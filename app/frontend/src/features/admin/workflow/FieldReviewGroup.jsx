@@ -125,7 +125,7 @@ function FieldRow({ field, value, status, details, blocking, entityScope, onFiel
       <div className="fld-head">
         <span className="fld-key">
           {heading}
-          {blocking ? <span className="badge blocker" style={{ marginLeft: 6 }}>required</span> : null}
+          {blocking ? <span title="Required — blocks promotion" aria-label="required" style={{ color: "var(--blocker)", fontWeight: 700, marginLeft: 4 }}>*</span> : null}
         </span>
         <span className={meta.cls}>{meta.text}</span>
       </div>
@@ -264,7 +264,7 @@ export default function FieldReviewGroup({ extracted, evidence, evidenceDetails,
         )}
       </div>
       <div className="anno">
-        Promotion is blocked until the fields tagged <strong>required</strong> are verified or corrected.
+        Promotion is blocked until fields marked <span style={{ color: "var(--blocker)", fontWeight: 700 }}>*</span> are verified or corrected.
       </div>
       {required.length ? (
         <div className="card fld-list">
