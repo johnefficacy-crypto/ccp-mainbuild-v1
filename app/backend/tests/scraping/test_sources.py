@@ -194,3 +194,30 @@ def test_sitemap_adapter_returns_none_when_no_url_or_base():
         "adapter_type": "sitemap",
     })
     assert src.primary_fetch_url() is None
+
+
+def test_serpapi_jobs_adapter_returns_sentinel_url():
+    # SerpApi adapters fetch from the API, not a per-source URL. The sentinel
+    # keeps primary_fetch_url non-None so the runner's source_config_invalid
+    # guard passes and dispatch reaches the SerpApi pass.
+    src = normalize_source_registry({
+        "id": "s11",
+        "source_name": "SerpApi Jobs",
+        "source_type": "aggregator",
+        "adapter_type": "serpapi_jobs",
+        "discovery_only": True,
+        "official_url": "https://serpapi.com/google-jobs-api",
+    })
+    assert src.primary_fetch_url() == "serpapi://google_jobs"
+
+
+def test_serpapi_web_adapter_returns_sentinel_url():
+    src = normalize_source_registry({
+        "id": "s12",
+        "source_name": "SerpApi Web",
+        "source_type": "aggregator",
+        "adapter_type": "serpapi_web",
+        "discovery_only": True,
+        "official_url": "https://serpapi.com/search-api",
+    })
+    assert src.primary_fetch_url() == "serpapi://google_web"

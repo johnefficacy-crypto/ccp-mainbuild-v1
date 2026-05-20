@@ -49,6 +49,7 @@ from .resolver import ResolverResult, resolve_with_registry
 from .sources import normalize_source_registry
 from .aggregator import (
     aggregator_max_items,
+    classify_aggregator_link,
     discover_aggregator_detail_urls,
     is_aggregator_source,
     mock_aggregator_detail_urls,
@@ -1020,6 +1021,201 @@ def _lookup_prior_document_headers(
         return {"etag": None, "last_modified": None}
 
 
+# ─── SerpApi discovery passes (discovery-only) ─────────────────────────────
+#
+# SerpApi is a discovery adapter: it feeds candidate URLs into
+# ``aggregator_listings`` with status ``needs_official_source`` and never
+# calls ``extract_recruitment_data`` or writes to ``recruitments`` /
+# ``posts`` / ``criteria``. The existing official-source resolver promotes a
+# listing only after it finds a ``.gov.in`` URL or PDF. Two engines, split by
+# intent — see ``serpapi_discovery``.
+
+# Hard cap on queries per pass. Defense in depth: the per-source daily cap in
+# scrape_config should already bound usage, but config is mutable and we never
+# trust it alone to protect the SerpApi free-tier quota.
+_SERPAPI_MAX_QUERIES_PER_RUN = 3
+
+
+def _is_pdf_lead_url(url: str) -> bool:
+    return url.lower().split("?", 1)[0].rstrip("/").endswith(".pdf")
+
+
+def _first_apply_link(lead: Any) -> str:
+    """First non-empty ``apply_options[].link`` for a job lead, else share_link.
+
+    apply_options usually point at LinkedIn / Naukri / Indeed rather than the
+    issuing agency — that's expected. The ``needs_official_source`` status
+    forces the resolver to find the real source before any promotion.
+    """
+    for option in getattr(lead, "apply_options", None) or []:
+        if isinstance(option, dict):
+            link = str(option.get("link") or "").strip()
+            if link:
+                return link
+    return str(getattr(lead, "share_link", "") or "").strip()
+
+
+def _persist_serpapi_listing(
+    supabase: Client,
+    *,
+    src: dict[str, Any],
+    run_id: str,
+    url: str,
+    label: str,
+    observed_label: str,
+) -> None:
+    """Record one discovered candidate URL as a ``needs_official_source``
+    aggregator listing. No extraction — promotion waits for the resolver."""
+    event_type = classify_aggregator_link(label, url)
+    listing_id = _upsert_aggregator_listing(
+        supabase,
+        source_id=src.get("id"),
+        scrape_run_id=run_id,
+        detail_url=url,
+        label=label or url,
+        event_type=event_type,
+    )
+    _record_listing_observation(
+        supabase,
+        listing_id=listing_id,
+        source_id=src.get("id"),
+        scrape_run_id=run_id,
+        observed_url=url,
+        observed_label=observed_label,
+        content_hash=None,
+    )
+    _mark_listing_status(supabase, listing_id, "needs_official_source")
+
+
+def _run_serpapi_jobs_pass(
+    supabase: Client,
+    *,
+    src: dict[str, Any],
+    source: Any,
+    run_id: str,
+    run_limit: int,
+    error_log: list[dict[str, Any]],
+    mock: bool,
+) -> bool:
+    """Google Jobs discovery (engine=google_jobs) for PSU / corporate careers
+    pages that emit JobPosting schema. Walks each lead's ``apply_options`` for
+    the first usable link and records it as a ``needs_official_source``
+    candidate. Returns ``True`` when at least one candidate was recorded (or
+    the run was cleanly quota-blocked, which is a no-op success, not a strike).
+    Raises when every query failed so the caller's ``_bump_source_failure``
+    path runs.
+    """
+    from .serpapi_discovery import mock_job_leads, search_google_jobs
+    from .quota import can_use_serpapi, record_serpapi_usage
+
+    adapter_config = source.adapter_config if isinstance(source.adapter_config, dict) else {}
+    scrape_config = source.scrape_config if isinstance(source.scrape_config, dict) else {}
+    queries = [q.strip() for q in (adapter_config.get("queries") or []) if isinstance(q, str) and q.strip()]
+    queries = queries[:_SERPAPI_MAX_QUERIES_PER_RUN]
+    location = str(adapter_config.get("location") or "India")
+    max_results = min(aggregator_max_items(src, default=10), run_limit)
+    daily_cap = int(scrape_config.get("daily_search_cap") or 0)
+    monthly_cap = int(scrape_config.get("monthly_search_cap") or 0)
+
+    recorded_any = False
+    quota_blocked = False
+    failures = 0
+    for query in queries:
+        if mock:
+            leads = mock_job_leads(max_results=max_results)
+        else:
+            if not can_use_serpapi(supabase, daily_cap=daily_cap, monthly_cap=monthly_cap):
+                logger.info("serpapi.quota_blocked source_id=%s engine=google_jobs", src.get("id"))
+                quota_blocked = True
+                break
+            try:
+                leads = search_google_jobs(query=query, location=location, max_results=max_results)
+            except Exception as exc:  # noqa: BLE001
+                error_class, error_message = _classify_exception(exc)
+                error_log.append({"source": source.name, "error": error_class, "error_message": error_message, "at": utc_now_iso()})
+                failures += 1
+                continue
+            record_serpapi_usage(supabase, count=1)
+
+        for lead in leads:
+            url = _first_apply_link(lead)
+            if not url:
+                continue
+            label = lead.title or lead.company_name or url
+            _persist_serpapi_listing(
+                supabase, src=src, run_id=run_id, url=url, label=label, observed_label=label,
+            )
+            recorded_any = True
+
+    if failures and failures == len(queries) and not recorded_any:
+        raise RuntimeError("serpapi_jobs: all queries failed")
+    return recorded_any or quota_blocked
+
+
+def _run_serpapi_web_pass(
+    supabase: Client,
+    *,
+    src: dict[str, Any],
+    source: Any,
+    run_id: str,
+    run_limit: int,
+    error_log: list[dict[str, Any]],
+    mock: bool,
+) -> bool:
+    """Google web discovery (engine=google) for government PDF / notification
+    URLs via ``site:`` operators. Each ``organic_results`` link is recorded as
+    a ``needs_official_source`` candidate; PDF links get a ``[pdf]`` tag on the
+    observation label so the resolver prioritises them. Same return/raise
+    contract as :func:`_run_serpapi_jobs_pass`.
+    """
+    from .serpapi_discovery import mock_web_leads, search_google_web
+    from .quota import can_use_serpapi, record_serpapi_usage
+
+    adapter_config = source.adapter_config if isinstance(source.adapter_config, dict) else {}
+    scrape_config = source.scrape_config if isinstance(source.scrape_config, dict) else {}
+    queries = [q.strip() for q in (adapter_config.get("queries") or []) if isinstance(q, str) and q.strip()]
+    queries = queries[:_SERPAPI_MAX_QUERIES_PER_RUN]
+    location = str(adapter_config.get("location") or "India")
+    max_results = min(aggregator_max_items(src, default=10), run_limit)
+    daily_cap = int(scrape_config.get("daily_search_cap") or 0)
+    monthly_cap = int(scrape_config.get("monthly_search_cap") or 0)
+
+    recorded_any = False
+    quota_blocked = False
+    failures = 0
+    for query in queries:
+        if mock:
+            leads = mock_web_leads(max_results=max_results)
+        else:
+            if not can_use_serpapi(supabase, daily_cap=daily_cap, monthly_cap=monthly_cap):
+                logger.info("serpapi.quota_blocked source_id=%s engine=google_web", src.get("id"))
+                quota_blocked = True
+                break
+            try:
+                leads = search_google_web(query=query, location=location, max_results=max_results)
+            except Exception as exc:  # noqa: BLE001
+                error_class, error_message = _classify_exception(exc)
+                error_log.append({"source": source.name, "error": error_class, "error_message": error_message, "at": utc_now_iso()})
+                failures += 1
+                continue
+            record_serpapi_usage(supabase, count=1)
+
+        for lead in leads:
+            url = (lead.link or "").strip()
+            if not url:
+                continue
+            label = lead.title or url
+            observed_label = f"{label} [pdf]" if _is_pdf_lead_url(url) else label
+            _persist_serpapi_listing(
+                supabase, src=src, run_id=run_id, url=url, label=label, observed_label=observed_label,
+            )
+            recorded_any = True
+
+    if failures and failures == len(queries) and not recorded_any:
+        raise RuntimeError("serpapi_web: all queries failed")
+    return recorded_any or quota_blocked
+
+
 # ─── Aggregator candidate layer helpers ────────────────────────────────────
 
 
@@ -1885,6 +2081,32 @@ def run_scraping_pass(
                         attempted_url=target_url,
                     )
                 continue
+            adapter_lc = (source.adapter_type or "").lower()
+            if adapter_lc in ("serpapi_jobs", "serpapi_web"):
+                runner_fn = _run_serpapi_jobs_pass if adapter_lc == "serpapi_jobs" else _run_serpapi_web_pass
+                try:
+                    if not runner_fn(supabase, src=src, source=source, run_id=run_id,
+                                     run_limit=run_limit, error_log=error_log, mock=mock):
+                        _bump_source_failure(
+                            supabase, src,
+                            error_class=f"empty_{adapter_lc}_response",
+                            error_message=f"{adapter_lc} adapter returned no usable leads",
+                            attempted_url=f"serpapi://{adapter_lc.removeprefix('serpapi_')}",
+                        )
+                        continue
+                    _mark_source_success(src)
+                except Exception as exc:  # noqa: BLE001
+                    error_class, error_message = _classify_exception(exc)
+                    error_log.append({"source": source.name, "error": error_class,
+                                      "error_message": error_message, "at": utc_now_iso()})
+                    _bump_source_failure(
+                        supabase, src,
+                        error_class=error_class,
+                        error_message=error_message,
+                        attempted_url=f"serpapi://{adapter_lc.removeprefix('serpapi_')}",
+                    )
+                continue
+
             try:
                 if is_aggregator_source(src):
                     source_limit = min(run_limit, aggregator_max_items(src))
