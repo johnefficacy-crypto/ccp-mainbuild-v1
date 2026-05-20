@@ -111,7 +111,7 @@
   padding: 1px 6px;
   border-radius: 2px;
 }
-.oc .modepill.active .count { background: var(--ink); color: var(--paper); }
+.oc .modepill.active .count { background: var(--paper-sunk); color: var(--ink); }
 
 /* Screens */
 .oc .scrn { padding: 18px 22px; border-top: 1px solid var(--rule); }
@@ -494,7 +494,7 @@
   cursor: pointer;
 }
 .oc .filter:hover { color: var(--ink); }
-.oc .filter.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.oc .filter.active { background: var(--paper-card); color: var(--ink); border-color: var(--ink); font-weight: 600; }
 
 /* Field-evidence list */
 .oc .fld-list .fld { padding: 10px 12px; border-bottom: 1px solid var(--rule-soft); }
@@ -988,8 +988,10 @@
 }
 .oc .oc-segmented__option:hover { color: var(--ink); background: var(--paper-sunk); }
 .oc .oc-segmented__option.active {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--paper-card);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--ink);
 }
 .oc .oc-segmented__option:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 

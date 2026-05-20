@@ -424,10 +424,10 @@ export default function AdminSources() {
                 onClick={() => setPolicyFilter(value)}
                 aria-pressed={isActive}
                 data-testid={`source-filter-${value}`}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs ${isActive ? "border-dusk-700 bg-dusk-700 text-white" : "border-border bg-white/70 text-foreground/75 hover:bg-clay-100"}`}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs ${isActive ? "border-dusk-700 bg-clay-100 text-dusk-900 font-semibold" : "border-border bg-white/70 text-foreground/75 hover:bg-clay-100"}`}
               >
                 {label}
-                <span className={`rounded-full px-1.5 text-[10px] font-semibold ${isActive ? "bg-white/25" : "bg-clay-100 text-foreground/60"}`}>{count}</span>
+                <span className={`rounded-full px-1.5 text-[10px] font-semibold ${isActive ? "bg-white text-dusk-700" : "bg-clay-100 text-foreground/60"}`}>{count}</span>
               </button>
             );
           })}

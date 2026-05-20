@@ -381,7 +381,7 @@ export default function AdminScraper() {
           ["dry_run", "Dry run"],
           ["all", "All"],
         ].map(([key, label]) => (
-          <button key={key} type="button" onClick={() => setQueueFilter(key)} className={`rounded-full border px-3 py-1.5 text-xs ${queueFilter === key ? "border-dusk-700 bg-dusk-700 text-white" : "border-border bg-white/70 text-foreground/75 hover:bg-clay-100"}`}>
+          <button key={key} type="button" onClick={() => setQueueFilter(key)} className={`rounded-full border px-3 py-1.5 text-xs ${queueFilter === key ? "border-dusk-700 bg-clay-100 text-dusk-900 font-semibold" : "border-border bg-white/70 text-foreground/75 hover:bg-clay-100"}`}>
             {label}
           </button>
         ))}

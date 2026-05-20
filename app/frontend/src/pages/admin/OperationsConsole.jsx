@@ -616,6 +616,24 @@ function scrapeHint(health, lastScrapedIso, pendingCount) {
   return { cls: "badge resolved", text: "fresh", rank: 6 };
 }
 
+// A small "i" badge for a panel's top-right corner. Holds explanatory text in
+// a tooltip (title + aria-label) instead of a full description line inside the
+// panel body, keeping the panel compact.
+function InfoBadge({ text }) {
+  if (!text) return null;
+  return (
+    <span
+      className="badge neutral"
+      title={text}
+      aria-label={text}
+      role="img"
+      style={{ cursor: "help", width: 18, height: 18, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontStyle: "italic", fontWeight: 700 }}
+    >
+      i
+    </span>
+  );
+}
+
 function SetupAndRun({ sources, selectedSource, runs, queue, onSelectSource, onRunDry, onRunLive, busy }) {
   const latestRun = runs[0] || null;
   const tierA = queue.filter((q) => tierForItem(q) === "A").length;
@@ -659,12 +677,12 @@ function SetupAndRun({ sources, selectedSource, runs, queue, onSelectSource, onR
         <div className="card">
           <div className="card-head">
             <h4 className="oc-title">Choose a source to scrape</h4>
-            <span className="row-sub">{selectedSource ? (selectedSource.org || selectedSource.source_name) : "all active sources"}</span>
+            <div className="row" style={{ gap: 8 }}>
+              <span className="row-sub">{selectedSource ? (selectedSource.org || selectedSource.source_name) : "all active sources"}</span>
+              <InfoBadge text="Sorted by what needs attention first — failing sources, never-scraped, then stale. Pick one source, or scrape all active sources." />
+            </div>
           </div>
           <div className="card-body stack">
-            <div className="anno">
-              Sorted by what needs attention first — failing sources, never-scraped, then stale. Pick one source or scrape all active sources.
-            </div>
             <div className="qlist" style={{ maxHeight: "46vh", overflowY: "auto" }}>
               <button
                 type="button"
@@ -700,8 +718,8 @@ function SetupAndRun({ sources, selectedSource, runs, queue, onSelectSource, onR
             </div>
           </div>
           <div className="card-foot">
-            <button type="button" className="btn small" onClick={onRunDry} disabled={busy} data-testid="ops-run-dry">Dry scrape</button>
-            <button type="button" className="btn primary small" onClick={onRunLive} disabled={busy} data-testid="ops-run-live">Run live scrape</button>
+            <button type="button" className="btn" onClick={onRunDry} disabled={busy} data-testid="ops-run-dry">Dry scrape</button>
+            <button type="button" className="btn primary" onClick={onRunLive} disabled={busy} data-testid="ops-run-live">Run live scrape</button>
           </div>
         </div>
 
