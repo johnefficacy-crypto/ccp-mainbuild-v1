@@ -363,7 +363,7 @@ function QueueFixSection({ item, conflicts = [], sources = [], onFieldAction, on
           }}
           data-testid="promote-bar"
         >
-          <div className="row" style={{ justifyContent: "space-between" }}>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div className="fld-key" style={{ color: blockedFromPromote ? "var(--blocker)" : "var(--resolved)" }}>
                 {blockedFromPromote ? "Promote blocked" : "Ready to promote"}
@@ -378,32 +378,36 @@ function QueueFixSection({ item, conflicts = [], sources = [], onFieldAction, on
                   : "All gates open. Promotion will create a recruitment draft."}
               </div>
             </div>
-            <button
-              type="button"
-              className="btn primary"
-              disabled={busy || blockedFromPromote}
-              onClick={() => onPromote?.(item)}
-              data-testid="fix-panel-promote"
-            >
-              Promote to draft
-            </button>
+            {/* Accept / reject sit together so the decision is one place, not a
+                button stranded at the bottom of the panel. */}
+            <div className="row" style={{ gap: 6 }}>
+              <button
+                type="button"
+                className="btn ghost small"
+                disabled={busy || item.status === "rejected" || item.status === "approved"}
+                onClick={() => onRejectCandidate?.(item)}
+                data-testid="fix-panel-reject-candidate"
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={busy || blockedFromPromote}
+                onClick={() => onPromote?.(item)}
+                data-testid="fix-panel-promote"
+              >
+                Promote to draft
+              </button>
+            </div>
           </div>
         </div>
       </div>
-      <div className="card-foot">
-        <button
-          type="button"
-          className="btn ghost small"
-          disabled={busy || item.status === "rejected" || item.status === "approved"}
-          onClick={() => onRejectCandidate?.(item)}
-          data-testid="fix-panel-reject-candidate"
-        >
-          Reject candidate
-        </button>
-        {dups.length ? (
+      {dups.length ? (
+        <div className="card-foot">
           <button type="button" className="btn small" disabled={busy} onClick={() => onMarkDuplicate?.(item, dups[0])}>Mark duplicate</button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -105,7 +105,7 @@ export default function PostEligibilityReviewGroup({ posts, evidenceDetails, onF
   return (
     <div data-testid="post-eligibility-review">
       <div className="anno" style={{ marginBottom: 6 }}>
-        Confirm the domicile requirement per post (pre-filled from the scraped notification). Other fields are shown for context.
+        Confirm the domicile requirement per post (pre-filled from the scraped notification). Other fields are read-only here — if a value is wrong, fix it in the recruitment editor after promoting (Open full editor on the draft).
       </div>
       <div style={{ overflowX: "auto" }}>
         <table className="t">
