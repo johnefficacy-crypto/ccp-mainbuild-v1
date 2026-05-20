@@ -229,18 +229,21 @@ def upsert_draft_sources(
     """Insert a draft row for every host in ``candidates`` that doesn't
     already exist in ``source_registry``.
 
-    Returns ``{"created": [...], "existing": [...]}``. Both lists contain
-    the supabase row shape so callers can update their in-memory source
-    listing without a follow-up fetch.
+    Returns ``{"created": [...], "existing": [...], "failed": [...]}``. The
+    first two lists carry the supabase row shape so callers can update their
+    in-memory source listing without a follow-up fetch; ``failed`` carries a
+    light ``{host, error_class}`` record per insert that raised (the runner
+    counts these toward run severity).
     """
     if not candidates:
-        return {"created": [], "existing": []}
+        return {"created": [], "existing": [], "failed": []}
 
     hosts = [host for host, _ in candidates]
     existing_by_host = _existing_by_host(supabase, hosts)
 
     created: list[dict[str, Any]] = []
     existing: list[dict[str, Any]] = []
+    failed: list[dict[str, Any]] = []
     for host, source_url in candidates:
         match = existing_by_host.get(host)
         if match is not None:
@@ -255,9 +258,23 @@ def upsert_draft_sources(
                 .data
                 or []
             )
-        except Exception:
-            # Hard fail on a single host shouldn't kill the whole batch.
-            # Caller's audit logger will note the absence.
+        except Exception as e:
+            # Hard fail on a single host shouldn't kill the whole batch, but a
+            # silent ``continue`` hid 7 source_registry 400s in a reference
+            # run. Log the triage context (keys + host + url, never raw values
+            # which may carry extracted text) and keep going.
+            logger.warning(
+                "scrape.source_draft_insert_failed",
+                extra={
+                    "host": payload.get("source_name"),
+                    "source_url": payload.get("official_url"),
+                    "queue_id": queue_id,
+                    "payload_keys": sorted(payload.keys()),
+                    "error_class": type(e).__name__,
+                    "error_message": str(e)[:500],
+                },
+            )
+            failed.append({"host": host, "error_class": type(e).__name__})
             continue
         if res:
             row = res[0]
@@ -267,4 +284,4 @@ def upsert_draft_sources(
         # A new official_url/host now exists — drop the host-match cache so
         # the next run (or call) re-reads and sees it.
         invalidate_source_registry_cache()
-    return {"created": created, "existing": existing}
+    return {"created": created, "existing": existing, "failed": failed}

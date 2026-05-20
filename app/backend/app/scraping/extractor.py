@@ -89,6 +89,7 @@ def extract_recruitment_data(
     source_name: str,
     *,
     mock: bool | None = None,
+    metrics: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Returns ``{"data": ExtractedRecruitment, "confidence": float}`` or ``None``."""
     truncated = raw_text[:16000]
@@ -152,7 +153,11 @@ def extract_recruitment_data(
     )
 
     try:
-        client = anthropic.Anthropic()
+        # 30s hard timeout: a single stalled article must not be able to
+        # hold the per-source loop open indefinitely (one FreeJobAlert page
+        # stalled a reference run for 154s). The runner adds a per-source
+        # call/time budget on top of this.
+        client = anthropic.Anthropic(timeout=30.0)
         resp = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4000,
@@ -178,6 +183,16 @@ def extract_recruitment_data(
         confidence = max(0.0, min(1.0, float(confidence)))
         data = ExtractedRecruitment(**parsed)
         return {"data": data, "confidence": confidence}
+    except anthropic.APITimeoutError as exc:
+        # Infra failure, not low confidence: the runner records a timeout
+        # and treats the item as a regular extraction failure (no queue
+        # insert, no low_quality row).
+        logger.warning(
+            "scrape.extractor_timeout source=%s url=%s err=%s", source_name, source_url, exc
+        )
+        if metrics is not None:
+            metrics["extractor_timeout_count"] = metrics.get("extractor_timeout_count", 0) + 1
+        return None
     except Exception as exc:  # noqa: BLE001
         logger.warning("[extractor] Claude call failed: %s", exc)
         return None

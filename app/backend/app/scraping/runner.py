@@ -22,6 +22,7 @@ import hashlib
 import logging
 import os
 import re
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -43,7 +44,7 @@ from .dedup import (
     post_extraction_dedup_recruitments,
     pre_llm_dedup_check,
 )
-from .normalizer import normalize_recruitment
+from .normalizer import normalize_recruitment, sanitize_json, sanitize_text
 from .promotion_gate import evaluate_promotion_gate
 from .resolver import ResolverResult, resolve_with_registry
 from .sources import normalize_source_registry
@@ -128,6 +129,10 @@ def _ensure_notification_document(
     raw_text: str,
     metadata: dict[str, Any] | None = None,
 ) -> str | None:
+    # Strip NUL/control bytes before they reach the DB (Postgres rejects NUL
+    # with 22P05). Hash the sanitized text so the stored body and its
+    # content_hash agree.
+    raw_text = sanitize_text(raw_text)
     content_hash = hashlib.sha256((raw_text or source_url or "").encode("utf-8")).hexdigest()
 
     existing = (
@@ -271,13 +276,20 @@ def _record_lifecycle_event(
     url: str,
     label: str,
 ) -> None:
-    """Insert a ``recruitment_events`` row for a discovered lifecycle link.
+    """Upsert a ``recruitment_events`` row for a discovered lifecycle link.
 
     ``recruitment_id`` is left null — migration 042 relaxed the FK so we
     can persist events for recruitments we haven't canonicalised yet.
     The ``payload`` carries enough provenance for admin to reconcile the
     event with a canonical row later. Best-effort: a missing or older
     table just logs a warning.
+
+    Task 9: write amplification guard. Aggregator re-discovery used to
+    INSERT the same (source_id, event_type, discovered_url) on every pass
+    (a reference run wrote ~184 dupes for one source). The migration adds a
+    generated ``event_hash`` over those three fields with a UNIQUE index;
+    here we ``upsert(... on_conflict=event_hash, ignore_duplicates=True)``
+    so a re-seen link is a no-op instead of a new row.
     """
     if not source_id or not event_type or not url:
         return
@@ -286,18 +298,22 @@ def _record_lifecycle_event(
         "discovered_label": label or None,
     }
     try:
-        supabase.table("recruitment_events").insert(
+        supabase.table("recruitment_events").upsert(
             {
                 "recruitment_id": None,
                 "event_type": event_type,
                 "source_id": source_id,
                 "aggregator_listing_id": listing_id,
                 "payload": payload,
-            }
+            },
+            on_conflict="event_hash",
+            ignore_duplicates=True,
         ).execute()
     except Exception as exc:  # noqa: BLE001
+        # Includes a 23505 from a concurrent writer racing the same hash —
+        # the row already exists, so swallow and move on.
         logger.warning(
-            "recruitment_events insert failed event_type=%s url=%s error=%s",
+            "recruitment_events upsert failed event_type=%s url=%s error=%s",
             event_type, url, exc,
         )
 
@@ -1543,6 +1559,35 @@ def run_scraping_pass(
     error_log: list[dict[str, Any]] = []
     run_limit = max(1, min(int(limit or 25), 100))
 
+    # Severity metrics (see docs/scrape_severity_policy.md). A mutable dict so
+    # the nested closure mutates it in place without ``nonlocal``.
+    run_metrics: dict[str, Any] = {
+        "anthropic_calls": 0,
+        "low_quality_count": 0,
+        "source_auto_disabled_count": 0,
+        "source_registry_draft_failures": 0,
+        "notification_document_failures": 0,
+        "extractor_timeout_count": 0,
+    }
+    # Sources auto-disabled mid-run (Task 3): the outer loop skips them and the
+    # per-source detail loop breaks out so we stop fetching/LLM-ing entirely.
+    disabled_source_ids: set[str] = set()
+    # Per-source, per-run model budget (Task 5): a stalled or runaway source
+    # can't burn the whole pass. Per-run only — the source stays active.
+    source_model_seconds: dict[str, float] = {}
+    source_model_calls: dict[str, int] = {}
+    budget_logged: set[str] = set()
+
+    def _source_budget_exceeded(sid: str | None) -> bool:
+        return (
+            source_model_seconds.get(sid, 0.0) >= MAX_MODEL_SECONDS_PER_SOURCE
+            or source_model_calls.get(sid, 0) >= MAX_MODEL_CALLS_PER_SOURCE
+        )
+
+    def _source_halted(sid: str | None) -> bool:
+        """A source whose detail loop must stop this run — disabled or over budget."""
+        return sid in disabled_source_ids or _source_budget_exceeded(sid)
+
     def queue_extraction(
         src: dict[str, Any],
         source_name: str,
@@ -1554,6 +1599,12 @@ def run_scraping_pass(
     ) -> str | None:
         """Run extraction → dedup → queue insert. Returns inserted queue id or None on failure."""
         nonlocal total_found, total_new, total_dup
+
+        sid = src.get("id")
+        # Task 5: per-source model budget guard. Once a source is over budget
+        # we stop spending model time on it (the detail loop also breaks).
+        if not mock and _source_budget_exceeded(sid):
+            return None
 
         # ── Pre-LLM URL dedup (targeted; see dedup.py) ─────────────────────
         # extract_recruitment_data is an Anthropic call. If a canonical
@@ -1570,7 +1621,20 @@ def run_scraping_pass(
             )
             return None
 
-        extraction = extract_recruitment_data(raw, item_url, source_name, mock=mock)
+        _t0 = time.monotonic()
+        extraction = extract_recruitment_data(
+            raw, item_url, source_name, mock=mock, metrics=run_metrics
+        )
+        if not mock:
+            run_metrics["anthropic_calls"] += 1
+            source_model_seconds[sid] = source_model_seconds.get(sid, 0.0) + (time.monotonic() - _t0)
+            source_model_calls[sid] = source_model_calls.get(sid, 0) + 1
+            if _source_budget_exceeded(sid) and sid not in budget_logged:
+                budget_logged.add(sid)
+                logger.warning(
+                    "scrape.source_budget_exceeded source_id=%s elapsed=%.1f calls=%d",
+                    sid, source_model_seconds.get(sid, 0.0), source_model_calls.get(sid, 0),
+                )
         if not extraction:
             error_log.append({"source": source_name, "url": item_url, "error": "Extraction returned null", "at": utc_now_iso()})
             return None
@@ -1585,12 +1649,13 @@ def run_scraping_pass(
         # record it for triage, and bump the per-source strike counter —
         # which auto-disables a source that keeps producing low-confidence
         # output so we stop paying for LLM calls on it.
-        if confidence < _min_confidence_to_queue():
+        if confidence <= _min_confidence_to_queue():
             try:
                 low_quality = normalize_recruitment(data).data_quality_score
             except Exception:  # noqa: BLE001 - quality is best-effort here
                 low_quality = None
-            _record_low_confidence_and_maybe_disable(
+            run_metrics["low_quality_count"] += 1
+            disabled = _record_low_confidence_and_maybe_disable(
                 supabase,
                 run_id=run_id,
                 src=src,
@@ -1599,6 +1664,16 @@ def run_scraping_pass(
                 data_quality_score=low_quality,
                 extracted_data=to_json_safe(data),
             )
+            if disabled and sid:
+                # Task 3: stop processing this source's remaining detail URLs
+                # this run. The detail loop checks ``_source_halted`` and the
+                # outer loop skips the id outright.
+                disabled_source_ids.add(sid)
+                run_metrics["source_auto_disabled_count"] += 1
+                logger.warning(
+                    "scrape.source_aborted_in_run source_id=%s strikes=%d",
+                    sid, _low_confidence_strike_limit(),
+                )
             return None
         # A confident extraction clears the source's low-confidence streak.
         _reset_low_confidence_strikes(src.get("id"))
@@ -1744,24 +1819,38 @@ def run_scraping_pass(
                 f"org_type_mismatch:{data.org_type}_not_in_{sorted(expected_org_types)}",
             ]
 
+        # Task 4b: queue-insert guard against missing evidence linkage. On a
+        # non-mock run a null ``notification_document_id`` means the document
+        # insert failed (e.g. 22P05) — the row would otherwise be written as
+        # ``extraction_status='ok'`` with no evidence document behind it.
+        document_missing = document_id is None and not mock
+        if document_missing:
+            run_metrics["notification_document_failures"] += 1
+            extracted_payload["_meta"]["warnings"] = [
+                *(extracted_payload["_meta"].get("warnings") or []),
+                "notification_document_missing",
+            ]
+
         # ``extraction_status`` distinguishes a technically successful
         # model call from one whose output is admin-usable. A collapsed
         # canonical key (missing org/title/year), a data_quality_score
-        # below the review threshold, a resolved-without-host block, or an
-        # org_type that contradicts the source's allowlist means the row
-        # needs a human pass before any downstream consumer treats it as
-        # "extraction completed".
+        # below the review threshold, a resolved-without-host block, an
+        # org_type that contradicts the source's allowlist, or a missing
+        # evidence document means the row needs a human pass before any
+        # downstream consumer treats it as "extraction completed".
         is_low_quality = normalized.data_quality_score < 0.30
         extraction_status = (
             "needs_review"
-            if (canonical_collapsed or is_low_quality or resolved_without_host or org_type_mismatch)
+            if (canonical_collapsed or is_low_quality or resolved_without_host or org_type_mismatch or document_missing)
             else "ok"
         )
         queue_payload = {
             "source_url": item_url,
             "source_name": source_name,
             "source_id": src.get("id"),
-            "extracted_data": extracted_payload,
+            # Strip NUL/control bytes from every string before they cross into
+            # the jsonb column (Postgres rejects NUL with 22P05).
+            "extracted_data": sanitize_json(extracted_payload),
             "confidence_score": confidence,
             "data_quality_score": normalized.data_quality_score,
             "scrape_run_id": run_id,
@@ -1820,6 +1909,7 @@ def run_scraping_pass(
                         run_id, inserted_id,
                         [r.get("source_name") for r in drafts["created"]],
                     )
+                run_metrics["source_registry_draft_failures"] += len(drafts.get("failed") or [])
         except Exception as exc:  # noqa: BLE001
             # Draft creation is best-effort; never let it kill the run.
             logger.warning(
@@ -1917,6 +2007,10 @@ def run_scraping_pass(
             released_source_ids.add(sid)
 
     for src in sources:
+        # Task 3: a source auto-disabled earlier in this run is skipped
+        # entirely — no claim, no fetch, no LLM, no DB writes.
+        if src.get("id") in disabled_source_ids:
+            continue
         source = normalize_source_registry(src)
         # Per-source concurrency claim. A worker that can't take the
         # lock skips the source for this run; the holding worker will
@@ -2342,6 +2436,15 @@ def run_scraping_pass(
                             listing_id=listing_id,
                             resolver_result=resolver_result,
                         )
+                        # Task 3/5: stop fetching this source's remaining
+                        # detail URLs once it's auto-disabled or over its
+                        # per-run model budget.
+                        if _source_halted(src.get("id")):
+                            logger.info(
+                                "scrape.source_detail_loop_halted source_id=%s",
+                                src.get("id"),
+                            )
+                            break
                     if total_found == found_before:
                         _bump_source_failure(
                             supabase, src,
@@ -2395,12 +2498,10 @@ def run_scraping_pass(
                 _release_source_claim(supabase, src)
 
     # ── 5. Finalise the run row ──────────────────────────────────────────
-    if sources and len(error_log) == len(sources):
-        final_status = "failed"
-    elif error_log:
-        final_status = "partial"
-    else:
-        final_status = "completed"
+    # Severity-aware status (Task 8, docs/scrape_severity_policy.md): a hard
+    # signal (low-quality flood, mid-run disable, draft/document failure)
+    # outranks a plain per-source error.
+    final_status = _compute_final_status(len(sources), len(error_log), run_metrics)
 
     execute_or_raise(
         "scrape_runs.finalize",
@@ -2582,6 +2683,55 @@ MIN_CONFIDENCE_TO_QUEUE = 0.20
 LOW_CONFIDENCE_STRIKE_LIMIT = 3
 _low_confidence_strikes: dict[str, int] = {}
 
+# ── Task 5: per-source model budget (per-run guard, not a disable) ─────────
+# A single source must not be able to burn the whole pass on model calls
+# (a reference run had one FreeJobAlert article stall the loop for 154s).
+# When a source crosses either limit in a run we stop fetching/LLM-ing its
+# remaining detail URLs; the source stays active for future runs.
+MAX_MODEL_SECONDS_PER_SOURCE = 120.0  # ~4 calls × 30s timeout
+MAX_MODEL_CALLS_PER_SOURCE = 6
+
+# ── Task 8: run severity thresholds (see docs/scrape_severity_policy.md) ───
+DEGRADED_LOW_QUALITY_RATIO = 0.40
+WARNING_LOW_QUALITY_RATIO = 0.20
+
+
+def _low_quality_ratio(metrics: dict[str, Any]) -> float:
+    return metrics.get("low_quality_count", 0) / max(metrics.get("anthropic_calls", 0), 1)
+
+
+def severity_triggers_degraded(metrics: dict[str, Any]) -> bool:
+    """Hard severity signals — any one routes the run to ``degraded``."""
+    return (
+        _low_quality_ratio(metrics) > DEGRADED_LOW_QUALITY_RATIO
+        or metrics.get("source_auto_disabled_count", 0) > 0
+        or metrics.get("source_registry_draft_failures", 0) > 0
+        or metrics.get("notification_document_failures", 0) > 0
+    )
+
+
+def any_severity_warnings(metrics: dict[str, Any]) -> bool:
+    """Soft severity signals — a strict superset of ``severity_triggers_degraded``."""
+    return (
+        _low_quality_ratio(metrics) > WARNING_LOW_QUALITY_RATIO
+        or metrics.get("extractor_timeout_count", 0) > 0
+    )
+
+
+def _compute_final_status(
+    num_sources: int, num_errors: int, metrics: dict[str, Any]
+) -> str:
+    """Map a finished run to a ``scrape_runs.status`` (first match wins)."""
+    if num_sources and num_errors == num_sources:
+        return "failed"
+    if severity_triggers_degraded(metrics):
+        return "degraded"
+    if num_errors:
+        return "partial"
+    if any_severity_warnings(metrics):
+        return "completed_with_warnings"
+    return "completed"
+
 
 def _min_confidence_to_queue() -> float:
     raw = os.getenv("MIN_CONFIDENCE_TO_QUEUE")
@@ -2617,15 +2767,23 @@ def _record_low_confidence_and_maybe_disable(
     confidence: float,
     data_quality_score: float | None,
     extracted_data: dict[str, Any],
-) -> None:
+) -> bool:
     """Persist a skipped low-confidence extraction and bump the strike count.
 
-    ``low_quality_extractions`` does not exist yet (flagged as a follow-up
-    migration); when the insert fails we fall back to a structured WARNING
-    and still skip the scrape_queue insert. After
-    ``LOW_CONFIDENCE_STRIKE_LIMIT`` consecutive low-confidence runs the
-    source is auto-disabled so future runs don't even claim it (the
-    is_active=False filter excludes it from the next source load).
+    Returns ``True`` iff this call auto-disabled the source (strike limit
+    hit), so the caller can stop processing it for the rest of the run.
+
+    When the ``low_quality_extractions`` insert fails (e.g. the table is not
+    yet applied) we fall back to a structured WARNING and still skip the
+    scrape_queue insert. After ``LOW_CONFIDENCE_STRIKE_LIMIT`` consecutive
+    low-confidence extractions the source is auto-disabled so future runs
+    don't even claim it (the is_active=False filter excludes it from the
+    next source load).
+
+    Task 6 note: this path issues at most ONE ``source_registry`` PATCH (the
+    auto-disable below). The strike counter is in-memory
+    (``_low_confidence_strikes``), never a second PATCH — so there is no
+    double-write to fold here. The single-PATCH invariant is pinned by test.
     """
     src_id = src.get("id")
     row = {
@@ -2648,7 +2806,7 @@ def _record_low_confidence_and_maybe_disable(
         )
 
     if not src_id:
-        return
+        return False
     strikes = _low_confidence_strikes.get(src_id, 0) + 1
     _low_confidence_strikes[src_id] = strikes
     if strikes >= _low_confidence_strike_limit():
@@ -2656,6 +2814,7 @@ def _record_low_confidence_and_maybe_disable(
             "scrape.source_auto_disabled source_id=%s strikes=%d reason=low_confidence",
             src_id, strikes,
         )
+        # Single merged PATCH: is_active + verification_status together.
         execute_or_default(
             "source_registry.auto_disable_low_confidence",
             lambda: supabase.table("source_registry").update({
@@ -2665,6 +2824,8 @@ def _record_low_confidence_and_maybe_disable(
             None,
         )
         _low_confidence_strikes.pop(src_id, None)
+        return True
+    return False
 
 
 def _classify_exception(exc: BaseException) -> tuple[str, str]:
