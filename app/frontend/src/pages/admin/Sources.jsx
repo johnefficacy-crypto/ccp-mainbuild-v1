@@ -345,9 +345,11 @@ export default function AdminSources() {
   const summary = useMemo(() => ({
     total: items.length,
     active: items.filter((i) => i.is_active !== false).length,
+    officialVerified: items.filter((i) => (i.source_type || i.kind) !== "aggregator" && i.is_verified).length,
     needsReview: items.filter((i) => i.verification_status === "needs_review").length,
     failed: items.filter((i) => (i.consecutive_fails || 0) > 0 || i.last_error).length,
     aggregators: items.filter((i) => i.source_type === "aggregator").length,
+    inactive: items.filter((i) => i.is_active === false).length,
   }), [items]);
   const showHistory = async (s) => { const d = await adminTrustService.sourceAudit(s.id); setAuditItems(d.items || []); setAuditTarget(s); };
   const typeOptions = useMemo(() => Array.from(new Set(items.map((i) => i.source_type || i.kind).filter(Boolean))), [items]);
@@ -386,13 +388,6 @@ export default function AdminSources() {
         </div>
         <button className="btn btn-primary" onClick={openCreate}><Plus className="h-4 w-4" /> Add source</button>
       </div>
-      <div className="grid gap-3 text-sm md:grid-cols-5">
-        <Metric label="Total" value={summary.total} filterKey="all" active={policyFilter === "all"} onSelect={setPolicyFilter} />
-        <Metric label="Active" value={summary.active} filterKey="active" active={policyFilter === "active"} onSelect={setPolicyFilter} />
-        <Metric label="Needs review" value={summary.needsReview} tone="warn" filterKey="review" active={policyFilter === "review"} onSelect={setPolicyFilter} />
-        <Metric label="Failed" value={summary.failed} tone="bad" filterKey="failed" active={policyFilter === "failed"} onSelect={setPolicyFilter} />
-        <Metric label="Aggregators" value={summary.aggregators} filterKey="discovery" active={policyFilter === "discovery"} onSelect={setPolicyFilter} />
-      </div>
       <section className="soft-card rounded-2xl p-4">
         <div className="grid gap-3 lg:grid-cols-[1fr_200px]">
           <label className="relative block">
@@ -409,18 +404,33 @@ export default function AdminSources() {
             </select>
           </label>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        {/* Counts and filters are one control: each chip filters the registry
+            in place and shows how many sources fall in that group. */}
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filter sources by trust group">
           {[
-            ["all", "All"],
-            ["active", "Active"],
-            ["official_verified", "Official verified"],
-            ["review", "Needs review"],
-            ["failed", "Failed"],
-            ["discovery", "Aggregator discovery-only"],
-            ["inactive", "Inactive"],
-          ].map(([value, label]) => (
-            <button key={value} type="button" onClick={() => setPolicyFilter(value)} className={`rounded-full border px-3 py-1.5 text-xs ${policyFilter === value ? "border-dusk-700 bg-dusk-700 text-white" : "border-border bg-white/70 text-foreground/75 hover:bg-clay-100"}`}>{label}</button>
-          ))}
+            ["all", "All", summary.total],
+            ["active", "Active", summary.active],
+            ["official_verified", "Verified", summary.officialVerified],
+            ["review", "Needs review", summary.needsReview],
+            ["failed", "Failed", summary.failed],
+            ["discovery", "Aggregators", summary.aggregators],
+            ["inactive", "Inactive", summary.inactive],
+          ].map(([value, label, count]) => {
+            const isActive = policyFilter === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setPolicyFilter(value)}
+                aria-pressed={isActive}
+                data-testid={`source-filter-${value}`}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs ${isActive ? "border-dusk-700 bg-dusk-700 text-white" : "border-border bg-white/70 text-foreground/75 hover:bg-clay-100"}`}
+              >
+                {label}
+                <span className={`rounded-full px-1.5 text-[10px] font-semibold ${isActive ? "bg-white/25" : "bg-clay-100 text-foreground/60"}`}>{count}</span>
+              </button>
+            );
+          })}
         </div>
       </section>
       {actionError && <div className="soft-card rounded-xl p-3 text-xs text-destructive">{actionError.message}</div>}
@@ -457,28 +467,6 @@ function FormSection({ label, children }) {
 
 function Detail({ label, value }) {
   return <div><div className="text-[11px] uppercase tracking-widest text-muted-foreground">{label}</div><div className="break-words">{value || "-"}</div></div>;
-}
-
-function Metric({ label, value, tone, filterKey, active, onSelect }) {
-  const toneClass = tone === "bad" ? "text-destructive" : tone === "warn" ? "text-amber-700" : "text-foreground";
-  const inner = (
-    <>
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className={`mt-1 font-heading text-2xl ${toneClass}`}>{value}</div>
-    </>
-  );
-  if (!filterKey) return <div className="soft-card rounded-xl p-3">{inner}</div>;
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(filterKey)}
-      aria-pressed={active}
-      className={`soft-card rounded-xl p-3 text-left transition ${active ? "ring-2 ring-dusk-700" : "hover:bg-clay-100"}`}
-      data-testid={`source-metric-${filterKey}`}
-    >
-      {inner}
-    </button>
-  );
 }
 
 function SourceCard({ source, busyKey, onDetails, onEdit, onVerify, onToggle, onHistory }) {
