@@ -602,6 +602,77 @@ def test_run_detail_falls_back_to_registry_name_for_orphan_source(sb):
 
 
 # ════════════════════════════════════════════════════════════════════════════
+#  P1.3: run detail surfaces aggregator_listings (discovery) separately
+# ════════════════════════════════════════════════════════════════════════════
+
+
+def test_run_detail_surfaces_discovery_for_serpapi_run(sb):
+    """A SerpApi-only run produces aggregator_listings, not scrape_queue rows.
+    The discovery block must surface them; the queue block stays empty."""
+    sb.tables["scrape_runs"] = [{
+        "id": "run-1", "status": "completed", "triggered_by": "admin",
+        "discovery_items_found": 3, "discovery_items_new": 3, "discovery_items_lifecycle": 0,
+        "error_log": [],
+    }]
+    sb.tables["scrape_queue"] = []
+    sb.tables["aggregator_listings"] = [
+        {"id": "al-1", "source_id": "serp-web", "listing_url": "https://rbi.org.in/n1.pdf",
+         "listing_title": "RBI notice", "event_type": "new_recruitment",
+         "status": "needs_official_source", "scrape_run_id": "run-1",
+         "first_seen_at": "2026-05-20T10:00:00+00:00", "last_seen_at": "2026-05-20T10:00:00+00:00"},
+        {"id": "al-2", "source_id": "serp-web", "listing_url": "https://ssc.gov.in/n2",
+         "listing_title": "SSC notice", "event_type": "new_recruitment",
+         "status": "needs_official_source", "scrape_run_id": "run-1",
+         "first_seen_at": "2026-05-20T10:00:01+00:00", "last_seen_at": "2026-05-20T10:00:01+00:00"},
+        {"id": "al-3", "source_id": "serp-web", "listing_url": "https://upsc.gov.in/n3.pdf",
+         "listing_title": "UPSC notice", "event_type": "new_recruitment",
+         "status": "needs_official_source", "scrape_run_id": "run-1",
+         "first_seen_at": "2026-05-20T10:00:02+00:00", "last_seen_at": "2026-05-20T10:00:02+00:00"},
+    ]
+    out = admin_scrape.get_scrape_run_detail("run-1", _admin=ADMIN_USER)
+    assert out["discovery"]["total"] == 3
+    assert len(out["discovery"]["rows"]) == 3
+    assert {b["source_id"] for b in out["discovery"]["by_source"]} == {"serp-web"}
+    assert out["discovery"]["by_source"][0]["count"] == 3
+    assert out["queue"]["rows"] == []
+    assert out["queue"]["total"] == 0
+    # Discovery counters echoed from scrape_runs.
+    assert out["discovery_items_found"] == 3
+
+
+def test_run_detail_discovery_empty_for_normal_html_run(sb):
+    """A normal RSS/HTML run produces queue rows and no aggregator_listings."""
+    sb.tables["scrape_runs"] = [{
+        "id": "run-2", "status": "completed", "triggered_by": "admin", "error_log": [],
+    }]
+    sb.tables["scrape_queue"] = [
+        {"source_id": "src-1", "source_name": "UPSC", "status": "pending", "scrape_run_id": "run-2"},
+        {"source_id": "src-1", "source_name": "UPSC", "status": "approved", "scrape_run_id": "run-2"},
+    ]
+    sb.tables["aggregator_listings"] = []
+    out = admin_scrape.get_scrape_run_detail("run-2", _admin=ADMIN_USER)
+    assert out["discovery"]["total"] == 0
+    assert out["discovery"]["rows"] == []
+    assert len(out["queue"]["rows"]) == 2
+
+
+def test_list_runs_includes_discovery_counters(sb):
+    sb.tables["scrape_runs"] = [{
+        "id": "run-1", "status": "completed", "triggered_by": "admin", "started_at": "2026-05-20T10:00:00+00:00",
+        "items_found": 0, "items_new": 0, "items_duplicate": 0,
+        "discovery_items_found": 25, "discovery_items_new": 20, "discovery_items_lifecycle": 5,
+        "error_log": [], "sources_checked": 1,
+    }]
+    out = admin_scrape.list_scrape_runs(limit=30, _admin=ADMIN_USER)
+    item = out["items"][0]
+    # Queue-item counters stay 0 (no scrape_queue work); discovery is separate.
+    assert item["items_seen"] == 0
+    assert item["discovery_items_found"] == 25
+    assert item["discovery_items_new"] == 20
+    assert item["discovery_items_lifecycle"] == 5
+
+
+# ════════════════════════════════════════════════════════════════════════════
 #  GET /api/admin/scrape/items/{id}/promotion-preview
 # ════════════════════════════════════════════════════════════════════════════
 

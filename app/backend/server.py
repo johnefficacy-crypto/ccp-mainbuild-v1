@@ -94,6 +94,13 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
 
+# Scrub api_key=<value> from any log record (httpx request logging prints the
+# full SerpApi URL at INFO; it leaked the key once). Attach after basicConfig
+# so the root handler exists.
+from app.core.logging_filters import install_log_redaction
+
+install_log_redaction()
+
 
 def _scheduler_enabled() -> bool:
     """``ENABLE_SCHEDULER`` gates the in-process APScheduler.

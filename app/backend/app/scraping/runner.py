@@ -415,7 +415,7 @@ def _run_rss_pass(
             )
             continue
 
-        listing_id = _upsert_aggregator_listing(
+        listing_id, _ = _upsert_aggregator_listing(
             supabase,
             source_id=src.get("id"),
             scrape_run_id=run_id,
@@ -577,7 +577,7 @@ def _run_sitemap_pass(
             )
             continue
 
-        listing_id = _upsert_aggregator_listing(
+        listing_id, _ = _upsert_aggregator_listing(
             supabase,
             source_id=src.get("id"),
             scrape_run_id=run_id,
@@ -752,7 +752,7 @@ def _run_pdf_pass(
         # original URL so existing pipelines see no behaviour change.
         chunk_url = target_url if len(chunks) == 1 else f"{target_url}#chunk-{index + 1}"
         chunk_label = source.name if len(chunks) == 1 else f"{source.name} (chunk {index + 1}/{len(chunks)})"
-        listing_id = _upsert_aggregator_listing(
+        listing_id, _ = _upsert_aggregator_listing(
             supabase,
             source_id=src.get("id"),
             scrape_run_id=run_id,
@@ -873,7 +873,7 @@ def _run_api_pass(
             )
             continue
 
-        listing_id = _upsert_aggregator_listing(
+        listing_id, _ = _upsert_aggregator_listing(
             supabase,
             source_id=src.get("id"),
             scrape_run_id=run_id,
@@ -1071,36 +1071,205 @@ def _first_apply_link(lead: Any) -> str:
     return str(getattr(lead, "share_link", "") or "").strip()
 
 
-def _persist_serpapi_listing(
+def _select_queries_for_run(source: Any, *, max_per_run: int) -> tuple[list[str], int]:
+    """Pick this run's queries and the next cursor (pure; unit-tested).
+
+    Rotates through ``adapter_config.queries`` starting at
+    ``scrape_config.next_query_index`` so queries past the per-run cap aren't
+    permanently starved. Returns ``(queries_to_run, new_cursor)``.
+    """
+    cfg = source.adapter_config if isinstance(source.adapter_config, dict) else {}
+    all_queries = [q.strip() for q in (cfg.get("queries") or []) if isinstance(q, str) and q.strip()]
+    if not all_queries:
+        return [], 0
+    scrape_cfg = source.scrape_config if isinstance(source.scrape_config, dict) else {}
+    try:
+        raw_start = int(scrape_cfg.get("next_query_index", 0))
+    except (TypeError, ValueError):
+        raw_start = 0
+    start = raw_start % len(all_queries)
+    take = min(max_per_run, len(all_queries))
+    rotated = all_queries[start:] + all_queries[:start]
+    selected = rotated[:take]
+    new_cursor = (start + take) % len(all_queries)
+    return selected, new_cursor
+
+
+def _persist_query_cursor(
+    supabase: Client,
+    *,
+    source_id: str | None,
+    scrape_config: dict[str, Any],
+    next_query_index: int,
+) -> None:
+    """Merge ``next_query_index`` into ``source_registry.scrape_config``.
+
+    Read-merge-write off the already-loaded config (the source is claim-locked
+    for the pass, so no concurrent writer), preserving other scrape_config keys
+    rather than clobbering the jsonb column.
+    """
+    if not source_id:
+        return
+    merged = {**(scrape_config if isinstance(scrape_config, dict) else {}), "next_query_index": next_query_index}
+    execute_or_default(
+        "source_registry.persist_query_cursor",
+        lambda: supabase.table("source_registry").update({"scrape_config": merged}).eq("id", source_id).execute(),
+        None,
+    )
+
+
+def _serpapi_fetch_leads(*, engine: str, query: str, location: str, max_results: int, mock: bool) -> list[Any]:
+    from .serpapi_discovery import (
+        mock_job_leads,
+        mock_web_leads,
+        search_google_jobs,
+        search_google_web,
+    )
+
+    if engine == "jobs":
+        if mock:
+            return list(mock_job_leads(max_results=max_results))
+        return list(search_google_jobs(query=query, location=location, max_results=max_results))
+    if mock:
+        return list(mock_web_leads(max_results=max_results))
+    return list(search_google_web(query=query, location=location, max_results=max_results))
+
+
+def _serpapi_candidate(engine: str, lead: Any) -> tuple[str, str, str]:
+    """Return ``(url, label, observed_label)`` for a lead; ``url == ''`` skips it.
+
+    Jobs leads walk ``apply_options`` for the first usable link; web leads use
+    the organic link and tag PDFs ``[pdf]`` so the resolver prioritises them.
+    """
+    if engine == "jobs":
+        url = _first_apply_link(lead)
+        label = lead.title or lead.company_name or url
+        return url, label, label
+    url = (lead.link or "").strip()
+    label = lead.title or url
+    observed_label = f"{label} [pdf]" if url and _is_pdf_lead_url(url) else label
+    return url, label, observed_label
+
+
+def _run_serpapi_pass(
     supabase: Client,
     *,
     src: dict[str, Any],
+    source: Any,
     run_id: str,
-    url: str,
-    label: str,
-    observed_label: str,
-) -> None:
-    """Record one discovered candidate URL as a ``needs_official_source``
-    aggregator listing. No extraction — promotion waits for the resolver."""
-    event_type = classify_aggregator_link(label, url)
-    listing_id = _upsert_aggregator_listing(
-        supabase,
-        source_id=src.get("id"),
-        scrape_run_id=run_id,
-        detail_url=url,
-        label=label or url,
-        event_type=event_type,
-    )
-    _record_listing_observation(
-        supabase,
-        listing_id=listing_id,
-        source_id=src.get("id"),
-        scrape_run_id=run_id,
-        observed_url=url,
-        observed_label=observed_label,
-        content_hash=None,
-    )
-    _mark_listing_status(supabase, listing_id, "needs_official_source")
+    run_limit: int,
+    error_log: list[dict[str, Any]],
+    mock: bool,
+    engine: str,
+    discovery_counters: dict[str, int],
+) -> bool:
+    """Shared SerpApi discovery loop for the jobs and web engines.
+
+    Discovery-only: ``new_recruitment`` leads become ``needs_official_source``
+    aggregator listings; lifecycle leads (admit cards / results / corrigenda)
+    route to ``recruitment_events`` via :func:`_record_lifecycle_event` exactly
+    like ``_run_api_pass`` and are never persisted as listings. Queries rotate
+    via the scrape_config cursor, which advances in a ``finally`` so a
+    zero-result or mid-loop failure can't starve the queries behind it.
+
+    Mutates ``discovery_counters`` (found / new / lifecycle). Returns ``True``
+    when any real work happened (a listing created/touched, a lifecycle event
+    recorded, or a clean quota block). Raises when every attempted query failed
+    so the caller's ``_bump_source_failure`` runs.
+    """
+    from .quota import can_use_serpapi, record_serpapi_usage
+
+    adapter_config = source.adapter_config if isinstance(source.adapter_config, dict) else {}
+    scrape_config = source.scrape_config if isinstance(source.scrape_config, dict) else {}
+    location = str(adapter_config.get("location") or "India")
+    max_results = min(aggregator_max_items(src, default=10), run_limit)
+    daily_cap = int(scrape_config.get("daily_search_cap") or 0)
+    monthly_cap = int(scrape_config.get("monthly_search_cap") or 0)
+
+    selected, new_cursor = _select_queries_for_run(source, max_per_run=_SERPAPI_MAX_QUERIES_PER_RUN)
+    if not selected:
+        error_log.append({"source": source.name, "error": "no_queries_configured", "at": utc_now_iso()})
+        return False
+
+    recorded_any = False
+    quota_blocked = False
+    failures = 0
+    attempted = 0
+    try:
+        for query in selected:
+            if mock:
+                leads = _serpapi_fetch_leads(engine=engine, query=query, location=location, max_results=max_results, mock=True)
+            else:
+                if not can_use_serpapi(supabase, daily_cap=daily_cap, monthly_cap=monthly_cap):
+                    logger.info("serpapi.quota_blocked source_id=%s engine=%s", src.get("id"), engine)
+                    quota_blocked = True
+                    break
+                try:
+                    leads = _serpapi_fetch_leads(engine=engine, query=query, location=location, max_results=max_results, mock=False)
+                except Exception as exc:  # noqa: BLE001
+                    error_class, error_message = _classify_exception(exc)
+                    error_log.append({"source": source.name, "error": error_class, "error_message": error_message, "at": utc_now_iso()})
+                    failures += 1
+                    attempted += 1
+                    continue
+                record_serpapi_usage(supabase, count=1)
+            attempted += 1
+
+            for lead in leads:
+                url, label, observed_label = _serpapi_candidate(engine, lead)
+                if not url:
+                    continue
+                discovery_counters["found"] += 1
+                event_type = classify_aggregator_link(label, url)
+                if event_type != "new_recruitment":
+                    logger.info(
+                        "serpapi.lifecycle_skipped source_id=%s url=%s event=%s",
+                        src.get("id"), url, event_type,
+                    )
+                    _record_lifecycle_event(
+                        supabase,
+                        source_id=src.get("id"),
+                        listing_id=None,
+                        event_type=event_type,
+                        url=url,
+                        label=label,
+                    )
+                    discovery_counters["lifecycle"] += 1
+                    recorded_any = True
+                    continue
+                listing_id, created = _upsert_aggregator_listing(
+                    supabase,
+                    source_id=src.get("id"),
+                    scrape_run_id=run_id,
+                    detail_url=url,
+                    label=label,
+                    event_type=event_type,
+                )
+                _record_listing_observation(
+                    supabase,
+                    listing_id=listing_id,
+                    source_id=src.get("id"),
+                    scrape_run_id=run_id,
+                    observed_url=url,
+                    observed_label=observed_label,
+                    content_hash=None,
+                )
+                _mark_listing_status(supabase, listing_id, "needs_official_source")
+                if created:
+                    discovery_counters["new"] += 1
+                recorded_any = True
+    finally:
+        # Advance the cursor regardless of recorded_any: a zero-result query is
+        # still information, and re-running it next time wastes quota and
+        # starves the queries behind it. Only skip when nothing was selected.
+        if selected:
+            _persist_query_cursor(
+                supabase, source_id=src.get("id"), scrape_config=scrape_config, next_query_index=new_cursor,
+            )
+
+    if failures and failures == attempted and not recorded_any:
+        raise RuntimeError(f"serpapi_{engine}: all queries failed")
+    return recorded_any or quota_blocked
 
 
 def _run_serpapi_jobs_pass(
@@ -1112,60 +1281,14 @@ def _run_serpapi_jobs_pass(
     run_limit: int,
     error_log: list[dict[str, Any]],
     mock: bool,
+    discovery_counters: dict[str, int],
 ) -> bool:
     """Google Jobs discovery (engine=google_jobs) for PSU / corporate careers
-    pages that emit JobPosting schema. Walks each lead's ``apply_options`` for
-    the first usable link and records it as a ``needs_official_source``
-    candidate. Returns ``True`` when at least one candidate was recorded (or
-    the run was cleanly quota-blocked, which is a no-op success, not a strike).
-    Raises when every query failed so the caller's ``_bump_source_failure``
-    path runs.
-    """
-    from .serpapi_discovery import mock_job_leads, search_google_jobs
-    from .quota import can_use_serpapi, record_serpapi_usage
-
-    adapter_config = source.adapter_config if isinstance(source.adapter_config, dict) else {}
-    scrape_config = source.scrape_config if isinstance(source.scrape_config, dict) else {}
-    queries = [q.strip() for q in (adapter_config.get("queries") or []) if isinstance(q, str) and q.strip()]
-    queries = queries[:_SERPAPI_MAX_QUERIES_PER_RUN]
-    location = str(adapter_config.get("location") or "India")
-    max_results = min(aggregator_max_items(src, default=10), run_limit)
-    daily_cap = int(scrape_config.get("daily_search_cap") or 0)
-    monthly_cap = int(scrape_config.get("monthly_search_cap") or 0)
-
-    recorded_any = False
-    quota_blocked = False
-    failures = 0
-    for query in queries:
-        if mock:
-            leads = mock_job_leads(max_results=max_results)
-        else:
-            if not can_use_serpapi(supabase, daily_cap=daily_cap, monthly_cap=monthly_cap):
-                logger.info("serpapi.quota_blocked source_id=%s engine=google_jobs", src.get("id"))
-                quota_blocked = True
-                break
-            try:
-                leads = search_google_jobs(query=query, location=location, max_results=max_results)
-            except Exception as exc:  # noqa: BLE001
-                error_class, error_message = _classify_exception(exc)
-                error_log.append({"source": source.name, "error": error_class, "error_message": error_message, "at": utc_now_iso()})
-                failures += 1
-                continue
-            record_serpapi_usage(supabase, count=1)
-
-        for lead in leads:
-            url = _first_apply_link(lead)
-            if not url:
-                continue
-            label = lead.title or lead.company_name or url
-            _persist_serpapi_listing(
-                supabase, src=src, run_id=run_id, url=url, label=label, observed_label=label,
-            )
-            recorded_any = True
-
-    if failures and failures == len(queries) and not recorded_any:
-        raise RuntimeError("serpapi_jobs: all queries failed")
-    return recorded_any or quota_blocked
+    pages that emit JobPosting schema. See :func:`_run_serpapi_pass`."""
+    return _run_serpapi_pass(
+        supabase, src=src, source=source, run_id=run_id, run_limit=run_limit,
+        error_log=error_log, mock=mock, engine="jobs", discovery_counters=discovery_counters,
+    )
 
 
 def _run_serpapi_web_pass(
@@ -1177,59 +1300,14 @@ def _run_serpapi_web_pass(
     run_limit: int,
     error_log: list[dict[str, Any]],
     mock: bool,
+    discovery_counters: dict[str, int],
 ) -> bool:
     """Google web discovery (engine=google) for government PDF / notification
-    URLs via ``site:`` operators. Each ``organic_results`` link is recorded as
-    a ``needs_official_source`` candidate; PDF links get a ``[pdf]`` tag on the
-    observation label so the resolver prioritises them. Same return/raise
-    contract as :func:`_run_serpapi_jobs_pass`.
-    """
-    from .serpapi_discovery import mock_web_leads, search_google_web
-    from .quota import can_use_serpapi, record_serpapi_usage
-
-    adapter_config = source.adapter_config if isinstance(source.adapter_config, dict) else {}
-    scrape_config = source.scrape_config if isinstance(source.scrape_config, dict) else {}
-    queries = [q.strip() for q in (adapter_config.get("queries") or []) if isinstance(q, str) and q.strip()]
-    queries = queries[:_SERPAPI_MAX_QUERIES_PER_RUN]
-    location = str(adapter_config.get("location") or "India")
-    max_results = min(aggregator_max_items(src, default=10), run_limit)
-    daily_cap = int(scrape_config.get("daily_search_cap") or 0)
-    monthly_cap = int(scrape_config.get("monthly_search_cap") or 0)
-
-    recorded_any = False
-    quota_blocked = False
-    failures = 0
-    for query in queries:
-        if mock:
-            leads = mock_web_leads(max_results=max_results)
-        else:
-            if not can_use_serpapi(supabase, daily_cap=daily_cap, monthly_cap=monthly_cap):
-                logger.info("serpapi.quota_blocked source_id=%s engine=google_web", src.get("id"))
-                quota_blocked = True
-                break
-            try:
-                leads = search_google_web(query=query, location=location, max_results=max_results)
-            except Exception as exc:  # noqa: BLE001
-                error_class, error_message = _classify_exception(exc)
-                error_log.append({"source": source.name, "error": error_class, "error_message": error_message, "at": utc_now_iso()})
-                failures += 1
-                continue
-            record_serpapi_usage(supabase, count=1)
-
-        for lead in leads:
-            url = (lead.link or "").strip()
-            if not url:
-                continue
-            label = lead.title or url
-            observed_label = f"{label} [pdf]" if _is_pdf_lead_url(url) else label
-            _persist_serpapi_listing(
-                supabase, src=src, run_id=run_id, url=url, label=label, observed_label=observed_label,
-            )
-            recorded_any = True
-
-    if failures and failures == len(queries) and not recorded_any:
-        raise RuntimeError("serpapi_web: all queries failed")
-    return recorded_any or quota_blocked
+    URLs via site: operators. See :func:`_run_serpapi_pass`."""
+    return _run_serpapi_pass(
+        supabase, src=src, source=source, run_id=run_id, run_limit=run_limit,
+        error_log=error_log, mock=mock, engine="web", discovery_counters=discovery_counters,
+    )
 
 
 # ─── Aggregator candidate layer helpers ────────────────────────────────────
@@ -1247,16 +1325,17 @@ def _upsert_aggregator_listing(
     detail_url: str,
     label: str,
     event_type: str,
-) -> str | None:
+) -> tuple[str | None, bool]:
     """Insert-or-touch an ``aggregator_listings`` row for a detail URL.
 
-    Returns the listing id on success or ``None`` if the table is
-    unavailable (older deployments before migration 038). The runner
-    treats a ``None`` listing id as "candidate layer not active" and
-    keeps writing the queue row directly.
+    Returns ``(listing_id, created)``. ``created`` is ``True`` only when a new
+    row was inserted (vs touching an existing one) so discovery counters can
+    distinguish new leads from re-discovered ones. ``listing_id`` is ``None``
+    if the table is unavailable (older deployments before migration 038); the
+    runner treats a ``None`` listing id as "candidate layer not active".
     """
     if not source_id:
-        return None
+        return None, False
     listing_hash = _listing_hash(source_id, detail_url)
     try:
         existing = (
@@ -1278,7 +1357,7 @@ def _upsert_aggregator_listing(
                     "event_type": event_type,
                 }
             ).eq("id", listing_id).execute()
-            return listing_id
+            return listing_id, False
 
         rows = (
             supabase.table("aggregator_listings")
@@ -1297,13 +1376,13 @@ def _upsert_aggregator_listing(
             .data
             or []
         )
-        return rows[0].get("id") if rows else None
+        return (rows[0].get("id") if rows else None), bool(rows)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "aggregator_listings unavailable source_id=%s detail_url=%s error=%s",
             source_id, detail_url, exc,
         )
-        return None
+        return None, False
 
 
 def _record_listing_observation(
@@ -1556,6 +1635,9 @@ def run_scraping_pass(
     total_found = 0
     total_new = 0
     total_dup = 0
+    # Discovery-adapter (SerpApi) counters, kept separate from queue-item
+    # counts (see migration 126). Mutated in place by the SerpApi passes.
+    discovery_counters = {"found": 0, "new": 0, "lifecycle": 0}
     error_log: list[dict[str, Any]] = []
     run_limit = max(1, min(int(limit or 25), 100))
 
@@ -2180,7 +2262,8 @@ def run_scraping_pass(
                 runner_fn = _run_serpapi_jobs_pass if adapter_lc == "serpapi_jobs" else _run_serpapi_web_pass
                 try:
                     if not runner_fn(supabase, src=src, source=source, run_id=run_id,
-                                     run_limit=run_limit, error_log=error_log, mock=mock):
+                                     run_limit=run_limit, error_log=error_log, mock=mock,
+                                     discovery_counters=discovery_counters):
                         _bump_source_failure(
                             supabase, src,
                             error_class=f"empty_{adapter_lc}_response",
@@ -2348,7 +2431,7 @@ def run_scraping_pass(
                                         "scrape.detail_unchanged source_id=%s detail_url=%s",
                                         src.get("id"), detail_url,
                                     )
-                                    listing_id_unchanged = _upsert_aggregator_listing(
+                                    listing_id_unchanged, _ = _upsert_aggregator_listing(
                                         supabase,
                                         source_id=src.get("id"),
                                         scrape_run_id=run_id,
@@ -2381,7 +2464,7 @@ def run_scraping_pass(
                                     continue
                                 raw_text = strip_html(detail_html)
 
-                        listing_id = _upsert_aggregator_listing(
+                        listing_id, _ = _upsert_aggregator_listing(
                             supabase,
                             source_id=src.get("id"),
                             scrape_run_id=run_id,
@@ -2514,6 +2597,9 @@ def run_scraping_pass(
                 "items_found": total_found,
                 "items_new": total_new,
                 "items_duplicate": total_dup,
+                "discovery_items_found": discovery_counters["found"],
+                "discovery_items_new": discovery_counters["new"],
+                "discovery_items_lifecycle": discovery_counters["lifecycle"],
                 "error_log": error_log,
             }
         )
@@ -2528,6 +2614,9 @@ def run_scraping_pass(
         "items_found": total_found,
         "items_new": total_new,
         "items_duplicate": total_dup,
+        "discovery_items_found": discovery_counters["found"],
+        "discovery_items_new": discovery_counters["new"],
+        "discovery_items_lifecycle": discovery_counters["lifecycle"],
         "errors": error_log,
     }
 
