@@ -74,9 +74,28 @@ class RunnerQuery:
         self.payload = payload
         return self
 
+    def upsert(self, payload, *, on_conflict=None, ignore_duplicates=False, **_kw):
+        # Mirrors supabase-py upsert. For recruitment_events the production
+        # path keys on the generated ``event_hash`` (source_id|event_type|
+        # payload.discovered_url); dedup on that so a re-seen link is a no-op.
+        self.payload = payload
+        self._upsert = True
+        self._ignore_duplicates = ignore_duplicates
+        return self
+
     def update(self, payload):
         self.payload = payload
         return self
+
+    @staticmethod
+    def _event_hash(payload):
+        p = payload.get("payload") or {}
+        url = p.get("discovered_url") if isinstance(p, dict) else None
+        return (
+            f"{payload.get('source_id') or ''}|"
+            f"{payload.get('event_type') or ''}|"
+            f"{url or ''}"
+        )
 
     def execute(self):
         self.calls.append(self.name)
@@ -179,6 +198,11 @@ class RunnerQuery:
                 return E([])
             if self.payload is not None:
                 rows = self.db.setdefault("recruitment_events", [])
+                if getattr(self, "_upsert", False) and getattr(self, "_ignore_duplicates", False):
+                    h = self._event_hash(self.payload)
+                    for existing in rows:
+                        if self._event_hash(existing) == h:
+                            return E([existing])  # on-conflict-do-nothing
                 row = {**self.payload, "id": f"re-{len(rows) + 1}"}
                 rows.append(row)
                 return E([row])

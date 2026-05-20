@@ -40,8 +40,12 @@ Match handling: 1 → duplicate; 2+ → needs_review (+candidate_ids);
 needs_review**, never silent merge (a divergent canonical key means
 org/year/title disagree — investigate).
 
-scrape_queue dedup: same A–E, ALWAYS ``.not_.in_(status,
-['rejected','duplicate'])``, NEVER constrained by source_id
+scrape_queue dedup: an INVALID canonical_key short-circuits to
+needs_review with zero queries — the open queue has no reviewed
+notification_number to trust (no Path B), so a key that can't
+disambiguate must never drive a duplicate decision. With a valid key it
+runs Path A (notif) / Path C (year), ALWAYS ``.not_.in_(status,
+['rejected','duplicate','dry_run'])``, NEVER constrained by source_id
 (cross-source dupes are the target). Stage-1 pre-filter selects only
 ``id, status`` (no ``extracted_data``); if ≤10 candidates, stage-2
 re-fetches them by ``id`` with ``extracted_data`` to compare canonical_key.
@@ -366,11 +370,25 @@ def post_extraction_dedup_recruitments(sb: Any, extracted: dict[str, Any], sim_k
 def post_extraction_dedup_queue(sb: Any, extracted: dict[str, Any], sim_key: str) -> DedupResult:
     """Open-queue dedup. Stage-1 narrows by an indexed key WITHOUT pulling
     extracted_data; stage-2 re-fetches the narrow set by id to compare
-    canonical_key. Cross-source by design (no source_id filter)."""
+    canonical_key. Cross-source by design (no source_id filter).
+
+    An invalid canonical_key short-circuits to needs_review with ZERO
+    queries: the year-narrowed path keys on a coincidental
+    ``extracted_data->>year`` match and would false-positive across orgs
+    when the key can't disambiguate. Unlike the recruitments dedup, the
+    open queue has no reviewed notification_number to fall back on (Path B),
+    so an invalid key is never trusted here."""
+    if canonical_key_invalid(sim_key):
+        return DedupResult(
+            status="needs_review",
+            duplicate_of=None,
+            candidate_ids=[],
+            reason="canonical_key_invalid",
+        )
+    # canonical_key is valid past the guard above, so every path compares it.
     notif = extracted.get("notification_number")
     norm_notif = _norm(notif)
     year = extracted.get("year")
-    key_invalid = canonical_key_invalid(sim_key)
 
     def _stage1(filter_col: str, filter_val: Any) -> list[dict[str, Any]]:
         return _data(
@@ -388,16 +406,10 @@ def post_extraction_dedup_queue(sb: Any, extracted: dict[str, Any], sim_key: str
             .in_("id", ids).limit(_NOTIF_LIMIT).execute()
         )
 
-    # Path A / B — notification_number present.
+    # Path A — notification_number present (canonical_key is valid here).
     if len(norm_notif) >= _DEDUP_NOTIF_MIN_LEN:
         pre = _stage1("extracted_data->>notification_number", notif)
         ids = [r.get("id") for r in pre if r.get("id")]
-        if key_invalid:
-            if len(ids) == 1:
-                return DedupResult("duplicate", duplicate_of=ids[0], reason="queue_notif_only")
-            if len(ids) >= 2:
-                return DedupResult("needs_review", candidate_ids=ids, reason="queue_notif_multi")
-            return DedupResult("unique", reason="queue_notif_no_match")
         full = _stage2(ids)
         return _decide_queue_from_canonical(full, sim_key, reason_prefix="queue_notif", had_prefilter=bool(ids))
 

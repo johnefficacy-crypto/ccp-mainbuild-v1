@@ -198,6 +198,49 @@ def test_queue_dedup_never_filters_by_source_id():
         assert not any(f[1] == "source_id" for f in c.filters)
 
 
+# ── Task 2: invalid canonical_key gates the year-narrowed queue path ─────
+
+
+def test_queue_dedup_invalid_key_short_circuits_needs_review_zero_queries():
+    # Two valid-key rows share year=2026; an invalid candidate key must not
+    # be allowed to false-match them through the year-narrowed path.
+    sb = SupabaseStub({
+        "scrape_queue": [
+            {"id": "q1", "status": "pending", "extracted_data": {
+                "organization_name": "SSC", "year": 2026, "title": "Alpha"}},
+            {"id": "q2", "status": "pending", "extracted_data": {
+                "organization_name": "UPSC", "year": 2026, "title": "Beta"}},
+        ],
+    })
+    res = D.post_extraction_dedup_queue(
+        sb,
+        {"notification_number": None, "year": 2026, "organization_name": None, "title": ""},
+        "-2026-",  # invalid canonical key (leading dash / empty org+title)
+    )
+    assert res.status == "needs_review"
+    assert res.reason == "canonical_key_invalid"
+    assert sb.calls_for("scrape_queue") == []  # never queried the queue
+
+
+def test_queue_dedup_valid_key_still_runs_year_path():
+    # Regression: a VALID key with only year (no notif) must still query the
+    # year-narrowed path and decide on canonical_key.
+    sb = SupabaseStub({
+        "scrape_queue": [
+            {"id": "q1", "status": "pending", "extracted_data": {
+                "organization_name": "SSC", "year": 2026, "title": "Combined"}},
+        ],
+    })
+    sb.guard_no_full_scan("scrape_queue")
+    sim = _sim_key("SSC", 2026, "Combined")
+    res = D.post_extraction_dedup_queue(
+        sb, {"notification_number": None, "year": 2026, "organization_name": "SSC", "title": "Combined"}, sim
+    )
+    assert res.status == "duplicate"
+    assert res.duplicate_of == "q1"
+    assert sb.calls_for("scrape_queue"), "year path must have queried the queue"
+
+
 # ── pre-LLM correctness ────────────────────────────────────────────────
 
 
