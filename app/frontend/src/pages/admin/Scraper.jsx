@@ -21,6 +21,41 @@ function selectedSourceIds(mode, selected) {
   return mode === "selected" ? selected : null;
 }
 
+function relTime(iso) {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  const diff = Date.now() - t;
+  if (diff < 3_600_000) return "just now";
+  if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}h ago`;
+  return `${Math.round(diff / 86_400_000)}d ago`;
+}
+
+function daysSince(iso) {
+  if (!iso) return Infinity;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return Infinity;
+  return (Date.now() - t) / 86_400_000;
+}
+
+function sourceHealth(s) {
+  if ((s.consecutive_fails || 0) > 0 || s.last_error) return { cls: "rejected", text: "failing", key: "failed" };
+  if (s.verification_status === "needs_review") return { cls: "pending", text: "needs review", key: "review" };
+  if (!s.is_verified && (s.source_type || s.kind) !== "aggregator") return { cls: "pending", text: "unverified", key: "unverified" };
+  return { cls: "verified", text: "healthy", key: "healthy" };
+}
+
+// Plain-language recommendation so the operator can decide what to scrape:
+// failing first, then never-scraped, then stale, then recently-yielding.
+function scrapeHint(health, lastScrapedIso, pendingCount) {
+  if (health.key === "failed") return { text: "failing · check source", rank: 1 };
+  if (health.key === "unverified") return { text: "verify before scraping", rank: 5 };
+  if (!lastScrapedIso) return { text: "not scraped yet", rank: 2 };
+  if (daysSince(lastScrapedIso) > 7) return { text: "stale · rescrape", rank: 3 };
+  if (pendingCount > 0) return { text: `${pendingCount} in review`, rank: 4 };
+  return { text: "fresh", rank: 6 };
+}
+
 function reviewState(item) {
   // Dry-run (mock) output is a pipeline preview only. It never enters the
   // promotable flow, so it takes precedence over every other state.
@@ -284,6 +319,25 @@ export default function AdminScraper() {
     return filteredSources.filter((source) => ids.includes(source.id));
   }, [filteredSources, selectedIds, sourceMode]);
   const canRunSelected = sourceMode !== "selected" || selectedIds.length > 0;
+  // Rank the run-eligible sources by what needs attention first, with per-source
+  // signals (last-scraped, pending-in-review, health) so the operator can pick.
+  const lastRunBySource = useMemo(() => {
+    const map = {};
+    for (const r of items) {
+      const key = String(r.source_name || r.source || "").toLowerCase();
+      if (!key) continue;
+      if (!map[key] || String(r.at || "") > String(map[key].at || "")) map[key] = r;
+    }
+    return map;
+  }, [items]);
+  const sourceRows = useMemo(() => filteredSources.map((s) => {
+    const key = String(s.source_name || s.org || "").toLowerCase();
+    const lastScrapedIso = s.last_success_at || lastRunBySource[key]?.at || null;
+    const pendingCount = queue.filter((q) => String(q.source_name || "").toLowerCase() === key && (q.status || "pending") === "pending").length;
+    const health = sourceHealth(s);
+    const hint = scrapeHint(health, lastScrapedIso, pendingCount);
+    return { s, health, hint, lastScrapedIso, pendingCount };
+  }).sort((a, b) => (a.hint.rank - b.hint.rank) || (daysSince(b.lastScrapedIso) - daysSince(a.lastScrapedIso))), [filteredSources, lastRunBySource, queue]);
   const workflowMessage = msg && msg.includes("Live run") ? NEXT_ACTION_MESSAGES.reviewQueue : NEXT_ACTION_MESSAGES.runDryFirst;
   // Server-side filter/search/sort delivers the queue already shaped; no
   // client-side re-filtering. Keeping a pass-through binding so the table
@@ -443,11 +497,39 @@ export default function AdminScraper() {
           <label className="text-sm"><div className="mb-1 text-[11px] uppercase tracking-widest text-muted-foreground">Max items</div><input className="input" type="number" min="1" max="100" value={limit} onChange={(e) => setLimit(e.target.value)} /></label>
           <div className="text-sm"><div className="mb-1 text-[11px] uppercase tracking-widest text-muted-foreground">Run scope</div><div className="rounded-xl border border-border bg-white/70 px-3 py-2">{sourceMode === "selected" ? `${selectedIds.length} selected` : `${filteredSources.length} active`}</div></div>
         </div>
-        {sourceMode === "selected" && (
-          <div className="mt-3 grid max-h-48 gap-2 overflow-auto md:grid-cols-2">
-            {filteredSources.map((source) => <label key={source.id} className="flex items-center gap-2 rounded-xl border border-border bg-white/60 p-2 text-sm"><input type="checkbox" checked={selectedIds.includes(source.id)} onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, source.id] : selectedIds.filter((id) => id !== source.id))} /><span className="truncate">{source.org || source.source_name}</span><span className="ml-auto text-xs text-muted-foreground">{typeLabel(source.source_type)}</span></label>)}
+        {/* Ranked source list with decision signals. Tick a row to scrape just
+            those sources (auto-switches scope to Selected); leave all unticked
+            with scope = All active to scrape everything. Sorted: failing →
+            never-scraped → stale → recently-yielding → fresh. */}
+        {!sourcesError ? (
+          <div className="mt-3 max-h-64 space-y-1.5 overflow-auto">
+            {sourceRows.map(({ s, health, hint, lastScrapedIso, pendingCount }) => {
+              const checked = sourceMode === "selected" && selectedIds.includes(s.id);
+              return (
+                <label key={s.id} className="flex items-center gap-2 rounded-xl border border-border bg-white/60 p-2 text-sm" data-testid={`scrape-source-${s.id}`}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      if (sourceMode !== "selected") setSourceMode("selected");
+                      setSelectedIds(e.target.checked ? [...selectedIds, s.id] : selectedIds.filter((id) => id !== s.id));
+                    }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate font-medium">{s.org || s.source_name}</span>
+                      <StatusBadge status={health.cls} label={health.text} />
+                    </div>
+                    <div className="truncate text-[10px] text-muted-foreground">
+                      {typeLabel(s.source_type)} · {lastScrapedIso ? `scraped ${relTime(lastScrapedIso)}` : "never scraped"} · {hint.text}
+                    </div>
+                  </div>
+                  {pendingCount > 0 ? <span className="shrink-0 text-[10px] text-amber-700">{pendingCount} in review</span> : null}
+                </label>
+              );
+            })}
           </div>
-        )}
+        ) : null}
         {!canRunSelected ? <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Select at least one source, or switch the run scope back to all active sources.</div> : null}
         <style>{`.input { width:100%; padding: 0.55rem 0.85rem; border-radius: 0.75rem; background: rgba(255,255,255,0.85); border: 1px solid hsl(var(--border)); font-size: 14px; }`}</style>
       </section>

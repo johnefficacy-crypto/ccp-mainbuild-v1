@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { api, getApiUnverifiedFields } from "../../lib/api";
 import useAdminAction from "../../features/admin/shared/useAdminAction";
 import { computeProgress } from "../../features/admin/workflow/AdminProgressBar";
@@ -7,15 +7,9 @@ import CurrentActionCard from "../../features/admin/workflow/CurrentActionCard";
 import AdminFixPanel from "../../features/admin/workflow/AdminFixPanel";
 import DuplicateMergePreview from "../../features/admin/workflow/DuplicateMergePreview";
 import SelectionContextBanner from "../../features/admin/workflow/SelectionContextBanner";
-import InfoBadge from "../../features/admin/shared/InfoBadge";
 import useConflicts from "../../features/admin/workflow/useConflicts";
 import { scoreToPct } from "../../features/admin/workflow/scoreUtils";
 import { useToast } from "../../shared/ui";
-
-const VIEWS = [
-  { id: "source", label: "1 · Run scrape" },
-  { id: "queue", label: "2 · Review & publish" },
-];
 
 // Filter ``key`` matches scrape_queue.status verbatim so the backend can do
 // the filtering; ``approved`` is the storage value for a row that has been
@@ -60,7 +54,6 @@ export default function OperationsConsole() {
   const sourceId = searchParams.get("source_id") || null;
   const queueId = searchParams.get("queue_id") || null;
   const recruitmentId = searchParams.get("recruitment_id") || null;
-  const mode = searchParams.get("mode") || "queue";
 
   const [sources, setSources] = useState([]);
   const [runs, setRuns] = useState([]);
@@ -89,6 +82,7 @@ export default function OperationsConsole() {
 
   const { runAction, busyKey, error: actionError } = useAdminAction();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const updateParams = useCallback((next) => {
     const merged = new URLSearchParams(searchParams);
@@ -240,12 +234,13 @@ export default function OperationsConsole() {
   // section and scroll it into view. Setup-phase kinds switch to the
   // setup view; everything else lives in the queue/review workspace.
   const onPrimaryAction = useCallback((kind) => {
+    // Running scrapes lives in the Scrape Monitor now; setup-phase prompts
+    // hand off there. Everything else scrolls to its panel in this workspace.
     const setupKinds = new Set(["source_ready", "dry_scrape", "live_scrape"]);
     if (setupKinds.has(kind)) {
-      updateParams({ mode: "source" });
+      navigate("/admin/scraper");
       return;
     }
-    if (mode !== "queue") updateParams({ mode: "queue" });
     const anchorByKind = {
       attach_official_source: "official-source-quick-resolver",
       verify_fields: "queue-fix-section",
@@ -253,7 +248,6 @@ export default function OperationsConsole() {
       promote_to_draft: "promote-bar",
     };
     const testid = anchorByKind[kind] || "ops-workspace";
-    // Defer one frame so a view switch has a chance to render the panel.
     const scroll = () => {
       if (typeof document === "undefined") return;
       const el = document.querySelector(`[data-testid="${testid}"]`)
@@ -262,7 +256,7 @@ export default function OperationsConsole() {
     };
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(scroll);
     else scroll();
-  }, [mode, updateParams]);
+  }, [navigate]);
 
   const queueFieldAction = useCallback(async (id, field, action, correctedValue, scope) => {
     await runAction({
@@ -289,7 +283,7 @@ export default function OperationsConsole() {
           const r = await api.post(`/api/admin/scrape/items/${item.id}/promote`, {});
           setMsg(`Promoted to recruitment ${(r.recruitment_id || "unknown").slice(0, 8)}. No alerts sent.`);
           await loadAll();
-          updateParams({ recruitment_id: r.recruitment_id, mode: "queue" });
+          updateParams({ recruitment_id: r.recruitment_id });
         } catch (e) {
           const fields = getApiUnverifiedFields(e);
           if (fields.length) setMsg(`Promote blocked. Verify required fields: ${fields.join(", ")}.`);
@@ -426,20 +420,6 @@ export default function OperationsConsole() {
     });
   }, [runAction, refetchConflicts, loadAll]);
 
-  const runScrape = useCallback(async (modeArg) => {
-    const key = modeArg === "dry" ? "scrape-dry" : "scrape-live";
-    await runAction({
-      key,
-      confirm: modeArg === "dry" ? null : "Run live scrape now? Live scrape only queues candidates; it does not publish.",
-      successMessage: modeArg === "dry" ? "Dry scrape complete." : "Live scrape complete.",
-      action: async () => {
-        const body = sourceId ? { source_ids: [sourceId], limit: 25 } : { limit: 25 };
-        await api.post(modeArg === "dry" ? "/api/admin/scrape/run-dry" : "/api/admin/scrape/run", body);
-        await loadAll();
-      },
-    });
-  }, [runAction, loadAll, sourceId]);
-
   if (loading && !sources.length && !queue.length) {
     return (
       <div className="stack">
@@ -461,39 +441,10 @@ export default function OperationsConsole() {
     );
   }
 
-  const pendingCount = queue.filter((q) => (q.status || "pending") === "pending").length;
-  const totalSources = sources.length;
-
   return (
     <div data-testid="admin-operations-console">
-      <nav className="modebar" style={{ margin: "-18px -22px 0", padding: "0 22px" }}>
-        {VIEWS.map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            className={`modepill${mode === v.id ? " active" : ""}`}
-            onClick={() => updateParams({ mode: v.id })}
-            data-testid={`ops-mode-${v.id}`}
-          >
-            {v.label}{" "}
-            <span className="count">{v.id === "source" ? `${totalSources} src` : pendingCount}</span>
-          </button>
-        ))}
-      </nav>
-
       <div className="scrn" style={{ borderTop: "none", paddingLeft: 0, paddingRight: 0 }}>
-        {mode === "source" ? (
-          <SetupAndRun
-            sources={sources}
-            selectedSource={selectedSource}
-            runs={runs}
-            queue={queue}
-            onSelectSource={(id) => updateParams({ source_id: id })}
-            onRunDry={() => runScrape("dry")}
-            onRunLive={() => runScrape("live")}
-            busy={Boolean(busyKey)}
-          />
-        ) : (
+        {(
           <ReviewAndPublish
             progressState={progressState}
             selectedSource={selectedSource}
@@ -599,202 +550,6 @@ function RejectCandidateDialog({ open, item, reason, onReasonChange, onCancel, o
   );
 }
 
-function relTime(iso) {
-  if (!iso) return null;
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return null;
-  const diff = Date.now() - t;
-  if (diff < 3_600_000) return "just now";
-  if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}h ago`;
-  return `${Math.round(diff / 86_400_000)}d ago`;
-}
-
-function daysSince(iso) {
-  if (!iso) return Infinity;
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return Infinity;
-  return (Date.now() - t) / 86_400_000;
-}
-
-function sourceHealth(s) {
-  if ((s.consecutive_fails || 0) > 0 || s.last_error) return { key: "failed", cls: "badge blocker", text: "failing" };
-  if (s.verification_status === "needs_review") return { key: "review", cls: "badge pending", text: "needs review" };
-  if (!s.is_verified && (s.source_type || s.kind) !== "aggregator") return { key: "unverified", cls: "badge pending", text: "unverified" };
-  return { key: "healthy", cls: "badge resolved", text: "healthy" };
-}
-
-// A single, plain-language recommendation so the operator can decide which
-// source to scrape without cross-referencing the Source Registry. Surfaces
-// failing sources, never-scraped sources, staleness, and recent yield.
-function scrapeHint(health, lastScrapedIso, pendingCount) {
-  if (health.key === "failed") return { cls: "badge blocker", text: "failing · check source", rank: 1 };
-  if (health.key === "unverified") return { cls: "badge pending", text: "verify before scraping", rank: 5 };
-  if (!lastScrapedIso) return { cls: "badge info", text: "not scraped yet", rank: 2 };
-  if (daysSince(lastScrapedIso) > 7) return { cls: "badge info", text: "stale · rescrape", rank: 3 };
-  if (pendingCount > 0) return { cls: "badge pending", text: `${pendingCount} in review`, rank: 4 };
-  return { cls: "badge resolved", text: "fresh", rank: 6 };
-}
-
-function SetupAndRun({ sources, selectedSource, runs, queue, onSelectSource, onRunDry, onRunLive, busy }) {
-  const latestRun = runs[0] || null;
-  const tierA = queue.filter((q) => tierForItem(q) === "A").length;
-  const tierB = queue.filter((q) => tierForItem(q) === "B").length;
-  const tierC = queue.filter((q) => tierForItem(q) === "C").length;
-
-  // Build per-source decision signals: last-scraped (from the source's own
-  // last_success_at, falling back to the latest matching run), how many of
-  // its candidates are still waiting in the queue, and a recommendation.
-  const lastRunBySource = useMemo(() => {
-    const map = {};
-    for (const r of runs) {
-      const key = String(r.source_name || r.source || "").toLowerCase();
-      if (!key) continue;
-      if (!map[key] || String(r.at || "") > String(map[key].at || "")) map[key] = r;
-    }
-    return map;
-  }, [runs]);
-
-  const sourceRows = useMemo(() => {
-    return sources.map((s) => {
-      const key = String(s.source_name || s.org || "").toLowerCase();
-      const lastRun = lastRunBySource[key] || null;
-      const lastScrapedIso = s.last_success_at || lastRun?.at || null;
-      const pendingCount = queue.filter(
-        (q) => String(q.source_name || "").toLowerCase() === key && (q.status || "pending") === "pending",
-      ).length;
-      const health = sourceHealth(s);
-      const hint = scrapeHint(health, lastScrapedIso, pendingCount);
-      return { s, health, hint, lastScrapedIso, pendingCount, lastRun };
-    }).sort((a, b) => (a.hint.rank - b.hint.rank) || (daysSince(b.lastScrapedIso) - daysSince(a.lastScrapedIso)));
-  }, [sources, lastRunBySource, queue]);
-
-  return (
-    <section className="scrn" style={{ padding: "0 0 18px", border: "none" }}>
-      <div className="scrn-head">
-        <h3 className="oc-title">Run scrape</h3>
-        <span className="scrn-tag">step 1 · choose sources</span>
-      </div>
-      <div className="stack">
-        <div className="card">
-          <div className="card-head">
-            <h4 className="oc-title">Choose a source to scrape</h4>
-            <div className="row" style={{ gap: 8 }}>
-              <span className="row-sub">{selectedSource ? (selectedSource.org || selectedSource.source_name) : "all active sources"}</span>
-              <InfoBadge text="Sorted by what needs attention first — failing sources, never-scraped, then stale. Pick one source, or scrape all active sources." />
-            </div>
-          </div>
-          <div className="card-body stack">
-            <div className="qlist" style={{ maxHeight: "46vh", overflowY: "auto" }}>
-              <button
-                type="button"
-                className={`qitem${!selectedSource ? " selected" : ""}`}
-                onClick={() => onSelectSource(null)}
-                data-testid="setup-source-all"
-              >
-                <div className="qttl">All active sources</div>
-                <div className="qsub">{sources.length} source{sources.length === 1 ? "" : "s"} · runs every active, verified source</div>
-              </button>
-              {sourceRows.map(({ s, health, hint, lastScrapedIso, pendingCount }) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={`qitem${selectedSource?.id === s.id ? " selected" : ""}`}
-                  onClick={() => onSelectSource(s.id)}
-                  data-testid={`setup-source-${s.id}`}
-                >
-                  <div className="row" style={{ gap: 5 }}>
-                    <span className={health.cls}>{health.text}</span>
-                    <span className={hint.cls}>{hint.text}</span>
-                  </div>
-                  <div className="qttl">{s.org || s.source_name}</div>
-                  <div className="qsub">
-                    {s.source_type || s.kind || "official"}
-                    {" · "}
-                    {lastScrapedIso ? `last scraped ${relTime(lastScrapedIso)}` : "never scraped"}
-                    {pendingCount > 0 ? ` · ${pendingCount} in review` : ""}
-                    {(s.consecutive_fails || 0) > 0 ? ` · ${s.consecutive_fails} consecutive fails` : ""}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="card-foot">
-            <button type="button" className="btn" onClick={onRunDry} disabled={busy} data-testid="ops-run-dry">Dry scrape</button>
-            <button type="button" className="btn primary" onClick={onRunLive} disabled={busy} data-testid="ops-run-live">Run live scrape</button>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-head">
-            <h4 className="oc-title">Last run</h4>
-            <span className="row-sub">{latestRun ? `${(latestRun.id || "").slice(0, 8)} · ${(latestRun.at || "").slice(11, 16) || "—"}` : "no runs yet"}</span>
-          </div>
-          <div className="card-body">
-            <div className="grid2">
-              <div className="field">
-                <div className="field-lbl">extracted</div>
-                <div className="field-val"><strong>{latestRun?.items_total ?? latestRun?.items_extracted ?? 0}</strong> items</div>
-              </div>
-              <div className="field">
-                <div className="field-lbl">classified</div>
-                <div className="field-val"><strong>{latestRun?.items_total ?? 0}</strong></div>
-                <div className="field-sub">A·{tierA} · B·{tierB} · C·{tierC}</div>
-              </div>
-              <div className="field">
-                <div className="field-lbl">queued</div>
-                <div className="field-val"><strong>{latestRun?.items_new ?? 0}</strong></div>
-                <div className="field-sub">{latestRun?.items_duplicate ?? 0} duplicate · hash match</div>
-              </div>
-              <div className="field">
-                <div className="field-lbl">duration</div>
-                <div className="field-val"><strong>{latestRun?.duration_human || "—"}</strong></div>
-                <div className="field-sub">{latestRun?.duration_per_item_human || "—"} / item</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-head">
-            <h4 className="oc-title">Recent runs</h4>
-            <a className="btn ghost small" href="/admin/scraper">Open scrape monitor</a>
-          </div>
-          {runs.length === 0 ? (
-            <div className="card-body"><div className="anno">No runs yet.</div></div>
-          ) : (
-            <table className="t">
-              <thead>
-                <tr>
-                  <th style={{ width: "42%" }}>Source</th>
-                  <th style={{ width: "20%" }}>Tier</th>
-                  <th style={{ width: "14%" }}>Items</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {runs.slice(0, 6).map((r) => {
-                  const tier = (r.source_tier || "A").toUpperCase();
-                  const statusCls = r.status === "completed" ? "badge resolved" : r.status === "failed" ? "badge blocker" : r.status === "running" ? "badge pending" : "badge info";
-                  return (
-                    <tr key={r.id}>
-                      <td>
-                        <div className="row-ttl">{r.source_name || r.source || "—"}</div>
-                        <div className="row-sub">{(r.id || "").slice(0, 8)} · {(r.at || "").slice(11, 16)}</div>
-                      </td>
-                      <td><span className={`badge tier-${tier.toLowerCase()}`}>{tier} · {r.items_total || 0}</span></td>
-                      <td className="num">{r.items_total || 0}</td>
-                      <td><span className={statusCls}>{r.status || "—"}</span></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function ReviewAndPublish({
   progressState, selectedSource, selectedQueueItem, selectedRecruitment,
