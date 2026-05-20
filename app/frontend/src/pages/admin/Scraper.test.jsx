@@ -29,19 +29,7 @@ jest.mock("../../lib/api", () => ({
 // the full admin module graph (the contract under test is purely the
 // list/detail call pattern on the page itself).
 jest.mock(
-  "../../features/admin/workflow/AdminWorkflowStepper",
-  () => () => null,
-);
-jest.mock(
   "../../features/admin/workflow/NextActionCallout",
-  () => () => null,
-);
-jest.mock(
-  "../../features/admin/workflow/FieldReviewGroup",
-  () => () => null,
-);
-jest.mock(
-  "../../features/admin/workflow/PromotionPreviewPanel",
   () => () => null,
 );
 jest.mock(

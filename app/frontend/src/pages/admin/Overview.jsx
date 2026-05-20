@@ -178,9 +178,9 @@ export default function AdminOverview() {
         </div>
         <div className="grid3">
           {[
-            { to: "/admin/operations", label: "Operations", sub: "scrape → review → publish" },
+            { to: "/admin/operations", label: "Pipeline Workspace", sub: "scrape → review → publish" },
+            { to: "/admin/operations?mode=queue", label: "Candidate review", sub: "verify & promote candidates" },
             { to: "/admin/recruitments", label: "Recruitment review", sub: "drafts & publish gate" },
-            { to: "/admin/eligibility-queue", label: "Promotion queue", sub: "candidates awaiting promote" },
             { to: "/admin/sources", label: "Source registry", sub: "trusted & discovery-only" },
             { to: "/admin/notifications", label: "Notifications", sub: "kill-switch armed" },
             { to: "/admin/audit", label: "Audit trail", sub: "full event log" },

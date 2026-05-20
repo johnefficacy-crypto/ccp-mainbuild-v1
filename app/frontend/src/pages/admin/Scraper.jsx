@@ -1,13 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Eye, Filter, Play, RefreshCw, Search, X } from "lucide-react";
-import { api, getApiExistingRecruitmentId, getApiNextActions, getApiUnverifiedFields } from "../../lib/api";
-import AdminWorkflowStepper from "../../features/admin/workflow/AdminWorkflowStepper";
+import { api } from "../../lib/api";
 import NextActionCallout from "../../features/admin/workflow/NextActionCallout";
-import FieldReviewGroup from "../../features/admin/workflow/FieldReviewGroup";
-import PromotionPreviewPanel from "../../features/admin/workflow/PromotionPreviewPanel";
 import ScrapeRunDetailDrawer from "../../features/admin/scraping/ScrapeRunDetailDrawer";
 import InlineAuditTimeline from "../../features/admin/shared/InlineAuditTimeline";
-import { HIGH_RISK_QUEUE_FIELDS, NEXT_ACTION_MESSAGES, RECOMMENDED_REVIEW_FIELDS, SOURCE_TYPE_LABELS } from "../../features/admin/workflow/adminWorkflowContract";
+import { NEXT_ACTION_MESSAGES, SOURCE_TYPE_LABELS } from "../../features/admin/workflow/adminWorkflowContract";
 import { useFocusTrap } from "../../shared/a11y/useFocusTrap";
 import { EmptyState, LoadingSkeleton, StatusBadge, useToast } from "../../shared/ui";
 import { formatScorePct } from "../../features/admin/workflow/scoreUtils";
@@ -41,28 +38,20 @@ function reviewState(item) {
   return { key: "pending", label: "Pending", reason: "Awaiting review" };
 }
 
-function QueueDetailDrawer({ item, onClose, onAction, onFieldAction, onMerge }) {
+// Read-only inspector. Verifying fields, resolving conflicts, promoting and
+// rejecting a candidate all happen in the single Pipeline Workspace; this
+// drawer is for diagnostics and deep inspection only and links across to act.
+function QueueDetailDrawer({ item, onClose }) {
   const panelRef = useRef(null);
   const closeRef = useRef(null);
   useFocusTrap({ active: !!item, containerRef: panelRef, onEscape: onClose, initialFocusRef: closeRef });
-  // Bumping previewKey forces PromotionPreviewPanel to refetch. We bump it
-  // after every field action so the preview reflects the latest evidence
-  // without the reviewer having to click Refresh.
-  const [previewKey, setPreviewKey] = useState(0);
-  const handleFieldAction = (id, field, action, correctedValue) => {
-    setPreviewKey((k) => k + 1);
-    return onFieldAction(id, field, action, correctedValue);
-  };
   if (!item) return null;
   const extracted = item.extracted_data || {};
-  // The bare ``field_evidence`` JSON fallback was a leftover from the
-  // pre-relational evidence schema; the backend now always populates
-  // ``field_evidence_status`` from the relational table, so the fallback
-  // is dead. Removed as part of Sprint 5 wire-contract cleanup.
   const evidence = item.field_evidence_status || {};
-  const evidenceDetails = item.field_evidence_details || [];
+  const evidenceEntries = Object.entries(evidence);
   const state = reviewState(item);
   const primaryDuplicate = (item.duplicate_candidates || [])[0];
+  const opsHref = `/admin/operations?queue_id=${item.id}&mode=queue`;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/30">
@@ -70,12 +59,19 @@ function QueueDetailDrawer({ item, onClose, onAction, onFieldAction, onMerge }) 
       <aside ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="queue-detail-title" className="relative h-full w-full max-w-3xl overflow-auto border-l border-border bg-[#FBF6EF] p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Scrape queue item</div>
+            <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Scrape queue item · read-only</div>
             <h2 id="queue-detail-title" className="truncate font-heading text-2xl">{extracted.title || extracted.name || item.source_name || "Candidate"}</h2>
             <p className="mt-1 text-xs text-muted-foreground">Queue {shortId(item.id)} · {item.source_name || "Unknown source"} · {typeLabel(item.source_type)}</p>
           </div>
           <button ref={closeRef} className="btn btn-ghost h-9 w-9 p-0" onClick={onClose} aria-label="Close queue details"><X className="h-4 w-4" /></button>
         </div>
+
+        <section className="mt-4 rounded-2xl border border-dusk-200 bg-dusk-50 p-4">
+          <h3 className="font-semibold">Review state: {state.label}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{state.reason}. Verify fields, promote, merge or reject this candidate in the Pipeline Workspace.</p>
+          <a className="btn btn-primary mt-3" href={opsHref} data-testid="scrape-drawer-open-ops">Open in Pipeline Workspace to verify &amp; promote →</a>
+          {item.unverified_fields?.length ? <div className="mt-2 text-xs text-amber-700">Promotion blockers: {item.unverified_fields.join(", ")}</div> : null}
+        </section>
 
         <section className="mt-5 grid gap-3 md:grid-cols-2">
           <Info label="Source" value={item.source_name} />
@@ -84,64 +80,36 @@ function QueueDetailDrawer({ item, onClose, onAction, onFieldAction, onMerge }) 
           <Info label="Dates" value={`${extracted.apply_start_date || "-"} to ${extracted.apply_end_date || "-"}`} />
           <Info label="Duplicate" value={item.duplicate_of || "No canonical duplicate linked"} />
           <Info label="Official provenance" value={item.official_source_resolved ? `Resolved${item.official_source_host ? ` · ${item.official_source_host}` : ""}` : "Required / unresolved"} />
-          <Info label="Resolver reason" value={(extracted._meta && extracted._meta.resolver_reason) || (item.official_source_resolved ? "matched" : null)} />
         </section>
 
         {primaryDuplicate ? (
           <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <h3 className="font-semibold">Duplicate candidate found</h3>
-            <p className="mt-1">Compare with existing recruitment before creating a new draft.</p>
+            <p className="mt-1">A matching recruitment may already exist. Compare and merge in the Pipeline Workspace.</p>
             <div className="mt-3 rounded-xl bg-white/70 p-3 text-xs">
               <div className="font-semibold">{primaryDuplicate.name}</div>
               <div>Score: {primaryDuplicate.score ?? "-"} · {(primaryDuplicate.reasons || []).join(", ") || "match"}</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 <a className="btn btn-ghost h-8 text-xs" href={`/admin/recruitments?open=${primaryDuplicate.recruitment_id}`}>Open recruitment</a>
-                <button className="btn btn-primary h-8 text-xs" onClick={() => onMerge(item.id, primaryDuplicate.recruitment_id)}>Merge reviewed fields</button>
               </div>
             </div>
           </section>
         ) : null}
 
-        <div className="mt-5">
-          <PromotionPreviewPanel
-            queueId={item.id}
-            open={true}
-            refreshKey={previewKey}
-            onScrollToField={(field) => {
-              document.getElementById("queue-field-review")?.scrollIntoView({ block: "start" });
-              // Field-specific anchors are not stable across renders today;
-              // scrolling to the section is the most reliable next-step
-              // surface until FieldRow gets an id attribute.
-            }}
-          />
-        </div>
-
         <section className="mt-5 soft-card rounded-2xl p-4">
-          <h3 className="font-semibold">Next action: {state.label}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Promotion creates a canonical recruitment draft with publish_status=needs_review. It does not publish and does not send alerts.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {state.key === "blocked" ? <button className="btn btn-primary" onClick={() => document.getElementById("queue-field-review")?.scrollIntoView({ block: "start" })}>Review missing fields</button> : null}
-            {state.key === "ready" ? <button className="btn btn-primary" onClick={() => onAction(item.id, "promote")}>Promote to new recruitment draft</button> : null}
-            {state.key === "duplicate" ? <button className="btn btn-primary" onClick={() => primaryDuplicate && onMerge(item.id, primaryDuplicate.recruitment_id)} disabled={!primaryDuplicate}>Merge into existing recruitment</button> : null}
-            {(state.key === "duplicate") ? <button className="btn btn-ghost" onClick={() => onAction(item.id, "mark-duplicate")}>Mark duplicate</button> : null}
-            {["promoted", "merged"].includes(state.key) && item.promoted_recruitment_id ? <a className="btn btn-primary" href={`/admin/recruitments?open=${item.promoted_recruitment_id}`}>Open recruitment</a> : null}
-            {!["promoted", "merged", "rejected"].includes(state.key) ? <button className="btn btn-ghost" onClick={() => onAction(item.id, "reject")}>Reject candidate</button> : null}
-          </div>
-          {item.unverified_fields?.length ? <div className="mt-2 text-xs text-amber-700">Backend blockers: {item.unverified_fields.join(", ")}</div> : null}
-        </section>
-
-        <section id="queue-field-review" className="mt-5 soft-card rounded-2xl p-4">
-          <h3 className="font-semibold">Field evidence</h3>
-          <div className="mt-3">
-            <FieldReviewGroup
-              extracted={extracted}
-              evidence={evidence}
-              evidenceDetails={evidenceDetails}
-              requiredFields={HIGH_RISK_QUEUE_FIELDS}
-              recommendedFields={RECOMMENDED_REVIEW_FIELDS}
-              onFieldAction={(field, action, correctedValue) => handleFieldAction(item.id, field, action, correctedValue)}
-            />
-          </div>
+          <h3 className="font-semibold">Field evidence status</h3>
+          {evidenceEntries.length ? (
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {evidenceEntries.map(([field, status]) => (
+                <div key={field} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-white/60 px-3 py-2 text-sm">
+                  <span className="truncate">{field}</span>
+                  <StatusBadge status={status === "verified" ? "verified" : "pending"} label={String(status)} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">No field evidence recorded yet.</p>
+          )}
         </section>
 
         <section className="mt-5 soft-card rounded-2xl p-4">
@@ -355,39 +323,6 @@ export default function AdminScraper() {
     }
   }
 
-  const act = async (id, action) => {
-    let notes = "admin review";
-    if (action === "reject") {
-      const reason = window.prompt("Reject this candidate? Enter a reason (required):", "");
-      if (reason == null) return; // user cancelled
-      const trimmed = reason.trim();
-      if (!trimmed) { setMsg("Reject cancelled — reason is required."); toast.error("Reject cancelled — reason is required."); return; }
-      notes = trimmed;
-    }
-    try {
-      const r = await api.post(`/api/admin/scrape/items/${id}/${action}`, { notes });
-      if (action === "promote") {
-        setMsg(`Recruitment draft created. Next: open Recruitments and validate publish readiness. ${JSON.stringify(r)}`);
-        toast.success("Recruitment draft created. Next: open Recruitments and validate publish readiness.");
-      } else {
-        setMsg(`${action}: ${JSON.stringify(r)}`);
-        toast.success(`${action} completed.`);
-      }
-      await load();
-    } catch (e) {
-      const fields = getApiUnverifiedFields(e);
-      const existingId = getApiExistingRecruitmentId(e);
-      const nextActions = getApiNextActions(e);
-      const text = fields.length
-        ? `Promote blocked. Verify required fields: ${fields.join(", ")}`
-        : existingId
-          ? `Duplicate recruitment exists (${existingId.slice(0, 8)}). Next: ${nextActions.join(", ") || "compare or merge reviewed fields."}`
-          : `${action} failed: ${e.message}`;
-      setMsg(text);
-      toast.error(text);
-    }
-  };
-
   // Open the inspect drawer for a queue row. The list response is the
   // lightweight shape (no raw_html / raw_payload / extracted_data), so
   // pull the full record on demand via ``include_detail=true``. The
@@ -412,36 +347,6 @@ export default function AdminScraper() {
     }
   };
 
-  const mergeIntoRecruitment = async (queueId, recruitmentId) => {
-    try {
-      const r = await api.post(`/api/admin/scrape/items/${queueId}/merge-into/${recruitmentId}`, { notes: "duplicate merge from scraper queue" });
-      setMsg(`Merged into existing recruitment. Updated: ${(r.updated_fields || []).join(", ") || "none"}.`);
-      toast.success("Merged into existing recruitment.");
-      await load();
-      setSelected(null);
-    } catch (e) {
-      const text = `Merge failed: ${e.message}`;
-      setMsg(text);
-      toast.error(text);
-    }
-  };
-
-  const fieldAct = async (id, field, action, correctedValue, scope) => {
-    const body = {
-      notes: scope?.notes || "field review",
-      corrected_value: correctedValue,
-      entity_type: scope?.entity_type || null,
-      entity_key: scope?.entity_key || null,
-    };
-    try {
-      await api.post(`/api/admin/scrape/items/${id}/fields/${field}/${action}`, body);
-      toast.success(`${field} ${action} saved.`);
-      await load();
-    } catch (e) {
-      toast.error(`${field} ${action} failed: ${e.message}`);
-    }
-  };
-
   const typeOptions = Array.from(new Set(sources.map((source) => source.source_type).filter(Boolean)));
 
   return (
@@ -453,8 +358,7 @@ export default function AdminScraper() {
       >
         Scrape Monitor — run diagnostics &amp; deep inspection. Daily review is in Operations.
       </p>
-      <AdminWorkflowStepper currentStep={["Scrape", "Candidate review"]} />
-      <NextActionCallout message={workflowMessage} href="/admin/recruitments" actionLabel="Open Recruitments" tone="info" />
+      <NextActionCallout message={workflowMessage} href="/admin/operations?mode=queue" actionLabel="Open Pipeline Workspace" tone="info" />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl font-semibold tracking-tight">Scrape queue trust review</h1>
@@ -645,7 +549,7 @@ export default function AdminScraper() {
         )}
       </section>
 
-      <QueueDetailDrawer item={selected} onClose={() => setSelected(null)} onAction={act} onFieldAction={fieldAct} onMerge={mergeIntoRecruitment} />
+      <QueueDetailDrawer item={selected} onClose={() => setSelected(null)} />
       <LiveConfirm open={confirmOpen} sources={sourceMode === "selected" ? runSources : []} limit={limit} busy={running === "live"} onCancel={() => setConfirmOpen(false)} onConfirm={runLive} />
       <ScrapeRunDetailDrawer runId={runDetailId} open={!!runDetailId} onClose={() => setRunDetailId(null)} />
     </div>
@@ -663,7 +567,7 @@ function QueueRowAction({ item, state, onOpen }) {
         href={`/admin/operations?queue_id=${item.id}&mode=queue`}
         data-testid={`scrape-row-open-ops-${item.id}`}
       >
-        Open in Operations →
+        Open in Pipeline Workspace →
       </a>
       <button
         type="button"

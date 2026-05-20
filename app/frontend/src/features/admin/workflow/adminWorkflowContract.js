@@ -1,23 +1,3 @@
-export const ADMIN_WORKFLOW_STEPS = [
-  "Sources",
-  "Scrape",
-  "Candidate review",
-  "Recruitment Draft",
-  "Validate",
-  "Publish",
-  "Eligibility",
-];
-
-export const ADMIN_ROUTES_BY_STEP = {
-  Sources: "/admin/sources",
-  Scrape: "/admin/scraper",
-  "Candidate review": "/admin/scraper",
-  "Recruitment Draft": "/admin/recruitments",
-  Validate: "/admin/recruitments",
-  Publish: "/admin/recruitments",
-  Eligibility: "/admin/eligibility-queue",
-};
-
 export const SOURCE_TYPE_LABELS = {
   aggregator: "Aggregator/listing page",
   official_html: "Official HTML page",
@@ -25,12 +5,6 @@ export const SOURCE_TYPE_LABELS = {
   rss: "RSS feed",
   sitemap: "Sitemap",
   api: "API source",
-};
-
-export const QUEUE_ACTION_LABELS = {
-  approve: "Mark reviewed only",
-  reject: "Reject candidate",
-  promote: "Promote to recruitment draft",
 };
 
 export const RECRUITMENT_BLOCKER_LABELS = {

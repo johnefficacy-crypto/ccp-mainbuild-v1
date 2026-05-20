@@ -2,13 +2,12 @@ import React from "react";
 import { ADMIN_PROGRESS_PHASES, ADMIN_PROGRESS_STEPS } from "./AdminProgressBar";
 
 // CurrentActionCard renders the single most-actionable item out of the
-// 13-step progress map. The full bar lives behind a drawer so the default
-// Operations review surface stays focused on one decision.
+// pipeline progress map, so the review surface stays focused on one decision
+// at a time instead of a long multi-step checklist.
 //
 // Contract:
 //   progress        — return value of computeProgress() in AdminProgressBar.jsx,
 //                     shape `{ [stepId]: { status, reason? } }`
-//   onOpenDetails   — () => void, opens the drawer with the full bar.
 //   onPrimaryAction — (kind: string) => void. Fired when the admin clicks the
 //                     primary action button. The parent maps the kind to the
 //                     right AdminFixPanel section and scrolls it into view.
@@ -76,7 +75,7 @@ function statusToBadge(status) {
   return { cls: "badge pending", text: "next" };
 }
 
-export default function CurrentActionCard({ progress, onOpenDetails, onPrimaryAction }) {
+export default function CurrentActionCard({ progress, onPrimaryAction }) {
   const total = ADMIN_PROGRESS_STEPS.length;
   const done = ADMIN_PROGRESS_STEPS.filter((s) => (progress?.[s.id]?.status) === "complete").length;
   const current = findCurrentStep(progress);
@@ -121,14 +120,6 @@ export default function CurrentActionCard({ progress, onOpenDetails, onPrimaryAc
             data-testid="oc-current-action-primary"
           >
             {primaryLabel}
-          </button>
-          <button
-            type="button"
-            className="btn ghost small"
-            onClick={onOpenDetails}
-            data-testid="oc-current-action-details"
-          >
-            View workflow details
           </button>
         </div>
       </div>
