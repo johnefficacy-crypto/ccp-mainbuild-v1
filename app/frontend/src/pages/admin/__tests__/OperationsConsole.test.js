@@ -57,20 +57,14 @@ function renderConsole(initialPath = "/admin/operations?mode=queue") {
 describe("OperationsConsole — PR-C surface", () => {
   beforeEach(() => setupApi());
 
-  test("default Review & Publish does not render the 13-step AdminProgressBar; CurrentActionCard does", async () => {
+  test("Review & Publish shows the single CurrentActionCard, not a multi-step progress bar", async () => {
     renderConsole();
     await waitFor(() => expect(screen.getByTestId("admin-operations-console")).toBeTruthy());
     expect(screen.getByTestId("oc-current-action")).toBeTruthy();
+    // The full multi-step bar and its "View workflow details" entry point
+    // were removed in favour of the single next-action card.
     expect(screen.queryByTestId("admin-progress-bar")).toBeNull();
-  });
-
-  test("opening 'View workflow details' surfaces the full AdminProgressBar in a drawer", async () => {
-    renderConsole();
-    await waitFor(() => expect(screen.getByTestId("oc-current-action-details")).toBeTruthy());
-    await act(async () => {
-      screen.getByTestId("oc-current-action-details").click();
-    });
-    expect(screen.getByTestId("admin-progress-bar")).toBeTruthy();
+    expect(screen.queryByTestId("oc-current-action-details")).toBeNull();
   });
 
   test("Candidates and Drafts are mutually exclusive — only one list at a time", async () => {

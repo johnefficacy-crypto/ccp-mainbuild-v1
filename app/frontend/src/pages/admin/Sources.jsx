@@ -2,11 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Filter, Pencil, Plus, Search, ShieldCheck, X } from "lucide-react";
 import SourceHealthBadge from "../../features/admin/sources/SourceHealthBadge";
 import { api } from "../../lib/api";
-import AdminWorkflowStepper from "../../features/admin/workflow/AdminWorkflowStepper";
 import NextActionCallout from "../../features/admin/workflow/NextActionCallout";
 import { NEXT_ACTION_MESSAGES, SOURCE_TYPE_LABELS } from "../../features/admin/workflow/adminWorkflowContract";
 import { useFocusTrap } from "../../shared/a11y/useFocusTrap";
-import { EmptyState, ErrorState, LoadingSkeleton, RowActions, StatusBadge } from "../../shared/ui";
+import { EmptyState, ErrorState, LoadingSkeleton, RowActions } from "../../shared/ui";
 import useAdminAction from "../../features/admin/shared/useAdminAction";
 import AuditTimelineDrawer from "../../features/admin/shared/AuditTimelineDrawer";
 import { adminTrustService } from "../../services/adminTrustService";
@@ -208,33 +207,62 @@ function SourceDetailsDialog({ source, result, onEdit, onClose }) {
           <h2 id="source-details-title" className="font-heading text-2xl">{source.org || source.source_name} details</h2>
           <button ref={closeRef} className="btn btn-ghost h-9 w-9 p-0" onClick={onClose} aria-label="Close details"><X className="h-4 w-4" /></button>
         </div>
-        <div className="mt-4 space-y-3 text-sm">
-          <Detail label="Type" value={source.source_type || source.kind} />
-          <Detail label="Adapter" value={source.adapter_type || "html"} />
-          <Detail label="Fetch URL (used by runner)" value={primaryFetchUrl(source)} />
-          <Detail label="Official URL" value={source.official_url} />
-          <Detail label="Notification URL" value={source.notification_url} />
-          <Detail label="Trust policy" value={source.source_type === "aggregator" ? "Discovery only / official confirmation required / cannot publish from this source alone" : "Official source candidate"} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Detail label="Last error class" value={source.last_error_class} />
-            <Detail label="Last error" value={source.last_error_detail || source.last_error} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Detail label="Currently scraping" value={source.currently_scraping_at ? `since ${source.currently_scraping_at}` : "no"} />
-            <Detail label="Listing cache" value={source.has_listing_cache ? "active (304 short-circuit)" : "cold"} />
-            <Detail label="Listing last-modified" value={source.last_listing_modified} />
-          </div>
-          <Detail label="Notes" value={source.notes} />
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Detail label="Max items" value={source.scrape_config?.max_items_per_run} />
-            <Detail label="Rate limit" value={source.scrape_config?.rate_limit_seconds ? `${source.scrape_config.rate_limit_seconds}s` : null} />
-            <Detail label="Timeout" value={source.scrape_config?.timeout_seconds ? `${source.scrape_config.timeout_seconds}s` : null} />
-          </div>
+        <div className="mt-4 space-y-4 text-sm">
+          {/* Decision summary first: can I trust and scrape this source? */}
+          <section className="rounded-xl border border-border bg-white/60 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Status &amp; health</div>
+              <SourceHealthBadge source={source} />
+            </div>
+            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+              <Detail label="Verified" value={source.is_verified ? "Yes" : "No"} />
+              <Detail label="Active" value={source.is_active === false ? "No" : "Yes"} />
+              <Detail label="Trust policy" value={source.source_type === "aggregator" ? "Discovery only" : "Official candidate"} />
+              <Detail label="Last success" value={source.last_success_at || "never"} />
+              <Detail label="Consecutive fails" value={source.consecutive_fails || 0} />
+              <Detail label="Currently scraping" value={source.currently_scraping_at ? `since ${source.currently_scraping_at}` : "no"} />
+            </div>
+            {(source.last_error || source.last_error_detail) ? (
+              <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-900">
+                Last error{source.last_error_class ? ` (${source.last_error_class})` : ""}: {source.last_error_detail || source.last_error}
+              </div>
+            ) : null}
+          </section>
+
+          <section>
+            <div className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">What gets fetched</div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Detail label="Type" value={source.source_type || source.kind} />
+              <Detail label="Adapter" value={source.adapter_type || "html"} />
+              <Detail label="Fetch URL (used by runner)" value={primaryFetchUrl(source)} />
+              <Detail label="Official URL" value={source.official_url} />
+              <Detail label="Notification URL" value={source.notification_url} />
+            </div>
+          </section>
+
+          <section>
+            <div className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">Run configuration</div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Detail label="Max items" value={source.scrape_config?.max_items_per_run} />
+              <Detail label="Rate limit" value={source.scrape_config?.rate_limit_seconds ? `${source.scrape_config.rate_limit_seconds}s` : null} />
+              <Detail label="Timeout" value={source.scrape_config?.timeout_seconds ? `${source.scrape_config.timeout_seconds}s` : null} />
+              <Detail label="Listing cache" value={source.has_listing_cache ? "active (304 short-circuit)" : "cold"} />
+              <Detail label="Listing last-modified" value={source.last_listing_modified} />
+            </div>
+          </section>
+
+          {source.notes ? <Detail label="Notes" value={source.notes} /> : null}
+
           <details className="rounded-xl border border-border bg-white/60 p-3">
             <summary className="cursor-pointer text-xs font-semibold">Configuration JSON</summary>
             <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[11px]">{JSON.stringify({ scrape_config: source.scrape_config, trust_config: source.trust_config, adapter_config: source.adapter_config }, null, 2)}</pre>
           </details>
-          {result && <pre className="max-h-56 overflow-auto rounded-xl border border-border bg-white/70 p-3 text-xs">{JSON.stringify(result, null, 2)}</pre>}
+          {result ? (
+            <details className="rounded-xl border border-border bg-white/70 p-3">
+              <summary className="cursor-pointer text-xs font-semibold">Last verification result</summary>
+              <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[11px]">{JSON.stringify(result, null, 2)}</pre>
+            </details>
+          ) : null}
         </div>
         <div className="mt-5 flex justify-end">
           <button className="btn btn-primary" onClick={() => onEdit(source)}><Pencil className="h-4 w-4" /> Edit source</button>
@@ -313,6 +341,7 @@ export default function AdminSources() {
       const matchesType = typeFilter === "all" || sourceType === typeFilter;
       const matchesPolicy =
         policyFilter === "all"
+        || (policyFilter === "active" && source.is_active !== false)
         || (policyFilter === "discovery" && sourceType === "aggregator")
         || (policyFilter === "official_verified" && sourceType !== "aggregator" && source.is_verified)
         || (policyFilter === "inactive" && source.is_active === false)
@@ -330,7 +359,6 @@ export default function AdminSources() {
 
   return (
     <div className="space-y-4" data-testid="admin-sources">
-      <AdminWorkflowStepper currentStep="Sources" />
       <NextActionCallout message={workflowMessage} href="/admin/scraper" actionLabel="Open Scraper" tone={workflowMessage === NEXT_ACTION_MESSAGES.aggregatorDiscovery ? "warn" : "info"} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -340,11 +368,11 @@ export default function AdminSources() {
         <button className="btn btn-primary" onClick={openCreate}><Plus className="h-4 w-4" /> Add source</button>
       </div>
       <div className="grid gap-3 text-sm md:grid-cols-5">
-        <Metric label="Total" value={summary.total} />
-        <Metric label="Active" value={summary.active} />
-        <Metric label="Needs review" value={summary.needsReview} tone="warn" />
-        <Metric label="Failed" value={summary.failed} tone="bad" />
-        <Metric label="Aggregators" value={summary.aggregators} />
+        <Metric label="Total" value={summary.total} filterKey="all" active={policyFilter === "all"} onSelect={setPolicyFilter} />
+        <Metric label="Active" value={summary.active} filterKey="active" active={policyFilter === "active"} onSelect={setPolicyFilter} />
+        <Metric label="Needs review" value={summary.needsReview} tone="warn" filterKey="review" active={policyFilter === "review"} onSelect={setPolicyFilter} />
+        <Metric label="Failed" value={summary.failed} tone="bad" filterKey="failed" active={policyFilter === "failed"} onSelect={setPolicyFilter} />
+        <Metric label="Aggregators" value={summary.aggregators} filterKey="discovery" active={policyFilter === "discovery"} onSelect={setPolicyFilter} />
       </div>
       <section className="soft-card rounded-2xl p-4">
         <div className="grid gap-3 lg:grid-cols-[1fr_200px]">
@@ -365,6 +393,7 @@ export default function AdminSources() {
         <div className="mt-3 flex flex-wrap gap-2">
           {[
             ["all", "All"],
+            ["active", "Active"],
             ["official_verified", "Official verified"],
             ["review", "Needs review"],
             ["failed", "Failed"],
@@ -402,44 +431,55 @@ function Detail({ label, value }) {
   return <div><div className="text-[11px] uppercase tracking-widest text-muted-foreground">{label}</div><div className="break-words">{value || "-"}</div></div>;
 }
 
-function Metric({ label, value, tone }) {
+function Metric({ label, value, tone, filterKey, active, onSelect }) {
   const toneClass = tone === "bad" ? "text-destructive" : tone === "warn" ? "text-amber-700" : "text-foreground";
-  return <div className="soft-card rounded-xl p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div><div className={`mt-1 font-heading text-2xl ${toneClass}`}>{value}</div></div>;
+  const inner = (
+    <>
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className={`mt-1 font-heading text-2xl ${toneClass}`}>{value}</div>
+    </>
+  );
+  if (!filterKey) return <div className="soft-card rounded-xl p-3">{inner}</div>;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(filterKey)}
+      aria-pressed={active}
+      className={`soft-card rounded-xl p-3 text-left transition ${active ? "ring-2 ring-dusk-700" : "hover:bg-clay-100"}`}
+      data-testid={`source-metric-${filterKey}`}
+    >
+      {inner}
+    </button>
+  );
 }
 
 function SourceCard({ source, busyKey, onDetails, onEdit, onVerify, onToggle, onHistory }) {
   const sourceType = source.source_type || source.kind;
   const isAggregator = sourceType === "aggregator";
   const failed = (source.consecutive_fails || 0) > 0 || source.last_error;
+  const lastSuccess = source.last_success_at ? String(source.last_success_at).slice(0, 10) : "never";
 
   return (
-    <article className="soft-card rounded-2xl p-4" data-testid={`source-card-${source.id}`}>
-      <div className="flex items-start justify-between gap-3">
+    <article className="soft-card rounded-xl p-3" data-testid={`source-card-${source.id}`}>
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex flex-wrap gap-1.5">
-            <StatusBadge status={sourceType || "unknown"} label={sourceTypeLabel(sourceType)} />
-            <StatusBadge status={source.is_active ? "active" : "disabled"} label={source.is_active ? "Active" : "Inactive"} />
-            {isAggregator ? <span className="pill pill-amber">Discovery only</span> : <span className="pill pill-sage">{source.is_verified ? "Verified official source" : "Official candidate"}</span>}
-            {source.currently_scraping_at ? <span className="pill pill-amber" title={`Lock held since ${source.currently_scraping_at}`}>Scraping in flight</span> : null}
-            {source.has_listing_cache ? <span className="pill pill-sage" title="Listing fetch will use If-None-Match / If-Modified-Since">Cached</span> : null}
-            {source.adapter_type && source.adapter_type !== "html" ? <span className="pill">{String(source.adapter_type).toUpperCase()}</span> : null}
-          </div>
-          <h2 className="mt-3 truncate font-heading text-xl">{source.org || source.source_name}</h2>
-          <p className="mt-1 truncate text-xs text-muted-foreground">{source.official_url || source.url || "-"}</p>
+          <h2 className="truncate font-heading text-base">{source.org || source.source_name}</h2>
+          <p className="truncate text-[11px] text-muted-foreground">{source.official_url || source.url || "-"}</p>
         </div>
-        <button className="btn btn-ghost h-9 shrink-0 text-xs" onClick={onDetails}>Details</button>
+        <SourceHealthBadge source={source} />
       </div>
-      <div className="mt-4 grid gap-2 text-xs sm:grid-cols-3">
-        <Mini label="Health" value={<SourceHealthBadge source={source} />} />
-        <Mini label="Last success" value={source.last_success_at || "-"} />
-        <Mini label={source.last_error_class ? `Fails (${source.last_error_class})` : "Fails"} value={source.consecutive_fails || 0} tone={failed ? "bad" : undefined} />
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+        <span className="pill">{sourceTypeLabel(sourceType)}</span>
+        {isAggregator
+          ? <span className="pill pill-amber" title="Cannot publish from this source alone">Discovery only</span>
+          : <span className="pill pill-sage">{source.is_verified ? "Verified" : "Unverified"}</span>}
+        <span className={`pill${source.is_active ? " pill-sage" : ""}`}>{source.is_active ? "Active" : "Inactive"}</span>
+        {source.currently_scraping_at ? <span className="pill pill-amber">Scraping…</span> : null}
+        {failed ? <span className="pill pill-amber" title={source.last_error || source.last_error_class || "recent failures"}>{source.consecutive_fails || 0} fails</span> : null}
+        <span className="text-muted-foreground">· scraped {lastSuccess}</span>
       </div>
-      {isAggregator ? (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          Discovery only. Cannot publish from this source alone.
-        </div>
-      ) : null}
-      <div className="mt-4 border-t border-border pt-3">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
+        <button className="btn btn-ghost h-7 text-[11px]" onClick={onDetails}>Details</button>
         <RowActions groupLabel={`Row actions for ${source.org || source.source_name || "source"}`} actions={[
           { label: "Edit", ariaLabel: `Edit source ${source.org || source.source_name}`, onClick: () => onEdit(source) },
           ...(!source.is_verified ? [{ label: "Verify", ariaLabel: `Verify source ${source.org || source.source_name}`, onClick: () => onVerify(source), disabled: isAggregator || busyKey === `verify-${source.id}` }] : []),
@@ -449,11 +489,6 @@ function SourceCard({ source, busyKey, onDetails, onEdit, onVerify, onToggle, on
       </div>
     </article>
   );
-}
-
-function Mini({ label, value, tone }) {
-  const toneClass = tone === "bad" ? "text-destructive" : "";
-  return <div className="min-w-0 rounded-xl border border-border bg-white/60 p-2"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div><div className={`mt-1 truncate font-semibold ${toneClass}`}>{value}</div></div>;
 }
 
 function sourceTypeLabel(value) {

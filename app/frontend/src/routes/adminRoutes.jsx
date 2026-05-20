@@ -5,7 +5,6 @@ import { ADMIN_ROLES } from "../lib/rbac";
 import AdminShell from "../pages/admin/AdminShell";
 import AdminOverview from "../pages/admin/Overview";
 import AdminRecruitments from "../pages/admin/Recruitments";
-import AdminEligibility from "../pages/admin/EligibilityQueue";
 import AdminOperationsConsole from "../pages/admin/OperationsConsole";
 import AdminEligibilityOps from "../pages/admin/EligibilityOps";
 import AdminSources from "../pages/admin/Sources";
@@ -43,10 +42,12 @@ export const adminRouteElements = (
     <Route path="/admin" element={<AdminOverview />} />
     <Route path="/admin/operations" element={<AdminOperationsConsole />} />
     <Route path="/admin/recruitments" element={<AdminRecruitments />} />
-    <Route path="/admin/eligibility-queue" element={<AdminEligibility />} />
-    {/* Legacy alias — keep a permanent redirect so deep links from older
-        emails/blogs reach the canonical promotion queue route. */}
-    <Route path="/admin/promotion-queue" element={<Navigate to="/admin/eligibility-queue" replace />} />
+    {/* Candidate review is now part of the single pipeline workspace. Both
+        the old promotion-queue and eligibility-queue deep links funnel into
+        the Review & publish surface so there is exactly one place to verify
+        and promote scraped candidates. */}
+    <Route path="/admin/eligibility-queue" element={<Navigate to="/admin/operations?mode=queue" replace />} />
+    <Route path="/admin/promotion-queue" element={<Navigate to="/admin/operations?mode=queue" replace />} />
     <Route path="/admin/eligibility-ops" element={<AdminEligibilityOps />} />
     <Route path="/admin/sources" element={<AdminSources />} />
     <Route path="/admin/organizations" element={<AdminOrganizations />} />

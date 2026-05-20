@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, getApiUnverifiedFields } from "../../lib/api";
 import useAdminAction from "../../features/admin/shared/useAdminAction";
-import AdminProgressBar, { computeProgress } from "../../features/admin/workflow/AdminProgressBar";
+import { computeProgress } from "../../features/admin/workflow/AdminProgressBar";
 import CurrentActionCard from "../../features/admin/workflow/CurrentActionCard";
 import AdminFixPanel from "../../features/admin/workflow/AdminFixPanel";
 import DuplicateMergePreview from "../../features/admin/workflow/DuplicateMergePreview";
@@ -10,11 +10,10 @@ import SelectionContextBanner from "../../features/admin/workflow/SelectionConte
 import useConflicts from "../../features/admin/workflow/useConflicts";
 import { scoreToPct } from "../../features/admin/workflow/scoreUtils";
 import { useToast } from "../../shared/ui";
-import { Drawer } from "../../shared/ui/studyos";
 
 const VIEWS = [
-  { id: "source", label: "Setup & run" },
-  { id: "queue", label: "Review & publish" },
+  { id: "source", label: "1 · Run scrape" },
+  { id: "queue", label: "2 · Review & publish" },
 ];
 
 // Filter ``key`` matches scrape_queue.status verbatim so the backend can do
@@ -75,7 +74,6 @@ export default function OperationsConsole() {
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
   const [queueFilter, setQueueFilter] = useState(() => searchParams.get("queue_status") || "pending");
-  const [workflowOpen, setWorkflowOpen] = useState(false);
   const [leftView, setLeftView] = useState(() => (recruitmentId ? "drafts" : "candidates"));
   // Heavy per-item detail (extracted_data / raw_extracted_item / raw_html)
   // is stripped from the lightweight queue list; we hydrate it on demand
@@ -218,11 +216,6 @@ export default function OperationsConsole() {
     validateResult,
     conflicts,
   }), [selectedSource, latestRun, selectedQueueItem, selectedRecruitment, validateResult, conflicts]);
-
-  const onStepClick = useCallback((stepId) => {
-    const setupSteps = new Set(["source_ready", "dry_scrape", "live_scrape"]);
-    updateParams({ mode: setupSteps.has(stepId) ? "source" : "queue" });
-  }, [updateParams]);
 
   // CurrentActionCard primary button: focus the matching AdminFixPanel
   // section and scroll it into view. Setup-phase kinds switch to the
@@ -499,14 +492,10 @@ export default function OperationsConsole() {
             onSelectRecruitment={(id) => updateParams({ recruitment_id: id, queue_id: null })}
             leftView={leftView}
             onLeftView={setLeftView}
-            workflowOpen={workflowOpen}
-            onOpenWorkflow={() => setWorkflowOpen(true)}
-            onCloseWorkflow={() => setWorkflowOpen(false)}
             onPrimaryAction={onPrimaryAction}
             onClearSource={() => updateParams({ source_id: null })}
             onClearQueue={() => updateParams({ queue_id: null })}
             onClearRecruitment={() => updateParams({ recruitment_id: null })}
-            onStepClick={onStepClick}
             onQueueFieldAction={queueFieldAction}
             onPromote={promote}
             onMergeIntoExisting={openMergePreview}
@@ -591,51 +580,123 @@ function RejectCandidateDialog({ open, item, reason, onReasonChange, onCancel, o
   );
 }
 
+function relTime(iso) {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  const diff = Date.now() - t;
+  if (diff < 3_600_000) return "just now";
+  if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}h ago`;
+  return `${Math.round(diff / 86_400_000)}d ago`;
+}
+
+function daysSince(iso) {
+  if (!iso) return Infinity;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return Infinity;
+  return (Date.now() - t) / 86_400_000;
+}
+
+function sourceHealth(s) {
+  if ((s.consecutive_fails || 0) > 0 || s.last_error) return { key: "failed", cls: "badge blocker", text: "failing" };
+  if (s.verification_status === "needs_review") return { key: "review", cls: "badge pending", text: "needs review" };
+  if (!s.is_verified && (s.source_type || s.kind) !== "aggregator") return { key: "unverified", cls: "badge pending", text: "unverified" };
+  return { key: "healthy", cls: "badge resolved", text: "healthy" };
+}
+
+// A single, plain-language recommendation so the operator can decide which
+// source to scrape without cross-referencing the Source Registry. Surfaces
+// failing sources, never-scraped sources, staleness, and recent yield.
+function scrapeHint(health, lastScrapedIso, pendingCount) {
+  if (health.key === "failed") return { cls: "badge blocker", text: "failing · check source", rank: 1 };
+  if (health.key === "unverified") return { cls: "badge pending", text: "verify before scraping", rank: 5 };
+  if (!lastScrapedIso) return { cls: "badge info", text: "not scraped yet", rank: 2 };
+  if (daysSince(lastScrapedIso) > 7) return { cls: "badge info", text: "stale · rescrape", rank: 3 };
+  if (pendingCount > 0) return { cls: "badge pending", text: `${pendingCount} in review`, rank: 4 };
+  return { cls: "badge resolved", text: "fresh", rank: 6 };
+}
+
 function SetupAndRun({ sources, selectedSource, runs, queue, onSelectSource, onRunDry, onRunLive, busy }) {
   const latestRun = runs[0] || null;
   const tierA = queue.filter((q) => tierForItem(q) === "A").length;
   const tierB = queue.filter((q) => tierForItem(q) === "B").length;
   const tierC = queue.filter((q) => tierForItem(q) === "C").length;
-  const sourceType = selectedSource?.source_type || selectedSource?.kind || "official";
-  const trustBadge = selectedSource?.is_verified
-    ? { cls: "badge resolved", text: "verified" }
-    : selectedSource ? { cls: "badge pending", text: "unverified" } : null;
-  const isAggregator = sourceType === "aggregator";
+
+  // Build per-source decision signals: last-scraped (from the source's own
+  // last_success_at, falling back to the latest matching run), how many of
+  // its candidates are still waiting in the queue, and a recommendation.
+  const lastRunBySource = useMemo(() => {
+    const map = {};
+    for (const r of runs) {
+      const key = String(r.source_name || r.source || "").toLowerCase();
+      if (!key) continue;
+      if (!map[key] || String(r.at || "") > String(map[key].at || "")) map[key] = r;
+    }
+    return map;
+  }, [runs]);
+
+  const sourceRows = useMemo(() => {
+    return sources.map((s) => {
+      const key = String(s.source_name || s.org || "").toLowerCase();
+      const lastRun = lastRunBySource[key] || null;
+      const lastScrapedIso = s.last_success_at || lastRun?.at || null;
+      const pendingCount = queue.filter(
+        (q) => String(q.source_name || "").toLowerCase() === key && (q.status || "pending") === "pending",
+      ).length;
+      const health = sourceHealth(s);
+      const hint = scrapeHint(health, lastScrapedIso, pendingCount);
+      return { s, health, hint, lastScrapedIso, pendingCount, lastRun };
+    }).sort((a, b) => (a.hint.rank - b.hint.rank) || (daysSince(b.lastScrapedIso) - daysSince(a.lastScrapedIso)));
+  }, [sources, lastRunBySource, queue]);
 
   return (
     <section className="scrn" style={{ padding: "0 0 18px", border: "none" }}>
       <div className="scrn-head">
-        <h3 className="oc-title">Setup &amp; run</h3>
-        <span className="scrn-tag">mode · setup</span>
+        <h3 className="oc-title">Run scrape</h3>
+        <span className="scrn-tag">step 1 · choose sources</span>
       </div>
       <div className="stack">
         <div className="card">
           <div className="card-head">
-            <h4 className="oc-title">Source</h4>
-            {trustBadge ? <span className={trustBadge.cls}>{trustBadge.text}</span> : <span className="badge neutral">no selection</span>}
+            <h4 className="oc-title">Choose a source to scrape</h4>
+            <span className="row-sub">{selectedSource ? (selectedSource.org || selectedSource.source_name) : "all active sources"}</span>
           </div>
           <div className="card-body stack">
-            <div>
-              <div className="lbl" style={{ marginBottom: 5 }}>Pick verified source</div>
-              <select className="input" value={selectedSource?.id || ""} onChange={(e) => onSelectSource(e.target.value || null)} data-testid="setup-source-select">
-                <option value="">Select a source…</option>
-                {sources.map((s) => (
-                  <option key={s.id} value={s.id}>{s.org || s.source_name} · {s.source_type || s.kind || "official"}</option>
-                ))}
-              </select>
-            </div>
-            {selectedSource ? (
-              <div className="row">
-                <span className="lbl">trust</span>
-                <span className={trustBadge.cls}>{trustBadge.text}</span>
-                <span className="lbl" style={{ marginLeft: 10 }}>policy</span>
-                <span className="badge neutral">{isAggregator ? "discovery only" : "official"}</span>
-              </div>
-            ) : null}
             <div className="anno">
-              {isAggregator
-                ? "Aggregator data discovers candidates only. Cannot become canonical until paired with official proof."
-                : "Verified official sources can become canonical proof. Promotion requires verified required fields."}
+              Sorted by what needs attention first — failing sources, never-scraped, then stale. Pick one source or scrape all active sources.
+            </div>
+            <div className="qlist" style={{ maxHeight: "46vh", overflowY: "auto" }}>
+              <button
+                type="button"
+                className={`qitem${!selectedSource ? " selected" : ""}`}
+                onClick={() => onSelectSource(null)}
+                data-testid="setup-source-all"
+              >
+                <div className="qttl">All active sources</div>
+                <div className="qsub">{sources.length} source{sources.length === 1 ? "" : "s"} · runs every active, verified source</div>
+              </button>
+              {sourceRows.map(({ s, health, hint, lastScrapedIso, pendingCount }) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`qitem${selectedSource?.id === s.id ? " selected" : ""}`}
+                  onClick={() => onSelectSource(s.id)}
+                  data-testid={`setup-source-${s.id}`}
+                >
+                  <div className="row" style={{ gap: 5 }}>
+                    <span className={health.cls}>{health.text}</span>
+                    <span className={hint.cls}>{hint.text}</span>
+                  </div>
+                  <div className="qttl">{s.org || s.source_name}</div>
+                  <div className="qsub">
+                    {s.source_type || s.kind || "official"}
+                    {" · "}
+                    {lastScrapedIso ? `last scraped ${relTime(lastScrapedIso)}` : "never scraped"}
+                    {pendingCount > 0 ? ` · ${pendingCount} in review` : ""}
+                    {(s.consecutive_fails || 0) > 0 ? ` · ${s.consecutive_fails} consecutive fails` : ""}
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
           <div className="card-foot">
@@ -721,14 +782,14 @@ function ReviewAndPublish({
   queue, queueId, recruitmentId, recruitments, sources, validateResult,
   queueFilter, onQueueFilter, onSelectQueue, onSelectRecruitment,
   onClearSource, onClearQueue, onClearRecruitment,
-  onStepClick, onQueueFieldAction,
+  onQueueFieldAction,
   onPromote, onMergeIntoExisting, onMarkDuplicate, onRejectCandidate,
   onValidate, onVerify, onPublish,
   mergeTarget, onCloseMerge,
   onSourcesChanged, onConfirmMerge,
   conflicts, conflictTarget, onOpenConflict, onResolveConflict, onRejectConflict, onCloseConflict,
   busy, msg, actionError,
-  leftView, onLeftView, workflowOpen, onOpenWorkflow, onCloseWorkflow, onPrimaryAction,
+  leftView, onLeftView, onPrimaryAction,
 }) {
   const progress = computeProgress(progressState);
   return (
@@ -739,7 +800,7 @@ function ReviewAndPublish({
           <span className="scrn-tag">current action + selection context</span>
         </div>
         <div className="stack">
-          <CurrentActionCard progress={progress} onOpenDetails={onOpenWorkflow} onPrimaryAction={onPrimaryAction} />
+          <CurrentActionCard progress={progress} onPrimaryAction={onPrimaryAction} />
           <SelectionContextBanner
             source={selectedSource}
             queueItem={selectedQueueItem}
@@ -752,15 +813,6 @@ function ReviewAndPublish({
           {actionError ? <div className="err-row">{actionError.message}</div> : null}
         </div>
       </section>
-
-      <Drawer
-        open={workflowOpen}
-        onClose={onCloseWorkflow}
-        title="Workflow details"
-        width={640}
-      >
-        <AdminProgressBar state={progressState} onStepClick={onStepClick} />
-      </Drawer>
 
       <section className="scrn" style={{ borderTop: "1px solid var(--rule)" }}>
         <div className="scrn-head">

@@ -279,48 +279,33 @@ function QueueFixSection({ item, conflicts = [], sources = [], onFieldAction, on
           </section>
         ) : null}
 
-        {blockers.length > 0 ? (
-          <FieldReviewGroup
-            extracted={item.raw_extracted_item || item.normalized_item || {}}
-            evidence={item.field_evidence_status || {}}
-            evidenceDetails={item.field_evidence_details || []}
-            requiredFields={HIGH_RISK_QUEUE_FIELDS}
-            recommendedFields={[]}
-            onFieldAction={queueFieldAction}
-          />
-        ) : null}
+        <FieldReviewGroup
+          extracted={item.raw_extracted_item || item.normalized_item || {}}
+          evidence={item.field_evidence_status || {}}
+          evidenceDetails={item.field_evidence_details || []}
+          requiredFields={HIGH_RISK_QUEUE_FIELDS}
+          recommendedFields={RECOMMENDED_REVIEW_FIELDS}
+          onFieldAction={queueFieldAction}
+        />
 
-        <details className="fx-disclosure" data-testid="fx-quality-review">
-          <summary className="fx-disclosure-summary">Quality review</summary>
-          <div style={{ marginTop: 10 }}>
-            <FieldReviewGroup
-              extracted={item.raw_extracted_item || item.normalized_item || {}}
-              evidence={item.field_evidence_status || {}}
-              evidenceDetails={item.field_evidence_details || []}
-              requiredFields={[]}
-              recommendedFields={RECOMMENDED_REVIEW_FIELDS}
-              onFieldAction={queueFieldAction}
-            />
-          </div>
-        </details>
-
-        <details
-          className="fx-disclosure"
-          open={blockers.includes("requires_domicile")}
-          data-testid="fx-post-eligibility"
-        >
-          <summary className="fx-disclosure-summary">Post-level eligibility review</summary>
-          <div style={{ marginTop: 8 }}>
-            <div className="anno" style={{ marginBottom: 6 }}>
-              Eligibility matching relies on per-post age, education, and vacancy fields. Corrections use dotted paths (posts.0.min_age).
+        {Array.isArray(posts) && posts.length ? (
+          <details
+            className="fx-disclosure"
+            open={blockers.includes("requires_domicile")}
+            data-testid="fx-post-eligibility"
+          >
+            <summary className="fx-disclosure-summary">
+              Post-level eligibility · {posts.length} post{posts.length === 1 ? "" : "s"}
+            </summary>
+            <div style={{ marginTop: 8 }}>
+              <PostEligibilityReviewGroup
+                posts={posts}
+                evidenceDetails={item.field_evidence_details || []}
+                onFieldAction={queueFieldAction}
+              />
             </div>
-            <PostEligibilityReviewGroup
-              posts={posts}
-              evidence={item.field_evidence_status || {}}
-              onFieldAction={queueFieldAction}
-            />
-          </div>
-        </details>
+          </details>
+        ) : null}
 
         <details
           className="fx-disclosure"

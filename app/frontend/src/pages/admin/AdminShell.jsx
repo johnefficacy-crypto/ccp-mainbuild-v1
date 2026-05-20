@@ -11,7 +11,7 @@ import { useAuth } from "../../lib/authContext";
 
 const COMMAND_CENTER = [
   { to: "/admin", label: "Overview", icon: LayoutGrid, end: true, testId: "admin-nav-overview" },
-  { to: "/admin/operations", label: "Operations", icon: LayoutGrid, end: true, testId: "admin-nav-operations" },
+  { to: "/admin/operations", label: "Pipeline Workspace", icon: GaugeCircle, end: true, testId: "admin-nav-operations" },
 ];
 
 const TRUST_PIPELINE = [

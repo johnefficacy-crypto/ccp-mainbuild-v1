@@ -7,7 +7,6 @@ import RecomputeStatusPanel from "../../features/admin/recruitments/RecomputeSta
 import InlineAuditTimeline from "../../features/admin/shared/InlineAuditTimeline";
 import useAdminAction from "../../features/admin/shared/useAdminAction";
 import { api, getApiBlockingIssues } from "../../lib/api";
-import AdminWorkflowStepper from "../../features/admin/workflow/AdminWorkflowStepper";
 import NextActionCallout from "../../features/admin/workflow/NextActionCallout";
 import BlockerList from "../../features/admin/workflow/BlockerList";
 import InlineTrustFixes from "../../features/admin/workflow/InlineTrustFixes";
@@ -80,7 +79,7 @@ function RecruitmentDrawer({ row, onClose, onAction, onSave, onReload, busyKey }
         <div className="mt-4">
           <NextActionCallout
             message={getNextActionForRecruitment(row)}
-            href={row.publish_status === "published" ? "/admin/eligibility-queue" : undefined}
+            href={row.publish_status === "published" ? "/admin/eligibility-ops" : undefined}
             actionLabel={row.publish_status === "published" ? "Open Eligibility Health" : undefined}
             tone={(row.blocking_issues || []).length ? "warn" : "info"}
           />
@@ -237,7 +236,6 @@ export default function AdminRecruitments() {
 
   return (
     <div className="space-y-5" data-testid="admin-recruitments">
-      <AdminWorkflowStepper currentStep={["Recruitment Draft", "Validate", "Publish"]} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">Recruitments / trust workflow</div>
