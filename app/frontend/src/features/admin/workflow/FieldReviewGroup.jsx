@@ -302,7 +302,7 @@ export default function FieldReviewGroup({ extracted, evidence, evidenceDetails,
         Promotion is blocked until fields marked <span style={{ color: "var(--blocker)", fontWeight: 700 }}>*</span> are verified or corrected.
       </div>
       {required.length ? (
-        <div className="card fld-list">
+        <div className="fld-list">
           {required.map((field) => (
             <Row key={field} field={field} blocking extracted={extracted} evidence={evidence} evidenceDetails={details} onFieldAction={onFieldAction} />
           ))}
@@ -311,7 +311,7 @@ export default function FieldReviewGroup({ extracted, evidence, evidenceDetails,
       {recommended.length ? (
         <details className="fx-disclosure" data-testid="field-review-optional">
           <summary className="fx-disclosure-summary">Optional quality checks (not blocking)</summary>
-          <div className="card fld-list" style={{ marginTop: 8 }}>
+          <div className="fld-list" style={{ marginTop: 8 }}>
             {recommended.map((field) => (
               <Row key={field} field={field} blocking={false} extracted={extracted} evidence={evidence} evidenceDetails={details} onFieldAction={onFieldAction} />
             ))}
