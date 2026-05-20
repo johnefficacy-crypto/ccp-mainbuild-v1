@@ -54,6 +54,14 @@ class ScrapeSource:
         attempting a silent empty fetch.
         """
         adapter = (self.adapter_type or "").lower()
+        # SerpApi adapters fetch from the API, not a per-source URL. The
+        # sentinel keeps ``primary_fetch_url`` non-None so the runner's
+        # ``source_config_invalid`` guard passes and dispatch reaches the
+        # SerpApi pass (which ignores this value and reads adapter_config).
+        if adapter == "serpapi_jobs":
+            return "serpapi://google_jobs"
+        if adapter == "serpapi_web":
+            return "serpapi://google_web"
         if adapter == "rss":
             return self.rss_url or None
         if adapter == "api":

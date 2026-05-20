@@ -1,0 +1,37 @@
+{
+  "search_metadata": {
+    "id": "fixture-google-web-0001",
+    "status": "Success",
+    "google_url": "https://www.google.co.in/search?q=site:rbi.org.in+recruitment+notification+2026"
+  },
+  "search_parameters": {
+    "engine": "google",
+    "q": "site:rbi.org.in recruitment notification 2026 filetype:pdf",
+    "google_domain": "google.co.in",
+    "hl": "en",
+    "gl": "in"
+  },
+  "organic_results": [
+    {
+      "position": 1,
+      "title": "Recruitment of Assistants in RBI — Notification 2026 (PDF)",
+      "link": "https://www.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=4321/Assistant-Recruitment-2026.pdf",
+      "displayed_link": "https://www.rbi.org.in › Scripts › Notification",
+      "snippet": "Reserve Bank of India invites applications for the post of Assistant. Notification dated 2026, last date to apply online, eligibility and exam pattern."
+    },
+    {
+      "position": 2,
+      "title": "RBI Grade B Officers Recruitment 2026",
+      "link": "https://www.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=4322",
+      "displayed_link": "https://www.rbi.org.in › Scripts › Opportunities",
+      "snippet": "Recruitment for Officers in Grade 'B' (DR) — General, DEPR and DSIM streams. Online application window and detailed advertisement."
+    },
+    {
+      "position": 3,
+      "title": "Detailed Advertisement — RBI Office Attendant 2026",
+      "link": "https://opportunities.rbi.org.in/documents/office-attendant-2026.pdf",
+      "displayed_link": "https://opportunities.rbi.org.in › documents",
+      "snippet": "Detailed advertisement for the post of Office Attendant in the Reserve Bank of India, 2026 recruitment cycle."
+    }
+  ]
+}

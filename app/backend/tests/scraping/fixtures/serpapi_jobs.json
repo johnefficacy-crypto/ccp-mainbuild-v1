@@ -1,0 +1,65 @@
+{
+  "search_metadata": {
+    "id": "fixture-google-jobs-0001",
+    "status": "Success",
+    "google_jobs_url": "https://www.google.com/search?ibp=htl;jobs&q=PSU+recruitment+India+2026"
+  },
+  "search_parameters": {
+    "engine": "google_jobs",
+    "q": "PSU recruitment India 2026",
+    "google_domain": "google.co.in",
+    "hl": "en",
+    "gl": "in"
+  },
+  "jobs_results": [
+    {
+      "title": "Scientist/Engineer - SC",
+      "company_name": "ISRO - Indian Space Research Organisation",
+      "location": "Bengaluru, Karnataka, India",
+      "via": "via LinkedIn",
+      "description": "ISRO invites applications for the post of Scientist/Engineer-SC in Electronics, Mechanical and Computer Science. Eligible candidates must hold a BE/B.Tech with first class.",
+      "job_id": "eyJqb2JfdGl0bGUiOiJTY2llbnRpc3QiLCJjb21wYW55IjoiSVNSTyJ9",
+      "share_link": "https://www.google.com/search?ibp=htl;jobs&q=isro+scientist+engineer#fpstate=tldetail&htidocid=isro-sc-001",
+      "detected_extensions": {
+        "posted_at": "3 days ago",
+        "schedule_type": "Full-time"
+      },
+      "apply_options": [
+        {"title": "LinkedIn", "link": "https://in.linkedin.com/jobs/view/isro-scientist-engineer-sc-2026"},
+        {"title": "Naukri", "link": "https://www.naukri.com/job-listings-isro-scientist-engineer-sc"}
+      ]
+    },
+    {
+      "title": "Engineer Trainee (Mechanical)",
+      "company_name": "BHEL - Bharat Heavy Electricals Limited",
+      "location": "Tiruchirappalli, Tamil Nadu, India",
+      "via": "via Indeed",
+      "description": "BHEL recruitment 2026 for Engineer Trainee through GATE 2026 score. Apply online before the last date.",
+      "job_id": "eyJqb2JfdGl0bGUiOiJFbmdpbmVlciBUcmFpbmVlIiwiY29tcGFueSI6IkJIRUwifQ==",
+      "share_link": "https://www.google.com/search?ibp=htl;jobs&q=bhel+engineer+trainee#fpstate=tldetail&htidocid=bhel-et-002",
+      "detected_extensions": {
+        "posted_at": "1 day ago",
+        "schedule_type": "Full-time"
+      },
+      "apply_options": [
+        {"title": "Indeed", "link": "https://in.indeed.com/viewjob?jk=bhel-engineer-trainee-2026"}
+      ]
+    },
+    {
+      "title": "Graduate Engineer (Drilling)",
+      "company_name": "ONGC - Oil and Natural Gas Corporation",
+      "location": "Dehradun, Uttarakhand, India",
+      "via": "via Freshersworld",
+      "description": "ONGC recruitment notification 2026 for Graduate Engineers across disciplines via GATE score.",
+      "job_id": "eyJqb2JfdGl0bGUiOiJHcmFkdWF0ZSBFbmdpbmVlciIsImNvbXBhbnkiOiJPTkdDIn0=",
+      "share_link": "https://www.google.com/search?ibp=htl;jobs&q=ongc+graduate+engineer#fpstate=tldetail&htidocid=ongc-ge-003",
+      "detected_extensions": {
+        "posted_at": "5 days ago",
+        "schedule_type": "Full-time"
+      },
+      "apply_options": [
+        {"title": "ONGC Careers", "link": "https://ongcindia.com/web/eng/careers/recruitment-notification-2026"}
+      ]
+    }
+  ]
+}
