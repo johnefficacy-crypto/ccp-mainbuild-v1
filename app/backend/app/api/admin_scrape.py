@@ -35,7 +35,7 @@ from pydantic import BaseModel, Field
 from app.core.auth import get_current_user, require_permission
 from app.core.errors import PromotionError
 from app.common.indexing import group_by
-from app.db.supabase_client import get_supabase_admin
+from app.db.supabase_client import get_supabase_admin, reset_supabase_admin
 from app.scraping.runner import promote_run, run_scraping_pass
 from app.scraping.intelligence import classify_item, duplicate_candidates, BLOCKED
 from app.scraping.promotion_gate import HIGH_RISK_FIELDS as _HIGH_RISK_FIELDS_SHARED, evaluate_promotion_gate
@@ -43,29 +43,35 @@ from app.scraping.promotion_gate import HIGH_RISK_FIELDS as _HIGH_RISK_FIELDS_SH
 logger = logging.getLogger("career_copilot.api.admin_scrape")
 
 
-def _execute_with_retry(query_builder, *, op: str, retries: int = 1):
-    """Execute a PostgREST read builder with one retry on transient
-    Supabase HTTP disconnects.
+def _execute_with_retry(query_or_factory, *, op: str, retries: int = 1):
+    """Execute a PostgREST read with one retry on transient disconnects.
 
-    Supabase's HTTP/2 pooler occasionally drops a connection mid-request,
-    surfacing as ``httpx.RemoteProtocolError`` / ``httpx.ConnectError``.
-    A single short retry recovers the common case without masking a real
-    outage — after the last attempt the original error re-raises so the
-    500 still surfaces to the caller.
+    Supabase's HTTP/2 pooler drops idle connections; the next read grabs the
+    half-dead socket and raises ``RemoteProtocolError`` / ``ConnectError``.
+    The earlier version retried the *same* pre-built builder, which reuses the
+    same dead connection — so the retry failed identically. The fix:
 
-    READ-ONLY: only wrap idempotent GET-equivalent reads. Never wrap
-    INSERT/UPDATE/DELETE builders — a retry there could double-write.
+      * ``query_or_factory`` may be a zero-arg callable that BUILDS the query
+        from ``get_supabase_admin()``. Pass a factory for full recovery.
+      * On a transient error we drop the cached admin client
+        (``reset_supabase_admin``) so the factory's next call rebuilds on a
+        fresh pool, then retry. A bare builder still gets the reset (helping
+        subsequent requests) but can't itself rebuild.
+
+    READ-ONLY: only wrap idempotent reads. Never wrap INSERT/UPDATE/DELETE.
     """
+    make = query_or_factory if callable(query_or_factory) else (lambda: query_or_factory)
     last_err: Exception | None = None
     for attempt in range(retries + 1):
         try:
-            return query_builder.execute()
+            return make().execute()
         except (RemoteProtocolError, ConnectError) as e:
             last_err = e
             logger.warning(
                 "supabase_transient op=%s attempt=%s err=%s", op, attempt, repr(e)
             )
             if attempt < retries:
+                reset_supabase_admin()  # drop the dead pool before rebuilding
                 time.sleep(0.25)
                 continue
             raise
@@ -648,14 +654,15 @@ def admin_sources(_admin: dict = Depends(require_permission("sources.manage"))) 
 
 
 def _list_sources() -> dict[str, Any]:
-    supabase = get_supabase_admin()
-    builder = (
-        supabase.table("source_registry")
-        .select("*")
-        .order("tier")
-        .order("source_name")
-    )
-    rows = _execute_with_retry(builder, op="list_sources").data or []
+    # Factory so a transient-disconnect retry rebuilds on a fresh client/pool.
+    def _builder():
+        return (
+            get_supabase_admin().table("source_registry")
+            .select("*")
+            .order("tier")
+            .order("source_name")
+        )
+    rows = _execute_with_retry(_builder, op="list_sources").data or []
     return {"items": [_shape_source(r) for r in rows]}
 
 
@@ -714,14 +721,14 @@ def list_scrape_runs(
     limit: int = Query(default=30, ge=1, le=100),
     _admin: dict = Depends(require_permission("scraper.manage")),
 ) -> dict[str, Any]:
-    supabase = get_supabase_admin()
-    builder = (
-        supabase.table("scrape_runs")
-        .select("*")
-        .order("started_at", desc=True)
-        .limit(limit)
-    )
-    rows = _execute_with_retry(builder, op="list_scrape_runs").data or []
+    def _builder():
+        return (
+            get_supabase_admin().table("scrape_runs")
+            .select("*")
+            .order("started_at", desc=True)
+            .limit(limit)
+        )
+    rows = _execute_with_retry(_builder, op="list_scrape_runs").data or []
     items = [
         {
             "id": r["id"],
@@ -943,6 +950,7 @@ def _summarize_extracted(ext: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.get("/admin/scrape/queue")
+@_surface_transient_as_503("list_scrape_queue")
 def list_scrape_queue(
     status: str | None = Query(default="pending"),
     limit: int = Query(default=50, ge=1, le=200),
@@ -963,6 +971,15 @@ def list_scrape_queue(
             "If true, returns the full row (raw_html, raw_payload, extracted_data, "
             "full evidence payload, duplicate_candidates list). The default is the "
             "lightweight table view; the drawer should request detail=true."
+        ),
+    ),
+    include_duplicates: bool = Query(
+        default=True,
+        description=(
+            "Detail path only. When true, rebuild duplicate_candidates live "
+            "(scans recruitments). Set false on detail refreshes that don't need "
+            "the merge picker (e.g. after a field verify) to skip that scan; the "
+            "precomputed duplicate_candidates column is used instead."
         ),
     ),
     item_id: str | None = Query(
@@ -1004,36 +1021,33 @@ def list_scrape_queue(
     selection = (
         (_DETAIL_COLUMNS if include_detail else _BASE_COLUMNS) + ", extracted_data"
     )
-    base = supabase.table("scrape_queue").select(selection, count="exact")
-    if item_id:
-        base = base.eq("id", item_id)
-    if status and status != "all":
-        base = base.eq("status", status)
-    if q:
-        # PostgREST .or_ expects comma-separated filter expressions; ILIKE
-        # gives case-insensitive search. The wildcard wrapping happens here
-        # so callers don't need to know the SQL form.
-        needle = f"%{q.strip()}%"
-        base = base.or_(f"source_name.ilike.{needle},source_url.ilike.{needle}")
-    if risk == "official_unresolved":
-        base = base.eq("official_source_resolved", False)
-    elif risk == "low_quality":
-        base = base.lt("data_quality_score", 50)
-    elif risk == "needs_review":
-        base = base.in_("status", ["pending", "needs_review"])
-    # Sort. ``risky_first`` puts unresolved-official rows ahead of the rest
-    # by sorting on ``official_source_resolved`` nulls/false first, then
-    # falling back to quality and recency.
-    if sort == "quality_asc":
-        base = base.order("data_quality_score", desc=False, nullsfirst=True).order("scraped_at", desc=True)
-    elif sort == "newest":
-        base = base.order("scraped_at", desc=True)
-    elif sort == "oldest":
-        base = base.order("scraped_at", desc=False)
-    else:  # risky_first (default)
-        base = base.order("official_source_resolved", desc=False, nullsfirst=True).order("data_quality_score", desc=False, nullsfirst=True).order("scraped_at", desc=True)
-    # PostgREST uses (offset, limit-1) ranges; .range() handles that math.
-    res = base.range(offset, offset + limit - 1).execute()
+    # Factory so a transient-disconnect retry rebuilds on a fresh client/pool
+    # (the cascade after a field verify hammers this endpoint).
+    def _build():
+        base = get_supabase_admin().table("scrape_queue").select(selection, count="exact")
+        if item_id:
+            base = base.eq("id", item_id)
+        if status and status != "all":
+            base = base.eq("status", status)
+        if q:
+            needle = f"%{q.strip()}%"
+            base = base.or_(f"source_name.ilike.{needle},source_url.ilike.{needle}")
+        if risk == "official_unresolved":
+            base = base.eq("official_source_resolved", False)
+        elif risk == "low_quality":
+            base = base.lt("data_quality_score", 50)
+        elif risk == "needs_review":
+            base = base.in_("status", ["pending", "needs_review"])
+        if sort == "quality_asc":
+            base = base.order("data_quality_score", desc=False, nullsfirst=True).order("scraped_at", desc=True)
+        elif sort == "newest":
+            base = base.order("scraped_at", desc=True)
+        elif sort == "oldest":
+            base = base.order("scraped_at", desc=False)
+        else:  # risky_first (default)
+            base = base.order("official_source_resolved", desc=False, nullsfirst=True).order("data_quality_score", desc=False, nullsfirst=True).order("scraped_at", desc=True)
+        return base.range(offset, offset + limit - 1)
+    res = _execute_with_retry(_build, op="list_scrape_queue")
     rows = res.data or []
     total = getattr(res, "count", None)
 
@@ -1062,7 +1076,7 @@ def list_scrape_queue(
     # populates at scrape time; the row also carries ``duplicate_of``,
     # which is enough for the boolean indicator the table needs.
     existing: list[dict[str, Any]] = []
-    if include_detail:
+    if include_detail and include_duplicates:
         supabase2 = get_supabase_admin()
         existing = (
             supabase2.table("recruitments")
@@ -1163,8 +1177,10 @@ def list_scrape_queue(
         meta = ext.get("_meta") if isinstance(ext, dict) else {}
         r["source_type"] = (meta or {}).get("source_type")
         if include_detail:
-            r["duplicate_candidates"] = duplicate_candidates(
-                ext if isinstance(ext, dict) else {}, existing
+            r["duplicate_candidates"] = (
+                duplicate_candidates(ext if isinstance(ext, dict) else {}, existing)
+                if include_duplicates
+                else (r.get("duplicate_candidates") or [])
             )
             r["multiple_posts_detected"] = bool(
                 (ext.get("posts") if isinstance(ext, dict) else None)

@@ -18,6 +18,7 @@ deployments still get one pool per worker, which is the right granularity
 """
 from __future__ import annotations
 
+import logging
 import threading
 
 import httpx
@@ -26,6 +27,7 @@ from supabase.lib.client_options import AsyncClientOptions, SyncClientOptions
 
 from app.core.config import get_settings
 
+logger = logging.getLogger("career_copilot.db.supabase_client")
 settings = get_settings()
 
 # Supabase's pooler resets idle keepalive connections at ~60s. httpx's
@@ -39,6 +41,24 @@ _LIMITS = httpx.Limits(
     max_connections=40,
     keepalive_expiry=30.0,
 )
+
+
+def _log_keepalive(client: Client) -> None:
+    """Verify keepalive_expiry actually reached postgrest's httpx pool.
+
+    supabase-py doesn't always thread the passed httpx_client through to every
+    sub-client, so log the live value once. If it isn't 30.0 the limits didn't
+    apply and the disconnect fix is a no-op. Best-effort: never raise.
+    """
+    try:
+        pool = client.postgrest.session._transport._pool  # type: ignore[attr-defined]
+        logger.info(
+            "supabase admin client: keepalive_expiry=%s max_keepalive=%s",
+            getattr(pool, "_keepalive_expiry", "?"),
+            getattr(pool, "_max_keepalive_connections", "?"),
+        )
+    except Exception as e:  # pragma: no cover - introspection only
+        logger.warning("could not introspect supabase keepalive: %r", e)
 
 
 def _sync_options() -> SyncClientOptions:
@@ -71,6 +91,7 @@ def get_supabase_admin() -> Client:
                 settings.SUPABASE_SERVICE_ROLE_KEY,
                 _sync_options(),
             )
+            _log_keepalive(_admin_client)
         return _admin_client
 
 
@@ -112,6 +133,20 @@ async def get_supabase_admin_async() -> AsyncClient:
             _async_options(),
         )
     return _async_admin_client
+
+
+def reset_supabase_admin() -> None:
+    """Drop the cached sync admin client so the next get_supabase_admin()
+    rebuilds on a fresh httpx pool.
+
+    Safe under concurrency: in-flight callers keep their own reference to the
+    old client; only the next builder gets the new one. Called by the read
+    retry helper when a pooled socket is found dead, so the retry runs on a
+    live connection instead of the RST'd one.
+    """
+    global _admin_client
+    with _client_lock:
+        _admin_client = None
 
 
 def reset_supabase_clients() -> None:
