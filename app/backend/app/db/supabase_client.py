@@ -20,11 +20,34 @@ from __future__ import annotations
 
 import threading
 
+import httpx
 from supabase import AsyncClient, Client, acreate_client, create_client
+from supabase.lib.client_options import AsyncClientOptions, SyncClientOptions
 
 from app.core.config import get_settings
 
 settings = get_settings()
+
+# Supabase's pooler resets idle keepalive connections at ~60s. httpx's
+# default keepalive_expiry leaves a connection in the pool well past that,
+# so the next request can grab a half-dead socket and fail the read with
+# ``RemoteProtocolError: Server disconnected``. Closing our side at 30s
+# keeps every pooled connection comfortably inside Supabase's window.
+# HTTP/2 stays on — only the keepalive window changes.
+_LIMITS = httpx.Limits(
+    max_keepalive_connections=20,
+    max_connections=40,
+    keepalive_expiry=30.0,
+)
+
+
+def _sync_options() -> SyncClientOptions:
+    return SyncClientOptions(httpx_client=httpx.Client(limits=_LIMITS, http2=True))
+
+
+def _async_options() -> AsyncClientOptions:
+    return AsyncClientOptions(httpx_client=httpx.AsyncClient(limits=_LIMITS, http2=True))
+
 
 _admin_client: Client | None = None
 _public_client: Client | None = None
@@ -46,6 +69,7 @@ def get_supabase_admin() -> Client:
             _admin_client = create_client(
                 settings.NEXT_PUBLIC_SUPABASE_URL,
                 settings.SUPABASE_SERVICE_ROLE_KEY,
+                _sync_options(),
             )
         return _admin_client
 
@@ -64,6 +88,7 @@ def get_supabase_public() -> Client:
             _public_client = create_client(
                 settings.NEXT_PUBLIC_SUPABASE_URL,
                 settings.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+                _sync_options(),
             )
         return _public_client
 
@@ -84,6 +109,7 @@ async def get_supabase_admin_async() -> AsyncClient:
         _async_admin_client = await acreate_client(
             settings.NEXT_PUBLIC_SUPABASE_URL,
             settings.SUPABASE_SERVICE_ROLE_KEY,
+            _async_options(),
         )
     return _async_admin_client
 

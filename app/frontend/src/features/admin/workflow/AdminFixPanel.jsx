@@ -11,6 +11,7 @@ import RecruitmentCriteriaPanel from "../recruitments/RecruitmentCriteriaPanel";
 import RecruitmentBlockerFixForm from "../recruitments/RecruitmentBlockerFixForm";
 import { HIGH_RISK_QUEUE_FIELDS, RECOMMENDED_REVIEW_FIELDS } from "./adminWorkflowContract";
 import { scoreToPct, isLowQuality } from "./scoreUtils";
+import { useToast } from "../../../shared/ui";
 
 // Scroll a field-row anchor into view + briefly highlight it. The
 // PromotionPreviewPanel blocker pills and the inline error callouts
@@ -139,11 +140,37 @@ function QueueFixSection({ item, conflicts = [], sources = [], onFieldAction, on
   // the admin sees the updated draft + blocker checklist immediately.
   const [previewKey, setPreviewKey] = useState(0);
   const bumpPreview = useCallback(() => setPreviewKey((n) => n + 1), []);
-  const queueFieldAction = useCallback((field, action, correctedValue, scope) => {
-    const r = onQueueFieldActionSafe(onFieldAction, item.id, field, action, correctedValue, scope);
-    bumpPreview();
-    return r;
-  }, [onFieldAction, item.id, bumpPreview]);
+  // Only mount (and fetch) the promotion preview once the disclosure is
+  // actually expanded — mounting it unconditionally fired a preview GET on
+  // every render even while collapsed.
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const toast = useToast();
+  const queueFieldAction = useCallback(async (field, action, correctedValue, scope) => {
+    const run = () => Promise.resolve(onFieldAction?.(item.id, field, action, correctedValue, scope));
+    try {
+      const result = await run();
+      // Refresh the preview only AFTER the write lands — bumping first
+      // raced the POST and showed the pre-write state.
+      bumpPreview();
+      return result;
+    } catch (err) {
+      if (err?.status === 503) {
+        // Transient Supabase disconnect: one auto-retry after 2s.
+        toast.info("Temporary database hiccup — retrying");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        try {
+          const retry = await run();
+          bumpPreview();
+          return retry;
+        } catch (retryErr) {
+          toast.error("Please try again in a moment");
+          throw retryErr; // keep the stale view; do NOT bumpPreview
+        }
+      }
+      // Non-transient failure: keep the stale preview and surface the error.
+      throw err;
+    }
+  }, [onFieldAction, item.id, bumpPreview, toast]);
 
   // P2-2: when the official-source gate flips false → true for the SAME
   // item (admin just attached proof), scroll the promote bar into view so
@@ -295,15 +322,21 @@ function QueueFixSection({ item, conflicts = [], sources = [], onFieldAction, on
           </div>
         </details>
 
-        <details className="fx-disclosure" data-testid="fx-promotion-preview">
+        <details
+          className="fx-disclosure"
+          data-testid="fx-promotion-preview"
+          onToggle={(e) => setPreviewOpen(e.currentTarget.open)}
+        >
           <summary className="fx-disclosure-summary">Promotion preview details</summary>
           <div style={{ marginTop: 8 }}>
-            <PromotionPreviewPanel
-              queueId={item.id}
-              open
-              refreshKey={previewKey}
-              onScrollToField={scrollToFieldAnchor}
-            />
+            {previewOpen && (
+              <PromotionPreviewPanel
+                queueId={item.id}
+                open
+                refreshKey={previewKey}
+                onScrollToField={scrollToFieldAnchor}
+              />
+            )}
           </div>
         </details>
 
@@ -388,11 +421,6 @@ function QueueFixSection({ item, conflicts = [], sources = [], onFieldAction, on
       </div>
     </section>
   );
-}
-
-function onQueueFieldActionSafe(handler, id, field, action, correctedValue, scope) {
-  try { return handler?.(id, field, action, correctedValue, scope); }
-  catch (err) { console.error("queue field action failed", err); return undefined; }
 }
 
 function RecruitmentFixSection({ recruitment, validateResult, sources = [], onSourcesChanged, onValidate, onVerify, onPublish, busy }) {

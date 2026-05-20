@@ -26,6 +26,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from httpx import ConnectError, RemoteProtocolError
 from pydantic import BaseModel
 
 from app.api.accountability import router as accountability_router
@@ -158,6 +159,23 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+
+@app.exception_handler(RemoteProtocolError)
+@app.exception_handler(ConnectError)
+async def transient_transport_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Safety net for any endpoint that didn't wrap a Supabase transport
+    disconnect itself: map it to a retryable 503 instead of a 500. Only the
+    two transient transport errors land here; everything else is a 500."""
+    logger.warning(
+        "supabase_transient_unhandled on %s %s error_class=%s",
+        request.method, request.url.path, type(exc).__name__,
+    )
+    return JSONResponse(
+        status_code=503,
+        content={"detail": {"code": "supabase_transient_disconnect", "retryable": True}},
+        headers={"Retry-After": "2"},
+    )
 
 
 @app.exception_handler(Exception)

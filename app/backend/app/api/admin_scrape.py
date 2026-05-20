@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 import hashlib
 import json
+import functools
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -69,6 +70,34 @@ def _execute_with_retry(query_builder, *, op: str, retries: int = 1):
                 continue
             raise
     raise last_err  # unreachable; loop either returns or raises
+
+
+def _surface_transient_as_503(op: str):
+    """Endpoint decorator: map an unrecovered Supabase transport disconnect
+    into a 503 (with a ``Retry-After`` hint) instead of letting it fall
+    through to the generic 500 handler.
+
+    ``_execute_with_retry`` re-raises ``RemoteProtocolError`` / ``ConnectError``
+    after its one retry is exhausted; this catches that at the request
+    boundary so the client can retry a genuinely transient blip. Every other
+    exception is left untouched (a real bug still surfaces as 500).
+    """
+    def deco(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            try:
+                return fn(*args, **kwargs)
+            except (RemoteProtocolError, ConnectError) as e:
+                logger.warning(
+                    "admin_scrape.transient op=%s error_class=%s", op, type(e).__name__
+                )
+                raise HTTPException(
+                    status_code=503,
+                    detail={"code": "supabase_transient_disconnect", "op": op, "retryable": True},
+                    headers={"Retry-After": "2"},
+                ) from e
+        return wrapper
+    return deco
 
 
 def _require_admin(user: dict = Depends(get_current_user)) -> dict:
@@ -278,15 +307,16 @@ def _upsert_field_review(supabase, queue_id: str, field_name: str, status: str, 
     # implement. The unique index ``uq_evidence_entity_scoped`` keeps
     # production from holding >1 matching row anyway.
     candidates = (
-        supabase.table("extracted_field_evidence")
-        .select("id, document_id, entity_type, entity_key")
-        .eq("scrape_queue_id", queue_id)
-        .eq("field_name", field_name)
-        .order("reviewed_at", desc=True, nullsfirst=False)
-        .order("created_at", desc=True)
-        .limit(20)
-        .execute()
-        .data
+        _execute_with_retry(
+            supabase.table("extracted_field_evidence")
+            .select("id, document_id, entity_type, entity_key")
+            .eq("scrape_queue_id", queue_id)
+            .eq("field_name", field_name)
+            .order("reviewed_at", desc=True, nullsfirst=False)
+            .order("created_at", desc=True)
+            .limit(20),
+            op="upsert_field_review.read_evidence",
+        ).data
         or []
     )
     def _ekey(row: dict) -> str | None:
@@ -298,7 +328,7 @@ def _upsert_field_review(supabase, queue_id: str, field_name: str, status: str, 
     ][:1]
     doc_id = (existing[0] or {}).get("document_id") if existing else None
     if not existing:
-        qrows = (supabase.table("scrape_queue").select("id, source_id, source_url, scrape_run_id, extracted_data, notification_document_id").eq("id", queue_id).limit(1).execute().data or [])
+        qrows = (_execute_with_retry(supabase.table("scrape_queue").select("id, source_id, source_url, scrape_run_id, extracted_data, notification_document_id").eq("id", queue_id).limit(1), op="upsert_field_review.read_queue").data or [])
         qrow = (qrows[0] or {}) if qrows else {}
         doc_id = doc_id or qrow.get("notification_document_id")
         if not doc_id:
@@ -317,7 +347,12 @@ def _upsert_field_review(supabase, queue_id: str, field_name: str, status: str, 
                 "metadata": {"created_by": "admin_field_review_fallback", "scrape_queue_id": queue_id},
             }
             try:
-                nd_rows = supabase.table("notification_documents").insert(nd_payload).execute().data or []
+                # content_hash carries uq_notification_documents_hash, so a
+                # retried insert after a lost response collapses to 23505 →
+                # caught below → re-fetched by hash. Safe to retry.
+                nd_rows = _execute_with_retry(supabase.table("notification_documents").insert(nd_payload), op="upsert_field_review.insert_document").data or []
+            except (RemoteProtocolError, ConnectError):
+                raise
             except Exception as exc:  # noqa: BLE001
                 logger.exception(
                     "fallback notification_document insert failed queue_id=%s source_url=%s content_hash=%s error=%s",
@@ -328,7 +363,7 @@ def _upsert_field_review(supabase, queue_id: str, field_name: str, status: str, 
                 )
                 nd_rows = []
             if not nd_rows:
-                nd_rows = (supabase.table("notification_documents").select("id").eq("content_hash", content_hash).limit(1).execute().data or [])
+                nd_rows = (_execute_with_retry(supabase.table("notification_documents").select("id").eq("content_hash", content_hash).limit(1), op="upsert_field_review.read_document").data or [])
             if not nd_rows:
                 logger.error(
                     "fallback notification_document unavailable; continuing field review without document queue_id=%s source_url=%s content_hash=%s",
@@ -338,14 +373,15 @@ def _upsert_field_review(supabase, queue_id: str, field_name: str, status: str, 
                 )
             else:
                 doc_id = nd_rows[0]["id"]
-                supabase.table("scrape_queue").update({"notification_document_id": doc_id}).eq("id", queue_id).execute()
+                # PATCH by id is last-write-wins → safe to retry.
+                _execute_with_retry(supabase.table("scrape_queue").update({"notification_document_id": doc_id}).eq("id", queue_id), op="upsert_field_review.update_queue_doc_id")
         extracted_data = qrow.get("extracted_data") if qrow else {}
         path_str = _resolve_entity_path(extracted_data, field_name, et, ek)
         extracted_value = corrected_value if corrected_value is not None else (
             _nested_get(extracted_data, _parse_field_path(path_str)) if path_str else None
         )
     else:
-        qrows = (supabase.table("scrape_queue").select("id, extracted_data, notification_document_id").eq("id", queue_id).limit(1).execute().data or [])
+        qrows = (_execute_with_retry(supabase.table("scrape_queue").select("id, extracted_data, notification_document_id").eq("id", queue_id).limit(1), op="upsert_field_review.read_queue").data or [])
         qrow = (qrows[0] or {}) if qrows else {}
         extracted_data = qrow.get("extracted_data") if qrow else {}
         path_str = _resolve_entity_path(extracted_data, field_name, et, ek)
@@ -355,12 +391,56 @@ def _upsert_field_review(supabase, queue_id: str, field_name: str, status: str, 
     payload={"scrape_queue_id": queue_id, "field_name": field_name, "document_id": doc_id, "reviewer_status": status, "reviewer_notes": notes, "reviewed_by": admin.get("id"), "reviewed_at": datetime.now(timezone.utc).isoformat(), "entity_type": et, "entity_key": ek, "extraction_method":"manual","extracted_value":extracted_value}
     if corrected_value is not None:
         payload["corrected_value"]=corrected_value
+
+    # Task 6: one atomic, idempotent upsert via RPC. The natural scope
+    # (scrape_queue_id, entity_type, coalesce(entity_key,''), field_name) is
+    # enforced by ``uq_evidence_entity_scoped``; the RPC's ON CONFLICT keys on
+    # that, so a retried call (after a transient disconnect) is a clean update
+    # rather than a duplicate row or a 23505. Wrapped in the retry helper now
+    # that the write is safe to repeat.
+    rpc_args = {
+        "p_queue_id": queue_id,
+        "p_field_name": field_name,
+        "p_entity_type": et,
+        "p_entity_key": ek,
+        "p_status": status,
+        "p_reviewed_by": admin.get("id"),
+        "p_notes": notes,
+        "p_corrected_value": corrected_value,
+        "p_extracted_value": extracted_value,
+        "p_extraction_method": "manual",
+        "p_document_id": doc_id,
+    }
     try:
-        if existing:
-            supabase.table("extracted_field_evidence").update(payload).eq("id", existing[0]["id"]).execute()
-        else:
-            supabase.table("extracted_field_evidence").insert(payload).execute()
+        _execute_with_retry(supabase.rpc("upsert_field_review", rpc_args), op="upsert_field_review.write_evidence")
+        return payload
+    except (RemoteProtocolError, ConnectError):
+        raise  # transient → surfaced as 503 by the endpoint decorator
     except Exception as exc:  # noqa: BLE001
+        if _is_missing_rpc(exc):
+            # Mirrors the enqueue_eligibility_recompute fallback: the live DB
+            # hasn't had migration 127 applied yet. Fall back to the legacy
+            # multi-step write so field review keeps working; do NOT delete
+            # the path in this PR.
+            logger.warning(
+                "upsert_field_review RPC missing (PGRST202); falling back to multi-step write. "
+                "Apply migration 127_field_review_upsert_rpc.sql. queue_id=%s field_name=%s err=%s",
+                queue_id, field_name, exc,
+            )
+            try:
+                if existing:
+                    _execute_with_retry(supabase.table("extracted_field_evidence").update(payload).eq("id", existing[0]["id"]), op="upsert_field_review.write_evidence_fallback_update")
+                else:
+                    supabase.table("extracted_field_evidence").insert(payload).execute()
+            except (RemoteProtocolError, ConnectError):
+                raise
+            except Exception as exc2:  # noqa: BLE001
+                logger.exception(
+                    "extracted_field_evidence fallback write failed queue_id=%s field_name=%s status=%s document_id=%s error=%s",
+                    queue_id, field_name, status, doc_id, exc2,
+                )
+                raise HTTPException(status_code=500, detail="Failed to write field evidence") from exc2
+            return payload
         logger.exception(
             "extracted_field_evidence write failed queue_id=%s field_name=%s status=%s document_id=%s error=%s",
             queue_id,
@@ -373,25 +453,34 @@ def _upsert_field_review(supabase, queue_id: str, field_name: str, status: str, 
     return payload
 
 
+def _is_missing_rpc(exc: Exception) -> bool:
+    """True when a Supabase RPC call failed because the function is absent
+    (PostgREST ``PGRST202``) — the signal to fall back to the legacy path."""
+    code = getattr(exc, "code", None)
+    if code == "PGRST202":
+        return True
+    msg = str(exc)
+    return "PGRST202" in msg or "Could not find the function" in msg
+
+
 def build_effective_extracted_data(supabase, queue_id: str) -> dict:
     rows = (
-        supabase.table("scrape_queue")
-        .select("extracted_data")
-        .eq("id", queue_id)
-        .limit(1)
-        .execute()
-        .data
+        _execute_with_retry(
+            supabase.table("scrape_queue").select("extracted_data").eq("id", queue_id).limit(1),
+            op="build_effective.read_queue",
+        ).data
         or []
     )
     if not rows:
         raise HTTPException(status_code=404, detail="Queue item not found")
     data = dict(rows[0].get("extracted_data") or {})
     evidence = (
-        supabase.table("extracted_field_evidence")
-        .select("field_name, reviewer_status, corrected_value, entity_type, entity_key")
-        .eq("scrape_queue_id", queue_id)
-        .execute()
-        .data
+        _execute_with_retry(
+            supabase.table("extracted_field_evidence")
+            .select("field_name, reviewer_status, corrected_value, entity_type, entity_key")
+            .eq("scrape_queue_id", queue_id),
+            op="build_effective.read_evidence",
+        ).data
         or []
     )
     for row in evidence:
@@ -421,12 +510,10 @@ def build_effective_extracted_data(supabase, queue_id: str) -> dict:
 
 def patch_scrape_queue_extracted_field(supabase, queue_id: str, field_name: str, value, entity_type: str | None = None, entity_key: str | None = None):
     rows = (
-        supabase.table("scrape_queue")
-        .select("extracted_data")
-        .eq("id", queue_id)
-        .limit(1)
-        .execute()
-        .data
+        _execute_with_retry(
+            supabase.table("scrape_queue").select("extracted_data").eq("id", queue_id).limit(1),
+            op="patch_extracted.read_queue",
+        ).data
         or []
     )
     if not rows:
@@ -444,10 +531,12 @@ def patch_scrape_queue_extracted_field(supabase, queue_id: str, field_name: str,
         data[path[0]] = value
     else:
         _nested_set(data, path, value)
-    supabase.table("scrape_queue").update({"extracted_data": data}).eq("id", queue_id).execute()
+    # PATCH by id is last-write-wins → safe to retry.
+    _execute_with_retry(supabase.table("scrape_queue").update({"extracted_data": data}).eq("id", queue_id), op="patch_extracted.update_queue")
     return data
 
 @router.post("/admin/scrape/items/{queue_id}/fields/{field_name}/verify")
+@_surface_transient_as_503("verify_field")
 def verify_field(queue_id: str, field_name: str, body: ReviewBody | None = None, admin: dict = Depends(require_permission("scraper.manage"))):
     _validate_queue_id(queue_id)
     if isinstance(body, dict):
@@ -460,6 +549,7 @@ def verify_field(queue_id: str, field_name: str, body: ReviewBody | None = None,
     return {"ok": True, "field_name": field_name, "reviewer_status": "verified", **data, "effective_extracted_data": build_effective_extracted_data(sb, queue_id)}
 
 @router.post("/admin/scrape/items/{queue_id}/fields/{field_name}/reject")
+@_surface_transient_as_503("reject_field")
 def reject_field(queue_id: str, field_name: str, body: ReviewBody | None = None, admin: dict = Depends(require_permission("scraper.manage"))):
     _validate_queue_id(queue_id)
     if isinstance(body, dict):
@@ -475,6 +565,7 @@ def reject_field(queue_id: str, field_name: str, body: ReviewBody | None = None,
     return {"ok": True, **data}
 
 @router.post("/admin/scrape/items/{queue_id}/fields/{field_name}/correct")
+@_surface_transient_as_503("correct_field")
 def correct_field(queue_id: str, field_name: str, body: ReviewBody | None = None, admin: dict = Depends(require_permission("scraper.manage"))):
     _validate_queue_id(queue_id)
     if isinstance(body, dict):
@@ -1126,6 +1217,7 @@ def list_scrape_queue(
 
 
 @router.get("/admin/scrape/items/{queue_id}/promotion-preview")
+@_surface_transient_as_503("promotion_preview")
 def promotion_preview(
     queue_id: str,
     _admin: dict = Depends(require_permission("recruitments.manage")),
@@ -1146,12 +1238,13 @@ def promotion_preview(
     _validate_queue_id(queue_id)
     supabase = get_supabase_admin()
     rows = (
-        supabase.table("scrape_queue")
-        .select("id, source_id, source_url, source_name, extracted_data, status, official_source_resolved, official_source_host, extraction_status")
-        .eq("id", queue_id)
-        .limit(1)
-        .execute()
-        .data
+        _execute_with_retry(
+            supabase.table("scrape_queue")
+            .select("id, source_id, source_url, source_name, extracted_data, status, official_source_resolved, official_source_host, extraction_status")
+            .eq("id", queue_id)
+            .limit(1),
+            op="promotion_preview.read_queue",
+        ).data
         or []
     )
     if not rows:

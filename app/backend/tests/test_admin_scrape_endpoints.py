@@ -827,3 +827,261 @@ def test_promotion_preview_blocks_when_queue_in_wrong_status(sb):
     assert out["ok"] is False
     codes = [b["code"] for b in out["blocking_issues"]]
     assert "wrong_status" in codes
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Transient-disconnect resilience (Tasks 1 / 5 / 6)
+# ════════════════════════════════════════════════════════════════════════════
+
+from fastapi import HTTPException as _HTTPException  # noqa: E402
+from httpx import ConnectError, RemoteProtocolError  # noqa: E402
+
+from app.api.admin_scrape import (  # noqa: E402
+    ReviewBody,
+    _execute_with_retry,
+    _is_missing_rpc,
+    _surface_transient_as_503,
+)
+
+
+class _FlakyOnce:
+    def __init__(self, fail_n, err):
+        self.fail_n = fail_n
+        self.err = err
+        self.calls = 0
+
+    def execute(self):
+        self.calls += 1
+        if self.calls <= self.fail_n:
+            raise self.err
+        return R(["ok"])
+
+
+def test_execute_with_retry_recovers_after_one_disconnect():
+    b = _FlakyOnce(1, RemoteProtocolError("Server disconnected"))
+    assert _execute_with_retry(b, op="t.read").data == ["ok"]
+    assert b.calls == 2
+
+
+def test_execute_with_retry_recovers_on_connect_error():
+    b = _FlakyOnce(1, ConnectError("connection refused"))
+    assert _execute_with_retry(b, op="t.read").data == ["ok"]
+
+
+def test_execute_with_retry_reraises_after_exhaustion():
+    b = _FlakyOnce(2, RemoteProtocolError("Server disconnected"))
+    with pytest.raises(RemoteProtocolError):
+        _execute_with_retry(b, op="t.read")
+    assert b.calls == 2  # original + one retry
+
+
+def test_decorator_maps_transient_to_503():
+    @_surface_transient_as_503("op_x")
+    def f():
+        raise RemoteProtocolError("Server disconnected")
+
+    with pytest.raises(_HTTPException) as ei:
+        f()
+    assert ei.value.status_code == 503
+    assert ei.value.detail["code"] == "supabase_transient_disconnect"
+    assert ei.value.detail["op"] == "op_x"
+    assert ei.value.detail["retryable"] is True
+    assert ei.value.headers["Retry-After"] == "2"
+
+
+def test_decorator_passes_through_non_transient():
+    @_surface_transient_as_503("op_x")
+    def f():
+        raise ValueError("real bug, not transport")
+
+    with pytest.raises(ValueError):
+        f()
+
+
+def test_decorator_returns_value_on_success():
+    @_surface_transient_as_503("op_x")
+    def f():
+        return 42
+
+    assert f() == 42
+
+
+def test_is_missing_rpc_detects_pgrst202():
+    assert _is_missing_rpc(Exception("PGRST202: Could not find the function")) is True
+    e = Exception("boom")
+    e.code = "PGRST202"
+    assert _is_missing_rpc(e) is True
+    assert _is_missing_rpc(Exception("some other db error")) is False
+
+
+class _Resp:
+    def __init__(self, data):
+        self.data = data
+
+
+class _FlakyBuilder:
+    def __init__(self, sb, table=None, is_rpc=False, rpc_params=None):
+        self.sb = sb
+        self.table = table
+        self.is_rpc = is_rpc
+        self.rpc_params = rpc_params
+        self.op = "select"
+        self.payload = None
+        self.filters = {}
+
+    def select(self, *a, **k):
+        return self
+
+    def insert(self, p):
+        self.op = "insert"
+        self.payload = p
+        return self
+
+    def update(self, p):
+        self.op = "update"
+        self.payload = p
+        return self
+
+    def eq(self, k, v):
+        self.filters[k] = v
+        return self
+
+    def in_(self, k, v):
+        return self
+
+    def order(self, *a, **k):
+        return self
+
+    def limit(self, *a, **k):
+        return self
+
+    def execute(self):
+        return self.sb._dispatch(self)
+
+
+class FlakySB:
+    """Supabase fake with controllable transient failures + an rpc() shim.
+
+    ``fail_first`` makes the first N execute() calls raise ``fail_err``
+    (a transient transport error), exercising the retry/503 paths.
+    """
+
+    def __init__(self, *, fail_first=0, fail_err=None, rpc_error=None,
+                 queue_rows=None, evidence_rows=None):
+        self.fail_left = fail_first
+        self.fail_err = fail_err or RemoteProtocolError("Server disconnected")
+        self.rpc_error = rpc_error
+        self.tables = {
+            "scrape_queue": [dict(r) for r in (queue_rows or [])],
+            "extracted_field_evidence": [dict(r) for r in (evidence_rows or [])],
+            "notification_documents": [],
+            "admin_audit_logs": [],
+        }
+        self.rpc_calls = []
+
+    def table(self, name):
+        return _FlakyBuilder(self, table=name)
+
+    def rpc(self, fn, params):
+        return _FlakyBuilder(self, is_rpc=True, rpc_params={"fn": fn, "params": params})
+
+    def _trip(self):
+        if self.fail_left > 0:
+            self.fail_left -= 1
+            raise self.fail_err
+
+    def _dispatch(self, b):
+        if b.is_rpc:
+            self.rpc_calls.append(b.rpc_params)
+            self._trip()
+            if self.rpc_error is not None:
+                raise self.rpc_error
+            return _Resp({"id": "ev-1", **b.rpc_params["params"]})
+        self._trip()
+        rows = self.tables.setdefault(b.table, [])
+        if b.op == "insert":
+            row = {**b.payload, "id": f"{b.table}-{len(rows) + 1}"}
+            rows.append(row)
+            return _Resp([row])
+        if b.op == "update":
+            return _Resp([])
+        filtered = [dict(r) for r in rows if all(r.get(k) == v for k, v in b.filters.items())]
+        return _Resp(filtered)
+
+
+_QROW = {"id": "q1", "extracted_data": {"title": "X"}, "notification_document_id": "doc-9"}
+
+
+def _patch_admin(monkeypatch, sb):
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+
+
+def test_verify_field_recovers_from_single_disconnect(monkeypatch):
+    sb = FlakySB(fail_first=1, queue_rows=[dict(_QROW)])
+    _patch_admin(monkeypatch, sb)
+    out = admin_scrape.verify_field("q1", "title", ReviewBody(), admin=ADMIN_USER)
+    assert out["ok"] is True
+    assert out["reviewer_status"] == "verified"
+    assert len(sb.rpc_calls) == 1  # idempotent RPC path used
+
+
+def test_verify_field_recovers_from_connect_error(monkeypatch):
+    sb = FlakySB(fail_first=1, fail_err=ConnectError("refused"), queue_rows=[dict(_QROW)])
+    _patch_admin(monkeypatch, sb)
+    out = admin_scrape.verify_field("q1", "title", ReviewBody(), admin=ADMIN_USER)
+    assert out["ok"] is True
+
+
+def test_verify_field_returns_503_when_both_attempts_fail(monkeypatch):
+    sb = FlakySB(fail_first=2, queue_rows=[dict(_QROW)])
+    _patch_admin(monkeypatch, sb)
+    with pytest.raises(_HTTPException) as ei:
+        admin_scrape.verify_field("q1", "title", ReviewBody(), admin=ADMIN_USER)
+    assert ei.value.status_code == 503
+    assert ei.value.detail["code"] == "supabase_transient_disconnect"
+    assert ei.value.headers["Retry-After"] == "2"
+
+
+def test_verify_field_falls_back_when_rpc_missing(monkeypatch, caplog):
+    sb = FlakySB(
+        rpc_error=Exception("PGRST202: Could not find the function public.upsert_field_review"),
+        queue_rows=[dict(_QROW)],
+    )
+    _patch_admin(monkeypatch, sb)
+    out = admin_scrape.verify_field("q1", "title", ReviewBody(), admin=ADMIN_USER)
+    assert out["ok"] is True
+    assert len(sb.rpc_calls) == 1  # RPC attempted before fallback
+    assert any(r.get("field_name") == "title" for r in sb.tables["extracted_field_evidence"])
+
+
+def test_verify_field_non_transient_db_error_is_500(monkeypatch):
+    sb = FlakySB(rpc_error=ValueError("check constraint violated"), queue_rows=[dict(_QROW)])
+    _patch_admin(monkeypatch, sb)
+    with pytest.raises(_HTTPException) as ei:
+        admin_scrape.verify_field("q1", "title", ReviewBody(), admin=ADMIN_USER)
+    assert ei.value.status_code == 500
+
+
+def test_correct_field_passes_expected_rpc_args(monkeypatch):
+    sb = FlakySB(queue_rows=[dict(_QROW)])
+    _patch_admin(monkeypatch, sb)
+    admin_scrape.correct_field(
+        "q1", "title", ReviewBody(corrected_value="Corrected Title"), admin=ADMIN_USER
+    )
+    params = sb.rpc_calls[0]["params"]
+    assert params["p_status"] == "corrected"
+    assert params["p_corrected_value"] == "Corrected Title"
+    assert params["p_field_name"] == "title"
+    assert params["p_queue_id"] == "q1"
+
+
+def test_server_transient_handler_returns_503():
+    import asyncio
+
+    import server
+    from starlette.requests import Request
+
+    req = Request({"type": "http", "method": "POST", "path": "/api/x", "headers": []})
+    resp = asyncio.run(server.transient_transport_handler(req, RemoteProtocolError("disc")))
+    assert resp.status_code == 503
+    assert resp.headers["Retry-After"] == "2"
