@@ -123,6 +123,21 @@ export default function OperationsConsole() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  // A field verify/correct/reject only changes the selected candidate's gate
+  // state — sources, runs and recruitments are untouched. Refetch just the
+  // queue (not the full loadAll fan-out) so one click is one read, not four.
+  // Bumps reloadNonce so the selected item's detail re-hydrates.
+  const reloadQueue = useCallback(async () => {
+    try {
+      const q = await api.get("/api/admin/scrape/queue?status=all&limit=50");
+      setQueue(q.items || []);
+    } catch {
+      // Keep the prior list; the field write already succeeded.
+    } finally {
+      setReloadNonce((n) => n + 1);
+    }
+  }, []);
+
   // Detail hydration: fetch the full row for the selected queue item via
   // the include_detail path and stash the heavy fields. Re-runs when the
   // selection changes or after any loadAll (reloadNonce). Failure is
@@ -130,8 +145,11 @@ export default function OperationsConsole() {
   const hydrateQueueDetail = useCallback(async (id) => {
     if (!id) { setQueueDetail(null); return; }
     try {
+      // include_duplicates=false: the workspace doesn't use the live
+      // duplicate scan here (we only stash the heavy content fields below),
+      // so skip the 400-row recruitments scan on every detail refresh.
       const r = await api.get(
-        `/api/admin/scrape/queue?status=all&include_detail=true&item_id=${encodeURIComponent(id)}&limit=1`,
+        `/api/admin/scrape/queue?status=all&include_detail=true&include_duplicates=false&item_id=${encodeURIComponent(id)}&limit=1`,
       );
       const full = (r.items || [])[0] || null;
       if (full && full.id === id) {
@@ -257,10 +275,10 @@ export default function OperationsConsole() {
           entity_type: scope?.entity_type || null,
           entity_key: scope?.entity_key || null,
         });
-        await loadAll();
+        await reloadQueue();
       },
     });
-  }, [runAction, loadAll]);
+  }, [runAction, reloadQueue]);
 
   const promote = useCallback(async (item) => {
     await runAction({
