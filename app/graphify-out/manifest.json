@@ -543,6 +543,10 @@
     "mtime": 1779278650.425123,
     "hash": "79684e2379a761819333f5aa41b5d8c1"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\scraping\\quota.py": {
+    "mtime": 1779292855.6228392,
+    "hash": "ddb9556d46aa0d4e7ef93bb8de659107"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\scraping\\recruitment_classifier.py": {
     "mtime": 1778879413.3841398,
     "hash": "506fbd0db3076ded87a1c0116d2f5f9b"
@@ -552,16 +556,20 @@
     "hash": "5896feab9b3d8dbcf243375d863377a8"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\scraping\\runner.py": {
-    "mtime": 1779282616.3188314,
-    "hash": "76c7662109e0418f651b3bb2d4fa1b49"
+    "mtime": 1779292855.6278446,
+    "hash": "c56e5a3a14b444abf3b0774f9bbde6ab"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\scraping\\schemas.py": {
     "mtime": 1778764124.9136865,
     "hash": "68de4cbf8dbe5947edf1897ca8ed6e4e"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\scraping\\serpapi_discovery.py": {
+    "mtime": 1779292855.6298554,
+    "hash": "c81c984a6da17bad971b228a8190dd2c"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\scraping\\sources.py": {
-    "mtime": 1778867156.1432958,
-    "hash": "e906e155216cdc78c94a28213c9b3dfd"
+    "mtime": 1779292855.632846,
+    "hash": "cf9d31273a22289caf93158e8d25d63c"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\scraping\\source_drafts.py": {
     "mtime": 1779264596.0316155,
@@ -1335,9 +1343,21 @@
     "mtime": 1778697344.1450047,
     "hash": "9fdd261b29d0fbf19b0d9ee5a403b796"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\scraping\\test_serpapi_discovery.py": {
+    "mtime": 1779292855.647838,
+    "hash": "656f25c1e0b130c98f56cd712be56122"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\scraping\\test_serpapi_quota.py": {
+    "mtime": 1779292855.649845,
+    "hash": "53f3154d8d23179270cfd3bed992e92a"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\scraping\\test_serpapi_runner.py": {
+    "mtime": 1779292855.6518466,
+    "hash": "e070f296d3b1c5ee203d201d8f574454"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\scraping\\test_sources.py": {
-    "mtime": 1778867156.147295,
-    "hash": "6f01a6add730024104867d8f50881f8c"
+    "mtime": 1779292855.6548424,
+    "hash": "e5f4debcf8ac58183c9a4d2bea6f9369"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\scraping\\test_url_normalize.py": {
     "mtime": 1779282616.3340425,
@@ -3491,6 +3511,10 @@
     "mtime": 1779282616.3380346,
     "hash": "250783c4708276dad02affaf2d64dc09"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\supabase\\migrations\\124_external_api_usage.sql": {
+    "mtime": 1779292855.6568506,
+    "hash": "bb3004ddfcd2de3f9acc108c591ce358"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\supabase\\migrations_legacy\\003_v_notification_feed.sql": {
     "mtime": 1778341297.606826,
     "hash": "9908e714bd52c1ec9d89a700435e5b7f"
@@ -3778,6 +3802,10 @@
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\supabase\\seeds\\free_job_alert_source_registry.sql": {
     "mtime": 1778867156.1592941,
     "hash": "65396b922df30c6f0087b7b6967e669f"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\supabase\\seeds\\serpapi_source_registry.sql": {
+    "mtime": 1779292855.6588483,
+    "hash": "e1258a562216f493dc835377c58d75ab"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\supabase\\seeds\\source_registry_rows (2).sql": {
     "mtime": 1778926383.72258,
