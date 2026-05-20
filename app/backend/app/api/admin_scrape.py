@@ -642,6 +642,11 @@ def list_scrape_runs(
             "items_seen": r.get("items_found") or 0,
             "items_new": r.get("items_new") or 0,
             "items_duplicate": r.get("items_duplicate") or 0,
+            # Discovery-adapter (SerpApi) counts, surfaced separately from
+            # queue items so items_seen keeps meaning "queue items".
+            "discovery_items_found": r.get("discovery_items_found") or 0,
+            "discovery_items_new": r.get("discovery_items_new") or 0,
+            "discovery_items_lifecycle": r.get("discovery_items_lifecycle") or 0,
             "errors": r.get("error_log") or [],
             "sources_checked": r.get("sources_checked") or 0,
         }
@@ -764,6 +769,31 @@ def get_scrape_run_detail(
         bucket["errors"] = errors_by_source.get(name, [])
         per_source.append(bucket)
 
+    # Discovery output (SerpApi etc.) lands in aggregator_listings, not
+    # scrape_queue, so it's invisible to the queue-only breakdown above. Surface
+    # it as a separate block. The 1000 cap is a safety ceiling; the payload caps
+    # rows at 200 (full set behind a paginated endpoint if ever needed).
+    listing_rows = (
+        supabase.table("aggregator_listings")
+        .select(
+            "id, source_id, listing_url, listing_title, event_type, status, "
+            "first_seen_at, last_seen_at"
+        )
+        .eq("scrape_run_id", run_id)
+        .order("last_seen_at", desc=True)
+        .limit(1000)
+        .execute()
+        .data
+        or []
+    )
+    discovery_by_source: dict[str, dict[str, Any]] = {}
+    for lr in listing_rows:
+        sid = lr.get("source_id") or "__unknown__"
+        bucket = discovery_by_source.setdefault(
+            sid, {"source_id": lr.get("source_id"), "count": 0}
+        )
+        bucket["count"] += 1
+
     return {
         "id": run["id"],
         "status": run.get("status"),
@@ -775,8 +805,17 @@ def get_scrape_run_detail(
         "items_found": run.get("items_found") or 0,
         "items_new": run.get("items_new") or 0,
         "items_duplicate": run.get("items_duplicate") or 0,
+        "discovery_items_found": run.get("discovery_items_found") or 0,
+        "discovery_items_new": run.get("discovery_items_new") or 0,
+        "discovery_items_lifecycle": run.get("discovery_items_lifecycle") or 0,
         "error_log": errors,
         "per_source": per_source,
+        "queue": {"total": len(queue_rows), "rows": queue_rows[:200]},
+        "discovery": {
+            "total": len(listing_rows),
+            "by_source": list(discovery_by_source.values()),
+            "rows": listing_rows[:200],
+        },
     }
 
 
