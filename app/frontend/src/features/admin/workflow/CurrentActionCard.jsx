@@ -1,5 +1,5 @@
 import React from "react";
-import { ADMIN_PROGRESS_PHASES, ADMIN_PROGRESS_STEPS } from "./AdminProgressBar";
+import { ADMIN_PROGRESS_STEPS } from "./AdminProgressBar";
 
 // CurrentActionCard renders the single most-actionable item out of the
 // pipeline progress map, so the review surface stays focused on one decision
@@ -23,13 +23,6 @@ function findCurrentStep(progress) {
         return { step, entry };
       }
     }
-  }
-  return null;
-}
-
-function findPhaseForStep(stepId) {
-  for (const phase of ADMIN_PROGRESS_PHASES) {
-    if (phase.stepIds.includes(stepId)) return phase;
   }
   return null;
 }
@@ -79,7 +72,6 @@ export default function CurrentActionCard({ progress, onPrimaryAction }) {
   const total = ADMIN_PROGRESS_STEPS.length;
   const done = ADMIN_PROGRESS_STEPS.filter((s) => (progress?.[s.id]?.status) === "complete").length;
   const current = findCurrentStep(progress);
-  const phase = current ? findPhaseForStep(current.step.id) : null;
   const status = current?.entry?.status || "pending";
   const badge = statusToBadge(status);
   const reason = current?.entry?.reason || null;
@@ -91,26 +83,14 @@ export default function CurrentActionCard({ progress, onPrimaryAction }) {
   return (
     <section className="card oc-current-action" data-testid="oc-current-action">
       <div className="card-body">
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div style={{ minWidth: 0 }}>
-            <div className="row" style={{ gap: 6 }}>
-              <span className="badge neutral">Current phase</span>
-              {phase ? <span className={badge.cls}>{phase.label} · {badge.text}</span> : null}
-            </div>
-            <div className="oc-title" style={{ fontSize: 16, marginTop: 6 }}>
-              {allComplete ? "All pipeline steps complete" : (current?.step?.label || "Pick a selection")}
-            </div>
-            {reason ? <div className="field-sub" style={{ marginTop: 4 }}>{reason}</div> : null}
-          </div>
-          <div
-            className="field-sub"
-            data-testid="oc-current-action-counter"
-            style={{ whiteSpace: "nowrap" }}
-          >
-            {done}/{total} steps complete
-          </div>
+        <div className="row" style={{ gap: 6 }}>
+          <span className="lbl">Next action</span>
+          <span className={allComplete ? "badge resolved" : badge.cls}>{allComplete ? "complete" : badge.text}</span>
         </div>
-
+        <div className="oc-title" style={{ fontSize: 16, marginTop: 6 }}>
+          {allComplete ? "All steps clear — ready to publish" : (current?.step?.label || "Pick a candidate or draft to start")}
+        </div>
+        {reason ? <div className="field-sub" style={{ marginTop: 4 }}>{reason}</div> : null}
         <div className="row" style={{ marginTop: 10 }}>
           <button
             type="button"
