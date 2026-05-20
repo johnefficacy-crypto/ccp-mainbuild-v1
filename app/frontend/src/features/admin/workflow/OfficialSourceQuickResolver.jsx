@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { api } from "../../../lib/api";
 import { useToast } from "../../../shared/ui";
+import InfoBadge from "../shared/InfoBadge";
 
 const RESOLVE_SUCCESS_TOAST =
   "Official proof attached. Next: verify remaining fields / promote to draft.";
@@ -229,12 +230,11 @@ export default function OfficialSourceQuickResolver({
       }}
       data-testid="official-source-quick-resolver"
     >
-      <div className="lbl" style={{ color: "var(--pending)", marginBottom: 4 }}>
-        Recruiting body missing from source registry
-      </div>
-      <div className="field-sub" style={{ color: "var(--pending)", marginBottom: 8 }}>
-        Promotion is blocked until an official, verified source is linked. Pick a host below
-        to create the registry entry, verify it, and link it in one click.
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+        <div className="lbl" style={{ color: "var(--pending)" }}>
+          Recruiting body missing from source registry
+        </div>
+        <InfoBadge text="Promotion is blocked until an official, verified source is linked. Pick a host below to create the registry entry, verify it, and link it in one click." />
       </div>
 
       {error ? <div className="err-row" role="alert" style={{ marginBottom: 8 }}>{error}</div> : null}

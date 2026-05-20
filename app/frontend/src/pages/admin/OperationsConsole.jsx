@@ -7,6 +7,7 @@ import CurrentActionCard from "../../features/admin/workflow/CurrentActionCard";
 import AdminFixPanel from "../../features/admin/workflow/AdminFixPanel";
 import DuplicateMergePreview from "../../features/admin/workflow/DuplicateMergePreview";
 import SelectionContextBanner from "../../features/admin/workflow/SelectionContextBanner";
+import InfoBadge from "../../features/admin/shared/InfoBadge";
 import useConflicts from "../../features/admin/workflow/useConflicts";
 import { scoreToPct } from "../../features/admin/workflow/scoreUtils";
 import { useToast } from "../../shared/ui";
@@ -614,24 +615,6 @@ function scrapeHint(health, lastScrapedIso, pendingCount) {
   if (daysSince(lastScrapedIso) > 7) return { cls: "badge info", text: "stale · rescrape", rank: 3 };
   if (pendingCount > 0) return { cls: "badge pending", text: `${pendingCount} in review`, rank: 4 };
   return { cls: "badge resolved", text: "fresh", rank: 6 };
-}
-
-// A small "i" badge for a panel's top-right corner. Holds explanatory text in
-// a tooltip (title + aria-label) instead of a full description line inside the
-// panel body, keeping the panel compact.
-function InfoBadge({ text }) {
-  if (!text) return null;
-  return (
-    <span
-      className="badge neutral"
-      title={text}
-      aria-label={text}
-      role="img"
-      style={{ cursor: "help", width: 18, height: 18, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontStyle: "italic", fontWeight: 700 }}
-    >
-      i
-    </span>
-  );
 }
 
 function SetupAndRun({ sources, selectedSource, runs, queue, onSelectSource, onRunDry, onRunLive, busy }) {
