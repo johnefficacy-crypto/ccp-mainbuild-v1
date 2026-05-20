@@ -18,6 +18,44 @@ from typing import Any
 from .schemas import ExtractedRecruitment
 
 
+# ── Control-character / NUL sanitization (single source of truth) ──────────
+# Postgres ``text``/``jsonb`` rejects NUL (0x00) outright (error 22P05) and
+# silently stores other C0 control bytes that corrupt downstream rendering
+# and full-text search. Drop every C0 control char except the three real
+# whitespace ones (\t \n \r). Defined once here and applied at each
+# text-to-DB boundary in the scraping module — never re-implemented inline.
+_CTRL_DROP = dict.fromkeys(range(32))
+for _keep in (9, 10, 13):  # \t \n \r
+    _CTRL_DROP.pop(_keep)
+del _keep
+
+
+def sanitize_text(s: str | None) -> str:
+    """Strip NUL and other C0 control chars (keeping tab/newline/CR).
+
+    Returns ``""`` for ``None``/empty so callers always get a real string.
+    """
+    if not s:
+        return ""
+    return s.translate(_CTRL_DROP)
+
+
+def sanitize_json(value: Any) -> Any:
+    """Recursively ``sanitize_text`` every string in a JSON-shaped value.
+
+    dict keys and values, list items, and bare strings are cleaned; other
+    scalars pass through unchanged. Used for ``scrape_queue.extracted_data``
+    before it crosses into the DB.
+    """
+    if isinstance(value, str):
+        return sanitize_text(value)
+    if isinstance(value, dict):
+        return {sanitize_text(k) if isinstance(k, str) else k: sanitize_json(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [sanitize_json(v) for v in value]
+    return value
+
+
 @dataclass
 class NormalizedRecruitment:
     normalized_fields: dict[str, Any]
