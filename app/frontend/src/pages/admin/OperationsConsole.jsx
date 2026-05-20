@@ -870,17 +870,19 @@ function ReviewAndPublish({
             {leftView === "candidates" ? (
               <div className="card" data-testid="ops-left-candidates">
                 <div className="filter-bar">
-                  {QUEUE_FILTERS.map((f) => (
-                    <button
-                      key={f.key}
-                      type="button"
-                      className={`filter${queueFilter === f.key ? " active" : ""}`}
-                      onClick={() => onQueueFilter(f.key)}
-                      data-testid={`queue-filter-${f.key}`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
+                  <label className="sr-only" htmlFor="ops-queue-status">Filter candidates by status</label>
+                  <select
+                    id="ops-queue-status"
+                    className="input"
+                    value={queueFilter}
+                    onChange={(e) => onQueueFilter(e.target.value)}
+                    data-testid="ops-queue-status"
+                    style={{ fontSize: 12, padding: "4px 8px" }}
+                  >
+                    {QUEUE_FILTERS.map((f) => (
+                      <option key={f.key} value={f.key}>{f.label}</option>
+                    ))}
+                  </select>
                 </div>
                 <QueueList items={queue} filter={queueFilter} selectedId={queueId} onSelect={onSelectQueue} />
               </div>
