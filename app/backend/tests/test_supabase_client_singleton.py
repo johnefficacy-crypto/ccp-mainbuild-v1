@@ -19,7 +19,7 @@ def test_admin_client_is_cached(monkeypatch):
             self.url = url
             self.key = key
 
-    def _spy(url, key):
+    def _spy(url, key, options=None):
         calls["n"] += 1
         return _Fake(url, key)
 
@@ -47,7 +47,7 @@ def test_public_client_is_cached_independently(monkeypatch):
         def __init__(self, url, key):
             pass
 
-    def _spy(url, key):
+    def _spy(url, key, options=None):
         calls["n"] += 1
         return _Fake(url, key)
 
@@ -77,7 +77,7 @@ def test_public_client_is_cached_independently(monkeypatch):
 def test_reset_drops_cached_clients(monkeypatch):
     calls = {"n": 0}
 
-    def _spy(url, key):
+    def _spy(url, key, options=None):
         calls["n"] += 1
         return object()
 
