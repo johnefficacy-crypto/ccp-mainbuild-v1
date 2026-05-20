@@ -129,8 +129,8 @@ test("filter change issues exactly one debounced call", async () => {
   render(<Scraper />);
   await waitFor(() => expect(listCalls().length).toBe(1));
 
-  // Click the "Approved/Promoted" filter pill.
-  fireEvent.click(screen.getByText(/Promoted/i));
+  // Change the consolidated status filter to "Promoted" (approved).
+  fireEvent.change(screen.getByLabelText(/Filter by status/i), { target: { value: "approved" } });
   // Debounce window is 250ms; wait past it.
   await act(() => new Promise((r) => setTimeout(r, 400)));
 

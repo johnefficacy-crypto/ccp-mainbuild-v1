@@ -58,6 +58,16 @@ function formatValue(v) {
   return String(v);
 }
 
+// A field with no extracted value can't be "verified" — there is nothing to
+// confirm. It must be corrected (given a value) or flagged instead. Numbers
+// and booleans (including 0 / false) count as real values.
+function isBlank(v) {
+  if (v == null) return true;
+  if (typeof v === "string") return v.trim() === "";
+  if (Array.isArray(v)) return v.length === 0;
+  return false;
+}
+
 const STATUS_BADGE = {
   verified: { cls: "badge resolved", text: "verified" },
   unverified: { cls: "badge blocker", text: "unverified" },
@@ -98,8 +108,11 @@ function FieldRow({ field, value, status, details, blocking, entityScope, onFiel
   const meta = STATUS_BADGE[statusKey] || { cls: "badge neutral", text: statusKey };
   const verified = statusKey === "verified";
   const correctedValue = details?.corrected_value;
+  // A corrected field carries its new value; otherwise use the scraped value.
+  const effectiveValue = statusKey === "corrected" && correctedValue != null ? correctedValue : value;
+  const blank = isBlank(effectiveValue);
 
-  const verify = () => onFieldAction(field, "verify", null, entityScope);
+  const verify = () => { if (!blank) onFieldAction(field, "verify", null, entityScope); };
 
   const saveCorrection = () => {
     setLocalError("");
@@ -125,7 +138,7 @@ function FieldRow({ field, value, status, details, blocking, entityScope, onFiel
       <div className="fld-head">
         <span className="fld-key">
           {heading}
-          {blocking ? <span className="badge blocker" style={{ marginLeft: 6 }}>required</span> : null}
+          {blocking ? <span title="Required — blocks promotion" aria-label="required" style={{ color: "var(--blocker)", fontWeight: 700, marginLeft: 4 }}>*</span> : null}
         </span>
         <span className={meta.cls}>{meta.text}</span>
       </div>
@@ -183,9 +196,19 @@ function FieldRow({ field, value, status, details, blocking, entityScope, onFiel
         </div>
       ) : (
         <div className="row" style={{ marginTop: 8 }}>
-          <button type="button" className="btn small" onClick={verify} data-testid={`field-verify-${field}`}>Verify</button>
+          <button
+            type="button"
+            className="btn small"
+            onClick={verify}
+            disabled={blank}
+            title={blank ? "No value extracted — correct or flag this field" : undefined}
+            data-testid={`field-verify-${field}`}
+          >
+            Verify
+          </button>
           <button type="button" className="btn ghost small" onClick={() => { setEditing(true); setLocalError(""); }}>Edit</button>
           <button type="button" className="btn ghost small" onClick={() => { setRejecting(true); setLocalError(""); }} aria-label={`Flag ${heading}`}>Flag</button>
+          {blank ? <span className="anno" style={{ marginLeft: 4 }}>No value — correct or flag</span> : null}
         </div>
       )}
     </div>
@@ -233,14 +256,24 @@ export default function FieldReviewGroup({ extracted, evidence, evidenceDetails,
   );
 
   // Fields the "Verify all" shortcut still needs to confirm: anything not
-  // already verified or flagged across both groups.
+  // already verified or flagged across both groups — and only fields that
+  // actually have a value (blank fields can't be verified).
   const pending = useMemo(() => {
     const all = [...required, ...recommended];
     return all.filter((f) => {
-      const { status } = statusFor(f, evidence, details);
-      return status !== "verified" && status !== "rejected";
+      const { status, detail } = statusFor(f, evidence, details);
+      if (status === "verified" || status === "rejected") return false;
+      const effective = detail?.corrected_value != null ? detail.corrected_value : extracted?.[f];
+      return !isBlank(effective);
     });
-  }, [required, recommended, evidence, details]);
+  }, [required, recommended, evidence, details, extracted]);
+
+  // Any field still awaiting a decision, including blank ones that can't be
+  // verified — used so the header doesn't claim "all verified" prematurely.
+  const anyUnresolved = useMemo(() => [...required, ...recommended].some((f) => {
+    const { status } = statusFor(f, evidence, details);
+    return status !== "verified" && status !== "rejected";
+  }), [required, recommended, evidence, details]);
 
   const verifyAll = async () => {
     for (const field of pending) {
@@ -259,12 +292,14 @@ export default function FieldReviewGroup({ extracted, evidence, evidenceDetails,
           <button type="button" className="btn small" onClick={verifyAll} data-testid="field-verify-all">
             Verify all ({pending.length})
           </button>
+        ) : anyUnresolved ? (
+          <span className="anno">Blank fields need a correction or flag</span>
         ) : (
           <span className="badge resolved">all verified</span>
         )}
       </div>
       <div className="anno">
-        Promotion is blocked until the fields tagged <strong>required</strong> are verified or corrected.
+        Promotion is blocked until fields marked <span style={{ color: "var(--blocker)", fontWeight: 700 }}>*</span> are verified or corrected.
       </div>
       {required.length ? (
         <div className="card fld-list">

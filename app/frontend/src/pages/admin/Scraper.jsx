@@ -367,44 +367,40 @@ export default function AdminScraper() {
         <button onClick={load} className="btn btn-ghost" disabled={loading}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Reload</button>
       </div>
 
-      {/* Status pills mirror scrape_queue.status values one-for-one so the
-          backend can do the filtering. The "Risk" and "Sort" dropdowns layer
-          on top — official_unresolved / low_quality / needs_review are
-          orthogonal to status (e.g. a pending item with low quality). */}
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          ["pending", "Pending"],
-          ["approved", "Promoted"],
-          ["duplicate", "Duplicates"],
-          ["merged", "Merged"],
-          ["rejected", "Rejected"],
-          ["dry_run", "Dry run"],
-          ["all", "All"],
-        ].map(([key, label]) => (
-          <button key={key} type="button" onClick={() => setQueueFilter(key)} className={`rounded-full border px-3 py-1.5 text-xs ${queueFilter === key ? "border-dusk-700 bg-dusk-700 text-white" : "border-border bg-white/70 text-foreground/75 hover:bg-clay-100"}`}>
-            {label}
-          </button>
-        ))}
-        <label className="ml-2 text-xs">
-          <span className="mr-1 uppercase tracking-widest text-[10px] text-muted-foreground">Risk</span>
-          <select value={queueRisk} onChange={(e) => setQueueRisk(e.target.value)} className="rounded-lg border border-border bg-white/80 px-2 py-1 text-xs">
-            <option value="all">Any</option>
+      {/* Single consolidated toolbar: search + status + risk + sort + count.
+          Status mirrors scrape_queue.status verbatim; risk (official_unresolved
+          / low_quality / needs_review) layers on top of status. */}
+      <section className="soft-card rounded-2xl p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative min-w-[220px] flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <span className="sr-only">Search scrape queue</span>
+            <input value={queueQuery} onChange={(e) => setQueueQuery(e.target.value)} className="w-full rounded-lg border border-border bg-white/80 py-1.5 pl-9 pr-3 text-sm" placeholder="Search title, source, URL, organization" />
+          </label>
+          <select aria-label="Filter by status" value={queueFilter} onChange={(e) => setQueueFilter(e.target.value)} className="rounded-lg border border-border bg-white/80 px-2 py-1.5 text-xs">
+            <option value="pending">Pending</option>
+            <option value="approved">Promoted</option>
+            <option value="duplicate">Duplicates</option>
+            <option value="merged">Merged</option>
+            <option value="rejected">Rejected</option>
+            <option value="dry_run">Dry run</option>
+            <option value="all">All statuses</option>
+          </select>
+          <select aria-label="Filter by risk" value={queueRisk} onChange={(e) => setQueueRisk(e.target.value)} className="rounded-lg border border-border bg-white/80 px-2 py-1.5 text-xs">
+            <option value="all">Any risk</option>
             <option value="official_unresolved">Official unresolved</option>
             <option value="low_quality">Low quality</option>
             <option value="needs_review">Needs review</option>
           </select>
-        </label>
-        <label className="text-xs">
-          <span className="mr-1 uppercase tracking-widest text-[10px] text-muted-foreground">Sort</span>
-          <select value={queueSort} onChange={(e) => setQueueSort(e.target.value)} className="rounded-lg border border-border bg-white/80 px-2 py-1 text-xs">
+          <select aria-label="Sort order" value={queueSort} onChange={(e) => setQueueSort(e.target.value)} className="rounded-lg border border-border bg-white/80 px-2 py-1.5 text-xs">
             <option value="risky_first">Risky first</option>
             <option value="quality_asc">Lowest quality first</option>
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
           </select>
-        </label>
-        {queueTotal != null ? <span className="ml-auto text-xs text-muted-foreground">{queueTotal} match{queueTotal === 1 ? "" : "es"}</span> : null}
-      </div>
+          {queueTotal != null ? <span className="ml-auto text-xs text-muted-foreground">{queueTotal} match{queueTotal === 1 ? "" : "es"}</span> : null}
+        </div>
+      </section>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
         <section className="soft-card rounded-2xl p-4">
@@ -467,31 +463,20 @@ export default function AdminScraper() {
         />
       ) : null}
 
-      <section className="soft-card rounded-2xl p-4">
-        <div className="grid gap-3">
-          <label className="relative block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <span className="sr-only">Search scrape queue</span>
-            <input value={queueQuery} onChange={(e) => setQueueQuery(e.target.value)} className="w-full rounded-xl border border-border bg-white/80 py-2 pl-9 pr-3 text-sm" placeholder="Search title, source, URL, organization" />
-          </label>
-        </div>
-      </section>
-
       {loading ? <LoadingSkeleton variant="table" /> : null}
       {/* Empty states only render when the queue actually loaded — a queue
           error shows its own banner above instead of a misleading "no items". */}
       {!loading && !queueError && queue.length === 0 ? <EmptyState icon={Search} title="No scrape queue items yet" description="Run a dry scrape or live scrape to discover candidates for manual review." /> : null}
-      {!loading && !queueError && queue.length > 0 && visibleQueue.length === 0 ? <EmptyState icon={Filter} title="No queue items match this view" description="Adjust search or filter chips." /> : null}
+      {!loading && !queueError && queue.length > 0 && visibleQueue.length === 0 ? <EmptyState icon={Filter} title="No queue items match this view" description="Adjust the search or filters above." /> : null}
 
       {!loading && !queueError && visibleQueue.length > 0 ? <div className="overflow-auto rounded-2xl border border-border bg-white/70">
-        <table className="w-full min-w-[900px] table-fixed text-xs">
+        <table className="w-full min-w-[760px] table-fixed text-xs">
           <thead className="bg-[#FBF6EF] text-left text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             <tr>
-              <th className="w-[280px] px-3 py-3">Candidate</th>
-              <th className="w-[260px] px-3 py-3">Source / URL</th>
-              <th className="w-[180px] px-3 py-3">Review state</th>
+              <th className="w-[320px] px-3 py-3">Candidate</th>
+              <th className="w-[280px] px-3 py-3">Source / URL</th>
               <th className="w-[120px] px-3 py-3">Data quality</th>
-              <th className="w-[190px] px-3 py-3">Actions</th>
+              <th className="w-[150px] px-3 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -504,9 +489,12 @@ export default function AdminScraper() {
               const state = reviewState(q);
               return (
                 <tr key={q.id} className="border-t border-border align-middle" data-testid={`scrape-row-${q.id}`}>
-                  <td className="px-3 py-3"><div className="truncate font-medium">{summary.title || "-"}</div><div className="truncate text-[10px] text-muted-foreground">Queue {shortId(q.id)} · {q.source_name || "-"}</div></td>
+                  <td className="px-3 py-3">
+                    <div className="mb-1"><StatusBadge status={state.key} label={state.label} /></div>
+                    <div className="truncate font-medium" title={state.reason}>{summary.title || "-"}</div>
+                    <div className="truncate text-[10px] text-muted-foreground">Queue {shortId(q.id)} · {q.source_name || "-"}</div>
+                  </td>
                   <td className="px-3 py-3"><div className="truncate">{typeLabel(q.source_type)}</div><div className="truncate text-[10px] text-muted-foreground">{q.source_url}</div></td>
-                  <td className="px-3 py-3"><StatusBadge status={state.key} label={state.label} /><div className="mt-1 truncate text-[10px] text-muted-foreground">{state.reason}</div></td>
                   <td className="px-3 py-3"><div>conf {formatScorePct(q.confidence_score)}</div><div className="text-[10px] text-muted-foreground">quality {formatScorePct(q.data_quality_score)}</div></td>
                   <td className="px-3 py-3"><QueueRowAction item={q} state={state} onOpen={() => openQueueDetail(q)} /></td>
                 </tr>
@@ -557,21 +545,14 @@ export default function AdminScraper() {
 }
 
 function QueueRowAction({ item, state, onOpen }) {
-  // Daily review is now centralised in Operations. The scraper page is
-  // for diagnostics & deep inspection; the row drawer stays as a
-  // secondary 'Inspect' action.
+  // One action per row: open the read-only inspector. Acting on the candidate
+  // (verify / promote / reject) happens via the "Open in Pipeline Workspace"
+  // link inside that drawer, so the row stays unambiguous.
   return (
     <div className="flex flex-wrap gap-2">
-      <a
-        className="btn btn-primary h-8 text-xs"
-        href={`/admin/operations?queue_id=${item.id}&mode=queue`}
-        data-testid={`scrape-row-open-ops-${item.id}`}
-      >
-        Open in Pipeline Workspace →
-      </a>
       <button
         type="button"
-        className="btn btn-ghost h-8 text-xs"
+        className="btn btn-primary h-8 text-xs"
         onClick={onOpen}
         data-testid={`scrape-row-inspect-${item.id}`}
       >

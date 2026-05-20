@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 jest.mock("../../../lib/api", () => ({
@@ -54,15 +54,20 @@ test("Scraper page renders the role banner at the top", async () => {
   expect(banner.textContent).toMatch(/Daily review is in Operations/);
 });
 
-test("Scraper queue row primary action deep-links into Operations", async () => {
+test("Scraper queue row exposes a single Inspect action; the workspace link lives in the drawer", async () => {
   render(
     <MemoryRouter>
       <Scraper />
     </MemoryRouter>,
   );
-  await waitFor(() => expect(screen.getByTestId("scrape-row-open-ops-queue-abc-123")).toBeTruthy());
-  const link = screen.getByTestId("scrape-row-open-ops-queue-abc-123");
-  expect(link.getAttribute("href")).toBe("/admin/operations?queue_id=queue-abc-123&mode=queue");
-  // The inspect/drawer entry point remains as a secondary action.
-  expect(screen.getByTestId("scrape-row-inspect-queue-abc-123")).toBeTruthy();
+  // One action per row — Inspect — and no separate row-level deep link.
+  await waitFor(() => expect(screen.getByTestId("scrape-row-inspect-queue-abc-123")).toBeTruthy());
+  expect(screen.queryByTestId("scrape-row-open-ops-queue-abc-123")).toBeNull();
+
+  // Opening the read-only inspector surfaces the Pipeline Workspace link.
+  fireEvent.click(screen.getByTestId("scrape-row-inspect-queue-abc-123"));
+  await waitFor(() => expect(screen.getByTestId("scrape-drawer-open-ops")).toBeTruthy());
+  expect(screen.getByTestId("scrape-drawer-open-ops").getAttribute("href")).toBe(
+    "/admin/operations?queue_id=queue-abc-123&mode=queue",
+  );
 });
