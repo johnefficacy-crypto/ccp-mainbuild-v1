@@ -140,48 +140,67 @@ function SourceFormDrawer({ open, mode, form, setForm, busy, error, onClose, onS
 
         {error && <div className="mt-4 rounded-xl border border-destructive/30 bg-white/70 p-3 text-sm text-destructive">{error}</div>}
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <Field label="Source name"><input className="input" value={form.source_name} onChange={(e) => setForm({ ...form, source_name: e.target.value })} /></Field>
-          <Field label="Source URL / Official URL"><input className="input" value={form.official_url} onChange={(e) => setForm({ ...form, official_url: e.target.value })} /></Field>
-          <Field label="Source type">
-            <select className="input" value={form.source_type} onChange={(e) => updateType(e.target.value)} required>
-              <option value="">Select source type</option>
-              {SOURCE_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-            </select>
-          </Field>
-          <Field label="Trust tier / source role"><input className="input" type="number" value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value })} /></Field>
-          <Field label="Max items per run"><input className="input" type="number" min="1" max="100" value={form.max_items_per_run} onChange={(e) => setForm({ ...form, max_items_per_run: e.target.value })} /></Field>
-          <Field label="Rate limit seconds"><input className="input" type="number" min="0" value={form.rate_limit_seconds} onChange={(e) => setForm({ ...form, rate_limit_seconds: e.target.value })} /></Field>
-          <Field label="Timeout seconds"><input className="input" type="number" min="1" value={form.timeout_seconds} onChange={(e) => setForm({ ...form, timeout_seconds: e.target.value })} /></Field>
-          <Field label="Source role"><input className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></Field>
-          <Field label="Notes"><textarea className="input min-h-[90px]" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
-        </div>
+        {/* Identity — what this source is and where it lives */}
+        <FormSection label="Identity">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Source name"><input className="input" value={form.source_name} onChange={(e) => setForm({ ...form, source_name: e.target.value })} /></Field>
+            <Field label="Source type">
+              <select className="input" value={form.source_type} onChange={(e) => updateType(e.target.value)} required>
+                <option value="">Select source type</option>
+                {SOURCE_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+              </select>
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Official URL"><input className="input" value={form.official_url} onChange={(e) => setForm({ ...form, official_url: e.target.value })} /></Field>
+            </div>
+          </div>
+        </FormSection>
+
+        {/* Run configuration — how the scraper hits this source */}
+        <FormSection label="Run configuration">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Max items / run"><input className="input" type="number" min="1" max="100" value={form.max_items_per_run} onChange={(e) => setForm({ ...form, max_items_per_run: e.target.value })} /></Field>
+            <Field label="Rate limit (s)"><input className="input" type="number" min="0" value={form.rate_limit_seconds} onChange={(e) => setForm({ ...form, rate_limit_seconds: e.target.value })} /></Field>
+            <Field label="Timeout (s)"><input className="input" type="number" min="1" value={form.timeout_seconds} onChange={(e) => setForm({ ...form, timeout_seconds: e.target.value })} /></Field>
+          </div>
+        </FormSection>
+
+        <FormSection label="Notes">
+          <Field label="Internal notes"><textarea className="input min-h-[80px]" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
+        </FormSection>
 
         <details className="mt-5 rounded-xl border border-border bg-white/50 p-3">
-          <summary className="cursor-pointer text-sm font-semibold">Advanced crawler rules</summary>
+          <summary className="cursor-pointer text-sm font-semibold">Advanced — crawler rules &amp; internals</summary>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="Only follow links matching these patterns" help="Examples: recruitment, vacancy, notification, apply-online"><textarea className="input min-h-[90px]" value={form.include_patterns} onChange={(e) => setForm({ ...form, include_patterns: e.target.value })} /></Field>
-            <Field label="Ignore links matching these patterns" help="Examples: login, syllabus, admit-card, result, handbook, user_manual"><textarea className="input min-h-[90px]" value={form.exclude_patterns} onChange={(e) => setForm({ ...form, exclude_patterns: e.target.value })} /></Field>
-            <Field label="Allowed domains for discovered links" help="Examples: ncs.gov.in, indgovtjobs.net"><textarea className="input min-h-[90px]" value={form.allowed_domains} onChange={(e) => setForm({ ...form, allowed_domains: e.target.value })} /></Field>
+            <Field label="Trust tier" help="Optional numeric ordering; trust itself is set by the Verify action."><input className="input" type="number" value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value })} /></Field>
+            <Field label="Source role / category"><input className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></Field>
+            <Field label="Only follow links matching these patterns" help="Examples: recruitment, vacancy, notification, apply-online"><textarea className="input min-h-[80px]" value={form.include_patterns} onChange={(e) => setForm({ ...form, include_patterns: e.target.value })} /></Field>
+            <Field label="Ignore links matching these patterns" help="Examples: login, syllabus, admit-card, result, handbook, user_manual"><textarea className="input min-h-[80px]" value={form.exclude_patterns} onChange={(e) => setForm({ ...form, exclude_patterns: e.target.value })} /></Field>
+            <div className="sm:col-span-2">
+              <Field label="Allowed domains for discovered links" help="Examples: ncs.gov.in, indgovtjobs.net"><textarea className="input min-h-[80px]" value={form.allowed_domains} onChange={(e) => setForm({ ...form, allowed_domains: e.target.value })} /></Field>
+            </div>
           </div>
         </details>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <label className="soft-card flex items-center justify-between rounded-xl p-3 text-sm">
-            <span>Active</span>
-            <input type="checkbox" checked={!!form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
-          </label>
-          <div className="soft-card flex items-center justify-between rounded-xl p-3 text-sm">
-            <span>Verification status</span>
-            {isAggregator ? (
-              <span className="pill pill-amber">Discovery only</span>
-            ) : form.is_verified ? (
-              <span className="pill pill-sage">Verified official source</span>
-            ) : (
-              <span className="pill" title="Save the source, then run the Verify action to perform the trust check.">Not verified — use Verify action</span>
-            )}
+        {/* Status — activation + read-only trust note (trust is set via Verify) */}
+        <FormSection label="Status">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="soft-card flex items-center justify-between rounded-xl p-3 text-sm">
+              <span>Active</span>
+              <input type="checkbox" checked={!!form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+            </label>
+            <div className="soft-card flex items-center justify-between rounded-xl p-3 text-sm">
+              <span>Trust</span>
+              {isAggregator ? (
+                <span className="pill pill-amber">Discovery only</span>
+              ) : form.is_verified ? (
+                <span className="pill pill-sage">Verified official source</span>
+              ) : (
+                <span className="pill" title="Save the source, then run the Verify action to perform the trust check.">Not verified — use Verify action</span>
+              )}
+            </div>
           </div>
-        </div>
+        </FormSection>
 
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
@@ -425,6 +444,15 @@ export default function AdminSources() {
 
 function Field({ label, help, children }) {
   return <label className="block text-sm"><div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</div>{children}{help ? <div className="mt-1 text-[11px] text-muted-foreground">{help}</div> : null}</label>;
+}
+
+function FormSection({ label, children }) {
+  return (
+    <section className="mt-5">
+      <div className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      {children}
+    </section>
+  );
 }
 
 function Detail({ label, value }) {
