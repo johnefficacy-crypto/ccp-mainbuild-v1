@@ -74,6 +74,10 @@ export default function OperationsConsole() {
   // when an item is selected so the resolver can auto-detect host
   // candidates and the field-review panels have data to render.
   const [queueDetail, setQueueDetail] = useState(null);
+  // Whether the targeted item_id fetch came back empty (the item is genuinely
+  // gone — rejected/merged) vs merely absent from the first paged list (sorted
+  // off-page). Only the former should clear the selection.
+  const [queueDetailMissing, setQueueDetailMissing] = useState(false);
   // Bumped at the end of every loadAll so the detail hydration effect
   // re-runs after a reload (e.g. post-resolve, post-field-correction).
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -137,29 +141,31 @@ export default function OperationsConsole() {
   // selection changes or after any loadAll (reloadNonce). Failure is
   // non-fatal — the resolver falls back to manual add.
   const hydrateQueueDetail = useCallback(async (id) => {
-    if (!id) { setQueueDetail(null); return; }
+    if (!id) { setQueueDetail(null); setQueueDetailMissing(false); return; }
     try {
       // include_duplicates=false skips the live 400-row scan but still returns
       // the precomputed duplicate_candidates column — enough for the merge UI.
-      // We stash the heavy content fields AND the relational evidence details +
-      // duplicate candidates, which the lightweight list response omits.
+      // We stash the WHOLE row (not just heavy fields): when the selected item
+      // sorts off the first queue page after a resolve (risky-first sort moves
+      // resolved rows down), this targeted fetch is the only source for the
+      // gate/status fields the workspace needs to keep rendering.
       const r = await api.get(
         `/api/admin/scrape/queue?status=all&include_detail=true&include_duplicates=false&item_id=${encodeURIComponent(id)}&limit=1`,
       );
       const full = (r.items || [])[0] || null;
       if (full && full.id === id) {
-        setQueueDetail({
-          id: full.id,
-          extracted_data: full.extracted_data ?? null,
-          raw_extracted_item: full.raw_extracted_item ?? full.extracted_data ?? null,
-          raw_html: full.raw_html ?? null,
-          raw_payload: full.raw_payload ?? null,
-          field_evidence_details: full.field_evidence_details ?? null,
-          duplicate_candidates: full.duplicate_candidates ?? null,
-        });
+        setQueueDetail(full);
+        setQueueDetailMissing(false);
+      } else {
+        // Empty result = the item is truly gone (rejected/merged), not just
+        // off-page. Flag it so the selection-clear effect may run.
+        setQueueDetail(null);
+        setQueueDetailMissing(true);
       }
     } catch {
-      // Keep list-level fields; the resolver shows the manual-add path.
+      // Network/transient error is NOT a 404 — keep any prior detail and do
+      // not flag the item as missing, so a blip can't blank the workspace.
+      setQueueDetailMissing(false);
     }
   }, []);
 
@@ -177,8 +183,23 @@ export default function OperationsConsole() {
     () => sources.find((s) => s.id === sourceId) || null,
     [sources, sourceId],
   );
+  // When the selected item has sorted off the first queue page (e.g. after a
+  // resolve flips official_source_resolved=true under the default risky-first
+  // sort), the lightweight 50-row list no longer contains it. Prepend the
+  // targeted detail row so the left rail keeps the selection visible and the
+  // base-find below still resolves. No-op when the item is already on the page.
+  const effectiveQueue = useMemo(() => {
+    if (
+      queueId && queueDetail && queueDetail.id === queueId
+      && !queue.some((q) => q.id === queueId)
+    ) {
+      return [queueDetail, ...queue];
+    }
+    return queue;
+  }, [queue, queueId, queueDetail]);
+
   const selectedQueueItem = useMemo(() => {
-    const base = queue.find((q) => q.id === queueId) || null;
+    const base = effectiveQueue.find((q) => q.id === queueId) || null;
     if (!base) return null;
     if (queueDetail && queueDetail.id === base.id) {
       // Overlay the heavy content + relational evidence/duplicate fields the
@@ -191,7 +212,7 @@ export default function OperationsConsole() {
       return {
         ...base,
         extracted_data: base.extracted_data ?? queueDetail.extracted_data,
-        raw_extracted_item: base.raw_extracted_item ?? queueDetail.raw_extracted_item,
+        raw_extracted_item: base.raw_extracted_item ?? queueDetail.raw_extracted_item ?? queueDetail.extracted_data,
         raw_html: base.raw_html ?? queueDetail.raw_html,
         raw_payload: base.raw_payload ?? queueDetail.raw_payload,
         field_evidence_details: queueDetail.field_evidence_details ?? base.field_evidence_details ?? [],
@@ -201,19 +222,21 @@ export default function OperationsConsole() {
       };
     }
     return base;
-  }, [queue, queueId, queueDetail]);
+  }, [effectiveQueue, queueId, queueDetail]);
 
   // P0-2 fallback: selection is URL-param driven and survives loadAll by
-  // re-finding the id in the fresh list. If the selected item vanished
-  // (rejected/merged out of view, or dropped past the page limit), clear
-  // the param and tell the admin rather than leaving an empty workspace.
+  // re-finding the id (in the list OR the targeted detail fetch). Clear the
+  // param ONLY when the targeted item_id fetch came back empty
+  // (queueDetailMissing) — i.e. the item is genuinely gone (rejected/merged).
+  // A selected item that merely sorted off the first page is kept alive via
+  // effectiveQueue, so it must NOT be cleared.
   useEffect(() => {
     if (loading) return;
-    if (queueId && !selectedQueueItem) {
+    if (queueId && !selectedQueueItem && queueDetailMissing) {
       toast.info("That candidate is no longer in the queue. Selection cleared.");
       updateParams({ queue_id: null });
     }
-  }, [loading, queueId, selectedQueueItem, toast, updateParams]);
+  }, [loading, queueId, selectedQueueItem, queueDetailMissing, toast, updateParams]);
   const selectedRecruitment = useMemo(
     () => recruitments.find((r) => r.id === recruitmentId) || null,
     [recruitments, recruitmentId],
@@ -472,7 +495,7 @@ export default function OperationsConsole() {
             selectedSource={selectedSource}
             selectedQueueItem={selectedQueueItem}
             selectedRecruitment={selectedRecruitment}
-            queue={queue}
+            queue={effectiveQueue}
             queueId={queueId}
             recruitmentId={recruitmentId}
             recruitments={recruitments}
