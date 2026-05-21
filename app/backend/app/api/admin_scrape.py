@@ -1959,6 +1959,39 @@ def reject_queue_item(
     return {"ok": True, "id": queue_id, "status": "rejected"}
 
 
+@router.post("/admin/scrape/items/{queue_id}/reopen")
+def reopen_queue_item(
+    queue_id: str,
+    body: dict | None = None,
+    admin: dict = Depends(require_permission("scraper.manage")),
+) -> dict[str, Any]:
+    """Undo a rejection: move a ``rejected`` candidate back to ``pending`` so it
+    can be reviewed again. Only valid from ``rejected`` (idempotent guard)."""
+    body = body or {}
+    supabase = get_supabase_admin()
+    current = (
+        supabase.table("scrape_queue").select("status").eq("id", queue_id).limit(1).execute().data or []
+    )
+    if not current:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+    if (current[0].get("status") or "") != "rejected":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Item is {current[0].get('status')!r}; only rejected items can be reopened.",
+        )
+    supabase.table("scrape_queue").update(
+        {
+            "status": "pending",
+            "reviewer_id": admin["id"],
+            "reviewer_notes": body.get("notes") or "reopened by admin",
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        }
+    ).eq("id", queue_id).execute()
+    _audit(supabase, admin, "scrape.queue.reopen", entity_type="scrape_queue",
+           entity_id=queue_id, new_value=body)
+    return {"ok": True, "id": queue_id, "status": "pending"}
+
+
 # ════════════════════════════════════════════════════════════════════════════
 #  Eligibility queue (admin view of pending scrape items + recompute backlog)
 # ════════════════════════════════════════════════════════════════════════════

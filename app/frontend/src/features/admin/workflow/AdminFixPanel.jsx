@@ -68,6 +68,7 @@ export default function AdminFixPanel({
   onMergeIntoExisting,
   onMarkDuplicate,
   onRejectCandidate,
+  onReopenCandidate,
   onValidate,
   onVerify,
   onPublish,
@@ -94,6 +95,7 @@ export default function AdminFixPanel({
           onMergeIntoExisting={onMergeIntoExisting}
           onMarkDuplicate={onMarkDuplicate}
           onRejectCandidate={onRejectCandidate}
+          onReopenCandidate={onReopenCandidate}
           onSourcesChanged={onSourcesChanged}
           onOpenConflict={onOpenConflict}
           onRejectConflict={onRejectConflict}
@@ -124,7 +126,7 @@ export default function AdminFixPanel({
   );
 }
 
-function QueueFixSection({ item, conflicts = [], sources = [], onFieldAction, onPromote, onMergeIntoExisting, onMarkDuplicate, onRejectCandidate, onSourcesChanged, onOpenConflict, onRejectConflict, busy }) {
+function QueueFixSection({ item, conflicts = [], sources = [], onFieldAction, onPromote, onMergeIntoExisting, onMarkDuplicate, onRejectCandidate, onReopenCandidate, onSourcesChanged, onOpenConflict, onRejectConflict, busy }) {
   const blockers = item.unverified_fields || [];
   const dups = item.duplicate_candidates || [];
   const officialUnresolved = item.official_source_resolved === false;
@@ -378,27 +380,41 @@ function QueueFixSection({ item, conflicts = [], sources = [], onFieldAction, on
                   : "All gates open. Promotion will create a recruitment draft."}
               </div>
             </div>
-            {/* Accept / reject sit together so the decision is one place, not a
-                button stranded at the bottom of the panel. */}
+            {/* Accept / reject sit together so the decision is one place. A
+                rejected candidate shows Reopen instead, to undo the rejection. */}
             <div className="row" style={{ gap: 6 }}>
-              <button
-                type="button"
-                className="btn ghost small"
-                disabled={busy || item.status === "rejected" || item.status === "approved"}
-                onClick={() => onRejectCandidate?.(item)}
-                data-testid="fix-panel-reject-candidate"
-              >
-                Reject
-              </button>
-              <button
-                type="button"
-                className="btn primary"
-                disabled={busy || blockedFromPromote}
-                onClick={() => onPromote?.(item)}
-                data-testid="fix-panel-promote"
-              >
-                Promote to draft
-              </button>
+              {item.status === "rejected" ? (
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={busy}
+                  onClick={() => onReopenCandidate?.(item)}
+                  data-testid="fix-panel-reopen-candidate"
+                >
+                  Reopen for review
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn ghost small"
+                    disabled={busy || item.status === "approved"}
+                    onClick={() => onRejectCandidate?.(item)}
+                    data-testid="fix-panel-reject-candidate"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    disabled={busy || blockedFromPromote}
+                    onClick={() => onPromote?.(item)}
+                    data-testid="fix-panel-promote"
+                  >
+                    Promote to draft
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

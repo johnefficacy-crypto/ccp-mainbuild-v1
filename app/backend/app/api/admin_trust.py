@@ -162,14 +162,12 @@ def verify_source(source_id: str, admin: dict = Depends(require_permission("sour
     return {"ok": True, "source_id": source_id, "checks": checks, "warnings": warnings, "errors": errors}
 
 
-def validate_recruitment_publish_readiness(recruitment_id: str, admin: dict):
-    sb = get_supabase_admin()
+def _evaluate_readiness(rec: dict, *, org: dict, posts: list, has_post_rules: bool, source: dict | None):
+    """Pure publish-readiness rules. Single and batch callers fetch the inputs
+    (org, posts, has_post_rules, source) differently but share these rules so
+    behaviour can't drift between them."""
     blocking, warnings = [], []
-    rec_rows = sb.table("recruitments").select("*, organizations(*), posts(id)").eq("id", recruitment_id).limit(1).execute().data or []
-    if not rec_rows:
-        raise HTTPException(status_code=404, detail="Recruitment not found")
-    rec = rec_rows[0]
-    org = rec.get("organizations") or {}
+    org = org or {}
     if not rec.get("organization_id"):
         blocking.append("organization_missing")
     if rec.get("organization_id") and not org.get("is_verified"):
@@ -185,18 +183,33 @@ def validate_recruitment_publish_readiness(recruitment_id: str, admin: dict):
                 blocking.append("apply_dates_reversed")
         except Exception:
             blocking.append("apply_dates_invalid")
-    posts = rec.get("posts") or []
     if not posts and not rec.get("posts_unavailable"):
         blocking.append("posts_missing")
     if not rec.get("rules_unavailable"):
-        post_ids = [p.get("id") for p in posts if p.get("id")]
-        has_post_rules = False
-        if post_ids:
-            age_rows = sb.table("age_criteria").select("id").in_("post_id", post_ids).limit(1).execute().data or []
-            edu_rows = sb.table("education_criteria").select("id").in_("post_id", post_ids).limit(1).execute().data or []
-            has_post_rules = bool(age_rows or edu_rows)
         if not has_post_rules and not rec.get("min_age") and not rec.get("max_age"):
             blocking.append("eligibility_rules_missing")
+    if not rec.get("source_id"):
+        blocking.append("source_provenance_missing")
+    elif not source:
+        blocking.append("source_provenance_not_found")
+    elif not source.get("is_verified"):
+        blocking.append("unverified_source_provenance")
+    return {"ready": len(blocking) == 0, "blocking_issues": blocking, "warnings": warnings}
+
+
+def validate_recruitment_publish_readiness(recruitment_id: str, admin: dict):
+    sb = get_supabase_admin()
+    rec_rows = sb.table("recruitments").select("*, organizations(*), posts(id)").eq("id", recruitment_id).limit(1).execute().data or []
+    if not rec_rows:
+        raise HTTPException(status_code=404, detail="Recruitment not found")
+    rec = rec_rows[0]
+    posts = rec.get("posts") or []
+    post_ids = [p.get("id") for p in posts if p.get("id")]
+    has_post_rules = False
+    if post_ids and not rec.get("rules_unavailable"):
+        age_rows = sb.table("age_criteria").select("id").in_("post_id", post_ids).limit(1).execute().data or []
+        edu_rows = sb.table("education_criteria").select("id").in_("post_id", post_ids).limit(1).execute().data or []
+        has_post_rules = bool(age_rows or edu_rows)
     source = None
     if rec.get("source_id"):
         source_rows = (
@@ -209,13 +222,7 @@ def validate_recruitment_publish_readiness(recruitment_id: str, admin: dict):
             or []
         )
         source = source_rows[0] if source_rows else None
-    if not rec.get("source_id"):
-        blocking.append("source_provenance_missing")
-    elif not source:
-        blocking.append("source_provenance_not_found")
-    elif not source.get("is_verified"):
-        blocking.append("unverified_source_provenance")
-    return {"ready": len(blocking) == 0, "blocking_issues": blocking, "warnings": warnings}
+    return _evaluate_readiness(rec, org=rec.get("organizations") or {}, posts=posts, has_post_rules=has_post_rules, source=source)
 
 
 @router.post("/admin/recruitments/{recruitment_id}/validate-publish")
@@ -375,17 +382,53 @@ def admin_recruitments(_admin: dict = Depends(require_permission("recruitments.m
     sb=get_supabase_admin()
     # Inline blocker-fix form needs editable fields (organization_id, source_id,
     # apply window, total_vacancies, notification_date) — select them too so the
-    # Operations Console can pre-fill the form without a per-row GET.
+    # Operations Console can pre-fill the form without a per-row GET. Readiness
+    # fields (status, min/max_age, *_unavailable) are selected so the batch
+    # readiness pass below needs no per-recruitment fetch.
     rows=sb.table("recruitments").select(
         "id,name,publish_status,status,organization_id,source_id,"
         "official_notification_url,official_apply_url,source_pdf_url,"
         "apply_start_date,apply_end_date,notification_date,total_vacancies,"
+        "min_age,max_age,posts_unavailable,rules_unavailable,"
         "published_by,published_at,review_notes,organizations(name,is_verified)"
     ).order("created_at", desc=True).limit(200).execute().data or []
+
+    # ── Batch readiness inputs (replaces the per-recruitment N+1 fan-out) ──
+    rec_ids = [r["id"] for r in rows if r.get("id")]
+    posts_by_rec: dict[str, list] = {}
+    post_to_rec: dict[str, str] = {}
+    if rec_ids:
+        for p in (sb.table("posts").select("id,recruitment_id").in_("recruitment_id", rec_ids).execute().data or []):
+            posts_by_rec.setdefault(p.get("recruitment_id"), []).append({"id": p.get("id")})
+            if p.get("id"):
+                post_to_rec[p["id"]] = p.get("recruitment_id")
+    all_post_ids = list(post_to_rec)
+    recs_with_rules: set = set()
+    for i in range(0, len(all_post_ids), 100):
+        batch = all_post_ids[i:i + 100]
+        if not batch:
+            continue
+        for tbl in ("age_criteria", "education_criteria"):
+            for row in (sb.table(tbl).select("post_id").in_("post_id", batch).execute().data or []):
+                rec_id = post_to_rec.get(row.get("post_id"))
+                if rec_id:
+                    recs_with_rules.add(rec_id)
+    src_ids = list({r["source_id"] for r in rows if r.get("source_id")})
+    src_by_id: dict[str, dict] = {}
+    if src_ids:
+        for srow in (sb.table("source_registry").select("id,is_verified,verification_status").in_("id", src_ids).execute().data or []):
+            src_by_id[srow.get("id")] = srow
+
     items=[]
     for r in rows:
         try:
-            ready=validate_recruitment_publish_readiness(r.get("id"), _admin)
+            ready=_evaluate_readiness(
+                r,
+                org=r.get("organizations") or {},
+                posts=posts_by_rec.get(r.get("id"), []),
+                has_post_rules=r.get("id") in recs_with_rules,
+                source=src_by_id.get(r.get("source_id")),
+            )
         except Exception as exc:  # noqa: BLE001
             ready={"blocking_issues":["readiness_check_failed"],"warnings":[str(exc)]}
         org=(r.get("organizations") or {})

@@ -161,16 +161,36 @@ function initialOpenMap(pathname) {
 export default function AdminShell() {
   const auth = useAuth();
   const location = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  // One collapsible nav: inline on desktop, an overlay drawer on mobile. The
+  // header button toggles it at any size (collapse the sidebar on desktop /
+  // open the drawer on mobile). Persisted so the choice survives reloads.
+  const [navOpen, setNavOpen] = useState(() => {
+    try {
+      const v = localStorage.getItem("cc-admin-nav-open");
+      if (v != null) return v === "1";
+      return window.matchMedia("(min-width: 1024px)").matches;
+    } catch {
+      return true;
+    }
+  });
   const [now, setNow] = useState(() => new Date());
   const [openMap, setOpenMap] = useState(() => initialOpenMap(location.pathname));
+
+  const toggleNav = () => setNavOpen((v) => {
+    const next = !v;
+    try { localStorage.setItem("cc-admin-nav-open", next ? "1" : "0"); } catch { /* ignore */ }
+    return next;
+  });
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+  // Close the overlay on navigation, mobile only — desktop keeps the sidebar.
+  useEffect(() => {
+    try { if (!window.matchMedia("(min-width: 1024px)").matches) setNavOpen(false); } catch { /* ignore */ }
+  }, [location.pathname]);
 
   useEffect(() => {
     // When navigating to a route inside a collapsed group, expand that
@@ -196,25 +216,28 @@ export default function AdminShell() {
   return (
     <div className="oc" data-testid="admin-shell">
       <div className="flex min-h-screen">
-        <div className="hidden lg:flex">
-          <Sidebar openMap={openMap} onToggleSection={toggleSection} />
-        </div>
-
-        {mobileOpen ? (
-          <div className="fixed inset-0 z-40 flex lg:hidden">
-            <div className="absolute inset-0 bg-black/30" onClick={() => setMobileOpen(false)} aria-hidden="true" />
-            <div className="relative z-10">
-              <Sidebar onClose={() => setMobileOpen(false)} openMap={openMap} onToggleSection={toggleSection} />
+        {/* One nav instance: a fixed overlay drawer on mobile, a static column
+            on desktop (lg:static). Gated by navOpen, so the header button both
+            collapses the desktop sidebar and opens/closes the mobile drawer. */}
+        {navOpen ? (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+              onClick={() => setNavOpen(false)}
+              aria-hidden="true"
+            />
+            <div className="fixed inset-y-0 left-0 z-40 lg:static lg:z-auto">
+              <Sidebar onClose={() => setNavOpen(false)} openMap={openMap} onToggleSection={toggleSection} />
+              <button
+                type="button"
+                className="absolute right-3 top-3 z-20 btn small lg:hidden"
+                onClick={() => setNavOpen(false)}
+                aria-label="Close navigation"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              className="absolute right-3 top-3 z-20 btn small"
-              onClick={() => setMobileOpen(false)}
-              aria-label="Close navigation"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          </>
         ) : null}
 
         <div className="min-w-0 flex-1">
@@ -222,9 +245,11 @@ export default function AdminShell() {
             <div className="flex items-end gap-3 min-w-0">
               <button
                 type="button"
-                className="btn small lg:hidden"
-                onClick={() => setMobileOpen(true)}
-                aria-label="Open admin navigation"
+                className="btn small"
+                onClick={toggleNav}
+                aria-label={navOpen ? "Collapse navigation" : "Open navigation"}
+                aria-expanded={navOpen}
+                data-testid="admin-nav-toggle"
               >
                 <Menu className="h-4 w-4" />
               </button>
