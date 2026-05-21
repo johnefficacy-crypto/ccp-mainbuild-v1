@@ -511,8 +511,11 @@ export default function AdminScraper() {
                     type="checkbox"
                     checked={checked}
                     onChange={(e) => {
-                      if (sourceMode !== "selected") setSourceMode("selected");
-                      setSelectedIds(e.target.checked ? [...selectedIds, s.id] : selectedIds.filter((id) => id !== s.id));
+                      const next = e.target.checked ? [...selectedIds, s.id] : selectedIds.filter((id) => id !== s.id);
+                      setSelectedIds(next);
+                      // Empty selection → fall back to "all active" so the run
+                      // buttons don't get stuck disabled with 0 selected.
+                      setSourceMode(next.length ? "selected" : "all");
                     }}
                   />
                   <div className="min-w-0 flex-1">
