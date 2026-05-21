@@ -6,6 +6,10 @@ const mockGetSession = jest.fn();
 const mockApiPost = jest.fn();
 const mockPeekAnonymousId = jest.fn();
 const mockClearAnonymousId = jest.fn();
+const mockPeekMergeClaim = jest.fn();
+const mockClearMergeClaim = jest.fn();
+const mockToastSuccess = jest.fn();
+const mockToastError = jest.fn();
 
 // Hoisted call recorder for exchangeCodeForSession so the test can assert
 // that AuthCallback never calls it (detectSessionInUrl=true already did).
@@ -30,6 +34,17 @@ jest.mock("../../features/onboarding-chat/anonymousId", () => ({
   __esModule: true,
   peekAnonymousId: (...args) => mockPeekAnonymousId(...args),
   clearAnonymousId: (...args) => mockClearAnonymousId(...args),
+}));
+
+jest.mock("../../features/onboarding-chat/mergeClaim", () => ({
+  __esModule: true,
+  peekMergeClaim: (...args) => mockPeekMergeClaim(...args),
+  clearMergeClaim: (...args) => mockClearMergeClaim(...args),
+}));
+
+jest.mock("../../shared/ui/ToastProvider", () => ({
+  __esModule: true,
+  useToast: () => ({ success: mockToastSuccess, error: mockToastError }),
 }));
 
 // eslint-disable-next-line global-require
@@ -70,8 +85,13 @@ beforeEach(() => {
   mockPeekAnonymousId.mockReset();
   mockClearAnonymousId.mockReset();
   mockExchangeCodeForSession.mockReset();
+  mockPeekMergeClaim.mockReset();
+  mockClearMergeClaim.mockReset();
+  mockToastSuccess.mockReset();
+  mockToastError.mockReset();
   mockApiPost.mockResolvedValue({});
   mockPeekAnonymousId.mockReturnValue(null);
+  mockPeekMergeClaim.mockReturnValue(null);
 });
 
 test("redirects to a safe ?next= path", async () => {
@@ -157,4 +177,44 @@ test("never calls exchangeCodeForSession", async () => {
     await new Promise((r) => setTimeout(r, 0));
   });
   expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
+});
+
+test("consumes a merge claim with explicit Bearer header, then clears + toasts", async () => {
+  mockGetSession.mockResolvedValue({ data: { session: SESSION }, error: null });
+  mockPeekMergeClaim.mockReturnValue("merge_tok_123");
+  mockApiPost.mockResolvedValue({ ok: true, merged: {} });
+  mountAt("/auth/callback?next=%2Fapp");
+  await screen.findByTestId("app-marker");
+
+  expect(mockApiPost).toHaveBeenCalledWith(
+    "/api/onboarding/merge-claim/consume",
+    { token: "merge_tok_123" },
+    expect.objectContaining({
+      headers: { Authorization: `Bearer ${SESSION.access_token}` },
+    }),
+  );
+  await waitFor(() => expect(mockClearMergeClaim).toHaveBeenCalled());
+  await waitFor(() => expect(mockToastSuccess).toHaveBeenCalled());
+});
+
+test("merge-claim consume failure clears token and does not block redirect", async () => {
+  mockGetSession.mockResolvedValue({ data: { session: SESSION }, error: null });
+  mockPeekMergeClaim.mockReturnValue("merge_tok_bad");
+  mockApiPost.mockRejectedValue(new Error("merge failed"));
+  mountAt("/auth/callback?next=%2Fapp");
+  await screen.findByTestId("app-marker");
+
+  await waitFor(() => expect(mockClearMergeClaim).toHaveBeenCalled());
+  await waitFor(() => expect(mockToastError).toHaveBeenCalled());
+});
+
+test("no merge claim → consume endpoint is never called", async () => {
+  mockGetSession.mockResolvedValue({ data: { session: SESSION }, error: null });
+  mountAt("/auth/callback?next=%2Fapp");
+  await screen.findByTestId("app-marker");
+  expect(mockApiPost).not.toHaveBeenCalledWith(
+    "/api/onboarding/merge-claim/consume",
+    expect.anything(),
+    expect.anything(),
+  );
 });

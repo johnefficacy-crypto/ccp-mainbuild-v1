@@ -2,13 +2,16 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useAuth } from "../../lib/authContext";
+import { api } from "../../lib/api";
 
 // Sticky-ish top banner shown only while the user is anonymous. Calls
 // supabase.auth.linkIdentity({provider:'google'}) which keeps the
 // same user_id and flips is_anonymous=false on success. If the email
-// is already attached to a different account we sign the anonymous
-// user out and route them to the normal login flow so they don't
-// fork their data into two rows.
+// is already attached to a different account, linking is impossible —
+// instead of abandoning the anon profile we mint a single-use merge
+// claim (while we still hold the anon session), sign out, and carry the
+// token to the login page so the permanent account can absorb the
+// onboarding progress after Google sign-in.
 export default function GoogleLinkBanner() {
   const { linkGoogleIdentity, logout, user } = useAuth();
   const navigate = useNavigate();
@@ -16,6 +19,28 @@ export default function GoogleLinkBanner() {
   const [error, setError] = useState(null);
 
   if (!user?.is_anonymous) return null;
+
+  const handleConflict = async () => {
+    // Mint the merge claim BEFORE signing out — the create endpoint needs
+    // the anon session. If it fails for any reason, degrade gracefully to
+    // the old behaviour (plain logout + conflict notice) rather than
+    // blocking the user from logging into their real account.
+    let token = null;
+    try {
+      const resp = await api.post("/api/onboarding/merge-claim/create", {});
+      token = resp?.token || null;
+    } catch (e) {
+      token = null;
+    }
+    await logout();
+    if (token) {
+      navigate(
+        `/login?merge_claim=${encodeURIComponent(token)}&conflict=true`
+      );
+    } else {
+      navigate("/login?conflict=true");
+    }
+  };
 
   const handleLink = async () => {
     setPending(true);
@@ -27,8 +52,7 @@ export default function GoogleLinkBanner() {
         return;
       }
       if (result?.conflict) {
-        await logout();
-        navigate("/login?conflict=true");
+        await handleConflict();
         return;
       }
       setError(result?.error || "Couldn't link your Google account");
