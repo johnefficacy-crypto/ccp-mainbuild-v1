@@ -29,7 +29,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from httpx import ConnectError, RemoteProtocolError
+from httpx import ConnectError, PoolTimeout, ReadError, RemoteProtocolError, WriteError
 from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user, require_permission
@@ -43,12 +43,30 @@ from app.scraping.promotion_gate import HIGH_RISK_FIELDS as _HIGH_RISK_FIELDS_SH
 logger = logging.getLogger("career_copilot.api.admin_scrape")
 
 
-def _execute_with_retry(query_or_factory, *, op: str, retries: int = 1):
-    """Execute a PostgREST read with one retry on transient disconnects.
+# Transport-layer errors that are safe to treat as transient: a retry on a
+# fresh connection pool is expected to succeed. Deliberately EXCLUDES:
+#   * ``KeyError`` — masks real dict-access bugs (and the HTTP/2 stream-state
+#     race that surfaces as ``KeyError`` is fixed at the source by running the
+#     sync Supabase client on HTTP/1.1; see db/supabase_client._sync_options).
+#   * bare ``Exception`` — would swallow schema/assertion failures.
+#   * PostgREST ``APIError`` (e.g. 42703 "column does not exist") — a schema
+#     error must surface as 500, never be retried.
+TRANSIENT_TRANSPORT = (
+    RemoteProtocolError,
+    ConnectError,
+    ReadError,
+    WriteError,
+    PoolTimeout,
+)
 
-    Supabase's HTTP/2 pooler drops idle connections; the next read grabs the
-    half-dead socket and raises ``RemoteProtocolError`` / ``ConnectError``.
-    The earlier version retried the *same* pre-built builder, which reuses the
+
+def _execute_with_retry(query_or_factory, *, op: str, retries: int = 1):
+    """Execute a PostgREST read with one retry on transient transport errors.
+
+    Supabase's pooler drops idle connections; the next read grabs the
+    half-dead socket and raises one of ``TRANSIENT_TRANSPORT`` (server
+    disconnect, connection refused, read/write error, pool timeout). The
+    earlier version retried the *same* pre-built builder, which reuses the
     same dead connection — so the retry failed identically. The fix:
 
       * ``query_or_factory`` may be a zero-arg callable that BUILDS the query
@@ -65,7 +83,7 @@ def _execute_with_retry(query_or_factory, *, op: str, retries: int = 1):
     for attempt in range(retries + 1):
         try:
             return make().execute()
-        except (RemoteProtocolError, ConnectError) as e:
+        except TRANSIENT_TRANSPORT as e:
             last_err = e
             logger.warning(
                 "supabase_transient op=%s attempt=%s err=%s", op, attempt, repr(e)
@@ -83,17 +101,18 @@ def _surface_transient_as_503(op: str):
     into a 503 (with a ``Retry-After`` hint) instead of letting it fall
     through to the generic 500 handler.
 
-    ``_execute_with_retry`` re-raises ``RemoteProtocolError`` / ``ConnectError``
-    after its one retry is exhausted; this catches that at the request
-    boundary so the client can retry a genuinely transient blip. Every other
-    exception is left untouched (a real bug still surfaces as 500).
+    ``_execute_with_retry`` re-raises a ``TRANSIENT_TRANSPORT`` error after its
+    one retry is exhausted; this catches that at the request boundary so the
+    client can retry a genuinely transient blip. Every other exception is left
+    untouched (a real bug, including a PostgREST schema error, still surfaces
+    as 500).
     """
     def deco(fn):
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
             try:
                 return fn(*args, **kwargs)
-            except (RemoteProtocolError, ConnectError) as e:
+            except TRANSIENT_TRANSPORT as e:
                 logger.warning(
                     "admin_scrape.transient op=%s error_class=%s", op, type(e).__name__
                 )

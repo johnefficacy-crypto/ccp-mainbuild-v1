@@ -7,22 +7,35 @@ class Q:
     def __init__(self, data): self._data=data
     def select(self,*a,**k): return self
     def eq(self,*a,**k): return self
+    def in_(self,*a,**k): return self
+    def order(self,*a,**k): return self
     def limit(self,*a,**k): return self
     def execute(self): return R(self._data)
 
 
 def _mk_rec(**kw):
-    base={"id":"r1","organization_id":"o1","organizations":{"is_verified":True},"source_id":"s1","official_notification_url":"https://x.gov/n","official_apply_url":"https://x.gov/a","status":"open","apply_start_date":"2026-05-01","apply_end_date":"2026-05-10","posts":[{"id":"p"}],"rules_unavailable":True}
+    # No min_age/max_age/posts_unavailable/rules_unavailable — those columns
+    # never existed on ``recruitments`` (see docs/columns_audit.md). Publish
+    # readiness now derives eligibility-rule presence from the age_criteria /
+    # education_criteria joins, which ``_set_sb`` seeds with one age row.
+    base={"id":"r1","organization_id":"o1","organizations":{"is_verified":True},"source_id":"s1","official_notification_url":"https://x.gov/n","official_apply_url":"https://x.gov/a","status":"open","apply_start_date":"2026-05-01","apply_end_date":"2026-05-10","posts":[{"id":"p"}]}
     base.update(kw);return base
 
-def _set_sb(monkeypatch, rec, source=None):
+def _set_sb(monkeypatch, rec, source=None, age_rows=None):
     source = {"id":"s1","is_verified":True,"verification_status":"verified"} if source is None else source
+    # Default: one age_criteria row so has_post_rules is True (eligibility
+    # rules present). Tests that want the "rules missing" path pass age_rows=[].
+    age_rows = [{"id":"ac1"}] if age_rows is None else age_rows
     class SB:
         def table(self, name):
             if name=="recruitments":
                 return Q([rec])
             if name=="source_registry" and source:
                 return Q([source])
+            if name=="age_criteria":
+                return Q(age_rows)
+            if name=="education_criteria":
+                return Q([])
             return Q([])
     monkeypatch.setattr(admin_trust, "get_supabase_admin", lambda: SB())
 
@@ -124,6 +137,10 @@ class _FanoutSB:
                     return R([outer.rec])
                 if self.name == "source_registry":
                     return R([outer.source])
+                # One age row → has_post_rules True so the recruitment is
+                # publish-ready without the removed ``rules_unavailable`` flag.
+                if self.name == "age_criteria":
+                    return R([{"id": "ac-1"}])
                 if self.name == "profiles":
                     return R(list(outer.profiles))
                 if self.name == "eligibility_recompute_queue":
@@ -270,3 +287,130 @@ def test_publish_with_no_onboarded_users_is_still_ok(monkeypatch):
     assert out["recompute"]["enqueued"] == 0
     assert sb.enqueued == []
     assert any(u.get("publish_status") == "published" for u in sb.updates)
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Bug 1 — schema drift: recruitments has no min_age/max_age/posts_unavailable/
+# rules_unavailable. admin_recruitments must no longer select or read them
+# (was a deterministic PGRST 42703 → 500). See docs/columns_audit.md.
+# ───────────────────────────────────────────────────────────────────────────
+
+
+class _RecListSB:
+    """Fake covering every table admin_recruitments touches, returning rows
+    that DELIBERATELY omit the four dropped columns — mirroring the real
+    schema after the drift fix."""
+
+    def __init__(self, rec):
+        self._data = {
+            "recruitments": [rec],
+            "posts": [{"id": "p1", "recruitment_id": rec["id"]}],
+            "age_criteria": [{"post_id": "p1"}],
+            "education_criteria": [],
+            "source_registry": [
+                {"id": rec.get("source_id"), "is_verified": True, "verification_status": "verified"}
+            ],
+        }
+
+    def table(self, name):
+        return Q(self._data.get(name, []))
+
+
+def _bare_rec():
+    # Exactly the columns admin_recruitments selects post-fix — no min_age,
+    # max_age, posts_unavailable or rules_unavailable.
+    return {
+        "id": "r1", "name": "Test Recruitment", "publish_status": "draft", "status": "open",
+        "organization_id": "o1", "source_id": "s1",
+        "official_notification_url": "https://x.gov/n", "official_apply_url": "https://x.gov/a",
+        "source_pdf_url": None, "apply_start_date": "2026-05-01", "apply_end_date": "2026-05-10",
+        "notification_date": None, "total_vacancies": 10,
+        "published_by": None, "published_at": None, "review_notes": None,
+        "organizations": {"name": "Org", "is_verified": True},
+    }
+
+
+def test_admin_recruitments_200_without_dropped_columns(monkeypatch):
+    """Rows lacking min_age/max_age/posts_unavailable/rules_unavailable must
+    produce a clean 200-shaped payload — no KeyError, no 500."""
+    monkeypatch.setattr(admin_trust, "get_supabase_admin", lambda: _RecListSB(_bare_rec()))
+    out = admin_trust.admin_recruitments(_admin={"id": "a", "email": "a@x"})
+    assert "items" in out and len(out["items"]) == 1
+    item = out["items"][0]
+    assert item["id"] == "r1"
+    assert item["organization"] == "Org"
+    # The dropped columns must never leak into the response.
+    for k in ("min_age", "max_age", "posts_unavailable", "rules_unavailable"):
+        assert k not in item
+    # Verified org + source, posts present, age rules present → fully ready.
+    assert item["blocking_issues"] == []
+
+
+def test_admin_recruitments_select_omits_dropped_columns():
+    """Pin the regression: the SELECT and readiness logic must not reference
+    the phantom recruitment columns again."""
+    import inspect
+
+    sel = inspect.getsource(admin_trust.admin_recruitments)
+    ev = inspect.getsource(admin_trust._evaluate_readiness)
+    val = inspect.getsource(admin_trust.validate_recruitment_publish_readiness)
+    for col in ("posts_unavailable", "rules_unavailable"):
+        assert col not in sel, f"{col} must not be selected from recruitments"
+        assert col not in ev, f"{col} must not be read in _evaluate_readiness"
+        assert col not in val
+    # min_age/max_age must not be read off the recruitment row anymore (they
+    # live on age_criteria, not recruitments).
+    assert 'rec.get("min_age")' not in ev and "rec.get('min_age')" not in ev
+    assert 'rec.get("max_age")' not in ev and "rec.get('max_age')" not in ev
+
+
+def test_evaluate_readiness_blocks_when_no_posts_or_rules():
+    """Without age fields on the recruitment, readiness derives posts_missing /
+    eligibility_rules_missing purely from posts + has_post_rules."""
+    rec = {
+        "organization_id": "o1", "official_notification_url": "https://x.gov/n",
+        "official_apply_url": "https://x.gov/a", "status": "open",
+        "apply_start_date": "2026-05-01", "apply_end_date": "2026-05-10", "source_id": "s1",
+    }
+    out = admin_trust._evaluate_readiness(
+        rec, org={"is_verified": True}, posts=[], has_post_rules=False,
+        source={"is_verified": True},
+    )
+    assert "posts_missing" in out["blocking_issues"]
+    assert "eligibility_rules_missing" in out["blocking_issues"]
+    assert out["ready"] is False
+
+
+def test_evaluate_readiness_ready_with_posts_and_post_rules():
+    rec = {
+        "organization_id": "o1", "official_notification_url": "https://x.gov/n",
+        "official_apply_url": "https://x.gov/a", "status": "open",
+        "apply_start_date": "2026-05-01", "apply_end_date": "2026-05-10", "source_id": "s1",
+    }
+    out = admin_trust._evaluate_readiness(
+        rec, org={"is_verified": True}, posts=[{"id": "p"}], has_post_rules=True,
+        source={"is_verified": True},
+    )
+    assert out["ready"] is True
+    assert out["blocking_issues"] == []
+
+
+def test_evaluate_readiness_no_keyerror_on_minimal_row():
+    """A recruitment row missing every optional key must not raise KeyError —
+    every lookup uses .get(); the dropped columns are simply never accessed."""
+    out = admin_trust._evaluate_readiness(
+        {}, org={}, posts=[], has_post_rules=False, source=None,
+    )
+    assert out["ready"] is False
+    # organization_missing fires (no organization_id) — proves we walked the
+    # whole predicate set without an exception.
+    assert "organization_missing" in out["blocking_issues"]
+
+
+def test_publish_ready_uses_age_criteria_join(monkeypatch):
+    """The rules-present path now comes from age_criteria, not a recruitment
+    column: no age rows → eligibility_rules_missing blocks readiness."""
+    _set_sb(monkeypatch, _mk_rec(), age_rows=[])
+    out = admin_trust.validate_recruitment_publish_readiness("r1", {})
+    assert "eligibility_rules_missing" in out["blocking_issues"]
+    assert out["ready"] is False
