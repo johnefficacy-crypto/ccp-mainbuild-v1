@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import AuthLayout from "./AuthLayout";
 import { useAuth } from "../../lib/authContext";
 import { resolvePostAuthRedirect } from "../../lib/resolvePostAuthRedirect";
 import { useTurnstileChallenge } from "../../lib/useTurnstileChallenge";
+import { stashMergeClaim } from "../../features/onboarding-chat/mergeClaim";
 
 function humanizeAuthError(err) {
   const raw = (err && (err.message || err.error_description)) || "Unable to sign in";
@@ -35,6 +36,13 @@ export default function Login() {
   // Surface OAuth provider errors that AuthCallback bounced back here.
   const urlError = useMemo(() => searchParams.get("error"), [searchParams]);
   const [bannerError, setBannerError] = useState(urlError);
+
+  // A merge_claim token rides in on the URL when an anonymous user hit the
+  // "email already exists" conflict. Stash it before the Google OAuth redirect
+  // wipes the query string; AuthCallback consumes it once we're permanent.
+  useEffect(() => {
+    stashMergeClaim(searchParams.get("merge_claim"));
+  }, [searchParams]);
 
   async function handleGoogleSignIn() {
     setLoading(true);

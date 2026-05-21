@@ -318,6 +318,24 @@ def get_current_user_required_permanent(
     return user
 
 
+def get_current_user_required_anonymous(
+    user: dict = Depends(get_current_user),
+) -> dict:
+    """Like :func:`get_current_user` but rejects *permanent* Supabase users.
+
+    The mirror of :func:`get_current_user_required_permanent`. Used by the
+    merge-claim *mint* endpoint: only an anonymous session may create a claim
+    over its own onboarding progress, so a permanent caller (who has nothing to
+    rescue) is rejected with a 403.
+    """
+    if not user.get("is_anonymous"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="An anonymous session is required for this resource",
+        )
+    return user
+
+
 def get_optional_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
