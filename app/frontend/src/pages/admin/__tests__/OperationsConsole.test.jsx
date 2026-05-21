@@ -211,6 +211,49 @@ describe("OperationsConsole — resolve official source UX", () => {
     expect(mockToastInfo).not.toHaveBeenCalled();
   });
 
+  test("P0-4: resolve with other fields still unverified keeps the field checklist (no blank)", async () => {
+    // Resolved official source, but high-risk fields (official url, vacancies)
+    // are NOT yet verified → promotable stays false. Workspace must keep the
+    // candidate + show the field-review checklist + a blocked promote bar.
+    const resolvedUnverified = {
+      ...QUEUE_ITEM_UNRESOLVED,
+      source_name: "Official portal",
+      source_type: "official_html",
+      official_source_resolved: true,
+      promotable: false,
+      unverified_fields: ["official_notification_url", "total_vacancies"],
+    };
+    apiGetMock.mockImplementation((path) => {
+      if (path.startsWith("/api/admin/sources")) return Promise.resolve({ items: [] });
+      if (path.startsWith("/api/admin/scrape/runs")) return Promise.resolve({ items: [] });
+      if (path.startsWith("/api/admin/scrape/queue")) {
+        if (path.includes("include_detail=true")) {
+          return Promise.resolve({
+            items: [{ ...DETAIL_ROW, official_source_resolved: resolvedNow, promotable: false, unverified_fields: ["official_notification_url", "total_vacancies"] }],
+          });
+        }
+        return Promise.resolve({ items: [resolvedNow ? resolvedUnverified : QUEUE_ITEM_UNRESOLVED] });
+      }
+      if (path.startsWith("/api/admin/recruitments")) return Promise.resolve({ items: [] });
+      if (/\/conflicts$/.test(path)) return Promise.resolve({ items: [] });
+      return Promise.resolve({ items: [] });
+    });
+
+    renderConsole();
+    await waitFor(() => expect(screen.getByTestId(`quick-action-${HOST}`)).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByTestId(`quick-action-${HOST}`)); });
+
+    // Resolver disappears once resolved…
+    await waitFor(() => expect(screen.queryByTestId("official-source-quick-resolver")).toBeNull());
+    // …but the workspace is NOT blank: candidate still selected,
+    expect(screen.getByTestId("queue-fix-section").textContent).toContain("q-1");
+    // the field checklist is shown to verify the remaining fields,
+    expect(screen.getByTestId("field-review-group")).toBeTruthy();
+    // promotion stays blocked, and the selection was not cleared.
+    expect(screen.getByTestId("promote-bar").textContent).toMatch(/promote blocked/i);
+    expect(mockToastInfo).not.toHaveBeenCalled();
+  });
+
   test("P0-1: CurrentActionCard primary button invokes the parent handler (no dead button)", async () => {
     renderConsole();
     await waitFor(() => expect(screen.getByTestId("oc-current-action-primary")).toBeTruthy());
