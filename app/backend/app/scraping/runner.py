@@ -1870,11 +1870,21 @@ def run_scraping_pass(
             and not official_source_host
         )
         if resolved_without_host:
+            # A host-applicable source with no resolved host is NOT evidence
+            # grade. Force the full unverified contract so the promotion gate
+            # blocks it and the row carries evidence_required=True downstream
+            # (extraction_status is set to needs_review below). Without
+            # forcing evidence_required the row could land
+            # resolved=False/host=None/evidence_required=False — the exact
+            # regression migration 129 had to repair.
             official_source_resolved = False
-            extracted_payload["_meta"]["warnings"] = [
-                *(extracted_payload["_meta"].get("warnings") or []),
-                "resolved_without_host_blocked",
-            ]
+            evidence_required = True
+            warnings = extracted_payload["_meta"].get("warnings") or []
+            if "resolved_without_host_blocked" not in warnings:
+                extracted_payload["_meta"]["warnings"] = [
+                    *warnings,
+                    "resolved_without_host_blocked",
+                ]
 
         # P1-3: a perfect, contradiction-free ``data_quality_score`` is rare
         # for genuine scraped notifications. Flag it (non-blocking) so the

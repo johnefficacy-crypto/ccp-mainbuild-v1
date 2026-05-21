@@ -1651,6 +1651,19 @@ def resolve_official_source_for_queue_item(
     primary_url = body.official_notification_url or body.official_apply_url or source.get("official_url") or ""
     official_host = (urlparse(primary_url).hostname or "").lower() if primary_url else None
 
+    # A resolution with no parseable host is not evidence grade: it would set
+    # official_source_resolved=True / official_source_host=null /
+    # evidence_required=False, which the promotion gate cannot catch (it only
+    # blocks on resolved=False). Refuse rather than create that bad state.
+    if not official_host:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Could not derive an official host from the supplied URLs",
+                "reason": "official_host_unresolved",
+            },
+        )
+
     update: dict[str, Any] = {
         "source_id": body.source_id,
         "official_source_resolved": True,
