@@ -1085,3 +1085,115 @@ def test_server_transient_handler_returns_503():
     resp = asyncio.run(server.transient_transport_handler(req, RemoteProtocolError("disc")))
     assert resp.status_code == 503
     assert resp.headers["Retry-After"] == "2"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Bug 3 — widen the transient-transport family for the read retry helper.
+#  Adds ReadError / WriteError / PoolTimeout; KeyError and PostgREST schema
+#  errors (42703) must NOT be retried. The retry resets the cached admin
+#  client between attempts so the rebuild lands on a fresh connection pool.
+# ════════════════════════════════════════════════════════════════════════════
+
+from httpx import PoolTimeout, ReadError, WriteError  # noqa: E402
+
+from app.api.admin_scrape import TRANSIENT_TRANSPORT  # noqa: E402
+
+
+class _SchemaError(Exception):
+    """Stand-in for postgrest's APIError on a 42703 (column does not exist).
+    Carries a ``.code`` like the real APIError so the test is faithful even
+    where the postgrest package isn't importable in this environment."""
+
+    def __init__(self, message="column recruitments.min_age does not exist", code="42703"):
+        super().__init__(message)
+        self.code = code
+
+
+def test_read_error_is_in_transient_family():
+    # The whole point of Bug 3: ReadError/WriteError/PoolTimeout join the set.
+    assert ReadError in TRANSIENT_TRANSPORT
+    assert WriteError in TRANSIENT_TRANSPORT
+    assert PoolTimeout in TRANSIENT_TRANSPORT
+    # And the originals are still there.
+    assert RemoteProtocolError in TRANSIENT_TRANSPORT
+    assert ConnectError in TRANSIENT_TRANSPORT
+
+
+def test_keyerror_not_in_transient_family():
+    """Regression: KeyError must NEVER be transient — it would mask real
+    dict-access bugs (and the HTTP/2 stream KeyError is fixed at the source by
+    running the sync client on HTTP/1.1, not by retrying here)."""
+    assert KeyError not in TRANSIENT_TRANSPORT
+
+
+def test_read_error_recovers_after_client_reset(monkeypatch):
+    """ReadError on the first call, success on the retry: the helper resets the
+    cached admin client (cache_clear-equivalent) so the rebuild uses a fresh
+    pool, then returns rows — endpoint returns 200, not 503."""
+    monkeypatch.setattr(admin_scrape.time, "sleep", lambda *_: None)
+    resets = {"n": 0}
+    monkeypatch.setattr(admin_scrape, "reset_supabase_admin", lambda: resets.__setitem__("n", resets["n"] + 1))
+
+    b = _FlakyOnce(1, ReadError("read timed out"))
+    out = _execute_with_retry(b, op="t.read")
+    assert out.data == ["ok"]
+    assert b.calls == 2          # failed once, retried once, succeeded
+    assert resets["n"] == 1      # cached client dropped before the retry
+
+
+def test_write_error_and_pool_timeout_are_retried(monkeypatch):
+    monkeypatch.setattr(admin_scrape.time, "sleep", lambda *_: None)
+    monkeypatch.setattr(admin_scrape, "reset_supabase_admin", lambda: None)
+    for err in (WriteError("broken pipe"), PoolTimeout("no connection available")):
+        b = _FlakyOnce(1, err)
+        assert _execute_with_retry(b, op="t.read").data == ["ok"]
+        assert b.calls == 2
+
+
+def test_keyerror_not_retried_surfaces(monkeypatch):
+    """A KeyError (e.g. the httpcore stream-state race, were it to reach here)
+    must propagate untouched after exactly one call — never retried."""
+    monkeypatch.setattr(admin_scrape.time, "sleep", lambda *_: None)
+    resets = {"n": 0}
+    monkeypatch.setattr(admin_scrape, "reset_supabase_admin", lambda: resets.__setitem__("n", resets["n"] + 1))
+
+    b = _FlakyOnce(1, KeyError(5))
+    with pytest.raises(KeyError):
+        _execute_with_retry(b, op="t.read")
+    assert b.calls == 1          # raised immediately, no retry
+    assert resets["n"] == 0      # no reset on a non-transient error
+
+
+def test_schema_error_42703_not_retried(monkeypatch):
+    """PostgREST schema errors (42703 column-does-not-exist) are not transient:
+    surface as 500, never retried — masking them would hide real drift."""
+    monkeypatch.setattr(admin_scrape.time, "sleep", lambda *_: None)
+    b = _FlakyOnce(1, _SchemaError())
+    with pytest.raises(_SchemaError):
+        _execute_with_retry(b, op="t.read")
+    assert b.calls == 1
+    assert _SchemaError not in TRANSIENT_TRANSPORT
+
+
+def test_surface_503_decorator_ignores_schema_error():
+    """The request-boundary decorator must let a schema error fall through to
+    the generic 500 handler, not dress it up as a retryable 503."""
+    @_surface_transient_as_503("op_schema")
+    def f():
+        raise _SchemaError()
+
+    with pytest.raises(_SchemaError):
+        f()
+
+
+def test_surface_503_decorator_maps_read_error():
+    """An unrecovered ReadError reaching the boundary now maps to 503 (same as
+    RemoteProtocolError) — the family is consistent across retry and surface."""
+    @_surface_transient_as_503("op_read")
+    def f():
+        raise ReadError("read timed out")
+
+    with pytest.raises(_HTTPException) as ei:
+        f()
+    assert ei.value.status_code == 503
+    assert ei.value.detail["code"] == "supabase_transient_disconnect"

@@ -183,11 +183,10 @@ def _evaluate_readiness(rec: dict, *, org: dict, posts: list, has_post_rules: bo
                 blocking.append("apply_dates_reversed")
         except Exception:
             blocking.append("apply_dates_invalid")
-    if not posts and not rec.get("posts_unavailable"):
+    if not posts:
         blocking.append("posts_missing")
-    if not rec.get("rules_unavailable"):
-        if not has_post_rules and not rec.get("min_age") and not rec.get("max_age"):
-            blocking.append("eligibility_rules_missing")
+    if not has_post_rules:
+        blocking.append("eligibility_rules_missing")
     if not rec.get("source_id"):
         blocking.append("source_provenance_missing")
     elif not source:
@@ -206,7 +205,7 @@ def validate_recruitment_publish_readiness(recruitment_id: str, admin: dict):
     posts = rec.get("posts") or []
     post_ids = [p.get("id") for p in posts if p.get("id")]
     has_post_rules = False
-    if post_ids and not rec.get("rules_unavailable"):
+    if post_ids:
         age_rows = sb.table("age_criteria").select("id").in_("post_id", post_ids).limit(1).execute().data or []
         edu_rows = sb.table("education_criteria").select("id").in_("post_id", post_ids).limit(1).execute().data or []
         has_post_rules = bool(age_rows or edu_rows)
@@ -382,14 +381,14 @@ def admin_recruitments(_admin: dict = Depends(require_permission("recruitments.m
     sb=get_supabase_admin()
     # Inline blocker-fix form needs editable fields (organization_id, source_id,
     # apply window, total_vacancies, notification_date) — select them too so the
-    # Operations Console can pre-fill the form without a per-row GET. Readiness
-    # fields (status, min/max_age, *_unavailable) are selected so the batch
-    # readiness pass below needs no per-recruitment fetch.
+    # Operations Console can pre-fill the form without a per-row GET. ``status``
+    # feeds the batch readiness pass below (open recruitments need an apply URL);
+    # eligibility-rule presence is derived from the age_criteria/education_criteria
+    # joins, not from recruitment columns.
     rows=sb.table("recruitments").select(
         "id,name,publish_status,status,organization_id,source_id,"
         "official_notification_url,official_apply_url,source_pdf_url,"
         "apply_start_date,apply_end_date,notification_date,total_vacancies,"
-        "min_age,max_age,posts_unavailable,rules_unavailable,"
         "published_by,published_at,review_notes,organizations(name,is_verified)"
     ).order("created_at", desc=True).limit(200).execute().data or []
 

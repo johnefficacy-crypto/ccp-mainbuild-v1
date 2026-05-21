@@ -35,7 +35,8 @@ settings = get_settings()
 # so the next request can grab a half-dead socket and fail the read with
 # ``RemoteProtocolError: Server disconnected``. Closing our side at 30s
 # keeps every pooled connection comfortably inside Supabase's window.
-# HTTP/2 stays on — only the keepalive window changes.
+# Shared by both clients; the sync client additionally runs HTTP/1.1
+# (see ``_sync_options``) while the async client keeps HTTP/2.
 _LIMITS = httpx.Limits(
     max_keepalive_connections=20,
     max_connections=40,
@@ -62,7 +63,22 @@ def _log_keepalive(client: Client) -> None:
 
 
 def _sync_options() -> SyncClientOptions:
-    return SyncClientOptions(httpx_client=httpx.Client(limits=_LIMITS, http2=True))
+    # HTTP/2 is disabled on the sync client only. httpcore's sync HTTP/2 stream
+    # cleanup has a stream-state race that raises ``KeyError: <stream_id>`` from
+    # ``_response_closed`` (httpcore/_sync/http2.py) under the admin console's
+    # rapid-fire reads (e.g. GET /api/admin/scrape/queue). No upstream fix
+    # exists — httpcore 1.0.9 (pinned) is the newest release — and the read
+    # retry helper deliberately won't catch ``KeyError`` (it would mask real
+    # dict-access bugs). HTTP/1.1 sidesteps the race entirely; the cost is
+    # ~10-15% more latency per request from losing multiplexing, an acceptable
+    # trade for eliminating the 500s. The async client keeps HTTP/2.
+    return SyncClientOptions(
+        httpx_client=httpx.Client(
+            limits=_LIMITS,
+            http2=False,
+            timeout=httpx.Timeout(30.0),
+        )
+    )
 
 
 def _async_options() -> AsyncClientOptions:

@@ -30,7 +30,21 @@ def test_sync_options_httpx_pool_uses_limits():
         assert pool._keepalive_expiry == 30.0
         assert pool._max_keepalive_connections == 20
         assert pool._max_connections == 40
-        assert pool._http2 is True  # HTTP/2 stays on
+        # HTTP/2 is OFF on the sync client to dodge httpcore's sync HTTP/2
+        # stream-cleanup KeyError race (httpcore 1.0.9, no upstream fix).
+        assert pool._http2 is False
+    finally:
+        opts.httpx_client.close()
+
+
+def test_sync_client_http1_latency_tradeoff():
+    """Sync client runs HTTP/1.1: no multiplexing (~10-15% slower per request)
+    is the deliberate trade for eliminating the stream-state KeyError 500s.
+    Pinned here so a re-enable of HTTP/2 on the sync path trips this test."""
+    opts = sc._sync_options()
+    pool = _pool(opts.httpx_client)
+    try:
+        assert pool._http2 is False
     finally:
         opts.httpx_client.close()
 
@@ -40,6 +54,9 @@ def test_async_options_httpx_pool_uses_limits():
     pool = _pool(opts.httpx_client)
     assert pool._keepalive_expiry == 30.0
     assert pool._max_keepalive_connections == 20
+    # Async client keeps HTTP/2 — the race is sync-only; this PR does not
+    # touch the async path.
+    assert pool._http2 is True
 
 
 def test_admin_client_passes_keepalive_options(monkeypatch):
