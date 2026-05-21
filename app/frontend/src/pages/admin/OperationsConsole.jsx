@@ -139,9 +139,10 @@ export default function OperationsConsole() {
   const hydrateQueueDetail = useCallback(async (id) => {
     if (!id) { setQueueDetail(null); return; }
     try {
-      // include_duplicates=false: the workspace doesn't use the live
-      // duplicate scan here (we only stash the heavy content fields below),
-      // so skip the 400-row recruitments scan on every detail refresh.
+      // include_duplicates=false skips the live 400-row scan but still returns
+      // the precomputed duplicate_candidates column — enough for the merge UI.
+      // We stash the heavy content fields AND the relational evidence details +
+      // duplicate candidates, which the lightweight list response omits.
       const r = await api.get(
         `/api/admin/scrape/queue?status=all&include_detail=true&include_duplicates=false&item_id=${encodeURIComponent(id)}&limit=1`,
       );
@@ -153,6 +154,8 @@ export default function OperationsConsole() {
           raw_extracted_item: full.raw_extracted_item ?? full.extracted_data ?? null,
           raw_html: full.raw_html ?? null,
           raw_payload: full.raw_payload ?? null,
+          field_evidence_details: full.field_evidence_details ?? null,
+          duplicate_candidates: full.duplicate_candidates ?? null,
         });
       }
     } catch {
@@ -178,17 +181,23 @@ export default function OperationsConsole() {
     const base = queue.find((q) => q.id === queueId) || null;
     if (!base) return null;
     if (queueDetail && queueDetail.id === base.id) {
-      // Overlay ONLY the heavy content fields. List-level gate/status
-      // fields (official_source_resolved, unverified_fields, promotable…)
-      // come from the freshest loadAll so a stale detail snapshot can't
-      // revert the gate after a resolve. ``??`` keeps the list value when
-      // present and falls back to the hydrated detail otherwise.
+      // Overlay the heavy content + relational evidence/duplicate fields the
+      // lightweight list omits. Gate/status fields (official_source_resolved,
+      // unverified_fields, promotable, field_evidence_status) are NOT overlaid
+      // so they stay from the freshest queue list — a stale detail snapshot
+      // can't revert the gate. field_evidence_details / duplicate_candidates
+      // are absent from the list, so they must come from the detail fetch
+      // (which is re-run after every reload, so they stay fresh).
       return {
         ...base,
         extracted_data: base.extracted_data ?? queueDetail.extracted_data,
         raw_extracted_item: base.raw_extracted_item ?? queueDetail.raw_extracted_item,
         raw_html: base.raw_html ?? queueDetail.raw_html,
         raw_payload: base.raw_payload ?? queueDetail.raw_payload,
+        field_evidence_details: queueDetail.field_evidence_details ?? base.field_evidence_details ?? [],
+        duplicate_candidates: (base.duplicate_candidates && base.duplicate_candidates.length)
+          ? base.duplicate_candidates
+          : (queueDetail.duplicate_candidates ?? base.duplicate_candidates ?? []),
       };
     }
     return base;
