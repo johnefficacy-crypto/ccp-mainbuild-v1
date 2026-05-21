@@ -71,7 +71,10 @@ function isBlank(v) {
 const STATUS_BADGE = {
   verified: { cls: "badge resolved", text: "verified" },
   unverified: { cls: "badge blocker", text: "unverified" },
-  rejected: { cls: "badge neutral", text: "flagged" },
+  // "rejected" is non-terminal: the admin flagged the value as wrong and a
+  // correction is owed before promotion. It must read as action-owed, so it
+  // uses the destructive blocker token rather than the muted neutral one.
+  rejected: { cls: "badge blocker", text: "Flagged — correction required" },
   corrected: { cls: "badge info", text: "corrected" },
   suggested: { cls: "badge pending", text: "suggested" },
 };
@@ -154,6 +157,11 @@ function FieldRow({ field, value, status, details, blocking, entityScope, onFiel
         )}
       </div>
       <EvidenceSnippet details={details} />
+      {statusKey === "rejected" && details?.reviewer_notes ? (
+        <div className="anno" style={{ marginTop: 4 }} data-testid={`field-flag-reason-${field}`}>
+          Flag reason: {details.reviewer_notes}
+        </div>
+      ) : null}
       {localError ? <div className="err-row" style={{ marginTop: 6 }}>{localError}</div> : null}
 
       {verified ? null : rejecting ? (
@@ -193,6 +201,27 @@ function FieldRow({ field, value, status, details, blocking, entityScope, onFiel
           )}
           <button type="button" className="btn primary small" disabled={correction === ""} onClick={saveCorrection}>Save</button>
           <button type="button" className="btn ghost small" onClick={() => { setEditing(false); setCorrection(""); setLocalError(""); }}>Cancel</button>
+        </div>
+      ) : statusKey === "rejected" ? (
+        <div className="row" style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            className="btn primary small"
+            onClick={() => { setEditing(true); setLocalError(""); }}
+            data-testid={`field-correct-${field}`}
+          >
+            Correct value
+          </button>
+          <button
+            type="button"
+            className="btn ghost small"
+            onClick={verify}
+            disabled={blank}
+            title={blank ? "No value extracted — correct this field" : undefined}
+            data-testid={`field-verify-${field}`}
+          >
+            Verify instead
+          </button>
         </div>
       ) : (
         <div className="row" style={{ marginTop: 8 }}>
@@ -255,25 +284,49 @@ export default function FieldReviewGroup({ extracted, evidence, evidenceDetails,
     [recommendedFields, required],
   );
 
-  // Fields the "Verify all" shortcut still needs to confirm: anything not
-  // already verified or flagged across both groups — and only fields that
-  // actually have a value (blank fields can't be verified).
+  // Fields the "Verify all" shortcut still needs to confirm. We exclude the
+  // two terminal gate-pass states (verified, corrected) and — separately —
+  // explicitly-flagged fields: the admin chose to reject those, so a bulk
+  // "Verify all" must not silently re-verify them. Each flagged field needs
+  // its own per-field correction instead. Blank fields are also skipped
+  // because there is nothing to verify.
   const pending = useMemo(() => {
     const all = [...required, ...recommended];
     return all.filter((f) => {
       const { status, detail } = statusFor(f, evidence, details);
-      if (status === "verified" || status === "rejected") return false;
+      if (status === "verified" || status === "corrected") return false;
+      // Non-terminal but requires explicit per-field correction, not bulk
+      // re-verify — never auto-override the admin's flag.
+      if (status === "rejected") return false;
       const effective = detail?.corrected_value != null ? detail.corrected_value : extracted?.[f];
       return !isBlank(effective);
     });
   }, [required, recommended, evidence, details, extracted]);
 
-  // Any field still awaiting a decision, including blank ones that can't be
-  // verified — used so the header doesn't claim "all verified" prematurely.
+  // Any field still blocking promotion. Only the terminal gate-pass states
+  // (verified, corrected) count as resolved; flagged ("rejected") is
+  // non-terminal and stays unresolved until corrected.
   const anyUnresolved = useMemo(() => [...required, ...recommended].some((f) => {
     const { status } = statusFor(f, evidence, details);
-    return status !== "verified" && status !== "rejected";
+    return status !== "verified" && status !== "corrected";
   }), [required, recommended, evidence, details]);
+
+  // Bucket every field for the header summary. "reviewed" = terminal
+  // gate-pass (verified|corrected); "flagged" = rejected (blocks promotion,
+  // correction owed); "pending" = everything still awaiting first review.
+  const counts = useMemo(() => {
+    const all = [...required, ...recommended];
+    let reviewed = 0;
+    let flagged = 0;
+    let pendingReview = 0;
+    for (const f of all) {
+      const { status } = statusFor(f, evidence, details);
+      if (status === "verified" || status === "corrected") reviewed += 1;
+      else if (status === "rejected") flagged += 1;
+      else pendingReview += 1;
+    }
+    return { total: all.length, reviewed, flagged, pending: pendingReview };
+  }, [required, recommended, evidence, details]);
 
   const verifyAll = async () => {
     for (const field of pending) {
@@ -292,14 +345,33 @@ export default function FieldReviewGroup({ extracted, evidence, evidenceDetails,
           <button type="button" className="btn small" onClick={verifyAll} data-testid="field-verify-all">
             Verify all ({pending.length})
           </button>
+        ) : counts.flagged > 0 ? (
+          <span className="badge blocker" data-testid="field-review-flagged-block">Flagged fields block promotion</span>
         ) : anyUnresolved ? (
           <span className="anno">Blank fields need a correction or flag</span>
         ) : (
           <span className="badge resolved">all verified</span>
         )}
       </div>
+      <div
+        className="anno"
+        data-testid="field-review-summary"
+        style={counts.flagged > 0 ? { color: "var(--blocker)", fontWeight: 600 } : undefined}
+      >
+        {counts.reviewed}/{counts.total} reviewed
+        {" · "}
+        <span
+          data-testid="field-review-flagged-count"
+          style={counts.flagged > 0 ? { color: "var(--blocker)", fontWeight: 700 } : undefined}
+        >
+          {counts.flagged} flagged
+        </span>
+        {" · "}
+        {counts.pending} pending
+      </div>
       <div className="anno">
         Promotion is blocked until fields marked <span style={{ color: "var(--blocker)", fontWeight: 700 }}>*</span> are verified or corrected.
+        {counts.flagged > 0 ? " Flagged fields must be corrected first." : null}
       </div>
       {required.length ? (
         <div className="fld-list">
