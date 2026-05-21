@@ -392,7 +392,7 @@ def test_list_lightweight_strips_heavy_fields(sb):
     assert item["duplicate_candidates"] == []
 
 
-def test_list_lightweight_evidence_query_is_three_columns(sb):
+def test_list_lightweight_evidence_query_is_slim(sb):
     sb.tables["scrape_queue"] = [dict(_FULL_ROW)]
     sb.tables["extracted_field_evidence"] = [
         {"scrape_queue_id": "q-full", "field_name": "apply_end_date", "reviewer_status": "verified"},
@@ -401,19 +401,23 @@ def test_list_lightweight_evidence_query_is_three_columns(sb):
     # Find the evidence query the endpoint sent.
     evidence_queries = [q for q in sb.queries if q.table == "extracted_field_evidence"]
     assert evidence_queries, "expected at least one evidence query"
-    # The select(...) call's first positional arg is the column list. The
-    # mock doesn't record it, so re-inspect the function by re-running
-    # with a wrapper. Simpler: assert the function asks the evidence
-    # table for ≤ 3 fields by inspecting the source string.
     import inspect
 
     src = inspect.getsource(admin_scrape.list_scrape_queue)
+    # The table path now also selects entity_type/entity_key so post-scoped
+    # ``unverified_fields`` is computed correctly here too — but it must STILL
+    # exclude the heavy detail columns (evidence_text, corrected_value,
+    # document_id, etc.) to keep the table render path light.
     lightweight_select = (
-        '"scrape_queue_id, field_name, reviewer_status"'
+        '"scrape_queue_id, field_name, reviewer_status, entity_type, entity_key"'
     )
     assert lightweight_select in src, (
-        "lightweight evidence path must select only the 3-column slim view"
+        "lightweight evidence path must select the slim status+scope view"
     )
+    # Heavy columns must not be on the slim path.
+    slim_block = src.split("else:", 1)[1] if "else:" in src else src
+    for heavy in ("evidence_text", "corrected_value", "document_id", "char_start"):
+        assert f"{heavy}" not in lightweight_select, heavy
 
 
 def test_list_detail_preserves_legacy_shape(sb):
@@ -1197,3 +1201,103 @@ def test_surface_503_decorator_maps_read_error():
         f()
     assert ei.value.status_code == 503
     assert ei.value.detail["code"] == "supabase_transient_disconnect"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Post-scoped evidence: per-post unverified_fields (BUG 1) + post-N entity
+#  resolution (BUG 4). Pins the requires_domicile promotion-block fixes.
+# ════════════════════════════════════════════════════════════════════════════
+
+
+def _row_with_posts(post_names):
+    row = dict(_FULL_ROW)
+    row["id"] = "q-dom"
+    row["extracted_data"] = {
+        **_FULL_ROW["extracted_data"],
+        "posts": [{"post_name": n} for n in post_names],
+    }
+    return row
+
+
+def _dom_rows(queue_id, names, status):
+    return [
+        {"scrape_queue_id": queue_id, "field_name": "requires_domicile",
+         "entity_type": "post", "entity_key": n, "reviewer_status": status}
+        for n in names
+    ]
+
+
+def test_post_scoped_all_posts_verified_clears_requires_domicile(sb):
+    sb.tables["scrape_queue"] = [_row_with_posts(["A", "B", "C"])]
+    sb.tables["extracted_field_evidence"] = _dom_rows("q-dom", ["A", "B", "C"], "verified")
+    item = _list_queue(include_detail=False, item_id="q-dom")["items"][0]
+    assert "requires_domicile" not in item["unverified_fields"]
+
+
+def test_post_scoped_partial_keeps_requires_domicile_unverified(sb):
+    sb.tables["scrape_queue"] = [_row_with_posts(["A", "B", "C"])]
+    sb.tables["extracted_field_evidence"] = _dom_rows("q-dom", ["A", "B"], "verified")  # C missing
+    item = _list_queue(include_detail=False, item_id="q-dom")["items"][0]
+    assert "requires_domicile" in item["unverified_fields"]
+
+
+def test_post_scoped_corrected_counts_as_resolved(sb):
+    sb.tables["scrape_queue"] = [_row_with_posts(["A", "B"])]
+    sb.tables["extracted_field_evidence"] = _dom_rows("q-dom", ["A", "B"], "corrected")
+    item = _list_queue(include_detail=False, item_id="q-dom")["items"][0]
+    assert "requires_domicile" not in item["unverified_fields"]
+
+
+def test_scoped_map_present_and_flat_map_backcompat(sb):
+    sb.tables["scrape_queue"] = [_row_with_posts(["A", "B"])]
+    sb.tables["extracted_field_evidence"] = [
+        {"scrape_queue_id": "q-dom", "field_name": "requires_domicile",
+         "entity_type": "post", "entity_key": "A", "reviewer_status": "verified"},
+        {"scrape_queue_id": "q-dom", "field_name": "requires_domicile",
+         "entity_type": "post", "entity_key": "B", "reviewer_status": "unverified"},
+        {"scrape_queue_id": "q-dom", "field_name": "apply_end_date",
+         "reviewer_status": "verified"},
+    ]
+    item = _list_queue(include_detail=False, item_id="q-dom")["items"][0]
+    scoped = item["field_evidence_status_scoped"]["requires_domicile"]
+    assert scoped.get("post:A") == "verified"
+    assert scoped.get("post:B") == "unverified"
+    # B unverified → field still blocks.
+    assert "requires_domicile" in item["unverified_fields"]
+    # Flat map retained for backward compatibility / non-post-scoped fields.
+    assert "requires_domicile" in item["field_evidence_status"]
+    assert item["field_evidence_status"].get("apply_end_date") == "verified"
+
+
+def test_resolve_entity_path_name_match_preferred():
+    data = {"posts": [{"post_name": "Alpha"}, {"post_name": "MyPost"}]}
+    assert admin_scrape._resolve_entity_path(data, "requires_domicile", "post", "MyPost") == "posts.1.requires_domicile"
+
+
+def test_resolve_entity_path_post_index_fallback_when_unnamed():
+    data = {"posts": [{"post_name": ""}, {"post_name": ""}, {}]}
+    assert admin_scrape._resolve_entity_path(data, "requires_domicile", "post", "post-1") == "posts.1.requires_domicile"
+
+
+def test_resolve_entity_path_index_out_of_range_returns_none():
+    data = {"posts": [{}, {}, {}]}
+    assert admin_scrape._resolve_entity_path(data, "requires_domicile", "post", "post-99") is None
+
+
+def test_patch_post_index_fallback_patches_correct_post(sb):
+    sb.tables["scrape_queue"] = [{"id": "q-x", "extracted_data": {"posts": [{"post_name": ""}, {"post_name": ""}]}}]
+    admin_scrape.patch_scrape_queue_extracted_field(
+        sb, "q-x", "requires_domicile", True, entity_type="post", entity_key="post-1",
+    )
+    posts = sb.tables["scrape_queue"][0]["extracted_data"]["posts"]
+    assert posts[1]["requires_domicile"] is True
+    assert "requires_domicile" not in posts[0]
+
+
+def test_patch_post_index_out_of_range_raises_422(sb):
+    sb.tables["scrape_queue"] = [{"id": "q-x", "extracted_data": {"posts": [{}, {}, {}]}}]
+    with pytest.raises(_HTTPException) as ei:
+        admin_scrape.patch_scrape_queue_extracted_field(
+            sb, "q-x", "requires_domicile", True, entity_type="post", entity_key="post-99",
+        )
+    assert ei.value.status_code == 422

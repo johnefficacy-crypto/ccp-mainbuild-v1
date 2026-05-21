@@ -117,6 +117,41 @@ order by entity_key;
 3. Wait for refresh.
 4. Promote button enabled + promotion-preview ready → PASS.
 
+## Implementation status (this PR)
+
+- **BUG 1 — FIXED.** `list_scrape_queue` now builds `field_evidence_status_scoped`
+  (`[field]["<entity_type>:<entity_key>"] = status`) alongside the flat
+  `field_evidence_status` (kept for back-compat), and computes
+  `unverified_fields`/`promotable` per-post for `POST_SCOPED_FIELDS`, mirroring
+  `evaluate_promotion_gate` (recruitment-level fields unchanged; no-posts payload
+  falls back to the recruitment-level rule). The table path now also selects
+  `entity_type, entity_key` (still excludes heavy columns).
+- **BUG 3 — PARTIALLY FIXED (per authorization).** `PostEligibilityReviewGroup`
+  now accepts `{"verified","corrected"}` (`ACCEPTED_STATUSES`): a corrected post
+  disables the Verify button and shows a ✓. **NOT fixed (out of blast radius,
+  not authorized):** `FieldReviewGroup.jsx` exact-match `=== "verified"` at
+  lines 109, 265, 275 (recruitment-level fields) — a corrected recruitment-level
+  field still looks unreviewed in that flat list. Recommended for a follow-up PR.
+- **BUG 4 — FIXED (resolver edit authorized).** `_resolve_entity_path` resolves
+  `post-<index>` to `posts[index]` when no `post_name` matches; out-of-range
+  index stays `None` → 422. `PostEligibilityReviewGroup` emits a dev
+  `console.warn` when it falls back to a positional key.
+- **BUG 2 — DEFERRED.** Conditional on live query (a): only if
+  `cec98cb3.extracted_data->'posts'` is empty/missing does the post table fail
+  to render. Static analysis says `posts` resolve via the
+  `extracted_data` fallback, so cause (A) is unlikely — confirm with (a) before
+  any AdminFixPanel change.
+
+### Tests added
+- Backend `tests/test_admin_scrape_endpoints.py`: all-posts-verified clears
+  `requires_domicile`; partial keeps it; corrected counts as resolved; scoped
+  map present + flat back-compat; `_resolve_entity_path` name-match / `post-N`
+  fallback / out-of-range; `patch_*` patches `posts[N]` and 422s on
+  out-of-range. Plus the slim-select test updated to the status+scope columns.
+- Frontend `__tests__/PostEligibilityReviewGroup.test.jsx`: verified/corrected →
+  disabled+✓; rejected/unverified → enabled+no-✓; unnamed post warns + emits
+  `post-0`; named post no-warn + uses `post_name`.
+
 ## Out of scope (confirmed, not fixed here)
 
 - `/api/admin/recruitments` 500 from `min_age` schema drift (separate PR). May
