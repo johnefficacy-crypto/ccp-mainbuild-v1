@@ -165,6 +165,52 @@ describe("OperationsConsole — resolve official source UX", () => {
     expect(mockToastInfo.mock.calls[0][0]).toMatch(/no longer in the queue/i);
   });
 
+  test("P0-3: selected item sorted off the first page stays in the workspace (no vanish)", async () => {
+    // Simulate the real bug: after resolving official source, the risky-first
+    // sort pushes the resolved item below the 50-row page, so the lightweight
+    // list no longer contains it. The targeted item_id fetch still returns it.
+    const bigPage = Array.from({ length: 50 }, (_, i) => ({
+      id: `other-${i}`,
+      status: "pending",
+      recruitment: `Other candidate ${i}`,
+      source_name: "Aggregator portal",
+      source_type: "aggregator",
+      official_source_resolved: false,
+      unverified_fields: [],
+      duplicate_candidates: [],
+      promotable: false,
+      open_conflicts: 0,
+    }));
+    const offPageResolved = {
+      ...QUEUE_ITEM_RESOLVED,
+      ...DETAIL_ROW,
+      id: "q-1",
+      official_source_resolved: true,
+      status: "pending",
+    };
+    apiGetMock.mockImplementation((path) => {
+      if (path.startsWith("/api/admin/sources")) return Promise.resolve({ items: [] });
+      if (path.startsWith("/api/admin/scrape/runs")) return Promise.resolve({ items: [] });
+      if (path.startsWith("/api/admin/scrape/queue")) {
+        // Targeted detail fetch always finds the off-page item.
+        if (path.includes("include_detail=true")) return Promise.resolve({ items: [offPageResolved] });
+        // First page: 50 OTHER rows; q-1 has sorted off the page.
+        return Promise.resolve({ items: bigPage });
+      }
+      if (path.startsWith("/api/admin/recruitments")) return Promise.resolve({ items: [] });
+      if (/\/conflicts$/.test(path)) return Promise.resolve({ items: [] });
+      return Promise.resolve({ items: [] });
+    });
+
+    renderConsole();
+    // Workspace stays populated with the selected candidate via the targeted
+    // fetch even though it is absent from the 50-row first page.
+    await waitFor(() => expect(screen.getByTestId("queue-fix-section")).toBeTruthy());
+    expect(screen.getByTestId("queue-fix-section").textContent).toContain("q-1");
+    // And the selection is NOT cleared (no "no longer in the queue" toast).
+    expect(mockToastInfo).not.toHaveBeenCalled();
+  });
+
   test("P0-1: CurrentActionCard primary button invokes the parent handler (no dead button)", async () => {
     renderConsole();
     await waitFor(() => expect(screen.getByTestId("oc-current-action-primary")).toBeTruthy());
