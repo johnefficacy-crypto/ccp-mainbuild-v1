@@ -367,6 +367,19 @@ export default function OperationsConsole() {
     setRejectTarget(item);
   }, []);
 
+  const reopenCandidate = useCallback(async (item) => {
+    if (!item?.id) return;
+    await runAction({
+      key: `reopen-${item.id}`,
+      confirm: `Reopen "${item.recruitment || item.id}" for review?`,
+      successMessage: "Candidate reopened — back in the pending queue.",
+      action: async () => {
+        await api.post(`/api/admin/scrape/items/${item.id}/reopen`, {});
+        await reloadQueue();
+      },
+    });
+  }, [runAction, reloadQueue]);
+
   const confirmReject = useCallback(async () => {
     if (!rejectTarget?.id) return;
     const trimmed = (rejectReason || "").trim();
@@ -471,6 +484,7 @@ export default function OperationsConsole() {
             onMergeIntoExisting={openMergePreview}
             onMarkDuplicate={markDuplicate}
             onRejectCandidate={rejectCandidate}
+            onReopenCandidate={reopenCandidate}
             onValidate={validate}
             onVerify={verify}
             onPublish={publish}
@@ -557,7 +571,7 @@ function ReviewAndPublish({
   queueFilter, onQueueFilter, onSelectQueue, onSelectRecruitment,
   onClearSource, onClearQueue, onClearRecruitment,
   onQueueFieldAction,
-  onPromote, onMergeIntoExisting, onMarkDuplicate, onRejectCandidate,
+  onPromote, onMergeIntoExisting, onMarkDuplicate, onRejectCandidate, onReopenCandidate,
   onValidate, onVerify, onPublish,
   mergeTarget, onCloseMerge,
   onSourcesChanged, onConfirmMerge,
@@ -662,6 +676,7 @@ function ReviewAndPublish({
               onMergeIntoExisting={onMergeIntoExisting}
               onMarkDuplicate={onMarkDuplicate}
               onRejectCandidate={onRejectCandidate}
+              onReopenCandidate={onReopenCandidate}
               onValidate={onValidate}
               onVerify={onVerify}
               onPublish={onPublish}
