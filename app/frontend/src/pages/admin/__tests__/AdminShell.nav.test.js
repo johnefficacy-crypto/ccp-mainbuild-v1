@@ -8,6 +8,12 @@ jest.mock("../../../lib/authContext", () => ({
 
 import AdminShell from "../AdminShell";
 
+// The sidebar is collapsible; pin it open so the IA assertions are
+// deterministic regardless of the test env's matchMedia support.
+beforeEach(() => {
+  try { window.localStorage.setItem("cc-admin-nav-open", "1"); } catch { /* ignore */ }
+});
+
 function renderShell(path = "/admin") {
   return render(
     <MemoryRouter initialEntries={[path]}>
