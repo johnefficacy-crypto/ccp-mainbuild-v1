@@ -1,4 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+
+// A post-scoped field counts as resolved when verified OR corrected — this
+// MUST mirror the backend gate (_VERIFIED_STATUSES). Gating the button on an
+// exact "verified" match left a "corrected" post looking unreviewed.
+const ACCEPTED_STATUSES = new Set(["verified", "corrected"]);
 
 // Per-post eligibility review. Rendered as one compact row per post so a
 // recruitment with many posts stays a short, scannable table instead of
@@ -43,13 +48,29 @@ function findDomicileDetail(evidenceDetails, entityKey) {
 }
 
 function PostRow({ post, postIndex, evidenceDetails, onFieldAction }) {
-  const entityKey = (post?.post_name || "").trim() || `post-${postIndex}`;
+  const hasName = Boolean((post?.post_name || "").trim());
+  const entityKey = hasName ? post.post_name.trim() : `post-${postIndex}`;
   const detail = findDomicileDetail(evidenceDetails, entityKey);
   const statusKey = detail?.reviewer_status || "unverified";
   const meta = STATUS_BADGE[statusKey] || STATUS_BADGE.unverified;
-  const verified = statusKey === "verified";
+  // Accept verified OR corrected (matches the backend gate). A corrected post
+  // is resolved — its Verify button should be disabled with a done indicator.
+  const accepted = ACCEPTED_STATUSES.has(statusKey);
   const baseValue = detail?.corrected_value != null ? detail.corrected_value : Boolean(post?.requires_domicile);
   const [checked, setChecked] = useState(Boolean(baseValue));
+
+  // Surface (dev-only) the positional entity_key fallback used when a post has
+  // no post_name. The backend now resolves "post-N" to posts[N], but the real
+  // fix is upstream extraction populating post_name.
+  useEffect(() => {
+    if (!hasName) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `PostEligibilityReviewGroup: post #${postIndex} has no post_name; ` +
+        `using positional entity_key "${entityKey}". Fix upstream extraction.`,
+      );
+    }
+  }, [hasName, postIndex, entityKey]);
 
   const scope = { entity_type: "post", entity_key: entityKey };
 
@@ -81,16 +102,21 @@ function PostRow({ post, postIndex, evidenceDetails, onFieldAction }) {
           <span className="anno">{checked ? "required" : "not required"}</span>
         </label>
       </td>
-      <td><span className={meta.cls}>{meta.text}</span></td>
+      <td>
+        <span className={meta.cls}>{meta.text}</span>
+        {accepted ? (
+          <span data-testid={`post-domicile-done-${postIndex}`} aria-label="resolved" style={{ marginLeft: 4 }}>✓</span>
+        ) : null}
+      </td>
       <td>
         <button
           type="button"
           className="btn small"
-          disabled={verified}
+          disabled={accepted}
           onClick={() => onFieldAction("requires_domicile", "verify", null, scope)}
           data-testid={`post-verify-${postIndex}`}
         >
-          {verified ? "Verified" : "Verify"}
+          {accepted ? "Verified" : "Verify"}
         </button>
       </td>
     </tr>

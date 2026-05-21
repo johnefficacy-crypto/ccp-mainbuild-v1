@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 import hashlib
 import json
+import re
 import functools
 import time
 from datetime import datetime, timedelta, timezone
@@ -38,7 +39,17 @@ from app.common.indexing import group_by
 from app.db.supabase_client import get_supabase_admin, reset_supabase_admin
 from app.scraping.runner import promote_run, run_scraping_pass
 from app.scraping.intelligence import classify_item, duplicate_candidates, BLOCKED
-from app.scraping.promotion_gate import HIGH_RISK_FIELDS as _HIGH_RISK_FIELDS_SHARED, evaluate_promotion_gate
+from app.scraping.promotion_gate import (
+    HIGH_RISK_FIELDS as _HIGH_RISK_FIELDS_SHARED,
+    POST_SCOPED_FIELDS as _POST_SCOPED_FIELDS,
+    RECRUITMENT_LEVEL_FIELDS as _RECRUITMENT_LEVEL_FIELDS,
+    evaluate_promotion_gate,
+)
+
+# Reviewer statuses that count a field as resolved. MUST match the gate's
+# ``_VERIFIED_STATUSES`` so list_scrape_queue's ``unverified_fields`` hint can
+# never disagree with ``evaluate_promotion_gate``.
+_ACCEPTED_REVIEW_STATUSES = frozenset({"verified", "corrected"})
 
 logger = logging.getLogger("career_copilot.api.admin_scrape")
 
@@ -313,12 +324,23 @@ def _resolve_entity_path(extracted_data: Any, field_name: str, entity_type: str,
         if not isinstance(posts, list):
             return None
         needle = entity_key.strip().lower()
+        # Prefer an exact post_name match (the normal case).
         for idx, post in enumerate(posts):
             if not isinstance(post, dict):
                 continue
             name = (post.get("post_name") or "").strip().lower()
-            if name == needle:
+            if name and name == needle:
                 return f"posts.{idx}.{field_name}"
+        # Positional fallback: the frontend emits ``post-<index>`` as entity_key
+        # when a post has no post_name (PostEligibilityReviewGroup). Resolve it
+        # to posts[index] so the correction patches the right post instead of
+        # 422-ing. Out-of-range index stays unresolved (→ 422) so a stale index
+        # can never silently patch the wrong post.
+        m = re.fullmatch(r"post-(\d+)", needle)
+        if m:
+            i = int(m.group(1))
+            if 0 <= i < len(posts) and isinstance(posts[i], dict):
+                return f"posts.{i}.{field_name}"
         return None
     return field_name
 
@@ -1108,6 +1130,12 @@ def list_scrape_queue(
 
     # ── Evidence per queue row ───────────────────────────────────────
     evidence_by_queue: dict[str, dict[str, str]] = {qid: {} for qid in queue_ids}
+    # Per-scope map alongside the flat one. Keyed
+    # ``[field_name]["<entity_type>:<entity_key>"] = reviewer_status`` so
+    # post-scoped fields (requires_domicile) keep one status PER POST instead of
+    # collapsing 3 posts into a single flat key. ``unverified_fields`` below is
+    # computed from this, mirroring evaluate_promotion_gate.
+    evidence_scoped_by_queue: dict[str, dict[str, dict[str, str]]] = {qid: {} for qid in queue_ids}
     evidence_details_by_queue: dict[str, list[dict[str, Any]]] = {qid: [] for qid in queue_ids}
     if queue_ids:
         if include_detail:
@@ -1118,8 +1146,11 @@ def list_scrape_queue(
                 "reviewed_by, source_page, alignment_status, document_id"
             )
         else:
-            # Table view only needs the per-field status pill.
-            evidence_columns = "scrape_queue_id, field_name, reviewer_status"
+            # Table view needs the per-field status pill AND entity scope so the
+            # post-scoped unverified_fields computation is correct here too.
+            evidence_columns = (
+                "scrape_queue_id, field_name, reviewer_status, entity_type, entity_key"
+            )
         try:
             frows: list[dict[str, Any]] = []
             for batch in _chunked_in(queue_ids):
@@ -1137,6 +1168,13 @@ def list_scrape_queue(
                 evidence_by_queue[qid] = {
                     fr.get("field_name"): fr.get("reviewer_status") for fr in group
                 }
+                scoped: dict[str, dict[str, str]] = {}
+                for fr in group:
+                    fname = fr.get("field_name")
+                    et = (fr.get("entity_type") or "other")
+                    ek = (fr.get("entity_key") or "")
+                    scoped.setdefault(fname, {})[f"{et}:{ek}"] = fr.get("reviewer_status")
+                evidence_scoped_by_queue[qid] = scoped
                 if include_detail:
                     evidence_details_by_queue[qid] = [
                         {
@@ -1161,6 +1199,7 @@ def list_scrape_queue(
                     ]
         except Exception:
             evidence_by_queue = {qid: {} for qid in queue_ids}
+            evidence_scoped_by_queue = {qid: {} for qid in queue_ids}
             evidence_details_by_queue = {qid: [] for qid in queue_ids}
 
     # ── Conflict counts ─────────────────────────────────────────────
@@ -1225,9 +1264,45 @@ def list_scrape_queue(
             r.pop("raw_payload", None)
         r["high_risk_fields"] = sorted(list(_HIGH_RISK_FIELDS))
         reviewed = evidence_by_queue.get(r.get("id"), {})
+        scoped = evidence_scoped_by_queue.get(r.get("id"), {})
         r["field_evidence_status"] = reviewed
+        # Per-scope map so the frontend (and any future consumer) can read a
+        # per-post status instead of the lossy flat map. Flat map is retained
+        # above for backward compatibility / non-post-scoped fields.
+        r["field_evidence_status_scoped"] = scoped
         r["field_evidence_details"] = evidence_details_by_queue.get(r.get("id"), [])
-        missing = [f for f in _HIGH_RISK_FIELDS if reviewed.get(f) not in {"verified", "corrected"}]
+        # unverified_fields / promotable MUST mirror evaluate_promotion_gate so
+        # the UI hint never disagrees with the real gate:
+        #   - recruitment-level fields: any verified/corrected row clears them;
+        #   - post-scoped fields (requires_domicile): EVERY extracted post needs
+        #     its own verified/corrected row keyed entity_type='post' /
+        #     entity_key==post_name. A single-post / no-posts payload falls back
+        #     to the recruitment-level rule, exactly like the gate.
+        posts_list = ext.get("posts") if isinstance(ext, dict) else None
+        posts_list = posts_list if isinstance(posts_list, list) else []
+        post_keys = sorted({
+            (p.get("post_name") or "").strip().lower()
+            for p in posts_list
+            if isinstance(p, dict) and (p.get("post_name") or "").strip()
+        })
+        missing: set[str] = set()
+        for f in _RECRUITMENT_LEVEL_FIELDS:
+            if reviewed.get(f) not in _ACCEPTED_REVIEW_STATUSES:
+                missing.add(f)
+        for f in _POST_SCOPED_FIELDS:
+            field_scope = scoped.get(f, {})
+            if not post_keys:
+                # No identifiable posts → recruitment-level rule (flat status).
+                if reviewed.get(f) not in _ACCEPTED_REVIEW_STATUSES:
+                    missing.add(f)
+                continue
+            verified_post_keys = {
+                key.split(":", 1)[1].strip().lower()
+                for key, st in field_scope.items()
+                if st in _ACCEPTED_REVIEW_STATUSES and key.split(":", 1)[0] == "post"
+            }
+            if not all(pk in verified_post_keys for pk in post_keys):
+                missing.add(f)
         r["unverified_fields"] = sorted(missing)
         r["open_conflicts"] = int(open_conflicts_by_queue.get(r.get("id"), 0))
         r["promotable"] = len(missing) == 0 and r["open_conflicts"] == 0
