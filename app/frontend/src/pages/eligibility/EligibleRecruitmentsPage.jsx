@@ -7,16 +7,15 @@ import {
   RefreshCw,
   AlertCircle,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { api } from "../../lib/api";
 
 // Recruitment listing — queries /api/recruitments, shows apply-window
-// stages, fee + save toggle. Detail view at
-// /app/eligibility/recruitments/:id is rendered by the same component:
-// selecting a row is a deep-link to a single recruitment row.
-// A richer detail (notification proof, posts, eligibility breakdown,
-// missing fields, apply window, source trust) is deferred — no
-// /api/recruitments/:id/detail shape established yet.
+// stages, fee + save toggle. The deep-link /app/eligibility/recruitments/:id
+// fetches GET /api/recruitments/:id and renders the secure detail overlay
+// (notification proof, posts, apply window, eligibility preview) returned by
+// that endpoint.
 
 const STAGES = ["Notification", "Open", "Closed", "Result"];
 const STAGE_INDEX = {
@@ -45,6 +44,179 @@ function StatusPill({ status }) {
     <span className={`pill ${cfg.cls} inline-flex items-center gap-1`}>
       <Icon className="h-3 w-3" /> {cfg.label}
     </span>
+  );
+}
+
+function fmtDate(d) {
+  if (!d) return null;
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return String(d);
+  return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+const VERDICT = {
+  eligible: { cls: "pill-sage", label: "Eligible", icon: ShieldCheck },
+  conditional: { cls: "pill-dusk", label: "Conditional", icon: AlertCircle },
+  pending: { cls: "pill-outline", label: "Complete your profile", icon: Sparkles },
+};
+
+function RecruitmentDetail({ detail, loading, err, onSave, onApply }) {
+  if (loading) {
+    return (
+      <div role="status" aria-live="polite" className="space-y-3">
+        <div className="soft-card rounded-2xl p-6 animate-pulse h-40" />
+        <div className="soft-card rounded-2xl p-6 animate-pulse h-56" />
+        <span className="sr-only">Loading recruitment</span>
+      </div>
+    );
+  }
+  if (err) {
+    return (
+      <div
+        data-testid="recruitment-detail-error"
+        className="soft-card rounded-2xl p-10 text-center text-muted-foreground"
+      >
+        {err}
+      </div>
+    );
+  }
+  if (!detail) return null;
+
+  const elig = detail.eligibility_preview || {};
+  const verdict = VERDICT[elig.verdict] || VERDICT.pending;
+  const VIcon = verdict.icon;
+  const win = detail.applyWindow || {};
+  const posts = detail.posts || [];
+  const applyUrl = detail.cta?.url || detail.sourceUrl;
+  const failReasons = elig.fail_reasons || [];
+
+  return (
+    <div className="space-y-4" data-testid="recruitment-detail">
+      <div className="soft-card rounded-2xl p-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">
+              {detail.organization || "—"}
+            </div>
+            <h3 className="font-heading text-2xl font-semibold mt-1">
+              {detail.title || detail.name}
+            </h3>
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <span className={`pill ${verdict.cls} inline-flex items-center gap-1`}>
+                <VIcon className="h-3 w-3" /> {verdict.label}
+              </span>
+              {Number.isFinite(elig.total_posts) && (
+                <span className="text-xs text-muted-foreground">
+                  {elig.matched_posts ?? 0}/{elig.total_posts} posts matched
+                </span>
+              )}
+              {detail.vacancies != null && (
+                <span className="text-xs text-muted-foreground">
+                  · {Number(detail.vacancies).toLocaleString("en-IN")} vacancies
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onSave}
+              data-testid="detail-save"
+              className={`h-10 w-10 grid place-items-center rounded-xl border transition ${
+                detail.saved
+                  ? "bg-clay-500 border-clay-500 text-white"
+                  : "border-border hover:border-clay-300"
+              }`}
+              aria-pressed={!!detail.saved}
+              aria-label={detail.saved ? "Saved" : "Save recruitment"}
+            >
+              <Bookmark className="h-4 w-4" />
+            </button>
+            {applyUrl && (
+              <button
+                type="button"
+                onClick={onApply}
+                data-testid="detail-apply"
+                className="btn btn-primary inline-flex items-center gap-1.5"
+              >
+                {detail.cta?.label || "Apply on official portal"}
+                <ExternalLink className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="soft-card rounded-2xl p-5">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+            Apply window
+          </div>
+          <div className="text-sm">
+            <span className="font-semibold">{fmtDate(win.start) || "TBA"}</span>
+            <span className="text-muted-foreground"> → </span>
+            <span className="font-semibold">{fmtDate(win.end) || "TBA"}</span>
+          </div>
+        </div>
+        <div className="soft-card rounded-2xl p-5">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+            Official notification
+          </div>
+          {detail.sourceUrl ? (
+            <a
+              href={detail.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="detail-notification-url"
+              className="text-sm link-under text-clay-700 inline-flex items-center gap-1.5 break-all"
+            >
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              View official notification
+            </a>
+          ) : (
+            <div className="text-sm text-muted-foreground">Not available</div>
+          )}
+        </div>
+      </div>
+
+      <div className="soft-card rounded-2xl p-5" data-testid="detail-posts">
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">
+          Posts ({posts.length})
+        </div>
+        {posts.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No posts listed yet.</div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {posts.map((p, i) => (
+              <li key={i} className="py-2.5 flex items-center justify-between gap-3">
+                <span className="text-sm font-medium">{p.name || "—"}</span>
+                <span className="text-xs text-muted-foreground">
+                  {p.vacancies != null
+                    ? `${Number(p.vacancies).toLocaleString("en-IN")} vac`
+                    : null}
+                  {p.payScale ? ` · ${p.payScale}` : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {failReasons.length > 0 && (
+        <div className="soft-card rounded-2xl p-5" data-testid="detail-eligibility">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+            Why not yet eligible
+          </div>
+          <ul className="list-disc pl-5 space-y-1">
+            {failReasons.map((r, i) => (
+              <li key={i} className="text-sm text-clay-700">
+                {r}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -102,6 +274,62 @@ export default function EligibleRecruitmentsPage() {
     load();
   }
 
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailErr, setDetailErr] = useState("");
+
+  useEffect(() => {
+    if (!id) {
+      setDetail(null);
+      setDetailErr("");
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      setDetailLoading(true);
+      setDetailErr("");
+      try {
+        const d = await api.get(`/api/recruitments/${id}`);
+        if (!cancelled) setDetail(d);
+      } catch (e) {
+        if (!cancelled)
+          setDetailErr(
+            e.status === 404
+              ? "Recruitment not found, or it's no longer published."
+              : "This recruitment is temporarily unavailable.",
+          );
+        if (process.env.NODE_ENV !== "production") console.error(e);
+      } finally {
+        if (!cancelled) setDetailLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  async function saveDetail() {
+    if (!detail?.id) return;
+    await api.post(`/api/recruitments/${detail.id}/save`, {});
+    try {
+      const d = await api.get(`/api/recruitments/${detail.id}`);
+      setDetail(d);
+    } catch {
+      setDetail((prev) => (prev ? { ...prev, saved: !prev.saved } : prev));
+    }
+  }
+
+  async function clickApply() {
+    if (!detail?.id) return;
+    try {
+      await api.post(`/api/applications/${detail.id}/clicked-apply`, {});
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") console.error(e);
+    }
+    const url = detail.cta?.url || detail.sourceUrl;
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   const tabs = [
     { id: "all", label: `All · ${data.counts.all ?? 0}` },
     { id: "eligible", label: `Eligible · ${data.counts.eligible ?? 0}` },
@@ -109,12 +337,7 @@ export default function EligibleRecruitmentsPage() {
     { id: "conditional", label: `Conditional · ${data.counts.conditional ?? 0}` },
   ];
 
-  // Detail view: a route param ":id" filters the list down to the single
-  // matching recruitment. The page-level shell is shared so the user keeps
-  // the chips + search visible even when deep-linked.
-  const visibleItems = id
-    ? data.items.filter((r) => String(r.id) === String(id) || r.slug === id)
-    : data.items;
+  const visibleItems = data.items;
 
   return (
     <section
@@ -141,15 +364,17 @@ export default function EligibleRecruitmentsPage() {
             </Link>
           ) : null}
         </div>
-        <button
-          onClick={recompute}
-          disabled={recomputing}
-          data-testid="recompute-btn"
-          className="btn btn-ghost"
-        >
-          <RefreshCw className={`h-4 w-4 ${recomputing ? "animate-spin" : ""}`} />
-          {recomputing ? "Recomputing…" : "Recompute eligibility"}
-        </button>
+        {!id && (
+          <button
+            onClick={recompute}
+            disabled={recomputing}
+            data-testid="recompute-btn"
+            className="btn btn-ghost"
+          >
+            <RefreshCw className={`h-4 w-4 ${recomputing ? "animate-spin" : ""}`} />
+            {recomputing ? "Recomputing…" : "Recompute eligibility"}
+          </button>
+        )}
       </div>
 
       {recomputeMsg && (
@@ -205,6 +430,16 @@ export default function EligibleRecruitmentsPage() {
         </div>
       )}
 
+      {id ? (
+        <RecruitmentDetail
+          detail={detail}
+          loading={detailLoading}
+          err={detailErr}
+          onSave={saveDetail}
+          onApply={clickApply}
+        />
+      ) : (
+        <>
       {err && <div className="text-xs text-clay-700 mb-3">{err}</div>}
 
       {loading ? (
@@ -322,6 +557,8 @@ export default function EligibleRecruitmentsPage() {
             );
           })}
         </div>
+      )}
+        </>
       )}
     </section>
   );
