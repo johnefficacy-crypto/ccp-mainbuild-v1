@@ -39,6 +39,7 @@ from pydantic import BaseModel, Field
 from app.core.auth import (
     get_current_user,
     get_current_user_required_permanent,
+    require_admin,
     require_permission,
 )
 from app.core.config import get_settings
@@ -61,12 +62,6 @@ def _verify_checkout_signature(order_id: str, payment_id: str, signature: str) -
 
 def _verify_webhook_signature(raw_body: bytes, signature: str) -> bool:
     return razorpay_client.verify_webhook_signature(raw_body, signature)
-
-
-def _require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if user.get("role") not in {"admin", "super_admin"}:
-        raise HTTPException(status_code=403, detail="Admin role required")
-    return user
 
 
 def _ensure_profile(user: dict) -> None:
@@ -246,7 +241,7 @@ def list_plans_public():
 
 
 @router.get("/admin/plans")
-def admin_list_plans(_: dict = Depends(_require_admin)):
+def admin_list_plans(_: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     return {"plans": _list_subscription_plans(sb, active_only=False)}
 
@@ -582,7 +577,7 @@ async def razorpay_webhook(request: Request):
 
 
 @router.get("/admin/subscriptions")
-def admin_subs(_: dict = Depends(_require_admin), limit: int = 100):
+def admin_subs(_: dict = Depends(require_admin), limit: int = 100):
     sb = get_supabase_admin()
     rows = (
         sb.table("user_subscriptions")
@@ -600,7 +595,7 @@ def admin_subs(_: dict = Depends(_require_admin), limit: int = 100):
 
 
 @router.get("/admin/payments")
-def admin_payments(_: dict = Depends(_require_admin), limit: int = 100):
+def admin_payments(_: dict = Depends(require_admin), limit: int = 100):
     sb = get_supabase_admin()
     rows = (
         sb.table("payment_history")

@@ -15,19 +15,12 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.core.auth import get_current_user
+from app.core.auth import require_admin
 from app.db.supabase_client import get_supabase_admin
 from app.payments import razorpay_client
 
 logger = logging.getLogger("career_copilot.api.admin_marketplace")
 router = APIRouter(prefix="/admin/marketplace", tags=["admin-marketplace"])
-
-
-def _require_admin(user: dict = Depends(get_current_user)) -> dict:
-    role = (user.get("role") or "").lower()
-    if role in {"admin", "super_admin"}:
-        return user
-    raise HTTPException(status_code=403, detail="Admin role required")
 
 
 def _now_iso() -> str:
@@ -184,7 +177,7 @@ def list_courses(
     status: str | None = Query(default=None),
     q: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
-    _admin: dict = Depends(_require_admin),
+    _admin: dict = Depends(require_admin),
 ):
     sb = get_supabase_admin()
     query = sb.table("courses").select("*").order("updated_at", desc=True).limit(limit)
@@ -197,7 +190,7 @@ def list_courses(
 
 
 @router.post("/courses")
-def create_course(payload: CourseIn, admin: dict = Depends(_require_admin)):
+def create_course(payload: CourseIn, admin: dict = Depends(require_admin)):
     if payload.is_affiliate and not (payload.affiliate_disclosure and payload.affiliate_disclosure.strip()):
         raise HTTPException(status_code=400, detail="Affiliate disclosure required when is_affiliate=true")
     sb = get_supabase_admin()
@@ -222,7 +215,7 @@ def create_course(payload: CourseIn, admin: dict = Depends(_require_admin)):
 
 
 @router.put("/courses/{course_id}")
-def update_course(course_id: str, patch: CoursePatch, admin: dict = Depends(_require_admin)):
+def update_course(course_id: str, patch: CoursePatch, admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     update = patch.model_dump(exclude_none=True)
     if not update:
@@ -265,7 +258,7 @@ def update_course(course_id: str, patch: CoursePatch, admin: dict = Depends(_req
 
 
 @router.post("/courses/{course_id}/publish")
-def publish_course(course_id: str, admin: dict = Depends(_require_admin)):
+def publish_course(course_id: str, admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     rows = sb.table("courses").update({"status": "published", "updated_at": _now_iso()}).eq("id", course_id).execute().data or []
     if not rows:
@@ -275,7 +268,7 @@ def publish_course(course_id: str, admin: dict = Depends(_require_admin)):
 
 
 @router.post("/courses/{course_id}/archive")
-def archive_course(course_id: str, admin: dict = Depends(_require_admin)):
+def archive_course(course_id: str, admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     rows = sb.table("courses").update({"status": "archived", "updated_at": _now_iso()}).eq("id", course_id).execute().data or []
     if not rows:
@@ -294,7 +287,7 @@ def list_orders(
     course_id: str | None = Query(default=None),
     since: str | None = Query(default=None, description="ISO timestamp"),
     limit: int = Query(default=100, ge=1, le=500),
-    _admin: dict = Depends(_require_admin),
+    _admin: dict = Depends(require_admin),
 ):
     sb = get_supabase_admin()
     q = sb.table("marketplace_orders").select("*").order("created_at", desc=True).limit(limit)
@@ -316,7 +309,7 @@ def list_orders(
 def list_refunds(
     status: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
-    _admin: dict = Depends(_require_admin),
+    _admin: dict = Depends(require_admin),
 ):
     sb = get_supabase_admin()
     q = sb.table("marketplace_refunds").select("*").order("created_at", desc=True).limit(limit)
@@ -326,7 +319,7 @@ def list_refunds(
 
 
 @router.post("/refunds/{refund_id}/approve")
-def approve_refund(refund_id: str, admin: dict = Depends(_require_admin)):
+def approve_refund(refund_id: str, admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     rows = sb.table("marketplace_refunds").select("*").eq("id", refund_id).limit(1).execute().data or []
     if not rows:
@@ -419,7 +412,7 @@ class RefundDecision(BaseModel):
 
 
 @router.post("/refunds/{refund_id}/deny")
-def deny_refund(refund_id: str, body: RefundDecision | None = None, admin: dict = Depends(_require_admin)):
+def deny_refund(refund_id: str, body: RefundDecision | None = None, admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     rows = sb.table("marketplace_refunds").select("*").eq("id", refund_id).limit(1).execute().data or []
     if not rows:
@@ -455,7 +448,7 @@ class ProviderIn(BaseModel):
 
 
 @router.get("/providers")
-def list_providers(_admin: dict = Depends(_require_admin), limit: int = Query(default=100, ge=1, le=500)):
+def list_providers(_admin: dict = Depends(require_admin), limit: int = Query(default=100, ge=1, le=500)):
     sb = get_supabase_admin()
     rows = (
         sb.table("profiles")
@@ -470,7 +463,7 @@ def list_providers(_admin: dict = Depends(_require_admin), limit: int = Query(de
 
 
 @router.put("/providers/{provider_id}")
-def update_provider(provider_id: str, payload: ProviderIn, admin: dict = Depends(_require_admin)):
+def update_provider(provider_id: str, payload: ProviderIn, admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     update = payload.model_dump(exclude_none=True)
     rows = sb.table("profiles").update(update).eq("id", provider_id).execute().data or []
@@ -494,7 +487,7 @@ def _count(sb, table: str, **filters) -> int:
 
 
 @router.get("/kpis")
-def kpis(_admin: dict = Depends(_require_admin)):
+def kpis(_admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     paid_orders = (
         sb.table("marketplace_orders")
@@ -704,7 +697,7 @@ def list_course_assets(
     course_id: str,
     limit: int = Query(default=50, ge=1, le=_ASSET_PAGE_MAX),
     offset: int = Query(default=0, ge=0),
-    _admin: dict = Depends(_require_admin),
+    _admin: dict = Depends(require_admin),
 ):
     sb = get_supabase_admin()
     rows = (
@@ -730,7 +723,7 @@ def list_course_assets(
 
 @router.post("/courses/{course_id}/assets", status_code=201)
 def create_course_asset(
-    course_id: str, payload: AssetCreateIn, admin: dict = Depends(_require_admin),
+    course_id: str, payload: AssetCreateIn, admin: dict = Depends(require_admin),
 ):
     sb = get_supabase_admin()
     course = _fetch_course(sb, course_id)
@@ -762,7 +755,7 @@ def create_course_asset(
 
 
 @router.put("/assets/{asset_id}")
-def update_asset(asset_id: str, patch_body: dict[str, Any], admin: dict = Depends(_require_admin)):
+def update_asset(asset_id: str, patch_body: dict[str, Any], admin: dict = Depends(require_admin)):
     if "status" in patch_body:
         raise _err(400, "status_not_patchable_use_transition_endpoint",
                    "status changes go through submit-review / approve / reject / publish")
@@ -822,7 +815,7 @@ def _transition(sb, *, asset: dict, allowed_from: set[str], new_status: str,
 
 
 @router.post("/assets/{asset_id}/submit-review")
-def submit_asset_for_review(asset_id: str, admin: dict = Depends(_require_admin)):
+def submit_asset_for_review(asset_id: str, admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     asset = _fetch_asset(sb, asset_id)
     if not asset:
@@ -838,7 +831,7 @@ def submit_asset_for_review(asset_id: str, admin: dict = Depends(_require_admin)
 
 @router.post("/assets/{asset_id}/approve")
 def approve_asset(asset_id: str, body: ApprovalDecisionIn | None = None,
-                  admin: dict = Depends(_require_admin)):
+                  admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     asset = _fetch_asset(sb, asset_id)
     if not asset:
@@ -863,7 +856,7 @@ def approve_asset(asset_id: str, body: ApprovalDecisionIn | None = None,
 
 @router.post("/assets/{asset_id}/reject")
 def reject_asset(asset_id: str, body: ApprovalDecisionIn | None = None,
-                 admin: dict = Depends(_require_admin)):
+                 admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     asset = _fetch_asset(sb, asset_id)
     if not asset:
@@ -883,7 +876,7 @@ def reject_asset(asset_id: str, body: ApprovalDecisionIn | None = None,
 
 
 @router.post("/assets/{asset_id}/publish")
-def publish_asset(asset_id: str, admin: dict = Depends(_require_admin)):
+def publish_asset(asset_id: str, admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     asset = _fetch_asset(sb, asset_id)
     if not asset:
@@ -932,7 +925,7 @@ def list_asset_files(
     asset_id: str,
     limit: int = Query(default=50, ge=1, le=_ASSET_PAGE_MAX),
     offset: int = Query(default=0, ge=0),
-    _admin: dict = Depends(_require_admin),
+    _admin: dict = Depends(require_admin),
 ):
     sb = get_supabase_admin()
     if not _fetch_asset(sb, asset_id):
@@ -952,7 +945,7 @@ def list_asset_files(
 
 
 @router.post("/assets/{asset_id}/files", status_code=201)
-def add_asset_file(asset_id: str, payload: FileCreateIn, admin: dict = Depends(_require_admin)):
+def add_asset_file(asset_id: str, payload: FileCreateIn, admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     asset = _fetch_asset(sb, asset_id)
     if not asset:

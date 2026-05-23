@@ -36,6 +36,13 @@ from app.db.supabase_client import get_supabase_admin
 logger = logging.getLogger("career_copilot.auth")
 security = HTTPBearer(auto_error=False)
 
+# ── Canonical auth roles ───────────────────────────────────────────────
+# These are the ONLY auth roles. ``mentor`` is a domain capability, not a
+# role (see profiles.is_mentor / /api/auth/me capabilities.mentor). The
+# backend is authoritative; frontend role gates are UX only.
+AUTH_ROLES = frozenset({"user", "admin", "super_admin"})
+ADMIN_ROLES = frozenset({"admin", "super_admin"})
+
 
 def _auth_debug_enabled() -> bool:
     """Optional diagnostic logging gated by ``AUTH_DEBUG=1``.
@@ -144,12 +151,25 @@ def _serialize_user(user: Any, claims: dict | None = None) -> dict:
         or getattr(user, "raw_app_meta_data", None)
         or {}
     )
-    role = (
-        app_metadata.get("role")
-        or metadata.get("role")
-        or claims.get("role")
-        or "user"
-    )
+    # Role resolution order (canonical first; legacy sources log a warning):
+    #   1. Supabase app_metadata.role  ← canonical
+    #   2. user_metadata.role          ← legacy
+    #   3. JWT claim role              ← legacy
+    #   4. fallback "user"
+    role = app_metadata.get("role")
+    if not role and metadata.get("role"):
+        role = metadata.get("role")
+        logger.warning("auth.role_from_legacy_user_metadata role=%s", role)
+    if not role and claims.get("role"):
+        role = claims.get("role")
+        logger.warning("auth.role_from_legacy_jwt_claim role=%s", role)
+    if not role:
+        role = "user"
+    # Mentor is no longer an auth role; anything outside the canonical set
+    # coerces to "user" so a stale/unexpected role can never grant access.
+    if role not in AUTH_ROLES:
+        logger.warning("auth.role_coerced_to_user original_role=%s", role)
+        role = "user"
     permissions = app_metadata.get("permissions") or []
     if isinstance(permissions, str):
         permissions = [permissions]
@@ -271,6 +291,45 @@ def get_current_user(
         return serialised
 
 
+def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    """Allow any admin-tier role (``admin`` or ``super_admin``).
+
+    Centralised second-layer gate for broad admin-only routes. A missing or
+    invalid token is already rejected with 401 by ``get_current_user``, so
+    here we only enforce identity class + role membership.
+    """
+    if user.get("is_anonymous"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Anonymous users cannot access admin",
+        )
+    if user.get("role") not in ADMIN_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Admin role required (allowed: {sorted(ADMIN_ROLES)})",
+        )
+    return user
+
+
+def require_super_admin(user: dict = Depends(get_current_user)) -> dict:
+    """Allow only ``super_admin``.
+
+    ``super_admin`` passes both this and :func:`require_admin`; ``admin`` and
+    ``user`` are rejected with 403.
+    """
+    if user.get("is_anonymous"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Anonymous users cannot access admin",
+        )
+    if user.get("role") != "super_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="super_admin role required (allowed: ['super_admin'])",
+        )
+    return user
+
+
 def require_permission(permission: str):
     def _dep(user: dict = Depends(get_current_user)) -> dict:
         # Anonymous users can never satisfy a permission check — short-
@@ -283,8 +342,12 @@ def require_permission(permission: str):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Anonymous users cannot access this resource",
             )
+        # super_admin bypasses explicit permission checks; admin/user must
+        # carry the granular permission.
+        if user.get("role") == "super_admin":
+            return user
         perms = set(user.get("permissions") or [])
-        if permission not in perms and user.get("role") not in {"super_admin"}:
+        if permission not in perms:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Missing permission: {permission}",

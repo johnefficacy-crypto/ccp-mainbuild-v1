@@ -14,7 +14,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, HttpUrl
 
-from app.core.auth import get_current_user, get_optional_user
+from app.core.auth import get_current_user, get_optional_user, require_admin
 from app.db.supabase_client import get_supabase_admin
 
 
@@ -103,12 +103,6 @@ def _profile_name(row: dict[str, Any] | None, fallback: str | None = None) -> st
     if not row:
         return fallback
     return row.get("display_name") or row.get("full_name") or fallback
-
-
-def _require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if (user.get("role") or "") not in {"admin", "super_admin"}:
-        raise HTTPException(status_code=403, detail="Admin role required")
-    return user
 
 
 def _audit(sb, actor: dict, action: str, entity_type: str, entity_id: str | None, payload: dict | None = None) -> None:
@@ -1013,7 +1007,7 @@ async def report_resource(resource_id: str, payload: ReportBody, user: dict = De
 
 
 @router.get("/admin/community/flags")
-async def admin_community_flags(admin: dict = Depends(_require_admin)):
+async def admin_community_flags(admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     forum_reports = _rows(sb.table("forum_reports").select("*").eq("status", "open").order("created_at", desc=True).limit(100))
     community_reports = _rows(sb.table("community_reports").select("*").eq("status", "pending").order("created_at", desc=True).limit(100))
@@ -1034,7 +1028,7 @@ class ModerationAction(BaseModel):
 
 
 @router.post("/admin/community/flags/{flag_id}")
-async def admin_resolve_community_flag(flag_id: str, payload: ModerationAction, admin: dict = Depends(_require_admin)):
+async def admin_resolve_community_flag(flag_id: str, payload: ModerationAction, admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     status = "dismissed" if payload.action == "dismiss" else "resolved"
     for table in ("forum_reports", "community_reports", "community_resource_reports"):
