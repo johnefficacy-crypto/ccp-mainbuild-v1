@@ -1,3 +1,4 @@
+// UX gate only. NOT a security control. Backend (require_admin / require_super_admin) enforces all access.
 import React from "react";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "./authContext";

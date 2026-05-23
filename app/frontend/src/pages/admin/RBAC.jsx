@@ -4,7 +4,9 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/authContext";
 import { EmptyState, ErrorState, StatusBadge, useToast } from "../../shared/ui";
 
-const ROLE_OPTIONS = ["user", "mentor", "admin", "super_admin"];
+const ROLE_OPTIONS = ["user", "admin", "super_admin"];
+// Roles that can be assigned when creating a staff account.
+const CREATE_ROLE_OPTIONS = ["admin", "super_admin"];
 const SORT_OPTIONS = [
   { value: "name", label: "Name" },
   { value: "role", label: "Role" },
@@ -43,11 +45,27 @@ export default function AdminRBAC() {
 
   async function updateRole(person, role) {
     try {
-      await api.put(`/api/admin/users/${person.id}/role`, { role });
+      const res = await api.put(`/api/admin/users/${person.id}/role`, { role });
       toast.success(`${person.email} is now ${role}.`);
+      if (res?.requires_session_refresh) {
+        toast.info("User must re-login for role change to take effect");
+      }
       await load();
     } catch (e) {
       toast.error(`${person.email} role could not be changed: ${e.message}`);
+    }
+  }
+
+  async function forceSignout(person) {
+    try {
+      const res = await api.post(`/api/admin/users/${person.id}/force-signout`, {});
+      if (res?.signout_supported === false) {
+        toast.info(`Force sign-out is not supported by the current auth backend.`);
+      } else {
+        toast.success(`${person.email} has been signed out.`);
+      }
+    } catch (e) {
+      toast.error(`${person.email} could not be signed out: ${e.message}`);
     }
   }
 
@@ -58,7 +76,7 @@ export default function AdminRBAC() {
         email: form.email.trim(),
         password: form.password,
         name: form.name.trim(),
-        role: form.role === "admin" || form.role === "mentor" ? form.role : "admin",
+        role: CREATE_ROLE_OPTIONS.includes(form.role) ? form.role : "admin",
         scope: form.scope ? form.scope.split(",").map((s) => s.trim()).filter(Boolean) : [],
       };
       await api.post("/api/admin/users/create", payload);
@@ -98,7 +116,7 @@ export default function AdminRBAC() {
         </div>
         {canManage && (
           <button onClick={() => setOpen(true)} className="btn btn-primary" data-testid="create-admin-btn">
-            <Plus className="h-4 w-4" /> Invite admin / mentor
+            <Plus className="h-4 w-4" /> Invite admin
           </button>
         )}
       </div>
@@ -155,7 +173,7 @@ export default function AdminRBAC() {
               <tbody>
                 {loading && <tr><td colSpan={5} className="px-4 py-6 text-muted-foreground">Loading users...</td></tr>}
                 {!loading && filteredItems.map((person) => (
-                  <UserTableRow key={person.id} person={person} canManage={canManage} onRoleChange={updateRole} />
+                  <UserTableRow key={person.id} person={person} canManage={canManage} onRoleChange={updateRole} onForceSignout={forceSignout} />
                 ))}
               </tbody>
             </table>
@@ -164,7 +182,7 @@ export default function AdminRBAC() {
           <div className="space-y-3 md:hidden">
             {loading && <div className="soft-card rounded-2xl p-4 text-sm text-muted-foreground">Loading users...</div>}
             {!loading && filteredItems.map((person) => (
-              <UserCard key={person.id} person={person} canManage={canManage} onRoleChange={updateRole} />
+              <UserCard key={person.id} person={person} canManage={canManage} onRoleChange={updateRole} onForceSignout={forceSignout} />
             ))}
           </div>
         </>
@@ -175,9 +193,9 @@ export default function AdminRBAC() {
           <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Roles</div>
           <ul className="mt-3 space-y-2 text-sm">
             <li><StatusBadge status="user" label="user" tone="pill-sage" /> Aspirant: study, community, marketplace.</li>
-            <li><StatusBadge status="mentor" label="mentor" tone="pill-amber" /> User permissions plus mentor dashboard.</li>
             <li><StatusBadge status="admin" label="admin" tone="pill-clay" /> Governance access except RBAC writes.</li>
             <li><StatusBadge status="super_admin" label="super_admin" tone="pill-dusk" /> Full access and admin creation.</li>
+            <li className="text-xs text-muted-foreground">Mentor is a capability, not a role — managed separately, not assignable here.</li>
           </ul>
         </div>
         <div className="soft-card rounded-2xl p-5">
@@ -191,15 +209,14 @@ export default function AdminRBAC() {
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
           <form onSubmit={createAdmin} className="w-full max-w-lg soft-card rounded-2xl p-6 space-y-4" data-testid="create-admin-form">
-            <h2 className="font-heading text-xl font-semibold">Create admin or mentor</h2>
+            <h2 className="font-heading text-xl font-semibold">Create admin</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Email"><input type="email" required className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
               <Field label="Password"><input type="password" minLength={8} required className="input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
               <Field label="Name"><input required className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
               <Field label="Role">
                 <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                  <option>admin</option>
-                  <option>mentor</option>
+                  {CREATE_ROLE_OPTIONS.map((role) => <option key={role}>{role}</option>)}
                 </select>
               </Field>
               <Field label="Scope (comma)" cls="sm:col-span-2"><input className="input" placeholder="content, scraper" value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })} /></Field>
@@ -216,14 +233,14 @@ export default function AdminRBAC() {
   );
 }
 
-function UserTableRow({ person, canManage, onRoleChange }) {
+function UserTableRow({ person, canManage, onRoleChange, onForceSignout }) {
   return (
     <tr className="border-t border-border align-top hover:bg-clay-50/50" data-testid={`user-row-${person.email}`}>
       <td className="px-4 py-3">
         <div className="font-semibold">{person.name || "-"}</div>
         <div className="font-mono text-[11px] text-muted-foreground">{person.email}</div>
       </td>
-      <td className="px-4 py-3"><RoleControl person={person} canManage={canManage} onRoleChange={onRoleChange} /></td>
+      <td className="px-4 py-3"><RoleControl person={person} canManage={canManage} onRoleChange={onRoleChange} onForceSignout={onForceSignout} /></td>
       <td className="px-4 py-3 text-xs">{person.plan || "-"}</td>
       <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(person.created_at)}</td>
       <td className="px-4 py-3 text-xs text-muted-foreground">{formatLogin(person.last_login_at)}</td>
@@ -231,7 +248,7 @@ function UserTableRow({ person, canManage, onRoleChange }) {
   );
 }
 
-function UserCard({ person, canManage, onRoleChange }) {
+function UserCard({ person, canManage, onRoleChange, onForceSignout }) {
   return (
     <article className="soft-card rounded-2xl p-4" data-testid={`user-row-${person.email}`}>
       <div className="flex items-start justify-between gap-3">
@@ -239,7 +256,7 @@ function UserCard({ person, canManage, onRoleChange }) {
           <div className="font-semibold">{person.name || "-"}</div>
           <div className="break-all font-mono text-[11px] text-muted-foreground">{person.email}</div>
         </div>
-        <RoleControl person={person} canManage={canManage} onRoleChange={onRoleChange} />
+        <RoleControl person={person} canManage={canManage} onRoleChange={onRoleChange} onForceSignout={onForceSignout} />
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
         <div><dt className="text-muted-foreground">Plan</dt><dd className="font-medium">{person.plan || "-"}</dd></div>
@@ -250,19 +267,30 @@ function UserCard({ person, canManage, onRoleChange }) {
   );
 }
 
-function RoleControl({ person, canManage, onRoleChange }) {
+function RoleControl({ person, canManage, onRoleChange, onForceSignout }) {
   if (!canManage) return <StatusBadge status={person.role} label={person.role} />;
 
   return (
-    <select
-      value={person.role}
-      onChange={(e) => onRoleChange(person, e.target.value)}
-      className="rounded-full border border-border bg-white/80 px-2 py-1 text-xs font-semibold"
-      data-testid={`role-select-${person.email}`}
-      aria-label={`Change role for ${person.email}`}
-    >
-      {ROLE_OPTIONS.map((role) => <option key={role}>{role}</option>)}
-    </select>
+    <div className="flex items-center gap-2">
+      <select
+        value={person.role}
+        onChange={(e) => onRoleChange(person, e.target.value)}
+        className="rounded-full border border-border bg-white/80 px-2 py-1 text-xs font-semibold"
+        data-testid={`role-select-${person.email}`}
+        aria-label={`Change role for ${person.email}`}
+      >
+        {ROLE_OPTIONS.map((role) => <option key={role}>{role}</option>)}
+      </select>
+      <button
+        type="button"
+        onClick={() => onForceSignout?.(person)}
+        className="rounded-full border border-border bg-white/80 px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
+        data-testid={`force-signout-${person.email}`}
+        title="Force sign-out (revoke sessions)"
+      >
+        Sign out
+      </button>
+    </div>
   );
 }
 

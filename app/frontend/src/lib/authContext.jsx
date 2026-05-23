@@ -9,7 +9,7 @@ import React, {
 } from "react";
 
 import { auth as authApi } from "./api";
-import { isAdminRole, ROLES } from "./rbac";
+import { ADMIN_ROLES, ROLES } from "./rbac";
 import { supabase } from "./supabase";
 
 const AuthCtx = createContext(null);
@@ -32,12 +32,18 @@ function mergeUser(supabaseUser, backendUser) {
   const isAnonymous = Boolean(
     backendUser?.is_anonymous ?? supabaseUser?.is_anonymous ?? appMeta.is_anonymous
   );
+  // Mentor is a capability, never a role. Source it from the backend's
+  // capabilities block (profiles.is_mentor); default to no capabilities.
+  const capabilities = {
+    mentor: Boolean(backendUser?.capabilities?.mentor),
+  };
   return {
     id: supabaseUser?.id || backendUser?.id || null,
     email: supabaseUser?.email || backendUser?.email || null,
     name: backendUser?.name || meta.name || meta.full_name || null,
     role,
     permissions: Array.isArray(backendUser?.permissions) ? backendUser.permissions : [],
+    capabilities,
     avatar: backendUser?.avatar || meta.avatar_url || null,
     onboarded: backendUser?.onboarded ?? Boolean(meta.onboarded),
     plan: backendUser?.plan || meta.plan || "free",
@@ -258,8 +264,9 @@ export function AuthProvider({ children }) {
       isAuthed: status === "session_authed" || status === "backend_authed",
       hasBackendSession: status === "backend_authed",
       isChecking: status === "checking",
-      isAdmin: isAdminRole(user?.role),
+      isAdmin: ADMIN_ROLES.includes(user?.role),
       isSuperAdmin: user?.role === ROLES.SUPER_ADMIN,
+      isMentor: Boolean(user?.capabilities?.mentor),
       login,
       register,
       logout,

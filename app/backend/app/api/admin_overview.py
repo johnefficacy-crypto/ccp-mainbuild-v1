@@ -12,18 +12,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.core.auth import get_current_user
+from app.core.auth import require_admin
 from app.db.supabase_client import get_supabase_admin
 
 
 router = APIRouter(prefix="/admin", tags=["admin-overview"])
-
-
-def _require_admin(user: dict = Depends(get_current_user)) -> dict:
-    role = (user.get("role") or "").lower()
-    if role in {"admin", "super_admin"}:
-        return user
-    raise HTTPException(status_code=403, detail="Admin role required")
 
 
 def _is_uuid(v: Any) -> bool:
@@ -57,7 +50,7 @@ def _count_since(sb, table: str, ts_col: str, since: datetime, **filters) -> int
 
 
 @router.get("/overview")
-def overview(user: dict = Depends(_require_admin)) -> dict:
+def overview(user: dict = Depends(require_admin)) -> dict:
     sb = get_supabase_admin()
     now = datetime.now(timezone.utc)
     today = now - timedelta(hours=24)
@@ -113,41 +106,10 @@ def overview(user: dict = Depends(_require_admin)) -> dict:
     }
 
 
-@router.get("/users")
-def list_users(
-    q: str | None = Query(default=None, max_length=80),
-    role: str | None = None,
-    plan: str | None = None,
-    limit: int = Query(default=100, ge=1, le=500),
-    user: dict = Depends(_require_admin),
-) -> dict:
-    sb = get_supabase_admin()
-    query = sb.table("profiles").select(
-        "id,email,name,full_name,display_name,role,plan,is_active,onboarded,created_at,updated_at"
-    )
-    if role:
-        query = query.eq("role", role)
-    if plan:
-        query = query.eq("plan", plan)
-    if q:
-        like = f"%{q}%"
-        query = query.or_(f"email.ilike.{like},name.ilike.{like},full_name.ilike.{like}")
-    rows = query.order("created_at", desc=True).limit(limit).execute().data or []
-    items = [
-        {
-            "id": r.get("id"),
-            "email": r.get("email"),
-            "name": r.get("name") or r.get("full_name") or r.get("display_name"),
-            "role": r.get("role") or "user",
-            "plan": r.get("plan") or "free",
-            "is_active": bool(r.get("is_active", True)),
-            "onboarded": bool(r.get("onboarded")),
-            "created_at": r.get("created_at"),
-            "updated_at": r.get("updated_at"),
-        }
-        for r in rows
-    ]
-    return {"items": items, "count": len(items)}
+# NOTE: GET /admin/users now lives in admin_ops.py and reads the
+# authoritative role from auth.users app_metadata via the service-role admin
+# API. The old profiles.role-based listing here was removed to keep a single
+# source of truth for roles (RBAC unification).
 
 
 @router.get("/audit-feed")
@@ -155,7 +117,7 @@ def audit_feed(
     actor_id: str | None = None,
     action: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
-    user: dict = Depends(_require_admin),
+    user: dict = Depends(require_admin),
 ) -> dict:
     """Global audit feed for the admin overview dashboard.
 
@@ -178,7 +140,7 @@ def audit_feed(
 def community_forum_flags(
     status: str = "open",
     limit: int = Query(default=50, ge=1, le=200),
-    user: dict = Depends(_require_admin),
+    user: dict = Depends(require_admin),
 ) -> dict:
     """Forum-scoped slice of moderation_items.
 
