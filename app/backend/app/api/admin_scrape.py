@@ -2016,6 +2016,9 @@ def reject_queue_item(
     admin: dict = Depends(require_permission("scraper.manage")),
 ) -> dict[str, Any]:
     body = body or {}
+    reason = (body.get("notes") or "").strip()
+    if not reason:
+        raise HTTPException(status_code=422, detail="Rejection reason is required.")
     supabase = get_supabase_admin()
     res = (
         supabase.table("scrape_queue")
@@ -2023,7 +2026,7 @@ def reject_queue_item(
             {
                 "status": "rejected",
                 "reviewer_id": admin["id"],
-                "reviewer_notes": body.get("notes"),
+                "reviewer_notes": reason,
                 "reviewed_at": datetime.now(timezone.utc).isoformat(),
             }
         )
