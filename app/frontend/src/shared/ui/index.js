@@ -9,6 +9,7 @@ export { default as ConfidencePill } from "./ConfidencePill";
 export { default as EvidenceDrawer } from "./EvidenceDrawer";
 export { default as FormField } from "./FormField";
 export { default as InputField } from "./InputField";
+export { default as DateField } from "./DateField";
 export { default as SelectField } from "./SelectField";
 export { default as CheckboxField } from "./CheckboxField";
 export { default as ChartCard } from "./ChartCard";

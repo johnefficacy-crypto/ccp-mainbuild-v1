@@ -3,6 +3,7 @@ import { RotateCcw, Plus, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
 import { parseImportFile } from "../../../lib/bulkImportFile";
 import CmsRefField from "../../../features/admin/shared/CmsRefField";
+import { DateField } from "../../../shared/ui";
 import ExamIntelDocuments from "./ExamIntelDocuments";
 
 // Reusable ref-picker descriptors. Each points at a CMS list endpoint that
@@ -71,11 +72,11 @@ const ENTITY_CONFIG = {
       { key: "year", label: "year", required: true, type: "int" },
       { key: "cycle_name", label: "cycle_name", required: true },
       { key: "status", label: "status (expected|open|active|closed|completed|cancelled)" },
-      { key: "notification_date", label: "notification_date (YYYY-MM-DD)" },
-      { key: "application_start", label: "application_start (YYYY-MM-DD)" },
-      { key: "application_end", label: "application_end (YYYY-MM-DD)" },
-      { key: "exam_start", label: "exam_start (YYYY-MM-DD)" },
-      { key: "exam_end", label: "exam_end (YYYY-MM-DD)" },
+      { key: "notification_date", label: "notification_date (dd-mm-yyyy)", type: "date", mode: "any" },
+      { key: "application_start", label: "application_start (dd-mm-yyyy)", type: "date", mode: "future" },
+      { key: "application_end", label: "application_end (dd-mm-yyyy)", type: "date", mode: "future" },
+      { key: "exam_start", label: "exam_start (dd-mm-yyyy)", type: "date", mode: "future" },
+      { key: "exam_end", label: "exam_end (dd-mm-yyyy)", type: "date", mode: "future" },
       { key: "source_url", label: "source_url" },
     ],
     columns: ["exam_id", "year", "cycle_name", "status"],
@@ -118,7 +119,7 @@ const ENTITY_CONFIG = {
       { key: "pyq_source_id", label: "pyq_source_id (in this exam)", type: "ref", ref: refPyqSource({ exam_id: "exam_id" }) },
       { key: "year", label: "year", required: true, type: "int" },
       { key: "exam_phase_id", label: "exam_phase_id", type: "ref", ref: refPhase({ exam_id: "exam_id" }) },
-      { key: "paper_date", label: "paper_date (YYYY-MM-DD)" },
+      { key: "paper_date", label: "paper_date (dd-mm-yyyy)", type: "date", mode: "past" },
       { key: "shift", label: "shift" },
       { key: "paper_code", label: "paper_code" },
       { key: "source_url", label: "source_url" },
@@ -644,6 +645,16 @@ export default function AdminExamIntelCms() {
                       <option key={o} value={o}>{o}</option>
                     ))}
                   </select>
+                ) : f.type === "date" ? (
+                  <div data-testid={`cms-field-${f.key}`}>
+                    <DateField
+                      value={formValues[f.key] ?? null}
+                      onChange={(iso) => setFormValues((p) => ({ ...p, [f.key]: iso }))}
+                      mode={f.mode || "any"}
+                      name={f.key}
+                      id={`cms-date-${f.key}`}
+                    />
+                  </div>
                 ) : f.type === "json" ? (
                   <textarea
                     value={formValues[f.key] ?? ""}
