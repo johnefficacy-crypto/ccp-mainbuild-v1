@@ -1881,7 +1881,10 @@ def delete_pyq_question_topic_tag(
 # 500-row batches make seeding an exam impractical. 2000 keeps one request
 # bounded while letting an operator import a full paper-set's tags at once.
 _DEFAULT_BULK_CAP = 500
-_MAX_BULK_CAP = 2000
+# Pydantic ceiling for any single bulk request. Per-entity caps (``max_rows``)
+# stay below it: 500 default, 2000 for tags/questions, 4000 for pyq-options
+# (a 20-year archive has ~4 options per question, so options outscale tags).
+_MAX_BULK_CAP = 4000
 
 
 class BulkImportBody(BaseModel):
@@ -2027,8 +2030,32 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
         "enums": {"tag_role": _PYQ_TAG_ROLES, "tagging_source": _PYQ_TAGGING_SOURCES},
         "audit": "exam_intel.cms.pyq_tag.bulk_create",
         # PYQ archives span 20 years → tens of thousands of tags; a larger
-        # batch makes seeding practical (see _MAX_BULK_CAP).
-        "max_rows": _MAX_BULK_CAP,
+        # batch makes seeding practical.
+        "max_rows": 2000,
+    },
+    "pyq-questions": {
+        "table": "pyq_questions",
+        "allowed": _QUESTION_FIELDS,
+        "required": ["pyq_paper_id", "question_text"],
+        "forced": {"reviewer_status": "pending"},
+        "fks": {"pyq_paper_id": "pyq_papers"},
+        "enums": {"question_type": _QUESTION_TYPES},
+        "audit": "exam_intel.cms.pyq_question.bulk_create",
+        "max_rows": 2000,
+        # Each question row may carry an inline ``options`` array; children are
+        # inserted against the new question id after the parent insert.
+        "inline": {"key": "options", "table": "pyq_options", "fk": "question_id", "allowed": _OPTION_FIELDS},
+    },
+    "pyq-options": {
+        "table": "pyq_options",
+        "allowed": _OPTION_FIELDS | {"question_id"},
+        "required": ["question_id"],
+        "forced": {},
+        "fks": {"question_id": "pyq_questions"},
+        "enums": {},
+        "audit": "exam_intel.cms.pyq_option.bulk_create",
+        # Options outnumber questions (~4:1 over a 20-year archive).
+        "max_rows": 4000,
     },
 }
 
@@ -2115,7 +2142,24 @@ def bulk_import(
             error_count += 1
             continue
         row = inserted[0] if inserted else cleaned
-        results.append({"index": idx, "ok": True, "row": row})
+        result = {"index": idx, "ok": True, "row": row}
+        # Insert any inline children (e.g. a question's options) against the
+        # freshly-created parent id.
+        inline = cfg.get("inline")
+        if inline and isinstance(raw.get(inline["key"]), list) and row.get("id"):
+            n = 0
+            for child in raw[inline["key"]]:
+                if not isinstance(child, dict):
+                    continue
+                child_row = {k: v for k, v in child.items() if k in inline["allowed"]}
+                child_row[inline["fk"]] = row["id"]
+                try:
+                    supabase.table(inline["table"]).insert(child_row).execute()
+                    n += 1
+                except Exception:  # noqa: BLE001
+                    pass
+            result["children_created"] = n
+        results.append(result)
         ok_count += 1
     audit_id = _audit(
         supabase, admin, cfg["audit"],
