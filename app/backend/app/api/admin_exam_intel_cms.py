@@ -1629,6 +1629,28 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
         "enums": {"source_basis": _COMPETITION_SOURCE_BASIS},
         "audit": "exam_intel.cms.competition_metric.bulk_create",
     },
+    # Taxonomy entities upsert on their natural key so re-importing the same
+    # CSV is idempotent (no duplicate subjects/topics).
+    "subjects": {
+        "table": "subjects",
+        "allowed": _SUBJECT_FIELDS,
+        "required": ["slug", "name"],
+        "forced": {},
+        "fks": {},
+        "enums": {},
+        "audit": "exam_intel.cms.subject.bulk_create",
+        "upsert_on": "slug",
+    },
+    "topics": {
+        "table": "topics",
+        "allowed": _TOPIC_FIELDS,
+        "required": ["subject_id", "slug", "name"],
+        "forced": {},
+        "fks": {"subject_id": "subjects", "parent_topic_id": "topics"},
+        "enums": {"level": _TOPIC_LEVELS},
+        "audit": "exam_intel.cms.topic.bulk_create",
+        "upsert_on": "subject_id,parent_topic_id,slug",
+    },
 }
 
 
@@ -1700,7 +1722,12 @@ def bulk_import(
             error_count += 1
             continue
         try:
-            inserted = supabase.table(cfg["table"]).insert(cleaned).execute().data or []
+            tbl = supabase.table(cfg["table"])
+            upsert_on = cfg.get("upsert_on")
+            if upsert_on:
+                inserted = tbl.upsert(cleaned, on_conflict=upsert_on).execute().data or []
+            else:
+                inserted = tbl.insert(cleaned).execute().data or []
         except Exception as exc:  # noqa: BLE001
             results.append({"index": idx, "ok": False, "error": f"db: {str(exc)[:200]}"})
             error_count += 1

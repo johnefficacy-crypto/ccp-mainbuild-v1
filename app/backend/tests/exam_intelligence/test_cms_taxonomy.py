@@ -287,3 +287,27 @@ def test_list_topics_filters_by_subject_and_level():
 
     by_level = client.get(f"{_BASE}/topics?subject_id=s1&level=microtopic")
     assert {t["id"] for t in by_level.json()["items"]} == {"t3"}
+
+
+# ── bulk import topics: upsert by slug, idempotent re-import ───────────────
+
+
+def test_bulk_import_topics_upserts_by_slug_no_duplicates_on_reimport():
+    sb = TaxSBStub({"subjects": [{"id": "s1", "slug": "quant", "name": "Quant", "is_active": True}]})
+    client = _client(sb)
+    rows = [
+        {"subject_id": "s1", "slug": f"topic-{i}", "name": f"Topic {i}", "level": "topic"}
+        for i in range(10)
+    ]
+    body = {"reason": "bulk seeding ten topics", "entity": "topics", "rows": rows}
+
+    first = client.post(f"{_BASE}/bulk-import", json=body)
+    assert first.status_code == 200, first.text
+    assert first.json()["ok_count"] == 10
+    assert len(sb.db["topics"]) == 10
+
+    # Re-importing the same slugs upserts in place — no duplicate rows.
+    second = client.post(f"{_BASE}/bulk-import", json=body)
+    assert second.status_code == 200, second.text
+    assert second.json()["ok_count"] == 10
+    assert len(sb.db["topics"]) == 10
