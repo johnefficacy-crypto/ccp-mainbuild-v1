@@ -43,6 +43,8 @@ const PYQ_QUESTION_TYPES = ["mcq", "numerical", "descriptive", "caselet", "match
 const PYQ_OBSERVED_DIFFICULTY = ["easy", "moderate", "hard"];
 const PYQ_OPTION_LABELS = ["A", "B", "C", "D", "E"];
 const COMPETITION_SOURCE_BASES = ["manual", "official", "reviewed_analysis", "derived", "model_generated"];
+// exam_policy_updates.claim_status CHECK (migration 056).
+const POLICY_CLAIM_STATUSES = ["unverified", "official_confirmed", "superseded"];
 
 const ENTITY_CONFIG = {
   "exam-families": {
@@ -111,6 +113,11 @@ const ENTITY_CONFIG = {
                displayFields: ["original_filename", "created_at"], secondaryKey: "document_kind",
                filters: { exam_id: "exam_id" } } },
       { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
+      { key: "source_id", label: "source_id (source_registry uuid, optional)" },
+      { key: "published_at", label: "published_at (dd-mm-yyyy)", type: "date", mode: "any" },
+      { key: "fetched_at", label: "fetched_at (dd-mm-yyyy)", type: "date", mode: "any" },
+      { key: "content_hash", label: "content_hash (auto-computed by extraction)", type: "readonly" },
+      { key: "metadata", label: "metadata (JSON object)", type: "json" },
     ],
     columns: ["title", "document_type", "trust_status", "exam_id"],
   },
@@ -126,6 +133,9 @@ const ENTITY_CONFIG = {
       { key: "paper_code", label: "paper_code" },
       { key: "source_url", label: "source_url" },
       { key: "source_type", label: "source_type (official|memory_based|coaching|community|aggregator|unknown)" },
+      { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
+      { key: "content_hash", label: "content_hash (auto-computed by extraction)", type: "readonly" },
+      { key: "metadata", label: "metadata (JSON object)", type: "json" },
     ],
     columns: ["year", "paper_code", "source_type", "trust_status"],
   },
@@ -158,8 +168,20 @@ const ENTITY_CONFIG = {
       { key: "summary", label: "summary" },
       { key: "source_type", label: "source_type (official|aggregator|research|opportunity|unknown)" },
       { key: "source_url", label: "source_url" },
-      { key: "affects_syllabus", label: "affects_syllabus", type: "bool" },
+      { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
+      { key: "source_id", label: "source_id (source_registry uuid, optional)" },
+      { key: "claim_status", label: "claim_status", type: "enum", options: POLICY_CLAIM_STATUSES },
+      // affects_* may only be true on official sources (DB CHECK + backend guard).
       { key: "affects_plan", label: "affects_plan", type: "bool" },
+      { key: "affects_deadline", label: "affects_deadline", type: "bool" },
+      { key: "affects_eligibility", label: "affects_eligibility", type: "bool" },
+      { key: "affects_documents", label: "affects_documents", type: "bool" },
+      { key: "affects_syllabus", label: "affects_syllabus", type: "bool" },
+      { key: "affects_vacancy", label: "affects_vacancy", type: "bool" },
+      { key: "change_summary", label: "change_summary (JSON object)", type: "json" },
+      { key: "evidence", label: "evidence (JSON object)", type: "json" },
+      { key: "published_at", label: "published_at (dd-mm-yyyy)", type: "date", mode: "any" },
+      { key: "effective_from", label: "effective_from (dd-mm-yyyy)", type: "date", mode: "any" },
     ],
     columns: ["title", "update_type", "reviewer_status", "source_type"],
   },
@@ -276,6 +298,9 @@ const ENTITY_CONFIG = {
       { key: "question_type", label: "question_type", type: "enum", options: PYQ_QUESTION_TYPES },
       { key: "observed_difficulty", label: "observed_difficulty", type: "enum", options: PYQ_OBSERVED_DIFFICULTY },
       { key: "expected_solve_time_sec", label: "expected_solve_time_sec", type: "int" },
+      { key: "explanation_text", label: "explanation_text", type: "textarea" },
+      { key: "language", label: "language" },
+      { key: "normalized_question_hash", label: "normalized_question_hash (auto-computed from text)", type: "readonly" },
       { key: "metadata", label: "metadata (JSON object)", type: "json" },
     ],
     columns: ["pyq_paper_id", "question_number", "question_type", "reviewer_status"],
@@ -704,6 +729,27 @@ export default function AdminExamIntelCms() {
                     rows={3}
                     placeholder="{}"
                     className="w-full px-2 py-1.5 text-sm font-mono border border-border/60 rounded bg-background"
+                    data-testid={`cms-field-${f.key}`}
+                  />
+                ) : f.type === "textarea" ? (
+                  <textarea
+                    value={formValues[f.key] ?? ""}
+                    onChange={(e) => setFormValues((p) => ({ ...p, [f.key]: e.target.value }))}
+                    rows={3}
+                    className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                    data-testid={`cms-field-${f.key}`}
+                  />
+                ) : f.type === "readonly" ? (
+                  // Auto-computed columns (e.g. content hashes). Shown for
+                  // visibility but never submitted from the form — the backend
+                  // derives them on insert.
+                  <input
+                    type="text"
+                    readOnly
+                    disabled
+                    value=""
+                    placeholder="auto-computed"
+                    className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-muted text-muted-foreground"
                     data-testid={`cms-field-${f.key}`}
                   />
                 ) : (
