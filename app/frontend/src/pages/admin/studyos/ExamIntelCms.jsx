@@ -13,6 +13,9 @@ const refCycle = (filters) => ({ endpoint: "exam-cycles", labelKey: "cycle_name"
 const refPhase = (filters) => ({ endpoint: "exam-phases", labelKey: "phase_name", secondaryKey: "phase_slug", filters });
 const refTopic = (filters, staticFilters) => ({ endpoint: "topics", labelKey: "name", secondaryKey: "level", filters, staticFilters });
 const refDoc = (filters) => ({ endpoint: "syllabus-documents", labelKey: "title", secondaryKey: "document_type", filters });
+const refPyqSource = (filters) => ({ endpoint: "pyq-sources", labelKey: "title", secondaryKey: "source_type", filters });
+const refPaper = (filters) => ({ endpoint: "pyq-papers", labelKey: "paper_code", secondaryKey: "year", filters });
+const refQuestion = (filters) => ({ endpoint: "pyq-questions", labelKey: "question_text", secondaryKey: "question_number", filters });
 
 // Enum values mirror the CHECK constraints on public.exam_topic_coverage
 // (migration 030). Keep these in sync with the migration, not invented.
@@ -26,6 +29,11 @@ const TOPIC_PREREQ_RELATIONS = ["requires", "recommended_before", "supports", "f
 
 // Syllabus mention enum mirrors the CHECK constraint in migration 031.
 const MENTION_TYPES = ["explicit", "implied", "parent_topic_only", "derived"];
+
+// PYQ enums mirror the CHECK constraints in migration 032.
+const PYQ_SOURCE_TYPES = ["official", "memory_based", "coaching", "community", "aggregator", "unknown"];
+const PYQ_TAG_ROLES = ["primary", "secondary", "prerequisite", "trap", "calculation_layer", "conceptual_layer"];
+const PYQ_TAGGING_SOURCES = ["manual", "admin", "ai", "rule", "imported"];
 
 const ENTITY_CONFIG = {
   "exam-families": {
@@ -98,6 +106,7 @@ const ENTITY_CONFIG = {
     label: "PYQ papers",
     fields: [
       { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
+      { key: "pyq_source_id", label: "pyq_source_id (in this exam)", type: "ref", ref: refPyqSource({ exam_id: "exam_id" }) },
       { key: "year", label: "year", required: true, type: "int" },
       { key: "exam_phase_id", label: "exam_phase_id", type: "ref", ref: refPhase({ exam_id: "exam_id" }) },
       { key: "paper_date", label: "paper_date (YYYY-MM-DD)" },
@@ -212,6 +221,36 @@ const ENTITY_CONFIG = {
       { key: "metadata", label: "metadata (JSON object)", type: "json" },
     ],
     columns: ["topic_id", "mention_type", "reviewer_status", "raw_text"],
+  },
+  "pyq-sources": {
+    label: "PYQ sources",
+    notice: "Lands as pending — verify trust before papers from it feed scoring.",
+    fields: [
+      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
+      { key: "source_type", label: "source_type", type: "enum", options: PYQ_SOURCE_TYPES },
+      { key: "title", label: "title" },
+      { key: "source_url", label: "source_url" },
+      { key: "source_id", label: "source_id (source_registry uuid, optional)" },
+      { key: "metadata", label: "metadata (JSON object)", type: "json" },
+    ],
+    columns: ["exam_id", "source_type", "title", "trust_status"],
+  },
+  "pyq-question-topic-tags": {
+    label: "PYQ question topic tags",
+    notice: "Lands as pending — verify in /admin/exam-intelligence review.",
+    fields: [
+      { key: "exam_id", label: "exam_id (scope only — not saved)", type: "ref", ref: REF_EXAM, uiOnly: true },
+      { key: "pyq_paper_id", label: "pyq_paper_id (scope only — not saved)", type: "ref", ref: refPaper({ exam_id: "exam_id" }), uiOnly: true },
+      { key: "question_id", label: "question_id", required: true, type: "ref", ref: refQuestion({ pyq_paper_id: "pyq_paper_id" }) },
+      { key: "subject_id", label: "subject_id (scope only — not saved)", type: "ref", ref: REF_SUBJECT, uiOnly: true },
+      { key: "topic_id", label: "topic_id", required: true, type: "ref", ref: refTopic({ subject_id: "subject_id" }) },
+      { key: "tag_role", label: "tag_role", type: "enum", options: PYQ_TAG_ROLES },
+      { key: "tagging_source", label: "tagging_source", type: "enum", options: PYQ_TAGGING_SOURCES },
+      { key: "tag_weight", label: "tag_weight (0–1)", type: "number", step: 0.001, min: 0, max: 1 },
+      { key: "confidence_score", label: "confidence_score (0–1)", type: "number", step: 0.001, min: 0, max: 1 },
+      { key: "metadata", label: "metadata (JSON object)", type: "json" },
+    ],
+    columns: ["question_id", "topic_id", "tag_role", "reviewer_status"],
   },
 };
 
