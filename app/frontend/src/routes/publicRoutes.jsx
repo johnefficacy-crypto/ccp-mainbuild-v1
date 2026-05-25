@@ -1,6 +1,6 @@
 import React from "react";
 import { Route } from "react-router-dom";
-import Landing from "../pages/Landing";
+import Landing from "../landingapp";
 import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
 import ForgotPassword from "../pages/auth/ForgotPassword";

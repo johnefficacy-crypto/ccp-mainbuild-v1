@@ -1,6 +1,7 @@
 // Career Copilot — flat-vector illustrations
 // Friendly, simple geometry. Round heads, soft shapes. No detailed faces.
 // All <svg> elements get a viewBox + currentColor where possible.
+import React from "react";
 
 // Logo mark
 const LogoMark = ({ size = 30 }) => (
@@ -444,7 +445,7 @@ const ShieldQuestion = () => (
   </svg>
 );
 
-Object.assign(window, {
+export {
   LogoMark, HeroScene,
   FloatCalendar, FloatBook, FloatClock,
   IconScan, IconCalendarFlip, IconClockSweep, IconChat,
@@ -452,4 +453,4 @@ Object.assign(window, {
   MiniBook, MiniPencil, MiniPaper, MiniBulb,
   SceneCommunity, SceneGroup, ScenePartner, SceneMentor, SceneResources, SceneShop,
   TrustFilterScene, ShieldCheck, ShieldQuestion,
-});
+};

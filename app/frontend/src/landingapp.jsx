@@ -1,12 +1,26 @@
 // Career Copilot — landing page main app
 // Sections: Hero, How it helps, Eligibility demo, Daily plan, Support, Trust, Exams, Pricing, FAQ, Footer
-// Globals from landing-art.jsx: LogoMark, HeroScene, FloatCalendar, FloatBook, FloatClock,
-// IconScan, IconCalendarFlip, IconClockSweep, IconChat, VerdictIcon,
-// MiniBook, MiniPencil, MiniPaper, MiniBulb,
-// SceneCommunity, SceneGroup, ScenePartner, SceneMentor, SceneResources, SceneShop,
-// TrustFilterScene, ShieldCheck, ShieldQuestion
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "./lib/authContext";
+import {
+  LogoMark,
+  FloatCalendar, FloatBook, FloatClock,
+  IconScan, IconCalendarFlip, IconClockSweep, IconChat,
+  VerdictIcon,
+  MiniBook, MiniPencil, MiniPaper, MiniBulb,
+  SceneCommunity, SceneGroup, ScenePartner, SceneMentor, SceneResources, SceneShop,
+  TrustFilterScene, ShieldCheck, ShieldQuestion,
+} from "./landingart";
+import "./landing.css";
 
-const { useState, useEffect, useRef } = React;
+// For `/app/*` deep links, send guests through signup with a `next` param so
+// the CTA never dead-ends on a protected route; authed users go straight in.
+function guestSafe(path, isAuthed) {
+  if (isAuthed) return path;
+  if (typeof path !== "string" || !path.startsWith("/app/")) return path;
+  return `/signup?next=${encodeURIComponent(path)}`;
+}
 
 const prefersReduced = () => typeof window !== "undefined" && window.matchMedia
   && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -18,7 +32,7 @@ function useReveal() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (prefersReduced()) { setSeen(true); return; }
+    if (prefersReduced() || typeof IntersectionObserver === "undefined") { setSeen(true); return; }
     const io = new IntersectionObserver((entries) => {
       entries.forEach(e => { if (e.isIntersecting) { setSeen(true); io.disconnect(); } });
     }, { threshold: 0.18 });
@@ -112,8 +126,11 @@ function Counter({ to, duration = 1100, suffix = "", trigger }) {
 }
 
 // ---- Top nav ----
-function Nav({ onPrimary }) {
+function Nav() {
   const scrolled = useScrolled(40);
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const startTarget = auth.isAuthed ? "/app" : "/signup";
   return (
     <nav className={"nav " + (scrolled ? "scrolled" : "")}>
       <div className="container nav-inner">
@@ -129,8 +146,8 @@ function Nav({ onPrimary }) {
         </div>
         <div className="nav-spacer" />
         <div className="nav-cta">
-          <a className="btn btn-ghost btn-sm" href="#" onMouseDown={rippleHandler}>Log in</a>
-          <button className="btn btn-primary btn-sm" onMouseDown={rippleHandler} onClick={onPrimary}>
+          <Link className="btn btn-ghost btn-sm" to="/login" onMouseDown={rippleHandler}>Log in</Link>
+          <button className="btn btn-primary btn-sm" onMouseDown={rippleHandler} onClick={() => navigate(startTarget)}>
             Start free
           </button>
         </div>
@@ -143,6 +160,8 @@ function Nav({ onPrimary }) {
 function Hero() {
   const [mockSeenRef, mockSeen] = useReveal();
   const artRef = useRef(null);
+  const auth = useAuth();
+  const navigate = useNavigate();
 
   // Parallax on hero illustration
   useEffect(() => {
@@ -186,10 +205,17 @@ function Hero() {
           </p>
           <div className="hero-cta">
             <button className="btn btn-primary" onMouseDown={rippleHandler}
-              onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); burstConfetti(r.left + r.width / 2, r.top + r.height / 2); }}>
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                burstConfetti(r.left + r.width / 2, r.top + r.height / 2);
+                navigate(guestSafe("/app/eligibility", auth.isAuthed));
+              }}>
               Check my eligibility <span className="arrow">→</span>
             </button>
-            <button className="btn btn-secondary" onMouseDown={rippleHandler}>Start my study plan</button>
+            <button className="btn btn-secondary" onMouseDown={rippleHandler}
+              onClick={() => navigate(guestSafe("/app/study/plan", auth.isAuthed))}>
+              Start my study plan
+            </button>
           </div>
           <div className="hero-meta">
             <span className="check">✓</span> Free to start. No credit card needed.
@@ -458,16 +484,18 @@ function Exams() {
 // ---- Pricing ----
 function Pricing() {
   const [ref, seen] = useReveal();
+  const auth = useAuth();
+  const navigate = useNavigate();
   const plans = [
     { tier: "Starter", name: "Free", price: "₹0", per: "forever",
       bullets: ["Eligibility check", "Deadline tracker", "Community access", "Free resources library"],
-      cta: "Start free" },
+      cta: "Start free", to: auth.isAuthed ? "/app" : "/signup" },
     { tier: "Most chosen", name: "Study Plan", price: "₹299", per: "per month",
       bullets: ["Everything in Free", "Daily study plan", "Revision schedule", "Mock test review", "Weekly report card"],
-      cta: "Start 7-day trial", featured: true },
+      cta: "Start 7-day trial", featured: true, to: guestSafe("/app/study/plan", auth.isAuthed) },
     { tier: "Premium", name: "Mentor", price: "₹999", per: "per month",
       bullets: ["Everything in Study Plan", "Plan review by a mentor", "1:1 mentor sessions", "Personal feedback"],
-      cta: "Talk to us" },
+      cta: "Talk to us", to: guestSafe("/app/mentors", auth.isAuthed) },
   ];
   return (
     <section className="section" id="pricing" ref={ref}>
@@ -487,7 +515,8 @@ function Pricing() {
               <div className="ppr"><span className="amt">{p.price}</span><span className="per">{p.per}</span></div>
               <ul>{p.bullets.map((b, k) => <li key={k}>{b}</li>)}</ul>
               <div className="pcta">
-                <button className={"btn " + (p.featured ? "btn-primary" : "btn-secondary")} style={{ width: "100%" }} onMouseDown={rippleHandler}>{p.cta}</button>
+                <button className={"btn " + (p.featured ? "btn-primary" : "btn-secondary")} style={{ width: "100%" }}
+                  onMouseDown={rippleHandler} onClick={() => navigate(p.to)}>{p.cta}</button>
               </div>
             </div>
           ))}
@@ -545,10 +574,10 @@ function Footer() {
         </div>
         <div className="nav-spacer" />
         <div className="foot-links">
-          <a href="#">About</a>
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
-          <a href="#">Contact</a>
+          <button type="button">About</button>
+          <button type="button">Privacy</button>
+          <button type="button">Terms</button>
+          <button type="button">Contact</button>
         </div>
         <div style={{ width: "100%", textAlign: "center", paddingTop: 14, color: "var(--ink-4)", fontSize: 13 }}>
           © 2026 Career Copilot. Made for aspirants in India.
@@ -558,15 +587,11 @@ function Footer() {
   );
 }
 
-// ---- App ----
-function App() {
-  const onPrimary = () => {
-    const el = document.querySelector(".hero .btn-primary");
-    if (el) el.click();
-  };
+// ---- Page ----
+export default function Landing() {
   return (
-    <React.Fragment>
-      <Nav onPrimary={onPrimary} />
+    <div className="cc-landing">
+      <Nav />
       <Hero />
       <HowItHelps />
       <EligibilityDemo />
@@ -577,8 +602,6 @@ function App() {
       <Pricing />
       <FAQ />
       <Footer />
-    </React.Fragment>
+    </div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
