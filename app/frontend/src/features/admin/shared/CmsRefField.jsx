@@ -8,22 +8,25 @@ import useCmsList from "./useCmsList";
  *
  * `field.ref` shape:
  *   {
- *     endpoint: "exam-cycles",        // CMS list endpoint
- *     labelKey: "cycle_name",         // human-readable label
- *     secondaryKey: "year",           // optional secondary text
- *     filters: { exam_id: "exam_id" } // queryParam -> sibling form field
+ *     endpoint: "exam-cycles",         // CMS list endpoint
+ *     labelKey: "cycle_name",          // human-readable label
+ *     secondaryKey: "year",            // optional secondary text
+ *     filters: { exam_id: "exam_id" }, // queryParam -> sibling form field
+ *     staticFilters: { level: "topic" }// queryParam -> constant value
  *   }
  *
  * The `filters` map reads sibling values out of `formValues`, so when the
- * parent field changes the child list refetches with the new param. The
- * filter object is rebuilt every render, but react-query compares query
- * keys structurally, so only a real value change triggers a refetch.
+ * parent field changes the child list refetches with the new param.
+ * `staticFilters` are constant query params (e.g. restrict a parent picker
+ * to level=topic). The filter object is rebuilt every render, but
+ * react-query compares query keys structurally, so only a real value change
+ * triggers a refetch.
  */
 export default function CmsRefField({ field, value, formValues = {}, onChange, testId }) {
   const ref = field.ref || {};
   const filterMap = ref.filters || {};
 
-  const filters = {};
+  const filters = { ...(ref.staticFilters || {}) };
   for (const [param, formKey] of Object.entries(filterMap)) {
     filters[param] = formValues[formKey];
   }

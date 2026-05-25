@@ -8,14 +8,20 @@ import CmsRefField from "../../../features/admin/shared/CmsRefField";
 // already exists; child pickers cascade off a sibling form field.
 const REF_EXAM = { endpoint: "exams", labelKey: "name", secondaryKey: "slug" };
 const REF_FAMILY = { endpoint: "exam-families", labelKey: "name", secondaryKey: "slug" };
+const REF_SUBJECT = { endpoint: "subjects", labelKey: "name", secondaryKey: "slug" };
 const refCycle = (filters) => ({ endpoint: "exam-cycles", labelKey: "cycle_name", secondaryKey: "year", filters });
 const refPhase = (filters) => ({ endpoint: "exam-phases", labelKey: "phase_name", secondaryKey: "phase_slug", filters });
+const refTopic = (filters, staticFilters) => ({ endpoint: "topics", labelKey: "name", secondaryKey: "level", filters, staticFilters });
 
 // Enum values mirror the CHECK constraints on public.exam_topic_coverage
 // (migration 030). Keep these in sync with the migration, not invented.
 const COVERAGE_DEPTHS = ["unknown", "none", "mentioned", "light", "normal", "deep", "core"];
 const COVERAGE_SOURCE_BASES = ["official_syllabus", "pyq_analysis", "admin_review", "hybrid", "manual", "model_generated"];
 const COVERAGE_REVIEWER_STATUSES = ["draft", "pending_review", "reviewed", "locked", "rejected"];
+
+// Taxonomy enums mirror the CHECK constraints in migration 029.
+const TOPIC_LEVELS = ["topic", "microtopic", "concept"];
+const TOPIC_PREREQ_RELATIONS = ["requires", "recommended_before", "supports", "foundation_for"];
 
 const ENTITY_CONFIG = {
   "exam-families": {
@@ -130,6 +136,59 @@ const ENTITY_CONFIG = {
       { key: "affects_plan", label: "affects_plan", type: "bool" },
     ],
     columns: ["title", "update_type", "reviewer_status", "source_type"],
+  },
+  subjects: {
+    label: "Subjects",
+    fields: [
+      { key: "slug", label: "slug", required: true },
+      { key: "name", label: "name", required: true },
+      { key: "subject_group", label: "subject_group" },
+      { key: "default_difficulty_level", label: "default_difficulty_level" },
+      { key: "description", label: "description" },
+      { key: "is_active", label: "is_active", type: "bool" },
+    ],
+    columns: ["slug", "name", "subject_group", "is_active"],
+  },
+  topics: {
+    label: "Topics",
+    fields: [
+      { key: "subject_id", label: "subject_id", required: true, type: "ref", ref: REF_SUBJECT },
+      { key: "level", label: "level", type: "enum", options: TOPIC_LEVELS },
+      // Parent picker is scoped to the chosen subject and restricted to
+      // level=topic, so a microtopic/concept can only hang off a top-level
+      // topic (the UI rule layered over the permissive backend).
+      { key: "parent_topic_id", label: "parent_topic_id (a level=topic in this subject)", type: "ref", ref: refTopic({ subject_id: "subject_id" }, { level: "topic" }) },
+      { key: "slug", label: "slug", required: true },
+      { key: "name", label: "name", required: true },
+      { key: "default_difficulty_level", label: "default_difficulty_level" },
+      { key: "description", label: "description" },
+      { key: "is_active", label: "is_active", type: "bool" },
+    ],
+    columns: ["subject_id", "slug", "name", "level", "is_active"],
+  },
+  "topic-aliases": {
+    label: "Topic aliases",
+    supportsBulk: false,
+    fields: [
+      { key: "subject_id", label: "subject_id (scope only — not saved)", type: "ref", ref: REF_SUBJECT, uiOnly: true },
+      { key: "topic_id", label: "topic_id", required: true, type: "ref", ref: refTopic({ subject_id: "subject_id" }) },
+      { key: "alias", label: "alias", required: true },
+      { key: "source_context", label: "source_context" },
+    ],
+    columns: ["topic_id", "alias", "normalized_alias", "created_at"],
+  },
+  "topic-prerequisites": {
+    label: "Topic prerequisites",
+    supportsBulk: false,
+    fields: [
+      { key: "subject_id", label: "subject_id (scope only — not saved)", type: "ref", ref: REF_SUBJECT, uiOnly: true },
+      { key: "topic_id", label: "topic_id", required: true, type: "ref", ref: refTopic({ subject_id: "subject_id" }) },
+      { key: "prerequisite_topic_id", label: "prerequisite_topic_id", required: true, type: "ref", ref: refTopic({ subject_id: "subject_id" }) },
+      { key: "relation_type", label: "relation_type", type: "enum", options: TOPIC_PREREQ_RELATIONS },
+      { key: "strength", label: "strength (0–1)", type: "number", step: 0.001, min: 0, max: 1 },
+      { key: "source_basis", label: "source_basis" },
+    ],
+    columns: ["topic_id", "prerequisite_topic_id", "relation_type", "strength"],
   },
 };
 
@@ -251,6 +310,9 @@ export default function AdminExamIntelCms() {
     }
     const payload = {};
     for (const f of cfg.fields) {
+      // uiOnly fields (e.g. a subject_id scope picker) drive cascade
+      // filtering but are not real columns — never submit them.
+      if (f.uiOnly) continue;
       let v;
       try {
         v = parseValue(f, formValues[f.key]);
@@ -259,6 +321,13 @@ export default function AdminExamIntelCms() {
         return;
       }
       if (v !== undefined) payload[f.key] = v;
+    }
+    // UI rule: a microtopic/concept must hang off a parent topic. The
+    // parent picker only offers level=topic rows, so this guarantees the
+    // "microtopic requires a level=topic parent" contract.
+    if (entity === "topics" && ["microtopic", "concept"].includes(payload.level) && !payload.parent_topic_id) {
+      setStatus({ ok: false, message: `A ${payload.level} must have a parent topic (level=topic).` });
+      return;
     }
     try {
       const r = await api.post(`/api/admin/exam-intelligence-cms/${entity}`, {
@@ -275,10 +344,20 @@ export default function AdminExamIntelCms() {
     }
   }
 
+  function insertBulkTemplate() {
+    const keys = cfg.fields.filter((f) => !f.uiOnly).map((f) => f.key);
+    const skeleton = Object.fromEntries(keys.map((k) => [k, ""]));
+    setBulkRows(JSON.stringify([skeleton], null, 2));
+  }
+
   useEffect(() => {
     setItems(null);
     setStatus(null);
     setShowCreate(false);
+    setShowBulk(false);
+    setBulkRows("");
+    setBulkResult(null);
+    setFileParseError("");
     setFormValues({});
     setReason("");
     load();
@@ -325,14 +404,16 @@ export default function AdminExamIntelCms() {
         >
           <Plus className="h-3 w-3" /> {showCreate ? "Cancel" : "New row"}
         </button>
-        <button
-          type="button"
-          className="btn small"
-          onClick={() => setShowBulk((s) => !s)}
-          data-testid="cms-toggle-bulk"
-        >
-          <Plus className="h-3 w-3" /> {showBulk ? "Cancel bulk" : "Bulk import"}
-        </button>
+        {cfg.supportsBulk !== false ? (
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => setShowBulk((s) => !s)}
+            data-testid="cms-toggle-bulk"
+          >
+            <Plus className="h-3 w-3" /> {showBulk ? "Cancel bulk" : "Bulk import"}
+          </button>
+        ) : null}
       </div>
 
       {status ? (
@@ -343,7 +424,7 @@ export default function AdminExamIntelCms() {
 
       {err ? <div className="text-sm text-red-700" role="alert">{err}</div> : null}
 
-      {showBulk ? (
+      {showBulk && cfg.supportsBulk !== false ? (
         <form onSubmit={submitBulk} className="rounded border border-border/60 bg-card p-4 space-y-2" data-testid="cms-bulk-form">
           <h3 className="text-sm font-semibold">Bulk import {ENTITY_CONFIG[entity].label}</h3>
           <p className="text-xs text-muted-foreground">
@@ -369,7 +450,17 @@ export default function AdminExamIntelCms() {
             ) : null}
           </label>
           <label className="block">
-            <span className="block text-xs text-muted-foreground mb-1">Rows JSON (array)</span>
+            <span className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+              <span>Rows JSON (array, max 500)</span>
+              <button
+                type="button"
+                className="btn small"
+                onClick={insertBulkTemplate}
+                data-testid="cms-bulk-template"
+              >
+                Insert template
+              </button>
+            </span>
             <textarea
               value={bulkRows}
               onChange={(e) => setBulkRows(e.target.value)}
