@@ -1639,6 +1639,233 @@ def update_syllabus_topic_mention(
 
 
 # ════════════════════════════════════════════════════════════════════════
+#  PYQ sources (migration 032)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Operator-settable columns from migration 032. ``trust_status`` is forced to
+# 'pending' on create (a source can't be born verified) but is PATCH-editable
+# because pyq_sources has no separate review queue. No ``updated_at`` column.
+_PYQ_SOURCE_FIELDS = {
+    "exam_id", "source_id", "source_type", "source_url", "title",
+    "trust_status", "metadata",
+}
+_PYQ_SOURCE_TYPES = ("official", "memory_based", "coaching", "community", "aggregator", "unknown")
+
+
+@router.get("/pyq-sources")
+def list_pyq_sources(
+    exam_id: str | None = Query(default=None),
+    source_type: str | None = Query(default=None),
+    trust_status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("pyq_sources").select(
+        "id, exam_id, source_id, source_type, source_url, title, trust_status, metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if exam_id:
+        query = query.eq("exam_id", exam_id)
+    if source_type:
+        query = query.eq("source_type", source_type)
+    if trust_status:
+        query = query.eq("trust_status", trust_status)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/pyq-sources")
+def create_pyq_source(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _PYQ_SOURCE_FIELDS, "pyq_sources")
+    row = {k: v for k, v in body.payload.items() if k in _PYQ_SOURCE_FIELDS}
+    if not row.get("exam_id"):
+        raise HTTPException(status_code=422, detail="exam_id is required")
+    if row.get("source_type") and row["source_type"] not in _PYQ_SOURCE_TYPES:
+        raise HTTPException(status_code=422, detail=f"source_type must be one of {_PYQ_SOURCE_TYPES}")
+    if not _safe_select(supabase, "exams", id=row["exam_id"]):
+        raise HTTPException(status_code=422, detail="exam_id does not resolve")
+    # CMS feeds the trust pipeline — a source lands pending.
+    row["trust_status"] = "pending"
+    try:
+        inserted = supabase.table("pyq_sources").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_source.create",
+        entity_type="pyq_source", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/pyq-sources/{source_id}")
+def update_pyq_source(
+    source_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_sources", id=source_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="PYQ source not found")
+    _reject_unknown(body.payload, _PYQ_SOURCE_FIELDS, "pyq_sources")
+    patch = {k: v for k, v in body.payload.items() if k in _PYQ_SOURCE_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("source_type") and patch["source_type"] not in _PYQ_SOURCE_TYPES:
+        raise HTTPException(status_code=422, detail=f"source_type must be one of {_PYQ_SOURCE_TYPES}")
+    # No updated_at column on this table (migration 032).
+    updated = supabase.table("pyq_sources").update(patch).eq("id", source_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_source.update",
+        entity_type="pyq_source", entity_id=source_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  PYQ question topic tags — created at reviewer_status='pending'
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Operator-settable columns from migration 032. ``reviewer_status`` is forced
+# to 'pending' on create and moves only through the review queue; the
+# reviewed_by/reviewed_at pair is review-queue-owned. No ``updated_at``.
+_PYQ_TAG_FIELDS = {
+    "question_id", "topic_id", "tag_weight", "tag_role", "tagging_source",
+    "confidence_score", "metadata",
+}
+_PYQ_TAG_CREATE_FIELDS = _PYQ_TAG_FIELDS | {"reviewer_status"}
+_PYQ_TAG_ROLES = ("primary", "secondary", "prerequisite", "trap", "calculation_layer", "conceptual_layer")
+_PYQ_TAGGING_SOURCES = ("manual", "admin", "ai", "rule", "imported")
+
+
+@router.get("/pyq-question-topic-tags")
+def list_pyq_question_topic_tags(
+    question_id: str | None = Query(default=None),
+    topic_id: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("pyq_question_topic_tags").select(
+        "id, question_id, topic_id, tag_weight, tag_role, tagging_source, "
+        "confidence_score, reviewer_status, metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if question_id:
+        query = query.eq("question_id", question_id)
+    if topic_id:
+        query = query.eq("topic_id", topic_id)
+    if reviewer_status:
+        query = query.eq("reviewer_status", reviewer_status)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/pyq-question-topic-tags")
+def create_pyq_question_topic_tag(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _PYQ_TAG_CREATE_FIELDS, "pyq_question_topic_tags")
+    row = {k: v for k, v in body.payload.items() if k in _PYQ_TAG_FIELDS}
+    if not row.get("question_id") or not row.get("topic_id"):
+        raise HTTPException(status_code=422, detail="question_id and topic_id are required")
+    if row.get("tag_role") and row["tag_role"] not in _PYQ_TAG_ROLES:
+        raise HTTPException(status_code=422, detail=f"tag_role must be one of {_PYQ_TAG_ROLES}")
+    if row.get("tagging_source") and row["tagging_source"] not in _PYQ_TAGGING_SOURCES:
+        raise HTTPException(status_code=422, detail=f"tagging_source must be one of {_PYQ_TAGGING_SOURCES}")
+    if not _safe_select(supabase, "pyq_questions", id=row["question_id"]):
+        raise HTTPException(status_code=422, detail="question_id does not resolve")
+    if not _safe_select(supabase, "topics", id=row["topic_id"]):
+        raise HTTPException(status_code=422, detail="topic_id does not resolve")
+    # CMS feeds the review queue — a tag can never be born verified.
+    row["reviewer_status"] = "pending"
+    try:
+        inserted = supabase.table("pyq_question_topic_tags").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_tag.create",
+        entity_type="pyq_question_topic_tag", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/pyq-question-topic-tags/{tag_id}")
+def update_pyq_question_topic_tag(
+    tag_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Edit non-status fields. ``reviewer_status`` (and reviewed_by/reviewed_at)
+    move only through the /admin/exam-intelligence review queue."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_question_topic_tags", id=tag_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="PYQ topic tag not found")
+    _reject_unknown(body.payload, _PYQ_TAG_FIELDS, "pyq_question_topic_tags")
+    patch = {k: v for k, v in body.payload.items() if k in _PYQ_TAG_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("tag_role") and patch["tag_role"] not in _PYQ_TAG_ROLES:
+        raise HTTPException(status_code=422, detail=f"tag_role must be one of {_PYQ_TAG_ROLES}")
+    if patch.get("tagging_source") and patch["tagging_source"] not in _PYQ_TAGGING_SOURCES:
+        raise HTTPException(status_code=422, detail=f"tagging_source must be one of {_PYQ_TAGGING_SOURCES}")
+    # No updated_at column on this table (migration 032).
+    updated = supabase.table("pyq_question_topic_tags").update(patch).eq("id", tag_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_tag.update",
+        entity_type="pyq_question_topic_tag", entity_id=tag_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+@router.delete("/pyq-question-topic-tags/{tag_id}")
+def delete_pyq_question_topic_tag(
+    tag_id: str,
+    reason: str = Query(..., min_length=8, max_length=500),
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Hard-delete: a tag is a pure relation row with a review surface but no
+    dependents; removing a mis-tag is a legitimate operator action."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_question_topic_tags", id=tag_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="PYQ topic tag not found")
+    supabase.table("pyq_question_topic_tags").delete().eq("id", tag_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_tag.delete",
+        entity_type="pyq_question_topic_tag", entity_id=tag_id,
+        new_value={"reason": reason, "deleted": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "id": tag_id}
+
+
+# ════════════════════════════════════════════════════════════════════════
 #  Bulk import — CSV/JSON paste-in for any CMS entity
 # ════════════════════════════════════════════════════════════════════════
 #
@@ -1648,7 +1875,13 @@ def update_syllabus_topic_mention(
 # same FK validation, same forced status. Per-row outcome is returned so
 # the operator can fix the failed rows and re-submit only those.
 #
-# Capped at 500 rows per call so a single request can't fan out forever.
+# Default cap is 500 rows per call so a single request can't fan out forever.
+# PYQ topic tags raise this to 2000 (see _DEFAULT_BULK_CAP / per-entity
+# ``max_rows``): a 20-year PYQ archive produces tens of thousands of tags, so
+# 500-row batches make seeding an exam impractical. 2000 keeps one request
+# bounded while letting an operator import a full paper-set's tags at once.
+_DEFAULT_BULK_CAP = 500
+_MAX_BULK_CAP = 2000
 
 
 class BulkImportBody(BaseModel):
@@ -1657,12 +1890,13 @@ class BulkImportBody(BaseModel):
     ``entity`` is one of the CMS slugs already used by the per-entity
     endpoints (``exam-families``, ``exams``, ``exam-cycles``, etc.).
     ``rows`` is the list of payloads — each payload matches the
-    single-row ``payload`` shape.
+    single-row ``payload`` shape. The Pydantic ceiling is the absolute max
+    (``_MAX_BULK_CAP``); the per-entity cap is enforced in the handler.
     """
 
     reason: str = Field(..., min_length=8, max_length=500)
     entity: str = Field(..., min_length=4, max_length=50)
-    rows: list[dict[str, Any]] = Field(..., min_length=1, max_length=500)
+    rows: list[dict[str, Any]] = Field(..., min_length=1, max_length=_MAX_BULK_CAP)
 
 
 # Per-entity import config. (allowed_fields, required_fields,
@@ -1784,6 +2018,18 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
         "enums": {"mention_type": _MENTION_TYPES},
         "audit": "exam_intel.cms.syllabus_mention.bulk_create",
     },
+    "pyq-question-topic-tags": {
+        "table": "pyq_question_topic_tags",
+        "allowed": _PYQ_TAG_FIELDS,
+        "required": ["question_id", "topic_id"],
+        "forced": {"reviewer_status": "pending"},
+        "fks": {"question_id": "pyq_questions", "topic_id": "topics"},
+        "enums": {"tag_role": _PYQ_TAG_ROLES, "tagging_source": _PYQ_TAGGING_SOURCES},
+        "audit": "exam_intel.cms.pyq_tag.bulk_create",
+        # PYQ archives span 20 years → tens of thousands of tags; a larger
+        # batch makes seeding practical (see _MAX_BULK_CAP).
+        "max_rows": _MAX_BULK_CAP,
+    },
 }
 
 
@@ -1843,6 +2089,9 @@ def bulk_import(
     cfg = _IMPORT_CONFIG.get(body.entity)
     if not cfg:
         raise HTTPException(status_code=422, detail=f"Unknown entity {body.entity!r}; known: {sorted(_IMPORT_CONFIG)}")
+    cap = cfg.get("max_rows", _DEFAULT_BULK_CAP)
+    if len(body.rows) > cap:
+        raise HTTPException(status_code=422, detail=f"{body.entity!r} accepts at most {cap} rows per request; got {len(body.rows)}")
     supabase = get_supabase_admin()
     fk_cache: dict = {}
     results: list[dict[str, Any]] = []
