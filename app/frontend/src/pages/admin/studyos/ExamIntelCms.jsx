@@ -3,6 +3,7 @@ import { RotateCcw, Plus, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
 import { parseImportFile } from "../../../lib/bulkImportFile";
 import CmsRefField from "../../../features/admin/shared/CmsRefField";
+import ExamIntelDocuments from "./ExamIntelDocuments";
 
 // Reusable ref-picker descriptors. Each points at a CMS list endpoint that
 // already exists; child pickers cascade off a sibling form field.
@@ -294,9 +295,16 @@ export default function AdminExamIntelCms() {
   const [formValues, setFormValues] = useState({});
   const [reason, setReason] = useState("");
 
+  const isDocuments = entity === "documents";
   const cfg = ENTITY_CONFIG[entity];
 
   async function load() {
+    // The Documents panel manages its own data via the upload/list endpoints.
+    if (isDocuments) {
+      setItems(null);
+      setBusy(false);
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
@@ -453,28 +461,33 @@ export default function AdminExamIntelCms() {
             {ENTITY_KEYS.map((k) => (
               <option key={k} value={k}>{ENTITY_CONFIG[k].label} · {k}</option>
             ))}
+            <option value="documents">Documents (PDF upload) · documents</option>
           </select>
         </label>
-        <button type="button" className="btn small" onClick={load} disabled={busy}>
-          <RotateCcw className="h-3 w-3" /> {busy ? "Loading…" : "Reload"}
-        </button>
-        <button
-          type="button"
-          className="btn small"
-          onClick={() => setShowCreate((s) => !s)}
-          data-testid="cms-toggle-create"
-        >
-          <Plus className="h-3 w-3" /> {showCreate ? "Cancel" : "New row"}
-        </button>
-        {cfg.supportsBulk !== false ? (
-          <button
-            type="button"
-            className="btn small"
-            onClick={() => setShowBulk((s) => !s)}
-            data-testid="cms-toggle-bulk"
-          >
-            <Plus className="h-3 w-3" /> {showBulk ? "Cancel bulk" : "Bulk import"}
-          </button>
+        {!isDocuments ? (
+          <>
+            <button type="button" className="btn small" onClick={load} disabled={busy}>
+              <RotateCcw className="h-3 w-3" /> {busy ? "Loading…" : "Reload"}
+            </button>
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => setShowCreate((s) => !s)}
+              data-testid="cms-toggle-create"
+            >
+              <Plus className="h-3 w-3" /> {showCreate ? "Cancel" : "New row"}
+            </button>
+            {cfg.supportsBulk !== false ? (
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => setShowBulk((s) => !s)}
+                data-testid="cms-toggle-bulk"
+              >
+                <Plus className="h-3 w-3" /> {showBulk ? "Cancel bulk" : "Bulk import"}
+              </button>
+            ) : null}
+          </>
         ) : null}
       </div>
 
@@ -486,7 +499,9 @@ export default function AdminExamIntelCms() {
 
       {err ? <div className="text-sm text-red-700" role="alert">{err}</div> : null}
 
-      {showBulk && cfg.supportsBulk !== false ? (
+      {isDocuments ? <ExamIntelDocuments /> : null}
+
+      {!isDocuments && showBulk && cfg.supportsBulk !== false ? (
         <form onSubmit={submitBulk} className="rounded border border-border/60 bg-card p-4 space-y-2" data-testid="cms-bulk-form">
           <h3 className="text-sm font-semibold">Bulk import {ENTITY_CONFIG[entity].label}</h3>
           <p className="text-xs text-muted-foreground">
@@ -550,7 +565,7 @@ export default function AdminExamIntelCms() {
         </form>
       ) : null}
 
-      {showCreate ? (
+      {!isDocuments && showCreate ? (
         <form onSubmit={submitCreate} className="rounded border border-border/60 bg-card p-4 space-y-2" data-testid="cms-create-form">
           <h3 className="text-sm font-semibold">New {cfg.label} row</h3>
           {cfg.notice ? (
@@ -633,6 +648,7 @@ export default function AdminExamIntelCms() {
         </form>
       ) : null}
 
+      {!isDocuments ? (
       <section className="rounded border border-border/60 bg-card p-0 overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="bg-muted/50">
@@ -666,6 +682,7 @@ export default function AdminExamIntelCms() {
           </div>
         ) : null}
       </section>
+      ) : null}
     </div>
   );
 }
