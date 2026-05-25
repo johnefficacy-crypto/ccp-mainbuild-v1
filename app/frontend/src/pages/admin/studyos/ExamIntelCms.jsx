@@ -35,6 +35,11 @@ const MENTION_TYPES = ["explicit", "implied", "parent_topic_only", "derived"];
 const PYQ_SOURCE_TYPES = ["official", "memory_based", "coaching", "community", "aggregator", "unknown"];
 const PYQ_TAG_ROLES = ["primary", "secondary", "prerequisite", "trap", "calculation_layer", "conceptual_layer"];
 const PYQ_TAGGING_SOURCES = ["manual", "admin", "ai", "rule", "imported"];
+const PYQ_QUESTION_TYPES = ["mcq", "numerical", "descriptive", "caselet", "matching", "other"];
+// observed_difficulty + option_label have no DB CHECK (migration 032) — these
+// are UI conveniences, not enforced enums.
+const PYQ_OBSERVED_DIFFICULTY = ["easy", "moderate", "hard"];
+const PYQ_OPTION_LABELS = ["A", "B", "C", "D", "E"];
 
 const ENTITY_CONFIG = {
   "exam-families": {
@@ -255,6 +260,34 @@ const ENTITY_CONFIG = {
       { key: "metadata", label: "metadata (JSON object)", type: "json" },
     ],
     columns: ["question_id", "topic_id", "tag_role", "reviewer_status"],
+  },
+  "pyq-questions": {
+    label: "PYQ questions",
+    notice: "Lands as pending — verify in /admin/exam-intelligence review.",
+    fields: [
+      { key: "exam_id", label: "exam_id (scope only — not saved)", type: "ref", ref: REF_EXAM, uiOnly: true },
+      { key: "pyq_paper_id", label: "pyq_paper_id", required: true, type: "ref", ref: refPaper({ exam_id: "exam_id" }) },
+      { key: "question_number", label: "question_number", type: "int" },
+      { key: "question_text", label: "question_text", required: true },
+      { key: "question_type", label: "question_type", type: "enum", options: PYQ_QUESTION_TYPES },
+      { key: "observed_difficulty", label: "observed_difficulty", type: "enum", options: PYQ_OBSERVED_DIFFICULTY },
+      { key: "expected_solve_time_sec", label: "expected_solve_time_sec", type: "int" },
+      { key: "metadata", label: "metadata (JSON object)", type: "json" },
+    ],
+    columns: ["pyq_paper_id", "question_number", "question_type", "reviewer_status"],
+  },
+  "pyq-options": {
+    label: "PYQ options",
+    fields: [
+      { key: "exam_id", label: "exam_id (scope only — not saved)", type: "ref", ref: REF_EXAM, uiOnly: true },
+      { key: "pyq_paper_id", label: "pyq_paper_id (scope only — not saved)", type: "ref", ref: refPaper({ exam_id: "exam_id" }), uiOnly: true },
+      { key: "question_id", label: "question_id", required: true, type: "ref", ref: refQuestion({ pyq_paper_id: "pyq_paper_id" }) },
+      { key: "option_label", label: "option_label", type: "enum", options: PYQ_OPTION_LABELS },
+      { key: "option_text", label: "option_text" },
+      { key: "is_correct", label: "is_correct", type: "bool" },
+      { key: "metadata", label: "metadata (JSON object)", type: "json" },
+    ],
+    columns: ["question_id", "option_label", "is_correct"],
   },
 };
 
