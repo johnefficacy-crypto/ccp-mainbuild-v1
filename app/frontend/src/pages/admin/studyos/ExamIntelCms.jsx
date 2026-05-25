@@ -2,6 +2,14 @@ import React, { useEffect, useState } from "react";
 import { RotateCcw, Plus, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
 import { parseImportFile } from "../../../lib/bulkImportFile";
+import CmsRefField from "../../../features/admin/shared/CmsRefField";
+
+// Reusable ref-picker descriptors. Each points at a CMS list endpoint that
+// already exists; child pickers cascade off a sibling form field.
+const REF_EXAM = { endpoint: "exams", labelKey: "name", secondaryKey: "slug" };
+const REF_FAMILY = { endpoint: "exam-families", labelKey: "name", secondaryKey: "slug" };
+const refCycle = (filters) => ({ endpoint: "exam-cycles", labelKey: "cycle_name", secondaryKey: "year", filters });
+const refPhase = (filters) => ({ endpoint: "exam-phases", labelKey: "phase_name", secondaryKey: "phase_slug", filters });
 
 // Enum values mirror the CHECK constraints on public.exam_topic_coverage
 // (migration 030). Keep these in sync with the migration, not invented.
@@ -25,7 +33,7 @@ const ENTITY_CONFIG = {
     fields: [
       { key: "slug", label: "slug", required: true },
       { key: "name", label: "name", required: true },
-      { key: "exam_family_id", label: "exam_family_id" },
+      { key: "exam_family_id", label: "exam_family_id", type: "ref", ref: REF_FAMILY },
       { key: "exam_type", label: "exam_type (recruitment|entrance|certification|opportunity|other)" },
       { key: "description", label: "description" },
       { key: "is_active", label: "is_active", type: "bool" },
@@ -35,7 +43,7 @@ const ENTITY_CONFIG = {
   "exam-cycles": {
     label: "Exam cycles",
     fields: [
-      { key: "exam_id", label: "exam_id", required: true },
+      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
       { key: "year", label: "year", required: true, type: "int" },
       { key: "cycle_name", label: "cycle_name", required: true },
       { key: "status", label: "status (expected|open|active|closed|completed|cancelled)" },
@@ -51,10 +59,10 @@ const ENTITY_CONFIG = {
   "exam-phases": {
     label: "Exam phases",
     fields: [
-      { key: "exam_id", label: "exam_id", required: true },
+      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
       { key: "phase_name", label: "phase_name", required: true },
       { key: "phase_slug", label: "phase_slug", required: true },
-      { key: "exam_cycle_id", label: "exam_cycle_id" },
+      { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
       { key: "phase_order", label: "phase_order", type: "int" },
       { key: "mode", label: "mode" },
       { key: "duration_mins", label: "duration_mins", type: "int" },
@@ -67,21 +75,21 @@ const ENTITY_CONFIG = {
   "syllabus-documents": {
     label: "Syllabus documents",
     fields: [
-      { key: "exam_id", label: "exam_id", required: true },
+      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
       { key: "document_type", label: "document_type (notification|syllabus_pdf|official_page|pattern_notice|corrigendum|other)", required: true },
       { key: "title", label: "title", required: true },
       { key: "source_url", label: "source_url" },
       { key: "storage_path", label: "storage_path" },
-      { key: "exam_cycle_id", label: "exam_cycle_id" },
+      { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
     ],
     columns: ["title", "document_type", "trust_status", "exam_id"],
   },
   "pyq-papers": {
     label: "PYQ papers",
     fields: [
-      { key: "exam_id", label: "exam_id", required: true },
+      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
       { key: "year", label: "year", required: true, type: "int" },
-      { key: "exam_phase_id", label: "exam_phase_id" },
+      { key: "exam_phase_id", label: "exam_phase_id", type: "ref", ref: refPhase({ exam_id: "exam_id" }) },
       { key: "paper_date", label: "paper_date (YYYY-MM-DD)" },
       { key: "shift", label: "shift" },
       { key: "paper_code", label: "paper_code" },
@@ -93,10 +101,10 @@ const ENTITY_CONFIG = {
   "exam-topic-coverage": {
     label: "Exam topic coverage",
     fields: [
-      { key: "exam_id", label: "exam_id", required: true },
+      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
       { key: "topic_id", label: "topic_id", required: true },
-      { key: "exam_cycle_id", label: "exam_cycle_id" },
-      { key: "exam_phase_id", label: "exam_phase_id" },
+      { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
+      { key: "exam_phase_id", label: "exam_phase_id", type: "ref", ref: refPhase({ exam_id: "exam_id", exam_cycle_id: "exam_cycle_id" }) },
       { key: "coverage_depth", label: "coverage_depth", type: "enum", options: COVERAGE_DEPTHS },
       { key: "expected_difficulty", label: "expected_difficulty" },
       { key: "exam_priority_score", label: "exam_priority_score (0–100)", type: "number", step: 0.01, min: 0, max: 100 },
@@ -112,7 +120,7 @@ const ENTITY_CONFIG = {
   "policy-updates": {
     label: "Policy updates",
     fields: [
-      { key: "exam_id", label: "exam_id", required: true },
+      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
       { key: "update_type", label: "update_type (notification_change|cycle_change|...)", required: true },
       { key: "title", label: "title", required: true },
       { key: "summary", label: "summary" },
@@ -398,7 +406,15 @@ export default function AdminExamIntelCms() {
                 <span className="block text-xs text-muted-foreground mb-1">
                   {f.label}{f.required ? <span className="text-red-700"> *</span> : null}
                 </span>
-                {f.type === "bool" ? (
+                {f.type === "ref" ? (
+                  <CmsRefField
+                    field={f}
+                    value={formValues[f.key] ?? ""}
+                    formValues={formValues}
+                    onChange={(val) => setFormValues((p) => ({ ...p, [f.key]: val }))}
+                    testId={`cms-field-${f.key}`}
+                  />
+                ) : f.type === "bool" ? (
                   <select
                     value={formValues[f.key] ?? ""}
                     onChange={(e) => setFormValues((p) => ({ ...p, [f.key]: e.target.value }))}
