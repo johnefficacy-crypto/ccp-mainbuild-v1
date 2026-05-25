@@ -1519,6 +1519,126 @@ def delete_topic_prerequisite(
 
 
 # ════════════════════════════════════════════════════════════════════════
+#  Syllabus topic mentions — created at reviewer_status='pending'
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Operator-settable columns from migration 031. ``reviewer_status`` is
+# accepted in the payload (so a stale 'verified' is tolerated, not 422'd)
+# but always forced to 'pending' on create. The review-queue fields
+# (reviewer_notes / reviewed_by / reviewed_at) are NOT settable here — they
+# flow through /admin/exam-intelligence. Note: this table has no
+# ``updated_at`` column, so PATCH must not set one.
+_MENTION_FIELDS = {
+    "syllabus_document_id", "exam_id", "exam_cycle_id", "exam_phase_id",
+    "topic_id", "raw_text", "normalized_text", "mention_type",
+    "confidence_score", "extraction_method", "metadata",
+}
+_MENTION_CREATE_FIELDS = _MENTION_FIELDS | {"reviewer_status"}
+_MENTION_TYPES = ("explicit", "implied", "parent_topic_only", "derived")
+
+
+@router.get("/syllabus-topic-mentions")
+def list_syllabus_topic_mentions(
+    syllabus_document_id: str | None = Query(default=None),
+    exam_id: str | None = Query(default=None),
+    exam_phase_id: str | None = Query(default=None),
+    topic_id: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    q: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("syllabus_topic_mentions").select(
+        "id, syllabus_document_id, exam_id, exam_cycle_id, exam_phase_id, topic_id, "
+        "raw_text, normalized_text, mention_type, confidence_score, extraction_method, "
+        "reviewer_status, reviewer_notes, metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if syllabus_document_id:
+        query = query.eq("syllabus_document_id", syllabus_document_id)
+    if exam_id:
+        query = query.eq("exam_id", exam_id)
+    if exam_phase_id:
+        query = query.eq("exam_phase_id", exam_phase_id)
+    if topic_id:
+        query = query.eq("topic_id", topic_id)
+    if reviewer_status:
+        query = query.eq("reviewer_status", reviewer_status)
+    if q:
+        query = query.ilike("raw_text", f"%{q.strip()}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/syllabus-topic-mentions")
+def create_syllabus_topic_mention(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _MENTION_CREATE_FIELDS, "syllabus_topic_mentions")
+    row = {k: v for k, v in body.payload.items() if k in _MENTION_FIELDS}
+    if not row.get("syllabus_document_id") or not row.get("exam_id") or not row.get("topic_id"):
+        raise HTTPException(status_code=422, detail="syllabus_document_id, exam_id, topic_id are required")
+    if row.get("mention_type") and row["mention_type"] not in _MENTION_TYPES:
+        raise HTTPException(status_code=422, detail=f"mention_type must be one of {_MENTION_TYPES}")
+    if not _safe_select(supabase, "syllabus_documents", id=row["syllabus_document_id"]):
+        raise HTTPException(status_code=422, detail="syllabus_document_id does not resolve")
+    if not _safe_select(supabase, "exams", id=row["exam_id"]):
+        raise HTTPException(status_code=422, detail="exam_id does not resolve")
+    if not _safe_select(supabase, "topics", id=row["topic_id"]):
+        raise HTTPException(status_code=422, detail="topic_id does not resolve")
+    # CMS feeds the review queue — a mention can never be born verified.
+    row["reviewer_status"] = "pending"
+    try:
+        inserted = supabase.table("syllabus_topic_mentions").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.syllabus_mention.create",
+        entity_type="syllabus_topic_mention", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/syllabus-topic-mentions/{mention_id}")
+def update_syllabus_topic_mention(
+    mention_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Edit the data fields of a mention. ``reviewer_status`` (and the
+    reviewer_notes/reviewed_by/reviewed_at trio) are NOT editable here —
+    those move through the /admin/exam-intelligence review queue."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "syllabus_topic_mentions", id=mention_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Syllabus topic mention not found")
+    _reject_unknown(body.payload, _MENTION_FIELDS, "syllabus_topic_mentions")
+    patch = {k: v for k, v in body.payload.items() if k in _MENTION_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("mention_type") and patch["mention_type"] not in _MENTION_TYPES:
+        raise HTTPException(status_code=422, detail=f"mention_type must be one of {_MENTION_TYPES}")
+    # No updated_at column on this table (migration 031).
+    updated = supabase.table("syllabus_topic_mentions").update(patch).eq("id", mention_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.syllabus_mention.update",
+        entity_type="syllabus_topic_mention", entity_id=mention_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
 #  Bulk import — CSV/JSON paste-in for any CMS entity
 # ════════════════════════════════════════════════════════════════════════
 #
@@ -1650,6 +1770,19 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
         "enums": {"level": _TOPIC_LEVELS},
         "audit": "exam_intel.cms.topic.bulk_create",
         "upsert_on": "subject_id,parent_topic_id,slug",
+    },
+    "syllabus-topic-mentions": {
+        "table": "syllabus_topic_mentions",
+        "allowed": _MENTION_FIELDS,
+        "required": ["syllabus_document_id", "exam_id", "topic_id"],
+        "forced": {"reviewer_status": "pending"},
+        "fks": {
+            "syllabus_document_id": "syllabus_documents",
+            "exam_id": "exams",
+            "topic_id": "topics",
+        },
+        "enums": {"mention_type": _MENTION_TYPES},
+        "audit": "exam_intel.cms.syllabus_mention.bulk_create",
     },
 }
 
