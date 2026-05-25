@@ -1124,6 +1124,401 @@ def update_competition_metric(
 
 
 # ════════════════════════════════════════════════════════════════════════
+#  Subjects (taxonomy, migration 029)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Exact writable columns from migration 029. ``slug`` is globally unique.
+_SUBJECT_FIELDS = {
+    "slug", "name", "subject_group", "default_difficulty_level",
+    "description", "is_active", "metadata",
+}
+
+
+def _reject_unknown(payload: dict[str, Any], allowed: set[str], table: str) -> None:
+    unknown = set(payload) - allowed
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown field(s) for {table}: {sorted(unknown)}",
+        )
+
+
+def _norm_alias(text: str) -> str:
+    return (text or "").strip().lower()
+
+
+@router.get("/subjects")
+def list_subjects(
+    is_active: bool | None = Query(default=None),
+    q: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("subjects").select(
+        "id, slug, name, subject_group, default_difficulty_level, description, is_active, metadata, created_at, updated_at",
+        count="exact",
+    ).order("name", desc=False)
+    if is_active is not None:
+        query = query.eq("is_active", is_active)
+    if q:
+        query = query.ilike("name", f"%{q.strip()}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/subjects")
+def create_subject(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _SUBJECT_FIELDS, "subjects")
+    row = {k: v for k, v in body.payload.items() if k in _SUBJECT_FIELDS}
+    if not row.get("slug") or not row.get("name"):
+        raise HTTPException(status_code=422, detail="slug and name are required")
+    row.setdefault("is_active", True)
+    try:
+        # Upsert by slug so re-importing the same subject is idempotent.
+        inserted = supabase.table("subjects").upsert(row, on_conflict="slug").execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.subject.create",
+        entity_type="subject", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/subjects/{subject_id}")
+def update_subject(
+    subject_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "subjects", id=subject_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    _reject_unknown(body.payload, _SUBJECT_FIELDS, "subjects")
+    patch = {k: v for k, v in body.payload.items() if k in _SUBJECT_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    patch["updated_at"] = _now_iso()
+    updated = supabase.table("subjects").update(patch).eq("id", subject_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.subject.update",
+        entity_type="subject", entity_id=subject_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Topics (taxonomy, migration 029)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Exact writable columns from migration 029. Slug is unique per
+# (subject_id, parent_topic_id, slug); level is constrained by a CHECK.
+_TOPIC_FIELDS = {
+    "subject_id", "parent_topic_id", "slug", "name", "level",
+    "default_difficulty_level", "description", "is_active", "metadata",
+}
+_TOPIC_LEVELS = ("topic", "microtopic", "concept")
+
+
+@router.get("/topics")
+def list_topics(
+    subject_id: str | None = Query(default=None),
+    parent_topic_id: str | None = Query(default=None),
+    level: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    q: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("topics").select(
+        "id, subject_id, parent_topic_id, slug, name, level, default_difficulty_level, description, is_active, metadata, created_at, updated_at",
+        count="exact",
+    ).order("name", desc=False)
+    if subject_id:
+        query = query.eq("subject_id", subject_id)
+    if parent_topic_id:
+        query = query.eq("parent_topic_id", parent_topic_id)
+    if level:
+        query = query.eq("level", level)
+    if is_active is not None:
+        query = query.eq("is_active", is_active)
+    if q:
+        query = query.ilike("name", f"%{q.strip()}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/topics")
+def create_topic(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _TOPIC_FIELDS, "topics")
+    row = {k: v for k, v in body.payload.items() if k in _TOPIC_FIELDS}
+    if not row.get("subject_id") or not row.get("slug") or not row.get("name"):
+        raise HTTPException(status_code=422, detail="subject_id, slug, name are required")
+    if row.get("level") and row["level"] not in _TOPIC_LEVELS:
+        raise HTTPException(status_code=422, detail=f"level must be one of {_TOPIC_LEVELS}")
+    if not _safe_select(supabase, "subjects", id=row["subject_id"]):
+        raise HTTPException(status_code=422, detail="subject_id does not resolve")
+    parent_id = row.get("parent_topic_id")
+    if parent_id:
+        parent = _safe_select(supabase, "topics", id=parent_id)
+        if not parent:
+            raise HTTPException(status_code=422, detail="parent_topic_id does not resolve")
+        if parent.get("subject_id") != row["subject_id"]:
+            raise HTTPException(
+                status_code=422,
+                detail="parent_topic_id belongs to a different subject",
+            )
+    row.setdefault("is_active", True)
+    try:
+        # Upsert on the natural key so re-importing a topic is idempotent.
+        inserted = (
+            supabase.table("topics")
+            .upsert(row, on_conflict="subject_id,parent_topic_id,slug")
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic.create",
+        entity_type="topic", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/topics/{topic_id}")
+def update_topic(
+    topic_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "topics", id=topic_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    _reject_unknown(body.payload, _TOPIC_FIELDS, "topics")
+    patch = {k: v for k, v in body.payload.items() if k in _TOPIC_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("level") and patch["level"] not in _TOPIC_LEVELS:
+        raise HTTPException(status_code=422, detail=f"level must be one of {_TOPIC_LEVELS}")
+    # Keep parent within the (possibly updated) subject.
+    target_subject = patch.get("subject_id", existing.get("subject_id"))
+    if patch.get("parent_topic_id"):
+        parent = _safe_select(supabase, "topics", id=patch["parent_topic_id"])
+        if not parent:
+            raise HTTPException(status_code=422, detail="parent_topic_id does not resolve")
+        if parent.get("subject_id") != target_subject:
+            raise HTTPException(status_code=422, detail="parent_topic_id belongs to a different subject")
+    patch["updated_at"] = _now_iso()
+    updated = supabase.table("topics").update(patch).eq("id", topic_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic.update",
+        entity_type="topic", entity_id=topic_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Topic aliases (taxonomy, migration 029)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Operator-settable columns. ``normalized_alias`` is server-derived from
+# ``alias`` (the table requires it NOT NULL with no default).
+_TOPIC_ALIAS_FIELDS = {"topic_id", "alias", "source_context"}
+
+
+@router.get("/topic-aliases")
+def list_topic_aliases(
+    topic_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("topic_aliases").select(
+        "id, topic_id, alias, normalized_alias, source_context, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if topic_id:
+        query = query.eq("topic_id", topic_id)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/topic-aliases")
+def create_topic_alias(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _TOPIC_ALIAS_FIELDS, "topic_aliases")
+    row = {k: v for k, v in body.payload.items() if k in _TOPIC_ALIAS_FIELDS}
+    if not row.get("topic_id") or not row.get("alias"):
+        raise HTTPException(status_code=422, detail="topic_id and alias are required")
+    if not _safe_select(supabase, "topics", id=row["topic_id"]):
+        raise HTTPException(status_code=422, detail="topic_id does not resolve")
+    row["normalized_alias"] = _norm_alias(row["alias"])
+    try:
+        inserted = supabase.table("topic_aliases").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic_alias.create",
+        entity_type="topic_alias", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.delete("/topic-aliases/{alias_id}")
+def delete_topic_alias(
+    alias_id: str,
+    reason: str = Query(..., min_length=8, max_length=500),
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Hard-delete: an alias is a pure lookup row with no review surface
+    and nothing FK-references it."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "topic_aliases", id=alias_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Topic alias not found")
+    supabase.table("topic_aliases").delete().eq("id", alias_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic_alias.delete",
+        entity_type="topic_alias", entity_id=alias_id,
+        new_value={"reason": reason, "deleted": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "id": alias_id}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Topic prerequisites (taxonomy, migration 029)
+# ════════════════════════════════════════════════════════════════════════
+
+
+_TOPIC_PREREQ_FIELDS = {
+    "topic_id", "prerequisite_topic_id", "relation_type", "strength",
+    "source_basis", "metadata",
+}
+_TOPIC_PREREQ_RELATIONS = ("requires", "recommended_before", "supports", "foundation_for")
+
+
+@router.get("/topic-prerequisites")
+def list_topic_prerequisites(
+    topic_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("topic_prerequisites").select(
+        "id, topic_id, prerequisite_topic_id, relation_type, strength, source_basis, metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if topic_id:
+        query = query.eq("topic_id", topic_id)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/topic-prerequisites")
+def create_topic_prerequisite(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _TOPIC_PREREQ_FIELDS, "topic_prerequisites")
+    row = {k: v for k, v in body.payload.items() if k in _TOPIC_PREREQ_FIELDS}
+    topic_id = row.get("topic_id")
+    prereq_id = row.get("prerequisite_topic_id")
+    if not topic_id or not prereq_id:
+        raise HTTPException(status_code=422, detail="topic_id and prerequisite_topic_id are required")
+    if topic_id == prereq_id:
+        raise HTTPException(status_code=422, detail="a topic cannot be its own prerequisite")
+    if row.get("relation_type") and row["relation_type"] not in _TOPIC_PREREQ_RELATIONS:
+        raise HTTPException(status_code=422, detail=f"relation_type must be one of {_TOPIC_PREREQ_RELATIONS}")
+    if not _safe_select(supabase, "topics", id=topic_id):
+        raise HTTPException(status_code=422, detail="topic_id does not resolve")
+    if not _safe_select(supabase, "topics", id=prereq_id):
+        raise HTTPException(status_code=422, detail="prerequisite_topic_id does not resolve")
+    # Basic cycle guard: reject B→A when A→B already exists. (One level only;
+    # transitive cycle detection would need a recursive CTE — see PR notes.)
+    if _safe_select(supabase, "topic_prerequisites", topic_id=prereq_id, prerequisite_topic_id=topic_id):
+        raise HTTPException(
+            status_code=422,
+            detail="cycle: the reverse prerequisite already exists",
+        )
+    try:
+        inserted = supabase.table("topic_prerequisites").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic_prerequisite.create",
+        entity_type="topic_prerequisite", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.delete("/topic-prerequisites/{prereq_id}")
+def delete_topic_prerequisite(
+    prereq_id: str,
+    reason: str = Query(..., min_length=8, max_length=500),
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Hard-delete: a prerequisite edge is a pure relation row."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "topic_prerequisites", id=prereq_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Topic prerequisite not found")
+    supabase.table("topic_prerequisites").delete().eq("id", prereq_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic_prerequisite.delete",
+        entity_type="topic_prerequisite", entity_id=prereq_id,
+        new_value={"reason": reason, "deleted": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "id": prereq_id}
+
+
+# ════════════════════════════════════════════════════════════════════════
 #  Bulk import — CSV/JSON paste-in for any CMS entity
 # ════════════════════════════════════════════════════════════════════════
 #
