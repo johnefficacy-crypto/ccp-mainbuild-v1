@@ -24,6 +24,7 @@ export default function ExamIntelDocuments() {
   const [docs, setDocs] = useState([]);
   const [pages, setPages] = useState({ docId: null, items: null });
   const [pollId, setPollId] = useState(null);
+  const [linkTarget, setLinkTarget] = useState({ docId: null, kind: null, targetId: "" });
 
   const filterExamId = form.exam_id || "";
 
@@ -122,9 +123,9 @@ export default function ExamIntelDocuments() {
     }
   }
 
-  async function linkTo(docId, kind) {
-    const targetId = window.prompt(`Target ${kind === "syllabus" ? "syllabus_document_id" : "pyq_paper_id"}:`);
-    if (!targetId) return;
+  async function confirmLink() {
+    const { docId, kind, targetId } = linkTarget;
+    if (!targetId) return setStatus({ ok: false, message: "Pick a target first." });
     const path = kind === "syllabus" ? "link-to-syllabus" : "link-to-pyq-paper";
     const payload = kind === "syllabus"
       ? { reason: "link uploaded admin document", syllabus_document_id: targetId }
@@ -132,6 +133,7 @@ export default function ExamIntelDocuments() {
     try {
       await api.post(`${DOC_BASE}/${docId}/${path}`, payload);
       setStatus({ ok: true, message: `Linked document to ${kind}.` });
+      setLinkTarget({ docId: null, kind: null, targetId: "" });
     } catch (e) {
       setStatus({ ok: false, message: getApiErrorMessage(e) });
     }
@@ -213,10 +215,33 @@ export default function ExamIntelDocuments() {
                   <td className="p-2 space-x-1">
                     <button type="button" className="btn small" onClick={() => viewPages(d.id)} data-testid={`doc-pages-${d.id}`}><FileText className="h-3 w-3" /> Pages</button>
                     <button type="button" className="btn small" onClick={() => refreshStatus(d.id)} data-testid={`doc-refresh-${d.id}`}>Status</button>
-                    <button type="button" className="btn small" onClick={() => linkTo(d.id, "syllabus")} data-testid={`doc-link-syllabus-${d.id}`}>→ Syllabus</button>
-                    <button type="button" className="btn small" onClick={() => linkTo(d.id, "pyq")} data-testid={`doc-link-pyq-${d.id}`}>→ PYQ paper</button>
+                    <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: d.id, kind: "syllabus", targetId: "" })} data-testid={`doc-link-syllabus-${d.id}`}>→ Syllabus</button>
+                    <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: d.id, kind: "pyq", targetId: "" })} data-testid={`doc-link-pyq-${d.id}`}>→ PYQ paper</button>
                   </td>
                 </tr>
+                {linkTarget.docId === d.id ? (
+                  <tr className="border-t border-border/40 bg-muted/30"><td colSpan={6} className="p-2">
+                    <div className="flex items-end gap-2" data-testid={`doc-link-picker-${d.id}`}>
+                      <label className="block flex-1">
+                        <span className="block text-xs text-muted-foreground mb-1">
+                          {linkTarget.kind === "syllabus" ? "Pick a syllabus_document" : "Pick a pyq_paper"}
+                        </span>
+                        <CmsRefField
+                          field={linkTarget.kind === "syllabus"
+                            ? { key: "t", ref: { endpoint: "syllabus-documents", labelKey: "title", secondaryKey: "document_type", filters: { exam_id: "exam_id" } } }
+                            : { key: "t", ref: { endpoint: "pyq-papers", labelKey: "paper_code", secondaryKey: "year", filters: { exam_id: "exam_id" } } }}
+                          value={linkTarget.targetId}
+                          formValues={{ exam_id: filterExamId }}
+                          onChange={(v) => setLinkTarget((p) => ({ ...p, targetId: v }))}
+                          testId={`doc-link-target-${d.id}`}
+                        />
+                      </label>
+                      <button type="button" className="btn small" onClick={confirmLink} data-testid={`doc-link-confirm-${d.id}`}>Link</button>
+                      <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: null, kind: null, targetId: "" })}>Cancel</button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">No target? Create it in the matching CMS entity first.</p>
+                  </td></tr>
+                ) : null}
                 {pages.docId === d.id ? (
                   <tr className="border-t border-border/40 bg-muted/30"><td colSpan={6} className="p-2">
                     <div className="max-h-72 overflow-auto space-y-2" data-testid={`doc-pages-view-${d.id}`}>

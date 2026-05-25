@@ -89,6 +89,35 @@ test("rejects a non-PDF file before calling the API", async () => {
   expect(api.post).not.toHaveBeenCalled();
 });
 
+test("link-to-syllabus opens a picker (no window.prompt) and links the selection", async () => {
+  const docs = [{ id: "d1", document_kind: "syllabus", original_filename: "syll.pdf", status: "processed", page_count: 1 }];
+  api.get.mockImplementation((url) => {
+    if (url.includes("/syllabus-documents")) return Promise.resolve({ items: [{ id: "sd1", title: "Official syllabus", document_type: "syllabus_pdf" }], total: 1 });
+    if (url.includes("/documents?exam_id=")) return Promise.resolve({ items: docs, total: 1 });
+    if (url.includes("/exams")) return Promise.resolve({ items: EXAMS, total: 1 });
+    return Promise.resolve({ items: [], total: 0 });
+  });
+  api.post.mockResolvedValue({ ok: true, audit_id: "a1" });
+  const promptSpy = jest.spyOn(window, "prompt");
+
+  renderPanel();
+  await pickExam();
+  await screen.findByTestId("doc-row-d1");
+  fireEvent.click(screen.getByTestId("doc-link-syllabus-d1"));
+
+  // A picker appears — not a prompt.
+  fireEvent.focus(await screen.findByTestId("doc-link-target-d1"));
+  fireEvent.mouseDown(await screen.findByTestId("doc-link-target-d1-option-sd1"));
+  fireEvent.click(screen.getByTestId("doc-link-confirm-d1"));
+
+  await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+    expect.stringContaining("/d1/link-to-syllabus"),
+    expect.objectContaining({ syllabus_document_id: "sd1" }),
+  ));
+  expect(promptSpy).not.toHaveBeenCalled();
+  promptSpy.mockRestore();
+});
+
 test("pages viewer fetches and shows extracted text per page", async () => {
   const docs = [{ id: "d1", document_kind: "syllabus", original_filename: "syll.pdf", status: "processed", page_count: 2 }];
   api.get.mockImplementation((url) => {
