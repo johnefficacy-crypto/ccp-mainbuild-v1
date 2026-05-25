@@ -37,6 +37,7 @@ from app.api.admin_persona import router as admin_persona_router
 from app.api.admin_scrape import router as admin_scrape_router
 from app.api.admin_study_os import router as admin_study_os_router
 from app.api.admin_exam_intel_cms import router as admin_exam_intel_cms_router
+from app.api.admin_exam_intel_documents import router as admin_exam_intel_documents_router
 from app.api.admin_community_governance import router as admin_community_governance_router
 from app.api.admin_conflicts import router as admin_conflicts_router
 from app.api.admin_eligibility import router as admin_eligibility_router
@@ -287,6 +288,7 @@ api.include_router(persona_questions_router)  # PR2 progressive tiny questions
 api.include_router(study_os_router)  # PR3 Study OS Mission Control — before canonical so /study/mission-control wins
 api.include_router(admin_study_os_router)  # admin Study OS ops (flagged via ADMIN_STUDY_OS_ENABLED)
 api.include_router(admin_exam_intel_cms_router)  # admin Exam Intelligence CMS — Phase 4 (same flag)
+api.include_router(admin_exam_intel_documents_router)  # admin Exam Intelligence PDF uploads (same flag)
 api.include_router(admin_community_governance_router)  # admin Community / Mentors / Resources governance (§4.1–§4.4)
 api.include_router(study_compare_router)  # Study OS comparison + social + verification
 api.include_router(onboarding_unified_router)  # legacy unified guided onboarding (deprecated; Item 8 will drop)
