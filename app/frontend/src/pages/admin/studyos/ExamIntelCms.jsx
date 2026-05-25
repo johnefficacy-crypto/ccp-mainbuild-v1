@@ -12,6 +12,7 @@ const REF_SUBJECT = { endpoint: "subjects", labelKey: "name", secondaryKey: "slu
 const refCycle = (filters) => ({ endpoint: "exam-cycles", labelKey: "cycle_name", secondaryKey: "year", filters });
 const refPhase = (filters) => ({ endpoint: "exam-phases", labelKey: "phase_name", secondaryKey: "phase_slug", filters });
 const refTopic = (filters, staticFilters) => ({ endpoint: "topics", labelKey: "name", secondaryKey: "level", filters, staticFilters });
+const refDoc = (filters) => ({ endpoint: "syllabus-documents", labelKey: "title", secondaryKey: "document_type", filters });
 
 // Enum values mirror the CHECK constraints on public.exam_topic_coverage
 // (migration 030). Keep these in sync with the migration, not invented.
@@ -22,6 +23,9 @@ const COVERAGE_REVIEWER_STATUSES = ["draft", "pending_review", "reviewed", "lock
 // Taxonomy enums mirror the CHECK constraints in migration 029.
 const TOPIC_LEVELS = ["topic", "microtopic", "concept"];
 const TOPIC_PREREQ_RELATIONS = ["requires", "recommended_before", "supports", "foundation_for"];
+
+// Syllabus mention enum mirrors the CHECK constraint in migration 031.
+const MENTION_TYPES = ["explicit", "implied", "parent_topic_only", "derived"];
 
 const ENTITY_CONFIG = {
   "exam-families": {
@@ -189,6 +193,25 @@ const ENTITY_CONFIG = {
       { key: "source_basis", label: "source_basis" },
     ],
     columns: ["topic_id", "prerequisite_topic_id", "relation_type", "strength"],
+  },
+  "syllabus-topic-mentions": {
+    label: "Syllabus topic mentions",
+    notice: "Lands as pending — verify in /admin/exam-intelligence review.",
+    fields: [
+      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
+      { key: "syllabus_document_id", label: "syllabus_document_id (in this exam)", required: true, type: "ref", ref: refDoc({ exam_id: "exam_id" }) },
+      { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
+      { key: "exam_phase_id", label: "exam_phase_id", type: "ref", ref: refPhase({ exam_id: "exam_id" }) },
+      { key: "subject_id", label: "subject_id (scope only — not saved)", type: "ref", ref: REF_SUBJECT, uiOnly: true },
+      { key: "topic_id", label: "topic_id", required: true, type: "ref", ref: refTopic({ subject_id: "subject_id" }) },
+      { key: "mention_type", label: "mention_type", type: "enum", options: MENTION_TYPES },
+      { key: "raw_text", label: "raw_text" },
+      { key: "normalized_text", label: "normalized_text" },
+      { key: "confidence_score", label: "confidence_score (0–1)", type: "number", step: 0.001, min: 0, max: 1 },
+      { key: "extraction_method", label: "extraction_method" },
+      { key: "metadata", label: "metadata (JSON object)", type: "json" },
+    ],
+    columns: ["topic_id", "mention_type", "reviewer_status", "raw_text"],
   },
 };
 
@@ -491,6 +514,9 @@ export default function AdminExamIntelCms() {
       {showCreate ? (
         <form onSubmit={submitCreate} className="rounded border border-border/60 bg-card p-4 space-y-2" data-testid="cms-create-form">
           <h3 className="text-sm font-semibold">New {cfg.label} row</h3>
+          {cfg.notice ? (
+            <p className="text-xs text-amber-700" data-testid="cms-create-notice">{cfg.notice}</p>
+          ) : null}
           <div className="grid gap-2 sm:grid-cols-2">
             {cfg.fields.map((f) => (
               <label key={f.key} className="block">
