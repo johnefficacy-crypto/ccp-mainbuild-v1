@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { CalendarDays, Check, Plus, SkipForward } from "lucide-react";
 import { revisionService } from "../../services/studyToolsService";
+import { DateField } from "../../shared/ui";
 
 const SOURCE_KINDS = [
   { value: "note", label: "Note" },
@@ -141,7 +142,7 @@ function RevisionEditor({ onClose, onSaved }) {
         <select className="w-full px-3 py-2 rounded-xl border border-border bg-background" value={kind} onChange={(e) => setKind(e.target.value)}>
           {SOURCE_KINDS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
-        <input type="date" className="w-full px-3 py-2 rounded-xl border border-border bg-background" value={date} onChange={(e) => setDate(e.target.value)} />
+        <DateField mode="future" value={date || null} onChange={(iso) => setDate(iso || "")} />
         <div className="flex justify-end gap-2">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={save}>Save</button>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../lib/api";
-import { ErrorState } from "../../../shared/ui";
+import { ErrorState, DateField } from "../../../shared/ui";
 
 const OFFICIAL_URL_FIELDS = [
   "official_notification_url",
@@ -434,8 +434,12 @@ export default function RecruitmentBlockerFixForm({
         {datesBad && (
           <Field label="Apply window" testId="fix-dates" wide>
             <div className="grid grid-cols-2 gap-2">
-              <input type="date" className="input" value={form.apply_start_date || ""} onChange={(e) => update({ apply_start_date: e.target.value })} data-testid="fix-apply-start" aria-label="Apply start date" />
-              <input type="date" className="input" value={form.apply_end_date || ""} onChange={(e) => update({ apply_end_date: e.target.value })} data-testid="fix-apply-end" aria-label="Apply end date" />
+              <div data-testid="fix-apply-start">
+                <DateField mode="future" label="Apply start date" value={form.apply_start_date || null} onChange={(iso) => update({ apply_start_date: iso || "" })} />
+              </div>
+              <div data-testid="fix-apply-end">
+                <DateField mode="future" label="Apply end date" value={form.apply_end_date || null} onChange={(iso) => update({ apply_end_date: iso || "" })} />
+              </div>
             </div>
             <FieldActions
               onSave={() => save({ apply_start_date: form.apply_start_date || null, apply_end_date: form.apply_end_date || null })}

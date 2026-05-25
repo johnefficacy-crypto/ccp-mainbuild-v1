@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { ListChecks, Plus, FileText, Receipt, Trophy, Bell } from "lucide-react";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
+import { DateField } from "../../shared/ui";
+import { formatDDMMYYYY } from "../../shared/forms/dateFormat";
 
 // Application tracker — one grouped-by-status timeline plus chip
 // filters (All / Applications / Documents / Results / Policy) and a
@@ -45,21 +47,6 @@ function rowBucket(a) {
   if (Array.isArray(a.documents_pending) && a.documents_pending.length > 0) return "documents";
   if (a.status === "submitted") return "results";
   return STATUS_TO_BUCKET[a.status || "not_started"] || "applications";
-}
-
-function isoToLocalInput(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.valueOf())) return "";
-  const offsetMs = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - offsetMs).toISOString().slice(0, 16);
-}
-
-function localInputToIso(value) {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.valueOf())) return null;
-  return d.toISOString();
 }
 
 function fieldDisplay(a, drafts, field, fallback = "") {
@@ -190,11 +177,6 @@ export default function EligibilityTrackerPage() {
       return Array.isArray(a.documents_pending) ? a.documents_pending.join(", ") : "";
     })();
     const feeAmountValue = fieldDisplay(a, drafts, "fee_amount", "");
-    const submittedValue = (() => {
-      const draftRow = drafts[a.recruitment_id];
-      if (draftRow && "submitted_at" in draftRow) return draftRow.submitted_at;
-      return isoToLocalInput(a.submitted_at);
-    })();
     const ctaSlug = a.recruitment?.slug || a.recruitment_id;
 
     return (
@@ -302,14 +284,10 @@ export default function EligibilityTrackerPage() {
             }
             disabled={rowSaving}
           />
-          <input
-            className="input"
-            type="datetime-local"
-            value={submittedValue}
-            onChange={(e) => setDraft(a.recruitment_id, "submitted_at", e.target.value)}
-            onBlur={() =>
-              commit(a.recruitment_id, "submitted_at", (v) => (v ? localInputToIso(v) : null))
-            }
+          <DateField
+            mode="past"
+            value={a.submitted_at || null}
+            onChange={(iso) => commitImmediate(a.recruitment_id, { submitted_at: iso || null })}
             disabled={rowSaving}
           />
         </div>
@@ -324,7 +302,7 @@ export default function EligibilityTrackerPage() {
         <div className="text-xs text-muted-foreground">
           clicked_apply_at:{" "}
           {a.clicked_apply_at ? new Date(a.clicked_apply_at).toLocaleString() : "—"} ·
-          submitted_at: {a.submitted_at ? new Date(a.submitted_at).toLocaleString() : "—"}
+          submitted_at: {a.submitted_at ? formatDDMMYYYY(a.submitted_at) : "—"}
         </div>
         {a.clicked_apply_at && !a.submitted_at && (
           <div className="text-xs text-clay-700">
