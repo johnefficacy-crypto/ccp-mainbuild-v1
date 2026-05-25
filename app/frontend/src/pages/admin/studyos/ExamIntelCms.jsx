@@ -3,6 +3,12 @@ import { RotateCcw, Plus, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
 import { parseImportFile } from "../../../lib/bulkImportFile";
 
+// Enum values mirror the CHECK constraints on public.exam_topic_coverage
+// (migration 030). Keep these in sync with the migration, not invented.
+const COVERAGE_DEPTHS = ["unknown", "none", "mentioned", "light", "normal", "deep", "core"];
+const COVERAGE_SOURCE_BASES = ["official_syllabus", "pyq_analysis", "admin_review", "hybrid", "manual", "model_generated"];
+const COVERAGE_REVIEWER_STATUSES = ["draft", "pending_review", "reviewed", "locked", "rejected"];
+
 const ENTITY_CONFIG = {
   "exam-families": {
     label: "Exam families",
@@ -89,12 +95,19 @@ const ENTITY_CONFIG = {
     fields: [
       { key: "exam_id", label: "exam_id", required: true },
       { key: "topic_id", label: "topic_id", required: true },
+      { key: "exam_cycle_id", label: "exam_cycle_id" },
       { key: "exam_phase_id", label: "exam_phase_id" },
-      { key: "priority", label: "priority (int)", type: "int" },
+      { key: "coverage_depth", label: "coverage_depth", type: "enum", options: COVERAGE_DEPTHS },
+      { key: "expected_difficulty", label: "expected_difficulty" },
+      { key: "exam_priority_score", label: "exam_priority_score (0–100)", type: "number", step: 0.01, min: 0, max: 100 },
       { key: "is_high_yield", label: "is_high_yield", type: "bool" },
-      { key: "is_active", label: "is_active", type: "bool" },
+      { key: "confidence_score", label: "confidence_score (0–1)", type: "number", step: 0.001, min: 0, max: 1 },
+      { key: "source_basis", label: "source_basis", type: "enum", options: COVERAGE_SOURCE_BASES },
+      { key: "reviewer_status", label: "reviewer_status (forced to pending_review on create)", type: "enum", options: COVERAGE_REVIEWER_STATUSES },
+      { key: "review_notes", label: "review_notes" },
+      { key: "metadata", label: "metadata (JSON object)", type: "json" },
     ],
-    columns: ["exam_id", "topic_id", "priority", "is_high_yield", "reviewer_status"],
+    columns: ["exam_id", "topic_id", "coverage_depth", "exam_priority_score", "is_high_yield", "reviewer_status"],
   },
   "policy-updates": {
     label: "Policy updates",
@@ -120,6 +133,19 @@ function parseValue(field, raw) {
   if (field.type === "int") {
     const n = parseInt(raw, 10);
     return Number.isFinite(n) ? n : undefined;
+  }
+  if (field.type === "number") {
+    const n = parseFloat(raw);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  if (field.type === "json") {
+    // Throws on malformed input; submitCreate catches it and surfaces a
+    // field-specific message rather than silently dropping the value.
+    const parsed = JSON.parse(raw);
+    if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("must be a JSON object");
+    }
+    return parsed;
   }
   return raw;
 }
@@ -217,7 +243,13 @@ export default function AdminExamIntelCms() {
     }
     const payload = {};
     for (const f of cfg.fields) {
-      const v = parseValue(f, formValues[f.key]);
+      let v;
+      try {
+        v = parseValue(f, formValues[f.key]);
+      } catch (err) {
+        setStatus({ ok: false, message: `Invalid ${f.key}: ${err.message}` });
+        return;
+      }
       if (v !== undefined) payload[f.key] = v;
     }
     try {
@@ -377,9 +409,33 @@ export default function AdminExamIntelCms() {
                     <option value="true">true</option>
                     <option value="false">false</option>
                   </select>
+                ) : f.type === "enum" ? (
+                  <select
+                    value={formValues[f.key] ?? ""}
+                    onChange={(e) => setFormValues((p) => ({ ...p, [f.key]: e.target.value }))}
+                    className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                    data-testid={`cms-field-${f.key}`}
+                  >
+                    <option value="">(skip)</option>
+                    {f.options.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                ) : f.type === "json" ? (
+                  <textarea
+                    value={formValues[f.key] ?? ""}
+                    onChange={(e) => setFormValues((p) => ({ ...p, [f.key]: e.target.value }))}
+                    rows={3}
+                    placeholder="{}"
+                    className="w-full px-2 py-1.5 text-sm font-mono border border-border/60 rounded bg-background"
+                    data-testid={`cms-field-${f.key}`}
+                  />
                 ) : (
                   <input
-                    type={f.type === "int" ? "number" : "text"}
+                    type={f.type === "int" || f.type === "number" ? "number" : "text"}
+                    step={f.type === "number" ? f.step : undefined}
+                    min={f.min}
+                    max={f.max}
                     value={formValues[f.key] ?? ""}
                     onChange={(e) => setFormValues((p) => ({ ...p, [f.key]: e.target.value }))}
                     className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"

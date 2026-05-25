@@ -844,9 +844,14 @@ def update_pyq_option(
 # ════════════════════════════════════════════════════════════════════════
 
 
+# Mirrors the real ``exam_topic_coverage`` schema (migration 030). There is
+# no ``priority`` or ``is_active`` column — the planner reads
+# ``exam_priority_score`` / ``is_high_yield`` instead.
 _COVERAGE_FIELDS = {
-    "exam_id", "exam_phase_id", "topic_id", "priority", "is_high_yield",
-    "is_active", "metadata",
+    "exam_id", "exam_cycle_id", "exam_phase_id", "topic_id",
+    "coverage_depth", "expected_difficulty", "exam_priority_score",
+    "is_high_yield", "confidence_score", "source_basis",
+    "reviewer_status", "review_notes", "metadata",
 }
 
 
@@ -860,7 +865,7 @@ def list_exam_topic_coverage(
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
-    q = supabase.table("exam_topic_coverage").select("*", count="exact").order("priority", desc=True)
+    q = supabase.table("exam_topic_coverage").select("*", count="exact").order("exam_priority_score", desc=True)
     if exam_id:
         q = q.eq("exam_id", exam_id)
     if reviewer_status:
@@ -876,6 +881,12 @@ def create_exam_topic_coverage(
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
+    unknown = set(body.payload) - _COVERAGE_FIELDS
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown field(s) for exam_topic_coverage: {sorted(unknown)}",
+        )
     row = {k: v for k, v in body.payload.items() if k in _COVERAGE_FIELDS}
     if not row.get("exam_id") or not row.get("topic_id"):
         raise HTTPException(status_code=422, detail="exam_id and topic_id are required")
