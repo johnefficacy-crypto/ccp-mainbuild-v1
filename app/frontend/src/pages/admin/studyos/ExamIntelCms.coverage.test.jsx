@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // The page fetches the entity list on mount; stub the API so the test
 // stays focused on which form fields the coverage entity renders.
@@ -12,8 +13,13 @@ jest.mock("../../../lib/api", () => ({
 // eslint-disable-next-line global-require
 const AdminExamIntelCms = require("./ExamIntelCms").default;
 
+function renderWithClient(ui) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
 test("exam-topic-coverage create form renders the real schema fields, not the stale ones", async () => {
-  render(<AdminExamIntelCms />);
+  renderWithClient(<AdminExamIntelCms />);
 
   // Switch to the coverage entity (changing entity resets the create form).
   fireEvent.change(screen.getByTestId("cms-entity-select"), {
