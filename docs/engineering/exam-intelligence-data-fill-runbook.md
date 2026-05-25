@@ -113,3 +113,10 @@ Exam can be considered planner-ready only when all are true:
 - competition rows used for context are reviewed/locked;
 - policy rows with `affects_*` true are official+verified;
 - discovery policy rows remain non-impacting (`affects_*` all false).
+
+## Column-name inconsistency
+
+- `exam_topic_coverage.review_notes`
+- `syllabus_topic_mentions.reviewer_notes`
+
+Both are correct per their migrations (030 and 031). Do not "normalise" either.

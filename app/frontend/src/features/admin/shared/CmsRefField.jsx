@@ -33,14 +33,20 @@ export default function CmsRefField({ field, value, formValues = {}, onChange, t
 
   const { items, loading } = useCmsList(ref.endpoint, filters);
 
+  // ``valueField`` is the column written into the form (default the row id —
+  // e.g. ``storage_path`` for a document picker). ``displayFields`` joins
+  // several columns into the option label.
+  const valueField = ref.valueField || "id";
   const options = useMemo(
     () =>
       items.map((it) => ({
-        id: it.id,
-        label: it[ref.labelKey] || it.name || it.id,
+        id: it[valueField],
+        label: ref.displayFields
+          ? ref.displayFields.map((f) => it[f]).filter(Boolean).join(" · ") || it[valueField]
+          : it[ref.labelKey] || it.name || it[valueField],
         secondary: ref.secondaryKey ? it[ref.secondaryKey] : undefined,
       })),
-    [items, ref.labelKey, ref.secondaryKey],
+    [items, valueField, ref.labelKey, ref.secondaryKey, ref.displayFields],
   );
 
   return (
