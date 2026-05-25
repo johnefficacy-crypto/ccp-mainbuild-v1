@@ -1673,7 +1673,7 @@ def test_cms_create_topic_coverage_forces_pending_review():
         "/api/admin/exam-intelligence-cms/exam-topic-coverage",
         json={
             "reason": "adding coverage row",
-            "payload": {"exam_id": "exam-1", "topic_id": "t-1", "priority": 5, "is_high_yield": True},
+            "payload": {"exam_id": "exam-1", "topic_id": "t-1", "exam_priority_score": 5, "is_high_yield": True},
         },
     )
     assert r.status_code == 200
