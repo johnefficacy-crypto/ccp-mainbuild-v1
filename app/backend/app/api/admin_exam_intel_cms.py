@@ -848,7 +848,7 @@ def update_pyq_option(
 # no ``priority`` or ``is_active`` column — the planner reads
 # ``exam_priority_score`` / ``is_high_yield`` instead.
 _COVERAGE_FIELDS = {
-    "exam_id", "exam_cycle_id", "exam_phase_id", "topic_id",
+    "exam_id", "exam_cycle_id", "exam_phase_id", "section_id", "topic_id",
     "coverage_depth", "expected_difficulty", "exam_priority_score",
     "is_high_yield", "confidence_score", "source_basis",
     "reviewer_status", "review_notes", "metadata",
@@ -890,6 +890,12 @@ def create_exam_topic_coverage(
     row = {k: v for k, v in body.payload.items() if k in _COVERAGE_FIELDS}
     if not row.get("exam_id") or not row.get("topic_id"):
         raise HTTPException(status_code=422, detail="exam_id and topic_id are required")
+    if row.get("section_id"):
+        section = _safe_select(supabase, "exam_phase_sections", id=row["section_id"])
+        if not section:
+            raise HTTPException(status_code=422, detail="section_id does not resolve")
+        if section.get("exam_phase_id") != row.get("exam_phase_id"):
+            raise HTTPException(status_code=422, detail="section_id belongs to a different exam_phase")
     row["reviewer_status"] = "pending_review"
     inserted = supabase.table("exam_topic_coverage").insert(row).execute().data or []
     new = inserted[0] if inserted else row
@@ -1519,6 +1525,132 @@ def delete_topic_prerequisite(
 
 
 # ════════════════════════════════════════════════════════════════════════
+#  Exam phase sections (migration 030)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Real columns from migration 030. exam_phase_id + subject_id + section_label
+# are NOT NULL; unique(exam_phase_id, subject_id, section_label). No
+# section_code / is_optional columns; the duration column is duration_mins.
+_SECTION_FIELDS = {
+    "exam_phase_id", "subject_id", "section_label", "question_count", "marks",
+    "duration_mins", "negative_marking", "difficulty_level", "weightage_percent",
+    "sort_order", "metadata",
+}
+
+
+@router.get("/exam-phase-sections")
+def list_exam_phase_sections(
+    exam_phase_id: str | None = Query(default=None),
+    subject_id: str | None = Query(default=None),
+    q: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("exam_phase_sections").select(
+        "id, exam_phase_id, subject_id, section_label, question_count, marks, "
+        "duration_mins, negative_marking, difficulty_level, weightage_percent, "
+        "sort_order, metadata, created_at, updated_at",
+        count="exact",
+    ).order("sort_order", desc=False)
+    if exam_phase_id:
+        query = query.eq("exam_phase_id", exam_phase_id)
+    if subject_id:
+        query = query.eq("subject_id", subject_id)
+    if q:
+        query = query.ilike("section_label", f"%{q.strip()}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/exam-phase-sections")
+def create_exam_phase_section(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _SECTION_FIELDS, "exam_phase_sections")
+    row = {k: v for k, v in body.payload.items() if k in _SECTION_FIELDS}
+    if not row.get("exam_phase_id") or not row.get("subject_id") or not row.get("section_label"):
+        raise HTTPException(status_code=422, detail="exam_phase_id, subject_id, section_label are required")
+    if not _safe_select(supabase, "exam_phases", id=row["exam_phase_id"]):
+        raise HTTPException(status_code=422, detail="exam_phase_id does not resolve")
+    if not _safe_select(supabase, "subjects", id=row["subject_id"]):
+        raise HTTPException(status_code=422, detail="subject_id does not resolve")
+    try:
+        inserted = supabase.table("exam_phase_sections").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.exam_phase_section.create",
+        entity_type="exam_phase_section", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/exam-phase-sections/{section_id}")
+def update_exam_phase_section(
+    section_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "exam_phase_sections", id=section_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Exam phase section not found")
+    _reject_unknown(body.payload, _SECTION_FIELDS, "exam_phase_sections")
+    patch = {k: v for k, v in body.payload.items() if k in _SECTION_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("subject_id") and not _safe_select(supabase, "subjects", id=patch["subject_id"]):
+        raise HTTPException(status_code=422, detail="subject_id does not resolve")
+    patch["updated_at"] = _now_iso()
+    updated = supabase.table("exam_phase_sections").update(patch).eq("id", section_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.exam_phase_section.update",
+        entity_type="exam_phase_section", entity_id=section_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Exam competition metrics — list (create/patch above)
+# ════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/exam-competition-metrics")
+def list_competition_metrics(
+    exam_id: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("exam_competition_metrics").select(
+        "id, exam_id, exam_cycle_id, exam_phase_id, vacancy_total, applicant_count, "
+        "selection_ratio, competition_pressure_score, source_basis, confidence_score, "
+        "evidence_count, reviewer_status, metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if exam_id:
+        query = query.eq("exam_id", exam_id)
+    if reviewer_status:
+        query = query.eq("reviewer_status", reviewer_status)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+# ════════════════════════════════════════════════════════════════════════
 #  Syllabus topic mentions — created at reviewer_status='pending'
 # ════════════════════════════════════════════════════════════════════════
 
@@ -2020,6 +2152,17 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
         },
         "enums": {"mention_type": _MENTION_TYPES},
         "audit": "exam_intel.cms.syllabus_mention.bulk_create",
+    },
+    "exam-phase-sections": {
+        "table": "exam_phase_sections",
+        "allowed": _SECTION_FIELDS,
+        "required": ["exam_phase_id", "subject_id", "section_label"],
+        "forced": {},
+        "fks": {"exam_phase_id": "exam_phases", "subject_id": "subjects"},
+        "enums": {},
+        "audit": "exam_intel.cms.exam_phase_section.bulk_create",
+        "max_rows": 500,
+        "upsert_on": "exam_phase_id,subject_id,section_label",
     },
     "pyq-question-topic-tags": {
         "table": "pyq_question_topic_tags",

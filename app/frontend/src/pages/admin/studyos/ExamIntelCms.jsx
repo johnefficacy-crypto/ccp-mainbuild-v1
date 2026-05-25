@@ -18,6 +18,7 @@ const refDoc = (filters) => ({ endpoint: "syllabus-documents", labelKey: "title"
 const refPyqSource = (filters) => ({ endpoint: "pyq-sources", labelKey: "title", secondaryKey: "source_type", filters });
 const refPaper = (filters) => ({ endpoint: "pyq-papers", labelKey: "paper_code", secondaryKey: "year", filters });
 const refQuestion = (filters) => ({ endpoint: "pyq-questions", labelKey: "question_text", secondaryKey: "question_number", filters });
+const refSection = (filters) => ({ endpoint: "exam-phase-sections", labelKey: "section_label", secondaryKey: "subject_id", filters });
 
 // Enum values mirror the CHECK constraints on public.exam_topic_coverage
 // (migration 030). Keep these in sync with the migration, not invented.
@@ -41,6 +42,7 @@ const PYQ_QUESTION_TYPES = ["mcq", "numerical", "descriptive", "caselet", "match
 // are UI conveniences, not enforced enums.
 const PYQ_OBSERVED_DIFFICULTY = ["easy", "moderate", "hard"];
 const PYQ_OPTION_LABELS = ["A", "B", "C", "D", "E"];
+const COMPETITION_SOURCE_BASES = ["manual", "official", "reviewed_analysis", "derived", "model_generated"];
 
 const ENTITY_CONFIG = {
   "exam-families": {
@@ -131,9 +133,10 @@ const ENTITY_CONFIG = {
     label: "Exam topic coverage",
     fields: [
       { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
-      { key: "topic_id", label: "topic_id", required: true },
+      { key: "topic_id", label: "topic_id", required: true, type: "ref", ref: refTopic({}) },
       { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
       { key: "exam_phase_id", label: "exam_phase_id", type: "ref", ref: refPhase({ exam_id: "exam_id", exam_cycle_id: "exam_cycle_id" }) },
+      { key: "section_id", label: "section_id (cascades from phase)", type: "ref", ref: refSection({ exam_phase_id: "exam_phase_id" }) },
       { key: "coverage_depth", label: "coverage_depth", type: "enum", options: COVERAGE_DEPTHS },
       { key: "expected_difficulty", label: "expected_difficulty" },
       { key: "exam_priority_score", label: "exam_priority_score (0–100)", type: "number", step: 0.01, min: 0, max: 100 },
@@ -290,6 +293,42 @@ const ENTITY_CONFIG = {
     ],
     columns: ["question_id", "option_label", "is_correct"],
   },
+  "exam-phase-sections": {
+    label: "Exam phase sections",
+    fields: [
+      { key: "exam_id", label: "exam_id (scope only — not saved)", type: "ref", ref: REF_EXAM, uiOnly: true },
+      { key: "exam_phase_id", label: "exam_phase_id", required: true, type: "ref", ref: refPhase({ exam_id: "exam_id" }) },
+      { key: "subject_id", label: "subject_id", required: true, type: "ref", ref: REF_SUBJECT },
+      { key: "section_label", label: "section_label", required: true },
+      { key: "question_count", label: "question_count", type: "int" },
+      { key: "marks", label: "marks", type: "number", step: 0.5, min: 0 },
+      { key: "duration_mins", label: "duration_mins", type: "int" },
+      { key: "negative_marking", label: "negative_marking" },
+      { key: "difficulty_level", label: "difficulty_level" },
+      { key: "weightage_percent", label: "weightage_percent", type: "number", step: 0.1, min: 0, max: 100 },
+      { key: "sort_order", label: "sort_order", type: "int" },
+      { key: "metadata", label: "metadata (JSON object)", type: "json" },
+    ],
+    columns: ["exam_phase_id", "section_label", "subject_id", "question_count", "marks"],
+  },
+  "exam-competition-metrics": {
+    label: "Exam competition metrics",
+    notice: "Lands as draft — promote in /admin/exam-intelligence review.",
+    fields: [
+      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
+      { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
+      { key: "exam_phase_id", label: "exam_phase_id", type: "ref", ref: refPhase({ exam_id: "exam_id" }) },
+      { key: "vacancy_total", label: "vacancy_total", type: "int" },
+      { key: "applicant_count", label: "applicant_count", type: "int" },
+      { key: "selection_ratio", label: "selection_ratio (0–1)", type: "number", step: 0.000001, min: 0, max: 1 },
+      { key: "competition_pressure_score", label: "competition_pressure_score (0–100)", type: "number", step: 0.01, min: 0, max: 100 },
+      { key: "source_basis", label: "source_basis", type: "enum", options: COMPETITION_SOURCE_BASES },
+      { key: "confidence_score", label: "confidence_score (0–1)", type: "number", step: 0.001, min: 0, max: 1 },
+      { key: "evidence_count", label: "evidence_count", type: "int" },
+      { key: "metadata", label: "metadata (JSON object)", type: "json" },
+    ],
+    columns: ["exam_id", "vacancy_total", "applicant_count", "reviewer_status", "created_at"],
+  },
 };
 
 const ENTITY_KEYS = Object.keys(ENTITY_CONFIG);
@@ -334,6 +373,9 @@ export default function AdminExamIntelCms() {
 
   const isDocuments = entity === "documents";
   const cfg = ENTITY_CONFIG[entity];
+  // Per-entity bulk caps — source of truth is the backend. UI copy only; the
+  // backend enforces. Submit is never blocked client-side.
+  const bulkCap = { "pyq-questions": 2000, "pyq-options": 4000, "pyq-question-topic-tags": 2000 }[entity] || 500;
 
   async function load() {
     // The Documents panel manages its own data via the upload/list endpoints.
@@ -543,7 +585,7 @@ export default function AdminExamIntelCms() {
           <h3 className="text-sm font-semibold">Bulk import {ENTITY_CONFIG[entity].label}</h3>
           <p className="text-xs text-muted-foreground">
             Drop a <strong>.csv</strong> or <strong>.json</strong> file, or paste a JSON array of row
-            objects (max 500). Each row goes through the same validation as the single-row create — required
+            objects (max {bulkCap}). Each row goes through the same validation as the single-row create — required
             fields, FK resolution, enum constraints, and forced statuses. Per-row results are returned so you
             can fix and retry only the failed rows. PDF and Markdown are out of scope — those need a separate
             extraction pipeline.
@@ -565,7 +607,7 @@ export default function AdminExamIntelCms() {
           </label>
           <label className="block">
             <span className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-              <span>Rows JSON (array, max 500)</span>
+              <span>Rows JSON (array, max {bulkCap})</span>
               <button
                 type="button"
                 className="btn small"
