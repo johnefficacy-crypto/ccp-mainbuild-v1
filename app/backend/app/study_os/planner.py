@@ -21,7 +21,7 @@ produce the same plan. Persists one active ``study_plan`` per user, a
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
@@ -1125,3 +1125,242 @@ def generate_plan(
     regenerations (``regen.regenerate_on_signal``).
     """
     return apply_plan(supabase, user_id, reason=reason, event_type=event_type)
+
+
+# ───────────────────────── regen-trigger surfacing ─────────────────────────
+#
+# These thresholds match the auto-regen contract described in
+# docs/product/aspirant-platform-strategy.md §2: misses > 2 consecutive days,
+# upcoming deadline compression, mock-score drift, backlog over threshold.
+# The numbers are intentionally conservative so the strip is only loud when
+# the planner would actually rewire the schedule on the next regen.
+_MISSED_STREAK_MIN = 2
+_BACKLOG_LOW = 7
+_BACKLOG_MED = 10
+_BACKLOG_HIGH = 15
+_DEADLINE_MED_DAYS = 30
+_DEADLINE_HIGH_DAYS = 14
+_MOCK_DRIFT_MIN_PER_WINDOW = 2
+_MOCK_DRIFT_LOW_PP = 5
+_MOCK_DRIFT_MED_PP = 10
+
+
+def _missed_days_streak(supabase: Any, user_id: str, today: date) -> dict[str, Any] | None:
+    """Count consecutive days (ending yesterday) where every planned task
+    was missed/skipped. Returns the trigger payload or None when below the
+    floor (≥ 2 consecutive days).
+    """
+    lookback = 14
+    rows = _safe(
+        lambda: (
+            supabase.table("study_tasks")
+            .select("status, scheduled_date")
+            .eq("user_id", user_id)
+            .gte("scheduled_date", (today - timedelta(days=lookback)).isoformat())
+            .lt("scheduled_date", today.isoformat())
+            .limit(2000)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    if not rows:
+        return None
+    by_day: dict[str, list[str]] = {}
+    for r in rows:
+        d = (r.get("scheduled_date") or "")[:10]
+        if not d:
+            continue
+        by_day.setdefault(d, []).append((r.get("status") or "planned").lower())
+
+    streak = 0
+    streak_start: str | None = None
+    cursor = today - timedelta(days=1)
+    while cursor >= today - timedelta(days=lookback):
+        key = cursor.isoformat()
+        statuses = by_day.get(key)
+        if not statuses:
+            break  # day with no planned task breaks the streak
+        if any(s == "completed" for s in statuses):
+            break
+        streak += 1
+        streak_start = key
+        cursor -= timedelta(days=1)
+
+    if streak < _MISSED_STREAK_MIN:
+        return None
+    if streak >= 4:
+        severity = "high"
+    elif streak >= 3:
+        severity = "medium"
+    else:
+        severity = "low"
+    return {
+        "code": "missed_days_streak",
+        "severity": severity,
+        "label": f"Missed {streak} planned day(s) in a row.",
+        "evidence": {
+            "streak_length": streak,
+            "streak_start_date": streak_start,
+            "lookback_days": lookback,
+        },
+    }
+
+
+def _backlog_trigger(supabase: Any, user_id: str, today: date) -> dict[str, Any] | None:
+    """Open backlog over the LOW threshold becomes a regen trigger."""
+    rows = _safe(
+        lambda: (
+            supabase.table("study_tasks")
+            .select("status")
+            .eq("user_id", user_id)
+            .lte("scheduled_date", today.isoformat())
+            .limit(5000)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    backlog = sum(
+        1 for r in rows
+        if (r.get("status") or "").lower() in {"planned", "in_progress", "carried_forward"}
+    )
+    if backlog < _BACKLOG_LOW:
+        return None
+    if backlog >= _BACKLOG_HIGH:
+        severity = "high"
+    elif backlog >= _BACKLOG_MED:
+        severity = "medium"
+    else:
+        severity = "low"
+    return {
+        "code": "backlog_threshold",
+        "severity": severity,
+        "label": f"Open backlog is {backlog} tasks (threshold {_BACKLOG_LOW}).",
+        "evidence": {
+            "backlog_count": backlog,
+            "threshold_low": _BACKLOG_LOW,
+            "threshold_med": _BACKLOG_MED,
+            "threshold_high": _BACKLOG_HIGH,
+        },
+    }
+
+
+def _deadline_trigger(supabase: Any, user_id: str, today: date) -> dict[str, Any] | None:
+    """Target-exam ``exam_start`` within ``_DEADLINE_MED_DAYS`` is a trigger."""
+    target = _safe(lambda: _resolve_target_exam(supabase, user_id), None)
+    exam_id = target.get("id") if target else None
+    if not exam_id:
+        return None
+    cycle = _safe(
+        lambda: (
+            supabase.table("exam_cycles")
+            .select("id, exam_start, cycle_name")
+            .eq("exam_id", exam_id)
+            .gte("exam_start", today.isoformat())
+            .order("exam_start")
+            .limit(1)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    if not cycle:
+        return None
+    exam_start_str = cycle[0].get("exam_start")
+    try:
+        exam_start = date.fromisoformat(str(exam_start_str)[:10])
+    except (TypeError, ValueError):
+        return None
+    days_remaining = (exam_start - today).days
+    if days_remaining < 0 or days_remaining > _DEADLINE_MED_DAYS:
+        return None
+    severity = "high" if days_remaining <= _DEADLINE_HIGH_DAYS else "medium"
+    return {
+        "code": "deadline_compression",
+        "severity": severity,
+        "label": f"Exam is in {days_remaining} day(s) ({exam_start.isoformat()}).",
+        "evidence": {
+            "days_remaining": days_remaining,
+            "exam_start": exam_start.isoformat(),
+            "exam_cycle_id": cycle[0].get("id"),
+        },
+    }
+
+
+def _mock_drift_trigger(supabase: Any, user_id: str) -> dict[str, Any] | None:
+    """Compare avg percentage of the last 2 mocks vs the prior 2."""
+    rows = _safe(
+        lambda: (
+            supabase.table("mock_tests")
+            .select("id, attempted_at, scored_marks, total_marks")
+            .eq("user_id", user_id)
+            .order("attempted_at", desc=True)
+            .limit(8)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+
+    def _pct(m: dict[str, Any]) -> float | None:
+        try:
+            scored = float(m.get("scored_marks") or 0)
+            total = float(m.get("total_marks") or 0)
+            if total <= 0:
+                return None
+            return (scored / total) * 100.0
+        except (TypeError, ValueError):
+            return None
+
+    pcts = [p for p in (_pct(m) for m in rows) if p is not None]
+    if len(pcts) < _MOCK_DRIFT_MIN_PER_WINDOW * 2:
+        return None
+    recent = pcts[:_MOCK_DRIFT_MIN_PER_WINDOW]
+    prior = pcts[_MOCK_DRIFT_MIN_PER_WINDOW : _MOCK_DRIFT_MIN_PER_WINDOW * 2]
+    recent_avg = sum(recent) / len(recent)
+    prior_avg = sum(prior) / len(prior)
+    delta = round(recent_avg - prior_avg, 1)
+    if delta >= -_MOCK_DRIFT_LOW_PP:
+        return None
+    drop = abs(delta)
+    severity = "high" if drop >= _MOCK_DRIFT_MED_PP else "medium" if drop >= _MOCK_DRIFT_LOW_PP + 2 else "low"
+    return {
+        "code": "mock_score_drift",
+        "severity": severity,
+        "label": f"Recent mock average dropped {drop:.1f} pts vs the prior window.",
+        "evidence": {
+            "recent_avg_pct": round(recent_avg, 1),
+            "prior_avg_pct": round(prior_avg, 1),
+            "delta_pct": delta,
+            "window_size": _MOCK_DRIFT_MIN_PER_WINDOW,
+        },
+    }
+
+
+def build_regen_triggers(supabase: Any, user_id: str) -> list[dict[str, Any]]:
+    """Return the active auto-regen triggers as a deterministic list.
+
+    Each item: ``{code, severity, label, evidence}`` where ``code`` is one
+    of ``missed_days_streak | backlog_threshold | deadline_compression |
+    mock_score_drift``. The list is informational — the planner does NOT
+    apply changes from this surface; the user still draws via
+    /api/study/plan/draft and applies via /api/study/plan/apply.
+    """
+    if not user_id:
+        return []
+    today = date.today()
+    triggers: list[dict[str, Any]] = []
+    for builder in (
+        lambda: _missed_days_streak(supabase, user_id, today),
+        lambda: _backlog_trigger(supabase, user_id, today),
+        lambda: _deadline_trigger(supabase, user_id, today),
+        lambda: _mock_drift_trigger(supabase, user_id),
+    ):
+        try:
+            row = builder()
+        except Exception:  # noqa: BLE001
+            row = None
+        if row:
+            triggers.append(row)
+    return triggers

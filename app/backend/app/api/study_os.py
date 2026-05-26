@@ -504,6 +504,7 @@ async def mission_control(user: dict = Depends(get_current_user)) -> dict[str, A
             },
             "today_tasks": [],
             "plan_reasoning": [],
+            "regen_triggers": [],
             "metrics": {
                 "tasks_total": 0,
                 "tasks_completed": 0,

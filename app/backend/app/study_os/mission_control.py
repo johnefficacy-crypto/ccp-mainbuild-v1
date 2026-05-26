@@ -1336,6 +1336,12 @@ async def build_mission_control_async(supabase: Any, user_id: str) -> dict[str, 
         _load_competition_context, supabase, exam_intel, exam_context
     )
 
+    # Stage 3b: auto-regen trigger summary (planner.build_regen_triggers).
+    # Independent of competition; runs in parallel via gather so it doesn't
+    # add latency to the longest dependency chain.
+    from app.study_os.planner import build_regen_triggers
+    regen_triggers = await asyncio.to_thread(build_regen_triggers, supabase, user_id)
+
     today_tasks: list[dict[str, Any]] = []
     has_active_plan = bool(plan_id)
     for task in today_tasks_raw:
@@ -1412,6 +1418,10 @@ async def build_mission_control_async(supabase: Any, user_id: str) -> dict[str, 
         "next_best_action": next_best_action,
         "truth_panel": truth_panel,
         "plan_reasoning": plan_reasoning,
+        # Active auto-regen trigger conditions. The planner does NOT apply
+        # these — they're informational so the user can decide whether to
+        # open /api/study/plan/draft and review the suggested rewire.
+        "regen_triggers": regen_triggers,
         "progressive_question": progressive_question,
         "engine_trace": engine_trace,
         "exam_intelligence": exam_intel,
