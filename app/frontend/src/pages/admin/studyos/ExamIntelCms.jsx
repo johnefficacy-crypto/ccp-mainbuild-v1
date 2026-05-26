@@ -358,6 +358,152 @@ const ENTITY_CONFIG = {
 
 const ENTITY_KEYS = Object.keys(ENTITY_CONFIG);
 
+// Entities that expose a full PATCH route in admin_exam_intel_cms.py and so
+// can be edited from the UI. Everything else stays create-only (lifecycle
+// rows go through the review queue, not here).
+const EDITABLE_ENTITIES = new Set(["exam-families", "exams", "exam-cycles", "exam-phases"]);
+// Only these two have a DELETE (soft-delete → is_active=false) route.
+const DEACTIVATABLE_ENTITIES = new Set(["exam-families", "exams"]);
+
+// Per-entity columns that are nullable in Postgres AND surfaced in cfg.fields,
+// so clearing them on edit may legitimately submit null. Any other field
+// cleared to empty is blocked (the column is NOT NULL — e.g. slug/name/exam_id/
+// year/cycle_name/phase_name/phase_slug, or a defaulted enum/bool like
+// status/is_active/phase_order). Source: docs/schema/supabase-current.md.
+const NULLABLE_ON_EDIT = {
+  "exam-families": new Set(["description"]),
+  exams: new Set(["exam_family_id", "exam_type", "description"]),
+  "exam-cycles": new Set([
+    "notification_date", "application_start", "application_end",
+    "exam_start", "exam_end", "source_url",
+  ]),
+  "exam-phases": new Set([
+    "exam_cycle_id", "mode", "duration_mins", "total_questions", "total_marks",
+  ]),
+};
+
+// Helper copy shown under specific date fields. exam_start is the Study OS
+// timeline anchor (see StudyPlan/timeline), so flag it in both create + edit.
+const DATE_FIELD_HELP = {
+  "exam-cycles": {
+    exam_start:
+      "Study OS timeline uses exam_start as the current cycle anchor. Keep it future-facing for active cycles.",
+  },
+};
+
+// Single rendering path for one form control, shared by the create and edit
+// forms so they never drift. ``idPrefix`` keeps their test ids distinct
+// ("cms-" for create, "cms-edit-" for edit). ``values`` is the whole form bag
+// so ref pickers can cascade off sibling fields.
+function renderFieldControl(f, values, setValues, idPrefix, entityKey) {
+  const testId = `${idPrefix}field-${f.key}`;
+  const set = (val) => setValues((p) => ({ ...p, [f.key]: val }));
+  if (f.type === "ref") {
+    return (
+      <CmsRefField
+        field={f}
+        value={values[f.key] ?? ""}
+        formValues={values}
+        onChange={(val) => set(val)}
+        testId={testId}
+      />
+    );
+  }
+  if (f.type === "bool") {
+    return (
+      <select
+        value={values[f.key] ?? ""}
+        onChange={(e) => set(e.target.value)}
+        className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+        data-testid={testId}
+      >
+        <option value="">(skip)</option>
+        <option value="true">true</option>
+        <option value="false">false</option>
+      </select>
+    );
+  }
+  if (f.type === "enum") {
+    return (
+      <select
+        value={values[f.key] ?? ""}
+        onChange={(e) => set(e.target.value)}
+        className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+        data-testid={testId}
+      >
+        <option value="">(skip)</option>
+        {f.options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    );
+  }
+  if (f.type === "date") {
+    return (
+      <div data-testid={testId}>
+        <DateField
+          value={values[f.key] ?? null}
+          onChange={(iso) => set(iso)}
+          mode={f.mode || "any"}
+          name={f.key}
+          id={`${idPrefix}date-${f.key}`}
+          helpText={DATE_FIELD_HELP[entityKey]?.[f.key]}
+        />
+      </div>
+    );
+  }
+  if (f.type === "json") {
+    return (
+      <textarea
+        value={values[f.key] ?? ""}
+        onChange={(e) => set(e.target.value)}
+        rows={3}
+        placeholder="{}"
+        className="w-full px-2 py-1.5 text-sm font-mono border border-border/60 rounded bg-background"
+        data-testid={testId}
+      />
+    );
+  }
+  if (f.type === "textarea") {
+    return (
+      <textarea
+        value={values[f.key] ?? ""}
+        onChange={(e) => set(e.target.value)}
+        rows={3}
+        className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+        data-testid={testId}
+      />
+    );
+  }
+  if (f.type === "readonly") {
+    // Auto-computed columns (e.g. content hashes). Shown for visibility but
+    // never submitted — the backend derives them.
+    return (
+      <input
+        type="text"
+        readOnly
+        disabled
+        value=""
+        placeholder="auto-computed"
+        className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-muted text-muted-foreground"
+        data-testid={testId}
+      />
+    );
+  }
+  return (
+    <input
+      type={f.type === "int" || f.type === "number" ? "number" : "text"}
+      step={f.type === "number" ? f.step : undefined}
+      min={f.min}
+      max={f.max}
+      value={values[f.key] ?? ""}
+      onChange={(e) => set(e.target.value)}
+      className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+      data-testid={testId}
+    />
+  );
+}
+
 function parseValue(field, raw) {
   if (raw === "" || raw == null) return undefined;
   if (field.type === "bool") return raw === "true";
@@ -395,9 +541,18 @@ export default function AdminExamIntelCms() {
   const [bulkResult, setBulkResult] = useState(null);
   const [formValues, setFormValues] = useState({});
   const [reason, setReason] = useState("");
+  // Edit state. ``editingRow`` is the original row (also the diff baseline);
+  // ``editValues`` is the prefilled, mutable form bag.
+  const [editingRow, setEditingRow] = useState(null);
+  const [editValues, setEditValues] = useState({});
+  const [editReason, setEditReason] = useState("");
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState(null);
 
   const isDocuments = entity === "documents";
   const cfg = ENTITY_CONFIG[entity];
+  const isEditable = EDITABLE_ENTITIES.has(entity);
+  const isDeactivatable = DEACTIVATABLE_ENTITIES.has(entity);
   // Per-entity bulk caps — source of truth is the backend. UI copy only; the
   // backend enforces. Submit is never blocked client-side.
   const bulkCap = { "pyq-questions": 2000, "pyq-options": 4000, "pyq-question-topic-tags": 2000 }[entity] || 500;
@@ -518,6 +673,117 @@ export default function AdminExamIntelCms() {
     }
   }
 
+  function startEdit(row) {
+    // Prefill every field in the form's shape from the row. Dates stay as the
+    // backend's date-only string (DateField speaks YYYY-MM-DD and never calls
+    // new Date(), so no timezone drift). Bools become the select's string.
+    const next = {};
+    for (const f of cfg.fields) {
+      const cur = row[f.key];
+      if (f.type === "bool") {
+        next[f.key] = cur === true ? "true" : cur === false ? "false" : "";
+      } else if (f.type === "date") {
+        next[f.key] = cur ?? null;
+      } else if (f.type === "json") {
+        next[f.key] = cur != null ? JSON.stringify(cur, null, 2) : "";
+      } else {
+        next[f.key] = cur == null ? "" : String(cur);
+      }
+    }
+    setShowCreate(false);
+    setEditingRow(row);
+    setEditValues(next);
+    setEditReason("");
+    setEditError(null);
+  }
+
+  function cancelEdit() {
+    setEditingRow(null);
+    setEditValues({});
+    setEditReason("");
+    setEditError(null);
+  }
+
+  async function submitEdit(e) {
+    e.preventDefault();
+    if (!editingRow) return;
+    if (editReason.trim().length < 8) {
+      setEditError("Reason must be ≥8 chars.");
+      return;
+    }
+    const nullable = NULLABLE_ON_EDIT[entity] || new Set();
+    // Diff against the original row: only keys the admin actually changed are
+    // submitted. uiOnly (cascade-only) and readonly (server-derived) fields are
+    // never sent.
+    const patch = {};
+    for (const f of cfg.fields) {
+      if (f.uiOnly || f.type === "readonly") continue;
+      let parsed;
+      try {
+        parsed = parseValue(f, editValues[f.key]);
+      } catch (err) {
+        setEditError(`Invalid ${f.key}: ${err.message}`);
+        return;
+      }
+      const orig = editingRow[f.key] == null ? undefined : editingRow[f.key];
+      const changed = parsed === undefined ? orig !== undefined : parsed !== orig;
+      if (!changed) continue;
+      if (parsed === undefined) {
+        // Cleared a field. Only allowed when the column is nullable.
+        if (!nullable.has(f.key)) {
+          setEditError(`${f.key} cannot be empty.`);
+          return;
+        }
+        patch[f.key] = null;
+      } else {
+        patch[f.key] = parsed;
+      }
+    }
+    if (Object.keys(patch).length === 0) {
+      setEditError("No changes to save.");
+      return;
+    }
+    setEditBusy(true);
+    try {
+      const r = await api.patch(`/api/admin/exam-intelligence-cms/${entity}/${editingRow.id}`, {
+        reason: editReason.trim(),
+        payload: patch,
+      });
+      setStatus({ ok: true, message: `Updated. audit_id=${r.audit_id}` });
+      cancelEdit();
+      load();
+    } catch (ex) {
+      setEditError(getApiErrorMessage(ex));
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
+  async function deactivateRow(row) {
+    // Soft-delete only (backend flips is_active=false; child rows keep their
+    // FK). UI never says "Delete".
+    if (!isDeactivatable) return;
+    const label = (row.name || row.slug || row.id || "").toString();
+    if (!window.confirm(`Deactivate ${cfg.label} "${label}"? It will be hidden (is_active=false), not deleted.`)) {
+      return;
+    }
+    const reasonText = window.prompt("Reason for deactivating (≥8 chars, recorded in audit):") || "";
+    if (reasonText.trim().length < 8) {
+      setStatus({ ok: false, message: "Deactivate reason must be ≥8 chars." });
+      return;
+    }
+    try {
+      const r = await api.del(
+        `/api/admin/exam-intelligence-cms/${entity}/${row.id}?reason=${encodeURIComponent(reasonText.trim())}`,
+      );
+      setStatus({ ok: true, message: `Deactivated. audit_id=${r.audit_id}` });
+      if (editingRow && editingRow.id === row.id) cancelEdit();
+      load();
+    } catch (ex) {
+      setStatus({ ok: false, message: getApiErrorMessage(ex) });
+    }
+  }
+
   function insertBulkTemplate() {
     const keys = cfg.fields.filter((f) => !f.uiOnly).map((f) => f.key);
     const skeleton = Object.fromEntries(keys.map((k) => [k, ""]));
@@ -534,6 +800,10 @@ export default function AdminExamIntelCms() {
     setFileParseError("");
     setFormValues({});
     setReason("");
+    setEditingRow(null);
+    setEditValues({});
+    setEditReason("");
+    setEditError(null);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity]);
@@ -681,89 +951,7 @@ export default function AdminExamIntelCms() {
                 <span className="block text-xs text-muted-foreground mb-1">
                   {f.label}{f.required ? <span className="text-red-700"> *</span> : null}
                 </span>
-                {f.type === "ref" ? (
-                  <CmsRefField
-                    field={f}
-                    value={formValues[f.key] ?? ""}
-                    formValues={formValues}
-                    onChange={(val) => setFormValues((p) => ({ ...p, [f.key]: val }))}
-                    testId={`cms-field-${f.key}`}
-                  />
-                ) : f.type === "bool" ? (
-                  <select
-                    value={formValues[f.key] ?? ""}
-                    onChange={(e) => setFormValues((p) => ({ ...p, [f.key]: e.target.value }))}
-                    className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
-                    data-testid={`cms-field-${f.key}`}
-                  >
-                    <option value="">(skip)</option>
-                    <option value="true">true</option>
-                    <option value="false">false</option>
-                  </select>
-                ) : f.type === "enum" ? (
-                  <select
-                    value={formValues[f.key] ?? ""}
-                    onChange={(e) => setFormValues((p) => ({ ...p, [f.key]: e.target.value }))}
-                    className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
-                    data-testid={`cms-field-${f.key}`}
-                  >
-                    <option value="">(skip)</option>
-                    {f.options.map((o) => (
-                      <option key={o} value={o}>{o}</option>
-                    ))}
-                  </select>
-                ) : f.type === "date" ? (
-                  <div data-testid={`cms-field-${f.key}`}>
-                    <DateField
-                      value={formValues[f.key] ?? null}
-                      onChange={(iso) => setFormValues((p) => ({ ...p, [f.key]: iso }))}
-                      mode={f.mode || "any"}
-                      name={f.key}
-                      id={`cms-date-${f.key}`}
-                    />
-                  </div>
-                ) : f.type === "json" ? (
-                  <textarea
-                    value={formValues[f.key] ?? ""}
-                    onChange={(e) => setFormValues((p) => ({ ...p, [f.key]: e.target.value }))}
-                    rows={3}
-                    placeholder="{}"
-                    className="w-full px-2 py-1.5 text-sm font-mono border border-border/60 rounded bg-background"
-                    data-testid={`cms-field-${f.key}`}
-                  />
-                ) : f.type === "textarea" ? (
-                  <textarea
-                    value={formValues[f.key] ?? ""}
-                    onChange={(e) => setFormValues((p) => ({ ...p, [f.key]: e.target.value }))}
-                    rows={3}
-                    className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
-                    data-testid={`cms-field-${f.key}`}
-                  />
-                ) : f.type === "readonly" ? (
-                  // Auto-computed columns (e.g. content hashes). Shown for
-                  // visibility but never submitted from the form — the backend
-                  // derives them on insert.
-                  <input
-                    type="text"
-                    readOnly
-                    disabled
-                    value=""
-                    placeholder="auto-computed"
-                    className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-muted text-muted-foreground"
-                    data-testid={`cms-field-${f.key}`}
-                  />
-                ) : (
-                  <input
-                    type={f.type === "int" || f.type === "number" ? "number" : "text"}
-                    step={f.type === "number" ? f.step : undefined}
-                    min={f.min}
-                    max={f.max}
-                    value={formValues[f.key] ?? ""}
-                    onChange={(e) => setFormValues((p) => ({ ...p, [f.key]: e.target.value }))}
-                    className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
-                    data-testid={`cms-field-${f.key}`}
-                  />
-                )}
+                {renderFieldControl(f, formValues, setFormValues, "cms-", entity)}
               </label>
             ))}
           </div>
@@ -783,6 +971,49 @@ export default function AdminExamIntelCms() {
         </form>
       ) : null}
 
+      {!isDocuments && isEditable && editingRow ? (
+        <form onSubmit={submitEdit} className="rounded border border-sky-300/60 bg-card p-4 space-y-2" data-testid="cms-edit-form">
+          <h3 className="text-sm font-semibold">
+            Edit {cfg.label} row · <span className="font-mono">{String(editingRow.id).slice(0, 8)}…</span>
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Only the fields you change are saved. Concurrency is last-write-wins — there is no
+            row-version check, so the most recent save wins if two admins edit the same row.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {cfg.fields.map((f) => (
+              <label key={f.key} className="block">
+                <span className="block text-xs text-muted-foreground mb-1">
+                  {f.label}{f.required ? <span className="text-red-700"> *</span> : null}
+                </span>
+                {renderFieldControl(f, editValues, setEditValues, "cms-edit-", entity)}
+              </label>
+            ))}
+          </div>
+          <label className="block">
+            <span className="block text-xs text-muted-foreground mb-1">Reason (≥8 chars, recorded in audit)</span>
+            <textarea
+              value={editReason}
+              onChange={(e) => setEditReason(e.target.value)}
+              rows={2}
+              className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+              data-testid="cms-edit-reason"
+            />
+          </label>
+          {editError ? (
+            <div className="text-sm text-red-700" role="alert" data-testid="cms-edit-error">{editError}</div>
+          ) : null}
+          <div className="flex gap-2">
+            <button type="submit" className="btn small" data-testid="cms-edit-submit" disabled={editBusy}>
+              {editBusy ? "Saving…" : "Save changes"}
+            </button>
+            <button type="button" className="btn small" onClick={cancelEdit} data-testid="cms-edit-cancel">
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : null}
+
       {!isDocuments ? (
       <section className="rounded border border-border/60 bg-card p-0 overflow-x-auto">
         <table className="w-full text-xs">
@@ -792,11 +1023,12 @@ export default function AdminExamIntelCms() {
               {cfg.columns.map((c) => (
                 <th key={c} className="text-left p-2">{c}</th>
               ))}
+              {isEditable ? <th className="text-left p-2">actions</th> : null}
             </tr>
           </thead>
           <tbody>
             {!items?.items?.length ? (
-              <tr><td colSpan={cfg.columns.length + 1} className="p-3 text-muted-foreground text-center">
+              <tr><td colSpan={cfg.columns.length + 1 + (isEditable ? 1 : 0)} className="p-3 text-muted-foreground text-center">
                 {busy ? "Loading…" : "No rows."}
               </td></tr>
             ) : items.items.map((r) => (
@@ -807,6 +1039,28 @@ export default function AdminExamIntelCms() {
                     {r[c] == null ? "—" : typeof r[c] === "boolean" ? String(r[c]) : String(r[c]).slice(0, 60)}
                   </td>
                 ))}
+                {isEditable ? (
+                  <td className="p-2 whitespace-nowrap">
+                    <button
+                      type="button"
+                      className="btn small"
+                      onClick={() => startEdit(r)}
+                      data-testid={`cms-edit-${r.id}`}
+                    >
+                      Edit
+                    </button>
+                    {isDeactivatable && r.is_active !== false ? (
+                      <button
+                        type="button"
+                        className="btn small ml-1"
+                        onClick={() => deactivateRow(r)}
+                        data-testid={`cms-deactivate-${r.id}`}
+                      >
+                        Deactivate
+                      </button>
+                    ) : null}
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
