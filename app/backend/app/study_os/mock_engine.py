@@ -107,6 +107,24 @@ def _question_snapshot(q: dict) -> dict:
     }
 
 
+def select_questions_for_template(supabase: Any, template_id: str, user_id: str) -> list[dict]:
+    """PR2d selector hook; currently supports section fixed selectors and legacy config.question_ids."""
+    sections = _safe(lambda: supabase.table("mock_template_sections").select("*").eq("template_id", template_id).order("section_index").execute(), default=None)
+    sec_rows = getattr(sections, "data", None) or []
+    if not sec_rows:
+        return []
+    ordered: list[str] = []
+    for sec in sec_rows:
+        selector = sec.get("selector") or {}
+        if selector.get("mode") == "fixed":
+            ordered.extend(selector.get("question_ids") or [])
+    if not ordered:
+        return []
+    q_rows = _safe(lambda: supabase.table("mock_question_bank").select("*").in_("id", ordered).execute(), default=None)
+    by_id = {r["id"]: r for r in (getattr(q_rows, "data", None) or [])}
+    return [by_id[qid] for qid in ordered if qid in by_id]
+
+
 # ── public API ─────────────────────────────────────────────────────────────────
 
 def start_attempt(supabase: Any, user_id: str, template_slug: str) -> dict:
@@ -144,7 +162,9 @@ def start_attempt(supabase: Any, user_id: str, template_slug: str) -> dict:
     if (getattr(existing, "data", None) or []):
         raise ConflictError("active attempt already exists for this template")
 
-    questions = _load_questions_for_template(supabase, template)
+    questions = select_questions_for_template(supabase, template["id"], user_id)
+    if not questions:
+        questions = _load_questions_for_template(supabase, template)
     if not questions:
         raise LookupError("template has no available questions")
 

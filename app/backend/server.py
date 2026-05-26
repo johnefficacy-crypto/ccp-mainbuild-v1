@@ -55,6 +55,7 @@ from app.api.admin_moderation import (
 )
 from app.api.auth import router as auth_router
 from app.api.admin_trust import router as admin_trust_router
+from app.api.admin_templates import router as admin_templates_router
 from app.api.admin_verification_reports import router as admin_verification_reports_router
 from app.api.evidence import router as evidence_router
 from app.api.flashcards import router as flashcards_router
@@ -288,6 +289,7 @@ api.include_router(persona_router)  # internal aspirant persona v1
 api.include_router(persona_questions_router)  # PR2 progressive tiny questions
 api.include_router(study_os_router)  # PR3 Study OS Mission Control — before canonical so /study/mission-control wins
 api.include_router(mock_engine_router)  # PR1 Mock Engine: start→answer→submit→score
+api.include_router(admin_templates_router)  # PR2d mock template authoring
 api.include_router(admin_study_os_router)  # admin Study OS ops (flagged via ADMIN_STUDY_OS_ENABLED)
 api.include_router(admin_exam_intel_cms_router)  # admin Exam Intelligence CMS — Phase 4 (same flag)
 api.include_router(admin_exam_intel_documents_router)  # admin Exam Intelligence PDF uploads (same flag)
