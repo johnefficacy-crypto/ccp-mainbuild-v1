@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "fingerprint_version": 1,
+  "fingerprint": {
+    "algorithm": "sha256",
+    "inputs": ["normalized_stem", "sorted_option_texts_joined_by_pipe", "correct_option_index"],
+    "normalize_stem": "lower + collapse_whitespace + strip"
+  },
+  "columns": [
+    "external_id", "exam_family", "exam_id", "exam_phase", "subject", "topic", "microtopic",
+    "question_type", "language", "question_text",
+    "option_a", "option_b", "option_c", "option_d", "option_e", "option_f",
+    "correct_option", "explanation",
+    "difficulty", "is_conceptual", "is_factual", "is_current",
+    "source_kind", "source_trust", "source_url", "pyq_year", "evidence_text",
+    "valid_from", "valid_until", "event_anchor_date",
+    "expected_time_sec", "question_group_id"
+  ],
+  "enums": {
+    "question_type": ["mcq_single", "mcq_multi", "statement", "assertion_reason", "match", "numerical"],
+    "difficulty": ["easy", "medium", "hard"],
+    "source_kind": ["manual", "mock", "pyq", "practice", "note", "flashcard_deck", "mistake", "topic", "custom"]
+  }
+}
