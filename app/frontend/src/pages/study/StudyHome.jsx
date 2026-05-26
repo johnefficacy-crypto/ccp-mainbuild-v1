@@ -1,11 +1,76 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Flame, Play } from "lucide-react";
+import { Flame, Play, X, Bell } from "lucide-react";
 import { api } from "../../lib/api";
 import ExamCycleTimeline from "../../features/study/components/ExamCycleTimeline";
 import ExamJourneyCard from "../../features/study/components/ExamJourneyCard";
 import PlanChangeLogCard from "../../features/study/components/PlanChangeLogCard";
 import HowItWorksHeaderButton from "../../shared/components/HowItWorksHeaderButton";
+
+const NUDGE_SEVERITY_CLASS = {
+  high: "border-[#E8B9C1] bg-[#FCEBEC] text-[#7A1D2C]",
+  medium: "border-[#F1DEAF] bg-[#FFF8E8] text-[#6A4A09]",
+  low: "border-[#BCD9F4] bg-[#EEF7FF] text-[#164A7A]",
+};
+
+// NudgeStack renders the compact stack of backend-computed Study Home
+// nudges (mission_control.nudges[]). Each entry is rendered verbatim;
+// the only client behaviour is the dismiss click → POST + local hide.
+function NudgeStack({ nudges, onDismiss }) {
+  if (!Array.isArray(nudges) || nudges.length === 0) return null;
+  return (
+    <section
+      className="soft-card rounded-2xl p-5"
+      data-testid="study-home-nudges"
+      aria-labelledby="study-home-nudges-heading"
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <Bell className="h-4 w-4 text-clay-700" aria-hidden="true" />
+        <h2
+          id="study-home-nudges-heading"
+          className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold"
+        >
+          Nudges
+        </h2>
+      </div>
+      <ul className="space-y-2">
+        {nudges.map((n) => {
+          const tone = NUDGE_SEVERITY_CLASS[n.severity] || NUDGE_SEVERITY_CLASS.low;
+          return (
+            <li
+              key={n.code}
+              className={`flex items-start justify-between gap-3 rounded-xl border px-3 py-2 text-[13px] ${tone}`}
+              data-testid={`study-home-nudge-${n.code}`}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="leading-snug">{n.message}</p>
+                {n.link ? (
+                  <Link
+                    to={n.link}
+                    className="link-under text-[11.5px] mt-1 inline-block"
+                  >
+                    Open →
+                  </Link>
+                ) : null}
+              </div>
+              {n.dismissable ? (
+                <button
+                  type="button"
+                  onClick={() => onDismiss(n.code)}
+                  aria-label={`Dismiss nudge: ${n.code}`}
+                  className="shrink-0 text-current opacity-70 hover:opacity-100"
+                  data-testid={`study-home-nudge-dismiss-${n.code}`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
 
 // PR10: real Study Home. Vertical stack of cards.
 // No new endpoints. Each card owns its loading / error / empty state
@@ -395,7 +460,21 @@ export default function StudyHome() {
   // Just the first truth_panel.corrections[] line so ExamJourneyCard can
   // render "one next correction" without re-fetching mission-control.
   const [nextCorrection, setNextCorrection] = useState("");
+  // Compact nudge stack from mission_control.nudges[]. Dismissals are
+  // persisted server-side (study_nudge_dismissals, migration 136) with a
+  // 24h TTL; the local state hides the row immediately so the optimistic
+  // UI matches what mission-control will return on the next refresh.
+  const [nudges, setNudges] = useState([]);
   const [reloadKey, setReloadKey] = useState(0);
+
+  async function dismissNudge(code) {
+    setNudges((prev) => prev.filter((n) => n.code !== code));
+    try {
+      await api.post(`/api/study/nudges/${code}/dismiss`, {});
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") console.error(e);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -432,11 +511,13 @@ export default function StudyHome() {
           ? d.truth_panel.corrections
           : [];
         setNextCorrection(typeof corrections[0] === "string" ? corrections[0] : "");
+        setNudges(Array.isArray(d?.nudges) ? d.nudges : []);
       } catch (e) {
         if (!cancelled) {
           setPlan({ data: null, loading: false, error: e });
           setFocus({ data: null, loading: false, error: e });
           setNextCorrection("");
+          setNudges([]);
         }
       }
     }
@@ -486,6 +567,7 @@ export default function StudyHome() {
           pageName="Study Home"
         />
       </div>
+      <NudgeStack nudges={nudges} onDismiss={dismissNudge} />
       <ActivePlanCard
         plan={plan.data?.plan}
         tasks={plan.data?.tasks}

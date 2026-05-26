@@ -505,6 +505,7 @@ async def mission_control(user: dict = Depends(get_current_user)) -> dict[str, A
             "today_tasks": [],
             "plan_reasoning": [],
             "regen_triggers": [],
+            "nudges": [],
             "metrics": {
                 "tasks_total": 0,
                 "tasks_completed": 0,
@@ -1058,3 +1059,45 @@ async def task_reasoning(
     if result is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return result
+
+
+_VALID_NUDGE_CODES = {
+    "mock_review_pending",
+    "subject_behind",
+    "backlog_over_threshold",
+    "milestone_in_7d",
+    "focus_streak_break",
+}
+
+
+@router.post("/nudges/{code}/dismiss")
+async def dismiss_nudge(
+    code: str, user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
+    """Record that the user dismissed a Study Home nudge.
+
+    Persisted in ``study_nudge_dismissals`` (migration 136). Mission
+    Control filters the nudge from the payload for a fixed 24h TTL and
+    surfaces it again if the underlying condition is still true after
+    that window. 400 on an unknown code so the closed-set contract is
+    enforced server-side as well as in the table CHECK constraint.
+    """
+    if code not in _VALID_NUDGE_CODES:
+        raise HTTPException(status_code=400, detail="Unknown nudge code.")
+    user_id = user.get("id")
+    supabase = get_supabase_admin()
+    from datetime import datetime, timezone
+
+    try:
+        supabase.table("study_nudge_dismissals").upsert(
+            {
+                "user_id": user_id,
+                "nudge_code": code,
+                "dismissed_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="user_id,nudge_code",
+        ).execute()
+    except Exception:  # noqa: BLE001
+        logger.exception("nudge dismiss failed for %s / %s", user_id, code)
+        raise HTTPException(status_code=500, detail="Could not dismiss nudge.")
+    return {"ok": True, "code": code}
