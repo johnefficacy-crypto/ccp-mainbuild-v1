@@ -117,14 +117,23 @@ def test_post_plan_apply_enforces_canonical_target_when_flag_on(_flag_on):
 
 
 def test_plan_endpoints_skip_enforcement_when_flag_off(_flag_off):
-    # With the flag off, the three endpoints fall through to compute_draft_plan /
-    # apply_plan, which gracefully report ``generated: False`` when there is no
-    # target exam — they do not 400.
+    # With the flag off, the endpoints fall through to compute_draft_plan /
+    # apply_plan instead of raising the 400 TARGET_EXAM_REQUIRED gate.
+    #
+    # ``draft`` is a read-style preview: it returns 200 with
+    # ``generated: False`` even when there is no target exam (contract
+    # unchanged). ``apply`` mutates state, so a no-target compute is now
+    # surfaced as a 422 (no_target_exam) rather than a misleading 200 that
+    # let the UI show "Plan applied" on a no-op.
     sb = SBStub({"profiles": [{"id": "u-1", "target_exam": None}]})
     client = TestClient(_app(sb))
     assert client.get("/api/study/plan/draft").status_code == 200
     assert client.post("/api/study/plan/draft").status_code == 200
-    assert client.post("/api/study/plan/apply").status_code == 200
+    r = client.post("/api/study/plan/apply")
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert detail["reason"] == "no_target_exam"
+    assert detail["generated"] is False
 
 
 def test_post_plan_apply_succeeds_when_target_is_set(_flag_on):
