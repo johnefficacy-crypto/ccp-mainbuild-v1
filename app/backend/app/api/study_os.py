@@ -48,6 +48,31 @@ _TARGET_EXAM_REQUIRED_DETAIL = {
     "message": "Choose the exam you are preparing for.",
 }
 
+# A failed persist (any critical write returned no rows) is a server fault —
+# 500. A precondition the user/admin must satisfy first (no target exam, no
+# locked coverage, every topic muted) is unprocessable — 422.
+_PLAN_UNPROCESSABLE_REASONS = {
+    "no_user",
+    "no_target_exam",
+    "no_locked_coverage",
+    "all_topics_muted",
+}
+
+
+def _raise_for_plan_failure(result: dict[str, Any]) -> dict[str, Any]:
+    """Translate a planner ``{generated|applied: False}`` envelope to HTTP.
+
+    The planner reports failure in-band so it can stay non-raising and
+    deterministic. The ``/apply`` and ``/generate`` routes must not return
+    a 2xx on a failed apply (that let the frontend show "Plan applied" while
+    the persist 23502'd). Success envelopes pass through unchanged.
+    """
+    if result.get("generated") is False or result.get("applied") is False:
+        reason = result.get("reason") or "unknown"
+        status_code = 422 if reason in _PLAN_UNPROCESSABLE_REASONS else 500
+        raise HTTPException(status_code=status_code, detail=result)
+    return result
+
 
 def _require_canonical_target(supabase: Any, user_id: str) -> str | None:
     """Enforce the canonical-exam flag uniformly across plan endpoints.
@@ -575,12 +600,13 @@ async def generate_study_plan(user: dict = Depends(get_current_user)) -> dict[st
     user_id = user.get("id")
     supabase = get_supabase_admin()
     try:
-        return generate_plan(supabase, user_id)
+        result = generate_plan(supabase, user_id)
     except Exception:  # noqa: BLE001
         logger.exception("plan generation failed for %s", user_id)
         raise HTTPException(
             status_code=500, detail="Plan generation is temporarily unavailable."
         )
+    return _raise_for_plan_failure(result)
 
 
 # ───────────────────────── Plan draft / apply / changelog ──────────────────
@@ -618,12 +644,13 @@ async def post_plan_apply(user: dict = Depends(get_current_user)) -> dict[str, A
     supabase = get_supabase_admin()
     _require_canonical_target(supabase, user_id)
     try:
-        return apply_plan(supabase, user_id)
+        result = apply_plan(supabase, user_id)
     except HTTPException:
         raise
     except Exception:  # noqa: BLE001
         logger.exception("plan apply failed for %s", user_id)
         raise HTTPException(status_code=500, detail="Plan apply is temporarily unavailable.")
+    return _raise_for_plan_failure(result)
 
 
 @router.get("/plan/timeline")

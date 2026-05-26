@@ -158,3 +158,99 @@ def test_apply_tolerates_empty_delete_on_fresh_plan():
     assert out["generated"] is True
     assert out["applied"] is True
     assert "reason" not in out
+
+
+# ── title / 23502 regression (the reported bug) ────────────────────────
+
+
+def test_persist_insert_sets_non_null_title():
+    """``study_plans.title`` is ``NOT NULL`` with no default; omitting it
+    made Postgres reject the insert with 23502. The insert must populate a
+    non-null title (and a non-null description).
+    """
+    sb = SBStub(_seed())
+    apply_plan(sb, "u-1")
+    plans = sb.db["study_plans"]
+    assert len(plans) == 1
+    plan = plans[0]
+    assert plan.get("title")  # non-null, non-empty
+    assert "SSC CGL" in plan["title"]
+    assert plan.get("description")  # non-null safe string
+
+
+def test_persist_update_preserves_title_on_revision():
+    """Re-applying reuses the active plan; the update path must never null
+    out the title set on the first insert.
+    """
+    sb = SBStub(_seed())
+    apply_plan(sb, "u-1")
+    first_title = sb.db["study_plans"][0]["title"]
+    assert first_title
+    apply_plan(sb, "u-1")
+    assert len(sb.db["study_plans"]) == 1
+    assert sb.db["study_plans"][0]["title"] == first_title
+
+
+class _Raising23502SB(SBStub):
+    """Raises a Postgres 23502 NOT NULL violation on ``study_plans.insert``,
+    mirroring production when ``title`` was omitted from the payload.
+    """
+
+    def table(self, name):  # type: ignore[override]
+        q = super().table(name)
+        if name == "study_plans":
+            original_execute = q.execute
+
+            def _execute():
+                if q._pending_insert is not None:
+                    raise RuntimeError(
+                        '{"code":"23502","message":"null value in column '
+                        '\\"title\\" of relation \\"study_plans\\" violates '
+                        'not-null constraint"}'
+                    )
+                return original_execute()
+
+            q.execute = _execute  # type: ignore[assignment]
+        return q
+
+
+def test_apply_surfaces_plan_persist_failed_on_23502():
+    sb = _Raising23502SB(_seed())
+    out = apply_plan(sb, "u-1")
+    assert out["generated"] is False
+    assert out["reason"] == "plan_persist_failed"
+    # nothing was written — no orphan study_plans row
+    assert sb.db.get("study_plans", []) == []
+
+
+def test_version_failure_rolls_back_created_plan():
+    """A failure *after* the plan insert must leave no orphan rows — the
+    compensating rollback tears the freshly-created plan back down.
+    """
+    sb = _failing_sb("study_plan_versions.insert")
+    out = apply_plan(sb, "u-1")
+    assert out["reason"] == "version_persist_failed"
+    assert sb.db.get("study_plans", []) == []
+    assert sb.db.get("study_plan_versions", []) == []
+
+
+def test_apply_route_returns_500_with_reason_on_persist_failure():
+    """The ``/apply`` route must surface a persist failure as a non-2xx
+    with the structured reason — not a misleading 200.
+    """
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from app.api import study_os as study_os_api
+    from app.core.auth import get_current_user
+
+    sb = _failing_sb("study_plans.insert")
+    app = FastAPI()
+    app.include_router(study_os_api.router, prefix="/api")
+    study_os_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    app.dependency_overrides[get_current_user] = lambda: {"id": "u-1", "role": "user"}
+    r = TestClient(app).post("/api/study/plan/apply")
+    assert r.status_code == 500
+    detail = r.json()["detail"]
+    assert detail["reason"] == "plan_persist_failed"
+    assert detail["generated"] is False

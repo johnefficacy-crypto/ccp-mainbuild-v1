@@ -493,7 +493,7 @@ def _active_plan(supabase: Any, user_id: str) -> dict[str, Any] | None:
         _safe(
             lambda: (
                 supabase.table("study_plans")
-                .select("id, status")
+                .select("id, status, current_plan_version_id")
                 .eq("user_id", user_id)
                 .eq("status", "active")
                 .limit(1)
@@ -549,13 +549,37 @@ def _persist(
     ``_safe(...)`` pattern was masking constraint violations (e.g. an
     ``event_type`` that wasn't in the CHECK list) and letting the API
     return ``{generated: True}`` while the audit row never wrote.
+
+    ``study_plans.title`` is ``NOT NULL`` with no default; omitting it was
+    rejected by Postgres with ``23502`` and the whole apply failed. We now
+    populate every ``NOT NULL`` column (``user_id``, ``title``) on insert
+    and give ``description`` a non-null safe string. The update path never
+    touches ``title`` so a re-version cannot null it out.
+
+    supabase-py exposes no client-side transaction, so on any failure
+    *after* the first insert we run a compensating rollback that tears
+    down exactly what this call created, in reverse FK-safe order, leaving
+    no orphan ``study_plans`` / ``study_plan_versions`` / ``study_tasks``
+    rows behind.
     """
     exam_id = exam.get("id")
+    exam_name = exam.get("name") or "Exam"
     today = _today_iso()
+    title = f"{exam_name} Study Plan"
+    description = f"Adaptive plan covering locked high-yield topics for {exam_name}."
+
+    # Compensating-rollback stack: each entry is a no-arg delete/restore run
+    # via ``_safe`` (best-effort) in reverse creation order on failure.
+    rollback_ops: list[Callable[[], Any]] = []
+
+    def _rollback() -> None:
+        for op in reversed(rollback_ops):
+            _safe(op)
 
     plan = _active_plan(supabase, user_id)
     if plan:
         plan_id = plan["id"]
+        prev_version_id = plan.get("current_plan_version_id")
     else:
         created = safe_required(
             lambda: (
@@ -563,12 +587,14 @@ def _persist(
                 .insert(
                     {
                         "user_id": user_id,
+                        "title": title,
+                        "description": description,
                         "status": "active",
                         "start_date": today,
                         "exam_id": exam_id,
                         "active_phase_id": plan_phase_id,
                         "metadata": {
-                            "theme": f"{exam.get('name') or 'Exam'} adaptive plan",
+                            "theme": f"{exam_name} adaptive plan",
                             "target": "Cover locked high-yield topics",
                         },
                         "generation_context": input_context,
@@ -582,6 +608,10 @@ def _persist(
         if created is None:
             return {"generated": False, "reason": "plan_persist_failed"}
         plan_id = created[0]["id"]
+        prev_version_id = None
+        rollback_ops.append(
+            lambda: supabase.table("study_plans").delete().eq("id", plan_id).execute()
+        )
 
     version_number = _next_version_number(supabase, plan_id)
     version = safe_required(
@@ -607,8 +637,15 @@ def _persist(
         op="study_plan_versions.insert",
     )
     if version is None:
+        _rollback()
         return {"generated": False, "reason": "version_persist_failed"}
     plan_version_id = version[0]["id"]
+    rollback_ops.append(
+        lambda: supabase.table("study_plan_versions")
+        .delete()
+        .eq("id", plan_version_id)
+        .execute()
+    )
 
     # Idempotent regeneration: clear today's still-planned tasks for this
     # plan, then insert the fresh set. Completed / in-progress tasks stay.
@@ -627,6 +664,7 @@ def _persist(
         allow_empty=True,
     )
     if cleared is None:
+        _rollback()
         return {"generated": False, "reason": "task_cleanup_failed"}
 
     task_rows = [
@@ -639,7 +677,14 @@ def _persist(
             op="study_tasks.insert",
         )
         if inserted_tasks is None:
+            _rollback()
             return {"generated": False, "reason": "task_persist_failed"}
+        rollback_ops.append(
+            lambda: supabase.table("study_tasks")
+            .delete()
+            .eq("plan_version_id", plan_version_id)
+            .execute()
+        )
 
     updated_plan = safe_required(
         lambda: (
@@ -657,7 +702,14 @@ def _persist(
         op="study_plans.update_active_version",
     )
     if updated_plan is None:
+        _rollback()
         return {"generated": False, "reason": "plan_persist_failed"}
+    rollback_ops.append(
+        lambda: supabase.table("study_plans")
+        .update({"current_plan_version_id": prev_version_id})
+        .eq("id", plan_id)
+        .execute()
+    )
 
     audit = safe_required(
         lambda: (
@@ -681,6 +733,7 @@ def _persist(
         op="study_adaptation_events.insert",
     )
     if audit is None:
+        _rollback()
         return {"generated": False, "reason": "audit_persist_failed"}
 
     return {

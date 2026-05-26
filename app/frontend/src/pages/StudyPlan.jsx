@@ -58,6 +58,7 @@ export default function StudyPlan() {
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftOpen, setDraftOpen] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [applyError, setApplyError] = useState("");
   const [examItems, setExamItems] = useState([]);
   const [examsLoading, setExamsLoading] = useState(true);
   const [examsError, setExamsError] = useState("");
@@ -167,6 +168,7 @@ export default function StudyPlan() {
     if (!selectedExamId) return;
     setDraftLoading(true);
     setDraftOpen(true);
+    setApplyError("");
     try {
       const d = await api.get("/api/study/plan/draft");
       setDraft(d || null);
@@ -180,15 +182,35 @@ export default function StudyPlan() {
   async function applyDraft() {
     if (!selectedExamId) return;
     setApplying(true);
+    setApplyError("");
     const result = await runApply({
-      action: () => api.post("/api/study/plan/apply", {}),
+      action: async () => {
+        const resp = await api.post("/api/study/plan/apply", {});
+        // The apply only counts as success when the planner persisted. A
+        // failed persist now comes back as a non-2xx (api.post throws), but
+        // guard the 2xx-with-flags case too so we never close the drawer or
+        // toast success on a half-written plan.
+        if (resp && (resp.generated === false || resp.applied === false)) {
+          const err = new Error(resp.reason || "apply_failed");
+          err.reason = resp.reason;
+          err.detail = { reason: resp.reason };
+          throw err;
+        }
+        return resp;
+      },
       successMessage: "Plan applied.",
       errorMessage: "Couldn't apply plan — try again.",
     });
-    if (result.ok) {
+    // Success UI (close drawer, reload) only when neither flag was false.
+    if (result?.ok) {
       setDraftOpen(false);
       setDraft(null);
       setReloadKey((k) => k + 1);
+    } else {
+      const e = result?.error;
+      const reason =
+        e?.detail?.reason || e?.reason || e?.data?.detail?.reason || "";
+      setApplyError(reason || e?.message || "Couldn't apply plan — try again.");
     }
     setApplying(false);
   }
@@ -637,6 +659,7 @@ export default function StudyPlan() {
             draft={draft}
             onApply={applyDraft}
             applying={applying}
+            applyError={applyError}
             applyDisabled={!selectedExamId || (selectedExam && !selectedExam.planner_ready)}
           />
         )}
@@ -645,7 +668,7 @@ export default function StudyPlan() {
   );
 }
 
-function DraftDiff({ draft, onApply, applying, applyDisabled = false }) {
+function DraftDiff({ draft, onApply, applying, applyError = "", applyDisabled = false }) {
   const changes = draft.changes || { added: [], removed: [], unchanged_count: 0 };
   const risk = draft.risk_level || "low";
   const before = draft.before_tasks || [];
@@ -717,6 +740,17 @@ function DraftDiff({ draft, onApply, applying, applyDisabled = false }) {
       </div>
 
       <DraftTimelinePreview timeline={draft.timeline} />
+
+      {applyError ? (
+        <div
+          className="rounded-xl bg-clay-50 px-3 py-2"
+          role="alert"
+          data-testid="apply-error"
+        >
+          <p className="text-sm text-clay-800">Couldn't apply plan.</p>
+          <p className="text-xs num-mono text-clay-700 mt-0.5">{applyError}</p>
+        </div>
+      ) : null}
 
       <div className="flex justify-end gap-2 pt-2 border-t border-[#E7DECB]">
         <button
