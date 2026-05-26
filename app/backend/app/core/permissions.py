@@ -69,6 +69,21 @@ def user_has_action(user: dict, action: str) -> bool:
     return False
 
 
+# ── Mock question bank permissions ──────────────────────────────────────────
+#
+# Three-tier permission model for question authoring workflow:
+#   MOCK_QUESTIONS_AUTHOR   — create/edit own drafts, submit for review, dedup-check
+#   MOCK_QUESTIONS_REVIEW   — approve, request_changes (cannot review own questions)
+#   MOCK_QUESTIONS_PUBLISH  — publish, archive, force-status, fingerprint override,
+#                             bulk import; grants implicitly all lower tiers
+#
+# super_admin bypasses all checks (via require_permission shortcut).
+
+MOCK_QUESTIONS_AUTHOR  = "mock_questions:author"
+MOCK_QUESTIONS_REVIEW  = "mock_questions:review"
+MOCK_QUESTIONS_PUBLISH = "mock_questions:publish"
+
+
 __all__ = [
     "SOURCES_MANAGE",
     "SCRAPING_MANAGE",
@@ -82,4 +97,7 @@ __all__ = [
     "ACTION_ACK_BATCH",
     "ACTION_PERMISSIONS",
     "user_has_action",
+    "MOCK_QUESTIONS_AUTHOR",
+    "MOCK_QUESTIONS_REVIEW",
+    "MOCK_QUESTIONS_PUBLISH",
 ]

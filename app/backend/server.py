@@ -86,6 +86,7 @@ from app.api.placeholders import router as placeholders_router
 from app.api.study_compare import router as study_compare_router
 from app.api.study_os import router as study_os_router
 from app.api.mock_engine import router as mock_engine_router
+from app.api.admin_mocks import router as admin_mocks_router
 from app.notifications.scheduler import start_scheduler, stop_scheduler
 from app.core.config import get_settings
 from app.db.postgres import close_pool, get_pool
@@ -104,6 +105,59 @@ logging.basicConfig(
 from app.core.logging_filters import install_log_redaction
 
 install_log_redaction()
+
+
+def _bootstrap_mock_publishers() -> None:
+    """Grant mock_questions:publish permission to emails in MOCK_PUBLISHER_BOOTSTRAP_EMAILS.
+
+    Reads a comma-separated list of email addresses from the environment.
+    Each email is resolved to a Supabase user; if found the permission is
+    idempotently added to ``app_metadata.permissions``.  Unresolved emails
+    log a warning and are skipped — boot never fails.
+
+    This is intentionally synchronous (called in lifespan, not an async path).
+    """
+    raw = os.environ.get("MOCK_PUBLISHER_BOOTSTRAP_EMAILS", "").strip()
+    if not raw:
+        return
+
+    emails = [e.strip() for e in raw.split(",") if e.strip()]
+    if not emails:
+        return
+
+    permission = "mock_questions:publish"
+    logger.info("bootstrap_mock_publishers: processing %d email(s)", len(emails))
+
+    try:
+        from app.db.supabase_client import get_supabase_admin
+        admin = get_supabase_admin()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("bootstrap_mock_publishers: cannot get admin client: %s", exc)
+        return
+
+    for email in emails:
+        try:
+            result = admin.auth.admin.list_users()
+            users = [u for u in (result or []) if getattr(u, "email", "") == email]
+            if not users:
+                logger.warning("bootstrap_mock_publishers: email not found: %s", email)
+                continue
+            user = users[0]
+            user_id = str(user.id)
+            existing_perms: list[str] = list(
+                (getattr(user, "app_metadata", {}) or {}).get("permissions") or []
+            )
+            if permission in existing_perms:
+                logger.info("bootstrap_mock_publishers: %s already has %s", email, permission)
+                continue
+            new_perms = list(set(existing_perms) | {permission})
+            admin.auth.admin.update_user_by_id(
+                user_id,
+                {"app_metadata": {"permissions": new_perms}},
+            )
+            logger.info("bootstrap_mock_publishers: granted %s to %s", permission, email)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("bootstrap_mock_publishers: failed for %s: %s", email, exc)
 
 
 def _scheduler_enabled() -> bool:
@@ -129,6 +183,11 @@ async def lifespan(app: FastAPI):
         logger.info("Postgres pool connected")
     except Exception as exc:  # noqa: BLE001
         logger.warning("Postgres pool not available at startup: %s", exc)
+    # Bootstrap mock publisher permissions (idempotent, never fails boot).
+    try:
+        _bootstrap_mock_publishers()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("bootstrap_mock_publishers raised unexpectedly: %s", exc)
     # APScheduler — in-process cron for notifications + recompute worker.
     scheduler_started = False
     if _scheduler_enabled():
@@ -288,6 +347,7 @@ api.include_router(persona_router)  # internal aspirant persona v1
 api.include_router(persona_questions_router)  # PR2 progressive tiny questions
 api.include_router(study_os_router)  # PR3 Study OS Mission Control — before canonical so /study/mission-control wins
 api.include_router(mock_engine_router)  # PR1 Mock Engine: start→answer→submit→score
+api.include_router(admin_mocks_router)  # PR2 Admin question bank + review workflow
 api.include_router(admin_study_os_router)  # admin Study OS ops (flagged via ADMIN_STUDY_OS_ENABLED)
 api.include_router(admin_exam_intel_cms_router)  # admin Exam Intelligence CMS — Phase 4 (same flag)
 api.include_router(admin_exam_intel_documents_router)  # admin Exam Intelligence PDF uploads (same flag)
