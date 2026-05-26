@@ -1,0 +1,3 @@
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import ChartContainer from './shared/ChartContainer';
+export default function TimeDistributionChart({ data = [], loading, error, dataTestId, height = 280 }) {return <ChartContainer title="Time Distribution" summary="Per-question dwell time distribution." loading={loading} error={error} isEmpty={!data.length} dataTestId={dataTestId} height={height}><ResponsiveContainer width="100%" height={height-40}><BarChart data={data}><XAxis dataKey="bucket" /><YAxis /><Tooltip /><Bar dataKey="count" fill="var(--color-primary, #2563eb)" /></BarChart></ResponsiveContainer></ChartContainer>;}
