@@ -966,6 +966,66 @@ def _diff_tasks(
     }
 
 
+def _build_tradeoffs(
+    before_tasks: list[dict[str, Any]], after_tasks: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Deterministic trade-off list for the draft preview.
+
+    Pairs the highest-priority added topic with the highest-priority removed
+    topic to express "gained X at the cost of Y". Items beyond the shorter
+    list are unpaired (cost=None for gain-only, gained=None for cost-only).
+    ``risk_delta`` is positive when the cost outranks the gain on the same
+    100-pt priority scale the planner already uses for `priority_score`.
+
+    Inputs come from the same maps `_diff_tasks` works over, so the
+    numbers cannot drift from the diff itself.
+    """
+    before_by_topic = {b.get("topic_id"): b for b in before_tasks if b.get("topic_id")}
+    after_by_topic = {a.get("topic_id"): a for a in after_tasks if a.get("topic_id")}
+    added_topics = set(after_by_topic) - set(before_by_topic)
+    removed_topics = set(before_by_topic) - set(after_by_topic)
+
+    def _score(d: dict[str, Any]) -> float:
+        try:
+            return float(d.get("priority_score") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    added_sorted = sorted(
+        (after_by_topic[t] for t in added_topics),
+        key=lambda d: (-_score(d), str(d.get("topic") or "")),
+    )
+    removed_sorted = sorted(
+        (before_by_topic[t] for t in removed_topics),
+        key=lambda d: (-_score(d), str(d.get("topic") or "")),
+    )
+
+    out: list[dict[str, Any]] = []
+    pair_count = max(len(added_sorted), len(removed_sorted))
+    for i in range(pair_count):
+        a = added_sorted[i] if i < len(added_sorted) else None
+        r = removed_sorted[i] if i < len(removed_sorted) else None
+        gained = a.get("topic") if a else None
+        cost = r.get("topic") if r else None
+        a_minutes = int((a.get("planned_minutes") if a else 0) or 0)
+        r_minutes = int((r.get("planned_minutes") if r else 0) or 0)
+        magnitude_minutes = max(a_minutes, r_minutes)
+        magnitude_hours = round(magnitude_minutes / 60.0, 2)
+        # risk_delta on the planner's own 100-pt scale: positive when the
+        # cost side outranks the gain side (risk rises on the dropped topic).
+        risk_delta = round((_score(r) if r else 0.0) - (_score(a) if a else 0.0), 1)
+        out.append({
+            "gained": gained,
+            "cost": cost,
+            "magnitude_hours": magnitude_hours,
+            "magnitude_minutes": magnitude_minutes,
+            "risk_delta": risk_delta,
+            "gained_priority": _score(a) if a else None,
+            "cost_priority": _score(r) if r else None,
+        })
+    return out[:5]
+
+
 def _risk_level(diff: dict[str, Any], before_count: int) -> str:
     """Rough risk label from how much of the plan is mutating."""
     if before_count == 0:
@@ -1008,6 +1068,7 @@ def compute_draft_plan(supabase: Any, user_id: str) -> dict[str, Any]:
         ]
         after_tasks = [_task_summary(t) for t in tasks]
         diff = _diff_tasks(before_tasks, after_tasks)
+        tradeoffs = _build_tradeoffs(before_tasks, after_tasks)
         exam = computed["exam"]
         return {
             "applied": False,
@@ -1019,6 +1080,7 @@ def compute_draft_plan(supabase: Any, user_id: str) -> dict[str, Any]:
             "before_tasks": before_tasks,
             "after_tasks": after_tasks,
             "changes": diff,
+            "tradeoffs": tradeoffs,
             "risk_level": _risk_level(diff, len(before_tasks)),
             "generated_at": _now_iso(),
         }

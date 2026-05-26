@@ -676,6 +676,8 @@ function DraftDiff({ draft, onApply, applying, applyError = "", applyDisabled = 
         </div>
       </div>
 
+      <DraftTradeoffs tradeoffs={draft.tradeoffs} />
+
       <DraftTimelinePreview timeline={draft.timeline} />
 
       {applyError ? (
@@ -700,6 +702,79 @@ function DraftDiff({ draft, onApply, applying, applyError = "", applyDisabled = 
           {applying ? "Applying…" : "Apply selected changes"}
         </button>
       </div>
+    </div>
+  );
+}
+
+// DraftTradeoffs renders the deterministic backend-built tradeoff list
+// from the draft endpoint. Each entry is shaped
+// `{gained, cost, magnitude_hours, magnitude_minutes, risk_delta,
+// gained_priority, cost_priority}` and is rendered verbatim — no
+// client-side scoring.
+function DraftTradeoffs({ tradeoffs }) {
+  if (!Array.isArray(tradeoffs) || tradeoffs.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-[#E7DECB] bg-white/60 p-3" data-testid="plan-draft-tradeoffs">
+      <Eyebrow>Trade-offs</Eyebrow>
+      <ul className="mt-2 space-y-1.5 text-[12px] text-clay-800">
+        {tradeoffs.map((t, i) => {
+          const parts = [];
+          const hours = Number(t.magnitude_hours) || 0;
+          const hoursLabel = hours > 0
+            ? `${hours}h`
+            : `${Number(t.magnitude_minutes) || 0}m`;
+          if (t.gained && t.cost) {
+            parts.push(
+              <span key="g">
+                <span className="font-semibold text-sage-700">{t.gained}</span> up by {hoursLabel}
+              </span>,
+            );
+            parts.push(<span key="sep1"> · </span>);
+            parts.push(
+              <span key="c">
+                <span className="font-semibold text-rose-700">{t.cost}</span> down by {hoursLabel}
+              </span>,
+            );
+          } else if (t.gained) {
+            parts.push(
+              <span key="g">
+                <span className="font-semibold text-sage-700">{t.gained}</span> up by {hoursLabel}
+              </span>,
+            );
+          } else if (t.cost) {
+            parts.push(
+              <span key="c">
+                <span className="font-semibold text-rose-700">{t.cost}</span> down by {hoursLabel}
+              </span>,
+            );
+          }
+          const riskDelta = Number(t.risk_delta);
+          if (Number.isFinite(riskDelta) && riskDelta > 0 && t.cost) {
+            parts.push(<span key="sep2"> · </span>);
+            parts.push(
+              <span key="r" className="text-rose-700">
+                risk on <span className="font-semibold">{t.cost}</span> rises (+{riskDelta} pts)
+              </span>,
+            );
+          } else if (Number.isFinite(riskDelta) && riskDelta < 0 && t.gained) {
+            parts.push(<span key="sep2"> · </span>);
+            parts.push(
+              <span key="r" className="text-sage-700">
+                risk on <span className="font-semibold">{t.gained}</span> falls ({riskDelta} pts)
+              </span>,
+            );
+          }
+          return (
+            <li
+              key={`tradeoff-${i}`}
+              data-testid="plan-draft-tradeoff"
+              className="flex flex-wrap items-baseline gap-1"
+            >
+              {parts}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
