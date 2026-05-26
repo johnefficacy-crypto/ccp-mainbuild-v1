@@ -1,0 +1,7 @@
+{
+  "note": "Golden fixture scaffold for PR4a; populated by tests through deterministic derivation.",
+  "contains_error_types": [
+    "correct","silly_mistake","concept_gap","option_trap","calc_error",
+    "time_pressure_unattempted","knowledge_gap","marked_unanswered"
+  ]
+}
