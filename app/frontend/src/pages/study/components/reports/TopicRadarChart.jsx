@@ -1,0 +1,3 @@
+import ChartContainer from './shared/ChartContainer';
+import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from 'recharts';
+export default function TopicRadarChart({ data = [], loading, error, dataTestId, height = 280 }) {return <ChartContainer title="Topic Mastery Radar" summary="Mastery by top topics." loading={loading} error={error} isEmpty={!data.length} dataTestId={dataTestId} height={height}><ResponsiveContainer width="100%" height={height-40}><RadarChart data={data}><PolarGrid /><PolarAngleAxis dataKey="topic" /><PolarRadiusAxis /><Radar dataKey="mastery" stroke="var(--color-primary, #2563eb)" fill="var(--color-primary, #2563eb)" fillOpacity={0.25} /></RadarChart></ResponsiveContainer></ChartContainer>;}
