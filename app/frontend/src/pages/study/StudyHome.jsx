@@ -302,6 +302,13 @@ function TruthPanelCompact({ current, previous, loading, error, onRetry }) {
   const hasCurrent = adherence != null && Number.isFinite(Number(adherence));
   const hasPrev = prevAdherence != null && Number.isFinite(Number(prevAdherence));
   const delta = hasCurrent && hasPrev ? Math.round((adherence - prevAdherence) * 100) : null;
+  // Highlights / corrections / next_actions ship pre-computed from the
+  // backend (study_os/report_cards.py). The compact panel just renders the
+  // first item from each list so StudyHome stays scannable; the full lists
+  // live on /app/study/review.
+  const highlights = Array.isArray(current?.highlights) ? current.highlights : [];
+  const corrections = Array.isArray(current?.corrections) ? current.corrections : [];
+  const nextActions = Array.isArray(current?.next_actions) ? current.next_actions : [];
 
   return (
     <CardShell
@@ -323,20 +330,49 @@ function TruthPanelCompact({ current, previous, loading, error, onRetry }) {
       ) : error ? (
         <CardError message="Report card unavailable." onRetry={onRetry} />
       ) : hasCurrent ? (
-        <div className="text-sm text-clay-800 flex items-center gap-3 flex-wrap">
-          <span className="font-medium">
-            Adherence: {Math.round(adherence * 100)}% this week
-          </span>
-          {delta != null ? (
-            <span
-              data-testid="study-home-truth-panel-delta"
-              className={`pill inline-flex ${
-                delta >= 0 ? "pill-sage" : "pill-rose"
-              }`}
-            >
-              {delta >= 0 ? "+" : ""}
-              {delta} pts vs last week
+        <div className="space-y-3">
+          <div className="text-sm text-clay-800 flex items-center gap-3 flex-wrap">
+            <span className="font-medium">
+              Adherence: {Math.round(adherence * 100)}% this week
             </span>
+            {delta != null ? (
+              <span
+                data-testid="study-home-truth-panel-delta"
+                className={`pill inline-flex ${
+                  delta >= 0 ? "pill-sage" : "pill-rose"
+                }`}
+              >
+                {delta >= 0 ? "+" : ""}
+                {delta} pts vs last week
+              </span>
+            ) : null}
+          </div>
+          {highlights[0] ? (
+            <p
+              className="text-xs text-clay-800"
+              data-testid="study-home-truth-panel-highlight"
+            >
+              <span className="num-mono text-[10px] uppercase tracking-[0.18em] text-clay-700 mr-2">Win</span>
+              {highlights[0].label}
+            </p>
+          ) : null}
+          {corrections[0] ? (
+            <p
+              className="text-xs text-clay-800"
+              data-testid="study-home-truth-panel-correction"
+            >
+              <span className="num-mono text-[10px] uppercase tracking-[0.18em] text-clay-700 mr-2">Fix</span>
+              {corrections[0].label}
+            </p>
+          ) : null}
+          {nextActions[0] ? (
+            <p
+              className="text-xs text-clay-800"
+              data-testid="study-home-truth-panel-next-action"
+            >
+              <span className="num-mono text-[10px] uppercase tracking-[0.18em] text-clay-700 mr-2">Next</span>
+              {nextActions[0].label}
+            </p>
           ) : null}
         </div>
       ) : (

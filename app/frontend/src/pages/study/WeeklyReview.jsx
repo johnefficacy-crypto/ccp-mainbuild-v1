@@ -162,6 +162,70 @@ export default function WeeklyReview() {
           <div className="text-xs text-muted-foreground mt-2">Source: platform tracked</div>
         </StudyCard>
       </div>
+
+      <ReportInsights data={data} />
+    </div>
+  );
+}
+
+// ReportInsights renders the deterministic highlights / corrections /
+// next_actions lists the backend computes in study_os/report_cards.py. Each
+// list is rendered exactly as-returned — no client-side ranking, scoring or
+// copy generation.
+function ReportInsights({ data }) {
+  const highlights = Array.isArray(data?.highlights) ? data.highlights : [];
+  const corrections = Array.isArray(data?.corrections) ? data.corrections : [];
+  const nextActions = Array.isArray(data?.next_actions) ? data.next_actions : [];
+  if (!highlights.length && !corrections.length && !nextActions.length) {
+    return null;
+  }
+  return (
+    <div className="grid lg:grid-cols-3 gap-4" data-testid="report-insights">
+      <StudyCard className="!bg-[#F4FBF2] !border-[#C9E8C3]" data-testid="report-highlights">
+        <Eyebrow>Highlights · this period</Eyebrow>
+        {highlights.length ? (
+          <ul className="mt-2 space-y-1.5 text-sm text-clay-800">
+            {highlights.map((h, i) => (
+              <li key={`${h.kind || "h"}-${i}`}>{h.label}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground mt-2">No standout wins yet — close more planned tasks to surface them.</p>
+        )}
+      </StudyCard>
+      <StudyCard className="!bg-[#FCEBEC] !border-[#E8B9C1]" data-testid="report-corrections">
+        <Eyebrow>Corrections · top misses</Eyebrow>
+        {corrections.length ? (
+          <ul className="mt-2 space-y-1.5 text-sm text-clay-800">
+            {corrections.map((c, i) => {
+              const key = `${c.kind || "c"}-${i}`;
+              const linkId = c.task_id || c.mock_id || c.correction_id;
+              return (
+                <li key={key} className="flex items-baseline gap-2">
+                  <span>{c.label}</span>
+                  {linkId ? (
+                    <span className="num-mono text-[10px] text-clay-700">#{String(linkId).slice(0, 8)}</span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground mt-2">No corrections logged this period.</p>
+        )}
+      </StudyCard>
+      <StudyCard className="!bg-[#F8FBFF] !border-[#C9DCF2]" data-testid="report-next-actions">
+        <Eyebrow>Next actions</Eyebrow>
+        {nextActions.length ? (
+          <ul className="mt-2 space-y-1.5 text-sm text-clay-800">
+            {nextActions.map((a, i) => (
+              <li key={`${a.kind || "a"}-${i}`}>{a.label}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground mt-2">No suggested next actions yet.</p>
+        )}
+      </StudyCard>
     </div>
   );
 }
