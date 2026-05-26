@@ -164,7 +164,131 @@ export default function WeeklyReview() {
       </div>
 
       <ReportInsights data={data} />
+      <HighYieldCoverageCard coverage={data?.high_yield_coverage} />
+      <BacklogHeatmapCard heatmap={data?.backlog_heatmap} />
     </div>
+  );
+}
+
+// HighYieldCoverageCard renders the deterministic backend metric — covered
+// vs total locked high-yield topics for the user's target exam, plus the
+// trust_status the backend returns. No client-side computation: the bar
+// uses the ratio as-is.
+function HighYieldCoverageCard({ coverage }) {
+  if (!coverage || typeof coverage !== "object") return null;
+  const total = Number(coverage.total) || 0;
+  const covered = Number(coverage.covered) || 0;
+  const pct = total > 0 ? Math.round((covered / total) * 100) : 0;
+  const trust = coverage.trust_status || "preview";
+  return (
+    <StudyCard className="!bg-white !border-[#E7DECB]" data-testid="report-high-yield">
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <div>
+          <Eyebrow>High-yield coverage</Eyebrow>
+          <div className="font-heading text-[22px] mt-1 leading-none">
+            {covered} / {total}
+            <span className="text-clay-700 text-base ml-2">topics mastered</span>
+          </div>
+        </div>
+        <span className="num-mono text-[10px] uppercase tracking-[0.18em] text-clay-700">
+          trust · {trust}
+        </span>
+      </div>
+      <div className="mt-3 h-2 bg-[#EFE2C9] rounded-full overflow-hidden">
+        <div
+          className="h-full bg-sage-500"
+          style={{ width: `${pct}%` }}
+          data-testid="report-high-yield-bar"
+        />
+      </div>
+      <p className="text-[11px] text-clay-700 mt-2">
+        Mastered = mastery score ≥ {Number(coverage.mastered_threshold) || 75} on locked, admin-reviewed high-yield topics.
+      </p>
+      {total === 0 ? (
+        <p className="text-[11px] text-amber-700 mt-1">
+          No locked high-yield topics yet — ask an admin to lock topics in /admin/exam-intelligence.
+        </p>
+      ) : null}
+    </StudyCard>
+  );
+}
+
+// BacklogHeatmapCard renders the per-subject backlog grid. Columns = age
+// buckets in the order the backend supplies. Cell shade scales to the max
+// cell value in the grid (purely display; the numbers themselves are not
+// recomputed).
+function BacklogHeatmapCard({ heatmap }) {
+  if (!heatmap || typeof heatmap !== "object") return null;
+  const buckets = Array.isArray(heatmap.buckets) ? heatmap.buckets : [];
+  const subjects = Array.isArray(heatmap.subjects) ? heatmap.subjects : [];
+  const grandTotal = Number(heatmap.total) || 0;
+  if (!buckets.length) return null;
+  const maxCell = subjects.reduce((m, row) => {
+    const local = buckets.reduce((mm, b) => Math.max(mm, Number(row?.buckets?.[b]) || 0), 0);
+    return Math.max(m, local);
+  }, 0);
+  const shadeFor = (n) => {
+    if (!n) return "bg-[#FBF8F2] text-clay-700";
+    const ratio = maxCell ? n / maxCell : 0;
+    if (ratio >= 0.75) return "bg-[#7A1D2C] text-white";
+    if (ratio >= 0.5) return "bg-[#C75D44] text-white";
+    if (ratio >= 0.25) return "bg-[#F1B97E] text-clay-900";
+    return "bg-[#F7E2C4] text-clay-900";
+  };
+  return (
+    <StudyCard className="!bg-white !border-[#E7DECB]" data-testid="report-backlog-heatmap">
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <div>
+          <Eyebrow>Backlog heatmap</Eyebrow>
+          <div className="font-heading text-[22px] mt-1 leading-none">
+            {grandTotal}
+            <span className="text-clay-700 text-base ml-2">open tasks</span>
+          </div>
+        </div>
+        <span className="num-mono text-[10px] uppercase tracking-[0.18em] text-clay-700">
+          by subject · age
+        </span>
+      </div>
+      {subjects.length ? (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-[12px]" data-testid="report-backlog-heatmap-grid">
+            <thead>
+              <tr className="text-clay-700 num-mono text-[10px] uppercase tracking-[0.18em]">
+                <th className="text-left py-1 pr-3">Subject</th>
+                {buckets.map((b) => (
+                  <th key={b} className="text-center py-1 px-2">{b}</th>
+                ))}
+                <th className="text-right py-1 pl-3">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subjects.map((row) => (
+                <tr key={row.subject} className="border-t border-[#EFE2C9]">
+                  <td className="py-1.5 pr-3 text-clay-800">{row.subject}</td>
+                  {buckets.map((b) => {
+                    const n = Number(row?.buckets?.[b]) || 0;
+                    return (
+                      <td key={b} className="py-1 px-2 text-center">
+                        <span
+                          className={`inline-block min-w-[28px] px-2 py-0.5 rounded-md num-mono ${shadeFor(n)}`}
+                        >
+                          {n}
+                        </span>
+                      </td>
+                    );
+                  })}
+                  <td className="py-1.5 pl-3 text-right num-mono font-semibold text-clay-900">
+                    {row.total}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="text-[11px] text-clay-700 mt-2">No open backlog tasks.</p>
+      )}
+    </StudyCard>
   );
 }
 

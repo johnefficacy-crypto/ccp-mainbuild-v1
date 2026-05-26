@@ -268,6 +268,147 @@ def _build_next_actions(
     return out[:3]
 
 
+_HIGH_YIELD_MASTERED_THRESHOLD = 75.0  # matches `revision_due` in /api/study/topics
+
+
+def _build_high_yield_coverage(
+    supabase: Any, user_id: str
+) -> dict[str, Any]:
+    """`{covered, total, exam_id, mastered_threshold}` for the target exam.
+
+    Counts locked high-yield ``exam_topic_coverage`` rows for the user's
+    target exam, then counts how many of those topics the user has a
+    mastery score ≥ 75 for in ``user_topic_mastery`` (the same threshold
+    `/api/study/topics` already uses to mark a topic ``revision_due``).
+    Returns zeros + ``trust_status='preview'`` when no target exam or no
+    locked coverage exists — never raises.
+    """
+    try:
+        from app.study_os.planner import (
+            _load_locked_coverage,
+            _load_user_signals,
+            _resolve_target_exam,
+        )
+    except Exception:
+        return {
+            "covered": 0,
+            "total": 0,
+            "exam_id": None,
+            "mastered_threshold": _HIGH_YIELD_MASTERED_THRESHOLD,
+            "trust_status": "preview",
+        }
+    target = _safe(lambda: _resolve_target_exam(supabase, user_id), None)
+    if not target or not target.get("id"):
+        return {
+            "covered": 0,
+            "total": 0,
+            "exam_id": None,
+            "mastered_threshold": _HIGH_YIELD_MASTERED_THRESHOLD,
+            "trust_status": "preview",
+        }
+    exam_id = target["id"]
+    coverage = _safe(lambda: _load_locked_coverage(supabase, exam_id), []) or []
+    high_yield = [c for c in coverage if c.get("is_high_yield")]
+    total = len(high_yield)
+    if total == 0:
+        return {
+            "covered": 0,
+            "total": 0,
+            "exam_id": exam_id,
+            "mastered_threshold": _HIGH_YIELD_MASTERED_THRESHOLD,
+            "trust_status": "locked",
+        }
+    mastery, _ = _safe(lambda: _load_user_signals(supabase, user_id, exam_id), ({}, set()))
+    covered = sum(
+        1
+        for c in high_yield
+        if (mastery.get(c.get("topic_id")) or 0) >= _HIGH_YIELD_MASTERED_THRESHOLD
+    )
+    return {
+        "covered": covered,
+        "total": total,
+        "exam_id": exam_id,
+        "mastered_threshold": _HIGH_YIELD_MASTERED_THRESHOLD,
+        "trust_status": "locked",
+    }
+
+
+def _age_bucket(age_days: int) -> str:
+    if age_days <= 3:
+        return "0-3d"
+    if age_days <= 7:
+        return "4-7d"
+    if age_days <= 14:
+        return "8-14d"
+    return "15d+"
+
+
+_BACKLOG_BUCKETS = ["0-3d", "4-7d", "8-14d", "15d+"]
+_BACKLOG_OPEN_STATES = {"planned", "in_progress", "carried_forward"}
+
+
+def _build_backlog_heatmap(
+    supabase: Any, user_id: str, anchor: date
+) -> dict[str, Any]:
+    """`{subjects:[{subject, total, buckets:{...}}], buckets:[...], total}`.
+
+    Pulls every open study_task whose ``scheduled_date`` ≤ ``anchor`` (the
+    same backlog definition `weekly_review._backlog_count` already uses)
+    and bins each row by subject + age bucket. Subjects are sorted by
+    backlog count desc with a deterministic alpha tie-break. Returns the
+    canonical bucket order via ``buckets`` so the frontend can render the
+    grid columns without hard-coding the list itself.
+    """
+    rows = _safe(
+        lambda: (
+            supabase.table("study_tasks")
+            .select("status, subject, scheduled_date")
+            .eq("user_id", user_id)
+            .lte("scheduled_date", anchor.isoformat())
+            .limit(5000)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    by_subject: dict[str, dict[str, int]] = {}
+    grand_total = 0
+    for r in rows:
+        if r.get("status") not in _BACKLOG_OPEN_STATES:
+            continue
+        scheduled = r.get("scheduled_date") or ""
+        try:
+            sd = date.fromisoformat(str(scheduled)[:10])
+        except ValueError:
+            continue
+        age = (anchor - sd).days
+        if age < 0:
+            # Future-dated open tasks are not yet backlog.
+            continue
+        bucket = _age_bucket(age)
+        subject = (r.get("subject") or "Unassigned").strip() or "Unassigned"
+        slot = by_subject.setdefault(
+            subject, {b: 0 for b in _BACKLOG_BUCKETS}
+        )
+        slot[bucket] += 1
+        grand_total += 1
+
+    items = []
+    for subject, buckets in by_subject.items():
+        total = sum(buckets.values())
+        items.append({
+            "subject": subject,
+            "total": total,
+            "buckets": buckets,
+        })
+    items.sort(key=lambda r: (-r["total"], r["subject"]))
+    return {
+        "buckets": list(_BACKLOG_BUCKETS),
+        "subjects": items,
+        "total": grand_total,
+    }
+
+
 def _compute(supabase: Any, user_id: str, period: str, anchor: date) -> dict[str, Any]:
     start, end = _period_bounds(period, anchor)
     tasks = _safe(lambda: supabase.table("study_tasks").select("id, title, subject, topic, status, task_type, scheduled_date, planned_minutes").eq("user_id", user_id).gte("scheduled_date", start.isoformat()).lte("scheduled_date", end.isoformat()).execute().data, []) or []
@@ -327,6 +468,8 @@ def _compute(supabase: Any, user_id: str, period: str, anchor: date) -> dict[str
         revision_total=revision_total,
         revision_done=revision_done,
     )
+    high_yield_coverage = _build_high_yield_coverage(supabase, user_id)
+    backlog_heatmap = _build_backlog_heatmap(supabase, user_id, end)
 
     payload = {
         "user_id": user_id,
@@ -364,16 +507,30 @@ def _compute(supabase: Any, user_id: str, period: str, anchor: date) -> dict[str
         },
         "computed_at": datetime.now(timezone.utc).isoformat(),
     }
+    # high_yield_coverage + backlog_heatmap are not columns on
+    # study_report_cards (migration 100) — they reflect current mastery /
+    # backlog state, not a frozen snapshot, so we compute them fresh on
+    # every read and merge them into the response without persisting.
     _safe(lambda: supabase.table("study_report_cards").upsert(payload, on_conflict="user_id,period_type,period_start").execute(), None)
     row = _safe(lambda: supabase.table("study_report_cards").select("*").eq("user_id", user_id).eq("period_type", period).eq("period_start", start.isoformat()).limit(1).execute().data, [])
-    return (row or [payload])[0]
+    persisted = (row or [payload])[0]
+    persisted["high_yield_coverage"] = high_yield_coverage
+    persisted["backlog_heatmap"] = backlog_heatmap
+    return persisted
 
 
 def get_report_card(supabase: Any, user_id: str, period: str, anchor: date) -> dict[str, Any]:
     start, _ = _period_bounds(period, anchor)
     row = _safe(lambda: supabase.table("study_report_cards").select("*").eq("user_id", user_id).eq("period_type", period).eq("period_start", start.isoformat()).limit(1).execute().data, [])
     if row:
-        return row[0]
+        out = dict(row[0])
+        # high_yield_coverage + backlog_heatmap are recomputed live so the
+        # values reflect the user's *current* mastery + backlog, not the
+        # frozen state from when the report card row was first persisted.
+        out["high_yield_coverage"] = _build_high_yield_coverage(supabase, user_id)
+        _, period_end = _period_bounds(period, anchor)
+        out["backlog_heatmap"] = _build_backlog_heatmap(supabase, user_id, period_end)
+        return out
     if period == "daily" and start == datetime.now(timezone.utc).date():
         return _compute(supabase, user_id, period, anchor)
     return _compute(supabase, user_id, period, anchor)
