@@ -51,15 +51,25 @@ def _require(call, op: str):
 # ── question loading ───────────────────────────────────────────────────────────
 
 def _load_questions_for_template(supabase: Any, template: dict) -> list[dict]:
-    """Load questions + options for a template, ordered by template config."""
+    """Load questions + options for a template, ordered by template config.
+
+    PR2 selector hardening: only published questions that haven't expired are
+    eligible for new attempts.  Existing frozen ``question_snapshot`` rows are
+    unaffected — scoring always reads from the snapshot, never from this path.
+    """
     question_ids: list[str] = (template.get("config") or {}).get("question_ids") or []
     if not question_ids:
         return []
+
+    from datetime import datetime, timezone
+    now_iso = datetime.now(timezone.utc).isoformat()
 
     q_rows = _safe(
         lambda: supabase.table("mock_question_bank")
         .select("*")
         .in_("id", question_ids)
+        .eq("reviewer_status", "published")
+        .or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
         .execute(),
         default=None,
     )
@@ -86,14 +96,19 @@ def _load_questions_for_template(supabase: Any, template: dict) -> list[dict]:
     return out
 
 
-def _question_snapshot(q: dict) -> dict:
-    """Frozen copy of a question + its options, stored in mock_attempt_responses."""
+def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wrong: float = 0.25) -> dict:
+    """Frozen copy of a question + its options, stored in mock_attempt_responses.
+
+    PR2: marks are template-bound (not question-bound), so they are passed in
+    from the template config rather than read from the question row.
+    Existing snapshots already have marks frozen; this only affects new attempts.
+    """
     return {
         "id": q["id"],
         "question_text": q["question_text"],
         "question_type": q["question_type"],
-        "marks": float(q.get("marks") or 1),
-        "negative_marks": float(q.get("negative_marks") or 0),
+        "marks": marks_per_correct,
+        "negative_marks": marks_per_wrong,
         "correct_option_id": q.get("correct_option_id"),
         "explanation": q.get("explanation"),
         "options": [
@@ -197,11 +212,17 @@ def start_attempt(supabase: Any, user_id: str, template_slug: str) -> dict:
     attempt = attempt_rows[0]
     attempt_id = attempt["id"]
 
+    tmpl_marks     = float(template.get("marks_per_correct") or 1)
+    tmpl_neg_marks = float(template.get("marks_per_wrong") or 0.25)
     response_rows = [
         {
             "attempt_id": attempt_id,
             "question_id": q["id"],
-            "question_snapshot": _question_snapshot(q),
+            "question_snapshot": _question_snapshot(
+                q,
+                marks_per_correct=tmpl_marks,
+                marks_per_wrong=tmpl_neg_marks,
+            ),
             "is_visited": False,
             "is_marked_for_review": False,
             "client_seq": 0,
@@ -470,13 +491,20 @@ def _time_remaining_sec(attempt: dict) -> int:
         return 0
 
 
-def _serialise_question_for_attempt(q: dict) -> dict:
+def _serialise_question_for_attempt(q: dict, *, marks_per_correct: float = 1.0, marks_per_wrong: float = 0.25) -> dict:
+    """Serialise a question for the attempt GET response.
+
+    PR2: marks come from the frozen question_snapshot (which was written at
+    attempt-start with template-level marks), not from the live question row.
+    Callers should prefer reading from question_snapshot; this helper is used
+    when re-hydrating from the snapshot dict directly.
+    """
     return {
         "question_id": q["id"],
         "question_text": q["question_text"],
         "question_type": q["question_type"],
-        "marks": float(q.get("marks") or 1),
-        "negative_marks": float(q.get("negative_marks") or 0),
+        "marks": float(q.get("marks") or marks_per_correct),
+        "negative_marks": float(q.get("negative_marks") or marks_per_wrong),
         "options": [
             {
                 "id": o["id"],
