@@ -40,6 +40,8 @@ import StudyShell from "../pages/study/StudyShell";
 import StudyHome from "../pages/study/StudyHome";
 import StudyLearningHub from "../pages/study/StudyLearningHub";
 import StudyProgressHub from "../pages/study/StudyProgressHub";
+import MockAttemptShell from "../pages/study/mocks/MockAttemptShell";
+import MockResult from "../pages/study/mocks/MockResult";
 
 export const appRouteElements = (
   <Route element={<ProtectedRoute requireBackend><DashShell /></ProtectedRoute>}>
@@ -76,6 +78,8 @@ export const appRouteElements = (
       </Route>
       <Route path="/app/study/focus" element={<Focus />} />
       <Route path="/app/study/mocks" element={<Mocks />} />
+      <Route path="/app/study/mocks/attempts/:attemptId" element={<MockAttemptShell />} />
+      <Route path="/app/study/mocks/attempts/:attemptId/result" element={<MockResult />} />
       <Route path="/app/study/subjects" element={<Subjects />} />
       <Route path="/app/study/review" element={<WeeklyReview />} />
       <Route path="/app/study/compare" element={<StudyCompare />} />

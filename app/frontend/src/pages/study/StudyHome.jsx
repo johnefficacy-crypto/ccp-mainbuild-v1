@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Flame, Play } from "lucide-react";
 import { api } from "../../lib/api";
 import ExamCycleTimeline from "../../features/study/components/ExamCycleTimeline";
+import ExamJourneyCard from "../../features/study/components/ExamJourneyCard";
 import PlanChangeLogCard from "../../features/study/components/PlanChangeLogCard";
 import HowItWorksHeaderButton from "../../shared/components/HowItWorksHeaderButton";
 
@@ -391,6 +392,9 @@ export default function StudyHome() {
     loading: true,
     error: null,
   });
+  // Just the first truth_panel.corrections[] line so ExamJourneyCard can
+  // render "one next correction" without re-fetching mission-control.
+  const [nextCorrection, setNextCorrection] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -424,10 +428,15 @@ export default function StudyHome() {
           loading: false,
           error: null,
         });
+        const corrections = Array.isArray(d?.truth_panel?.corrections)
+          ? d.truth_panel.corrections
+          : [];
+        setNextCorrection(typeof corrections[0] === "string" ? corrections[0] : "");
       } catch (e) {
         if (!cancelled) {
           setPlan({ data: null, loading: false, error: e });
           setFocus({ data: null, loading: false, error: e });
+          setNextCorrection("");
         }
       }
     }
@@ -497,6 +506,7 @@ export default function StudyHome() {
         error={focus.error}
         onRetry={() => setReloadKey((k) => k + 1)}
       />
+      <ExamJourneyCard correction={nextCorrection} />
       <CardShell
         testId="study-home-cycle"
         eyebrow="Exam cycle"
