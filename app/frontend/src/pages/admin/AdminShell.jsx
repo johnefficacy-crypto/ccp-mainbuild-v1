@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   Award, Bell, Bot, BookText, ChevronDown, Copyright as CopyrightIcon, CreditCard, Database, ExternalLink,
   FileSearch, Files, Flag, GaugeCircle, GraduationCap, LayoutGrid, LineChart,
-  NotebookPen,
+  NotebookPen, Library, ClipboardList, Upload,
   LogOut, Menu, MessagesSquare, Network, Radar, ScrollText, ShieldCheck,
   ShoppingBag, Sparkles, UserSearch, Users2, Wrench, X,
 } from "lucide-react";
@@ -51,6 +51,12 @@ const STUDY_OS = [
   { to: "/admin/study-os/content-access", label: "Content Access (4-eyes)", icon: ShieldCheck, testId: "admin-nav-studyos-content-access" },
 ];
 
+const MOCK_CONTENT = [
+  { to: "/admin/mocks/questions",   label: "Question Bank",  icon: Library,       testId: "admin-nav-mocks-question-bank" },
+  { to: "/admin/mocks/review-queue", label: "Review Queue",  icon: ClipboardList, testId: "admin-nav-mocks-review-queue" },
+  { to: "/admin/mocks/import",      label: "Bulk Import",    icon: Upload,        testId: "admin-nav-mocks-import" },
+];
+
 const SAFETY = [
   { to: "/admin/moderation", label: "Moderation Queue", icon: Flag, testId: "admin-nav-moderation" },
   { to: "/admin/copyright", label: "Copyright & Takedown", icon: CopyrightIcon, testId: "admin-nav-copyright" },
@@ -66,6 +72,7 @@ const SECTIONS = [
   { id: "knowledge-governance", label: "Knowledge Governance", items: KNOWLEDGE_GOVERNANCE, defaultOpen: false },
   { id: "community-marketplace", label: "Community & Marketplace", items: COMMUNITY_MARKETPLACE, defaultOpen: false },
   { id: "study-os", label: "Study OS", items: STUDY_OS, defaultOpen: false },
+  { id: "mock-content", label: "Mock Content", items: MOCK_CONTENT, defaultOpen: false },
   { id: "safety", label: "Safety", items: SAFETY, defaultOpen: false },
 ];
 
