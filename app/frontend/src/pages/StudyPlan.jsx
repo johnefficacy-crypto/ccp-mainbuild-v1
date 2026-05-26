@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, ChevronRight } from "lucide-react";
 import { api } from "../lib/api";
 import { Card, Drawer, Eyebrow, PageHeader, Pill, SectionHeader, StatusDot } from "../shared/ui/studyos";
 import PlanChangeLogCard from "../features/study/components/PlanChangeLogCard";
@@ -497,77 +497,14 @@ export default function StudyPlan() {
           <div className="hairline mx-7" />
           <div className="px-7 pb-6 pt-2">
             {tasks.length ? (
-              tasks.map((t) => {
-                const status = t.status || "planned";
-                const isDone = t.done || status === "completed";
-                return (
-                  <div key={t.id} className="task-row !grid-cols-[22px_70px_1fr_auto]">
-                    <button
-                      onClick={() => toggle(t)}
-                      aria-label={isDone ? "Mark task incomplete" : "Mark task complete"}
-                      className="mt-1.5 outline-none"
-                    >
-                      <span
-                        className={`tick ${isDone ? "done" : ""} ${status === "skipped" ? "skip" : ""}`}
-                      />
-                    </button>
-                    <div className="num-mono text-[12px] text-clay-700 pt-1">{t.time || "—"}</div>
-                    <div>
-                      <div
-                        className={`text-[15px] leading-snug ${
-                          isDone ? "line-through text-[#A68057]" : "text-clay-900 font-medium"
-                        }`}
-                      >
-                        {t.title}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5 items-center">
-                        <button
-                          type="button"
-                          aria-pressed={status === "in_progress"}
-                          disabled={status === "in_progress"}
-                          className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
-                            status === "in_progress"
-                              ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
-                              : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
-                          }`}
-                          onClick={() => updateStatus(t, "in_progress")}
-                        >
-                          In progress
-                        </button>
-                        <button
-                          type="button"
-                          aria-pressed={status === "skipped"}
-                          disabled={status === "skipped"}
-                          className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
-                            status === "skipped"
-                              ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
-                              : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
-                          }`}
-                          onClick={() => updateStatus(t, "skipped")}
-                        >
-                          Skip
-                        </button>
-                        <button
-                          type="button"
-                          aria-pressed={status === "missed"}
-                          disabled={status === "missed"}
-                          className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
-                            status === "missed"
-                              ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
-                              : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
-                          }`}
-                          onClick={() => updateStatus(t, "missed")}
-                        >
-                          Mark missed
-                        </button>
-                      </div>
-                    </div>
-                    <div className="pt-1.5">
-                      <Pill tone={STATUS_TONE[status] || "outline"}>{status.replace("_", " ")}</Pill>
-                    </div>
-                  </div>
-                );
-              })
+              tasks.map((t) => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  onToggle={() => toggle(t)}
+                  onSetStatus={(status) => updateStatus(t, status)}
+                />
+              ))
             ) : (
               <p className="py-6 text-sm text-clay-700">
                 No tasks scheduled yet. Use Regenerate plan to populate today's blocks.
@@ -762,6 +699,189 @@ function DraftDiff({ draft, onApply, applying, applyError = "", applyDisabled = 
         >
           {applying ? "Applying…" : "Apply selected changes"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// TaskRow — single task in the schedule list. Renders the deterministic
+// `why_this_task_summary` one-liner from the backend always, and on expand
+// fetches the full `reasoning_trace + evidence` via
+// `/api/study/task-reasoning/:task_id`. No client-side derivation of
+// reasoning copy — the row only displays what the backend returns.
+function TaskRow({ task: t, onToggle, onSetStatus }) {
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
+  const status = t.status || "planned";
+  const isDone = t.done || status === "completed";
+  const oneLiner = t.why_this_task_summary || "";
+
+  async function toggleExpand() {
+    const next = !open;
+    setOpen(next);
+    if (next && !detail && !detailLoading) {
+      setDetailLoading(true);
+      setDetailError("");
+      try {
+        const d = await api.get(`/api/study/task-reasoning/${t.id}`);
+        setDetail(d || null);
+      } catch (e) {
+        setDetailError("Couldn't load reasoning detail.");
+        if (process.env.NODE_ENV !== "production") console.error(e);
+      } finally {
+        setDetailLoading(false);
+      }
+    }
+  }
+
+  const panelId = `task-reasoning-${t.id}`;
+  return (
+    <div className="task-row !grid-cols-[22px_70px_1fr_auto]" data-testid={`task-row-${t.id}`}>
+      <button
+        onClick={onToggle}
+        aria-label={isDone ? "Mark task incomplete" : "Mark task complete"}
+        className="mt-1.5 outline-none"
+      >
+        <span
+          className={`tick ${isDone ? "done" : ""} ${status === "skipped" ? "skip" : ""}`}
+        />
+      </button>
+      <div className="num-mono text-[12px] text-clay-700 pt-1">{t.time || "—"}</div>
+      <div>
+        <div
+          className={`text-[15px] leading-snug ${
+            isDone ? "line-through text-[#A68057]" : "text-clay-900 font-medium"
+          }`}
+        >
+          {t.title}
+        </div>
+        {oneLiner ? (
+          <button
+            type="button"
+            onClick={toggleExpand}
+            aria-expanded={open}
+            aria-controls={panelId}
+            className="mt-1 flex items-start gap-1 text-[12px] text-clay-700 hover:text-clay-900 text-left"
+            data-testid={`task-reasoning-toggle-${t.id}`}
+          >
+            <ChevronRight
+              className={`h-3 w-3 mt-0.5 transition-transform shrink-0 ${open ? "rotate-90" : ""}`}
+              aria-hidden="true"
+            />
+            <span className="leading-snug">{oneLiner}</span>
+          </button>
+        ) : null}
+        {open ? (
+          <div
+            id={panelId}
+            role="region"
+            aria-label="Task reasoning detail"
+            className="mt-2 rounded-xl border border-[#E7DECB] bg-[#FBF8F2] p-3 text-[12px] text-clay-800"
+            data-testid={`task-reasoning-panel-${t.id}`}
+          >
+            {detailLoading ? (
+              <p className="text-clay-700">Loading reasoning…</p>
+            ) : detailError ? (
+              <p className="text-amber-700">{detailError}</p>
+            ) : detail ? (
+              <div className="space-y-3">
+                {detail.safe_user_copy ? (
+                  <p className="text-clay-800">{detail.safe_user_copy}</p>
+                ) : null}
+                {Array.isArray(detail.reasoning_trace) && detail.reasoning_trace.length ? (
+                  <div>
+                    <Eyebrow>Reasoning trace</Eyebrow>
+                    <ul className="mt-1 space-y-1">
+                      {detail.reasoning_trace.map((row, i) => (
+                        <li key={`${row.rule_key || "trace"}-${i}`} className="flex items-start gap-2">
+                          <span className="num-mono text-[10px] uppercase tracking-[0.18em] text-clay-700 mt-0.5 shrink-0">
+                            {row.layer || "—"}
+                          </span>
+                          <span className="text-clay-800">
+                            {row.label}
+                            {row.status ? (
+                              <span className="ml-1 num-mono text-[10px] text-clay-700">
+                                · {row.status}
+                              </span>
+                            ) : null}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {Array.isArray(detail.evidence) && detail.evidence.length ? (
+                  <div>
+                    <Eyebrow>Evidence</Eyebrow>
+                    <ul className="mt-1 space-y-1">
+                      {detail.evidence.map((ev, i) => (
+                        <li key={`${ev.label || ev.type || "ev"}-${i}`} className="flex items-center gap-2">
+                          <span className="num-mono text-[10px] uppercase tracking-[0.18em] text-clay-700 shrink-0">
+                            {ev.type || "—"}
+                          </span>
+                          <span className="text-clay-800">
+                            {ev.label}
+                            {ev.value !== undefined && ev.value !== null ? (
+                              <span className="num-mono text-clay-700"> · {String(ev.value)}</span>
+                            ) : null}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-clay-700">No reasoning detail available.</p>
+            )}
+          </div>
+        ) : null}
+        <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+          <button
+            type="button"
+            aria-pressed={status === "in_progress"}
+            disabled={status === "in_progress"}
+            className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
+              status === "in_progress"
+                ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
+                : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
+            }`}
+            onClick={() => onSetStatus("in_progress")}
+          >
+            In progress
+          </button>
+          <button
+            type="button"
+            aria-pressed={status === "skipped"}
+            disabled={status === "skipped"}
+            className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
+              status === "skipped"
+                ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
+                : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
+            }`}
+            onClick={() => onSetStatus("skipped")}
+          >
+            Skip
+          </button>
+          <button
+            type="button"
+            aria-pressed={status === "missed"}
+            disabled={status === "missed"}
+            className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
+              status === "missed"
+                ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
+                : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
+            }`}
+            onClick={() => onSetStatus("missed")}
+          >
+            Mark missed
+          </button>
+        </div>
+      </div>
+      <div className="pt-1.5">
+        <Pill tone={STATUS_TONE[status] || "outline"}>{status.replace("_", " ")}</Pill>
       </div>
     </div>
   );
