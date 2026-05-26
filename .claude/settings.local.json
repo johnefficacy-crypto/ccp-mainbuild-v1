@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git ls-tree *)",
+      "Bash(git reset *)",
+      "Bash(python -m pytest tests/study_os/test_mock_engine.py -x -q)",
+      "Bash(python -m pytest tests/study_os/test_mocks.py -x -q)",
+      "Bash(rm -f .git/index.lock)",
+      "Bash(gh run *)"
     ]
   }
 }
