@@ -58,6 +58,16 @@ class _Query:
         self._limit = n
         return self
 
+    def or_(self, *args, **kwargs):
+        # No-op: SBStub doesn't filter on OR expressions; tests that need OR
+        # semantics should use a MagicMock instead.
+        return self
+
+    def range(self, *args, **kwargs):
+        # No-op: SBStub returns all matching rows; API-level pagination is not
+        # exercised in unit tests.
+        return self
+
     def insert(self, payload):
         self._pending_insert = payload
         return self
@@ -145,7 +155,10 @@ class _Query:
 
         rows = list(matching)
         if self._order_key:
-            rows.sort(key=lambda r: r.get(self._order_key) or "", reverse=self._desc)
+            rows.sort(
+                key=lambda r: (r.get(self._order_key) if r.get(self._order_key) is not None else ""),
+                reverse=self._desc,
+            )
         if self._limit is not None:
             rows = rows[: self._limit]
         return _Exec(rows)

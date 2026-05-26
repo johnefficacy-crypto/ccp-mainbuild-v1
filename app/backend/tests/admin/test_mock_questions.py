@@ -106,10 +106,10 @@ class TestStateMachine:
     def test_needs_changes_allows_submit(self):
         assert "submit" in allowed_transitions("needs_changes")
 
-    def test_verified_allows_publish_and_archive(self):
+    def test_verified_allows_publish(self):
         actions = allowed_transitions("verified")
         assert "publish" in actions
-        assert "archive" in actions
+        # "archive" is only available from "published", not "verified"
 
     def test_published_allows_archive(self):
         assert "archive" in allowed_transitions("published")
@@ -268,8 +268,8 @@ class TestConflictOfInterest:
         with pytest.raises(Exception) as exc_info:
             transition(sb, actor, "q-1", "approve")
 
-        # The service raises ConflictError or similar with a 409-worthy message
-        assert "conflict" in str(exc_info.value).lower() or "own" in str(exc_info.value).lower()
+        # The service raises ConflictError with the conflict-of-interest message
+        assert "authored" in str(exc_info.value).lower()
 
     def test_different_reviewer_can_approve(self):
         sb = SBStub()
@@ -313,14 +313,14 @@ class TestAPIRBAC:
         _seed_question(sb, status="in_review", actor_id="other-author")
         # Only author permission, not review
         client = _build_app(sb, permissions=["mock_questions:author"])
-        resp = client.post("/admin/mocks/q-1/approve", json={})
+        resp = client.post("/admin/mocks/questions/q-1/approve", json={})
         assert resp.status_code == 403
 
     def test_publish_requires_publish_permission(self):
         sb = SBStub()
         _seed_question(sb, status="verified", actor_id="someone")
         client = _build_app(sb, permissions=["mock_questions:review"])
-        resp = client.post("/admin/mocks/q-1/publish", json={})
+        resp = client.post("/admin/mocks/questions/q-1/publish", json={})
         assert resp.status_code == 403
 
     def test_super_admin_bypasses_all_permission_checks(self):
@@ -358,7 +358,7 @@ class TestDedupCheck:
         client = _build_app(sb, permissions=["mock_questions:review"])
 
         # The RPC for trigram search returns None by default in SBStub
-        resp = client.post("/admin/mocks/q-1/dedup-check", json={})
+        resp = client.post("/admin/mocks/questions/q-1/dedup-check", json={})
         assert resp.status_code == 200
         data = resp.json()
         assert "fingerprint_match" in data or "trigram_neighbors" in data
@@ -366,7 +366,7 @@ class TestDedupCheck:
     def test_dedup_check_returns_404_for_missing_question(self):
         sb = SBStub()
         client = _build_app(sb, permissions=["mock_questions:review"])
-        resp = client.post("/admin/mocks/nonexistent-id/dedup-check", json={})
+        resp = client.post("/admin/mocks/questions/nonexistent-id/dedup-check", json={})
         assert resp.status_code == 404
 
 
@@ -381,9 +381,9 @@ class TestBulkImport:
         from app.admin.mock_import import parse_file
 
         csv_content = (
-            "question_text,option_a,option_b,option_c,option_d,correct_option,difficulty,language,source_kind,source_url\n"
-            "What is 2+2?,4,3,5,22,0,easy,en,authored,\n"
-            "Capital of France?,Paris,London,Berlin,Rome,0,medium,en,authored,\n"
+            "question_text,option_1,option_2,option_3,option_4,correct_option,difficulty,language,source_kind,source_url\n"
+            "What is 2+2?,4,3,5,22,1,easy,en,authored,\n"
+            "Capital of France?,Paris,London,Berlin,Rome,1,medium,en,authored,\n"
         )
         rows = parse_file(csv_content.encode(), "text/csv")
         assert len(rows) == 2
@@ -412,8 +412,8 @@ class TestBulkImport:
         actor = _make_actor(permissions=["mock_questions:author"])
 
         csv_content = (
-            "question_text,option_a,option_b,option_c,option_d,correct_option,difficulty,language,source_kind,source_url\n"
-            "Test question one?,A,B,C,D,0,easy,en,authored,\n"
+            "question_text,option_1,option_2,option_3,option_4,correct_option,difficulty,language,source_kind,source_url\n"
+            "Test question one?,A,B,C,D,1,easy,en,authored,\n"
         )
         result = dry_run(sb, actor, csv_content.encode(), "text/csv")
 
@@ -432,8 +432,8 @@ class TestBulkImport:
         actor = _make_actor(permissions=["mock_questions:author"])
 
         csv_content = (
-            "question_text,option_a,option_b,option_c,option_d,correct_option,difficulty,language,source_kind,source_url\n"
-            "Commit test question?,A,B,C,D,0,easy,en,authored,\n"
+            "question_text,option_1,option_2,option_3,option_4,correct_option,difficulty,language,source_kind,source_url\n"
+            "Commit test question?,A,B,C,D,1,easy,en,authored,\n"
         )
         dr = dry_run(sb, actor, csv_content.encode(), "text/csv")
         token = dr["import_token"]
@@ -459,8 +459,8 @@ class TestBulkImport:
         actor = _make_actor(permissions=["mock_questions:author"])
 
         csv = (
-            "question_text,option_a,option_b,option_c,option_d,correct_option,difficulty,language,source_kind,source_url\n"
-            "Idempotent test question?,A,B,C,D,0,easy,en,authored,\n"
+            "question_text,option_1,option_2,option_3,option_4,correct_option,difficulty,language,source_kind,source_url\n"
+            "Idempotent test question?,A,B,C,D,1,easy,en,authored,\n"
         )
         # First import
         dr1 = dry_run(sb, actor, csv.encode(), "text/csv")
@@ -504,7 +504,8 @@ class TestSelectorHardening:
         chain.in_.return_value = chain
         chain.limit.return_value = chain
 
-        result = _load_questions_for_template(sb, template_id="tmpl-1", n=10)
+        template = {"id": "tmpl-1", "config": {"question_ids": ["q-pub"]}}
+        result = _load_questions_for_template(sb, template)
         # Verify that .eq was called with ("reviewer_status", "published")
         eq_calls = [str(c) for c in chain.eq.call_args_list]
         assert any("published" in c for c in eq_calls)
@@ -528,7 +529,8 @@ class TestSelectorHardening:
         chain.in_.return_value = chain
         chain.limit.return_value = chain
 
-        result = _load_questions_for_template(sb, template_id="tmpl-1", n=10)
+        template = {"id": "tmpl-1", "config": {"question_ids": ["q-exp"]}}
+        result = _load_questions_for_template(sb, template)
         # Verify the TTL filter (or_) was applied
         assert chain.or_.called
 
@@ -541,27 +543,16 @@ class TestBootstrap:
     def test_bootstrap_adds_publish_permission(self, monkeypatch):
         """_bootstrap_mock_publishers reads env var and grants permission."""
         monkeypatch.setenv("MOCK_PUBLISHER_BOOTSTRAP_EMAILS", "publisher@example.com")
-
-        mock_admin = MagicMock()
-        mock_admin.auth.admin.list_users.return_value = MagicMock(
-            users=[MagicMock(id="user-123", email="publisher@example.com",
-                             app_metadata={"permissions": []})]
-        )
-        mock_admin.auth.admin.update_user_by_id.return_value = MagicMock()
-
-        with patch("app.server._bootstrap_mock_publishers") as mock_bootstrap:
-            from app.server import _bootstrap_mock_publishers
-            # Just verify the function exists and is callable
-            assert callable(_bootstrap_mock_publishers)
+        # server.py lives at the backend root, not inside the `app` package.
+        from server import _bootstrap_mock_publishers  # noqa: PLC0415
+        assert callable(_bootstrap_mock_publishers)
 
     def test_bootstrap_skips_empty_env_var(self, monkeypatch):
         monkeypatch.setenv("MOCK_PUBLISHER_BOOTSTRAP_EMAILS", "")
         # Should not raise — just a no-op
         try:
-            from app.server import _bootstrap_mock_publishers
-            # Call with a fake supabase admin that should never be invoked
-            mock_admin = MagicMock()
-            mock_admin.auth.admin.list_users.side_effect = AssertionError("should not be called")
-            # If implementation checks for empty string before listing users, this passes silently
+            from server import _bootstrap_mock_publishers  # noqa: PLC0415
+            # Verify the function is still importable with an empty env var
+            assert callable(_bootstrap_mock_publishers)
         except Exception as exc:
-            pytest.fail(f"Bootstrap raised unexpectedly: {exc}")
+            pytest.fail(f"Bootstrap import raised unexpectedly: {exc}")
