@@ -87,6 +87,7 @@ from app.api.placeholders import router as placeholders_router
 from app.api.study_compare import router as study_compare_router
 from app.api.study_os import router as study_os_router
 from app.api.mock_engine import router as mock_engine_router
+from app.api.mock_attempt_events import router as mock_attempt_events_router
 from app.api.admin_mocks import router as admin_mocks_router
 from app.notifications.scheduler import start_scheduler, stop_scheduler
 from app.core.config import get_settings
@@ -348,6 +349,7 @@ api.include_router(persona_router)  # internal aspirant persona v1
 api.include_router(persona_questions_router)  # PR2 progressive tiny questions
 api.include_router(study_os_router)  # PR3 Study OS Mission Control — before canonical so /study/mission-control wins
 api.include_router(mock_engine_router)          # PR1 Mock Engine: start→answer→submit→score
+api.include_router(mock_attempt_events_router)  # PR2b attempt events & telemetry
 api.include_router(admin_templates_router)      # PR2d mock template authoring
 api.include_router(admin_mocks_router)          # PR2 Admin question bank + review workflow
 api.include_router(admin_study_os_router)  # admin Study OS ops (flagged via ADMIN_STUDY_OS_ENABLED)
