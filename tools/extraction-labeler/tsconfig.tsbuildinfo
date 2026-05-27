@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/types.ts","./src/components/BboxOverlay.tsx","./src/components/ExportPanel.tsx","./src/components/PdfViewer.tsx","./src/components/QuestionPanel.tsx","./src/lib/coords.test.ts","./src/lib/coords.ts","./src/lib/hash.test.ts","./src/lib/hash.ts","./src/lib/schema.ts","./src/lib/storage.ts"],"version":"5.9.3"}
