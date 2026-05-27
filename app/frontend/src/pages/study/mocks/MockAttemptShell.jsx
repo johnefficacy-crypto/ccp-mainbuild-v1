@@ -217,11 +217,23 @@ export default function MockAttemptShell() {
     if (nextIdx >= all.length) return;
     const nextSection = Number(all[nextIdx]?.section_index || 0);
     if (nextSection !== currentSection) {
-      // Persist the current question BEFORE moving the section pointer: a save
-      // that lands after enter-section would be rejected as out-of-section
-      // (422 → failed), wrongly blocking submit behind the failed-answer modal.
-      await answerSync.flush(all[currentIdx]?.question_id);
+      // Drain every pending debounce in the current section before moving the
+      // section pointer. A save for section N that fires after enter-section(N+1)
+      // is rejected by the server as out-of-section (422 → non-retryable failed),
+      // which would wrongly block submit. Flushing all section-N questions while
+      // current_section_index is still N ensures they land cleanly.
+      const currentSectionQids = all
+        .filter((q) => Number(q.section_index || 0) === currentSection)
+        .map((q) => q.question_id);
+      await answerSync.flushMany(currentSectionQids);
+      // Advance both section and question index before awaiting enter-section so
+      // the UI shows the first question of the new section immediately. If the
+      // index update happened after the await, the old (section-N) question would
+      // remain visible until enter-section responded; the test (and a fast user)
+      // could re-answer that question with the wrong section_index on the server,
+      // causing a 422 → SYNC.FAILED that blocks submit.
       setCurrentSection(nextSection);
+      setCurrentIdx(nextIdx);
       try {
         await api.post(`/api/study/mocks/attempts/${attemptId}/enter-section`, {
           section_index: nextSection,
@@ -230,6 +242,7 @@ export default function MockAttemptShell() {
         // server stays authoritative; a failed enter-section just means the
         // next answer in that section may be rejected — surfaced on save.
       }
+      return;
     }
     setCurrentIdx(nextIdx);
   }
