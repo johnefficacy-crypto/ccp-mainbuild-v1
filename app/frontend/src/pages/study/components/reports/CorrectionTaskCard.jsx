@@ -1,3 +1,14 @@
+import PropTypes from "prop-types";
+
+/**
+ * @typedef {Object} CorrectionTaskDraft
+ * @property {string=} title
+ * @property {string=} topic_name
+ * @property {string=} reason
+ * @property {string=} error_type
+ * @property {string=} source_url
+ */
+
 export default function CorrectionTaskCard({ task, onAccept, onDismiss, showSourceLink = true }) {
   if (!task) return null;
   return (
@@ -9,3 +20,16 @@ export default function CorrectionTaskCard({ task, onAccept, onDismiss, showSour
     </article>
   );
 }
+
+CorrectionTaskCard.propTypes = {
+  task: PropTypes.shape({
+    title: PropTypes.string,
+    topic_name: PropTypes.string,
+    reason: PropTypes.string,
+    error_type: PropTypes.string,
+    source_url: PropTypes.string,
+  }),
+  onAccept: PropTypes.func,
+  onDismiss: PropTypes.func,
+  showSourceLink: PropTypes.bool,
+};

@@ -725,6 +725,53 @@ async def get_plan_changelog(user: dict = Depends(get_current_user)) -> dict[str
         return {"items": [], "count": 0}
 
 
+
+
+@router.get("/reports/mock-trend")
+async def reports_mock_trend(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    sb = get_supabase_admin(); user_id = user.get("id")
+    rows = (sb.table("mock_attempts").select("id, submitted_at, score_pct, accuracy_pct, time_used_sec").eq("user_id", user_id).order("submitted_at", desc=False).limit(100).execute().data or [])
+    return {"items": [{"attempt_id": r.get("id"), "submitted_at": r.get("submitted_at"), "score_pct": r.get("score_pct") or 0, "accuracy_pct": r.get("accuracy_pct") or 0, "time_used_sec": r.get("time_used_sec") or 0} for r in rows]}
+
+@router.get("/reports/mistakes")
+async def reports_mistakes(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    sb = get_supabase_admin(); user_id = user.get("id")
+    rows = (sb.table("attempt_question_analytics").select("error_type, topic_id, question_id").eq("user_id", user_id).limit(5000).execute().data or [])
+    agg = {}
+    for r in rows:
+        e = r.get("error_type") or "unknown"; a = agg.setdefault(e,{"error_type":e,"count":0,"topics":{},"recent_question_ids":[]}); a["count"] += 1
+        t = r.get("topic_id")
+        if t: a["topics"][t] = a["topics"].get(t,0)+1
+        q = r.get("question_id")
+        if q and q not in a["recent_question_ids"]: a["recent_question_ids"].append(q)
+    items=[]
+    for v in agg.values():
+        items.append({"error_type":v["error_type"],"count":v["count"],"topics":[{"topic_id":k,"count":c} for k,c in v["topics"].items()],"recent_question_ids":v["recent_question_ids"][:10]})
+    return {"items":items}
+
+@router.get("/reports/plan-timeline")
+async def reports_plan_timeline(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    sb = get_supabase_admin(); user_id = user.get("id")
+    rows = (sb.table("study_adaptation_events").select("id, created_at, event_type, trigger_source, trigger_payload, change_summary").eq("user_id", user_id).order("created_at", desc=True).limit(200).execute().data or [])
+    return {"items": rows}
+
+@router.get("/reports/topic-recovery")
+async def reports_topic_recovery(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    sb = get_supabase_admin(); user_id = user.get("id")
+    rows = (sb.table("user_topic_mastery_audit").select("topic_id, topic_name, created_at, mastery_db").eq("user_id", user_id).order("created_at", desc=False).limit(5000).execute().data or [])
+    by = {}
+    for r in rows:
+        t = r.get("topic_id")
+        o = by.setdefault(t,{"topic_id":t,"name":r.get("topic_name"),"mastery_history":[]})
+        o["mastery_history"].append({"at":r.get("created_at"),"mastery_db":r.get("mastery_db")})
+    return {"items": list(by.values())}
+
+@router.get("/reports/subject-mastery")
+async def reports_subject_mastery(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    sb = get_supabase_admin(); user_id = user.get("id")
+    rows = (sb.table("subject_mastery_snapshots").select("subject_id, subject_name, topic_id, topic_name, mastery, mastery_delta, attempt_volume").eq("user_id", user_id).order("attempt_volume", desc=True).limit(100).execute().data or [])
+    return {"items": rows}
+
 # ───────────────────────────── Subjects ─────────────────────────────────────
 @router.get("/subjects")
 async def list_subjects(user: dict = Depends(get_current_user)) -> dict[str, Any]:
