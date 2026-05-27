@@ -217,6 +217,10 @@ export default function MockAttemptShell() {
     if (nextIdx >= all.length) return;
     const nextSection = Number(all[nextIdx]?.section_index || 0);
     if (nextSection !== currentSection) {
+      // Persist the current question BEFORE moving the section pointer: a save
+      // that lands after enter-section would be rejected as out-of-section
+      // (422 → failed), wrongly blocking submit behind the failed-answer modal.
+      await answerSync.flush(all[currentIdx]?.question_id);
       setCurrentSection(nextSection);
       try {
         await api.post(`/api/study/mocks/attempts/${attemptId}/enter-section`, {
