@@ -5,6 +5,16 @@
 - `...=shadow`: writes only to `mock_mastery_shadow`.
 - `...=live`: writes shadow + `user_topic_mastery` + `user_topic_mastery_audit` + `mock_correction_tasks`.
 
+## Apply guarantees (live)
+- **Cap**: per-attempt delta bounded to ±0.15 unit (±15 db) in `_apply_mastery`,
+  separate from the [0,100] safety clamp. See docs/study_os/mock_submit_flow.md.
+- **Idempotent + atomic**: applied via the `apply_mock_mastery_delta` RPC
+  (migration 145) — skips if an audit row already exists for
+  `(user, topic, attempt)`, and writes mastery + audit in one transaction.
+  Re-submitting an attempt is a silent no-op.
+- **Ordering**: derived inline from raw responses (implementation B), independent
+  of PR4 derivation completing.
+
 ## Cutover plan
 1. Keep `off` at deploy.
 2. Flip to `shadow` for 14 days.

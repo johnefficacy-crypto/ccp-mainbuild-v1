@@ -17,7 +17,6 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
-from app.study_os.attempt_analytics import compute_and_persist
 from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
 from app.study_os.mock_engine import (
     ConflictError,
@@ -132,9 +131,13 @@ async def submit(
     user_id = user["id"]
     try:
         sb = get_supabase_admin()
+        # submit_attempt already scores, flips status, and runs derivation with
+        # its own retry queue — no second compute_and_persist here. The mastery
+        # writer derives inline from the persisted raw responses (implementation
+        # B; see mastery_writer.process_attempt), so it runs independently and a
+        # derivation failure cannot silently suppress the write-back.
         result = submit_attempt(sb, user_id, attempt_id)
         try:
-            compute_and_persist(sb, attempt_id)
             writer = MasteryWriter(sb, get_mastery_write_flag())
             await writer.process_attempt(attempt_id)
         except Exception:  # noqa: BLE001
