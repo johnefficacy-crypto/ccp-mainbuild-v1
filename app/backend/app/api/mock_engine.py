@@ -17,6 +17,8 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
+from app.study_os.attempt_analytics import compute_and_persist
+from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
 from app.study_os.mock_engine import (
     ConflictError,
     get_attempt,
@@ -129,7 +131,15 @@ async def submit(
 ) -> dict[str, Any]:
     user_id = user["id"]
     try:
-        return submit_attempt(get_supabase_admin(), user_id, attempt_id)
+        sb = get_supabase_admin()
+        result = submit_attempt(sb, user_id, attempt_id)
+        try:
+            compute_and_persist(sb, attempt_id)
+            writer = MasteryWriter(sb, get_mastery_write_flag())
+            await writer.process_attempt(attempt_id)
+        except Exception:  # noqa: BLE001
+            logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
+        return result
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
