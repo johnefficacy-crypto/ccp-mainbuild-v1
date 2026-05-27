@@ -430,7 +430,7 @@ def enter_section(supabase: Any, user_id: str, attempt_id: str, section_index: i
         raise ValueError("backward section movement is not allowed")
     now = _now_iso()
     _safe(lambda: supabase.table("mock_attempts").update({"current_section_index": section_index}).eq("id", attempt_id).execute(), default=None)
-    _safe(lambda: supabase.table("mock_attempt_section_state").upsert({"attempt_id": attempt_id, "section_index": section_index, "entered_at": now}).execute(), default=None)
+    _safe(lambda: supabase.table("mock_attempt_section_state").upsert({"attempt_id": attempt_id, "section_index": section_index, "entered_at": now}).execute(), default=None)  # safe-write-ok: navigation state; non-critical, not used for scoring
     return {"ok": True, "current_section_index": section_index}
 
 def save_answer(
@@ -915,8 +915,8 @@ def _emit_mock_tests_row(
     duration_sec = int(snap.get("duration_sec") or 0)
     duration_mins = round(duration_sec / 60) if duration_sec else None
 
-    _safe(
-        lambda: supabase.table("mock_tests").insert({
+    try:
+        supabase.table("mock_tests").insert({
             "user_id": user_id,
             "test_name": snap.get("name") or "Mock",
             "title": snap.get("name") or "Mock",
@@ -933,9 +933,71 @@ def _emit_mock_tests_row(
             "trust_level": "platform_verified",
             "mock_attempt_id": attempt["id"],
             "analysis_payload": {"mock_attempt_id": attempt["id"]},
-        }).execute(),
+        }).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "mock_tests insert failed attempt=%s, scheduling retry: %s",
+            attempt.get("id"), exc,
+        )
+        schedule_job(supabase, JOB_MOCK_TESTS_RETRY, attempt["id"], last_error=str(exc))
+
+
+def _retry_emit_mock_tests_row(supabase: Any, attempt_id: str) -> None:
+    """Idempotent re-emit of a mock_tests compat row. Called by the sweeper."""
+    existing = _safe(
+        lambda: supabase.table("mock_tests")
+        .select("id")
+        .eq("mock_attempt_id", attempt_id)
+        .limit(1)
+        .execute(),
         default=None,
     )
+    if getattr(existing, "data", None):
+        return  # already present — idempotent no-op
+
+    attempt = _fetch_attempt_by_id(supabase, attempt_id)
+    if attempt is None:
+        raise RuntimeError(f"attempt {attempt_id} not found for mock_tests_retry")
+
+    resp_rows = _safe(
+        lambda: supabase.table("mock_attempt_responses")
+        .select("question_snapshot")
+        .eq("attempt_id", attempt_id)
+        .execute(),
+        default=None,
+    )
+    responses = getattr(resp_rows, "data", None) or []
+    max_score = sum(
+        float((r.get("question_snapshot") or {}).get("marks") or 1) for r in responses
+    )
+
+    snap = attempt.get("template_snapshot") or {}
+    duration_sec = int(snap.get("duration_sec") or 0)
+    duration_mins = round(duration_sec / 60) if duration_sec else None
+    score_raw = float(attempt.get("score_raw") or 0)
+    total_correct = int(attempt.get("total_correct") or 0)
+    total_wrong = int(attempt.get("total_wrong") or 0)
+    submitted_at = attempt.get("submitted_at") or _now_iso()
+
+    # Propagate exceptions so the sweeper's retry/backoff loop handles them.
+    supabase.table("mock_tests").insert({
+        "user_id": attempt["user_id"],
+        "test_name": snap.get("name") or "Mock",
+        "title": snap.get("name") or "Mock",
+        "exam_name": snap.get("exam_family") or snap.get("slug") or "",
+        "scored_marks": round(score_raw, 2),
+        "total_marks": max_score,
+        "duration_mins": duration_mins,
+        "correct_answers": total_correct,
+        "wrong_answers": total_wrong,
+        "questions_attempted": total_correct + total_wrong,
+        "review_state": "unreviewed",
+        "attempted_at": submitted_at,
+        "source_type": "platform_attempt",
+        "trust_level": "platform_verified",
+        "mock_attempt_id": attempt_id,
+        "analysis_payload": {"mock_attempt_id": attempt_id},
+    }).execute()
 
 
 class ConflictError(Exception):
@@ -960,6 +1022,7 @@ class SubmitConsistencyError(RuntimeError):
 JOB_AUTO_SUBMIT = "auto_submit"
 JOB_ANALYTICS_RETRY = "analytics_retry"
 JOB_MASTERY_RETRY = "mastery_retry"
+JOB_MOCK_TESTS_RETRY = "mock_tests_retry"
 
 _ACTIVE_JOB_STATUSES = ["pending", "running"]
 
@@ -1008,7 +1071,7 @@ def schedule_job(
             "status": "pending",
             "last_error": last_error[:500] if last_error else None,
         }
-        _safe(lambda: supabase.table("mock_attempt_jobs").insert(payload).execute(), default=None)
+        _safe(lambda: supabase.table("mock_attempt_jobs").insert(payload).execute(), default=None)  # safe-write-ok: fire-and-forget job scheduling; sweeper re-enqueues missed auto-submit jobs
 
 
 def _complete_job(supabase: Any, job_kind: str, attempt_id: str) -> None:
@@ -1066,6 +1129,8 @@ def _run_job(supabase: Any, job: dict) -> None:
         auto_submit_attempt(supabase, attempt_id)
     elif kind == JOB_ANALYTICS_RETRY:
         attempt_analytics.compute_and_persist(supabase, attempt_id)
+    elif kind == JOB_MOCK_TESTS_RETRY:
+        _retry_emit_mock_tests_row(supabase, attempt_id)
     else:
         raise RuntimeError(f"unknown job_kind {kind!r}")
 

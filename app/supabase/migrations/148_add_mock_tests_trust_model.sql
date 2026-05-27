@@ -1,3 +1,8 @@
+-- SUPERSEDED: This migration was broken (referenced non-existent `metadata` column).
+-- It is marked applied in the tracker but was never executed.
+-- See migration 150 for the actual schema change.
+-- DO NOT attempt to re-run this migration.
+
 -- 148: Mock trust model — platform-verified vs self-reported
 --
 -- Option B (trust-aware coexistence): both manual logs and platform attempts

@@ -424,7 +424,7 @@ def request_partner(
         "exam_id": exam_id,
         "status": "active",
     }
-    res = _safe(lambda: supabase.table("accountability_pairs").insert(row).execute(), default=None)
+    res = _safe(lambda: supabase.table("accountability_pairs").insert(row).execute(), default=None)  # safe-write-ok: returns local row dict on failure; caller handles absent id gracefully
     data = getattr(res, "data", None) or []
     return data[0] if data else row
 
@@ -464,6 +464,6 @@ def write_mentor_feedback(
         "follow_through_rating": follow_through_rating,
         "feedback_private": feedback_private or {},
     }
-    res = _safe(lambda: supabase.table("mentor_session_feedback").insert(row).execute(), default=None)
+    res = _safe(lambda: supabase.table("mentor_session_feedback").insert(row).execute(), default=None)  # safe-write-ok: returns local row dict on failure; mentor feedback is non-critical
     data = getattr(res, "data", None) or []
     return data[0] if data else row

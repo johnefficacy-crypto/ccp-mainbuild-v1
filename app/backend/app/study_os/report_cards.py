@@ -511,7 +511,7 @@ def _compute(supabase: Any, user_id: str, period: str, anchor: date) -> dict[str
     # study_report_cards (migration 100) — they reflect current mastery /
     # backlog state, not a frozen snapshot, so we compute them fresh on
     # every read and merge them into the response without persisting.
-    _safe(lambda: supabase.table("study_report_cards").upsert(payload, on_conflict="user_id,period_type,period_start").execute(), None)
+    _safe(lambda: supabase.table("study_report_cards").upsert(payload, on_conflict="user_id,period_type,period_start").execute(), None)  # safe-write-ok: computed fresh on every read; persistence is best-effort caching
     row = _safe(lambda: supabase.table("study_report_cards").select("*").eq("user_id", user_id).eq("period_type", period).eq("period_start", start.isoformat()).limit(1).execute().data, [])
     persisted = (row or [payload])[0]
     persisted["high_yield_coverage"] = high_yield_coverage

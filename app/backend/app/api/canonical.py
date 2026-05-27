@@ -2187,7 +2187,7 @@ async def review_mock(
         )
         rows = [_mock_breakdown_row(mock_id, b) for b in body.topic_breakdowns]
         if rows:
-            _safe(lambda: supabase.table("mock_topic_breakdowns").insert(rows).execute())
+            _safe(lambda: supabase.table("mock_topic_breakdowns").insert(rows).execute())  # safe-write-ok: analytics cache; recomputed on next breakdown request
         from app.study_os.mastery import recompute_topic_mastery
 
         _safe(lambda: recompute_topic_mastery(supabase, user["id"]))
