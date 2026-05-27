@@ -168,7 +168,7 @@ def test_sweeper_auto_submit_is_idempotent():
 
     submitted_events = [e for e in sb.db["mock_attempt_events"] if e["event_type"] == "attempt.auto_submitted"]
     assert len(submitted_events) == 1
-    mock_rows = [r for r in sb.db["mock_tests"] if r.get("metadata", {}).get("mock_attempt_id") == attempt_id]
+    mock_rows = [r for r in sb.db["mock_tests"] if r.get("analysis_payload", {}).get("mock_attempt_id") == attempt_id]
     assert len(mock_rows) == 1
 
 

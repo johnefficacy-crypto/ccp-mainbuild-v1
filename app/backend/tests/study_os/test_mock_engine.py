@@ -306,8 +306,8 @@ def test_ac6_submit_writes_mock_tests_row():
     assert mt["total_marks"] is not None
     assert mt["correct_answers"] is not None
     assert mt["review_state"] == "unreviewed"
-    # metadata links back to the attempt
-    assert mt.get("metadata", {}).get("mock_attempt_id") == attempt_id
+    # analysis_payload links back to the attempt (mock_tests has no metadata column)
+    assert mt.get("analysis_payload", {}).get("mock_attempt_id") == attempt_id
 
 
 def test_ac6_double_submit_does_not_duplicate_mock_tests_row():

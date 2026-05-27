@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
@@ -36,6 +37,19 @@ require_publisher = require_permission(MOCK_QUESTIONS_PUBLISH)
 
 def _sb() -> Any:
     return get_supabase_admin()
+
+
+def _validate_uuid_param(value: str, name: str = "id") -> str:
+    """Reject non-UUID path params with 422 before they reach Supabase.
+
+    Without this, a malformed id (e.g. the literal string "undefined" sent by
+    a buggy frontend) reaches PostgREST and surfaces as an opaque 500 instead
+    of a clear client error.
+    """
+    try:
+        return str(UUID(str(value)))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail=f"invalid {name}")
 
 
 def _handle(exc: Exception, context: str = "") -> None:
@@ -153,6 +167,7 @@ def update_question(
     """[author] Edit own draft or needs_changes question.
     Publisher may override fingerprint collision via X-Override-Fingerprint: true header.
     """
+    question_id = _validate_uuid_param(question_id, "question_id")
     perms = set(actor.get("permissions") or [])
     is_publisher = actor.get("role") == "super_admin" or MOCK_QUESTIONS_PUBLISH in perms
     override = is_publisher and (x_override_fingerprint or "").lower() in ("true", "1")
@@ -193,6 +208,7 @@ def get_question(
     actor: dict = Depends(require_author),
 ):
     """[author] Question detail: row + options + sources + tags + review log."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.get_question_detail(_sb(), actor, question_id)
     except Exception as exc:
@@ -208,6 +224,7 @@ def submit_question(
     actor: dict = Depends(require_author),
 ):
     """[author] Submit draft / needs_changes → in_review."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.transition(_sb(), actor, question_id, "submit", notes=body.notes)
     except Exception as exc:
@@ -221,6 +238,7 @@ def approve_question(
     actor: dict = Depends(require_reviewer),
 ):
     """[reviewer] in_review → verified. Rejects self-review with 409."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.transition(_sb(), actor, question_id, "approve", notes=body.notes)
     except Exception as exc:
@@ -234,6 +252,7 @@ def request_changes(
     actor: dict = Depends(require_reviewer),
 ):
     """[reviewer] in_review → needs_changes."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.transition(_sb(), actor, question_id, "request_changes", notes=body.notes)
     except Exception as exc:
@@ -247,6 +266,7 @@ def publish_question(
     actor: dict = Depends(require_publisher),
 ):
     """[publisher] verified → published."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.transition(_sb(), actor, question_id, "publish", notes=body.notes)
     except Exception as exc:
@@ -260,6 +280,7 @@ def archive_question(
     actor: dict = Depends(require_publisher),
 ):
     """[publisher] published → archived."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.transition(_sb(), actor, question_id, "archive", notes=body.notes)
     except Exception as exc:
@@ -273,6 +294,7 @@ def force_status(
     actor: dict = Depends(require_publisher),
 ):
     """[publisher] Force any status transition, logged with reason."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.transition(
             _sb(), actor, question_id, "force",
@@ -306,6 +328,7 @@ def dedup_check(
     actor: dict = Depends(require_author),
 ):
     """[author] Fingerprint match + top-5 trigram neighbors at given similarity threshold."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.dedup_check(_sb(), question_id, similarity_threshold=threshold)
     except Exception as exc:
@@ -321,6 +344,7 @@ def link_translation(
     actor: dict = Depends(require_author),
 ):
     """[author] Link question to a translation partner in a question group."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.link_translation(_sb(), actor, question_id, body.model_dump())
     except Exception as exc:
@@ -336,6 +360,7 @@ def set_topic_tags(
     actor: dict = Depends(require_author),
 ):
     """[author] Replace all topic tags for a question."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.set_topic_tags(_sb(), actor, question_id, [t.model_dump() for t in tags])
     except Exception as exc:
@@ -351,6 +376,7 @@ def set_sources(
     actor: dict = Depends(require_author),
 ):
     """[author] Replace all sources for a question."""
+    question_id = _validate_uuid_param(question_id, "question_id")
     try:
         return svc.set_sources(_sb(), actor, question_id, [s.model_dump() for s in sources])
     except Exception as exc:

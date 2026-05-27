@@ -40,3 +40,10 @@ fails CI on drift — the goal of this contract.
 
 When updating `schemas.py`, regenerate/update the JSON contract so the parity test
 passes; the JS PropTypes follow automatically.
+
+## Mock attempt → `mock_tests` compat row
+
+`mock_tests.analysis_payload` (jsonb, migration 034) is the canonical field for the
+Study OS → Mocks.jsx compat row written by `mock_engine._emit_mock_tests_row`; the
+table has no `metadata` column, and the legacy `/api/study/mocks` reader treats a
+missing payload as `{}`.

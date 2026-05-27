@@ -104,9 +104,13 @@ export default function QuestionList() {
                 <td style={S.td}>{q.language}</td>
                 <td style={{ ...S.td, color: "#6b7280", fontSize: 12 }}>{q.updated_at ? new Date(q.updated_at).toLocaleDateString() : "—"}</td>
                 <td style={S.td}>
-                  <Link to={`/admin/mocks/questions/${q.id}`} style={{ color: "#60a5fa", fontSize: 13, textDecoration: "none" }}>
-                    View →
-                  </Link>
+                  {q.id ? (
+                    <Link to={`/admin/mocks/questions/${q.id}`} style={{ color: "#60a5fa", fontSize: 13, textDecoration: "none" }}>
+                      View →
+                    </Link>
+                  ) : (
+                    <span className="text-red-400">Missing id</span>
+                  )}
                 </td>
               </tr>
             ))}
