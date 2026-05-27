@@ -63,15 +63,15 @@ begin
       v_correct_oid := ('e2e00000-0000-4000-8001-' || lpad((qn * 10 + 1)::text, 12, '0'))::uuid;
 
       insert into public.mock_question_bank
-        (id, exam_family, question_text, question_type, difficulty, marks,
-         negative_marks, correct_option_id, explanation, source_type, reviewer_status)
+        (id, exam_family, question_text, question_type, difficulty,
+         correct_option_id, explanation, source_type, reviewer_status)
       values
         (v_qid, 'IBPS',
          format('[%s] Q%s — sample question for the E2E mock (section %s).',
                 v_section_names[s + 1], k, s + 1),
-         'mcq', 'medium', 1, 0.25, v_correct_oid,
+         'mcq', 'medium', v_correct_oid,
          format('Option 1 is correct for Q%s. (E2E fixture explanation.)', qn),
-         'e2e_fixture', 'reviewed')
+         'e2e_fixture', 'published')
       on conflict (id) do update set
         question_text = excluded.question_text,
         correct_option_id = excluded.correct_option_id,
