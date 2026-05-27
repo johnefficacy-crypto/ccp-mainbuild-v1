@@ -1,5 +1,5 @@
 import React from "react";
-import { RowActions } from "../../../shared/ui";
+import { RowActions } from "../../../shared/ui/core";
 
 export default function RecruitmentTrustActions({ row, onAction, busyKey }) {
   const blocking = row.blocking_issues || [];

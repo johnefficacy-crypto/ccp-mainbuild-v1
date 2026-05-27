@@ -17,7 +17,7 @@ jest.mock("../../../lib/api", () => ({
   },
 }));
 
-jest.mock("../../../shared/ui", () => ({
+jest.mock("../../../shared/ui/core", () => ({
   __esModule: true,
   LoadingSkeleton: () => null,
 }));

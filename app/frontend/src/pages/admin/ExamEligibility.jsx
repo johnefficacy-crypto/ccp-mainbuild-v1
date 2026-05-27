@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { GraduationCap, Plus, ShieldCheck, X } from "lucide-react";
 import { api } from "../../lib/api";
-import { LoadingSkeleton } from "../../shared/ui";
+import { LoadingSkeleton } from "../../shared/ui/core";
 
 const SCOPES = ["all", "general", "obc", "sc", "st", "ews", "pwd", "ex_serviceman", "women"];
 const RULE_TYPES = ["age_min", "age_max", "education_min_level", "nationality", "gender", "attempts_max"];

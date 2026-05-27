@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/authContext";
-import { EmptyState, ErrorState, StatusBadge, useToast } from "../../shared/ui";
+import { EmptyState, ErrorState, StatusBadge, useToast } from "../../shared/ui/core";
 
 const ROLE_OPTIONS = ["user", "admin", "super_admin"];
 // Roles that can be assigned when creating a staff account.

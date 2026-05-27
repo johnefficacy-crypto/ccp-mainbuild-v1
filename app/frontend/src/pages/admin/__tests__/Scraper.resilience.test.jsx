@@ -22,7 +22,7 @@ jest.mock("../../../lib/api", () => ({
 // Stub shared/ui primitives so the test doesn't depend on their internals.
 // The per-block banners under test (LoadErrorBanner) live inside Scraper.jsx
 // itself, so they render regardless of this mock.
-jest.mock("../../../shared/ui", () => ({
+jest.mock("../../../shared/ui/core", () => ({
   __esModule: true,
   EmptyState: () => null,
   ErrorState: () => null,

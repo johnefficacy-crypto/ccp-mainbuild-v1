@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { InputField } from "../../../shared/ui";
+import { InputField } from "../../../shared/ui/core";
 import { useFocusTrap } from "../../../shared/a11y/useFocusTrap";
 
 export default function OrganizationEditPanel({ org, onSave, busy }) {

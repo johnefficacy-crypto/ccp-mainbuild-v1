@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../lib/api";
-import { ErrorState, DateField } from "../../../shared/ui";
+import { ErrorState } from "../../../shared/ui/core";
+import { DateField } from "../../../shared/ui/heavy";
 
 const OFFICIAL_URL_FIELDS = [
   "official_notification_url",

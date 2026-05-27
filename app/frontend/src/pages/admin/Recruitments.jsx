@@ -12,7 +12,7 @@ import BlockerList from "../../features/admin/workflow/BlockerList";
 import InlineTrustFixes from "../../features/admin/workflow/InlineTrustFixes";
 import { getNextActionForRecruitment } from "../../features/admin/workflow/adminWorkflowContract";
 import { useFocusTrap } from "../../shared/a11y/useFocusTrap";
-import { EmptyState, ErrorState, LoadingSkeleton, StatusBadge } from "../../shared/ui";
+import { EmptyState, ErrorState, LoadingSkeleton, StatusBadge } from "../../shared/ui/core";
 
 const STATUS_FILTERS = [
   { value: "all", label: "All" },

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { ExternalLink, Filter, Search } from "lucide-react";
-import { EmptyState, StatusBadge } from "../../shared/ui";
+import { EmptyState, StatusBadge } from "../../shared/ui/core";
 
 const ROWS = [
   { id: "SSC-CGL-26", title: "SSC CGL 2026", org: "Staff Selection Commission", status: "verified", posts: 21, source: "ssc.nic.in", updated: "12:42" },

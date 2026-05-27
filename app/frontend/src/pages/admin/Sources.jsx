@@ -5,7 +5,7 @@ import { api } from "../../lib/api";
 import NextActionCallout from "../../features/admin/workflow/NextActionCallout";
 import { NEXT_ACTION_MESSAGES, SOURCE_TYPE_LABELS } from "../../features/admin/workflow/adminWorkflowContract";
 import { useFocusTrap } from "../../shared/a11y/useFocusTrap";
-import { EmptyState, ErrorState, LoadingSkeleton, RowActions } from "../../shared/ui";
+import { EmptyState, ErrorState, LoadingSkeleton, RowActions } from "../../shared/ui/core";
 import useAdminAction from "../../features/admin/shared/useAdminAction";
 import AuditTimelineDrawer from "../../features/admin/shared/AuditTimelineDrawer";
 import { adminTrustService } from "../../services/adminTrustService";

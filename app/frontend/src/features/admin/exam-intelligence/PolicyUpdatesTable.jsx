@@ -1,6 +1,6 @@
 import React from "react";
 import { Newspaper } from "lucide-react";
-import { StatusBadge, SourceTrustBadge, EmptyState } from "../../../shared/ui";
+import { StatusBadge, SourceTrustBadge, EmptyState } from "../../../shared/ui/core";
 
 // exam_policy_updates review surface.
 //

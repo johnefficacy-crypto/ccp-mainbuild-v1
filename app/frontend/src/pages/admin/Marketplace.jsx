@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Store } from "lucide-react";
 import { api, getApiErrorMessage } from "../../lib/api";
-import { EmptyState, LoadingSkeleton, StatusBadge } from "../../shared/ui";
+import { EmptyState, LoadingSkeleton, StatusBadge } from "../../shared/ui/core";
 
 const TABS = [
   { id: "overview", label: "Overview" },
