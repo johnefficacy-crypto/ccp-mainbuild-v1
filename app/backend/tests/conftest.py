@@ -67,3 +67,16 @@ def _reset_eligibility_rules_cache():
     invalidate_eligibility_rules_cache()
     yield
     invalidate_eligibility_rules_cache()
+
+
+@pytest.fixture(autouse=True)
+def _reset_planner_cache():
+    """The planner's days-remaining TTL cache lives at module scope."""
+    try:
+        from app.study_os.planner import invalidate_planner_cache
+    except ImportError:
+        yield
+        return
+    invalidate_planner_cache()
+    yield
+    invalidate_planner_cache()

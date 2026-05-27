@@ -21,8 +21,11 @@ produce the same plan. Persists one active ``study_plan`` per user, a
 from __future__ import annotations
 
 import logging
+import threading
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
+
+from cachetools import TTLCache
 
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
 from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
@@ -38,6 +41,52 @@ PLANNER_VERSION = "planner_v1"
 # preferred_task_size -> minutes per task block.
 _SIZE_MINUTES = {"small": 25, "medium": 40, "large": 60}
 _DEFAULT_SIZE = "medium"
+
+# The soonest upcoming exam cycle is identical across users and only changes
+# daily. Cache it (keyed by exam_id + date) so the several planner reads of
+# exam_cycles for one exam within a request wave — e.g. mission-control's
+# regen-trigger fan-out, which also computes days-remaining for the same exam —
+# collapse to a single round-trip. Reset between tests via tests/conftest.py.
+# ``False`` is the sentinel for 'no upcoming cycle'.
+_NEXT_CYCLE_TTL_SECONDS = 600
+_next_cycle_cache: TTLCache = TTLCache(maxsize=256, ttl=_NEXT_CYCLE_TTL_SECONDS)
+_next_cycle_lock = threading.Lock()
+
+
+def invalidate_planner_cache() -> None:
+    """Drop the planner's process-local caches (test hook / admin reset)."""
+    with _next_cycle_lock:
+        _next_cycle_cache.clear()
+
+
+def _cached_next_cycle(supabase: Any, exam_id: str, today_iso: str) -> dict[str, Any] | None:
+    """Soonest upcoming exam cycle (``id, exam_start, cycle_name``) for an exam,
+    per-exam+date TTL cached. Returns ``None`` when there is no upcoming cycle."""
+    cache_key = (exam_id, today_iso)
+    with _next_cycle_lock:
+        if cache_key in _next_cycle_cache:
+            cached = _next_cycle_cache[cache_key]
+            return None if cached is False else cached
+    rows = (
+        _safe(
+            lambda: (
+                supabase.table("exam_cycles")
+                .select("id, exam_start, cycle_name")
+                .eq("exam_id", exam_id)
+                .gte("exam_start", today_iso)
+                .order("exam_start")
+                .limit(1)
+                .execute()
+                .data
+            ),
+            default=[],
+        )
+        or []
+    )
+    cycle = rows[0] if rows else None
+    with _next_cycle_lock:
+        _next_cycle_cache[cache_key] = cycle if cycle else False
+    return cycle
 _DEFAULT_MAX_TASKS = 4
 
 _TASK_LABEL = {
@@ -125,26 +174,11 @@ def _resolve_target_exam(supabase: Any, user_id: str) -> dict[str, Any] | None:
 
 def _days_remaining(supabase: Any, exam_id: str) -> int | None:
     today = datetime.now(timezone.utc).date()
-    rows = (
-        _safe(
-            lambda: (
-                supabase.table("exam_cycles")
-                .select("exam_start")
-                .eq("exam_id", exam_id)
-                .gte("exam_start", today.isoformat())
-                .order("exam_start")
-                .limit(1)
-                .execute()
-                .data
-            ),
-            default=[],
-        )
-        or []
-    )
-    if not rows or not rows[0].get("exam_start"):
+    cycle = _cached_next_cycle(supabase, exam_id, today.isoformat())
+    if not cycle or not cycle.get("exam_start"):
         return None
     try:
-        start = datetime.fromisoformat(str(rows[0]["exam_start"])).date()
+        start = datetime.fromisoformat(str(cycle["exam_start"])).date()
     except (ValueError, TypeError):
         return None
     return max(0, (start - today).days)
@@ -1314,22 +1348,10 @@ def _deadline_trigger(supabase: Any, user_id: str, today: date) -> dict[str, Any
     exam_id = target.get("id") if target else None
     if not exam_id:
         return None
-    cycle = _safe(
-        lambda: (
-            supabase.table("exam_cycles")
-            .select("id, exam_start, cycle_name")
-            .eq("exam_id", exam_id)
-            .gte("exam_start", today.isoformat())
-            .order("exam_start")
-            .limit(1)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
+    cycle = _cached_next_cycle(supabase, exam_id, today.isoformat())
     if not cycle:
         return None
-    exam_start_str = cycle[0].get("exam_start")
+    exam_start_str = cycle.get("exam_start")
     try:
         exam_start = date.fromisoformat(str(exam_start_str)[:10])
     except (TypeError, ValueError):
@@ -1345,7 +1367,7 @@ def _deadline_trigger(supabase: Any, user_id: str, today: date) -> dict[str, Any
         "evidence": {
             "days_remaining": days_remaining,
             "exam_start": exam_start.isoformat(),
-            "exam_cycle_id": cycle[0].get("id"),
+            "exam_cycle_id": cycle.get("id"),
         },
     }
 
