@@ -5,7 +5,6 @@ import StatusBadge from "./components/StatusBadge";
 import { Plus, RefreshCw } from "lucide-react";
 
 const STATUSES = ["", "draft", "in_review", "needs_changes", "verified", "published", "archived"];
-const DIFFICULTIES = ["", "easy", "medium", "hard"];
 
 const S = {
   page: { padding: 24, color: "#e5e7eb", minHeight: "100vh" },

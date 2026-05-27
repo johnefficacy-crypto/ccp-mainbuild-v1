@@ -354,8 +354,7 @@ class TestDedupCheck:
     def test_dedup_check_returns_no_collision_when_unique(self):
         sb = SBStub()
         _seed_question(sb, qid="q-1")
-        actor = _make_actor(permissions=["mock_questions:review"])
-        client = _build_app(sb, permissions=["mock_questions:review"])
+        client = _build_app(sb, permissions=["mock_questions:author"])
 
         # The RPC for trigram search returns None by default in SBStub
         resp = client.post("/admin/mocks/questions/q-1/dedup-check", json={})
@@ -365,7 +364,7 @@ class TestDedupCheck:
 
     def test_dedup_check_returns_404_for_missing_question(self):
         sb = SBStub()
-        client = _build_app(sb, permissions=["mock_questions:review"])
+        client = _build_app(sb, permissions=["mock_questions:author"])
         resp = client.post("/admin/mocks/questions/nonexistent-id/dedup-check", json={})
         assert resp.status_code == 404
 

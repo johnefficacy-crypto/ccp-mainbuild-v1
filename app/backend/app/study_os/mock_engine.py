@@ -14,6 +14,13 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from app.study_os.attempt_events import record_server_event
+from app.study_os.attempt_event_types import (
+    ATTEMPT_STARTED,
+    ATTEMPT_SUBMITTED,
+    QUESTION_ANSWERED,
+)
+
 logger = logging.getLogger("career_copilot.study_os.mock_engine")
 
 
@@ -64,27 +71,21 @@ def _load_questions_for_template(supabase: Any, template: dict) -> list[dict]:
     from datetime import datetime, timezone
     now_iso = datetime.now(timezone.utc).isoformat()
 
-    q_rows = _safe(
-        lambda: supabase.table("mock_question_bank")
-        .select("*")
-        .in_("id", question_ids)
-        .eq("reviewer_status", "published")
-        .or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
-        .execute(),
-        default=None,
-    )
-    questions = {r["id"]: r for r in (getattr(q_rows, "data", None) or [])}
+    q_exec = supabase.table("mock_question_bank") \
+        .select("*") \
+        .in_("id", question_ids) \
+        .eq("reviewer_status", "published") \
+        .or_(f"valid_until.is.null,valid_until.gt.{now_iso}") \
+        .execute()
+    questions = {r["id"]: r for r in (q_exec.data or [])}
 
-    opt_rows = _safe(
-        lambda: supabase.table("mock_question_options")
-        .select("*")
-        .in_("question_id", question_ids)
-        .order("option_index")
-        .execute(),
-        default=None,
-    )
+    opt_exec = supabase.table("mock_question_options") \
+        .select("*") \
+        .in_("question_id", question_ids) \
+        .order("option_index") \
+        .execute()
     opts_by_q: dict[str, list[dict]] = {}
-    for o in (getattr(opt_rows, "data", None) or []):
+    for o in (opt_exec.data or []):
         opts_by_q.setdefault(o["question_id"], []).append(o)
 
     out = []
@@ -234,6 +235,12 @@ def start_attempt(supabase: Any, user_id: str, template_slug: str) -> dict:
         op="mock_attempt_responses.insert_initial",
     )
 
+    record_server_event(
+        supabase, attempt_id, user_id, ATTEMPT_STARTED,
+        payload={"template_slug": template_slug},
+        occurred_at=now.isoformat(),
+    )
+
     return {
         "attempt_id": attempt_id,
         "expires_at": expires_at.isoformat(),
@@ -342,6 +349,17 @@ def save_answer(
         .execute(),
         default=None,
     )
+
+    record_server_event(
+        supabase, attempt_id, user_id, QUESTION_ANSWERED,
+        payload={
+            "question_id": question_id,
+            "selected_option_id": selected_option_id,
+            "is_marked_for_review": is_marked_for_review,
+            "time_spent_sec": time_spent_sec,
+        },
+    )
+
     return {"ok": True, "idempotent": False}
 
 
@@ -435,6 +453,19 @@ def submit_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
         .eq("id", attempt_id)
         .execute(),
         default=None,
+    )
+
+    # Server-authoritative event — written immediately after the status flip.
+    record_server_event(
+        supabase, attempt_id, user_id, ATTEMPT_SUBMITTED,
+        payload={
+            "score_raw": round(score_raw, 2),
+            "score_percentage": pct,
+            "total_correct": total_correct,
+            "total_wrong": total_wrong,
+            "total_unattempted": total_unattempted,
+        },
+        occurred_at=now_iso,
     )
 
     # Compatibility row for existing Mocks.jsx analytics
