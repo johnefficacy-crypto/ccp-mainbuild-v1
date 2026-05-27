@@ -15,7 +15,7 @@ logger = logging.getLogger("career_copilot.study_os.attempt_analytics")
 
 
 def derive_attempt_analytics(attempt: dict, responses: list[dict], events: list[dict]) -> DerivedAttemptAnalytics:
-    dwell_by_q, warnings = compute_dwell_times(responses, events, attempt.get("submitted_at"))
+    dwell_by_q, warnings, quality = compute_dwell_times(responses, events, attempt.get("submitted_at"))
     summary, sections = compute_scoring(attempt, responses, dwell_by_q)
     topics = compute_topic_breakdown(responses, dwell_by_q)
 
@@ -52,6 +52,7 @@ def derive_attempt_analytics(attempt: dict, responses: list[dict], events: list[
         stuck_questions=stuck,
         rush_questions=rush,
         warnings=warnings,
+        analytics_quality=quality,
     )
 
 
@@ -70,7 +71,10 @@ def compute_and_persist(supabase: Any, attempt_id: str) -> DerivedAttemptAnalyti
 
     derived = derive_attempt_analytics(attempt, responses, events)
     s = derived.summary.model_dump(mode="json")
-    supabase.table("mock_attempt_summary").upsert({"attempt_id": attempt_id, **s}, on_conflict="attempt_id").execute()
+    supabase.table("mock_attempt_summary").upsert(
+        {"attempt_id": attempt_id, **s, "analytics_quality": derived.analytics_quality},
+        on_conflict="attempt_id",
+    ).execute()
 
     for row in derived.section_breakdown:
         payload = row.model_dump(mode="json")

@@ -24,6 +24,12 @@ Each question weight is:
 
 Final `capped_delta` is clamped to ±0.15.
 
+## Scale contract handoff to PR5 wiring
+
+- **PR5a output unit:** mastery deltas are emitted on unit interval scale `[-1, 1]` (and currently capped at ±0.15).
+- **PR5 persistence contract:** before `INSERT/UPDATE` into `user_topic_mastery.mastery_score` (0..100 column), PR5 must multiply delta by 100.
+- This conversion is owned by PR5 wiring (integration contract), not by the PR5a `mastery_engine` internals.
+
 ## Error signal extraction
 
 For every question classified as `option_trap`, `calc_error`, or `concept_gap`, emit one `ErrorPatternSignal` with:
