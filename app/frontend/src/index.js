@@ -7,7 +7,7 @@ import "./index.css";
 import App from "./App";
 import { AuthProvider } from "./lib/authContext";
 import { queryClient } from "./shared/api/queryClient";
-import { ToastProvider } from "./shared/ui";
+import { ToastProvider } from "./shared/ui/core";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(

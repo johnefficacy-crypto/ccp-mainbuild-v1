@@ -1,7 +1,7 @@
 import React from "react";
 import { CheckCircle2 } from "lucide-react";
 import { useFormContext } from "react-hook-form";
-import { CheckboxField, SelectField } from "../../../shared/ui";
+import { CheckboxField, SelectField } from "../../../shared/ui/core";
 import { EXAM_FAMILY_OPTIONS, INDIAN_STATE_OPTIONS, SECTOR_OPTIONS } from "../../../lib/profileFields";
 
 function Chip({ active, onClick, children }) { return <button type="button" onClick={onClick} className={`text-left p-3 rounded-xl border-2 transition ${active ? "border-clay-500 bg-clay-50" : "border-border hover:border-clay-300"}`}><div className="flex items-center justify-between"><div className="font-semibold">{children}</div>{active && <CheckCircle2 className="h-4 w-4 text-sage-600" />}</div></button>; }

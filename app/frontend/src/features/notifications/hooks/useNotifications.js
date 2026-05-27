@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../lib/api";
-import { useToast } from "../../../shared/ui";
+import { useToast } from "../../../shared/ui/core";
 
 function toQuery(filters) {
   const query = new URLSearchParams();

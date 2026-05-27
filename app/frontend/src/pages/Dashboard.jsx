@@ -14,7 +14,8 @@ import { useAuth } from "../lib/authContext";
 import { rankRecruitments } from "../lib/recruitmentRanking";
 import useDashboardData from "../features/dashboard/hooks/useDashboardData";
 import TodaysActions from "../features/dashboard/components/TodaysActions";
-import { ChartCard, ErrorState, LoadingSkeleton } from "../shared/ui";
+import { ErrorState, LoadingSkeleton } from "../shared/ui/core";
+import { ChartCard } from "../shared/ui/heavy";
 
 function MatchSection({ title, items }) {
   return (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useToast } from "../../../shared/ui";
+import { useToast } from "../../../shared/ui/core";
 
 export default function useAdminAction() {
   const [busyKey, setBusyKey] = useState(null);

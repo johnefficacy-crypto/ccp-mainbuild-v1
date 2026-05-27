@@ -1,6 +1,6 @@
 import React from "react";
 import { Lock, Info } from "lucide-react";
-import { StatusBadge, ConfidencePill, EmptyState } from "../../../shared/ui";
+import { StatusBadge, ConfidencePill, EmptyState } from "../../../shared/ui/core";
 
 // exam_topic_coverage review surface.
 //

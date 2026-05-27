@@ -1,6 +1,6 @@
 import React from "react";
 import { ShieldAlert } from "lucide-react";
-import { EvidenceDrawer } from "../../../shared/ui";
+import { EvidenceDrawer } from "../../../shared/ui/core";
 
 // Known internal persona dimension values. If any of these strings appear
 // in copy that is flagged user-facing, that is a safety problem — the

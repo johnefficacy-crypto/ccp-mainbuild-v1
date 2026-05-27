@@ -3,7 +3,7 @@ import { RotateCcw, Plus, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
 import { parseImportFile } from "../../../lib/bulkImportFile";
 import CmsRefField from "../../../features/admin/shared/CmsRefField";
-import { DateField } from "../../../shared/ui";
+import { DateField } from "../../../shared/ui/heavy";
 import ExamIntelDocuments from "./ExamIntelDocuments";
 
 // Reusable ref-picker descriptors. Each points at a CMS list endpoint that

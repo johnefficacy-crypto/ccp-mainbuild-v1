@@ -1,5 +1,5 @@
 import React from "react";
-import { StatusBadge } from "../../../shared/ui";
+import { StatusBadge } from "../../../shared/ui/core";
 
 const READINESS_STATUS = {
   ready: "ready",
