@@ -48,17 +48,6 @@ export default function TcsIonAttemptShell() {
     }
   };
 
-  const handleAnswer = async (selected_option_id) => {
-    if (!q) return;
-    await api.post(`/api/study/mocks/attempts/${attemptId}/answer`, {
-      question_id: q.question_id,
-      selected_option_id,
-      is_marked_for_review: Boolean(q.is_marked_for_review),
-      client_seq: Date.now(),
-      time_spent_sec: 0,
-    });
-  };
-
   if (!attempt) return <div>Loading…</div>;
 
   return (

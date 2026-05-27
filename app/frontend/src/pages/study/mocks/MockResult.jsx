@@ -12,7 +12,7 @@ export default function MockResult() {
   const [result,setResult]=useState(null); const [analytics,setAnalytics]=useState(null); const [tab,setTab]=useState("overview");
   useEffect(()=>{ api.get(`/api/study/mocks/attempts/${attemptId}/result`).then(setResult); },[attemptId]);
   useEffect(()=>{ if(tab!=="overview") api.get(`/api/study/mocks/attempts/${attemptId}/analytics`).then(setAnalytics).catch(()=>setAnalytics({})); },[attemptId,tab]);
-  const donut=useMemo(()=>Object.entries((analytics?.response_classification||[]).reduce((a,r)=>((a[r.error_type]=(a[r.error_type]||0)+1),a),{})).map(([label,value])=>({label,value})),[analytics]);
+  const donut=useMemo(()=>Object.entries((analytics?.response_classification||[]).reduce((a,r)=>{a[r.error_type]=(a[r.error_type]||0)+1;return a;},{})).map(([label,value])=>({label,value})),[analytics]);
   if(!result) return <div data-testid="result-loading">Loading…</div>;
   return <div className="p-4 space-y-4" data-testid="result-page">
     <div data-testid="result-summary" data-score={result.score_percentage ?? ""}>
