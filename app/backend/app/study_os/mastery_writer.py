@@ -17,6 +17,9 @@ logger = logging.getLogger("career_copilot.study_os.mastery_writer")
 
 FlagState = Literal["off", "shadow", "live"]
 
+# Per-attempt mastery delta cap, in mastery units (0..1). 0.15 unit == 15 db.
+_CAP_UNIT = Decimal("0.15")
+
 
 class MasteryWriter:
     def __init__(self, supabase: Any, flag_state: FlagState) -> None:
@@ -24,6 +27,12 @@ class MasteryWriter:
         self.flag_state = flag_state
 
     async def process_attempt(self, attempt_id: str) -> None:
+        # Ordering decision (PR-fix-3): implementation B — the writer derives
+        # mastery inline from the persisted raw attempt data (mock_attempts +
+        # mock_attempt_responses, whose is_correct is set at submit time), NOT
+        # from mock_attempt_summary. It therefore does not depend on PR4's
+        # derivation having run, and a failed/pending derivation cannot silently
+        # suppress mastery writes. See docs/study_os/mock_submit_flow.md.
         if self.flag_state == "off":
             return
 
@@ -123,21 +132,27 @@ class MasteryWriter:
 
     def _apply_mastery(self, attempt_id: str, deltas: list[Any]) -> None:
         for d in deltas:
-            existing = self.supabase.table("user_topic_mastery_audit").select("id").eq("attempt_id", attempt_id).eq("user_id", d.user_id).eq("topic_id", d.topic_id).limit(1).execute().data or []
-            if existing:
-                continue
-            current_row = self.supabase.table("user_topic_mastery").select("id,mastery_score").eq("user_id", d.user_id).eq("topic_id", d.topic_id).limit(1).execute().data or []
-            current = Decimal(str((current_row[0].get("mastery_score") if current_row else 50) or 50))
-            delta_db = (d.capped_delta * Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            new_value = min(Decimal("100"), max(Decimal("0"), current + delta_db))
-            if current_row:
-                self.supabase.table("user_topic_mastery").update({"mastery_score": float(new_value)}).eq("id", current_row[0]["id"]).execute()
-            else:
-                self.supabase.table("user_topic_mastery").insert({"id": str(uuid4()), "user_id": d.user_id, "topic_id": d.topic_id, "mastery_score": float(new_value)}).execute()
-            self.supabase.table("user_topic_mastery_audit").insert({
-                "id": str(uuid4()), "user_id": d.user_id, "topic_id": d.topic_id, "attempt_id": attempt_id,
-                "before_mastery_db": float(current), "after_mastery_db": float(new_value), "delta_applied_db": float(delta_db), "reason": "mock_submit"
-            }).execute()
+            # Cap (whiplash guard): bound one mock's swing to ±0.15 unit. PR5a
+            # emits both delta_raw_unit and delta_capped_unit; we read the capped
+            # field (``capped_delta``) and re-cap defensively so a bad upstream
+            # value can never write more than ±15 db. This is a different
+            # invariant from the [0,100] clamp the RPC applies (overflow guard).
+            delta_unit = min(_CAP_UNIT, max(-_CAP_UNIT, Decimal(str(d.capped_delta))))
+            delta_db = (delta_unit * Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            # Idempotent + atomic. The RPC skips when an audit row already exists
+            # for (user, topic, attempt), and applies the clamp + mastery write +
+            # audit insert in one transaction, so re-submission is a silent no-op
+            # and partial failure can't desync mastery from its audit trail.
+            self.supabase.rpc(
+                "apply_mock_mastery_delta",
+                {
+                    "p_user_id": d.user_id,
+                    "p_topic_id": d.topic_id,
+                    "p_attempt_id": attempt_id,
+                    "p_delta_db": float(delta_db),
+                    "p_reason": "mock_submit",
+                },
+            ).execute()
 
     def _apply_error_patterns(self, signals: list[Any]) -> None:
         for s in signals:

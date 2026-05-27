@@ -17,6 +17,7 @@ from typing import Any
 from app.study_os.attempt_events import record_server_event
 from app.study_os.attempt_analytics import service as attempt_analytics
 from app.study_os.attempt_event_types import (
+    ATTEMPT_AUTO_SUBMITTED,
     ATTEMPT_STARTED,
     ATTEMPT_SUBMITTED,
     QUESTION_ANSWERED,
@@ -113,6 +114,14 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
         "negative_marks": marks_per_wrong,
         "correct_option_id": q.get("correct_option_id"),
         "explanation": q.get("explanation"),
+        # Mastery write-back (PR5) derives deltas straight from the frozen
+        # snapshot, so the topic/difficulty/source signals it weights on must be
+        # captured here at attempt start — never read back from the live bank.
+        "topic_id": q.get("topic_id"),
+        "microtopic_id": q.get("microtopic_id"),
+        "difficulty": q.get("difficulty") or "medium",
+        "source_type": q.get("source_type") or "authored",
+        "expected_time_sec": q.get("expected_time_sec"),
         "options": [
             {
                 "id": o["id"],
@@ -411,16 +420,22 @@ def save_answer(
     return {"ok": True, "idempotent": False}
 
 
-def submit_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
-    """Score and finalise the attempt. Idempotent — second call returns same result."""
-    attempt = _fetch_attempt(supabase, user_id, attempt_id)
+def _finalize_submission(
+    supabase: Any,
+    attempt: dict,
+    user_id: str,
+    *,
+    submitted_at: str,
+    event_type: str,
+) -> tuple[dict, list[dict], list[dict]]:
+    """Score an in-progress attempt and flip it to ``submitted``.
 
-    if attempt["status"] == "submitted":
-        return _build_result(supabase, attempt)
-
-    if attempt["status"] != "in_progress":
-        raise ValueError("attempt is not in progress")
-
+    Shared by the user-initiated ``submit_attempt`` and the sweeper's
+    ``auto_submit_attempt``. Handles only the deterministic, snapshot-based work
+    (scoring, status flip, lifecycle event, Mocks.jsx compat row). Derivation is
+    NOT run here — callers decide whether to run it inline or schedule a job.
+    """
+    attempt_id = attempt["id"]
     resp_rows = _safe(
         lambda: supabase.table("mock_attempt_responses")
         .select("*")
@@ -486,12 +501,11 @@ def submit_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
     )
     pct = round(score_raw / max_score * 100, 2) if max_score > 0 else 0.0
 
-    now_iso = _now_iso()
     _safe(
         lambda: supabase.table("mock_attempts")
         .update({
             "status": "submitted",
-            "submitted_at": now_iso,
+            "submitted_at": submitted_at,
             "score_raw": round(score_raw, 2),
             "score_percentage": pct,
             "total_correct": total_correct,
@@ -505,7 +519,7 @@ def submit_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
 
     # Server-authoritative event — written immediately after the status flip.
     record_server_event(
-        supabase, attempt_id, user_id, ATTEMPT_SUBMITTED,
+        supabase, attempt_id, user_id, event_type,
         payload={
             "score_raw": round(score_raw, 2),
             "score_percentage": pct,
@@ -513,31 +527,72 @@ def submit_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "total_wrong": total_wrong,
             "total_unattempted": total_unattempted,
         },
-        occurred_at=now_iso,
+        occurred_at=submitted_at,
     )
 
     # Compatibility row for existing Mocks.jsx analytics
     _emit_mock_tests_row(supabase, user_id, attempt, score_raw, max_score,
-                         total_correct, total_wrong, total_q, now_iso)
-
-    try:
-        attempt_analytics.compute_and_persist(supabase, attempt_id)
-        _clear_derivation_retry(supabase, attempt_id)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("derivation failed attempt=%s", attempt_id, exc_info=exc)
-        schedule_derivation_retry(supabase, attempt_id, str(exc))
+                         total_correct, total_wrong, total_q, submitted_at)
 
     updated_attempt = {
         **attempt,
         "status": "submitted",
-        "submitted_at": now_iso,
+        "submitted_at": submitted_at,
         "score_raw": round(score_raw, 2),
         "score_percentage": pct,
         "total_correct": total_correct,
         "total_wrong": total_wrong,
         "total_unattempted": total_unattempted,
     }
+    return updated_attempt, responses, updates
+
+
+def submit_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
+    """Score and finalise the attempt. Idempotent — second call returns same result."""
+    attempt = _fetch_attempt(supabase, user_id, attempt_id)
+
+    if attempt["status"] == "submitted":
+        return _build_result(supabase, attempt)
+
+    if attempt["status"] != "in_progress":
+        raise ValueError("attempt is not in progress")
+
+    now_iso = _now_iso()
+    updated_attempt, responses, updates = _finalize_submission(
+        supabase, attempt, user_id, submitted_at=now_iso, event_type=ATTEMPT_SUBMITTED,
+    )
+
+    try:
+        attempt_analytics.compute_and_persist(supabase, attempt_id)
+        _complete_job(supabase, JOB_ANALYTICS_RETRY, attempt_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("derivation failed attempt=%s", attempt_id, exc_info=exc)
+        schedule_job(supabase, JOB_ANALYTICS_RETRY, attempt_id, last_error=str(exc))
+
     return _build_result(supabase, updated_attempt, responses=responses, updates=updates)
+
+
+def auto_submit_attempt(supabase: Any, attempt_id: str) -> dict:
+    """Submit an expired in-progress attempt on the user's behalf (sweeper path).
+
+    Idempotent: a no-op once the attempt has left ``in_progress``. Stamps
+    ``submitted_at`` with the attempt's ``expires_at`` (the moment the window
+    actually closed, not the sweeper's wall clock) and emits
+    ``attempt.auto_submitted``. Derivation is scheduled as an ``analytics_retry``
+    job rather than run synchronously, so one slow derivation cannot stall the
+    sweep batch.
+    """
+    attempt = _fetch_attempt_by_id(supabase, attempt_id)
+    if attempt is None or attempt.get("status") != "in_progress":
+        return {"ok": True, "skipped": True}
+
+    submitted_at = attempt.get("expires_at") or _now_iso()
+    _finalize_submission(
+        supabase, attempt, attempt["user_id"],
+        submitted_at=submitted_at, event_type=ATTEMPT_AUTO_SUBMITTED,
+    )
+    schedule_job(supabase, JOB_ANALYTICS_RETRY, attempt_id)
+    return {"ok": True, "skipped": False, "submitted_at": submitted_at}
 
 
 def get_result(supabase: Any, user_id: str, attempt_id: str) -> dict:
@@ -563,6 +618,19 @@ def _fetch_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
     if not items:
         raise LookupError("attempt not found")
     return items[0]
+
+
+def _fetch_attempt_by_id(supabase: Any, attempt_id: str) -> dict | None:
+    """Fetch an attempt without an owner filter — for system/sweeper paths."""
+    rows = _safe(
+        lambda: supabase.table("mock_attempts")
+        .select("*")
+        .eq("id", attempt_id)
+        .limit(1)
+        .execute(),
+        default=None,
+    )
+    return (getattr(rows, "data", None) or [None])[0]
 
 
 def _time_remaining_sec(attempt: dict) -> int:
@@ -733,32 +801,187 @@ class ConflictError(Exception):
     pass
 
 
-def schedule_derivation_retry(supabase: Any, attempt_id: str, last_error: str) -> None:
-    rows = _safe(lambda: supabase.table("mock_attempt_derivation_retry").select("attempt_id,attempts").eq("attempt_id", attempt_id).limit(1).execute(), default=None)
-    item = (getattr(rows, "data", None) or [None])[0]
-    attempts = int((item or {}).get("attempts") or 0) + 1
-    next_retry_at = (_now() + timedelta(seconds=min(2 ** attempts, 300))).isoformat()
-    payload = {"attempt_id": attempt_id, "attempts": attempts, "last_error": last_error[:500], "next_retry_at": next_retry_at}
-    _safe(lambda: supabase.table("mock_attempt_derivation_retry").upsert(payload, on_conflict="attempt_id").execute(), default=None)
+# ── consolidated background jobs (PR-fix-3) ─────────────────────────────────────
+#
+# A single sweeper drains ``mock_attempt_jobs`` and dispatches by ``job_kind``.
+# Running two cron loops over the same DB would compete on locks and split
+# observability, so auto-submit and derivation retry share one loop. A new job
+# kind (e.g. ``mastery_retry``) only needs a branch in ``_run_job``.
+
+JOB_AUTO_SUBMIT = "auto_submit"
+JOB_ANALYTICS_RETRY = "analytics_retry"
+JOB_MASTERY_RETRY = "mastery_retry"
+
+_ACTIVE_JOB_STATUSES = ["pending", "running"]
 
 
-def _clear_derivation_retry(supabase: Any, attempt_id: str) -> None:
-    _safe(lambda: supabase.table("mock_attempt_derivation_retry").delete().eq("attempt_id", attempt_id).execute(), default=None)
+def _backoff_seconds(attempts: int) -> int:
+    return min(2 ** max(attempts, 1), 300)
 
 
-def run_derivation_retry_sweeper(supabase: Any, *, now: datetime | None = None, max_attempts: int = 5) -> int:
+def schedule_job(
+    supabase: Any,
+    job_kind: str,
+    attempt_id: str,
+    *,
+    scheduled_for: str | None = None,
+    last_error: str | None = None,
+) -> None:
+    """Enqueue (or reschedule) an active job for an attempt.
+
+    Idempotent against the partial unique index on (job_kind, attempt_id) for
+    pending/running rows: if an active job already exists it is reset to pending
+    with a fresh schedule rather than duplicated.
+    """
+    existing = _safe(
+        lambda: supabase.table("mock_attempt_jobs")
+        .select("id,attempts")
+        .eq("job_kind", job_kind)
+        .eq("attempt_id", attempt_id)
+        .in_("status", _ACTIVE_JOB_STATUSES)
+        .limit(1)
+        .execute(),
+        default=None,
+    )
+    item = (getattr(existing, "data", None) or [None])[0]
+    now_iso = scheduled_for or _now_iso()
+    if item:
+        patch = {"status": "pending", "scheduled_for": now_iso, "updated_at": _now_iso()}
+        if last_error is not None:
+            patch["last_error"] = last_error[:500]
+        _safe(lambda: supabase.table("mock_attempt_jobs").update(patch).eq("id", item["id"]).execute(), default=None)
+    else:
+        payload = {
+            "job_kind": job_kind,
+            "attempt_id": attempt_id,
+            "scheduled_for": now_iso,
+            "attempts": 0,
+            "status": "pending",
+            "last_error": last_error[:500] if last_error else None,
+        }
+        _safe(lambda: supabase.table("mock_attempt_jobs").insert(payload).execute(), default=None)
+
+
+def _complete_job(supabase: Any, job_kind: str, attempt_id: str) -> None:
+    """Mark any active job for (job_kind, attempt) done — keeps the row for audit."""
+    _safe(
+        lambda: supabase.table("mock_attempt_jobs")
+        .update({"status": "done", "last_error": None, "updated_at": _now_iso()})
+        .eq("job_kind", job_kind)
+        .eq("attempt_id", attempt_id)
+        .in_("status", _ACTIVE_JOB_STATUSES)
+        .execute(),
+        default=None,
+    )
+
+
+def _mark_running(supabase: Any, job: dict, now: datetime) -> int:
+    """Claim a job: bump attempts (bounds crash loops) and flag it running."""
+    attempts = int(job.get("attempts") or 0) + 1
+    _safe(
+        lambda: supabase.table("mock_attempt_jobs")
+        .update({"status": "running", "attempts": attempts, "updated_at": now.isoformat()})
+        .eq("id", job["id"])
+        .execute(),
+        default=None,
+    )
+    return attempts
+
+
+def _reschedule_job(supabase: Any, job: dict, attempts: int, last_error: str, now: datetime) -> None:
+    next_at = (now + timedelta(seconds=_backoff_seconds(attempts))).isoformat()
+    _safe(
+        lambda: supabase.table("mock_attempt_jobs")
+        .update({"status": "pending", "scheduled_for": next_at, "last_error": last_error[:500], "updated_at": now.isoformat()})
+        .eq("id", job["id"])
+        .execute(),
+        default=None,
+    )
+
+
+def _fail_job(supabase: Any, job: dict, last_error: str, now: datetime) -> None:
+    _safe(
+        lambda: supabase.table("mock_attempt_jobs")
+        .update({"status": "failed", "last_error": last_error[:500], "updated_at": now.isoformat()})
+        .eq("id", job["id"])
+        .execute(),
+        default=None,
+    )
+
+
+def _run_job(supabase: Any, job: dict) -> None:
+    """Dispatch a single job by kind. Raises on failure so the sweeper retries."""
+    kind = job.get("job_kind")
+    attempt_id = job.get("attempt_id")
+    if kind == JOB_AUTO_SUBMIT:
+        auto_submit_attempt(supabase, attempt_id)
+    elif kind == JOB_ANALYTICS_RETRY:
+        attempt_analytics.compute_and_persist(supabase, attempt_id)
+    else:
+        raise RuntimeError(f"unknown job_kind {kind!r}")
+
+
+def run_sweeper(
+    supabase: Any,
+    *,
+    now: datetime | None = None,
+    batch: int = 50,
+    max_attempts: int = 5,
+) -> dict:
+    """Single background loop for the mock engine.
+
+    Phase A enqueues auto-submit jobs for attempts whose window closed more than
+    60s ago. Phase B claims due jobs and dispatches them by kind. A crash between
+    claim and completion leaves the job ``running`` with ``scheduled_for`` in the
+    past, so the next cycle reclaims it; both job kinds are idempotent, so
+    reprocessing is safe and no orphan rows are produced.
+    """
     now = now or _now()
-    rows = _safe(lambda: supabase.table("mock_attempt_derivation_retry").select("*").lte("next_retry_at", now.isoformat()).execute(), default=None)
-    jobs = getattr(rows, "data", None) or []
-    processed = 0
-    for job in jobs:
+    counts = {"enqueued": 0, "auto_submitted": 0, "derivations": 0, "failed": 0, "errors": 0}
+
+    # Phase A — detect expired in-progress attempts, enqueue auto-submit jobs.
+    threshold = (now - timedelta(seconds=60)).isoformat()
+    expired = _safe(
+        lambda: supabase.table("mock_attempts")
+        .select("id")
+        .eq("status", "in_progress")
+        .lt("expires_at", threshold)
+        .limit(batch)
+        .execute(),
+        default=None,
+    )
+    for row in (getattr(expired, "data", None) or []):
+        schedule_job(supabase, JOB_AUTO_SUBMIT, row["id"], scheduled_for=now.isoformat())
+        counts["enqueued"] += 1
+
+    # Phase B — claim and run due jobs.
+    due = _safe(
+        lambda: supabase.table("mock_attempt_jobs")
+        .select("*")
+        .in_("status", _ACTIVE_JOB_STATUSES)
+        .lte("scheduled_for", now.isoformat())
+        .order("scheduled_for", desc=False)
+        .limit(batch)
+        .execute(),
+        default=None,
+    )
+    for job in (getattr(due, "data", None) or []):
         if int(job.get("attempts") or 0) >= max_attempts:
+            _fail_job(supabase, job, "max_attempts_exceeded", now)
+            counts["failed"] += 1
             continue
-        attempt_id = job.get("attempt_id")
+        attempts = _mark_running(supabase, job, now)
+        kind = job.get("job_kind")
         try:
-            attempt_analytics.compute_and_persist(supabase, attempt_id)
-            _clear_derivation_retry(supabase, attempt_id)
+            _run_job(supabase, job)
+            _complete_job(supabase, kind, job.get("attempt_id"))
+            if kind == JOB_AUTO_SUBMIT:
+                counts["auto_submitted"] += 1
+            elif kind == JOB_ANALYTICS_RETRY:
+                counts["derivations"] += 1
         except Exception as exc:  # noqa: BLE001
-            schedule_derivation_retry(supabase, attempt_id, str(exc))
-        processed += 1
-    return processed
+            logger.warning("sweeper job failed kind=%s attempt=%s: %s", kind, job.get("attempt_id"), exc)
+            _reschedule_job(supabase, job, attempts, str(exc), now)
+            counts["errors"] += 1
+
+    return counts

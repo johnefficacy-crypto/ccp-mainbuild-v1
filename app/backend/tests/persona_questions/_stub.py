@@ -1,6 +1,7 @@
 """Tiny in-memory Supabase stub shared across persona_questions tests."""
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 
@@ -37,8 +38,16 @@ class _Query:
         self.filters.append((key, "gte", val))
         return self
 
+    def gt(self, key, val):
+        self.filters.append((key, "gt", val))
+        return self
+
     def lte(self, key, val):
         self.filters.append((key, "lte", val))
+        return self
+
+    def lt(self, key, val):
+        self.filters.append((key, "lt", val))
         return self
 
     def is_(self, key, val):
@@ -97,7 +106,11 @@ class _Query:
                 return False
             if op == "gte" and not (cell is not None and cell >= val):
                 return False
+            if op == "gt" and not (cell is not None and cell > val):
+                return False
             if op == "lte" and not (cell is not None and cell <= val):
+                return False
+            if op == "lt" and not (cell is not None and cell < val):
                 return False
             if op == "in" and cell not in val:
                 return False
@@ -115,7 +128,7 @@ class _Query:
             inserted = []
             for p in payloads:
                 row = dict(p)
-                row.setdefault("id", f"row-{self.name}-{len(rows_store) + 1}")
+                row.setdefault("id", str(uuid.uuid4()))
                 rows_store.append(row)
                 inserted.append(row)
             return _Exec(inserted)
@@ -139,7 +152,7 @@ class _Query:
                     upserted.append(match)
                 else:
                     row = dict(p)
-                    row.setdefault("id", f"row-{self.name}-{len(rows_store) + 1}")
+                    row.setdefault("id", str(uuid.uuid4()))
                     rows_store.append(row)
                     upserted.append(row)
             return _Exec(upserted)
@@ -197,7 +210,48 @@ class SBStub:
             return _RpcCall(self._inc("community_resources", params.get("p_resource_id"), "upvote_count", params.get("p_delta", 0), floor_at_zero=True))
         if name == "community_inc_resource_report_count":
             return _RpcCall(self._inc("community_resources", params.get("p_resource_id"), "report_count", params.get("p_delta", 0), floor_at_zero=True))
+        if name == "apply_mock_mastery_delta":
+            return _RpcCall(self._apply_mock_mastery_delta(params))
         return _RpcCall(None)
+
+    def _apply_mock_mastery_delta(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Emulate the atomic, idempotent mastery-apply function (migration 145).
+
+        Mirrors the PL/pgSQL: skip when an audit row already exists for
+        (user, topic, attempt); otherwise read mastery (default 50), apply the
+        [0,100] clamp, write mastery, and append the audit row.
+        """
+        import uuid as _uuid
+
+        user_id = params.get("p_user_id")
+        topic_id = params.get("p_topic_id")
+        attempt_id = params.get("p_attempt_id")
+        delta_db = float(params.get("p_delta_db") or 0)
+        reason = params.get("p_reason") or "mock_submit"
+
+        audit = self.db.setdefault("user_topic_mastery_audit", [])
+        for r in audit:
+            if r.get("user_id") == user_id and r.get("topic_id") == topic_id and r.get("attempt_id") == attempt_id:
+                return {"applied": False, "reason": "already_applied"}
+
+        mastery = self.db.setdefault("user_topic_mastery", [])
+        row = None
+        for r in mastery:
+            if r.get("user_id") == user_id and r.get("topic_id") == topic_id and not r.get("exam_id") and not r.get("exam_phase_id"):
+                row = r
+                break
+        current = float(row.get("mastery_score")) if row is not None and row.get("mastery_score") is not None else 50.0
+        new_value = max(0.0, min(100.0, current + delta_db))
+        if row is None:
+            mastery.append({"id": str(_uuid.uuid4()), "user_id": user_id, "topic_id": topic_id, "mastery_score": new_value})
+        else:
+            row["mastery_score"] = new_value
+
+        audit.append({
+            "id": str(_uuid.uuid4()), "user_id": user_id, "topic_id": topic_id, "attempt_id": attempt_id,
+            "before_mastery_db": current, "after_mastery_db": new_value, "delta_applied_db": delta_db, "reason": reason,
+        })
+        return {"applied": True, "before": current, "after": new_value, "delta": delta_db}
 
     def _inc(self, table: str, row_id: Any, col: str, delta: int, floor_at_zero: bool = False) -> int | None:
         for r in self.db.get(table, []):
