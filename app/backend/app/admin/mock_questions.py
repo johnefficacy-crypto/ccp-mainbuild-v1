@@ -69,10 +69,16 @@ def compute_fingerprint(question_text: str, options: list[dict], correct_option_
     sorted_opts = sorted(options, key=lambda o: (o.get("option_text") or "").lower())
     opts_text = "|".join((o.get("option_text") or "").strip() for o in sorted_opts)
 
-    # Correct option index in the sorted list
+    # Correct option index in the sorted list.
+    # When correct_option_id is None, fall back to the is_correct flag so
+    # callers can compute a pre-insertion fingerprint without DB ids.
     correct_idx = ""
     for i, o in enumerate(sorted_opts):
-        if o.get("id") == correct_option_id:
+        if correct_option_id is not None:
+            if o.get("id") == correct_option_id:
+                correct_idx = str(i)
+                break
+        elif o.get("is_correct"):
             correct_idx = str(i)
             break
 
@@ -307,11 +313,26 @@ def update_question(supabase: Any, actor: dict, question_id: str, data: dict,
     if options_raw is not None:
         if len(options_raw) < 2:
             raise ValueError("at least 2 options required")
-        correct_opts = [o for o in options_raw if o.get("is_correct")]
-        if not correct_opts:
+        if not any(o.get("is_correct") for o in options_raw):
             raise ValueError("exactly one correct option required")
 
-        # Replace options
+    # Compute proposed fingerprint and check for collision BEFORE mutating
+    # options — prevents leaving the question in an inconsistent state if a
+    # duplicate edit is rejected.
+    q_text = updates.get("question_text") or q["question_text"]
+    if options_raw is not None:
+        # Pass correct_option_id=None so compute_fingerprint uses is_correct flag
+        fp = compute_fingerprint(q_text, options_raw, None)
+    else:
+        correct_opt_existing = next((o for o in opts if o.get("is_correct")), None)
+        fp = compute_fingerprint(q_text, opts, correct_opt_existing["id"] if correct_opt_existing else q.get("correct_option_id"))
+
+    existing_fp = supabase.table("mock_question_bank").select("id").eq("question_fingerprint", fp).neq("id", question_id).limit(1).execute().data or []
+    if existing_fp and not (is_publisher and override_fingerprint):
+        raise ConflictError(f"fingerprint collision with question {existing_fp[0]['id']}")
+
+    if options_raw is not None:
+        # Replace options (safe now that collision check passed)
         supabase.table("mock_question_options").delete().eq("question_id", question_id).execute()
         new_opt_rows = []
         for idx, opt in enumerate(options_raw):
@@ -323,17 +344,13 @@ def update_question(supabase: Any, actor: dict, question_id: str, data: dict,
             })
         supabase.table("mock_question_options").insert(new_opt_rows).execute()
         opts = _fetch_options(supabase, question_id)
-
-    # Recompute fingerprint
-    q_text = updates.get("question_text") or q["question_text"]
-    correct_opt = next((o for o in opts if o.get("is_correct")), None)
-    correct_option_id = correct_opt["id"] if correct_opt else q.get("correct_option_id")
-    fp = compute_fingerprint(q_text, opts, correct_option_id)
-
-    # Check for fingerprint collision (unless publisher is overriding)
-    existing_fp = supabase.table("mock_question_bank").select("id").eq("question_fingerprint", fp).neq("id", question_id).limit(1).execute().data or []
-    if existing_fp and not (is_publisher and override_fingerprint):
-        raise ConflictError(f"fingerprint collision with question {existing_fp[0]['id']}")
+        # Recompute with actual DB ids for correct_option_id storage
+        correct_opt = next((o for o in opts if o.get("is_correct")), None)
+        correct_option_id = correct_opt["id"] if correct_opt else None
+        fp = compute_fingerprint(q_text, opts, correct_option_id)
+    else:
+        correct_opt = next((o for o in opts if o.get("is_correct")), None)
+        correct_option_id = correct_opt["id"] if correct_opt else q.get("correct_option_id")
 
     updates["question_fingerprint"] = fp
     updates["correct_option_id"] = correct_option_id

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "../../../lib/api";
+import { api, apiFetch } from "../../../lib/api";
 import { ArrowLeft, Upload, CheckCircle, AlertTriangle, XCircle, ArrowRight } from "lucide-react";
 
 // ---------- styles ----------
@@ -96,20 +96,10 @@ export default function ImportWizard() {
     if (examId.trim()) formData.append("exam_id_override", examId.trim());
 
     try {
-      // api.post may not support FormData; fall back to fetch directly
-      const res = await fetch("/api/admin/mocks/questions/import/dry-run", {
+      const data = await apiFetch("/api/admin/mocks/questions/import/dry-run", {
         method: "POST",
         body: formData,
-        headers: { Authorization: api._authHeader?.() }.Authorization
-          ? { Authorization: api._authHeader() }
-          : undefined,
-        credentials: "include",
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.detail || `HTTP ${res.status}`);
-      }
-      const data = await res.json();
       setDryRunData(data);
       setStep(1);
     } catch (e) {

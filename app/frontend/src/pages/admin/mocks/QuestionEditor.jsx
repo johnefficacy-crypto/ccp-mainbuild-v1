@@ -188,7 +188,7 @@ export default function QuestionEditor() {
       language:         form.language,
       is_conceptual:    form.is_conceptual,
       is_factual:       form.is_factual,
-      is_current_event: form.is_current_event,
+      is_current: form.is_current_event,
       valid_from:       form.valid_from  || null,
       valid_until:      form.valid_until || null,
       options:          form.options.filter((o) => o.option_text.trim()),
@@ -221,7 +221,7 @@ export default function QuestionEditor() {
     setTransitioning(action);
     setError(null);
     try {
-      await api.post(`/api/admin/mocks/${id}/${ACTION_ENDPOINT[action]}`, { notes: notes || "" });
+      await api.post(`/api/admin/mocks/questions/${id}/${ACTION_ENDPOINT[action]}`, { notes: notes || "" });
       const q = await api.get(`/api/admin/mocks/questions/${id}`);
       setQStatus(q.reviewer_status);
       setReviewLog(q.review_log || []);
