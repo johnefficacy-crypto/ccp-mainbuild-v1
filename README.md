@@ -118,3 +118,10 @@ For migration-by-migration details, see `docs/migrations.md`.
 - Step 6: Optimize queue queries — **completed in this change**.
 - Step 7: Security and permissions — **completed in this change**.
 - Optional event-driven architecture: **not started in this change**.
+
+## Frontend prototype build gate
+
+Prototype routes are build-gated by `REACT_APP_ENABLE_PROTOTYPE`:
+
+- `REACT_APP_ENABLE_PROTOTYPE=false` (recommended for production) excludes `/prototype/*` route code from the build, so prototype modules are removed from shipped bundles.
+- `REACT_APP_ENABLE_PROTOTYPE=true` keeps prototype routes available and lazy-loads them as on-demand chunks.
