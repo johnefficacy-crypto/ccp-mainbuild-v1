@@ -8,7 +8,7 @@ import TopicCoveragePreview from "../../features/admin/exam-intelligence/TopicCo
 import CompetitionMetricsTable from "../../features/admin/exam-intelligence/CompetitionMetricsTable";
 import PolicyUpdatesTable from "../../features/admin/exam-intelligence/PolicyUpdatesTable";
 import PlanImpactPreview from "../../features/admin/exam-intelligence/PlanImpactPreview";
-import { AdminSafetyBanner } from "../../shared/ui";
+import { AdminSafetyBanner } from "../../shared/ui/core";
 import { Drawer, PageHeader, StatusDot } from "../../shared/ui/studyos";
 
 const TABS = [

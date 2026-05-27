@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { StatusBadge } from "../../../shared/ui";
+import { StatusBadge } from "../../../shared/ui/core";
 
 function labelForType(t) {
   const m = { continue_application: "Application", submit_form: "Application", complete_profile: "Profile", study_backlog_recovery: "Study", apply_deadline_urgent: "Deadline", weekly_review_ready: "Weekly Review", monitor_result: "Result Monitoring", prepare_after_submission: "Study" };

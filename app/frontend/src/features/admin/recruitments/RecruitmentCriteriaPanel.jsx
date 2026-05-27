@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { api } from "../../../lib/api";
-import { DateField } from "../../../shared/ui";
+import { DateField } from "../../../shared/ui/heavy";
 
 const QUALIFICATION_LEVELS = ["10th", "12th", "diploma", "graduate", "postgraduate", "phd"];
 

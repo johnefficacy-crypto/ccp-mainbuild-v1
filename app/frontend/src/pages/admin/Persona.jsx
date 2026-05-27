@@ -8,7 +8,7 @@ import PersonaSnapshotTable from "../../features/admin/persona/PersonaSnapshotTa
 import PersonaUserInspector from "../../features/admin/persona/PersonaUserInspector";
 import PersonaQueueTable from "../../features/admin/persona/PersonaQueueTable";
 import PersonaSignalEventsTable from "../../features/admin/persona/PersonaSignalEventsTable";
-import { AdminSafetyBanner } from "../../shared/ui";
+import { AdminSafetyBanner } from "../../shared/ui/core";
 import { PageHeader, StatusDot } from "../../shared/ui/studyos";
 
 const TABS = [

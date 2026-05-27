@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckboxField, SelectField } from "../../../shared/ui";
+import { CheckboxField, SelectField } from "../../../shared/ui/core";
 
 export default function FilterToolbar({ filters, onChange, onReset }) {
   const set = (key, value) => onChange({ ...filters, [key]: value });

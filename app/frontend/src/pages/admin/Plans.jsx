@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ListFilter, Pencil, Plus, Power, RefreshCw, Save, Search, X } from "lucide-react";
 import { api } from "../../lib/api";
-import { EmptyState, ErrorState, StatusBadge, useToast } from "../../shared/ui";
+import { EmptyState, ErrorState, StatusBadge, useToast } from "../../shared/ui/core";
 
 const EMPTY = {
   id: "",

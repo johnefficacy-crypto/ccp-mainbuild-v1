@@ -6,7 +6,7 @@ import ScrapeRunDetailDrawer from "../../features/admin/scraping/ScrapeRunDetail
 import InlineAuditTimeline from "../../features/admin/shared/InlineAuditTimeline";
 import { NEXT_ACTION_MESSAGES, SOURCE_TYPE_LABELS } from "../../features/admin/workflow/adminWorkflowContract";
 import { useFocusTrap } from "../../shared/a11y/useFocusTrap";
-import { EmptyState, LoadingSkeleton, StatusBadge, useToast } from "../../shared/ui";
+import { EmptyState, LoadingSkeleton, StatusBadge, useToast } from "../../shared/ui/core";
 import { formatScorePct } from "../../features/admin/workflow/scoreUtils";
 
 function shortId(value) {

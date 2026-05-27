@@ -1,5 +1,5 @@
 import React from "react";
-import { StatusBadge } from "../../../shared/ui";
+import { StatusBadge } from "../../../shared/ui/core";
 
 export default function SourceHealthBadge({ source }) {
   const failed = (source.consecutive_fails || 0) > 0 || !!source.last_error;

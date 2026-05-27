@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Search, RefreshCw } from "lucide-react";
 import { api } from "../../../lib/api";
-import { JsonPreview } from "../../../shared/ui";
+import { JsonPreview } from "../../../shared/ui/core";
 import PersonaStudyPolicyPreview from "./PersonaStudyPolicyPreview";
 import PersonaEvidenceDrawer from "./PersonaEvidenceDrawer";
 import { Eyebrow, Pill, StudyCard, MiniBar } from "../../../shared/ui/studyos";

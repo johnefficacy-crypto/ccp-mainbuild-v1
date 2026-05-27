@@ -1,6 +1,6 @@
 import React from "react";
 import { useFormContext } from "react-hook-form";
-import { InputField, SelectField } from "../../../shared/ui";
+import { InputField, SelectField } from "../../../shared/ui/core";
 import { EDUCATION_LEVEL_OPTIONS, MARKS_TYPE_OPTIONS } from "../../../lib/profileFields";
 
 export default function EducationStep({ showErrors }) {

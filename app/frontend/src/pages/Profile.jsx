@@ -17,7 +17,7 @@ import ExamAttemptsSection from "../features/profile/components/ExamAttemptsSect
 import CompletionSidebar from "../features/profile/components/CompletionSidebar";
 import PersonaSummaryCard from "../features/profile/components/PersonaSummaryCard";
 import { profileSchema, toProfilePayload } from "../features/profile/profileSchema";
-import { ErrorState, LoadingSkeleton } from "../shared/ui";
+import { ErrorState, LoadingSkeleton } from "../shared/ui/core";
 
 const FIELD_TO_SECTION = {
   name: "identity",

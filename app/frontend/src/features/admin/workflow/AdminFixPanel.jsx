@@ -11,7 +11,7 @@ import RecruitmentCriteriaPanel from "../recruitments/RecruitmentCriteriaPanel";
 import RecruitmentBlockerFixForm from "../recruitments/RecruitmentBlockerFixForm";
 import { HIGH_RISK_QUEUE_FIELDS, RECOMMENDED_REVIEW_FIELDS } from "./adminWorkflowContract";
 import { scoreToPct, isLowQuality } from "./scoreUtils";
-import { useToast } from "../../../shared/ui";
+import { useToast } from "../../../shared/ui/core";
 
 // Scroll a field-row anchor into view + briefly highlight it. The
 // PromotionPreviewPanel blocker pills and the inline error callouts
