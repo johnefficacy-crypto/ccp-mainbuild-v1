@@ -48,46 +48,63 @@ create policy "mqg_admin_all"
 
 -- 2a. Change reviewer_status from enum to text
 --     Existing enum values: draft → draft, reviewed → published, locked → published
-do $$
-begin
-  -- Drop default so we can alter the column type freely
-  alter table public.mock_question_bank alter column reviewer_status drop default;
+-- Drop policies that depend on reviewer_status before changing column type.
+drop policy if exists "mock_question_bank_read_reviewed" on public.mock_question_bank;
+drop policy if exists "mock_question_bank_read_published" on public.mock_question_bank;
+drop policy if exists "mock_question_bank_admin_all" on public.mock_question_bank;
 
-  -- Cast enum → text. Postgres allows this via USING.
-  alter table public.mock_question_bank
-    alter column reviewer_status type text
-    using reviewer_status::text;
+-- Defensive: old/pre-existing remote table may not have this column.
+alter table public.mock_question_bank
+  add column if not exists reviewer_status text not null default 'draft';
 
-  -- Backfill old enum values to new status labels
-  update public.mock_question_bank
-    set reviewer_status = 'published'
-    where reviewer_status in ('reviewed', 'locked');
+-- Convert enum/text safely.
+alter table public.mock_question_bank
+  alter column reviewer_status drop default;
 
-  -- Ensure any stale values get a safe default
-  update public.mock_question_bank
-    set reviewer_status = 'draft'
-    where reviewer_status not in ('draft','in_review','needs_changes','verified','published','archived');
+alter table public.mock_question_bank
+  alter column reviewer_status type text
+  using reviewer_status::text;
 
-  -- Set new default
-  alter table public.mock_question_bank
-    alter column reviewer_status set default 'draft';
+update public.mock_question_bank
+  set reviewer_status = 'published'
+  where reviewer_status in ('reviewed', 'locked');
 
-exception when others then
-  -- Column may already be text (re-run scenario); skip
-  null;
-end $$;
+update public.mock_question_bank
+  set reviewer_status = 'draft'
+  where reviewer_status not in (
+    'draft',
+    'in_review',
+    'needs_changes',
+    'verified',
+    'published',
+    'archived'
+  );
 
--- Drop the old enum type if it still exists (idempotent)
-drop type if exists mock_reviewer_status cascade;
+alter table public.mock_question_bank
+  alter column reviewer_status set default 'draft';
+
+alter table public.mock_question_bank
+  alter column reviewer_status set not null;
+
+-- Do NOT use cascade here.
+drop type if exists mock_reviewer_status;
 
 -- 2b. Add check constraint (idempotent guard)
-do $$
-begin
-  alter table public.mock_question_bank
-    add constraint mock_question_bank_reviewer_status_check
-    check (reviewer_status in ('draft','in_review','needs_changes','verified','published','archived'));
-exception when duplicate_object then null;
-end $$;
+alter table public.mock_question_bank
+  drop constraint if exists mock_question_bank_reviewer_status_check;
+
+alter table public.mock_question_bank
+  add constraint mock_question_bank_reviewer_status_check
+  check (
+    reviewer_status in (
+      'draft',
+      'in_review',
+      'needs_changes',
+      'verified',
+      'published',
+      'archived'
+    )
+  );
 
 -- 2c. difficulty constraint — update 'difficult' → 'hard', tighten constraint
 update public.mock_question_bank set difficulty = 'hard' where difficulty = 'difficult';

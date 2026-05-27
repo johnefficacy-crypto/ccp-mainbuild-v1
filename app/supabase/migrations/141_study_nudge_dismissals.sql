@@ -1,4 +1,4 @@
--- 136_study_nudge_dismissals.sql
+-- 141_study_nudge_dismissals.sql
 -- Per-user dismissal log for Study OS Home nudges.
 -- One row per (user_id, nudge_code). The mission_control payload reads
 -- this table and hides the nudge for a fixed TTL after dismissed_at, so
