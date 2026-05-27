@@ -236,9 +236,20 @@ export default function MockAttemptShell() {
     setSubmitting(true);
     clearInterval(timerRef.current);
     try {
-      await api.post(`/api/study/mocks/attempts/${attemptId}/submit`, {});
+      const { syncStates } = answerSync;
+      const answeredCount = Object.entries(syncStates).filter(
+        ([, e]) => e?.state === "saved" && responses[e?.question_id]?.selected_option_id != null
+      ).length;
+      await api.post(`/api/study/mocks/attempts/${attemptId}/submit`, {
+        claimed_answered_count: answeredCount || null,
+      });
       navigate(`/app/study/mocks/attempts/${attemptId}/result`, { replace: true });
     } catch (e) {
+      if (e?.status === 409) {
+        alert("Some answers didn't save. Refreshing to show current state.");
+        window.location.reload();
+        return;
+      }
       if (!isAuto) alert(e?.message || "Submission failed. Please try again.");
       setSubmitting(false);
     }

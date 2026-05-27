@@ -489,15 +489,28 @@ def save_answer(
         "updated_at": _now_iso(),
     }
 
-    _safe(
-        lambda: supabase.table("mock_attempt_responses")
-        .update(payload)
-        .eq("attempt_id", attempt_id)
-        .eq("question_id", question_id)
-        .execute(),
-        default=None,
-    )
+    try:
+        result = (
+            supabase.table("mock_attempt_responses")
+            .update(payload)
+            .eq("attempt_id", attempt_id)
+            .eq("question_id", question_id)
+            .execute()
+        )
+    except Exception as exc:
+        raise AnswerPersistenceError(
+            f"DB write rejected for attempt={attempt_id} question={question_id}: {exc}"
+        ) from exc
+    updated_rows = getattr(result, "data", None) or []
+    if not updated_rows:
+        raise AnswerPersistenceError(
+            f"answer update affected 0 rows: attempt={attempt_id} question={question_id}"
+        )
 
+    # INVARIANT: events are telemetry, not source of truth.
+    # mock_attempt_responses.selected_option_id is the only authority for scoring.
+    # Never record QUESTION_ANSWERED before the response row update is confirmed.
+    # See docs/mock_engine/attempt_save_semantics.md.
     record_server_event(
         supabase, attempt_id, user_id, QUESTION_ANSWERED,
         payload={
@@ -638,7 +651,12 @@ def _finalize_submission(
     return updated_attempt, responses, updates
 
 
-def submit_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
+def submit_attempt(
+    supabase: Any,
+    user_id: str,
+    attempt_id: str,
+    claimed_answered_count: int | None = None,
+) -> dict:
     """Score and finalise the attempt. Idempotent — second call returns same result."""
     attempt = _fetch_attempt(supabase, user_id, attempt_id)
 
@@ -647,6 +665,24 @@ def submit_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
 
     if attempt["status"] != "in_progress":
         raise ValueError("attempt is not in progress")
+
+    if claimed_answered_count is not None:
+        resp_rows = _safe(
+            lambda: supabase.table("mock_attempt_responses")
+            .select("selected_option_id")
+            .eq("attempt_id", attempt_id)
+            .execute(),
+            default=None,
+        )
+        db_answered = sum(
+            1 for r in (getattr(resp_rows, "data", None) or [])
+            if r.get("selected_option_id") is not None
+        )
+        if claimed_answered_count > db_answered:
+            raise SubmitConsistencyError(
+                f"client claims {claimed_answered_count} answered, "
+                f"DB has {db_answered}; refusing to submit"
+            )
 
     now_iso = _now_iso()
     updated_attempt, responses, updates = _finalize_submission(
@@ -903,6 +939,14 @@ def _emit_mock_tests_row(
 
 
 class ConflictError(Exception):
+    pass
+
+
+class AnswerPersistenceError(RuntimeError):
+    pass
+
+
+class SubmitConsistencyError(RuntimeError):
     pass
 
 

@@ -46,10 +46,12 @@ expired) or section-locked — these are real errors and surface immediately as
 
 The sequence number is minted **once per logical save** (when the debounce
 fires), not per attempt, and frozen onto the payload so every retry — automatic
-or manual — replays the **same** `client_seq`. It is generated as
-`max(prev + 1, Date.now())`: monotonic within a session and reload-safe, so a
-fresh component after a page reload never emits a seq the server rejects as
-stale.
+or manual — replays the **same** `client_seq`. It is a strictly incrementing
+integer starting at 0, guaranteed to be well within the Postgres `int4` range
+(max 2,147,483,647). It is never seeded from `Date.now()`, `performance.now()`,
+or any timestamp source — a per-session counter suffices because the server's
+idempotency guard needs only strict ordering within an attempt, not global
+uniqueness across sessions.
 
 ## Server idempotency
 
@@ -92,6 +94,34 @@ saves.
 Failures and retries are recorded through the PR2b event bus as client events
 `answer.save_failed` and `answer.save_retried`, flushed to
 `POST /attempts/:id/events` and stored server-side for observability.
+
+## Source of truth invariant
+
+**Scoring reads exclusively from `mock_attempt_responses.selected_option_id`.**
+The `mock_attempt_events` table is telemetry — useful for diagnostics,
+dwell-time analytics, and anti-cheat signals, but never for reconstructing
+answers. The `QUESTION_ANSWERED` event is only recorded **after** the response
+row update is confirmed to have affected at least one row. If the DB write
+fails, the event is never emitted and the endpoint returns 503.
+
+Any future code that attempts to scan events to "recover" missing answers
+violates this invariant and should be rejected in review. Likewise, any
+wrapper that swallows a failed DB write and continues to emit an event
+reintroduces the silent-failure pattern this invariant is designed to prevent.
+
+## Submit consistency check
+
+On submit, the client sends `claimed_answered_count` — the number of questions
+whose sync state is `saved` with a non-null `selected_option_id`. The server
+compares this against the DB row count. If the client claims more answered
+questions than the DB has, the server returns 409 Conflict with body
+`{error: "client_server_mismatch"}`. The frontend then reloads attempt state
+so the user sees the server's authoritative view before deciding whether to
+submit.
+
+This is defense in depth. Fix 2's strict write means the DB is always correct
+if the write path works. The submit check catches regressions where a silent
+failure path is reintroduced.
 
 ## Non-goals
 
