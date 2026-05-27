@@ -402,3 +402,22 @@ def test_scoring_correct_wrong_unattempted():
     assert result["total_wrong"] == 1
     assert result["total_unattempted"] == len(questions) - 2
     assert abs(result["score_raw"] - (1.0 - 0.25)) < 0.01
+
+
+def test_submit_derivation_failure_does_not_block(monkeypatch):
+    sb, _, questions = _seeded_db()
+    start_result = svc.start_attempt(sb, "user-1", "test-mock-1")
+    attempt_id = start_result["attempt_id"]
+    monkeypatch.setattr(svc.attempt_analytics, "compute_and_persist", lambda *_: (_ for _ in ()).throw(RuntimeError("boom")))
+    out = svc.submit_attempt(sb, "user-1", attempt_id)
+    assert out["status"] == "submitted"
+
+
+def test_get_review_endpoint_shape():
+    sb, _, _ = _seeded_db()
+    start = svc.start_attempt(sb, "user-1", "test-mock-1")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+    review = svc.get_review(sb, "user-1", attempt_id)
+    assert review["attempt_id"] == attempt_id
+    assert isinstance(review["questions"], list)

@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.study_os.attempt_events import record_server_event
+from app.study_os.attempt_analytics import service as attempt_analytics
 from app.study_os.attempt_event_types import (
     ATTEMPT_STARTED,
     ATTEMPT_SUBMITTED,
@@ -519,6 +520,13 @@ def submit_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
     _emit_mock_tests_row(supabase, user_id, attempt, score_raw, max_score,
                          total_correct, total_wrong, total_q, now_iso)
 
+    try:
+        attempt_analytics.compute_and_persist(supabase, attempt_id)
+        _clear_derivation_retry(supabase, attempt_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("derivation failed attempt=%s", attempt_id, exc_info=exc)
+        schedule_derivation_retry(supabase, attempt_id, str(exc))
+
     updated_attempt = {
         **attempt,
         "status": "submitted",
@@ -630,18 +638,60 @@ def _build_result(
             "explanation": snap.get("explanation"),
         })
 
+    summary_rows = _safe(lambda: supabase.table("mock_attempt_summary").select("*").eq("attempt_id", attempt["id"]).limit(1).execute(), default=None)
+    summary = (getattr(summary_rows, "data", None) or [None])[0]
+    section_rows = _safe(lambda: supabase.table("mock_attempt_section_breakdown").select("*").eq("attempt_id", attempt["id"]).order("section_index").execute(), default=None)
     return {
         "attempt_id": attempt["id"],
         "status": attempt.get("status"),
         "submitted_at": attempt.get("submitted_at"),
-        "score_raw": attempt.get("score_raw"),
-        "score_percentage": attempt.get("score_percentage"),
-        "total_correct": attempt.get("total_correct"),
-        "total_wrong": attempt.get("total_wrong"),
-        "total_unattempted": attempt.get("total_unattempted"),
+        "score_raw": (summary or {}).get("score_raw", attempt.get("score_raw")),
+        "score_percentage": (summary or {}).get("score_percentage", attempt.get("score_percentage")),
+        "total_correct": (summary or {}).get("total_correct", attempt.get("total_correct")),
+        "total_wrong": (summary or {}).get("total_wrong", attempt.get("total_wrong")),
+        "total_unattempted": (summary or {}).get("total_unattempted", attempt.get("total_unattempted")),
+        "section_breakdown": getattr(section_rows, "data", None) or [],
         "per_question": per_question,
     }
 
+
+
+
+def get_analytics(supabase: Any, user_id: str, attempt_id: str) -> dict:
+    attempt = _fetch_attempt(supabase, user_id, attempt_id)
+    if attempt.get("status") != "submitted":
+        raise ValueError("attempt not yet submitted")
+    topics = _safe(lambda: supabase.table("mock_attempt_topic_breakdown").select("*").eq("attempt_id", attempt_id).execute(), default=None)
+    classes = _safe(lambda: supabase.table("mock_attempt_response_classification").select("*").eq("attempt_id", attempt_id).execute(), default=None)
+    summary_rows = _safe(lambda: supabase.table("mock_attempt_summary").select("analytics_quality").eq("attempt_id", attempt_id).limit(1).execute(), default=None)
+    return {
+        "attempt_id": attempt_id,
+        "topic_breakdown": getattr(topics, "data", None) or [],
+        "response_classification": getattr(classes, "data", None) or [],
+        "analytics_quality": ((getattr(summary_rows, "data", None) or [{}])[0]).get("analytics_quality") or {},
+    }
+
+
+def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
+    attempt = _fetch_attempt(supabase, user_id, attempt_id)
+    if attempt.get("status") != "submitted":
+        raise ValueError("attempt not yet submitted")
+    resp_rows = _safe(lambda: supabase.table("mock_attempt_responses").select("*").eq("attempt_id", attempt_id).execute(), default=None)
+    cls_rows = _safe(lambda: supabase.table("mock_attempt_response_classification").select("question_id,error_type").eq("attempt_id", attempt_id).execute(), default=None)
+    cls = {r.get("question_id"): r.get("error_type") for r in (getattr(cls_rows, "data", None) or [])}
+    questions = []
+    for r in (getattr(resp_rows, "data", None) or []):
+        snap = r.get("question_snapshot") or {}
+        questions.append({
+            "question_id": r.get("question_id"),
+            "question_snapshot": snap,
+            "selected_option_id": r.get("selected_option_id"),
+            "is_correct": r.get("is_correct"),
+            "error_type": cls.get(r.get("question_id")),
+            "explanation": snap.get("explanation"),
+            "time_spent_sec": int(r.get("time_spent_sec") or 0),
+        })
+    return {"attempt_id": attempt_id, "questions": questions}
 
 def _emit_mock_tests_row(
     supabase: Any,
@@ -681,3 +731,34 @@ def _emit_mock_tests_row(
 
 class ConflictError(Exception):
     pass
+
+
+def schedule_derivation_retry(supabase: Any, attempt_id: str, last_error: str) -> None:
+    rows = _safe(lambda: supabase.table("mock_attempt_derivation_retry").select("attempt_id,attempts").eq("attempt_id", attempt_id).limit(1).execute(), default=None)
+    item = (getattr(rows, "data", None) or [None])[0]
+    attempts = int((item or {}).get("attempts") or 0) + 1
+    next_retry_at = (_now() + timedelta(seconds=min(2 ** attempts, 300))).isoformat()
+    payload = {"attempt_id": attempt_id, "attempts": attempts, "last_error": last_error[:500], "next_retry_at": next_retry_at}
+    _safe(lambda: supabase.table("mock_attempt_derivation_retry").upsert(payload, on_conflict="attempt_id").execute(), default=None)
+
+
+def _clear_derivation_retry(supabase: Any, attempt_id: str) -> None:
+    _safe(lambda: supabase.table("mock_attempt_derivation_retry").delete().eq("attempt_id", attempt_id).execute(), default=None)
+
+
+def run_derivation_retry_sweeper(supabase: Any, *, now: datetime | None = None, max_attempts: int = 5) -> int:
+    now = now or _now()
+    rows = _safe(lambda: supabase.table("mock_attempt_derivation_retry").select("*").lte("next_retry_at", now.isoformat()).execute(), default=None)
+    jobs = getattr(rows, "data", None) or []
+    processed = 0
+    for job in jobs:
+        if int(job.get("attempts") or 0) >= max_attempts:
+            continue
+        attempt_id = job.get("attempt_id")
+        try:
+            attempt_analytics.compute_and_persist(supabase, attempt_id)
+            _clear_derivation_retry(supabase, attempt_id)
+        except Exception as exc:  # noqa: BLE001
+            schedule_derivation_retry(supabase, attempt_id, str(exc))
+        processed += 1
+    return processed

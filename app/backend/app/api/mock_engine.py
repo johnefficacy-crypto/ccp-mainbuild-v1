@@ -21,6 +21,8 @@ from app.study_os.mock_engine import (
     ConflictError,
     get_attempt,
     get_result,
+    get_review,
+    get_analytics,
     save_answer,
     start_attempt,
     submit_attempt,
@@ -145,6 +147,34 @@ async def result(
     user_id = user["id"]
     try:
         return get_result(get_supabase_admin(), user_id, attempt_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/attempts/{attempt_id}/review")
+async def review(
+    attempt_id: str,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    user_id = user["id"]
+    try:
+        return get_review(get_supabase_admin(), user_id, attempt_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/attempts/{attempt_id}/analytics")
+async def analytics(
+    attempt_id: str,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    user_id = user["id"]
+    try:
+        return get_analytics(get_supabase_admin(), user_id, attempt_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
