@@ -43,20 +43,38 @@ export default function useAnswerSync({ postAnswer, onEvent, debounceMs = 600 })
   const payloads = useRef({}); // questionId -> latest payload (with client_seq once fired)
   const seqRef = useRef(0);
   const aliveRef = useRef(true);
+  // Synchronous mirror of syncStates for reads inside async callbacks.
+  const syncStatesRef = useRef({});
+  // Resolvers for flush() callers waiting on a terminal state (saved|failed).
+  const flushResolvers = useRef({}); // qid -> resolve[]
 
   useEffect(() => {
     aliveRef.current = true;
     const debounces = debounceTimers.current;
     const retries = retryTimers.current;
+    const resolvers = flushResolvers.current;
     return () => {
       aliveRef.current = false;
       Object.values(debounces).forEach((t) => clearTimeout(t));
       Object.values(retries).forEach((t) => clearTimeout(t));
+      // Unblock any callers still awaiting flush() so they don't hang.
+      Object.values(resolvers).forEach((arr) => arr.forEach((r) => r()));
     };
   }, []);
 
   const setEntry = useCallback((qid, patch) => {
+    syncStatesRef.current = {
+      ...syncStatesRef.current,
+      [qid]: { ...syncStatesRef.current[qid], ...patch },
+    };
     setSyncStates((prev) => ({ ...prev, [qid]: { ...prev[qid], ...patch } }));
+    if (patch.state === SYNC.SAVED || patch.state === SYNC.FAILED) {
+      const arr = flushResolvers.current[qid];
+      if (arr?.length) {
+        delete flushResolvers.current[qid];
+        arr.forEach((r) => r());
+      }
+    }
   }, []);
 
   // Strictly monotonic counter — always a small integer well within Postgres int4
@@ -144,22 +162,48 @@ export default function useAnswerSync({ postAnswer, onEvent, debounceMs = 600 })
     [doSave, nextSeq, debounceMs, setEntry],
   );
 
-  // Force a question's pending (debounced) save to fire now and await it.
-  // Needed before a section change: enter-section moves the server's section
-  // pointer, and a later debounce for an earlier-section question would be
-  // rejected as out-of-section (422 → non-retryable failed). Flushing while we
-  // are still in the question's section persists it cleanly. No-op if nothing
-  // is pending (already saving/saved).
+  // Force a question's pending save to fire now and wait until it reaches a
+  // terminal state (saved or failed). Handles three cases:
+  //   • debounce still running → cleared and fired immediately
+  //   • save in-flight or retrying → just wait for terminal
+  //   • already terminal or never touched → no-op
+  // Needed before a section change: saves that fire after enter-section are
+  // rejected as out-of-section (422 → non-retryable failed).
   const flush = useCallback(
     async (qid) => {
-      if (!qid || !debounceTimers.current[qid]) return;
-      clearTimeout(debounceTimers.current[qid]);
-      delete debounceTimers.current[qid];
-      const fired = { ...payloads.current[qid], client_seq: nextSeq() };
-      payloads.current[qid] = fired;
-      await doSave(qid, fired, 0);
+      if (!qid) return;
+
+      if (debounceTimers.current[qid]) {
+        clearTimeout(debounceTimers.current[qid]);
+        delete debounceTimers.current[qid];
+        const fired = { ...payloads.current[qid], client_seq: nextSeq() };
+        payloads.current[qid] = fired;
+        // Don't await — we wait via the resolver below so retries are covered.
+        doSave(qid, fired, 0);
+      }
+
+      await new Promise((resolve) => {
+        // Check state inside the Promise constructor to avoid a race between
+        // the doSave call above and registering the resolver.
+        const state = syncStatesRef.current[qid]?.state;
+        if (!state || state === SYNC.SAVED || state === SYNC.FAILED) {
+          resolve();
+          return;
+        }
+        if (!flushResolvers.current[qid]) flushResolvers.current[qid] = [];
+        flushResolvers.current[qid].push(resolve);
+      });
     },
     [doSave, nextSeq],
+  );
+
+  // Flush multiple questions in parallel — used before a section transition to
+  // drain every pending debounce in the current section at once.
+  const flushMany = useCallback(
+    async (qids) => {
+      await Promise.all(qids.map((qid) => flush(qid)));
+    },
+    [flush],
   );
 
   // Manual retry from the failed banner — replays the same client_seq.
@@ -190,6 +234,7 @@ export default function useAnswerSync({ postAnswer, onEvent, debounceMs = 600 })
     syncStates,
     queueSave,
     flush,
+    flushMany,
     retryNow,
     retryAllFailed,
     failedIds,

@@ -217,10 +217,15 @@ export default function MockAttemptShell() {
     if (nextIdx >= all.length) return;
     const nextSection = Number(all[nextIdx]?.section_index || 0);
     if (nextSection !== currentSection) {
-      // Persist the current question BEFORE moving the section pointer: a save
-      // that lands after enter-section would be rejected as out-of-section
-      // (422 → failed), wrongly blocking submit behind the failed-answer modal.
-      await answerSync.flush(all[currentIdx]?.question_id);
+      // Drain every pending debounce in the current section before moving the
+      // section pointer. A save for section N that fires after enter-section(N+1)
+      // is rejected by the server as out-of-section (422 → non-retryable failed),
+      // which would wrongly block submit. Flushing all section-N questions while
+      // current_section_index is still N ensures they land cleanly.
+      const currentSectionQids = all
+        .filter((q) => Number(q.section_index || 0) === currentSection)
+        .map((q) => q.question_id);
+      await answerSync.flushMany(currentSectionQids);
       setCurrentSection(nextSection);
       try {
         await api.post(`/api/study/mocks/attempts/${attemptId}/enter-section`, {
