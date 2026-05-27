@@ -31,11 +31,25 @@ create index if not exists mock_attempt_jobs_due_idx
   on public.mock_attempt_jobs(status, scheduled_for);
 
 -- ── 2. migrate any in-flight derivation retries into the jobs table ───────────
-insert into public.mock_attempt_jobs (job_kind, attempt_id, scheduled_for, attempts, last_error, status)
-select 'analytics_retry', r.attempt_id, r.next_retry_at, coalesce(r.attempts, 0), r.last_error, 'pending'
-from public.mock_attempt_derivation_retry r
-where exists (select 1 from public.mock_attempts a where a.id = r.attempt_id)
-on conflict do nothing;
+-- mock_attempt_derivation_retry (migration 141) is absent on instances where 141
+-- was never applied. An unguarded reference raises 42P01 and aborts the whole
+-- migration in its transaction, so 145 is never recorded and 146/147 never run.
+-- Guard the copy on the source table's existence; there is nothing to migrate
+-- when it is missing.
+do $migrate_retries$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'mock_attempt_derivation_retry'
+  ) then
+    insert into public.mock_attempt_jobs (job_kind, attempt_id, scheduled_for, attempts, last_error, status)
+    select 'analytics_retry', r.attempt_id, r.next_retry_at, coalesce(r.attempts, 0), r.last_error, 'pending'
+    from public.mock_attempt_derivation_retry r
+    where exists (select 1 from public.mock_attempts a where a.id = r.attempt_id)
+    on conflict do nothing;
+  end if;
+end
+$migrate_retries$;
 
 -- ── 3. atomic, idempotent mastery apply ───────────────────────────────────────
 -- Runs as a single transaction (function body). Idempotency, the [0,100] safety
