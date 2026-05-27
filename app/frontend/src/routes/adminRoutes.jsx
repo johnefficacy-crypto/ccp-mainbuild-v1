@@ -1,8 +1,7 @@
-import React, { Suspense, lazy } from "react";
+import React, {lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
 import { ADMIN_ROLES } from "../lib/rbac";
-import { LoadingSkeleton } from "../shared/ui";
 
 const AdminShell = lazy(() => import("../pages/admin/AdminShell"));
 const AdminOverview = lazy(() => import("../pages/admin/Overview"));
@@ -44,7 +43,7 @@ const AdminMockQuestionEditor = lazy(() => import("../pages/admin/mocks/Question
 const AdminMockImportWizard = lazy(() => import("../pages/admin/mocks/ImportWizard"));
 
 export const adminRouteElements = (
-  <Suspense fallback={<LoadingSkeleton />}>
+  <>
     <Route element={<ProtectedRoute role={ADMIN_ROLES} requireBackend><AdminShell /></ProtectedRoute>}>
     <Route path="/admin" element={<AdminOverview />} />
     <Route path="/admin/operations" element={<AdminOperationsConsole />} />
@@ -92,5 +91,5 @@ export const adminRouteElements = (
     <Route path="/admin/mocks/review-queue" element={<AdminMockReviewQueue />} />
     <Route path="/admin/mocks/import" element={<AdminMockImportWizard />} />
     </Route>
-  </Suspense>
+  </>
 );

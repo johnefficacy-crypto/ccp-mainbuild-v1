@@ -1,8 +1,7 @@
-import React, { Suspense, lazy } from "react";
+import React, {lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
 import RouteErrorBoundary from "../components/RouteErrorBoundary";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
-import { LoadingSkeleton } from "../shared/ui";
 
 const CommunityScreen = lazy(() => import("../features/community/CommunityScreen"));
 const StudyGroupsScreen = lazy(() => import("../features/community/StudyGroupsScreen"));
@@ -48,7 +47,7 @@ const MockResult = lazy(() => import("../pages/study/mocks/MockResult"));
 const MockReview = lazy(() => import("../pages/study/mocks/MockReview"));
 
 export const appRouteElements = (
-  <Suspense fallback={<LoadingSkeleton />}>
+  <>
     <Route element={<ProtectedRoute requireBackend><DashShell /></ProtectedRoute>}>
     <Route element={<RouteErrorBoundary />}>
       <Route path="/app" element={<Navigate to="/app/today" replace />} />
@@ -114,5 +113,5 @@ export const appRouteElements = (
       <Route path="/app/pricing" element={<Pricing />} />
     </Route>
     </Route>
-  </Suspense>
+  </>
 );
