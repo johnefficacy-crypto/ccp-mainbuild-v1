@@ -372,3 +372,88 @@ def test_mastery_writes_from_raw_data_when_derivation_fails(monkeypatch):
         j["job_kind"] == "analytics_retry" and j["attempt_id"] == attempt_id
         for j in sb.db["mock_attempt_jobs"]
     )
+
+
+# ─── mock_tests_retry job (PR-fix-12) ────────────────────────────────────────
+
+
+class _MockTestsFailStub(SBStub):
+    """SBStub whose mock_tests.insert raises, simulating a DB failure."""
+
+    def table(self, name):
+        q = super().table(name)
+        if name == "mock_tests":
+            original_execute = q.execute
+
+            def _raising():
+                if q._pending_insert is not None:
+                    raise RuntimeError("mock_tests insert failed: column does not exist")
+                return original_execute()
+
+            q.execute = _raising  # type: ignore[assignment]
+        return q
+
+
+def _seeded_fail_db():
+    """Return a _MockTestsFailStub seeded the same as _seeded_db."""
+    _, template, questions = _seeded_db()
+    db = {
+        "mock_templates": [template],
+        "mock_question_bank": questions,
+        "mock_question_options": [o for q in questions for o in q["options"]],
+        "mock_attempts": [],
+        "mock_attempt_responses": [],
+        "mock_attempt_events": [],
+        "mock_attempt_jobs": [],
+        "mock_tests": [],
+    }
+    return _MockTestsFailStub(db), template, questions
+
+
+def test_emit_mock_tests_row_failure_schedules_retry():
+    """When mock_tests INSERT fails, a mock_tests_retry job is enqueued."""
+    sb, _, _ = _seeded_fail_db()
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+
+    svc.submit_attempt(sb, "user-1", attempt_id)
+
+    assert not [r for r in sb.db.get("mock_tests", []) if r.get("mock_attempt_id") == attempt_id]
+    retry_jobs = [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("job_kind") == svc.JOB_MOCK_TESTS_RETRY]
+    assert len(retry_jobs) == 1
+    assert retry_jobs[0]["attempt_id"] == attempt_id
+
+
+def test_retry_emit_mock_tests_row_writes_compat_row():
+    """Sweeper processes mock_tests_retry and the compat row appears."""
+    sb, _, _ = _seeded_db()
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+
+    # Simulate the initial emit failing: remove the row and plant a retry job.
+    sb.db["mock_tests"] = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") != attempt_id]
+    svc.schedule_job(sb, svc.JOB_MOCK_TESTS_RETRY, attempt_id, scheduled_for=_past_iso(5))
+
+    svc.run_sweeper(sb)
+
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["trust_level"] == "platform_verified"
+    assert rows[0]["source_type"] == "platform_attempt"
+
+
+def test_retry_emit_mock_tests_row_idempotent():
+    """Calling _retry_emit_mock_tests_row when a row already exists is a no-op."""
+    sb, _, _ = _seeded_db()
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+
+    before = len([r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id])
+    assert before == 1
+
+    svc._retry_emit_mock_tests_row(sb, attempt_id)
+
+    after = len([r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id])
+    assert after == 1
