@@ -8,36 +8,35 @@ Rules:
 - For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
-## RBAC bootstrap
+## Known-flaky CI checks
 
-Auth roles are `user`, `admin`, `super_admin` only. The single source of truth
-for a role is `auth.users.raw_app_meta_data.role` (Supabase app_metadata),
-read/written exclusively by the FastAPI service-role backend
-(`require_admin` / `require_super_admin`). `profiles.admin_role` and
-`profiles.is_admin` are deprecated (marked, not dropped). `mentor` is NOT a
-role — it is a capability (`profiles.is_mentor`, surfaced as
-`capabilities.mentor` on `/api/auth/me`).
+These checks fail in predictable, non-code-related ways. Do not spend time
+diagnosing them unless the failure pattern changes.
 
-To create the first `super_admin` (the user must already exist in Supabase
-Auth), run from the repo root:
+**backend (push-trigger run)**
+- The `ci.yml` workflow runs on both `push` and `pull_request` events.
+- The push-trigger run fires immediately on branch push, before a PR exists.
+- This run frequently fails against the pre-existing test suite (the same
+  tests pass on the PR-triggered run minutes later).
+- Pattern: two `backend` check entries appear — the first (push run) fails,
+  the second (PR run) passes. The PR run result is authoritative.
+- Observed on PR #480 and PR #481.
 
-```
-SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
-  python -m app.backend.scripts.bootstrap_super_admin --email <email>
-```
+**e2e**
+- The `e2e` check is not defined in `.github/workflows/ci.yml` or
+  `pr-body-check.yml` (the only two local workflow files).
+- It fails on every PR observed so far and PRs merge despite it.
+- Likely requires live Supabase / app-server infra not available in CI.
+- Treat as non-blocking until the check definition and required secrets
+  are traced down.
 
-Env prerequisites: `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_URL`
-(`NEXT_PUBLIC_SUPABASE_URL` is also accepted). The script is idempotent
-(re-running on an existing super_admin exits 0 with "already super_admin"),
-exits 2 on no match, 3 on multiple matches, and writes a
-`rbac.bootstrap_super_admin` audit row. It never prints tokens or keys.
-
-**Force-signout SDK limitation:** `supabase-auth` 2.29 exposes only a
-JWT-scoped `sign_out(jwt, scope)` — there is no by-user-id admin signout. The
-`POST /api/admin/users/{id}/force-signout` endpoint therefore uses a best-effort
-`ban_duration` cycle via `update_user_by_id` to invalidate the active session;
-existing access tokens remain valid until they expire. If neither path works
-the endpoint returns `{"signout_supported": false}`.
+**validate-pr-body (first run only)**
+- `pr-body-check.yml` triggers on `pull_request` events including
+  `synchronize`. The very first run fires before the PR description is
+  fully set if the branch was pushed before the PR was opened.
+- Fix: ensure the PR body is set in the same API call that opens the PR.
+  If it still fails on the first run, a PR body edit triggers a re-run
+  that will pass.
 
 ## Study OS frontend contract
 
