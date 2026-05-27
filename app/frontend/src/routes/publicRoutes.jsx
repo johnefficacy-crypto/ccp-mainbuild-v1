@@ -1,17 +1,17 @@
 import React, { Suspense, lazy } from "react";
 import { Route } from "react-router-dom";
 import Landing from "../landingapp";
-import Login from "../pages/auth/Login";
-import Signup from "../pages/auth/Signup";
-import ForgotPassword from "../pages/auth/ForgotPassword";
-import ResetPassword from "../pages/auth/ResetPassword";
-import AuthCallback from "../pages/auth/AuthCallback";
-import OnboardingChat from "../pages/OnboardingChat";
 import FunnelLandingRouter from "../features/funnel/FunnelLandingRouter";
 import { GuestOnly } from "../lib/ProtectedRoute";
-import CopyrightSubmit from "../pages/CopyrightSubmit";
-import Blogs from "../pages/Blogs";
-import BlogDetail from "../pages/BlogDetail";
+const Login = lazy(() => import("../pages/auth/Login"));
+const Signup = lazy(() => import("../pages/auth/Signup"));
+const ForgotPassword = lazy(() => import("../pages/auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
+const AuthCallback = lazy(() => import("../pages/auth/AuthCallback"));
+const OnboardingChat = lazy(() => import("../pages/OnboardingChat"));
+const CopyrightSubmit = lazy(() => import("../pages/CopyrightSubmit"));
+const Blogs = lazy(() => import("../pages/Blogs"));
+const BlogDetail = lazy(() => import("../pages/BlogDetail"));
 
 const PrototypeRoutes = process.env.REACT_APP_ENABLE_PROTOTYPE === "true"
   ? lazy(() => import("./prototypeRoutes"))

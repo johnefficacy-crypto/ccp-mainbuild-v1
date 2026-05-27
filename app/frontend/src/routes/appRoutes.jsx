@@ -3,7 +3,6 @@ import { Navigate, Route } from "react-router-dom";
 import RouteErrorBoundary from "../components/RouteErrorBoundary";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
 import { LoadingSkeleton } from "../shared/ui";
-import DashShell from "../pages/DashShell";
 import CommunityScreen from "../features/community/CommunityScreen";
 import StudyGroupsScreen from "../features/community/StudyGroupsScreen";
 import PartnersScreen from "../features/community/PartnersScreen";
@@ -11,6 +10,7 @@ import MentorsScreen from "../features/community/MentorsScreen";
 import ResourcesScreen from "../features/community/ResourcesScreen";
 
 const Today = lazy(() => import("../pages/Today"));
+const DashShell = lazy(() => import("../pages/DashShell"));
 const Profile = lazy(() => import("../pages/Profile"));
 const ExamDetail = lazy(() => import("../pages/ExamDetail"));
 const Saved = lazy(() => import("../pages/Saved"));

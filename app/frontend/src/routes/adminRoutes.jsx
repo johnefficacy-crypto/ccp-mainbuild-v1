@@ -3,8 +3,8 @@ import { Navigate, Route } from "react-router-dom";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
 import { ADMIN_ROLES } from "../lib/rbac";
 import { LoadingSkeleton } from "../shared/ui";
-import AdminShell from "../pages/admin/AdminShell";
 
+const AdminShell = lazy(() => import("../pages/admin/AdminShell"));
 const AdminOverview = lazy(() => import("../pages/admin/Overview"));
 const AdminRecruitments = lazy(() => import("../pages/admin/Recruitments"));
 const AdminOperationsConsole = lazy(() => import("../pages/admin/OperationsConsole"));
