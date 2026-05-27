@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from "react";
+import "react-day-picker/style.css";
 import { DayPicker } from "react-day-picker";
 import { enIN } from "date-fns/locale";
 import { CalendarDays } from "lucide-react";

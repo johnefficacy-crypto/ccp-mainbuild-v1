@@ -30,7 +30,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --watchAll=false",
-    "check:study-copy": "bash ../../scripts/check-study-plan-copy.sh"
+    "check:study-copy": "bash ../../scripts/check-study-plan-copy.sh",
+    "check:bundle-budget": "node ../../scripts/check-initial-bundle-denylist.mjs"
   },
   "browserslist": {
     "production": [
@@ -47,6 +48,33 @@
   "eslintConfig": {
     "extends": [
       "react-app"
+    ],
+    "overrides": [
+      {
+        "files": [
+          "src/index.js",
+          "src/App.js",
+          "src/routes/**/*.jsx",
+          "src/pages/**/*.jsx",
+          "src/features/**/*.jsx",
+          "src/components/**/*.jsx",
+          "src/shared/**/*.jsx",
+          "src/lib/**/*.jsx"
+        ],
+        "excludedFiles": [
+          "src/features/onboarding-chat/**/*.jsx"
+        ],
+        "rules": {
+          "no-restricted-imports": [
+            "error",
+            {
+              "paths": [
+                "framer-motion"
+              ]
+            }
+          ]
+        }
+      }
     ]
   },
   "jest": {
