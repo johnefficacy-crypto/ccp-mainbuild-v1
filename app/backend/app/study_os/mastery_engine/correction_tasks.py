@@ -15,6 +15,7 @@ def derive_correction_tasks(
     analytics: DerivedAttemptAnalytics,
     error_signals: list[ErrorPatternSignal],
     existing_error_topics: set[str],
+    source_trust: str = "platform_verified",
 ) -> list[CorrectionTaskDraft]:
     by_topic = {t.topic_id: t for t in analytics.topics}
     q_by_topic: dict[str, list] = defaultdict(list)
@@ -57,10 +58,15 @@ def derive_correction_tasks(
         priority = _priority(err_count, has_hard)
         reason = f"{task_type} due to {attempted} attempted with {accuracy}% accuracy"
         related_ids = sorted({q.question_id for q in questions if (not q.is_correct) or q.error_type})
+        is_platform = source_trust == "platform_verified"
         evidence = CorrectionEvidence(
             accuracy_pct=accuracy,
             error_types=sorted(list(counts.keys())),
             related_question_ids=related_ids,
+            source_trust=source_trust,
+            source_attempt_id=analytics.attempt_id if is_platform else None,
+            canonical_topic_id=topic_id if is_platform else None,
+            canonical_microtopic_id=(topic.microtopic_id if topic else None) if is_platform else None,
         )
         drafts.append(
             CorrectionTaskDraft(

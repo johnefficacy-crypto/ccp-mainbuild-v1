@@ -21,6 +21,32 @@
 3. Run weekly shadow analysis and verify sign agreement >=80%, overlap >=60%, no outliers.
 4. Flip to `live`.
 
+## Trust weighting
+
+Mastery deltas are scaled by the trust level of the source `mock_tests` row
+before being written to shadow or live tables. The weight constants live in
+`mastery_writer.TRUST_WEIGHT`:
+
+| trust_level | weight |
+|---|---|
+| `platform_verified` | 1.0 |
+| `admin_verified` | 1.0 |
+| `self_reported` | 0.3 |
+
+**Why reduce self-reported weight?** Users self-reporting a score cannot be
+verified. They may miscount, round, or report a curated subset of questions.
+The 0.3 factor keeps manual logs as useful signals without letting a single
+self-reported session dominate a topic's mastery score. Platform attempts (where
+the system scores every response) are fully trusted.
+
+Weight is applied *after* the ±0.15 unit cap, so:
+- Platform attempt max delta: ±0.15 unit (±15 db)
+- Self-reported max delta: ±0.045 unit (±4.5 db)
+
+The shadow table (`mock_mastery_shadow`) stores both the weighted delta
+(`proposed_delta_db`) and the pre-weight value (`proposed_delta_db_unweighted`)
+so shadow analysis can compare them separately via `shadow-analysis compare`.
+
 ## Rollback SQL (last N days)
 ```sql
 with reverted as (

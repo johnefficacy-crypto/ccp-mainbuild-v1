@@ -60,6 +60,10 @@ class CorrectionEvidence(BaseModel):
     accuracy_pct: Decimal
     error_types: list[str] = Field(default_factory=list)
     related_question_ids: list[str] = Field(default_factory=list)
+    source_trust: str | None = None
+    source_attempt_id: UUID | None = None
+    canonical_topic_id: str | None = None
+    canonical_microtopic_id: str | None = None
 
 
 class CorrectionTaskDraft(BaseModel):
