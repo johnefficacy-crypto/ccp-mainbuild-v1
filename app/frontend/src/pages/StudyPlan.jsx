@@ -1,12 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { Sparkles, ArrowRight, ChevronRight } from "lucide-react";
 import { api } from "../lib/api";
-import { Card, Drawer, Eyebrow, PageHeader, Pill, SectionHeader, StatusDot } from "../shared/ui/studyos";
+import { Card, Drawer, Eyebrow, PageHeader, Pill, SectionHeader, StatusDot, Tabs } from "../shared/ui/studyos";
 import PlanChangeLogCard from "../features/study/components/PlanChangeLogCard";
 import PlanByTopic from "../features/study/components/PlanByTopic";
 import ExamCycleTimeline from "../features/study/components/ExamCycleTimeline";
 import useApiAction from "../lib/hooks/useApiAction";
 import HowItWorksHeaderButton from "../shared/components/HowItWorksHeaderButton";
+
+// Lazy so PlanImpactTimeline and its chart deps stay out of the plan page's
+// initial chunk — the timeline only loads when the "Plan changes" tab opens.
+const PlanTimelineTab = React.lazy(() => import("../features/study/components/PlanTimelineTab"));
 
 const STATUS_TONE = {
   completed: "sage",
@@ -65,6 +69,7 @@ export default function StudyPlan() {
   const [selectedExamId, setSelectedExamId] = useState("");
   const [trackedExams, setTrackedExams] = useState([]);
   const [reloadKey, setReloadKey] = useState(0);
+  const [tab, setTab] = useState("plan");
   const { run: runTaskAction } = useApiAction();
   const { run: runApply } = useApiAction();
 
@@ -403,6 +408,27 @@ export default function StudyPlan() {
         )}
       </Card>
 
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "plan", label: "This week" },
+          { value: "changes", label: "Plan changes" },
+        ]}
+      />
+
+      {tab === "changes" ? (
+        <Suspense
+          fallback={
+            <Card>
+              <p className="text-sm text-clay-700">Loading plan changes…</p>
+            </Card>
+          }
+        >
+          <PlanTimelineTab />
+        </Suspense>
+      ) : (
+        <>
       <PageHeader
         eyebrow="Study Plan · timeline &amp; adaptation"
         title={
@@ -567,6 +593,8 @@ export default function StudyPlan() {
         <PlanByTopic />
         <PlanChangeLogCard />
       </div>
+        </>
+      )}
 
       <Drawer
         open={draftOpen}

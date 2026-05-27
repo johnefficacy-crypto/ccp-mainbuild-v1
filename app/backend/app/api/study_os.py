@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -22,6 +23,7 @@ from app.study_os.mission_control import (
     build_task_reasoning_response,
 )
 from app.study_os.plan_preferences import get_plan_preferences, upsert_plan_preferences
+from app.study_os.mastery_writer import get_mastery_write_flag
 from app.study_os.planner import apply_plan, compute_draft_plan, generate_plan
 from app.study_os import mocks as mocks_service
 from app.study_os import plan_by_subject as plan_by_subject_service
@@ -749,11 +751,145 @@ async def reports_mistakes(days: int = 90, user: dict = Depends(get_current_user
         items.append({"error_type":v["error_type"],"count":v["count"],"topics":[{"topic_id":k,"count":c} for k,c in v["topics"].items()],"recent_question_ids":v["recent_question_ids"][:10]})
     return {"items":items}
 
+# ─── Plan-change timeline (PR6 page set: /app/study/plan) ────────────────────
+# Maps the raw planner audit + (PR5-live) mastery audit into the canonical
+# event shape the PlanImpactTimeline UI consumes. `kind` is one of
+# topic_added | priority_shift | topic_removed | phase_change.
+_PLAN_KIND_BY_EVENT = {
+    "manual_regeneration": "priority_shift",
+    "weekly_review": "priority_shift",
+    "revision_overdue": "priority_shift",
+    "task_missed": "priority_shift",
+    "task_completed": "priority_shift",
+    "focus_session_completed": "priority_shift",
+    "mock_logged": "priority_shift",
+    "deadline_changed": "phase_change",
+    "exam_update": "phase_change",
+}
+
+_PLAN_REASON_HUMAN = {
+    "manual_regeneration": "Plan regenerated",
+    "weekly_review": "Weekly review adjustment",
+    "revision_overdue": "Revision overdue — topics reprioritized",
+    "task_missed": "Task missed — plan adjusted",
+    "task_completed": "Task completed",
+    "focus_session_completed": "Focus session logged",
+    "mock_logged": "Mock logged — plan adjusted",
+    "deadline_changed": "Exam deadline changed",
+    "exam_update": "Exam details updated",
+}
+
+
+def _derive_plan_kind(event_type: str | None, change_summary: dict | None) -> str:
+    cs = change_summary or {}
+    if cs.get("removed") or cs.get("removed_topics"):
+        return "topic_removed"
+    if cs.get("added") or cs.get("added_topics"):
+        return "topic_added"
+    return _PLAN_KIND_BY_EVENT.get(event_type or "", "priority_shift")
+
+
+def _derive_plan_trigger(row: dict) -> dict[str, Any]:
+    payload = row.get("trigger_payload") or {}
+    event_type = row.get("event_type")
+    source = row.get("trigger_source")
+    attempt_id = payload.get("attempt_id") or payload.get("mock_attempt_id")
+    if source == "admin":
+        return {"type": "manual", "actor_id": payload.get("actor_id")}
+    if attempt_id or event_type == "mock_logged":
+        return {"type": "mock_attempt", "attempt_id": attempt_id}
+    if event_type == "manual_regeneration":
+        return {"type": "manual", "actor_id": payload.get("actor_id")}
+    return {"type": "scheduled"}
+
+
+def _plan_timeline_events(
+    sb: Any, user_id: str, cutoff: str, mastery_flag: str
+) -> list[dict[str, Any]]:
+    adaptation = (
+        sb.table("study_adaptation_events")
+        .select("id, created_at, event_type, trigger_source, trigger_payload, change_summary")
+        .eq("user_id", user_id)
+        .gte("created_at", cutoff)
+        .order("created_at", desc=True)
+        .limit(200)
+        .execute()
+        .data
+        or []
+    )
+    events: list[dict[str, Any]] = []
+    for r in adaptation:
+        event_type = r.get("event_type")
+        events.append(
+            {
+                "id": r.get("id"),
+                "at": r.get("created_at"),
+                "kind": _derive_plan_kind(event_type, r.get("change_summary")),
+                "reason_code": event_type,
+                "reason_human": _PLAN_REASON_HUMAN.get(event_type or "", "Plan updated"),
+                "trigger": _derive_plan_trigger(r),
+                "mastery_delta_db": None,
+            }
+        )
+
+    # Mastery-driven plan changes are only honest when PR5 actually wrote them.
+    # In off/shadow the audit table holds no live rows for this user, but we
+    # still gate on the flag so a stale shadow row can never leak a delta.
+    if mastery_flag == "live":
+        audit = (
+            sb.table("user_topic_mastery_audit")
+            .select("id, topic_id, attempt_id, before_mastery_db, after_mastery_db, delta_applied_db, at")
+            .eq("user_id", user_id)
+            .gte("at", cutoff)
+            .order("at", desc=True)
+            .limit(200)
+            .execute()
+            .data
+            or []
+        )
+        for r in audit:
+            before = r.get("before_mastery_db")
+            after = r.get("after_mastery_db")
+            delta = r.get("delta_applied_db")
+            if delta is None and before is not None and after is not None:
+                delta = float(after) - float(before)
+            events.append(
+                {
+                    "id": f"mastery:{r.get('id')}",
+                    "at": r.get("at"),
+                    "kind": "priority_shift",
+                    "reason_code": "mastery_shift",
+                    "reason_human": "Mastery updated from a mock attempt",
+                    "trigger": {"type": "mock_attempt", "attempt_id": r.get("attempt_id")},
+                    "mastery_delta_db": {
+                        "topic_id": r.get("topic_id"),
+                        "before": before,
+                        "after": after,
+                        "delta": delta,
+                    },
+                }
+            )
+
+    events.sort(key=lambda e: e.get("at") or "", reverse=True)
+    return events[:200]
+
+
 @router.get("/reports/plan-timeline")
 async def reports_plan_timeline(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
-    sb = get_supabase_admin(); user_id = user.get("id")
-    rows = (sb.table("study_adaptation_events").select("id, created_at, event_type, trigger_source, trigger_payload, change_summary").eq("user_id", user_id).order("created_at", desc=True).limit(200).execute().data or [])
-    return {"items": rows}
+    """Plan-change events for the /app/study/plan timeline.
+
+    Unions rule-based planner audit (``study_adaptation_events``) with
+    mastery-shift events (``user_topic_mastery_audit``). ``mastery_delta_db``
+    is populated only when the PR5 write-back flag is ``live`` — it is null on
+    every event otherwise so the UI can suppress delta indicators uniformly.
+    """
+    sb = get_supabase_admin()
+    user_id = user.get("id")
+    if not user_id:
+        return {"events": []}
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=max(1, days))).isoformat()
+    events = _plan_timeline_events(sb, user_id, cutoff, get_mastery_write_flag())
+    return {"events": events}
 
 @router.get("/reports/topic-recovery")
 async def reports_topic_recovery(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
