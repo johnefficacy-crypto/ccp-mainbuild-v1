@@ -55,3 +55,4 @@ class DerivedAttemptAnalytics(BaseModel):
     stuck_questions: list[str]
     rush_questions: list[str]
     warnings: list[str] = Field(default_factory=list)
+    analytics_quality: dict[str, int] = Field(default_factory=dict)
