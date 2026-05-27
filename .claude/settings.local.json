@@ -8,7 +8,12 @@
       "Bash(python -m pytest tests/study_os/test_mock_engine.py -x -q)",
       "Bash(python -m pytest tests/study_os/test_mocks.py -x -q)",
       "Bash(rm -f .git/index.lock)",
-      "Bash(gh run *)"
+      "Bash(gh run *)",
+      "PowerShell(Get-ChildItem \"D:\\\\GovtExamAgent\\\\ccp-mainbuild-v1\\\\app\\\\backend\" -Name -Recurse | Where-Object { $_ -like \"main.py\" })",
+      "PowerShell(if \\(-not $?\\) { \"NOT FOUND\" })",
+      "Bash(gh pr create --title 'feat\\(mock-engine\\): PR2 admin question bank + review workflow' --base feat/mock-engine-pr1 --draft --body ' *)",
+      "Bash(gh pr *)",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }
