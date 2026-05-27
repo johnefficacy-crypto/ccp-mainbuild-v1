@@ -24,6 +24,7 @@ from app.study_os.mock_engine import (
     save_answer,
     start_attempt,
     submit_attempt,
+    enter_section,
 )
 
 logger = logging.getLogger("career_copilot.api.mock_engine")
@@ -35,6 +36,10 @@ router = APIRouter(prefix="/study/mocks", tags=["mock-engine"])
 
 class StartAttemptBody(BaseModel):
     template_slug: str
+
+
+class EnterSectionBody(BaseModel):
+    section_index: int = Field(ge=0)
 
 
 class AnswerBody(BaseModel):
@@ -76,6 +81,21 @@ async def read_attempt(
         raise HTTPException(status_code=404, detail=str(exc))
 
 
+@router.post("/attempts/{attempt_id}/enter-section")
+async def enter_section_route(
+    attempt_id: str,
+    body: EnterSectionBody,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    user_id = user["id"]
+    try:
+        return enter_section(get_supabase_admin(), user_id, attempt_id, body.section_index)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
 @router.post("/attempts/{attempt_id}/answer")
 async def answer(
     attempt_id: str,
@@ -97,7 +117,7 @@ async def answer(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @router.post("/attempts/{attempt_id}/submit")

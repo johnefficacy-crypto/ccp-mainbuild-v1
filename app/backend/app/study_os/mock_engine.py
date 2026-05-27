@@ -197,6 +197,9 @@ def start_attempt(supabase: Any, user_id: str, template_slug: str) -> dict:
         "marks_per_correct": float(template.get("marks_per_correct") or 1),
         "marks_per_wrong": float(template.get("marks_per_wrong") or 0.25),
         "question_ids": [q["id"] for q in questions],
+        "interface_mode": (template.get("config") or {}).get("interface_mode", "simple"),
+        "sections": (template.get("config") or {}).get("sections") or [],
+        "allow_switching": bool((template.get("config") or {}).get("allow_switching", True)),
     }
 
     attempt_rows = _require(
@@ -207,6 +210,8 @@ def start_attempt(supabase: Any, user_id: str, template_slug: str) -> dict:
             "status": "in_progress",
             "started_at": now.isoformat(),
             "expires_at": expires_at.isoformat(),
+            "current_section_index": 0,
+            "section_locks_enabled": not bool((template.get("config") or {}).get("allow_switching", True)),
         }).execute(),
         op="mock_attempts.insert",
     )
@@ -244,6 +249,8 @@ def start_attempt(supabase: Any, user_id: str, template_slug: str) -> dict:
     return {
         "attempt_id": attempt_id,
         "expires_at": expires_at.isoformat(),
+        "current_section_index": 0,
+        "section_locks_enabled": not bool((template.get("config") or {}).get("allow_switching", True)),
         "questions": [_serialise_question_for_attempt(q) for q in questions],
     }
 
@@ -291,8 +298,43 @@ def get_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
         "expires_at": attempt["expires_at"],
         "time_remaining_sec": time_remaining,
         "questions": questions_out,
+        "current_section_index": int(attempt.get("current_section_index") or 0),
+        "template_interface_mode": snapshot.get("interface_mode") or "simple",
+        "template_config": {"interface_mode": snapshot.get("interface_mode"), "allow_switching": snapshot.get("allow_switching")},
+        "sections": _get_section_states(supabase, attempt_id),
     }
 
+
+
+
+def _question_section_index(snapshot: dict, question_id: str) -> int | None:
+    qids = snapshot.get("question_ids") or []
+    sections = snapshot.get("sections") or []
+    for sec in sections:
+        idx = int(sec.get("section_index") or 0)
+        for qid in sec.get("question_ids") or []:
+            if qid == question_id:
+                return idx
+    if question_id in qids:
+        return 0
+    return None
+
+
+def _get_section_states(supabase: Any, attempt_id: str) -> list[dict]:
+    rows = _safe(lambda: supabase.table("mock_attempt_section_state").select("*").eq("attempt_id", attempt_id).order("section_index").execute(), default=None)
+    return getattr(rows, "data", None) or []
+
+
+def enter_section(supabase: Any, user_id: str, attempt_id: str, section_index: int) -> dict:
+    attempt = _fetch_attempt(supabase, user_id, attempt_id)
+    current = int(attempt.get("current_section_index") or 0)
+    locked = bool(attempt.get("section_locks_enabled"))
+    if locked and section_index < current:
+        raise ValueError("backward section movement is not allowed")
+    now = _now_iso()
+    _safe(lambda: supabase.table("mock_attempts").update({"current_section_index": section_index}).eq("id", attempt_id).execute(), default=None)
+    _safe(lambda: supabase.table("mock_attempt_section_state").upsert({"attempt_id": attempt_id, "section_index": section_index, "entered_at": now}).execute(), default=None)
+    return {"ok": True, "current_section_index": section_index}
 
 def save_answer(
     supabase: Any,
@@ -316,6 +358,11 @@ def save_answer(
         raise ValueError("attempt is not in progress")
     if _time_remaining_sec(attempt) <= 0:
         raise ValueError("attempt has expired")
+    snapshot = attempt.get("template_snapshot") or {}
+    if bool(attempt.get("section_locks_enabled")):
+        expected = _question_section_index(snapshot, question_id)
+        if expected is not None and expected != int(attempt.get("current_section_index") or 0):
+            raise ValueError("question is outside current section")
 
     existing = _safe(
         lambda: supabase.table("mock_attempt_responses")

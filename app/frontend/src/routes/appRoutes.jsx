@@ -42,7 +42,7 @@ const StudyShell = lazy(() => import("../pages/study/StudyShell"));
 const StudyHome = lazy(() => import("../pages/study/StudyHome"));
 const StudyLearningHub = lazy(() => import("../pages/study/StudyLearningHub"));
 const StudyProgressHub = lazy(() => import("../pages/study/StudyProgressHub"));
-const MockAttemptShell = lazy(() => import("../pages/study/mocks/MockAttemptShell"));
+const AttemptShellRouter = lazy(() => import("../pages/study/mocks/AttemptShellRouter"));
 const MockResult = lazy(() => import("../pages/study/mocks/MockResult"));
 
 export const appRouteElements = (
@@ -81,7 +81,7 @@ export const appRouteElements = (
       </Route>
       <Route path="/app/study/focus" element={<Focus />} />
       <Route path="/app/study/mocks" element={<Mocks />} />
-      <Route path="/app/study/mocks/attempts/:attemptId" element={<MockAttemptShell />} />
+      <Route path="/app/study/mocks/attempts/:attemptId" element={<AttemptShellRouter />} />
       <Route path="/app/study/mocks/attempts/:attemptId/result" element={<MockResult />} />
       <Route path="/app/study/subjects" element={<Subjects />} />
       <Route path="/app/study/review" element={<WeeklyReview />} />
