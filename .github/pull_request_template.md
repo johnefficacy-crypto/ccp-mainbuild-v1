@@ -37,6 +37,12 @@
 - [ ] Keyboard interaction tested for changed controls
 - [ ] Screen reader friendly loading/error text (`role="status"`, `aria-live`, etc.)
 
+## E2E Impact
+- [ ] I checked whether this change affects the critical E2E flows in `app/frontend/e2e/` (attempt happy path / submit→review / report→attempt drill).
+- Flows affected (or **None**):
+- `data-testid`s added/changed, or a new flow needed (or **None**):
+- [ ] If behaviour covered by E2E changed, the relevant spec(s) and fixtures were updated.
+
 ## Manual Test Checklist
 - [ ] Scenario 1:
 - [ ] Scenario 2:

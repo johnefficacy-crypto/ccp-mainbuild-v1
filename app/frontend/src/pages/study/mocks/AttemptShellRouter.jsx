@@ -10,7 +10,7 @@ export default function AttemptShellRouter() {
 
   useEffect(() => {
     (async () => {
-      const data = await api.get(`/study/mocks/attempts/${attemptId}`);
+      const data = await api.get(`/api/study/mocks/attempts/${attemptId}`);
       setMode(data?.template_interface_mode || data?.template_config?.interface_mode || "simple");
     })();
   }, [attemptId]);

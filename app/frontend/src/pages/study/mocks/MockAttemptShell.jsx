@@ -21,6 +21,7 @@ export default function MockAttemptShell() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [currentSection, setCurrentSection] = useState(0);
   const [responses, setResponses] = useState({});
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -63,10 +64,11 @@ export default function MockAttemptShell() {
     let cancelled = false;
     async function load() {
       try {
-        const data = await api.get(`/study/mocks/attempts/${attemptId}`);
+        const data = await api.get(`/api/study/mocks/attempts/${attemptId}`);
         if (cancelled) return;
         setAttempt(data);
         setTimeRemaining(data.time_remaining_sec ?? null);
+        setCurrentSection(Number(data.current_section_index || 0));
 
         const initial = {};
         for (const q of data.questions || []) {
@@ -135,7 +137,7 @@ export default function MockAttemptShell() {
       debounceTimer.current = setTimeout(async () => {
         const seq = ++clientSeq.current;
         try {
-          await api.post(`/study/mocks/attempts/${attemptId}/answer`, {
+          await api.post(`/api/study/mocks/attempts/${attemptId}/answer`, {
             question_id: questionId,
             selected_option_id: selected_option_id || null,
             is_marked_for_review,
@@ -181,13 +183,37 @@ export default function MockAttemptShell() {
     });
   }
 
+  // ── section-aware advance ────────────────────────────────────────────────
+  // "Save & Next" moves to the next question. When the next question lives in
+  // a later section we tell the server we are entering it (POST /enter-section)
+  // before moving; with locks on, the server then refuses backward moves and
+  // we mirror that in the palette below.
+  async function saveAndNext() {
+    const all = attempt?.questions || [];
+    const nextIdx = currentIdx + 1;
+    if (nextIdx >= all.length) return;
+    const nextSection = Number(all[nextIdx]?.section_index || 0);
+    if (nextSection !== currentSection) {
+      setCurrentSection(nextSection);
+      try {
+        await api.post(`/api/study/mocks/attempts/${attemptId}/enter-section`, {
+          section_index: nextSection,
+        });
+      } catch {
+        // server stays authoritative; a failed enter-section just means the
+        // next answer in that section may be rejected — surfaced on save.
+      }
+    }
+    setCurrentIdx(nextIdx);
+  }
+
   // ── submit ────────────────────────────────────────────────────────────────
   async function doSubmit(isAuto = false) {
     if (submitting) return;
     setSubmitting(true);
     clearInterval(timerRef.current);
     try {
-      await api.post(`/study/mocks/attempts/${attemptId}/submit`, {});
+      await api.post(`/api/study/mocks/attempts/${attemptId}/submit`, {});
       navigate(`/app/study/mocks/attempts/${attemptId}/result`, { replace: true });
     } catch (e) {
       if (!isAuto) alert(e?.message || "Submission failed. Please try again.");
@@ -213,34 +239,64 @@ export default function MockAttemptShell() {
   const answered = Object.values(responses).filter((r) => r.selected_option_id).length;
   const total = questions.length;
 
+  const sectionLocked =
+    Boolean(attempt.section_locks_enabled) || attempt.template_config?.allow_switching === false;
+  const sectionIndices = [...new Set(questions.map((qq) => Number(qq.section_index || 0)))].sort(
+    (a, b) => a - b,
+  );
+  const sectionCount = sectionIndices.length || 1;
+  const isLastQuestion = currentIdx === total - 1;
+
   return (
     <div style={styles.shell}>
       {/* Header */}
-      <div style={styles.header}>
+      <div style={styles.header} data-testid="attempt-shell">
         <span style={styles.title}>{attempt.template_name || "Mock Test"}</span>
+        {sectionCount > 1 && (
+          <span style={styles.sectionLabel} data-testid="attempt-section-label">
+            Section {currentSection + 1} of {sectionCount}
+            {sectionLocked ? " · locked" : ""}
+          </span>
+        )}
         <span style={timeRemaining !== null && timeRemaining < 60 ? styles.timerWarn : styles.timer}>
           {timeRemaining !== null ? formatTime(timeRemaining) : "--"}
         </span>
-        <button style={styles.submitBtn} onClick={() => setConfirmOpen(true)} disabled={submitting}>
+        <button
+          style={styles.submitBtn}
+          data-testid="attempt-submit"
+          onClick={() => setConfirmOpen(true)}
+          disabled={submitting}
+        >
           {submitting ? "Submitting…" : "Submit"}
         </button>
       </div>
 
-      {/* Question nav strip */}
-      <div style={styles.navStrip}>
+      {/* Question nav strip / palette */}
+      <div style={styles.navStrip} data-testid="attempt-palette">
         {questions.map((qq, i) => {
           const r = responses[qq.question_id] || {};
           const isAnswered = Boolean(r.selected_option_id);
           const isMarked = r.is_marked_for_review;
           const isCurrent = i === currentIdx;
+          // With locks on, the palette only lets you move within the section
+          // you're currently in — earlier sections are sealed, later ones not
+          // yet entered.
+          const outOfSection = Number(qq.section_index || 0) !== currentSection;
+          const disabled = sectionLocked && outOfSection;
           return (
             <button
               key={qq.question_id}
-              onClick={() => setCurrentIdx(i)}
+              data-testid={`attempt-nav-${i}`}
+              data-section={Number(qq.section_index || 0)}
+              disabled={disabled}
+              aria-disabled={disabled}
+              onClick={() => !disabled && setCurrentIdx(i)}
               style={{
                 ...styles.navBtn,
                 background: isCurrent ? "#1a56db" : isAnswered ? "#16a34a" : "#374151",
                 border: isMarked ? "2px solid #f59e0b" : "2px solid transparent",
+                opacity: disabled ? 0.4 : 1,
+                cursor: disabled ? "not-allowed" : "pointer",
               }}
             >
               {i + 1}
@@ -258,11 +314,13 @@ export default function MockAttemptShell() {
           </div>
           <p style={styles.qText}>{q.question_text}</p>
           <div style={styles.options}>
-            {(q.options || []).map((opt) => {
+            {(q.options || []).map((opt, optIdx) => {
               const selected = resp.selected_option_id === opt.id;
               return (
                 <button
                   key={opt.id}
+                  data-testid={`attempt-option-${optIdx}`}
+                  aria-pressed={selected}
                   onClick={() => selectOption(q.question_id, opt.id)}
                   style={{
                     ...styles.optBtn,
@@ -279,6 +337,7 @@ export default function MockAttemptShell() {
           <label style={styles.reviewLabel}>
             <input
               type="checkbox"
+              data-testid="attempt-mark-review"
               checked={Boolean(resp.is_marked_for_review)}
               onChange={() => toggleReview(q.question_id)}
             />
@@ -287,12 +346,17 @@ export default function MockAttemptShell() {
         </div>
       )}
 
-      {/* Prev / Next */}
+      {/* Prev / Save & Next */}
       <div style={styles.navRow}>
         <button
           style={styles.navArrow}
-          disabled={currentIdx === 0}
-          onClick={() => setCurrentIdx((i) => i - 1)}
+          data-testid="attempt-prev"
+          disabled={
+            currentIdx === 0 ||
+            (sectionLocked &&
+              Number(questions[currentIdx - 1]?.section_index || 0) !== currentSection)
+          }
+          onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
         >
           ← Prev
         </button>
@@ -301,28 +365,34 @@ export default function MockAttemptShell() {
         </span>
         <button
           style={styles.navArrow}
-          disabled={currentIdx === questions.length - 1}
-          onClick={() => setCurrentIdx((i) => i + 1)}
+          data-testid="attempt-save-next"
+          disabled={isLastQuestion}
+          onClick={saveAndNext}
         >
-          Next →
+          Save &amp; Next →
         </button>
       </div>
 
       {/* Confirm dialog */}
       {confirmOpen && (
         <div style={styles.overlay}>
-          <div style={styles.dialog}>
+          <div style={styles.dialog} role="dialog" aria-modal="true" data-testid="attempt-confirm-dialog">
             <h3 style={{ marginTop: 0 }}>Submit test?</h3>
             <p>
               {answered} of {total} questions answered.
               {total - answered > 0 && ` ${total - answered} unattempted.`}
             </p>
             <div style={styles.dialogActions}>
-              <button style={styles.cancelBtn} onClick={() => setConfirmOpen(false)}>
+              <button
+                style={styles.cancelBtn}
+                data-testid="attempt-confirm-cancel"
+                onClick={() => setConfirmOpen(false)}
+              >
                 Cancel
               </button>
               <button
                 style={styles.confirmBtn}
+                data-testid="attempt-confirm-submit"
                 onClick={() => { setConfirmOpen(false); doSubmit(); }}
                 disabled={submitting}
               >
@@ -341,6 +411,7 @@ const styles = {
   center: { textAlign: "center", marginTop: 80, color: "#9ca3af" },
   header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", background: "#1f2937", borderBottom: "1px solid #374151" },
   title: { fontWeight: 600, fontSize: 16, color: "#f9fafb" },
+  sectionLabel: { fontSize: 13, fontWeight: 600, color: "#fbbf24", letterSpacing: "0.02em" },
   timer: { fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: "#60a5fa" },
   timerWarn: { fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: "#ef4444" },
   submitBtn: { padding: "6px 18px", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 },

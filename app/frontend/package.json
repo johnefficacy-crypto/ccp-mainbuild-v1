@@ -21,6 +21,7 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@testing-library/react": "^14.0.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
@@ -31,7 +32,11 @@
     "build": "react-scripts build",
     "test": "react-scripts test --watchAll=false",
     "check:study-copy": "bash ../../scripts/check-study-plan-copy.sh",
-    "check:bundle-budget": "node ../../scripts/check-initial-bundle-denylist.mjs"
+    "check:bundle": "node ../../scripts/check-bundle.js",
+    "check:bundle-budget": "node ../../scripts/check-bundle.js",
+    "e2e": "playwright test --config e2e/playwright.config.ts",
+    "e2e:ui": "playwright test --config e2e/playwright.config.ts --ui",
+    "e2e:report": "playwright show-report e2e/playwright-report"
   },
   "browserslist": {
     "production": [

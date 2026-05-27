@@ -19,7 +19,7 @@ export default function TcsIonAttemptShell() {
 
   useEffect(() => {
     (async () => {
-      const data = await api.get(`/study/mocks/attempts/${attemptId}`);
+      const data = await api.get(`/api/study/mocks/attempts/${attemptId}`);
       setAttempt(data);
       setCurrentIdx(Math.max(0, Number(data.current_question_index || 0)));
     })();
@@ -42,7 +42,7 @@ export default function TcsIonAttemptShell() {
     const next = violationCount + 1;
     setViolationCount(next);
     if (policy === "strict" && next >= Number(config.anti_cheat_threshold || 3)) {
-      api.post(`/study/mocks/attempts/${attemptId}/submit`, { reason: "anti_cheat_threshold" }).then(() => {
+      api.post(`/api/study/mocks/attempts/${attemptId}/submit`, { reason: "anti_cheat_threshold" }).then(() => {
         navigate(`/app/study/mocks/attempts/${attemptId}/result`, { replace: true });
       });
     }
@@ -50,7 +50,7 @@ export default function TcsIonAttemptShell() {
 
   const handleAnswer = async (selected_option_id) => {
     if (!q) return;
-    await api.post(`/study/mocks/attempts/${attemptId}/answer`, {
+    await api.post(`/api/study/mocks/attempts/${attemptId}/answer`, {
       question_id: q.question_id,
       selected_option_id,
       is_marked_for_review: Boolean(q.is_marked_for_review),
@@ -64,7 +64,7 @@ export default function TcsIonAttemptShell() {
   return (
     <AntiCheatProvider enforceFullscreen={Boolean(config.tcs_ion_fullscreen)} blockCopy blockPaste onViolation={antiCheatPolicy}>
       <SectionLockGuard locked={config.allow_switching === false}>
-        <SectionTimer expiresAt={currentSection?.expires_at} onExpire={() => api.post(`/study/mocks/attempts/${attemptId}/enter-section`, {})} />
+        <SectionTimer expiresAt={currentSection?.expires_at} onExpire={() => api.post(`/api/study/mocks/attempts/${attemptId}/enter-section`, {})} />
         <QuestionPalette items={paletteItems} />
         <div>{q?.question_text || "No question"}</div>
         <button onClick={() => setConfirmOpen(true)}>Submit</button>
@@ -73,7 +73,7 @@ export default function TcsIonAttemptShell() {
           summary={{ total: (attempt.questions || []).length }}
           onCancel={() => setConfirmOpen(false)}
           onConfirm={async () => {
-            await api.post(`/study/mocks/attempts/${attemptId}/submit`, {});
+            await api.post(`/api/study/mocks/attempts/${attemptId}/submit`, {});
             navigate(`/app/study/mocks/attempts/${attemptId}/result`, { replace: true });
           }}
         />

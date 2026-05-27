@@ -1,0 +1,105 @@
+name: E2E
+
+# Critical-flow Playwright suite. Brings up the real stack — local Supabase
+# (via the CLI + Docker), the FastAPI backend, and a production build of the
+# SPA — seeds deterministic fixtures, then runs the three flows.
+#
+# See docs/testing/e2e.md for the local equivalent and for debugging failures.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase (applies migrations)
+        working-directory: app/supabase
+        run: supabase start
+
+      - name: Capture Supabase connection details
+        working-directory: app/supabase
+        run: |
+          supabase status -o json > /tmp/sb.json
+          echo "SB_API_URL=$(jq -r '.API_URL' /tmp/sb.json)" >> "$GITHUB_ENV"
+          echo "SB_DB_URL=$(jq -r '.DB_URL' /tmp/sb.json)" >> "$GITHUB_ENV"
+          echo "SB_ANON_KEY=$(jq -r '.ANON_KEY' /tmp/sb.json)" >> "$GITHUB_ENV"
+          echo "SB_SERVICE_ROLE_KEY=$(jq -r '.SERVICE_ROLE_KEY' /tmp/sb.json)" >> "$GITHUB_ENV"
+
+      - name: Seed E2E fixtures
+        run: psql "$SB_DB_URL" -v ON_ERROR_STOP=1 -f app/supabase/seeds/e2e_fixtures.sql
+
+      - name: Install backend deps
+        working-directory: app/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run backend
+        working-directory: app/backend
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.SB_API_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.SB_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SB_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ env.SB_DB_URL }}
+          ENABLE_SCHEDULER: "false"
+        run: |
+          nohup uvicorn server:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/api/health && break || sleep 2
+          done
+
+      - name: Build frontend
+        working-directory: app/frontend
+        env:
+          REACT_APP_SUPABASE_URL: ${{ env.SB_API_URL }}
+          REACT_APP_SUPABASE_ANON_KEY: ${{ env.SB_ANON_KEY }}
+          REACT_APP_BACKEND_URL: http://127.0.0.1:8000
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Playwright browsers
+        working-directory: app/frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E flows
+        working-directory: app/frontend
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+          E2E_BACKEND_URL: http://127.0.0.1:8000
+          E2E_SUPABASE_URL: ${{ env.SB_API_URL }}
+          E2E_SUPABASE_ANON_KEY: ${{ env.SB_ANON_KEY }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ env.SB_SERVICE_ROLE_KEY }}
+        run: npm run e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: app/frontend/e2e/playwright-report
+          retention-days: 7
+
+      - name: Backend log (on failure)
+        if: ${{ failure() }}
+        run: cat /tmp/backend.log || true
