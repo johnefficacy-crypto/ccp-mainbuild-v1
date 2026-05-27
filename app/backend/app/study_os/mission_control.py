@@ -149,6 +149,31 @@ def _cached_days_remaining(supabase: Any, exam_id: str) -> int | None:
     return value
 
 
+def _cached_upcoming_cycles(supabase: Any, exam_id: str, today_iso: str) -> list[dict[str, Any]]:
+    """Soonest upcoming exam cycles (for the milestone nudge), per-exam TTL
+    cached so a repeat mission-control call for the same exam pays zero
+    exam_cycles round-trips."""
+    cache_key = ("upcoming_cycles", exam_id, today_iso)
+    hit = _cache_lookup(cache_key)
+    if hit is not None:
+        return [] if hit is False else hit
+    rows = _safe(
+        lambda: (
+            supabase.table("exam_cycles")
+            .select("id, exam_start, notification_date, application_start, application_end, cycle_name")
+            .eq("exam_id", exam_id)
+            .gte("exam_start", today_iso)
+            .order("exam_start")
+            .limit(3)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    _cache_store(cache_key, rows if rows else False)
+    return rows
+
+
 def _cached_competition_context(
     supabase: Any, exam_id: str | None, days_remaining: int | None
 ) -> dict[str, Any]:
@@ -1331,18 +1356,15 @@ async def build_mission_control_async(supabase: Any, user_id: str) -> dict[str, 
         asyncio.to_thread(_load_policy_update_context, supabase, exam_intel),
     )
 
-    # Stage 3: competition depends on exam_context (days_remaining).
-    competition_ctx = await asyncio.to_thread(
-        _load_competition_context, supabase, exam_intel, exam_context
-    )
-
-    # Stage 3b: auto-regen trigger summary (planner.build_regen_triggers).
-    # Independent of competition; runs in parallel via gather so it doesn't
-    # add latency to the longest dependency chain.
+    # Stage 3: competition_ctx depends on exam_context (days_remaining);
+    # regen_triggers and nudges depend only on stage-1/2 outputs. All three
+    # have their inputs ready here and touch different tables, so run them
+    # concurrently instead of in series.
     from app.study_os.planner import build_regen_triggers
-    regen_triggers = await asyncio.to_thread(build_regen_triggers, supabase, user_id)
-    nudges = await asyncio.to_thread(
-        _build_nudges, supabase, user_id, exam_intel, review
+    competition_ctx, regen_triggers, nudges = await asyncio.gather(
+        asyncio.to_thread(_load_competition_context, supabase, exam_intel, exam_context),
+        asyncio.to_thread(build_regen_triggers, supabase, user_id),
+        asyncio.to_thread(_build_nudges, supabase, user_id, exam_intel, review),
     )
 
     today_tasks: list[dict[str, Any]] = []
@@ -1570,19 +1592,7 @@ def _nudge_milestone_in_7d(supabase: Any, exam_intel: dict[str, Any], today: dat
     if not exam_id:
         return None
     horizon = today + timedelta(days=7)
-    cycles = _safe(
-        lambda: (
-            supabase.table("exam_cycles")
-            .select("id, exam_start, notification_date, application_start, application_end, cycle_name")
-            .eq("exam_id", exam_id)
-            .gte("exam_start", today.isoformat())
-            .order("exam_start")
-            .limit(3)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
+    cycles = _cached_upcoming_cycles(supabase, exam_id, today.isoformat())
     if not cycles:
         return None
     candidates: list[tuple[date, str, str]] = []
