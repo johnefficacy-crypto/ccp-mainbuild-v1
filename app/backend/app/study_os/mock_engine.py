@@ -817,7 +817,10 @@ def _emit_mock_tests_row(
             "questions_attempted": total_correct + total_wrong,
             "review_state": "unreviewed",
             "attempted_at": submitted_at,
-            "metadata": {"mock_attempt_id": attempt["id"]},
+            "source_type": "platform_attempt",
+            "trust_level": "platform_verified",
+            "mock_attempt_id": attempt["id"],
+            "metadata": {"mock_attempt_id": attempt["id"]},  # kept for 6-month transition
         }).execute(),
         default=None,
     )

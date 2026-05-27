@@ -10,17 +10,32 @@ function humanizeTaskType(taskType) {
     .join(" ");
 }
 
+const ORIGIN_BADGE = {
+  platform_verified: { label: "Platform", className: "bg-[#EAF2EA] text-[#3A6B35]" },
+  self_reported: { label: "Self-logged", className: "bg-slate-100 text-slate-500" },
+  admin_verified: { label: "Admin", className: "bg-[#EAF0F8] text-[#2D5A8E]" },
+};
+
 export default function CorrectionTaskCard({ task, onAccept, onDismiss }) {
   if (!task) return null;
   const topicLabel = task.microtopic_id || task.topic_id;
   const errorTypes = task.evidence?.error_types ?? [];
+  const sourceTrust = task.evidence?.source_trust;
+  const originBadge = sourceTrust ? (ORIGIN_BADGE[sourceTrust] || ORIGIN_BADGE.self_reported) : null;
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex items-start justify-between gap-2">
         <h4 className="text-sm font-semibold text-slate-900">{humanizeTaskType(task.task_type)}</h4>
-        {typeof task.priority === "number" ? (
-          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">P{task.priority}</span>
-        ) : null}
+        <div className="flex items-center gap-1.5">
+          {originBadge && (
+            <span className={`rounded px-2 py-0.5 text-xs font-medium ${originBadge.className}`}>
+              {originBadge.label}
+            </span>
+          )}
+          {typeof task.priority === "number" ? (
+            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">P{task.priority}</span>
+          ) : null}
+        </div>
       </div>
       {topicLabel ? <p className="mt-0.5 text-xs text-slate-500">{topicLabel}</p> : null}
       <p className="mt-1 text-sm text-slate-600">{task.reason || "Needs correction review."}</p>

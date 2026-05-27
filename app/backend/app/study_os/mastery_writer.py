@@ -20,6 +20,21 @@ FlagState = Literal["off", "shadow", "live"]
 # Per-attempt mastery delta cap, in mastery units (0..1). 0.15 unit == 15 db.
 _CAP_UNIT = Decimal("0.15")
 
+# Trust weight applied to mastery deltas by source. Manual self-reports carry
+# ~30% of the influence of a platform-scored attempt at the same accuracy, so
+# they can still nudge mastery without dominating it. See
+# docs/architecture/mock_trust_model.md for the rationale.
+TRUST_WEIGHT: dict[str, Decimal] = {
+    "platform_verified": Decimal("1.0"),
+    "admin_verified": Decimal("1.0"),
+    "self_reported": Decimal("0.3"),
+}
+
+
+def _weighted_delta(base_delta: Decimal, trust_level: str) -> Decimal:
+    """Scale a capped mastery delta by the source trust weight."""
+    return base_delta * TRUST_WEIGHT.get(trust_level, Decimal("0.3"))
+
 
 class MasteryWriter:
     def __init__(self, supabase: Any, flag_state: FlagState) -> None:
@@ -40,14 +55,17 @@ class MasteryWriter:
         if analytics is None:
             return
 
+        trust_level = self._load_trust_level(attempt_id)
         current_mastery = self._load_current_mastery(analytics.user_id)
         existing_error_topics = self._load_existing_error_topics(analytics.user_id)
-        result = derive_from_analytics(analytics, current_mastery, existing_error_topics)
+        result = derive_from_analytics(
+            analytics, current_mastery, existing_error_topics, source_trust=trust_level
+        )
 
-        self._write_shadow(attempt_id, result.mastery_deltas, self.flag_state)
+        self._write_shadow(attempt_id, result.mastery_deltas, self.flag_state, trust_level)
 
         if self.flag_state == "live":
-            self._apply_mastery(attempt_id, result.mastery_deltas)
+            self._apply_mastery(attempt_id, result.mastery_deltas, trust_level)
             self._apply_error_patterns(result.error_signals)
             self._draft_correction_tasks(result.correction_task_drafts)
 
@@ -98,6 +116,19 @@ class MasteryWriter:
         ]
         return DerivedAttemptAnalytics(attempt_id=attempt_id, user_id=attempt["user_id"], questions=questions, topics=topics)
 
+    def _load_trust_level(self, attempt_id: str) -> str:
+        rows = (
+            self.supabase.table("mock_tests")
+            .select("trust_level")
+            .eq("mock_attempt_id", attempt_id)
+            .limit(1)
+            .execute()
+            .data or []
+        )
+        # Platform attempts always go through mock_attempts, so default to
+        # platform_verified if the mock_tests row isn't written yet.
+        return (rows[0].get("trust_level") or "platform_verified") if rows else "platform_verified"
+
     def _load_current_mastery(self, user_id: str) -> dict[str, Decimal]:
         rows = self.supabase.table("user_topic_mastery").select("topic_id,mastery_score").eq("user_id", user_id).execute().data or []
         out: dict[str, Decimal] = {}
@@ -110,10 +141,12 @@ class MasteryWriter:
         rows = self.supabase.table("user_topic_error_patterns").select("topic_id").eq("user_id", user_id).execute().data or []
         return {r.get("topic_id") for r in rows if r.get("topic_id")}
 
-    def _write_shadow(self, attempt_id: str, deltas: list[Any], flag_state: FlagState) -> None:
+    def _write_shadow(self, attempt_id: str, deltas: list[Any], flag_state: FlagState, trust_level: str = "platform_verified") -> None:
         payload = []
         for d in deltas:
-            delta_db = (d.capped_delta * Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            unweighted_db = (d.capped_delta * Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            weighted = _weighted_delta(d.capped_delta, trust_level)
+            delta_db = (weighted * Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             current_db = (d.current_mastery * Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             would_be = min(Decimal("100"), max(Decimal("0"), current_db + delta_db))
             payload.append({
@@ -121,23 +154,28 @@ class MasteryWriter:
                 "attempt_id": attempt_id,
                 "user_id": d.user_id,
                 "topic_id": d.topic_id,
-                "proposed_delta_unit": str(d.capped_delta),
+                "proposed_delta_unit": str(weighted),
                 "proposed_delta_db": str(delta_db),
+                "proposed_delta_db_unweighted": str(unweighted_db),
                 "current_mastery_db": str(current_db),
                 "would_be_mastery_db": str(would_be),
                 "flag_state": flag_state,
+                "trust_level": trust_level,
             })
         if payload:
             self.supabase.table("mock_mastery_shadow").insert(payload).execute()
 
-    def _apply_mastery(self, attempt_id: str, deltas: list[Any]) -> None:
+    def _apply_mastery(self, attempt_id: str, deltas: list[Any], trust_level: str = "platform_verified") -> None:
         for d in deltas:
             # Cap (whiplash guard): bound one mock's swing to ±0.15 unit. PR5a
             # emits both delta_raw_unit and delta_capped_unit; we read the capped
             # field (``capped_delta``) and re-cap defensively so a bad upstream
             # value can never write more than ±15 db. This is a different
             # invariant from the [0,100] clamp the RPC applies (overflow guard).
+            # Trust weight is applied after capping so a self-reported mock can
+            # never exceed the cap even at weight=1.0.
             delta_unit = min(_CAP_UNIT, max(-_CAP_UNIT, Decimal(str(d.capped_delta))))
+            delta_unit = _weighted_delta(delta_unit, trust_level)
             delta_db = (delta_unit * Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             # Idempotent + atomic. The RPC skips when an audit row already exists
             # for (user, topic, attempt), and applies the clamp + mastery write +

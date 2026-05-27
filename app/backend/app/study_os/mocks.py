@@ -93,6 +93,8 @@ def _serialise_mock(row: dict[str, Any], breakdowns: Iterable[dict[str, Any]] | 
         "error_patterns": dict(row.get("error_patterns") or {}),
         "review_state": row.get("review_state") or "unreviewed",
         "attempted_at": row.get("attempted_at"),
+        "source_type": row.get("source_type") or "manual_log",
+        "trust_level": row.get("trust_level") or "self_reported",
         "subject_breakdown": [
             _serialise_breakdown(b) for b in (breakdowns or [])
         ],
@@ -254,6 +256,9 @@ def create_mock(
         "review_state": payload.get("review_state") or "unreviewed",
         "attempted_at": payload.get("attempted_at") or _now_iso(),
         "notes": payload.get("notes"),
+        "source_type": "manual_log",
+        "trust_level": "self_reported",
+        "mock_attempt_id": None,
     }
 
     items = safe_required(
