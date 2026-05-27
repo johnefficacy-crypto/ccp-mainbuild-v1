@@ -1,4 +1,4 @@
--- 136_mock_templates_authoring.sql
+-- 139_mock_templates_authoring.sql
 -- PR2d template authoring backend (additive only)
 
 create table if not exists public.mock_template_sections (

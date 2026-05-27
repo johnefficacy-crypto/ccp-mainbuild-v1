@@ -1,3 +1,4 @@
+-- 138_mock_attempt_events.sql
 -- PR2b: mock_attempt_events — append-only telemetry log.
 --
 -- Server-emitted events are written in the same DB call as the state change
