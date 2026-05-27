@@ -1,5 +1,5 @@
 import React from "react";
-import { JsonPreview } from "../../../shared/ui";
+import { JsonPreview } from "../../../shared/ui/core";
 
 // Raw persona signal events list. Extracted from the AdminPersona page so the
 // Signal Events tab has a dedicated, testable component.

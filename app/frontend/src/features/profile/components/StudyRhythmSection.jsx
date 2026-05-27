@@ -1,6 +1,6 @@
 import React from "react";
 import { useFormContext } from "react-hook-form";
-import { InputField, SelectField } from "../../../shared/ui";
+import { InputField, SelectField } from "../../../shared/ui/core";
 import { PREPARATION_MODE_OPTIONS } from "../../../lib/profileFields";
 import { Grid, Section } from "./shared";
 

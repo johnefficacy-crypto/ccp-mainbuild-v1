@@ -49,7 +49,7 @@ jest.mock("../../features/admin/workflow/adminWorkflowContract", () => ({
 jest.mock("../../shared/a11y/useFocusTrap", () => ({
   useFocusTrap: () => null,
 }));
-jest.mock("../../shared/ui", () => ({
+jest.mock("../../shared/ui/core", () => ({
   EmptyState: () => null,
   ErrorState: () => null,
   LoadingSkeleton: () => null,

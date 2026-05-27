@@ -1,6 +1,6 @@
 import React from "react";
 import { useFormContext } from "react-hook-form";
-import { CheckboxField, InputField, SelectField } from "../../../shared/ui";
+import { CheckboxField, InputField, SelectField } from "../../../shared/ui/core";
 import { CATEGORY_OPTIONS, INDIAN_STATE_OPTIONS, PWBD_OPTIONS } from "../../../lib/profileFields";
 import { Grid, Section } from "./shared";
 

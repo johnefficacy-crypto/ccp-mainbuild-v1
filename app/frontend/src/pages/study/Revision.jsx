@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { CalendarDays, Check, Plus, SkipForward } from "lucide-react";
 import { revisionService } from "../../services/studyToolsService";
-import { DateField } from "../../shared/ui";
+import { DateField } from "../../shared/ui/heavy";
 
 const SOURCE_KINDS = [
   { value: "note", label: "Note" },

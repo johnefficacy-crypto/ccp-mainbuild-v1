@@ -1,6 +1,7 @@
 import React from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { InputField, SelectField, DateField } from "../../../shared/ui";
+import { InputField, SelectField } from "../../../shared/ui/core";
+import { DateField } from "../../../shared/ui/heavy";
 import { CATEGORY_OPTIONS, GENDER_OPTIONS, INDIAN_STATE_OPTIONS, PWBD_OPTIONS } from "../../../lib/profileFields";
 import { getDOBInputBounds } from "../../../shared/forms/dateParsers";
 
