@@ -243,6 +243,8 @@ export default function MockAttemptShell() {
         // next answer in that section may be rejected — surfaced on save.
       }
       return;
+    }
+    setCurrentIdx(nextIdx);
   }
 
   // ── submit ────────────────────────────────────────────────────────────────
