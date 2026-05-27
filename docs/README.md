@@ -31,6 +31,7 @@ This directory is the single source of context for the product, engineering stra
 | Source taxonomy and scraper intelligence | [engineering/source-intelligence.md](engineering/source-intelligence.md) |
 | What has been built (current truth) | [operations/implementation-checklist.md](operations/implementation-checklist.md) |
 | How to operate the system (runbook) | [operations/runbook.md](operations/runbook.md) |
+| Manual click-through review discipline (process) | [process/click_through_review.md](process/click_through_review.md) |
 | AI/agent context summary | [00-ai-context.md](00-ai-context.md) |
 | Build history and past sprint reports | [history/README.md](history/README.md) |
 

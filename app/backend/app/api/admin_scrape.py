@@ -136,30 +136,6 @@ def _surface_transient_as_503(op: str):
     return deco
 
 
-def _require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if user.get("role") not in {"admin", "super_admin"}:
-        raise HTTPException(status_code=403, detail="Admin role required")
-    # Ensure a profiles row exists — scrape_runs.triggered_by_user FKs into profiles.
-    try:
-        supabase = get_supabase_admin()
-        rows = (
-            supabase.table("profiles").select("id").eq("id", user["id"]).limit(1).execute().data
-            or []
-        )
-        if not rows:
-            supabase.table("profiles").insert(
-                {
-                    "id": user["id"],
-                    "full_name": user.get("name") or (user.get("email") or "").split("@")[0] or "Admin",
-                    "is_admin": True,
-                    "admin_role": user.get("role"),
-                }
-            ).execute()
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("admin profile bootstrap skipped")
-    return user
-
-
 def _audit(supabase, actor: dict, action: str, *, entity_type: str | None = None,
            entity_id: str | None = None, new_value: Any = None) -> None:
     try:
@@ -623,7 +599,6 @@ def correct_field(queue_id: str, field_name: str, body: ReviewBody | None = None
         patch_scrape_queue_extracted_field(sb, queue_id, field_name, body.corrected_value, entity_type=body.entity_type, entity_key=body.entity_key)
     _audit(sb, admin, "scrape.field.correct", entity_type="scrape_field", entity_id=f"{queue_id}:{field_name}", new_value=data)
     return {"ok": True, "field_name": field_name, "reviewer_status": "corrected", "corrected_value": body.corrected_value, **data, "effective_extracted_data": build_effective_extracted_data(sb, queue_id)}
-
 
 
 def _shape_source(row: dict[str, Any]) -> dict[str, Any]:
@@ -1652,8 +1627,6 @@ def promote_run_endpoint(
     return result
 
 
-
-
 class ResolveOfficialSourceBody(BaseModel):
     source_id: str = Field(..., min_length=1, max_length=64)
     official_notification_url: str | None = Field(default=None, max_length=2048)
@@ -2043,6 +2016,9 @@ def reject_queue_item(
     admin: dict = Depends(require_permission("scraper.manage")),
 ) -> dict[str, Any]:
     body = body or {}
+    reason = (body.get("notes") or "").strip()
+    if not reason:
+        raise HTTPException(status_code=422, detail="Rejection reason is required.")
     supabase = get_supabase_admin()
     res = (
         supabase.table("scrape_queue")
@@ -2050,7 +2026,7 @@ def reject_queue_item(
             {
                 "status": "rejected",
                 "reviewer_id": admin["id"],
-                "reviewer_notes": body.get("notes"),
+                "reviewer_notes": reason,
                 "reviewed_at": datetime.now(timezone.utc).isoformat(),
             }
         )

@@ -705,7 +705,7 @@ def set_mentor_verification(
         new = {**existing[0], **patch}
     else:
         row = {"user_id": user_id, **patch}
-        new = (_safe(lambda: supabase.table("mentor_verification").insert(row).execute().data, default=[]) or [row])[0]
+        new = (_safe(lambda: supabase.table("mentor_verification").insert(row).execute().data, default=[]) or [row])[0]  # safe-write-ok: falls back to local row dict on failure; admin retry is trivial
     audit_id = _audit(
         supabase, admin, "admin.mentor.verification.set",
         entity_type="mentor_verification", entity_id=user_id,

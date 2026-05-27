@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Info, ArrowRight } from "lucide-react";
 import { api } from "../../../lib/api";
-import { StatusBadge, EmptyState } from "../../../shared/ui";
+import { StatusBadge, EmptyState } from "../../../shared/ui/core";
 import { Eyebrow, Pill, SectionHeader, StatusDot, StudyCard } from "../../../shared/ui/studyos";
 
 // Live Plan Impact review.

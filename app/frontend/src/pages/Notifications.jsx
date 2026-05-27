@@ -4,7 +4,7 @@ import { Bell } from "lucide-react";
 import FilterToolbar from "../features/notifications/components/FilterToolbar";
 import NotificationList from "../features/notifications/components/NotificationList";
 import useNotifications from "../features/notifications/hooks/useNotifications";
-import { EmptyState, ErrorState, LoadingSkeleton } from "../shared/ui";
+import { EmptyState, ErrorState, LoadingSkeleton } from "../shared/ui/core";
 
 const FILTERS_KEY = "ccp.notifications.filters.v1";
 const DEFAULT_FILTERS = { unreadOnly: false, priority: "", type: "" };

@@ -56,6 +56,10 @@ def _matches_with_lt(self, row):
                 cell = row.get(key)
                 if op == "eq" and cell == val:
                     return True
+                if op == "is" and val == "null" and cell is None:
+                    return True
+                if op == "gt" and cell is not None and cell > val:
+                    return True
         return False
     return True
 

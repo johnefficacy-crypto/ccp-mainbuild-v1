@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Trophy } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
 import {
   Eyebrow,
@@ -33,6 +34,12 @@ const STATE_PILL = {
   unreviewed: { tone: "amber", label: "unreviewed" },
   reviewed: { tone: "sage", label: "reviewed" },
   correction_drafted: { tone: "sage", label: "corrected" },
+};
+
+const TRUST_BADGE = {
+  platform_verified: { tone: "sage", label: "Platform Attempt" },
+  self_reported: { tone: "outline", label: "Self-Logged" },
+  admin_verified: { tone: "dusk", label: "Admin Verified" },
 };
 
 function pct(m) {
@@ -77,6 +84,8 @@ export default function Mocks() {
   const [err, setErr] = useState("");
   const [formError, setFormError] = useState("");
   const { run: runMockAction } = useApiAction();
+  const navigate = useNavigate();
+  const [startingMock, setStartingMock] = useState(false);
 
   async function loadList() {
     try {
@@ -277,6 +286,25 @@ export default function Mocks() {
     });
   }
 
+  async function startIbpsMock() {
+    setStartingMock(true);
+    try {
+      const data = await api.post("/api/study/mocks/attempts/start", {
+        template_slug: "ibps-po-prelims-mock-1",
+      });
+      navigate(`/app/study/mocks/attempts/${data.attempt_id}`);
+    } catch (e) {
+      const detail = e?.data?.detail || e?.message || "";
+      if (typeof detail === "string" && detail.toLowerCase().includes("active attempt")) {
+        setErr("You already have an active attempt for this mock. Please complete or abandon it first.");
+      } else {
+        setErr("Could not start mock. Please try again.");
+      }
+    } finally {
+      setStartingMock(false);
+    }
+  }
+
   const avg = items.length
     ? Math.round(items.reduce((a, b) => a + pct(b), 0) / items.length)
     : 0;
@@ -301,6 +329,14 @@ export default function Mocks() {
         </div>
         <div className="flex items-center gap-3">
           <StatusDot state="live" label="Live" />
+          <button
+            onClick={startIbpsMock}
+            disabled={startingMock}
+            className="btn btn-primary"
+            data-testid="start-ibps-mock-btn"
+          >
+            {startingMock ? "Starting…" : "Start IBPS PO Prelims Mock"}
+          </button>
           <button onClick={() => setOpen(true)} className="btn btn-primary" data-testid="add-mock-btn">
             <Plus className="h-4 w-4" /> Log a mock
           </button>
@@ -400,6 +436,7 @@ function MockList({ items, activeId, onPick }) {
         {items.map((m) => {
           const active = m.id === activeId;
           const state = STATE_PILL[m.review_state] || STATE_PILL.unreviewed;
+          const trust = TRUST_BADGE[m.trust_level] || TRUST_BADGE.self_reported;
           return (
             <li key={m.id}>
               <button
@@ -415,7 +452,10 @@ function MockList({ items, activeId, onPick }) {
                   <span className={`font-heading text-[15px] ${active ? "" : "text-clay-900"}`}>
                     {m.name}
                   </span>
-                  <Pill tone={state.tone}>{state.label}</Pill>
+                  <div className="flex items-center gap-1">
+                    <Pill tone={trust.tone}>{trust.label}</Pill>
+                    <Pill tone={state.tone}>{state.label}</Pill>
+                  </div>
                 </div>
                 <div
                   className={`flex items-center justify-between mt-1 text-[11.5px] ${
@@ -443,6 +483,7 @@ function MockAnalysis({ bundle, onChangeReviewState, onDraftCorrections }) {
   const errors = bundle.error_patterns || {};
   const totalErrors = Object.values(errors).reduce((a, b) => a + Number(b || 0), 0);
   const reviewState = bundle.review_state || "unreviewed";
+  const isSelfReported = m.trust_level === "self_reported" || m.source_type === "manual_log";
 
   return (
     <StudyCard data-testid="mock-analysis">
@@ -456,6 +497,16 @@ function MockAnalysis({ bundle, onChangeReviewState, onDraftCorrections }) {
           </Pill>
         }
       />
+      {isSelfReported && (
+        <div
+          className="mb-4 rounded-lg border border-[#D9C7A7] bg-[#FBF6EE] px-3.5 py-2.5 text-[12.5px] text-clay-700"
+          data-testid="self-reported-banner"
+        >
+          <strong className="font-semibold text-clay-900">Self-reported mock.</strong>{" "}
+          Analytics are based on the score you entered. Mastery updates from this mock
+          carry reduced weight compared to platform-scored attempts.
+        </div>
+      )}
 
       <div className="grid md:grid-cols-[1fr_240px] gap-6">
         <div>

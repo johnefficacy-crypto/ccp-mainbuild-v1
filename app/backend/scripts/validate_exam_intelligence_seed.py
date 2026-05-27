@@ -50,7 +50,7 @@ def main() -> int:
     phases = _rows(sb, "exam_phases", "id,phase_name,status", exam_id=exam_id)
     results.append(CheckResult("Phases", "PASS" if phases else "FAIL", f"{len(phases)} phase row(s)", not bool(phases)))
 
-    locked_cov = _rows(sb, "exam_topic_coverage", "id,topic_id,source_basis,reviewer_status,reviewer_notes", exam_id=exam_id)
+    locked_cov = _rows(sb, "exam_topic_coverage", "id,topic_id,source_basis,reviewer_status,review_notes", exam_id=exam_id)
     locked_cov = [r for r in locked_cov if r.get("reviewer_status") == "locked"]
 
     topic_rows = _rows(sb, "topics", "id,is_active")
@@ -82,7 +82,7 @@ def main() -> int:
         tid = row.get("topic_id")
         if tid in verified_mention_topics or tid in verified_tag_topics:
             continue
-        if row.get("source_basis") == "admin_review" and (row.get("reviewer_notes") or "").strip():
+        if row.get("source_basis") == "admin_review" and (row.get("review_notes") or "").strip():
             continue
         unsupported.append(row.get("id"))
     results.append(CheckResult("Evidence linkage", "PASS" if not unsupported else "FAIL", "all locked rows have verified evidence or admin review notes" if not unsupported else f"{len(unsupported)} locked rows lack evidence chain", bool(unsupported)))

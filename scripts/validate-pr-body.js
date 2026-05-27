@@ -17,6 +17,7 @@ const requiredSections = [
   'API Contracts Touched',
   'UI States Covered',
   'Accessibility Checklist',
+  'E2E Impact',
   'Manual Test Checklist',
   'Commands Run',
 ];

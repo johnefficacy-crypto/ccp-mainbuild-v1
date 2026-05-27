@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { StatusBadge, ConfidencePill } from "../../../shared/ui";
+import { StatusBadge, ConfidencePill } from "../../../shared/ui/core";
 import ExamEvidenceDrawer from "./ExamEvidenceDrawer";
 
 const ACTIONS = [

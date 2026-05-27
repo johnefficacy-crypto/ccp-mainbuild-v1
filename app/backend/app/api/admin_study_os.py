@@ -2859,7 +2859,7 @@ def mocks_recompute_breakdowns(
         "outcome": outcome,
         "error_message": result.get("error") if outcome == "error" else None,
     }
-    _safe(lambda: supabase.table("mock_breakdown_recompute_runs").insert(run_row).execute())
+    _safe(lambda: supabase.table("mock_breakdown_recompute_runs").insert(run_row).execute())  # safe-write-ok: observability audit log; missing run record does not affect correctness
     audit_id = _audit(
         supabase, admin, "study_os.mocks.recompute_breakdowns",
         entity_type="mock_test", entity_id=mock_id,

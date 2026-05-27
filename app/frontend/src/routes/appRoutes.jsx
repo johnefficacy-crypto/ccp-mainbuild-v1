@@ -1,48 +1,54 @@
-import React from "react";
+import React, {lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
 import RouteErrorBoundary from "../components/RouteErrorBoundary";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
-import DashShell from "../pages/DashShell";
-import Today from "../pages/Today";
-import Profile from "../pages/Profile";
-import ExamDetail from "../pages/ExamDetail";
-import Saved from "../pages/Saved";
-import StudyPlan from "../pages/StudyPlan";
-import Focus from "../pages/study/Focus";
-import Mocks from "../pages/study/Mocks";
-import Subjects from "../pages/study/Subjects";
-import WeeklyReview from "../pages/study/WeeklyReview";
-import StudyCompare from "../pages/study/Compare";
-import Notes from "../pages/Notes";
-import Flashcards from "../pages/study/Flashcards";
-import FlashcardsDeck from "../pages/study/FlashcardsDeck";
-import Mistakes from "../pages/study/Mistakes";
-import Revision from "../pages/study/Revision";
-import Reports from "../pages/Reports";
-import CommunityScreen from "../features/community/CommunityScreen";
-import StudyGroupsScreen from "../features/community/StudyGroupsScreen";
-import PartnersScreen from "../features/community/PartnersScreen";
-import MentorsScreen from "../features/community/MentorsScreen";
-import ResourcesScreen from "../features/community/ResourcesScreen";
-import Marketplace from "../pages/Marketplace";
-import ResourceDetail from "../pages/ResourceDetail";
-import CoursePlayer from "../pages/CoursePlayer";
-import MentorDetail from "../pages/MentorDetail";
-import AIChat from "../pages/AIChat";
-import Notifications from "../pages/Notifications";
-import NotificationPreferences from "../pages/NotificationPreferences";
-import Pricing from "../pages/Pricing";
-import EligibilityShell from "../pages/eligibility/EligibilityShell";
-import EligibleExamsPage from "../pages/eligibility/EligibleExamsPage";
-import EligibleRecruitmentsPage from "../pages/eligibility/EligibleRecruitmentsPage";
-import EligibilityTrackerPage from "../pages/eligibility/EligibilityTrackerPage";
-import StudyShell from "../pages/study/StudyShell";
-import StudyHome from "../pages/study/StudyHome";
-import StudyLearningHub from "../pages/study/StudyLearningHub";
-import StudyProgressHub from "../pages/study/StudyProgressHub";
+
+const CommunityScreen = lazy(() => import("../features/community/CommunityScreen"));
+const StudyGroupsScreen = lazy(() => import("../features/community/StudyGroupsScreen"));
+const PartnersScreen = lazy(() => import("../features/community/PartnersScreen"));
+const MentorsScreen = lazy(() => import("../features/community/MentorsScreen"));
+const ResourcesScreen = lazy(() => import("../features/community/ResourcesScreen"));
+
+const Today = lazy(() => import("../pages/Today"));
+const DashShell = lazy(() => import("../pages/DashShell"));
+const Profile = lazy(() => import("../pages/Profile"));
+const ExamDetail = lazy(() => import("../pages/ExamDetail"));
+const Saved = lazy(() => import("../pages/Saved"));
+const StudyPlan = lazy(() => import("../pages/StudyPlan"));
+const Focus = lazy(() => import("../pages/study/Focus"));
+const Mocks = lazy(() => import("../pages/study/Mocks"));
+const Subjects = lazy(() => import("../pages/study/Subjects"));
+const WeeklyReview = lazy(() => import("../pages/study/WeeklyReview"));
+const StudyCompare = lazy(() => import("../pages/study/Compare"));
+const Notes = lazy(() => import("../pages/Notes"));
+const Flashcards = lazy(() => import("../pages/study/Flashcards"));
+const FlashcardsDeck = lazy(() => import("../pages/study/FlashcardsDeck"));
+const Mistakes = lazy(() => import("../pages/study/Mistakes"));
+const Revision = lazy(() => import("../pages/study/Revision"));
+const Reports = lazy(() => import("../pages/Reports"));
+const Marketplace = lazy(() => import("../pages/Marketplace"));
+const ResourceDetail = lazy(() => import("../pages/ResourceDetail"));
+const CoursePlayer = lazy(() => import("../pages/CoursePlayer"));
+const MentorDetail = lazy(() => import("../pages/MentorDetail"));
+const AIChat = lazy(() => import("../pages/AIChat"));
+const Notifications = lazy(() => import("../pages/Notifications"));
+const NotificationPreferences = lazy(() => import("../pages/NotificationPreferences"));
+const Pricing = lazy(() => import("../pages/Pricing"));
+const EligibilityShell = lazy(() => import("../pages/eligibility/EligibilityShell"));
+const EligibleExamsPage = lazy(() => import("../pages/eligibility/EligibleExamsPage"));
+const EligibleRecruitmentsPage = lazy(() => import("../pages/eligibility/EligibleRecruitmentsPage"));
+const EligibilityTrackerPage = lazy(() => import("../pages/eligibility/EligibilityTrackerPage"));
+const StudyShell = lazy(() => import("../pages/study/StudyShell"));
+const StudyHome = lazy(() => import("../pages/study/StudyHome"));
+const StudyLearningHub = lazy(() => import("../pages/study/StudyLearningHub"));
+const StudyProgressHub = lazy(() => import("../pages/study/StudyProgressHub"));
+const AttemptShellRouter = lazy(() => import("../pages/study/mocks/AttemptShellRouter"));
+const MockResult = lazy(() => import("../pages/study/mocks/MockResult"));
+const MockReview = lazy(() => import("../pages/study/mocks/MockReview"));
 
 export const appRouteElements = (
-  <Route element={<ProtectedRoute requireBackend><DashShell /></ProtectedRoute>}>
+  <>
+    <Route element={<ProtectedRoute requireBackend><DashShell /></ProtectedRoute>}>
     <Route element={<RouteErrorBoundary />}>
       <Route path="/app" element={<Navigate to="/app/today" replace />} />
       <Route path="/app/dashboard" element={<Navigate to="/app/today" replace />} />
@@ -76,6 +82,9 @@ export const appRouteElements = (
       </Route>
       <Route path="/app/study/focus" element={<Focus />} />
       <Route path="/app/study/mocks" element={<Mocks />} />
+      <Route path="/app/study/mocks/attempts/:attemptId" element={<AttemptShellRouter />} />
+      <Route path="/app/study/mocks/attempts/:attemptId/result" element={<MockResult />} />
+      <Route path="/app/study/mocks/attempts/:attemptId/review" element={<MockReview />} />
       <Route path="/app/study/subjects" element={<Subjects />} />
       <Route path="/app/study/review" element={<WeeklyReview />} />
       <Route path="/app/study/compare" element={<StudyCompare />} />
@@ -103,5 +112,6 @@ export const appRouteElements = (
       <Route path="/app/notifications/preferences" element={<NotificationPreferences />} />
       <Route path="/app/pricing" element={<Pricing />} />
     </Route>
-  </Route>
+    </Route>
+  </>
 );

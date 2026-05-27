@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
 from app.exam_eligibility.evaluator import summarize_user_eligibility
@@ -147,6 +147,31 @@ def _cached_days_remaining(supabase: Any, exam_id: str) -> int | None:
     value = _days_remaining_for_exam(supabase, exam_id)
     _cache_store(cache_key, value if value is not None else False)
     return value
+
+
+def _cached_upcoming_cycles(supabase: Any, exam_id: str, today_iso: str) -> list[dict[str, Any]]:
+    """Soonest upcoming exam cycles (for the milestone nudge), per-exam TTL
+    cached so a repeat mission-control call for the same exam pays zero
+    exam_cycles round-trips."""
+    cache_key = ("upcoming_cycles", exam_id, today_iso)
+    hit = _cache_lookup(cache_key)
+    if hit is not None:
+        return [] if hit is False else hit
+    rows = _safe(
+        lambda: (
+            supabase.table("exam_cycles")
+            .select("id, exam_start, notification_date, application_start, application_end, cycle_name")
+            .eq("exam_id", exam_id)
+            .gte("exam_start", today_iso)
+            .order("exam_start")
+            .limit(3)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    _cache_store(cache_key, rows if rows else False)
+    return rows
 
 
 def _cached_competition_context(
@@ -1331,9 +1356,15 @@ async def build_mission_control_async(supabase: Any, user_id: str) -> dict[str, 
         asyncio.to_thread(_load_policy_update_context, supabase, exam_intel),
     )
 
-    # Stage 3: competition depends on exam_context (days_remaining).
-    competition_ctx = await asyncio.to_thread(
-        _load_competition_context, supabase, exam_intel, exam_context
+    # Stage 3: competition_ctx depends on exam_context (days_remaining);
+    # regen_triggers and nudges depend only on stage-1/2 outputs. All three
+    # have their inputs ready here and touch different tables, so run them
+    # concurrently instead of in series.
+    from app.study_os.planner import build_regen_triggers
+    competition_ctx, regen_triggers, nudges = await asyncio.gather(
+        asyncio.to_thread(_load_competition_context, supabase, exam_intel, exam_context),
+        asyncio.to_thread(build_regen_triggers, supabase, user_id),
+        asyncio.to_thread(_build_nudges, supabase, user_id, exam_intel, review),
     )
 
     today_tasks: list[dict[str, Any]] = []
@@ -1412,6 +1443,15 @@ async def build_mission_control_async(supabase: Any, user_id: str) -> dict[str, 
         "next_best_action": next_best_action,
         "truth_panel": truth_panel,
         "plan_reasoning": plan_reasoning,
+        # Active auto-regen trigger conditions. The planner does NOT apply
+        # these — they're informational so the user can decide whether to
+        # open /api/study/plan/draft and review the suggested rewire.
+        "regen_triggers": regen_triggers,
+        # Compact nudge stack tied to milestones / weekly review signals.
+        # Dismissals are honoured per-user with a 24h TTL (see
+        # study_nudge_dismissals, migration 136). Codes are a closed set —
+        # see _NUDGE_CODES below.
+        "nudges": nudges,
         "progressive_question": progressive_question,
         "engine_trace": engine_trace,
         "exam_intelligence": exam_intel,
@@ -1506,3 +1546,227 @@ def build_task_reasoning_response(
         study_policy=dict(snapshot.get("study_policy") or {}),
         exam_context=exam_context,
     )
+
+
+# ─── Compact nudge stack (tied to milestones / weekly review) ─────────────
+_NUDGE_CODES = {
+    "mock_review_pending",
+    "subject_behind",
+    "backlog_over_threshold",
+    "milestone_in_7d",
+    "focus_streak_break",
+}
+
+# How long a dismissed nudge stays hidden before it can resurface if the
+# underlying condition is still / again true. 24h gives the user breathing
+# room without permanently silencing a real risk.
+_NUDGE_DISMISS_TTL_HOURS = 24
+
+# Backlog threshold matches planner.build_regen_triggers' _BACKLOG_LOW so
+# the two surfaces never disagree on what counts as "over threshold".
+_NUDGE_BACKLOG_THRESHOLD = 7
+
+
+def _load_dismissed_nudge_codes(supabase: Any, user_id: str) -> set[str]:
+    """Return nudge codes the user has dismissed within the TTL window."""
+    if not user_id:
+        return set()
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=_NUDGE_DISMISS_TTL_HOURS)).isoformat()
+    rows = _safe(
+        lambda: (
+            supabase.table("study_nudge_dismissals")
+            .select("nudge_code, dismissed_at")
+            .eq("user_id", user_id)
+            .gte("dismissed_at", cutoff)
+            .limit(50)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    return {r.get("nudge_code") for r in rows if r.get("nudge_code")}
+
+
+def _nudge_milestone_in_7d(supabase: Any, exam_intel: dict[str, Any], today: date) -> dict[str, Any] | None:
+    exam_id = (exam_intel or {}).get("exam_id") or (exam_intel or {}).get("id")
+    if not exam_id:
+        return None
+    horizon = today + timedelta(days=7)
+    cycles = _cached_upcoming_cycles(supabase, exam_id, today.isoformat())
+    if not cycles:
+        return None
+    candidates: list[tuple[date, str, str]] = []
+    for cyc in cycles:
+        for key, kind in (
+            ("notification_date", "notification"),
+            ("application_start", "application opens"),
+            ("application_end", "application closes"),
+            ("exam_start", "exam day"),
+        ):
+            raw = cyc.get(key)
+            if not raw:
+                continue
+            try:
+                d = date.fromisoformat(str(raw)[:10])
+            except ValueError:
+                continue
+            if today <= d <= horizon:
+                candidates.append((d, kind, str(cyc.get("cycle_name") or "")))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: c[0])
+    d, kind, cycle_name = candidates[0]
+    days_to = (d - today).days
+    return {
+        "code": "milestone_in_7d",
+        "message": f"{kind.capitalize()} in {days_to} day(s) on {d.isoformat()}.",
+        "link": "/app/study/plan",
+        "dismissable": True,
+        "severity": "high" if days_to <= 2 else "medium",
+        "evidence": {"milestone": kind, "date": d.isoformat(), "cycle_name": cycle_name},
+    }
+
+
+def _nudge_mock_review_pending(supabase: Any, user_id: str) -> dict[str, Any] | None:
+    rows = _safe(
+        lambda: (
+            supabase.table("mock_tests")
+            .select("id, review_state")
+            .eq("user_id", user_id)
+            .order("attempted_at", desc=True)
+            .limit(20)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    unreviewed = [
+        r for r in rows
+        if (r.get("review_state") or "").lower() in {"", "scheduled", "unreviewed"}
+    ]
+    if not unreviewed:
+        return None
+    return {
+        "code": "mock_review_pending",
+        "message": f"{len(unreviewed)} mock(s) waiting on review before your next attempt.",
+        "link": "/app/study/mocks",
+        "dismissable": True,
+        "severity": "medium",
+        "evidence": {"unreviewed_count": len(unreviewed)},
+    }
+
+
+def _nudge_backlog_over_threshold(review: dict[str, Any]) -> dict[str, Any] | None:
+    backlog = int((review or {}).get("backlog_count") or 0)
+    if backlog < _NUDGE_BACKLOG_THRESHOLD:
+        return None
+    return {
+        "code": "backlog_over_threshold",
+        "message": f"{backlog} open task(s) past their planned date — clear or carry forward.",
+        "link": "/app/study/plan",
+        "dismissable": True,
+        "severity": "high" if backlog >= 15 else "medium",
+        "evidence": {"backlog_count": backlog, "threshold": _NUDGE_BACKLOG_THRESHOLD},
+    }
+
+
+def _nudge_subject_behind(supabase: Any, user_id: str) -> dict[str, Any] | None:
+    """Pick one subject where planned tasks outpace completed ≥ 3:1.
+
+    Computed in-line from study_tasks because mission-control does not
+    otherwise carry per-subject roll-ups (those live on /plan/timeline).
+    Threshold mirrors plan_timeline._build_risk_flags' subject_behind code.
+    """
+    since = (date.today() - timedelta(days=21)).isoformat()
+    rows = _safe(
+        lambda: (
+            supabase.table("study_tasks")
+            .select("subject, status, scheduled_date")
+            .eq("user_id", user_id)
+            .gte("scheduled_date", since)
+            .limit(2000)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    if not rows:
+        return None
+    totals: dict[str, dict[str, int]] = {}
+    for r in rows:
+        sub = (r.get("subject") or "").strip()
+        if not sub:
+            continue
+        slot = totals.setdefault(sub, {"planned": 0, "completed": 0})
+        slot["planned"] += 1
+        if (r.get("status") or "").lower() == "completed":
+            slot["completed"] += 1
+    behind: list[tuple[str, int, int]] = []
+    for sub, slot in totals.items():
+        if slot["planned"] >= 6 and slot["completed"] * 2 < slot["planned"]:
+            behind.append((sub, slot["planned"], slot["completed"]))
+    if not behind:
+        return None
+    behind.sort(key=lambda r: (-r[1], r[0]))
+    sub, planned, completed = behind[0]
+    return {
+        "code": "subject_behind",
+        "message": f"Behind on {sub}: only {completed} of {planned} planned tasks done in the last 3 weeks.",
+        "link": "/app/study/subjects",
+        "dismissable": True,
+        "severity": "medium",
+        "evidence": {"subject": sub, "planned": planned, "completed": completed, "window_days": 21},
+    }
+
+
+def _nudge_focus_streak_break(supabase: Any, user_id: str, today: date) -> dict[str, Any] | None:
+    """Reuse planner._missed_days_streak so the two surfaces agree."""
+    from app.study_os.planner import _missed_days_streak  # local import to avoid cycle
+    streak = _missed_days_streak(supabase, user_id, today)
+    if not streak:
+        return None
+    return {
+        "code": "focus_streak_break",
+        "message": streak.get("label", "Focus streak broke."),
+        "link": "/app/study/plan",
+        "dismissable": True,
+        "severity": streak.get("severity", "medium"),
+        "evidence": streak.get("evidence", {}),
+    }
+
+
+def _build_nudges(
+    supabase: Any,
+    user_id: str,
+    exam_intel: dict[str, Any] | None,
+    review: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Compose the compact nudge stack for the Study Home page.
+
+    Deterministic order: milestone_in_7d → mock_review_pending →
+    backlog_over_threshold → subject_behind → focus_streak_break. Honours
+    per-user dismissals within the TTL window from
+    ``study_nudge_dismissals`` (migration 136). Each nudge is shaped
+    ``{code, message, link, dismissable, severity, evidence}``. Never
+    raises — failing sub-builders just skip their nudge.
+    """
+    if not user_id:
+        return []
+    today = date.today()
+    dismissed = _load_dismissed_nudge_codes(supabase, user_id)
+    out: list[dict[str, Any]] = []
+    builders = (
+        lambda: _nudge_milestone_in_7d(supabase, exam_intel or {}, today),
+        lambda: _nudge_mock_review_pending(supabase, user_id),
+        lambda: _nudge_backlog_over_threshold(review or {}),
+        lambda: _nudge_subject_behind(supabase, user_id),
+        lambda: _nudge_focus_streak_break(supabase, user_id, today),
+    )
+    for build in builders:
+        try:
+            row = build()
+        except Exception:  # noqa: BLE001
+            row = None
+        if row and row.get("code") in _NUDGE_CODES and row["code"] not in dismissed:
+            out.append(row)
+    return out

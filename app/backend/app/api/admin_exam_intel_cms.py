@@ -844,9 +844,14 @@ def update_pyq_option(
 # ════════════════════════════════════════════════════════════════════════
 
 
+# Mirrors the real ``exam_topic_coverage`` schema (migration 030). There is
+# no ``priority`` or ``is_active`` column — the planner reads
+# ``exam_priority_score`` / ``is_high_yield`` instead.
 _COVERAGE_FIELDS = {
-    "exam_id", "exam_phase_id", "topic_id", "priority", "is_high_yield",
-    "is_active", "metadata",
+    "exam_id", "exam_cycle_id", "exam_phase_id", "section_id", "topic_id",
+    "coverage_depth", "expected_difficulty", "exam_priority_score",
+    "is_high_yield", "confidence_score", "source_basis",
+    "reviewer_status", "review_notes", "metadata",
 }
 
 
@@ -860,7 +865,7 @@ def list_exam_topic_coverage(
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
-    q = supabase.table("exam_topic_coverage").select("*", count="exact").order("priority", desc=True)
+    q = supabase.table("exam_topic_coverage").select("*", count="exact").order("exam_priority_score", desc=True)
     if exam_id:
         q = q.eq("exam_id", exam_id)
     if reviewer_status:
@@ -876,9 +881,21 @@ def create_exam_topic_coverage(
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
+    unknown = set(body.payload) - _COVERAGE_FIELDS
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown field(s) for exam_topic_coverage: {sorted(unknown)}",
+        )
     row = {k: v for k, v in body.payload.items() if k in _COVERAGE_FIELDS}
     if not row.get("exam_id") or not row.get("topic_id"):
         raise HTTPException(status_code=422, detail="exam_id and topic_id are required")
+    if row.get("section_id"):
+        section = _safe_select(supabase, "exam_phase_sections", id=row["section_id"])
+        if not section:
+            raise HTTPException(status_code=422, detail="section_id does not resolve")
+        if section.get("exam_phase_id") != row.get("exam_phase_id"):
+            raise HTTPException(status_code=422, detail="section_id belongs to a different exam_phase")
     row["reviewer_status"] = "pending_review"
     inserted = supabase.table("exam_topic_coverage").insert(row).execute().data or []
     new = inserted[0] if inserted else row
@@ -1113,6 +1130,874 @@ def update_competition_metric(
 
 
 # ════════════════════════════════════════════════════════════════════════
+#  Subjects (taxonomy, migration 029)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Exact writable columns from migration 029. ``slug`` is globally unique.
+_SUBJECT_FIELDS = {
+    "slug", "name", "subject_group", "default_difficulty_level",
+    "description", "is_active", "metadata",
+}
+
+
+def _reject_unknown(payload: dict[str, Any], allowed: set[str], table: str) -> None:
+    unknown = set(payload) - allowed
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown field(s) for {table}: {sorted(unknown)}",
+        )
+
+
+def _norm_alias(text: str) -> str:
+    return (text or "").strip().lower()
+
+
+@router.get("/subjects")
+def list_subjects(
+    is_active: bool | None = Query(default=None),
+    q: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("subjects").select(
+        "id, slug, name, subject_group, default_difficulty_level, description, is_active, metadata, created_at, updated_at",
+        count="exact",
+    ).order("name", desc=False)
+    if is_active is not None:
+        query = query.eq("is_active", is_active)
+    if q:
+        query = query.ilike("name", f"%{q.strip()}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/subjects")
+def create_subject(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _SUBJECT_FIELDS, "subjects")
+    row = {k: v for k, v in body.payload.items() if k in _SUBJECT_FIELDS}
+    if not row.get("slug") or not row.get("name"):
+        raise HTTPException(status_code=422, detail="slug and name are required")
+    row.setdefault("is_active", True)
+    try:
+        # Upsert by slug so re-importing the same subject is idempotent.
+        inserted = supabase.table("subjects").upsert(row, on_conflict="slug").execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.subject.create",
+        entity_type="subject", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/subjects/{subject_id}")
+def update_subject(
+    subject_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "subjects", id=subject_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    _reject_unknown(body.payload, _SUBJECT_FIELDS, "subjects")
+    patch = {k: v for k, v in body.payload.items() if k in _SUBJECT_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    patch["updated_at"] = _now_iso()
+    updated = supabase.table("subjects").update(patch).eq("id", subject_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.subject.update",
+        entity_type="subject", entity_id=subject_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Topics (taxonomy, migration 029)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Exact writable columns from migration 029. Slug is unique per
+# (subject_id, parent_topic_id, slug); level is constrained by a CHECK.
+_TOPIC_FIELDS = {
+    "subject_id", "parent_topic_id", "slug", "name", "level",
+    "default_difficulty_level", "description", "is_active", "metadata",
+}
+_TOPIC_LEVELS = ("topic", "microtopic", "concept")
+
+
+@router.get("/topics")
+def list_topics(
+    subject_id: str | None = Query(default=None),
+    parent_topic_id: str | None = Query(default=None),
+    level: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    q: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("topics").select(
+        "id, subject_id, parent_topic_id, slug, name, level, default_difficulty_level, description, is_active, metadata, created_at, updated_at",
+        count="exact",
+    ).order("name", desc=False)
+    if subject_id:
+        query = query.eq("subject_id", subject_id)
+    if parent_topic_id:
+        query = query.eq("parent_topic_id", parent_topic_id)
+    if level:
+        query = query.eq("level", level)
+    if is_active is not None:
+        query = query.eq("is_active", is_active)
+    if q:
+        query = query.ilike("name", f"%{q.strip()}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/topics")
+def create_topic(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _TOPIC_FIELDS, "topics")
+    row = {k: v for k, v in body.payload.items() if k in _TOPIC_FIELDS}
+    if not row.get("subject_id") or not row.get("slug") or not row.get("name"):
+        raise HTTPException(status_code=422, detail="subject_id, slug, name are required")
+    if row.get("level") and row["level"] not in _TOPIC_LEVELS:
+        raise HTTPException(status_code=422, detail=f"level must be one of {_TOPIC_LEVELS}")
+    if not _safe_select(supabase, "subjects", id=row["subject_id"]):
+        raise HTTPException(status_code=422, detail="subject_id does not resolve")
+    parent_id = row.get("parent_topic_id")
+    if parent_id:
+        parent = _safe_select(supabase, "topics", id=parent_id)
+        if not parent:
+            raise HTTPException(status_code=422, detail="parent_topic_id does not resolve")
+        if parent.get("subject_id") != row["subject_id"]:
+            raise HTTPException(
+                status_code=422,
+                detail="parent_topic_id belongs to a different subject",
+            )
+    row.setdefault("is_active", True)
+    try:
+        # Upsert on the natural key so re-importing a topic is idempotent.
+        inserted = (
+            supabase.table("topics")
+            .upsert(row, on_conflict="subject_id,parent_topic_id,slug")
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic.create",
+        entity_type="topic", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/topics/{topic_id}")
+def update_topic(
+    topic_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "topics", id=topic_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    _reject_unknown(body.payload, _TOPIC_FIELDS, "topics")
+    patch = {k: v for k, v in body.payload.items() if k in _TOPIC_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("level") and patch["level"] not in _TOPIC_LEVELS:
+        raise HTTPException(status_code=422, detail=f"level must be one of {_TOPIC_LEVELS}")
+    # Keep parent within the (possibly updated) subject.
+    target_subject = patch.get("subject_id", existing.get("subject_id"))
+    if patch.get("parent_topic_id"):
+        parent = _safe_select(supabase, "topics", id=patch["parent_topic_id"])
+        if not parent:
+            raise HTTPException(status_code=422, detail="parent_topic_id does not resolve")
+        if parent.get("subject_id") != target_subject:
+            raise HTTPException(status_code=422, detail="parent_topic_id belongs to a different subject")
+    patch["updated_at"] = _now_iso()
+    updated = supabase.table("topics").update(patch).eq("id", topic_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic.update",
+        entity_type="topic", entity_id=topic_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Topic aliases (taxonomy, migration 029)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Operator-settable columns. ``normalized_alias`` is server-derived from
+# ``alias`` (the table requires it NOT NULL with no default).
+_TOPIC_ALIAS_FIELDS = {"topic_id", "alias", "source_context"}
+
+
+@router.get("/topic-aliases")
+def list_topic_aliases(
+    topic_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("topic_aliases").select(
+        "id, topic_id, alias, normalized_alias, source_context, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if topic_id:
+        query = query.eq("topic_id", topic_id)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/topic-aliases")
+def create_topic_alias(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _TOPIC_ALIAS_FIELDS, "topic_aliases")
+    row = {k: v for k, v in body.payload.items() if k in _TOPIC_ALIAS_FIELDS}
+    if not row.get("topic_id") or not row.get("alias"):
+        raise HTTPException(status_code=422, detail="topic_id and alias are required")
+    if not _safe_select(supabase, "topics", id=row["topic_id"]):
+        raise HTTPException(status_code=422, detail="topic_id does not resolve")
+    row["normalized_alias"] = _norm_alias(row["alias"])
+    try:
+        inserted = supabase.table("topic_aliases").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic_alias.create",
+        entity_type="topic_alias", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.delete("/topic-aliases/{alias_id}")
+def delete_topic_alias(
+    alias_id: str,
+    reason: str = Query(..., min_length=8, max_length=500),
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Hard-delete: an alias is a pure lookup row with no review surface
+    and nothing FK-references it."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "topic_aliases", id=alias_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Topic alias not found")
+    supabase.table("topic_aliases").delete().eq("id", alias_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic_alias.delete",
+        entity_type="topic_alias", entity_id=alias_id,
+        new_value={"reason": reason, "deleted": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "id": alias_id}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Topic prerequisites (taxonomy, migration 029)
+# ════════════════════════════════════════════════════════════════════════
+
+
+_TOPIC_PREREQ_FIELDS = {
+    "topic_id", "prerequisite_topic_id", "relation_type", "strength",
+    "source_basis", "metadata",
+}
+_TOPIC_PREREQ_RELATIONS = ("requires", "recommended_before", "supports", "foundation_for")
+
+
+@router.get("/topic-prerequisites")
+def list_topic_prerequisites(
+    topic_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("topic_prerequisites").select(
+        "id, topic_id, prerequisite_topic_id, relation_type, strength, source_basis, metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if topic_id:
+        query = query.eq("topic_id", topic_id)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/topic-prerequisites")
+def create_topic_prerequisite(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _TOPIC_PREREQ_FIELDS, "topic_prerequisites")
+    row = {k: v for k, v in body.payload.items() if k in _TOPIC_PREREQ_FIELDS}
+    topic_id = row.get("topic_id")
+    prereq_id = row.get("prerequisite_topic_id")
+    if not topic_id or not prereq_id:
+        raise HTTPException(status_code=422, detail="topic_id and prerequisite_topic_id are required")
+    if topic_id == prereq_id:
+        raise HTTPException(status_code=422, detail="a topic cannot be its own prerequisite")
+    if row.get("relation_type") and row["relation_type"] not in _TOPIC_PREREQ_RELATIONS:
+        raise HTTPException(status_code=422, detail=f"relation_type must be one of {_TOPIC_PREREQ_RELATIONS}")
+    if not _safe_select(supabase, "topics", id=topic_id):
+        raise HTTPException(status_code=422, detail="topic_id does not resolve")
+    if not _safe_select(supabase, "topics", id=prereq_id):
+        raise HTTPException(status_code=422, detail="prerequisite_topic_id does not resolve")
+    # Basic cycle guard: reject B→A when A→B already exists. (One level only;
+    # transitive cycle detection would need a recursive CTE — see PR notes.)
+    if _safe_select(supabase, "topic_prerequisites", topic_id=prereq_id, prerequisite_topic_id=topic_id):
+        raise HTTPException(
+            status_code=422,
+            detail="cycle: the reverse prerequisite already exists",
+        )
+    try:
+        inserted = supabase.table("topic_prerequisites").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic_prerequisite.create",
+        entity_type="topic_prerequisite", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.delete("/topic-prerequisites/{prereq_id}")
+def delete_topic_prerequisite(
+    prereq_id: str,
+    reason: str = Query(..., min_length=8, max_length=500),
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Hard-delete: a prerequisite edge is a pure relation row."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "topic_prerequisites", id=prereq_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Topic prerequisite not found")
+    supabase.table("topic_prerequisites").delete().eq("id", prereq_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.topic_prerequisite.delete",
+        entity_type="topic_prerequisite", entity_id=prereq_id,
+        new_value={"reason": reason, "deleted": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "id": prereq_id}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Exam phase sections (migration 030)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Real columns from migration 030. exam_phase_id + subject_id + section_label
+# are NOT NULL; unique(exam_phase_id, subject_id, section_label). No
+# section_code / is_optional columns; the duration column is duration_mins.
+_SECTION_FIELDS = {
+    "exam_phase_id", "subject_id", "section_label", "question_count", "marks",
+    "duration_mins", "negative_marking", "difficulty_level", "weightage_percent",
+    "sort_order", "metadata",
+}
+
+
+@router.get("/exam-phase-sections")
+def list_exam_phase_sections(
+    exam_phase_id: str | None = Query(default=None),
+    subject_id: str | None = Query(default=None),
+    q: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("exam_phase_sections").select(
+        "id, exam_phase_id, subject_id, section_label, question_count, marks, "
+        "duration_mins, negative_marking, difficulty_level, weightage_percent, "
+        "sort_order, metadata, created_at, updated_at",
+        count="exact",
+    ).order("sort_order", desc=False)
+    if exam_phase_id:
+        query = query.eq("exam_phase_id", exam_phase_id)
+    if subject_id:
+        query = query.eq("subject_id", subject_id)
+    if q:
+        query = query.ilike("section_label", f"%{q.strip()}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/exam-phase-sections")
+def create_exam_phase_section(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _SECTION_FIELDS, "exam_phase_sections")
+    row = {k: v for k, v in body.payload.items() if k in _SECTION_FIELDS}
+    if not row.get("exam_phase_id") or not row.get("subject_id") or not row.get("section_label"):
+        raise HTTPException(status_code=422, detail="exam_phase_id, subject_id, section_label are required")
+    if not _safe_select(supabase, "exam_phases", id=row["exam_phase_id"]):
+        raise HTTPException(status_code=422, detail="exam_phase_id does not resolve")
+    if not _safe_select(supabase, "subjects", id=row["subject_id"]):
+        raise HTTPException(status_code=422, detail="subject_id does not resolve")
+    try:
+        inserted = supabase.table("exam_phase_sections").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.exam_phase_section.create",
+        entity_type="exam_phase_section", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/exam-phase-sections/{section_id}")
+def update_exam_phase_section(
+    section_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "exam_phase_sections", id=section_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Exam phase section not found")
+    _reject_unknown(body.payload, _SECTION_FIELDS, "exam_phase_sections")
+    patch = {k: v for k, v in body.payload.items() if k in _SECTION_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("subject_id") and not _safe_select(supabase, "subjects", id=patch["subject_id"]):
+        raise HTTPException(status_code=422, detail="subject_id does not resolve")
+    patch["updated_at"] = _now_iso()
+    updated = supabase.table("exam_phase_sections").update(patch).eq("id", section_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.exam_phase_section.update",
+        entity_type="exam_phase_section", entity_id=section_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Exam competition metrics — list (create/patch above)
+# ════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/exam-competition-metrics")
+def list_competition_metrics(
+    exam_id: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("exam_competition_metrics").select(
+        "id, exam_id, exam_cycle_id, exam_phase_id, vacancy_total, applicant_count, "
+        "selection_ratio, competition_pressure_score, source_basis, confidence_score, "
+        "evidence_count, reviewer_status, metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if exam_id:
+        query = query.eq("exam_id", exam_id)
+    if reviewer_status:
+        query = query.eq("reviewer_status", reviewer_status)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Syllabus topic mentions — created at reviewer_status='pending'
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Operator-settable columns from migration 031. ``reviewer_status`` is
+# accepted in the payload (so a stale 'verified' is tolerated, not 422'd)
+# but always forced to 'pending' on create. The review-queue fields
+# (reviewer_notes / reviewed_by / reviewed_at) are NOT settable here — they
+# flow through /admin/exam-intelligence. Note: this table has no
+# ``updated_at`` column, so PATCH must not set one.
+_MENTION_FIELDS = {
+    "syllabus_document_id", "exam_id", "exam_cycle_id", "exam_phase_id",
+    "topic_id", "raw_text", "normalized_text", "mention_type",
+    "confidence_score", "extraction_method", "metadata",
+}
+_MENTION_CREATE_FIELDS = _MENTION_FIELDS | {"reviewer_status"}
+_MENTION_TYPES = ("explicit", "implied", "parent_topic_only", "derived")
+
+
+@router.get("/syllabus-topic-mentions")
+def list_syllabus_topic_mentions(
+    syllabus_document_id: str | None = Query(default=None),
+    exam_id: str | None = Query(default=None),
+    exam_phase_id: str | None = Query(default=None),
+    topic_id: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    q: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("syllabus_topic_mentions").select(
+        "id, syllabus_document_id, exam_id, exam_cycle_id, exam_phase_id, topic_id, "
+        "raw_text, normalized_text, mention_type, confidence_score, extraction_method, "
+        "reviewer_status, reviewer_notes, metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if syllabus_document_id:
+        query = query.eq("syllabus_document_id", syllabus_document_id)
+    if exam_id:
+        query = query.eq("exam_id", exam_id)
+    if exam_phase_id:
+        query = query.eq("exam_phase_id", exam_phase_id)
+    if topic_id:
+        query = query.eq("topic_id", topic_id)
+    if reviewer_status:
+        query = query.eq("reviewer_status", reviewer_status)
+    if q:
+        query = query.ilike("raw_text", f"%{q.strip()}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/syllabus-topic-mentions")
+def create_syllabus_topic_mention(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _MENTION_CREATE_FIELDS, "syllabus_topic_mentions")
+    row = {k: v for k, v in body.payload.items() if k in _MENTION_FIELDS}
+    if not row.get("syllabus_document_id") or not row.get("exam_id") or not row.get("topic_id"):
+        raise HTTPException(status_code=422, detail="syllabus_document_id, exam_id, topic_id are required")
+    if row.get("mention_type") and row["mention_type"] not in _MENTION_TYPES:
+        raise HTTPException(status_code=422, detail=f"mention_type must be one of {_MENTION_TYPES}")
+    if not _safe_select(supabase, "syllabus_documents", id=row["syllabus_document_id"]):
+        raise HTTPException(status_code=422, detail="syllabus_document_id does not resolve")
+    if not _safe_select(supabase, "exams", id=row["exam_id"]):
+        raise HTTPException(status_code=422, detail="exam_id does not resolve")
+    if not _safe_select(supabase, "topics", id=row["topic_id"]):
+        raise HTTPException(status_code=422, detail="topic_id does not resolve")
+    # CMS feeds the review queue — a mention can never be born verified.
+    row["reviewer_status"] = "pending"
+    try:
+        inserted = supabase.table("syllabus_topic_mentions").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.syllabus_mention.create",
+        entity_type="syllabus_topic_mention", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/syllabus-topic-mentions/{mention_id}")
+def update_syllabus_topic_mention(
+    mention_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Edit the data fields of a mention. ``reviewer_status`` (and the
+    reviewer_notes/reviewed_by/reviewed_at trio) are NOT editable here —
+    those move through the /admin/exam-intelligence review queue."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "syllabus_topic_mentions", id=mention_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Syllabus topic mention not found")
+    _reject_unknown(body.payload, _MENTION_FIELDS, "syllabus_topic_mentions")
+    patch = {k: v for k, v in body.payload.items() if k in _MENTION_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("mention_type") and patch["mention_type"] not in _MENTION_TYPES:
+        raise HTTPException(status_code=422, detail=f"mention_type must be one of {_MENTION_TYPES}")
+    # No updated_at column on this table (migration 031).
+    updated = supabase.table("syllabus_topic_mentions").update(patch).eq("id", mention_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.syllabus_mention.update",
+        entity_type="syllabus_topic_mention", entity_id=mention_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  PYQ sources (migration 032)
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Operator-settable columns from migration 032. ``trust_status`` is forced to
+# 'pending' on create (a source can't be born verified) but is PATCH-editable
+# because pyq_sources has no separate review queue. No ``updated_at`` column.
+_PYQ_SOURCE_FIELDS = {
+    "exam_id", "source_id", "source_type", "source_url", "title",
+    "trust_status", "metadata",
+}
+_PYQ_SOURCE_TYPES = ("official", "memory_based", "coaching", "community", "aggregator", "unknown")
+
+
+@router.get("/pyq-sources")
+def list_pyq_sources(
+    exam_id: str | None = Query(default=None),
+    source_type: str | None = Query(default=None),
+    trust_status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("pyq_sources").select(
+        "id, exam_id, source_id, source_type, source_url, title, trust_status, metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if exam_id:
+        query = query.eq("exam_id", exam_id)
+    if source_type:
+        query = query.eq("source_type", source_type)
+    if trust_status:
+        query = query.eq("trust_status", trust_status)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/pyq-sources")
+def create_pyq_source(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _PYQ_SOURCE_FIELDS, "pyq_sources")
+    row = {k: v for k, v in body.payload.items() if k in _PYQ_SOURCE_FIELDS}
+    if not row.get("exam_id"):
+        raise HTTPException(status_code=422, detail="exam_id is required")
+    if row.get("source_type") and row["source_type"] not in _PYQ_SOURCE_TYPES:
+        raise HTTPException(status_code=422, detail=f"source_type must be one of {_PYQ_SOURCE_TYPES}")
+    if not _safe_select(supabase, "exams", id=row["exam_id"]):
+        raise HTTPException(status_code=422, detail="exam_id does not resolve")
+    # CMS feeds the trust pipeline — a source lands pending.
+    row["trust_status"] = "pending"
+    try:
+        inserted = supabase.table("pyq_sources").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_source.create",
+        entity_type="pyq_source", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/pyq-sources/{source_id}")
+def update_pyq_source(
+    source_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_sources", id=source_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="PYQ source not found")
+    _reject_unknown(body.payload, _PYQ_SOURCE_FIELDS, "pyq_sources")
+    patch = {k: v for k, v in body.payload.items() if k in _PYQ_SOURCE_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("source_type") and patch["source_type"] not in _PYQ_SOURCE_TYPES:
+        raise HTTPException(status_code=422, detail=f"source_type must be one of {_PYQ_SOURCE_TYPES}")
+    # No updated_at column on this table (migration 032).
+    updated = supabase.table("pyq_sources").update(patch).eq("id", source_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_source.update",
+        entity_type="pyq_source", entity_id=source_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  PYQ question topic tags — created at reviewer_status='pending'
+# ════════════════════════════════════════════════════════════════════════
+
+
+# Operator-settable columns from migration 032. ``reviewer_status`` is forced
+# to 'pending' on create and moves only through the review queue; the
+# reviewed_by/reviewed_at pair is review-queue-owned. No ``updated_at``.
+_PYQ_TAG_FIELDS = {
+    "question_id", "topic_id", "tag_weight", "tag_role", "tagging_source",
+    "confidence_score", "metadata",
+}
+_PYQ_TAG_CREATE_FIELDS = _PYQ_TAG_FIELDS | {"reviewer_status"}
+_PYQ_TAG_ROLES = ("primary", "secondary", "prerequisite", "trap", "calculation_layer", "conceptual_layer")
+_PYQ_TAGGING_SOURCES = ("manual", "admin", "ai", "rule", "imported")
+
+
+@router.get("/pyq-question-topic-tags")
+def list_pyq_question_topic_tags(
+    question_id: str | None = Query(default=None),
+    topic_id: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("pyq_question_topic_tags").select(
+        "id, question_id, topic_id, tag_weight, tag_role, tagging_source, "
+        "confidence_score, reviewer_status, metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if question_id:
+        query = query.eq("question_id", question_id)
+    if topic_id:
+        query = query.eq("topic_id", topic_id)
+    if reviewer_status:
+        query = query.eq("reviewer_status", reviewer_status)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/pyq-question-topic-tags")
+def create_pyq_question_topic_tag(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _PYQ_TAG_CREATE_FIELDS, "pyq_question_topic_tags")
+    row = {k: v for k, v in body.payload.items() if k in _PYQ_TAG_FIELDS}
+    if not row.get("question_id") or not row.get("topic_id"):
+        raise HTTPException(status_code=422, detail="question_id and topic_id are required")
+    if row.get("tag_role") and row["tag_role"] not in _PYQ_TAG_ROLES:
+        raise HTTPException(status_code=422, detail=f"tag_role must be one of {_PYQ_TAG_ROLES}")
+    if row.get("tagging_source") and row["tagging_source"] not in _PYQ_TAGGING_SOURCES:
+        raise HTTPException(status_code=422, detail=f"tagging_source must be one of {_PYQ_TAGGING_SOURCES}")
+    if not _safe_select(supabase, "pyq_questions", id=row["question_id"]):
+        raise HTTPException(status_code=422, detail="question_id does not resolve")
+    if not _safe_select(supabase, "topics", id=row["topic_id"]):
+        raise HTTPException(status_code=422, detail="topic_id does not resolve")
+    # CMS feeds the review queue — a tag can never be born verified.
+    row["reviewer_status"] = "pending"
+    try:
+        inserted = supabase.table("pyq_question_topic_tags").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_tag.create",
+        entity_type="pyq_question_topic_tag", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/pyq-question-topic-tags/{tag_id}")
+def update_pyq_question_topic_tag(
+    tag_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Edit non-status fields. ``reviewer_status`` (and reviewed_by/reviewed_at)
+    move only through the /admin/exam-intelligence review queue."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_question_topic_tags", id=tag_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="PYQ topic tag not found")
+    _reject_unknown(body.payload, _PYQ_TAG_FIELDS, "pyq_question_topic_tags")
+    patch = {k: v for k, v in body.payload.items() if k in _PYQ_TAG_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("tag_role") and patch["tag_role"] not in _PYQ_TAG_ROLES:
+        raise HTTPException(status_code=422, detail=f"tag_role must be one of {_PYQ_TAG_ROLES}")
+    if patch.get("tagging_source") and patch["tagging_source"] not in _PYQ_TAGGING_SOURCES:
+        raise HTTPException(status_code=422, detail=f"tagging_source must be one of {_PYQ_TAGGING_SOURCES}")
+    # No updated_at column on this table (migration 032).
+    updated = supabase.table("pyq_question_topic_tags").update(patch).eq("id", tag_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_tag.update",
+        entity_type="pyq_question_topic_tag", entity_id=tag_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+@router.delete("/pyq-question-topic-tags/{tag_id}")
+def delete_pyq_question_topic_tag(
+    tag_id: str,
+    reason: str = Query(..., min_length=8, max_length=500),
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Hard-delete: a tag is a pure relation row with a review surface but no
+    dependents; removing a mis-tag is a legitimate operator action."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_question_topic_tags", id=tag_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="PYQ topic tag not found")
+    supabase.table("pyq_question_topic_tags").delete().eq("id", tag_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_tag.delete",
+        entity_type="pyq_question_topic_tag", entity_id=tag_id,
+        new_value={"reason": reason, "deleted": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "id": tag_id}
+
+
+# ════════════════════════════════════════════════════════════════════════
 #  Bulk import — CSV/JSON paste-in for any CMS entity
 # ════════════════════════════════════════════════════════════════════════
 #
@@ -1122,7 +2007,16 @@ def update_competition_metric(
 # same FK validation, same forced status. Per-row outcome is returned so
 # the operator can fix the failed rows and re-submit only those.
 #
-# Capped at 500 rows per call so a single request can't fan out forever.
+# Default cap is 500 rows per call so a single request can't fan out forever.
+# PYQ topic tags raise this to 2000 (see _DEFAULT_BULK_CAP / per-entity
+# ``max_rows``): a 20-year PYQ archive produces tens of thousands of tags, so
+# 500-row batches make seeding an exam impractical. 2000 keeps one request
+# bounded while letting an operator import a full paper-set's tags at once.
+_DEFAULT_BULK_CAP = 500
+# Pydantic ceiling for any single bulk request. Per-entity caps (``max_rows``)
+# stay below it: 500 default, 2000 for tags/questions, 4000 for pyq-options
+# (a 20-year archive has ~4 options per question, so options outscale tags).
+_MAX_BULK_CAP = 4000
 
 
 class BulkImportBody(BaseModel):
@@ -1131,12 +2025,13 @@ class BulkImportBody(BaseModel):
     ``entity`` is one of the CMS slugs already used by the per-entity
     endpoints (``exam-families``, ``exams``, ``exam-cycles``, etc.).
     ``rows`` is the list of payloads — each payload matches the
-    single-row ``payload`` shape.
+    single-row ``payload`` shape. The Pydantic ceiling is the absolute max
+    (``_MAX_BULK_CAP``); the per-entity cap is enforced in the handler.
     """
 
     reason: str = Field(..., min_length=8, max_length=500)
     entity: str = Field(..., min_length=4, max_length=50)
-    rows: list[dict[str, Any]] = Field(..., min_length=1, max_length=500)
+    rows: list[dict[str, Any]] = Field(..., min_length=1, max_length=_MAX_BULK_CAP)
 
 
 # Per-entity import config. (allowed_fields, required_fields,
@@ -1223,6 +2118,88 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
         "enums": {"source_basis": _COMPETITION_SOURCE_BASIS},
         "audit": "exam_intel.cms.competition_metric.bulk_create",
     },
+    # Taxonomy entities upsert on their natural key so re-importing the same
+    # CSV is idempotent (no duplicate subjects/topics).
+    "subjects": {
+        "table": "subjects",
+        "allowed": _SUBJECT_FIELDS,
+        "required": ["slug", "name"],
+        "forced": {},
+        "fks": {},
+        "enums": {},
+        "audit": "exam_intel.cms.subject.bulk_create",
+        "upsert_on": "slug",
+    },
+    "topics": {
+        "table": "topics",
+        "allowed": _TOPIC_FIELDS,
+        "required": ["subject_id", "slug", "name"],
+        "forced": {},
+        "fks": {"subject_id": "subjects", "parent_topic_id": "topics"},
+        "enums": {"level": _TOPIC_LEVELS},
+        "audit": "exam_intel.cms.topic.bulk_create",
+        "upsert_on": "subject_id,parent_topic_id,slug",
+    },
+    "syllabus-topic-mentions": {
+        "table": "syllabus_topic_mentions",
+        "allowed": _MENTION_FIELDS,
+        "required": ["syllabus_document_id", "exam_id", "topic_id"],
+        "forced": {"reviewer_status": "pending"},
+        "fks": {
+            "syllabus_document_id": "syllabus_documents",
+            "exam_id": "exams",
+            "topic_id": "topics",
+        },
+        "enums": {"mention_type": _MENTION_TYPES},
+        "audit": "exam_intel.cms.syllabus_mention.bulk_create",
+    },
+    "exam-phase-sections": {
+        "table": "exam_phase_sections",
+        "allowed": _SECTION_FIELDS,
+        "required": ["exam_phase_id", "subject_id", "section_label"],
+        "forced": {},
+        "fks": {"exam_phase_id": "exam_phases", "subject_id": "subjects"},
+        "enums": {},
+        "audit": "exam_intel.cms.exam_phase_section.bulk_create",
+        "max_rows": 500,
+        "upsert_on": "exam_phase_id,subject_id,section_label",
+    },
+    "pyq-question-topic-tags": {
+        "table": "pyq_question_topic_tags",
+        "allowed": _PYQ_TAG_FIELDS,
+        "required": ["question_id", "topic_id"],
+        "forced": {"reviewer_status": "pending"},
+        "fks": {"question_id": "pyq_questions", "topic_id": "topics"},
+        "enums": {"tag_role": _PYQ_TAG_ROLES, "tagging_source": _PYQ_TAGGING_SOURCES},
+        "audit": "exam_intel.cms.pyq_tag.bulk_create",
+        # PYQ archives span 20 years → tens of thousands of tags; a larger
+        # batch makes seeding practical.
+        "max_rows": 2000,
+    },
+    "pyq-questions": {
+        "table": "pyq_questions",
+        "allowed": _QUESTION_FIELDS,
+        "required": ["pyq_paper_id", "question_text"],
+        "forced": {"reviewer_status": "pending"},
+        "fks": {"pyq_paper_id": "pyq_papers"},
+        "enums": {"question_type": _QUESTION_TYPES},
+        "audit": "exam_intel.cms.pyq_question.bulk_create",
+        "max_rows": 2000,
+        # Each question row may carry an inline ``options`` array; children are
+        # inserted against the new question id after the parent insert.
+        "inline": {"key": "options", "table": "pyq_options", "fk": "question_id", "allowed": _OPTION_FIELDS},
+    },
+    "pyq-options": {
+        "table": "pyq_options",
+        "allowed": _OPTION_FIELDS | {"question_id"},
+        "required": ["question_id"],
+        "forced": {},
+        "fks": {"question_id": "pyq_questions"},
+        "enums": {},
+        "audit": "exam_intel.cms.pyq_option.bulk_create",
+        # Options outnumber questions (~4:1 over a 20-year archive).
+        "max_rows": 4000,
+    },
 }
 
 
@@ -1282,6 +2259,9 @@ def bulk_import(
     cfg = _IMPORT_CONFIG.get(body.entity)
     if not cfg:
         raise HTTPException(status_code=422, detail=f"Unknown entity {body.entity!r}; known: {sorted(_IMPORT_CONFIG)}")
+    cap = cfg.get("max_rows", _DEFAULT_BULK_CAP)
+    if len(body.rows) > cap:
+        raise HTTPException(status_code=422, detail=f"{body.entity!r} accepts at most {cap} rows per request; got {len(body.rows)}")
     supabase = get_supabase_admin()
     fk_cache: dict = {}
     results: list[dict[str, Any]] = []
@@ -1294,13 +2274,35 @@ def bulk_import(
             error_count += 1
             continue
         try:
-            inserted = supabase.table(cfg["table"]).insert(cleaned).execute().data or []
+            tbl = supabase.table(cfg["table"])
+            upsert_on = cfg.get("upsert_on")
+            if upsert_on:
+                inserted = tbl.upsert(cleaned, on_conflict=upsert_on).execute().data or []
+            else:
+                inserted = tbl.insert(cleaned).execute().data or []
         except Exception as exc:  # noqa: BLE001
             results.append({"index": idx, "ok": False, "error": f"db: {str(exc)[:200]}"})
             error_count += 1
             continue
         row = inserted[0] if inserted else cleaned
-        results.append({"index": idx, "ok": True, "row": row})
+        result = {"index": idx, "ok": True, "row": row}
+        # Insert any inline children (e.g. a question's options) against the
+        # freshly-created parent id.
+        inline = cfg.get("inline")
+        if inline and isinstance(raw.get(inline["key"]), list) and row.get("id"):
+            n = 0
+            for child in raw[inline["key"]]:
+                if not isinstance(child, dict):
+                    continue
+                child_row = {k: v for k, v in child.items() if k in inline["allowed"]}
+                child_row[inline["fk"]] = row["id"]
+                try:
+                    supabase.table(inline["table"]).insert(child_row).execute()
+                    n += 1
+                except Exception:  # noqa: BLE001
+                    pass
+            result["children_created"] = n
+        results.append(result)
         ok_count += 1
     audit_id = _audit(
         supabase, admin, cfg["audit"],

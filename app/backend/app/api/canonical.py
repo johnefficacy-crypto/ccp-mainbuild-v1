@@ -1834,16 +1834,50 @@ async def get_plan(user: dict = Depends(get_current_user)):
     plan_id = _ensure_active_plan(supabase, user["id"])
     if not plan_id:
         return {"date": today, "plan": None, "tasks": []}
+    # Pull the planner's reasoning columns (added in migration 034) alongside
+    # the display fields so the StudyPlan task list can show the deterministic
+    # one-liner without a second round-trip per row. The full reasoning_trace
+    # + evidence still live behind /api/study/task-reasoning/{task_id}, fetched
+    # lazily by the frontend on expand.
     tasks = _safe(
         lambda: supabase.table("study_tasks")
-        .select("id, day_label, subject, topic, microtopic, task_type, title, duration_mins, status, completed_at")
+        .select(
+            "id, day_label, subject, topic, microtopic, task_type, title, "
+            "duration_mins, planned_minutes, status, completed_at, "
+            "priority_score, why_this_task, "
+            "topic_id, exam_topic_coverage_id, subject_id"
+        )
         .eq("plan_id", plan_id)
         .order("day_label")
         .execute()
         .data,
         default=[],
     ) or []
-    out_tasks = [{"id": t.get("id"), "title": t.get("title") or t.get("topic") or t.get("subject"), "time": t.get("day_label") or "Today", "duration": t.get("duration_mins"), "done": t.get("status") == "completed", "status": t.get("status") or "planned"} for t in tasks]
+    from app.study_os.task_reasoning import _detail_safe_copy as _safe_copy
+    out_tasks = []
+    for t in tasks:
+        task_type = (t.get("task_type") or "").lower()
+        out_tasks.append({
+            "id": t.get("id"),
+            "title": t.get("title") or t.get("topic") or t.get("subject"),
+            "time": t.get("day_label") or "Today",
+            "duration": t.get("duration_mins"),
+            "done": t.get("status") == "completed",
+            "status": t.get("status") or "planned",
+            "subject": t.get("subject"),
+            "topic": t.get("topic"),
+            "task_type": t.get("task_type"),
+            "planned_minutes": t.get("planned_minutes") or t.get("duration_mins"),
+            "priority_score": t.get("priority_score"),
+            "why_this_task": t.get("why_this_task"),
+            "topic_id": t.get("topic_id"),
+            "exam_topic_coverage_id": t.get("exam_topic_coverage_id"),
+            "subject_id": t.get("subject_id"),
+            # Deterministic one-liner. Computed server-side from the same
+            # builder the standalone /task-reasoning endpoint uses, so the
+            # frontend never derives copy itself.
+            "why_this_task_summary": _safe_copy(t, None, task_type),
+        })
     return {"date": today, "plan": {"id": plan_id, "theme": "Adaptive weekly plan", "target": "Complete planned blocks", "day": None}, "tasks": out_tasks}
 
 
@@ -2153,7 +2187,7 @@ async def review_mock(
         )
         rows = [_mock_breakdown_row(mock_id, b) for b in body.topic_breakdowns]
         if rows:
-            _safe(lambda: supabase.table("mock_topic_breakdowns").insert(rows).execute())
+            _safe(lambda: supabase.table("mock_topic_breakdowns").insert(rows).execute())  # safe-write-ok: analytics cache; recomputed on next breakdown request
         from app.study_os.mastery import recompute_topic_mastery
 
         _safe(lambda: recompute_topic_mastery(supabase, user["id"]))

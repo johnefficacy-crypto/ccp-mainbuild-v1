@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { CheckboxField, ErrorState, InputField, LoadingSkeleton, SelectField, useToast } from "../shared/ui";
+import { CheckboxField, ErrorState, InputField, LoadingSkeleton, SelectField, useToast } from "../shared/ui/core";
 
 const TYPES = ["complete_profile","continue_application","submit_form","prepare_after_submission","study_backlog_recovery","weekly_review_ready","monitor_result","apply_deadline_urgent"];
 

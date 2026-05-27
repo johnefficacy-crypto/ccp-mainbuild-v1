@@ -22,7 +22,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.auth import get_current_user, require_permission
+from app.core.auth import get_current_user, require_admin, require_permission
 from app.db.supabase_client import get_supabase_admin
 from app.notifications.dispatcher import (
     kill_switch_enabled,
@@ -39,12 +39,6 @@ from app.scraping.alerts import (
 logger = logging.getLogger("career_copilot.api.notifications")
 
 router = APIRouter(tags=["notifications"])
-
-
-def _require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if user.get("role") not in {"admin", "super_admin"}:
-        raise HTTPException(status_code=403, detail="Admin role required")
-    return user
 
 
 # ─── User feed ──────────────────────────────────────────────────────────────
@@ -160,7 +154,7 @@ def update_prefs(body: Prefs, user: dict = Depends(get_current_user)) -> dict[st
 
 
 @router.get("/admin/notifications")
-def admin_notifications(_admin: dict = Depends(_require_admin)) -> dict[str, Any]:
+def admin_notifications(_admin: dict = Depends(require_admin)) -> dict[str, Any]:
     sb = get_supabase_admin()
     paused = kill_switch_enabled(sb)
     pending = (
@@ -245,7 +239,7 @@ def toggle_kill(body: KillSwitchBody, admin: dict = Depends(require_permission("
 
 
 @router.get("/admin/jobs")
-def admin_jobs(_admin: dict = Depends(_require_admin)) -> dict[str, Any]:
+def admin_jobs(_admin: dict = Depends(require_admin)) -> dict[str, Any]:
     return {"jobs": list_jobs(), "registered": list(JOBS.keys())}
 
 

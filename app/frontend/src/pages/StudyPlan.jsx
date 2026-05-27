@@ -1,12 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { Sparkles, ArrowRight } from "lucide-react";
+import React, { useEffect, useState, Suspense } from "react";
+import { Sparkles, ArrowRight, ChevronRight } from "lucide-react";
 import { api } from "../lib/api";
-import { Card, Drawer, Eyebrow, PageHeader, Pill, SectionHeader, StatusDot } from "../shared/ui/studyos";
+import { Card, Drawer, Eyebrow, PageHeader, Pill, SectionHeader, StatusDot, Tabs } from "../shared/ui/studyos";
 import PlanChangeLogCard from "../features/study/components/PlanChangeLogCard";
 import PlanByTopic from "../features/study/components/PlanByTopic";
 import ExamCycleTimeline from "../features/study/components/ExamCycleTimeline";
 import useApiAction from "../lib/hooks/useApiAction";
 import HowItWorksHeaderButton from "../shared/components/HowItWorksHeaderButton";
+
+// Lazy so PlanImpactTimeline and its chart deps stay out of the plan page's
+// initial chunk — the timeline only loads when the "Plan changes" tab opens.
+const PlanTimelineTab = React.lazy(() => import("../features/study/components/PlanTimelineTab"));
 
 const STATUS_TONE = {
   completed: "sage",
@@ -58,12 +62,14 @@ export default function StudyPlan() {
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftOpen, setDraftOpen] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [applyError, setApplyError] = useState("");
   const [examItems, setExamItems] = useState([]);
   const [examsLoading, setExamsLoading] = useState(true);
   const [examsError, setExamsError] = useState("");
   const [selectedExamId, setSelectedExamId] = useState("");
   const [trackedExams, setTrackedExams] = useState([]);
   const [reloadKey, setReloadKey] = useState(0);
+  const [tab, setTab] = useState("plan");
   const { run: runTaskAction } = useApiAction();
   const { run: runApply } = useApiAction();
 
@@ -167,6 +173,7 @@ export default function StudyPlan() {
     if (!selectedExamId) return;
     setDraftLoading(true);
     setDraftOpen(true);
+    setApplyError("");
     try {
       const d = await api.get("/api/study/plan/draft");
       setDraft(d || null);
@@ -180,15 +187,35 @@ export default function StudyPlan() {
   async function applyDraft() {
     if (!selectedExamId) return;
     setApplying(true);
+    setApplyError("");
     const result = await runApply({
-      action: () => api.post("/api/study/plan/apply", {}),
+      action: async () => {
+        const resp = await api.post("/api/study/plan/apply", {});
+        // The apply only counts as success when the planner persisted. A
+        // failed persist now comes back as a non-2xx (api.post throws), but
+        // guard the 2xx-with-flags case too so we never close the drawer or
+        // toast success on a half-written plan.
+        if (resp && (resp.generated === false || resp.applied === false)) {
+          const err = new Error(resp.reason || "apply_failed");
+          err.reason = resp.reason;
+          err.detail = { reason: resp.reason };
+          throw err;
+        }
+        return resp;
+      },
       successMessage: "Plan applied.",
       errorMessage: "Couldn't apply plan — try again.",
     });
-    if (result.ok) {
+    // Success UI (close drawer, reload) only when neither flag was false.
+    if (result?.ok) {
       setDraftOpen(false);
       setDraft(null);
       setReloadKey((k) => k + 1);
+    } else {
+      const e = result?.error;
+      const reason =
+        e?.detail?.reason || e?.reason || e?.data?.detail?.reason || "";
+      setApplyError(reason || e?.message || "Couldn't apply plan — try again.");
     }
     setApplying(false);
   }
@@ -381,6 +408,27 @@ export default function StudyPlan() {
         )}
       </Card>
 
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "plan", label: "This week" },
+          { value: "changes", label: "Plan changes" },
+        ]}
+      />
+
+      {tab === "changes" ? (
+        <Suspense
+          fallback={
+            <Card>
+              <p className="text-sm text-clay-700">Loading plan changes…</p>
+            </Card>
+          }
+        >
+          <PlanTimelineTab />
+        </Suspense>
+      ) : (
+        <>
       <PageHeader
         eyebrow="Study Plan · timeline &amp; adaptation"
         title={
@@ -475,77 +523,14 @@ export default function StudyPlan() {
           <div className="hairline mx-7" />
           <div className="px-7 pb-6 pt-2">
             {tasks.length ? (
-              tasks.map((t) => {
-                const status = t.status || "planned";
-                const isDone = t.done || status === "completed";
-                return (
-                  <div key={t.id} className="task-row !grid-cols-[22px_70px_1fr_auto]">
-                    <button
-                      onClick={() => toggle(t)}
-                      aria-label={isDone ? "Mark task incomplete" : "Mark task complete"}
-                      className="mt-1.5 outline-none"
-                    >
-                      <span
-                        className={`tick ${isDone ? "done" : ""} ${status === "skipped" ? "skip" : ""}`}
-                      />
-                    </button>
-                    <div className="num-mono text-[12px] text-clay-700 pt-1">{t.time || "—"}</div>
-                    <div>
-                      <div
-                        className={`text-[15px] leading-snug ${
-                          isDone ? "line-through text-[#A68057]" : "text-clay-900 font-medium"
-                        }`}
-                      >
-                        {t.title}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5 items-center">
-                        <button
-                          type="button"
-                          aria-pressed={status === "in_progress"}
-                          disabled={status === "in_progress"}
-                          className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
-                            status === "in_progress"
-                              ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
-                              : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
-                          }`}
-                          onClick={() => updateStatus(t, "in_progress")}
-                        >
-                          In progress
-                        </button>
-                        <button
-                          type="button"
-                          aria-pressed={status === "skipped"}
-                          disabled={status === "skipped"}
-                          className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
-                            status === "skipped"
-                              ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
-                              : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
-                          }`}
-                          onClick={() => updateStatus(t, "skipped")}
-                        >
-                          Skip
-                        </button>
-                        <button
-                          type="button"
-                          aria-pressed={status === "missed"}
-                          disabled={status === "missed"}
-                          className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
-                            status === "missed"
-                              ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
-                              : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
-                          }`}
-                          onClick={() => updateStatus(t, "missed")}
-                        >
-                          Mark missed
-                        </button>
-                      </div>
-                    </div>
-                    <div className="pt-1.5">
-                      <Pill tone={STATUS_TONE[status] || "outline"}>{status.replace("_", " ")}</Pill>
-                    </div>
-                  </div>
-                );
-              })
+              tasks.map((t) => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  onToggle={() => toggle(t)}
+                  onSetStatus={(status) => updateStatus(t, status)}
+                />
+              ))
             ) : (
               <p className="py-6 text-sm text-clay-700">
                 No tasks scheduled yet. Use Regenerate plan to populate today's blocks.
@@ -608,6 +593,8 @@ export default function StudyPlan() {
         <PlanByTopic />
         <PlanChangeLogCard />
       </div>
+        </>
+      )}
 
       <Drawer
         open={draftOpen}
@@ -637,6 +624,7 @@ export default function StudyPlan() {
             draft={draft}
             onApply={applyDraft}
             applying={applying}
+            applyError={applyError}
             applyDisabled={!selectedExamId || (selectedExam && !selectedExam.planner_ready)}
           />
         )}
@@ -645,7 +633,7 @@ export default function StudyPlan() {
   );
 }
 
-function DraftDiff({ draft, onApply, applying, applyDisabled = false }) {
+function DraftDiff({ draft, onApply, applying, applyError = "", applyDisabled = false }) {
   const changes = draft.changes || { added: [], removed: [], unchanged_count: 0 };
   const risk = draft.risk_level || "low";
   const before = draft.before_tasks || [];
@@ -716,7 +704,20 @@ function DraftDiff({ draft, onApply, applying, applyDisabled = false }) {
         </div>
       </div>
 
+      <DraftTradeoffs tradeoffs={draft.tradeoffs} />
+
       <DraftTimelinePreview timeline={draft.timeline} />
+
+      {applyError ? (
+        <div
+          className="rounded-xl bg-clay-50 px-3 py-2"
+          role="alert"
+          data-testid="apply-error"
+        >
+          <p className="text-sm text-clay-800">Couldn't apply plan.</p>
+          <p className="text-xs num-mono text-clay-700 mt-0.5">{applyError}</p>
+        </div>
+      ) : null}
 
       <div className="flex justify-end gap-2 pt-2 border-t border-[#E7DECB]">
         <button
@@ -728,6 +729,262 @@ function DraftDiff({ draft, onApply, applying, applyDisabled = false }) {
         >
           {applying ? "Applying…" : "Apply selected changes"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// DraftTradeoffs renders the deterministic backend-built tradeoff list
+// from the draft endpoint. Each entry is shaped
+// `{gained, cost, magnitude_hours, magnitude_minutes, risk_delta,
+// gained_priority, cost_priority}` and is rendered verbatim — no
+// client-side scoring.
+function DraftTradeoffs({ tradeoffs }) {
+  if (!Array.isArray(tradeoffs) || tradeoffs.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-[#E7DECB] bg-white/60 p-3" data-testid="plan-draft-tradeoffs">
+      <Eyebrow>Trade-offs</Eyebrow>
+      <ul className="mt-2 space-y-1.5 text-[12px] text-clay-800">
+        {tradeoffs.map((t, i) => {
+          const parts = [];
+          const hours = Number(t.magnitude_hours) || 0;
+          const hoursLabel = hours > 0
+            ? `${hours}h`
+            : `${Number(t.magnitude_minutes) || 0}m`;
+          if (t.gained && t.cost) {
+            parts.push(
+              <span key="g">
+                <span className="font-semibold text-sage-700">{t.gained}</span> up by {hoursLabel}
+              </span>,
+            );
+            parts.push(<span key="sep1"> · </span>);
+            parts.push(
+              <span key="c">
+                <span className="font-semibold text-rose-700">{t.cost}</span> down by {hoursLabel}
+              </span>,
+            );
+          } else if (t.gained) {
+            parts.push(
+              <span key="g">
+                <span className="font-semibold text-sage-700">{t.gained}</span> up by {hoursLabel}
+              </span>,
+            );
+          } else if (t.cost) {
+            parts.push(
+              <span key="c">
+                <span className="font-semibold text-rose-700">{t.cost}</span> down by {hoursLabel}
+              </span>,
+            );
+          }
+          const riskDelta = Number(t.risk_delta);
+          if (Number.isFinite(riskDelta) && riskDelta > 0 && t.cost) {
+            parts.push(<span key="sep2"> · </span>);
+            parts.push(
+              <span key="r" className="text-rose-700">
+                risk on <span className="font-semibold">{t.cost}</span> rises (+{riskDelta} pts)
+              </span>,
+            );
+          } else if (Number.isFinite(riskDelta) && riskDelta < 0 && t.gained) {
+            parts.push(<span key="sep2"> · </span>);
+            parts.push(
+              <span key="r" className="text-sage-700">
+                risk on <span className="font-semibold">{t.gained}</span> falls ({riskDelta} pts)
+              </span>,
+            );
+          }
+          return (
+            <li
+              key={`tradeoff-${i}`}
+              data-testid="plan-draft-tradeoff"
+              className="flex flex-wrap items-baseline gap-1"
+            >
+              {parts}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// TaskRow — single task in the schedule list. Renders the deterministic
+// `why_this_task_summary` one-liner from the backend always, and on expand
+// fetches the full `reasoning_trace + evidence` via
+// `/api/study/task-reasoning/:task_id`. No client-side derivation of
+// reasoning copy — the row only displays what the backend returns.
+function TaskRow({ task: t, onToggle, onSetStatus }) {
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
+  const status = t.status || "planned";
+  const isDone = t.done || status === "completed";
+  const oneLiner = t.why_this_task_summary || "";
+
+  async function toggleExpand() {
+    const next = !open;
+    setOpen(next);
+    if (next && !detail && !detailLoading) {
+      setDetailLoading(true);
+      setDetailError("");
+      try {
+        const d = await api.get(`/api/study/task-reasoning/${t.id}`);
+        setDetail(d || null);
+      } catch (e) {
+        setDetailError("Couldn't load reasoning detail.");
+        if (process.env.NODE_ENV !== "production") console.error(e);
+      } finally {
+        setDetailLoading(false);
+      }
+    }
+  }
+
+  const panelId = `task-reasoning-${t.id}`;
+  return (
+    <div className="task-row !grid-cols-[22px_70px_1fr_auto]" data-testid={`task-row-${t.id}`}>
+      <button
+        onClick={onToggle}
+        aria-label={isDone ? "Mark task incomplete" : "Mark task complete"}
+        className="mt-1.5 outline-none"
+      >
+        <span
+          className={`tick ${isDone ? "done" : ""} ${status === "skipped" ? "skip" : ""}`}
+        />
+      </button>
+      <div className="num-mono text-[12px] text-clay-700 pt-1">{t.time || "—"}</div>
+      <div>
+        <div
+          className={`text-[15px] leading-snug ${
+            isDone ? "line-through text-[#A68057]" : "text-clay-900 font-medium"
+          }`}
+        >
+          {t.title}
+        </div>
+        {oneLiner ? (
+          <button
+            type="button"
+            onClick={toggleExpand}
+            aria-expanded={open}
+            aria-controls={panelId}
+            className="mt-1 flex items-start gap-1 text-[12px] text-clay-700 hover:text-clay-900 text-left"
+            data-testid={`task-reasoning-toggle-${t.id}`}
+          >
+            <ChevronRight
+              className={`h-3 w-3 mt-0.5 transition-transform shrink-0 ${open ? "rotate-90" : ""}`}
+              aria-hidden="true"
+            />
+            <span className="leading-snug">{oneLiner}</span>
+          </button>
+        ) : null}
+        {open ? (
+          <div
+            id={panelId}
+            role="region"
+            aria-label="Task reasoning detail"
+            className="mt-2 rounded-xl border border-[#E7DECB] bg-[#FBF8F2] p-3 text-[12px] text-clay-800"
+            data-testid={`task-reasoning-panel-${t.id}`}
+          >
+            {detailLoading ? (
+              <p className="text-clay-700">Loading reasoning…</p>
+            ) : detailError ? (
+              <p className="text-amber-700">{detailError}</p>
+            ) : detail ? (
+              <div className="space-y-3">
+                {detail.safe_user_copy ? (
+                  <p className="text-clay-800">{detail.safe_user_copy}</p>
+                ) : null}
+                {Array.isArray(detail.reasoning_trace) && detail.reasoning_trace.length ? (
+                  <div>
+                    <Eyebrow>Reasoning trace</Eyebrow>
+                    <ul className="mt-1 space-y-1">
+                      {detail.reasoning_trace.map((row, i) => (
+                        <li key={`${row.rule_key || "trace"}-${i}`} className="flex items-start gap-2">
+                          <span className="num-mono text-[10px] uppercase tracking-[0.18em] text-clay-700 mt-0.5 shrink-0">
+                            {row.layer || "—"}
+                          </span>
+                          <span className="text-clay-800">
+                            {row.label}
+                            {row.status ? (
+                              <span className="ml-1 num-mono text-[10px] text-clay-700">
+                                · {row.status}
+                              </span>
+                            ) : null}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {Array.isArray(detail.evidence) && detail.evidence.length ? (
+                  <div>
+                    <Eyebrow>Evidence</Eyebrow>
+                    <ul className="mt-1 space-y-1">
+                      {detail.evidence.map((ev, i) => (
+                        <li key={`${ev.label || ev.type || "ev"}-${i}`} className="flex items-center gap-2">
+                          <span className="num-mono text-[10px] uppercase tracking-[0.18em] text-clay-700 shrink-0">
+                            {ev.type || "—"}
+                          </span>
+                          <span className="text-clay-800">
+                            {ev.label}
+                            {ev.value !== undefined && ev.value !== null ? (
+                              <span className="num-mono text-clay-700"> · {String(ev.value)}</span>
+                            ) : null}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-clay-700">No reasoning detail available.</p>
+            )}
+          </div>
+        ) : null}
+        <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+          <button
+            type="button"
+            aria-pressed={status === "in_progress"}
+            disabled={status === "in_progress"}
+            className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
+              status === "in_progress"
+                ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
+                : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
+            }`}
+            onClick={() => onSetStatus("in_progress")}
+          >
+            In progress
+          </button>
+          <button
+            type="button"
+            aria-pressed={status === "skipped"}
+            disabled={status === "skipped"}
+            className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
+              status === "skipped"
+                ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
+                : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
+            }`}
+            onClick={() => onSetStatus("skipped")}
+          >
+            Skip
+          </button>
+          <button
+            type="button"
+            aria-pressed={status === "missed"}
+            disabled={status === "missed"}
+            className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition ${
+              status === "missed"
+                ? "border-[#2E2218] bg-[#2E2218] text-[#F3EADB] cursor-default"
+                : "border-[#E7DECB] text-clay-700 hover:bg-clay-50"
+            }`}
+            onClick={() => onSetStatus("missed")}
+          >
+            Mark missed
+          </button>
+        </div>
+      </div>
+      <div className="pt-1.5">
+        <Pill tone={STATUS_TONE[status] || "outline"}>{status.replace("_", " ")}</Pill>
       </div>
     </div>
   );

@@ -1,0 +1,64 @@
+import { createClient } from "@supabase/supabase-js";
+import type { Page } from "@playwright/test";
+import { readEnv } from "./env";
+
+/**
+ * Seeded aspirant. Created idempotently against the (local) Supabase via the
+ * admin API — re-running tests converges on the same confirmed user instead of
+ * drifting. PR1's seed mock content (the IBPS PO Prelims E2E template) is
+ * available to this user once app/supabase/seeds/e2e_fixtures.sql is applied.
+ */
+export async function ensureSeededUser(): Promise<{ id: string; email: string; password: string }> {
+  const env = readEnv();
+  const admin = createClient(env.supabaseURL, env.supabaseServiceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { data: created, error } = await admin.auth.admin.createUser({
+    email: env.user.email,
+    password: env.user.password,
+    email_confirm: true,
+  });
+
+  if (created?.user) {
+    return { id: created.user.id, email: env.user.email, password: env.user.password };
+  }
+
+  // Already exists → find it and force the password so the credential is known.
+  const alreadyExists = error && /already.*registered|exists/i.test(error.message || "");
+  if (!alreadyExists) throw error;
+
+  const { data: list } = await admin.auth.admin.listUsers();
+  const existing = list?.users?.find((u) => u.email === env.user.email);
+  if (!existing) throw new Error(`Could not locate seeded user ${env.user.email}`);
+  await admin.auth.admin.updateUserById(existing.id, {
+    password: env.user.password,
+    email_confirm: true,
+  });
+  return { id: existing.id, email: env.user.email, password: env.user.password };
+}
+
+/** Mint a real Supabase access token for direct backend API calls in fixtures. */
+export async function getAccessToken(): Promise<string> {
+  const env = readEnv();
+  const client = createClient(env.supabaseURL, env.supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data, error } = await client.auth.signInWithPassword({
+    email: env.user.email,
+    password: env.user.password,
+  });
+  if (error || !data.session) throw error || new Error("No session for seeded user");
+  return data.session.access_token;
+}
+
+/** Log the seeded user in through the actual UI (exercises the real auth path). */
+export async function loginViaUi(page: Page): Promise<void> {
+  const env = readEnv();
+  await page.goto("/login");
+  await page.getByTestId("login-email").fill(env.user.email);
+  await page.getByTestId("login-password").fill(env.user.password);
+  await page.getByTestId("login-submit").click();
+  // GuestOnly redirects an authed user away from /login to /app.
+  await page.waitForURL(/\/app(\/|$)/, { timeout: 20_000 });
+}
