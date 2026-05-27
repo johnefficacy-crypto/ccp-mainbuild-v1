@@ -59,13 +59,12 @@ export default function useAnswerSync({ postAnswer, onEvent, debounceMs = 600 })
     setSyncStates((prev) => ({ ...prev, [qid]: { ...prev[qid], ...patch } }));
   }, []);
 
-  // Monotonic, reload-safe sequence: timestamp-based so a fresh component on
-  // resume never emits a seq the server would reject as stale, with a +1 floor
-  // so two saves inside the same millisecond still strictly increase.
+  // Strictly monotonic counter — always a small integer well within Postgres int4
+  // max (2,147,483,647). Never seeded from Date.now() or any timestamp source.
+  // Retries replay the same frozen seq so the server's idempotency guard fires.
   const nextSeq = useCallback(() => {
-    const seq = Math.max(seqRef.current + 1, Date.now());
-    seqRef.current = seq;
-    return seq;
+    seqRef.current = seqRef.current + 1;
+    return seqRef.current;
   }, []);
 
   const clearRetry = (qid) => {

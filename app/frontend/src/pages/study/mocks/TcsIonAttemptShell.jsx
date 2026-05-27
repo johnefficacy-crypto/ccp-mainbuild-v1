@@ -148,8 +148,23 @@ export default function TcsIonAttemptShell() {
           summary={{ total: (attempt.questions || []).length }}
           onCancel={() => setConfirmOpen(false)}
           onConfirm={async () => {
-            await api.post(`/api/study/mocks/attempts/${attemptId}/submit`, {});
-            navigate(`/app/study/mocks/attempts/${attemptId}/result`, { replace: true });
+            const { syncStates } = answerSync;
+            const answeredCount = Object.entries(syncStates).filter(
+              ([qid, e]) => e?.state === "saved" && responses[qid]?.selected_option_id != null
+            ).length;
+            try {
+              await api.post(`/api/study/mocks/attempts/${attemptId}/submit`, {
+                claimed_answered_count: answeredCount || null,
+              });
+              navigate(`/app/study/mocks/attempts/${attemptId}/result`, { replace: true });
+            } catch (e) {
+              if (e?.status === 409) {
+                alert("Some answers didn't save. Refreshing to show current state.");
+                window.location.reload();
+                return;
+              }
+              throw e;
+            }
           }}
         />
       </SectionLockGuard>

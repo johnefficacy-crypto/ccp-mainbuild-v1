@@ -19,7 +19,9 @@ from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
 from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
 from app.study_os.mock_engine import (
+    AnswerPersistenceError,
     ConflictError,
+    SubmitConsistencyError,
     get_attempt,
     get_result,
     get_review,
@@ -51,6 +53,10 @@ class AnswerBody(BaseModel):
     is_marked_for_review: bool = False
     client_seq: int = Field(ge=0)
     time_spent_sec: int = Field(default=0, ge=0)
+
+
+class SubmitBody(BaseModel):
+    claimed_answered_count: int | None = None
 
 
 # ── routes ─────────────────────────────────────────────────────────────────────
@@ -121,11 +127,19 @@ async def answer(
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+    except AnswerPersistenceError as exc:
+        logger.error("answer persistence failed attempt=%s", attempt_id, exc_info=exc)
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "persistence_failed", "detail": str(exc)},
+            headers={"Retry-After": "1"},
+        )
 
 
 @router.post("/attempts/{attempt_id}/submit")
 async def submit(
     attempt_id: str,
+    body: SubmitBody = SubmitBody(),
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     user_id = user["id"]
@@ -136,13 +150,16 @@ async def submit(
         # writer derives inline from the persisted raw responses (implementation
         # B; see mastery_writer.process_attempt), so it runs independently and a
         # derivation failure cannot silently suppress the write-back.
-        result = submit_attempt(sb, user_id, attempt_id)
+        result = submit_attempt(sb, user_id, attempt_id, body.claimed_answered_count)
         try:
             writer = MasteryWriter(sb, get_mastery_write_flag())
             await writer.process_attempt(attempt_id)
         except Exception:  # noqa: BLE001
             logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
         return result
+    except SubmitConsistencyError as exc:
+        logger.warning("submit consistency mismatch attempt=%s: %s", attempt_id, exc)
+        raise HTTPException(status_code=409, detail={"error": "client_server_mismatch", "detail": str(exc)})
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
