@@ -468,11 +468,13 @@ def test_async_mission_control_runs_independent_loaders_concurrently():
     asyncio.run(build_mission_control_async(slow, "u-1"))
     elapsed = time.monotonic() - started
 
-    # Strictly serial mission-control fires ~24 reads × 0.10s ≈ 2.4s.
-    # Stage-1 fan-out should overlap the heaviest sub-loaders so the
-    # observed latency is clearly under that baseline. We assert
-    # improvement here, not a hard perf-budget number.
-    serial_baseline_seconds = 24 * delay
+    # Strictly serial mission-control fires ~30 reads × 0.10s ≈ 3.0s
+    # (exam-intel chain ~8, weekly-review ~3, competition ~3,
+    # regen-triggers ~6, nudges ~5, misc ~5).
+    # Stage-1 fan-out + stage-3b gather should overlap the heaviest
+    # sub-loaders so the observed latency is clearly under that baseline.
+    # We assert improvement here, not a hard perf-budget number.
+    serial_baseline_seconds = 30 * delay
     assert elapsed < serial_baseline_seconds * 0.75, (
         f"expected concurrent execution; elapsed={elapsed:.2f}s "
         f"(serial baseline ~{serial_baseline_seconds:.2f}s)"

@@ -171,6 +171,40 @@ def _cached_policy_update_context(supabase: Any, exam_id: str | None) -> dict[st
     return block
 
 
+def _cached_nudge_milestone_in_7d(
+    supabase: Any, exam_intel: dict[str, Any], today: "date"
+) -> "dict[str, Any] | None":
+    """Cache-through wrapper so the exam_cycles read is paid once per exam per day."""
+    exam_id = (exam_intel or {}).get("exam_id") or (exam_intel or {}).get("id")
+    if not exam_id:
+        return None
+    cache_key = ("nudge_milestone_in_7d", exam_id, today.isoformat())
+    hit = _cache_lookup(cache_key)
+    if hit is not None:
+        return None if hit is False else hit
+    result = _nudge_milestone_in_7d(supabase, exam_intel, today)
+    _cache_store(cache_key, result if result is not None else False)
+    return result
+
+
+def _cached_regen_triggers(supabase: Any, user_id: str) -> list[dict[str, Any]]:
+    """Cache-through wrapper for build_regen_triggers.
+
+    build_regen_triggers reads exam_cycles (via _deadline_trigger) and other
+    per-exam tables. Caching by (user_id, today) ensures the second
+    mission-control call for the same user pays zero per-exam table round-trips.
+    TTL matches _per_exam_intel_cache (5 min) so staleness is bounded.
+    """
+    from app.study_os.planner import build_regen_triggers
+    cache_key = ("regen_triggers", user_id, _today_iso())
+    hit = _cache_lookup(cache_key)
+    if hit is not None:
+        return hit
+    result = build_regen_triggers(supabase, user_id)
+    _cache_store(cache_key, result)
+    return result
+
+
 # ─── Per-request read cache ───────────────────────────────────────────────
 #
 # Mission-control composes ~12 sub-loaders and the same logical table read
@@ -1336,13 +1370,12 @@ async def build_mission_control_async(supabase: Any, user_id: str) -> dict[str, 
         _load_competition_context, supabase, exam_intel, exam_context
     )
 
-    # Stage 3b: auto-regen trigger summary (planner.build_regen_triggers).
-    # Independent of competition; runs in parallel via gather so it doesn't
-    # add latency to the longest dependency chain.
-    from app.study_os.planner import build_regen_triggers
-    regen_triggers = await asyncio.to_thread(build_regen_triggers, supabase, user_id)
-    nudges = await asyncio.to_thread(
-        _build_nudges, supabase, user_id, exam_intel, review
+    # Stage 3b: auto-regen triggers + nudges. Both are independent of each
+    # other and of competition; gather them so their sub-loader reads
+    # overlap instead of serialising.
+    regen_triggers, nudges = await asyncio.gather(
+        asyncio.to_thread(_cached_regen_triggers, supabase, user_id),
+        asyncio.to_thread(_build_nudges, supabase, user_id, exam_intel, review),
     )
 
     today_tasks: list[dict[str, Any]] = []
@@ -1746,7 +1779,7 @@ def _build_nudges(
     dismissed = _load_dismissed_nudge_codes(supabase, user_id)
     out: list[dict[str, Any]] = []
     builders = (
-        lambda: _nudge_milestone_in_7d(supabase, exam_intel or {}, today),
+        lambda: _cached_nudge_milestone_in_7d(supabase, exam_intel or {}, today),
         lambda: _nudge_mock_review_pending(supabase, user_id),
         lambda: _nudge_backlog_over_threshold(review or {}),
         lambda: _nudge_subject_behind(supabase, user_id),
