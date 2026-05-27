@@ -1,0 +1,56 @@
+name: Click-Through Review Check
+
+# Advisory gate for the manual click-through discipline.
+# See docs/process/click_through_review.md.
+#
+# When a PR touches user-facing surface (app/frontend/ or app/backend/app/api/)
+# it must document a manual click-through in the PR body. Override with the
+# `click-through-na` label (no user surface) or `hotfix-skip-click-through`
+# (emergency hotfix, follow-up audit required).
+#
+# Ships ADVISORY: violations warn but do not fail the build. After the
+# two-sprint soak (target: 2026-07-08), flip CLICK_THROUGH_ENFORCE to "block".
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  click-through:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Compute changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed-files.txt 2>/dev/null && [ -s changed-files.txt ]; then
+            :
+          else
+            git fetch --no-tags origin "$BASE_REF" 2>/dev/null || true
+            git diff --name-only "origin/$BASE_REF...HEAD" > changed-files.txt 2>/dev/null \
+              || git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-files.txt 2>/dev/null \
+              || git ls-files > changed-files.txt
+          fi
+          echo "Changed files:"
+          cat changed-files.txt
+
+      - name: Check click-through documentation
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          CHANGED_FILES_FILE: changed-files.txt
+          # Flip to "block" after the two-sprint soak (target: 2026-07-08).
+          CLICK_THROUGH_ENFORCE: warn
+        run: node scripts/check-click-through.js

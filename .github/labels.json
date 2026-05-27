@@ -1,0 +1,17 @@
+[
+  {
+    "name": "click-through-na",
+    "color": "0e8a16",
+    "description": "PR has no user-facing surface (backend lib / docs / tooling / migration); click-through review not applicable."
+  },
+  {
+    "name": "hotfix-skip-click-through",
+    "color": "b60205",
+    "description": "Emergency hotfix merged without click-through. Requires a mandatory follow-up click-through audit issue."
+  },
+  {
+    "name": "click-through-audit",
+    "color": "fbca04",
+    "description": "Retroactive click-through audit of a previously merged PR."
+  }
+]
