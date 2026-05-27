@@ -6,7 +6,7 @@ from app.admin.mock_templates import MOCK_PUBLISHER_PERMISSION, preview_selectio
 from app.core.auth import require_permission
 from app.db.supabase_client import get_supabase_admin
 
-router = APIRouter(prefix="/api/admin/mocks/templates", tags=["admin-mock-templates"])
+router = APIRouter(prefix="/admin/mocks/templates", tags=["admin-mock-templates"])
 
 
 @router.get("/")
@@ -30,6 +30,6 @@ def publish_template(template_id: str, force: bool = Query(default=False), notes
     preview = preview_selection(sb, template_id)
     if preview["has_gaps"] and not force:
         raise HTTPException(status_code=409, detail={"message": "preview has gaps", "preview": preview})
-    sb.table("mock_templates").update({"status": "published", "published_at": "now()"}).eq("id", template_id).eq("status", "draft").execute()
-    sb.table("mock_template_audit_log").insert({"template_id": template_id, "actor_id": admin.get("id"), "action": "publish", "from_status": "draft", "to_status": "published", "diff": {"force": force, "preview": preview}, "notes": notes}).execute()
+    sb.table("mock_templates").update({"status": "active"}).eq("id", template_id).eq("status", "draft").execute()
+    sb.table("mock_template_audit_log").insert({"template_id": template_id, "actor_id": admin.get("id"), "action": "publish", "from_status": "draft", "to_status": "active", "diff": {"force": force, "preview": preview}, "notes": notes}).execute()
     return {"ok": True, "forced": force, "preview": preview}

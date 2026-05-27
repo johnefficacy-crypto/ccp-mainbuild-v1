@@ -133,8 +133,77 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
     }
 
 
+def _criteria_difficulty_targets(mix: dict, total: int) -> dict[str, int]:
+    """Apportion ``total`` questions across difficulty buckets by ``mix`` fractions.
+
+    Largest-remainder rounding so the per-bucket targets sum to exactly ``total``
+    (plain rounding can over- or under-shoot once fractions are summed).
+    """
+    if not mix or total <= 0:
+        return {}
+    raw = {d: float(f or 0) * total for d, f in mix.items()}
+    floors = {d: int(v) for d, v in raw.items()}
+    remainder = total - sum(floors.values())
+    for d in sorted(raw, key=lambda d: raw[d] - floors[d], reverse=True)[:max(remainder, 0)]:
+        floors[d] += 1
+    return floors
+
+
+def _select_criteria_question_ids(supabase: Any, selector: dict, question_count: int) -> list[str]:
+    """Resolve a ``criteria`` section selector to concrete published question ids.
+
+    Honours the bank filters the admin UI can configure (exam_family, subject_id,
+    topic_ids) and, when present, the ``difficulty_mix`` distribution. Only
+    published, non-expired questions are eligible — same gate as ``fixed`` and
+    the legacy ``config.question_ids`` path. If a difficulty bucket is short, the
+    deficit is backfilled from the rest of the eligible pool so a thin bucket
+    can't silently shrink the section below ``question_count``.
+    """
+    if question_count <= 0:
+        return []
+    filters = selector.get("filters") or {}
+    q = supabase.table("mock_question_bank").select("*").eq("reviewer_status", "published")
+    if filters.get("exam_family"):
+        q = q.eq("exam_family", filters["exam_family"])
+    if filters.get("subject_id"):
+        q = q.eq("subject_id", filters["subject_id"])
+    if filters.get("topic_ids"):
+        q = q.in_("topic_id", list(filters["topic_ids"]))
+    now_iso = _now_iso()
+    q = q.or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
+    rows = _safe(lambda: q.execute(), default=None)
+    pool = [
+        r for r in (getattr(rows, "data", None) or [])
+        if not r.get("valid_until") or str(r["valid_until"]) > now_iso
+    ]
+    # Deterministic ordering so the same template config yields the same set.
+    pool.sort(key=lambda r: str(r.get("id")))
+
+    mix = filters.get("difficulty_mix") or {}
+    if not mix:
+        return [r["id"] for r in pool[:question_count]]
+
+    buckets: dict[str, list[dict]] = {}
+    for r in pool:
+        buckets.setdefault(r.get("difficulty") or "medium", []).append(r)
+    chosen: list[str] = []
+    used: set[str] = set()
+    for diff, target in _criteria_difficulty_targets(mix, question_count).items():
+        for r in buckets.get(diff, [])[:target]:
+            chosen.append(r["id"])
+            used.add(r["id"])
+    if len(chosen) < question_count:
+        for r in pool:
+            if r["id"] in used:
+                continue
+            chosen.append(r["id"])
+            if len(chosen) >= question_count:
+                break
+    return chosen[:question_count]
+
+
 def select_questions_for_template(supabase: Any, template_id: str, user_id: str) -> list[dict]:
-    """PR2d selector hook; currently supports section fixed selectors and legacy config.question_ids."""
+    """PR2d selector hook; supports section ``fixed`` and ``criteria`` selectors."""
     sections = _safe(lambda: supabase.table("mock_template_sections").select("*").eq("template_id", template_id).order("section_index").execute(), default=None)
     sec_rows = getattr(sections, "data", None) or []
     if not sec_rows:
@@ -142,8 +211,11 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
     ordered: list[str] = []
     for sec in sec_rows:
         selector = sec.get("selector") or {}
-        if selector.get("mode") == "fixed":
+        mode = selector.get("mode")
+        if mode == "fixed":
             ordered.extend(selector.get("question_ids") or [])
+        elif mode == "criteria":
+            ordered.extend(_select_criteria_question_ids(supabase, selector, int(sec.get("question_count") or 0)))
     if not ordered:
         return []
     q_rows = _safe(lambda: supabase.table("mock_question_bank").select("*").in_("id", ordered).execute(), default=None)
