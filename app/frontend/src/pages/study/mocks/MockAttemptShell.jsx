@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../lib/api";
+import { supabase } from "../../../lib/supabase";
+import { eventBus } from "./attemptEventBus";
 
 const DEBOUNCE_MS = 600;
 
@@ -28,6 +30,33 @@ export default function MockAttemptShell() {
   const debounceTimer = useRef(null);
   const timerRef = useRef(null);
   const autoSubmitFired = useRef(false);
+  const timeRemainingRef = useRef(null);
+
+  // ── event bus init/teardown ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!attemptId) return;
+    try {
+      eventBus.init({
+        attemptId,
+        apiBase: "/api/study/mocks/attempts",
+        getAuthToken: async () => {
+          try {
+            const { data } = await supabase.auth.getSession();
+            return data?.session?.access_token || null;
+          } catch {
+            return null;
+          }
+        },
+        getClientRemaining: () => timeRemainingRef.current,
+        getServerRemaining: () => null,  // PR3 will supply server-side value
+      });
+    } catch (e) {
+      console.warn("[Shell] eventBus.init error:", e);
+    }
+    return () => {
+      try { eventBus.destroy(); } catch (e) { console.warn("[Shell] eventBus.destroy error:", e); }
+    };
+  }, [attemptId]);
 
   // ── load attempt on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -57,6 +86,9 @@ export default function MockAttemptShell() {
     return () => { cancelled = true; };
   }, [attemptId]);
 
+  // Keep ref in sync so eventBus heartbeat can read without a closure over stale state.
+  useEffect(() => { timeRemainingRef.current = timeRemaining; }, [timeRemaining]);
+
   // ── countdown ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (timeRemaining === null) return;
@@ -78,6 +110,23 @@ export default function MockAttemptShell() {
     return () => clearInterval(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRemaining === null ? "null" : "ready"]);
+
+  // ── track current question in event bus ──────────────────────────────────
+  const questions_ref = useRef([]);
+  useEffect(() => {
+    if (attempt) questions_ref.current = attempt.questions || [];
+  }, [attempt]);
+
+  useEffect(() => {
+    try {
+      const qid = questions_ref.current[currentIdx]?.question_id || null;
+      eventBus.setCurrentQuestionId(qid);
+      if (qid) eventBus.enqueue("question.visited", { question_id: qid });
+    } catch (e) {
+      console.warn("[Shell] question visit enqueue error:", e);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIdx]);
 
   // ── send answer to server (debounced) ────────────────────────────────────
   const sendAnswer = useCallback(
@@ -107,6 +156,13 @@ export default function MockAttemptShell() {
       const cur = prev[questionId] || {};
       const updated = { ...cur, selected_option_id: optionId };
       sendAnswer(questionId, optionId, updated.is_marked_for_review || false);
+      try {
+        eventBus.enqueue("question.answered", {
+          question_id: questionId,
+          selected_option_id: optionId,
+          time_spent_sec: 0,
+        });
+      } catch (e) { console.warn("[Shell] enqueue error:", e); }
       return { ...prev, [questionId]: updated };
     });
   }
@@ -117,6 +173,10 @@ export default function MockAttemptShell() {
       const flipped = !cur.is_marked_for_review;
       const updated = { ...cur, is_marked_for_review: flipped };
       sendAnswer(questionId, cur.selected_option_id || null, flipped);
+      try {
+        const evType = flipped ? "question.marked" : "question.unmarked";
+        eventBus.enqueue(evType, { question_id: questionId });
+      } catch (e) { console.warn("[Shell] enqueue error:", e); }
       return { ...prev, [questionId]: updated };
     });
   }

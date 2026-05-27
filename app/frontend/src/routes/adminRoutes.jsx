@@ -36,6 +36,10 @@ import AdminContentAccessRequests from "../pages/admin/studyos/ContentAccessRequ
 import AdminGroupsConsole from "../pages/admin/community/GroupsConsole";
 import AdminPartnersConsole from "../pages/admin/community/PartnersConsole";
 import AdminResourcesReviewQueue from "../pages/admin/community/ResourcesReviewQueue";
+import AdminMockQuestionList from "../pages/admin/mocks/QuestionList";
+import AdminMockReviewQueue from "../pages/admin/mocks/ReviewQueue";
+import AdminMockQuestionEditor from "../pages/admin/mocks/QuestionEditor";
+import AdminMockImportWizard from "../pages/admin/mocks/ImportWizard";
 
 export const adminRouteElements = (
   <Route element={<ProtectedRoute role={ADMIN_ROLES} requireBackend><AdminShell /></ProtectedRoute>}>
@@ -78,5 +82,11 @@ export const adminRouteElements = (
     <Route path="/admin/study-os/social" element={<AdminStudyOsSocial />} />
     <Route path="/admin/study-os/exam-intel-cms" element={<AdminExamIntelCms />} />
     <Route path="/admin/study-os/content-access" element={<AdminContentAccessRequests />} />
+    {/* Mock Content */}
+    <Route path="/admin/mocks/questions" element={<AdminMockQuestionList />} />
+    <Route path="/admin/mocks/questions/new" element={<AdminMockQuestionEditor />} />
+    <Route path="/admin/mocks/questions/:id" element={<AdminMockQuestionEditor />} />
+    <Route path="/admin/mocks/review-queue" element={<AdminMockReviewQueue />} />
+    <Route path="/admin/mocks/import" element={<AdminMockImportWizard />} />
   </Route>
 );

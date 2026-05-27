@@ -31,7 +31,7 @@ describe("AdminShell sidebar IA", () => {
   test("renders exactly 6 top-level groups", () => {
     renderShell("/admin");
     const groups = screen.getAllByTestId(/^admin-nav-group-/);
-    expect(groups).toHaveLength(6);
+    expect(groups).toHaveLength(7);
   });
 
   test("Command Center and Trust Pipeline are default-expanded; others collapsed", () => {

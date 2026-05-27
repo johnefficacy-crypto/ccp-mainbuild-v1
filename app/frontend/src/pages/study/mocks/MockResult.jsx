@@ -53,7 +53,6 @@ export default function MockResult() {
         {per_question.map((q, i) => {
           const isCorrect = q.is_correct === true;
           const isWrong = q.is_correct === false;
-          const isSkipped = q.selected_option_id === null && q.is_correct === null;
           const borderColor = isCorrect ? "#16a34a" : isWrong ? "#dc2626" : "#374151";
           return (
             <div key={q.question_id} style={{ ...styles.qCard, borderLeft: `4px solid ${borderColor}` }}>

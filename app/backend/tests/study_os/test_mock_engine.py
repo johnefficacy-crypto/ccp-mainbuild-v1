@@ -61,7 +61,7 @@ def _make_question(qid: str | None = None) -> dict:
         "negative_marks": 0.25,
         "correct_option_id": correct_opt_id,
         "explanation": "Explanation text.",
-        "reviewer_status": "reviewed",
+        "reviewer_status": "published",
         "options": opts,
     }
 
