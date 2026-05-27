@@ -205,16 +205,20 @@ def _latest_plan_version(supabase: Any, plan_id: str | None) -> dict[str, Any] |
     rows = _safe(
         lambda: (
             supabase.table("study_plan_versions")
-            .select("id, version, created_at")
+            .select("id, version_number, created_at")
             .eq("plan_id", plan_id)
-            .order("version", desc=True)
+            .order("version_number", desc=True)
             .limit(1)
             .execute()
             .data
         ),
         default=[],
     ) or []
-    return rows[0] if rows else None
+    if not rows:
+        return None
+    row = rows[0]
+    row["version"] = row.get("version_number")
+    return row
 
 
 def _load_tasks(
