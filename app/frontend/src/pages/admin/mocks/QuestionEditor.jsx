@@ -79,6 +79,10 @@ export default function QuestionEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isNew = id === "new";
+  // A route like /admin/mocks/questions/undefined means the caller built the
+  // URL from a missing id. Never issue an API call with that — bounce back to
+  // the list instead of letting the backend 422/500 on a bad UUID.
+  const invalidId = !isNew && (!id || id === "undefined" || id === "null");
 
   const [form,    setForm]    = useState(EMPTY_FORM);
   const [qStatus, setQStatus] = useState("draft");
@@ -97,9 +101,14 @@ export default function QuestionEditor() {
 
   const dedupTimer = useRef(null);
 
+  // ── invalid id guard ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (invalidId) navigate("/admin/mocks/questions", { replace: true });
+  }, [invalidId, navigate]);
+
   // ── load ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (isNew) return;
+    if (isNew || invalidId) return;
     setLoading(true);
     api.get(`/api/admin/mocks/questions/${id}`)
       .then((q) => {
@@ -121,19 +130,19 @@ export default function QuestionEditor() {
       })
       .catch((e) => setError(e?.message || "Failed to load question"))
       .finally(() => setLoading(false));
-  }, [id, isNew]);
+  }, [id, isNew, invalidId]);
 
   // ── debounced dedup (edit mode only) ─────────────────────────────────────
   useEffect(() => {
-    if (isNew || !id || form.question_text.length < 20) return;
+    if (isNew || invalidId || !id || form.question_text.length < 20) return;
     clearTimeout(dedupTimer.current);
     dedupTimer.current = setTimeout(() => {
-      api.post(`/api/admin/mocks/${id}/dedup-check`, {})
+      api.post(`/api/admin/mocks/questions/${id}/dedup-check`, {})
         .then((res) => { setDedupResult(res); setDedupDismissed(false); })
         .catch(() => {});
     }, 600);
     return () => clearTimeout(dedupTimer.current);
-  }, [form.question_text, id, isNew]);
+  }, [form.question_text, id, isNew, invalidId]);
 
   // ── options helpers ───────────────────────────────────────────────────────
   const setCorrect = (idx) =>
@@ -221,7 +230,7 @@ export default function QuestionEditor() {
     setTransitioning(action);
     setError(null);
     try {
-      await api.post(`/api/admin/mocks/${id}/${ACTION_ENDPOINT[action]}`, { notes: notes || "" });
+      await api.post(`/api/admin/mocks/questions/${id}/${ACTION_ENDPOINT[action]}`, { notes: notes || "" });
       const q = await api.get(`/api/admin/mocks/questions/${id}`);
       setQStatus(q.reviewer_status);
       setReviewLog(q.review_log || []);
@@ -235,6 +244,14 @@ export default function QuestionEditor() {
   }, [id]);
 
   // ── render ────────────────────────────────────────────────────────────────
+  if (invalidId) {
+    return (
+      <div style={S.page}>
+        <div style={S.error}>Invalid question id — returning to the question bank…</div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div style={{ ...S.page, display: "flex", alignItems: "center", justifyContent: "center" }}>

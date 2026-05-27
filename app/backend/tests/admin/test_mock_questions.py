@@ -34,6 +34,11 @@ from app.api import admin_mocks as admin_mocks_api
 from app.core.auth import get_current_user
 from tests.persona_questions._stub import SBStub
 
+# Canonical valid UUIDs — endpoints now reject non-UUID question ids with 422,
+# so dedup/detail tests that expect to reach the service must use real UUIDs.
+VALID_UUID = "11111111-1111-1111-1111-111111111111"
+MISSING_UUID = "22222222-2222-2222-2222-222222222222"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -353,11 +358,11 @@ class TestAPIRBAC:
 class TestDedupCheck:
     def test_dedup_check_returns_no_collision_when_unique(self):
         sb = SBStub()
-        _seed_question(sb, qid="q-1")
+        _seed_question(sb, qid=VALID_UUID)
         client = _build_app(sb, permissions=["mock_questions:author"])
 
         # The RPC for trigram search returns None by default in SBStub
-        resp = client.post("/admin/mocks/questions/q-1/dedup-check", json={})
+        resp = client.post(f"/admin/mocks/questions/{VALID_UUID}/dedup-check", json={})
         assert resp.status_code == 200
         data = resp.json()
         assert "fingerprint_match" in data or "trigram_neighbors" in data
@@ -365,8 +370,58 @@ class TestDedupCheck:
     def test_dedup_check_returns_404_for_missing_question(self):
         sb = SBStub()
         client = _build_app(sb, permissions=["mock_questions:author"])
-        resp = client.post("/admin/mocks/questions/nonexistent-id/dedup-check", json={})
+        # Valid UUID that was never seeded → service raises LookupError → 404.
+        resp = client.post(f"/admin/mocks/questions/{MISSING_UUID}/dedup-check", json={})
         assert resp.status_code == 404
+
+    def test_dedup_check_rejects_invalid_uuid_with_422(self):
+        sb = SBStub()
+        client = _build_app(sb, permissions=["mock_questions:author"])
+        resp = client.post("/admin/mocks/questions/not-a-uuid/dedup-check", json={})
+        assert resp.status_code == 422
+        assert resp.json()["detail"] == "invalid question_id"
+
+    def test_dedup_endpoint_lives_under_questions_path(self):
+        """Dedup is mounted at /questions/{id}/dedup-check, not /{id}/dedup-check."""
+        sb = SBStub()
+        client = _build_app(sb, permissions=["mock_questions:author"])
+        resp = client.post(f"/admin/mocks/{VALID_UUID}/dedup-check", json={})
+        assert resp.status_code == 404  # no route registered at that path
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 6b.  UUID validation on path params
+# ═════════════════════════════════════════════════════════════════════════════
+
+class TestUUIDValidation:
+    def test_get_question_undefined_id_returns_422(self):
+        """A frontend that built the URL from a missing id sends "undefined"."""
+        sb = SBStub()
+        client = _build_app(sb, permissions=["mock_questions:author"])
+        resp = client.get("/admin/mocks/questions/undefined")
+        assert resp.status_code == 422
+        assert resp.json()["detail"] == "invalid question_id"
+
+    def test_update_question_invalid_uuid_returns_422(self):
+        sb = SBStub()
+        client = _build_app(sb, permissions=["mock_questions:author"])
+        resp = client.patch("/admin/mocks/questions/null", json={"question_text": "x"})
+        assert resp.status_code == 422
+
+    def test_valid_uuid_passes_validation_and_reaches_service(self):
+        """A well-formed but unseeded UUID clears validation → 404, not 422."""
+        sb = SBStub()
+        client = _build_app(sb, permissions=["mock_questions:author"])
+        resp = client.get(f"/admin/mocks/questions/{MISSING_UUID}")
+        assert resp.status_code == 404
+
+    def test_rbac_runs_before_uuid_validation(self):
+        """A non-reviewer hitting /approve gets 403 even with a bad id —
+        the permission gate fires before the body's UUID check."""
+        sb = SBStub()
+        client = _build_app(sb, permissions=["mock_questions:author"])
+        resp = client.post("/admin/mocks/questions/not-a-uuid/approve", json={})
+        assert resp.status_code == 403
 
 
 # ═════════════════════════════════════════════════════════════════════════════
