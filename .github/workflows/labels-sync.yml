@@ -1,0 +1,34 @@
+name: Sync Labels
+
+# Creates/updates the repository labels declared in .github/labels.json.
+# Self-contained (Node fetch + REST API); never deletes labels.
+# Runs when the label definitions change on main, and on demand.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/labels.json
+      - scripts/sync-labels.mjs
+      - .github/workflows/labels-sync.yml
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  sync-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Sync labels
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/sync-labels.mjs

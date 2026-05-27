@@ -43,6 +43,34 @@
 - `data-testid`s added/changed, or a new flow needed (or **None**):
 - [ ] If behaviour covered by E2E changed, the relevant spec(s) and fixtures were updated.
 
+## Click-through verification
+
+For PRs touching user-facing routes, endpoints, or UI:
+
+- [ ] **Author manually clicked through the flow** with browser devtools network tab open
+- [ ] **Zero 4xx or 5xx responses** during the flow (or all expected and documented)
+- [ ] **Console clean** — no errors, no warnings about missing keys or props
+- [ ] **Screenshot or screen recording** attached to PR for the primary flow
+- [ ] **Reviewer replicated the click-through** before approving
+
+If this PR does not touch user-facing surface area, write "N/A — backend-only library / docs / tooling" and skip. For backend-only / docs / tooling / migration PRs, also apply the `click-through-na` label. See `docs/process/click_through_review.md`.
+
+### Flow walked
+
+Describe the exact sequence (1-2 sentences):
+> e.g. "Login as test user → /admin/mocks/questions → click 'New Question' → fill form → save → verify draft appears in QuestionList → open and verify edit works → request review → switch user → approve → publish."
+
+### Network requests observed
+
+Paste relevant requests from devtools (status codes, paths):
+> POST /api/admin/mocks/questions → 201
+> GET /api/admin/mocks/questions/{id} → 200
+> POST /api/admin/mocks/questions/{id}/dedup-check → 200
+
+### Known issues found and filed (not fixed in this PR)
+
+> - Issue #N: empty state on QuestionList when no questions exist
+
 ## Manual Test Checklist
 - [ ] Scenario 1:
 - [ ] Scenario 2:
