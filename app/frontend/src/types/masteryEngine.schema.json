@@ -103,6 +103,26 @@
         "type": "list[str]",
         "required": false,
         "nullable": false
+      },
+      "source_trust": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
+      "source_attempt_id": {
+        "type": "UUID",
+        "required": false,
+        "nullable": true
+      },
+      "canonical_topic_id": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
+      "canonical_microtopic_id": {
+        "type": "str",
+        "required": false,
+        "nullable": true
       }
     },
     "CorrectionTaskDraft": {
