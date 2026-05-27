@@ -1,0 +1,14 @@
+{
+  "corpus_id": "upsc-cse-prelims-pyq-v1",
+  "document_id": "TODO_DOCUMENT_ASSETS_ID",
+  "document_kind": "pyq_paper",
+  "exam_id": "TODO_UPSC_CSE_EXAM_UUID",
+  "paper": {
+    "paper_name": "TODO_PAPER_NAME e.g. General Studies Paper I 2023",
+    "year": 2023,
+    "page_count": 1
+  },
+  "extractor_target": "questions",
+  "coord_system": "top_left_normalized",
+  "expected_questions": []
+}
