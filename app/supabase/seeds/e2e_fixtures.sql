@@ -32,6 +32,16 @@ declare
   v_sections jsonb := '[]'::jsonb;
   v_section_names text[] := array['English Language', 'Reasoning Ability', 'Quantitative Aptitude'];
 begin
+  -- 0) Migration 135 (mock_engine_core) seeds its own "IBPS PO Prelims Mock 1"
+  -- template under this same slug with a DB-generated id. Our fixture upserts on
+  -- the primary key (id), so that pre-seeded row would survive and the insert
+  -- below would trip the slug unique constraint (mock_templates_slug_key). Drop
+  -- any row squatting on our slug that isn't our fixed-id fixture row; at seed
+  -- time that template has no template_sections and no attempts, so the delete
+  -- is safe, and it is a no-op once our own row exists (keeps the seed idempotent).
+  delete from public.mock_templates
+   where slug = v_slug and id <> v_template_id;
+
   -- 1) Template shell (config filled in after we know the question ids).
   insert into public.mock_templates
     (id, slug, name, exam_family, total_questions, duration_sec,
