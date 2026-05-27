@@ -28,6 +28,10 @@ ATTEMPT_PASTE       = "attempt.paste"
 # ── Drift detection — client-emitted ──────────────────────────────────────────
 ATTEMPT_HEARTBEAT = "attempt.heartbeat"
 
+# ── Answer-save sync UX (PR-fix-7) — client-emitted, record-only ──────────────
+ANSWER_SAVE_FAILED  = "answer.save_failed"
+ANSWER_SAVE_RETRIED = "answer.save_retried"
+
 KNOWN_CLIENT_EVENTS: frozenset[str] = frozenset({
     QUESTION_VISITED,
     QUESTION_ANSWERED,
@@ -39,6 +43,8 @@ KNOWN_CLIENT_EVENTS: frozenset[str] = frozenset({
     ATTEMPT_COPY,
     ATTEMPT_PASTE,
     ATTEMPT_HEARTBEAT,
+    ANSWER_SAVE_FAILED,
+    ANSWER_SAVE_RETRIED,
 })
 
 KNOWN_SERVER_EVENTS: frozenset[str] = frozenset({

@@ -474,7 +474,11 @@ def save_answer(
     if existing_rows:
         stored_seq = int(existing_rows[0].get("client_seq") or 0)
         if client_seq <= stored_seq:
-            return {"ok": True, "idempotent": True}
+            # A client retry after a partial-failure write replays the same
+            # client_seq. The row was already written (and the QUESTION_ANSWERED
+            # event already emitted) on the first call, so we acknowledge without
+            # re-processing — no duplicate row, no duplicate side effect.
+            return {"ok": True, "idempotent": True, "status": "already_recorded"}
 
     payload = {
         "selected_option_id": selected_option_id,
