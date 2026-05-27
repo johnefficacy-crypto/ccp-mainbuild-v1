@@ -31,7 +31,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test --watchAll=false",
     "check:study-copy": "bash ../../scripts/check-study-plan-copy.sh",
-    "check:bundle-budget": "node scripts/check-bundle-budget.mjs"
+    "check:bundle-budget": "node ../../scripts/check-initial-bundle-denylist.mjs"
   },
   "browserslist": {
     "production": [
@@ -52,19 +52,24 @@
     "overrides": [
       {
         "files": [
-          "src/routes/*Routes.jsx"
+          "src/index.js",
+          "src/App.js",
+          "src/routes/**/*.jsx",
+          "src/pages/**/*.jsx",
+          "src/features/**/*.jsx",
+          "src/components/**/*.jsx",
+          "src/shared/**/*.jsx",
+          "src/lib/**/*.jsx"
+        ],
+        "excludedFiles": [
+          "src/features/onboarding-chat/**/*.jsx"
         ],
         "rules": {
           "no-restricted-imports": [
             "error",
             {
-              "patterns": [
-                {
-                  "group": [
-                    "../pages/**"
-                  ],
-                  "message": "Route modules must lazy-load pages via lazy(() => import(\"../pages/...\")); static imports from ../pages/** are forbidden."
-                }
+              "paths": [
+                "framer-motion"
               ]
             }
           ]

@@ -2,7 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
-import "react-day-picker/style.css";
 import "./index.css";
 import App from "./App";
 // Policy: framer-motion imports are allowed only inside lazy-loaded route subtrees.
