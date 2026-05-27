@@ -144,6 +144,24 @@ export default function useAnswerSync({ postAnswer, onEvent, debounceMs = 600 })
     [doSave, nextSeq, debounceMs, setEntry],
   );
 
+  // Force a question's pending (debounced) save to fire now and await it.
+  // Needed before a section change: enter-section moves the server's section
+  // pointer, and a later debounce for an earlier-section question would be
+  // rejected as out-of-section (422 → non-retryable failed). Flushing while we
+  // are still in the question's section persists it cleanly. No-op if nothing
+  // is pending (already saving/saved).
+  const flush = useCallback(
+    async (qid) => {
+      if (!qid || !debounceTimers.current[qid]) return;
+      clearTimeout(debounceTimers.current[qid]);
+      delete debounceTimers.current[qid];
+      const fired = { ...payloads.current[qid], client_seq: nextSeq() };
+      payloads.current[qid] = fired;
+      await doSave(qid, fired, 0);
+    },
+    [doSave, nextSeq],
+  );
+
   // Manual retry from the failed banner — replays the same client_seq.
   const retryNow = useCallback(
     (qid) => {
@@ -171,6 +189,7 @@ export default function useAnswerSync({ postAnswer, onEvent, debounceMs = 600 })
   return {
     syncStates,
     queueSave,
+    flush,
     retryNow,
     retryAllFailed,
     failedIds,
