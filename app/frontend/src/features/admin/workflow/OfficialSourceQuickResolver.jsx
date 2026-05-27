@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { api } from "../../../lib/api";
-import { useToast } from "../../../shared/ui";
+import { useToast } from "../../../shared/ui/core";
 import InfoBadge from "../shared/InfoBadge";
 
 const RESOLVE_SUCCESS_TOAST =

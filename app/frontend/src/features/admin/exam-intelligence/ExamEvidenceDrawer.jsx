@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../../../lib/api";
-import { EvidenceDrawer, SourceTrustBadge, ConfidencePill } from "../../../shared/ui";
+import { EvidenceDrawer, SourceTrustBadge, ConfidencePill } from "../../../shared/ui/core";
 
 // Evidence drawer for a single exam-intelligence review-queue row.
 // Fetches GET /api/evidence/{kind}/{id} when opened. Renders ONLY fields

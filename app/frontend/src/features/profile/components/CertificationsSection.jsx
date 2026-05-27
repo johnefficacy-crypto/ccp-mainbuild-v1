@@ -1,5 +1,5 @@
 import React from "react";
-import { InputField, SelectField } from "../../../shared/ui";
+import { InputField, SelectField } from "../../../shared/ui/core";
 import { CERTIFICATION_TYPE_OPTIONS } from "../../../lib/profileFields";
 import { Grid, Section, SimpleList } from "./shared";
 

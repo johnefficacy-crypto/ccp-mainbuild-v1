@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ListChecks, Plus, FileText, Receipt, Trophy, Bell } from "lucide-react";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
-import { DateField } from "../../shared/ui";
+import { DateField } from "../../shared/ui/heavy";
 import { formatDDMMYYYY } from "../../shared/forms/dateFormat";
 
 // Application tracker — one grouped-by-status timeline plus chip

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { InputField } from "../../../shared/ui";
+import { InputField } from "../../../shared/ui/core";
 import { Grid, Section, SimpleList } from "./shared";
 
 export default function ExamAttemptsSection({ newAttempt, setNewAttempt, attemptRows, setAttemptRows }) {

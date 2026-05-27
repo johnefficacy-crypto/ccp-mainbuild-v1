@@ -9,7 +9,7 @@ import App from "./App";
 // Keep / and /login motion-free in initial bundles; do not import framer-motion from eagerly loaded modules.
 import { AuthProvider } from "./lib/authContext";
 import { queryClient } from "./shared/api/queryClient";
-import { ToastProvider } from "./shared/ui";
+import { ToastProvider } from "./shared/ui/core";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(

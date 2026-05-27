@@ -3,7 +3,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 
 // Spy holder so each test can read what useToast was asked to show.
 const mockToastSpies = { info: jest.fn(), error: jest.fn(), success: jest.fn() };
-jest.mock("../../../shared/ui", () => ({ useToast: () => mockToastSpies }));
+jest.mock("../../../shared/ui/core", () => ({ useToast: () => mockToastSpies }));
 
 // PromotionPreviewPanel: record every mount + the refreshKey it renders with,
 // so tests can assert lazy-mount (Task 4) and bump-after-write (Task 3).

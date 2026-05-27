@@ -24,8 +24,8 @@ jest.mock("../../../lib/api", () => ({
   getApiUnverifiedFields: () => [],
 }));
 
-jest.mock("../../../shared/ui", () => {
-  const actual = jest.requireActual("../../../shared/ui");
+jest.mock("../../../shared/ui/core", () => {
+  const actual = jest.requireActual("../../../shared/ui/core");
   return {
     ...actual,
     useToast: () => ({

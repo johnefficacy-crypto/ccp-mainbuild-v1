@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useToast } from "../../shared/ui";
+import { useToast } from "../../shared/ui/core";
 
 /**
  * Standard mutation runner for community/study/feature screens.

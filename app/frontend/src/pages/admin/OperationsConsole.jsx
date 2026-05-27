@@ -9,7 +9,7 @@ import DuplicateMergePreview from "../../features/admin/workflow/DuplicateMergeP
 import SelectionContextBanner from "../../features/admin/workflow/SelectionContextBanner";
 import useConflicts from "../../features/admin/workflow/useConflicts";
 import { scoreToPct } from "../../features/admin/workflow/scoreUtils";
-import { useToast } from "../../shared/ui";
+import { useToast } from "../../shared/ui/core";
 
 // Filter ``key`` matches scrape_queue.status verbatim so the backend can do
 // the filtering; ``approved`` is the storage value for a row that has been
