@@ -80,18 +80,18 @@ describe("StudyLearningHub (PR10)", () => {
   });
 });
 
-describe("StudyProgressHub (PR10)", () => {
-  test("renders four live cards with the expected destinations", () => {
+describe("StudyProgressHub (PR6 trend surface)", () => {
+  test("renders the progress page and loads the 90-day mock trend", async () => {
+    mockGet.mockResolvedValue({ items: [] });
     renderAt(StudyProgressHub);
-    expect(screen.getByTestId("progress-card-report-card").getAttribute("href")).toBe("/app/study/review");
-    expect(screen.getByTestId("progress-card-compare-effort").getAttribute("href")).toBe("/app/study/compare");
-    expect(screen.getByTestId("progress-card-reports").getAttribute("href")).toBe("/app/reports");
-    expect(screen.getByTestId("progress-card-monthly-review").getAttribute("href")).toBe(
-      "/app/study/review?period=monthly",
+    expect(screen.getByTestId("study-progress-page")).toBeTruthy();
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenCalledWith("/api/study/reports/mock-trend?days=90"),
     );
   });
 
   test("no disabled card on the Progress hub", () => {
+    mockGet.mockResolvedValue({ items: [] });
     renderAt(StudyProgressHub);
     expect(screen.queryByTestId("disabled-card")).toBeNull();
   });

@@ -724,12 +724,23 @@ def _build_result(
     summary_rows = _safe(lambda: supabase.table("mock_attempt_summary").select("*").eq("attempt_id", attempt["id"]).limit(1).execute(), default=None)
     summary = (getattr(summary_rows, "data", None) or [None])[0]
     section_rows = _safe(lambda: supabase.table("mock_attempt_section_breakdown").select("*").eq("attempt_id", attempt["id"]).order("section_index").execute(), default=None)
+    # score_raw/score_percentage originate as Decimal and are persisted via
+    # model_dump(mode="json"), i.e. as JSON strings. Coerce back to a number so
+    # the result contract is numeric regardless of which source (summary vs
+    # attempt row) supplies the value.
+    def _as_number(v):
+        if isinstance(v, str):
+            try:
+                return float(v)
+            except ValueError:
+                return v
+        return v
     return {
         "attempt_id": attempt["id"],
         "status": attempt.get("status"),
         "submitted_at": attempt.get("submitted_at"),
-        "score_raw": (summary or {}).get("score_raw", attempt.get("score_raw")),
-        "score_percentage": (summary or {}).get("score_percentage", attempt.get("score_percentage")),
+        "score_raw": _as_number((summary or {}).get("score_raw", attempt.get("score_raw"))),
+        "score_percentage": _as_number((summary or {}).get("score_percentage", attempt.get("score_percentage"))),
         "total_correct": (summary or {}).get("total_correct", attempt.get("total_correct")),
         "total_wrong": (summary or {}).get("total_wrong", attempt.get("total_wrong")),
         "total_unattempted": (summary or {}).get("total_unattempted", attempt.get("total_unattempted")),
