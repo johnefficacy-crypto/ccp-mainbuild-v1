@@ -732,8 +732,26 @@ async def get_plan_changelog(user: dict = Depends(get_current_user)) -> dict[str
 @router.get("/reports/mock-trend")
 async def reports_mock_trend(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
     sb = get_supabase_admin(); user_id = user.get("id")
-    rows = (sb.table("mock_attempts").select("id, submitted_at, score_pct, accuracy_pct, time_used_sec").eq("user_id", user_id).order("submitted_at", desc=False).limit(100).execute().data or [])
-    return {"items": [{"attempt_id": r.get("id"), "submitted_at": r.get("submitted_at"), "score_pct": r.get("score_pct") or 0, "accuracy_pct": r.get("accuracy_pct") or 0, "time_used_sec": r.get("time_used_sec") or 0} for r in rows]}
+    rows = (sb.table("mock_attempts")
+              .select("id, submitted_at, score_percentage, total_correct, total_wrong")
+              .eq("user_id", user_id)
+              .eq("status", "submitted")
+              .order("submitted_at", desc=False)
+              .limit(100)
+              .execute()
+              .data or [])
+    items = []
+    for r in rows:
+        total_ans = (r.get("total_correct") or 0) + (r.get("total_wrong") or 0)
+        accuracy = round((r.get("total_correct") or 0) / total_ans * 100, 2) if total_ans > 0 else 0.0
+        items.append({
+            "attempt_id": r.get("id"),
+            "submitted_at": r.get("submitted_at"),
+            "score_pct": float(r.get("score_percentage") or 0),
+            "accuracy_pct": accuracy,
+            "time_used_sec": 0,
+        })
+    return {"items": items}
 
 @router.get("/reports/mistakes")
 async def reports_mistakes(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
