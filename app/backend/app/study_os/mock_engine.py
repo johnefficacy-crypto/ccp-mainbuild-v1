@@ -148,7 +148,20 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
         return []
     q_rows = _safe(lambda: supabase.table("mock_question_bank").select("*").in_("id", ordered).execute(), default=None)
     by_id = {r["id"]: r for r in (getattr(q_rows, "data", None) or [])}
-    return [by_id[qid] for qid in ordered if qid in by_id]
+    # Attach options (ordered by option_index) — without these the frozen
+    # snapshot has no options and the attempt renders no answer choices.
+    opt_rows = _safe(
+        lambda: supabase.table("mock_question_options")
+        .select("*")
+        .in_("question_id", ordered)
+        .order("option_index")
+        .execute(),
+        default=None,
+    )
+    opts_by_q: dict[str, list[dict]] = {}
+    for o in (getattr(opt_rows, "data", None) or []):
+        opts_by_q.setdefault(o["question_id"], []).append(o)
+    return [{**by_id[qid], "options": opts_by_q.get(qid, [])} for qid in ordered if qid in by_id]
 
 
 # ── public API ─────────────────────────────────────────────────────────────────
@@ -298,6 +311,7 @@ def get_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "is_marked_for_review": bool((r or {}).get("is_marked_for_review")),
             "is_visited": bool((r or {}).get("is_visited")),
             "time_spent_sec": int((r or {}).get("time_spent_sec") or 0),
+            "section_index": _question_section_index(snapshot, qid),
         })
 
     time_remaining = _time_remaining_sec(attempt)
@@ -309,6 +323,7 @@ def get_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
         "time_remaining_sec": time_remaining,
         "questions": questions_out,
         "current_section_index": int(attempt.get("current_section_index") or 0),
+        "section_locks_enabled": bool(attempt.get("section_locks_enabled")),
         "template_interface_mode": snapshot.get("interface_mode") or "simple",
         "template_config": {"interface_mode": snapshot.get("interface_mode"), "allow_switching": snapshot.get("allow_switching")},
         "sections": _get_section_states(supabase, attempt_id),

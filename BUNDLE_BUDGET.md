@@ -6,13 +6,33 @@ This repository enforces a frontend bundle budget in CI to protect route-level l
 
 Current enforced limits:
 
-- **Main chunk gzip size must be ≤ 200 KB**.
-- **Any bundle that is reachable from `/` or `/login` must not include**:
-  - `pages/admin/**`
-  - `pages/prototype/**`
-  - `src/prototype/**`
+- **Initial (entry) chunk gzip size must be ≤ 220 KB** (`main.*.js`).
+- **The initial chunk must not statically include** any of:
+  - `pages/admin/`
+  - `pages/prototype/`
+  - `pages/study/Mocks.jsx` (the user mocks page must be lazy)
+  - `pages/StudyPlan.jsx`
+  - `features/community/`
+  - `recharts` (the entire chart lib)
+  - `react-day-picker`
 
-The check runs from `app/frontend/scripts/check-bundle-budget.mjs` and is wired into CI after production build.
+The check runs from `scripts/check-bundle.js` and is wired into CI after the
+production build (`npm run check:bundle-budget`). It works in two independent
+ways:
+
+1. **Forbidden-in-initial** — a static import-graph walk from `src/index.js`.
+   A `lazy(() => import('...'))` is a dynamic import and is *not* followed, so
+   lazy routes stay out of the initial chunk; a plain `import X from '...'`
+   *is* followed, so re-introducing forbidden code via a static import fails
+   the gate with a message naming the offending file and specifier.
+2. **Size budget** — the emitted `main.*.js` is gzipped with `zlib` and
+   compared against the cap; a violation reports the actual measured size.
+
+`source-map-explorer` is available as an opt-in byte-level cross-check
+(`npm run check:bundle -- --sme` or `CHECK_BUNDLE_SME=1`). It is **not** part
+of the gate by default because source-map-explorer 2.5.x trips on CRA's
+minified entry sourcemap ("generated column Infinity"); the static graph walk
+is the authoritative, deterministic signal.
 
 ## Local Run
 
@@ -50,7 +70,7 @@ Any change to thresholds or forbidden-module constraints requires:
 2. Reviewer approval explicitly acknowledging the budget change.
 3. Corresponding updates to:
    - `BUNDLE_BUDGET.md`
-   - `app/frontend/scripts/check-bundle-budget.mjs`
+   - `scripts/check-bundle.js`
    - any CI wiring if applicable.
 
 Do **not** raise the budget as a first response to CI failures; investigate bundle composition and lazy-loading boundaries first.

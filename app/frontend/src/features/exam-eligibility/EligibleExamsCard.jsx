@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, ChevronDown, GraduationCap } from "lucide-react";
 import { api } from "../../lib/api";
 import { Eyebrow, Pill, StudyCard } from "../../shared/ui/studyos";
@@ -78,15 +77,13 @@ function ExamRow({ item, tone, expanded, onToggle }) {
           aria-hidden="true"
         />
       </button>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="border-t border-[#E7DECB] bg-[#FBF6EF]"
-          >
+      <div
+        className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
+      >
+        <div className="overflow-hidden border-t border-[#E7DECB] bg-[#FBF6EF]">
+          {expanded && (
             <div className="px-4 py-3 text-[12.5px] text-clay-800 space-y-2">
               {isConditional ? (
                 <>
@@ -118,14 +115,14 @@ function ExamRow({ item, tone, expanded, onToggle }) {
                 </>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </div>
+      </div>
     </li>
   );
 }
 
-function CountTile({ label, value, tone, animated, testId }) {
+function CountTile({ label, value, tone, testId }) {
   const toneCls =
     tone === "sage"
       ? "border-[#B9CFAF] bg-[#F0F5EF] text-[#33482F]"
@@ -136,15 +133,7 @@ function CountTile({ label, value, tone, animated, testId }) {
       className={`rounded-xl border ${toneCls} px-4 py-3 flex-1 min-w-[120px]`}
     >
       <Eyebrow>{label}</Eyebrow>
-      <motion.div
-        key={value}
-        initial={animated ? { scale: 0.85, opacity: 0 } : false}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 240, damping: 18 }}
-        className="font-heading text-[34px] leading-none mt-1.5 num-mono"
-      >
-        {value}
-      </motion.div>
+      <div className="font-heading text-[34px] leading-none mt-1.5 num-mono">{value}</div>
     </div>
   );
 }
@@ -304,7 +293,6 @@ export default function EligibleExamsCard({ variant = "card", initialData } = {}
       label: "Confirmed eligible",
       value: eligible.length,
       tone: "sage",
-      animated: true,
     });
   }
   if (conditional.length > 0) {
@@ -313,7 +301,6 @@ export default function EligibleExamsCard({ variant = "card", initialData } = {}
       label: "Likely eligible",
       value: conditional.length,
       tone: "amber",
-      animated: false,
     });
   }
 
@@ -372,27 +359,20 @@ export default function EligibleExamsCard({ variant = "card", initialData } = {}
             label={t.label}
             value={t.value}
             tone={t.tone}
-            animated={t.animated}
             testId={`tile-${t.key}`}
           />
         ))}
       </div>
 
       <ul className="mt-4 space-y-2" data-testid="eligible-exams-rows">
-        {rows.map(({ item, tone }, idx) => (
-          <motion.div
+        {rows.map(({ item, tone }) => (
+          <ExamRow
             key={`${tone}:${item.exam_id}`}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18, delay: idx * 0.04, ease: "easeOut" }}
-          >
-            <ExamRow
-              item={item}
-              tone={tone}
-              expanded={expandedId === item.exam_id}
-              onToggle={() => toggleRow(item.exam_id)}
-            />
-          </motion.div>
+            item={item}
+            tone={tone}
+            expanded={expandedId === item.exam_id}
+            onToggle={() => toggleRow(item.exam_id)}
+          />
         ))}
       </ul>
     </CardShell>

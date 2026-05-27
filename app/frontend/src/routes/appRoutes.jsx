@@ -3,11 +3,12 @@ import { Navigate, Route } from "react-router-dom";
 import RouteErrorBoundary from "../components/RouteErrorBoundary";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
 import { LoadingSkeleton } from "../shared/ui";
-import CommunityScreen from "../features/community/CommunityScreen";
-import StudyGroupsScreen from "../features/community/StudyGroupsScreen";
-import PartnersScreen from "../features/community/PartnersScreen";
-import MentorsScreen from "../features/community/MentorsScreen";
-import ResourcesScreen from "../features/community/ResourcesScreen";
+
+const CommunityScreen = lazy(() => import("../features/community/CommunityScreen"));
+const StudyGroupsScreen = lazy(() => import("../features/community/StudyGroupsScreen"));
+const PartnersScreen = lazy(() => import("../features/community/PartnersScreen"));
+const MentorsScreen = lazy(() => import("../features/community/MentorsScreen"));
+const ResourcesScreen = lazy(() => import("../features/community/ResourcesScreen"));
 
 const Today = lazy(() => import("../pages/Today"));
 const DashShell = lazy(() => import("../pages/DashShell"));
