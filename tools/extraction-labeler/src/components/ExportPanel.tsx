@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { LabeledQuestion, PaperMeta } from '../types';
 import { validateFixture } from '../lib/schema';
 
-interface Props {
-  documentId: string;
-  examId: string;
-  paperMeta: PaperMeta;
-  questions: LabeledQuestion[];
-  onDocumentIdChange: (v: string) => void;
-  onExamIdChange: (v: string) => void;
-  onPaperMetaChange: (v: PaperMeta) => void;
-  onClearSession: () => void;
+const METADATA_OPEN_KEY = 'labeler:metadata-open';
+
+function isMetadataComplete(documentId: string, examId: string, paperMeta: PaperMeta): boolean {
+  return !!(
+    documentId.trim() &&
+    examId.trim() &&
+    paperMeta.paper_name.trim() &&
+    paperMeta.year &&
+    paperMeta.page_count
+  );
 }
 
 function buildFixture(
@@ -35,6 +36,17 @@ function buildFixture(
   };
 }
 
+interface Props {
+  documentId: string;
+  examId: string;
+  paperMeta: PaperMeta;
+  questions: LabeledQuestion[];
+  onDocumentIdChange: (v: string) => void;
+  onExamIdChange: (v: string) => void;
+  onPaperMetaChange: (v: PaperMeta) => void;
+  onClearSession: () => void;
+}
+
 export default function ExportPanel({
   documentId,
   examId,
@@ -47,6 +59,30 @@ export default function ExportPanel({
 }: Props) {
   const [showErrors, setShowErrors] = useState(false);
 
+  // Open when fields are empty; respect explicit user preference stored in localStorage.
+  const [metadataOpen, setMetadataOpen] = useState(() => {
+    const saved = localStorage.getItem(METADATA_OPEN_KEY);
+    if (saved !== null) return saved === 'true';
+    return !isMetadataComplete(documentId, examId, paperMeta);
+  });
+
+  // Auto-collapse on the first transition from incomplete → complete (e.g. session restore).
+  const wasCompleteRef = useRef(isMetadataComplete(documentId, examId, paperMeta));
+  useEffect(() => {
+    const complete = isMetadataComplete(documentId, examId, paperMeta);
+    if (!wasCompleteRef.current && complete && localStorage.getItem(METADATA_OPEN_KEY) === null) {
+      setMetadataOpen(false);
+    }
+    wasCompleteRef.current = complete;
+  }, [documentId, examId, paperMeta]);
+
+  function toggleMetadata() {
+    const next = !metadataOpen;
+    setMetadataOpen(next);
+    localStorage.setItem(METADATA_OPEN_KEY, String(next));
+  }
+
+  const complete = isMetadataComplete(documentId, examId, paperMeta);
   const fixture = buildFixture(documentId, examId, paperMeta, questions);
   const { valid, errors } = validateFixture(fixture);
 
@@ -55,9 +91,7 @@ export default function ExportPanel({
       setShowErrors(true);
       return;
     }
-    const blob = new Blob([JSON.stringify(fixture, null, 2)], {
-      type: 'application/json',
-    });
+    const blob = new Blob([JSON.stringify(fixture, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -74,104 +108,124 @@ export default function ExportPanel({
 
   return (
     <div style={styles.panel}>
-      <strong style={{ fontSize: 14 }}>Fixture metadata</strong>
+      {/* ── Collapsible metadata header ── */}
+      <button onClick={toggleMetadata} style={styles.sectionToggle}>
+        <span style={{ fontWeight: 600, fontSize: 13 }}>
+          Fixture metadata{!metadataOpen && complete ? ' ✓' : ''}
+        </span>
+        <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 'auto' }}>
+          {metadataOpen ? '▲ collapse' : '▼ edit'}
+        </span>
+      </button>
 
-      <label style={styles.label}>
-        document_id (document_assets.id)
-        <input
-          value={documentId}
-          onChange={(e) => onDocumentIdChange(e.target.value)}
-          placeholder="UUID from document_assets"
-          style={styles.input}
-        />
-      </label>
+      {/* ── Metadata fields (collapsible) ── */}
+      {metadataOpen && (
+        <div style={styles.metadataBody}>
+          <label style={styles.label}>
+            document_id
+            <input
+              value={documentId}
+              onChange={(e) => onDocumentIdChange(e.target.value)}
+              placeholder="UUID from document_assets"
+              style={styles.input}
+            />
+          </label>
 
-      <label style={styles.label}>
-        exam_id (UUID)
-        <input
-          value={examId}
-          onChange={(e) => onExamIdChange(e.target.value)}
-          placeholder="UPSC CSE exam UUID"
-          style={styles.input}
-        />
-      </label>
+          <label style={styles.label}>
+            exam_id (UUID)
+            <input
+              value={examId}
+              onChange={(e) => onExamIdChange(e.target.value)}
+              placeholder="UPSC CSE exam UUID"
+              style={styles.input}
+            />
+          </label>
 
-      <label style={styles.label}>
-        paper_name
-        <input
-          value={paperMeta.paper_name}
-          onChange={(e) => onPaperMetaChange({ ...paperMeta, paper_name: e.target.value })}
-          placeholder="General Studies Paper I 2023"
-          style={styles.input}
-        />
-      </label>
+          <label style={styles.label}>
+            paper_name
+            <input
+              value={paperMeta.paper_name}
+              onChange={(e) => onPaperMetaChange({ ...paperMeta, paper_name: e.target.value })}
+              placeholder="General Studies Paper I 2023"
+              style={styles.input}
+            />
+          </label>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <label style={{ ...styles.label, flex: 1 }}>
-          year
-          <input
-            type="number"
-            min={1990}
-            max={2100}
-            value={paperMeta.year}
-            onChange={(e) => onPaperMetaChange({ ...paperMeta, year: parseInt(e.target.value, 10) || 2023 })}
-            style={styles.input}
-          />
-        </label>
-        <label style={{ ...styles.label, flex: 1 }}>
-          page_count
-          <input
-            type="number"
-            min={1}
-            value={paperMeta.page_count}
-            onChange={(e) => onPaperMetaChange({ ...paperMeta, page_count: parseInt(e.target.value, 10) || 1 })}
-            style={styles.input}
-          />
-        </label>
-      </div>
-
-      <div style={styles.stats}>
-        {questions.length} question{questions.length !== 1 ? 's' : ''} ·{' '}
-        {questions.reduce((n, q) => n + q.regions.length, 0)} regions
-      </div>
-
-      {!valid && showErrors && (
-        <div style={styles.errorBox}>
-          {errors.map((e, i) => (
-            <div key={i} style={{ fontSize: 11 }}>
-              {e}
-            </div>
-          ))}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <label style={{ ...styles.label, flex: 1 }}>
+              year
+              <input
+                type="number"
+                min={1990}
+                max={2100}
+                value={paperMeta.year}
+                onChange={(e) =>
+                  onPaperMetaChange({ ...paperMeta, year: parseInt(e.target.value, 10) || 2023 })
+                }
+                style={styles.input}
+              />
+            </label>
+            <label style={{ ...styles.label, flex: 1 }}>
+              page_count
+              <input
+                type="number"
+                min={1}
+                value={paperMeta.page_count}
+                onChange={(e) =>
+                  onPaperMetaChange({ ...paperMeta, page_count: parseInt(e.target.value, 10) || 1 })
+                }
+                style={styles.input}
+              />
+            </label>
+          </div>
         </div>
       )}
 
-      {!valid && (
-        <div style={styles.warnBadge}>
-          {errors.length} validation error{errors.length !== 1 ? 's' : ''}{' '}
-          <button
-            onClick={() => setShowErrors((v) => !v)}
-            style={{ fontSize: 11, background: 'none', border: 'none', cursor: 'pointer', color: '#b45309', textDecoration: 'underline' }}
-          >
-            {showErrors ? 'hide' : 'show'}
-          </button>
+      {/* ── Footer: stats, errors, export, clear — always visible ── */}
+      <div style={styles.footer}>
+        <div style={styles.stats}>
+          {questions.length} question{questions.length !== 1 ? 's' : ''} ·{' '}
+          {questions.reduce((n, q) => n + q.regions.length, 0)} regions
         </div>
-      )}
 
-      <button
-        onClick={handleExport}
-        disabled={!valid}
-        style={{
-          ...styles.exportBtn,
-          background: valid ? '#16a34a' : '#9ca3af',
-          cursor: valid ? 'pointer' : 'not-allowed',
-        }}
-      >
-        ⬇ Export questions.json
-      </button>
+        {!valid && showErrors && (
+          <div style={styles.errorBox}>
+            {errors.map((e, i) => (
+              <div key={i} style={{ fontSize: 11 }}>
+                {e}
+              </div>
+            ))}
+          </div>
+        )}
 
-      <button onClick={handleClear} style={styles.clearBtn}>
-        Clear session
-      </button>
+        {!valid && (
+          <div style={styles.warnBadge}>
+            {errors.length} validation error{errors.length !== 1 ? 's' : ''}{' '}
+            <button
+              onClick={() => setShowErrors((v) => !v)}
+              style={{ fontSize: 11, background: 'none', border: 'none', cursor: 'pointer', color: '#b45309', textDecoration: 'underline' }}
+            >
+              {showErrors ? 'hide' : 'show'}
+            </button>
+          </div>
+        )}
+
+        <button
+          onClick={handleExport}
+          disabled={!valid}
+          style={{
+            ...styles.exportBtn,
+            background: valid ? '#16a34a' : '#9ca3af',
+            cursor: valid ? 'pointer' : 'not-allowed',
+          }}
+        >
+          ⬇ Export questions.json
+        </button>
+
+        <button onClick={handleClear} style={styles.clearBtn}>
+          Clear session
+        </button>
+      </div>
     </div>
   );
 }
@@ -180,12 +234,30 @@ const styles: Record<string, React.CSSProperties> = {
   panel: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
-    padding: 14,
+    width: 300,
     background: '#fff',
     border: '1px solid #e5e7eb',
     borderRadius: 8,
-    width: 280,
+    overflow: 'hidden',
+  },
+  sectionToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    padding: '10px 12px',
+    background: '#f9fafb',
+    border: 'none',
+    borderBottom: '1px solid #e5e7eb',
+    cursor: 'pointer',
+    textAlign: 'left',
+    gap: 6,
+  },
+  metadataBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    padding: '12px 14px',
+    borderBottom: '1px solid #e5e7eb',
   },
   label: {
     display: 'flex',
@@ -200,11 +272,17 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 4,
     fontSize: 13,
     width: '100%',
+    boxSizing: 'border-box',
+  },
+  footer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    padding: '10px 14px 12px',
   },
   stats: {
     fontSize: 12,
     color: '#6b7280',
-    padding: '4px 0',
   },
   errorBox: {
     background: '#fef2f2',
