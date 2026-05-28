@@ -59,6 +59,25 @@ describe('buildFixture', () => {
     expect(result.coord_system).toBe('top_left_normalized');
     expect(result.paper).toEqual(defaultMeta);
   });
+
+  it('produces an empty skipped[] when no questions are out-of-scope', () => {
+    const q1 = makeQ({ id: 'q1', question_number: 1 });
+    const q2 = makeQ({ id: 'q2', question_number: 2 });
+    const result = buildFixture('doc-id', 'exam-id', defaultMeta, [q1, q2]);
+    expect(result.skipped).toEqual([]);
+  });
+
+  it('populates skipped[] with question_number and reason for OOS questions', () => {
+    const q1 = makeQ({ id: 'q1', question_number: 5 });
+    const q2 = makeQ({ id: 'q2', question_number: 12, out_of_scope_v1: true });
+    const q3 = makeQ({ id: 'q3', question_number: 18, out_of_scope_v1: true });
+    const result = buildFixture('doc-id', 'exam-id', defaultMeta, [q1, q2, q3]);
+    expect(result.skipped).toHaveLength(2);
+    expect(result.skipped[0]).toEqual({ question_number: 12, reason: 'out_of_scope_v1' });
+    expect(result.skipped[1]).toEqual({ question_number: 18, reason: 'out_of_scope_v1' });
+    expect(result.expected_questions).toHaveLength(1);
+    expect(result.expected_questions[0].question_number).toBe(5);
+  });
 });
 
 describe('skippedCount', () => {

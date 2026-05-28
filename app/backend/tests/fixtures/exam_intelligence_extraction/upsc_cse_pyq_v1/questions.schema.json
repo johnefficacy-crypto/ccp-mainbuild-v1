@@ -58,6 +58,13 @@
       "items": {
         "$ref": "#/definitions/question"
       }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/skipped_entry"
+      },
+      "description": "Questions excluded from expected_questions (e.g. tables, figures, matching lists)"
     }
   },
   "definitions": {
@@ -112,6 +119,21 @@
           "type": "string"
         }
       }
+    },
+    "skipped_entry": {
+      "type": "object",
+      "required": ["question_number", "reason"],
+      "properties": {
+        "question_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

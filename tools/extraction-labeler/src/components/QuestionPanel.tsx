@@ -41,7 +41,10 @@ export default function QuestionPanel({
   const handleTextBlur = useCallback(
     async (q: LabeledQuestion, text: string) => {
       const hash = text.trim() ? await hashQuestionText(text) : undefined;
-      onUpdate(q.id, { question_text: text, normalized_question_hash: hash });
+      const detected = detectLeadingOrdinal(text);
+      const patch: Partial<LabeledQuestion> = { question_text: text, normalized_question_hash: hash };
+      if (detected !== null) patch.question_number = detected;
+      onUpdate(q.id, patch);
     },
     [onUpdate],
   );
@@ -161,13 +164,7 @@ export default function QuestionPanel({
             ref={textareaRef}
             value={selected.question_text}
             onChange={(e) => {
-              const text = e.target.value;
-              const patch: Partial<LabeledQuestion> = { question_text: text };
-              const detected = detectLeadingOrdinal(text);
-              if (detected !== null) {
-                patch.question_number = detected;
-              }
-              onUpdate(selected.id, patch);
+              onUpdate(selected.id, { question_text: e.target.value });
               autoResize(e.target);
             }}
             onBlur={(e) => handleTextBlur(selected, e.target.value)}
@@ -221,7 +218,7 @@ export default function QuestionPanel({
 
           {/* Guidance text */}
           <div style={{ fontSize: 11, fontStyle: 'italic', color: '#9ca3af' }}>
-            question_text = stem only, no leading number, no (a)(b)(c)(d). Tables/matching → mark out-of-scope.
+            Stem only — no leading number, no (a)(b)(c)(d). Matching/table/figure → mark out-of-scope.
           </div>
         </div>
       ) : (
