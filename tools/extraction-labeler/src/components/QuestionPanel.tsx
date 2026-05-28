@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { LabeledQuestion } from '../types';
 import { hashQuestionText } from '../lib/hash';
+import { detectLeadingOrdinal, stripLeadingOrdinal, cleanWhitespace } from '../lib/ordinal';
 
 const MIN_TEXTAREA_PX = 6 * 24;   // 144 px — 6 rows
 const MAX_TEXTAREA_PX = 16 * 24;  // 384 px — 16 rows, then scroll
@@ -45,6 +46,22 @@ export default function QuestionPanel({
     [onUpdate],
   );
 
+  const recomputeHash = useCallback(
+    async (id: string, text: string) => {
+      const hash = text.trim() ? await hashQuestionText(text) : undefined;
+      onUpdate(id, { question_text: text, normalized_question_hash: hash });
+    },
+    [onUpdate],
+  );
+
+  // Derived values for the active editor
+  const detectedOrdinal = selected ? detectLeadingOrdinal(selected.question_text) : null;
+  const ordinalMismatch =
+    detectedOrdinal !== null && selected !== null && detectedOrdinal !== selected.question_number;
+  const hasExtraSpaces =
+    selected !== null && cleanWhitespace(selected.question_text) !== selected.question_text;
+  const hasLeadingOrdinal = selected !== null && detectLeadingOrdinal(selected.question_text) !== null;
+
   return (
     <div style={styles.panel}>
       {/* ── Header ── */}
@@ -66,6 +83,7 @@ export default function QuestionPanel({
           const isSelected = q.id === selectedQuestionId;
           const pageList = [...new Set(q.regions.map((r) => r.page))].sort((a, b) => a - b);
           const onThisPage = q.regions.some((r) => r.page === currentPage);
+          const isOos = q.out_of_scope_v1 === true;
           return (
             <div
               key={q.id}
@@ -74,10 +92,11 @@ export default function QuestionPanel({
                 ...styles.listItem,
                 background: isSelected ? '#eff6ff' : '#fff',
                 borderColor: isSelected ? '#3b82f6' : '#e5e7eb',
+                opacity: isOos ? 0.6 : 1,
               }}
             >
               <span style={{ fontWeight: 600, fontSize: 13, color: isSelected ? '#1d4ed8' : '#374151', flexShrink: 0 }}>
-                Q{q.question_number}
+                {isOos ? '⊘ ' : ''}Q{q.question_number}
               </span>
               <span style={styles.listPreview}>
                 {q.question_text
@@ -123,11 +142,32 @@ export default function QuestionPanel({
             </div>
           </div>
 
+          {/* Amber warning when detected ordinal differs from stored question_number */}
+          {ordinalMismatch && (
+            <div style={styles.ordinalWarning}>
+              <span style={{ fontSize: 11, color: '#92400e' }}>
+                Detected Q# {detectedOrdinal} differs from stored {selected.question_number}.
+              </span>
+              <button
+                style={styles.acceptBtn}
+                onClick={() => onUpdate(selected.id, { question_number: detectedOrdinal as number })}
+              >
+                Accept {detectedOrdinal}
+              </button>
+            </div>
+          )}
+
           <textarea
             ref={textareaRef}
             value={selected.question_text}
             onChange={(e) => {
-              onUpdate(selected.id, { question_text: e.target.value });
+              const text = e.target.value;
+              const patch: Partial<LabeledQuestion> = { question_text: text };
+              const detected = detectLeadingOrdinal(text);
+              if (detected !== null) {
+                patch.question_number = detected;
+              }
+              onUpdate(selected.id, patch);
               autoResize(e.target);
             }}
             onBlur={(e) => handleTextBlur(selected, e.target.value)}
@@ -135,11 +175,54 @@ export default function QuestionPanel({
             style={styles.activeTextarea}
           />
 
+          {/* Action row: strip ordinal and clean spaces buttons */}
+          {(hasLeadingOrdinal || hasExtraSpaces) && (
+            <div style={{ display: 'flex', gap: 6 }}>
+              {hasLeadingOrdinal && (
+                <button
+                  style={styles.actionBtn}
+                  onClick={() => {
+                    const stripped = stripLeadingOrdinal(selected.question_text);
+                    recomputeHash(selected.id, stripped);
+                  }}
+                >
+                  Strip N.
+                </button>
+              )}
+              {hasExtraSpaces && (
+                <button
+                  style={styles.actionBtn}
+                  onClick={() => {
+                    const cleaned = cleanWhitespace(selected.question_text);
+                    recomputeHash(selected.id, cleaned);
+                  }}
+                >
+                  Clean spaces
+                </button>
+              )}
+            </div>
+          )}
+
           {selected.normalized_question_hash && (
             <div style={{ fontSize: 10, color: '#9ca3af', fontFamily: 'monospace', wordBreak: 'break-all' }}>
               {selected.normalized_question_hash.slice(0, 16)}…
             </div>
           )}
+
+          {/* Out-of-scope checkbox */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={selected.out_of_scope_v1 === true}
+              onChange={(e) => onUpdate(selected.id, { out_of_scope_v1: e.target.checked })}
+            />
+            Out of scope (table / figure / matching)
+          </label>
+
+          {/* Guidance text */}
+          <div style={{ fontSize: 11, fontStyle: 'italic', color: '#9ca3af' }}>
+            question_text = stem only, no leading number, no (a)(b)(c)(d). Tables/matching → mark out-of-scope.
+          </div>
         </div>
       ) : (
         <div style={styles.editorEmpty}>
@@ -265,5 +348,35 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     fontStyle: 'italic',
     borderTop: '1px solid #e5e7eb',
+  },
+  ordinalWarning: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    background: '#fffbeb',
+    border: '1px solid #fcd34d',
+    borderRadius: 4,
+    padding: '5px 8px',
+  },
+  acceptBtn: {
+    padding: '2px 8px',
+    background: '#f59e0b',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontSize: 11,
+    fontWeight: 600,
+    marginLeft: 'auto',
+    flexShrink: 0,
+  },
+  actionBtn: {
+    padding: '3px 10px',
+    background: '#f3f4f6',
+    color: '#374151',
+    border: '1px solid #d1d5db',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontSize: 11,
   },
 };

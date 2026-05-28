@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { LabeledQuestion, PaperMeta } from '../types';
 import { validateFixture } from '../lib/schema';
+import { buildFixture, skippedCount } from '../lib/fixture';
 
 const METADATA_OPEN_KEY = 'labeler:metadata-open';
 
@@ -12,28 +13,6 @@ function isMetadataComplete(documentId: string, examId: string, paperMeta: Paper
     paperMeta.year &&
     paperMeta.page_count
   );
-}
-
-function buildFixture(
-  documentId: string,
-  examId: string,
-  paperMeta: PaperMeta,
-  questions: LabeledQuestion[],
-) {
-  return {
-    corpus_id: 'upsc-cse-prelims-pyq-v1' as const,
-    document_id: documentId,
-    document_kind: 'pyq_paper' as const,
-    exam_id: examId,
-    paper: {
-      paper_name: paperMeta.paper_name,
-      year: paperMeta.year,
-      page_count: paperMeta.page_count,
-    },
-    extractor_target: 'questions' as const,
-    coord_system: 'top_left_normalized' as const,
-    expected_questions: questions.map(({ id: _id, ...rest }) => rest),
-  };
 }
 
 interface Props {
@@ -184,7 +163,8 @@ export default function ExportPanel({
       {/* ── Footer: stats, errors, export, clear — always visible ── */}
       <div style={styles.footer}>
         <div style={styles.stats}>
-          {questions.length} question{questions.length !== 1 ? 's' : ''} ·{' '}
+          {questions.length} question{questions.length !== 1 ? 's' : ''}
+          {skippedCount(questions) > 0 ? ` (${skippedCount(questions)} skipped)` : ''} ·{' '}
           {questions.reduce((n, q) => n + q.regions.length, 0)} regions
         </div>
 
