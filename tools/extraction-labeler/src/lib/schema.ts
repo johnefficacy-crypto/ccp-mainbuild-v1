@@ -35,6 +35,10 @@ const QUESTIONS_SCHEMA = {
       type: 'array',
       items: { $ref: '#/definitions/question' },
     },
+    skipped: {
+      type: 'array',
+      items: { $ref: '#/definitions/skipped_entry' },
+    },
   },
   definitions: {
     question: {
@@ -70,6 +74,15 @@ const QUESTIONS_SCHEMA = {
         },
         text_excerpt: { type: 'string' },
       },
+    },
+    skipped_entry: {
+      type: 'object',
+      required: ['question_number', 'reason'],
+      properties: {
+        question_number: { type: 'integer', minimum: 1 },
+        reason: { type: 'string', minLength: 1 },
+      },
+      additionalProperties: false,
     },
   },
   additionalProperties: false,

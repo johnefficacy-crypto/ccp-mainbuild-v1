@@ -33,6 +33,22 @@ describe('detectLeadingOrdinal', () => {
   it('detects multi-digit ordinals', () => {
     expect(detectLeadingOrdinal('25. What happened?')).toBe(25);
   });
+
+  it('detects "21." (spec case)', () => {
+    expect(detectLeadingOrdinal('21. Consider the following statements:')).toBe(21);
+  });
+
+  it('detects "3 " space separator (spec case)', () => {
+    expect(detectLeadingOrdinal('3 Consider the following')).toBe(3);
+  });
+
+  it('detects "1)" paren separator (spec case)', () => {
+    expect(detectLeadingOrdinal('1) Which one of the following?')).toBe(1);
+  });
+
+  it('returns null for text without leading ordinal (spec case)', () => {
+    expect(detectLeadingOrdinal('Consider the following statements about India:')).toBeNull();
+  });
 });
 
 describe('stripLeadingOrdinal', () => {
@@ -76,5 +92,17 @@ describe('cleanWhitespace', () => {
 
   it('is a no-op for already clean text', () => {
     expect(cleanWhitespace('clean text')).toBe('clean text');
+  });
+
+  it('preserves intentional newlines between numbered statement items', () => {
+    const input = 'I.  Item one\nII.  Item two\nIII.  Item three';
+    const result = cleanWhitespace(input);
+    expect(result).toBe('I. Item one\nII. Item two\nIII. Item three');
+    expect(result.split('\n')).toHaveLength(3);
+  });
+
+  it('trims per-line leading and trailing whitespace', () => {
+    const input = '  line one  \n  line two  ';
+    expect(cleanWhitespace(input)).toBe('line one\nline two');
   });
 });

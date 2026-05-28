@@ -21,8 +21,14 @@ export function stripLeadingOrdinal(text: string): string {
 }
 
 /**
- * Collapses runs of spaces/tabs into a single space and trims the result.
+ * Collapses runs of spaces/tabs to a single space on each line, trims each
+ * line's leading/trailing whitespace, and preserves intentional newlines
+ * (e.g. between numbered statement items I./II./1./2.).
  */
 export function cleanWhitespace(text: string): string {
-  return text.replace(/[ \t]+/g, ' ').trim();
+  return text
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+    .join('\n')
+    .trim();
 }

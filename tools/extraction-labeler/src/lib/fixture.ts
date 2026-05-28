@@ -1,5 +1,10 @@
 import type { LabeledQuestion, PaperMeta } from '../types';
 
+export interface SkippedEntry {
+  question_number: number;
+  reason: string;
+}
+
 export interface FixtureDoc {
   corpus_id: 'upsc-cse-prelims-pyq-v1';
   document_id: string;
@@ -13,6 +18,7 @@ export interface FixtureDoc {
   extractor_target: 'questions';
   coord_system: 'top_left_normalized';
   expected_questions: Array<Omit<LabeledQuestion, 'id' | 'out_of_scope_v1'>>;
+  skipped: SkippedEntry[];
 }
 
 /**
@@ -24,7 +30,7 @@ export function skippedCount(questions: LabeledQuestion[]): number {
 
 /**
  * Builds the exportable fixture document from the current session state.
- * Filters out OOS questions and strips `id` + `out_of_scope_v1` from each exported question.
+ * In-scope questions go to expected_questions; OOS questions go to skipped[].
  */
 export function buildFixture(
   documentId: string,
@@ -33,6 +39,7 @@ export function buildFixture(
   questions: LabeledQuestion[],
 ): FixtureDoc {
   const inScope = questions.filter((q) => !q.out_of_scope_v1);
+  const outOfScope = questions.filter((q) => q.out_of_scope_v1);
   return {
     corpus_id: 'upsc-cse-prelims-pyq-v1',
     document_id: documentId,
@@ -46,5 +53,6 @@ export function buildFixture(
     extractor_target: 'questions',
     coord_system: 'top_left_normalized',
     expected_questions: inScope.map(({ id: _id, out_of_scope_v1: _oos, ...rest }) => rest),
+    skipped: outOfScope.map((q) => ({ question_number: q.question_number, reason: 'out_of_scope_v1' })),
   };
 }
