@@ -70,6 +70,31 @@ Write rules:
 - Tool: PR0.5 bbox labeler (PDF.js + canvas rectangle drawer).
 - Target labeling time: ~6 hours for 100 questions including review.
 
+## Source document characteristics (v1 corpus, observed)
+
+- Format: scanned PDF (no text layer), 300 DPI JPEG per page.
+  Confirmed across 2026 and 2025 GS-I papers — both produced by
+  ScandAll PRO + Adobe PDF Scan Library.
+- Bilingual layout: English on odd pages, Hindi translations on
+  even pages. v1 extractor processes odd pages only.
+- Two-column layout, gutter near x ≈ 0.5 normalized. Column-split
+  must be detected per-page via x-histogram bimodality, NOT hardcoded.
+- Page size varies across papers:
+  2026 paper: 538.56 × 761.76 pts (~7.5" × 10.6")
+  2025 paper: 602.64 × 761.04 pts (~8.4" × 10.6")
+  All geometric heuristics must operate in normalized [0,1] coords.
+- 100 numbered questions per paper. Approximately 8-12 are
+  matching/table-form questions tagged out_of_scope_v1 in fixtures.
+
+## Extractor stack (v1, locked)
+
+- pymupdf for page rasterization, dimensions, metadata
+- Tesseract OCR (lang=eng) with --psm 6, word-level bbox output
+- No LLM
+- No Hindi processing
+- No figure/table/matching-list extraction
+- No options, no topic tags
+
 ## Out of scope (explicit non-goals for v1)
 - Topic taxonomy seeding for UPSC.
 - Options extraction.
