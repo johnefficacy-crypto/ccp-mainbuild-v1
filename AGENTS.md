@@ -55,3 +55,47 @@ Each surface has one source of truth. Do not cross-wire them:
 - `competition_context` reads `reviewer_status in ('locked','reviewed')`
   (locked preferred). UI copy must say "reviewed or locked rows feed the
   planner; locked preferred" — not "locked only".
+  
+RLS verification protocol for Supabase Studio:
+- set_config(name, value, is_local := true) only persists for the
+  current transaction
+- ALWAYS wrap role + JWT-claims + SELECT in a single BEGIN/ROLLBACK
+- A read that returns rows OUTSIDE a wrapped transaction proves nothing
+  about RLS — it just proves Studio's connection has bypass privileges
+
+
+  ## Migration discipline
+
+1. Applied migrations are immutable. Never rename, delete, or rewrite a
+   migration that exists on main. Reverse via a NEW forward migration.
+
+2. Migration numbers are checked by CI (migration-numbers workflow).
+   Numbering must be MAX(main) + 1, contiguous. The next slot is
+   determined by `select max(version)::int + 1 from schema_migrations`,
+   not by inspecting the file system.
+
+3. RLS verification: Supabase Studio's SQL editor bypasses RLS for the
+   dashboard role. `set role authenticated` alone does NOT simulate a
+   real user. Use wrapped transactions:
+     begin;
+       select set_config('role', 'authenticated', true);
+       select set_config('request.jwt.claims', '{...}'::text, true);
+       -- query here, in the same transaction
+     rollback;
+   Or test via PostgREST with a real JWT. Studio output that isn't
+   transaction-wrapped proves nothing.
+
+4. RLS access model: admin operations are FastAPI-mediated on
+   service_role for most tables. Direct PostgREST admin reads are
+   only supported on Pattern A tables (profiles, notification_*,
+   eligibility_results, scrape_queue, tracked_recruitments, audit
+   logs, settings — those using is_admin(auth.uid())). All other
+   tables use defense-in-depth Pattern B (inline profiles.is_admin
+   check, fails closed). When adding a new admin-touching table,
+   default to Pattern B unless the frontend has a clear need for
+   direct PostgREST reads.
+
+5. profiles.is_admin and profiles.admin_role are DEPRECATED. Source
+   of truth is auth.users.raw_app_meta_data.role ∈ {user, admin,
+   super_admin}. public.is_admin(uid) reads from raw_app_meta_data.
+   Do not consult profiles.is_admin in new code.
