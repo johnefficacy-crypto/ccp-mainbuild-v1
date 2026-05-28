@@ -160,7 +160,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#fff',
     border: '1px solid #e5e7eb',
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: 'clip',
   },
   header: {
     display: 'flex',
@@ -170,6 +170,9 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '1px solid #e5e7eb',
     background: '#f9fafb',
     flexShrink: 0,
+    position: 'sticky',
+    top: 0,
+    zIndex: 1,
   },
   addBtn: {
     padding: '3px 10px',
