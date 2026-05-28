@@ -9,6 +9,7 @@ build/
 dist/
 .next/
 .cache/
+*.tsbuildinfo
 
 # test / coverage artifacts
 .coverage
