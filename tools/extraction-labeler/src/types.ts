@@ -14,6 +14,7 @@ export interface LabeledQuestion {
   normalized_question_hash?: string;
   regions: Region[];
   notes?: string;
+  out_of_scope_v1?: boolean;
 }
 
 export interface PaperMeta {
