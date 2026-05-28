@@ -125,8 +125,14 @@ def run_eval(candidates: dict, fixture: dict) -> str:
     missed_fix_nums: list[int] = []
     iou_vals: list[float] = []
     text_sim_vals: list[float] = []
+    # per-page tracking: page → (matched, total)
+    page_matched: dict[int, int] = {}
+    page_total: dict[int, int] = {}
 
     for fq in fix_qs:
+        fix_page = fq["regions"][0]["page"]
+        page_total[fix_page] = page_total.get(fix_page, 0) + 1
+
         best_iou = 0.0
         best_sim = 0.0
         matched = False
@@ -141,6 +147,7 @@ def run_eval(candidates: dict, fixture: dict) -> str:
                 break
         if matched:
             matched_fix_nums.append(fq["question_number"])
+            page_matched[fix_page] = page_matched.get(fix_page, 0) + 1
             if best_iou > 0:
                 iou_vals.append(best_iou)
             if best_sim > 0:
@@ -171,15 +178,38 @@ def run_eval(candidates: dict, fixture: dict) -> str:
         f"| Duplicate Q#s | {len(duplicates)} {'✅' if not duplicates else '❌'} |",
         "",
         "## IoU distribution (matched pairs)",
-        f"| p50 | p90 |",
-        f"|-----|-----|",
-        f"| {_percentile(iou_vals, 50):.3f} | {_percentile(iou_vals, 90):.3f} |",
+        f"| p10 | p25 | p50 | p75 | p90 |",
+        f"|-----|-----|-----|-----|-----|",
+        f"| {_percentile(iou_vals, 10):.3f}"
+        f" | {_percentile(iou_vals, 25):.3f}"
+        f" | {_percentile(iou_vals, 50):.3f}"
+        f" | {_percentile(iou_vals, 75):.3f}"
+        f" | {_percentile(iou_vals, 90):.3f} |",
         "",
         "## Text similarity distribution (matched pairs)",
-        f"| p50 | p90 |",
-        f"|-----|-----|",
-        f"| {_percentile(text_sim_vals, 50):.3f} | {_percentile(text_sim_vals, 90):.3f} |",
+        f"| p10 | p25 | p50 | p75 | p90 |",
+        f"|-----|-----|-----|-----|-----|",
+        f"| {_percentile(text_sim_vals, 10):.3f}"
+        f" | {_percentile(text_sim_vals, 25):.3f}"
+        f" | {_percentile(text_sim_vals, 50):.3f}"
+        f" | {_percentile(text_sim_vals, 75):.3f}"
+        f" | {_percentile(text_sim_vals, 90):.3f} |",
     ]
+
+    # Per-page recall table
+    if page_total:
+        lines += [
+            "",
+            "## Per-page recall",
+            "| Page | Matched | Total | Recall |",
+            "|------|---------|-------|--------|",
+        ]
+        for pg in sorted(page_total):
+            m = page_matched.get(pg, 0)
+            t = page_total[pg]
+            r = m / t if t else 0.0
+            flag = "✅" if r >= 0.80 else ("⚠️" if r >= 0.50 else "❌")
+            lines.append(f"| {pg} | {m} | {t} | {r:.2f} {flag} |")
 
     if missed_fix_nums:
         lines += ["", "## Missed fixture questions", f"{sorted(missed_fix_nums)}"]
