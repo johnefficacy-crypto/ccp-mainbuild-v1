@@ -1,0 +1,62 @@
+name: migration-numbers
+on:
+  pull_request:
+    paths: ['app/supabase/migrations/**']
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Validate migration numbering
+        run: |
+          set -euo pipefail
+          BASE=$(git merge-base origin/main HEAD)
+
+          ON_MAIN=$(git ls-tree -r --name-only "$BASE" -- app/supabase/migrations/ \
+            | grep -E '^app/supabase/migrations/[0-9]+_.*\.sql$' \
+            | sed -E 's|.*/([0-9]+)_.*|\1|' | sort -n)
+          MAX_ON_MAIN=$(echo "$ON_MAIN" | tail -1)
+
+          ADDED=$(git diff --name-only --diff-filter=A "$BASE"...HEAD -- 'app/supabase/migrations/*.sql' \
+            | sed -E 's|.*/([0-9]+)_.*|\1|' | sort -n || true)
+          DELETED=$(git diff --name-only --diff-filter=D "$BASE"...HEAD -- 'app/supabase/migrations/*.sql' || true)
+          RENAMED=$(git diff --name-only --diff-filter=R "$BASE"...HEAD -- 'app/supabase/migrations/*.sql' || true)
+
+          if [[ -n "$DELETED" || -n "$RENAMED" ]]; then
+            echo "ERROR: applied migrations must not be deleted or renamed."
+            echo "Deleted: $DELETED"
+            echo "Renamed: $RENAMED"
+            echo ""
+            echo "If you need to undo an applied migration, write a NEW forward"
+            echo "migration that reverses the change. Never modify a migration"
+            echo "that exists on main."
+            exit 1
+          fi
+
+          if [[ -z "$ADDED" ]]; then
+            echo "OK: no new migrations in this PR"
+            exit 0
+          fi
+
+          for num in $ADDED; do
+            if echo "$ON_MAIN" | grep -qx "$num"; then
+              echo "ERROR: migration number $num already exists on main"
+              echo "Existing file:"
+              git ls-tree -r --name-only "$BASE" -- app/supabase/migrations/ | grep "/${num}_"
+              exit 1
+            fi
+          done
+
+          EXPECTED=$((MAX_ON_MAIN + 1))
+          for num in $ADDED; do
+            if [[ "$num" -ne "$EXPECTED" ]]; then
+              echo "ERROR: expected migration $EXPECTED, got $num"
+              echo "Migrations must be contiguous starting from $((MAX_ON_MAIN + 1))"
+              exit 1
+            fi
+            EXPECTED=$((EXPECTED + 1))
+          done
+
+          echo "OK: $ADDED contiguous from $((MAX_ON_MAIN + 1))"
