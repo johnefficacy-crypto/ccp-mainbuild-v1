@@ -47,7 +47,8 @@ def extract(
 
     if pages is None:
         # Odd pages carry English content; even pages are Hindi translations.
-        pages = [p for p in range(1, total_pages + 1) if p % 2 == 1]
+        # Page 1 is the instructions/cover sheet — skip it to avoid spurious ordinals.
+        pages = [p for p in range(3, total_pages + 1) if p % 2 == 1]
 
     # Resolve pages_skipped as all pages not in the requested set.
     all_pages = set(range(1, total_pages + 1))

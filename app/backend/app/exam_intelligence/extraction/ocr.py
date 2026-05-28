@@ -28,7 +28,7 @@ except pytesseract.TesseractNotFoundError as e:
         "Verify:  python -c \"import pytesseract; print(pytesseract.get_tesseract_version())\""
     ) from e
 
-TESSERACT_PSM = 6      # Assume uniform block of text
+TESSERACT_PSM = 3      # Fully automatic page segmentation (handles multi-column)
 TESSERACT_LANG = "eng"
 MIN_WORD_CONFIDENCE = 30
 DPI = 300              # for rasterization

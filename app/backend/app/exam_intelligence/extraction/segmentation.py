@@ -26,7 +26,7 @@ _WS_RE = re.compile(r'[ \t]+')
 
 def cluster_by_vertical_gap(
     words: list[Word],
-    gap_factor: float = 1.5,
+    gap_factor: float = 1.2,
 ) -> list[list[Word]]:
     """Cluster vertically adjacent words into line-blocks.
 
