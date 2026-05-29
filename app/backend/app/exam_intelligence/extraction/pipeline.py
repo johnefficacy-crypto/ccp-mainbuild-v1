@@ -27,20 +27,21 @@ logger = logging.getLogger(__name__)
 
 EXTRACTOR_VERSION = "0.2.0"
 
-# Hardcoded page ranges for known corpus IDs.
-# Keys are matched as substrings of document_id.
+# Hardcoded page ranges for known corpus document IDs (exact UUID match).
 CORPUS_ALLOWED_PAGES: dict[str, list[int]] = {
-    "2026": list(range(3, 52, 2)),  # odd pages 3–51
-    "2025": list(range(3, 44, 2)),  # odd pages 3–43
+    "83722a86-610b-471d-8b6b-4a8397aa1791": list(range(3, 52, 2)),  # 2026 GS-I
+    "afc8e285-0ea1-41a1-a524-83b8b3121154": list(range(3, 44, 2)),  # 2025 GS-I
 }
 
 
-def allowed_pages_for(document_id: str) -> list[int] | None:
-    """Return the allowed page list for a known corpus ID, else None."""
-    for key, pages in CORPUS_ALLOWED_PAGES.items():
-        if key in document_id:
-            return pages
-    return None
+def allowed_pages_for(document_id: str, total_pages: int) -> list[int]:
+    """Return the allowed page list for a known corpus ID.
+
+    Falls back to odd pages 3..(total_pages-2) — drops cover and trailing blank.
+    """
+    if document_id in CORPUS_ALLOWED_PAGES:
+        return CORPUS_ALLOWED_PAGES[document_id]
+    return list(range(3, total_pages - 1, 2))
 
 
 def _process_page_words(
@@ -125,9 +126,7 @@ def extract(
     total_pages = doc.page_count
 
     if pages is None:
-        pages = allowed_pages_for(document_id) or [
-            p for p in range(3, total_pages + 1) if p % 2 == 1
-        ]
+        pages = allowed_pages_for(document_id, total_pages)
 
     all_pages = set(range(1, total_pages + 1))
     pages_skipped = sorted(all_pages - set(pages))
@@ -162,7 +161,26 @@ def extract(
 
     doc.close()
 
-    questions = _dedup(questions)
+    # Duplicate detection: drop BOTH occurrences and record in errors.
+    seen: dict[int, ExtractedQuestion] = {}
+    final_questions: list[ExtractedQuestion] = []
+    for q in questions:
+        if q.question_number in seen:
+            errors.append({
+                "kind": "duplicate_question_number",
+                "question_number": q.question_number,
+                "first_region": seen[q.question_number].regions[0],
+                "duplicate_region": q.regions[0],
+            })
+            continue
+        seen[q.question_number] = q
+        final_questions.append(q)
+    # Remove the first occurrence of any question_number that duplicated.
+    bad_qnums = {
+        e["question_number"] for e in errors
+        if e.get("kind") == "duplicate_question_number"
+    }
+    questions = [q for q in final_questions if q.question_number not in bad_qnums]
 
     return ExtractionResult(
         document_id=document_id,

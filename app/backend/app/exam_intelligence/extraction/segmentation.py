@@ -36,6 +36,8 @@ _OPTION_RE = re.compile(r'^\s*\([a-dA-D]\)')
 _MCQ_FOOTER_RES = [
     re.compile(r'select\s+the\s+answer', re.IGNORECASE),
     re.compile(r'codes?\s+below', re.IGNORECASE),
+    re.compile(r'^\s*which\s+of\s+the\s+following.*given\s+below', re.IGNORECASE),
+    re.compile(r'^\s*choose\s+the\s+correct', re.IGNORECASE),
 ]
 
 # Legacy fraction gate kept for segment_page backward compatibility.
