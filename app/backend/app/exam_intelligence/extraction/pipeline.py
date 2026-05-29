@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 
 import fitz  # PyMuPDF
+import numpy as np
 from PIL import Image
 
 from .layout import assign_words_to_columns, detect_columns
@@ -26,6 +27,18 @@ from .types import ExtractionResult, ExtractedQuestion, Word
 logger = logging.getLogger(__name__)
 
 EXTRACTOR_VERSION = "0.2.0"
+
+# The v1 corpus is two-column with the gutter reliably near x≈0.47-0.49
+# (normalized).  Left-column body text and right-column question ordinals
+# overlap in x globally — left text extends to ~0.49 while right ordinals
+# start at ~0.47 — so layout.detect_columns' generic bimodal valley search
+# frequently locks onto a spurious low-density bin far from the true gutter
+# (e.g. 0.09, 0.31, 0.71).  A mis-placed split floods the right column with
+# left-column words, dragging its effective_left west and causing the anchor
+# gate to reject every genuine right-column ordinal.  Pinning the valley
+# search to the gutter band below yields a stable split.
+_GUTTER_BAND = (0.44, 0.52)
+_GUTTER_BINS = 100
 
 # Hardcoded page ranges for known corpus document IDs (exact UUID match).
 CORPUS_ALLOWED_PAGES: dict[str, list[int]] = {
@@ -44,6 +57,42 @@ def allowed_pages_for(document_id: str, total_pages: int) -> list[int]:
     return list(range(3, total_pages - 1, 2))
 
 
+def _detect_columns_robust(words: list[Word]) -> list[tuple[float, float]]:
+    """Split into two columns at the lowest-density bin in the gutter band.
+
+    The generic detector (layout.detect_columns) searches the whole page for a
+    histogram valley and is easily misled when the two columns overlap in x.
+    This corpus-aware variant restricts the search to _GUTTER_BAND, where the
+    real gutter always falls, and defers to detect_columns (which also handles
+    the single-column case) whenever the band is unpopulated on either side.
+    """
+    if not words:
+        return [(0.0, 1.0)]
+
+    x_centers = np.array([(w.bbox[0] + w.bbox[2]) / 2.0 for w in words])
+    counts, edges = np.histogram(x_centers, bins=_GUTTER_BINS, range=(0.0, 1.0))
+    centers = (edges[:-1] + edges[1:]) / 2.0
+
+    band_idx = [
+        i for i, c in enumerate(centers)
+        if _GUTTER_BAND[0] <= c <= _GUTTER_BAND[1]
+    ]
+    if not band_idx:
+        return detect_columns(words)
+
+    # Both columns must carry mass outside the band, else treat as single column.
+    left_mass = int(counts[: band_idx[0]].sum())
+    right_mass = int(counts[band_idx[-1] + 1:].sum())
+    if left_mass == 0 or right_mass == 0:
+        return detect_columns(words)
+
+    # Lowest-density bin inside the band; tie-break toward the band centre.
+    band_centre = (_GUTTER_BAND[0] + _GUTTER_BAND[1]) / 2.0
+    best = min(band_idx, key=lambda i: (counts[i], abs(centers[i] - band_centre)))
+    split = float(centers[best])
+    return [(0.0, split), (split, 1.0)]
+
+
 def _process_page_words(
     words: list[Word],
     page: int,
@@ -58,7 +107,7 @@ def _process_page_words(
     if not words:
         return [], last_accepted_ordinal
 
-    columns = detect_columns(words)
+    columns = _detect_columns_robust(words)
     col_words = assign_words_to_columns(words, columns)
 
     questions: list[ExtractedQuestion] = []
