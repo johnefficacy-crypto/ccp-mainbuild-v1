@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
-import type { Page } from "@playwright/test";
+import { createNodeSupabaseClient } from "./supabaseNodeClient";
+import { expect, type Page } from "@playwright/test";
 import { readEnv } from "./env";
 
 /**
@@ -10,9 +10,7 @@ import { readEnv } from "./env";
  */
 export async function ensureSeededUser(): Promise<{ id: string; email: string; password: string }> {
   const env = readEnv();
-  const admin = createClient(env.supabaseURL, env.supabaseServiceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const admin = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
 
   const { data: created, error } = await admin.auth.admin.createUser({
     email: env.user.email,
@@ -41,9 +39,7 @@ export async function ensureSeededUser(): Promise<{ id: string; email: string; p
 /** Mint a real Supabase access token for direct backend API calls in fixtures. */
 export async function getAccessToken(): Promise<string> {
   const env = readEnv();
-  const client = createClient(env.supabaseURL, env.supabaseAnonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const client = createNodeSupabaseClient(env.supabaseURL, env.supabaseAnonKey);
   const { data, error } = await client.auth.signInWithPassword({
     email: env.user.email,
     password: env.user.password,
@@ -55,10 +51,28 @@ export async function getAccessToken(): Promise<string> {
 /** Log the seeded user in through the actual UI (exercises the real auth path). */
 export async function loginViaUi(page: Page): Promise<void> {
   const env = readEnv();
+
   await page.goto("/login");
+  await expect(page.getByTestId("login-email")).toBeVisible({ timeout: 30_000 });
+
   await page.getByTestId("login-email").fill(env.user.email);
   await page.getByTestId("login-password").fill(env.user.password);
-  await page.getByTestId("login-submit").click();
-  // GuestOnly redirects an authed user away from /login to /app.
-  await page.waitForURL(/\/app(\/|$)/, { timeout: 20_000 });
+
+  await Promise.all([
+    page.waitForURL(/\/app(\/|$)/, { timeout: 90_000 }),
+    page.getByTestId("login-submit").click(),
+  ]);
+}
+
+export async function gotoProtectedPage(
+  page: Page,
+  path: string,
+  readyTestId: string,
+): Promise<void> {
+  await page.goto(path);
+
+  await expect(page.getByTestId("auth-checking")).toBeHidden({ timeout: 90_000 });
+  await expect(page.getByTestId("backend-sync-pending")).toBeHidden({ timeout: 90_000 });
+
+  await expect(page.getByTestId(readyTestId)).toBeVisible({ timeout: 90_000 });
 }
