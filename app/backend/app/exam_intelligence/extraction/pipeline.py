@@ -14,11 +14,18 @@ No writes to any database table occur in this module.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 
 import fitz  # PyMuPDF
 import numpy as np
 from PIL import Image
 
+from .dispatch import (
+    ELIGIBLE_FORMATS_V1,
+    ExamIdentity,
+    StructuralFormat,
+    is_extractable_by_v1,
+)
 from .layout import assign_words_to_columns, detect_columns
 from .ocr import DPI, ocr_page
 from .segmentation import reconstruct_lines, segment_column
@@ -45,6 +52,59 @@ CORPUS_ALLOWED_PAGES: dict[str, list[int]] = {
     "83722a86-610b-471d-8b6b-4a8397aa1791": list(range(3, 52, 2)),  # 2026 GS-I
     "afc8e285-0ea1-41a1-a524-83b8b3121154": list(range(3, 44, 2)),  # 2025 GS-I
 }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Scope-fence error types
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ExtractionNotSupportedError(RuntimeError):
+    """v1 extractor cannot handle this document's structural_format."""
+
+
+class ExtractionRequiresClassificationError(RuntimeError):
+    """document_assets row has structural_format='unknown';
+    classification required before extraction."""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Document row dataclass (read-only; only the fields the extractor needs)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class _DocumentAssetsRow:
+    id: str
+    structural_format: StructuralFormat
+    exam_identity: ExamIdentity
+    storage_path: str
+
+
+def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
+    """SELECT id, structural_format, exam_identity, storage_path
+    FROM document_assets WHERE id = $1.
+
+    Service-role client; read-only. Raises ValueError if not found.
+    """
+    from app.db.supabase_client import get_supabase_admin
+
+    sb = get_supabase_admin()
+    row = (
+        sb.table("document_assets")
+        .select("id, structural_format, exam_identity, storage_path")
+        .eq("id", document_id)
+        .single()
+        .execute()
+        .data
+    )
+    if not row:
+        raise ValueError(f"document_assets row not found for id={document_id!r}")
+
+    return _DocumentAssetsRow(
+        id=row["id"],
+        structural_format=StructuralFormat(row["structural_format"]),
+        exam_identity=ExamIdentity(row["exam_identity"]),
+        storage_path=row["storage_path"],
+    )
 
 
 def allowed_pages_for(document_id: str, total_pages: int) -> list[int]:
@@ -192,6 +252,32 @@ def extract(
         ExtractionResult with extracted questions and diagnostics.
         No database writes occur.
     """
+    # ─── Scope-fence guard ────────────────────────────────────
+    # MUST run before any OCR or processing. Loud failure on
+    # unsupported documents prevents silent garbage rows.
+
+    doc_row = _fetch_document_assets_row(document_id)
+
+    if doc_row.structural_format == StructuralFormat.UNKNOWN:
+        raise ExtractionRequiresClassificationError(
+            f"Document {document_id} has structural_format='unknown'. "
+            f"Admin must classify (set structural_format and exam_identity) "
+            f"via the document_assets admin UI before extraction can run. "
+            f"Exam identity: {doc_row.exam_identity.value}."
+        )
+
+    if not is_extractable_by_v1(doc_row.structural_format):
+        raise ExtractionNotSupportedError(
+            f"Document {document_id} has structural_format="
+            f"{doc_row.structural_format.value!r}, which the v1 extractor does "
+            f"not handle. v1 supports: {sorted(f.value for f in ELIGIBLE_FORMATS_V1)}. "
+            f"Exam identity: {doc_row.exam_identity.value}. "
+            f"Future extractor versions (v1.5/v2/v3) will handle additional "
+            f"formats per the tier roadmap."
+        )
+
+    # ─── Existing pipeline below (unchanged) ──────────────────
+
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_pages = doc.page_count
 

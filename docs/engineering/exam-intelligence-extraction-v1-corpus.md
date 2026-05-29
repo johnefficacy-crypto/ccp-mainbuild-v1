@@ -1,5 +1,57 @@
 # Exam Intelligence Extraction v1 — Corpus Contract
 
+## Scope (v1 and tier roadmap)
+
+The extractor pipeline is explicitly scoped via two axes on
+document_assets:
+
+- **structural_format** drives extractor dispatch. Slow-growing
+  enum; one value per processing strategy.
+- **exam_identity** drives downstream domain logic (syllabus
+  mapping, planner blast radius, reviewer UX). Larger enum that
+  grows with each new exam added; does NOT affect extractor logic.
+
+### Tier roadmap
+
+| Tier | Structural formats | Status |
+|------|-------------------|--------|
+| 1 (v1) | mcq_bilingual_two_column | shipping; UPSC CSE Prelims |
+| 1.5 | mcq_monolingual_single | planned; banking/state PSC MCQ |
+| 2 | essay_long_form, mixed_objective_subjective | future; Mains GS, non-technical optionals |
+| 3 | technical_with_figures, vernacular_non_devanagari | future; needs vision model + multilingual OCR |
+
+### v1 eligibility
+
+A document is extractable by v1 iff:
+1. structural_format == 'mcq_bilingual_two_column'
+2. source_kind is appropriate clean input (see PR #501)
+
+Out-of-scope documents upload successfully with their format tagged
+but are NEVER auto-extracted. The extractor raises a loud error
+(ExtractionNotSupportedError) on dispatch attempts for unsupported
+formats. No silent garbage is produced.
+
+### Adding a new exam identity
+
+1. Add the value to the `document_exam_identity` ENUM (forward
+   migration; never remove ENUM values).
+2. Add the value to `ExamIdentity` in `dispatch.py`.
+3. Add a mapping in `EXAM_TO_FORMAT_DEFAULT`.
+4. Add a test case in `test_dispatch.py` confirming the mapping.
+
+The test `test_every_exam_identity_has_a_mapping` will fail
+loudly if step 3 is skipped.
+
+### Grandfather clause
+
+The 2026 fixture (83722a86-...) and 2025 smoke document
+(afc8e285-...) were uploaded before the source_kind convention
+existed. They are grandfathered as 'sanitized_coaching' for v1
+acceptance gate continuity. Future uploads MUST use the new
+classification flow.
+
+---
+
 ## Scope
 - Exam: UPSC CSE
 - Cycle context: UPSC CSE 2026

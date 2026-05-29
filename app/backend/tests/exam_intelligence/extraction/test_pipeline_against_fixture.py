@@ -127,7 +127,7 @@ def _matches(extracted, fixture_q: dict) -> bool:
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_recall_against_2026_fixture(pdf_bytes_2026, questions_fixture):
+def test_recall_against_2026_fixture(stub_fetch_doc_row_for_fixtures, pdf_bytes_2026, questions_fixture):
     """Extractor recall >= 0.80 on the 2026 GS-I fixture."""
     # Surface the pipeline's per-page DIAG lines into the captured (-s) output.
     logging.basicConfig(level=logging.DEBUG, force=True)
