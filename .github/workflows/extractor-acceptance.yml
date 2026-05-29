@@ -22,6 +22,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify Supabase credentials are present
+        run: |
+          echo "SUPABASE_URL set:              $( [ -n "$SUPABASE_URL" ] && echo YES || echo NO )"
+          echo "SUPABASE_SERVICE_ROLE_KEY set: $( [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && echo YES || echo NO )"
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set as repository secrets (Settings → Secrets and variables → Actions → Repository secrets). Without them the integration test SKIPs and the acceptance gate is a no-op."
+            exit 1
+          fi
+
       - name: Install system dependencies (Tesseract OCR)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-eng
 
@@ -33,14 +42,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Verify Supabase credentials are present
-        run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "::error::SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set as repository secrets."
-            echo "Without them the integration test SKIPs and the acceptance gate is a no-op."
-            exit 1
-          fi
 
       - name: Run acceptance test (integration, recall ≥ 0.80)
         run: |
