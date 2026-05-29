@@ -1,4 +1,4 @@
-"""Extraction pipeline: PDF bytes → ExtractionResult.
+"""Extraction pipeline: PDF bytes → ExtractionResult.  # acceptance-gate trigger
 
 This module is the public entry point. It:
 1. Opens the PDF with PyMuPDF (fitz).
