@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createNodeSupabaseClient } from "./supabaseNodeClient";
 import { readEnv } from "./env";
 import { ensureSeededUser } from "./seedUser";
 
@@ -15,9 +15,7 @@ export default async function globalSetup() {
   const env = readEnv();
   await ensureSeededUser();
 
-  const admin = createClient(env.supabaseURL, env.supabaseServiceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const admin = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
   const { data: tmpl, error } = await admin
     .from("mock_templates")
     .select("id, slug, total_questions")

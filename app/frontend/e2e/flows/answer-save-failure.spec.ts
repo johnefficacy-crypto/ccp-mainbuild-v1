@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { ensureSeededUser, loginViaUi } from "../fixtures/seedUser";
+import { ensureSeededUser, loginViaUi, gotoProtectedPage } from "../fixtures/seedUser";
 import { resetAttempts } from "../fixtures/seedAttempt";
 
 /**
@@ -20,8 +20,7 @@ test.describe("Flow 4: answer-save failure → recovery", () => {
   test("offline answer retries, blocks submit, recovers on retry", async ({ page, context }) => {
     await loginViaUi(page);
 
-    await page.goto("/app/study/mocks");
-    await expect(page.getByTestId("mocks-page")).toBeVisible();
+    await gotoProtectedPage(page, "/app/study/mocks", "mocks-page");
     await page.getByTestId("start-ibps-mock-btn").click();
 
     await page.waitForURL(/\/app\/study\/mocks\/attempts\/[^/]+$/);
