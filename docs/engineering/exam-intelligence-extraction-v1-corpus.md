@@ -77,8 +77,13 @@ Write rules:
   ScandAll PRO + Adobe PDF Scan Library.
 - Bilingual layout: English on odd pages, Hindi translations on
   even pages. v1 extractor processes odd pages only.
-- Two-column layout, gutter near x ≈ 0.5 normalized. Column-split
-  must be detected per-page via x-histogram bimodality, NOT hardcoded.
+- Two-column layout. Papers in this corpus (2025 and 2026 GS-I) have
+  gutters consistently in the band x ∈ [0.44, 0.52] (normalized).
+  Column-split is detected per-page by finding the lowest-density bin
+  within this band; global bimodal search is forbidden for this corpus
+  (failure mode: locks onto header/watermark bins far from the true
+  gutter). The band [0.44, 0.52] is an explicit UPSC v1 corpus
+  parameter, not a generic heuristic.
 - Page size varies across papers:
   2026 paper: 538.56 × 761.76 pts (~7.5" × 10.6")
   2025 paper: 602.64 × 761.04 pts (~8.4" × 10.6")

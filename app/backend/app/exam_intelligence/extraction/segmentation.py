@@ -33,7 +33,11 @@ _ANCHOR_X_GAP = 0.04      # x_min must be within this absolute distance of colum
 
 _WS_RE = re.compile(r'[ \t]+')
 _OPTION_RE = re.compile(r'^\s*\([a-dA-D]\)')
-# Strip OCR artifacts (gutter pipe characters, whitespace) from line start before ordinal matching.
+# Matches a word token that is entirely OCR gutter noise (pipe chars and/or whitespace).
+# Used to skip leading noise WORDS before the spatial gate so the gate evaluates the
+# ordinal token's bbox, not the pipe's.
+_NOISE_WORD_RE = re.compile(r'^[|\s]+$')
+# Strips leading pipe/whitespace from a TEXT string (for build_question first-line clean-up).
 _LEADING_NOISE_RE = re.compile(r'^[|\s]+')
 _MCQ_FOOTER_RES = [
     re.compile(r'select\s+the\s+answer', re.IGNORECASE),
@@ -121,11 +125,20 @@ def find_anchor_lines(
     for idx, line in enumerate(lines):
         if not line:
             continue
-        first_word = line[0]
-        if first_word.bbox[0] > effective_left + _ANCHOR_X_GAP:
+        # Skip leading pure-noise tokens so the spatial gate evaluates the
+        # ordinal token's x position, not the gutter pipe's.
+        ci = 0
+        while ci < len(line) and _NOISE_WORD_RE.match(line[ci].text):
+            ci += 1
+        if ci >= len(line):
             continue
-        text = ' '.join(w.text for w in line)
-        ordinal = detect_ordinal(_LEADING_NOISE_RE.sub('', text))
+        content_word = line[ci]
+        if content_word.bbox[0] > effective_left + _ANCHOR_X_GAP:
+            continue
+        # Build text from the content word onward; strip any fused leading noise
+        # (e.g. "|26." as a single OCR token) before ordinal matching.
+        text = _LEADING_NOISE_RE.sub('', ' '.join(w.text for w in line[ci:]))
+        ordinal = detect_ordinal(text)
         if ordinal is None:
             continue
         if not (_ORDINAL_MIN <= ordinal <= _ANCHOR_MAX):
@@ -155,18 +168,24 @@ def find_stem_end(
         line = lines[i]
         if not line:
             continue
-        first_word = line[0]
-        text = ' '.join(w.text for w in line)
+        # Skip leading noise tokens — same design principle as find_anchor_lines.
+        ci = 0
+        while ci < len(line) and _NOISE_WORD_RE.match(line[ci].text):
+            ci += 1
+        if ci >= len(line):
+            continue
+        content_word = line[ci]
+        text = _LEADING_NOISE_RE.sub('', ' '.join(w.text for w in line[ci:]))
 
-        if _OPTION_RE.match(first_word.text):
+        if _OPTION_RE.match(content_word.text):
             return i
 
         for pat in _MCQ_FOOTER_RES:
             if pat.search(text):
                 return i
 
-        if first_word.bbox[0] <= column_left_edge + _ANCHOR_X_GAP:
-            if detect_ordinal(_LEADING_NOISE_RE.sub('', text)) is not None:
+        if content_word.bbox[0] <= column_left_edge + _ANCHOR_X_GAP:
+            if detect_ordinal(text) is not None:
                 return i
 
     return len(lines)

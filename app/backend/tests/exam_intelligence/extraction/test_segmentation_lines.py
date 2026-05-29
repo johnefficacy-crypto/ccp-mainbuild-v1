@@ -162,3 +162,39 @@ class TestFindAnchorLines:
         anchors = find_anchor_lines([q3, q2], effective_left=0.00, last_accepted_ordinal=0)
         assert len(anchors) == 1
         assert anchors[0].ordinal == 3
+
+
+class TestFindAnchorLinesPipePrefix:
+    """F-regression: pipe-strip must happen before x-gate so the gate evaluates
+    the ordinal token's bbox, not the gutter pipe's."""
+
+    def test_pipe_then_period_separator(self):
+        # OCR: "| 26. Which of" — pipe is a separate word at column edge.
+        line = [_w("|", 0.00, 0.10, w=0.01), _w("26.", 0.02, 0.10), _w("Which", 0.11, 0.10)]
+        anchors = find_anchor_lines([line], effective_left=0.00)
+        assert len(anchors) == 1 and anchors[0].ordinal == 26
+
+    def test_pipe_then_space_separator(self):
+        # OCR: "| 74 Which" — ordinal "74" followed only by a space (space is a valid separator).
+        line = [_w("|", 0.00, 0.10, w=0.01), _w("74", 0.02, 0.10), _w("Which", 0.11, 0.10)]
+        anchors = find_anchor_lines([line], effective_left=0.00)
+        assert len(anchors) == 1 and anchors[0].ordinal == 74
+
+    def test_multiple_pipes_comma_separator(self):
+        # OCR: "| | 4, consider" — two pipe tokens then a comma-separated ordinal.
+        line = [
+            _w("|", 0.00, 0.10, w=0.01),
+            _w("|", 0.01, 0.10, w=0.01),
+            _w("4,", 0.02, 0.10),
+            _w("consider", 0.11, 0.10),
+        ]
+        anchors = find_anchor_lines([line], effective_left=0.00)
+        assert len(anchors) == 1 and anchors[0].ordinal == 4
+
+    def test_pipe_does_not_smuggle_indented_ordinal_past_gate(self):
+        # Pipe sits at the column edge (x=0.00) but the ordinal is far right (x=0.10).
+        # The gate must fire on the ordinal's bbox, not the pipe's.
+        # effective_left=0.00, gate=0.04 → ordinal at x=0.10 must be REJECTED.
+        line = [_w("|", 0.00, 0.10, w=0.01), _w("26.", 0.10, 0.10), _w("Which", 0.20, 0.10)]
+        anchors = find_anchor_lines([line], effective_left=0.00)
+        assert anchors == [], "pipe at col-edge must not smuggle an indented ordinal through the gate"
