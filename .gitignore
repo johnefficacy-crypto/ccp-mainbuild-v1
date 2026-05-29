@@ -52,3 +52,5 @@ yarn-error.log*
 .graphify/
 .graphify-cache/
 graphify-out/
+e2e-auth-check.cjs
+test-results/
