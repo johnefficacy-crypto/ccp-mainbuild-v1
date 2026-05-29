@@ -99,3 +99,25 @@ RLS verification protocol for Supabase Studio:
    of truth is auth.users.raw_app_meta_data.role ∈ {user, admin,
    super_admin}. public.is_admin(uid) reads from raw_app_meta_data.
    Do not consult profiles.is_admin in new code.
+
+   ## Before adding new modules, verify they don't already exist
+
+When a prompt says "add `app/<path>/<module>.py`", do not assume 
+the path is empty. Run:
+
+  git show origin/main:app/<path>/<module>.py 2>/dev/null && \
+    echo "EXISTS — read before writing" || \
+    echo "OK to create"
+
+Also check the parent directory:
+
+  git ls-tree origin/main app/<path>/
+
+If any file in that directory exists, read it and the test file 
+that exercises it before writing new code. Stubs that replace 
+real implementations break test suites silently — CI catches it, 
+but the rework cost is high.
+
+This applies to all "new file" instructions in prompts, not just 
+this one. The prompt is a description of intent, not a guarantee 
+of filesystem state.
