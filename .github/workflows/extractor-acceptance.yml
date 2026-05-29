@@ -16,7 +16,7 @@ jobs:
         working-directory: app/backend
 
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
@@ -24,10 +24,10 @@ jobs:
 
       - name: Verify Supabase credentials are present
         run: |
-          echo "SUPABASE_URL set:              $( [ -n "$SUPABASE_URL" ] && echo YES || echo NO )"
+          echo "NEXT_PUBLIC_SUPABASE_URL set:  $( [ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && echo YES || echo NO )"
           echo "SUPABASE_SERVICE_ROLE_KEY set: $( [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && echo YES || echo NO )"
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "::error::SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set as repository secrets (Settings → Secrets and variables → Actions → Repository secrets). Without them the integration test SKIPs and the acceptance gate is a no-op."
+          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::Repo secrets SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (Settings → Secrets and variables → Actions). The app reads NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY; the workflow maps SUPABASE_URL → NEXT_PUBLIC_SUPABASE_URL."
             exit 1
           fi
 
