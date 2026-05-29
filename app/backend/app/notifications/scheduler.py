@@ -56,6 +56,11 @@ def _is_noop_result(name: str, result: Any) -> bool:
         return bool(result.get("killed")) or (result.get("sent") or 0) == 0
     if name == "anon:cleanup":
         return (result.get("deleted") or 0) == 0
+    if name == "mock:sweeper":
+        return not any(
+            (result.get(k) or 0)
+            for k in ("enqueued", "auto_submitted", "derivations", "failed", "errors")
+        )
     return False
 
 
@@ -106,6 +111,14 @@ def _job_cleanup_anonymous_users() -> dict[str, Any]:
     return cleanup_anonymous_users(get_supabase_admin())
 
 
+def _job_mock_sweeper() -> dict[str, Any]:
+    # Lazy import — mock_engine pulls in the study_os package, which the
+    # scheduler module is imported ahead of during startup.
+    from app.study_os.mock_engine import run_sweeper
+
+    return run_sweeper(get_supabase_admin())
+
+
 # Public registry — also used by the manual-trigger admin endpoint.
 JOBS: dict[str, callable] = {  # type: ignore[type-arg]
     "notif:dispatch": _job_dispatch,
@@ -113,6 +126,7 @@ JOBS: dict[str, callable] = {  # type: ignore[type-arg]
     "elig:recompute": _job_recompute,
     "study:plan_regen": _job_plan_regen,
     "anon:cleanup": _job_cleanup_anonymous_users,
+    "mock:sweeper": _job_mock_sweeper,
 }
 
 
@@ -166,6 +180,16 @@ def start_scheduler() -> BackgroundScheduler | None:
         _wrap("anon:cleanup", _job_cleanup_anonymous_users),
         CronTrigger(hour=4, minute=0, timezone="UTC"),
         id="anon:cleanup",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    # Every 30s — auto-submit expired mock attempts + drain derivation retries.
+    # Single loop with a job-kind dispatcher; max_instances=1 prevents overlap.
+    sched.add_job(
+        _wrap("mock:sweeper", _job_mock_sweeper),
+        IntervalTrigger(seconds=30),
+        id="mock:sweeper",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

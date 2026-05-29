@@ -19,7 +19,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.core.auth import get_current_user, get_optional_user, require_permission
+from app.core.auth import get_optional_user, require_admin, require_permission
 
 
 # ───────────────────────────── Static seed data ─────────────────────────────
@@ -250,18 +250,9 @@ _mentor_bookings: dict[str, list[dict]] = defaultdict(list)
 router_acc = APIRouter(prefix="/accountability", tags=["accountability"])
 
 
-
-
 # ───────────────────────────── Admin ───────────────────────────────────────
 
 router_admin = APIRouter(prefix="/admin", tags=["admin"])
-
-
-def _require_admin(user: dict = Depends(get_current_user)) -> dict:
-    role = user.get("role")
-    if role not in {"admin", "super_admin"}:
-        raise HTTPException(status_code=403, detail="Admin role required")
-    return user
 
 
 # NOTE: POST /admin/users/create previously lived here as a placeholder.
@@ -270,7 +261,7 @@ def _require_admin(user: dict = Depends(get_current_user)) -> dict:
 
 
 @router_admin.get("/sources-static")
-async def admin_sources_static(_admin: dict = Depends(_require_admin)):
+async def admin_sources_static(_admin: dict = Depends(require_admin)):
     return {
         "items": [
             {"id": "src-ssc", "name": "ssc.gov.in", "trust": "official", "last_run": _now(), "queue_depth": 2},
@@ -281,7 +272,7 @@ async def admin_sources_static(_admin: dict = Depends(_require_admin)):
 
 
 @router_admin.get("/scraper/runs-static")
-async def admin_scraper_runs_static(_admin: dict = Depends(_require_admin)):
+async def admin_scraper_runs_static(_admin: dict = Depends(require_admin)):
     return {
         "items": [
             {"id": "run-12", "source": "ssc.gov.in", "status": "ok", "items_found": 4, "promoted": 2, "at": _now()},
@@ -291,7 +282,7 @@ async def admin_scraper_runs_static(_admin: dict = Depends(_require_admin)):
 
 
 @router_admin.get("/eligibility-queue-static")
-async def admin_eligibility_queue_static(_admin: dict = Depends(_require_admin)):
+async def admin_eligibility_queue_static(_admin: dict = Depends(require_admin)):
     return {
         "items": [
             {"id": "eq-1", "user_id": "u-101", "recruitment": "ssc-cgl-2026", "verdict": "conditional", "reason": "qualification missing", "at": _now()},
@@ -313,7 +304,7 @@ class NotifToggle(BaseModel):
 
 
 @router_admin.post("/notifications/toggle")
-async def admin_notif_toggle(body: NotifToggle, _admin: dict = Depends(_require_admin)):
+async def admin_notif_toggle(body: NotifToggle, _admin: dict = Depends(require_admin)):
     return {"ok": True, "channel": body.channel, "enabled": body.enabled}
 
 

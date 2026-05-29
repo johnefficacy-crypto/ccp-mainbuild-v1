@@ -1,0 +1,53 @@
+name: extractor-acceptance
+
+on:
+  pull_request:
+    paths:
+      - "app/backend/app/exam_intelligence/extraction/**"
+      - "app/backend/tests/exam_intelligence/extraction/**"
+      - "app/backend/scripts/eval_extractor.py"
+      - "app/backend/scripts/run_extractor_dry.py"
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/backend
+
+    env:
+      # conftest.py _require_integration_env() checks SUPABASE_URL
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      # get_supabase_admin() reads settings.NEXT_PUBLIC_SUPABASE_URL
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Supabase credentials are present
+        run: |
+          echo "SUPABASE_URL set:              $( [ -n "$SUPABASE_URL" ] && echo YES || echo NO )"
+          echo "NEXT_PUBLIC_SUPABASE_URL set:  $( [ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && echo YES || echo NO )"
+          echo "SUPABASE_SERVICE_ROLE_KEY set: $( [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && echo YES || echo NO )"
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::Repo secrets SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (Settings → Secrets → Actions)."
+            exit 1
+          fi
+
+      - name: Install system dependencies (Tesseract OCR)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-eng
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run acceptance test (integration, recall ≥ 0.80)
+        run: |
+          pytest tests/exam_intelligence/extraction/test_pipeline_against_fixture.py \
+            -m integration --strict-markers -v -s

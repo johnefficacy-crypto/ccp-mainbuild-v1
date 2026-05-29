@@ -1,0 +1,2 @@
+external_id,exam_family,exam_id,exam_phase,subject,topic,microtopic,question_type,language,question_text,option_a,option_b,option_c,option_d,option_e,option_f,correct_option,explanation,difficulty,is_conceptual,is_factual,is_current,source_kind,source_trust,source_url,pyq_year,evidence_text,valid_from,valid_until,event_anchor_date,expected_time_sec,question_group_id
+x,upsc,cse-prelims,prelims,polity,constitution,fr,bad,en,,a,b,c,d,,,A,easy,true,false,false,bad,high,,,text,,,,60,grp

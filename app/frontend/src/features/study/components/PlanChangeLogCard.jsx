@@ -1,7 +1,64 @@
 import React, { useEffect, useState } from "react";
-import { History } from "lucide-react";
+import { History, AlertTriangle } from "lucide-react";
 import { api } from "../../../lib/api";
 import { Card, Eyebrow, Pill, StatusDot } from "../../../shared/ui/studyos";
+
+const REGEN_TRIGGER_LABEL = {
+  missed_days_streak: "Missed days streak",
+  backlog_threshold: "Backlog over threshold",
+  deadline_compression: "Deadline compression",
+  mock_score_drift: "Mock score drift",
+};
+
+const REGEN_SEVERITY_TONE = {
+  low: "outline",
+  medium: "amber",
+  high: "rose",
+};
+
+// RegenTriggerStrip surfaces backend-computed auto-regen trigger
+// conditions. The planner does NOT apply changes from this strip — the
+// user still drafts and applies via /api/study/plan/{draft,apply}. The
+// strip just makes the conditions visible.
+function RegenTriggerStrip({ triggers }) {
+  if (!Array.isArray(triggers) || triggers.length === 0) return null;
+  return (
+    <div
+      className="rounded-2xl border border-[#F1DEAF] bg-[#FFF8E8] px-4 py-3 mb-4"
+      data-testid="regen-triggers-strip"
+      role="region"
+      aria-label="Why plan may change"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <AlertTriangle className="h-4 w-4 text-[#6A4A09]" aria-hidden="true" />
+        <span className="num-mono text-[10px] uppercase tracking-[0.18em] text-[#6A4A09] font-semibold">
+          Why plan may change
+        </span>
+      </div>
+      <ul className="space-y-1.5">
+        {triggers.map((t, i) => (
+          <li
+            key={`${t.code || "regen"}-${i}`}
+            className="flex items-start gap-2 text-[12.5px] text-clay-900"
+            data-testid={`regen-trigger-${t.code}`}
+          >
+            <Pill tone={REGEN_SEVERITY_TONE[t.severity] || "outline"}>
+              {t.severity || "info"}
+            </Pill>
+            <span className="leading-snug">
+              <span className="font-semibold mr-1">
+                {REGEN_TRIGGER_LABEL[t.code] || t.code}:
+              </span>
+              {t.label}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export { RegenTriggerStrip };
 
 // Plan change log fed by /api/study/plan/changelog (study_adaptation_events).
 // Each row is server-derived — the UI never re-derives event copy.

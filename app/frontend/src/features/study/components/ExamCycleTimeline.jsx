@@ -13,6 +13,7 @@ import PlannedVsActualChart from "./PlannedVsActualChart";
 import PhaseBandTimeline from "./PhaseBandTimeline";
 import CycleSubjectProgress from "./CycleSubjectProgress";
 import PlanRiskFlags from "./PlanRiskFlags";
+import { RegenTriggerStrip } from "./PlanChangeLogCard";
 
 const STATUS_TONE = {
   ahead: { tone: "sage", label: "Ahead" },
@@ -108,6 +109,7 @@ export default function ExamCycleTimeline() {
   const series = Array.isArray(safe.series) ? safe.series : [];
   const subjects = Array.isArray(safe.subjects) ? safe.subjects : [];
   const flags = Array.isArray(safe.risk_flags) ? safe.risk_flags : [];
+  const regenTriggers = Array.isArray(safe.regen_triggers) ? safe.regen_triggers : [];
   const status = progress.status || "not_connected";
   const tone = STATUS_TONE[status] || STATUS_TONE.not_connected;
 
@@ -173,6 +175,7 @@ export default function ExamCycleTimeline() {
       <div className="hairline mx-7" />
 
       <div className="px-7 py-5 space-y-5">
+        <RegenTriggerStrip triggers={regenTriggers} />
         <CycleProgressRail milestones={milestones} phaseBands={phaseBands} />
 
         <SectionHeader

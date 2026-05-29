@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { api } from "../../../lib/api";
+import { DateField } from "../../../shared/ui/heavy";
 
 const QUALIFICATION_LEVELS = ["10th", "12th", "diploma", "graduate", "postgraduate", "phd"];
 
@@ -192,14 +193,13 @@ function AgeCriteriaEditor({ recruitmentId, postId, criteria, setError, onChange
       </div>
       <div className="row" style={{ marginTop: 6 }}>
         <span className="anno">cutoff</span>
-        <input
-          className="input"
-          style={{ fontSize: 12, padding: "5px 8px", flex: 1 }}
-          type="date"
-          value={form.cutoff_date || ""}
-          onChange={(e) => setForm({ ...form, cutoff_date: e.target.value })}
-          data-testid={`age-cutoff-${postId}`}
-        />
+        <div style={{ flex: 1 }} data-testid={`age-cutoff-${postId}`}>
+          <DateField
+            mode="any"
+            value={form.cutoff_date || null}
+            onChange={(iso) => setForm({ ...form, cutoff_date: iso || "" })}
+          />
+        </div>
       </div>
       <button type="button" className="btn small" style={{ marginTop: 6 }} onClick={save} disabled={busy}>
         {criteria?.id ? "Update" : "Add age criteria"}

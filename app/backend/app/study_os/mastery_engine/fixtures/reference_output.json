@@ -1,0 +1,72 @@
+{
+  "mastery_deltas": [
+    {
+      "user_id": "u1",
+      "topic_id": "t1",
+      "current_mastery": "0.5",
+      "expected_accuracy": "0.60",
+      "observed_accuracy": "0.3076923076923076923076923077",
+      "raw_delta": "-0.2923076923076923076923076923",
+      "capped_delta": "-0.15",
+      "attempted": 5
+    }
+  ],
+  "error_signals": [
+    {
+      "user_id": "u1",
+      "topic_id": "t1",
+      "microtopic_id": null,
+      "error_type": "concept_gap",
+      "count": 1,
+      "evidence_question_ids": [
+        "q1"
+      ],
+      "signal_strength": "0.9"
+    },
+    {
+      "user_id": "u1",
+      "topic_id": "t1",
+      "microtopic_id": null,
+      "error_type": "concept_gap",
+      "count": 1,
+      "evidence_question_ids": [
+        "q2"
+      ],
+      "signal_strength": "0.8"
+    },
+    {
+      "user_id": "u1",
+      "topic_id": "t1",
+      "microtopic_id": null,
+      "error_type": "concept_gap",
+      "count": 1,
+      "evidence_question_ids": [
+        "q3"
+      ],
+      "signal_strength": "0.7"
+    }
+  ],
+  "correction_task_drafts": [
+    {
+      "user_id": "u1",
+      "topic_id": "t1",
+      "microtopic_id": null,
+      "task_type": "concept_review",
+      "priority": 1,
+      "reason": "concept_review due to 5 attempted with 40% accuracy",
+      "evidence": {
+        "accuracy_pct": "40",
+        "error_types": [
+          "concept_gap"
+        ],
+        "related_question_ids": [
+          "q1",
+          "q2",
+          "q3"
+        ]
+      },
+      "estimated_minutes": 30,
+      "source_attempt_id": "11111111-1111-1111-1111-111111111111"
+    }
+  ]
+}

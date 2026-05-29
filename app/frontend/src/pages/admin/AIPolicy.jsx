@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Bot, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
-import { LoadingSkeleton, StatusBadge } from "../../shared/ui";
+import { LoadingSkeleton, StatusBadge } from "../../shared/ui/core";
 
 export default function AdminAIPolicy() {
   const [d, setD] = useState(null);

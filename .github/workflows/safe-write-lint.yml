@@ -1,0 +1,16 @@
+name: Safe-Write Lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  safe-write-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Lint — _safe() wrapping write operations
+        run: python scripts/lint_safe_writes.py app/backend

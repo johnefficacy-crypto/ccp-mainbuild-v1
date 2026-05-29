@@ -158,6 +158,7 @@ def test_resolve_conflict_updates_status_audit_and_queue_payload():
         "scope": "field",
         "reason": "Corrigendum supersedes notification per official desk-note.",
         "evidence_url": "https://upsc.gov.in/corrigendum.pdf",
+        "confirmation_text": "CONFIRM_OVERRIDE",
     }
     r = client.post("/api/admin/conflicts/conflict-1/resolve", json=payload)
     assert r.status_code == 200, r.text
@@ -183,7 +184,7 @@ def test_resolve_conflict_updates_status_audit_and_queue_payload():
     audits = sb.db["admin_audit_logs"]
     assert len(audits) == 1
     audit = audits[0]
-    assert audit["action"] == "conflict.resolve"
+    assert audit["action"] == "rbac.conflict_override"
     assert audit["entity_id"] == "conflict-1"
     assert audit["new_value"]["request"]["scope"] == "field"
 
@@ -201,6 +202,7 @@ def test_resolve_rejects_short_reason():
             "scope": "field",
             "reason": "too short",
             "evidence_url": "https://upsc.gov.in/corrigendum.pdf",
+            "confirmation_text": "CONFIRM_OVERRIDE",
         },
     )
     assert r.status_code == 400
@@ -225,6 +227,7 @@ def test_resolve_rejects_invalid_evidence_url():
             "scope": "field",
             "reason": "Corrigendum supersedes notification.",
             "evidence_url": "not-a-real-url",
+            "confirmation_text": "CONFIRM_OVERRIDE",
         },
     )
     assert r.status_code == 400

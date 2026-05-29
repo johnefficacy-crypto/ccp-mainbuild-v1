@@ -15,6 +15,7 @@ jest.mock("../../lib/api", () => ({
 // Heavy child cards make their own fetches / pull context; stub them so
 // this test observes only StudyHome's own calls.
 jest.mock("../../features/study/components/ExamCycleTimeline", () => () => null);
+jest.mock("../../features/study/components/ExamJourneyCard", () => () => null);
 jest.mock("../../features/study/components/PlanChangeLogCard", () => () => null);
 jest.mock("../../shared/components/HowItWorksHeaderButton", () => () => null);
 

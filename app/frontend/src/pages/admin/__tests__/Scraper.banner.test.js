@@ -10,7 +10,7 @@ jest.mock("../../../lib/api", () => ({
   getApiNextActions: () => [],
 }));
 
-jest.mock("../../../shared/ui", () => ({
+jest.mock("../../../shared/ui/core", () => ({
   __esModule: true,
   EmptyState: () => null,
   ErrorState: () => null,

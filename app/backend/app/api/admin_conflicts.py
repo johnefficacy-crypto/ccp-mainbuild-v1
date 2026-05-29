@@ -26,12 +26,16 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.auth import require_permission
+from app.core.auth import require_permission, require_super_admin
 from app.db.supabase_client import get_supabase_admin
 
 logger = logging.getLogger("career_copilot.api.admin_conflicts")
 
 router = APIRouter(tags=["admin-conflicts"])
+
+# Conflict resolution overrides the official-source consensus, so it is a
+# super_admin-only destructive op gated behind an explicit confirmation phrase.
+CONFIRM_OVERRIDE = "CONFIRM_OVERRIDE"
 
 
 # Allowlist of recruitment columns that field-scope resolutions may
@@ -49,6 +53,8 @@ class ResolveBody(BaseModel):
     scope: str = Field(..., min_length=1)
     reason: str = Field(..., min_length=1)
     evidence_url: str = Field(..., min_length=1, max_length=2048)
+    # Destructive-op confirmation: must equal ``CONFIRM_OVERRIDE``.
+    confirmation_text: str = Field(..., min_length=1, max_length=64)
 
 
 class RejectBody(BaseModel):
@@ -251,12 +257,15 @@ def _bulk_resolve_for_recruitment_scope(
     return bulk_ids
 
 
+# TODO: 4-eyes approval (two super_admins) for production
 @router.post("/admin/conflicts/{conflict_id}/resolve")
 def resolve_conflict(
     conflict_id: str,
     body: ResolveBody,
-    admin: dict = Depends(require_permission("recruitments.manage")),
+    admin: dict = Depends(require_super_admin),
 ) -> dict[str, Any]:
+    if body.confirmation_text != CONFIRM_OVERRIDE:
+        raise HTTPException(status_code=400, detail="Confirmation phrase mismatch")
     if body.scope not in {"field", "recruitment"}:
         raise HTTPException(status_code=400, detail="scope must be 'field' or 'recruitment'")
     if len((body.reason or "").strip()) < 10:
@@ -319,7 +328,7 @@ def resolve_conflict(
     _audit(
         supabase,
         admin,
-        "conflict.resolve",
+        "rbac.conflict_override",
         entity_type="recruitment_verification_conflicts",
         entity_id=conflict_id,
         payload={

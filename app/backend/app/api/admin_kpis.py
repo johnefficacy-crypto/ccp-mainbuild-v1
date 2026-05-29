@@ -13,20 +13,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.core.auth import get_current_user
+from app.core.auth import require_admin
 from app.db.supabase_client import get_supabase_admin
 
 
 router = APIRouter(prefix="/admin/kpis", tags=["admin-kpis"])
 
 FAMILIES = ("outcome", "trust", "commercial", "quality")
-
-
-def _require_admin(user: dict = Depends(get_current_user)) -> dict:
-    role = (user.get("role") or "").lower()
-    if role in {"admin", "super_admin"}:
-        return user
-    raise HTTPException(status_code=403, detail="Admin role required")
 
 
 def _safe_count(sb, table: str, **filters) -> int:
@@ -138,7 +131,7 @@ def _compute_quality(sb, day: date) -> list[dict]:
 @router.get("")
 def get_dashboard(
     days: int = Query(default=14, ge=1, le=90),
-    user: dict = Depends(_require_admin),
+    user: dict = Depends(require_admin),
 ) -> dict:
     sb = get_supabase_admin()
     since = (date.today() - timedelta(days=days)).isoformat()
@@ -178,7 +171,7 @@ def get_dashboard(
 
 
 @router.post("/recompute")
-def recompute(user: dict = Depends(_require_admin)) -> dict:
+def recompute(user: dict = Depends(require_admin)) -> dict:
     sb = get_supabase_admin()
     today = date.today()
     return {

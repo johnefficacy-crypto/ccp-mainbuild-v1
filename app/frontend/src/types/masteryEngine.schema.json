@@ -1,0 +1,294 @@
+{
+  "_meta": {
+    "source": "app/backend/app/study_os/mastery_engine/schemas.py",
+    "note": "Hand-synced contract. Source of truth is schemas.py. test_schema_frontend_parity.py fails CI on drift."
+  },
+  "models": {
+    "AttemptQuestionAnalytics": {
+      "question_id": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "topic_id": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "microtopic_id": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
+      "is_correct": {
+        "type": "bool",
+        "required": true,
+        "nullable": false
+      },
+      "difficulty": {
+        "type": "str",
+        "required": false,
+        "nullable": false
+      },
+      "source_type": {
+        "type": "str",
+        "required": false,
+        "nullable": false
+      },
+      "pyq_year": {
+        "type": "int",
+        "required": false,
+        "nullable": true
+      },
+      "expected_time_sec": {
+        "type": "int",
+        "required": false,
+        "nullable": true
+      },
+      "actual_time_sec": {
+        "type": "int",
+        "required": false,
+        "nullable": true
+      },
+      "error_type": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
+      "confidence": {
+        "type": "Decimal",
+        "required": false,
+        "nullable": false
+      }
+    },
+    "AttemptTopicAnalytics": {
+      "topic_id": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "microtopic_id": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
+      "attempted": {
+        "type": "int",
+        "required": false,
+        "nullable": false
+      },
+      "correct": {
+        "type": "int",
+        "required": false,
+        "nullable": false
+      },
+      "accuracy_pct": {
+        "type": "Decimal",
+        "required": false,
+        "nullable": false
+      }
+    },
+    "CorrectionEvidence": {
+      "accuracy_pct": {
+        "type": "Decimal",
+        "required": true,
+        "nullable": false
+      },
+      "error_types": {
+        "type": "list[str]",
+        "required": false,
+        "nullable": false
+      },
+      "related_question_ids": {
+        "type": "list[str]",
+        "required": false,
+        "nullable": false
+      },
+      "source_trust": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
+      "source_attempt_id": {
+        "type": "UUID",
+        "required": false,
+        "nullable": true
+      },
+      "canonical_topic_id": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
+      "canonical_microtopic_id": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      }
+    },
+    "CorrectionTaskDraft": {
+      "user_id": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "topic_id": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "microtopic_id": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
+      "task_type": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "priority": {
+        "type": "int",
+        "required": true,
+        "nullable": false
+      },
+      "reason": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "evidence": {
+        "type": "CorrectionEvidence",
+        "required": true,
+        "nullable": false
+      },
+      "estimated_minutes": {
+        "type": "int",
+        "required": true,
+        "nullable": false
+      },
+      "source_attempt_id": {
+        "type": "UUID",
+        "required": true,
+        "nullable": false
+      }
+    },
+    "DerivationResult": {
+      "mastery_deltas": {
+        "type": "list[MasteryDelta]",
+        "required": false,
+        "nullable": false
+      },
+      "error_signals": {
+        "type": "list[ErrorPatternSignal]",
+        "required": false,
+        "nullable": false
+      },
+      "correction_task_drafts": {
+        "type": "list[CorrectionTaskDraft]",
+        "required": false,
+        "nullable": false
+      }
+    },
+    "DerivedAttemptAnalytics": {
+      "attempt_id": {
+        "type": "UUID",
+        "required": true,
+        "nullable": false
+      },
+      "user_id": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "questions": {
+        "type": "list[AttemptQuestionAnalytics]",
+        "required": false,
+        "nullable": false
+      },
+      "topics": {
+        "type": "list[AttemptTopicAnalytics]",
+        "required": false,
+        "nullable": false
+      }
+    },
+    "ErrorPatternSignal": {
+      "user_id": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "topic_id": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "microtopic_id": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
+      "error_type": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "count": {
+        "type": "int",
+        "required": false,
+        "nullable": false
+      },
+      "evidence_question_ids": {
+        "type": "list[str]",
+        "required": false,
+        "nullable": false
+      },
+      "signal_strength": {
+        "type": "Decimal",
+        "required": true,
+        "nullable": false
+      }
+    },
+    "MasteryDelta": {
+      "user_id": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "topic_id": {
+        "type": "str",
+        "required": true,
+        "nullable": false
+      },
+      "current_mastery": {
+        "type": "Decimal",
+        "required": true,
+        "nullable": false
+      },
+      "expected_accuracy": {
+        "type": "Decimal",
+        "required": true,
+        "nullable": false
+      },
+      "observed_accuracy": {
+        "type": "Decimal",
+        "required": true,
+        "nullable": false
+      },
+      "raw_delta": {
+        "type": "Decimal",
+        "required": true,
+        "nullable": false
+      },
+      "capped_delta": {
+        "type": "Decimal",
+        "required": true,
+        "nullable": false
+      },
+      "attempted": {
+        "type": "int",
+        "required": true,
+        "nullable": false
+      }
+    }
+  }
+}

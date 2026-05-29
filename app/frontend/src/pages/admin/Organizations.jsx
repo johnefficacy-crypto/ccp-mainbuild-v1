@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Building2, History, Pencil, Search, ShieldCheck, X } from "lucide-react";
 import OrganizationEditPanel from "../../features/admin/organizations/OrganizationEditPanel";
 import { api } from "../../lib/api";
-import { EmptyState, ErrorState, LoadingSkeleton, RowActions, StatusBadge } from "../../shared/ui";
+import { EmptyState, ErrorState, LoadingSkeleton, RowActions, StatusBadge } from "../../shared/ui/core";
 import { useFocusTrap } from "../../shared/a11y/useFocusTrap";
 import useAdminAction from "../../features/admin/shared/useAdminAction";
 import AuditTimelineDrawer from "../../features/admin/shared/AuditTimelineDrawer";

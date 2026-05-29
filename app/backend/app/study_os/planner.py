@@ -21,8 +21,11 @@ produce the same plan. Persists one active ``study_plan`` per user, a
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+import threading
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
+
+from cachetools import TTLCache
 
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
 from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
@@ -38,6 +41,52 @@ PLANNER_VERSION = "planner_v1"
 # preferred_task_size -> minutes per task block.
 _SIZE_MINUTES = {"small": 25, "medium": 40, "large": 60}
 _DEFAULT_SIZE = "medium"
+
+# The soonest upcoming exam cycle is identical across users and only changes
+# daily. Cache it (keyed by exam_id + date) so the several planner reads of
+# exam_cycles for one exam within a request wave — e.g. mission-control's
+# regen-trigger fan-out, which also computes days-remaining for the same exam —
+# collapse to a single round-trip. Reset between tests via tests/conftest.py.
+# ``False`` is the sentinel for 'no upcoming cycle'.
+_NEXT_CYCLE_TTL_SECONDS = 600
+_next_cycle_cache: TTLCache = TTLCache(maxsize=256, ttl=_NEXT_CYCLE_TTL_SECONDS)
+_next_cycle_lock = threading.Lock()
+
+
+def invalidate_planner_cache() -> None:
+    """Drop the planner's process-local caches (test hook / admin reset)."""
+    with _next_cycle_lock:
+        _next_cycle_cache.clear()
+
+
+def _cached_next_cycle(supabase: Any, exam_id: str, today_iso: str) -> dict[str, Any] | None:
+    """Soonest upcoming exam cycle (``id, exam_start, cycle_name``) for an exam,
+    per-exam+date TTL cached. Returns ``None`` when there is no upcoming cycle."""
+    cache_key = (exam_id, today_iso)
+    with _next_cycle_lock:
+        if cache_key in _next_cycle_cache:
+            cached = _next_cycle_cache[cache_key]
+            return None if cached is False else cached
+    rows = (
+        _safe(
+            lambda: (
+                supabase.table("exam_cycles")
+                .select("id, exam_start, cycle_name")
+                .eq("exam_id", exam_id)
+                .gte("exam_start", today_iso)
+                .order("exam_start")
+                .limit(1)
+                .execute()
+                .data
+            ),
+            default=[],
+        )
+        or []
+    )
+    cycle = rows[0] if rows else None
+    with _next_cycle_lock:
+        _next_cycle_cache[cache_key] = cycle if cycle else False
+    return cycle
 _DEFAULT_MAX_TASKS = 4
 
 _TASK_LABEL = {
@@ -125,26 +174,11 @@ def _resolve_target_exam(supabase: Any, user_id: str) -> dict[str, Any] | None:
 
 def _days_remaining(supabase: Any, exam_id: str) -> int | None:
     today = datetime.now(timezone.utc).date()
-    rows = (
-        _safe(
-            lambda: (
-                supabase.table("exam_cycles")
-                .select("exam_start")
-                .eq("exam_id", exam_id)
-                .gte("exam_start", today.isoformat())
-                .order("exam_start")
-                .limit(1)
-                .execute()
-                .data
-            ),
-            default=[],
-        )
-        or []
-    )
-    if not rows or not rows[0].get("exam_start"):
+    cycle = _cached_next_cycle(supabase, exam_id, today.isoformat())
+    if not cycle or not cycle.get("exam_start"):
         return None
     try:
-        start = datetime.fromisoformat(str(rows[0]["exam_start"])).date()
+        start = datetime.fromisoformat(str(cycle["exam_start"])).date()
     except (ValueError, TypeError):
         return None
     return max(0, (start - today).days)
@@ -493,7 +527,7 @@ def _active_plan(supabase: Any, user_id: str) -> dict[str, Any] | None:
         _safe(
             lambda: (
                 supabase.table("study_plans")
-                .select("id, status")
+                .select("id, status, current_plan_version_id")
                 .eq("user_id", user_id)
                 .eq("status", "active")
                 .limit(1)
@@ -549,13 +583,37 @@ def _persist(
     ``_safe(...)`` pattern was masking constraint violations (e.g. an
     ``event_type`` that wasn't in the CHECK list) and letting the API
     return ``{generated: True}`` while the audit row never wrote.
+
+    ``study_plans.title`` is ``NOT NULL`` with no default; omitting it was
+    rejected by Postgres with ``23502`` and the whole apply failed. We now
+    populate every ``NOT NULL`` column (``user_id``, ``title``) on insert
+    and give ``description`` a non-null safe string. The update path never
+    touches ``title`` so a re-version cannot null it out.
+
+    supabase-py exposes no client-side transaction, so on any failure
+    *after* the first insert we run a compensating rollback that tears
+    down exactly what this call created, in reverse FK-safe order, leaving
+    no orphan ``study_plans`` / ``study_plan_versions`` / ``study_tasks``
+    rows behind.
     """
     exam_id = exam.get("id")
+    exam_name = exam.get("name") or "Exam"
     today = _today_iso()
+    title = f"{exam_name} Study Plan"
+    description = f"Adaptive plan covering locked high-yield topics for {exam_name}."
+
+    # Compensating-rollback stack: each entry is a no-arg delete/restore run
+    # via ``_safe`` (best-effort) in reverse creation order on failure.
+    rollback_ops: list[Callable[[], Any]] = []
+
+    def _rollback() -> None:
+        for op in reversed(rollback_ops):
+            _safe(op)
 
     plan = _active_plan(supabase, user_id)
     if plan:
         plan_id = plan["id"]
+        prev_version_id = plan.get("current_plan_version_id")
     else:
         created = safe_required(
             lambda: (
@@ -563,12 +621,14 @@ def _persist(
                 .insert(
                     {
                         "user_id": user_id,
+                        "title": title,
+                        "description": description,
                         "status": "active",
                         "start_date": today,
                         "exam_id": exam_id,
                         "active_phase_id": plan_phase_id,
                         "metadata": {
-                            "theme": f"{exam.get('name') or 'Exam'} adaptive plan",
+                            "theme": f"{exam_name} adaptive plan",
                             "target": "Cover locked high-yield topics",
                         },
                         "generation_context": input_context,
@@ -582,6 +642,10 @@ def _persist(
         if created is None:
             return {"generated": False, "reason": "plan_persist_failed"}
         plan_id = created[0]["id"]
+        prev_version_id = None
+        rollback_ops.append(
+            lambda: supabase.table("study_plans").delete().eq("id", plan_id).execute()
+        )
 
     version_number = _next_version_number(supabase, plan_id)
     version = safe_required(
@@ -607,8 +671,15 @@ def _persist(
         op="study_plan_versions.insert",
     )
     if version is None:
+        _rollback()
         return {"generated": False, "reason": "version_persist_failed"}
     plan_version_id = version[0]["id"]
+    rollback_ops.append(
+        lambda: supabase.table("study_plan_versions")
+        .delete()
+        .eq("id", plan_version_id)
+        .execute()
+    )
 
     # Idempotent regeneration: clear today's still-planned tasks for this
     # plan, then insert the fresh set. Completed / in-progress tasks stay.
@@ -627,6 +698,7 @@ def _persist(
         allow_empty=True,
     )
     if cleared is None:
+        _rollback()
         return {"generated": False, "reason": "task_cleanup_failed"}
 
     task_rows = [
@@ -639,7 +711,14 @@ def _persist(
             op="study_tasks.insert",
         )
         if inserted_tasks is None:
+            _rollback()
             return {"generated": False, "reason": "task_persist_failed"}
+        rollback_ops.append(
+            lambda: supabase.table("study_tasks")
+            .delete()
+            .eq("plan_version_id", plan_version_id)
+            .execute()
+        )
 
     updated_plan = safe_required(
         lambda: (
@@ -657,7 +736,14 @@ def _persist(
         op="study_plans.update_active_version",
     )
     if updated_plan is None:
+        _rollback()
         return {"generated": False, "reason": "plan_persist_failed"}
+    rollback_ops.append(
+        lambda: supabase.table("study_plans")
+        .update({"current_plan_version_id": prev_version_id})
+        .eq("id", plan_id)
+        .execute()
+    )
 
     audit = safe_required(
         lambda: (
@@ -681,6 +767,7 @@ def _persist(
         op="study_adaptation_events.insert",
     )
     if audit is None:
+        _rollback()
         return {"generated": False, "reason": "audit_persist_failed"}
 
     return {
@@ -913,6 +1000,66 @@ def _diff_tasks(
     }
 
 
+def _build_tradeoffs(
+    before_tasks: list[dict[str, Any]], after_tasks: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Deterministic trade-off list for the draft preview.
+
+    Pairs the highest-priority added topic with the highest-priority removed
+    topic to express "gained X at the cost of Y". Items beyond the shorter
+    list are unpaired (cost=None for gain-only, gained=None for cost-only).
+    ``risk_delta`` is positive when the cost outranks the gain on the same
+    100-pt priority scale the planner already uses for `priority_score`.
+
+    Inputs come from the same maps `_diff_tasks` works over, so the
+    numbers cannot drift from the diff itself.
+    """
+    before_by_topic = {b.get("topic_id"): b for b in before_tasks if b.get("topic_id")}
+    after_by_topic = {a.get("topic_id"): a for a in after_tasks if a.get("topic_id")}
+    added_topics = set(after_by_topic) - set(before_by_topic)
+    removed_topics = set(before_by_topic) - set(after_by_topic)
+
+    def _score(d: dict[str, Any]) -> float:
+        try:
+            return float(d.get("priority_score") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    added_sorted = sorted(
+        (after_by_topic[t] for t in added_topics),
+        key=lambda d: (-_score(d), str(d.get("topic") or "")),
+    )
+    removed_sorted = sorted(
+        (before_by_topic[t] for t in removed_topics),
+        key=lambda d: (-_score(d), str(d.get("topic") or "")),
+    )
+
+    out: list[dict[str, Any]] = []
+    pair_count = max(len(added_sorted), len(removed_sorted))
+    for i in range(pair_count):
+        a = added_sorted[i] if i < len(added_sorted) else None
+        r = removed_sorted[i] if i < len(removed_sorted) else None
+        gained = a.get("topic") if a else None
+        cost = r.get("topic") if r else None
+        a_minutes = int((a.get("planned_minutes") if a else 0) or 0)
+        r_minutes = int((r.get("planned_minutes") if r else 0) or 0)
+        magnitude_minutes = max(a_minutes, r_minutes)
+        magnitude_hours = round(magnitude_minutes / 60.0, 2)
+        # risk_delta on the planner's own 100-pt scale: positive when the
+        # cost side outranks the gain side (risk rises on the dropped topic).
+        risk_delta = round((_score(r) if r else 0.0) - (_score(a) if a else 0.0), 1)
+        out.append({
+            "gained": gained,
+            "cost": cost,
+            "magnitude_hours": magnitude_hours,
+            "magnitude_minutes": magnitude_minutes,
+            "risk_delta": risk_delta,
+            "gained_priority": _score(a) if a else None,
+            "cost_priority": _score(r) if r else None,
+        })
+    return out[:5]
+
+
 def _risk_level(diff: dict[str, Any], before_count: int) -> str:
     """Rough risk label from how much of the plan is mutating."""
     if before_count == 0:
@@ -955,6 +1102,7 @@ def compute_draft_plan(supabase: Any, user_id: str) -> dict[str, Any]:
         ]
         after_tasks = [_task_summary(t) for t in tasks]
         diff = _diff_tasks(before_tasks, after_tasks)
+        tradeoffs = _build_tradeoffs(before_tasks, after_tasks)
         exam = computed["exam"]
         return {
             "applied": False,
@@ -966,6 +1114,7 @@ def compute_draft_plan(supabase: Any, user_id: str) -> dict[str, Any]:
             "before_tasks": before_tasks,
             "after_tasks": after_tasks,
             "changes": diff,
+            "tradeoffs": tradeoffs,
             "risk_level": _risk_level(diff, len(before_tasks)),
             "generated_at": _now_iso(),
         }
@@ -1072,3 +1221,230 @@ def generate_plan(
     regenerations (``regen.regenerate_on_signal``).
     """
     return apply_plan(supabase, user_id, reason=reason, event_type=event_type)
+
+
+# ───────────────────────── regen-trigger surfacing ─────────────────────────
+#
+# These thresholds match the auto-regen contract described in
+# docs/product/aspirant-platform-strategy.md §2: misses > 2 consecutive days,
+# upcoming deadline compression, mock-score drift, backlog over threshold.
+# The numbers are intentionally conservative so the strip is only loud when
+# the planner would actually rewire the schedule on the next regen.
+_MISSED_STREAK_MIN = 2
+_BACKLOG_LOW = 7
+_BACKLOG_MED = 10
+_BACKLOG_HIGH = 15
+_DEADLINE_MED_DAYS = 30
+_DEADLINE_HIGH_DAYS = 14
+_MOCK_DRIFT_MIN_PER_WINDOW = 2
+_MOCK_DRIFT_LOW_PP = 5
+_MOCK_DRIFT_MED_PP = 10
+
+
+def _missed_days_streak(supabase: Any, user_id: str, today: date) -> dict[str, Any] | None:
+    """Count consecutive days (ending yesterday) where every planned task
+    was missed/skipped. Returns the trigger payload or None when below the
+    floor (≥ 2 consecutive days).
+    """
+    lookback = 14
+    rows = _safe(
+        lambda: (
+            supabase.table("study_tasks")
+            .select("status, scheduled_date")
+            .eq("user_id", user_id)
+            .gte("scheduled_date", (today - timedelta(days=lookback)).isoformat())
+            .lt("scheduled_date", today.isoformat())
+            .limit(2000)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    if not rows:
+        return None
+    by_day: dict[str, list[str]] = {}
+    for r in rows:
+        d = (r.get("scheduled_date") or "")[:10]
+        if not d:
+            continue
+        by_day.setdefault(d, []).append((r.get("status") or "planned").lower())
+
+    streak = 0
+    streak_start: str | None = None
+    cursor = today - timedelta(days=1)
+    while cursor >= today - timedelta(days=lookback):
+        key = cursor.isoformat()
+        statuses = by_day.get(key)
+        if not statuses:
+            break  # day with no planned task breaks the streak
+        if any(s == "completed" for s in statuses):
+            break
+        streak += 1
+        streak_start = key
+        cursor -= timedelta(days=1)
+
+    if streak < _MISSED_STREAK_MIN:
+        return None
+    if streak >= 4:
+        severity = "high"
+    elif streak >= 3:
+        severity = "medium"
+    else:
+        severity = "low"
+    return {
+        "code": "missed_days_streak",
+        "severity": severity,
+        "label": f"Missed {streak} planned day(s) in a row.",
+        "evidence": {
+            "streak_length": streak,
+            "streak_start_date": streak_start,
+            "lookback_days": lookback,
+        },
+    }
+
+
+def _backlog_trigger(supabase: Any, user_id: str, today: date) -> dict[str, Any] | None:
+    """Open backlog over the LOW threshold becomes a regen trigger."""
+    rows = _safe(
+        lambda: (
+            supabase.table("study_tasks")
+            .select("status")
+            .eq("user_id", user_id)
+            .lte("scheduled_date", today.isoformat())
+            .limit(5000)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    backlog = sum(
+        1 for r in rows
+        if (r.get("status") or "").lower() in {"planned", "in_progress", "carried_forward"}
+    )
+    if backlog < _BACKLOG_LOW:
+        return None
+    if backlog >= _BACKLOG_HIGH:
+        severity = "high"
+    elif backlog >= _BACKLOG_MED:
+        severity = "medium"
+    else:
+        severity = "low"
+    return {
+        "code": "backlog_threshold",
+        "severity": severity,
+        "label": f"Open backlog is {backlog} tasks (threshold {_BACKLOG_LOW}).",
+        "evidence": {
+            "backlog_count": backlog,
+            "threshold_low": _BACKLOG_LOW,
+            "threshold_med": _BACKLOG_MED,
+            "threshold_high": _BACKLOG_HIGH,
+        },
+    }
+
+
+def _deadline_trigger(supabase: Any, user_id: str, today: date) -> dict[str, Any] | None:
+    """Target-exam ``exam_start`` within ``_DEADLINE_MED_DAYS`` is a trigger."""
+    target = _safe(lambda: _resolve_target_exam(supabase, user_id), None)
+    exam_id = target.get("id") if target else None
+    if not exam_id:
+        return None
+    cycle = _cached_next_cycle(supabase, exam_id, today.isoformat())
+    if not cycle:
+        return None
+    exam_start_str = cycle.get("exam_start")
+    try:
+        exam_start = date.fromisoformat(str(exam_start_str)[:10])
+    except (TypeError, ValueError):
+        return None
+    days_remaining = (exam_start - today).days
+    if days_remaining < 0 or days_remaining > _DEADLINE_MED_DAYS:
+        return None
+    severity = "high" if days_remaining <= _DEADLINE_HIGH_DAYS else "medium"
+    return {
+        "code": "deadline_compression",
+        "severity": severity,
+        "label": f"Exam is in {days_remaining} day(s) ({exam_start.isoformat()}).",
+        "evidence": {
+            "days_remaining": days_remaining,
+            "exam_start": exam_start.isoformat(),
+            "exam_cycle_id": cycle.get("id"),
+        },
+    }
+
+
+def _mock_drift_trigger(supabase: Any, user_id: str) -> dict[str, Any] | None:
+    """Compare avg percentage of the last 2 mocks vs the prior 2."""
+    rows = _safe(
+        lambda: (
+            supabase.table("mock_tests")
+            .select("id, attempted_at, scored_marks, total_marks")
+            .eq("user_id", user_id)
+            .order("attempted_at", desc=True)
+            .limit(8)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+
+    def _pct(m: dict[str, Any]) -> float | None:
+        try:
+            scored = float(m.get("scored_marks") or 0)
+            total = float(m.get("total_marks") or 0)
+            if total <= 0:
+                return None
+            return (scored / total) * 100.0
+        except (TypeError, ValueError):
+            return None
+
+    pcts = [p for p in (_pct(m) for m in rows) if p is not None]
+    if len(pcts) < _MOCK_DRIFT_MIN_PER_WINDOW * 2:
+        return None
+    recent = pcts[:_MOCK_DRIFT_MIN_PER_WINDOW]
+    prior = pcts[_MOCK_DRIFT_MIN_PER_WINDOW : _MOCK_DRIFT_MIN_PER_WINDOW * 2]
+    recent_avg = sum(recent) / len(recent)
+    prior_avg = sum(prior) / len(prior)
+    delta = round(recent_avg - prior_avg, 1)
+    if delta >= -_MOCK_DRIFT_LOW_PP:
+        return None
+    drop = abs(delta)
+    severity = "high" if drop >= _MOCK_DRIFT_MED_PP else "medium" if drop >= _MOCK_DRIFT_LOW_PP + 2 else "low"
+    return {
+        "code": "mock_score_drift",
+        "severity": severity,
+        "label": f"Recent mock average dropped {drop:.1f} pts vs the prior window.",
+        "evidence": {
+            "recent_avg_pct": round(recent_avg, 1),
+            "prior_avg_pct": round(prior_avg, 1),
+            "delta_pct": delta,
+            "window_size": _MOCK_DRIFT_MIN_PER_WINDOW,
+        },
+    }
+
+
+def build_regen_triggers(supabase: Any, user_id: str) -> list[dict[str, Any]]:
+    """Return the active auto-regen triggers as a deterministic list.
+
+    Each item: ``{code, severity, label, evidence}`` where ``code`` is one
+    of ``missed_days_streak | backlog_threshold | deadline_compression |
+    mock_score_drift``. The list is informational — the planner does NOT
+    apply changes from this surface; the user still draws via
+    /api/study/plan/draft and applies via /api/study/plan/apply.
+    """
+    if not user_id:
+        return []
+    today = date.today()
+    triggers: list[dict[str, Any]] = []
+    for builder in (
+        lambda: _missed_days_streak(supabase, user_id, today),
+        lambda: _backlog_trigger(supabase, user_id, today),
+        lambda: _deadline_trigger(supabase, user_id, today),
+        lambda: _mock_drift_trigger(supabase, user_id),
+    ):
+        try:
+            row = builder()
+        except Exception:  # noqa: BLE001
+            row = None
+        if row:
+            triggers.append(row)
+    return triggers

@@ -220,7 +220,7 @@ def build_leaderboard(
             skipped_private += 1
         rows_to_write.append(row)
 
-    _safe(lambda: supabase.table("study_leaderboard_entries").insert(rows_to_write).execute())
+    _safe(lambda: supabase.table("study_leaderboard_entries").insert(rows_to_write).execute())  # safe-write-ok: leaderboard entries are recomputed on next publish cycle
     return {"written": len(rows_to_write), "skipped_private": skipped_private}
 
 
@@ -329,5 +329,5 @@ def build_group_leaderboard(
             r["rank"] = i
             r["percentile"] = _percentile_rank([x["score"] for x in rows], r["score"])
             r["rank_band"] = _rank_band(r["percentile"])
-        _safe(lambda: supabase.table("study_leaderboard_entries").insert(rows).execute())
+        _safe(lambda: supabase.table("study_leaderboard_entries").insert(rows).execute())  # safe-write-ok: leaderboard entries are recomputed on next publish cycle
     return {"written": len(rows)}

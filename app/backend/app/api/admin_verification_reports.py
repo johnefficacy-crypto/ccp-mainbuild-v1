@@ -24,7 +24,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.core.auth import get_current_user
+from app.core.auth import require_admin
 from app.core.permissions import (
     ACTION_ACK_BATCH,
     ACTION_PROMOTE,
@@ -110,12 +110,6 @@ def _check_resolver_rate_limit(report_id: str, admin_id: str) -> None:
     _resolver_last_run_at[report_id] = now
 
 
-def _require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if user.get("role") not in {"admin", "super_admin"}:
-        raise HTTPException(status_code=403, detail="Admin role required")
-    return user
-
-
 class VerificationReportListItem(BaseModel):
     """Subset of columns surfaced in the listing view.
 
@@ -156,7 +150,7 @@ def list_verification_reports(
     include_superseded: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    _: dict = Depends(_require_admin),
+    _: dict = Depends(require_admin),
 ) -> VerificationReportListResponse:
     """List verification reports for the admin attention queue.
 
@@ -199,7 +193,7 @@ def list_verification_reports(
 @router.get("/admin/verification-reports/{report_id}")
 def get_verification_report(
     report_id: str,
-    _: dict = Depends(_require_admin),
+    _: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """Return the full report row including jsonb columns.
 
@@ -238,7 +232,7 @@ class RunResolverResponse(BaseModel):
 )
 def run_resolver_for_report(
     report_id: str,
-    admin: dict = Depends(_require_admin),
+    admin: dict = Depends(require_admin),
 ) -> RunResolverResponse:
     """Force a resolver re-run for one report.
 
@@ -280,7 +274,7 @@ class OverrideConflictRequest(BaseModel):
 def override_conflict(
     report_id: str,
     payload: OverrideConflictRequest = Body(...),
-    admin: dict = Depends(_require_admin),
+    admin: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """Resolve one verification conflict with an explicit admin choice.
 
@@ -354,7 +348,7 @@ class ConfirmSuggestedProofRequest(BaseModel):
 def confirm_suggested_proof(
     report_id: str,
     payload: ConfirmSuggestedProofRequest = Body(...),
-    _: dict = Depends(_require_admin),
+    _: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """Admin confirms one of the suggested URLs.
 
@@ -442,7 +436,7 @@ class PromoteRequest(BaseModel):
 def promote_report(
     report_id: str,
     payload: PromoteRequest = Body(default_factory=PromoteRequest),
-    admin: dict = Depends(_require_admin),
+    admin: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """Promote a verification report through the gate.
 
@@ -483,7 +477,7 @@ class RejectRequest(BaseModel):
 def reject_report(
     report_id: str,
     payload: RejectRequest = Body(default_factory=RejectRequest),
-    admin: dict = Depends(_require_admin),
+    admin: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """Mark a report ``rejected``.
 
@@ -525,7 +519,7 @@ _BULK_ACTIONS: set[str] = {"bulk_promote", "bulk_reject"}
 @router.post("/admin/verification-reports/bulk-dry-run")
 def bulk_dry_run(
     payload: BulkRequest,
-    admin: dict = Depends(_require_admin),
+    admin: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """Compute per-row eligibility for a bulk action without mutating.
 
@@ -607,7 +601,7 @@ def bulk_dry_run(
 @router.post("/admin/verification-reports/bulk-apply")
 def bulk_apply(
     payload: BulkRequest,
-    admin: dict = Depends(_require_admin),
+    admin: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """Run a bulk action on the eligible subset.
 
@@ -652,7 +646,7 @@ def bulk_apply(
 def list_reverification_batches(
     acknowledged: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
-    _: dict = Depends(_require_admin),
+    _: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """List reverification batches.
 
@@ -675,7 +669,7 @@ def list_reverification_batches(
 @router.post("/admin/verification-reports/acknowledge-batch/{batch_id}")
 def acknowledge_reverification_batch(
     batch_id: str,
-    admin: dict = Depends(_require_admin),
+    admin: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """Acknowledge a reverification batch.
 

@@ -1,0 +1,155 @@
+{
+  "document_id": "83722a86-610b-471d-8b6b-4a8397aa1791",
+  "extractor_version": "0.1.0",
+  "pages_processed": [
+    7
+  ],
+  "pages_skipped": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56
+  ],
+  "errors": [],
+  "expected_questions": [
+    {
+      "question_number": 11,
+      "question_text": "Consider the following assertion : 14.\nIn the Pleistocene period either the Yamuna\nflowed into the Indus, the Sutlej flowed once or\nthe Yamuna into and tributary : of one major\neither had shifted from the Ganga the Indus to\nvice or versa.\nWhich of the following is/are the basis of the\nabove assertion ?\n1. The Nadi-Sukta of the Rigveda\n2. The explorations of the Sutlej and the\nYamuna by Robert Bruce Foote\n3. The of the species of presence same\ndolphins in both the Indus and the\nGanga ‘ systems river\nSelect the using the code given below answer :\n(a) lonly\n(b) 2only\n(c) land2\n| (@) 3",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.038128249566724434,
+            0.07129337539432176,
+            0.5173310225303293,
+            0.42712933753943216
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 12,
+      "question_text": "What does empty early seat an represent in\nBuddhist iconography ?\n(a) The meditation of the Buddha\n(b) The Buddha’s First Sermon\n(c) The Buddha’s Mahaparinibbana\n(d) The Buddha’s Mahabhinishkramana\n15.\n13. Which of the following pairs of ancient and\nmodern of is/are correctly names rivers\nmatched ?\n1. Vitasta\nAsikni Jhelum 2. :\n3. Parushni Ravi :\nYavyavati * Beas\nSelect the using the code given below answer :\n(a) land2\n(b) 3and4\n8only\n(d) 4only",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.02902946273830156,
+            0.4498422712933754,
+            0.5086655112651647,
+            0.8712933753943217
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 92.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 2,
+      "question_text": "In India, it only the Sanchi next to was\nStupa in size.",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.5398613518197574,
+            0.20788643533123027,
+            0.9272097053726169,
+            0.244794952681388
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 3,
+      "question_text": "The Amaravati school of sculpture made\nlasting impact the later South a on\nIndian sculpture, and products its were\ncarried Sri Lanka to and South-east\nAsia.",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.5389948006932409,
+            0.26088328075709777,
+            0.9267764298093587,
+            0.3665615141955836
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    }
+  ],
+  "_stats": {
+    "total_questions": 4,
+    "total_pages_processed": 1,
+    "total_pages_skipped": 55,
+    "total_errors": 0,
+    "question_numbers": [
+      2,
+      3,
+      11,
+      12
+    ]
+  }
+}

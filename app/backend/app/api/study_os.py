@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -22,6 +23,7 @@ from app.study_os.mission_control import (
     build_task_reasoning_response,
 )
 from app.study_os.plan_preferences import get_plan_preferences, upsert_plan_preferences
+from app.study_os.mastery_writer import get_mastery_write_flag
 from app.study_os.planner import apply_plan, compute_draft_plan, generate_plan
 from app.study_os import mocks as mocks_service
 from app.study_os import plan_by_subject as plan_by_subject_service
@@ -47,6 +49,31 @@ _TARGET_EXAM_REQUIRED_DETAIL = {
     "code": "TARGET_EXAM_REQUIRED",
     "message": "Choose the exam you are preparing for.",
 }
+
+# A failed persist (any critical write returned no rows) is a server fault —
+# 500. A precondition the user/admin must satisfy first (no target exam, no
+# locked coverage, every topic muted) is unprocessable — 422.
+_PLAN_UNPROCESSABLE_REASONS = {
+    "no_user",
+    "no_target_exam",
+    "no_locked_coverage",
+    "all_topics_muted",
+}
+
+
+def _raise_for_plan_failure(result: dict[str, Any]) -> dict[str, Any]:
+    """Translate a planner ``{generated|applied: False}`` envelope to HTTP.
+
+    The planner reports failure in-band so it can stay non-raising and
+    deterministic. The ``/apply`` and ``/generate`` routes must not return
+    a 2xx on a failed apply (that let the frontend show "Plan applied" while
+    the persist 23502'd). Success envelopes pass through unchanged.
+    """
+    if result.get("generated") is False or result.get("applied") is False:
+        reason = result.get("reason") or "unknown"
+        status_code = 422 if reason in _PLAN_UNPROCESSABLE_REASONS else 500
+        raise HTTPException(status_code=status_code, detail=result)
+    return result
 
 
 def _require_canonical_target(supabase: Any, user_id: str) -> str | None:
@@ -479,6 +506,8 @@ async def mission_control(user: dict = Depends(get_current_user)) -> dict[str, A
             },
             "today_tasks": [],
             "plan_reasoning": [],
+            "regen_triggers": [],
+            "nudges": [],
             "metrics": {
                 "tasks_total": 0,
                 "tasks_completed": 0,
@@ -575,12 +604,13 @@ async def generate_study_plan(user: dict = Depends(get_current_user)) -> dict[st
     user_id = user.get("id")
     supabase = get_supabase_admin()
     try:
-        return generate_plan(supabase, user_id)
+        result = generate_plan(supabase, user_id)
     except Exception:  # noqa: BLE001
         logger.exception("plan generation failed for %s", user_id)
         raise HTTPException(
             status_code=500, detail="Plan generation is temporarily unavailable."
         )
+    return _raise_for_plan_failure(result)
 
 
 # ───────────────────────── Plan draft / apply / changelog ──────────────────
@@ -618,12 +648,13 @@ async def post_plan_apply(user: dict = Depends(get_current_user)) -> dict[str, A
     supabase = get_supabase_admin()
     _require_canonical_target(supabase, user_id)
     try:
-        return apply_plan(supabase, user_id)
+        result = apply_plan(supabase, user_id)
     except HTTPException:
         raise
     except Exception:  # noqa: BLE001
         logger.exception("plan apply failed for %s", user_id)
         raise HTTPException(status_code=500, detail="Plan apply is temporarily unavailable.")
+    return _raise_for_plan_failure(result)
 
 
 @router.get("/plan/timeline")
@@ -695,6 +726,205 @@ async def get_plan_changelog(user: dict = Depends(get_current_user)) -> dict[str
         logger.exception("plan changelog read failed for %s", user_id)
         return {"items": [], "count": 0}
 
+
+
+
+@router.get("/reports/mock-trend")
+async def reports_mock_trend(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    sb = get_supabase_admin(); user_id = user.get("id")
+    rows = (sb.table("mock_attempts")
+              .select("id, submitted_at, score_percentage, total_correct, total_wrong")
+              .eq("user_id", user_id)
+              .eq("status", "submitted")
+              .order("submitted_at", desc=False)
+              .limit(100)
+              .execute()
+              .data or [])
+    items = []
+    for r in rows:
+        total_ans = (r.get("total_correct") or 0) + (r.get("total_wrong") or 0)
+        accuracy = round((r.get("total_correct") or 0) / total_ans * 100, 2) if total_ans > 0 else 0.0
+        items.append({
+            "attempt_id": r.get("id"),
+            "submitted_at": r.get("submitted_at"),
+            "score_pct": float(r.get("score_percentage") or 0),
+            "accuracy_pct": accuracy,
+            "time_used_sec": 0,
+        })
+    return {"items": items}
+
+@router.get("/reports/mistakes")
+async def reports_mistakes(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    sb = get_supabase_admin(); user_id = user.get("id")
+    rows = (sb.table("attempt_question_analytics").select("error_type, topic_id, question_id").eq("user_id", user_id).limit(5000).execute().data or [])
+    agg = {}
+    for r in rows:
+        e = r.get("error_type") or "unknown"; a = agg.setdefault(e,{"error_type":e,"count":0,"topics":{},"recent_question_ids":[]}); a["count"] += 1
+        t = r.get("topic_id")
+        if t: a["topics"][t] = a["topics"].get(t,0)+1
+        q = r.get("question_id")
+        if q and q not in a["recent_question_ids"]: a["recent_question_ids"].append(q)
+    items=[]
+    for v in agg.values():
+        items.append({"error_type":v["error_type"],"count":v["count"],"topics":[{"topic_id":k,"count":c} for k,c in v["topics"].items()],"recent_question_ids":v["recent_question_ids"][:10]})
+    return {"items":items}
+
+# ─── Plan-change timeline (PR6 page set: /app/study/plan) ────────────────────
+# Maps the raw planner audit + (PR5-live) mastery audit into the canonical
+# event shape the PlanImpactTimeline UI consumes. `kind` is one of
+# topic_added | priority_shift | topic_removed | phase_change.
+_PLAN_KIND_BY_EVENT = {
+    "manual_regeneration": "priority_shift",
+    "weekly_review": "priority_shift",
+    "revision_overdue": "priority_shift",
+    "task_missed": "priority_shift",
+    "task_completed": "priority_shift",
+    "focus_session_completed": "priority_shift",
+    "mock_logged": "priority_shift",
+    "deadline_changed": "phase_change",
+    "exam_update": "phase_change",
+}
+
+_PLAN_REASON_HUMAN = {
+    "manual_regeneration": "Plan regenerated",
+    "weekly_review": "Weekly review adjustment",
+    "revision_overdue": "Revision overdue — topics reprioritized",
+    "task_missed": "Task missed — plan adjusted",
+    "task_completed": "Task completed",
+    "focus_session_completed": "Focus session logged",
+    "mock_logged": "Mock logged — plan adjusted",
+    "deadline_changed": "Exam deadline changed",
+    "exam_update": "Exam details updated",
+}
+
+
+def _derive_plan_kind(event_type: str | None, change_summary: dict | None) -> str:
+    cs = change_summary or {}
+    if cs.get("removed") or cs.get("removed_topics"):
+        return "topic_removed"
+    if cs.get("added") or cs.get("added_topics"):
+        return "topic_added"
+    return _PLAN_KIND_BY_EVENT.get(event_type or "", "priority_shift")
+
+
+def _derive_plan_trigger(row: dict) -> dict[str, Any]:
+    payload = row.get("trigger_payload") or {}
+    event_type = row.get("event_type")
+    source = row.get("trigger_source")
+    attempt_id = payload.get("attempt_id") or payload.get("mock_attempt_id")
+    if source == "admin":
+        return {"type": "manual", "actor_id": payload.get("actor_id")}
+    if attempt_id or event_type == "mock_logged":
+        return {"type": "mock_attempt", "attempt_id": attempt_id}
+    if event_type == "manual_regeneration":
+        return {"type": "manual", "actor_id": payload.get("actor_id")}
+    return {"type": "scheduled"}
+
+
+def _plan_timeline_events(
+    sb: Any, user_id: str, cutoff: str, mastery_flag: str
+) -> list[dict[str, Any]]:
+    adaptation = (
+        sb.table("study_adaptation_events")
+        .select("id, created_at, event_type, trigger_source, trigger_payload, change_summary")
+        .eq("user_id", user_id)
+        .gte("created_at", cutoff)
+        .order("created_at", desc=True)
+        .limit(200)
+        .execute()
+        .data
+        or []
+    )
+    events: list[dict[str, Any]] = []
+    for r in adaptation:
+        event_type = r.get("event_type")
+        events.append(
+            {
+                "id": r.get("id"),
+                "at": r.get("created_at"),
+                "kind": _derive_plan_kind(event_type, r.get("change_summary")),
+                "reason_code": event_type,
+                "reason_human": _PLAN_REASON_HUMAN.get(event_type or "", "Plan updated"),
+                "trigger": _derive_plan_trigger(r),
+                "mastery_delta_db": None,
+            }
+        )
+
+    # Mastery-driven plan changes are only honest when PR5 actually wrote them.
+    # In off/shadow the audit table holds no live rows for this user, but we
+    # still gate on the flag so a stale shadow row can never leak a delta.
+    if mastery_flag == "live":
+        audit = (
+            sb.table("user_topic_mastery_audit")
+            .select("id, topic_id, attempt_id, before_mastery_db, after_mastery_db, delta_applied_db, at")
+            .eq("user_id", user_id)
+            .gte("at", cutoff)
+            .order("at", desc=True)
+            .limit(200)
+            .execute()
+            .data
+            or []
+        )
+        for r in audit:
+            before = r.get("before_mastery_db")
+            after = r.get("after_mastery_db")
+            delta = r.get("delta_applied_db")
+            if delta is None and before is not None and after is not None:
+                delta = float(after) - float(before)
+            events.append(
+                {
+                    "id": f"mastery:{r.get('id')}",
+                    "at": r.get("at"),
+                    "kind": "priority_shift",
+                    "reason_code": "mastery_shift",
+                    "reason_human": "Mastery updated from a mock attempt",
+                    "trigger": {"type": "mock_attempt", "attempt_id": r.get("attempt_id")},
+                    "mastery_delta_db": {
+                        "topic_id": r.get("topic_id"),
+                        "before": before,
+                        "after": after,
+                        "delta": delta,
+                    },
+                }
+            )
+
+    events.sort(key=lambda e: e.get("at") or "", reverse=True)
+    return events[:200]
+
+
+@router.get("/reports/plan-timeline")
+async def reports_plan_timeline(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Plan-change events for the /app/study/plan timeline.
+
+    Unions rule-based planner audit (``study_adaptation_events``) with
+    mastery-shift events (``user_topic_mastery_audit``). ``mastery_delta_db``
+    is populated only when the PR5 write-back flag is ``live`` — it is null on
+    every event otherwise so the UI can suppress delta indicators uniformly.
+    """
+    sb = get_supabase_admin()
+    user_id = user.get("id")
+    if not user_id:
+        return {"events": []}
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=max(1, days))).isoformat()
+    events = _plan_timeline_events(sb, user_id, cutoff, get_mastery_write_flag())
+    return {"events": events}
+
+@router.get("/reports/topic-recovery")
+async def reports_topic_recovery(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    sb = get_supabase_admin(); user_id = user.get("id")
+    rows = (sb.table("user_topic_mastery_audit").select("topic_id, topic_name, created_at, mastery_db").eq("user_id", user_id).order("created_at", desc=False).limit(5000).execute().data or [])
+    by = {}
+    for r in rows:
+        t = r.get("topic_id")
+        o = by.setdefault(t,{"topic_id":t,"name":r.get("topic_name"),"mastery_history":[]})
+        o["mastery_history"].append({"at":r.get("created_at"),"mastery_db":r.get("mastery_db")})
+    return {"items": list(by.values())}
+
+@router.get("/reports/subject-mastery")
+async def reports_subject_mastery(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    sb = get_supabase_admin(); user_id = user.get("id")
+    rows = (sb.table("subject_mastery_snapshots").select("subject_id, subject_name, topic_id, topic_name, mastery, mastery_delta, attempt_volume").eq("user_id", user_id).order("attempt_volume", desc=True).limit(100).execute().data or [])
+    return {"items": rows}
 
 # ───────────────────────────── Subjects ─────────────────────────────────────
 @router.get("/subjects")
@@ -1030,3 +1260,45 @@ async def task_reasoning(
     if result is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return result
+
+
+_VALID_NUDGE_CODES = {
+    "mock_review_pending",
+    "subject_behind",
+    "backlog_over_threshold",
+    "milestone_in_7d",
+    "focus_streak_break",
+}
+
+
+@router.post("/nudges/{code}/dismiss")
+async def dismiss_nudge(
+    code: str, user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
+    """Record that the user dismissed a Study Home nudge.
+
+    Persisted in ``study_nudge_dismissals`` (migration 136). Mission
+    Control filters the nudge from the payload for a fixed 24h TTL and
+    surfaces it again if the underlying condition is still true after
+    that window. 400 on an unknown code so the closed-set contract is
+    enforced server-side as well as in the table CHECK constraint.
+    """
+    if code not in _VALID_NUDGE_CODES:
+        raise HTTPException(status_code=400, detail="Unknown nudge code.")
+    user_id = user.get("id")
+    supabase = get_supabase_admin()
+    from datetime import datetime, timezone
+
+    try:
+        supabase.table("study_nudge_dismissals").upsert(
+            {
+                "user_id": user_id,
+                "nudge_code": code,
+                "dismissed_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="user_id,nudge_code",
+        ).execute()
+    except Exception:  # noqa: BLE001
+        logger.exception("nudge dismiss failed for %s / %s", user_id, code)
+        raise HTTPException(status_code=500, detail="Could not dismiss nudge.")
+    return {"ok": True, "code": code}

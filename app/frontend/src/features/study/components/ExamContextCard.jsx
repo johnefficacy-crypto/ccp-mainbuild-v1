@@ -1,6 +1,6 @@
 import React from "react";
 import { BookOpen } from "lucide-react";
-import { StatusBadge } from "../../../shared/ui";
+import { StatusBadge } from "../../../shared/ui/core";
 
 // Renders the `exam_context` block. high_yield_topics is verified-only by
 // contract (backend returns locked coverage rows only), so anything shown
