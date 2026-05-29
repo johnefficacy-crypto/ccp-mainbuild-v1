@@ -67,9 +67,10 @@ def _process_page_words(
         if not col:
             continue
         col_start, _col_end = columns[col_idx]
+        effective_left = min((w.bbox[0] for w in col), default=col_start)
         lines = reconstruct_lines(col)
         col_questions, last_accepted_ordinal = segment_column(
-            lines, col_start, last_accepted_ordinal, page
+            lines, effective_left, last_accepted_ordinal, page
         )
         questions.extend(col_questions)
 

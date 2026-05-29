@@ -34,11 +34,11 @@ def _w(
 # Left column   x ≈ 0.01 – 0.43   col_left detected ≈ 0.00
 # Right column  x ≈ 0.51 – 0.94   col_left detected ≈ 0.50
 #
-# Anchor threshold = col_left + 0.02:
-#   Left  anchors:    x_min ≤ 0.02   →  question "1." at x=0.01  ✓
-#   Left  statements: x_min ≈ 0.05   →  REJECTED (> 0.02)
-#   Right anchors:    x_min ≤ 0.52   →  question "4." at x=0.51  ✓
-#   Right options:    x_min ≈ 0.53   →  rejected as anchor; caught by option regex
+# Anchor threshold = effective_left + 0.04  (effective_left = min word x in column):
+#   Left  anchors:    effective_left=0.01, gate=0.05  →  "1." at x=0.01  ✓
+#   Left  statements: x_min=0.06 > gate=0.05          →  REJECTED
+#   Right anchors:    effective_left=0.51, gate=0.55  →  "4." at x=0.51  ✓
+#   Right options:    x_min=0.53, caught by option regex before ordinal check
 # ---------------------------------------------------------------------------
 
 WORDS: list[Word] = [
@@ -48,12 +48,12 @@ WORDS: list[Word] = [
     _w("Consider",  0.10, 0.04),
     _w("the",       0.22, 0.04),
     _w("following", 0.28, 0.04),
-    # statement 1 — indented x=0.05 > col_left+0.02=0.02  →  NOT an anchor
-    _w("1.",        0.05, 0.07),
+    # statement 1 — indented x=0.06 > gate(0.01+0.04=0.05)  →  NOT an anchor
+    _w("1.",        0.06, 0.07),
     _w("First",     0.14, 0.07),
     _w("point.",    0.24, 0.07),
     # statement 2 — indented
-    _w("2.",        0.05, 0.09),
+    _w("2.",        0.06, 0.09),
     _w("Second",    0.14, 0.09),
     _w("point",     0.24, 0.09),
     _w("here.",     0.33, 0.09),
