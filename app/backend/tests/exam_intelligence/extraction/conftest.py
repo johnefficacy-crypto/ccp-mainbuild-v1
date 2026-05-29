@@ -55,7 +55,8 @@ def _require_integration_env() -> None:
     url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     if not url or not key:
-        pytest.skip(
+        pytest.fail(
             "Integration test requires SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) "
-            "and SUPABASE_SERVICE_ROLE_KEY env vars"
+            "and SUPABASE_SERVICE_ROLE_KEY env vars — missing creds must fail loud, "
+            "not silently skip the acceptance gate."
         )

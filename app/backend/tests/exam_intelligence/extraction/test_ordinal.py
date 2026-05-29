@@ -19,6 +19,15 @@ class TestDetectOrdinal:
     def test_colon_separator(self):
         assert detect_ordinal("42: Which of the following") == 42
 
+    def test_comma_separator(self):
+        assert detect_ordinal("47, Which of the following") == 47
+
+    def test_dash_separator(self):
+        assert detect_ordinal("89- Which one of the following") == 89
+
+    def test_semicolon_separator(self):
+        assert detect_ordinal("5; Next question stem") == 5
+
     def test_non_ordinal_statement_marker(self):
         assert detect_ordinal("Statement I:") is None
 
