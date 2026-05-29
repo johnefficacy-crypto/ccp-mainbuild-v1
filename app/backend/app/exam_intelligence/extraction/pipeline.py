@@ -110,6 +110,13 @@ def _process_page_words(
     columns = _detect_columns_robust(words)
     col_words = assign_words_to_columns(words, columns)
 
+    split = columns[1][0] if len(columns) > 1 else None
+    logger.debug(
+        "DIAG page %d: words=%d split=%s ncols=%d last_acc_in=%d",
+        page, len(words), None if split is None else round(split, 4),
+        len(columns), last_accepted_ordinal,
+    )
+
     questions: list[ExtractedQuestion] = []
     for col_idx in sorted(col_words.keys()):
         col = col_words[col_idx]
@@ -126,6 +133,13 @@ def _process_page_words(
         lines = reconstruct_lines(col)
         col_questions, last_accepted_ordinal = segment_column(
             lines, effective_left, last_accepted_ordinal, page
+        )
+        logger.debug(
+            "DIAG page %d col %d: nwords=%d nlines=%d eff_left=%.4f "
+            "first_line=%r qnums=%s last_acc_out=%d",
+            page, col_idx, len(col), len(lines), effective_left,
+            (" ".join(w.text for w in lines[0])[:40] if lines else ""),
+            [q.question_number for q in col_questions], last_accepted_ordinal,
         )
         questions.extend(col_questions)
 
