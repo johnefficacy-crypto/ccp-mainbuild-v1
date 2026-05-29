@@ -22,14 +22,34 @@ document_assets:
 
 ### v1 eligibility
 
-A document is extractable by v1 iff:
-1. structural_format == 'mcq_bilingual_two_column'
-2. source_kind is appropriate clean input (see PR #501)
+A document is extractable by v1 iff ALL three guards pass:
 
-Out-of-scope documents upload successfully with their format tagged
-but are NEVER auto-extracted. The extractor raises a loud error
-(ExtractionNotSupportedError) on dispatch attempts for unsupported
-formats. No silent garbage is produced.
+1. `structural_format != 'unknown'`  — raises `ExtractionRequiresClassificationError`
+2. `structural_format == 'mcq_bilingual_two_column'`  — raises `ExtractionNotSupportedError`
+3. `source_kind IN ('official_scan', 'sanitized_coaching')`  — raises `ExtractionRequiresCleanInputError`
+
+All three checks run before any OCR. No garbage rows are produced on failure.
+
+### Source eligibility
+
+| `source_kind`        | v1 eligible? | Rationale |
+|---------------------|-------------|-----------|
+| `official_scan`      | Yes         | No overlays; clean input guaranteed |
+| `sanitized_coaching` | Yes         | Overlays removed; verified clean |
+| `raw_coaching`       | No          | Watermarks/overlays corrupt OCR word stream |
+| `crowd_sourced`      | No          | Provenance unclear; cannot guarantee clean input |
+| `unknown`            | No          | Must be classified before extraction |
+
+See `docs/engineering/sanitization-sop-v1.md` for the full rationale
+and the step-by-step procedure for converting `raw_coaching` → `sanitized_coaching`.
+
+**Why clean input, not a watermark filter:** A post-OCR filter would need to match
+hundreds of ever-changing coaching agency naming conventions, handle partial overlap
+with real question text, and be maintained indefinitely. A pre-OCR clean-input gate
+is permanent: sanitize once at upload time.
+
+Out-of-scope documents upload successfully with their format and source_kind tagged
+but are NEVER auto-extracted. Loud errors on dispatch prevent silent garbage rows.
 
 ### Adding a new exam identity
 
