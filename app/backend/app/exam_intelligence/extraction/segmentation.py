@@ -4,7 +4,7 @@ Algorithm (v3 — ordinal-anchored, document-monotonic, stem-only):
 1. Detect columns via x-histogram bimodality (layout.py).
 2. Assign words to columns (layout.py).
 3. Within each column, reconstruct visual lines by y-overlap (reconstruct_lines).
-4. Find anchor lines: first word x_min ≤ column_left_edge + 0.02 AND ordinal ∈ [1, 100]
+4. Find anchor lines: first word x_min ≤ column_left_edge + 0.04 AND ordinal ∈ [1, 100]
    AND ordinal > last_accepted_ordinal (monotonic).
 5. For each anchor, find_stem_end: stop at option labels, MCQ footers, or next anchor.
 6. Emit ExtractedQuestion for each anchor–stem span.
@@ -29,10 +29,12 @@ from .types import ExtractedQuestion, Region, Word
 _ORDINAL_MIN = 1
 _ORDINAL_MAX = 200
 _ANCHOR_MAX = 100         # questions rarely exceed 100; filters OCR noise above this
-_ANCHOR_X_GAP = 0.02      # x_min must be within this absolute distance of column left edge
+_ANCHOR_X_GAP = 0.04      # x_min must be within this absolute distance of column left edge
 
 _WS_RE = re.compile(r'[ \t]+')
 _OPTION_RE = re.compile(r'^\s*\([a-dA-D]\)')
+# Strip OCR artifacts (gutter pipe characters, whitespace) from line start before ordinal matching.
+_LEADING_NOISE_RE = re.compile(r'^[|\s]+')
 _MCQ_FOOTER_RES = [
     re.compile(r'select\s+the\s+answer', re.IGNORECASE),
     re.compile(r'codes?\s+below', re.IGNORECASE),
@@ -109,7 +111,7 @@ def find_anchor_lines(
     """Identify question-anchor lines within a column's reconstructed lines.
 
     A line is an anchor if:
-    * First word x_min ≤ effective_left + _ANCHOR_X_GAP (0.02).
+    * First word x_min ≤ effective_left + _ANCHOR_X_GAP (0.04).
     * Joined line text starts with an ordinal ∈ [1, _ANCHOR_MAX].
     * Ordinal is strictly greater than last_accepted_ordinal (monotonic).
     """
@@ -123,7 +125,7 @@ def find_anchor_lines(
         if first_word.bbox[0] > effective_left + _ANCHOR_X_GAP:
             continue
         text = ' '.join(w.text for w in line)
-        ordinal = detect_ordinal(text)
+        ordinal = detect_ordinal(_LEADING_NOISE_RE.sub('', text))
         if ordinal is None:
             continue
         if not (_ORDINAL_MIN <= ordinal <= _ANCHOR_MAX):
@@ -164,7 +166,7 @@ def find_stem_end(
                 return i
 
         if first_word.bbox[0] <= column_left_edge + _ANCHOR_X_GAP:
-            if detect_ordinal(text) is not None:
+            if detect_ordinal(_LEADING_NOISE_RE.sub('', text)) is not None:
                 return i
 
     return len(lines)
@@ -180,8 +182,9 @@ def build_question(
     if not all_words:
         return None
 
-    first_line_text = strip_ordinal(' '.join(w.text for w in stem_lines[0]))
-    rest = [' '.join(w.text for w in line) for line in stem_lines[1:] if line]
+    first_line_raw = ' '.join(w.text for w in stem_lines[0])
+    first_line_text = strip_ordinal(_LEADING_NOISE_RE.sub('', first_line_raw))
+    rest = [_LEADING_NOISE_RE.sub('', ' '.join(w.text for w in line)) for line in stem_lines[1:] if line]
     question_text = '\n'.join(
         _WS_RE.sub(' ', part).strip()
         for part in [first_line_text] + rest

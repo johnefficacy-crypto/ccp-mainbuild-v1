@@ -34,11 +34,11 @@ def _w(
 # Left column   x ≈ 0.01 – 0.43   col_left detected ≈ 0.00
 # Right column  x ≈ 0.51 – 0.94   col_left detected ≈ 0.50
 #
-# Anchor threshold = col_left + 0.02:
-#   Left  anchors:    x_min ≤ 0.02   →  question "1." at x=0.01  ✓
-#   Left  statements: x_min ≈ 0.05   →  REJECTED (> 0.02)
-#   Right anchors:    x_min ≤ 0.52   →  question "4." at x=0.51  ✓
-#   Right options:    x_min ≈ 0.53   →  rejected as anchor; caught by option regex
+# Anchor threshold = effective_left + 0.04  (effective_left = min word x in column):
+#   Left  anchors:    effective_left=0.01, gate=0.05  →  "1." at x=0.01  ✓
+#   Left  statements: x_min=0.06 > gate=0.05          →  REJECTED
+#   Right anchors:    effective_left=0.51, gate=0.55  →  "4." at x=0.51  ✓
+#   Right options:    x_min=0.53, caught by option regex before ordinal check
 # ---------------------------------------------------------------------------
 
 WORDS: list[Word] = [
@@ -48,12 +48,12 @@ WORDS: list[Word] = [
     _w("Consider",  0.10, 0.04),
     _w("the",       0.22, 0.04),
     _w("following", 0.28, 0.04),
-    # statement 1 — indented x=0.05 > col_left+0.02=0.02  →  NOT an anchor
-    _w("1.",        0.05, 0.07),
+    # statement 1 — indented x=0.06 > gate(0.01+0.04=0.05)  →  NOT an anchor
+    _w("1.",        0.06, 0.07),
     _w("First",     0.14, 0.07),
     _w("point.",    0.24, 0.07),
     # statement 2 — indented
-    _w("2.",        0.05, 0.09),
+    _w("2.",        0.06, 0.09),
     _w("Second",    0.14, 0.09),
     _w("point",     0.24, 0.09),
     _w("here.",     0.33, 0.09),
@@ -156,3 +156,63 @@ def test_q1_contains_stem_text():
     result = pipeline.extract_from_words(WORDS, page=3, document_id="test")
     q1 = next(q for q in result.questions if q.question_number == 1)
     assert "Consider" in q1.question_text
+
+
+class TestDetectColumnsRobust:
+    """Regression tests for the gutter-band column split (right-column recall fix).
+
+    The two columns of the v1 corpus overlap in x — left body text extends to
+    ~0.49 while right-column ordinals start at ~0.47 — so a global histogram
+    valley search can lock onto a spurious low-density bin far from the gutter.
+    A mis-placed split floods the right column with left-column words and the
+    anchor gate then rejects every genuine right-column ordinal.
+    """
+
+    def test_split_lands_in_gutter_band_despite_left_sparse_bin(self):
+        # Left column words deliberately leave a sparse band near x≈0.10 that
+        # the generic detector is prone to mistake for the gutter.  The robust
+        # detector must place the split inside [0.44, 0.52] instead.
+        words = []
+        # Dense left cluster near the margin, then a gap, then more left text.
+        for i in range(8):
+            x = 0.02 + i * 0.004
+            words.append(_w("L", x, 0.10 + i * 0.03, w=0.02))
+        for i in range(8):
+            x = 0.20 + i * 0.025
+            words.append(_w("L", x, 0.10 + i * 0.03, w=0.05))
+        # Right column cluster starting just right of the true gutter.
+        for i in range(8):
+            x = 0.49 + (i % 4) * 0.06
+            words.append(_w("R", x, 0.10 + i * 0.03, w=0.05))
+
+        columns = pipeline._detect_columns_robust(words)
+        assert len(columns) == 2, f"expected two columns, got {columns}"
+        split = columns[1][0]
+        assert 0.44 <= split <= 0.52, f"split {split} outside gutter band"
+
+    def test_right_column_ordinals_survive_anchor_gate(self):
+        # Build a two-column page where the right ordinals sit at x≈0.49.
+        # Before the fix a mis-placed split dragged right effective_left west,
+        # rejecting these ordinals; now all six questions must be extracted.
+        words = [
+            _w("1.", 0.02, 0.05), _w("Left", 0.05, 0.05), _w("stem", 0.12, 0.05),
+            _w("2.", 0.02, 0.20), _w("Left", 0.05, 0.20), _w("two", 0.12, 0.20),
+            _w("3.", 0.02, 0.35), _w("Left", 0.05, 0.35), _w("three", 0.12, 0.35),
+            _w("4.", 0.49, 0.05), _w("Right", 0.53, 0.05), _w("stem", 0.62, 0.05),
+            _w("5.", 0.49, 0.20), _w("Right", 0.53, 0.20), _w("two", 0.62, 0.20),
+            _w("6.", 0.49, 0.35), _w("Right", 0.53, 0.35), _w("three", 0.62, 0.35),
+        ]
+        result = pipeline.extract_from_words(words, page=3, document_id="test")
+        qnums = sorted(q.question_number for q in result.questions)
+        assert qnums == [1, 2, 3, 4, 5, 6], (
+            f"right-column ordinals dropped: got {qnums}"
+        )
+
+    def test_single_column_page_returns_one_column(self):
+        # No right-column mass — must not invent a spurious split.
+        words = [
+            _w("1.", 0.02, 0.05), _w("Only", 0.05, 0.05), _w("left", 0.12, 0.05),
+            _w("2.", 0.02, 0.20), _w("Only", 0.05, 0.20), _w("left", 0.12, 0.20),
+        ]
+        columns = pipeline._detect_columns_robust(words)
+        assert columns == [(0.0, 1.0)], f"expected single column, got {columns}"

@@ -9,13 +9,13 @@ from __future__ import annotations
 import re
 
 # Matches a leading printed question number followed by a separator.
-# Separators: period, closing paren, colon, or any whitespace.
-# Examples that match: "21. ", "3 ", "1) ", "42: "
+# Separators: period, closing paren, colon, comma, dash, or any whitespace.
+# Examples that match: "21. ", "3 ", "1) ", "42: ", "47, ", "89- "
 # Examples that do NOT match: "I. ", "Statement I:", "21" (no separator)
-PATTERN = r'^\s*(\d+)[.):\s]'
+PATTERN = r'^\s*(\d+)[.),:;\s-]'
 
 _RE = re.compile(PATTERN)
-_STRIP_RE = re.compile(r'^\s*\d+[.):\s]\s*')
+_STRIP_RE = re.compile(r'^\s*\d+[.),:;\s-]\s*')
 
 
 def detect_ordinal(text: str) -> int | None:
