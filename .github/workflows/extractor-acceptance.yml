@@ -34,6 +34,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Verify Supabase credentials are present
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set as repository secrets."
+            echo "Without them the integration test SKIPs and the acceptance gate is a no-op."
+            exit 1
+          fi
+
       - name: Run acceptance test (integration, recall ≥ 0.80)
         run: |
           pytest tests/exam_intelligence/extraction/test_pipeline_against_fixture.py \

@@ -1,9 +1,10 @@
-"""Unit tests for reconstruct_lines and join_lines_text."""
+"""Unit tests for reconstruct_lines, join_lines_text, and find_anchor_lines."""
 from __future__ import annotations
 
 import pytest
 
 from app.exam_intelligence.extraction.segmentation import (
+    find_anchor_lines,
     join_lines_text,
     reconstruct_lines,
 )
@@ -121,3 +122,43 @@ class TestJoinLinesText:
     def test_empty_inner_lines_skipped(self):
         line = [_w("hello", 0.1, 0.1)]
         assert join_lines_text([line, [], line]) == "hello\nhello"
+
+
+class TestFindAnchorLines:
+    """D2 regression tests: anchor gate must reject statement numerals."""
+
+    def test_question_anchor_accepted(self):
+        # "1." at x=0.01, column left=0.00 → x ≤ 0.00+0.02 → accepted
+        line = [_w("1.", 0.01, 0.10), _w("Consider", 0.10, 0.10)]
+        anchors = find_anchor_lines([line], effective_left=0.00)
+        assert len(anchors) == 1
+        assert anchors[0].ordinal == 1
+
+    def test_statement_numeral_rejected_by_anchor_gate(self):
+        # "1." at x=0.05, column left=0.00 → x > 0.00+0.02 → REJECTED (D2 fix)
+        line = [_w("1.", 0.05, 0.10), _w("First", 0.14, 0.10), _w("point.", 0.24, 0.10)]
+        anchors = find_anchor_lines([line], effective_left=0.00)
+        assert anchors == [], (
+            "Statement numeral at x=0.05 must be rejected: "
+            "x_min(0.05) > col_left(0.00) + _ANCHOR_X_GAP(0.02)"
+        )
+
+    def test_question_accepted_statement_rejected_in_same_column(self):
+        # Real Q1 at x=0.01, then statement "1." and "2." at x=0.05
+        q1_line = [_w("1.", 0.01, 0.04), _w("Consider", 0.10, 0.04)]
+        stmt1   = [_w("1.", 0.05, 0.07), _w("First",    0.14, 0.07)]
+        stmt2   = [_w("2.", 0.05, 0.09), _w("Second",   0.14, 0.09)]
+        q2_line = [_w("2.", 0.01, 0.22), _w("Which",    0.10, 0.22)]
+        anchors = find_anchor_lines([q1_line, stmt1, stmt2, q2_line], effective_left=0.00)
+        ordinals = [a.ordinal for a in anchors]
+        assert ordinals == [1, 2], (
+            f"Only real Q1 and Q2 should be anchors, got ordinals={ordinals}"
+        )
+
+    def test_monotonicity_rejects_lower_ordinal(self):
+        # If Q3 is already accepted, a later line with ordinal 2 is rejected
+        q3 = [_w("3.", 0.01, 0.10), _w("Stem", 0.10, 0.10)]
+        q2 = [_w("2.", 0.01, 0.30), _w("Stem", 0.10, 0.30)]
+        anchors = find_anchor_lines([q3, q2], effective_left=0.00, last_accepted_ordinal=0)
+        assert len(anchors) == 1
+        assert anchors[0].ordinal == 3
