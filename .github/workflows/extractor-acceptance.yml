@@ -16,6 +16,9 @@ jobs:
         working-directory: app/backend
 
     env:
+      # conftest.py _require_integration_env() checks SUPABASE_URL
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      # get_supabase_admin() reads settings.NEXT_PUBLIC_SUPABASE_URL
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
@@ -24,10 +27,11 @@ jobs:
 
       - name: Verify Supabase credentials are present
         run: |
+          echo "SUPABASE_URL set:              $( [ -n "$SUPABASE_URL" ] && echo YES || echo NO )"
           echo "NEXT_PUBLIC_SUPABASE_URL set:  $( [ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && echo YES || echo NO )"
           echo "SUPABASE_SERVICE_ROLE_KEY set: $( [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && echo YES || echo NO )"
-          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "::error::Repo secrets SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (Settings → Secrets and variables → Actions). The app reads NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY; the workflow maps SUPABASE_URL → NEXT_PUBLIC_SUPABASE_URL."
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::Repo secrets SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (Settings → Secrets → Actions)."
             exit 1
           fi
 

@@ -51,9 +51,11 @@ def pdf_bytes_2025() -> bytes:
 
 
 def _require_integration_env() -> None:
-    url = os.getenv("SUPABASE_URL")
+    # Accept either SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL (workflow maps both).
+    url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     if not url or not key:
         pytest.skip(
-            "Integration test requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars"
+            "Integration test requires SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) "
+            "and SUPABASE_SERVICE_ROLE_KEY env vars"
         )
