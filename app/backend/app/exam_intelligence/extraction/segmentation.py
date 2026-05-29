@@ -33,6 +33,8 @@ _ANCHOR_X_GAP = 0.04      # x_min must be within this absolute distance of colum
 
 _WS_RE = re.compile(r'[ \t]+')
 _OPTION_RE = re.compile(r'^\s*\([a-dA-D]\)')
+# Strip OCR artifacts (gutter pipe characters, whitespace) from line start before ordinal matching.
+_LEADING_NOISE_RE = re.compile(r'^[|\s]+')
 _MCQ_FOOTER_RES = [
     re.compile(r'select\s+the\s+answer', re.IGNORECASE),
     re.compile(r'codes?\s+below', re.IGNORECASE),
@@ -123,7 +125,7 @@ def find_anchor_lines(
         if first_word.bbox[0] > effective_left + _ANCHOR_X_GAP:
             continue
         text = ' '.join(w.text for w in line)
-        ordinal = detect_ordinal(text)
+        ordinal = detect_ordinal(_LEADING_NOISE_RE.sub('', text))
         if ordinal is None:
             continue
         if not (_ORDINAL_MIN <= ordinal <= _ANCHOR_MAX):
@@ -164,7 +166,7 @@ def find_stem_end(
                 return i
 
         if first_word.bbox[0] <= column_left_edge + _ANCHOR_X_GAP:
-            if detect_ordinal(text) is not None:
+            if detect_ordinal(_LEADING_NOISE_RE.sub('', text)) is not None:
                 return i
 
     return len(lines)
@@ -180,8 +182,9 @@ def build_question(
     if not all_words:
         return None
 
-    first_line_text = strip_ordinal(' '.join(w.text for w in stem_lines[0]))
-    rest = [' '.join(w.text for w in line) for line in stem_lines[1:] if line]
+    first_line_raw = ' '.join(w.text for w in stem_lines[0])
+    first_line_text = strip_ordinal(_LEADING_NOISE_RE.sub('', first_line_raw))
+    rest = [_LEADING_NOISE_RE.sub('', ' '.join(w.text for w in line)) for line in stem_lines[1:] if line]
     question_text = '\n'.join(
         _WS_RE.sub(' ', part).strip()
         for part in [first_line_text] + rest
