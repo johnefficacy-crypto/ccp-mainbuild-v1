@@ -21,8 +21,8 @@ import numpy as np
 from PIL import Image
 
 from .dispatch import (
-    ExamIdentity,
     ELIGIBLE_FORMATS_V1,
+    ExamIdentity,
     StructuralFormat,
     is_extractable_by_v1,
 )
@@ -83,8 +83,7 @@ def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
     """SELECT id, structural_format, exam_identity, storage_path
     FROM document_assets WHERE id = $1.
 
-    Service-role client; read-only.
-    Raises ValueError if not found.
+    Service-role client; read-only. Raises ValueError if not found.
     """
     from app.db.supabase_client import get_supabase_admin
 
