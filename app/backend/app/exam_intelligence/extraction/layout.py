@@ -21,8 +21,7 @@ def assign_words_to_columns(
     words: list[Word],
     columns: list[tuple[float, float]],
 ) -> dict[int, list[Word]]:
-
-  """Assign each word to a column by centroid x."""
+    """Assign each word to a column by centroid x."""
     result: dict[int, list[Word]] = {i: [] for i in range(len(columns))}
     for w in words:
         cx = (w.bbox[0] + w.bbox[2]) / 2.0
