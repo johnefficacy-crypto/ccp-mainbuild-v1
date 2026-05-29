@@ -67,7 +67,13 @@ def _process_page_words(
         if not col:
             continue
         col_start, _col_end = columns[col_idx]
-        effective_left = min((w.bbox[0] for w in col), default=col_start)
+        # Exclude words whose left edge is west of col_start (wide gutter-spanning
+        # words assigned by centroid); their bbox[0] would drag effective_left
+        # below the actual column edge and tighten the anchor gate too much.
+        effective_left = min(
+            (w.bbox[0] for w in col if w.bbox[0] >= col_start),
+            default=col_start,
+        )
         lines = reconstruct_lines(col)
         col_questions, last_accepted_ordinal = segment_column(
             lines, effective_left, last_accepted_ordinal, page
