@@ -1,122 +1,130 @@
-# Sanitization SOP — v1 Extractor Clean-Input Requirement
+# Sanitization SOP — v1
 
-**Status:** Active  
-**Applies to:** v1 extractor (`exam_intelligence.extraction`, extractor_version 0.2.x)
+UPSC papers acquired from coaching distributions (Drishti, Vision IAS, ForumIAS, etc.)
+carry watermarks that interfere with OCR. This SOP describes how to sanitize a
+`raw_coaching` PDF into a `sanitized_coaching` PDF eligible for extraction.
 
----
+## When to use this SOP
 
-## Why clean input, not a watermark filter
-
-The v1 OCR pipeline (Tesseract PSM 3) runs on full-page rasterized images at 300 DPI.
-Watermarks and coaching-overlay text contaminate the OCR word stream in three ways:
-
-1. **Text collision** — OCR picks up watermark characters as real words, injecting
-   spurious tokens into the word list that the segmentation module cannot distinguish
-   from question text.
-2. **Confidence dilution** — semi-transparent overlays reduce ink contrast and depress
-   word-level OCR confidence, dragging p50 confidence below the `MIN_WORD_CONFIDENCE=30`
-   floor and dropping real words.
-3. **Layout disruption** — diagonal or full-bleed overlays add spurious x-coordinate
-   mass that defeats the gutter-band column splitter, collapsing both columns into one.
-
-A post-OCR watermark filter would need to:
-- Detect all coaching agency naming conventions (hundreds, ever-changing)
-- Handle partial overlap with real question text without over-stripping
-- Be maintained for each new coaching source added to the corpus
-
-This is fragile and gets harder over time. A pre-OCR clean-input gate is permanent:
-sanitize once at upload time, run extraction on the clean copy.
-
----
+Triggered when:
+- Current year's UPSC paper is published by a coaching service (before official UPSC
+  archive release ~1 year later)
+- A `raw_coaching` document is uploaded; the admin or SME needs to produce its sanitized
+  counterpart
 
 ## Source kind taxonomy
 
 | `source_kind` value   | Extraction eligible? | Description |
 |----------------------|---------------------|-------------|
-| `official_scan`       | Yes                 | Directly from UPSC/government press; no overlays |
-| `sanitized_coaching`  | Yes                 | Coaching PDF; watermarks/overlays removed; verified clean |
-| `raw_coaching`        | **No**              | Coaching PDF as uploaded; overlays present |
-| `crowd_sourced`       | **No**              | Community-contributed; provenance unclear |
-| `unknown`             | **No**              | Not yet classified |
+| `official_archive`    | Yes                 | UPSC's published archive; no watermark; authoritative. Available ~1 year after exam. |
+| `official_scan`       | Yes (legacy)        | Legacy alias for official_archive; prefer `official_archive` for new uploads. |
+| `sanitized_coaching`  | Yes                 | Coaching PDF; watermarks/overlays removed and verified clean. |
+| `sme_authored`        | Yes                 | SME-authored or transcribed test content. |
+| `raw_coaching`        | **No**              | Coaching PDF as-is; overlays present. Must be sanitized first. |
+| `crowd_sourced`       | **No**              | Community-contributed; provenance unclear. |
+| `unknown`             | **No**              | Not yet classified. |
 
-The v1 extractor raises `ExtractionRequiresCleanInputError` for any ineligible kind
-before any OCR runs. No garbage rows are written to `extraction_runs`.
+## Quality target
 
----
+The sanitized PDF must:
+- Have no visible watermark across all question pages
+- Preserve English question text undamaged
+- Preserve all original page numbers and ordering
+- Contain only English question pages (Hindi/vernacular pages may be removed or kept;
+  v1 extractor skips them either way)
 
-## How to sanitize a coaching PDF
+## Recommended tooling
 
-### Prerequisites
+### ImageMagick (fastest for Drishti's "Al Vision" watermark)
 
-- `pdftk` or `qpdf` for page extraction / reassembly
-- `ghostscript` for rasterization / recompression
-- Any PDF editor (Adobe Acrobat, PDF-XChange, LibreOffice Draw) for manual overlay removal
-
-### Step-by-step
-
-1. **Obtain the raw PDF** — upload with `source_kind=raw_coaching`. Do not attempt extraction.
-
-2. **Identify overlay type:**
-   - *Text overlays* (coaching agency name stamped as a PDF text object) →
-     open in editor, select-all on each page, delete any text that is not
-     question content.
-   - *Image overlays* (semi-transparent PNG/JPEG burned into the page) →
-     use Ghostscript to re-render pages and manually remove via image editing,
-     or use Acrobat's "Edit PDF" layer tools.
-   - *Full-page watermarks* (repeated diagonal text) → use Acrobat's watermark
-     removal or a Ghostscript PostScript filter.
-
-3. **Ghostscript clean rasterize + repack** (removes most PDF-layer overlays):
-   ```bash
-   gs -dBATCH -dNOPAUSE -sDEVICE=pdfwrite \
-      -dCompatibilityLevel=1.4 \
-      -dPrinted=false \
-      -sOutputFile=clean.pdf \
-      raw.pdf
-   ```
-   This flattens transparent layers. Inspect the output; some overlays survive flattening.
-
-4. **Verify** — open `clean.pdf` in a PDF viewer and confirm:
-   - No coaching agency name visible on any page
-   - No semi-transparent logos or diagonal watermarks
-   - Question text is fully legible
-
-5. **Upload the clean PDF** via the admin UI with:
-   - `source_kind = sanitized_coaching`
-   - `sanitized_from_document_id = <UUID of the raw_coaching document uploaded in step 1>`
-
-6. **Trigger extraction** — the v1 extractor will now accept the document.
-
----
-
-## Quality bar
-
-A sanitized document is accepted only if the acceptance gate (≥ 0.80 recall on the
-2026 GS-I fixture) continues to hold after the document enters the corpus. Run:
+The Drishti watermark is a flat color overlay at consistent opacity. ImageMagick handles
+this in one command:
 
 ```bash
-pytest tests/exam_intelligence/extraction/test_pipeline_against_fixture.py \
-    -m integration -v -s
+# Single-page test first
+convert input.pdf[2] \
+    -fuzz 25% -fill white \
+    -opaque "rgb(220,180,180)" \
+    -density 300 \
+    test_page3.png
+
+# Inspect test_page3.png. Adjust fuzz % and target color
+# until the watermark disappears without damaging body text.
+
+# Full document
+convert input.pdf \
+    -fuzz 25% -fill white \
+    -opaque "rgb(220,180,180)" \
+    -density 300 \
+    sanitized.pdf
 ```
 
-If recall drops, the overlay was not fully removed; repeat steps 2–4.
+Tune the `rgb(...)` value by sampling the watermark color in GIMP or any image editor.
+The default value above is calibrated for the Drishti distribution observed in v1 fixtures.
 
----
+### Other coaching distributions
 
-## Grandfather clause
+| Distribution | Watermark color (approximate) | Notes |
+|--------------|------------------------------|-------|
+| Drishti (Al Vision) | rgb(220,180,180), light red | Tested, works |
+| Vision IAS | TBD on first encounter | Add row when seen |
+| ForumIAS | TBD on first encounter | Add row when seen |
 
-Documents uploaded before migration 153 that have no `source_kind` value are
-backfilled to `sanitized_coaching` (migration 153, `UPDATE document_assets WHERE id IN (...)`).
-Only the two known acceptance-gate fixture documents are backfilled; all other
-pre-153 documents remain `unknown` and require classification before extraction.
+When encountering a new distribution, add a row here with the calibrated values.
 
----
+## Quality check before upload
 
-## Adding a new source to the corpus
+After sanitization, verify by spot-check:
+1. Render pages 3, 5, 7 (first three English question pages)
+2. Confirm: no visible watermark, body text unchanged
+3. Render page 1 (cover) — should be intact
+4. Word count comparison: `pdftotext input.pdf - | wc -w` vs
+   `pdftotext sanitized.pdf - | wc -w`. Counts should differ by < 5%
+   (watermark contributes minimal text-layer content).
 
-1. Obtain the PDF.
-2. Check `source_kind`: if it is a coaching aggregate, it is `raw_coaching` by default.
-3. Follow the sanitization steps above.
-4. Upload with `source_kind=sanitized_coaching`, `sanitized_from_document_id` pointing at the raw version.
-5. Classify `exam_identity` and verify `structural_format` is auto-inferred correctly.
-6. Run the acceptance gate to confirm recall ≥ 0.80.
+If any of the above fails, retune ImageMagick parameters and retry. Do NOT upload a
+sanitized PDF that damages body text — it will silently degrade extraction recall.
+
+## Upload procedure
+
+1. Upload the RAW PDF first via admin doc flow with `source_kind='raw_coaching'`. Record
+   the resulting `document_id`.
+2. Run sanitization producing `sanitized.pdf`.
+3. Upload `sanitized.pdf` with:
+   - `source_kind='sanitized_coaching'`
+   - `sanitized_from_document_id=<id from step 1>`
+   - `structural_format` and `exam_identity` matching the raw doc
+4. The v1 extractor will now accept the document.
+
+## Why clean-input pipeline, not a watermark filter in code
+
+An earlier design (deferred H item from PR #499) considered a runtime watermark-detection
+module. That approach was rejected in favour of upstream sanitization:
+
+1. **Architectural**: the extractor's job is segmentation, not OCR preprocessing. Mixing
+   concerns produces brittle code.
+2. **Generalizability**: a code-resident filter needs maintenance as new coaching services
+   emerge. The SOP scales with documentation, not code.
+3. **False-positive risk**: a regex catching "Al Vision" could catch a legitimate question
+   about "AI vision". Sanitization happens before the text layer is created.
+4. **SME effort**: ~30–90 min per paper, ~10–15 papers per year. Bounded and one-time.
+5. **Audit**: storing both raw and sanitized versions (via `sanitized_from_document_id`)
+   lets reviewers verify what the extractor actually read.
+
+The deferred H item from PR #499 is therefore **cancelled**, not deferred.
+
+## What this SOP intentionally does not cover
+
+- Hindi/vernacular page filtering: v1 extractor skips even pages automatically.
+- Cropping: not needed if watermark removal is clean.
+- OCR re-pass: not needed; extractor does its own OCR.
+- Manual transcription: **never**. If sanitization fails, escalate — do not retype
+  questions from the watermarked PDF.
+
+## v2 plan
+
+When v2 lands, this SOP will be supplemented (not replaced) by:
+- Automated sanitization pipeline triggered on `raw_coaching` upload
+- Per-distribution detector modules
+- Vision-model-based watermark removal for complex cases
+- Multilingual OCR enabling vernacular page extraction

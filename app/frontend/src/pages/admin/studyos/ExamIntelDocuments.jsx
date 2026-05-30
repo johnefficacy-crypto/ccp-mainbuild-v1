@@ -22,7 +22,13 @@ const STRUCTURAL_FORMATS = [
 ];
 
 const SOURCE_KINDS = [
-  "official_scan", "sanitized_coaching", "raw_coaching", "crowd_sourced", "unknown",
+  { value: "official_archive", label: "Official UPSC archive (no watermark, authoritative)" },
+  { value: "sanitized_coaching", label: "Sanitized coaching PDF (watermark removed)" },
+  { value: "raw_coaching", label: "Raw coaching PDF (will need sanitization)" },
+  { value: "sme_authored", label: "SME-authored test content" },
+  { value: "official_scan", label: "Official scan (legacy; use official_archive instead)" },
+  { value: "crowd_sourced", label: "Crowd-sourced (not eligible for extraction)" },
+  { value: "unknown", label: "(not classified)" },
 ];
 
 // exam_identity → inferred structural_format (mirrors dispatch.py EXAM_TO_FORMAT_DEFAULT)
@@ -262,7 +268,7 @@ export default function ExamIntelDocuments() {
               className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
               data-testid="doc-field-source_kind"
             >
-              {SOURCE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+              {SOURCE_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
             </select>
             {form.source_kind === "raw_coaching" && (
               <p className="text-xs text-amber-700 mt-1" data-testid="raw-coaching-warning">

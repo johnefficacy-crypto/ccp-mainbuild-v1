@@ -14,19 +14,23 @@ class TestSourceKindEnum:
 
     def test_all_expected_values_present(self):
         values = {sk.value for sk in SourceKind}
+        assert 'official_archive' in values
         assert 'official_scan' in values
         assert 'sanitized_coaching' in values
         assert 'raw_coaching' in values
+        assert 'sme_authored' in values
         assert 'crowd_sourced' in values
         assert 'unknown' in values
 
     def test_source_kind_is_str_enum(self):
-        assert isinstance(SourceKind.OFFICIAL_SCAN, str)
-        assert SourceKind.OFFICIAL_SCAN == 'official_scan'
+        assert isinstance(SourceKind.OFFICIAL_ARCHIVE, str)
+        assert SourceKind.OFFICIAL_ARCHIVE == 'official_archive'
 
     def test_construct_from_string(self):
         assert SourceKind('sanitized_coaching') is SourceKind.SANITIZED_COACHING
         assert SourceKind('raw_coaching') is SourceKind.RAW_COACHING
+        assert SourceKind('official_archive') is SourceKind.OFFICIAL_ARCHIVE
+        assert SourceKind('sme_authored') is SourceKind.SME_AUTHORED
         assert SourceKind('unknown') is SourceKind.UNKNOWN
 
     def test_invalid_value_raises(self):
@@ -36,11 +40,17 @@ class TestSourceKindEnum:
 
 class TestEligibleSourceKindsV1:
 
-    def test_eligible_set_contains_official_scan(self):
+    def test_official_archive_eligible(self):
+        assert SourceKind.OFFICIAL_ARCHIVE in ELIGIBLE_SOURCE_KINDS_V1
+
+    def test_official_scan_eligible_legacy(self):
         assert SourceKind.OFFICIAL_SCAN in ELIGIBLE_SOURCE_KINDS_V1
 
-    def test_eligible_set_contains_sanitized_coaching(self):
+    def test_sanitized_coaching_eligible(self):
         assert SourceKind.SANITIZED_COACHING in ELIGIBLE_SOURCE_KINDS_V1
+
+    def test_sme_authored_eligible(self):
+        assert SourceKind.SME_AUTHORED in ELIGIBLE_SOURCE_KINDS_V1
 
     def test_raw_coaching_not_eligible(self):
         assert SourceKind.RAW_COACHING not in ELIGIBLE_SOURCE_KINDS_V1
@@ -54,15 +64,23 @@ class TestEligibleSourceKindsV1:
     def test_eligible_set_is_frozenset(self):
         assert isinstance(ELIGIBLE_SOURCE_KINDS_V1, frozenset)
 
-    def test_eligible_set_has_exactly_two_members(self):
-        assert len(ELIGIBLE_SOURCE_KINDS_V1) == 2
+    def test_eligibility_set_explicit(self):
+        """Sentinel: if this set changes, the change must be reviewed."""
+        assert ELIGIBLE_SOURCE_KINDS_V1 == frozenset({
+            SourceKind.OFFICIAL_ARCHIVE,
+            SourceKind.OFFICIAL_SCAN,
+            SourceKind.SANITIZED_COACHING,
+            SourceKind.SME_AUTHORED,
+        })
 
 
 class TestIsSourceEligibleV1:
 
     @pytest.mark.parametrize("kind", [
+        SourceKind.OFFICIAL_ARCHIVE,
         SourceKind.OFFICIAL_SCAN,
         SourceKind.SANITIZED_COACHING,
+        SourceKind.SME_AUTHORED,
     ])
     def test_eligible_kinds_return_true(self, kind):
         assert is_source_eligible_v1(kind) is True
