@@ -323,6 +323,62 @@ def post_trap_drill_attempts(
     return {"exam_id": exam_row["id"], **result}
 
 
+@router.get("/exams/{slug}/documents")
+def get_exam_documents(
+    slug: str,
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return verified exam documents grouped by doc_type, deterministic order."""
+    sb = get_supabase_admin()
+    try:
+        rows = (
+            sb.table("exams").select("id, slug").eq("slug", slug).limit(1).execute().data
+            or []
+        )
+        exam_row = rows[0] if rows else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("exam_documents exam lookup failed for %s: %s", slug, exc)
+        exam_row = None
+    if not exam_row or not exam_row.get("id"):
+        return {
+            "exam_id": None,
+            "verified_only": True,
+            "groups": {},
+            "total": 0,
+        }
+    try:
+        docs = (
+            sb.table("exam_documents")
+            .select("id, doc_type, title, url, cycle_year, valid_from, valid_until")
+            .eq("exam_id", exam_row["id"])
+            .in_("reviewer_status", ["reviewed", "locked"])
+            .order("doc_type", desc=False)
+            .order("cycle_year", desc=True, nullsfirst=False)
+            .order("title", desc=False)
+            .execute()
+            .data
+        ) or []
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("exam_documents fetch failed for %s", slug)
+        return {
+            "exam_id": exam_row["id"],
+            "verified_only": True,
+            "groups": {},
+            "total": 0,
+            "error": str(exc)[:200],
+        }
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for d in docs:
+        dt = d["doc_type"]
+        groups.setdefault(dt, []).append(d)
+    return {
+        "exam_id": exam_row["id"],
+        "verified_only": True,
+        "groups": groups,
+        "total": len(docs),
+    }
+
+
 @router.get("/exams/{slug}/trap-drill/streak")
 def get_trap_drill_streak(
     slug: str,
