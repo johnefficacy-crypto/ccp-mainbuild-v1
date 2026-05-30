@@ -79,6 +79,17 @@ class ExtractionRequiresCleanInputError(RuntimeError):
     """
 
 
+class ExtractionWrongDocumentKindError(RuntimeError):
+    """document_assets row has document_kind not handled by v1.
+
+    v1 processes pyq_paper only. Notifications, syllabi, corrigenda, and
+    answer keys are out of scope for the question extractor.
+    """
+
+
+ELIGIBLE_DOCUMENT_KINDS_V1: frozenset[str] = frozenset({'pyq_paper'})
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Document row dataclass (read-only; only the fields the extractor needs)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -89,11 +100,12 @@ class _DocumentAssetsRow:
     structural_format: StructuralFormat
     exam_identity: ExamIdentity
     source_kind: SourceKind
+    document_kind: str
     storage_path: str
 
 
 def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
-    """SELECT id, structural_format, exam_identity, source_kind, storage_path
+    """SELECT id, structural_format, exam_identity, source_kind, document_kind, storage_path
     FROM document_assets WHERE id = $1.
 
     Service-role client; read-only. Raises ValueError if not found.
@@ -103,7 +115,7 @@ def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
     sb = get_supabase_admin()
     row = (
         sb.table("document_assets")
-        .select("id, structural_format, exam_identity, source_kind, storage_path")
+        .select("id, structural_format, exam_identity, source_kind, document_kind, storage_path")
         .eq("id", document_id)
         .single()
         .execute()
@@ -117,6 +129,7 @@ def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
         structural_format=StructuralFormat(row["structural_format"]),
         exam_identity=ExamIdentity(row["exam_identity"]),
         source_kind=SourceKind(row["source_kind"]),
+        document_kind=row.get("document_kind") or "unknown",
         storage_path=row["storage_path"],
     )
 
@@ -298,6 +311,13 @@ def extract(
             f"Raw coaching PDFs must be sanitized (watermarks/overlays removed) before "
             f"extraction. See docs/engineering/sanitization-sop-v1.md. "
             f"Exam identity: {doc_row.exam_identity.value}."
+        )
+
+    if doc_row.document_kind not in ELIGIBLE_DOCUMENT_KINDS_V1:
+        raise ExtractionWrongDocumentKindError(
+            f"Document {document_id} has document_kind={doc_row.document_kind!r}. "
+            f"v1 extractor only processes {sorted(ELIGIBLE_DOCUMENT_KINDS_V1)}. "
+            f"Notifications, syllabi, corrigenda, and answer keys are out of scope."
         )
 
     # ─── Existing pipeline below (unchanged) ──────────────────

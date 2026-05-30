@@ -658,6 +658,10 @@ _QUESTION_FIELDS = {
     "pyq_paper_id", "question_number", "question_text",
     "normalized_question_hash", "question_type", "explanation_text",
     "observed_difficulty", "expected_solve_time_sec", "language", "metadata",
+    # Provenance fields (migration 149) — written by the auto-extractor.
+    "source_kind", "source_document_id", "source_page", "source_regions",
+    "extractor_version", "extraction_run_id", "idempotency_key",
+    "content_hash", "confidence_by_field",
 }
 _QUESTION_TYPES = ("mcq", "numerical", "descriptive", "caselet", "matching", "other")
 _OPTION_FIELDS = {"option_label", "option_text", "normalized_option_hash", "normalized_value", "is_correct", "metadata"}
