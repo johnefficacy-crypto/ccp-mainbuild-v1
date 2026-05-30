@@ -63,6 +63,7 @@ def _seed():
         "pyq_papers": [{"id": "p1", "exam_id": "e1"}],
         "pyq_questions": [
             {"id": "q1", "pyq_paper_id": "p1", "question_type": "mcq", "reviewer_status": "pending",
+             "reviewed_by": None, "reviewed_at": None,
              "created_at": "2026-05-01T00:00:00+00:00"},
         ],
         "pyq_question_topic_tags": [
@@ -317,6 +318,43 @@ def test_review_patch_missing_row_returns_404():
         json={"reviewer_status": "verified"},
     )
     assert r.status_code == 404
+
+
+def test_review_patch_pyq_question_verified():
+    """pyq_question review must patch reviewed_by + reviewed_at (migration 155 adds these columns)."""
+    sb = SBStub(_seed())
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/items/pyq_question/q1/review",
+        json={"reviewer_status": "verified"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["reviewer_status"] == "verified"
+    assert body["reviewed_by"] == "admin-1"
+    assert body["reviewed_at"]
+
+
+def test_review_patch_pyq_question_rejected():
+    sb = SBStub(_seed())
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/items/pyq_question/q1/review",
+        json={"reviewer_status": "rejected"},
+    )
+    assert r.status_code == 200
+    assert r.json()["reviewer_status"] == "rejected"
+
+
+def test_review_patch_pyq_question_needs_correction():
+    sb = SBStub(_seed())
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/items/pyq_question/q1/review",
+        json={"reviewer_status": "needs_correction"},
+    )
+    assert r.status_code == 200
+    assert r.json()["reviewer_status"] == "needs_correction"
 
 
 # ─── Topic coverage lifecycle review ──────────────────────────────────────
