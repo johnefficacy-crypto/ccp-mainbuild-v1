@@ -44,17 +44,6 @@ const SORT_OPTIONS = [
 
 const AUDIT_REASON = "workspace reviewer action";
 
-// ── Normalize text (port of idempotency.py normalize_for_content_hash) ──────
-
-function normalizeText(text) {
-  if (!text) return "";
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
 function Badge({ label, colorClass, className = "" }) {
@@ -428,7 +417,7 @@ function QuestionEditor({
       metadata: question.metadata ? JSON.stringify(question.metadata, null, 2) : "{}",
     });
     setError("");
-  }, [question?.id]);
+  }, [question]);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -534,14 +523,6 @@ function QuestionEditor({
   }
 
   const conf = confidenceFromField(question.confidence_by_field);
-  const dismissals =
-    (() => {
-      try {
-        return JSON.parse(form.metadata || "{}").dup_dismissals || [];
-      } catch {
-        return [];
-      }
-    })();
 
   return (
     <div className="flex flex-col h-full overflow-y-auto p-4 space-y-4 text-sm">
