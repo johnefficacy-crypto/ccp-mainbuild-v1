@@ -16,6 +16,7 @@ import {
 import { api } from "../lib/api";
 import ExamIntelligenceTab from "../features/exams/ExamIntelligenceTab";
 import ExamDetailAnchorNav from "../features/exams/ExamDetailAnchorNav";
+import ExamDocumentsSection from "../features/exams/ExamDocumentsSection";
 
 // PR11: ExamDetail is now a single scrollable page with a sticky anchor
 // chip strip and IntersectionObserver-driven scroll-spy. The old
@@ -46,6 +47,7 @@ const SECTIONS = [
   { id: "about", label: "About" },
   { id: "eligibility", label: "Eligibility" },
   { id: "docs-fees", label: "Docs & Fees" },
+  { id: "important-documents", label: "Documents" },
   { id: "competition", label: "Competition" },
   { id: "resources", label: "Resources" },
   { id: "groups", label: "Groups" },
@@ -480,6 +482,15 @@ export default function ExamDetail() {
               </ul>
             )}
           </div>
+        </Section>
+
+        {/* ─── Important Documents ───────────────────────────────── */}
+        <Section
+          id="important-documents"
+          eyebrow="Official resources"
+          title="Important Documents"
+        >
+          <ExamDocumentsSection examSlug={examSlug} />
         </Section>
 
         {/* ─── Competition ───────────────────────────────────────── */}
