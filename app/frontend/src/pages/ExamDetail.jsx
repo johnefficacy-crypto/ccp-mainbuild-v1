@@ -16,7 +16,7 @@ import {
 import { api } from "../lib/api";
 import ExamIntelligenceTab from "../features/exams/ExamIntelligenceTab";
 import ExamDetailAnchorNav from "../features/exams/ExamDetailAnchorNav";
-import ExamDocumentsSection from "../features/exams/ExamDocumentsSection";
+import PyqExplorerSection from "../features/exams/PyqExplorerSection";
 
 // PR11: ExamDetail is now a single scrollable page with a sticky anchor
 // chip strip and IntersectionObserver-driven scroll-spy. The old
@@ -49,6 +49,7 @@ const SECTIONS = [
   { id: "docs-fees", label: "Docs & Fees" },
   { id: "important-documents", label: "Documents" },
   { id: "competition", label: "Competition" },
+  { id: "pyq-explorer", label: "PYQ Explorer" },
   { id: "resources", label: "Resources" },
   { id: "groups", label: "Groups" },
 ];
@@ -500,6 +501,15 @@ export default function ExamDetail() {
           title="What we know about this exam"
         >
           <ExamIntelligenceTab examSlug={examSlug} />
+        </Section>
+
+        {/* ─── PYQ Explorer ──────────────────────────────────────── */}
+        <Section
+          id="pyq-explorer"
+          eyebrow="Previous year questions"
+          title="PYQ Explorer"
+        >
+          <PyqExplorerSection examSlug={examSlug} />
         </Section>
 
         {/* ─── Resources ─────────────────────────────────────────── */}
