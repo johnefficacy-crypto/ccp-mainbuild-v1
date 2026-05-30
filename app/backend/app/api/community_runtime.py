@@ -872,13 +872,34 @@ async def mentor_earnings(user: dict = Depends(get_current_user)):
 # Community resource library
 
 
+_RESOURCE_TYPES = {
+    "pyq_paper", "notes", "strategy_guide", "video_link", "course_link", "book",
+    "concept_note", "formula_sheet", "grammar_sheet", "vocabulary_sheet",
+    "drill_set", "practice_set", "current_affairs_digest", "scheme_card",
+    "pyq_solution", "mindmap", "revision_sheet",
+}
+
+
 def _shape_resource(row: dict[str, Any], uid: str | None = None) -> dict[str, Any]:
     return {
         "id": row.get("id"),
         "title": row.get("title"),
         "type": row.get("resource_type"),
         "exam": row.get("exam"),
+        "examId": row.get("exam_id"),
+        "examPhaseId": row.get("exam_phase_id"),
         "subject": row.get("subject"),
+        "subjectId": row.get("subject_id"),
+        "topicId": row.get("topic_id"),
+        "microtopicId": row.get("microtopic_id"),
+        "difficulty": row.get("difficulty"),
+        "resourceLevel": row.get("resource_level"),
+        "contentFormat": row.get("content_format"),
+        "sourceKind": row.get("source_kind"),
+        "reviewerStatus": row.get("reviewer_status"),
+        "validFrom": row.get("valid_from"),
+        "validUntil": row.get("valid_until"),
+        "usableForMockGeneration": bool(row.get("usable_for_mock_generation")),
         "sourceTrust": row.get("source_trust"),
         "sourceUrl": row.get("source_url"),
         "contributedBy": row.get("contributed_by"),
@@ -894,6 +915,17 @@ def _shape_resource(row: dict[str, Any], uid: str | None = None) -> dict[str, An
 @router.get("/community/resources")
 async def list_resources(
     exam: str | None = None,
+    exam_id: str | None = None,
+    exam_phase_id: str | None = None,
+    subject_id: str | None = None,
+    topic_id: str | None = None,
+    microtopic_id: str | None = None,
+    difficulty: str | None = None,
+    resource_level: str | None = None,
+    content_format: str | None = None,
+    source_kind: str | None = None,
+    reviewer_status: str | None = None,
+    usable_for_mock_generation: bool | None = None,
     type: str | None = None,
     trust: str | None = None,
     sort: str = "top",
@@ -903,6 +935,28 @@ async def list_resources(
     q = sb.table("community_resources").select("*").eq("status", "approved")
     if exam and exam != "all":
         q = q.eq("exam", exam)
+    if exam_id:
+        q = q.eq("exam_id", exam_id)
+    if exam_phase_id:
+        q = q.eq("exam_phase_id", exam_phase_id)
+    if subject_id:
+        q = q.eq("subject_id", subject_id)
+    if topic_id:
+        q = q.eq("topic_id", topic_id)
+    if microtopic_id:
+        q = q.eq("microtopic_id", microtopic_id)
+    if difficulty:
+        q = q.eq("difficulty", difficulty)
+    if resource_level:
+        q = q.eq("resource_level", resource_level)
+    if content_format:
+        q = q.eq("content_format", content_format)
+    if source_kind:
+        q = q.eq("source_kind", source_kind)
+    if reviewer_status:
+        q = q.eq("reviewer_status", reviewer_status)
+    if usable_for_mock_generation is not None:
+        q = q.eq("usable_for_mock_generation", usable_for_mock_generation)
     if type and type != "all":
         q = q.eq("resource_type", type)
     if trust and trust != "all":
@@ -929,28 +983,58 @@ class ResourceContribute(BaseModel):
     sourceTrust: str = Field(default="community", max_length=16)
     size: str = Field(default="link", max_length=16)
     sourceUrl: HttpUrl
+    # exam-prep classification (all optional)
+    examId: str | None = None
+    examPhaseId: str | None = None
+    subjectId: str | None = None
+    topicId: str | None = None
+    microtopicId: str | None = None
+    difficulty: str | None = Field(default=None, max_length=32)
+    resourceLevel: str | None = Field(default=None, max_length=32)
+    contentFormat: str | None = Field(default=None, max_length=32)
+    sourceKind: str | None = Field(default=None, max_length=32)
+    validFrom: str | None = None
+    validUntil: str | None = None
+    usableForMockGeneration: bool = False
 
 
 @router.post("/community/resources")
 async def contribute_resource(payload: ResourceContribute, user: dict = Depends(get_current_user)):
     if payload.sourceTrust not in {"official", "community", "coaching", "unknown"}:
         raise HTTPException(status_code=400, detail="Invalid sourceTrust")
+    if payload.type not in _RESOURCE_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid resource type")
     sb = get_supabase_admin()
-    row = _rows(
-        sb.table("community_resources").insert(
-            {
-                "title": payload.title.strip(),
-                "resource_type": payload.type,
-                "exam": payload.exam,
-                "subject": payload.subject,
-                "source_trust": payload.sourceTrust,
-                "source_url": str(payload.sourceUrl),
-                "contributed_by": user["id"],
-                "size_label": payload.size,
-                "status": "pending_review",
-            }
-        )
-    )
+    insert_data: dict[str, Any] = {
+        "title": payload.title.strip(),
+        "resource_type": payload.type,
+        "exam": payload.exam,
+        "subject": payload.subject,
+        "source_trust": payload.sourceTrust,
+        "source_url": str(payload.sourceUrl),
+        "contributed_by": user["id"],
+        "size_label": payload.size,
+        "status": "pending_review",
+        "usable_for_mock_generation": payload.usableForMockGeneration,
+    }
+    # Include nullable classification fields only when provided.
+    for src, dst in (
+        ("examId", "exam_id"),
+        ("examPhaseId", "exam_phase_id"),
+        ("subjectId", "subject_id"),
+        ("topicId", "topic_id"),
+        ("microtopicId", "microtopic_id"),
+        ("difficulty", "difficulty"),
+        ("resourceLevel", "resource_level"),
+        ("contentFormat", "content_format"),
+        ("sourceKind", "source_kind"),
+        ("validFrom", "valid_from"),
+        ("validUntil", "valid_until"),
+    ):
+        val = getattr(payload, src, None)
+        if val is not None:
+            insert_data[dst] = val
+    row = _rows(sb.table("community_resources").insert(insert_data))
     _event(sb, user["id"], "community_resource.contributed", {"resource_id": (row[0] or {}).get("id") if row else None})
     return _shape_resource(row[0], user["id"]) if row else {}
 
