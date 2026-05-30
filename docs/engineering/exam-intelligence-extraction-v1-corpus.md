@@ -22,12 +22,28 @@ document_assets:
 
 ### v1 eligibility
 
-A document is extractable by v1 iff both axes pass:
+A document is extractable by v1 iff all four guards pass (evaluated in order):
 
-1. `structural_format ∈ ELIGIBLE_FORMATS_V1` (guard from PR #500)
-2. `source_kind ∈ ELIGIBLE_SOURCE_KINDS_V1`
+1. `structural_format != UNKNOWN` — classification required (ExtractionRequiresClassificationError)
+2. `structural_format ∈ ELIGIBLE_FORMATS_V1` — format must be supported (ExtractionNotSupportedError)
+3. `source_kind ∈ ELIGIBLE_SOURCE_KINDS_V1` — source must be clean (ExtractionRequiresCleanInputError)
+4. `document_kind ∈ ELIGIBLE_DOCUMENT_KINDS_V1` — must be a PYQ paper (ExtractionWrongDocumentKindError)
 
-All guards run before any OCR. No garbage rows are produced on failure.
+All guards run inside `extract()` before any OCR or DB write. No garbage rows are produced on failure.
+
+### Document kind eligibility (v1)
+
+v1 only processes `pyq_paper` documents. Other kinds on `document_assets`:
+
+| `document_kind`   | v1 eligible? | Notes |
+|-------------------|-------------|-------|
+| `pyq_paper`       | Yes         | The only kind targeted by v1. |
+| `notification`    | No          | Administrative; no extractable questions. |
+| `syllabus`        | No          | Curriculum document; out of scope. |
+| `answer_key`      | No          | Correct-answer list; out of scope. |
+| `corrigendum`     | No          | Correction notice; out of scope. |
+
+Guard fires with `ExtractionWrongDocumentKindError`, naming the actual kind and expected kind.
 
 ## Source eligibility (v1)
 
@@ -137,17 +153,59 @@ Aggregate v1 ship gate:
   zero false-positive question_numbers (extractor must not invent numbering)
 
 ## Idempotency and collision
-idempotency_key = sha256(document_id || page || regions_hash || extractor_version)
+
+```
+idempotency_key = sha256(document_id || page || question_number || extractor_version)
 content_hash    = sha256(normalize(question_text))
+```
 
-normalize(question_text): lowercase, collapse whitespace, strip punctuation
-except internal "?" and ".", remove leading "Q." or "N." numbering.
+**Why `question_number` not `bbox` in the idempotency key**: IoU between bbox across
+re-runs had p10 = 0.000 empirically (bboxes are unstable — Tesseract line splits shift
+with minor rendering changes). `question_number` is stable and unambiguous within a document.
 
-Write rules:
-- idempotency_key collision → reuse existing extracted row, do not insert.
-- content_hash collision with any existing row (manual or auto) → do not
-  insert; create extraction_provenance link to existing row and flag for
-  reviewer confirmation.
+normalize(question_text): lowercase, collapse whitespace, strip punctuation, strip leading
+Q./N. numbering.
+
+### Dedup policy (writer)
+
+Evaluated per question in order:
+
+1. `idempotency_key` exact match → `skip_idempotent` (same extractor version already processed this slot)
+2. `content_hash` exact match → `link_fuzzy_duplicate` (same text, different version or document)
+3. Levenshtein ratio ≥ 0.85 → `link_fuzzy_duplicate` (OCR noise variant)
+4. Otherwise → `insert`
+
+**Threshold rationale**: Acceptance-run text-similarity distribution: p50 = 0.939, p25 = 0.874.
+Threshold 0.85 sits above p25, catching OCR-noisy matches. p10 = 0.432 tail (bad-OCR questions)
+correctly falls below threshold and lands as new insert rows.
+
+Actions `link_fuzzy_duplicate` record the `linked_row_id` in metadata; they do not suppress
+the new row entirely (reviewer decides which to keep).
+
+## Extraction run lifecycle
+
+Every invocation creates an `extraction_runs` row with `extractor_name = 'upsc_pyq_question_extractor'`.
+
+Lifecycle: `running` → `completed` | `failed` | `killed`
+
+- `start_run()` — inserts row, returns `run_id`; called before any per-question write
+- `complete_run()` — sets `completed` or `failed`, writes `row_count`, `error_count`, `metadata`
+- `fail_run()` — sets `failed`, appends error to `error_log`
+- `is_killed()` — polled between rows; writer stops early if run status is `killed`
+
+Kill switch allows ops to halt a runaway extraction without losing already-inserted rows.
+
+### Dry-run mode
+
+Default mode for the CLI (`run_extractor_live.py`). `--confirm` is the explicit opt-in for
+live writes. Combining `--confirm` with `--dry-run` is rejected with exit code 2.
+
+In dry-run mode: no rows are inserted, `dry_run_rows` is populated in the `extraction_runs`
+metadata for inspection. Inspect via:
+
+```sql
+SELECT metadata->'dry_run_rows' FROM extraction_runs WHERE id = '<run_id>';
+```
 
 ## Label ownership
 - Owner: <TODO — name internal SME or contract labeler>

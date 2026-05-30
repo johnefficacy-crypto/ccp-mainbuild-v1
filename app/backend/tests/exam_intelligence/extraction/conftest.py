@@ -80,6 +80,7 @@ def stub_fetch_doc_row_for_fixtures():
                 structural_format=StructuralFormat(sf),
                 exam_identity=ExamIdentity(ei),
                 source_kind=SourceKind(sk),
+                document_kind='pyq_paper',
                 storage_path="",
             )
         raise ValueError(

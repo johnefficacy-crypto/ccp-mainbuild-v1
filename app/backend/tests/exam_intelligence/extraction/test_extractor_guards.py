@@ -5,6 +5,7 @@ from app.exam_intelligence.extraction.pipeline import (
     ExtractionNotSupportedError,
     ExtractionRequiresClassificationError,
     ExtractionRequiresCleanInputError,
+    ExtractionWrongDocumentKindError,
 )
 from app.exam_intelligence.extraction.dispatch import (
     ExamIdentity,
@@ -13,11 +14,17 @@ from app.exam_intelligence.extraction.dispatch import (
 )
 
 
-def _mock_doc_row(structural_format, exam_identity, source_kind=SourceKind.SANITIZED_COACHING):
+def _mock_doc_row(
+    structural_format,
+    exam_identity,
+    source_kind=SourceKind.SANITIZED_COACHING,
+    document_kind='pyq_paper',
+):
     row = MagicMock()
     row.structural_format = structural_format
     row.exam_identity = exam_identity
     row.source_kind = source_kind
+    row.document_kind = document_kind
     row.storage_path = 'fake/path.pdf'
     return row
 
@@ -180,3 +187,58 @@ class TestExtractorGuards:
             mock_fitz.open.return_value = mock_doc
             result = extract(pdf_bytes=b'\x25\x50\x44\x46', document_id='test-id')
             assert result is not None
+
+    def test_raises_wrong_document_kind_for_notification(self, mock_fetch):
+        mock_fetch.return_value = _mock_doc_row(
+            StructuralFormat.MCQ_BILINGUAL_TWO_COLUMN,
+            ExamIdentity.UPSC_CSE_PRELIMS_GS1,
+            document_kind='notification',
+        )
+        with pytest.raises(ExtractionWrongDocumentKindError) as exc:
+            extract(pdf_bytes=b'', document_id='test-id')
+        assert 'notification' in str(exc.value)
+        assert 'pyq_paper' in str(exc.value)
+
+    def test_raises_wrong_document_kind_for_syllabus(self, mock_fetch):
+        mock_fetch.return_value = _mock_doc_row(
+            StructuralFormat.MCQ_BILINGUAL_TWO_COLUMN,
+            ExamIdentity.UPSC_CSE_PRELIMS_GS1,
+            document_kind='syllabus',
+        )
+        with pytest.raises(ExtractionWrongDocumentKindError):
+            extract(pdf_bytes=b'', document_id='test-id')
+
+    def test_raises_wrong_document_kind_for_answer_key(self, mock_fetch):
+        mock_fetch.return_value = _mock_doc_row(
+            StructuralFormat.MCQ_BILINGUAL_TWO_COLUMN,
+            ExamIdentity.UPSC_CSE_PRELIMS_GS1,
+            document_kind='answer_key',
+        )
+        with pytest.raises(ExtractionWrongDocumentKindError):
+            extract(pdf_bytes=b'', document_id='test-id')
+
+    def test_proceeds_for_pyq_paper_kind(self, mock_fetch):
+        mock_fetch.return_value = _mock_doc_row(
+            StructuralFormat.MCQ_BILINGUAL_TWO_COLUMN,
+            ExamIdentity.UPSC_CSE_PRELIMS_GS1,
+            document_kind='pyq_paper',
+        )
+        mock_doc = MagicMock()
+        mock_doc.page_count = 0
+        mock_doc.__enter__ = MagicMock(return_value=mock_doc)
+        mock_doc.__exit__ = MagicMock(return_value=False)
+        with patch('app.exam_intelligence.extraction.pipeline.fitz') as mock_fitz:
+            mock_fitz.open.return_value = mock_doc
+            result = extract(pdf_bytes=b'\x25\x50\x44\x46', document_id='test-id')
+            assert result is not None
+
+    def test_document_kind_guard_fires_after_source_kind_guard(self, mock_fetch):
+        """source_kind guard runs before document_kind guard."""
+        mock_fetch.return_value = _mock_doc_row(
+            StructuralFormat.MCQ_BILINGUAL_TWO_COLUMN,
+            ExamIdentity.UPSC_CSE_PRELIMS_GS1,
+            source_kind=SourceKind.RAW_COACHING,
+            document_kind='notification',
+        )
+        with pytest.raises(ExtractionRequiresCleanInputError):
+            extract(pdf_bytes=b'', document_id='test-id')
