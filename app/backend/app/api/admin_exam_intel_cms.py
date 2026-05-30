@@ -647,6 +647,188 @@ def update_pyq_paper(
 
 
 # ════════════════════════════════════════════════════════════════════════
+#  PYQ paper workspace sub-endpoints (PR4)
+# ════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/pyq-papers/{paper_id}/progress")
+def pyq_paper_progress(
+    paper_id: str,
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Return question counts, missing list, and by-status breakdown for a paper.
+
+    ``total_expected`` uses ``metadata.expected_question_count`` if set on the
+    paper row; otherwise falls back to max(question_number) present.
+    """
+    supabase = get_supabase_admin()
+    paper = _safe_select(supabase, "pyq_papers", id=paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+
+    rows = (
+        supabase.table("pyq_questions")
+        .select("id, question_number, reviewer_status")
+        .eq("pyq_paper_id", paper_id)
+        .limit(2000)
+        .execute()
+        .data
+        or []
+    )
+
+    present_numbers = sorted(
+        {int(r["question_number"]) for r in rows if r.get("question_number") is not None}
+    )
+    by_status: dict[str, int] = {}
+    for r in rows:
+        s = r.get("reviewer_status") or "pending"
+        by_status[s] = by_status.get(s, 0) + 1
+
+    meta_expected = (paper.get("metadata") or {}).get("expected_question_count")
+    total_expected: int | None = None
+    if meta_expected is not None:
+        try:
+            total_expected = int(meta_expected)
+        except (TypeError, ValueError):
+            pass
+    if total_expected is None and present_numbers:
+        total_expected = present_numbers[-1]
+
+    missing: list[int] = []
+    if total_expected:
+        full_range = set(range(1, total_expected + 1))
+        missing = sorted(full_range - set(present_numbers))
+
+    return {
+        "paper_id": paper_id,
+        "total_expected": total_expected,
+        "present": len(rows),
+        "missing": missing,
+        "by_status": by_status,
+    }
+
+
+@router.get("/pyq-papers/{paper_id}/dup-check")
+def pyq_paper_dup_check(
+    paper_id: str,
+    question_text: str = Query(..., min_length=1, max_length=4000),
+    question_id: str | None = Query(default=None),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Find potential duplicate questions in the same paper (or same exam).
+
+    Returns rows with a content_hash exact match, plus rows whose
+    normalized question_text shares a Levenshtein ratio >= 0.80 with the
+    candidate text (slightly below the extractor threshold so the reviewer
+    sees borderline cases too).
+    """
+    import re as _re
+    try:
+        from Levenshtein import ratio as _ratio
+    except ImportError:
+        _ratio = None
+
+    supabase = get_supabase_admin()
+    paper = _safe_select(supabase, "pyq_papers", id=paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+
+    # Fetch candidate rows — same paper, exclude self
+    q = (
+        supabase.table("pyq_questions")
+        .select("id, question_number, question_text, content_hash, reviewer_status, pyq_paper_id")
+        .eq("pyq_paper_id", paper_id)
+        .limit(500)
+    )
+    rows = q.execute().data or []
+    if question_id:
+        rows = [r for r in rows if r.get("id") != question_id]
+
+    # Normalize: lowercase, replace punctuation with space, collapse whitespace
+    _punct = _re.compile(r'[^\w\s]')
+    _ws = _re.compile(r'\s+')
+
+    def _norm(t: str) -> str:
+        t = _punct.sub(' ', (t or '').lower())
+        return _ws.sub(' ', t).strip()
+
+    import hashlib
+    candidate_norm = _norm(question_text)
+    candidate_hash = hashlib.sha256(candidate_norm.encode()).hexdigest()
+
+    matches = []
+    for row in rows:
+        row_hash = row.get("content_hash") or ""
+        row_text = row.get("question_text") or ""
+        row_norm = _norm(row_text)
+
+        if row_hash and row_hash == candidate_hash:
+            matches.append({**row, "match_type": "exact_hash", "ratio": 1.0})
+        elif _ratio and row_norm:
+            r = _ratio(candidate_norm, row_norm)
+            if r >= 0.80:
+                matches.append({**row, "match_type": "fuzzy", "ratio": round(r, 3)})
+
+    matches.sort(key=lambda x: -x["ratio"])
+    return {"matches": matches[:20], "candidate_content_hash": candidate_hash}
+
+
+@router.get("/pyq-papers/{paper_id}/signed-pdf")
+def pyq_paper_signed_pdf(
+    paper_id: str,
+    document_id: str = Query(..., min_length=1),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Return a short-lived signed URL for viewing a source PDF in the workspace."""
+    supabase = get_supabase_admin()
+    if not _safe_select(supabase, "pyq_papers", id=paper_id):
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+
+    asset = (
+        supabase.table("document_assets")
+        .select("id, storage_bucket, storage_path, original_filename, page_count")
+        .eq("id", document_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not asset:
+        raise HTTPException(status_code=404, detail="document_asset not found")
+    row = asset[0]
+
+    bucket = row.get("storage_bucket")
+    path = row.get("storage_path")
+    if not bucket or not path:
+        raise HTTPException(status_code=422, detail="Document has no storage path")
+
+    try:
+        result = supabase.storage.from_(bucket).create_signed_url(path, 3600)
+        signed_url = (
+            result.get("signedURL")
+            or result.get("signedUrl")
+            or result.get("signed_url")
+            or ""
+        )
+    except Exception as exc:
+        logger.exception("signed URL creation failed for doc=%s", document_id)
+        raise HTTPException(status_code=502, detail=f"Storage error: {exc}") from exc
+
+    if not signed_url:
+        raise HTTPException(status_code=502, detail="Storage did not return a signed URL")
+
+    return {
+        "document_id": document_id,
+        "signed_url": signed_url,
+        "original_filename": row.get("original_filename"),
+        "page_count": row.get("page_count"),
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════
 #  PYQ questions — created at reviewer_status='pending'; options upsert
 #  in the same call so the question + options land atomically (best
 #  effort — no row-level transaction across two tables here, but at
@@ -781,6 +963,26 @@ def update_pyq_question(
 # ════════════════════════════════════════════════════════════════════════
 #  PYQ options (standalone insert — for editing existing questions)
 # ════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/pyq-options")
+def list_pyq_options(
+    question_id: str | None = Query(default=None),
+    limit: int = Query(default=10, ge=1, le=50),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """List PYQ options, optionally filtered by question_id."""
+    supabase = get_supabase_admin()
+    q = (
+        supabase.table("pyq_options")
+        .select("*", count="exact")
+        .order("option_label", desc=False)
+    )
+    if question_id:
+        q = q.eq("question_id", question_id)
+    res = q.limit(limit).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None)}
 
 
 @router.post("/pyq-options")
