@@ -80,6 +80,7 @@ class CreateQuestionIn(BaseModel):
     is_conceptual: bool = False
     is_factual: bool = False
     is_current: bool = False
+    is_current_based: bool = False
     valid_from: str | None = None
     valid_until: str | None = None
     event_anchor_date: str | None = None
@@ -90,6 +91,13 @@ class CreateQuestionIn(BaseModel):
     subject_id: str | None = None
     topic_id: str | None = None
     options: list[OptionIn] = Field(..., min_length=2)
+    # Provenance fields (PR4) — carry source back to resource/PYQ/CA item.
+    source_kind: str | None = None
+    source_url: str | None = None
+    source_trust: str | None = None
+    current_affairs_item_id: str | None = None
+    pyq_paper_id: str | None = None
+    evidence_text: str | None = None
 
 
 class UpdateQuestionIn(BaseModel):
@@ -99,6 +107,7 @@ class UpdateQuestionIn(BaseModel):
     is_conceptual: bool | None = None
     is_factual: bool | None = None
     is_current: bool | None = None
+    is_current_based: bool | None = None
     valid_from: str | None = None
     valid_until: str | None = None
     event_anchor_date: str | None = None
@@ -109,6 +118,9 @@ class UpdateQuestionIn(BaseModel):
     subject_id: str | None = None
     topic_id: str | None = None
     options: list[OptionIn] | None = None
+    source_kind: str | None = None
+    source_url: str | None = None
+    current_affairs_item_id: str | None = None
 
 
 class TransitionIn(BaseModel):
@@ -229,6 +241,44 @@ def submit_question(
         return svc.transition(_sb(), actor, question_id, "submit", notes=body.notes)
     except Exception as exc:
         _handle(exc, "submit")
+
+
+@router.post("/questions/{question_id}/review")
+def review_question(
+    question_id: str,
+    body: TransitionIn = TransitionIn(),
+    actor: dict = Depends(require_reviewer),
+):
+    """[reviewer] draft → reviewed (pipeline first-pass review).
+
+    Marks the question as reviewed by an admin.  A second reviewer must then
+    call /verify to promote it to verified before it is selectable by the
+    template selector.
+    """
+    question_id = _validate_uuid_param(question_id, "question_id")
+    try:
+        return svc.transition(_sb(), actor, question_id, "review", notes=body.notes)
+    except Exception as exc:
+        _handle(exc, "review")
+
+
+@router.post("/questions/{question_id}/verify")
+def verify_question(
+    question_id: str,
+    body: TransitionIn = TransitionIn(),
+    actor: dict = Depends(require_reviewer),
+):
+    """[reviewer] reviewed → verified.
+
+    Promotes a reviewed question to verified, making it selectable by the
+    template selector.  Rejects self-verify with 409 (same COI rule as
+    approve).
+    """
+    question_id = _validate_uuid_param(question_id, "question_id")
+    try:
+        return svc.transition(_sb(), actor, question_id, "verify", notes=body.notes)
+    except Exception as exc:
+        _handle(exc, "verify")
 
 
 @router.post("/questions/{question_id}/approve")
