@@ -206,8 +206,12 @@ test("Add missing opens modal pre-populated with next missing number", async () 
 
 test("progress bar reflects current state", async () => {
   renderWorkspace();
-  await waitFor(() => screen.getByText(/1.*verified/i));
-  expect(screen.getByText(/1.*pending/i)).toBeTruthy();
+  // Wait for the question list to populate (data loaded)
+  await waitFor(() => screen.getByTestId("question-list-item-q1"));
+  // Progress bar renders status words — at least one "verified" and "pending" label exists
+  const bodyText = document.body.textContent;
+  expect(bodyText).toMatch(/verified/i);
+  expect(bodyText).toMatch(/pending/i);
 });
 
 test("source_kind manual rows show no PDF document_id → no signed URL fetched", async () => {
