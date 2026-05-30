@@ -125,6 +125,46 @@ class TestExtractorGuards:
             result = extract(pdf_bytes=b'\x25\x50\x44\x46', document_id='test-id')
             assert result is not None
 
+    def test_official_archive_passes_source_guard(self, mock_fetch):
+        mock_fetch.return_value = _mock_doc_row(
+            StructuralFormat.MCQ_BILINGUAL_TWO_COLUMN,
+            ExamIdentity.UPSC_CSE_PRELIMS_GS1,
+            source_kind=SourceKind.OFFICIAL_ARCHIVE,
+        )
+        mock_doc = MagicMock()
+        mock_doc.page_count = 0
+        mock_doc.__enter__ = MagicMock(return_value=mock_doc)
+        mock_doc.__exit__ = MagicMock(return_value=False)
+        with patch('app.exam_intelligence.extraction.pipeline.fitz') as mock_fitz:
+            mock_fitz.open.return_value = mock_doc
+            result = extract(pdf_bytes=b'\x25\x50\x44\x46', document_id='test-id')
+            assert result is not None
+
+    def test_sme_authored_passes_source_guard(self, mock_fetch):
+        mock_fetch.return_value = _mock_doc_row(
+            StructuralFormat.MCQ_BILINGUAL_TWO_COLUMN,
+            ExamIdentity.UPSC_CSE_PRELIMS_GS1,
+            source_kind=SourceKind.SME_AUTHORED,
+        )
+        mock_doc = MagicMock()
+        mock_doc.page_count = 0
+        mock_doc.__enter__ = MagicMock(return_value=mock_doc)
+        mock_doc.__exit__ = MagicMock(return_value=False)
+        with patch('app.exam_intelligence.extraction.pipeline.fitz') as mock_fitz:
+            mock_fitz.open.return_value = mock_doc
+            result = extract(pdf_bytes=b'\x25\x50\x44\x46', document_id='test-id')
+            assert result is not None
+
+    def test_structural_format_guard_fires_before_source_kind_guard(self, mock_fetch):
+        """If both format and source are bad, format error fires first."""
+        mock_fetch.return_value = _mock_doc_row(
+            StructuralFormat.ESSAY_LONG_FORM,
+            ExamIdentity.UPSC_CSE_MAINS_GS1,
+            source_kind=SourceKind.RAW_COACHING,
+        )
+        with pytest.raises(ExtractionNotSupportedError):
+            extract(pdf_bytes=b'', document_id='test-id')
+
     def test_proceeds_when_mcq_bilingual_eligible(self, mock_fetch):
         """Guard passes through; actual extraction not tested here.
         Mock the OCR/segmentation downstream to confirm guard didn't block."""

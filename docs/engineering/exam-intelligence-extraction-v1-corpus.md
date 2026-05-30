@@ -22,34 +22,46 @@ document_assets:
 
 ### v1 eligibility
 
-A document is extractable by v1 iff ALL three guards pass:
+A document is extractable by v1 iff both axes pass:
 
-1. `structural_format != 'unknown'`  — raises `ExtractionRequiresClassificationError`
-2. `structural_format == 'mcq_bilingual_two_column'`  — raises `ExtractionNotSupportedError`
-3. `source_kind IN ('official_scan', 'sanitized_coaching')`  — raises `ExtractionRequiresCleanInputError`
+1. `structural_format ∈ ELIGIBLE_FORMATS_V1` (guard from PR #500)
+2. `source_kind ∈ ELIGIBLE_SOURCE_KINDS_V1`
 
-All three checks run before any OCR. No garbage rows are produced on failure.
+All guards run before any OCR. No garbage rows are produced on failure.
 
-### Source eligibility
+## Source eligibility (v1)
 
-| `source_kind`        | v1 eligible? | Rationale |
-|---------------------|-------------|-----------|
-| `official_scan`      | Yes         | No overlays; clean input guaranteed |
-| `sanitized_coaching` | Yes         | Overlays removed; verified clean |
-| `raw_coaching`       | No          | Watermarks/overlays corrupt OCR word stream |
-| `crowd_sourced`      | No          | Provenance unclear; cannot guarantee clean input |
-| `unknown`            | No          | Must be classified before extraction |
+v1 source_kind eligibility:
 
-See `docs/engineering/sanitization-sop-v1.md` for the full rationale
-and the step-by-step procedure for converting `raw_coaching` → `sanitized_coaching`.
+| `source_kind`         | v1 eligible? | Description |
+|----------------------|-------------|-------------|
+| `official_archive`    | Yes         | UPSC's published archive; authoritative. Available ~1yr after exam. |
+| `official_scan`       | Yes (legacy) | Legacy alias; prefer `official_archive` for new uploads. |
+| `sanitized_coaching`  | Yes         | Coaching PDF cleaned per the sanitization SOP. |
+| `sme_authored`        | Yes         | SME-authored or transcribed test content. |
+| `raw_coaching`        | **No**      | Must be sanitized first. |
+| `crowd_sourced`       | **No**      | Provenance unclear. |
+| `unknown`             | **No**      | Must be classified. |
 
-**Why clean input, not a watermark filter:** A post-OCR filter would need to match
-hundreds of ever-changing coaching agency naming conventions, handle partial overlap
-with real question text, and be maintained indefinitely. A pre-OCR clean-input gate
-is permanent: sanitize once at upload time.
+The grandfather clause stands: the 2026 fixture (83722a86-...) and 2025 smoke document
+(afc8e285-...) were uploaded before this classification existed; they are backfilled as
+`sanitized_coaching` on the basis of their empirical acceptance-gate behavior at 0.815 recall.
 
-Out-of-scope documents upload successfully with their format and source_kind tagged
-but are NEVER auto-extracted. Loud errors on dispatch prevent silent garbage rows.
+## Why clean-input pipeline, not watermark filter
+
+An earlier design (deferred H item from PR #499) considered a runtime watermark-detection
+module. That approach was rejected in favour of upstream sanitization:
+
+1. **Architectural**: the extractor's job is segmentation, not OCR preprocessing.
+2. **Generalizability**: a code-resident filter needs maintenance as new coaching services
+   emerge. The SOP scales with documentation, not code.
+3. **False-positive risk**: regex catching "Al Vision" could catch legitimate "AI vision"
+   question text. Sanitization happens before the text layer is created.
+4. **SME effort**: ~30–90 min per paper, ~10–15 papers per year.
+5. **Audit**: `sanitized_from_document_id` FK lets reviewers see what the extractor read
+   vs the original.
+
+The deferred H item from PR #499 is therefore **cancelled**, not deferred.
 
 ### Adding a new exam identity
 

@@ -88,16 +88,20 @@ ELIGIBLE_FORMATS_V1: frozenset[StructuralFormat] = frozenset({
 # ───────────────────────────────────────────────────────────────
 
 class SourceKind(str, Enum):
-    OFFICIAL_SCAN       = 'official_scan'       # directly from government press
-    SANITIZED_COACHING  = 'sanitized_coaching'  # coaching PDF, watermarks removed
-    RAW_COACHING        = 'raw_coaching'         # coaching PDF as-is; overlays present
-    CROWD_SOURCED       = 'crowd_sourced'        # community-contributed; unclear provenance
+    OFFICIAL_ARCHIVE    = 'official_archive'    # UPSC's published archive; ~1yr delay
+    OFFICIAL_SCAN       = 'official_scan'        # legacy alias; prefer official_archive
+    SANITIZED_COACHING  = 'sanitized_coaching'   # coaching PDF, watermarks removed
+    RAW_COACHING        = 'raw_coaching'          # coaching PDF as-is; overlays present
+    SME_AUTHORED        = 'sme_authored'          # SME-authored or transcribed test content
+    CROWD_SOURCED       = 'crowd_sourced'         # community-contributed; unclear provenance
     UNKNOWN             = 'unknown'
 
 
 ELIGIBLE_SOURCE_KINDS_V1: frozenset[SourceKind] = frozenset({
-    SourceKind.OFFICIAL_SCAN,
+    SourceKind.OFFICIAL_ARCHIVE,
+    SourceKind.OFFICIAL_SCAN,       # legacy alias; accepted for backwards compat
     SourceKind.SANITIZED_COACHING,
+    SourceKind.SME_AUTHORED,
 })
 
 
