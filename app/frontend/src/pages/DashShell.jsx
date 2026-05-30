@@ -29,11 +29,12 @@ const SECTIONS = [
     defaultOpen: false,
     items: [
       { to: "/app/study/subjects", label: "Subjects", icon: LineChart, testId: "sidebar-subjects" },
+      { to: "/app/study/resources", label: "Resources", icon: Library, testId: "sidebar-study-resources" },
       { to: "/app/notes", label: "Notes", icon: NotebookPen, testId: "sidebar-notes" },
       { to: "/app/flashcards", label: "Flashcards", icon: Layers, testId: "sidebar-flashcards" },
-      { to: "/app/study/mistakes", label: "Mistakes", icon: XCircle, testId: "sidebar-mistakes" },
       { to: "/app/study/revision", label: "Revision", icon: RotateCw, testId: "sidebar-revision" },
       { to: "/app/study/mocks", label: "Mocks", icon: Trophy, testId: "sidebar-mock-tests" },
+      { to: "/app/study/mistakes", label: "Mistakes", icon: XCircle, testId: "sidebar-mistakes" },
     ],
   },
   {
