@@ -91,7 +91,18 @@ def complete_run(
     Use FAILED only for uncaught pipeline exceptions.
     Use KILLED only when the kill switch was honored.
     """
-    metadata: dict[str, Any] = {
+    existing_res = (
+        sb.table('extraction_runs')
+        .select('metadata')
+        .eq('id', run_id)
+        .limit(1)
+        .execute()
+    )
+    if not existing_res.data:
+        raise RuntimeError(f'complete_run called on missing run_id={run_id}')
+    existing_metadata: dict[str, Any] = existing_res.data[0].get('metadata') or {}
+
+    metrics_metadata: dict[str, Any] = {
         'questions_extracted': metrics.questions_extracted,
         'rows_inserted': metrics.rows_inserted,
         'rows_skipped_idempotent': metrics.rows_skipped_idempotent,
@@ -101,7 +112,11 @@ def complete_run(
         'error_log': metrics.error_log,
     }
     if metrics.dry_run_rows:
-        metadata['dry_run_rows'] = metrics.dry_run_rows
+        metrics_metadata['dry_run_rows'] = metrics.dry_run_rows
+
+    # Merge: existing_metadata wins on collision — start_run's fields
+    # (dry_run, triggered_by_user_id) are immutable facts; metrics are derived.
+    merged_metadata = {**metrics_metadata, **existing_metadata}
 
     update: dict[str, Any] = {
         'status': final_status.value,
@@ -111,7 +126,7 @@ def complete_run(
         'confidence_p50': metrics.confidence_p50,
         'confidence_p90': metrics.confidence_p90,
         'error_log': metrics.error_log,
-        'metadata': metadata,
+        'metadata': merged_metadata,
     }
     sb.table('extraction_runs').update(update).eq('id', run_id).execute()
 
