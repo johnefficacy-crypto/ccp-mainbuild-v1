@@ -42,11 +42,12 @@ def _make_result(questions=None, document_id='doc-a') -> ExtractionResult:
 
 def _make_sb(existing_rows=None, kill_status='running'):
     sb = MagicMock()
-    # _fetch_existing_rows
+    # _fetch_existing_rows makes two .eq() queries (by paper + by doc); both
+    # return the same existing_rows for simplicity in tests.
     sb.table.return_value.select.return_value.eq.return_value.execute.return_value.data = (
         existing_rows or []
     )
-    # is_killed
+    # is_killed SELECT chain
     sb.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
         {'status': kill_status}
     ]
@@ -203,3 +204,99 @@ class TestDocumentKindGuard:
                 extract(pdf_bytes=b'', document_id='doc-a')
         assert 'notification' in str(exc.value)
         assert 'pyq_paper' in str(exc.value)
+
+
+class TestConfidenceNormalization:
+    def test_confidence_p50_normalized_to_0_1(self):
+        """Tesseract ocr_p50 is 0-100; extraction_runs expects 0..1."""
+        sb = _make_sb(existing_rows=[])
+        q = ExtractedQuestion(
+            question_number=1,
+            question_text="What is X?",
+            regions=[Region(page=3, bbox=(0.1, 0.1, 0.9, 0.3))],
+            confidence_by_field={'ocr_p50': 87.0},
+        )
+        result = ExtractionResult(
+            document_id='doc-a',
+            extractor_version='0.2.0',
+            questions=[q],
+            pages_processed=[3],
+            pages_skipped=[],
+            errors=[],
+        )
+        with patch('app.exam_intelligence.extraction.writer._create_pyq_question') as mock_cms:
+            mock_cms.return_value = {'ok': True}
+            metrics = write_extraction_result(sb, result, 'run-1', 'paper-1', dry_run=False)
+        assert metrics.confidence_p50 is not None
+        assert 0.0 <= metrics.confidence_p50 <= 1.0
+
+    def test_confidence_already_normalized_passthrough(self):
+        """Values already in 0..1 are not double-normalized."""
+        sb = _make_sb(existing_rows=[])
+        q = ExtractedQuestion(
+            question_number=1,
+            question_text="What is X?",
+            regions=[Region(page=3, bbox=(0.1, 0.1, 0.9, 0.3))],
+            confidence_by_field={'ocr_p50': 0.87},
+        )
+        result = ExtractionResult(
+            document_id='doc-a',
+            extractor_version='0.2.0',
+            questions=[q],
+            pages_processed=[3],
+            pages_skipped=[],
+            errors=[],
+        )
+        with patch('app.exam_intelligence.extraction.writer._create_pyq_question') as mock_cms:
+            mock_cms.return_value = {'ok': True}
+            metrics = write_extraction_result(sb, result, 'run-1', 'paper-1', dry_run=False)
+        assert metrics.confidence_p50 == pytest.approx(0.87)
+
+
+class TestFetchExistingRowsByPaper:
+    def test_dedup_sees_manual_rows_via_paper_id(self):
+        """Rows with source_document_id=NULL (manual entry) must be fetched by pyq_paper_id."""
+        from unittest.mock import MagicMock
+        from app.exam_intelligence.extraction.idempotency import compute_content_hash
+
+        manual_row = {
+            'id': 'manual-row-1',
+            'idempotency_key': None,
+            'content_hash': compute_content_hash("What is X?"),
+            'question_text': 'What is X?',
+        }
+
+        sb = MagicMock()
+        # by_paper query returns the manual row; by_doc returns nothing
+        call_count = [0]
+        def eq_side_effect(col, val):
+            mock = MagicMock()
+            if col == 'pyq_paper_id':
+                mock.execute.return_value.data = [manual_row]
+            else:
+                mock.execute.return_value.data = []
+            # is_killed chain
+            mock.limit.return_value.execute.return_value.data = [{'status': 'running'}]
+            return mock
+        sb.table.return_value.select.return_value.eq.side_effect = eq_side_effect
+
+        from app.exam_intelligence.extraction.writer import _fetch_existing_rows
+        rows = _fetch_existing_rows(sb, 'doc-a', 'paper-1')
+        assert any(r['id'] == 'manual-row-1' for r in rows)
+
+    def test_dedup_deduplicates_rows_appearing_in_both_queries(self):
+        """A row present in both by_paper and by_doc results is returned only once."""
+        from app.exam_intelligence.extraction.writer import _fetch_existing_rows
+
+        shared_row = {'id': 'row-1', 'idempotency_key': 'k', 'content_hash': 'h', 'question_text': 'Q'}
+
+        sb = MagicMock()
+        def eq_side_effect(col, val):
+            mock = MagicMock()
+            mock.execute.return_value.data = [shared_row]
+            mock.limit.return_value.execute.return_value.data = [{'status': 'running'}]
+            return mock
+        sb.table.return_value.select.return_value.eq.side_effect = eq_side_effect
+
+        rows = _fetch_existing_rows(sb, 'doc-a', 'paper-1')
+        assert len(rows) == 1

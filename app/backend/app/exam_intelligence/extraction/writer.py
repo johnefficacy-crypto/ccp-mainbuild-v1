@@ -83,15 +83,33 @@ def _build_row_payload(
     }
 
 
-def _fetch_existing_rows(sb, document_id: str) -> list[dict]:
-    """Fetch existing pyq_questions (auto or manual) for dedup comparison."""
-    res = (
+def _fetch_existing_rows(sb, document_id: str, pyq_paper_id: str) -> list[dict]:
+    """Fetch existing pyq_questions for dedup comparison.
+
+    Queries by pyq_paper_id (catches all rows for the paper, including manual
+    rows with source_document_id=NULL) unioned with source_document_id (catches
+    rows from previous extractor runs on the same document regardless of paper).
+    De-duplicated by row id before returning.
+    """
+    by_paper = (
+        sb.table('pyq_questions')
+        .select('id, idempotency_key, content_hash, question_text')
+        .eq('pyq_paper_id', pyq_paper_id)
+        .execute()
+    )
+    by_doc = (
         sb.table('pyq_questions')
         .select('id, idempotency_key, content_hash, question_text')
         .eq('source_document_id', document_id)
         .execute()
     )
-    return res.data or []
+    seen: set[str] = set()
+    rows: list[dict] = []
+    for row in (by_paper.data or []) + (by_doc.data or []):
+        if row['id'] not in seen:
+            seen.add(row['id'])
+            rows.append(row)
+    return rows
 
 
 def write_extraction_result(
@@ -113,7 +131,7 @@ def write_extraction_result(
         pages_skipped=len(result.pages_skipped),
     )
 
-    existing_rows = _fetch_existing_rows(sb, result.document_id)
+    existing_rows = _fetch_existing_rows(sb, result.document_id, pyq_paper_id)
     confidences: list[float] = []
 
     for q in result.questions:
@@ -142,7 +160,9 @@ def write_extraction_result(
         )
 
         if conf := q.confidence_by_field.get('ocr_p50'):
-            confidences.append(conf)
+            # Tesseract confidence is 0-100; extraction_runs.confidence_p50/p90
+            # are constrained to [0..1] (migration 149, numeric(4,3)).
+            confidences.append(conf / 100.0 if conf > 1.0 else conf)
 
         payload = _build_row_payload(
             q=q,
