@@ -1,5 +1,5 @@
 -- =============================================================================
--- 156_exam_subject_resources.sql
+-- 160_exam_subject_resources.sql
 -- Verified subjectwise booklist mapping.
 --
 -- Table: exam_subject_resources

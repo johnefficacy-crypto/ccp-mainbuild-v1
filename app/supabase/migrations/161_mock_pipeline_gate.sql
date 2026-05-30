@@ -1,5 +1,5 @@
 -- =============================================================================
--- 157_mock_pipeline_gate.sql
+-- 161_mock_pipeline_gate.sql
 -- Controlled Mock Pipeline — reviewer_status gate
 --
 -- Adds 'reviewed' and 'live' to the reviewer_status check constraint so the

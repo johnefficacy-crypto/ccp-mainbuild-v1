@@ -1,5 +1,5 @@
 -- =============================================================================
--- 156_mock_question_provenance.sql
+-- 159_mock_question_provenance.sql
 -- Mock Question Provenance + Review Gate
 --
 -- Adds provenance metadata and a 5-state reviewer lifecycle to
