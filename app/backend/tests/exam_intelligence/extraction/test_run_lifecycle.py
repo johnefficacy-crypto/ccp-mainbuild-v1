@@ -22,9 +22,18 @@ def _make_sb(insert_return_id='run-uuid-1', select_status='running'):
     sb.table.return_value.insert.return_value.execute.return_value.data = [
         {'id': insert_return_id}
     ]
-    # is_killed SELECT chain
+    # is_killed / complete_run SELECT chain
     sb.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
-        {'status': select_status}
+        {'status': select_status, 'metadata': {}}
+    ]
+    return sb
+
+
+def _make_complete_sb(existing_metadata=None):
+    """Build a mock sb pre-configured for complete_run / fail_run calls."""
+    sb = MagicMock()
+    sb.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+        {'metadata': existing_metadata if existing_metadata is not None else {}}
     ]
     return sb
 
@@ -76,28 +85,28 @@ class TestIsKilled:
 
 class TestCompleteRun:
     def test_sets_completed_status(self):
-        sb = MagicMock()
+        sb = _make_complete_sb()
         metrics = RunMetrics(rows_inserted=80)
         complete_run(sb, 'run-a', metrics, RunStatus.COMPLETED)
         update = sb.table.return_value.update.call_args[0][0]
         assert update['status'] == 'completed'
 
     def test_sets_failed_status(self):
-        sb = MagicMock()
+        sb = _make_complete_sb()
         metrics = RunMetrics(error_count=5)
         complete_run(sb, 'run-a', metrics, RunStatus.FAILED)
         update = sb.table.return_value.update.call_args[0][0]
         assert update['status'] == 'failed'
 
     def test_records_row_count(self):
-        sb = MagicMock()
+        sb = _make_complete_sb()
         metrics = RunMetrics(rows_inserted=42)
         complete_run(sb, 'run-a', metrics, RunStatus.COMPLETED)
         update = sb.table.return_value.update.call_args[0][0]
         assert update['row_count'] == 42
 
     def test_records_error_count(self):
-        sb = MagicMock()
+        sb = _make_complete_sb()
         metrics = RunMetrics(error_count=3)
         complete_run(sb, 'run-a', metrics, RunStatus.COMPLETED)
         update = sb.table.return_value.update.call_args[0][0]
@@ -105,14 +114,14 @@ class TestCompleteRun:
 
     def test_completed_with_errors_still_completed_status(self):
         """Per-row failures are non-fatal; status is still COMPLETED."""
-        sb = MagicMock()
+        sb = _make_complete_sb()
         metrics = RunMetrics(rows_inserted=95, error_count=5)
         complete_run(sb, 'run-a', metrics, RunStatus.COMPLETED)
         update = sb.table.return_value.update.call_args[0][0]
         assert update['status'] == 'completed'
 
     def test_dry_run_rows_in_metadata(self):
-        sb = MagicMock()
+        sb = _make_complete_sb()
         metrics = RunMetrics()
         metrics.dry_run_rows.append({'payload': {'question_text': 'Q1'}})
         complete_run(sb, 'run-a', metrics, RunStatus.COMPLETED)
@@ -120,20 +129,20 @@ class TestCompleteRun:
         assert 'dry_run_rows' in update['metadata']
 
     def test_updates_correct_run_id(self):
-        sb = MagicMock()
+        sb = _make_complete_sb()
         complete_run(sb, 'run-specific-id', RunMetrics(), RunStatus.COMPLETED)
         sb.table.return_value.update.return_value.eq.assert_called_with('id', 'run-specific-id')
 
 
 class TestFailRun:
     def test_sets_failed_status(self):
-        sb = MagicMock()
+        sb = _make_complete_sb()
         fail_run(sb, 'run-a', ValueError("boom"), RunMetrics())
         update = sb.table.return_value.update.call_args[0][0]
         assert update['status'] == 'failed'
 
     def test_records_exception_in_error_log(self):
-        sb = MagicMock()
+        sb = _make_complete_sb()
         metrics = RunMetrics()
         fail_run(sb, 'run-a', RuntimeError("something went wrong"), metrics)
         update = sb.table.return_value.update.call_args[0][0]
@@ -142,8 +151,41 @@ class TestFailRun:
         assert 'something went wrong' in update['error_log'][0]['error_message']
 
     def test_increments_error_count(self):
-        sb = MagicMock()
+        sb = _make_complete_sb()
         metrics = RunMetrics(error_count=2)
         fail_run(sb, 'run-a', ValueError("boom"), metrics)
         update = sb.table.return_value.update.call_args[0][0]
         assert update['error_count'] == 3
+
+
+class TestMetadataPreservation:
+    def test_complete_run_preserves_dry_run_flag(self):
+        sb = _make_complete_sb({'dry_run': True, 'triggered_by_user_id': 'cli'})
+        metrics = RunMetrics(rows_inserted=10)
+        complete_run(sb, 'run-id', metrics, RunStatus.COMPLETED)
+        update = sb.table.return_value.update.call_args[0][0]
+        assert update['metadata']['dry_run'] is True
+        assert update['metadata']['triggered_by_user_id'] == 'cli'
+        assert update['metadata']['rows_inserted'] == 10
+
+    def test_complete_run_handles_missing_existing_metadata(self):
+        sb = _make_complete_sb(None)
+        metrics = RunMetrics(rows_inserted=5)
+        complete_run(sb, 'run-id', metrics, RunStatus.COMPLETED)
+        update = sb.table.return_value.update.call_args[0][0]
+        assert update['metadata']['rows_inserted'] == 5
+
+    def test_complete_run_raises_on_missing_run(self):
+        sb = MagicMock()
+        sb.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        with pytest.raises(RuntimeError, match='missing run_id'):
+            complete_run(sb, 'gone', RunMetrics(), RunStatus.COMPLETED)
+
+    def test_fail_run_preserves_metadata(self):
+        sb = _make_complete_sb({'dry_run': False, 'triggered_by_user_id': 'workflow'})
+        metrics = RunMetrics()
+        fail_run(sb, 'run-id', ValueError('boom'), metrics)
+        update = sb.table.return_value.update.call_args[0][0]
+        assert update['metadata']['dry_run'] is False
+        assert update['metadata']['triggered_by_user_id'] == 'workflow'
+        assert len(update['metadata']['error_log']) == 1
