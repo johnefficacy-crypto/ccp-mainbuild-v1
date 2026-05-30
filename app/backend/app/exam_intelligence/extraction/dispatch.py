@@ -81,6 +81,31 @@ ELIGIBLE_FORMATS_V1: frozenset[StructuralFormat] = frozenset({
 })
 
 
+# ───────────────────────────────────────────────────────────────
+# Source kind: provenance of the uploaded PDF.
+# ELIGIBLE_SOURCE_KINDS_V1 = the two kinds whose input is clean
+# enough for the v1 OCR + segmentation pipeline.
+# ───────────────────────────────────────────────────────────────
+
+class SourceKind(str, Enum):
+    OFFICIAL_SCAN       = 'official_scan'       # directly from government press
+    SANITIZED_COACHING  = 'sanitized_coaching'  # coaching PDF, watermarks removed
+    RAW_COACHING        = 'raw_coaching'         # coaching PDF as-is; overlays present
+    CROWD_SOURCED       = 'crowd_sourced'        # community-contributed; unclear provenance
+    UNKNOWN             = 'unknown'
+
+
+ELIGIBLE_SOURCE_KINDS_V1: frozenset[SourceKind] = frozenset({
+    SourceKind.OFFICIAL_SCAN,
+    SourceKind.SANITIZED_COACHING,
+})
+
+
+def is_source_eligible_v1(source_kind: SourceKind) -> bool:
+    """True iff the source_kind is clean enough for the v1 extractor."""
+    return source_kind in ELIGIBLE_SOURCE_KINDS_V1
+
+
 def infer_format_from_identity(identity: ExamIdentity) -> StructuralFormat:
     """Look up the default structural_format for an exam_identity.
 

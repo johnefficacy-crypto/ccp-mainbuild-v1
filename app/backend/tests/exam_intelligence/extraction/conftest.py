@@ -23,13 +23,13 @@ DOCUMENT_ID_2026 = "83722a86-610b-471d-8b6b-4a8397aa1791"
 DOCUMENT_ID_2025 = "afc8e285-0ea1-41a1-a524-83b8b3121154"
 
 # Known fixture/smoke document UUIDs and their backfilled classification.
-# These documents predate migration 152; we provide the values here so
-# the acceptance gate runs even before migration 152 is applied on the
-# acceptance test DB. Once migration 152 is live everywhere this stub
+# These documents predate migrations 152-153; we provide the values here so
+# the acceptance gate runs even before those migrations are applied on the
+# acceptance test DB. Once migrations 152-153 are live everywhere this stub
 # can be removed — the real fetch will return the same values.
 _FIXTURE_CLASSIFICATIONS = {
-    DOCUMENT_ID_2026: ("mcq_bilingual_two_column", "upsc_cse_prelims_gs1"),
-    DOCUMENT_ID_2025: ("mcq_bilingual_two_column", "upsc_cse_prelims_gs1"),
+    DOCUMENT_ID_2026: ("mcq_bilingual_two_column", "upsc_cse_prelims_gs1", "sanitized_coaching"),
+    DOCUMENT_ID_2025: ("mcq_bilingual_two_column", "upsc_cse_prelims_gs1", "sanitized_coaching"),
 }
 
 
@@ -69,16 +69,17 @@ def stub_fetch_doc_row_for_fixtures():
     the acceptance test DB. Once migration 152 is live everywhere, this
     stub can be removed — the real fetch will return the same values.
     """
-    from app.exam_intelligence.extraction.dispatch import ExamIdentity, StructuralFormat
+    from app.exam_intelligence.extraction.dispatch import ExamIdentity, SourceKind, StructuralFormat
     from app.exam_intelligence.extraction.pipeline import _DocumentAssetsRow
 
     def _side_effect(document_id: str):
         if document_id in _FIXTURE_CLASSIFICATIONS:
-            sf, ei = _FIXTURE_CLASSIFICATIONS[document_id]
+            sf, ei, sk = _FIXTURE_CLASSIFICATIONS[document_id]
             return _DocumentAssetsRow(
                 id=document_id,
                 structural_format=StructuralFormat(sf),
                 exam_identity=ExamIdentity(ei),
+                source_kind=SourceKind(sk),
                 storage_path="",
             )
         raise ValueError(

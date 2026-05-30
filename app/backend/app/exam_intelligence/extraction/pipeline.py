@@ -22,9 +22,12 @@ from PIL import Image
 
 from .dispatch import (
     ELIGIBLE_FORMATS_V1,
+    ELIGIBLE_SOURCE_KINDS_V1,
     ExamIdentity,
+    SourceKind,
     StructuralFormat,
     is_extractable_by_v1,
+    is_source_eligible_v1,
 )
 from .layout import assign_words_to_columns, detect_columns
 from .ocr import DPI, ocr_page
@@ -67,6 +70,15 @@ class ExtractionRequiresClassificationError(RuntimeError):
     classification required before extraction."""
 
 
+class ExtractionRequiresCleanInputError(RuntimeError):
+    """document_assets row has source_kind that is not in ELIGIBLE_SOURCE_KINDS_V1.
+
+    Raw coaching PDFs (watermarks, promotional overlays) must be sanitized
+    before the v1 extractor can produce reliable output. See
+    docs/engineering/sanitization-sop-v1.md for the cleaning procedure.
+    """
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Document row dataclass (read-only; only the fields the extractor needs)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -76,11 +88,12 @@ class _DocumentAssetsRow:
     id: str
     structural_format: StructuralFormat
     exam_identity: ExamIdentity
+    source_kind: SourceKind
     storage_path: str
 
 
 def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
-    """SELECT id, structural_format, exam_identity, storage_path
+    """SELECT id, structural_format, exam_identity, source_kind, storage_path
     FROM document_assets WHERE id = $1.
 
     Service-role client; read-only. Raises ValueError if not found.
@@ -90,7 +103,7 @@ def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
     sb = get_supabase_admin()
     row = (
         sb.table("document_assets")
-        .select("id, structural_format, exam_identity, storage_path")
+        .select("id, structural_format, exam_identity, source_kind, storage_path")
         .eq("id", document_id)
         .single()
         .execute()
@@ -103,6 +116,7 @@ def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
         id=row["id"],
         structural_format=StructuralFormat(row["structural_format"]),
         exam_identity=ExamIdentity(row["exam_identity"]),
+        source_kind=SourceKind(row["source_kind"]),
         storage_path=row["storage_path"],
     )
 
@@ -274,6 +288,16 @@ def extract(
             f"Exam identity: {doc_row.exam_identity.value}. "
             f"Future extractor versions (v1.5/v2/v3) will handle additional "
             f"formats per the tier roadmap."
+        )
+
+    if not is_source_eligible_v1(doc_row.source_kind):
+        raise ExtractionRequiresCleanInputError(
+            f"Document {document_id} has source_kind={doc_row.source_kind.value!r}, "
+            f"which is not eligible for the v1 extractor. "
+            f"v1 requires clean input: {sorted(k.value for k in ELIGIBLE_SOURCE_KINDS_V1)}. "
+            f"Raw coaching PDFs must be sanitized (watermarks/overlays removed) before "
+            f"extraction. See docs/engineering/sanitization-sop-v1.md. "
+            f"Exam identity: {doc_row.exam_identity.value}."
         )
 
     # ─── Existing pipeline below (unchanged) ──────────────────
