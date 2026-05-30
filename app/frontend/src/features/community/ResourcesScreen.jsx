@@ -34,6 +34,7 @@ export default function ResourcesScreen() {
   // Default to the user's primary exam if known; otherwise show everything.
   const defaultExam =
     Array.isArray(user?.goal_exams) && user.goal_exams.length > 0 ? user.goal_exams[0] : "all";
+  const [lane, setLane] = useState("all");
   const [type, setType] = useState("all");
   const [trust, setTrust] = useState("all");
   const [exam, setExam] = useState(defaultExam);
@@ -54,18 +55,19 @@ export default function ResourcesScreen() {
   }, []);
 
   useEffect(() => {
-    reload({ exam, type, trust });
-  }, [reload, exam, type, trust]);
+    reload({ exam, type, trust, lane: lane !== "all" ? lane : undefined });
+  }, [reload, exam, type, trust, lane]);
 
   const filtered = useMemo(
     () =>
       items.filter((r) => {
+        if (lane !== "all" && r.category !== lane) return false;
         if (type !== "all" && r.type !== type) return false;
         if (trust !== "all" && r.sourceTrust !== trust) return false;
         if (exam !== "all" && r.exam !== exam) return false;
         return true;
       }),
-    [items, type, trust, exam],
+    [items, lane, type, trust, exam],
   );
 
   async function vote(r) {
@@ -113,6 +115,8 @@ export default function ResourcesScreen() {
           </FieldButton>
         }
       />
+
+      <LaneFilter lane={lane} setLane={setLane} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
         <FilterSidebar
@@ -162,6 +166,46 @@ export default function ResourcesScreen() {
         <ReportDrawer resource={reportFor} onClose={() => setReportFor(null)} onSubmit={submitReport} />
       ) : null}
     </FieldPage>
+  );
+}
+
+const LANES = [
+  { k: "all", label: "All" },
+  { k: "study_material", label: "Study Material" },
+  { k: "pyq", label: "PYQ" },
+  { k: "sheets", label: "Sheets" },
+  { k: "practice", label: "Practice" },
+  { k: "current_affairs", label: "Current Affairs" },
+  { k: "official", label: "Official" },
+  { k: "community", label: "Community" },
+];
+
+function LaneFilter({ lane, setLane }) {
+  return (
+    <div
+      className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none"
+      role="tablist"
+      aria-label="Resource category lanes"
+      data-testid="resource-lane-filter"
+    >
+      {LANES.map(({ k, label }) => (
+        <button
+          key={k}
+          type="button"
+          role="tab"
+          aria-selected={lane === k}
+          data-testid={`res-lane-${k}`}
+          onClick={() => setLane(k)}
+          className={`shrink-0 text-[12.5px] px-3 h-8 rounded-full border transition-colors whitespace-nowrap ${
+            lane === k
+              ? "bg-field-accent text-white border-field-accent font-medium"
+              : "border-field-line text-field-ink-muted hover:bg-field-line-soft"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }
 

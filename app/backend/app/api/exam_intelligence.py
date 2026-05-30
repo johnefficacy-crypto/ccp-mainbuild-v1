@@ -70,6 +70,92 @@ def get_exam_summary(
         }
 
 
+@router.get("/exams/{slug}/booklist")
+def get_exam_booklist(
+    slug: str,
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Verified subjectwise booklist for an exam.
+
+    Reads ``exam_subject_resources`` (verified-only), groups rows by
+    subject ordered by ``subjects.name``, then ``priority_order`` within
+    each subject.  When a row has a ``marketplace_resource_id`` it is
+    echoed back so the frontend can link directly to the marketplace asset.
+    Returns ``subjects=[]`` cleanly when nothing is verified yet.
+    """
+    sb = get_supabase_admin()
+    try:
+        exam_rows = (
+            sb.table("exams").select("id, slug").eq("slug", slug).limit(1).execute().data
+            or []
+        )
+        exam_row = exam_rows[0] if exam_rows else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("booklist exam lookup failed for %s: %s", slug, exc)
+        exam_row = None
+
+    if not exam_row or not exam_row.get("id"):
+        return {"exam_id": None, "verified_only": True, "subjects": []}
+
+    exam_id = exam_row["id"]
+    try:
+        rows = (
+            sb.table("exam_subject_resources")
+            .select(
+                "id, subject_id, topic_id, resource_type, title, author, "
+                "provider, url, marketplace_resource_id, priority_order, "
+                "recommended_for, subjects(id, name, slug)"
+            )
+            .eq("exam_id", exam_id)
+            .eq("reviewer_status", "verified")
+            .order("priority_order")
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("booklist query failed for %s", slug)
+        return {
+            "exam_id": exam_id,
+            "verified_only": True,
+            "subjects": [],
+            "error": str(exc)[:200],
+        }
+
+    # Group by subject, preserving subject order by name then priority_order.
+    seen: dict[str, dict] = {}
+    order: list[str] = []
+    for row in rows:
+        subj = row.get("subjects") or {}
+        sid = row.get("subject_id") or subj.get("id") or ""
+        if sid not in seen:
+            seen[sid] = {
+                "subject_id": sid,
+                "subject_name": subj.get("name") or "",
+                "subject_slug": subj.get("slug") or "",
+                "resources": [],
+            }
+            order.append(sid)
+        seen[sid]["resources"].append({
+            "id": row.get("id"),
+            "resource_type": row.get("resource_type"),
+            "title": row.get("title"),
+            "author": row.get("author"),
+            "provider": row.get("provider"),
+            "url": row.get("url"),
+            "marketplace_resource_id": row.get("marketplace_resource_id"),
+            "priority_order": row.get("priority_order"),
+            "recommended_for": row.get("recommended_for"),
+            "topic_id": row.get("topic_id"),
+        })
+
+    subjects = sorted(
+        [seen[sid] for sid in order],
+        key=lambda s: s["subject_name"].lower(),
+    )
+    return {"exam_id": exam_id, "verified_only": True, "subjects": subjects}
+
+
 @router.get("/exams/{slug}/option-insights")
 def get_option_insights(
     slug: str,
@@ -458,6 +544,62 @@ def post_trap_drill_attempts(
         drill_seed=body.drill_seed,
     )
     return {"exam_id": exam_row["id"], **result}
+
+
+@router.get("/exams/{slug}/documents")
+def get_exam_documents(
+    slug: str,
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return verified exam documents grouped by doc_type, deterministic order."""
+    sb = get_supabase_admin()
+    try:
+        rows = (
+            sb.table("exams").select("id, slug").eq("slug", slug).limit(1).execute().data
+            or []
+        )
+        exam_row = rows[0] if rows else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("exam_documents exam lookup failed for %s: %s", slug, exc)
+        exam_row = None
+    if not exam_row or not exam_row.get("id"):
+        return {
+            "exam_id": None,
+            "verified_only": True,
+            "groups": {},
+            "total": 0,
+        }
+    try:
+        docs = (
+            sb.table("exam_documents")
+            .select("id, doc_type, title, url, cycle_year, valid_from, valid_until")
+            .eq("exam_id", exam_row["id"])
+            .in_("reviewer_status", ["reviewed", "locked"])
+            .order("doc_type", desc=False)
+            .order("cycle_year", desc=True, nullsfirst=False)
+            .order("title", desc=False)
+            .execute()
+            .data
+        ) or []
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("exam_documents fetch failed for %s", slug)
+        return {
+            "exam_id": exam_row["id"],
+            "verified_only": True,
+            "groups": {},
+            "total": 0,
+            "error": str(exc)[:200],
+        }
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for d in docs:
+        dt = d["doc_type"]
+        groups.setdefault(dt, []).append(d)
+    return {
+        "exam_id": exam_row["id"],
+        "verified_only": True,
+        "groups": groups,
+        "total": len(docs),
+    }
 
 
 @router.get("/exams/{slug}/trap-drill/streak")
