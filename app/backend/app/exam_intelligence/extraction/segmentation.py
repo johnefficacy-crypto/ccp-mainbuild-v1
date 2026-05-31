@@ -23,8 +23,9 @@ import statistics
 from dataclasses import dataclass
 
 from .layout import assign_words_to_columns, detect_columns
+from .options import extract_options
 from .ordinal import detect_ordinal, strip_ordinal
-from .types import ExtractedQuestion, Region, Word
+from .types import ExtractedOption, ExtractedQuestion, Region, Word
 
 _ORDINAL_MIN = 1
 _ORDINAL_MAX = 200
@@ -178,7 +179,11 @@ def find_stem_end(
         text = _LEADING_NOISE_RE.sub('', ' '.join(w.text for w in line[ci:]))
 
         if _OPTION_RE.match(content_word.text):
-            return i
+            # Module B gate: only treat as option boundary if the label sits
+            # at the column left edge.  Body enumerators — (a), (b) inside a
+            # matching-column statement — are indented and must not split the stem.
+            if content_word.bbox[0] <= column_left_edge + _ANCHOR_X_GAP:
+                return i
 
         for pat in _MCQ_FOOTER_RES:
             if pat.search(text):
@@ -195,6 +200,7 @@ def build_question(
     ordinal: int,
     stem_lines: list[list[Word]],
     page: int,
+    options: tuple[ExtractedOption, ...] = (),
 ) -> ExtractedQuestion | None:
     """Build an ExtractedQuestion from an ordinal and its stem lines."""
     all_words = [w for line in stem_lines for w in line]
@@ -227,6 +233,7 @@ def build_question(
         question_text=question_text,
         regions=[region],
         confidence_by_field={"ocr_p50": ocr_p50, "segmentation": 1.0},
+        options=options,
     )
 
 
@@ -244,10 +251,14 @@ def segment_column(
     anchors = find_anchor_lines(lines, column_left_edge, last_accepted_ordinal)
 
     questions: list[ExtractedQuestion] = []
-    for anchor in anchors:
+    for i, anchor in enumerate(anchors):
         stem_end = find_stem_end(lines, anchor.line_idx, column_left_edge)
         stem_lines = lines[anchor.line_idx:stem_end]
-        q = build_question(anchor.ordinal, stem_lines, page)
+        # Option lines: from stem_end up to (but not including) the next anchor.
+        next_anchor_idx = anchors[i + 1].line_idx if i + 1 < len(anchors) else len(lines)
+        option_lines = lines[stem_end:next_anchor_idx]
+        options = extract_options(option_lines, column_left_edge)
+        q = build_question(anchor.ordinal, stem_lines, page, options)
         if q is not None:
             questions.append(q)
 

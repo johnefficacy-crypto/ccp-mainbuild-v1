@@ -4,7 +4,7 @@ All coordinates are normalized [0, 1], top-left origin, (x_min, y_min, x_max, y_
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -22,11 +22,18 @@ class Region:
 
 
 @dataclass(frozen=True)
+class ExtractedOption:
+    label: str        # normalised label: 'a', 'b', 'c', 'd'
+    option_text: str
+
+
+@dataclass(frozen=True)
 class ExtractedQuestion:
     question_number: int  # printed number, not array index
     question_text: str
     regions: list[Region]
     confidence_by_field: dict[str, float]  # {'ocr_p50': 87.2, 'segmentation': 0.9, ...}
+    options: tuple[ExtractedOption, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
