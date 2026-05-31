@@ -1,5 +1,5 @@
 /**
- * Tests for ExamWorkspace shell (PR1).
+ * Tests for ExamWorkspace shell (PR1) + readiness provider (PR2).
  *
  * Covers:
  * - shell renders loading state
@@ -9,6 +9,9 @@
  * - shell renders 7 disabled tabs
  * - changing cycle picker updates URL
  * - useExamWorkspace() outside provider throws
+ * - provider exposes readiness after fetch (PR2)
+ * - readiness fetch error does not crash shell (PR2)
+ * - refetchReadiness() re-fires the call (PR2)
  */
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
@@ -41,8 +44,24 @@ const CONTEXT_RESPONSE = {
   cycle: null,
   cycles: CYCLES,
   phases: PHASES,
-  readiness: null,
 };
+
+const READINESS_RESPONSE = {
+  exam_id: "exam-1",
+  cycle_id: null,
+  generated_at: "2026-01-01T00:00:00Z",
+  overall: { status: "empty", score_percent: 0, ready_to_activate: false, blockers: [] },
+  sections: [],
+};
+
+// ── Mock helper — routes /context calls to CONTEXT_RESPONSE, /readiness to READINESS_RESPONSE ──
+
+function mockBothEndpoints({ contextResponse = CONTEXT_RESPONSE, readinessResponse = READINESS_RESPONSE } = {}) {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/readiness")) return Promise.resolve(readinessResponse);
+    return Promise.resolve(contextResponse);
+  });
+}
 
 // ── Render helper ─────────────────────────────────────────────────────────────
 
@@ -60,7 +79,7 @@ function renderWorkspace(examId = "exam-1", cycleId = null) {
   );
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// ── PR1 Tests ─────────────────────────────────────────────────────────────────
 
 describe("ExamWorkspace shell", () => {
   beforeEach(() => {
@@ -68,14 +87,20 @@ describe("ExamWorkspace shell", () => {
   });
 
   test("renders loading state while fetch is in flight", async () => {
-    // Never resolves
-    api.get.mockReturnValue(new Promise(() => {}));
+    // Context never resolves; readiness resolves (doesn't affect shell loading)
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return new Promise(() => {});
+    });
     renderWorkspace();
     expect(screen.getByTestId("workspace-loading")).toBeTruthy();
   });
 
   test("renders error state with retry button on API failure", async () => {
-    api.get.mockRejectedValue(new Error("server error"));
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.reject(new Error("server error"));
+    });
     renderWorkspace();
     await waitFor(() =>
       expect(screen.getByTestId("workspace-error")).toBeTruthy(),
@@ -85,7 +110,13 @@ describe("ExamWorkspace shell", () => {
   });
 
   test("retry button calls refetch", async () => {
-    api.get.mockRejectedValueOnce(new Error("fail")).mockResolvedValue(CONTEXT_RESPONSE);
+    let callCount = 0;
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      callCount++;
+      if (callCount === 1) return Promise.reject(new Error("fail"));
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
     renderWorkspace();
     await waitFor(() => screen.getByTestId("workspace-error"));
 
@@ -98,14 +129,14 @@ describe("ExamWorkspace shell", () => {
   });
 
   test("renders exam name from context", async () => {
-    api.get.mockResolvedValue(CONTEXT_RESPONSE);
+    mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("exam-name"));
     expect(screen.getByTestId("exam-name").textContent).toBe("SSC CGL");
   });
 
   test("renders cycle picker populated from cycles[]", async () => {
-    api.get.mockResolvedValue(CONTEXT_RESPONSE);
+    mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("cycle-picker"));
     const picker = screen.getByTestId("cycle-picker");
@@ -116,7 +147,7 @@ describe("ExamWorkspace shell", () => {
   });
 
   test("renders exactly 7 tabs all disabled", async () => {
-    api.get.mockResolvedValue(CONTEXT_RESPONSE);
+    mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
 
@@ -129,7 +160,7 @@ describe("ExamWorkspace shell", () => {
   });
 
   test("renders all 7 tab labels", async () => {
-    api.get.mockResolvedValue(CONTEXT_RESPONSE);
+    mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
 
@@ -143,7 +174,7 @@ describe("ExamWorkspace shell", () => {
   });
 
   test("renders placeholder content area", async () => {
-    api.get.mockResolvedValue(CONTEXT_RESPONSE);
+    mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("workspace-placeholder"));
     expect(screen.getByTestId("workspace-placeholder").textContent).toBe(
@@ -152,25 +183,107 @@ describe("ExamWorkspace shell", () => {
   });
 
   test("changing cycle picker navigates to cycle URL", async () => {
-    api.get.mockResolvedValue(CONTEXT_RESPONSE);
+    mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("cycle-picker"));
 
-    // Changing cycle navigates, which remounts the provider and triggers a new fetch
-    // with the new cycle_id in the URL. We verify navigation happened by checking
-    // that api.get was called a second time (initial load + after navigation).
-    const callsBefore = api.get.mock.calls.length;
+    const callsBefore = api.get.mock.calls.filter((c) => c[0].includes("/context")).length;
 
     fireEvent.change(screen.getByTestId("cycle-picker"), {
       target: { value: "cycle-2026" },
     });
 
     await waitFor(() =>
-      expect(api.get.mock.calls.length).toBeGreaterThan(callsBefore),
+      expect(api.get.mock.calls.filter((c) => c[0].includes("/context")).length).toBeGreaterThan(callsBefore),
     );
 
     const allUrls = api.get.mock.calls.map((c) => c[0]);
     expect(allUrls.some((u) => u.includes("cycle-2026"))).toBe(true);
+  });
+});
+
+// ── PR2 Tests: readiness provider ─────────────────────────────────────────────
+
+describe("ExamWorkspace readiness provider (PR2)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("provider exposes readiness after fetch", async () => {
+    mockBothEndpoints();
+    let captured = null;
+
+    function ReadinessCapture() {
+      const { readiness } = useExamWorkspace();
+      captured = readiness;
+      return null;
+    }
+
+    render(
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1"]}>
+        <Routes>
+          <Route
+            path="/admin/exam-intelligence/workspace/:exam_id"
+            element={
+              <ExamWorkspaceProvider>
+                <ReadinessCapture />
+              </ExamWorkspaceProvider>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(captured).not.toBeNull());
+    expect(captured.exam_id).toBe("exam-1");
+    expect(captured.overall).toBeTruthy();
+  });
+
+  test("readiness fetch error does not crash shell", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.reject(new Error("readiness fail"));
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+    renderWorkspace();
+    // Shell renders normally despite readiness failure
+    await waitFor(() => expect(screen.getByTestId("exam-name")).toBeTruthy());
+    // workspace-error should NOT appear (that's only for context failure)
+    expect(screen.queryByTestId("workspace-error")).toBeNull();
+  });
+
+  test("refetchReadiness re-fires the readiness call", async () => {
+    mockBothEndpoints();
+    let captured = null;
+
+    function ReadinessHarness() {
+      const { readiness, refetchReadiness } = useExamWorkspace();
+      captured = { readiness, refetchReadiness };
+      return null;
+    }
+
+    render(
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1"]}>
+        <Routes>
+          <Route
+            path="/admin/exam-intelligence/workspace/:exam_id"
+            element={
+              <ExamWorkspaceProvider>
+                <ReadinessHarness />
+              </ExamWorkspaceProvider>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(captured.readiness).not.toBeNull());
+    const callsBefore = api.get.mock.calls.filter((c) => c[0].includes("/readiness")).length;
+
+    await act(async () => { captured.refetchReadiness(); });
+
+    await waitFor(() =>
+      expect(api.get.mock.calls.filter((c) => c[0].includes("/readiness")).length).toBeGreaterThan(callsBefore),
+    );
   });
 });
 
