@@ -3,6 +3,7 @@
  *
  * PR1: shell + disabled tabs
  * PR3b: Syllabus Mapper tab enabled when readiness available
+ * PR4: PYQ Workbench tab enabled when readiness available
  *
  * Routes:
  *   /admin/exam-intelligence/workspace/:exam_id
@@ -13,6 +14,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ExamWorkspaceProvider, useExamWorkspace } from "./ExamWorkspaceContext";
 
 const SyllabusMapperPanel = lazy(() => import("./syllabus-mapper/SyllabusMapperPanel"));
+const PyqWorkbenchPanel = lazy(() => import("./pyq-workbench/PyqWorkbenchPanel"));
 
 const TABS = [
   { id: "setup",       label: "Setup" },
@@ -27,6 +29,12 @@ const TABS = [
 function isSyllabusTabEnabled(readiness) {
   if (!readiness) return false;
   const section = readiness.sections?.find((s) => s.section === "syllabus_mapper");
+  return section ? section.status !== "empty" : false;
+}
+
+function isPyqTabEnabled(readiness) {
+  if (!readiness) return false;
+  const section = readiness.sections?.find((s) => s.section === "pyq_workbench");
   return section ? section.status !== "empty" : false;
 }
 
@@ -73,9 +81,11 @@ function WorkspaceShell() {
   }
 
   const syllabusEnabled = isSyllabusTabEnabled(readiness);
+  const pyqEnabled = isPyqTabEnabled(readiness);
 
   function isTabEnabled(tabId) {
     if (tabId === "syllabus") return syllabusEnabled;
+    if (tabId === "pyq") return pyqEnabled;
     return false;
   }
 
@@ -150,6 +160,10 @@ function WorkspaceShell() {
         {activeTab === "syllabus" ? (
           <Suspense fallback={<div className="p-8 text-gray-400">Loading…</div>}>
             <SyllabusMapperPanel />
+          </Suspense>
+        ) : activeTab === "pyq" ? (
+          <Suspense fallback={<div className="p-8 text-gray-400">Loading…</div>}>
+            <PyqWorkbenchPanel />
           </Suspense>
         ) : (
           <div

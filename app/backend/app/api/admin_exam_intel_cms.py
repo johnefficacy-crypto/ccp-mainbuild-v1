@@ -579,6 +579,7 @@ def list_pyq_papers(
     exam_id: str | None = Query(default=None),
     year: int | None = Query(default=None),
     trust_status: str | None = Query(default=None),
+    exam_cycle_id: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _admin: dict = Depends(require_permission(PERM_CMS)),
@@ -592,8 +593,23 @@ def list_pyq_papers(
         q = q.eq("year", year)
     if trust_status:
         q = q.eq("trust_status", trust_status)
+    if exam_cycle_id:
+        q = q.eq("exam_cycle_id", exam_cycle_id)
     res = q.range(offset, offset + limit - 1).execute()
     return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.get("/pyq-papers/{paper_id}")
+def get_pyq_paper(
+    paper_id: str,
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    paper = _safe_select(supabase, "pyq_papers", id=paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+    return paper
 
 
 @router.post("/pyq-papers")
