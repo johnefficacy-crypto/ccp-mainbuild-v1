@@ -10,6 +10,8 @@
 --
 -- Called by PATCH /api/admin/exam-intelligence/items/pyq_question/{id}/review.
 
+begin;
+
 create or replace function public.update_pyq_question_review_atomic(
     p_question_id     uuid,
     p_reviewer_status text,
@@ -59,5 +61,7 @@ $$;
 -- can bypass the /review endpoint's permission check.
 revoke all on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) from public;
 grant execute on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) to service_role;
+
+commit;
 
 notify pgrst, 'reload schema';
