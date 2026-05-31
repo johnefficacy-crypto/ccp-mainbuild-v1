@@ -414,7 +414,7 @@ def commit(
                 raise RuntimeError("question insert returned no row")
             question_id = inserted_q[0]["id"]
 
-            # Insert 4 options
+            # Insert 4 options; roll back the question row on any failure (PR7 atomicity).
             correct = parsed["correct_option"]  # "A"|"B"|"C"|"D"
             opt_rows = [
                 {
@@ -426,7 +426,15 @@ def commit(
                 }
                 for lbl in ("A", "B", "C", "D")
             ]
-            supabase.table("pyq_options").insert(opt_rows).execute()
+            try:
+                supabase.table("pyq_options").insert(opt_rows).execute()
+            except Exception as opt_exc:  # noqa: BLE001
+                # Delete the orphaned question row before surfacing the error.
+                try:
+                    supabase.table("pyq_questions").delete().eq("id", question_id).execute()
+                except Exception:  # noqa: BLE001
+                    logger.exception("rollback delete failed for question %s (row %s)", question_id, row_num)
+                raise RuntimeError(f"options insert failed: {opt_exc}") from opt_exc
 
             already_inserted.add(qn)
             committed.append({"row": row_num, "question_number": qn, "question_id": question_id})

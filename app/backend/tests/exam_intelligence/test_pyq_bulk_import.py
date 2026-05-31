@@ -378,6 +378,44 @@ class TestCommit:
         self._do_preflight_and_commit(sb, rows)
         assert len(sb.db["pyq_options"]) == 12  # 3 questions × 4 options
 
+    def test_options_failure_rolls_back_question_and_reports_failed(self):
+        """PR7 atomicity in bulk-import commit: options insert failure → question deleted, row=failed."""
+        from tests.exam_intelligence.test_pr7_child_errors import FailSBStub
+
+        sb = FailSBStub(_seed(), fail_table="pyq_options")
+        client = _client(sb)
+        rows = [_clean_row(1), _clean_row(2)]
+        pf = _preflight(client, rows)
+        r = client.post(
+            f"{_BASE}/pyq-papers/paper-1/bulk-import/commit",
+            json={"import_token": pf["import_token"], "reason": "atomicity test"},
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["committed"] == 0
+        assert body["failed"] == 2
+        # No orphaned question rows
+        assert len(sb.db["pyq_questions"]) == 0
+        assert len(sb.db["pyq_options"]) == 0
+        # per_row entries report the failure
+        assert all(r["result"] == "failed" for r in body["per_row"])
+
+    def test_options_failure_ok_false_is_real(self):
+        """Corollary: when ok:false is returned, the DB state is clean (no orphans)."""
+        from tests.exam_intelligence.test_pr7_child_errors import FailSBStub
+
+        sb = FailSBStub(_seed(), fail_table="pyq_options")
+        client = _client(sb)
+        pf = _preflight(client, [_clean_row(1)])
+        r = client.post(
+            f"{_BASE}/pyq-papers/paper-1/bulk-import/commit",
+            json={"import_token": pf["import_token"], "reason": "ok-false real failure"},
+        )
+        body = r.json()
+        assert body["failed"] == 1
+        # failed=1 is an honest report — no silently committed orphan
+        assert len(sb.db["pyq_questions"]) == 0
+
 
 # ── Parity test ───────────────────────────────────────────────────────────────
 
