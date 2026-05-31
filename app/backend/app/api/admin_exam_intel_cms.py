@@ -987,6 +987,7 @@ def create_pyq_question(
     question_id = new_q.get("id")
 
     inserted_options: list[dict] = []
+    child_errors: list[dict] = []
     options = body.payload.get("options") or []
     if isinstance(options, list) and options and question_id:
         opt_rows = []
@@ -1006,8 +1007,20 @@ def create_pyq_question(
                 inserted_options = supabase.table("pyq_options").insert(opt_rows).execute().data or []
             except Exception as exc:  # noqa: BLE001
                 logger.exception("pyq_options insert failed for question %s", question_id)
-                # Don't roll back the question — surface in audit + response.
-                inserted_options = []
+                child_errors = [{"label": r.get("option_label"), "error": str(exc)[:200]} for r in opt_rows]
+
+    if child_errors and question_id:
+        # Options failed — delete the orphaned question row to preserve atomicity.
+        try:
+            supabase.table("pyq_questions").delete().eq("id", question_id).execute()
+        except Exception:  # noqa: BLE001
+            logger.exception("rollback delete failed for question %s", question_id)
+        audit_id = _audit(
+            supabase, admin, "exam_intel.cms.pyq_question.create",
+            entity_type="pyq_question", entity_id=question_id,
+            new_value={"reason": body.reason, "question": new_q, "child_errors": child_errors, "rolled_back": True},
+        )
+        return {"ok": False, "audit_id": audit_id, "question": new_q, "child_errors": child_errors}
 
     audit_id = _audit(
         supabase, admin, "exam_intel.cms.pyq_question.create",
@@ -2585,12 +2598,13 @@ def bulk_import(
             error_count += 1
             continue
         row = inserted[0] if inserted else cleaned
-        result = {"index": idx, "ok": True, "row": row}
+        result: dict[str, Any] = {"index": idx, "ok": True, "row": row}
         # Insert any inline children (e.g. a question's options) against the
         # freshly-created parent id.
         inline = cfg.get("inline")
         if inline and isinstance(raw.get(inline["key"]), list) and row.get("id"):
             n = 0
+            child_errors: list[dict] = []
             for child in raw[inline["key"]]:
                 if not isinstance(child, dict):
                     continue
@@ -2599,8 +2613,20 @@ def bulk_import(
                 try:
                     supabase.table(inline["table"]).insert(child_row).execute()
                     n += 1
+                except Exception as child_exc:  # noqa: BLE001
+                    child_errors.append({
+                        "label": child_row.get("option_label") or child_row.get(inline["fk"]),
+                        "error": str(child_exc)[:200],
+                    })
+            if child_errors:
+                # Roll back parent so we never leave a question without its options.
+                try:
+                    supabase.table(cfg["table"]).delete().eq("id", row["id"]).execute()
                 except Exception:  # noqa: BLE001
                     pass
+                results.append({"index": idx, "ok": False, "error": "options insert failed", "child_errors": child_errors})
+                error_count += 1
+                continue
             result["children_created"] = n
         results.append(result)
         ok_count += 1
