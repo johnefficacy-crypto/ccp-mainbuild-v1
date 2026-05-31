@@ -65,7 +65,7 @@ def _build_row_payload(
     Maps ExtractedQuestion fields onto the pyq_questions column names.
     reviewer_status is NOT included — the CMS path forces 'pending'.
     """
-    return {
+    payload: dict[str, Any] = {
         'pyq_paper_id': pyq_paper_id,
         'question_number': q.question_number,
         'question_text': q.question_text,
@@ -81,6 +81,15 @@ def _build_row_payload(
         'content_hash': content_hash,
         'confidence_by_field': q.confidence_by_field or {},
     }
+    if q.options:
+        payload['options'] = [
+            {
+                'option_label': opt.label.upper(),
+                'option_text': opt.option_text,
+            }
+            for opt in q.options
+        ]
+    return payload
 
 
 def _fetch_existing_rows(sb, document_id: str, pyq_paper_id: str) -> list[dict]:
@@ -175,14 +184,25 @@ def write_extraction_result(
         )
 
         if dry_run:
-            metrics.dry_run_rows.append({
+            dry_row: dict[str, Any] = {
                 'payload': payload,
                 'dedup_decision': {
                     'action': decision.action,
                     'reason': decision.reason,
                     'linked_row_id': decision.linked_row_id,
                 },
-            })
+            }
+            if q.options:
+                dry_row['metadata'] = {
+                    'options': [
+                        {
+                            'option_label': opt.label.upper(),
+                            'option_text': opt.option_text,
+                        }
+                        for opt in q.options
+                    ]
+                }
+            metrics.dry_run_rows.append(dry_row)
             continue
 
         # Live write path.
@@ -190,8 +210,11 @@ def write_extraction_result(
             metrics.rows_skipped_idempotent += 1
             continue
 
+        import logging as _logging
+        _log = _logging.getLogger(__name__)
+
         try:
-            _create_pyq_question(
+            result_row = _create_pyq_question(
                 sb,
                 payload=payload,
                 reason=(
@@ -199,10 +222,24 @@ def write_extraction_result(
                     f"run={run_id} doc={result.document_id} Q{q.question_number}"
                 ),
             )
-            if decision.action == 'link_fuzzy_duplicate':
-                metrics.rows_linked_fuzzy += 1
+            if isinstance(result_row, dict) and not result_row.get('ok', True):
+                child_errors = result_row.get('child_errors', [])
+                _log.warning(
+                    "create_pyq_question returned ok=false for Q%s: %s",
+                    q.question_number,
+                    child_errors,
+                )
+                metrics.error_count += 1
+                metrics.error_log.append({
+                    'kind': 'create_pyq_question_ok_false',
+                    'question_number': q.question_number,
+                    'child_errors': child_errors,
+                })
             else:
-                metrics.rows_inserted += 1
+                if decision.action == 'link_fuzzy_duplicate':
+                    metrics.rows_linked_fuzzy += 1
+                else:
+                    metrics.rows_inserted += 1
         except Exception as exc:  # noqa: BLE001
             metrics.error_count += 1
             metrics.error_log.append({
