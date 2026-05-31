@@ -7,9 +7,13 @@
  *   Right  (~30%)  Source PDF preview via signed URL
  *
  * Routes: /admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace
+ *
+ * Props (optional):
+ *   paperId  — if provided, use this instead of useParams (embedded mode)
+ *   embedded — if true, drop h-screen wrapper (sized by parent)
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Copy, ExternalLink } from "lucide-react";
 import { api } from "../../../lib/api";
 
@@ -1072,8 +1076,9 @@ function ProgressBar({ progress }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function PyqPaperWorkspace() {
-  const { pyq_paper_id } = useParams();
+export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = false }) {
+  const { pyq_paper_id: pyq_paper_id_param } = useParams();
+  const pyq_paper_id = paperIdProp || pyq_paper_id_param;
   const navigate = useNavigate();
 
   const [paper, setPaper] = useState(null);
@@ -1099,12 +1104,10 @@ export default function PyqPaperWorkspace() {
   // ── Data loading ─────────────────────────────────────────────────────────
 
   const loadPaper = useCallback(async () => {
+    if (!pyq_paper_id) return;
     try {
-      const res = await api.get(
-        `${CMS_BASE}/pyq-papers?limit=1`,
-      );
-      const found = (res.items || []).find((p) => p.id === pyq_paper_id);
-      setPaper(found || null);
+      const res = await api.get(`${CMS_BASE}/pyq-papers/${encodeURIComponent(pyq_paper_id)}`);
+      setPaper(res || null);
     } catch {
       /* best-effort */
     }
@@ -1267,18 +1270,42 @@ export default function PyqPaperWorkspace() {
     );
   }
 
+  const workspaceLink = paper
+    ? paper.exam_cycle_id
+      ? `/admin/exam-intelligence/workspace/${paper.exam_id}/${paper.exam_cycle_id}`
+      : `/admin/exam-intelligence/workspace/${paper.exam_id}`
+    : null;
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div
+      className={`flex flex-col ${embedded ? "h-full" : "h-screen"} overflow-hidden`}
+      data-testid="pyq-workspace-root"
+      data-embedded={embedded ? "true" : "false"}
+    >
       {/* Top header */}
       <div className="flex-shrink-0 px-4 py-3 border-b border-clay-200 bg-[#FFFDF9] space-y-2">
+        {!embedded && workspaceLink && (
+          <div className="rounded bg-indigo-50 border border-indigo-200 px-3 py-1.5 text-[12px] text-indigo-800 flex items-center gap-2" data-testid="workspace-banner">
+            This paper workspace is now available inside Exam Workspace.{" "}
+            <Link
+              to={workspaceLink}
+              className="underline font-medium hover:no-underline"
+              data-testid="workspace-banner-link"
+            >
+              Open in Exam Workspace →
+            </Link>
+          </div>
+        )}
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="text-[12px] text-clay-600 hover:text-clay-900 underline"
-            onClick={() => navigate("/admin/exam-intelligence")}
-          >
-            ← Exam intelligence
-          </button>
+          {!embedded && (
+            <button
+              type="button"
+              className="text-[12px] text-clay-600 hover:text-clay-900 underline"
+              onClick={() => navigate("/admin/exam-intelligence")}
+            >
+              ← Exam intelligence
+            </button>
+          )}
           <h1 className="font-bold text-clay-900 text-sm">{paperTitle}</h1>
         </div>
         <ProgressBar progress={progress} />
