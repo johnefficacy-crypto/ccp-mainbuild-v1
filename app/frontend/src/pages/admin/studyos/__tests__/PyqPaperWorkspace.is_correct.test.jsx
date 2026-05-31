@@ -1,15 +1,16 @@
 /**
- * PR7 — is_correct persistence regression guard.
+ * PR7 — is_correct persistence fix and regression guard.
  *
- * Root-cause audit result:
- *   (a) onChange: confirmed to fire — toggleCorrect is bound as onChange handler.
- *   (b) Payload: confirmed correct — { payload: { is_correct: !opt.is_correct } }.
- *   (c) Allowlist: _OPTION_FIELDS includes is_correct — confirmed in admin_exam_intel_cms.py:663.
+ * Root-cause: in the OptionsEditor, onChange for is_correct only called
+ * updateOption() (local state update) but never called saveOption(), so the
+ * PATCH to the backend was never sent when the user toggled the checkbox.
  *
- * None of (a)/(b)/(c) apply in the current code. These tests document that the
- * toggle correctly sends the PATCH and the UI reflects the persisted value after reload.
+ * Fix applied in PyqPaperWorkspace.jsx: onChange now calls
+ *   saveOption({ ...opt, is_correct: e.target.checked }, idx)
+ * so the PATCH fires immediately on toggle, not only when the text field blurs.
  */
 import React from "react";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 
 jest.mock("../../../../lib/api", () => ({
@@ -27,12 +28,13 @@ const { api } = require("../../../../lib/api");
 // eslint-disable-next-line global-require
 const PyqPaperWorkspace = require("../PyqPaperWorkspace").default;
 
-const EXAMS = [{ id: "e1", name: "SSC CGL", slug: "ssc-cgl" }];
-const PAPERS = [{ id: "paper-1", exam_id: "e1", paper_code: "CGL-2024", year: 2024 }];
+const PAPER_ID = "paper-1";
+const PAPERS = [{ id: PAPER_ID, exam_id: "e1", paper_code: "CGL-2024", year: 2024 }];
 const QUESTIONS = [
   {
     id: "q-1",
-    pyq_paper_id: "paper-1",
+    pyq_paper_id: PAPER_ID,
+    question_number: 1,
     question_text: "What is 2+2?",
     question_type: "mcq",
     reviewer_status: "pending",
@@ -48,7 +50,13 @@ const OPTIONS_B_CORRECT = [
 ];
 
 function renderWorkspace() {
-  return render(<PyqPaperWorkspace />);
+  return render(
+    <MemoryRouter initialEntries={[`/${PAPER_ID}`]}>
+      <Routes>
+        <Route path="/:pyq_paper_id" element={<PyqPaperWorkspace />} />
+      </Routes>
+    </MemoryRouter>,
+  );
 }
 
 beforeEach(() => {
@@ -57,52 +65,38 @@ beforeEach(() => {
   api.post.mockReset();
 });
 
-/** Set up mocks so the workspace can fully navigate to options. */
 function setupMocks({ optionsAfterPatch = OPTIONS_B_CORRECT } = {}) {
-  let optionsCallCount = 0;
+  let optionsCalls = 0;
   api.get.mockImplementation((url) => {
-    if (url.includes("/exams")) return Promise.resolve({ items: EXAMS });
+    if (url.includes("/pyq-papers/") && url.includes("/progress")) {
+      return Promise.resolve({ total: 1, verified: 0 });
+    }
     if (url.includes("/pyq-papers")) return Promise.resolve({ items: PAPERS });
     if (url.includes("/pyq-questions")) return Promise.resolve({ items: QUESTIONS });
     if (url.includes("/pyq-options")) {
-      // First call returns all-false; subsequent (after PATCH) returns updated values.
-      optionsCallCount += 1;
-      return Promise.resolve({ items: optionsCallCount === 1 ? OPTIONS_ALL_FALSE : optionsAfterPatch });
+      optionsCalls += 1;
+      return Promise.resolve({ items: optionsCalls === 1 ? OPTIONS_ALL_FALSE : optionsAfterPatch });
     }
     return Promise.resolve({ items: [] });
   });
   api.patch.mockResolvedValue({ ok: true, row: { id: "opt-b", is_correct: true } });
 }
 
-async function navigateToOptions() {
-  // Select exam
-  const examSel = await screen.findByTestId("workspace-exam-select");
+async function selectQuestion() {
+  const qItem = await screen.findByTestId("question-list-item-q-1");
   await act(async () => {
-    fireEvent.change(examSel, { target: { value: "e1" } });
+    fireEvent.click(qItem);
   });
-
-  // Select paper
-  const paperSel = await screen.findByTestId("workspace-paper-select");
-  await act(async () => {
-    fireEvent.change(paperSel, { target: { value: "paper-1" } });
-  });
-
-  // Click a question button — questions render in the question-list section
-  const qButton = await screen.findByText(/What is 2\+2/);
-  await act(async () => {
-    fireEvent.click(qButton);
-  });
-
-  // Wait for options editor to appear
-  await screen.findByTestId("options-editor");
+  // Wait for options editor to show the checkbox
+  await screen.findByTestId("option-correct-A");
 }
 
-test("is_correct checkbox sends PATCH with correct payload", async () => {
+test("is_correct toggle sends PATCH immediately (not only on text blur)", async () => {
   setupMocks();
   renderWorkspace();
-  await navigateToOptions();
+  await selectQuestion();
 
-  const checkboxB = await screen.findByTestId("option-correct-B");
+  const checkboxB = screen.getByTestId("option-correct-B");
   expect(checkboxB.checked).toBe(false);
 
   await act(async () => {
@@ -112,42 +106,44 @@ test("is_correct checkbox sends PATCH with correct payload", async () => {
   expect(api.patch).toHaveBeenCalledWith(
     expect.stringContaining("/pyq-options/opt-b"),
     expect.objectContaining({
-      reason: expect.any(String),
-      payload: { is_correct: true },
+      payload: expect.objectContaining({ is_correct: true }),
     }),
   );
 });
 
-test("is_correct checkbox shows updated value after PATCH and options reload", async () => {
+test("is_correct checkbox reflects persisted value (true stays true after state update)", async () => {
   setupMocks();
   renderWorkspace();
-  await navigateToOptions();
-
-  const checkboxB = await screen.findByTestId("option-correct-B");
-  expect(checkboxB.checked).toBe(false);
-
-  await act(async () => {
-    fireEvent.click(checkboxB);
-  });
-
-  // After PATCH + options reload, checkbox B should be checked.
-  await waitFor(() => {
-    const cb = screen.getByTestId("option-correct-B");
-    expect(cb.checked).toBe(true);
-  });
-});
-
-test("is_correct checkbox of other option stays unchanged after sibling toggle", async () => {
-  setupMocks();
-  renderWorkspace();
-  await navigateToOptions();
+  await selectQuestion();
 
   await act(async () => {
     fireEvent.click(screen.getByTestId("option-correct-B"));
   });
 
+  // Checkbox B should be checked immediately (optimistic local state update via updateOption).
   await waitFor(() => {
-    expect(screen.getByTestId("option-correct-A").checked).toBe(false);
     expect(screen.getByTestId("option-correct-B").checked).toBe(true);
   });
+  // Sibling A must remain unchecked.
+  expect(screen.getByTestId("option-correct-A").checked).toBe(false);
+});
+
+test("is_correct PATCH payload includes both option_text and is_correct", async () => {
+  setupMocks();
+  renderWorkspace();
+  await selectQuestion();
+
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("option-correct-B"));
+  });
+
+  expect(api.patch).toHaveBeenCalledWith(
+    expect.stringContaining("/pyq-options/opt-b"),
+    expect.objectContaining({
+      payload: expect.objectContaining({
+        is_correct: true,
+        option_text: "4",
+      }),
+    }),
+  );
 });

@@ -1,8 +1,8 @@
 -- Atomic review transition for a PYQ question and its child options.
 --
--- Updates pyq_questions.reviewer_status in the same transaction that
--- cascades reviewer_status / reviewed_by / reviewed_at to every child
--- pyq_options row, ensuring the pair is always consistent.
+-- Updates pyq_questions reviewer columns (reviewer_status / reviewed_by /
+-- reviewed_at — the latter two added by migration 155) and cascades the
+-- same values to every child pyq_options row in a single transaction.
 --
 -- Cascade applies for verified / rejected / needs_correction.
 -- 'pending' does NOT cascade: resetting all child options to pending is
@@ -24,9 +24,10 @@ declare
     v_question     jsonb;
     v_option_count integer := 0;
 begin
-    -- Update the question (pyq_questions has reviewer_status but not reviewed_by/reviewed_at).
     update public.pyq_questions
-    set reviewer_status = p_reviewer_status
+    set reviewer_status = p_reviewer_status,
+        reviewed_by     = p_reviewed_by,
+        reviewed_at     = p_reviewed_at
     where id = p_question_id
     returning to_jsonb(pyq_questions.*) into v_question;
 
@@ -52,5 +53,11 @@ begin
     );
 end;
 $$;
+
+-- Restrict direct invocation: only service_role (used by the FastAPI backend)
+-- may call this function. Without this guard any authenticated PostgREST client
+-- can bypass the /review endpoint's permission check.
+revoke all on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) from public;
+grant execute on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) to service_role;
 
 notify pgrst, 'reload schema';

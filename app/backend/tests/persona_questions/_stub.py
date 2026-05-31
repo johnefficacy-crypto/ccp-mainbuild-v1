@@ -227,6 +227,8 @@ class SBStub:
         for q in self.db.get("pyq_questions", []):
             if q.get("id") == question_id:
                 q["reviewer_status"] = status
+                q["reviewed_by"] = reviewed_by
+                q["reviewed_at"] = reviewed_at
                 question = q
                 break
 
