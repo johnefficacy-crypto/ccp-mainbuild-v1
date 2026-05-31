@@ -7,6 +7,8 @@ import PageViewer from "./PageViewer";
 import ProposalActionBar from "./ProposalActionBar";
 import ProposalRunner from "./ProposalRunner";
 import TopicTreePanel from "./TopicTreePanel";
+import TopicEditDrawer from "./topic-edit/TopicEditDrawer";
+import { useTopicEdit } from "./topic-edit/useTopicEdit";
 import { useSyllabusMapper } from "./useSyllabusMapper";
 
 export default function SyllabusMapperPanel() {
@@ -16,6 +18,7 @@ export default function SyllabusMapperPanel() {
   const [pageText, setPageText] = useState("");
 
   const mapper = useSyllabusMapper(examId);
+  const topicEdit = useTopicEdit();
 
   // Fetch page text when page changes
   useEffect(() => {
@@ -98,6 +101,7 @@ export default function SyllabusMapperPanel() {
             proposals={mapper.proposals}
             selectedKeys={mapper.selectedKeys}
             onToggle={mapper.toggleSelection}
+            onEditTopic={topicEdit.openForTopic}
             currentPage={mapper.currentPage}
           />
         </div>
@@ -123,6 +127,14 @@ export default function SyllabusMapperPanel() {
           onClose={() => setShowModal(false)}
         />
       )}
+
+      {/* Topic edit drawer — re-propose on alias change so matching updates */}
+      <TopicEditDrawer
+        hook={topicEdit}
+        onSaved={() => {
+          if (mapper.syllabusDocumentId) mapper.runPropose(mapper.syllabusDocumentId);
+        }}
+      />
     </div>
   );
 }
