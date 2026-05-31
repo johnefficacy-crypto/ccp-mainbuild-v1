@@ -85,6 +85,7 @@ export const adminRouteElements = (
     <Route path="/admin/study-os/reports" element={<AdminStudyOsReports />} />
     <Route path="/admin/study-os/social" element={<AdminStudyOsSocial />} />
     <Route path="/admin/study-os/exam-intel-cms" element={<AdminExamIntelCms />} />
+    <Route path="/admin/study-os/pyq-workspace" element={<AdminPyqPaperWorkspace />} />
     <Route path="/admin/study-os/content-access" element={<AdminContentAccessRequests />} />
     {/* Mock Content */}
     <Route path="/admin/mocks/questions" element={<AdminMockQuestionList />} />
