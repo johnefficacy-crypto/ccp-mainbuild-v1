@@ -291,8 +291,11 @@ function OptionsEditor({ questionId, initialOptions, onSaved }) {
             <input
               type="checkbox"
               checked={!!opt.is_correct}
+              data-testid={`option-correct-${opt.option_label}`}
               onChange={(e) => {
+                const updated = { ...opt, is_correct: e.target.checked };
                 updateOption(idx, { is_correct: e.target.checked });
+                if (updated.id) saveOption(updated, idx);
               }}
             />
             ✓

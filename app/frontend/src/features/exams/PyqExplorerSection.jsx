@@ -42,7 +42,6 @@ function FilterSelect({ label, value, onChange, options }) {
 
 function QuestionCard({ q }) {
   const [expanded, setExpanded] = useState(false);
-  const correct = q.options.find((o) => o.is_correct);
 
   return (
     <div
@@ -192,7 +191,7 @@ export default function PyqExplorerSection({ examSlug }) {
     return () => {
       cancelled = true;
     };
-  }, [buildUrl]);
+  }, [buildUrl, examSlug]);
 
   // Reset page when filters change
   useEffect(() => {
