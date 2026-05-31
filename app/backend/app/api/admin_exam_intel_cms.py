@@ -33,7 +33,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from app.core.auth import require_permission
@@ -829,6 +829,100 @@ def pyq_paper_signed_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
+#  PYQ bulk import (PR5) — preflight + idempotent commit
+# ════════════════════════════════════════════════════════════════════════
+
+
+class _PrefligtBody(BaseModel):
+    """Accept rows as pre-parsed JSON. For CSV, use the multipart endpoints."""
+    rows: list[dict[str, Any]] = Field(default_factory=list)
+    reason: str = Field(default="bulk import preflight")
+
+
+class _CommitBody(BaseModel):
+    import_token: str
+    override_errors: bool = False
+    reason: str = Field(default="bulk import commit")
+
+
+@router.post("/pyq-papers/{paper_id}/bulk-import/preflight")
+async def pyq_bulk_preflight(
+    paper_id: str,
+    request: Request,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Preflight: parse CSV or JSON bytes, validate rows, run dedup. NO writes.
+
+    Send either:
+    - ``Content-Type: text/csv`` with CSV bytes
+    - ``Content-Type: application/json`` with a JSON array of row objects
+
+    Returns per-row preview + ``import_token`` for use in /commit.
+    """
+    from app.exam_intelligence import pyq_bulk_import as _bi
+
+    supabase = get_supabase_admin()
+    if not _safe_select(supabase, "pyq_papers", id=paper_id):
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+
+    content_type = request.headers.get("content-type", "")
+    body_bytes = await request.body()
+    if not body_bytes:
+        raise HTTPException(status_code=422, detail="request body is empty")
+
+    try:
+        result = _bi.preflight(supabase, admin, paper_id, body_bytes, content_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return result
+
+
+@router.post("/pyq-papers/{paper_id}/bulk-import/commit")
+def pyq_bulk_commit(
+    paper_id: str,
+    body: _CommitBody,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Commit a previously preflighted PYQ bulk import.
+
+    ``import_token`` comes from the preflight response.  Pass
+    ``override_errors=true`` to attempt rows that were flagged
+    ``error`` or ``duplicate`` in preflight (fuzzy rows are always
+    committed unless they were also error rows).
+    Idempotent: rows whose ``question_number`` already exists in the
+    paper are silently skipped.
+    """
+    from app.exam_intelligence import pyq_bulk_import as _bi
+
+    supabase = get_supabase_admin()
+    if not _safe_select(supabase, "pyq_papers", id=paper_id):
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+
+    try:
+        result = _bi.commit(
+            supabase, admin, body.import_token, override_errors=body.override_errors
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    _audit(
+        supabase, admin, "exam_intel.cms.pyq_bulk_import.commit",
+        entity_type="pyq_paper", entity_id=paper_id,
+        new_value={
+            "reason": body.reason,
+            "import_token": body.import_token,
+            "committed": result["committed"],
+            "skipped": result["skipped"],
+            "failed": result["failed"],
+        },
+    )
+    return result
+
+
+# ════════════════════════════════════════════════════════════════════════
 #  PYQ questions — created at reviewer_status='pending'; options upsert
 #  in the same call so the question + options land atomically (best
 #  effort — no row-level transaction across two tables here, but at
@@ -893,6 +987,7 @@ def create_pyq_question(
     question_id = new_q.get("id")
 
     inserted_options: list[dict] = []
+    child_errors: list[dict] = []
     options = body.payload.get("options") or []
     if isinstance(options, list) and options and question_id:
         opt_rows = []
@@ -912,8 +1007,20 @@ def create_pyq_question(
                 inserted_options = supabase.table("pyq_options").insert(opt_rows).execute().data or []
             except Exception as exc:  # noqa: BLE001
                 logger.exception("pyq_options insert failed for question %s", question_id)
-                # Don't roll back the question — surface in audit + response.
-                inserted_options = []
+                child_errors = [{"label": r.get("option_label"), "error": str(exc)[:200]} for r in opt_rows]
+
+    if child_errors and question_id:
+        # Options failed — delete the orphaned question row to preserve atomicity.
+        try:
+            supabase.table("pyq_questions").delete().eq("id", question_id).execute()
+        except Exception:  # noqa: BLE001
+            logger.exception("rollback delete failed for question %s", question_id)
+        audit_id = _audit(
+            supabase, admin, "exam_intel.cms.pyq_question.create",
+            entity_type="pyq_question", entity_id=question_id,
+            new_value={"reason": body.reason, "question": new_q, "child_errors": child_errors, "rolled_back": True},
+        )
+        return {"ok": False, "audit_id": audit_id, "question": new_q, "child_errors": child_errors}
 
     audit_id = _audit(
         supabase, admin, "exam_intel.cms.pyq_question.create",
@@ -2491,12 +2598,13 @@ def bulk_import(
             error_count += 1
             continue
         row = inserted[0] if inserted else cleaned
-        result = {"index": idx, "ok": True, "row": row}
+        result: dict[str, Any] = {"index": idx, "ok": True, "row": row}
         # Insert any inline children (e.g. a question's options) against the
         # freshly-created parent id.
         inline = cfg.get("inline")
         if inline and isinstance(raw.get(inline["key"]), list) and row.get("id"):
             n = 0
+            child_errors: list[dict] = []
             for child in raw[inline["key"]]:
                 if not isinstance(child, dict):
                     continue
@@ -2505,8 +2613,20 @@ def bulk_import(
                 try:
                     supabase.table(inline["table"]).insert(child_row).execute()
                     n += 1
+                except Exception as child_exc:  # noqa: BLE001
+                    child_errors.append({
+                        "label": child_row.get("option_label") or child_row.get(inline["fk"]),
+                        "error": str(child_exc)[:200],
+                    })
+            if child_errors:
+                # Roll back parent so we never leave a question without its options.
+                try:
+                    supabase.table(cfg["table"]).delete().eq("id", row["id"]).execute()
                 except Exception:  # noqa: BLE001
                     pass
+                results.append({"index": idx, "ok": False, "error": "options insert failed", "child_errors": child_errors})
+                error_count += 1
+                continue
             result["children_created"] = n
         results.append(result)
         ok_count += 1
