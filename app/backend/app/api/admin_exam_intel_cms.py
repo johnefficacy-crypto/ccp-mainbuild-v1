@@ -39,6 +39,11 @@ from pydantic import BaseModel, Field
 from app.core.auth import require_permission
 from app.core.config import get_settings
 from app.db.supabase_client import get_supabase_admin
+from app.exam_intelligence.diagnostics import (
+    find_orphan_questions,
+    find_stuck_documents,
+    find_stuck_text_extract_jobs,
+)
 from app.exam_intelligence.lookup import invalidate_exam_lookup_cache
 from app.exam_intelligence.option_normalize import option_hash, question_hash
 
@@ -2665,3 +2670,122 @@ def bulk_import(
         "error_count": error_count,
         "results": results,
     }
+
+
+# ─── Diagnostics ──────────────────────────────────────────────────────────────
+
+
+class _DiagnosticsActionBody(BaseModel):
+    reason: str = Field(..., min_length=1)
+
+
+@router.get("/diagnostics")
+def get_diagnostics(
+    exam_id: str | None = Query(default=None),
+    age_minutes: int = Query(default=30, ge=1),
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    _: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    orphans = find_orphan_questions(supabase, exam_id=exam_id)
+    stuck_docs = find_stuck_documents(supabase, age_minutes=age_minutes)
+    stuck_jobs = find_stuck_text_extract_jobs(supabase, age_minutes=age_minutes)
+    return {
+        "generated_at": _now_iso(),
+        "thresholds": {"stuck_age_minutes": age_minutes},
+        "orphan_questions": {"count": len(orphans), "rows": orphans},
+        "stuck_documents": {"count": len(stuck_docs), "rows": stuck_docs},
+        "stuck_text_extract_jobs": {"count": len(stuck_jobs), "rows": stuck_jobs},
+    }
+
+
+@router.post("/diagnostics/orphan-question/{question_id}/delete")
+def delete_orphan_question(
+    question_id: str,
+    body: _DiagnosticsActionBody,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    _: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    opts = (
+        supabase.table("pyq_options")
+        .select("question_id")
+        .eq("question_id", question_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if opts:
+        raise HTTPException(
+            status_code=409,
+            detail="question has options — no longer an orphan; delete aborted",
+        )
+    supabase.table("pyq_questions").delete().eq("id", question_id).execute()
+    _audit(
+        supabase,
+        admin,
+        "exam_intel.cms.diagnostics.orphan_question.delete",
+        entity_type="pyq_questions",
+        entity_id=question_id,
+        new_value={"reason": body.reason},
+    )
+    return {"ok": True, "deleted_question_id": question_id}
+
+
+@router.post("/diagnostics/stuck-document/{document_id}/reset")
+def reset_stuck_document(
+    document_id: str,
+    body: _DiagnosticsActionBody,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    _: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    doc = _safe_select(supabase, "document_assets", id=document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="document_asset not found")
+    if doc.get("status") != "processing":
+        raise HTTPException(
+            status_code=409,
+            detail=f"document status is '{doc.get('status')}', not 'processing' — reset aborted",
+        )
+    supabase.table("document_assets").update({"status": "uploaded"}).eq("id", document_id).execute()
+    _audit(
+        supabase,
+        admin,
+        "exam_intel.cms.diagnostics.stuck_document.reset",
+        entity_type="document_assets",
+        entity_id=document_id,
+        new_value={"reason": body.reason, "previous_status": "processing", "new_status": "uploaded"},
+    )
+    return {"ok": True, "document_id": document_id, "new_status": "uploaded"}
+
+
+@router.post("/diagnostics/stuck-job/{job_id}/reset")
+def reset_stuck_job(
+    job_id: str,
+    body: _DiagnosticsActionBody,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    _: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    job = _safe_select(supabase, "document_processing_jobs", id=job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="document_processing_job not found")
+    if job.get("status") != "running":
+        raise HTTPException(
+            status_code=409,
+            detail=f"job status is '{job.get('status')}', not 'running' — reset aborted",
+        )
+    supabase.table("document_processing_jobs").update(
+        {"status": "failed", "error_code": "manual_reset", "error_message": body.reason}
+    ).eq("id", job_id).execute()
+    _audit(
+        supabase,
+        admin,
+        "exam_intel.cms.diagnostics.stuck_job.reset",
+        entity_type="document_processing_jobs",
+        entity_id=job_id,
+        new_value={"reason": body.reason},
+    )
+    return {"ok": True, "job_id": job_id, "new_status": "failed", "error_code": "manual_reset"}
