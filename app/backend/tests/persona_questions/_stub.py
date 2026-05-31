@@ -212,7 +212,37 @@ class SBStub:
             return _RpcCall(self._inc("community_resources", params.get("p_resource_id"), "report_count", params.get("p_delta", 0), floor_at_zero=True))
         if name == "apply_mock_mastery_delta":
             return _RpcCall(self._apply_mock_mastery_delta(params))
+        if name == "update_pyq_question_review_atomic":
+            return _RpcCall(self._update_pyq_question_review_atomic(params))
         return _RpcCall(None)
+
+    def _update_pyq_question_review_atomic(self, params: dict[str, Any]) -> dict[str, Any] | None:
+        """Emulate the atomic question-review cascade RPC (migration 151)."""
+        question_id = params.get("p_question_id")
+        status = params.get("p_reviewer_status")
+        reviewed_by = params.get("p_reviewed_by")
+        reviewed_at = params.get("p_reviewed_at")
+
+        question = None
+        for q in self.db.get("pyq_questions", []):
+            if q.get("id") == question_id:
+                q["reviewer_status"] = status
+                question = q
+                break
+
+        if question is None:
+            return None  # caller maps None → 404
+
+        option_count = 0
+        if status in ("verified", "rejected", "needs_correction"):
+            for opt in self.db.get("pyq_options", []):
+                if opt.get("question_id") == question_id:
+                    opt["reviewer_status"] = status
+                    opt["reviewed_by"] = reviewed_by
+                    opt["reviewed_at"] = reviewed_at
+                    option_count += 1
+
+        return {"question": question, "cascaded_option_count": option_count}
 
     def _apply_mock_mastery_delta(self, params: dict[str, Any]) -> dict[str, Any]:
         """Emulate the atomic, idempotent mastery-apply function (migration 145).

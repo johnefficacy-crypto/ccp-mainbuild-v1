@@ -627,6 +627,22 @@ def review_item(
     cfg = _REVIEWABLE[kind]
     sb = get_supabase_admin()
 
+    # pyq_question reviews are atomic: a single RPC updates the question row and
+    # cascades reviewer_status to every child pyq_options row in one transaction.
+    if kind == "pyq_question":
+        result = _safe(
+            lambda: sb.rpc("update_pyq_question_review_atomic", {
+                "p_question_id": row_id,
+                "p_reviewer_status": body.reviewer_status,
+                "p_reviewed_by": admin.get("id"),
+                "p_reviewed_at": _now_iso(),
+            }).execute().data,
+            default=None,
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="Row not found")
+        return result.get("question", result)
+
     patch: dict[str, Any] = {
         "reviewer_status": body.reviewer_status,
         "reviewed_by": admin.get("id"),
