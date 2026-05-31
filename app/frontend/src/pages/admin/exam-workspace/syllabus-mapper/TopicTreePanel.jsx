@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Pencil } from "lucide-react";
 
 function groupByTopic(proposals) {
   const map = {};
@@ -9,20 +10,33 @@ function groupByTopic(proposals) {
   return Object.values(map);
 }
 
-function TopicItem({ group, selectedKeys, onToggle }) {
+function TopicItem({ group, selectedKeys, onToggle, onEdit }) {
   const [expanded, setExpanded] = useState(true);
-  const allSelected = group.proposals.every((p) => selectedKeys.has(p.client_proposal_key));
+  const topicLabel = group.matched_alias || group.topic_id;
   return (
     <li role="treeitem" aria-expanded={expanded} className="mb-1">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-indigo-700 w-full text-left"
-      >
-        <span className="text-xs">{expanded ? "▾" : "▸"}</span>
-        <span className="flex-1 truncate">{group.matched_alias || group.topic_id}</span>
-        <span className="text-xs text-gray-400">{group.proposals.length}</span>
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-indigo-700 flex-1 text-left min-w-0"
+        >
+          <span className="text-xs shrink-0">{expanded ? "▾" : "▸"}</span>
+          <span className="flex-1 truncate">{topicLabel}</span>
+          <span className="text-xs text-gray-400 shrink-0">{group.proposals.length}</span>
+        </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(group.topic_id)}
+            aria-label={`Edit topic ${topicLabel}`}
+            data-testid={`edit-topic-${group.topic_id}`}
+            className="shrink-0 p-1 text-gray-400 hover:text-indigo-600 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
       {expanded && (
         <ul className="ml-4 mt-0.5 space-y-0.5">
           {group.proposals.map((p) => {
@@ -49,7 +63,7 @@ function TopicItem({ group, selectedKeys, onToggle }) {
   );
 }
 
-export default function TopicTreePanel({ proposals, selectedKeys, onToggle, currentPage }) {
+export default function TopicTreePanel({ proposals, selectedKeys, onToggle, onEditTopic, currentPage }) {
   const [showAll, setShowAll] = useState(false);
   const filtered = showAll ? proposals : proposals.filter((p) => p.source_page === currentPage);
   const groups = groupByTopic(filtered);
@@ -72,7 +86,13 @@ export default function TopicTreePanel({ proposals, selectedKeys, onToggle, curr
       ) : (
         <ul role="tree" className="space-y-1">
           {groups.map((g) => (
-            <TopicItem key={g.topic_id} group={g} selectedKeys={selectedKeys} onToggle={onToggle} />
+            <TopicItem
+              key={g.topic_id}
+              group={g}
+              selectedKeys={selectedKeys}
+              onToggle={onToggle}
+              onEdit={onEditTopic}
+            />
           ))}
         </ul>
       )}
