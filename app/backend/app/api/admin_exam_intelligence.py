@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.core.auth import require_permission
 from app.db.supabase_client import get_supabase_admin
 from app.exam_intelligence.option_normalize import option_hash, question_hash
+from app.exam_intelligence.readiness import compute_exam_workspace_readiness
 from app.study_os.mission_control import invalidate_per_exam_intelligence
 from app.study_os.plan_impact import compute_plan_impact, record_plan_impact_decision
 
@@ -1484,3 +1485,155 @@ def backfill_option_hashes(
         "question_rows_scanned": len(question_rows) if include_questions else 0,
         "question_hashes_written": len(question_writes),
     }
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Exam Workspace context  (PR1 — shell only)
+# ════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/workspace/{exam_id}/context")
+def exam_workspace_context(
+    exam_id: str,
+    cycle_id: str | None = Query(default=None),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Return exam + cycles + phases context for the Exam Workspace shell.
+
+    readiness is always null in PR1; it will be populated by PR2.
+    """
+    sb = get_supabase_admin()
+
+    exam = _safe(
+        lambda: (
+            sb.table("exams")
+            .select("*")
+            .eq("id", exam_id)
+            .limit(1)
+            .execute()
+            .data
+        ),
+        default=[],
+    )
+    if not exam:
+        raise HTTPException(status_code=404, detail="exam not found")
+    exam = exam[0]
+
+    cycles = _safe(
+        lambda: (
+            sb.table("exam_cycles")
+            .select("*")
+            .eq("exam_id", exam_id)
+            .order("year", desc=True)
+            .order("created_at", desc=True)
+            .limit(200)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+
+    cycle: dict | None = None
+    if cycle_id is not None:
+        matched = [c for c in cycles if c.get("id") == cycle_id]
+        if not matched:
+            # cycle not found in this exam's cycles — check globally
+            global_match = _safe(
+                lambda: (
+                    sb.table("exam_cycles")
+                    .select("*")
+                    .eq("id", cycle_id)
+                    .limit(1)
+                    .execute()
+                    .data
+                ),
+                default=[],
+            )
+            if not global_match:
+                raise HTTPException(status_code=404, detail="cycle not found")
+            if global_match[0].get("exam_id") != exam_id:
+                raise HTTPException(status_code=422, detail="cycle does not belong to exam")
+            cycle = global_match[0]
+        else:
+            cycle = matched[0]
+
+    phases_q = (
+        sb.table("exam_phases")
+        .select("*")
+        .eq("exam_id", exam_id)
+    )
+    if cycle_id is not None:
+        phases_q = phases_q.eq("exam_cycle_id", cycle_id)
+    phases = _safe(
+        lambda: phases_q.order("phase_order", desc=False).limit(500).execute().data,
+        default=[],
+    ) or []
+
+    return {
+        "exam": exam,
+        "cycle": cycle,
+        "cycles": cycles,
+        "phases": phases,
+        "readiness": None,  # populated by /readiness endpoint (PR2)
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Exam Workspace readiness  (PR2)
+# ════════════════════════════════════════════════════════════════════════
+
+
+def _resolve_exam_and_cycle(sb, exam_id: str, cycle_id: str | None) -> None:
+    """Validate exam_id and cycle_id; raises HTTPException on invalid input."""
+    exam = _safe(
+        lambda: sb.table("exams").select("id").eq("id", exam_id).limit(1).execute().data,
+        default=[],
+    )
+    if not exam:
+        raise HTTPException(status_code=404, detail="exam not found")
+
+    if cycle_id is not None:
+        cycles = _safe(
+            lambda: (
+                sb.table("exam_cycles")
+                .select("id, exam_id")
+                .eq("exam_id", exam_id)
+                .eq("id", cycle_id)
+                .limit(1)
+                .execute()
+                .data
+            ),
+            default=[],
+        ) or []
+        if not cycles:
+            global_match = _safe(
+                lambda: (
+                    sb.table("exam_cycles")
+                    .select("id, exam_id")
+                    .eq("id", cycle_id)
+                    .limit(1)
+                    .execute()
+                    .data
+                ),
+                default=[],
+            ) or []
+            if not global_match:
+                raise HTTPException(status_code=404, detail="cycle not found")
+            if global_match[0].get("exam_id") != exam_id:
+                raise HTTPException(status_code=422, detail="cycle does not belong to exam")
+
+
+@router.get("/workspace/{exam_id}/readiness")
+def exam_workspace_readiness(
+    exam_id: str,
+    cycle_id: str | None = Query(default=None),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Full section-by-section readiness for the Exam Workspace (PR2).
+
+    Validates exam_id and cycle_id the same way /context does, then
+    delegates to compute_exam_workspace_readiness().
+    """
+    sb = get_supabase_admin()
+    _resolve_exam_and_cycle(sb, exam_id, cycle_id)
+    return compute_exam_workspace_readiness(sb, exam_id, cycle_id)
