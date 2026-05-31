@@ -32,15 +32,14 @@ import hashlib
 import io
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 logger = logging.getLogger("career_copilot.exam_intelligence.pyq_bulk_import")
 
-# ── Token store ───────────────────────────────────────────────────────────────
+# ── Token store (Supabase-backed) ─────────────────────────────────────────────
 
-_STORE: dict[str, dict] = {}
-_TTL_SEC = 3600
+_DEFAULT_TTL_SEC = 3600
 
 
 def _now_ts() -> float:
@@ -49,6 +48,55 @@ def _now_ts() -> float:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _store_token(
+    sb,
+    *,
+    token: str,
+    paper_id: str,
+    summary: dict,
+    rows: dict,
+    ttl_seconds: int = _DEFAULT_TTL_SEC,
+    created_by: str | None = None,
+) -> None:
+    """INSERT into pyq_import_tokens with expires_at = now + ttl."""
+    now = datetime.now(timezone.utc)
+    expires_at = (now + timedelta(seconds=ttl_seconds)).isoformat()
+    sb.table("pyq_import_tokens").insert({
+        "token": token,
+        "paper_id": paper_id,
+        "preflight_summary": summary,
+        "preflight_rows": rows,
+        "created_by": created_by,
+        "created_at": now.isoformat(),
+        "expires_at": expires_at,
+        "consumed_at": None,
+    }).execute()
+
+
+def _load_token(sb, *, token: str, paper_id: str) -> dict | None:
+    """SELECT row WHERE token=$1 AND paper_id=$2 AND consumed_at IS NULL AND expires_at > now().
+
+    Returns the row dict or None if not found / expired / consumed.
+    """
+    now_iso = _now_iso()
+    rows = (
+        sb.table("pyq_import_tokens")
+        .select("*")
+        .eq("token", token)
+        .eq("paper_id", paper_id)
+        .is_("consumed_at", None)
+        .gt("expires_at", now_iso)
+        .execute()
+        .data
+    ) or []
+    return rows[0] if rows else None
+
+
+def _consume_token(sb, *, token: str) -> None:
+    """UPDATE pyq_import_tokens SET consumed_at = now() WHERE token=$1."""
+    sb.table("pyq_import_tokens").update({"consumed_at": _now_iso()}).eq("token", token).execute()
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -280,24 +328,27 @@ def preflight(
         + str(_now_ts()) + hashlib.sha256(content).hexdigest()
     )
     import_token = hashlib.sha256(token_input.encode()).hexdigest()[:32]
-    _STORE[import_token] = {
-        "paper_id": paper_id,
-        "actor_id": actor.get("id"),
-        "created_at": _now_ts(),
-        "rows": valid_parsed,       # None entries = validation error rows
-        "preview": preview_rows,
-    }
 
     ok = sum(1 for p in preview_rows if p["status"] == "ok")
     errors = sum(1 for p in preview_rows if p["status"] == "error")
     duplicates = sum(1 for p in preview_rows if p["status"] == "duplicate")
     fuzzy = sum(1 for p in preview_rows if p["status"] == "fuzzy")
 
+    summary = {"ok": ok, "error": errors, "duplicate": duplicates, "fuzzy": fuzzy}
+    _store_token(
+        supabase,
+        token=import_token,
+        paper_id=paper_id,
+        summary=summary,
+        rows={"parsed": valid_parsed, "preview": preview_rows},
+        created_by=actor.get("id"),
+    )
+
     return {
         "import_token": import_token,
         "paper_id": paper_id,
         "total": len(raw_rows),
-        "summary": {"ok": ok, "error": errors, "duplicate": duplicates, "fuzzy": fuzzy},
+        "summary": summary,
         "rows": preview_rows,
     }
 
@@ -313,16 +364,28 @@ def commit(
     override_errors: bool = False,
 ) -> dict:
     """Commit previously preflighted rows. Idempotent on question_number."""
-    store = _STORE.get(import_token)
-    if not store:
+    # Derive paper_id from token lookup — we need it to scope the query.
+    # The caller (router) passes paper_id implicitly via the URL; commit()
+    # receives it indirectly by loading the token which carries paper_id.
+    # We do a two-phase lookup: first find the token without paper_id
+    # constraint to get paper_id, then validate it matches.
+    token_rows = (
+        supabase.table("pyq_import_tokens")
+        .select("*")
+        .eq("token", import_token)
+        .is_("consumed_at", None)
+        .gt("expires_at", _now_iso())
+        .execute()
+        .data
+    ) or []
+    if not token_rows:
         raise LookupError(f"import_token {import_token!r} not found or expired")
-    if _now_ts() - store["created_at"] > _TTL_SEC:
-        _STORE.pop(import_token, None)
-        raise LookupError("import_token expired")
+    store = token_rows[0]
 
     paper_id: str = store["paper_id"]
-    parsed_rows: list[dict | None] = store["rows"]
-    preview_rows: list[dict] = store["preview"]
+    row_payload: dict = store.get("preflight_rows") or {}
+    parsed_rows: list[dict | None] = row_payload.get("parsed", [])
+    preview_rows: list[dict] = row_payload.get("preview", [])
 
     # Re-fetch existing question_numbers for idempotency check
     try:
@@ -425,6 +488,8 @@ def commit(
             logger.error("commit: row %s (qn=%s) failed: %s", row_num, qn, exc)
             failed.append({"row": row_num, "question_number": qn, "reason": str(exc)[:200]})
             per_row.append({"row": row_num, "result": "failed", "question_number": qn, "reason": str(exc)[:200]})
+
+    _consume_token(supabase, token=import_token)
 
     return {
         "paper_id": paper_id,
