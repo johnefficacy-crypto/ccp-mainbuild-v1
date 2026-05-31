@@ -17,6 +17,8 @@ import { api } from "../lib/api";
 import ExamIntelligenceTab from "../features/exams/ExamIntelligenceTab";
 import ExamDetailAnchorNav from "../features/exams/ExamDetailAnchorNav";
 import PyqExplorerSection from "../features/exams/PyqExplorerSection";
+import ExamDocumentsSection from "../features/exams/ExamDocumentsSection";
+import SubjectBooklistSection from "../features/exams/SubjectBooklistSection";
 
 // PR11: ExamDetail is now a single scrollable page with a sticky anchor
 // chip strip and IntersectionObserver-driven scroll-spy. The old
