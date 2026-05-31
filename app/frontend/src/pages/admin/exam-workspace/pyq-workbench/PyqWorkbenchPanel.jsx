@@ -1,6 +1,7 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { usePyqWorkbench } from "./usePyqWorkbench";
+import BulkImportModal from "./bulk-import/BulkImportModal";
 
 const PyqPaperWorkspace = lazy(() => import("../../studyos/PyqPaperWorkspace"));
 
@@ -13,6 +14,8 @@ export default function PyqWorkbenchPanel() {
     examId,
     cycleId,
   );
+
+  const [showBulkImport, setShowBulkImport] = useState(false);
 
   function groupPapers() {
     if (cycleId) return null; // flat list when cycle is set
@@ -67,6 +70,14 @@ export default function PyqWorkbenchPanel() {
                 ))}
           </select>
         )}
+        <button
+          type="button"
+          onClick={() => setShowBulkImport(true)}
+          className="ml-auto text-sm px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 whitespace-nowrap flex-shrink-0"
+          data-testid="bulk-import-btn"
+        >
+          Bulk import questions
+        </button>
       </div>
 
       {/* Workspace area */}
@@ -81,6 +92,13 @@ export default function PyqWorkbenchPanel() {
           </div>
         )}
       </div>
+      {showBulkImport && (
+        <BulkImportModal
+          papers={papers}
+          initialPaperId={selectedPaperId}
+          onClose={() => setShowBulkImport(false)}
+        />
+      )}
     </div>
   );
 }
