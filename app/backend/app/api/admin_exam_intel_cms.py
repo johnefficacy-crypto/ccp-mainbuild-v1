@@ -33,7 +33,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from app.core.auth import require_permission
@@ -826,6 +826,100 @@ def pyq_paper_signed_pdf(
         "original_filename": row.get("original_filename"),
         "page_count": row.get("page_count"),
     }
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  PYQ bulk import (PR5) — preflight + idempotent commit
+# ════════════════════════════════════════════════════════════════════════
+
+
+class _PrefligtBody(BaseModel):
+    """Accept rows as pre-parsed JSON. For CSV, use the multipart endpoints."""
+    rows: list[dict[str, Any]] = Field(default_factory=list)
+    reason: str = Field(default="bulk import preflight")
+
+
+class _CommitBody(BaseModel):
+    import_token: str
+    override_errors: bool = False
+    reason: str = Field(default="bulk import commit")
+
+
+@router.post("/pyq-papers/{paper_id}/bulk-import/preflight")
+async def pyq_bulk_preflight(
+    paper_id: str,
+    request: Request,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Preflight: parse CSV or JSON bytes, validate rows, run dedup. NO writes.
+
+    Send either:
+    - ``Content-Type: text/csv`` with CSV bytes
+    - ``Content-Type: application/json`` with a JSON array of row objects
+
+    Returns per-row preview + ``import_token`` for use in /commit.
+    """
+    from app.exam_intelligence import pyq_bulk_import as _bi
+
+    supabase = get_supabase_admin()
+    if not _safe_select(supabase, "pyq_papers", id=paper_id):
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+
+    content_type = request.headers.get("content-type", "")
+    body_bytes = await request.body()
+    if not body_bytes:
+        raise HTTPException(status_code=422, detail="request body is empty")
+
+    try:
+        result = _bi.preflight(supabase, admin, paper_id, body_bytes, content_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return result
+
+
+@router.post("/pyq-papers/{paper_id}/bulk-import/commit")
+def pyq_bulk_commit(
+    paper_id: str,
+    body: _CommitBody,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Commit a previously preflighted PYQ bulk import.
+
+    ``import_token`` comes from the preflight response.  Pass
+    ``override_errors=true`` to attempt rows that were flagged
+    ``error`` or ``duplicate`` in preflight (fuzzy rows are always
+    committed unless they were also error rows).
+    Idempotent: rows whose ``question_number`` already exists in the
+    paper are silently skipped.
+    """
+    from app.exam_intelligence import pyq_bulk_import as _bi
+
+    supabase = get_supabase_admin()
+    if not _safe_select(supabase, "pyq_papers", id=paper_id):
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+
+    try:
+        result = _bi.commit(
+            supabase, admin, body.import_token, override_errors=body.override_errors
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    _audit(
+        supabase, admin, "exam_intel.cms.pyq_bulk_import.commit",
+        entity_type="pyq_paper", entity_id=paper_id,
+        new_value={
+            "reason": body.reason,
+            "import_token": body.import_token,
+            "committed": result["committed"],
+            "skipped": result["skipped"],
+            "failed": result["failed"],
+        },
+    )
+    return result
 
 
 # ════════════════════════════════════════════════════════════════════════
