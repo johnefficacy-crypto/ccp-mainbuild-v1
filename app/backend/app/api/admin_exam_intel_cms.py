@@ -779,6 +779,22 @@ def update_pyq_question(
 # ════════════════════════════════════════════════════════════════════════
 
 
+@router.get("/pyq-options")
+def list_pyq_options(
+    question_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    q = supabase.table("pyq_options").select("*", count="exact").order("option_label")
+    if question_id:
+        q = q.eq("question_id", question_id)
+    res = q.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
 @router.post("/pyq-options")
 def create_pyq_option(
     body: WriteEnvelope,
