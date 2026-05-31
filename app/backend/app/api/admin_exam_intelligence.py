@@ -24,6 +24,11 @@ from app.core.auth import require_permission
 from app.db.supabase_client import get_supabase_admin
 from app.exam_intelligence.option_normalize import option_hash, question_hash
 from app.exam_intelligence.readiness import compute_exam_workspace_readiness
+from app.exam_intelligence.syllabus_mapper import (
+    PROPOSER_VERSION as _SYLLABUS_PROPOSER_VERSION,
+    ProposerError,
+    propose_syllabus_mentions,
+)
 from app.study_os.mission_control import invalidate_per_exam_intelligence
 from app.study_os.plan_impact import compute_plan_impact, record_plan_impact_decision
 
@@ -1637,3 +1642,87 @@ def exam_workspace_readiness(
     sb = get_supabase_admin()
     _resolve_exam_and_cycle(sb, exam_id, cycle_id)
     return compute_exam_workspace_readiness(sb, exam_id, cycle_id)
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Syllabus mention proposer  (PR3a — stateless, read-only)
+# ════════════════════════════════════════════════════════════════════════
+
+
+class _SyllabusProposeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    syllabus_document_id: str
+    cycle_id: str | None = None
+    phase_id: str | None = None
+    threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+@router.post("/workspace/{exam_id}/syllabus/propose")
+def syllabus_propose(
+    exam_id: str,
+    body: _SyllabusProposeBody,
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Propose syllabus topic mentions for a document (stateless, read-only).
+
+    No rows are inserted. The caller decides whether to persist proposals.
+    """
+    from datetime import datetime, timezone
+
+    if body.threshold is not None and not (0.0 <= body.threshold <= 1.0):
+        raise HTTPException(status_code=422, detail="threshold must be between 0.0 and 1.0")
+
+    sb = get_supabase_admin()
+
+    # Validate exam
+    exam = _safe(
+        lambda: sb.table("exams").select("id").eq("id", exam_id).limit(1).execute().data,
+        default=[],
+    )
+    if not exam:
+        raise HTTPException(status_code=404, detail="exam not found")
+
+    # Validate cycle_id if provided (reuse PR2 helper pattern)
+    if body.cycle_id is not None:
+        _resolve_exam_and_cycle(sb, exam_id, body.cycle_id)
+
+    # Validate phase_id if provided
+    if body.phase_id is not None:
+        phase = _safe(
+            lambda: (
+                sb.table("exam_phases")
+                .select("id, exam_id")
+                .eq("id", body.phase_id)
+                .limit(1)
+                .execute()
+                .data
+            ),
+            default=[],
+        ) or []
+        if not phase:
+            raise HTTPException(status_code=422, detail="phase not found")
+        if phase[0].get("exam_id") != exam_id:
+            raise HTTPException(status_code=422, detail="phase does not belong to exam")
+
+    try:
+        proposals = propose_syllabus_mentions(
+            sb,
+            exam_id=exam_id,
+            syllabus_document_id=body.syllabus_document_id,
+            cycle_id=body.cycle_id,
+            phase_id=body.phase_id,
+            threshold=body.threshold,
+        )
+    except ProposerError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    eff_threshold = body.threshold if body.threshold is not None else 0.85
+    return {
+        "exam_id": exam_id,
+        "syllabus_document_id": body.syllabus_document_id,
+        "threshold": eff_threshold,
+        "proposer_version": _SYLLABUS_PROPOSER_VERSION,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "proposals": proposals,
+    }
