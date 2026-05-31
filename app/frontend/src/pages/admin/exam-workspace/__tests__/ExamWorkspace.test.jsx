@@ -71,17 +71,17 @@ describe("ExamWorkspace shell", () => {
     // Never resolves
     api.get.mockReturnValue(new Promise(() => {}));
     renderWorkspace();
-    expect(screen.getByTestId("workspace-loading")).toBeInTheDocument();
+    expect(screen.getByTestId("workspace-loading")).toBeTruthy();
   });
 
   test("renders error state with retry button on API failure", async () => {
     api.get.mockRejectedValue(new Error("server error"));
     renderWorkspace();
     await waitFor(() =>
-      expect(screen.getByTestId("workspace-error")).toBeInTheDocument(),
+      expect(screen.getByTestId("workspace-error")).toBeTruthy(),
     );
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
-    expect(screen.getByText(/server error/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeTruthy();
+    expect(screen.getByText(/server error/i)).toBeTruthy();
   });
 
   test("retry button calls refetch", async () => {
@@ -93,15 +93,15 @@ describe("ExamWorkspace shell", () => {
     await act(async () => { fireEvent.click(retry); });
 
     await waitFor(() =>
-      expect(screen.getByTestId("exam-name")).toBeInTheDocument(),
+      expect(screen.getByTestId("exam-name")).toBeTruthy(),
     );
   });
 
   test("renders exam name from context", async () => {
     api.get.mockResolvedValue(CONTEXT_RESPONSE);
     renderWorkspace();
-    await waitFor(() => expect(screen.getByTestId("exam-name")).toBeInTheDocument());
-    expect(screen.getByTestId("exam-name")).toHaveTextContent("SSC CGL");
+    await waitFor(() => screen.getByTestId("exam-name"));
+    expect(screen.getByTestId("exam-name").textContent).toBe("SSC CGL");
   });
 
   test("renders cycle picker populated from cycles[]", async () => {
@@ -123,8 +123,8 @@ describe("ExamWorkspace shell", () => {
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(7);
     tabs.forEach((tab) => {
-      expect(tab).toBeDisabled();
-      expect(tab).toHaveAttribute("aria-disabled", "true");
+      expect(tab.disabled).toBe(true);
+      expect(tab.getAttribute("aria-disabled")).toBe("true");
     });
   });
 
@@ -138,7 +138,7 @@ describe("ExamWorkspace shell", () => {
       "Updates", "Competition", "Review & Activate",
     ];
     expectedLabels.forEach((label) => {
-      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(screen.getByText(label)).toBeTruthy();
     });
   });
 
@@ -146,26 +146,31 @@ describe("ExamWorkspace shell", () => {
     api.get.mockResolvedValue(CONTEXT_RESPONSE);
     renderWorkspace();
     await waitFor(() => screen.getByTestId("workspace-placeholder"));
-    expect(screen.getByTestId("workspace-placeholder")).toHaveTextContent(
+    expect(screen.getByTestId("workspace-placeholder").textContent).toBe(
       "Select a section to begin",
     );
   });
 
   test("changing cycle picker navigates to cycle URL", async () => {
     api.get.mockResolvedValue(CONTEXT_RESPONSE);
-    const { container } = renderWorkspace();
+    renderWorkspace();
     await waitFor(() => screen.getByTestId("cycle-picker"));
+
+    // Changing cycle navigates, which remounts the provider and triggers a new fetch
+    // with the new cycle_id in the URL. We verify navigation happened by checking
+    // that api.get was called a second time (initial load + after navigation).
+    const callsBefore = api.get.mock.calls.length;
 
     fireEvent.change(screen.getByTestId("cycle-picker"), {
       target: { value: "cycle-2026" },
     });
 
-    // After navigation, a new fetch fires with the new path including cycle_id
     await waitFor(() =>
-      expect(api.get).toHaveBeenCalledWith(
-        expect.stringContaining("cycle-2026"),
-      ),
+      expect(api.get.mock.calls.length).toBeGreaterThan(callsBefore),
     );
+
+    const allUrls = api.get.mock.calls.map((c) => c[0]);
+    expect(allUrls.some((u) => u.includes("cycle-2026"))).toBe(true);
   });
 });
 

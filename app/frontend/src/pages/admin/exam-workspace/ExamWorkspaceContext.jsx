@@ -24,7 +24,8 @@ export function ExamWorkspaceProvider({ children }) {
     try {
       const params = new URLSearchParams();
       if (cycle_id) params.set("cycle_id", cycle_id);
-      const url = `${REVIEW_BASE}/workspace/${encodeURIComponent(exam_id)}/context${params.size ? `?${params}` : ""}`;
+      const qs = params.toString();
+      const url = `${REVIEW_BASE}/workspace/${encodeURIComponent(exam_id)}/context${qs ? `?${qs}` : ""}`;
       const d = await api.get(url);
       setExam(d.exam ?? null);
       setCycle(d.cycle ?? null);
