@@ -56,8 +56,8 @@
     "hash": "a554d39e6c1a7f2b0b1ca05a06206a3b"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_exam_intelligence.py": {
-    "mtime": 1780260508.0091634,
-    "hash": "496072f6f6f3bd9b988d0a7d0b8f993e"
+    "mtime": 1780262141.6168327,
+    "hash": "72b387b6aa9420b98af27bd8506c0408"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_exam_intel_cms.py": {
     "mtime": 1780256096.754758,
@@ -376,8 +376,8 @@
     "hash": "a98bed4c85366fc9a09c4e7ab2cbe23a"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\pyq_bulk_import.py": {
-    "mtime": 1780256096.7567677,
-    "hash": "f0cf1e28e9edf176d81a1981d13b1095"
+    "mtime": 1780262141.6218016,
+    "hash": "9e0e0298876cb84607985bc4bc7a6974"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\pyq_papers.py": {
     "mtime": 1778961540.8791971,
@@ -390,6 +390,14 @@
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\status.py": {
     "mtime": 1779118919.831968,
     "hash": "7f7279488a0c5badbc6cfbcbff6f5148"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\syllabus_mapper.py": {
+    "mtime": 1780262141.632798,
+    "hash": "80fdd96a6a4134381047926cee8a14a9"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\text_utils.py": {
+    "mtime": 1780262141.6348028,
+    "hash": "35d4abc815107558e4c2c53b7a065daf"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\trap_drill.py": {
     "mtime": 1779036736.8256226,
@@ -440,8 +448,8 @@
     "hash": "65c9cd474ae98abe924a0ac1789e5a41"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\extraction\\writer.py": {
-    "mtime": 1780137547.94956,
-    "hash": "6eccee2e00edfe0b72667811f4500394"
+    "mtime": 1780262141.619805,
+    "hash": "e832a1669eaadee4edac00d96b086d15"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\extraction\\__init__.py": {
     "mtime": 1779997659.385787,
@@ -1375,6 +1383,10 @@
     "mtime": 1779240873.630741,
     "hash": "b10cc0f32cc9971fb0efb131f6b341b9"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\test_syllabus_proposer.py": {
+    "mtime": 1780262141.6398025,
+    "hash": "de7d6ea308de1b2b63cae5f6c9924db4"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\test_trap_drill.py": {
     "mtime": 1779036736.8346155,
     "hash": "412c0050ef2db1f09510e5f256abc159"
@@ -1440,8 +1452,8 @@
     "hash": "b0d38cc6fe7363121f81799a18fcd392"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\extraction\\test_writer.py": {
-    "mtime": 1780137551.3139462,
-    "hash": "93c19213fecbe7cc1f7ee464e3d12c28"
+    "mtime": 1780262141.6378026,
+    "hash": "e5e1e7410bfa198264553917202aee02"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\extraction\\__init__.py": {
     "mtime": 1779997659.5257893,
