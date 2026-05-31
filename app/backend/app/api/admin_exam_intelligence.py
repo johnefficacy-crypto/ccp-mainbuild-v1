@@ -27,6 +27,8 @@ from app.exam_intelligence.readiness import compute_exam_workspace_readiness
 from app.exam_intelligence.syllabus_mapper import (
     PROPOSER_VERSION as _SYLLABUS_PROPOSER_VERSION,
     ProposerError,
+    commit_accept,
+    preview_accept,
     propose_syllabus_mentions,
 )
 from app.study_os.mission_control import invalidate_per_exam_intelligence
@@ -1726,3 +1728,99 @@ def syllabus_propose(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "proposals": proposals,
     }
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Syllabus accept: preview + commit  (PR3b)
+# ════════════════════════════════════════════════════════════════════════
+
+_MAX_PROPOSALS = 500
+
+
+class _ProposalItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    syllabus_document_id: str
+    topic_id: str
+    exam_id: str | None = None
+    exam_cycle_id: str | None = None
+    exam_phase_id: str | None = None
+    source_page: int
+    raw_text: str = ""
+    normalized_text: str
+    mention_type: str = "explicit"
+    confidence_score: float | None = None
+    matched_alias: str = ""
+    match_method: str = ""
+    proposer_version: str = ""
+    client_proposal_key: str | None = None
+
+
+class _AcceptPreviewBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    proposals: list[_ProposalItem]
+
+
+class _AcceptCommitBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    proposals: list[_ProposalItem]
+    reason: str
+
+
+def _validate_accept_body(proposals: list, *, require_client_key: bool = False) -> None:
+    if not proposals:
+        raise HTTPException(status_code=422, detail="proposals must not be empty")
+    if len(proposals) > _MAX_PROPOSALS:
+        raise HTTPException(status_code=422, detail=f"proposals exceeds bulk cap of {_MAX_PROPOSALS}")
+    if require_client_key:
+        missing = [i for i, p in enumerate(proposals) if not p.client_proposal_key]
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail=f"client_proposal_key required on all proposals (missing on indices: {missing[:5]})",
+            )
+
+
+@router.post("/workspace/{exam_id}/syllabus/accept/preview")
+def syllabus_accept_preview(
+    exam_id: str,
+    body: _AcceptPreviewBody,
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Dry-run: classify proposals without writing anything."""
+    exam = _safe(
+        lambda: get_supabase_admin().table("exams").select("id").eq("id", exam_id).limit(1).execute().data,
+        default=[],
+    )
+    if not exam:
+        raise HTTPException(status_code=404, detail="exam not found")
+    _validate_accept_body(body.proposals)
+    sb = get_supabase_admin()
+    return preview_accept(sb, exam_id=exam_id, proposals=[p.model_dump() for p in body.proposals])
+
+
+@router.post("/workspace/{exam_id}/syllabus/accept/commit")
+def syllabus_accept_commit(
+    exam_id: str,
+    body: _AcceptCommitBody,
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Write accepted proposals to syllabus_topic_mentions with reviewer_status=pending."""
+    exam = _safe(
+        lambda: get_supabase_admin().table("exams").select("id").eq("id", exam_id).limit(1).execute().data,
+        default=[],
+    )
+    if not exam:
+        raise HTTPException(status_code=404, detail="exam not found")
+    if not body.reason or not body.reason.strip():
+        raise HTTPException(status_code=422, detail="reason is required")
+    _validate_accept_body(body.proposals, require_client_key=True)
+    sb = get_supabase_admin()
+    actor_id = admin.get("id")
+    return commit_accept(
+        sb,
+        exam_id=exam_id,
+        proposals=[p.model_dump() for p in body.proposals],
+        reason=body.reason,
+        actor_id=actor_id,
+    )

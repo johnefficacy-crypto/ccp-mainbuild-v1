@@ -1,16 +1,18 @@
 /**
- * ExamWorkspace — shell for the Exam Intelligence admin workspace (PR1).
+ * ExamWorkspace — shell for the Exam Intelligence admin workspace.
  *
- * Renders: header with exam name + cycle picker, 7 disabled tabs, and a
- * placeholder content area.  All tab sections are deferred to later PRs.
+ * PR1: shell + disabled tabs
+ * PR3b: Syllabus Mapper tab enabled when readiness available
  *
  * Routes:
  *   /admin/exam-intelligence/workspace/:exam_id
  *   /admin/exam-intelligence/workspace/:exam_id/:cycle_id
  */
-import React from "react";
+import React, { lazy, Suspense, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ExamWorkspaceProvider, useExamWorkspace } from "./ExamWorkspaceContext";
+
+const SyllabusMapperPanel = lazy(() => import("./syllabus-mapper/SyllabusMapperPanel"));
 
 const TABS = [
   { id: "setup",       label: "Setup" },
@@ -22,10 +24,17 @@ const TABS = [
   { id: "review",      label: "Review & Activate" },
 ];
 
+function isSyllabusTabEnabled(readiness) {
+  if (!readiness) return false;
+  const section = readiness.sections?.find((s) => s.section === "syllabus_mapper");
+  return section ? section.status !== "empty" : false;
+}
+
 function WorkspaceShell() {
   const { exam_id } = useParams();
   const navigate = useNavigate();
-  const { exam, cycles, loading, error, refetch } = useExamWorkspace();
+  const { exam, cycles, loading, error, refetch, readiness } = useExamWorkspace();
+  const [activeTab, setActiveTab] = useState(null);
 
   function handleCycleChange(e) {
     const val = e.target.value;
@@ -63,6 +72,18 @@ function WorkspaceShell() {
     );
   }
 
+  const syllabusEnabled = isSyllabusTabEnabled(readiness);
+
+  function isTabEnabled(tabId) {
+    if (tabId === "syllabus") return syllabusEnabled;
+    return false;
+  }
+
+  function handleTabClick(tabId) {
+    if (!isTabEnabled(tabId)) return;
+    setActiveTab((cur) => (cur === tabId ? null : tabId));
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -76,7 +97,6 @@ function WorkspaceShell() {
           )}
         </div>
 
-        {/* Cycle picker */}
         <div className="shrink-0">
           <select
             data-testid="cycle-picker"
@@ -94,28 +114,51 @@ function WorkspaceShell() {
         </div>
       </div>
 
-      {/* Tab strip — all disabled in PR1 */}
+      {/* Tab strip */}
       <div className="border-b border-gray-200 bg-white px-6" role="tablist" data-testid="tab-strip">
         <div className="flex gap-1 -mb-px">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              role="tab"
-              aria-selected="false"
-              aria-disabled="true"
-              disabled
-              className="px-4 py-3 text-sm font-medium text-gray-400 border-b-2 border-transparent cursor-not-allowed select-none"
-              data-testid={`tab-${tab.id}`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {TABS.map((tab) => {
+            const enabled = isTabEnabled(tab.id);
+            const selected = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={selected}
+                aria-disabled={!enabled}
+                disabled={!enabled}
+                onClick={() => handleTabClick(tab.id)}
+                className={[
+                  "px-4 py-3 text-sm font-medium border-b-2",
+                  enabled
+                    ? selected
+                      ? "text-indigo-700 border-indigo-600"
+                      : "text-gray-700 border-transparent hover:text-indigo-600 hover:border-indigo-300 cursor-pointer"
+                    : "text-gray-400 border-transparent cursor-not-allowed select-none",
+                ].join(" ")}
+                data-testid={`tab-${tab.id}`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Content area */}
-      <div className="flex-1 flex items-center justify-center text-gray-400 text-sm" data-testid="workspace-placeholder">
-        Select a section to begin
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {activeTab === "syllabus" ? (
+          <Suspense fallback={<div className="p-8 text-gray-400">Loading…</div>}>
+            <SyllabusMapperPanel />
+          </Suspense>
+        ) : (
+          <div
+            className="h-full flex items-center justify-center text-gray-400 text-sm"
+            data-testid="workspace-placeholder"
+          >
+            Select a section to begin
+          </div>
+        )}
       </div>
     </div>
   );
