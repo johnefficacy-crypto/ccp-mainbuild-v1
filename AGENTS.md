@@ -1,3 +1,11 @@
+<!-- Table of contents -->
+- [graphify](#graphify)
+- [Known-flaky CI checks](#known-flaky-ci-checks)
+- [Study OS frontend contract](#study-os-frontend-contract)
+- [Migration discipline](#migration-discipline)
+- [Before adding new modules, verify they don't already exist](#before-adding-new-modules-verify-they-dont-already-exist)
+- [Patterns and Lessons](#patterns-and-lessons)
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
@@ -121,3 +129,62 @@ but the rework cost is high.
 This applies to all "new file" instructions in prompts, not just 
 this one. The prompt is a description of intent, not a guarantee 
 of filesystem state.
+
+## Patterns and Lessons
+
+Patterns observed across PRs #526–#535. Each item has a one-sentence
+summary and a pointer to where it was learned.
+
+### 1. Graphify-first discovery
+Before authoring any PR prompt or starting work in an unfamiliar area,
+read graphify-out/GRAPH_REPORT.md and the relevant wiki file. Treat
+file paths in prompts as hints, not facts. Source: every operator
+audit in the workspace track caught at least one bad assumption this way.
+
+### 2. Audit before assume
+When a prompt mentions an existing module/route/table, grep first.
+PR4's prompt assumed PyqPaperWorkspace could render directly; operator
+audit caught the useParams coupling before dispatch. See PR #534.
+
+### 3. Hash-parity tests for cross-side identity
+Any time frontend and backend compute the same hash (e.g. proposal_key
+in syllabus mapper, future bulk-import tokens), commit a unit test on
+BOTH sides with a fixed input and the known SHA output. Without this,
+every commit silently fails as "stale" and operators think the system
+is broken. Source: PR #533 — the single highest-risk thing about
+that feature, caught by the pin test.
+
+### 4. api.post() JSON-stringifies bodies
+Anywhere binary or CSV bodies cross the API wrapper, use apiFetch
+directly with explicit Content-Type, or add an api.postRaw() helper.
+Caught mid-build during PR5 frontend. See PR #535.
+
+### 5. Override semantics labeling
+Operator-facing flags must describe what they actually do. "Override
+errors" misleads operators into thinking malformed rows can be
+force-imported. Use precise copy: "Override duplicate/error warnings
+where importable" + helper text explaining what override cannot fix.
+Source: PR #527 operator review.
+
+### 6. Descriptive branch names
+Use claude/pr-name-shape (e.g. claude/pr3b-syllabus-mapper), not
+generated names like claude/festive-sagan-xAIiF. The latter pattern
+showed up on PRs #526 and #530 and made the merge log unreadable.
+
+### 7. PR7-style atomic cascade
+Single-parent + multi-child inserts must rollback parent on any child
+failure and return { ok: false, child_errors: [...] }. Application-level
+rollback is acceptable; true Postgres transaction is better. Pattern
+lives in app/backend/app/api/admin_exam_intel_cms.py:create_pyq_question.
+See PR #526.
+
+### 8. Trust gate on bulk inserts
+reviewer_status forced 'pending' on every CMS write, even when caller
+sends 'verified'. Pattern lives across PR3b accept (#533) and PR5
+commit (#527). Bulk flows must not bypass review.
+
+### 9. Snapshot pin when refactoring shared compute
+When extracting a service module from a multi-consumer function (e.g.
+compute_exam_workspace_readiness out of overview() in PR #530), pin
+the pre-refactor output byte-identical with a test. The shared
+consumer (review kanban for that case) breaks silently otherwise.
