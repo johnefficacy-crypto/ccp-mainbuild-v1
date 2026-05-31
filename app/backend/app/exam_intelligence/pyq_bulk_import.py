@@ -152,26 +152,7 @@ def _q_hash(text: str) -> str:
     return question_hash(text) or hashlib.sha256(text.lower().encode()).hexdigest()
 
 
-def _levenshtein_ratio(a: str, b: str) -> float:
-    try:
-        from Levenshtein import ratio
-        return ratio(a, b)
-    except ImportError:
-        pass
-    # Pure-Python fallback (DP edit distance)
-    if not a and not b:
-        return 1.0
-    if not a or not b:
-        return 0.0
-    la, lb = len(a), len(b)
-    prev = list(range(lb + 1))
-    for i, ca in enumerate(a, 1):
-        curr = [i]
-        for j, cb in enumerate(b, 1):
-            curr.append(min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + (ca != cb)))
-        prev = curr
-    dist = prev[lb]
-    return 1 - dist / max(la, lb)
+from app.exam_intelligence.text_utils import levenshtein_ratio as _levenshtein_ratio
 
 
 # ── Preflight ─────────────────────────────────────────────────────────────────
