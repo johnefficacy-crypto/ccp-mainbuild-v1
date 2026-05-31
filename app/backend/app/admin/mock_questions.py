@@ -26,11 +26,16 @@ logger = logging.getLogger("career_copilot.admin.mock_questions")
 # ── State machine ──────────────────────────────────────────────────────────────
 
 VALID_STATUSES = frozenset({
-    "draft", "in_review", "needs_changes", "verified", "published", "archived",
+    "draft", "reviewed", "in_review", "needs_changes",
+    "verified", "published", "live", "archived",
 })
 
 # Map (from_status, action) → to_status
 _TRANSITIONS: dict[tuple[str, str], str] = {
+    # Simplified pipeline (PR5): draft → reviewed → verified
+    ("draft",          "review"):          "reviewed",
+    ("reviewed",       "verify"):          "verified",
+    # Extended authoring pipeline (PR2): draft → in_review → verified → published
     ("draft",          "submit"):          "in_review",
     ("needs_changes",  "submit"):          "in_review",
     ("in_review",      "approve"):         "verified",
@@ -41,7 +46,7 @@ _TRANSITIONS: dict[tuple[str, str], str] = {
 }
 
 # Actions that require specific permission tiers (enforced at API layer, checked here too)
-_REVIEWER_ACTIONS  = frozenset({"approve", "request_changes"})
+_REVIEWER_ACTIONS  = frozenset({"approve", "request_changes", "review", "verify"})
 _PUBLISHER_ACTIONS = frozenset({"publish", "archive", "restore", "force"})
 
 
@@ -181,9 +186,16 @@ def create_question(supabase: Any, actor: dict, data: dict) -> dict:
 
     ``data`` fields:
         question_text, question_type, difficulty, is_conceptual, is_factual,
-        is_current, valid_from, valid_until, event_anchor_date, explanation,
-        language, exam_id, subject_id, topic_id, options (list of
-        {option_text, is_correct}), exam_family.
+        is_current, is_current_based, valid_from, valid_until,
+        event_anchor_date, explanation, language, exam_id, subject_id,
+        topic_id, options (list of {option_text, is_correct}), exam_family,
+        source_kind, source_url, current_affairs_item_id, pyq_paper_id.
+
+    Provenance fields (source_kind, source_url, is_current_based,
+    current_affairs_item_id) are carried from PR4 and written directly to
+    mock_question_bank.  pyq_paper_id additionally creates a
+    mock_question_sources row so the question is traceable back to its PYQ
+    paper.
 
     Returns the created question dict (with options).
     Raises ValueError for missing required fields.
@@ -201,13 +213,14 @@ def create_question(supabase: Any, actor: dict, data: dict) -> dict:
         raise ValueError("exactly one correct option required")
 
     # Insert question (fingerprint resolved via trigger; we'll update after options)
-    q_row = {
+    q_row: dict[str, Any] = {
         "question_text": q_text,
         "question_type": data.get("question_type", "mcq"),
         "difficulty": data.get("difficulty") or "medium",
         "is_conceptual": bool(data.get("is_conceptual", False)),
         "is_factual": bool(data.get("is_factual", False)),
         "is_current": bool(data.get("is_current", False)),
+        "is_current_based": bool(data.get("is_current_based", False)),
         "valid_from": data.get("valid_from"),
         "valid_until": data.get("valid_until"),
         "event_anchor_date": data.get("event_anchor_date"),
@@ -222,6 +235,11 @@ def create_question(supabase: Any, actor: dict, data: dict) -> dict:
         "created_at": _now_iso(),
         "updated_at": _now_iso(),
     }
+    # Provenance fields (PR4) — included only when provided.
+    for pfield in ("source_kind", "source_url", "current_affairs_item_id"):
+        val = data.get(pfield)
+        if val is not None:
+            q_row[pfield] = val
 
     result = supabase.table("mock_question_bank").insert(q_row).execute()
     rows = (result.data or [])
@@ -268,6 +286,23 @@ def create_question(supabase: Any, actor: dict, data: dict) -> dict:
                action="create", to_status="draft",
                diff={"question_text": {"to": q_text}, "options_count": {"to": len(opt_rows)}})
 
+    # Auto-create a source row when pyq_paper_id or source_kind is provided so
+    # the question is traceable back to its origin without a second API call.
+    pyq_paper_id = data.get("pyq_paper_id")
+    source_kind_inline = data.get("source_kind")
+    if pyq_paper_id or source_kind_inline:
+        try:
+            supabase.table("mock_question_sources").insert({
+                "question_id": question_id,
+                "source_kind": source_kind_inline or "pyq",
+                "source_trust": data.get("source_trust") or "provisional",
+                "source_url": data.get("source_url"),
+                "pyq_paper_id": pyq_paper_id,
+                "evidence_text": data.get("evidence_text"),
+            }).execute()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("auto source row failed question=%s: %s", question_id, exc)
+
     return {**question, "options": opts}
 
 
@@ -296,8 +331,9 @@ def update_question(supabase: Any, actor: dict, question_id: str, data: dict,
     updates: dict[str, Any] = {"updated_at": _now_iso()}
     for field in ("question_text", "question_type", "difficulty", "explanation",
                   "language", "exam_id", "exam_family", "subject_id", "topic_id",
-                  "is_conceptual", "is_factual", "is_current",
-                  "valid_from", "valid_until", "event_anchor_date"):
+                  "is_conceptual", "is_factual", "is_current", "is_current_based",
+                  "valid_from", "valid_until", "event_anchor_date",
+                  "source_kind", "source_url", "current_affairs_item_id"):
         if field in data:
             updates[field] = data[field]
 
@@ -409,9 +445,9 @@ def transition(
                        notes=f"{action} without publisher permission")
             raise PermissionError("publisher permission required")
 
-        # Conflict-of-interest: reviewer cannot approve own question
-        if action == "approve" and q.get("created_by") == actor_id:
-            raise ConflictError("reviewer cannot approve a question they authored")
+        # Conflict-of-interest: reviewer cannot approve or verify own question
+        if action in ("approve", "verify") and q.get("created_by") == actor_id:
+            raise ConflictError("reviewer cannot approve or verify a question they authored")
 
     # Build update payload
     updates: dict[str, Any] = {
@@ -462,7 +498,8 @@ def list_questions(
     q = supabase.table("mock_question_bank").select(
         "id, question_text, question_type, difficulty, reviewer_status, "
         "language, exam_id, subject_id, topic_id, created_by, created_at, "
-        "updated_at, is_conceptual, is_factual, is_current, published_at"
+        "updated_at, is_conceptual, is_factual, is_current, is_current_based, "
+        "published_at, source_kind, source_url, current_affairs_item_id"
     )
 
     if not is_elevated:

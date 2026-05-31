@@ -72,6 +72,7 @@ export const adminRouteElements = (
     <Route path="/admin/ai-policy" element={<AdminAIPolicy />} />
     <Route path="/admin/persona" element={<AdminPersona />} />
     <Route path="/admin/exam-intelligence" element={<AdminExamIntelligence />} />
+    <Route path="/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace" element={<AdminPyqPaperWorkspace />} />
     <Route path="/admin/exam-eligibility" element={<AdminExamEligibility />} />
     <Route path="/admin/moderation" element={<AdminModerationQueue />} />
     <Route path="/admin/kpis" element={<AdminKPIs />} />

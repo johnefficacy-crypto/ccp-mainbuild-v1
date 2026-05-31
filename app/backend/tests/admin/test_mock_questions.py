@@ -542,13 +542,15 @@ class TestSelectorHardening:
         mock_sb.table.return_value = mock_chain
         return mock_sb
 
-    def test_only_published_questions_are_loaded(self):
+    def test_only_verified_or_published_questions_are_loaded(self):
+        """Selector gates on reviewer_status IN ('verified','published','live')
+        — both verified and published questions are included; draft/reviewed are
+        excluded.  The filter is applied via .in_() not .eq()."""
         from app.study_os.mock_engine import _load_questions_for_template
 
         published_q = {"id": "q-pub", "reviewer_status": "published", "valid_until": None, "question_text": "Q1?", "options": []}
-        verified_q  = {"id": "q-ver", "reviewer_status": "verified",   "valid_until": None, "question_text": "Q2?", "options": []}
 
-        # Patch supabase call — return only published_q (simulating DB filter)
+        # Patch supabase call — return published_q (simulating DB filter)
         sb = MagicMock()
         chain = MagicMock()
         chain.execute.return_value = MagicMock(data=[published_q])
@@ -559,10 +561,17 @@ class TestSelectorHardening:
         chain.limit.return_value = chain
 
         template = {"id": "tmpl-1", "config": {"question_ids": ["q-pub"]}}
-        result = _load_questions_for_template(sb, template)
-        # Verify that .eq was called with ("reviewer_status", "published")
-        eq_calls = [str(c) for c in chain.eq.call_args_list]
-        assert any("published" in c for c in eq_calls)
+        _load_questions_for_template(sb, template)
+        # Verify .in_ was called with reviewer_status and the selectable list.
+        in_calls = chain.in_.call_args_list
+        status_call = next(
+            (c for c in in_calls if c.args and c.args[0] == "reviewer_status"),
+            None,
+        )
+        assert status_call is not None, ".in_('reviewer_status', ...) was not called"
+        selectable = status_call.args[1]
+        assert "verified" in selectable
+        assert "published" in selectable
 
     def test_expired_question_excluded_via_ttl_filter(self):
         """valid_until in the past should be excluded."""

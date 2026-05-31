@@ -33,6 +33,12 @@ from app.api.admin_exam_intel_cms import PERM_CMS, _audit, _flag_enabled, _safe_
 from app.core.auth import require_permission
 from app.core.config import get_settings
 from app.db.supabase_client import get_supabase_admin
+from app.exam_intelligence.extraction.dispatch import (
+    ExamIdentity,
+    SourceKind,
+    StructuralFormat,
+    infer_format_from_identity,
+)
 from app.library import text_extract as _text_extract
 
 logger = logging.getLogger("career_copilot.api.admin_exam_intel_documents")
@@ -153,6 +159,10 @@ def _shape(row: dict) -> dict:
         "page_count": row.get("page_count"),
         "visibility": row.get("visibility"),
         "status": row.get("status"),
+        "exam_identity": row.get("exam_identity"),
+        "structural_format": row.get("structural_format"),
+        "source_kind": row.get("source_kind"),
+        "sanitized_from_document_id": row.get("sanitized_from_document_id"),
         "metadata": row.get("metadata") or {},
         "created_at": row.get("created_at"),
         "updated_at": row.get("updated_at"),
@@ -171,6 +181,11 @@ class DocUploadUrlRequest(BaseModel):
     exam_cycle_id: str | None = None
     exam_phase_id: str | None = None
     title: str | None = Field(default=None, max_length=200)
+    # Classification fields (migration 152-153)
+    exam_identity: str | None = Field(default=None, max_length=60)
+    structural_format: str | None = Field(default=None, max_length=60)
+    source_kind: str | None = Field(default=None, max_length=40)
+    sanitized_from_document_id: str | None = None
 
 
 class DocCompleteUploadRequest(BaseModel):
@@ -207,9 +222,40 @@ def create_document_upload_url(
     if body.size_bytes > _max_bytes():
         raise HTTPException(status_code=400, detail={"code": "file_too_large", "max_bytes": _max_bytes()})
 
+    # Validate and coerce classification fields (migration 152-153).
+    exam_identity_val: str = ExamIdentity.UNKNOWN.value
+    structural_format_val: str = StructuralFormat.UNKNOWN.value
+    source_kind_val: str = SourceKind.UNKNOWN.value
+
+    if body.exam_identity:
+        try:
+            exam_identity_val = ExamIdentity(body.exam_identity).value
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"exam_identity {body.exam_identity!r} is not a valid ExamIdentity value")
+        # Auto-infer structural_format from exam_identity if not overridden.
+        inferred = infer_format_from_identity(ExamIdentity(exam_identity_val))
+        structural_format_val = inferred.value
+
+    if body.structural_format:
+        try:
+            structural_format_val = StructuralFormat(body.structural_format).value
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"structural_format {body.structural_format!r} is not a valid StructuralFormat value")
+
+    if body.source_kind:
+        try:
+            source_kind_val = SourceKind(body.source_kind).value
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"source_kind {body.source_kind!r} is not a valid SourceKind value")
+
     sb = get_supabase_admin()
     if not _safe_select(sb, "exams", id=body.exam_id):
         raise HTTPException(status_code=422, detail="exam_id does not resolve")
+
+    if body.sanitized_from_document_id:
+        ref = _safe_select(sb, "document_assets", id=body.sanitized_from_document_id)
+        if not ref:
+            raise HTTPException(status_code=422, detail="sanitized_from_document_id does not resolve")
 
     bucket = _bucket()
     path = _admin_storage_path(body.exam_id, body.filename)
@@ -239,6 +285,10 @@ def create_document_upload_url(
         "processing_policy": "extract_text",
         "visibility": "admin_only",
         "status": "uploaded",
+        "exam_identity": exam_identity_val,
+        "structural_format": structural_format_val,
+        "source_kind": source_kind_val,
+        "sanitized_from_document_id": body.sanitized_from_document_id,
         "metadata": {
             "exam_id": body.exam_id,
             "exam_cycle_id": body.exam_cycle_id,
@@ -251,7 +301,14 @@ def create_document_upload_url(
     _audit(
         sb, admin, "exam_intel.cms.document.upload_url",
         entity_type="document_asset", entity_id=row.get("id"),
-        new_value={"exam_id": body.exam_id, "document_kind": body.document_kind, "storage_path": path},
+        new_value={
+            "exam_id": body.exam_id,
+            "document_kind": body.document_kind,
+            "storage_path": path,
+            "exam_identity": exam_identity_val,
+            "structural_format": structural_format_val,
+            "source_kind": source_kind_val,
+        },
     )
     return {
         "document_id": row.get("id"),

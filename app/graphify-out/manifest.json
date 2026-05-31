@@ -736,8 +736,8 @@
     "hash": "c78197f5f763365629f2e0fa4ff7ac16"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\plan_timeline.py": {
-    "mtime": 1779825834.81544,
-    "hash": "902716c3e483b844b5da0b8ae93eb5b3"
+    "mtime": 1779905353.699298,
+    "hash": "4715d83750fbe33c069f8e90b4002f04"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\regen.py": {
     "mtime": 1778782769.9301076,
@@ -1792,12 +1792,16 @@
     "hash": "ff22c2e81113d802386aae21f17d4489"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\e2e\\fixtures\\seedAttempt.ts": {
-    "mtime": 1779879886.263465,
-    "hash": "2d4335534c5bb2cbbbb7d7954105ee40"
+    "mtime": 1779915799.0161016,
+    "hash": "f155ca7f8850551b18dcf776031cf8db"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\e2e\\fixtures\\seedUser.ts": {
     "mtime": 1779879886.2644758,
     "hash": "99f4b5d97746b3b4198845088953c538"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\e2e\\fixtures\\supabaseNodeClient.ts": {
+    "mtime": 1779914989.3362997,
+    "hash": "e99554a813ecc8ff5135a65d104229e0"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\e2e\\flows\\answer-save-failure.spec.ts": {
     "mtime": 1779888710.5690186,
@@ -3216,8 +3220,8 @@
     "hash": "ec269cb11dc05c33c8e9d55ac3aa0d69"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\study\\mocks\\MockAttemptShell.jsx": {
-    "mtime": 1779891238.005348,
-    "hash": "cb9be684744291aabbafffd882fd8a64"
+    "mtime": 1779905035.332279,
+    "hash": "e27c9a5a9f8bc64329f9df0f02e1366e"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\study\\mocks\\MockResult.jsx": {
     "mtime": 1779886106.674915,
@@ -3232,8 +3236,8 @@
     "hash": "da8278a67f80d682d3161984fb46be46"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\study\\mocks\\useAnswerSync.js": {
-    "mtime": 1779891238.0103354,
-    "hash": "8edbfc9fb291394747810d4ee7e5d5b5"
+    "mtime": 1779905035.333276,
+    "hash": "b5e04c04e052e9a5198e669e7da094cd"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\study\\mocks\\validateMockForm.js": {
     "mtime": 1778972624.8597758,
@@ -4223,6 +4227,10 @@
     "mtime": 1779368519.9907072,
     "hash": "ddacf2a6a339a2e46b61500a9ce479f0"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\supabase\\migrations\\134_exam_intelligence_extraction_runs.sql": {
+    "mtime": 1779916354.2401786,
+    "hash": "2feade6e824999058b7ac1d26627c1a5"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\supabase\\migrations\\134_rbac_unification.sql": {
     "mtime": 1779630322.5251422,
     "hash": "b5898fecefbbd75dc8f5c0164ea64fc2"
@@ -4598,6 +4606,10 @@
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\requirements.txt": {
     "mtime": 1779630322.4899428,
     "hash": "2e3d1fb15fb7c16441a8c1e4f59a9565"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\fixtures\\exam_intelligence_extraction\\upsc_cse_pyq_v1\\README.md": {
+    "mtime": 1779915854.0324316,
+    "hash": "92e18e8dc00cc0b9bbe25c8a92cccfcf"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\public\\index.html": {
     "mtime": 1777919584.108395,

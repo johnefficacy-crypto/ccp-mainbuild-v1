@@ -1,16 +1,16 @@
-# Graph Report - ccp-mainbuild-v1  (2026-05-27)
+# Graph Report - ccp-mainbuild-v1  (2026-05-31)
 
 ## Corpus Check
-- 1323 files · ~936,348 words
+- 1400 files · ~1,056,788 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 19591 nodes · 37092 edges · 978 communities (833 shown, 145 thin omitted)
-- Extraction: 77% EXTRACTED · 23% INFERRED · 0% AMBIGUOUS · INFERRED: 8534 edges (avg confidence: 0.76)
+- 20490 nodes · 38722 edges · 1013 communities (865 shown, 148 thin omitted)
+- Extraction: 77% EXTRACTED · 23% INFERRED · 0% AMBIGUOUS · INFERRED: 8919 edges (avg confidence: 0.76)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `edd2ffe9`
+- Built from commit: `fd334c6b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -82,6 +82,7 @@
 - [[_COMMUNITY_Community 66|Community 66]]
 - [[_COMMUNITY_Community 67|Community 67]]
 - [[_COMMUNITY_Community 68|Community 68]]
+- [[_COMMUNITY_Community 69|Community 69]]
 - [[_COMMUNITY_Community 70|Community 70]]
 - [[_COMMUNITY_Community 71|Community 71]]
 - [[_COMMUNITY_Community 72|Community 72]]
@@ -186,6 +187,8 @@
 - [[_COMMUNITY_Community 171|Community 171]]
 - [[_COMMUNITY_Community 172|Community 172]]
 - [[_COMMUNITY_Community 173|Community 173]]
+- [[_COMMUNITY_Community 174|Community 174]]
+- [[_COMMUNITY_Community 175|Community 175]]
 - [[_COMMUNITY_Community 176|Community 176]]
 - [[_COMMUNITY_Community 177|Community 177]]
 - [[_COMMUNITY_Community 178|Community 178]]
@@ -200,14 +203,13 @@
 - [[_COMMUNITY_Community 187|Community 187]]
 - [[_COMMUNITY_Community 188|Community 188]]
 - [[_COMMUNITY_Community 189|Community 189]]
-- [[_COMMUNITY_Community 190|Community 190]]
-- [[_COMMUNITY_Community 191|Community 191]]
 - [[_COMMUNITY_Community 192|Community 192]]
 - [[_COMMUNITY_Community 193|Community 193]]
 - [[_COMMUNITY_Community 194|Community 194]]
 - [[_COMMUNITY_Community 195|Community 195]]
 - [[_COMMUNITY_Community 196|Community 196]]
 - [[_COMMUNITY_Community 197|Community 197]]
+- [[_COMMUNITY_Community 198|Community 198]]
 - [[_COMMUNITY_Community 199|Community 199]]
 - [[_COMMUNITY_Community 200|Community 200]]
 - [[_COMMUNITY_Community 201|Community 201]]
@@ -219,9 +221,9 @@
 - [[_COMMUNITY_Community 207|Community 207]]
 - [[_COMMUNITY_Community 208|Community 208]]
 - [[_COMMUNITY_Community 209|Community 209]]
-- [[_COMMUNITY_Community 210|Community 210]]
 - [[_COMMUNITY_Community 211|Community 211]]
 - [[_COMMUNITY_Community 212|Community 212]]
+- [[_COMMUNITY_Community 213|Community 213]]
 - [[_COMMUNITY_Community 214|Community 214]]
 - [[_COMMUNITY_Community 215|Community 215]]
 - [[_COMMUNITY_Community 216|Community 216]]
@@ -247,7 +249,6 @@
 - [[_COMMUNITY_Community 236|Community 236]]
 - [[_COMMUNITY_Community 237|Community 237]]
 - [[_COMMUNITY_Community 238|Community 238]]
-- [[_COMMUNITY_Community 239|Community 239]]
 - [[_COMMUNITY_Community 240|Community 240]]
 - [[_COMMUNITY_Community 241|Community 241]]
 - [[_COMMUNITY_Community 242|Community 242]]
@@ -264,6 +265,7 @@
 - [[_COMMUNITY_Community 253|Community 253]]
 - [[_COMMUNITY_Community 254|Community 254]]
 - [[_COMMUNITY_Community 255|Community 255]]
+- [[_COMMUNITY_Community 256|Community 256]]
 - [[_COMMUNITY_Community 257|Community 257]]
 - [[_COMMUNITY_Community 258|Community 258]]
 - [[_COMMUNITY_Community 259|Community 259]]
@@ -286,7 +288,6 @@
 - [[_COMMUNITY_Community 276|Community 276]]
 - [[_COMMUNITY_Community 277|Community 277]]
 - [[_COMMUNITY_Community 278|Community 278]]
-- [[_COMMUNITY_Community 279|Community 279]]
 - [[_COMMUNITY_Community 280|Community 280]]
 - [[_COMMUNITY_Community 281|Community 281]]
 - [[_COMMUNITY_Community 282|Community 282]]
@@ -319,6 +320,7 @@
 - [[_COMMUNITY_Community 309|Community 309]]
 - [[_COMMUNITY_Community 310|Community 310]]
 - [[_COMMUNITY_Community 311|Community 311]]
+- [[_COMMUNITY_Community 312|Community 312]]
 - [[_COMMUNITY_Community 313|Community 313]]
 - [[_COMMUNITY_Community 314|Community 314]]
 - [[_COMMUNITY_Community 315|Community 315]]
@@ -348,7 +350,6 @@
 - [[_COMMUNITY_Community 339|Community 339]]
 - [[_COMMUNITY_Community 340|Community 340]]
 - [[_COMMUNITY_Community 341|Community 341]]
-- [[_COMMUNITY_Community 342|Community 342]]
 - [[_COMMUNITY_Community 343|Community 343]]
 - [[_COMMUNITY_Community 344|Community 344]]
 - [[_COMMUNITY_Community 345|Community 345]]
@@ -361,6 +362,10 @@
 - [[_COMMUNITY_Community 352|Community 352]]
 - [[_COMMUNITY_Community 353|Community 353]]
 - [[_COMMUNITY_Community 354|Community 354]]
+- [[_COMMUNITY_Community 355|Community 355]]
+- [[_COMMUNITY_Community 356|Community 356]]
+- [[_COMMUNITY_Community 357|Community 357]]
+- [[_COMMUNITY_Community 358|Community 358]]
 - [[_COMMUNITY_Community 359|Community 359]]
 - [[_COMMUNITY_Community 360|Community 360]]
 - [[_COMMUNITY_Community 361|Community 361]]
@@ -383,11 +388,7 @@
 - [[_COMMUNITY_Community 378|Community 378]]
 - [[_COMMUNITY_Community 379|Community 379]]
 - [[_COMMUNITY_Community 380|Community 380]]
-- [[_COMMUNITY_Community 381|Community 381]]
 - [[_COMMUNITY_Community 382|Community 382]]
-- [[_COMMUNITY_Community 383|Community 383]]
-- [[_COMMUNITY_Community 384|Community 384]]
-- [[_COMMUNITY_Community 385|Community 385]]
 - [[_COMMUNITY_Community 386|Community 386]]
 - [[_COMMUNITY_Community 387|Community 387]]
 - [[_COMMUNITY_Community 388|Community 388]]
@@ -410,6 +411,12 @@
 - [[_COMMUNITY_Community 405|Community 405]]
 - [[_COMMUNITY_Community 406|Community 406]]
 - [[_COMMUNITY_Community 407|Community 407]]
+- [[_COMMUNITY_Community 408|Community 408]]
+- [[_COMMUNITY_Community 409|Community 409]]
+- [[_COMMUNITY_Community 410|Community 410]]
+- [[_COMMUNITY_Community 411|Community 411]]
+- [[_COMMUNITY_Community 412|Community 412]]
+- [[_COMMUNITY_Community 413|Community 413]]
 - [[_COMMUNITY_Community 414|Community 414]]
 - [[_COMMUNITY_Community 415|Community 415]]
 - [[_COMMUNITY_Community 416|Community 416]]
@@ -424,12 +431,6 @@
 - [[_COMMUNITY_Community 425|Community 425]]
 - [[_COMMUNITY_Community 426|Community 426]]
 - [[_COMMUNITY_Community 427|Community 427]]
-- [[_COMMUNITY_Community 428|Community 428]]
-- [[_COMMUNITY_Community 429|Community 429]]
-- [[_COMMUNITY_Community 430|Community 430]]
-- [[_COMMUNITY_Community 431|Community 431]]
-- [[_COMMUNITY_Community 432|Community 432]]
-- [[_COMMUNITY_Community 433|Community 433]]
 - [[_COMMUNITY_Community 434|Community 434]]
 - [[_COMMUNITY_Community 435|Community 435]]
 - [[_COMMUNITY_Community 436|Community 436]]
@@ -459,6 +460,7 @@
 - [[_COMMUNITY_Community 460|Community 460]]
 - [[_COMMUNITY_Community 461|Community 461]]
 - [[_COMMUNITY_Community 462|Community 462]]
+- [[_COMMUNITY_Community 463|Community 463]]
 - [[_COMMUNITY_Community 464|Community 464]]
 - [[_COMMUNITY_Community 465|Community 465]]
 - [[_COMMUNITY_Community 466|Community 466]]
@@ -476,7 +478,6 @@
 - [[_COMMUNITY_Community 478|Community 478]]
 - [[_COMMUNITY_Community 479|Community 479]]
 - [[_COMMUNITY_Community 480|Community 480]]
-- [[_COMMUNITY_Community 481|Community 481]]
 - [[_COMMUNITY_Community 482|Community 482]]
 - [[_COMMUNITY_Community 483|Community 483]]
 - [[_COMMUNITY_Community 484|Community 484]]
@@ -727,9 +728,11 @@
 - [[_COMMUNITY_Community 729|Community 729]]
 - [[_COMMUNITY_Community 730|Community 730]]
 - [[_COMMUNITY_Community 731|Community 731]]
+- [[_COMMUNITY_Community 732|Community 732]]
 - [[_COMMUNITY_Community 733|Community 733]]
 - [[_COMMUNITY_Community 734|Community 734]]
 - [[_COMMUNITY_Community 735|Community 735]]
+- [[_COMMUNITY_Community 736|Community 736]]
 - [[_COMMUNITY_Community 737|Community 737]]
 - [[_COMMUNITY_Community 738|Community 738]]
 - [[_COMMUNITY_Community 739|Community 739]]
@@ -751,9 +754,7 @@
 - [[_COMMUNITY_Community 755|Community 755]]
 - [[_COMMUNITY_Community 756|Community 756]]
 - [[_COMMUNITY_Community 757|Community 757]]
-- [[_COMMUNITY_Community 758|Community 758]]
 - [[_COMMUNITY_Community 759|Community 759]]
-- [[_COMMUNITY_Community 760|Community 760]]
 - [[_COMMUNITY_Community 761|Community 761]]
 - [[_COMMUNITY_Community 762|Community 762]]
 - [[_COMMUNITY_Community 763|Community 763]]
@@ -773,6 +774,7 @@
 - [[_COMMUNITY_Community 777|Community 777]]
 - [[_COMMUNITY_Community 778|Community 778]]
 - [[_COMMUNITY_Community 779|Community 779]]
+- [[_COMMUNITY_Community 780|Community 780]]
 - [[_COMMUNITY_Community 781|Community 781]]
 - [[_COMMUNITY_Community 782|Community 782]]
 - [[_COMMUNITY_Community 783|Community 783]]
@@ -804,14 +806,29 @@
 - [[_COMMUNITY_Community 809|Community 809]]
 - [[_COMMUNITY_Community 810|Community 810]]
 - [[_COMMUNITY_Community 811|Community 811]]
-- [[_COMMUNITY_Community 813|Community 813]]
+- [[_COMMUNITY_Community 812|Community 812]]
 - [[_COMMUNITY_Community 814|Community 814]]
 - [[_COMMUNITY_Community 815|Community 815]]
 - [[_COMMUNITY_Community 816|Community 816]]
 - [[_COMMUNITY_Community 817|Community 817]]
 - [[_COMMUNITY_Community 818|Community 818]]
+- [[_COMMUNITY_Community 819|Community 819]]
+- [[_COMMUNITY_Community 820|Community 820]]
+- [[_COMMUNITY_Community 821|Community 821]]
+- [[_COMMUNITY_Community 822|Community 822]]
+- [[_COMMUNITY_Community 823|Community 823]]
 - [[_COMMUNITY_Community 824|Community 824]]
 - [[_COMMUNITY_Community 825|Community 825]]
+- [[_COMMUNITY_Community 826|Community 826]]
+- [[_COMMUNITY_Community 827|Community 827]]
+- [[_COMMUNITY_Community 828|Community 828]]
+- [[_COMMUNITY_Community 829|Community 829]]
+- [[_COMMUNITY_Community 830|Community 830]]
+- [[_COMMUNITY_Community 831|Community 831]]
+- [[_COMMUNITY_Community 832|Community 832]]
+- [[_COMMUNITY_Community 833|Community 833]]
+- [[_COMMUNITY_Community 834|Community 834]]
+- [[_COMMUNITY_Community 835|Community 835]]
 - [[_COMMUNITY_Community 836|Community 836]]
 - [[_COMMUNITY_Community 837|Community 837]]
 - [[_COMMUNITY_Community 838|Community 838]]
@@ -823,26 +840,15 @@
 - [[_COMMUNITY_Community 844|Community 844]]
 - [[_COMMUNITY_Community 845|Community 845]]
 - [[_COMMUNITY_Community 846|Community 846]]
-- [[_COMMUNITY_Community 847|Community 847]]
 - [[_COMMUNITY_Community 848|Community 848]]
 - [[_COMMUNITY_Community 849|Community 849]]
 - [[_COMMUNITY_Community 850|Community 850]]
 - [[_COMMUNITY_Community 851|Community 851]]
-- [[_COMMUNITY_Community 852|Community 852]]
-- [[_COMMUNITY_Community 853|Community 853]]
-- [[_COMMUNITY_Community 854|Community 854]]
-- [[_COMMUNITY_Community 855|Community 855]]
-- [[_COMMUNITY_Community 856|Community 856]]
 - [[_COMMUNITY_Community 857|Community 857]]
-- [[_COMMUNITY_Community 858|Community 858]]
-- [[_COMMUNITY_Community 859|Community 859]]
-- [[_COMMUNITY_Community 860|Community 860]]
-- [[_COMMUNITY_Community 862|Community 862]]
-- [[_COMMUNITY_Community 863|Community 863]]
-- [[_COMMUNITY_Community 864|Community 864]]
-- [[_COMMUNITY_Community 865|Community 865]]
+- [[_COMMUNITY_Community 868|Community 868]]
 - [[_COMMUNITY_Community 869|Community 869]]
 - [[_COMMUNITY_Community 870|Community 870]]
+- [[_COMMUNITY_Community 871|Community 871]]
 - [[_COMMUNITY_Community 872|Community 872]]
 - [[_COMMUNITY_Community 873|Community 873]]
 - [[_COMMUNITY_Community 874|Community 874]]
@@ -857,7 +863,6 @@
 - [[_COMMUNITY_Community 883|Community 883]]
 - [[_COMMUNITY_Community 884|Community 884]]
 - [[_COMMUNITY_Community 885|Community 885]]
-- [[_COMMUNITY_Community 886|Community 886]]
 - [[_COMMUNITY_Community 887|Community 887]]
 - [[_COMMUNITY_Community 888|Community 888]]
 - [[_COMMUNITY_Community 889|Community 889]]
@@ -868,53 +873,82 @@
 - [[_COMMUNITY_Community 894|Community 894]]
 - [[_COMMUNITY_Community 895|Community 895]]
 - [[_COMMUNITY_Community 896|Community 896]]
-- [[_COMMUNITY_Community 897|Community 897]]
-- [[_COMMUNITY_Community 898|Community 898]]
-- [[_COMMUNITY_Community 937|Community 937]]
-- [[_COMMUNITY_Community 938|Community 938]]
-- [[_COMMUNITY_Community 939|Community 939]]
-- [[_COMMUNITY_Community 940|Community 940]]
-- [[_COMMUNITY_Community 941|Community 941]]
-- [[_COMMUNITY_Community 942|Community 942]]
-- [[_COMMUNITY_Community 943|Community 943]]
-- [[_COMMUNITY_Community 944|Community 944]]
-- [[_COMMUNITY_Community 945|Community 945]]
-- [[_COMMUNITY_Community 946|Community 946]]
-- [[_COMMUNITY_Community 947|Community 947]]
-- [[_COMMUNITY_Community 948|Community 948]]
-- [[_COMMUNITY_Community 949|Community 949]]
-- [[_COMMUNITY_Community 950|Community 950]]
-- [[_COMMUNITY_Community 951|Community 951]]
-- [[_COMMUNITY_Community 952|Community 952]]
-- [[_COMMUNITY_Community 953|Community 953]]
-- [[_COMMUNITY_Community 954|Community 954]]
-- [[_COMMUNITY_Community 955|Community 955]]
-- [[_COMMUNITY_Community 956|Community 956]]
-- [[_COMMUNITY_Community 957|Community 957]]
-- [[_COMMUNITY_Community 958|Community 958]]
-- [[_COMMUNITY_Community 959|Community 959]]
-- [[_COMMUNITY_Community 960|Community 960]]
-- [[_COMMUNITY_Community 961|Community 961]]
-- [[_COMMUNITY_Community 962|Community 962]]
-- [[_COMMUNITY_Community 963|Community 963]]
-- [[_COMMUNITY_Community 964|Community 964]]
-- [[_COMMUNITY_Community 965|Community 965]]
-- [[_COMMUNITY_Community 966|Community 966]]
-- [[_COMMUNITY_Community 967|Community 967]]
-- [[_COMMUNITY_Community 968|Community 968]]
-- [[_COMMUNITY_Community 969|Community 969]]
-- [[_COMMUNITY_Community 970|Community 970]]
-- [[_COMMUNITY_Community 971|Community 971]]
+- [[_COMMUNITY_Community 900|Community 900]]
+- [[_COMMUNITY_Community 901|Community 901]]
+- [[_COMMUNITY_Community 903|Community 903]]
+- [[_COMMUNITY_Community 904|Community 904]]
+- [[_COMMUNITY_Community 905|Community 905]]
+- [[_COMMUNITY_Community 906|Community 906]]
+- [[_COMMUNITY_Community 907|Community 907]]
+- [[_COMMUNITY_Community 908|Community 908]]
+- [[_COMMUNITY_Community 909|Community 909]]
+- [[_COMMUNITY_Community 910|Community 910]]
+- [[_COMMUNITY_Community 911|Community 911]]
+- [[_COMMUNITY_Community 912|Community 912]]
+- [[_COMMUNITY_Community 913|Community 913]]
+- [[_COMMUNITY_Community 914|Community 914]]
+- [[_COMMUNITY_Community 915|Community 915]]
+- [[_COMMUNITY_Community 916|Community 916]]
+- [[_COMMUNITY_Community 917|Community 917]]
+- [[_COMMUNITY_Community 918|Community 918]]
+- [[_COMMUNITY_Community 919|Community 919]]
+- [[_COMMUNITY_Community 920|Community 920]]
+- [[_COMMUNITY_Community 921|Community 921]]
+- [[_COMMUNITY_Community 922|Community 922]]
+- [[_COMMUNITY_Community 923|Community 923]]
+- [[_COMMUNITY_Community 924|Community 924]]
+- [[_COMMUNITY_Community 925|Community 925]]
+- [[_COMMUNITY_Community 926|Community 926]]
+- [[_COMMUNITY_Community 927|Community 927]]
+- [[_COMMUNITY_Community 928|Community 928]]
+- [[_COMMUNITY_Community 929|Community 929]]
+- [[_COMMUNITY_Community 930|Community 930]]
+- [[_COMMUNITY_Community 931|Community 931]]
 - [[_COMMUNITY_Community 972|Community 972]]
+- [[_COMMUNITY_Community 973|Community 973]]
+- [[_COMMUNITY_Community 974|Community 974]]
+- [[_COMMUNITY_Community 975|Community 975]]
+- [[_COMMUNITY_Community 976|Community 976]]
+- [[_COMMUNITY_Community 977|Community 977]]
+- [[_COMMUNITY_Community 978|Community 978]]
+- [[_COMMUNITY_Community 979|Community 979]]
+- [[_COMMUNITY_Community 980|Community 980]]
+- [[_COMMUNITY_Community 981|Community 981]]
+- [[_COMMUNITY_Community 982|Community 982]]
+- [[_COMMUNITY_Community 983|Community 983]]
+- [[_COMMUNITY_Community 984|Community 984]]
+- [[_COMMUNITY_Community 985|Community 985]]
+- [[_COMMUNITY_Community 986|Community 986]]
+- [[_COMMUNITY_Community 987|Community 987]]
+- [[_COMMUNITY_Community 988|Community 988]]
+- [[_COMMUNITY_Community 989|Community 989]]
+- [[_COMMUNITY_Community 990|Community 990]]
+- [[_COMMUNITY_Community 991|Community 991]]
+- [[_COMMUNITY_Community 992|Community 992]]
+- [[_COMMUNITY_Community 993|Community 993]]
+- [[_COMMUNITY_Community 994|Community 994]]
+- [[_COMMUNITY_Community 995|Community 995]]
+- [[_COMMUNITY_Community 996|Community 996]]
+- [[_COMMUNITY_Community 997|Community 997]]
+- [[_COMMUNITY_Community 998|Community 998]]
+- [[_COMMUNITY_Community 999|Community 999]]
+- [[_COMMUNITY_Community 1000|Community 1000]]
+- [[_COMMUNITY_Community 1001|Community 1001]]
+- [[_COMMUNITY_Community 1002|Community 1002]]
+- [[_COMMUNITY_Community 1003|Community 1003]]
+- [[_COMMUNITY_Community 1004|Community 1004]]
+- [[_COMMUNITY_Community 1005|Community 1005]]
+- [[_COMMUNITY_Community 1006|Community 1006]]
+- [[_COMMUNITY_Community 1007|Community 1007]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `get_supabase_admin()` - 584 edges
-2. `SBStub` - 304 edges
+1. `get_supabase_admin()` - 594 edges
+2. `SBStub` - 305 edges
 3. `SBStub` - 292 edges
 4. `get_supabase_admin()` - 214 edges
-5. `api` - 143 edges
+5. `api` - 148 edges
 6. `run_scraping_pass()` - 104 edges
-7. `All()` - 98 edges
+7. `All()` - 100 edges
 8. `FakeSupabase` - 98 edges
 9. `PromotionError` - 88 edges
 10. `RunnerSB` - 85 edges
@@ -922,3019 +956,3143 @@
 ## Surprising Connections (you probably didn't know these)
 - `main()` --calls--> `get_supabase_admin()`  [INFERRED]
   scripts/backfill_verification_reports.py → app/backend/app/db/supabase_client.py
+- `TweakColor()` --calls--> `key()`  [INFERRED]
+  docs/reference/UI_claude-code/tweaks-panel.jsx → tools/extraction-labeler/src/lib/storage.ts
 - `get_supabase_admin()` --calls--> `main()`  [INFERRED]
   app/backend/app/db/supabase_client.py → scripts/backfill_verification_reports.py
 - `iter_published_recruitments()` --calls--> `main()`  [INFERRED]
   app/backend/app/scraping/verification_backfill.py → scripts/backfill_verification_reports.py
 - `run_backfill()` --calls--> `main()`  [INFERRED]
   app/backend/app/scraping/verification_backfill.py → scripts/backfill_verification_reports.py
-- `test_scrape_monitor_uses_compact_rows_and_detail_drawer()` --calls--> `read_text()`  [INFERRED]
-  app/backend/tests/test_admin_frontend_contract.py → tools/audit_schema_usage.py
 
-## Communities (978 total, 145 thin omitted)
+## Communities (1013 total, 148 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.02
-Nodes (231): add_comment(), add_mock(), add_tracker(), affiliates(), _aggregate_error_types(), ApplicationUpsert, _assemble_profile_payload(), carry_forward_tasks() (+223 more)
+Cohesion: 0.03
+Nodes (286): list_audit_entries(), list_recompute_queue(), publish_impact(), Reset a single recompute queue row to ``pending`` so the worker picks it up., Best-effort preview of what publishing this recruitment will trigger.      Ret, Generic audit-log read so admin drawers can show an inline timeline.      Exis, List eligibility_recompute_queue rows with optional filters.      Status count, retry_recompute_row() (+278 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.03
-Nodes (226): _list_open_conflicts(), list_queue_item_conflicts(), list_recruitment_conflicts(), list_audit_entries(), list_recompute_queue(), publish_impact(), Reset a single recompute queue row to ``pending`` so the worker picks it up., Best-effort preview of what publishing this recruitment will trigger.      Ret (+218 more)
+Cohesion: 0.01
+Nodes (191): RejectBody, ResolveBody, _now(), list_partners(), RejectBody, ResolveBody, ResolveOfficialSourceBody, ApproveBody (+183 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.01
-Nodes (93): FOCUSABLE_SELECTOR, getFocusableElements(), useFocusTrap(), AuditDrawer(), OrganizationDrawer(), FILTERS, ROWS, isBlocked() (+85 more)
+Cohesion: 0.02
+Nodes (93): FOCUSABLE_SELECTOR, getFocusableElements(), useFocusTrap(), AuditDrawer(), OrganizationDrawer(), isBlocked(), matchesStatus(), RecruitmentCard() (+85 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.02
-Nodes (81): EMPTY_FORM, apiFetch(), attachStructuredErrorFields(), formatApiErrorDetail(), getAccessToken(), getApiBlockingIssues(), getApiErrorDetail(), getApiErrorFieldList() (+73 more)
+Nodes (192): add_comment(), add_mock(), add_tracker(), affiliates(), _aggregate_error_types(), ApplicationUpsert, _assemble_profile_payload(), carry_forward_tasks() (+184 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.01
-Nodes (138): mockApiPost, mockClearAnonymousId, mockClearMergeClaim, mockExchangeCodeForSession, mockGetSession, mockPeekAnonymousId, mockPeekMergeClaim, mockToastError (+130 more)
+Cohesion: 0.02
+Nodes (65): COVERAGE_STATUSES, KINDS, POLICY_SOURCE_TYPES, POLICY_STATUSES, STATUSES, TAB_HELPER_COPY, TABS, FILTERS (+57 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.01
-Nodes (84): STATUSES, FAMILY_TITLES, RESOLUTIONS, SEVERITIES, TABS, fmtDate(), RecruitmentDetail(), STAGE_INDEX (+76 more)
+Cohesion: 0.02
+Nodes (68): EMPTY_FORM, apiFetch(), attachStructuredErrorFields(), formatApiErrorDetail(), getAccessToken(), getApiBlockingIssues(), getApiErrorDetail(), getApiErrorFieldList() (+60 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.02
-Nodes (51): CycleProgressRail(), KIND_COPY, KIND_TONE, rangeFor(), KEY_ROWS, NODES, SDOT, STATUS_LABEL (+43 more)
+Cohesion: 0.01
+Nodes (161): apply_correction_task(), create_mock(), _derive_plan_kind(), _derive_plan_trigger(), dismiss_correction_task(), dismiss_nudge(), draft_correction_tasks(), generate_study_plan() (+153 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.03
-Nodes (130): _audit(), recompute_user(), Record a skip in answers (for audit) and update the dismissal row., _safe(), save_question_answer(), save_question_skip(), add_comment(), create_certification() (+122 more)
+Cohesion: 0.02
+Nodes (79): STATUSES, FAMILY_TITLES, RESOLUTIONS, SEVERITIES, TABS, AccuracyHeatmap, ErrorTypeDonut, styles (+71 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.02
-Nodes (135): apply_correction_task(), create_mock(), _derive_plan_kind(), _derive_plan_trigger(), dismiss_correction_task(), dismiss_nudge(), draft_correction_tasks(), generate_study_plan() (+127 more)
+Cohesion: 0.03
+Nodes (139): _audit(), bulk_import(), create_competition_metric(), create_cycle(), create_exam(), create_exam_family(), create_exam_phase_section(), create_exam_topic_coverage() (+131 more)
 
 ### Community 9 - "Community 9"
 Cohesion: 0.02
-Nodes (71): AdminShell(), BUSINESS_NAV, COMMAND_CENTER, COMMUNITY_MARKETPLACE, GOVERNANCE_NAV, KNOWLEDGE_GOVERNANCE, MOCK_CONTENT, OPERATIONS_NAV (+63 more)
+Nodes (60): CycleProgressRail(), KIND_COPY, KIND_TONE, rangeFor(), ExamCycleTimeline(), fmt(), STATUS_DOT, STATUS_TONE (+52 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.03
-Nodes (129): _audit(), bulk_import(), create_competition_metric(), create_cycle(), create_exam(), create_exam_family(), create_exam_phase_section(), create_exam_topic_coverage() (+121 more)
+Nodes (123): async_safe_select(), execute_or_raise(), Async wrapper around safe_select for async API boundaries.      supabase-py ca, Execute a DB operation and raise DatabaseError on failure., _audit_recompute(), slugify(), fetch_page_html(), Public alias of the HTML→plain-text reducer used inside fetch().      Exposed (+115 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.02
-Nodes (63): _now(), _annotate(), ChatBody, create_thread(), CreateAdminBody, FocusStart, get_recruitment(), join_group() (+55 more)
+Nodes (97): coerce(), parseCsvToRows(), parseImportFile(), bad, md, ok, pdf, { rows } (+89 more)
 
 ### Community 12 - "Community 12"
-Cohesion: 0.03
-Nodes (121): ApproveBody, artifacts_flashcard_decks(), artifacts_flashcard_srs(), artifacts_flashcards_list(), artifacts_flashcards_open(), artifacts_mistakes_list(), artifacts_mistakes_open(), artifacts_notes_list() (+113 more)
+Cohesion: 0.06
+Nodes (100): Scraper trust-gate API.  Endpoints:     GET  /api/sources, Parse a dotted field path like ``posts.0.min_age`` into segments.      Each se, Mark a queue item as backed by a verified official source.      Promotion is g, Show what merging this queue item into the recruitment would do.      Returns, Set a value at a nested path, creating intermediate dicts as needed.      Refu, Two-pane KPI view consumed by ``EligibilityQueue.jsx``:      * ``pending`` — s, Sanitise (entity_type, entity_key); defaults to recruitment-scoped row., Map (entity_type, entity_key, field_name) into a dotted path inside     ``extra (+92 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.03
-Nodes (82): promote_queue_item(), Run a scrape pass in mock mode (no model call, deterministic output).      Bod, Run a scrape pass in mock mode (no model call, deterministic output).      Bod, Run a real scrape pass. It creates review queue items and never publishes., Run a real scrape pass. It creates review queue items and never publishes., Run a scrape pass in mock mode (no model call, deterministic output).      Bod, Run a real scrape pass. It creates review queue items and never publishes., ResolveOfficialSourceBody (+74 more)
+Cohesion: 0.05
+Nodes (121): _app(), _cms_app(), _ExtendedQuery, ExtSBStub, _NotProxy, Tests for admin Study OS Phase 1 — Inspector + Plan Ops., Adds ilike, range, not_.in_, and count='exact' on top of the base stub.      T, Extends ``_seed_cms`` with one pyq paper/question/option + one     competition_ (+113 more)
 
 ### Community 14 - "Community 14"
 Cohesion: 0.03
-Nodes (59): EducationSection(), EducationStep(), IdentitySection(), IdentityStep(), ReservationSection(), Chips(), Grid(), Section() (+51 more)
+Nodes (126): _require_admin(), artifacts_flashcard_decks(), artifacts_flashcard_srs(), artifacts_flashcards_list(), artifacts_flashcards_open(), artifacts_mistakes_list(), artifacts_mistakes_open(), artifacts_notes_list() (+118 more)
 
 ### Community 15 - "Community 15"
-Cohesion: 0.04
-Nodes (111): _is_duplicate_slug_rpc_error(), _is_rpc_missing_error(), promote_to_recruitments(), run_scraping_pass(), _is_duplicate_slug_rpc_error(), _is_rpc_missing_error(), _open_conflict_field_keys(), promote_to_recruitments() (+103 more)
+Cohesion: 0.02
+Nodes (89): Run a scrape pass in mock mode (no model call, deterministic output).      Bod, Run a scrape pass in mock mode (no model call, deterministic output).      Bod, Run a real scrape pass. It creates review queue items and never publishes., Run a real scrape pass. It creates review queue items and never publishes., Run a scrape pass in mock mode (no model call, deterministic output).      Bod, Run a real scrape pass. It creates review queue items and never publishes., scrape_run(), scrape_run_dry() (+81 more)
 
 ### Community 16 - "Community 16"
-Cohesion: 0.07
-Nodes (95): Scraper trust-gate API.  Endpoints:     GET  /api/sources, Parse a dotted field path like ``posts.0.min_age`` into segments.      Each se, Mark a queue item as backed by a verified official source.      Promotion is g, Show what merging this queue item into the recruitment would do.      Returns, Set a value at a nested path, creating intermediate dicts as needed.      Refu, Two-pane KPI view consumed by ``EligibilityQueue.jsx``:      * ``pending`` — s, Sanitise (entity_type, entity_key); defaults to recruitment-scoped row., Map (entity_type, entity_key, field_name) into a dotted path inside     ``extra (+87 more)
+Cohesion: 0.02
+Nodes (42): KEY_ROWS, NODES, SDOT, STATUS_LABEL, HowItWorksDrawer(), HOW_IT_WORKS_TOPICS, lookupTopic(), LAYERS (+34 more)
 
 ### Community 17 - "Community 17"
-Cohesion: 0.04
-Nodes (109): All(), Run a single scrape pass over active sources.      Returns the summary dict +, Run a single scrape pass over active sources.      Returns the summary dict +, Clear ``currently_scraping_at``. Called from a finally block., Clear ``currently_scraping_at``. Called from a finally block., _release_source_claim(), run_scraping_pass(), test_dry_run_pass_flags_run_and_queue_rows() (+101 more)
+Cohesion: 0.03
+Nodes (110): _cms(), End-to-end: an exam goes empty → planner-ready entirely through the CMS.  Seed, test_exam_activation_empty_to_planner_ready(), _job_plan_regen(), _clean_topic_ids(), focus_weights(), _normalise(), User Study OS plan preferences — read / write + weighting profiles.  One row p (+102 more)
 
 ### Community 18 - "Community 18"
-Cohesion: 0.03
-Nodes (104): _cms(), End-to-end: an exam goes empty → planner-ready entirely through the CMS.  Seed, test_exam_activation_empty_to_planner_ready(), _job_plan_regen(), _clean_topic_ids(), focus_weights(), _normalise(), User Study OS plan preferences — read / write + weighting profiles.  One row p (+96 more)
+Cohesion: 0.04
+Nodes (104): All(), Run a single scrape pass over active sources.      Returns the summary dict +, Run a single scrape pass over active sources.      Returns the summary dict +, Clear ``currently_scraping_at``. Called from a finally block., Clear ``currently_scraping_at``. Called from a finally block., _release_source_claim(), run_scraping_pass(), test_dry_run_pass_flags_run_and_queue_rows() (+96 more)
 
 ### Community 19 - "Community 19"
-Cohesion: 0.05
-Nodes (99): build_app(), client(), _LessonQuery, MktSBStub, patch_razorpay(), Shared fixtures for marketplace API tests.  Builds a FastAPI app mounting the, Lessons read path hydrates the inner ``course_sections`` join., seed_course() (+91 more)
+Cohesion: 0.04
+Nodes (101): _queue_item(), End-to-end tests for ``app.scraping.verification_reports``.  Exercises every c, The fake's index mirror catches the same race the real partial     unique index, test_active_uniqueness_on_queue_id(), test_backfilled_to_classified_allowed(), test_chain_root_preserved_across_three_versions(), test_classified_to_backfilled_needs_review_rejected(), test_classified_to_rejected_allowed() (+93 more)
 
 ### Community 20 - "Community 20"
-Cohesion: 0.02
-Nodes (40): CompetitionContextCard(), fmtInt(), fmtRatio(), CompetitionContextCard(), fmtInt(), fmtRatio(), PRESSURE_LABEL, PRESSURE_STATUS (+32 more)
+Cohesion: 0.04
+Nodes (63): validate_status(), DatabaseError, Raised when a critical database operation fails., Execute a select query and raise DatabaseError on failures.      Use for criti, require_select(), _attempts(), _cgpa(), _cgpa_basis() (+55 more)
 
 ### Community 21 - "Community 21"
-Cohesion: 0.04
-Nodes (97): _attempt_record(), _band(), _classify_url_type(), _is_aggregator_host(), Official-source resolver waterfall (PR plan §3).  Layers (deterministic; L6 AI, Guess a URL's role from its shape + a hint.      Hint is one of the field name, L1: pull direct official-looking URLs from the extracted payload.      A URL o, L4: pull the ``official_url`` and career-page URL off source_registry.      Lo (+89 more)
+Cohesion: 0.03
+Nodes (38): badgeKind(), MENTOR_PALETTE, MentorBadgeTag(), SEED_MENTORS, LANES, REPORT_REASONS, TYPE_ICONS, GroupDetail() (+30 more)
 
 ### Community 22 - "Community 22"
-Cohesion: 0.05
-Nodes (87): _queue_item(), End-to-end tests for ``app.scraping.verification_reports``.  Exercises every c, The fake's index mirror catches the same race the real partial     unique index, test_active_uniqueness_on_queue_id(), test_backfilled_to_classified_allowed(), test_chain_root_preserved_across_three_versions(), test_classified_to_backfilled_needs_review_rejected(), test_classified_to_rejected_allowed() (+79 more)
+Cohesion: 0.03
+Nodes (78): _list_queue(), Test coverage for Sprint 2 admin scrape endpoints (PR #212):      GET  /api/ad, ``q`` translates to a PostgREST ``or_`` ILIKE filter on     source_name + sourc, ``source_type`` lives on source_registry, not scrape_queue.     The endpoint pu, The response carries ``filters`` so the UI can confirm the active     set. Test, The point of the run-detail endpoint is the per-source split.     Pre-Sprint 2, error_log entries on scrape_runs are flat — the endpoint groups     them by ``e, If a source had errors before producing any queue rows, the     per-source buck (+70 more)
 
 ### Community 23 - "Community 23"
-Cohesion: 0.04
-Nodes (68): validate_status(), format_error_context(), log_warning_with_context(), Emit a consistent warning log for recoverable pipeline failures., Build a compact operation/context string for logs., DatabaseError, Raised when a critical database operation fails., Execute a select query and raise DatabaseError on failures.      Use for criti (+60 more)
-
-### Community 24 - "Community 24"
 Cohesion: 0.05
 Nodes (61): _client(), _force_engine(), PR3 — OCR job wiring tests.  Covers the OCR control surface (schema + state ma, A `skipped` (terminal) job does NOT block a fresh `retry` request.      The pa, Authenticated non-owner sees zero rows — the API filters by     user_id, equiva, Settings is constructed once and cached via lru_cache; flip the     cached inst, `Settings.LIBRARY_OCR_ENGINE` is a class-level default evaluated     at module, reset_settings_cache() (+53 more)
 
+### Community 24 - "Community 24"
+Cohesion: 0.06
+Nodes (85): _build_app(), _competition_seed(), _options_seed(), Admin exam intelligence API tests (PR5)., pyq_question review must patch reviewed_by + reviewed_at (migration 155 adds the, Two papers across two years, four questions, four options each.      The "1 on, Two papers across two years, four questions, four options each.      The "1 on, Two papers across two years, four questions, four options each.      The "1 on (+77 more)
+
 ### Community 25 - "Community 25"
-Cohesion: 0.05
-Nodes (87): admin_sources(), approve_queue_item(), _audit(), build_effective_extracted_data(), correct_field(), _list_sources(), mark_queue_item_duplicate(), merge_preview() (+79 more)
+Cohesion: 0.04
+Nodes (86): _attempt_record(), _band(), _classify_url_type(), _host_of(), _is_aggregator_host(), _is_govt_host(), Official-source resolver waterfall (PR plan §3).  Layers (deterministic; L6 AI, Guess a URL's role from its shape + a hint.      Hint is one of the field name (+78 more)
 
 ### Community 26 - "Community 26"
-Cohesion: 0.04
-Nodes (83): _as_float(), CoverageEditBody, CoverageReviewBody, _iso_days_ago(), PlanImpactDecisionBody, PolicyUpdateReviewBody, Admin Exam Intelligence review API (PR5).  Read-light admin surface that lets, ReviewBody (+75 more)
+Cohesion: 0.05
+Nodes (72): Tests for the PR7 soft-backfill driver.  Plan §2 + §9 (PR7 ship gate):  * em, _seed_recruitment(), test_backfill_does_not_modify_recruitments_table(), test_backfill_emits_only_pr1_lifecycle_states(), test_backfill_emits_only_pr1_recommended_actions(), test_backfill_emits_only_pr1_trigger_reason(), test_backfill_sets_canonical_hash_and_leaves_source_hash_null(), test_backfill_skips_recruitment_with_no_id() (+64 more)
 
 ### Community 27 - "Community 27"
 Cohesion: 0.06
-Nodes (78): _app(), Seed the Phase 2 tables on top of the minimal fixture., Phase 1 had table-name typos (user_notes / revision_schedule / mock_results);, _seed_artifacts(), _seed_content(), _seed_minimal_user(), _seed_mocks(), _seed_reports() (+70 more)
+Nodes (75): _is_duplicate_slug_rpc_error(), _is_rpc_missing_error(), promote_to_recruitments(), run_scraping_pass(), RunnerSB, _RunnerSBWithRpc(), SB, test_aggregator_path_marks_needs_official_source_when_resolver_fails() (+67 more)
 
 ### Community 28 - "Community 28"
-Cohesion: 0.05
-Nodes (74): locked_topic_coverage(), Verified-only coverage / PYQ aggregates.  Reads ``exam_topic_coverage`` joined, Return ``{topic_id: verified_pyq_count}`` for ``exam_id``.      Only counts PY, Return ``exam_topic_coverage`` rows whose ``reviewer_status='locked'``.      V, Return active topic-coverage rows for ``exam_id``.      Joined via two follow-, _safe(), verified_pyq_topic_counts(), verified_topic_coverage() (+66 more)
+Cohesion: 0.04
+Nodes (41): AdminShell(), ForgotPassword(), ResetPassword(), signUpWithEmail(), useAuth(), TIERS, DashShell(), Nav() (+33 more)
 
 ### Community 29 - "Community 29"
 Cohesion: 0.06
-Nodes (74): admin_community_flags(), admin_resolve_community_flag(), _audit(), book_mentor_direct(), book_mentor_session(), cancel_mentor_session(), contribute_resource(), create_channel_thread() (+66 more)
+Nodes (68): _attach_rows_by_post(), _load_active_posts_with_criteria(), _looks_like_missing_embed(), _looks_like_missing_relation(), _profile_hash(), run_eligibility_for_user(), _stable_json(), _criteria_error_sb() (+60 more)
 
 ### Community 30 - "Community 30"
-Cohesion: 0.05
-Nodes (61): compare_titles(), Self-view read for GET /api/study/compare/me.      Returns today's freshly com, read_compare_me(), _load_week_tasks(), _build_milestones(), _build_phase_bands(), _build_series(), _build_subjects() (+53 more)
+Cohesion: 0.06
+Nodes (75): admin_community_flags(), admin_resolve_community_flag(), _audit(), book_mentor_direct(), book_mentor_session(), cancel_mentor_session(), contribute_resource(), create_channel_thread() (+67 more)
 
 ### Community 31 - "Community 31"
-Cohesion: 0.04
-Nodes (74): list_partners(), list_partners(), AttestBody, CheckinBody, compare_me(), ComparisonSettings, CreateGroupBody, EndSessionBody (+66 more)
+Cohesion: 0.08
+Nodes (52): DocCompleteUploadRequest, DocUploadUrlRequest, LinkPyqPaperRequest, LinkSyllabusRequest, Enum, ExamIdentity, Dispatcher logic: maps exam_identity to structural_format, and structural_forma, SourceKind (+44 more)
 
 ### Community 32 - "Community 32"
+Cohesion: 0.03
+Nodes (48): TABS, AdminMentors(), badge(), fmt(), kycBadge(), queryClient, AuthProvider(), AdminAIPolicy (+40 more)
+
+### Community 33 - "Community 33"
 Cohesion: 0.11
 Nodes (66): check_eligibility(), _cert_post(), _edu_with_cgpa(), _edu_with_level(), _edu_with_stream(), _education(), _post(), _post_with_disciplines() (+58 more)
 
-### Community 33 - "Community 33"
-Cohesion: 0.09
-Nodes (58): check_eligibility_batch(), Deterministic eligibility engine — Career Copilot.  Direct port of ``UI-career, Map a known category token to its canonical bucket, or ``None`` if unrecognised., Years to add to max_age for non-ex-serviceman cases., Look up the ``attempts_used`` count for a given limit row.      Returns the co, _criteria_hash(), _deep_sort_lists(), _first() (+50 more)
-
 ### Community 34 - "Community 34"
 Cohesion: 0.05
-Nodes (67): create_certification(), enqueue_recompute(), enqueue_eligibility_recompute(), Enqueue a recompute event for one user(+optional recruitment scope).      Call, claim_pending_recomputes(), drain_recompute_queue(), drain_recompute_queue_async(), _finalise_failure() (+59 more)
+Nodes (52): POST(), ctx(), API-level tests for the unified onboarding router (stubbed Supabase)., Two consecutive POSTs → one eligibility enqueue, identical response., _resolve_cold(), test_answer_intent_picker_advances_to_persona_question(), test_answer_invalid_single_select_option_is_rejected(), test_answer_with_wrong_question_key_is_rejected() (+44 more)
 
 ### Community 35 - "Community 35"
-Cohesion: 0.05
-Nodes (72): AnswerValidationError, _coerce_boolean(), _coerce_date(), _coerce_number(), _coerce_percentage(), _option_values(), Deterministic, allowlisted answer parsing for the unified engine.  Sprint-1 ru, Raised when an answer cannot be deterministically validated. (+64 more)
+Cohesion: 0.06
+Nodes (70): One candidate URL produced by an L-stage.      The candidate's ``method`` matc, Aggregated outcome across all L-stages for one report., ResolverCandidate, ResolverResult, Tests for ``app.scraping.verification_gateway``.  Plan §3 acceptance:  * ver, _seed_queue_item(), _seed_source(), test_enqueue_or_run_sync_mode_runs_inline() (+62 more)
 
 ### Community 36 - "Community 36"
 Cohesion: 0.05
-Nodes (67): Attach anonymous onboarding progress to a freshly authenticated user.  Pre-log, Claim + fan out anonymous progress for ``user_id``; idempotent., stitch_anonymous_sessions(), _claim_rows(), _enqueue_recompute(), _existing_onboarding_answer_keys(), _existing_persona_keys(), _fan_out_answers() (+59 more)
+Nodes (69): read_attempt(), auto_submit_attempt(), _backoff_seconds(), _build_result(), _complete_job(), _emit_mock_tests_row(), enter_section(), _fail_job() (+61 more)
 
 ### Community 37 - "Community 37"
-Cohesion: 0.04
-Nodes (67): alert_users_for_new_recruitment(), One ``new_match`` alert per eligible user. Idempotent on     ``(user_id, recrui, _clamp(), compute_behavior_snapshot(), _day_bounds(), _focus_minutes(), _ratio(), Study OS — daily behavior snapshot aggregation (PR 1).  Aggregates `study_sess (+59 more)
+Cohesion: 0.06
+Nodes (68): _exam_level_score(), _num(), _rank(), Phase 8 — Plan Impact: before/after diff of locking a coverage row.  ``compute, Score + rank a coverage-row set by the exam-level score, descending., Deterministic risk heuristic.      high   — a high-yield candidate that displa, Persist a hold / stage / approve decision for ``coverage_id``.      Recomputes, User-independent planner score component (see module docstring). (+60 more)
 
 ### Community 38 - "Community 38"
-Cohesion: 0.04
-Nodes (72): utc_now_iso(), execute_or_default(), Execute a DB operation and return default when failure is safe., aggregator_max_items(), fetch_page_html(), Public alias of the HTML→plain-text reducer used inside fetch().      Exposed, Return the raw HTML body. Used by the aggregator listing discoverer., strip_html() (+64 more)
+Cohesion: 0.07
+Nodes (65): _iso_hours_ago(), _now(), overview(), _already_exists_today(), _candidate_from_recommendation(), _day_bucket(), _dedupe_key(), generate_next_actions_for_user() (+57 more)
 
 ### Community 39 - "Community 39"
-Cohesion: 0.07
-Nodes (69): _build_app(), Mount the admin router with a stubbed Supabase + injected user., _seed_bank(), _seed_full(), test_admin_can_access_overview(), test_admin_can_filter_snapshots_by_user(), test_admin_can_inspect_one_user(), test_admin_can_list_snapshots() (+61 more)
+Cohesion: 0.05
+Nodes (66): locked_topic_coverage(), Verified-only coverage / PYQ aggregates.  Reads ``exam_topic_coverage`` joined, Return ``{topic_id: verified_pyq_count}`` for ``exam_id``.      Only counts PY, Return ``exam_topic_coverage`` rows whose ``reviewer_status='locked'``.      V, Return active topic-coverage rows for ``exam_id``.      Joined via two follow-, _safe(), verified_pyq_topic_counts(), verified_topic_coverage() (+58 more)
 
 ### Community 40 - "Community 40"
-Cohesion: 0.05
-Nodes (52): POST(), API-level tests for the unified onboarding router (stubbed Supabase)., Two consecutive POSTs → one eligibility enqueue, identical response., _resolve_cold(), test_answer_intent_picker_advances_to_persona_question(), test_answer_invalid_single_select_option_is_rejected(), test_answer_with_wrong_question_key_is_rejected(), test_caller_cannot_answer_a_session_they_do_not_own() (+44 more)
-
-### Community 41 - "Community 41"
-Cohesion: 0.06
-Nodes (57): _attach_rows_by_post(), _load_active_posts_with_criteria(), _looks_like_missing_embed(), _looks_like_missing_relation(), _profile_hash(), _stable_json(), _criteria_error_sb(), _current_hashes() (+49 more)
-
-### Community 42 - "Community 42"
-Cohesion: 0.03
-Nodes (43): TABS, AdminMentors(), badge(), fmt(), kycBadge(), AdminAIPolicy, AdminAudit, AdminBlogs (+35 more)
-
-### Community 43 - "Community 43"
 Cohesion: 0.14
 Nodes (69): check_eligibility(), Scope-aware attempt count for one user.      The engine looks up the right row, UserExamAttempts, UserExamCredential, _cert_post(), _edu_with_cgpa(), _edu_with_level(), _edu_with_stream() (+61 more)
 
-### Community 44 - "Community 44"
-Cohesion: 0.06
-Nodes (63): _iso_days_ago(), Compose the /api/study/mission-control response (PR3).  Pulls together: - Lat, _week_start_iso(), _active_plan_id(), _build_nudges(), _cache_lookup(), _cache_store(), _cached_competition_context() (+55 more)
-
-### Community 45 - "Community 45"
+### Community 41 - "Community 41"
 Cohesion: 0.04
-Nodes (39): AdminEligibilityQueue(), OperationsConsole(), AdminOrganizations(), AdminPlans(), EMPTY, formatPrice(), paiseToRupees(), PlanCard() (+31 more)
+Nodes (43): alertUsersForDeadline(), alertUsersForNewRecruitment(), getUnreadAlertCount(), markAlertsRead(), sendDeadlineAlerts(), runEligibilityForUser(), _deactivate_other_active(), Mark any other active subscription for this user as 'cancelled'.      A partia (+35 more)
 
-### Community 46 - "Community 46"
-Cohesion: 0.06
-Nodes (66): _exam_level_score(), _num(), _rank(), Phase 8 — Plan Impact: before/after diff of locking a coverage row.  ``compute, Score + rank a coverage-row set by the exam-level score, descending., Deterministic risk heuristic.      high   — a high-yield candidate that displa, User-independent planner score component (see module docstring)., _risk_level() (+58 more)
-
-### Community 47 - "Community 47"
-Cohesion: 0.05
-Nodes (65): approve_question(), archive_question(), CommitImportIn, create_question(), CreateQuestionIn, dedup_check(), force_status(), ForceStatusIn (+57 more)
-
-### Community 48 - "Community 48"
-Cohesion: 0.06
-Nodes (60): Tests for the PR7 soft-backfill driver.  Plan §2 + §9 (PR7 ship gate):  * em, _seed_recruitment(), test_backfill_does_not_modify_recruitments_table(), test_backfill_emits_only_pr1_lifecycle_states(), test_backfill_emits_only_pr1_recommended_actions(), test_backfill_emits_only_pr1_trigger_reason(), test_backfill_sets_canonical_hash_and_leaves_source_hash_null(), test_backfill_skips_recruitment_with_no_id() (+52 more)
-
-### Community 49 - "Community 49"
+### Community 42 - "Community 42"
 Cohesion: 0.06
 Nodes (40): CallRecord, FullScanError, _json_path_get(), _Query, Filter-aware in-memory Supabase stub for dedup tests.  The legacy scraper stub, Raised when a guarded table is queried without any filter., Resolve ``extracted_data->>notification_number`` style accessors., _Result (+32 more)
 
-### Community 50 - "Community 50"
+### Community 43 - "Community 43"
+Cohesion: 0.06
+Nodes (59): Structured return shape for aggregator listing discovery.      Replaces the pr, _as_bool(), _as_dict(), _as_str_or_none(), normalize_legacy_source(), normalize_source_registry(), Typed runtime view of ``source_registry`` rows.  Background — the original ``S, Build a :class:`ScrapeSource` from a ``source_registry`` row.      Reads every (+51 more)
+
+### Community 44 - "Community 44"
+Cohesion: 0.05
+Nodes (64): utc_now_iso(), execute_or_default(), Execute a DB operation and return default when failure is safe., aggregator_max_items(), fetch_page_html(), Public alias of the HTML→plain-text reducer used inside fetch().      Exposed, Return the raw HTML body. Used by the aggregator listing discoverer., strip_html() (+56 more)
+
+### Community 45 - "Community 45"
 Cohesion: 0.07
 Nodes (37): get_profile(), ProfileUpdate, update_profile(), _Exec, _Q, _SB, test_get_profile_returns_assembled_profile(), test_profile_completion_detects_missing_education() (+29 more)
 
-### Community 51 - "Community 51"
+### Community 46 - "Community 46"
+Cohesion: 0.08
+Nodes (64): _build_app(), Tests for the PR4 admin persona controls API., Mount the admin router with a stubbed Supabase + injected user., _seed_bank(), _seed_full(), test_admin_can_access_overview(), test_admin_can_filter_snapshots_by_user(), test_admin_can_inspect_one_user() (+56 more)
+
+### Community 47 - "Community 47"
+Cohesion: 0.06
+Nodes (59): eligibility_summary(), Exam-level eligibility summary (PR-D1).  Single user-facing endpoint:    ``G, Four-bucket exam eligibility summary for the current user.      See ``app.exam, _build_eligibility_overlay(), _decode_cursor(), eligibility_me(), _encode_cursor(), list_exams() (+51 more)
+
+### Community 48 - "Community 48"
 Cohesion: 0.05
-Nodes (51): Test coverage for Sprint 2 admin scrape endpoints (PR #212):      GET  /api/ad, The point of the run-detail endpoint is the per-source split.     Pre-Sprint 2, error_log entries on scrape_runs are flat — the endpoint groups     them by ``e, If a source had errors before producing any queue rows, the     per-source buck, # NOTE: The mock dispatch uses exact-match filters; ``.ilike`` isn't, test_promotion_preview_404_when_queue_item_missing(), test_promotion_preview_422_when_id_bogus(), test_run_detail_404_when_run_missing() (+43 more)
+Nodes (63): Record a skip in answers (for audit) and update the dismissal row., _safe(), save_question_answer(), save_question_skip(), _bootstrap_path(), main(), emit_question_signal(), Insert a ``user_signal_events`` row and enqueue a persona recompute.      Retu (+55 more)
+
+### Community 49 - "Community 49"
+Cohesion: 0.08
+Nodes (61): SBStub, _client(), _exam_seed(), _plan_with_tasks(), Plan Timeline service + API tests., test_active_plan_with_tasks_returns_progress_and_series(), test_api_returns_full_envelope(), test_api_safe_fallback_when_user_has_no_exam() (+53 more)
+
+### Community 50 - "Community 50"
+Cohesion: 0.06
+Nodes (58): archive_item(), _bucket(), complete_upload(), CompleteUploadRequest, create_upload_url(), DownloadUrlResponse, enqueue_ocr(), _extension() (+50 more)
+
+### Community 51 - "Community 51"
+Cohesion: 0.11
+Nodes (47): Deterministic eligibility engine — Career Copilot.  Direct port of ``UI-career, Map a known category token to its canonical bucket, or ``None`` if unrecognised., Years to add to max_age for non-ex-serviceman cases., Look up the ``attempts_used`` count for a given limit row.      Returns the co, _criteria_hash(), _deep_sort_lists(), Scrape pass runner + queue→canonical promoter.  Direct port of ``UI-career-cop, Hash the rule inputs that define a post's eligibility verdict.      The post i (+39 more)
 
 ### Community 52 - "Community 52"
 Cohesion: 0.04
-Nodes (31): QueueFixSection(), statusBadge(), tierForItem(), AGGREGATOR_HINTS, detectRecruitmentHosts(), hostOf(), hostsInRegistry(), looksAggregator() (+23 more)
+Nodes (37): AdminEligibilityQueue(), OperationsConsole(), AdminOrganizations(), AdminPlans(), EMPTY, formatPrice(), paiseToRupees(), PlanCard() (+29 more)
 
 ### Community 53 - "Community 53"
-Cohesion: 0.03
-Nodes (20): COVERAGE_STATUSES, KINDS, POLICY_SOURCE_TYPES, POLICY_STATUSES, STATUSES, TAB_HELPER_COPY, TABS, TRANSITIONS (+12 more)
-
-### Community 54 - "Community 54"
 Cohesion: 0.06
 Nodes (60): _audit(), create_rematch_block(), _emit_mod_event(), get_group_detail(), get_mentor_detail(), get_resource_detail(), group_archive(), group_attendance_invalidate() (+52 more)
 
+### Community 54 - "Community 54"
+Cohesion: 0.06
+Nodes (58): _clamp(), compute_behavior_snapshot(), _day_bounds(), _focus_minutes(), _ratio(), Study OS — daily behavior snapshot aggregation (PR 1).  Aggregates `study_sess, Open tasks scheduled on or before `on_date` that are not completed., Count distinct UTC dates with at least one positive-duration session     inside (+50 more)
+
 ### Community 55 - "Community 55"
-Cohesion: 0.07
-Nodes (56): _audit(), _bulk_resolve_for_recruitment_scope(), _load_conflict(), _patch_queue_extracted_data(), _patch_recruitment_field(), Patch ``scrape_queue.extracted_data[field_key]`` with the chosen value., Patch a single canonical column on a recruitment row.      Only columns in :da, When scope='recruitment', resolve every other open conflict on the     same que (+48 more)
+Cohesion: 0.05
+Nodes (56): admin_create_plan(), admin_disable_plan(), admin_list_plans(), admin_payments(), admin_subs(), admin_update_plan(), create_order(), _deactivate_other_active() (+48 more)
 
 ### Community 56 - "Community 56"
-Cohesion: 0.06
-Nodes (59): _bootstrap_path(), main(), load_field_registry(), load_verified_recruitment_questions(), Resolve a post within a recruitment.      ``posts`` has no slug column, so we, Return a ``{field_key: registry_row}`` map for candidate fields., Load ONLY ``reviewer_status='verified'`` requirement rows.      Recruitment-le, resolve_post() (+51 more)
+Cohesion: 0.05
+Nodes (59): fetch(), fetch_api(), fetch_pdf(), fetch_rss(), parse_json_feed(), parse_rss_feed(), Parse an RSS 2.0 or Atom feed into a flat list of entries.      Uses stdlib ``, Fetch an RSS / Atom feed and return both the raw FetchResult and     the parsed (+51 more)
 
 ### Community 57 - "Community 57"
+Cohesion: 0.04
+Nodes (57): bulk_apply(), BulkRequest, _check_resolver_rate_limit(), ConfirmSuggestedProofRequest, OverrideConflictRequest, PromoteRequest, Admin read API for the Recruitment Verification Gateway.  PR7 scope — read-onl, Subset of columns surfaced in the listing view.      The detail endpoint retur (+49 more)
+
+### Community 58 - "Community 58"
 Cohesion: 0.05
 Nodes (56): canonical_disciplines(), disciplines_intersect(), _normalise(), Discipline alias registry for the eligibility engine.  Replaces the engine's p, Lowercase and collapse separators that tokenize disciplines., Return the set of canonical discipline slugs found in `text`.      Looks for a, True when any canonical bucket is shared by both sides.      Used by the engin, Fallback: tokenized whole-word containment in either direction.      Used when (+48 more)
 
-### Community 58 - "Community 58"
-Cohesion: 0.07
-Nodes (58): Tests for ``app.scraping.verification_hash``.  Hash equality must be stable ac, test_array_order_does_not_affect_hash(), test_canonical_hash_post_order_irrelevant(), test_canonical_hash_requires_posts_argument(), test_canonical_hash_uses_post_names(), test_date_format_normalises_to_iso(), test_normalize_drops_none_and_empty(), test_normalize_rejects_non_dict() (+50 more)
-
 ### Community 59 - "Community 59"
-Cohesion: 0.04
-Nodes (28): QUEUE_FILTERS, ReviewAndPublish(), VIEWS, AdminProgressBar(), computeProgress(), OperationsConsole(), actual, bigPage (+20 more)
+Cohesion: 0.03
+Nodes (3): ExploreFooterLink(), guestSafe(), ScreenLinkCard()
 
 ### Community 60 - "Community 60"
 Cohesion: 0.04
-Nodes (30): CREATE_ROLE_OPTIONS, formatDate(), formatLogin(), ROLE_OPTIONS, SORT_OPTIONS, UserCard(), UserTableRow(), ExamDetail() (+22 more)
+Nodes (28): QUEUE_FILTERS, ReviewAndPublish(), VIEWS, AdminProgressBar(), computeProgress(), OperationsConsole(), actual, bigPage (+20 more)
 
 ### Community 63 - "Community 63"
-Cohesion: 0.06
-Nodes (54): eligibility_summary(), Exam-level eligibility summary (PR-D1).  Single user-facing endpoint:    ``G, Four-bucket exam eligibility summary for the current user.      See ``app.exam, _build_eligibility_overlay(), _decode_cursor(), eligibility_me(), _encode_cursor(), list_exams() (+46 more)
+Cohesion: 0.05
+Nodes (56): get_exam_summary(), locked_topic_coverage(), locked_topic_coverage_summary(), Return ``{topic_id: verified_pyq_count}`` for ``exam_id``.      Only counts PY, Return ``{topic_id: verified_pyq_count}`` for ``exam_id``.      Only counts PY, Return ``exam_topic_coverage`` rows whose ``reviewer_status='locked'``.      V, Return ``exam_topic_coverage`` rows whose ``reviewer_status='locked'``.      V, Return active topic-coverage rows for ``exam_id``.      Joined via two follow- (+48 more)
 
 ### Community 64 - "Community 64"
-Cohesion: 0.06
-Nodes (54): DrillAttempt, DrillAttemptsBody, get_exam_summary(), get_option_insights(), get_trap_drill(), get_trap_drill_streak(), post_trap_drill_attempts(), Exam Intelligence read API (PR5).  User-visible, authenticated, deterministic. (+46 more)
+Cohesion: 0.09
+Nodes (54): detect_complexity(), EligibilityComplexitySignal, _gather_text(), Eligibility complexity detector for the Recruitment Verification Gateway.  Pla, Flatten the relevant extracted-data text + record where each field came from., Return all complexity signals fired by the extracted payload.      Each detect, Plain dataclass mirror of the pydantic schema.      The pydantic class lives i, detect_complexity() (+46 more)
 
 ### Community 65 - "Community 65"
 Cohesion: 0.06
 Nodes (55): _bundle(), classify_recruitment(), _gather_text(), _has_any(), _match_family(), Tier classification for the Recruitment Verification Gateway.  Pure function., Classify a scraped recruitment payload into a tier + exam family.      Args:, _bundle() (+47 more)
 
 ### Community 66 - "Community 66"
-Cohesion: 0.06
-Nodes (55): locked_topic_coverage(), locked_topic_coverage_summary(), Return ``{topic_id: verified_pyq_count}`` for ``exam_id``.      Only counts PY, Return ``{topic_id: verified_pyq_count}`` for ``exam_id``.      Only counts PY, Return ``exam_topic_coverage`` rows whose ``reviewer_status='locked'``.      V, Return ``exam_topic_coverage`` rows whose ``reviewer_status='locked'``.      V, Return active topic-coverage rows for ``exam_id``.      Joined via two follow-, Return locked topic-coverage rows for ``exam_id`` joined with topic + subject me (+47 more)
+Cohesion: 0.07
+Nodes (54): _is_suspicious_domain(), _validate_source_type(), _verify_url(), activate_source(), admin_organizations(), admin_recruitments(), _audit(), create_age_criteria() (+46 more)
 
 ### Community 67 - "Community 67"
-Cohesion: 0.1
-Nodes (56): _options_seed(), Admin exam intelligence API tests (PR5)., Two papers across two years, four questions, four options each.      The "1 on, Two papers across two years, four questions, four options each.      The "1 on, Recompute on the same seed once more after backfill should now key     on hashe, Recompute on the same seed once more after backfill should now key     on hashe, Options that hash-collide via canonicalisation group together even     when the, Options that hash-collide via canonicalisation group together even     when the (+48 more)
+Cohesion: 0.05
+Nodes (29): QueueFixSection(), statusBadge(), tierForItem(), QUALIFICATION_LEVELS, clampScore(), formatScorePct(), isLowQuality(), scoreToPct() (+21 more)
 
 ### Community 68 - "Community 68"
-Cohesion: 0.09
-Nodes (54): detect_complexity(), EligibilityComplexitySignal, _gather_text(), Eligibility complexity detector for the Recruitment Verification Gateway.  Pla, Flatten the relevant extracted-data text + record where each field came from., Return all complexity signals fired by the extracted payload.      Each detect, Plain dataclass mirror of the pydantic schema.      The pydantic class lives i, detect_complexity() (+46 more)
+Cohesion: 0.05
+Nodes (47): _audit(), Enqueue an eligibility recompute for every onboarded user, scoped to     one re, recompute_eligibility_for_recruitment(), RecruitmentRecomputeBody, create_certification(), create_exam_attempt(), create_experience(), enqueue_recompute() (+39 more)
 
-### Community 70 - "Community 70"
-Cohesion: 0.06
-Nodes (54): acknowledge_reverification_batch(), Acknowledge a reverification batch.      Promotes up to one chunk's worth of p, Acknowledge a reverification batch.      Promotes up to one chunk's worth of p, acknowledge_batch(), compute_valid_until(), FreshScrape, on_recruitment_critical_field_edit(), Fire staleness when an admin edits a critical recruitment field.      Only tri (+46 more)
-
-### Community 71 - "Community 71"
-Cohesion: 0.08
-Nodes (54): answer(), read_attempt(), auto_submit_attempt(), _backoff_seconds(), _build_result(), _complete_job(), _emit_mock_tests_row(), enter_section() (+46 more)
-
-### Community 72 - "Community 72"
-Cohesion: 0.06
-Nodes (40): NormalizedRecruitment, Strip NUL and other C0 control chars (keeping tab/newline/CR).      Returns ``, Recursively ``sanitize_text`` every string in a JSON-shaped value.      dict k, sanitize_json(), sanitize_text(), _EventsSB, _EventsTable, _high_quality() (+32 more)
-
-### Community 73 - "Community 73"
+### Community 69 - "Community 69"
 Cohesion: 0.08
 Nodes (53): _client(), _full_client(), _future_iso(), _make_client_events(), _make_option(), _make_question(), _make_template(), _now_iso() (+45 more)
 
+### Community 70 - "Community 70"
+Cohesion: 0.06
+Nodes (40): NormalizedRecruitment, Strip NUL and other C0 control chars (keeping tab/newline/CR).      Returns ``, Recursively ``sanitize_text`` every string in a JSON-shaped value.      dict k, sanitize_json(), sanitize_text(), _EventsSB, _EventsTable, _high_quality() (+32 more)
+
+### Community 71 - "Community 71"
+Cohesion: 0.06
+Nodes (40): _validate_age_body(), _validate_education_body(), _admin(), Tests for the admin Operations Console backend additions (Phases 6-11).  These, Inline RecruitmentBlockerFixForm reads organization_id, source_id,     apply_st, _resolve_body(), _SB, test_admin_recruitments_exposes_inline_editor_fields() (+32 more)
+
+### Community 72 - "Community 72"
+Cohesion: 0.04
+Nodes (53): process_queue(), recompute_user(), _is_missing_rpc(), True when a Supabase RPC call failed because the function is absent     (PostgR, Exception, build_task_reasoning_response(), _days_remaining_for_exam(), _load_competition_context() (+45 more)
+
+### Community 73 - "Community 73"
+Cohesion: 0.09
+Nodes (28): complete_run(), fail_run(), is_killed(), _now(), extraction_runs lifecycle.  Every extraction invocation creates an extraction_, Terminal failure — records the exception and transitions to FAILED., Terminal failure — records the exception and transitions to FAILED., Insert extraction_runs row with status='running'. Returns the run UUID. (+20 more)
+
 ### Community 74 - "Community 74"
 Cohesion: 0.05
-Nodes (51): acknowledge_reverification_batch(), Mark a report ``rejected``.      Lifecycle is updated via :func:`update_lifecy, Acknowledge a reverification batch.      Promotes up to one chunk's worth of p, reject_report(), Staleness watcher + canonical-edit hook (PR plan §6).  Two entry points:  *, Orchestrator for the Recruitment Verification Gateway (PR plan §0.2).  Owns th, extend_transitions(), Service surface for ``recruitment_verification_reports``.  Single choke point (+43 more)
+Nodes (22): ChannelRules(), CommunityScreen(), flairTone(), ThreadCard(), ThreadDetail(), ThreadSidebar(), ACCOUNTABILITY, CHANNEL_RULES (+14 more)
 
 ### Community 75 - "Community 75"
-Cohesion: 0.04
-Nodes (27): admin_token(), normal_user(), order_pro(), End-to-end backend tests for Razorpay subscription / payment flow.  Hits the p, Create a fresh non-admin user and return (token, email, user_id)., Create → update → soft-delete a temp plan to keep core plans intact., Verify price update on the canonical 'pro' plan persists, then restore., _supabase_admin_create_user() (+19 more)
-
-### Community 76 - "Community 76"
-Cohesion: 0.05
-Nodes (53): _active_plan(), _active_plan_today_tasks(), _backlog_trigger(), build_regen_triggers(), _build_tasks(), _cached_next_cycle(), _clamp(), _compute_plan() (+45 more)
-
-### Community 77 - "Community 77"
 Cohesion: 0.06
 Nodes (51): aggregator_max_items(), classify_aggregator_link(), _clean_label(), discover_aggregator_detail_urls(), _host(), is_aggregator_source(), _looks_like_detail(), _matches_any() (+43 more)
 
-### Community 78 - "Community 78"
+### Community 76 - "Community 76"
 Cohesion: 0.06
-Nodes (38): _admin(), Tests for the admin Operations Console backend additions (Phases 6-11).  These, Inline RecruitmentBlockerFixForm reads organization_id, source_id,     apply_st, _resolve_body(), _SB, test_admin_recruitments_exposes_inline_editor_fields(), test_eligibility_ops_returns_zeros_when_tables_missing(), test_merge_preview_corrected_value_wins() (+30 more)
+Nodes (52): Tests for ``app.scraping.verification_report_schemas``.  Pydantic gate for the, test_conflict_missing_id_is_rejected(), test_conflict_status_must_be_known_value(), test_conflict_value_confidence_out_of_range_rejected(), test_conflict_with_no_values_rejected(), test_empty_evidence_summary_is_valid(), test_empty_risk_flags_is_valid(), test_evidence_summary_backfills_key_from_mapping() (+44 more)
 
-### Community 79 - "Community 79"
-Cohesion: 0.07
-Nodes (51): Tests for ``app.scraping.verification_gateway``.  Plan §3 acceptance:  * ver, _seed_queue_item(), _seed_source(), test_enqueue_or_run_sync_mode_runs_inline(), test_gateway_creates_report_and_runs_resolver_on_first_insert(), test_gateway_noop_does_not_rewrite_resolver_state(), test_gateway_suggested_when_only_source_registry_matches(), test_gateway_unresolved_when_no_govt_url_found() (+43 more)
+### Community 77 - "Community 77"
+Cohesion: 0.06
+Nodes (46): SBStub, _active_plan_today_tasks(), apply_plan(), Apply today's computed plan. Always persists when ``generated=True``.      Ide, Apply today's computed plan. Always persists when ``generated=True``.      Ide, Apply today's computed plan. Always persists when ``generated=True``.      Ide, Return today's still-planned tasks for the user's active plan., Return today's still-planned tasks for the user's active plan. (+38 more)
 
-### Community 80 - "Community 80"
+### Community 78 - "Community 78"
 Cohesion: 0.1
 Nodes (38): _client(), DocSBStub, Admin PDF upload flow for Exam Intelligence documents.  Covers the signed-uplo, _seed(), _Storage, test_complete_upload_triggers_text_extract(), test_get_document_pages_returns_extracted_text(), test_link_to_pyq_paper_sets_document_asset_id_and_source_url() (+30 more)
 
-### Community 81 - "Community 81"
+### Community 79 - "Community 79"
+Cohesion: 0.08
+Nodes (49): Normalize a DB row into the API contract., shape_question_for_api(), persona_bank(), Three safe persona questions + one deliberately sensitive one., _cold_session(), Deterministic next-question selection tests., test_already_answered_question_is_skipped(), test_anonymous_session_skips_persona_snapshot_lookup() (+41 more)
+
+### Community 80 - "Community 80"
 Cohesion: 0.07
-Nodes (42): install_log_redaction(), Logging filters that scrub secrets from log records.  The SerpApi adapter send, Strips ``api_key=<value>`` from any logged message (URLs, exceptions, repr)., Attach :class:`RedactQuerySecretsFilter` to the relevant loggers.      Idempot, RedactQuerySecretsFilter, _serpapi_fetch_leads(), _load_fixture(), mock_job_leads() (+34 more)
+Nodes (49): _color_for(), list_plan_by_subject(), _locked_subjects(), _monday_of(), Study OS — Plan by Subject service.  Derives per-subject allocation for the cu, Return per-subject allocation for the user's planning week.      Output shape:, Map subject_id → subject_name for subjects that have any locked     coverage ro, _resolve_subject_label() (+41 more)
+
+### Community 81 - "Community 81"
+Cohesion: 0.06
+Nodes (48): mission_control(), _iso_days_ago(), _metrics(), Compose the /api/study/mission-control response (PR3).  Pulls together: - Lat, _today_iso(), _week_start_iso(), build_mission_control_async(), _cache_lookup() (+40 more)
 
 ### Community 82 - "Community 82"
-Cohesion: 0.08
-Nodes (48): detect_canonical_drift(), detect_source_drift(), DriftDecision, Corrigendum detector (PR plan §6).  A *corrigendum* is an official addendum th, Return True when this trigger should NOT mark a report stale.      The watcher, Outcome of one drift check.      ``trigger_reason`` matches the gateway's enum, Compare a freshly-scraped payload's hash to the active report's hash.      Ret, Compare a canonical-side hash to the active report's hash.      Used by the ca (+40 more)
+Cohesion: 0.07
+Nodes (42): install_log_redaction(), Logging filters that scrub secrets from log records.  The SerpApi adapter send, Strips ``api_key=<value>`` from any logged message (URLs, exceptions, repr)., Attach :class:`RedactQuerySecretsFilter` to the relevant loggers.      Idempot, RedactQuerySecretsFilter, _serpapi_fetch_leads(), _load_fixture(), mock_job_leads() (+34 more)
 
 ### Community 83 - "Community 83"
 Cohesion: 0.09
 Nodes (47): add_asset_file(), ApprovalDecisionIn, approve_asset(), approve_refund(), archive_course(), AssetCreateIn, AssetPatch, _audit() (+39 more)
 
 ### Community 84 - "Community 84"
-Cohesion: 0.06
-Nodes (47): _chunked_in(), list_scrape_queue(), List scrape queue items with server-side filter/search/sort.      The previous, List scrape queue items with server-side filter/search/sort.      The previous, List scrape queue items with server-side filter/search/sort.      The previous, Derive the lightweight summary for the queue table view.      Stays server-sid, _summarize_extracted(), classify_item() (+39 more)
-
-### Community 85 - "Community 85"
-Cohesion: 0.05
-Nodes (28): ExamJourneyCard(), fmtDate(), pickNextMilestone(), STATUS_TONE, drawer, opener, renderProvider(), HowItWorksHeaderButton() (+20 more)
-
-### Community 86 - "Community 86"
 Cohesion: 0.07
 Nodes (46): normalize_intent(), Entry resolution for the unified onboarding engine.  Two entry modes resolve h, Resolve the entry context for a unified onboarding session.      Returns a dic, Lower-case, underscore-normalise and alias-map an intent string., resolve_entry(), _shape_post(), _shape_recruitment(), load_field_registry() (+38 more)
 
+### Community 85 - "Community 85"
+Cohesion: 0.05
+Nodes (29): Validate and normalize ``answer_value`` against ``question``.      Returns the, validate_answer(), Deterministic answer-validation tests (no AI parsing in this sprint)., Tests for answer validation, persistence, and emit signal., Deterministic answer-validation tests (no AI parsing in this sprint)., test_accepts_valid_single_select_option(), test_boolean_coercion(), test_date_requires_iso() (+21 more)
+
+### Community 86 - "Community 86"
+Cohesion: 0.05
+Nodes (24): admin_token(), normal_user(), order_pro(), End-to-end backend tests for Razorpay subscription / payment flow.  Hits the p, Create a fresh non-admin user and return (token, email, user_id)., Verify price update on the canonical 'pro' plan persists, then restore., _supabase_admin_create_user(), _supabase_signin() (+16 more)
+
 ### Community 87 - "Community 87"
-Cohesion: 0.09
-Nodes (47): persona_bank(), Three safe persona questions + one deliberately sensitive one., ctx(), _cold_session(), Deterministic next-question selection tests., test_already_answered_question_is_skipped(), test_anonymous_session_skips_persona_snapshot_lookup(), test_cold_session_with_intent_returns_persona_question() (+39 more)
+Cohesion: 0.05
+Nodes (28): ExamJourneyCard(), fmtDate(), pickNextMilestone(), STATUS_TONE, drawer, opener, renderProvider(), HowItWorksHeaderButton() (+20 more)
 
 ### Community 88 - "Community 88"
-Cohesion: 0.06
-Nodes (38): enqueue_recompute(), build_group_leaderboard(), build_leaderboard(), _percentile_rank(), _rank_band(), Study OS — leaderboard build (PR 4 + PR 11).  Builds opt-in leaderboard rows., Build leaderboard rows for one cohort/metric window. Returns counts., Read the latest leaderboard rows the caller is allowed to see.      RLS does t (+30 more)
+Cohesion: 0.09
+Nodes (45): _host(), _iter_anchors(), _looks_official(), _path_depth(), Official-source resolver for aggregator-discovered detail pages.  The scraping, WordPress-style aggregators (Free Job Alert, Sarkari Result clones)     almost, Pick the official-source URL referenced by an aggregator detail page.      Ret, resolve_official_source() (+37 more)
 
 ### Community 89 - "Community 89"
 Cohesion: 0.06
-Nodes (47): Tests for ``app.scraping.verification_report_schemas``.  Pydantic gate for the, test_conflict_missing_id_is_rejected(), test_conflict_status_must_be_known_value(), test_conflict_value_confidence_out_of_range_rejected(), test_conflict_with_no_values_rejected(), test_empty_evidence_summary_is_valid(), test_empty_risk_flags_is_valid(), test_evidence_summary_backfills_key_from_mapping() (+39 more)
+Nodes (47): _chunked_in(), list_scrape_queue(), List scrape queue items with server-side filter/search/sort.      The previous, List scrape queue items with server-side filter/search/sort.      The previous, List scrape queue items with server-side filter/search/sort.      The previous, Derive the lightweight summary for the queue table view.      Stays server-sid, _summarize_extracted(), classify_item() (+39 more)
 
 ### Community 90 - "Community 90"
-Cohesion: 0.05
-Nodes (17): _Exec, _KillExec, _KillQ, _KillSB, _Q, _SB, test_dispatch_respects_notification_kill_switch(), test_dispatch_skips_cleanly_when_email_sent_column_missing() (+9 more)
+Cohesion: 0.06
+Nodes (47): _fetch_html(), fetch_page_text(), Network fetch boundary for the scraper.  Phase 4 of the scraper audit pulled t, ApiEntry, _drill(), fetch_api(), fetch_api_paginated(), _fetch_html() (+39 more)
 
 ### Community 91 - "Community 91"
-Cohesion: 0.06
-Nodes (27): Validate and normalize ``answer_value`` against ``question``.      Returns the, validate_answer(), Deterministic answer-validation tests (no AI parsing in this sprint)., Tests for answer validation, persistence, and emit signal., Deterministic answer-validation tests (no AI parsing in this sprint)., test_accepts_valid_single_select_option(), test_boolean_coercion(), test_date_requires_iso() (+19 more)
+Cohesion: 0.05
+Nodes (47): _active_plan(), _backlog_trigger(), build_regen_triggers(), _build_tasks(), _cached_next_cycle(), _clamp(), _compute_plan(), _days_remaining() (+39 more)
 
 ### Community 92 - "Community 92"
 Cohesion: 0.07
-Nodes (44): build_task_reasoning(), build_task_reasoning_detail(), _confidence_value(), _detail_safe_copy(), _plan_signal_copy(), _policy_signal_copy(), Deterministic per-task reasoning strings (PR3).  The reasoning attached to eac, Return ``{summary, user_signal, study_policy_signal, plan_signal, evidence}``. (+36 more)
+Nodes (23): detect_ordinal(), Ordinal detection and stripping for question text.  Ported from tools/extracti, Return the printed leading ordinal if text starts with one, else None., Return text with the leading ordinal and its separator removed., strip_ordinal(), _assemble_question(), _block_bbox(), build_question() (+15 more)
 
 ### Community 93 - "Community 93"
-Cohesion: 0.1
-Nodes (45): find_duplicate(), fuzzy_duplicate(), Deprecated. Kept for tests / external callers — use ``find_duplicate``.      S, Decide whether ``extracted`` duplicates anything known.      Signals (first ma, compute_similarity_key(), Canonical similarity key. Used identically for canonical recruitments,     open, recruitment_key(), find_duplicate() (+37 more)
+Cohesion: 0.05
+Nodes (30): Tiny in-memory Supabase stub shared across persona_questions tests., _RpcCall, _RpcExec, Re-export the shared in-memory Supabase stub for compare tests, with small exte, Re-export the shared in-memory Supabase stub for compare tests, with small exte, PR 4 — leaderboard build respects privacy + system-verified metric scope., test_behavior_board_rejects_non_system_verified_metric(), test_opt_out_user_gets_no_rank_but_row_written() (+22 more)
 
 ### Community 94 - "Community 94"
-Cohesion: 0.11
-Nodes (44): _is_blank(), normalize_recruitment(), NormalizedRecruitment, _parse_iso_date(), _post_coverage(), _post_value(), Quality/normalisation pass for queue payloads.  Phase 6 of the scraping audit, A truly missing field. Whitespace counts as missing. (+36 more)
+Cohesion: 0.06
+Nodes (46): approve_queue_item(), _audit(), build_effective_extracted_data(), correct_field(), mark_queue_item_duplicate(), merge_preview(), merge_queue_item_into_recruitment(), _nested_get() (+38 more)
 
 ### Community 95 - "Community 95"
-Cohesion: 0.04
-Nodes (13): COMPLETION, DIFFICULTY, REVISE, EligibilityTrackerPage(), FILTER_CHIPS, STATUS_TO_BUCKET, STATUSES, STATUSES (+5 more)
+Cohesion: 0.07
+Nodes (42): _active_plan_id(), _build_nudges(), _cached_upcoming_cycles(), _CachedQuery, _days_remaining_for_exam(), _fetch_recent_study_sessions(), _focus_summary(), _iso_days_ago() (+34 more)
 
 ### Community 96 - "Community 96"
-Cohesion: 0.04
-Nodes (25): SOURCE_LABEL, TRUST_STATE, e, mockDel, mockErrorToast, mockGet, mockPost, mockPut (+17 more)
+Cohesion: 0.07
+Nodes (44): build_task_reasoning(), build_task_reasoning_detail(), _confidence_value(), _detail_safe_copy(), _plan_signal_copy(), _policy_signal_copy(), Deterministic per-task reasoning strings (PR3).  The reasoning attached to eac, Return ``{summary, user_signal, study_policy_signal, plan_signal, evidence}``. (+36 more)
 
 ### Community 97 - "Community 97"
 Cohesion: 0.04
-Nodes (45): 1) Forum strategy (structured, exam-specific, trust-separated), 2) Exam plan generation strategy (adaptive, realistic, constraint-aware), 3) Productivity tracker strategy (execution over intention), 4) Community strategy (retention engine, not generic chat), 5) Marketplace strategy (trust + affordability + outcomes), 6) AI assistant + AI chat strategy (coach, not authority), 7) Resources governance strategy (create → store → maintain → share), A) Operating model (+37 more)
+Nodes (13): COMPLETION, DIFFICULTY, REVISE, EligibilityTrackerPage(), FILTER_CHIPS, STATUS_TO_BUCKET, STATUSES, STATUSES (+5 more)
 
 ### Community 98 - "Community 98"
-Cohesion: 0.08
-Nodes (40): SBStub, apply_plan(), Apply today's computed plan. Always persists when ``generated=True``.      Ide, Apply today's computed plan. Always persists when ``generated=True``.      Ide, Apply today's computed plan. Always persists when ``generated=True``.      Ide, Apply today's computed plan. Always persists when ``generated=True``.      Ide, Apply today's computed plan. Always persists when ``generated=True``.      Ide, _mastery_seed() (+32 more)
+Cohesion: 0.04
+Nodes (45): 1) Forum strategy (structured, exam-specific, trust-separated), 2) Exam plan generation strategy (adaptive, realistic, constraint-aware), 3) Productivity tracker strategy (execution over intention), 4) Community strategy (retention engine, not generic chat), 5) Marketplace strategy (trust + affordability + outcomes), 6) AI assistant + AI chat strategy (coach, not authority), 7) Resources governance strategy (create → store → maintain → share), A) Operating model (+37 more)
 
 ### Community 99 - "Community 99"
-Cohesion: 0.06
-Nodes (44): _active_dismissals(), build_progress(), build_readiness(), is_sensitive_question(), _persona_answered_keys(), Deterministic next-question selection for the unified engine.  Selection order, Persona questions an auth'd user has dismissed ("not now")., One-line 'why we ask' — prefer registered help_text, else a safe fallback. (+36 more)
+Cohesion: 0.11
+Nodes (44): _is_blank(), normalize_recruitment(), NormalizedRecruitment, _parse_iso_date(), _post_coverage(), _post_value(), Quality/normalisation pass for queue payloads.  Phase 6 of the scraping audit, A truly missing field. Whitespace counts as missing. (+36 more)
 
 ### Community 100 - "Community 100"
-Cohesion: 0.05
-Nodes (14): TABS, derivePersonaSafetyWarnings(), INTERNAL_LABELS, PersonaEvidenceDrawer(), POLICY_HINT, TONE_TEXT, STATUS_TONE, SIZE_LABEL (+6 more)
+Cohesion: 0.11
+Nodes (43): build_mission_control(), Synchronous wrapper around :func:`build_mission_control_async`.      Kept for, Synchronous wrapper around :func:`build_mission_control_async`.      Kept for, Synchronous wrapper around :func:`build_mission_control_async`.      Kept for, Build the full mission-control response for ``user_id``.      Defensive throug, Build the full mission-control response for ``user_id``.      Defensive throug, StudyHome adopts /api/study/mission-control as its source of truth.  This pins, test_mission_control_carries_every_key_studyhome_reads() (+35 more)
 
 ### Community 101 - "Community 101"
-Cohesion: 0.08
-Nodes (42): fetch(), fetch_pdf(), fetch_rss(), parse_rss_feed(), Parse an RSS 2.0 or Atom feed into a flat list of entries.      Uses stdlib ``, Fetch an RSS / Atom feed and return both the raw FetchResult and     the parsed, Fetch ``url`` and return a structured result.      Single dispatch point: ``ad, Split a PDF's full-text body at boundaries matching ``regex``.      Each match (+34 more)
+Cohesion: 0.06
+Nodes (42): _get_results_supabase_client(), Prefer async Supabase client; fall back to sync client for compatibility., results_me(), results_me_all(), format_error_context(), log_warning_with_context(), Emit a consistent warning log for recoverable pipeline failures., Build a compact operation/context string for logs. (+34 more)
 
 ### Community 102 - "Community 102"
-Cohesion: 0.05
-Nodes (42): code:python (from datetime import datetime, timezone), code:python ("extractor_version": PROMPT_VERSION,), code:`python (def _extract_json_object(text: str) -> str:), code:python (from dataclasses import dataclass), code:bash (pip install rapidfuzz), code:python (from rapidfuzz import fuzz), code:python ("duplicate_reason": "similarity_key" | "fuzzy_match"), code:python (from app.eligibility.recompute_queue import enqueue_eligibil) (+34 more)
+Cohesion: 0.08
+Nodes (42): _attempt_row(), _client(), _delta(), _make_option(), _make_question(), _MockTestsFailStub, _past_iso(), PR-fix-3 correctness gate — the four fixes, each covered individually.  Fix 1: (+34 more)
 
 ### Community 103 - "Community 103"
-Cohesion: 0.06
-Nodes (25): Tiny in-memory Supabase stub shared across persona_questions tests., _RpcCall, _RpcExec, Re-export the shared in-memory Supabase stub for compare tests, with small exte, Re-export the shared in-memory Supabase stub for compare tests, with small exte, PR 1 — behavior snapshot aggregation tests., _session(), _task() (+17 more)
+Cohesion: 0.14
+Nodes (44): MktSBStub, _add_file(), _create_asset(), _make_asset(), Admin marketplace CRUD + refund flow tests., No PR2 API path can set status to 'suspended' or 'dmca_removed'.     PUT reject, _seed_course_with_delivery(), _set_status() (+36 more)
 
 ### Community 104 - "Community 104"
+Cohesion: 0.05
+Nodes (26): EvidenceDiffViewer(), toObj(), EvidenceDiffViewer(), toObj(), FieldRow(), fieldType(), formatValue(), extracted (+18 more)
+
+### Community 105 - "Community 105"
+Cohesion: 0.07
+Nodes (43): _existing_row(), _mastery_band(), _next_revision(), _num(), Phase 6 — deterministic user-topic mastery + error-pattern derivation.  Reads, Recompute ``user_topic_mastery`` + ``user_topic_error_patterns``.      Aggrega, Find one row matching every key in ``match`` (``None`` matched as IS NULL)., recompute_topic_mastery() (+35 more)
+
+### Community 106 - "Community 106"
 Cohesion: 0.08
 Nodes (42): test_job_blocker_enables_weekend_catchup(), test_short_focus_blocks_yields_small_task_size(), test_strict_daily_schedule_sets_flag(), test_weekly_targets_only_caps_max_tasks(), _base_targets(), _base_task_mix(), derive_study_policy(), _normalize() (+34 more)
 
-### Community 105 - "Community 105"
+### Community 107 - "Community 107"
 Cohesion: 0.05
 Nodes (42): code:python (from datetime import datetime, timezone), code:python ("extractor_version": PROMPT_VERSION,), code:`python (def _extract_json_object(text: str) -> str:), code:python (from dataclasses import dataclass), code:bash (pip install rapidfuzz), code:python (from rapidfuzz import fuzz), code:python ("duplicate_reason": "similarity_key" | "fuzzy_match"), code:python (from app.eligibility.recompute_queue import enqueue_eligibil) (+34 more)
 
-### Community 106 - "Community 106"
-Cohesion: 0.09
-Nodes (38): burstConfetti(), DailyPlan(), EligibilityDemo(), Exams(), FAQ(), guestSafe(), Hero(), HowItHelps() (+30 more)
-
-### Community 107 - "Community 107"
-Cohesion: 0.07
-Nodes (20): Q, R, SB, test_create_source_accepts_aggregator_and_sets_discovery_policy(), test_create_source_accepts_official_html_without_html_default(), test_create_source_requires_explicit_source_type(), test_invalid_trust_score(), test_org_update_clears_verified() (+12 more)
-
 ### Community 108 - "Community 108"
-Cohesion: 0.07
-Nodes (40): _client(), _make_option(), _make_question(), _make_template(), _past_iso(), Mock Engine — acceptance criteria 2–7.  AC2: Two tabs cannot start an active a, Service layer: starting twice raises ConflictError., API layer: second POST /start returns 409. (+32 more)
+Cohesion: 0.05
+Nodes (41): promote_run_endpoint(), Pydantic shapes for the scraper. Mirrors ``types/scraping.ts``.  The original, Return a JSON-serialisable dict for ``scrape_queue.extracted_data``., Permissive queue/admin-review shape.      *Every* field is optional — a partia, RawExtractedRecruitment, to_json_safe(), _DetailFetchOutcome, promote_run() (+33 more)
 
 ### Community 109 - "Community 109"
-Cohesion: 0.06
-Nodes (34): ChannelCreate, create_channel(), _find_space(), GroupCheckin, list_mentor_sessions(), list_mentors(), mentor_detail(), MentorBooking (+26 more)
+Cohesion: 0.05
+Nodes (42): code:python (from datetime import datetime, timezone), code:python ("extractor_version": PROMPT_VERSION,), code:`python (def _extract_json_object(text: str) -> str:), code:python (from dataclasses import dataclass), code:bash (pip install rapidfuzz), code:python (from rapidfuzz import fuzz), code:python ("duplicate_reason": "similarity_key" | "fuzzy_match"), code:python (from app.eligibility.recompute_queue import enqueue_eligibil) (+34 more)
 
 ### Community 110 - "Community 110"
 Cohesion: 0.07
-Nodes (15): Stamp newly-promoted ``recruitment_id`` onto unattached lifecycle     events th, Stamp newly-promoted ``recruitment_id`` onto unattached lifecycle     events th, _reconcile_lifecycle_events(), _Exec, _Q, _Exec, _Q, _SB (+7 more)
+Nodes (20): Q, R, SB, test_create_source_accepts_aggregator_and_sets_discovery_policy(), test_create_source_accepts_official_html_without_html_default(), test_create_source_requires_explicit_source_type(), test_invalid_trust_score(), test_org_update_clears_verified() (+12 more)
 
 ### Community 111 - "Community 111"
 Cohesion: 0.07
-Nodes (40): competition_context(), _empty(), _pick_best(), _pressure_level(), _pressure_reason(), Competition Intelligence context for Study OS (read-only).  Reads ``exam_compe, Return the ``competition_context`` block for ``exam_id``.      ``days_remainin, Pick the most authoritative metrics row.      Preference order: matches the re (+32 more)
+Nodes (15): Stamp newly-promoted ``recruitment_id`` onto unattached lifecycle     events th, Stamp newly-promoted ``recruitment_id`` onto unattached lifecycle     events th, _reconcile_lifecycle_events(), _Exec, _Q, _Exec, _Q, _SB (+7 more)
 
 ### Community 112 - "Community 112"
-Cohesion: 0.06
-Nodes (42): apply_correction_task(), create_mock(), dismiss_correction_task(), draft_correction_tasks(), _draft_corrections_from_mock(), get_mock(), get_mock_analysis(), list_correction_tasks() (+34 more)
+Cohesion: 0.07
+Nodes (40): _client(), _make_option(), _make_question(), _make_template(), _past_iso(), Mock Engine — acceptance criteria 2–7.  AC2: Two tabs cannot start an active a, Service layer: starting twice raises ConflictError., API layer: second POST /start returns 409. (+32 more)
 
 ### Community 113 - "Community 113"
-Cohesion: 0.07
-Nodes (20): _app(), _FakeStorage, _FakeStorageObject, _Q, _R, Tests for the PR1 Document Asset Foundation (`app.api.library`).  Mirrors the, Per-bucket facade. Captures uploads so `download` can return them., _SB (+12 more)
+Cohesion: 0.09
+Nodes (38): burstConfetti(), DailyPlan(), EligibilityDemo(), Exams(), FAQ(), guestSafe(), Hero(), HowItHelps() (+30 more)
 
 ### Community 114 - "Community 114"
 Cohesion: 0.06
-Nodes (13): ACCOUNTABILITY, ADMIN_COMM, CHANNEL_RULES, COMMUNITY_USERS, FLAIRS, MENTOR_EARNINGS, MENTOR_SESSIONS, MENTORS (+5 more)
+Nodes (34): ChannelCreate, create_channel(), _find_space(), GroupCheckin, list_mentor_sessions(), list_mentors(), mentor_detail(), MentorBooking (+26 more)
 
 ### Community 115 - "Community 115"
 Cohesion: 0.08
-Nodes (39): admin_create_plan(), admin_disable_plan(), admin_list_plans(), admin_payments(), admin_subs(), admin_update_plan(), create_order(), _deactivate_other_active() (+31 more)
+Nodes (41): _build_diff(), compute_fingerprint(), create_question(), dedup_check(), _fetch_log(), _fetch_options(), _fetch_question(), _fetch_sources() (+33 more)
 
 ### Community 116 - "Community 116"
-Cohesion: 0.05
-Nodes (42): process_queue(), Exception, build_task_reasoning_response(), _load_persona_snapshot(), Compose the GET /api/study/task-reasoning/:task_id response.      Returns ``No, Fetch (or compute) the latest persona snapshot.      Always returns a dict — n, _host_of(), _is_govt_host() (+34 more)
+Cohesion: 0.06
+Nodes (42): apply_correction_task(), create_mock(), dismiss_correction_task(), draft_correction_tasks(), _draft_corrections_from_mock(), get_mock(), get_mock_analysis(), list_correction_tasks() (+34 more)
 
 ### Community 117 - "Community 117"
-Cohesion: 0.08
-Nodes (40): _mastery_band(), _next_revision(), _num(), Phase 6 — deterministic user-topic mastery + error-pattern derivation.  Reads, Recompute ``user_topic_mastery`` + ``user_topic_error_patterns``.      Aggrega, recompute_topic_mastery(), _existing_row(), _load_user_mock_breakdowns() (+32 more)
+Cohesion: 0.09
+Nodes (41): _audit(), _bulk_resolve_for_recruitment_scope(), _is_valid_url(), _list_open_conflicts(), list_queue_item_conflicts(), list_recruitment_conflicts(), _load_conflict(), _patch_queue_extracted_data() (+33 more)
 
 ### Community 118 - "Community 118"
-Cohesion: 0.1
-Nodes (40): build_mission_control(), _engine_trace(), _metrics(), _plan_reasoning(), Plain-language explanations safe to show an aspirant.      Derived from progre, Tagged reasoning behind today's plan.      Each entry carries a ``reason_type`, Build the full mission-control response for ``user_id``.      Defensive throug, _safe_user_explanation() (+32 more)
+Cohesion: 0.07
+Nodes (20): _app(), _FakeStorage, _FakeStorageObject, _Q, _R, Tests for the PR1 Document Asset Foundation (`app.api.library`).  Mirrors the, Per-bucket facade. Captures uploads so `download` can return them., _SB (+12 more)
 
 ### Community 119 - "Community 119"
-Cohesion: 0.1
-Nodes (34): _build_app(), _extracted_payload(), _PromoteSB, Tests for the consensus conflict resolver (migration 087).  Covers the four ``, Minimal supabase stub for :func:`promote_to_recruitments`.      Wraps :class:`, Minimal payload that passes :class:`VerifiedRecruitmentForPromotion`., _seed_two_conflicts(), test_list_open_conflicts_returns_both_for_queue() (+26 more)
+Cohesion: 0.06
+Nodes (16): _Exec, FakeSupabase, _Query, _rec(), test_disabled_type_is_skipped(), test_dry_run_creates_no_rows(), test_min_priority_skips_low(), test_priority_and_types() (+8 more)
 
 ### Community 120 - "Community 120"
-Cohesion: 0.17
-Nodes (40): _cms_app(), ExtSBStub, Tests for admin Study OS Phase 1 — Inspector + Plan Ops., Extends ``_seed_cms`` with one pyq paper/question/option + one     competition_, A non-official policy row cannot keep an ``affects_*`` flag true., _seed_cms(), _seed_cms_with_pyq_and_competition(), test_cms_bulk_import_forces_pending_status_per_entity() (+32 more)
+Cohesion: 0.05
+Nodes (14): TABS, derivePersonaSafetyWarnings(), INTERNAL_LABELS, PersonaEvidenceDrawer(), POLICY_HINT, TONE_TEXT, STATUS_TONE, SIZE_LABEL (+6 more)
 
 ### Community 121 - "Community 121"
-Cohesion: 0.06
-Nodes (24): REPORT_REASONS, TYPE_ICONS, AVATAR_PALETTE, BTN_SIZE, BTN_VARIANT, FieldAvatar(), FieldCard(), FieldDivider() (+16 more)
-
-### Community 122 - "Community 122"
 Cohesion: 0.09
 Nodes (38): apply_correction_task(), create_mock(), dismiss_correction_task(), draft_correction_tasks(), _draft_corrections_from_mock(), get_mock(), get_mock_analysis(), list_correction_tasks() (+30 more)
 
+### Community 122 - "Community 122"
+Cohesion: 0.08
+Nodes (38): _dedup(), Drop both entries when the same question_number appears more than once., _best_metrics(), _centroid_inside(), _iou(), _matches(), _normalize_text(), _percentiles() (+30 more)
+
 ### Community 123 - "Community 123"
-Cohesion: 0.06
-Nodes (40): execute_or_raise(), Execute a DB operation and raise DatabaseError on failure., PromotionError, _build_promotion_rpc_payload(), _compensate_promotion(), _derive_status(), _find_or_create_organization(), _map_education_level() (+32 more)
+Cohesion: 0.08
+Nodes (16): compute_content_hash(), compute_idempotency_key(), decide_dedup(), DedupDecision, normalize_for_content_hash(), Idempotency and content-hash dedup for extractor writes.  Two keys per extract, Lowercase, collapse whitespace, strip punctuation.      Canonical normalizatio, Deterministic identity key for a logical question. (+8 more)
 
 ### Community 124 - "Community 124"
-Cohesion: 0.06
-Nodes (39): list_exams(), get_topics(), Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree. (+31 more)
+Cohesion: 0.05
+Nodes (18): ReplyItem(), FeaturedSessions(), adaptPartnerState(), adaptUser(), DailyCheckinPartner(), PARTNER_PALETTE, PartnerCandidates(), PartnerCandidatesCard() (+10 more)
 
 ### Community 125 - "Community 125"
-Cohesion: 0.05
-Nodes (39): Accountability partners (Phase 9), Admin tools for community (Phase 8+), Aspirant booking flow, Career Copilot — Community Platform Strategy, code:block1 (Community Space: SSC CGL), code:block2 (Study Group), code:block3 (Study Room Session), code:block4 (Accountability Partnership) (+31 more)
+Cohesion: 0.1
+Nodes (34): _build_app(), _extracted_payload(), _PromoteSB, Tests for the consensus conflict resolver (migration 087).  Covers the four ``, Minimal supabase stub for :func:`promote_to_recruitments`.      Wraps :class:`, Minimal payload that passes :class:`VerifiedRecruitmentForPromotion`., _seed_two_conflicts(), test_list_open_conflicts_returns_both_for_queue() (+26 more)
 
 ### Community 126 - "Community 126"
 Cohesion: 0.08
-Nodes (39): activate_source(), admin_recruitments(), _audit(), create_age_criteria(), create_education_criteria(), create_recruitment_post(), create_source(), deactivate_source() (+31 more)
+Nodes (39): _as_float(), CoverageEditBody, CoverageReviewBody, edit_topic_coverage(), _exam_name_map(), get_plan_impact(), _iso_days_ago(), list_competition_metrics() (+31 more)
 
 ### Community 127 - "Community 127"
+Cohesion: 0.06
+Nodes (14): generateId(), getAnonymousId(), clearAnonymousId(), generateId(), getAnonymousId(), peekAnonymousId(), CAPABILITY_LABELS, CAPABILITY_TONES (+6 more)
+
+### Community 128 - "Community 128"
+Cohesion: 0.05
+Nodes (39): Accountability partners (Phase 9), Admin tools for community (Phase 8+), Aspirant booking flow, Career Copilot — Community Platform Strategy, code:block1 (Community Space: SSC CGL), code:block2 (Study Group), code:block3 (Study Room Session), code:block4 (Accountability Partnership) (+31 more)
+
+### Community 129 - "Community 129"
 Cohesion: 0.1
 Nodes (38): access_state(), _activate_enrollment(), affiliates(), _audit(), _course_select(), create_order(), _ensure_profile(), _get_access_state() (+30 more)
 
-### Community 128 - "Community 128"
-Cohesion: 0.08
-Nodes (33): _anthropic_api_key_available(), build_recruitment_key(), _extract_json_object(), extract_recruitment_data(), _guess_org_type(), _is_mock_mode(), _mock_extract(), HTML fetcher + Claude extractor (port of ``lib/scraping/extractor.ts``).  Beha (+25 more)
-
-### Community 129 - "Community 129"
-Cohesion: 0.05
-Nodes (38): code:js (const [subject, setSubject] = useState("Quant");), code:js (setInterval(() => setRemaining((r) => r - 1), 1000)), code:js (try {), code:js (const pct = Math.max(0, Math.min(100, Math.round((d.hrs / 7)), code:js (const todayKey = new Date().toLocaleDateString("en-US", { we), code:js (exam_slug: "ssc-cgl-2026",), P1 — Wrong-data / broken-interaction, S-P1-10. `Mocks` SVG score axis hardcodes 100% ceiling but ignores 0 (+30 more)
-
 ### Community 130 - "Community 130"
-Cohesion: 0.09
-Nodes (35): admin_create_user(), admin_invite(), AdminCreateBody, AdminInviteBody, ai_policy(), _app_metadata(), _as_user(), _audit_rbac() (+27 more)
+Cohesion: 0.07
+Nodes (38): _active_dismissals(), build_progress(), is_sensitive_question(), _persona_answered_keys(), Deterministic next-question selection for the unified engine.  Selection order, Persona questions an auth'd user has dismissed ("not now")., One-line 'why we ask' — prefer registered help_text, else a safe fallback., One-line 'why we ask' — prefer registered help_text, else a safe fallback. (+30 more)
 
 ### Community 131 - "Community 131"
-Cohesion: 0.08
-Nodes (10): _ExecResult, FakeSupabase, _Query, In-memory fake Supabase client for verification_reports tests.  Simulates just, Tiny in-memory supabase double.      Use directly as the ``supabase`` argument, Mirror the DB CHECK constraints declared in migration 075.          Catches se, Filter chain for a single ``table(name)`` call.      Records filters as a list, Mirror the two partial-unique indexes from migration 075.          ``uq_active (+2 more)
+Cohesion: 0.11
+Nodes (14): find_anchor_lines(), join_lines_text(), Join lines with newline; words within a line with space., Identify question-anchor lines within a column's reconstructed lines.      A l, Group words into visual lines by y-overlap.      Two words are on the same lin, reconstruct_lines(), Unit tests for reconstruct_lines, join_lines_text, and find_anchor_lines., D2 regression tests: anchor gate must reject statement numerals. (+6 more)
 
 ### Community 132 - "Community 132"
-Cohesion: 0.1
-Nodes (36): _build_diff(), compute_fingerprint(), ConflictError, create_question(), dedup_check(), _fetch_log(), _fetch_options(), _fetch_question() (+28 more)
+Cohesion: 0.07
+Nodes (37): get_topics(), Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree., Locked-only topic intelligence — drives the Subjects topic tree. (+29 more)
 
 ### Community 133 - "Community 133"
 Cohesion: 0.06
-Nodes (7): ChannelRules(), CommunityScreen(), ThreadSidebar(), rulesKeyFor(), CommunityScreen(), ThreadSidebar(), rulesKeyFor()
+Nodes (27): { api }, client, CYCLE_FIELD, { rerender }, CmsRefField(), input, onChange, OPTIONS (+19 more)
 
 ### Community 134 - "Community 134"
+Cohesion: 0.05
+Nodes (38): code:js (const [subject, setSubject] = useState("Quant");), code:js (setInterval(() => setRemaining((r) => r - 1), 1000)), code:js (try {), code:js (const pct = Math.max(0, Math.min(100, Math.round((d.hrs / 7)), code:js (const todayKey = new Date().toLocaleDateString("en-US", { we), code:js (exam_slug: "ssc-cgl-2026",), P1 — Wrong-data / broken-interaction, S-P1-10. `Mocks` SVG score axis hardcodes 100% ceiling but ignores 0 (+30 more)
+
+### Community 135 - "Community 135"
+Cohesion: 0.08
+Nodes (31): AssertionError, build_snapshot_payload(), get_latest_persona_snapshot(), _hash_signals(), _now_iso(), Persona snapshot persistence and lookup.  Snapshots are immutable rows in `pub, Pure helper: build the snapshot row payload from a signals dict., Insert a persona snapshot row. Returns the inserted row (best effort). (+23 more)
+
+### Community 136 - "Community 136"
+Cohesion: 0.09
+Nodes (35): admin_create_user(), admin_invite(), AdminCreateBody, AdminInviteBody, ai_policy(), _app_metadata(), _as_user(), _audit_rbac() (+27 more)
+
+### Community 137 - "Community 137"
+Cohesion: 0.12
+Nodes (35): _build_app(), Tests for the aspirant trap-drill builder + endpoint., _seed(), _seed_with_attempts(), test_build_trap_drill_anonymous_call_is_not_adaptive(), test_build_trap_drill_echoes_seed_back(), test_build_trap_drill_emits_trap_insights_for_annotated_options(), test_build_trap_drill_empty_when_no_papers() (+27 more)
+
+### Community 138 - "Community 138"
+Cohesion: 0.08
+Nodes (10): _ExecResult, FakeSupabase, _Query, In-memory fake Supabase client for verification_reports tests.  Simulates just, Tiny in-memory supabase double.      Use directly as the ``supabase`` argument, Mirror the DB CHECK constraints declared in migration 075.          Catches se, Filter chain for a single ``table(name)`` call.      Records filters as a list, Mirror the two partial-unique indexes from migration 075.          ``uq_active (+2 more)
+
+### Community 139 - "Community 139"
+Cohesion: 0.12
+Nodes (35): admin_sources(), approve_queue_item(), _audit(), build_effective_extracted_data(), correct_field(), _list_sources(), mark_queue_item_duplicate(), merge_preview() (+27 more)
+
+### Community 140 - "Community 140"
 Cohesion: 0.07
 Nodes (12): MAP, base, modes, types, fakeDOMPurify, hasMath(), KatexBlock, MathRenderer() (+4 more)
 
-### Community 135 - "Community 135"
+### Community 141 - "Community 141"
+Cohesion: 0.07
+Nodes (13): ADMIN_MARKET, CART, LIBRARY, MARKET_CATEGORIES, PRODUCTS, RECENTLY_VIEWED, SELLER_DASH, SELLERS (+5 more)
+
+### Community 142 - "Community 142"
+Cohesion: 0.08
+Nodes (32): _anthropic_api_key_available(), _extract_json_object(), extract_recruitment_data(), _guess_org_type(), _is_mock_mode(), _mock_extract(), HTML fetcher + Claude extractor (port of ``lib/scraping/extractor.ts``).  Beha, Deterministic synthetic extraction for tests + dry runs without a model. (+24 more)
+
+### Community 143 - "Community 143"
+Cohesion: 0.07
+Nodes (35): _empty(), _pick_best(), _pressure_level(), _pressure_reason(), Competition Intelligence context for Study OS (read-only).  Reads ``exam_compe, Pick the most authoritative metrics row.      Preference order: matches the re, Coarse, deterministic pressure bucket.      Driven primarily by the reviewed `, _safe() (+27 more)
+
+### Community 144 - "Community 144"
 Cohesion: 0.11
 Nodes (35): check_gateway_promotion(), PR2 stub gateway promotion gate.      Behaviour:      * Tier A — blocks if n, check_gateway_promotion(), PR2 stub gateway promotion gate.      Behaviour:      * Tier A — blocks if n, PR2 stub gateway promotion gate.      Behaviour:      * Tier A — blocks if n, Tests for the bulk gate evaluation surface (PR6 dry-run logic).  The actual HT, test_blocker_shape_carries_reason_code_and_level(), test_missing_report_blocks_both_gates_at_promotion_level() (+27 more)
 
-### Community 136 - "Community 136"
+### Community 145 - "Community 145"
+Cohesion: 0.06
+Nodes (16): Q, R, Chained query builder for the scrape endpoints.      Records ``or_`` / ``lt``, An ExtractedRecruitment-shaped payload that satisfies the Pydantic     schema w, Healthy queue item with all evidence verified → blocking_issues     empty, orga, ``rejected`` and ``duplicate`` items must not be promotable. The     real promo, An ExtractedRecruitment-shaped payload that satisfies the Pydantic     schema w, Healthy queue item with all evidence verified → blocking_issues     empty, orga (+8 more)
+
+### Community 146 - "Community 146"
+Cohesion: 0.08
+Nodes (35): answer(), AnswerBody, complete(), CompleteBody, _enqueue_eligibility_recompute(), _filter_field_hints(), _load_owned_session(), Unified Guided Onboarding API (Sprint 1).  Surface:     GET  /api/onboarding- (+27 more)
+
+### Community 147 - "Community 147"
+Cohesion: 0.1
+Nodes (34): Attach anonymous onboarding progress to a freshly authenticated user.  Pre-log, Claim + fan out anonymous progress for ``user_id``; idempotent., stitch_anonymous_sessions(), Attach pre-login anonymous progress to the authenticated user., Attach pre-login anonymous progress to the authenticated user., stitch_anonymous(), _claim_rows(), _enqueue_recompute() (+26 more)
+
+### Community 148 - "Community 148"
 Cohesion: 0.16
 Nodes (35): _app(), Tests for the admin community governance router.  Covers the four consoles spe, _seed(), test_governance_writes_403_when_role_and_perms_missing(), test_governance_writes_reject_short_reason(), test_groups_archive_flips_status_and_audits(), test_groups_archive_rejects_already_archived(), test_groups_attendance_invalidate_zeroes_trust() (+27 more)
 
-### Community 137 - "Community 137"
-Cohesion: 0.08
-Nodes (35): DuplicateDecision, _norm(), normalize_url(), Duplicate detection for scraped recruitment notifications.  Returns a structur, Public URL normaliser shared with the runner's pre-LLM dedup path.      Lowerc, _title_ratio(), _data(), _decide_from_canonical() (+27 more)
+### Community 149 - "Community 149"
+Cohesion: 0.09
+Nodes (21): actual, cbs, mockExecute, mockLogin, mockLoginWithGoogle, mockNavigate, mockReset, ReactInner (+13 more)
 
-### Community 138 - "Community 138"
+### Community 150 - "Community 150"
+Cohesion: 0.1
+Nodes (25): dimensionLine(), evidenceLine(), humanize(), PersonaSummaryCard(), parseDateString(), validateDOBRange(), parseDateString(), validateDOBRange() (+17 more)
+
+### Community 151 - "Community 151"
 Cohesion: 0.06
 Nodes (6): FUNNEL_ANALYTICS, QUESTION_BANK, QUEUE_BY_INTENT, QUEUE_CTA_EXAMPLE, SAMPLE_SESSION, STATE_DEFS
 
-### Community 139 - "Community 139"
-Cohesion: 0.09
-Nodes (33): async_safe_select(), Async wrapper around safe_select for async API boundaries.      supabase-py ca, log_warning_with_context(), Emit a consistent warning log for recoverable pipeline failures., list_partners(), get_all_eligibility_results(), get_all_eligibility_results_async(), get_eligible_recruitments() (+25 more)
-
-### Community 140 - "Community 140"
-Cohesion: 0.1
-Nodes (34): ComplexityRepresentation, evaluate_representation(), has_unrepresented_blocker(), Compiler adapter for eligibility complexity (PR plan §5).  Bridges the gateway, Decide which complexity signals are unrepresented.      ``signals`` is the dic, True if any signal at ``level`` is unrepresented.      Used by the promotion/p, One signal's representation status., _canonical_rule_kinds_for_recruitment() (+26 more)
-
-### Community 141 - "Community 141"
+### Community 152 - "Community 152"
 Cohesion: 0.07
 Nodes (12): GenerateNextActionsBody, _Exec, _Q, _SB, test_generate_next_actions_all_users_limit_and_counts(), test_generate_next_actions_failed_run_log(), test_my_alerts_shaping_and_recruitment_link(), _Exec (+4 more)
 
-### Community 142 - "Community 142"
-Cohesion: 0.07
-Nodes (33): Notification alert helpers — port of ``lib/scraping/alerts.ts``.  These run **, admin_jobs(), admin_run_job(), my_alerts(), my_mark_read(), my_unread_count(), admin_jobs(), _is_noop_result() (+25 more)
+### Community 153 - "Community 153"
+Cohesion: 0.09
+Nodes (27): override_conflict(), Resolve one verification conflict with an explicit admin choice.      Permissi, Resolve one verification conflict with an explicit admin choice.      Permissi, Tests for the PR3 override service helper and lifecycle integration.  Plan §4, _seed_report_with_conflict(), test_override_flips_conflict_status_to_resolved_by_admin(), test_override_rejects_unknown_conflict_id(), test_override_rejects_unknown_report_id() (+19 more)
 
-### Community 143 - "Community 143"
-Cohesion: 0.1
-Nodes (34): build_mission_control(), Synchronous wrapper around :func:`build_mission_control_async`.      Kept for, Synchronous wrapper around :func:`build_mission_control_async`.      Kept for, Synchronous wrapper around :func:`build_mission_control_async`.      Kept for, Build the full mission-control response for ``user_id``.      Defensive throug, Build the full mission-control response for ``user_id``.      Defensive throug, StudyHome adopts /api/study/mission-control as its source of truth.  This pins, test_mission_control_carries_every_key_studyhome_reads() (+26 more)
-
-### Community 144 - "Community 144"
+### Community 154 - "Community 154"
 Cohesion: 0.09
 Nodes (17): _future(), _past(), Q, PR4 — Reminders CRUD security contract.  Covers: - Cross-user reads/writes/de, Resp, SB, test_create_then_list_round_trip(), test_cross_user_delete_blocked() (+9 more)
 
-### Community 145 - "Community 145"
+### Community 155 - "Community 155"
+Cohesion: 0.06
+Nodes (15): CATEGORY_COLORS, CATEGORY_LABELS, DIFFICULTY_LABEL, { container }, EMPTY_STREAK, get, post, INITIAL (+7 more)
+
+### Community 156 - "Community 156"
 Cohesion: 0.06
 Nodes (33): 10. Strategic rule, 1. Strategic positioning, 2. Canonical domain model, 3. Admin system philosophy, 4. Current state summary, 5.1 Full RBAC enforcement, 5.2 Admin audit viewer, 5.3 Eligibility queue monitor (+25 more)
 
-### Community 146 - "Community 146"
+### Community 157 - "Community 157"
 Cohesion: 0.06
 Nodes (35): code:js (await api.put(`/api/applications/${recId}`, patch);), code:js ({(p.name || "").slice(0, 6) || `M${i + 1}`}), code:js (const list = (items && items.length ? items : highlights || ), P2 — A11y / contract drift / polish, S-P2-10. `WeeklyReview` ImprovedDeclined coerces strings to `{label}` but no `delta`, S-P2-11. Hardcoded subject names in `STATUS_TONE`, `ERROR_ROWS`, `CORRECTION_LABEL` are not i18n-ready, S-P2-12. `EngineTrace` SVG is `aria-hidden="true"` but contains the only narrative, S-P2-13. `PlanChangeLogCard` renders raw enum values verbatim (+27 more)
 
-### Community 147 - "Community 147"
+### Community 158 - "Community 158"
+Cohesion: 0.07
+Nodes (13): _Exec, _KillExec, _KillQ, _KillSB, _Q, _SB, test_dispatch_respects_notification_kill_switch(), test_dispatch_skips_cleanly_when_email_sent_column_missing() (+5 more)
+
+### Community 159 - "Community 159"
 Cohesion: 0.11
 Nodes (21): evaluate_promotion_gate(), Decide whether a queue item is allowed to promote.      * If ``official_source, _all_recruitment_level_verified(), _Exec, _multi_post_queue_item(), _Q, Unit tests for `app.scraping.promotion_gate.evaluate_promotion_gate`.  The gat, A queue item with two posts. Used by the per-post tests below. (+13 more)
 
-### Community 148 - "Community 148"
+### Community 160 - "Community 160"
+Cohesion: 0.11
+Nodes (33): ComplexityRepresentation, evaluate_representation(), has_unrepresented_blocker(), Compiler adapter for eligibility complexity (PR plan §5).  Bridges the gateway, Decide which complexity signals are unrepresented.      ``signals`` is the dic, True if any signal at ``level`` is unrepresented.      Used by the promotion/p, One signal's representation status., _canonical_rule_kinds_for_recruitment() (+25 more)
+
+### Community 161 - "Community 161"
 Cohesion: 0.06
 Nodes (33): 10. Strategic rule, 1. Strategic positioning, 2. Canonical domain model, 3. Admin system philosophy, 4. Current state summary, 5.1 Full RBAC enforcement, 5.2 Admin audit viewer, 5.3 Eligibility queue monitor (+25 more)
 
-### Community 149 - "Community 149"
-Cohesion: 0.08
-Nodes (33): _get_results_supabase_client(), Prefer async Supabase client; fall back to sync client for compatibility., results_me(), results_me_all(), _attach_rows_by_post(), _criteria_hash(), _deep_sort_lists(), _first() (+25 more)
+### Community 162 - "Community 162"
+Cohesion: 0.12
+Nodes (15): block_to_question(), cluster_by_vertical_gap(), Per-page segmentation using the legacy x-fraction anchor gate.      Preserved, Cluster vertically adjacent words into line-blocks.      Gap threshold = gap_f, Cluster vertically adjacent words into line-blocks.      Gap threshold = gap_f, Convert a word-block to an ExtractedQuestion, or None if not a question., Convert a word-block to an ExtractedQuestion, or None if not a question., segment_page() (+7 more)
 
-### Community 150 - "Community 150"
-Cohesion: 0.11
-Nodes (32): _attempt_row(), _client(), _delta(), _make_option(), _make_question(), _past_iso(), PR-fix-3 correctness gate — the four fixes, each covered individually.  Fix 1:, AC1: an attempt expired >60s ago is flipped to submitted in one cycle,     stam (+24 more)
-
-### Community 151 - "Community 151"
-Cohesion: 0.09
-Nodes (32): AnswerValidationError, _coerce_boolean(), _coerce_number(), _option_values(), Answer validation + persistence for tiny questions.  Validation is intentional, Raised when an answer cannot be coerced/validated against the question., AnswerBody, get_history() (+24 more)
-
-### Community 152 - "Community 152"
+### Community 163 - "Community 163"
 Cohesion: 0.06
 Nodes (9): ChipForSource(), LayerGlyph(), ChipForSource(), ENGINE_META, LayerGlyph(), PERSONA, TASKS, TWEAK_DEFAULTS (+1 more)
 
-### Community 153 - "Community 153"
-Cohesion: 0.06
-Nodes (23): { api }, client, CYCLE_FIELD, { rerender }, CmsRefField(), input, onChange, OPTIONS (+15 more)
-
-### Community 154 - "Community 154"
+### Community 164 - "Community 164"
 Cohesion: 0.06
 Nodes (31): 10. Acceptance criteria, 11. Out of scope (tracked elsewhere), 12. Strategic rule (carried from `admin-governance.md` §10), 1. Problem, 2. Goals / non-goals, 3.1 Admin shell and routes, 3.2 Admin pages — actual behavior, 3.3 Backend capability (stronger than frontend) (+23 more)
 
-### Community 155 - "Community 155"
+### Community 165 - "Community 165"
 Cohesion: 0.06
 Nodes (33): 1) Consolidate common helpers, 2) Improve error propagation, 3) Introduce asynchronous APIs, 4) Enhance documentation, 5) Add unit and integration tests, 6) Optimize queue queries, 7) Security and permissions, Exit criteria (+25 more)
 
-### Community 156 - "Community 156"
-Cohesion: 0.07
-Nodes (13): _CapturingQuery, _CapturingSB, Records the select string passed in so we can assert on it., test_get_all_eligibility_results_select_string_includes_checks(), test_get_eligible_recruitments_passes_checks_payload_through(), test_get_eligible_recruitments_select_string_includes_checks(), _AsyncQuery, _AsyncSupabase (+5 more)
-
-### Community 157 - "Community 157"
-Cohesion: 0.15
-Nodes (33): Tests for the PR4 admin persona controls API., _build_app(), Tests for the PR4 admin persona controls API., Mount the admin router with a stubbed Supabase + injected user., _seed_bank(), _seed_full(), test_admin_can_access_overview(), test_admin_can_filter_snapshots_by_user() (+25 more)
-
-### Community 158 - "Community 158"
+### Community 166 - "Community 166"
 Cohesion: 0.06
 Nodes (33): 1) Consolidate common helpers, 2) Improve error propagation, 3) Introduce asynchronous APIs, 4) Enhance documentation, 5) Add unit and integration tests, 6) Optimize queue queries, 7) Security and permissions, Exit criteria (+25 more)
 
-### Community 159 - "Community 159"
+### Community 167 - "Community 167"
+Cohesion: 0.13
+Nodes (31): acknowledge_reverification_batch(), Acknowledge a reverification batch.      Promotes up to one chunk's worth of p, Acknowledge a reverification batch.      Promotes up to one chunk's worth of p, Permission constants for the admin pipeline.  Plan §7: "PR6 creates permission, Return True if ``user`` can perform ``action``.      ``super_admin`` always pa, user_has_action(), Tests for ``app.core.permissions`` (PR6 plan §7).  Role mapping coverage:  *, test_admin_role_covers_most_actions() (+23 more)
+
+### Community 168 - "Community 168"
 Cohesion: 0.07
 Nodes (32): _build_tradeoffs(), compute_draft_plan(), _diff_tasks(), _now_iso(), Deterministic trade-off list for the draft preview.      Pairs the highest-pri, Rough risk label from how much of the plan is mutating., Compute today's plan candidate without mutating any persisted plan.      Retur, Rough risk label from how much of the plan is mutating. (+24 more)
 
-### Community 160 - "Community 160"
+### Community 169 - "Community 169"
 Cohesion: 0.06
 Nodes (31): API Endpoints, Bootstrap — seed publisher at startup, Bulk import, Bulk Import, code:block1 (draft  ──submit──▶  in_review  ──approve──▶  verified  ──pub), code:bash (MOCK_PUBLISHER_BOOTSTRAP_EMAILS=alice@example.com,bob@exampl), code:block4 (X-Override-Fingerprint: true), code:csv (question_text,option_a,option_b,option_c,option_d,correct_op) (+23 more)
 
-### Community 161 - "Community 161"
-Cohesion: 0.08
-Nodes (16): recompute_self(), Compute + upsert a snapshot row. Returns the computed payload., Compute + upsert a snapshot row. Returns the computed payload.      Skips the, upsert_behavior_snapshot(), _FailingSB, _make_sb(), _RaisingQuery, PR — Bug 2 fix: schema-drift reads must not persist a zero snapshot.  Before t (+8 more)
+### Community 170 - "Community 170"
+Cohesion: 0.1
+Nodes (17): recompute(), RecomputeBody, _SB, test_recompute_service_role_requires_user_id(), test_recompute_service_role_runs(), test_recompute_unauthorized_raises_401(), test_recompute_user_mode_audits(), test_recompute_user_mode_ignores_body_user_id() (+9 more)
 
-### Community 162 - "Community 162"
-Cohesion: 0.08
-Nodes (31): draft_sources_from_queue_item(), Auto-create draft ``source_registry`` rows for every official-URL     host on t, Auto-create draft ``source_registry`` rows for every official-URL     host on t, Auto-create draft ``source_registry`` rows for every official-URL     host on t, draft_sources_from_recruitment(), Auto-create draft ``source_registry`` rows for every official-URL     host on t, Auto-create draft ``source_registry`` rows for every official-URL     host on t, Auto-create draft ``source_registry`` rows for every official-URL     host on t (+23 more)
-
-### Community 163 - "Community 163"
+### Community 171 - "Community 171"
 Cohesion: 0.09
-Nodes (30): get_current_user(), get_optional_user(), Normalise a Supabase user object (gotrue User) into a plain dict., Validate the Supabase access token and return the resolved user., _serialize_user(), _adbg(), _auth_debug_enabled(), _cache_get() (+22 more)
+Nodes (32): normalize_url(), Duplicate detection for scraped recruitment notifications.  Returns a structur, Public URL normaliser shared with the runner's pre-LLM dedup path.      Lowerc, _data(), _decide_from_canonical(), _decide_queue_from_canonical(), DedupResult, DuplicateDecision (+24 more)
 
-### Community 164 - "Community 164"
-Cohesion: 0.07
-Nodes (29): bulk_apply(), BulkRequest, _check_resolver_rate_limit(), ConfirmSuggestedProofRequest, OverrideConflictRequest, PromoteRequest, Admin read API for the Recruitment Verification Gateway.  PR7 scope — read-onl, Subset of columns surfaced in the listing view.      The detail endpoint retur (+21 more)
+### Community 172 - "Community 172"
+Cohesion: 0.16
+Nodes (23): E2EEnv, readEnv(), required(), globalSetup(), AnswerOutcome, apiCall(), AttemptQuestion, env() (+15 more)
 
-### Community 165 - "Community 165"
+### Community 173 - "Community 173"
+Cohesion: 0.11
+Nodes (31): _app(), Tests for ``/api/study/plan/draft`` and ``/api/study/plan/apply`` — the two end, test_apply_creates_version_and_adaptation_event(), test_apply_is_idempotent_versions_increment(), test_draft_does_not_mutate_active_plan(), test_plan_apply_route_persists(), test_plan_changelog_route_returns_events(), test_plan_draft_route_returns_diff() (+23 more)
+
+### Community 174 - "Community 174"
+Cohesion: 0.09
+Nodes (16): submit(), get_mastery_write_flag(), MasteryWriter, Scale a capped mastery delta by the source trust weight., _weighted_delta(), _make_analytics(), Mock trust model — PR-fix-8 acceptance criteria.  AC2: Existing platform-attem, Verify the metadata key used for backfill matches what mock_engine writes. (+8 more)
+
+### Community 175 - "Community 175"
+Cohesion: 0.06
+Nodes (15): FAQS, EXAMS, PROMPT_LINES, StartFreeButton(), actual, btn, mockNavigate, mockSignInAnonymously (+7 more)
+
+### Community 176 - "Community 176"
 Cohesion: 0.07
 Nodes (9): r, VALID, toNumber(), validateMockForm(), CORRECTION_LABEL, ERROR_ROWS, EXAM_SLUG_FALLBACK, STATE_PILL (+1 more)
 
-### Community 166 - "Community 166"
+### Community 177 - "Community 177"
+Cohesion: 0.07
+Nodes (20): confidenceFromField(), DIFFICULTY_OPTIONS, OPTION_LABELS, QUESTION_TYPES, QuestionEditor(), QuestionList(), REJECT_REASONS, SORT_OPTIONS (+12 more)
+
+### Community 178 - "Community 178"
 Cohesion: 0.07
 Nodes (17): useCopyPasteSuppression(), useFullscreen(), useServerCountdown(), useVisibility(), AntiCheatContext, AntiCheatProvider(), attemptEventBus, emitAttemptEvent() (+9 more)
 
-### Community 168 - "Community 168"
+### Community 179 - "Community 179"
+Cohesion: 0.07
+Nodes (12): ACCOUNTABILITY, ADMIN_COMM, CHANNEL_RULES, COMMUNITY_USERS, FLAIRS, MENTOR_EARNINGS, MENTOR_SESSIONS, MENTORS (+4 more)
+
+### Community 181 - "Community 181"
 Cohesion: 0.06
 Nodes (26): code:sql (alter table public.aspirant_reservations), code:sql (alter table public.posts), code:sql (alter table public.education_criteria), Confirmed current facts, Current-state corrections, Non-goals for the first implementation PR, P0.1 Add schema contract tests, P0.2 Keep recompute queue status consistent (+18 more)
 
-### Community 169 - "Community 169"
-Cohesion: 0.1
-Nodes (23): Tests for the PR3 override service helper and lifecycle integration.  Plan §4, _seed_report_with_conflict(), test_override_flips_conflict_status_to_resolved_by_admin(), test_override_rejects_unknown_conflict_id(), test_override_rejects_unknown_report_id(), test_override_scope_field_is_accepted(), test_override_scope_recruitment_is_accepted(), test_override_scope_report_is_rejected() (+15 more)
+### Community 182 - "Community 182"
+Cohesion: 0.11
+Nodes (31): acknowledge_batch(), compute_valid_until(), FreshScrape, Aggregate outcome of one watch pass., One queue/source observation passed into the watch driver., Walk a batch of fresh re-scrapes and flag drifted reports stale.      Mass-cor, Promote ``pending_reverification_batch`` reports for a batch.      The admin a, Write staleness state onto a report.      Lifecycle flips route through :func: (+23 more)
 
-### Community 170 - "Community 170"
+### Community 183 - "Community 183"
 Cohesion: 0.15
 Nodes (31): check_gateway_publish(), Publish-readiness gate (PR4).      Stricter than :func:`check_gateway_promotio, check_gateway_publish(), Publish-readiness gate (PR4).      Stricter than :func:`check_gateway_promotio, Publish-readiness gate (PR4).      Stricter than :func:`check_gateway_promotio, _flag(), PR4 promotion + publish gate tests.  Plan §5 ship gate:  * promotion gate re, _report() (+23 more)
 
-### Community 171 - "Community 171"
-Cohesion: 0.12
-Nodes (28): _bucket(), complete_upload(), CompleteUploadRequest, create_upload_url(), DownloadUrlResponse, _extension(), get_download_url(), get_item() (+20 more)
+### Community 184 - "Community 184"
+Cohesion: 0.15
+Nodes (30): _build_risk_flags(), Study OS — Exam Cycle Timeline service.  Composes the data behind the Study Pl, _build_milestones(), _build_phase_bands(), _build_risk_flags(), _build_series(), _build_subjects(), _empty_payload() (+22 more)
 
-### Community 172 - "Community 172"
-Cohesion: 0.12
-Nodes (19): can_use_serpapi(), SerpApi usage quota guard.  SerpApi's free tier is 250 searches/month. ``exter, Return ``True`` only when neither the daily nor monthly cap is reached.      F, Increment today's SerpApi usage counter by ``count``.      Read-modify-write r, record_serpapi_usage(), _today(), _usage_month(), FakeUsageSB (+11 more)
+### Community 185 - "Community 185"
+Cohesion: 0.11
+Nodes (19): assign_words_to_columns(), detect_columns(), _find_column(), Column detection via x-histogram bimodality analysis.  The v1 corpus uses a tw, Return the column index whose interval contains cx, or the closest., Build an x-histogram and detect column intervals.      Returns a list of (x_st, Assign words to columns, sorted by y_min ASC within each column.      A word i, _detect_columns_robust() (+11 more)
 
-### Community 173 - "Community 173"
-Cohesion: 0.07
-Nodes (6): formatVotes(), VoteColumn(), FLAIR_TONE, formatVotes(), SOURCE_TRUST_MAP, VoteColumn()
-
-### Community 176 - "Community 176"
-Cohesion: 0.12
-Nodes (29): _app(), Tests for ``/api/study/plan/draft`` and ``/api/study/plan/apply`` — the two end, test_apply_creates_version_and_adaptation_event(), test_apply_is_idempotent_versions_increment(), test_draft_diff_shows_added_when_no_active_plan(), test_plan_apply_route_persists(), test_plan_changelog_route_returns_events(), test_plan_draft_route_returns_diff() (+21 more)
-
-### Community 177 - "Community 177"
+### Community 186 - "Community 186"
 Cohesion: 0.12
 Nodes (30): PR2: tiny-question answers feed into the persona classifier + study policy., _signals(), test_budget_sensitive_still_only_from_explicit_flag_with_answers(), test_mock_avoid_answer_sets_mock_avoider(), test_mock_skip_analysis_sets_high_mock_low_review(), test_phone_distraction_raises_execution_risk_to_medium(), test_preparation_answer_final_revision_phase(), test_preparation_answer_overrides_inferred_stage_to_beginner() (+22 more)
 
-### Community 178 - "Community 178"
-Cohesion: 0.11
-Nodes (29): _is_valid_url(), Consensus conflict resolution for scrape queue + recruitments.  Endpoints (adm, RejectBody, ResolveBody, _audit(), _bulk_resolve_for_recruitment_scope(), _is_valid_url(), _list_open_conflicts() (+21 more)
-
-### Community 179 - "Community 179"
-Cohesion: 0.12
-Nodes (27): _build_page_rows(), _claim_job(), _count_pdf_pages(), _download_object(), enqueue_text_extract_job(), _extract_with_deadline(), ExtractConflict, _ExtractError (+19 more)
-
-### Community 180 - "Community 180"
-Cohesion: 0.1
-Nodes (29): _fetch_html(), fetch_page_text(), fetch_sitemap(), fetch_sitemap_recursive(), parse_sitemap(), Network fetch boundary for the scraper.  Phase 4 of the scraper audit pulled t, Parse a sitemap.xml (urlset) or sitemapindex into entries.      For ``sitemapi, Fetch a sitemap, recursing into child sitemaps up to ``max_depth``.      Retur (+21 more)
-
-### Community 181 - "Community 181"
-Cohesion: 0.14
-Nodes (29): _backlog_count(), compute_weekly_review(), _derive_items(), get_weekly_review(), _isofmt(), _mock_trend_history(), _mocks_in_week(), _monday_of() (+21 more)
-
-### Community 182 - "Community 182"
-Cohesion: 0.08
-Nodes (22): _list_audit(), Test coverage for the admin eligibility / publish-impact / audit endpoints adde, Retrying a row that's currently being processed would double-run     the eligib, test_list_audit_entries_filters_by_entity(), test_list_audit_entries_returns_all_for_entity_type_when_id_omitted(), test_list_audit_entries_unknown_entity_type_rejected(), test_publish_impact_404_when_recruitment_missing(), test_publish_impact_422_on_bogus_id() (+14 more)
-
-### Community 183 - "Community 183"
-Cohesion: 0.09
-Nodes (21): Question registry helpers.  `persona_question_bank` is the source of truth for, Normalize a DB row into the API contract., shape_question_for_api(), get_question(), invalidate_bank_cache(), latest_question_answers(), list_active_questions(), Question registry helpers.  `persona_question_bank` is the source of truth for (+13 more)
-
-### Community 184 - "Community 184"
-Cohesion: 0.13
-Nodes (29): list_plan_by_subject(), Return per-subject allocation for the user's planning week.      Output shape:, _client(), _monday(), Plan-by-Subject service + API tests., _seed_with_tasks(), test_api_returns_envelope(), test_empty_when_no_tasks_in_week() (+21 more)
-
-### Community 185 - "Community 185"
-Cohesion: 0.07
-Nodes (7): adaptPartnerState(), adaptUser(), PARTNER_PALETTE, safePct(), SEED_STATE, ThisWeekComparison(), FieldTd()
-
-### Community 186 - "Community 186"
-Cohesion: 0.08
-Nodes (21): banner, cta, dismiss, mockUseProfileCompletion, past, raw, recent, renderBanner() (+13 more)
-
 ### Community 187 - "Community 187"
-Cohesion: 0.07
-Nodes (14): CONFIDENCE_TONE(), Drawer(), Eyebrow(), ProvenanceChips(), StatusDot(), StudyConfidencePill(), Tabs(), Chip() (+6 more)
+Cohesion: 0.12
+Nodes (19): can_use_serpapi(), SerpApi usage quota guard.  SerpApi's free tier is 250 searches/month. ``exter, Return ``True`` only when neither the daily nor monthly cap is reached.      F, Increment today's SerpApi usage counter by ``count``.      Read-modify-write r, record_serpapi_usage(), _today(), _usage_month(), FakeUsageSB (+11 more)
 
 ### Community 188 - "Community 188"
-Cohesion: 0.07
-Nodes (28): 1. AI positioning, 2.1 Fully automatable (low risk, user-correctable), 2.2 AI-assisted, admin-reviewed (medium risk), 2.3 Deterministic only — AI must not be used, 2.4 AI action policy table, 2. AI action policy, 3.1 Principle, 3.2 Personalization dimensions (+20 more)
+Cohesion: 0.09
+Nodes (19): CREATE_ROLE_OPTIONS, formatDate(), formatLogin(), ROLE_OPTIONS, SORT_OPTIONS, UserCard(), UserTableRow(), ExamDetail() (+11 more)
 
 ### Community 189 - "Community 189"
-Cohesion: 0.1
-Nodes (24): _Query, _client(), _count_question_answered(), _EmptyUpdateQuery, _EmptyUpdateSBStub, _RaisingQuery, _RaisingResponseSBStub, PR-fix-10a — answer persistence correctness invariant tests.  Three invariants (+16 more)
-
-### Community 190 - "Community 190"
-Cohesion: 0.17
-Nodes (28): _build_risk_flags(), Study OS — Exam Cycle Timeline service.  Composes the data behind the Study Pl, _build_milestones(), _build_phase_bands(), _build_risk_flags(), _build_series(), _build_subjects(), _empty_payload() (+20 more)
-
-### Community 191 - "Community 191"
-Cohesion: 0.12
-Nodes (24): RuntimeError, _criteria_error_sb(), test_criteria_fallback_degrades_on_genuinely_missing_table(), test_criteria_fallback_reraises_transient_certification_failure(), test_criteria_fallback_reraises_transient_table_failure(), test_criteria_fallback_transient_failure_surfaces_as_database_error(), Tests for app.utils.safe — schema-drift aware Supabase wrapper.  The bug this, test_detects_does_not_exist_fallback_without_code() (+16 more)
+Cohesion: 0.07
+Nodes (6): formatVotes(), VoteColumn(), FLAIR_TONE, formatVotes(), SOURCE_TRUST_MAP, VoteColumn()
 
 ### Community 192 - "Community 192"
-Cohesion: 0.12
-Nodes (17): fake_sb(), Q, PR1 — Exams catalogue API.  Tests cover the security contract: - 401 when una, The list endpoint must be wrapped in ``Depends(get_current_user)``., Resp, SB, _stub_overlay(), test_eligibility_overlay_is_per_caller() (+9 more)
+Cohesion: 0.13
+Nodes (30): fuzzy_duplicate(), Deprecated. Kept for tests / external callers — use ``find_duplicate``.      S, find_duplicate(), fuzzy_duplicate(), Decide whether ``extracted`` duplicates anything known.      Signals (first ma, Deprecated. Kept for tests / external callers — use ``find_duplicate``.      S, Deprecated. Kept for tests / external callers — use ``find_duplicate``.      S, Decide whether ``extracted`` duplicates anything known.      Signals (first ma (+22 more)
 
 ### Community 193 - "Community 193"
 Cohesion: 0.09
-Nodes (15): _CountingRegistrySB, _FakeSupabaseForLowConf, _FakeTable, Tests for the scraper round-trip optimizations (Tasks 1, 4, 5, 6).  Tasks 2/3, Contract: a second host-match within the TTL does 0 source_registry     GETs un, Records source_registry updates + low_quality_extractions inserts.      ``low_, A normal pass must clear ``currently_scraping_at`` inside the same     PATCH th, Minimal supabase stub that counts unfiltered source_registry reads. (+7 more)
+Nodes (29): _build_state(), Assemble the full session-state payload the frontend renders., Assemble the full session-state payload the frontend renders.      When ``extr, build_readiness(), Local, deterministic profile-readiness placeholder per capability.      This i, Local, deterministic profile-readiness placeholder per capability.      This i, Local, deterministic profile-readiness placeholder per capability.      This i, _asked_keys() (+21 more)
 
 ### Community 194 - "Community 194"
-Cohesion: 0.1
-Nodes (14): _Exec, FakeSupabase, _Query, test_disabled_type_is_skipped(), test_dry_run_creates_no_rows(), test_min_priority_skips_low(), test_no_duplicate_notification_same_day(), test_priority_and_types() (+6 more)
+Cohesion: 0.12
+Nodes (27): _build_page_rows(), _claim_job(), _count_pdf_pages(), _download_object(), enqueue_text_extract_job(), _extract_with_deadline(), ExtractConflict, _ExtractError (+19 more)
 
 ### Community 195 - "Community 195"
-Cohesion: 0.17
-Nodes (20): E2EEnv, readEnv(), required(), globalSetup(), AnswerOutcome, apiCall(), AttemptQuestion, env() (+12 more)
+Cohesion: 0.11
+Nodes (30): build_mission_control(), _engine_trace(), _plan_reasoning(), Plain-language explanations safe to show an aspirant.      Derived from progre, Tagged reasoning behind today's plan.      Each entry carries a ``reason_type`, Build the full mission-control response for ``user_id``.      Defensive throug, _safe_user_explanation(), _scores_block() (+22 more)
 
 ### Community 196 - "Community 196"
-Cohesion: 0.08
-Nodes (26): refreshMyEligibility(), AgeCriteria, AttemptLimit, BatchEligibilityResult, checkEligibility(), checkEligibilityBatch(), EDU_LEVEL_ORDER, EducationCriteria (+18 more)
+Cohesion: 0.15
+Nodes (10): allowed_pages_for(), extract(), Return the allowed page list for a known corpus ID.      Falls back to odd pag, Extract questions from a scanned PDF.      Args:         pdf_bytes: Raw PDF c, Extract questions from a scanned PDF.      Args:         pdf_bytes: Raw PDF c, _mock_doc_row(), If both format and source are bad, format error fires first., Guard passes through; actual extraction not tested here.         Mock the OCR/s (+2 more)
 
 ### Community 197 - "Community 197"
+Cohesion: 0.08
+Nodes (21): banner, cta, dismiss, mockUseProfileCompletion, past, raw, recent, renderBanner() (+13 more)
+
+### Community 198 - "Community 198"
 Cohesion: 0.07
-Nodes (4): formatVotes(), VoteColumn(), formatVotes(), VoteColumn()
+Nodes (14): CONFIDENCE_TONE(), Eyebrow(), PageHeader(), ProvenanceChips(), StatusDot(), StudyConfidencePill(), Tabs(), Chip() (+6 more)
 
 ### Community 199 - "Community 199"
 Cohesion: 0.07
-Nodes (28): code:js (if (cancelled || !Array.isArray(d?.items) || d.items.length ), code:js (if (mentor.badge.includes("AIR")) return <VerifiedTopperBadg), code:js (const [whenDay, whenTime] = s.at.split("·").map((x) => x.tri), code:js (candidates: ACCOUNTABILITY.candidates.map((c) => ({ ...c, us), code:js (const SEED_MENTORS = MENTORS.map((m, i) => adaptMentor(m, i)), code:js (if (n.includes("form")) return "form";), F-P2-11. `PartnersScreen.ThisWeekComparison` divides by partner commitments, F-P2-12. `key={i}` everywhere there's an array (+20 more)
+Nodes (28): 1. AI positioning, 2.1 Fully automatable (low risk, user-correctable), 2.2 AI-assisted, admin-reviewed (medium risk), 2.3 Deterministic only — AI must not be used, 2.4 AI action policy table, 2. AI action policy, 3.1 Principle, 3.2 Personalization dimensions (+20 more)
 
 ### Community 200 - "Community 200"
-Cohesion: 0.1
-Nodes (29): edit_topic_coverage(), _exam_name_map(), get_plan_impact(), list_competition_metrics(), list_items(), list_policy_updates(), _now_iso(), post_plan_impact_decision() (+21 more)
+Cohesion: 0.08
+Nodes (27): _bootstrap_mock_publishers(), db_health(), DbHealth, Health, lifespan(), Career Copilot backend (Phase 1.5).  Authentication is delegated to Supabase A, ``ENABLE_SCHEDULER`` gates the in-process APScheduler.      Default ``false``, ``ENABLE_SCHEDULER`` gates the in-process APScheduler.      Default ``false`` (+19 more)
 
 ### Community 201 - "Community 201"
-Cohesion: 0.08
-Nodes (6): R, E, _EnqueueRpcSimulator, Q, QLegacyQueue, Mirrors the SQL contract of `enqueue_eligibility_recompute` in     migration 04
+Cohesion: 0.14
+Nodes (29): _backlog_count(), compute_weekly_review(), _derive_items(), get_weekly_review(), _isofmt(), _mock_trend_history(), _mocks_in_week(), _monday_of() (+21 more)
 
 ### Community 202 - "Community 202"
 Cohesion: 0.11
-Nodes (16): base_sb(), Query, PR2 — Recruitment detail security contract.  Exercises the extended GET /api/r, The endpoint's `user` dependency must be the required (non-optional) auth., _rec(), Resp, SB, test_admin_only_fields_not_exposed() (+8 more)
+Nodes (29): detect_source_drift(), Compare a freshly-scraped payload's hash to the active report's hash.      Ret, test_source_drift_false_when_hash_unchanged(), test_source_drift_ignores_raw_html_noise(), test_source_drift_no_active_report(), test_source_drift_true_when_apply_end_date_changes(), Tests for ``app.scraping.verification_hash``.  Hash equality must be stable ac, test_array_order_does_not_affect_hash() (+21 more)
 
 ### Community 203 - "Community 203"
-Cohesion: 0.07
-Nodes (8): MiniBar(), PageHeader(), Pill(), SectionHeader(), TrustStamp(), VerifiedSeal(), Chip(), LayerGlyph()
+Cohesion: 0.12
+Nodes (13): _build_app(), _make_options(), Pytest suite for PR2 — Admin Question Bank: Workflow & RBAC.  Covers:   - Sta, Verify that permission guards return 403 to unauthorised callers., Dedup is mounted at /questions/{id}/dedup-check, not /{id}/dedup-check., A frontend that built the URL from a missing id sends "undefined"., A well-formed but unseeded UUID clears validation → 404, not 422., A non-reviewer hitting /approve gets 403 even with a bad id —         the permi (+5 more)
 
 ### Community 204 - "Community 204"
 Cohesion: 0.11
-Nodes (16): dedupe_cmd(), normalize_cmd(), tag_coverage_cmd(), validate_cmd(), coverage_report(), dedupe_against(), compute_fingerprint(), _correct_index() (+8 more)
+Nodes (24): confirm_suggested_proof(), Admin confirms one of the suggested URLs.      The ``chosen_url`` MUST match o, Admin confirms one of the suggested URLs.      The ``chosen_url`` MUST match o, RuntimeError, attach_admin_official_url(), Record an admin's manual confirmation of a suggested URL.      Audit-truthful:, Tests for app.utils.safe — schema-drift aware Supabase wrapper.  The bug this, test_detects_does_not_exist_fallback_without_code() (+16 more)
 
 ### Community 205 - "Community 205"
-Cohesion: 0.07
-Nodes (27): _blocking_contradictions(), GateResult, GatewayGateResult, _has_complexity_blocker(), _has_unresolved_conflict(), _post_identity_key(), Promotion gate for scrape_queue → recruitments.  Single source of truth for th, Outcome of the gateway promotion gate.      Mirrors :class:`GateResult` shape (+19 more)
+Cohesion: 0.12
+Nodes (17): fake_sb(), Q, PR1 — Exams catalogue API.  Tests cover the security contract: - 401 when una, The list endpoint must be wrapped in ``Depends(get_current_user)``., Resp, SB, _stub_overlay(), test_eligibility_overlay_is_per_caller() (+9 more)
 
 ### Community 206 - "Community 206"
-Cohesion: 0.11
-Nodes (24): _as_float(), ProcessQueueBody, QuestionPatch, Admin-only persona controls (PR4).  Read/light-write surface for operators to, RecomputeBody, _as_float(), inspect_user(), _iso_hours_ago() (+16 more)
+Cohesion: 0.1
+Nodes (24): _Query, _client(), _count_question_answered(), _EmptyUpdateQuery, _EmptyUpdateSBStub, _RaisingQuery, _RaisingResponseSBStub, PR-fix-10a — answer persistence correctness invariant tests.  Three invariants (+16 more)
 
 ### Community 207 - "Community 207"
-Cohesion: 0.13
-Nodes (26): _admin_storage_path(), _bucket(), complete_document_upload(), create_document_upload_url(), DocCompleteUploadRequest, DocUploadUrlRequest, _extension(), _extraction_status() (+18 more)
+Cohesion: 0.08
+Nodes (9): trackOnboardingEvent(), ProfileOnboardingShell(), mockSession, mockEnv, mockGet, mockSignInAnonymously, { result }, { useProfileOnboarding } (+1 more)
 
 ### Community 208 - "Community 208"
-Cohesion: 0.12
-Nodes (24): normalize_option_text(), normalize_question_text(), option_hash(), Canonical text normalisation + sha256 hashing for PYQ options/questions.  Cent, Canonical form used as input to ``option_hash``.      - unicode-NFC, smart-pun, sha256 hex digest of the canonical option text, or ``None`` if empty., Canonical form for question text.      Looser than option normalisation — we k, _build_app() (+16 more)
+Cohesion: 0.08
+Nodes (26): refreshMyEligibility(), AgeCriteria, AttemptLimit, BatchEligibilityResult, checkEligibility(), checkEligibilityBatch(), EDU_LEVEL_ORDER, EducationCriteria (+18 more)
 
 ### Community 209 - "Community 209"
-Cohesion: 0.14
-Nodes (15): analytics(), AnswerBody, enter_section_route(), EnterSectionBody, Mock Engine API — PR1 vertical slice.  Routes (all under /api/study/mocks):, result(), review(), StartAttemptBody (+7 more)
-
-### Community 210 - "Community 210"
-Cohesion: 0.08
-Nodes (27): get_plan_draft(), post_plan_apply(), post_plan_draft(), Preview today's deterministic plan without touching the active plan., Preview today's deterministic plan without touching the active plan., Same payload as GET /plan/draft — write-style verb for explicit refresh., Apply the deterministic plan candidate to the active plan., Preview today's deterministic plan without touching the active plan. (+19 more)
+Cohesion: 0.07
+Nodes (4): formatVotes(), VoteColumn(), formatVotes(), VoteColumn()
 
 ### Community 211 - "Community 211"
-Cohesion: 0.09
-Nodes (5): E, _EnqueueRpcSimulator, Q, QLegacyQueue, Mirrors the SQL contract of `enqueue_eligibility_recompute` in     migration 04
+Cohesion: 0.07
+Nodes (28): code:js (if (cancelled || !Array.isArray(d?.items) || d.items.length ), code:js (if (mentor.badge.includes("AIR")) return <VerifiedTopperBadg), code:js (const [whenDay, whenTime] = s.at.split("·").map((x) => x.tri), code:js (const pctH = g.weeklyHoursDone / g.weeklyHoursGoal;), code:js (const SEED_MENTORS = MENTORS.map((m, i) => adaptMentor(m, i)), code:js (if (n.includes("form")) return "form";), F-P2-10. `StudyGroupsScreen.GroupListCard` progress div uses unbounded division, F-P2-11. `PartnersScreen.ThisWeekComparison` divides by partner commitments (+20 more)
 
 ### Community 212 - "Community 212"
-Cohesion: 0.1
-Nodes (11): _Exec, _Query, PR — Bug 1 fix: `POST /api/recruitments/{ref}/save` toggle.  Before this PR th, Simulate the unique-index path: two interleaved calls where the     second inse, Records every insert/delete the endpoint issues so the test can     assert the, _SB, test_concurrent_double_save_does_not_500(), test_first_save_inserts_row_returns_saved_true() (+3 more)
+Cohesion: 0.12
+Nodes (27): _collect_study_os_signals(), collect_user_signals(), _count_list(), _empty_signals(), _goal_exams_count(), _iso_days_ago(), _profile_completeness(), Defensive signal collection for persona classification.  The classifier consum (+19 more)
+
+### Community 213 - "Community 213"
+Cohesion: 0.09
+Nodes (15): _CountingRegistrySB, _FakeSupabaseForLowConf, _FakeTable, Tests for the scraper round-trip optimizations (Tasks 1, 4, 5, 6).  Tasks 2/3, Contract: a second host-match within the TTL does 0 source_registry     GETs un, Records source_registry updates + low_quality_extractions inserts.      ``low_, A normal pass must clear ``currently_scraping_at`` inside the same     PATCH th, Minimal supabase stub that counts unfiltered source_registry reads. (+7 more)
 
 ### Community 214 - "Community 214"
-Cohesion: 0.09
-Nodes (11): ADMIN_MARKET, CART, LIBRARY, MARKET_CATEGORIES, PRODUCTS, RECENTLY_VIEWED, SELLER_DASH, SELLERS (+3 more)
+Cohesion: 0.11
+Nodes (25): _as_float(), list_question_bank(), list_queue(), list_signal_events(), list_snapshots(), ProcessQueueBody, QuestionPatch, Admin-only persona controls (PR4).  Read/light-write surface for operators to (+17 more)
+
+### Community 215 - "Community 215"
+Cohesion: 0.1
+Nodes (27): draft_sources_from_queue_item(), Auto-create draft ``source_registry`` rows for every official-URL     host on t, Auto-create draft ``source_registry`` rows for every official-URL     host on t, Auto-create draft ``source_registry`` rows for every official-URL     host on t, _draft_payload(), _existing_by_host(), _existing_by_official_url(), extract_candidate_hosts() (+19 more)
 
 ### Community 216 - "Community 216"
-Cohesion: 0.07
-Nodes (26): 10. Endpoint consolidation (separate workstream), 11. Rollout, 12. Open questions, 13. Out of scope for this doc, 1. Problem, 2. Goals / non-goals, 3. Current state (verified), 4.1 User Study Inspector (`/admin/study-os`) (+18 more)
+Cohesion: 0.09
+Nodes (20): _list_audit(), Test coverage for the admin eligibility / publish-impact / audit endpoints adde, test_list_audit_entries_filters_by_entity(), test_list_audit_entries_returns_all_for_entity_type_when_id_omitted(), test_list_audit_entries_unknown_entity_type_rejected(), test_publish_impact_404_when_recruitment_missing(), test_publish_impact_422_on_bogus_id(), test_publish_impact_returns_zero_state_for_unpublished_recruitment() (+12 more)
 
 ### Community 217 - "Community 217"
-Cohesion: 0.07
-Nodes (26): 4. PR3 — Consensus Engine + Conflict Override, Acceptance, API endpoint, code:text (app/backend/app/scraping/consensus_engine.py), code:text (title), code:text (official source wins over aggregator), code:python (class VerificationConflict(BaseModel):), code:text (consensus_pending) (+18 more)
+Cohesion: 0.13
+Nodes (25): eligibility_input_me(), _SB, test_debug_endpoint(), test_invalid_numeric_rows_skipped(), test_mapper_contract_and_precedence(), test_mapper_deduplicates_certifications_and_attempts_and_credentials(), test_mapper_default_pwbd_status_none_is_not_treated_as_pwd(), test_mapper_optional_tables_fallback_to_empty_lists() (+17 more)
 
 ### Community 218 - "Community 218"
-Cohesion: 0.15
-Nodes (25): _client(), _exam_seed(), _plan_with_tasks(), Plan Timeline service + API tests., test_active_plan_with_tasks_returns_progress_and_series(), test_api_returns_full_envelope(), test_api_safe_fallback_when_user_has_no_exam(), test_behind_plan_risk_flag_when_actual_trails_planned() (+17 more)
+Cohesion: 0.11
+Nodes (16): base_sb(), Query, PR2 — Recruitment detail security contract.  Exercises the extended GET /api/r, The endpoint's `user` dependency must be the required (non-optional) auth., _rec(), Resp, SB, test_admin_only_fields_not_exposed() (+8 more)
 
 ### Community 219 - "Community 219"
-Cohesion: 0.07
-Nodes (26): 4. PR3 — Consensus Engine + Conflict Override, Acceptance, API endpoint, code:text (app/backend/app/scraping/consensus_engine.py), code:text (title), code:text (official source wins over aggregator), code:python (class VerificationConflict(BaseModel):), code:text (consensus_pending) (+18 more)
+Cohesion: 0.1
+Nodes (11): _hash(), _norm(), Tests for the PYQ paper workspace backend endpoints (PR4).  Tests:   - GET /p, metadata field is in _QUESTION_FIELDS so the caller controls it fully., Mirror of normalize_for_content_hash in idempotency.py., The JS normalize function in PyqPaperWorkspace.jsx must match this., TestNormalizeParity, TestPatchPreservesDupDismissals (+3 more)
 
 ### Community 220 - "Community 220"
-Cohesion: 0.13
-Nodes (16): _admin(), _Builder, _R, Retry-on-transient-disconnect for admin scrape read endpoints.  Supabase's HTT, A write path (reject) must NOT be retried — its builder execute()     is called, PostgREST-style chainable builder whose ``execute`` raises a     scripted seque, Supabase stub returning a pre-seeded builder per table name., _SB (+8 more)
+Cohesion: 0.07
+Nodes (14): EMPTY_SOURCE, SOURCE_KINDS, SOURCE_TRUSTS, STATUS_CONFIG, ROLE_OPTIONS, ACTION_ENDPOINT, ACTION_META, EMPTY_FORM (+6 more)
 
 ### Community 221 - "Community 221"
 Cohesion: 0.1
-Nodes (12): base_sb(), Q, PR3 — Policy updates feed.  Tests the published-only gate, limit clamp, future, Future sinceClientTs must not error and must not bypass the gt filter.      Af, Resp, SB, test_future_timestamp_clamps_to_now(), test_limit_above_cap_rejected() (+4 more)
+Nodes (21): COLORS, cornerHandles(), Drag, Handle, hitHandle(), Props, Props, styles (+13 more)
 
 ### Community 222 - "Community 222"
-Cohesion: 0.14
-Nodes (10): _make_actor(), _make_options(), Pytest suite for PR2 — Admin Question Bank: Workflow & RBAC.  Covers:   - Sta, Author and reviewer are the same person → ConflictError (→ 409)., Verify that permission guards return 403 to unauthorised callers., Insert a minimal question + options row into the SBStub., _seed_question(), TestAPIRBAC (+2 more)
+Cohesion: 0.12
+Nodes (22): ExportPanel(), isMetadataComplete(), Props, styles, buildFixture(), FixtureDoc, skippedCount(), SkippedEntry (+14 more)
 
 ### Community 223 - "Community 223"
-Cohesion: 0.08
-Nodes (6): badgeKind(), MENTOR_PALETTE, MentorBadgeTag(), SEED_MENTORS, FieldButton(), FieldSegmented()
+Cohesion: 0.07
+Nodes (8): Drawer(), MiniBar(), Pill(), SectionHeader(), TrustStamp(), VerifiedSeal(), Chip(), LayerGlyph()
 
 ### Community 224 - "Community 224"
 Cohesion: 0.1
-Nodes (11): styles, eventBus, formatTime(), MockAttemptShell(), styles, TcsIonAttemptShell(), BACKOFFS_MS, SYNC (+3 more)
+Nodes (18): Question registry helpers.  `persona_question_bank` is the source of truth for, invalidate_bank_cache(), latest_question_answers(), list_active_questions(), Question registry helpers.  `persona_question_bank` is the source of truth for, Return a {question_key: latest_answer_row} map for ``user_id``.      The perso, Drop the in-process question-bank cache.      Call this from admin write paths, Normalize a DB row into the API contract. (+10 more)
 
 ### Community 225 - "Community 225"
-Cohesion: 0.08
-Nodes (4): EMPTY, mockGet, renderAt(), PERIODS
+Cohesion: 0.11
+Nodes (25): _adbg(), _auth_debug_enabled(), _cache_get(), _cache_set(), _flight_lock_for(), get_current_user(), get_current_user_required_anonymous(), get_current_user_required_permanent() (+17 more)
 
 ### Community 226 - "Community 226"
-Cohesion: 0.08
-Nodes (4): COLORS, ACCURACY_STOPS, accuracyColor(), formatPct()
-
-### Community 227 - "Community 227"
-Cohesion: 0.08
-Nodes (26): code:js (const replies = liveThread.topReplies || liveThread.replies_), code:jsx (<button onClick={() => api.post("/api/community/partner/end"), code:jsx ({MENTOR_SESSIONS.filter((s) => s.mentorId === mentor.id).map), code:js (useEffect(() => {), code:js ({[ {u: "u_aarav", join: "Mar 11", hrs: 38.5, founder: true},), code:js (useEffect(() => {), F-P1-10. `CommunityScreen` URL sync writes on every render, F-P1-11. Sorting state isn't lifted into the URL (+18 more)
+Cohesion: 0.1
+Nodes (11): _Exec, _Query, PR — Bug 1 fix: `POST /api/recruitments/{ref}/save` toggle.  Before this PR th, Simulate the unique-index path: two interleaved calls where the     second inse, Records every insert/delete the endpoint issues so the test can     assert the, _SB, test_concurrent_double_save_does_not_500(), test_first_save_inserts_row_returns_saved_true() (+3 more)
 
 ### Community 228 - "Community 228"
-Cohesion: 0.08
-Nodes (25): 3. PR2 — Official Resolver v2 + Orchestrator + Stub Gate, Acceptance, API endpoints, Audit table, code:text (app/backend/app/scraping/official_resolver.py), code:text (L1 direct official links on scraped page), code:python (# verification_policy.py), code:text (≥ 0.85   → auto-resolved, status = 'auto_resolved') (+17 more)
+Cohesion: 0.07
+Nodes (26): 10. Endpoint consolidation (separate workstream), 11. Rollout, 12. Open questions, 13. Out of scope for this doc, 1. Problem, 2. Goals / non-goals, 3. Current state (verified), 4.1 User Study Inspector (`/admin/study-os`) (+18 more)
 
 ### Community 229 - "Community 229"
-Cohesion: 0.1
-Nodes (12): FieldRow(), fieldType(), formatValue(), FIELD_LABELS, FIELD_TYPES, fieldLabel(), FieldRow(), fieldType() (+4 more)
+Cohesion: 0.07
+Nodes (26): 4. PR3 — Consensus Engine + Conflict Override, Acceptance, API endpoint, code:text (app/backend/app/scraping/consensus_engine.py), code:text (title), code:text (official source wins over aggregator), code:python (class VerificationConflict(BaseModel):), code:text (consensus_pending) (+18 more)
 
 ### Community 230 - "Community 230"
-Cohesion: 0.08
-Nodes (26): code:js (setMc((prev) => ({ ...prev, today_tasks: prev.today_tasks.ma), code:js (async function start() {), code:js (setMc({ ...EMPTY_MC, ...(data || {}) });), code:js (const EMPTY = { ..., adherence: 0, ..., revision_coverage: n), code:js (score: Number(form.score),), code:js (if (pendingDocs > 0 || inProgressForms > 0) list.push({ labe), P0 — Crashes / silent functional breaks, S-P0-10. `PlanPreferencesCard.save` failure leaves local prefs diverged from server (+18 more)
+Cohesion: 0.07
+Nodes (26): _blocking_contradictions(), GatewayGateResult, _has_complexity_blocker(), _has_unresolved_conflict(), _post_identity_key(), Promotion gate for scrape_queue → recruitments.  Single source of truth for th, Outcome of the gateway promotion gate.      Mirrors :class:`GateResult` shape, Return True if a complexity flag at ``level`` is on ``risk_flags``.      The p (+18 more)
 
 ### Community 231 - "Community 231"
-Cohesion: 0.11
-Nodes (23): compare_cohort(), _percentile_from_checkpoints(), _rank_band(), Study OS — cohort percentile compute + read (PR 3).  Given a cohort_key (resol, PR 3 — cohort percentile + fallback ladder., test_fallback_ladder_skips_undersample_cohorts(), test_no_eligible_cohort_returns_none_metrics(), test_percentile_interpolates_between_checkpoints() (+15 more)
+Cohesion: 0.07
+Nodes (26): 4. PR3 — Consensus Engine + Conflict Override, Acceptance, API endpoint, code:text (app/backend/app/scraping/consensus_engine.py), code:text (title), code:text (official source wins over aggregator), code:python (class VerificationConflict(BaseModel):), code:text (consensus_pending) (+18 more)
 
 ### Community 232 - "Community 232"
-Cohesion: 0.08
-Nodes (25): 3. PR2 — Official Resolver v2 + Orchestrator + Stub Gate, Acceptance, API endpoints, Audit table, code:text (app/backend/app/scraping/official_resolver.py), code:text (L1 direct official links on scraped page), code:python (# verification_policy.py), code:text (≥ 0.85   → auto-resolved, status = 'auto_resolved') (+17 more)
+Cohesion: 0.11
+Nodes (25): _load_policy_update_context(), Return the ``policy_update_context`` block.      Verified official updates may, _load_policy_update_context(), Wrap a supabase client so reads dedupe within one request.      Thread-safe: `, Return the ``policy_update_context`` block.      Verified official updates may, Return the ``policy_update_context`` block.      Verified official updates may, test_policy_update_context_splits_official_and_discovery(), _discovery_payload() (+17 more)
 
 ### Community 233 - "Community 233"
 Cohesion: 0.13
-Nodes (23): _collect_study_os_signals(), collect_user_signals(), _count_list(), _empty_signals(), _goal_exams_count(), _iso_days_ago(), _profile_completeness(), Defensive signal collection for persona classification.  The classifier consum (+15 more)
+Nodes (16): _admin(), _Builder, _R, Retry-on-transient-disconnect for admin scrape read endpoints.  Supabase's HTT, A write path (reject) must NOT be retried — its builder execute()     is called, PostgREST-style chainable builder whose ``execute`` raises a     scripted seque, Supabase stub returning a pre-seeded builder per table name., _SB (+8 more)
 
 ### Community 234 - "Community 234"
-Cohesion: 0.23
-Nodes (24): _build_next_best_action(), _build_next_best_action(), _empty_metrics(), Deterministic next-best-action rules (PR3)., _snapshot(), test_fallback_action_when_no_strong_signal(), test_nba_never_uses_shame_language(), test_rule1_incomplete_task_wins() (+16 more)
+Cohesion: 0.1
+Nodes (12): _CapturingSB, test_get_all_eligibility_results_select_string_includes_checks(), test_get_eligible_recruitments_passes_checks_payload_through(), test_get_eligible_recruitments_select_string_includes_checks(), _AsyncSupabase, _CapturingQuery, _CapturingSB, Records the select string passed in so we can assert on it. (+4 more)
 
 ### Community 235 - "Community 235"
-Cohesion: 0.25
-Nodes (23): _build_app(), FakeSupabase, _FakeUser, RBAC hardening tests — centralized guards, role endpoints, audit, bootstrap., _seed_users(), test_bootstrap_ambiguous_exit_3(), test_bootstrap_idempotent_already_super_admin(), test_bootstrap_promotes_and_audits() (+15 more)
+Cohesion: 0.1
+Nodes (12): base_sb(), Q, PR3 — Policy updates feed.  Tests the published-only gate, limit clamp, future, Future sinceClientTs must not error and must not bypass the gt filter.      Af, Resp, SB, test_future_timestamp_clamps_to_now(), test_limit_above_cap_rejected() (+4 more)
 
 ### Community 236 - "Community 236"
-Cohesion: 0.11
-Nodes (21): eligibility_queue(), Two-pane KPI view consumed by ``EligibilityQueue.jsx``:      * ``pending`` — s, Two-pane KPI view consumed by ``EligibilityQueue.jsx``:      * ``pending`` — s, Two-pane KPI view consumed by ``EligibilityQueue.jsx``:      * ``pending`` — s, group_by(), index_by(), normalize_token(), InvalidTransition (+13 more)
+Cohesion: 0.08
+Nodes (4): EMPTY, mockGet, renderAt(), PERIODS
 
 ### Community 237 - "Community 237"
-Cohesion: 0.09
-Nodes (7): GroupDetail(), GroupListCard(), safePct(), FieldLabel(), FieldPill(), FieldSection(), FieldTable()
+Cohesion: 0.1
+Nodes (11): styles, eventBus, formatTime(), MockAttemptShell(), styles, TcsIonAttemptShell(), BACKOFFS_MS, SYNC (+3 more)
 
-### Community 239 - "Community 239"
+### Community 238 - "Community 238"
 Cohesion: 0.08
-Nodes (24): 6. PR5 — Corrigendum / Staleness / Reverification, Acceptance, Batch entity table, Canonical edit hook, code:text (app/backend/app/scraping/corrigendum_detector.py), code:sql (alter table public.recruitment_verification_reports), code:text (stale_source_changed), code:python (extend_transitions({) (+16 more)
+Nodes (4): COLORS, ACCURACY_STOPS, accuracyColor(), formatPct()
 
 ### Community 240 - "Community 240"
-Cohesion: 0.1
-Nodes (8): E, Q, SB, test_my_applications_shape_and_select(), E, Q, SB, test_my_applications_shape_and_select()
+Cohesion: 0.08
+Nodes (26): code:jsx (<button onClick={() => api.post("/api/community/partner/end"), code:js (useEffect(() => {), code:js ({[ {u: "u_aarav", join: "Mar 11", hrs: 38.5, founder: true},), code:js (if (Array.isArray(d?.items) && d.items.length === 0) return;), code:js (const [exam, setExam] = useState("UPSC CSE");), code:js (api.get(`/api/community/channels/${cid}/threads?sort=hot`)), F-P1-11. Sorting state isn't lifted into the URL, F-P1-12. `CommunityScreen.refreshChannelThreads` ignores the user's chosen sort (+18 more)
 
 ### Community 241 - "Community 241"
-Cohesion: 0.13
-Nodes (24): _apply_answer_overrides(), _classify_discovery(), _classify_execution_risk(), _classify_learning_behavior(), _classify_motivation(), _classify_preparation(), _classify_resource_constraint(), _classify_time_constraint() (+16 more)
+Cohesion: 0.08
+Nodes (25): Adding a new exam identity, code:block1 (idempotency_key = sha256(document_id || page || question_num), code:sql (SELECT metadata->'dry_run_rows' FROM extraction_runs WHERE i), Dedup policy (writer), Document kind eligibility (v1), Dry-run mode, Evaluation metrics (v1 acceptance), Exam Intelligence Extraction v1 — Corpus Contract (+17 more)
 
 ### Community 242 - "Community 242"
 Cohesion: 0.08
-Nodes (24): 6. PR5 — Corrigendum / Staleness / Reverification, Acceptance, Batch entity table, Canonical edit hook, code:text (app/backend/app/scraping/corrigendum_detector.py), code:sql (alter table public.recruitment_verification_reports), code:text (stale_source_changed), code:python (extend_transitions({) (+16 more)
+Nodes (25): 3. PR2 — Official Resolver v2 + Orchestrator + Stub Gate, Acceptance, API endpoints, Audit table, code:text (app/backend/app/scraping/official_resolver.py), code:text (L1 direct official links on scraped page), code:python (# verification_policy.py), code:text (≥ 0.85   → auto-resolved, status = 'auto_resolved') (+17 more)
 
 ### Community 243 - "Community 243"
-Cohesion: 0.13
-Nodes (23): _attempts_used_for_limit(), _canonical_category(), _category_relaxation_years(), check_eligibility_batch(), _condition_matches(), _exact_age_years(), _normalise_token(), _normalize_category() (+15 more)
+Cohesion: 0.08
+Nodes (26): code:js (setMc((prev) => ({ ...prev, today_tasks: prev.today_tasks.ma), code:js (async function start() {), code:js (setMc({ ...EMPTY_MC, ...(data || {}) });), code:js (const EMPTY = { ..., adherence: 0, ..., revision_coverage: n), code:js (score: Number(form.score),), code:js (if (pendingDocs > 0 || inProgressForms > 0) list.push({ labe), P0 — Crashes / silent functional breaks, S-P0-10. `PlanPreferencesCard.save` failure leaves local prefs diverged from server (+18 more)
 
 ### Community 244 - "Community 244"
-Cohesion: 0.12
-Nodes (20): computeSimilarityKey(), extractRecruitmentData(), fetchPageText(), stripHtml(), buildRecruitmentKey(), deriveStatus(), mapEducationLevel(), promoteToRecruitments() (+12 more)
+Cohesion: 0.11
+Nodes (23): compare_cohort(), _percentile_from_checkpoints(), _rank_band(), Study OS — cohort percentile compute + read (PR 3).  Given a cohort_key (resol, PR 3 — cohort percentile + fallback ladder., test_fallback_ladder_skips_undersample_cohorts(), test_no_eligible_cohort_returns_none_metrics(), test_percentile_interpolates_between_checkpoints() (+15 more)
 
 ### Community 245 - "Community 245"
-Cohesion: 0.16
-Nodes (22): _coerce_number(), competition_series(), cutoff_series(), _cycle_year(), _load_cycles(), _load_metrics(), _load_phases(), Competition Intelligence read helpers (Phase 12).  Reads ``exam_competition_me (+14 more)
+Cohesion: 0.08
+Nodes (25): 3. PR2 — Official Resolver v2 + Orchestrator + Stub Gate, Acceptance, API endpoints, Audit table, code:text (app/backend/app/scraping/official_resolver.py), code:text (L1 direct official links on scraped page), code:python (# verification_policy.py), code:text (≥ 0.85   → auto-resolved, status = 'auto_resolved') (+17 more)
 
 ### Community 246 - "Community 246"
+Cohesion: 0.23
+Nodes (24): _build_next_best_action(), _build_next_best_action(), _empty_metrics(), Deterministic next-best-action rules (PR3)., _snapshot(), test_fallback_action_when_no_strong_signal(), test_nba_never_uses_shame_language(), test_rule1_incomplete_task_wins() (+16 more)
+
+### Community 247 - "Community 247"
+Cohesion: 0.1
+Nodes (8): E, Q, SB, test_my_applications_shape_and_select(), E, Q, SB, test_my_applications_shape_and_select()
+
+### Community 248 - "Community 248"
+Cohesion: 0.12
+Nodes (24): _attempts_used_for_limit(), _canonical_category(), _category_relaxation_years(), check_eligibility_batch(), _condition_matches(), _exact_age_years(), _normalise_token(), _normalize_category() (+16 more)
+
+### Community 249 - "Community 249"
+Cohesion: 0.25
+Nodes (23): _build_app(), FakeSupabase, _FakeUser, RBAC hardening tests — centralized guards, role endpoints, audit, bootstrap., _seed_users(), test_bootstrap_ambiguous_exit_3(), test_bootstrap_idempotent_already_super_admin(), test_bootstrap_no_user_exit_2() (+15 more)
+
+### Community 250 - "Community 250"
+Cohesion: 0.15
+Nodes (22): claim_pending_recomputes(), drain_recompute_queue_async(), Atomically claim pending recomputes via the claim_eligibility_queue RPC., Async recompute queue drain with bounded concurrency., SB, SBFailRpc, test_admin_queue_counts_pending(), test_async_worker_blocked_without_safe_runner() (+14 more)
+
+### Community 251 - "Community 251"
+Cohesion: 0.09
+Nodes (10): is_source_eligible_v1(), True iff the source_kind is clean enough for the v1 extractor., Unit tests for SourceKind enum and source eligibility in dispatch.py., Sentinel: if this set changes, the change must be reviewed., All SourceKind values must be explicitly eligible or not — no gaps., test_eligible_kinds_return_true(), test_ineligible_kinds_return_false(), TestEligibleSourceKindsV1 (+2 more)
+
+### Community 252 - "Community 252"
+Cohesion: 0.1
+Nodes (8): infer_format_from_identity(), is_extractable_by_v1(), Look up the default structural_format for an exam_identity.      Returns UNKNO, True iff v1 extractor can process this structural_format., Compile-time-equivalent check: no enum value goes unmapped., TestEligibilityV1, TestExamToFormatMapping, TestInferFormat
+
+### Community 253 - "Community 253"
+Cohesion: 0.13
+Nodes (24): _apply_answer_overrides(), _classify_discovery(), _classify_execution_risk(), _classify_learning_behavior(), _classify_motivation(), _classify_preparation(), _classify_resource_constraint(), _classify_time_constraint() (+16 more)
+
+### Community 255 - "Community 255"
+Cohesion: 0.08
+Nodes (24): 6. PR5 — Corrigendum / Staleness / Reverification, Acceptance, Batch entity table, Canonical edit hook, code:text (app/backend/app/scraping/corrigendum_detector.py), code:sql (alter table public.recruitment_verification_reports), code:text (stale_source_changed), code:python (extend_transitions({) (+16 more)
+
+### Community 256 - "Community 256"
+Cohesion: 0.11
+Nodes (21): eligibility_queue(), Two-pane KPI view consumed by ``EligibilityQueue.jsx``:      * ``pending`` — s, Two-pane KPI view consumed by ``EligibilityQueue.jsx``:      * ``pending`` — s, Two-pane KPI view consumed by ``EligibilityQueue.jsx``:      * ``pending`` — s, group_by(), index_by(), normalize_token(), InvalidTransition (+13 more)
+
+### Community 257 - "Community 257"
+Cohesion: 0.11
+Nodes (21): norm, computeSimilarityKey(), extractRecruitmentData(), fetchPageText(), stripHtml(), buildRecruitmentKey(), deriveStatus(), mapEducationLevel() (+13 more)
+
+### Community 258 - "Community 258"
+Cohesion: 0.08
+Nodes (24): 6. PR5 — Corrigendum / Staleness / Reverification, Acceptance, Batch entity table, Canonical edit hook, code:text (app/backend/app/scraping/corrigendum_detector.py), code:sql (alter table public.recruitment_verification_reports), code:text (stale_source_changed), code:python (extend_transitions({) (+16 more)
+
+### Community 259 - "Community 259"
+Cohesion: 0.16
+Nodes (23): _admin_storage_path(), _bucket(), complete_document_upload(), create_document_upload_url(), _extension(), _extraction_status(), get_document(), get_document_pages() (+15 more)
+
+### Community 260 - "Community 260"
 Cohesion: 0.15
 Nodes (23): _load_profile(), _merge_seed(), _next_question(), _now_iso(), onboarding_answer(), onboarding_next(), onboarding_skip_all(), OnboardingAnswerBody (+15 more)
 
-### Community 249 - "Community 249"
-Cohesion: 0.09
-Nodes (4): Q, R, Chained query builder for the scrape endpoints.      Records ``or_`` / ``lt``, SB
+### Community 261 - "Community 261"
+Cohesion: 0.13
+Nodes (22): backfill_option_hashes(), Populate ``normalized_option_hash`` (and optionally     ``normalized_question_h, Populate ``normalized_option_hash`` (and optionally     ``normalized_question_h, normalize_option_text(), normalize_question_text(), option_hash(), question_hash(), Canonical text normalisation + sha256 hashing for PYQ options/questions.  Cent (+14 more)
 
-### Community 250 - "Community 250"
-Cohesion: 0.09
-Nodes (23): _drill(), fetch_api(), fetch_api_paginated(), _first_field(), parse_json_feed(), Walk a dotted path through a JSON object. Returns ``None`` when     any interme, Return the first non-empty string value among ``candidates`` keys     on ``entr, Parse a decoded JSON payload into a flat list of entries.      ``adapter_confi (+15 more)
+### Community 263 - "Community 263"
+Cohesion: 0.11
+Nodes (23): _extract_post_names(), _flatten_observation(), _norm_value(), Consensus engine for the Recruitment Verification Gateway (PR plan §4).  Compa, Normalise a value for comparison.      Strings → lower + stripped. Lists → sor, Project an extracted-data blob into per-field observations., One observation of a field's value, tagged with its source trust., SourceObservation (+15 more)
 
-### Community 251 - "Community 251"
-Cohesion: 0.12
-Nodes (22): fetch(), fetch_pdf(), Fetch ``url`` and return a structured result.      Single dispatch point: ``ad, Fetch a PDF bulletin and return its extracted text in ``FetchResult.text``., _json_resp(), A scanned PDF / image-only PDF extracts to empty string. fetch_pdf     surfaces, test_fetch_dispatches_api_adapter(), test_fetch_dispatches_pdf_adapter() (+14 more)
+### Community 264 - "Community 264"
+Cohesion: 0.2
+Nodes (22): patch_razorpay(), seed_course(), test_refund_approve_revokes_enrollment_and_writes_audit(), test_refund_deny_does_not_revoke_enrollment(), test_refund_razorpay_failure_does_not_corrupt_state(), Checkout, verify and webhook tests for the marketplace API., Verify then webhook for the same payment must not double-enroll., _seed_profile() (+14 more)
 
-### Community 252 - "Community 252"
-Cohesion: 0.09
-Nodes (23): _drill(), fetch_api(), fetch_api_paginated(), _first_field(), parse_json_feed(), Walk a dotted path through a JSON object. Returns ``None`` when     any interme, Return the first non-empty string value among ``candidates`` keys     on ``entr, Parse a decoded JSON payload into a flat list of entries.      ``adapter_confi (+15 more)
+### Community 266 - "Community 266"
+Cohesion: 0.11
+Nodes (22): process_queue(), recompute_user(), get_my_persona(), Persona API (internal aspirant persona v1).  Surface:     GET  /api/persona/m, recompute_my_persona(), RecomputeBody, _serialize_snapshot(), enqueue_persona_recompute() (+14 more)
 
-### Community 253 - "Community 253"
-Cohesion: 0.09
-Nodes (20): _load_questions_for_template must filter by published + valid TTL., Return a MagicMock supabase that intercepts the question query chain., valid_until in the past should be excluded., TestSelectorHardening, start(), _load_questions_for_template(), _question_snapshot(), Frozen copy of a question + its options, stored in mock_attempt_responses. (+12 more)
-
-### Community 255 - "Community 255"
+### Community 267 - "Community 267"
 Cohesion: 0.1
-Nodes (20): CorrectionTaskCard(), humanizeTaskType(), ORIGIN_BADGE, allOutput, { container }, errSpy, validTask, AttemptQuestionAnalytics (+12 more)
+Nodes (23): admin_notifications(), _recent_generation_runs(), toggle_kill(), _allowed_for_user(), _looks_like_missing_email_sent(), Notification dispatcher — render + send unread alerts.  Channel adapters:, Send via Resend if configured, otherwise log and return a mock id., _render_email() (+15 more)
 
-### Community 257 - "Community 257"
-Cohesion: 0.09
-Nodes (22): Admin/operations, Career Copilot — Product Roadmap, code:block1 (community_spaces         — one per exam family), Phase 0 — Infrastructure Stabilization ✅, Phase 10 — Mentor Session Marketplace ⏳, Phase 11 — Resource Library and Public Community ⏳, Phase 12 — Exam Intelligence Hub 🔄, Phase 13 — AI Intelligence Expansion 📋 (+14 more)
+### Community 268 - "Community 268"
+Cohesion: 0.16
+Nodes (22): _coerce_number(), competition_series(), cutoff_series(), _cycle_year(), _load_cycles(), _load_metrics(), _load_phases(), Competition Intelligence read helpers (Phase 12).  Reads ``exam_competition_me (+14 more)
 
-### Community 258 - "Community 258"
-Cohesion: 0.09
-Nodes (22): 13. Admin review UX requirements, 14. Safety rules, 15. Release checklist, 16. Recommended MVP scope, 17. Final recommendation, 1. Purpose, 2. Strategic decision, 3. Why this strategy is feasible (+14 more)
+### Community 269 - "Community 269"
+Cohesion: 0.13
+Nodes (23): Return True when this trigger should NOT mark a report stale.      The watcher, staleness_suppressed(), detect_canonical_drift(), Return True when this trigger should NOT mark a report stale.      The watcher, Compare a canonical-side hash to the active report's hash.      Used by the ca, staleness_suppressed(), Tests for ``app.scraping.corrigendum_detector``.  Plan §6 acceptance:  * sam, _report() (+15 more)
 
-### Community 259 - "Community 259"
+### Community 270 - "Community 270"
+Cohesion: 0.08
+Nodes (23): 10. PR1 Trigger Reasons, 11. Backfill, 19. E2E Acceptance Criteria, 22. What This Spec Does NOT Cover, 4. Hash Contract, 5. JSONB Schemas (Pydantic), 6. Lifecycle States + Transitions, 7. Reprocess Rule (+15 more)
+
+### Community 271 - "Community 271"
 Cohesion: 0.12
 Nodes (10): _FlakyBuilder, FlakySB, _patch_admin(), Supabase fake with controllable transient failures + an rpc() shim.      ``fai, test_correct_field_passes_expected_rpc_args(), test_verify_field_falls_back_when_rpc_missing(), test_verify_field_non_transient_db_error_is_500(), test_verify_field_recovers_from_connect_error() (+2 more)
 
-### Community 260 - "Community 260"
-Cohesion: 0.09
-Nodes (22): 13. Admin review UX requirements, 14. Safety rules, 15. Release checklist, 16. Recommended MVP scope, 17. Final recommendation, 1. Purpose, 2. Strategic decision, 3. Why this strategy is feasible (+14 more)
+### Community 272 - "Community 272"
+Cohesion: 0.11
+Nodes (21): AnswerBody, get_history(), get_next_question(), post_answer(), post_skip(), Progressive Tiny Questions API (PR2).  Surface:     GET  /api/persona/questio, _require_user_id(), SkipBody (+13 more)
 
-### Community 261 - "Community 261"
+### Community 273 - "Community 273"
+Cohesion: 0.13
+Nodes (21): check_community_resources(), check_mock_question_bank(), count_verified_quant(), _extract_insert_values(), Content safety gate — reviewer_status invariants and mock-expansion gate.  Rul, Return a list of raw VALUES strings for INSERT INTO <table> blocks., No community_resources row in the pilot seed sets usable_for_mock_generation=tru, No mock_question_bank row in the pilot seed carries reviewer_status='live'. (+13 more)
+
+### Community 274 - "Community 274"
+Cohesion: 0.16
+Nodes (13): eligibility_input_me(), build_user_eligibility_profile(), AttemptRow, _Base, CertificationRow, CredentialRow, EducationRow, EligibilityProfile (+5 more)
+
+### Community 275 - "Community 275"
+Cohesion: 0.1
+Nodes (20): pdf_bytes_2025(), pdf_bytes_2026(), questions_fixture(), Test fixtures for the extraction package.  Unit tests use synthetic Word lists, Load the 2026 GS-I questions fixture (92 expected, 8 skipped)., Load the 2026 GS-I questions fixture (92 expected, 8 skipped)., Fetch the 2026 PDF from Supabase Storage. Requires live service-role creds., Fetch the 2025 PDF from Supabase Storage. Requires live service-role creds. (+12 more)
+
+### Community 276 - "Community 276"
+Cohesion: 0.09
+Nodes (16): AdminShell(), BUSINESS_NAV, COMMAND_CENTER, COMMUNITY_MARKETPLACE, GOVERNANCE_NAV, KNOWLEDGE_GOVERNANCE, MOCK_CONTENT, OPERATIONS_NAV (+8 more)
+
+### Community 278 - "Community 278"
+Cohesion: 0.1
+Nodes (20): CorrectionTaskCard(), humanizeTaskType(), ORIGIN_BADGE, allOutput, { container }, errSpy, validTask, AttemptQuestionAnalytics (+12 more)
+
+### Community 280 - "Community 280"
+Cohesion: 0.09
+Nodes (22): Admin Review Requirement, AI Usage Boundary, Architecture Overview, code:txt (Scraper/Admin creates the verified question contract.), code:txt (Post: Safety Officer), code:txt (You are a guided onboarding assistant for Career Copilot.), code:json ({), code:txt (date_of_birth -> profiles.date_of_birth) (+14 more)
+
+### Community 281 - "Community 281"
+Cohesion: 0.09
+Nodes (22): Admin/operations, Career Copilot — Product Roadmap, code:block1 (community_spaces         — one per exam family), Phase 0 — Infrastructure Stabilization ✅, Phase 10 — Mentor Session Marketplace ⏳, Phase 11 — Resource Library and Public Community ⏳, Phase 12 — Exam Intelligence Hub 🔄, Phase 13 — AI Intelligence Expansion 📋 (+14 more)
+
+### Community 282 - "Community 282"
+Cohesion: 0.09
+Nodes (21): 10. PR1 Trigger Reasons, 11. Backfill, 14. AI Resolver Budget (PR2), 19. E2E Acceptance Criteria, 1. Architecture, 22. What This Spec Does NOT Cover, 5. JSONB Schemas (Pydantic), 7. Reprocess Rule (+13 more)
+
+### Community 283 - "Community 283"
+Cohesion: 0.12
+Nodes (22): fetch(), fetch_pdf(), Fetch ``url`` and return a structured result.      Single dispatch point: ``ad, Fetch a PDF bulletin and return its extracted text in ``FetchResult.text``., _json_resp(), A scanned PDF / image-only PDF extracts to empty string. fetch_pdf     surfaces, test_fetch_dispatches_api_adapter(), test_fetch_dispatches_pdf_adapter() (+14 more)
+
+### Community 284 - "Community 284"
 Cohesion: 0.19
 Nodes (20): _active_rubric_version(), assign(), AssignBody, change_status(), claim(), file_report(), get_item(), get_rubric() (+12 more)
 
-### Community 262 - "Community 262"
-Cohesion: 0.13
-Nodes (19): build_snapshot_payload(), compute_persona_snapshot(), get_latest_persona_snapshot(), _hash_signals(), _now_iso(), Persona snapshot persistence and lookup.  Snapshots are immutable rows in `pub, End-to-end: collect signals, classify, derive policy, save row.      Always wr, End-to-end: collect signals, classify, derive policy, save row.      Always wr (+11 more)
-
-### Community 263 - "Community 263"
-Cohesion: 0.1
-Nodes (19): build_mission_control_async(), _engine_trace(), _metrics(), _plan_reasoning(), Async version of :func:`build_mission_control`.      Runs independent sub-load, Async version of :func:`build_mission_control`.      Runs independent sub-load, Plain-language explanations safe to show an aspirant.      Derived from progre, Wrap a supabase client so reads dedupe within one request.      Thread-safe: ` (+11 more)
-
-### Community 264 - "Community 264"
-Cohesion: 0.19
-Nodes (21): _age_bucket(), _build_backlog_heatmap(), _build_corrections(), _build_high_yield_coverage(), _build_highlights(), _build_next_actions(), _compute(), compute_report_card() (+13 more)
-
-### Community 265 - "Community 265"
-Cohesion: 0.12
-Nodes (10): Q, R, Coverage for GET /api/admin/overview.  The overview KPIs intentionally compose, The legacy code path issued 8 distinct count queries for the     duplicate-coun, SB, _seed(), test_overview_call_count_drops_versus_legacy(), test_overview_does_not_repeat_open_moderation_or_received_copyright() (+2 more)
-
-### Community 266 - "Community 266"
-Cohesion: 0.19
-Nodes (21): attest_mock(), PR 5 / PR 9 — mock verification tier rules., _sb(), test_mentor_attestation_is_tier_1(), test_partner_must_not_be_self_collusion_risk(), test_partner_with_evidence_is_tier_1_5(), test_provider_with_attempt_id_is_tier_1(), test_screenshot_alone_is_tier_2_pending() (+13 more)
-
-### Community 267 - "Community 267"
-Cohesion: 0.13
-Nodes (12): _CountingSupabase, _CountingTable, Reference-data TTL caches.  Three admin-mutable but read-heavy tables (``exams, test_invalidate_bank_cache_forces_refetch(), test_invalidate_eligibility_rules_cache_forces_refetch(), test_invalidate_exam_lookup_cache_forces_refetch(), test_list_active_exams_caches_within_ttl(), test_load_rules_by_exam_caches_within_ttl() (+4 more)
-
-### Community 270 - "Community 270"
-Cohesion: 0.09
-Nodes (21): 10) Core / Auth / DB foundations (`app/core/*`, `app/db/*`), 1) Entrypoint & composition (`app/backend/server.py`), 2) API section (`app/api/*`), 3) Scraping section (`app/scraping/*`), 4) Study OS section (`app/study_os/*` + `app/api/study_os.py`), 5) Eligibility section (`app/eligibility/*`), 6) Notifications section (`app/notifications/*`), 7) Persona & Persona Questions (`app/persona/*`, `app/persona_questions/*`) (+13 more)
-
-### Community 271 - "Community 271"
-Cohesion: 0.09
-Nodes (21): Admin Review Requirement, Architecture Overview, code:txt (Scraper/Admin creates the verified question contract.), code:txt (Post: Safety Officer), code:txt (date_of_birth -> profiles.date_of_birth), code:python (def handle_first_class_response(answer, rule, user_profile):), code:json ({), code:txt ([ ] Add migration 084_candidate_question_contracts.sql) (+13 more)
-
-### Community 272 - "Community 272"
-Cohesion: 0.09
-Nodes (21): 1. Discover, 2. Match, 3. Understand, 4. Prepare, 5. Connect, 6. Act, AI assists, does not decide, Career Copilot — Product Vision (+13 more)
-
-### Community 273 - "Community 273"
-Cohesion: 0.1
-Nodes (4): Q, R, Chained query builder for the scrape endpoints.      Records ``or_`` / ``lt``, SB
-
-### Community 274 - "Community 274"
-Cohesion: 0.09
-Nodes (21): Admin Review Requirement, Architecture Overview, code:txt (Scraper/Admin creates the verified question contract.), code:txt (Post: Safety Officer), code:txt (date_of_birth -> profiles.date_of_birth), code:python (def handle_first_class_response(answer, rule, user_profile):), code:json ({), code:txt ([ ] Add migration 084_candidate_question_contracts.sql) (+13 more)
-
-### Community 275 - "Community 275"
-Cohesion: 0.21
-Nodes (20): CardPatch, CardUpsert, create_card(), create_deck(), DeckUpsert, delete_card(), delete_deck(), due_summary() (+12 more)
-
-### Community 276 - "Community 276"
-Cohesion: 0.15
-Nodes (13): classify_response(), compute_scoring(), D(), compute_and_persist(), derive_attempt_analytics(), compute_dwell_times(), _parse(), compute_topic_breakdown() (+5 more)
-
-### Community 277 - "Community 277"
-Cohesion: 0.16
-Nodes (15): derive_correction_tasks(), _priority(), derive_error_pattern_signals(), derive_mastery_deltas(), _difficulty_weight(), expected_accuracy_for_mastery(), _pyq_recency_weight(), _source_weight() (+7 more)
-
-### Community 278 - "Community 278"
-Cohesion: 0.14
-Nodes (15): _job_cleanup_anonymous_users(), cleanup_anonymous_users(), _cutoff_iso(), _delete_one(), Daily cleanup of orphan anonymous Supabase users.  A "Start free" click create, Delete the auth user (cascades) and fall back to a direct profile delete., Delete anonymous profiles older than ``ANONYMOUS_TTL_DAYS``.      Returns a sm, _select_expired() (+7 more)
-
-### Community 279 - "Community 279"
-Cohesion: 0.11
-Nodes (20): _enqueue_legacy_python(), _legacy_payload(), _looks_like_rpc_missing(), _looks_like_schema_cache_miss(), _now_iso(), Thin Python wrapper around the `enqueue_eligibility_recompute` RPC.  The atomi, Pre-migration fallback. Known limitations vs the RPC:       * Dedupes only agai, Distinguish "RPC not deployed" from real DB errors.      `PGRST202` is PostgRE (+12 more)
-
-### Community 280 - "Community 280"
-Cohesion: 0.1
-Nodes (9): test_field_evidence_continues_when_fallback_document_missing(), test_field_evidence_fallback_document_created(), test_list_sources_uses_source_registry_only(), test_promote_blocks_unverified_high_risk(), test_promote_failure_keeps_queue_item_pending(), test_promote_sets_status_promoted_when_high_risk_verified(), test_review_body_limits_notes(), test_validate_queue_id_rejects_invalid() (+1 more)
-
-### Community 281 - "Community 281"
-Cohesion: 0.13
-Nodes (12): _Exec, _patch_client(), _Query, Schema-truth regression for ``scripts/validate_exam_intelligence_seed.py``.  M, The validator must only select columns that exist. With the corrected     ``rev, Pins the bug directly: selecting the drifted ``reviewer_notes`` from     ``exam, Mimics PostgREST 42703 for an unknown column in a SELECT., SchemaAwareStub (+4 more)
-
-### Community 282 - "Community 282"
-Cohesion: 0.25
-Nodes (20): _build_app(), Tests for the admin CRUD endpoints on ``exam_eligibility_rules`` (PR-D2)., test_admin_with_permission_can_list(), test_create_rule_conflict_when_scope_rule_type_pair_exists(), test_create_rule_happy_path_stamps_verified_metadata(), test_create_rule_on_unknown_exam_is_404(), test_create_rule_rejects_numeric_rule_without_value_num(), test_create_rule_rejects_text_rule_without_value_text() (+12 more)
-
-### Community 284 - "Community 284"
-Cohesion: 0.1
-Nodes (20): Accountability partner rules, Backend modules, code:text (Layer 1 — Behavior Benchmark), code:text (discipline     → cross-exam OK), code:text (mentor_action_items_assigned), code:text (/app/study/compare), code:text (comparison_enabled         = true   (self-view only)), code:text (app/backend/app/study_os/behavior_scores.py    -- daily snap) (+12 more)
-
 ### Community 285 - "Community 285"
-Cohesion: 0.1
-Nodes (20): Canonical Mapping Table, Duplicate / Overlap Inventory, Fields Safe to Use Now, Fields to avoid for new work (until reconciled), Highest-risk drift, Key finding, P0 Schema Lineage Audit (Pre-Progressive Profile), P2-H.1 Contract freeze (no schema changes) (+12 more)
+Cohesion: 0.09
+Nodes (21): DrillAttempt, DrillAttemptsBody, get_exam_booklist(), get_exam_documents(), get_trap_drill(), get_trap_drill_streak(), list_exam_pyqs(), list_exams() (+13 more)
 
 ### Community 286 - "Community 286"
 Cohesion: 0.1
-Nodes (21): 12. Recommended implementation phases, code:text (rss_url), code:text (rss_adapter.py), code:text (DiscoveredListing), code:python (class DiscoveredListing:), code:text (title), code:text (official_source_resolved = true/false), code:text (% aggregator listings resolved to official sources) (+13 more)
+Nodes (4): Q, R, Chained query builder for the scrape endpoints.      Records ``or_`` / ``lt``, SB
 
 ### Community 287 - "Community 287"
-Cohesion: 0.1
-Nodes (20): 5. PR4 — Eligibility Complexity Contract, Acceptance, code:text (app/backend/app/scraping/eligibility_complexity.py), code:text (app/backend/app/eligibility/complexity_contract.py), code:text (domicile), code:python (@dataclass), code:text (Tier A:), code:text (promotion_blocker          → cannot promote until canonical ) (+12 more)
+Cohesion: 0.13
+Nodes (21): AnswerValidationError, _coerce_boolean(), _coerce_number(), _option_values(), Answer validation + persistence for tiny questions.  Validation is intentional, Raised when an answer cannot be coerced/validated against the question., AnswerValidationError, _coerce_boolean() (+13 more)
 
 ### Community 288 - "Community 288"
-Cohesion: 0.1
-Nodes (20): Architecture (Phase 1.5), Backend (`backend/.env`), Backend endpoints, Career Copilot — Product Requirements Document, Environment variables, Files to know, Frontend (`frontend/.env`), Notes for future contributors (+12 more)
+Cohesion: 0.16
+Nodes (21): acknowledge_reverification_batch(), Acknowledge a reverification batch.      Promotes up to one chunk's worth of p, Staleness watcher + canonical-edit hook (PR plan §6).  Two entry points:  *, acknowledge_batch(), FreshScrape, Staleness watcher + canonical-edit hook (PR plan §6).  Two entry points:  *, Aggregate outcome of one watch pass., One queue/source observation passed into the watch driver. (+13 more)
 
 ### Community 289 - "Community 289"
-Cohesion: 0.14
-Nodes (11): AttemptRow, _Base, CertificationRow, CredentialRow, EducationRow, EligibilityProfile, ExperienceRow, Identity (+3 more)
+Cohesion: 0.12
+Nodes (10): Q, R, Coverage for GET /api/admin/overview.  The overview KPIs intentionally compose, The legacy code path issued 8 distinct count queries for the     duplicate-coun, SB, _seed(), test_overview_call_count_drops_versus_legacy(), test_overview_does_not_repeat_open_moderation_or_received_copyright() (+2 more)
 
 ### Community 290 - "Community 290"
-Cohesion: 0.13
-Nodes (20): _client(), Production Mocks surface — service-layer + API tests with the in-memory Supabas, test_api_analysis_bundle_shape(), test_api_correction_flow_end_to_end(), test_api_create_then_list(), test_api_set_review_state_validates_value(), test_apply_correction_task_creates_study_task_and_links(), test_create_mock_persists_row_and_breakdowns() (+12 more)
+Cohesion: 0.19
+Nodes (21): _age_bucket(), _build_backlog_heatmap(), _build_corrections(), _build_high_yield_coverage(), _build_highlights(), _build_next_actions(), _compute(), compute_report_card() (+13 more)
 
 ### Community 291 - "Community 291"
+Cohesion: 0.13
+Nodes (12): _CountingSupabase, _CountingTable, Reference-data TTL caches.  Three admin-mutable but read-heavy tables (``exams, test_invalidate_bank_cache_forces_refetch(), test_invalidate_eligibility_rules_cache_forces_refetch(), test_invalidate_exam_lookup_cache_forces_refetch(), test_list_active_exams_caches_within_ttl(), test_load_rules_by_exam_caches_within_ttl() (+4 more)
+
+### Community 294 - "Community 294"
+Cohesion: 0.09
+Nodes (21): 10) Core / Auth / DB foundations (`app/core/*`, `app/db/*`), 1) Entrypoint & composition (`app/backend/server.py`), 2) API section (`app/api/*`), 3) Scraping section (`app/scraping/*`), 4) Study OS section (`app/study_os/*` + `app/api/study_os.py`), 5) Eligibility section (`app/eligibility/*`), 6) Notifications section (`app/notifications/*`), 7) Persona & Persona Questions (`app/persona/*`, `app/persona_questions/*`) (+13 more)
+
+### Community 295 - "Community 295"
+Cohesion: 0.09
+Nodes (21): 1. Discover, 2. Match, 3. Understand, 4. Prepare, 5. Connect, 6. Act, AI assists, does not decide, Career Copilot — Product Vision (+13 more)
+
+### Community 296 - "Community 296"
+Cohesion: 0.09
+Nodes (21): 9. Trie / Prefix Tree, Additive migration rule, code:text (GET /api/search/suggest?q=ssc&type=exam), code:text (app/backend/app/discovery/suggest.py), code:text (app/backend/app/discovery/trie.py), code:text (graph_nodes), code:text (resource_exam_links), code:text (tests/common/test_indexing.py) (+13 more)
+
+### Community 297 - "Community 297"
+Cohesion: 0.09
+Nodes (21): Admin Review Requirement, Architecture Overview, code:txt (Scraper/Admin creates the verified question contract.), code:txt (Post: Safety Officer), code:txt (date_of_birth -> profiles.date_of_birth), code:python (def handle_first_class_response(answer, rule, user_profile):), code:json ({), code:txt ([ ] Add migration 084_candidate_question_contracts.sql) (+13 more)
+
+### Community 298 - "Community 298"
+Cohesion: 0.21
+Nodes (20): CardPatch, CardUpsert, create_card(), create_deck(), DeckUpsert, delete_card(), delete_deck(), due_summary() (+12 more)
+
+### Community 299 - "Community 299"
+Cohesion: 0.2
+Nodes (20): AnswerValidationError, _coerce_boolean(), _coerce_date(), _coerce_number(), _coerce_percentage(), _option_values(), Deterministic, allowlisted answer parsing for the unified engine.  Sprint-1 ru, Raised when an answer cannot be deterministically validated. (+12 more)
+
+### Community 300 - "Community 300"
+Cohesion: 0.18
+Nodes (21): _build_milestones(), _build_phase_bands(), _build_series(), _build_subjects(), _empty_payload(), get_plan_timeline(), _iso(), _load_active_cycle() (+13 more)
+
+### Community 301 - "Community 301"
+Cohesion: 0.1
+Nodes (9): test_field_evidence_continues_when_fallback_document_missing(), test_field_evidence_fallback_document_created(), test_list_sources_uses_source_registry_only(), test_promote_blocks_unverified_high_risk(), test_promote_failure_keeps_queue_item_pending(), test_promote_sets_status_promoted_when_high_risk_verified(), test_review_body_limits_notes(), test_validate_queue_id_rejects_invalid() (+1 more)
+
+### Community 302 - "Community 302"
+Cohesion: 0.16
+Nodes (15): derive_correction_tasks(), _priority(), derive_error_pattern_signals(), derive_mastery_deltas(), _difficulty_weight(), expected_accuracy_for_mastery(), _pyq_recency_weight(), _source_weight() (+7 more)
+
+### Community 303 - "Community 303"
+Cohesion: 0.13
+Nodes (12): _Exec, _patch_client(), _Query, Schema-truth regression for ``scripts/validate_exam_intelligence_seed.py``.  M, The validator must only select columns that exist. With the corrected     ``rev, Pins the bug directly: selecting the drifted ``reviewer_notes`` from     ``exam, Mimics PostgREST 42703 for an unknown column in a SELECT., SchemaAwareStub (+4 more)
+
+### Community 304 - "Community 304"
+Cohesion: 0.25
+Nodes (20): _build_app(), Tests for the admin CRUD endpoints on ``exam_eligibility_rules`` (PR-D2)., test_admin_with_permission_can_list(), test_create_rule_conflict_when_scope_rule_type_pair_exists(), test_create_rule_happy_path_stamps_verified_metadata(), test_create_rule_on_unknown_exam_is_404(), test_create_rule_rejects_numeric_rule_without_value_num(), test_create_rule_rejects_text_rule_without_value_text() (+12 more)
+
+### Community 305 - "Community 305"
 Cohesion: 0.22
 Nodes (20): classify_persona(), Pure function: signals -> persona dict. Safe with empty or partial input., Deterministic tests for the rule-based persona classifier (v1)., _base_signals(), Deterministic tests for the rule-based persona classifier (v1)., test_budget_sensitive_never_inferred_from_category(), test_budget_sensitive_only_from_explicit_flag(), test_consistent_executor_when_completion_high() (+12 more)
 
-### Community 292 - "Community 292"
-Cohesion: 0.15
-Nodes (10): _admin(), _Q, _R, Regression: resolving an official source flips the promotion gate.  After an a, _resolve_body(), _SB, test_gate_blocks_on_source_before_resolve(), test_resolve_official_source_then_gate_no_longer_blocks_on_source() (+2 more)
+### Community 306 - "Community 306"
+Cohesion: 0.1
+Nodes (9): ExamRow(), FIELD_LABELS, humanFieldList(), mockGet, React, renderCard(), row, STRIP (+1 more)
 
-### Community 293 - "Community 293"
+### Community 308 - "Community 308"
+Cohesion: 0.1
+Nodes (20): Accountability partner rules, Backend modules, code:text (Layer 1 — Behavior Benchmark), code:text (discipline     → cross-exam OK), code:text (mentor_action_items_assigned), code:text (/app/study/compare), code:text (comparison_enabled         = true   (self-view only)), code:text (app/backend/app/study_os/behavior_scores.py    -- daily snap) (+12 more)
+
+### Community 309 - "Community 309"
+Cohesion: 0.1
+Nodes (20): Canonical Mapping Table, Duplicate / Overlap Inventory, Fields Safe to Use Now, Fields to avoid for new work (until reconciled), Highest-risk drift, Key finding, P0 Schema Lineage Audit (Pre-Progressive Profile), P2-H.1 Contract freeze (no schema changes) (+12 more)
+
+### Community 310 - "Community 310"
+Cohesion: 0.1
+Nodes (21): 12. Recommended implementation phases, code:text (rss_url), code:text (rss_adapter.py), code:text (DiscoveredListing), code:python (class DiscoveredListing:), code:text (title), code:text (official_source_resolved = true/false), code:text (% aggregator listings resolved to official sources) (+13 more)
+
+### Community 311 - "Community 311"
 Cohesion: 0.1
 Nodes (20): 5. PR4 — Eligibility Complexity Contract, Acceptance, code:text (app/backend/app/scraping/eligibility_complexity.py), code:text (app/backend/app/eligibility/complexity_contract.py), code:text (domicile), code:python (@dataclass), code:text (Tier A:), code:text (promotion_blocker          → cannot promote until canonical ) (+12 more)
 
-### Community 294 - "Community 294"
+### Community 312 - "Community 312"
+Cohesion: 0.1
+Nodes (20): Architecture (Phase 1.5), Backend (`backend/.env`), Backend endpoints, Career Copilot — Product Requirements Document, Environment variables, Files to know, Frontend (`frontend/.env`), Notes for future contributors (+12 more)
+
+### Community 313 - "Community 313"
+Cohesion: 0.15
+Nodes (13): classify_response(), compute_scoring(), D(), compute_and_persist(), derive_attempt_analytics(), compute_dwell_times(), _parse(), compute_topic_breakdown() (+5 more)
+
+### Community 314 - "Community 314"
+Cohesion: 0.1
+Nodes (20): admin_jobs(), admin_run_job(), admin_jobs(), _is_noop_result(), _job_deadline_sweep(), _job_dispatch(), _job_mock_sweeper(), list_jobs() (+12 more)
+
+### Community 315 - "Community 315"
 Cohesion: 0.14
-Nodes (11): download_report(), get_report(), _is_uuid(), list_reports(), _now(), Downloadable Reports API.  User-facing report export request + status + delive, ReportRequest, request_report() (+3 more)
+Nodes (15): _job_cleanup_anonymous_users(), cleanup_anonymous_users(), _cutoff_iso(), _delete_one(), Daily cleanup of orphan anonymous Supabase users.  A "Start free" click create, Delete the auth user (cascades) and fall back to a direct profile delete., Delete anonymous profiles older than ``ANONYMOUS_TTL_DAYS``.      Returns a sm, _select_expired() (+7 more)
 
-### Community 295 - "Community 295"
-Cohesion: 0.2
-Nodes (18): _apply_removal(), claim_stats(), ClaimSubmission, counter_notice(), CounterNoticeBody, _event(), get_claim(), _is_uuid() (+10 more)
+### Community 316 - "Community 316"
+Cohesion: 0.15
+Nodes (10): _admin(), _Q, _R, Regression: resolving an official source flips the promotion gate.  After an a, _resolve_body(), _SB, test_gate_blocks_on_source_before_resolve(), test_resolve_official_source_then_gate_no_longer_blocks_on_source() (+2 more)
 
-### Community 296 - "Community 296"
-Cohesion: 0.13
-Nodes (19): toggle_kill(), _allowed_for_user(), _looks_like_missing_email_sent(), Notification dispatcher — render + send unread alerts.  Channel adapters:, _render_email(), _allowed_for_user(), dispatch_pending_alerts(), kill_switch_enabled() (+11 more)
+### Community 317 - "Community 317"
+Cohesion: 0.1
+Nodes (20): 5. PR4 — Eligibility Complexity Contract, Acceptance, code:text (app/backend/app/scraping/eligibility_complexity.py), code:text (app/backend/app/eligibility/complexity_contract.py), code:text (domicile), code:python (@dataclass), code:text (Tier A:), code:text (promotion_blocker          → cannot promote until canonical ) (+12 more)
 
-### Community 297 - "Community 297"
-Cohesion: 0.11
-Nodes (5): Q, R, Stateful fake Supabase admin client.      ``tables`` is a dict of table_name →, One chained query builder per ``table(...)`` call.      Records the filter cha, SB
-
-### Community 298 - "Community 298"
-Cohesion: 0.11
-Nodes (5): Q, R, Stateful fake Supabase admin client.      ``tables`` is a dict of table_name →, One chained query builder per ``table(...)`` call.      Records the filter cha, SB
-
-### Community 299 - "Community 299"
+### Community 318 - "Community 318"
 Cohesion: 0.15
 Nodes (13): commit_import(), dry_run(), _now_iso(), parse_file(), _parse_row(), Admin mock question bulk import — CSV/JSON parse, fingerprint dedup, idempotent, Parse CSV or JSON file bytes into raw row dicts., Parse file and return per-row preview without writing anything.      Returns: (+5 more)
 
-### Community 300 - "Community 300"
-Cohesion: 0.13
-Nodes (18): process_queue(), Signal emit + recompute trigger after a tiny question is answered.  Both calls, _safe(), emit_question_signal(), Signal emit + recompute trigger after a tiny question is answered.  Both calls, Insert a ``user_signal_events`` row and enqueue a persona recompute.      Retu, Insert a ``user_signal_events`` row and enqueue a persona recompute.      Retu, _safe() (+10 more)
+### Community 319 - "Community 319"
+Cohesion: 0.2
+Nodes (18): _apply_removal(), claim_stats(), ClaimSubmission, counter_notice(), CounterNoticeBody, _event(), get_claim(), _is_uuid() (+10 more)
 
-### Community 301 - "Community 301"
+### Community 320 - "Community 320"
 Cohesion: 0.14
-Nodes (19): _color_for(), _locked_subjects(), _monday_of(), Study OS — Plan by Subject service.  Derives per-subject allocation for the cu, Map subject_id → subject_name for subjects that have any locked     coverage ro, _resolve_subject_label(), _safe(), _week_bounds() (+11 more)
+Nodes (11): download_report(), get_report(), _is_uuid(), list_reports(), _now(), Downloadable Reports API.  User-facing report export request + status + delive, ReportRequest, request_report() (+3 more)
 
-### Community 303 - "Community 303"
+### Community 321 - "Community 321"
+Cohesion: 0.11
+Nodes (20): _exam_name_map(), get_plan_impact(), list_competition_metrics(), list_exams(), list_items(), list_policy_updates(), post_plan_impact_decision(), List ``exam_competition_metrics`` rows for admin review.      Only ``locked`` (+12 more)
+
+### Community 322 - "Community 322"
+Cohesion: 0.12
+Nodes (20): edit_topic_coverage(), _now_iso(), Move an ``exam_topic_coverage`` row through its review lifecycle.      Lifecyc, Move an ``exam_topic_coverage`` row through its review lifecycle.      Lifecyc, Move an ``exam_topic_coverage`` row through its review lifecycle.      Lifecyc, Edit a coverage row's intelligence fields without changing lifecycle.      Lif, Edit a coverage row's intelligence fields without changing lifecycle.      Lif, Edit a coverage row's intelligence fields without changing lifecycle.      Lif (+12 more)
+
+### Community 323 - "Community 323"
+Cohesion: 0.12
+Nodes (20): _classify_elimination(), _fetch_option_universe(), _group_options(), list_elimination_patterns(), list_option_repetitions(), list_option_traps(), _option_group_key(), Same option text recurring across verified questions in an exam.      Computed (+12 more)
+
+### Community 324 - "Community 324"
+Cohesion: 0.11
+Nodes (5): Q, R, Stateful fake Supabase admin client.      ``tables`` is a dict of table_name →, One chained query builder per ``table(...)`` call.      Records the filter cha, SB
+
+### Community 325 - "Community 325"
+Cohesion: 0.11
+Nodes (5): Q, R, Stateful fake Supabase admin client.      ``tables`` is a dict of table_name →, One chained query builder per ``table(...)`` call.      Records the filter cha, SB
+
+### Community 327 - "Community 327"
+Cohesion: 0.12
+Nodes (11): onFieldAction, renderGroup(), warn, ACCEPTED_STATUSES, ageRange(), findDomicileDetail(), listValue(), POST_FIELDS (+3 more)
+
+### Community 329 - "Community 329"
+Cohesion: 0.14
+Nodes (19): attest_mock(), _decide_tier(), Study OS — mock score verification flow (PR 5 + PR 9 + PR 10).  The verificati, _safe(), mock_attest(), _decide_tier(), Study OS — mock score verification flow (PR 5 + PR 9 + PR 10).  The verificati, read_verification() (+11 more)
+
+### Community 330 - "Community 330"
+Cohesion: 0.14
+Nodes (19): detect_canonical_drift(), detect_source_drift(), DriftDecision, Corrigendum detector (PR plan §6).  A *corrigendum* is an official addendum th, Outcome of one drift check.      ``trigger_reason`` matches the gateway's enum, Compare a freshly-scraped payload's hash to the active report's hash.      Ret, Compare a canonical-side hash to the active report's hash.      Used by the ca, DriftDecision (+11 more)
+
+### Community 332 - "Community 332"
 Cohesion: 0.1
-Nodes (20): 5.1 Layer 1: Source registry, 5.2 Layer 2: Discovery ingestion, 5.4 Layer 4: Official-source resolution, 5.5 Layer 5: Official extraction, 5.7 Layer 7: Canonical promotion, 5.8 Layer 8: Eligibility recompute and alerts, 5. Target ingestion architecture, code:text (official_notification_documents) (+12 more)
+Nodes (20): A. Eligibility engine, B. Scraper and admin review, code:text (GET /api/eligibility/recruitments/{recruitment_id}/graph), code:text (app/backend/app/recommendations/scoring.py), code:text (GET /api/recommendations/me), code:json ({), Current situation, Current situation (+12 more)
 
-### Community 305 - "Community 305"
-Cohesion: 0.13
-Nodes (18): _load_policy_update_context(), Wrap a supabase client so reads dedupe within one request.      Thread-safe: `, Return the ``policy_update_context`` block.      Verified official updates may, Return the ``policy_update_context`` block.      Verified official updates may, test_policy_update_context_empty_without_exam(), test_policy_update_context_splits_official_and_discovery(), _discovery_payload(), empty_policy_update_context() (+10 more)
+### Community 333 - "Community 333"
+Cohesion: 0.27
+Nodes (18): apply_profile_mapping(), Apply the allowlisted canonical write (if any) for one answer., Apply the allowlisted canonical write (if any) for one answer.      Returns a, field_registry(), Tests for the unified onboarding profile adapter.  Covers the recruitment allo, End-to-end: anonymous recruitment answer → login → stitch reaches canonical., _registry(), _seed_user() (+10 more)
 
-### Community 306 - "Community 306"
-Cohesion: 0.23
-Nodes (18): _capture_attempts_and_criteria(), Runner-level regression tests for UserProfile field wiring.  These tests guard, SB stub seeded with both attempt tables AND a `recruitments.exam_id`., _sb_with_attempts(), test_runner_constructs_exam_family_attempts_from_aspirant_exam_attempts(), test_runner_constructs_post_attempts_when_post_id_present(), test_runner_constructs_recruitment_attempts_from_new_table(), test_runner_recruitment_exam_id_defaults_to_none_for_unlinked_recruitments() (+10 more)
-
-### Community 307 - "Community 307"
-Cohesion: 0.14
-Nodes (10): is_at_least(), Convenience: ``True`` iff the user's level is at least the required.      Both, Unit tests for ``app.eligibility.education_taxonomy``.  The taxonomy replaces, test_is_at_least_accepts_aliases_on_either_side(), test_is_at_least_higher_satisfies_lower(), test_is_at_least_lower_does_not_satisfy_higher(), test_is_at_least_satisfies_self(), test_is_at_least_unknown_requirement_passes() (+2 more)
-
-### Community 308 - "Community 308"
+### Community 334 - "Community 334"
 Cohesion: 0.11
 Nodes (10): Shared runtime data-structure helpers., Exam Intelligence Contracts v1 (PR5).  Thin, deterministic READ layer on top o, Study OS Mission Control (PR3).  Deterministic read/composition layer that com, Phase-2 notifications layer.  The Career Copilot data plane fans out to four c, Unified guided onboarding engine (Sprint 1).  One session engine, two entry mo, Internal Aspirant Persona v1 layer.  PR1 foundation: deterministic, rule-based, Progressive tiny questions (PR2) — internal persona/profile layer.  Public sur, Queue scoring and worker helpers. (+2 more)
 
-### Community 309 - "Community 309"
-Cohesion: 0.11
-Nodes (4): _ExplodingQ, _Q, _R, Queue table that raises on every read; used to simulate missing     eligibility
+### Community 335 - "Community 335"
+Cohesion: 0.16
+Nodes (18): analytics(), answer(), AnswerBody, enter_section_route(), EnterSectionBody, Mock Engine API — PR1 vertical slice.  Routes (all under /api/study/mocks):, result(), review() (+10 more)
 
-### Community 310 - "Community 310"
-Cohesion: 0.12
-Nodes (6): SCREENS, Eyebrow(), FooterStrip(), KPI_TONES, PrototypePage(), SELLER_TRUST
+### Community 336 - "Community 336"
+Cohesion: 0.15
+Nodes (11): _FailingSB, _make_sb(), _RaisingQuery, PR — Bug 2 fix: schema-drift reads must not persist a zero snapshot.  Before t, No sessions today is real, observed state — the daily snapshot     must still b, If `_read_session_minutes` returns READ_FAILED, the compute layer     sets `_re, Supabase stub whose `study_sessions` table raises like PostgREST     would on a, _session() (+3 more)
 
-### Community 313 - "Community 313"
-Cohesion: 0.13
-Nodes (16): buildDir, checkSizeBudgets(), failures, FORBIDDEN_IN_INITIAL, frontendDir, globToRe(), jsDir, PATH_FORBIDDEN (+8 more)
+### Community 337 - "Community 337"
+Cohesion: 0.16
+Nodes (10): dedupe_cmd(), normalize_cmd(), tag_coverage_cmd(), coverage_report(), dedupe_against(), compute_fingerprint(), _correct_index(), normalize_stem_for_fp() (+2 more)
 
-### Community 314 - "Community 314"
-Cohesion: 0.11
-Nodes (18): Admin visibility (PR4), API surface (PR1), code:block1 (profile facts + onboarding answers          ┐), code:json ({), Consumed by Study OS Mission Control (PR3), Future PR path, Internal Aspirant Persona — v1 (PR1 Foundation), Layer responsibilities (+10 more)
-
-### Community 315 - "Community 315"
-Cohesion: 0.11
-Nodes (19): A. Eligibility engine, B. Scraper and admin review, code:text (GET /api/eligibility/recruitments/{recruitment_id}/graph), code:text (app/backend/app/notifications/dedupe.py), code:text (app/backend/app/notifications/priority.py), Current situation, Current situation, Current situation (+11 more)
-
-### Community 316 - "Community 316"
-Cohesion: 0.11
-Nodes (19): 8. Graph, code:text (app/backend/app/graph/schemas.py), code:python (from typing import Any), code:text (Candidate), code:python (nodes = [), code:text (User), code:text (Recommended because you target SSC CGL, Quant is a weak area), code:text (User) (+11 more)
-
-### Community 317 - "Community 317"
-Cohesion: 0.11
-Nodes (19): code:sql (-- 0NN_study_os_behavior_foundation.sql), code:sql (-- 0NN_study_os_exam_snapshots.sql), code:sql (-- 0NN_study_os_cohorts.sql), code:sql (-- 0NN_study_os_leaderboards.sql), code:sql (-- 0NN_study_os_mock_verification.sql), code:sql (-- 0NN_study_os_social_groups.sql), code:sql (-- 0NN_study_os_trust_breakdown.sql), code:sql (-- 0NN_study_os_pairs.sql) (+11 more)
-
-### Community 318 - "Community 318"
-Cohesion: 0.11
-Nodes (19): 7. PR6 — Admin UI Simplification + API Surface, Acceptance, Backend API (ship before any frontend component), Bulk contract, Checklist policy, code:text (GET  /api/admin/verification-reports?lifecycle=&tier=&recomm), code:text (- calls promotion_gate.check_promotion), code:json ({) (+11 more)
-
-### Community 319 - "Community 319"
-Cohesion: 0.11
-Nodes (18): 10. PR1 Trigger Reasons, 11. Backfill, 19. E2E Acceptance Criteria, 22. What This Spec Does NOT Cover, 5. JSONB Schemas (Pydantic), 6. Lifecycle States + Transitions, 7. Reprocess Rule, code:python (class RiskFlag(BaseModel):) (+10 more)
-
-### Community 320 - "Community 320"
-Cohesion: 0.2
-Nodes (14): recompute(), RecomputeBody, _SB, test_recompute_service_role_requires_user_id(), test_recompute_service_role_runs(), test_recompute_unauthorized_raises_401(), test_recompute_user_mode_audits(), test_recompute_user_mode_ignores_body_user_id() (+6 more)
-
-### Community 321 - "Community 321"
-Cohesion: 0.12
-Nodes (16): Walk the resolver chain and return the first match.      Tests can pass a cust, _as_bool(), _as_dict(), _as_str_or_none(), Typed runtime view of ``source_registry`` rows.  Background — the original ``S, _as_bool(), _as_dict(), _as_str_or_none() (+8 more)
-
-### Community 322 - "Community 322"
-Cohesion: 0.19
-Nodes (18): normalize_source_registry(), Build a :class:`ScrapeSource` from a ``source_registry`` row.      Reads every, Build a :class:`ScrapeSource` from a ``source_registry`` row.      Reads every, test_aggregator_source_prefers_crawl_url(), test_api_adapter_picks_api_url(), test_direct_source_prefers_notification_url(), test_discovery_only_flag_routes_to_crawl_url_even_without_source_type(), test_pdf_adapter_picks_pdf_bulletin_url() (+10 more)
-
-### Community 323 - "Community 323"
+### Community 338 - "Community 338"
 Cohesion: 0.11
 Nodes (7): read_text(), test_scrape_monitor_uses_compact_rows_and_detail_drawer(), test_source_registry_form_submits_source_type_and_configs(), test_no_asyncio_to_thread_in_eligibility_runner(), test_no_duplicate_async_function_definitions(), test_active_migration_adds_eligibility_relationship_fks(), test_active_migration_adds_eligibility_relationship_fks()
 
-### Community 324 - "Community 324"
-Cohesion: 0.18
-Nodes (16): eligibility_input_me(), _ErrSB, _SB, test_debug_endpoint(), test_invalid_numeric_rows_skipped(), test_mapper_contract_and_precedence(), test_mapper_deduplicates_certifications_and_attempts_and_credentials(), test_mapper_default_pwbd_status_none_is_not_treated_as_pwd() (+8 more)
+### Community 340 - "Community 340"
+Cohesion: 0.12
+Nodes (5): SCREENS, Eyebrow(), FooterStrip(), PrototypePage(), TYPE_ICONS
 
-### Community 325 - "Community 325"
-Cohesion: 0.18
-Nodes (18): _client(), Subjects (progress) service + API tests., _seed(), test_api_returns_items_envelope(), test_subjects_empty_when_no_target_exam(), test_subjects_orders_weak_first_then_alpha(), test_subjects_returns_averaged_mastery_grouped_by_subject(), test_subjects_skips_draft_and_rejected_coverage() (+10 more)
+### Community 343 - "Community 343"
+Cohesion: 0.13
+Nodes (16): buildDir, checkSizeBudgets(), failures, FORBIDDEN_IN_INITIAL, frontendDir, globToRe(), jsDir, PATH_FORBIDDEN (+8 more)
 
-### Community 326 - "Community 326"
-Cohesion: 0.11
-Nodes (19): A. Eligibility engine, B. Scraper and admin review, code:text (GET /api/eligibility/recruitments/{recruitment_id}/graph), code:text (app/backend/app/notifications/dedupe.py), code:text (app/backend/app/notifications/priority.py), Current situation, Current situation, Current situation (+11 more)
-
-### Community 327 - "Community 327"
-Cohesion: 0.11
-Nodes (19): 8. Graph, code:text (app/backend/app/graph/schemas.py), code:python (from typing import Any), code:text (Candidate), code:python (nodes = [), code:text (User), code:text (Recommended because you target SSC CGL, Quant is a weak area), code:text (User) (+11 more)
-
-### Community 328 - "Community 328"
+### Community 344 - "Community 344"
 Cohesion: 0.11
 Nodes (18): Admin visibility (PR4), API surface (PR1), code:block1 (profile facts + onboarding answers          ┐), code:json ({), Consumed by Study OS Mission Control (PR3), Future PR path, Internal Aspirant Persona — v1 (PR1 Foundation), Layer responsibilities (+10 more)
 
-### Community 329 - "Community 329"
+### Community 345 - "Community 345"
+Cohesion: 0.11
+Nodes (19): 8. Graph, code:text (app/backend/app/graph/schemas.py), code:python (from typing import Any), code:text (Candidate), code:python (nodes = [), code:text (User), code:text (Recommended because you target SSC CGL, Quant is a weak area), code:text (User) (+11 more)
+
+### Community 346 - "Community 346"
+Cohesion: 0.11
+Nodes (19): A. Eligibility engine, B. Scraper and admin review, code:text (GET /api/eligibility/recruitments/{recruitment_id}/graph), code:text (app/backend/app/notifications/dedupe.py), code:text (app/backend/app/notifications/priority.py), Current situation, Current situation, Current situation (+11 more)
+
+### Community 347 - "Community 347"
+Cohesion: 0.11
+Nodes (19): code:sql (-- 0NN_study_os_behavior_foundation.sql), code:sql (-- 0NN_study_os_exam_snapshots.sql), code:sql (-- 0NN_study_os_cohorts.sql), code:sql (-- 0NN_study_os_leaderboards.sql), code:sql (-- 0NN_study_os_mock_verification.sql), code:sql (-- 0NN_study_os_social_groups.sql), code:sql (-- 0NN_study_os_trust_breakdown.sql), code:sql (-- 0NN_study_os_pairs.sql) (+11 more)
+
+### Community 348 - "Community 348"
+Cohesion: 0.11
+Nodes (18): 13. Admin review UX requirements, 14. Safety rules, 15. Release checklist, 16. Recommended MVP scope, 17. Final recommendation, 1. Purpose, 2. Strategic decision, 3. Why this strategy is feasible (+10 more)
+
+### Community 349 - "Community 349"
 Cohesion: 0.11
 Nodes (19): 7. PR6 — Admin UI Simplification + API Surface, Acceptance, Backend API (ship before any frontend component), Bulk contract, Checklist policy, code:text (GET  /api/admin/verification-reports?lifecycle=&tier=&recomm), code:text (- calls promotion_gate.check_promotion), code:json ({) (+11 more)
 
-### Community 330 - "Community 330"
-Cohesion: 0.11
-Nodes (18): 10. PR1 Trigger Reasons, 11. Backfill, 19. E2E Acceptance Criteria, 22. What This Spec Does NOT Cover, 5. JSONB Schemas (Pydantic), 6. Lifecycle States + Transitions, 7. Reprocess Rule, code:python (class RiskFlag(BaseModel):) (+10 more)
-
-### Community 331 - "Community 331"
-Cohesion: 0.17
-Nodes (17): _bump_counts(), chat(), ChatBody, ConvUpsert, create_conversation(), flag_message(), FlagBody, guidance() (+9 more)
-
-### Community 332 - "Community 332"
-Cohesion: 0.14
-Nodes (13): Scale a capped mastery delta by the source trust weight., _weighted_delta(), _make_analytics(), Mock trust model — PR-fix-8 acceptance criteria.  AC2: Existing platform-attem, Verify the metadata key used for backfill matches what mock_engine writes., Same accuracy → platform delta is exactly 1/0.3 ≈ 3.33x larger., test_backfill_detection_logic(), test_correction_task_manual_log_no_canonical_ids() (+5 more)
-
-### Community 333 - "Community 333"
-Cohesion: 0.17
-Nodes (12): _build_app(), _FakeAdmin, _FakeAuth, Tests for the anonymous→permanent merge-claim endpoints.  Covers the Python or, SBStub plus a canned ``consume_profile_merge_claim`` RPC + fake auth admin., RpcSBStub, test_consume_ok_hashes_token_calls_rpc_and_deletes_anon_user(), test_consume_replay_is_idempotent_noop_and_does_not_redelete() (+4 more)
-
-### Community 334 - "Community 334"
-Cohesion: 0.17
-Nodes (13): get_recruitment(), SB, test_admin_list_can_see_all_statuses(), test_fake_generated_trailing_id_slug_does_not_resolve(), test_partial_uuid_does_not_resolve(), test_public_detail_excludes_unpublished(), test_resolver_does_not_use_uuid_ilike(), SB (+5 more)
-
-### Community 335 - "Community 335"
-Cohesion: 0.12
-Nodes (4): _ExplodingQ, _Q, _R, Queue table that raises on every read; used to simulate missing     eligibility
-
-### Community 336 - "Community 336"
-Cohesion: 0.12
-Nodes (18): bulk_apply(), bulk_dry_run(), _fetch_report(), _gate_blocker(), promote_report(), PromoteRequest, Return the gate's blocker shape if blocked, else None.      ``mode`` is ``"pro, Return the gate's blocker shape if blocked, else None.      ``mode`` is ``"pro (+10 more)
-
-### Community 337 - "Community 337"
-Cohesion: 0.11
-Nodes (4): FAQS, EXAMS, PROMPT_LINES, StartFreeButton()
-
-### Community 338 - "Community 338"
-Cohesion: 0.12
-Nodes (4): NEXT_ACTION_LABELS, NEXT_ACTION_ROUTES, UnifiedOnboardingShell(), useUnifiedOnboardingSession()
-
-### Community 339 - "Community 339"
-Cohesion: 0.11
-Nodes (9): chip, compEl, eligEl, first, last, middle, observerInstances, renderNav() (+1 more)
-
-### Community 340 - "Community 340"
-Cohesion: 0.11
-Nodes (5): VARIANTS, SAMPLE_OFFICIAL, SAMPLE_UNVERIFIED, SourceTrustBadge(), TRUST_MAP
-
-### Community 341 - "Community 341"
-Cohesion: 0.11
-Nodes (17): Before editing code — read order, Career Copilot — AI/Agent Context, code:block1 (Database entity  = recruitment        (public.recruitments)), code:bash (npm run lint), code:bash (grep -R "public.exams\|from(\"exams\"\|from('exams'" app act), code:block4 (027_user_events_and_form_submissions.sql), code:block5 (Trust > Speed), Current implementation state (Sprint 8 in progress) (+9 more)
-
-### Community 342 - "Community 342"
-Cohesion: 0.16
-Nodes (17): _host(), _iter_anchors(), _looks_official(), _path_depth(), Official-source resolver for aggregator-discovered detail pages.  The scraping, WordPress-style aggregators (Free Job Alert, Sarkari Result clones)     almost, _strip_label(), _wordpress_apply_online_resolver() (+9 more)
-
-### Community 343 - "Community 343"
-Cohesion: 0.15
-Nodes (16): _execute_with_retry(), list_scrape_runs(), Execute a PostgREST read with one retry on transient transport errors.      Su, _FlakyOnce, Stand-in for postgrest's APIError on a 42703 (column does not exist).     Carri, ReadError on the first call, success on the retry: the helper resets the     ca, A KeyError (e.g. the httpcore stream-state race, were it to reach here)     mus, PostgREST schema errors (42703 column-does-not-exist) are not transient:     su (+8 more)
-
-### Community 344 - "Community 344"
-Cohesion: 0.16
-Nodes (17): PR 4 — leaderboard build respects privacy + system-verified metric scope., test_behavior_board_rejects_non_system_verified_metric(), test_opt_out_user_gets_no_rank_but_row_written(), test_solo_mode_user_is_excluded_entirely(), build_group_leaderboard(), build_leaderboard(), _percentile_rank(), _rank_band() (+9 more)
-
-### Community 345 - "Community 345"
-Cohesion: 0.19
-Nodes (18): classify_persona(), Pure function: signals -> persona dict. Safe with empty or partial input., _base_signals(), test_budget_sensitive_never_inferred_from_category(), test_budget_sensitive_only_from_explicit_flag(), test_consistent_executor_when_completion_high(), test_empty_signals_produce_unknown_or_insufficient_data(), test_high_miss_low_completion_is_planner_poor_executor_and_high_risk() (+10 more)
-
-### Community 346 - "Community 346"
-Cohesion: 0.24
-Nodes (17): evaluate_promotion_gate(), Decide whether a queue item is allowed to promote.      * If ``official_source, _all_recruitment_level_verified(), _multi_post_queue_item(), A queue item with two posts. Used by the per-post tests below., _SB, test_gate_blocks_when_official_source_unresolved(), test_gate_blocks_when_only_requires_domicile_is_unverified() (+9 more)
-
-### Community 347 - "Community 347"
-Cohesion: 0.17
-Nodes (16): book_mentor(), cancel_booking(), CancelBody, GroupJoinBody, _is_uuid(), join_group(), list_bookings(), list_groups() (+8 more)
-
-### Community 348 - "Community 348"
-Cohesion: 0.23
-Nodes (16): create_mistake(), delete_mistake(), _is_uuid(), list_mistakes(), MistakeCreate, MistakePatch, _now_iso(), promote_to_card() (+8 more)
-
-### Community 349 - "Community 349"
-Cohesion: 0.18
-Nodes (15): auto_enqueue_from_text_extract(), _engine_is_disabled(), enqueue_ocr_job(), _finalize_skipped(), get_job_by_id(), get_latest_job_for_item(), _is_uuid(), _now_iso() (+7 more)
-
 ### Community 350 - "Community 350"
-Cohesion: 0.15
-Nodes (11): _app(), HTTP contract for ``GET /api/exams/eligibility-summary`` (PR-D1)., The endpoint must never 500 a brand-new user. Per-call DB failures     are swal, test_summary_endpoint_returns_four_buckets(), test_summary_endpoint_swallows_db_errors_returns_empty_buckets(), test_collect_signals_safe_when_tables_missing(), _BrokenSB, test_require_select_raises_database_error() (+3 more)
+Cohesion: 0.14
+Nodes (18): _audit_recompute(), _is_service_role(), Eligibility API.  Endpoints (mirrors the reference repo):     POST /api/eligi, recompute(), RecomputeBody, _get_results_supabase_client(), Eligibility API.  Endpoints (mirrors the reference repo):     POST /api/eligi, Prefer async Supabase client; fall back to sync client for compatibility. (+10 more)
 
 ### Community 351 - "Community 351"
 Cohesion: 0.21
-Nodes (16): compare_observations(), has_unresolved_conflict(), Group observations by field and produce the conflict list.      Rules:, Return True if any conflict on the report still has ``status='open'``., _obs(), Tests for ``app.scraping.consensus_engine``.  Plan §4 acceptance:  * officia, test_aggregator_only_disagreement_is_not_canonical(), test_conflict_id_is_unique_per_field() (+8 more)
+Nodes (19): DuplicateDecision, find_duplicate(), _norm(), Decide whether ``extracted`` duplicates anything known.      Signals (first ma, _title_ratio(), build_recruitment_key(), compute_similarity_key(), Canonical similarity key. Used identically for canonical recruitments,     open (+11 more)
 
 ### Community 352 - "Community 352"
-Cohesion: 0.21
-Nodes (14): _mk_rec(), _set_sb(), test_missing_apply_when_open(), test_missing_notification(), test_publish_ready(), test_reversed_dates(), test_unverified_org(), test_unverified_source() (+6 more)
+Cohesion: 0.11
+Nodes (4): _ExplodingQ, _Q, _R, Queue table that raises on every read; used to simulate missing     eligibility
 
 ### Community 353 - "Community 353"
-Cohesion: 0.16
-Nodes (10): FakeQuery, FakeSB, PR6 — Onboarding ``fields=`` allowlist + cross-session boundary.  Asserts the, The hint-filter touches only candidate_field_registry — make sure     no other, test_all_unknown_collapses_to_empty(), test_duplicate_hints_deduped_pre_registry_check(), test_empty_input_returns_empty_list(), test_filter_does_not_consult_user_or_session_tables() (+2 more)
+Cohesion: 0.25
+Nodes (18): _capture_profile(), Runner-level regression tests for UserProfile field wiring.  These tests guard, _sb_with(), test_runner_default_pwbd_stays_none(), test_runner_propagates_ex_serviceman_from_aspirant_reservations(), test_runner_propagates_pwbd_from_aspirant_reservations_when_profiles_default(), test_runner_propagates_pwbd_from_profiles_when_aspirant_reservations_empty(), test_runner_propagates_service_years_from_profiles() (+10 more)
 
 ### Community 354 - "Community 354"
-Cohesion: 0.21
-Nodes (17): _candidate_from_recommendation(), _day_bucket(), _priority_for_candidate(), _rec(), _monday(), _client(), _monday_of(), Build a stub DB seeded with sessions/tasks/mocks for one week. (+9 more)
+Cohesion: 0.18
+Nodes (18): _client(), Subjects (progress) service + API tests., _seed(), test_api_returns_items_envelope(), test_subjects_empty_when_no_target_exam(), test_subjects_orders_weak_first_then_alpha(), test_subjects_returns_averaged_mastery_grouped_by_subject(), test_subjects_skips_draft_and_rejected_coverage() (+10 more)
+
+### Community 355 - "Community 355"
+Cohesion: 0.19
+Nodes (18): Deterministic snapshot hashing for verification reports.  A verification repor, test_canonical_hash_post_order_irrelevant(), test_canonical_hash_requires_posts_argument(), test_canonical_hash_uses_post_names(), test_normalize_drops_none_and_empty(), test_normalize_rejects_non_dict(), build_canonical_snapshot_hash(), _extract_post_names() (+10 more)
+
+### Community 356 - "Community 356"
+Cohesion: 0.22
+Nodes (18): evaluate_promotion_gate(), GateResult, Decide whether a queue item is allowed to promote.      * If ``official_source, _all_recruitment_level_verified(), _multi_post_queue_item(), A queue item with two posts. Used by the per-post tests below., _SB, test_gate_blocks_when_official_source_unresolved() (+10 more)
+
+### Community 357 - "Community 357"
+Cohesion: 0.11
+Nodes (19): 8. Graph, code:text (app/backend/app/graph/schemas.py), code:python (from typing import Any), code:text (Candidate), code:python (nodes = [), code:text (User), code:text (Recommended because you target SSC CGL, Quant is a weak area), code:text (User) (+11 more)
+
+### Community 358 - "Community 358"
+Cohesion: 0.11
+Nodes (18): Admin visibility (PR4), API surface (PR1), code:block1 (profile facts + onboarding answers          ┐), code:json ({), Consumed by Study OS Mission Control (PR3), Future PR path, Internal Aspirant Persona — v1 (PR1 Foundation), Layer responsibilities (+10 more)
 
 ### Community 359 - "Community 359"
-Cohesion: 0.12
-Nodes (8): body, checked, cleaned, content, fs, lines, placeholderPhrases, requiredSections
+Cohesion: 0.11
+Nodes (18): 13. Admin review UX requirements, 14. Safety rules, 15. Release checklist, 16. Recommended MVP scope, 17. Final recommendation, 1. Purpose, 2. Strategic decision, 3. Why this strategy is feasible (+10 more)
 
 ### Community 360 - "Community 360"
-Cohesion: 0.12
-Nodes (16): Admin visibility (PR4), code:json ({), code:block2 (1. incomplete today task   → study_task           (first non), code:json ({), Deterministic next-best-action, Exam intelligence wiring (PR5), Future PRs, How persona / study_policy affects the UI (+8 more)
+Cohesion: 0.11
+Nodes (19): 7. PR6 — Admin UI Simplification + API Surface, Acceptance, Backend API (ship before any frontend component), Bulk contract, Checklist policy, code:text (GET  /api/admin/verification-reports?lifecycle=&tier=&recomm), code:text (- calls promotion_gate.check_promotion), code:json ({) (+11 more)
 
 ### Community 361 - "Community 361"
-Cohesion: 0.12
-Nodes (12): 1. `candidate_field_registry`, 2. `recruitment_question_requirements`, 3. `funnel_sessions`, 4. `onboarding_sessions`, 5. `onboarding_answers`, 6. `funnel_events`, 7. Optional `knowledge_base_university_thresholds`, code:sql (create table if not exists public.knowledge_base_university_) (+4 more)
+Cohesion: 0.17
+Nodes (17): _bump_counts(), chat(), ChatBody, ConvUpsert, create_conversation(), flag_message(), FlagBody, guidance() (+9 more)
 
 ### Community 362 - "Community 362"
-Cohesion: 0.12
-Nodes (17): 4. State Machine, Application lifecycle, code:text (discovered), code:text (pending), code:text (scrape_queue item must not become promoted unless canonical ), code:text (viewed), code:text (visible), code:text (app/backend/app/common/state_machine.py) (+9 more)
+Cohesion: 0.15
+Nodes (16): _execute_with_retry(), list_scrape_runs(), Execute a PostgREST read with one retry on transient transport errors.      Su, _FlakyOnce, Stand-in for postgrest's APIError on a 42703 (column does not exist).     Carri, ReadError on the first call, success on the retry: the helper resets the     ca, A KeyError (e.g. the httpcore stream-state race, were it to reach here)     mus, PostgREST schema errors (42703 column-does-not-exist) are not transient:     su (+8 more)
 
 ### Community 363 - "Community 363"
 Cohesion: 0.12
-Nodes (16): 1) Create import SQL from template, 2) Fill evidence-first, 3) Add coverage only after evidence exists, 4) Add competition and policy context safely, 5) Validate readiness before planner activation, code:bash (python app/backend/scripts/validate_exam_intelligence_seed.p), code:bash (psql "$DATABASE_URL" -f app/supabase/seeds/exam_intelligence), Column-name inconsistency (+8 more)
+Nodes (16): sample_template_cmd(), main(), scan_file(), `study_sessions.duration_minutes` does not exist (migration 017     defines onl, test_source_does_not_select_nonexistent_duration_minutes(), ADMIN_DIRS, FORBIDDEN, fs (+8 more)
 
 ### Community 364 - "Community 364"
-Cohesion: 0.12
-Nodes (16): Career Copilot — Monetization Strategy, Community monetization specifics, Core principle, Demo eligibility design, Elite, Feature paywall matrix, Forum access, Free (authenticated, no paid plan) (+8 more)
+Cohesion: 0.17
+Nodes (12): _build_app(), _FakeAdmin, _FakeAuth, Tests for the anonymous→permanent merge-claim endpoints.  Covers the Python or, SBStub plus a canned ``consume_profile_merge_claim`` RPC + fake auth admin., RpcSBStub, test_consume_ok_hashes_token_calls_rpc_and_deletes_anon_user(), test_consume_replay_is_idempotent_noop_and_does_not_redelete() (+4 more)
 
 ### Community 365 - "Community 365"
-Cohesion: 0.12
-Nodes (16): admin_only (6) — trust / moderation / verification / KYC sensitive, authenticated_owner_only (31) — per-user; need owner-column policy first, Classification legend, code:sql (-- Every public table with RLS enabled and zero policies (re), Live RLS-enabled / zero-policy tables (100), grouped by classification, Live verification, needs product decision (13) — blog / community / forum public content, public_catalog_read (19) — recruitment catalog/criteria + static reference (+8 more)
+Cohesion: 0.17
+Nodes (13): get_recruitment(), SB, test_admin_list_can_see_all_statuses(), test_fake_generated_trailing_id_slug_does_not_resolve(), test_partial_uuid_does_not_resolve(), test_public_detail_excludes_unpublished(), test_resolver_does_not_use_uuid_ilike(), SB (+5 more)
 
 ### Community 366 - "Community 366"
-Cohesion: 0.12
-Nodes (17): 0.1 Transition Matrix — Single Source of Truth, 0.2 Orchestrator Owner, 0.3 Execution Mode Flag, 0.4 Hook Points Per Stage, 0.5 Promotion Gate Timing, 0.6 `recommended_action` Enum Growth Plan, 0.7 PR Ordering, 0. Cross-cutting Glue (+9 more)
+Cohesion: 0.14
+Nodes (17): claim_pending_recomputes(), drain_recompute_queue_async(), Atomically claim pending recomputes via the claim_eligibility_queue RPC., Async recompute queue drain with bounded concurrency., SB, test_admin_queue_counts_pending(), test_async_worker_blocked_without_safe_runner(), test_async_worker_processes_multiple_rows_with_limit() (+9 more)
 
 ### Community 367 - "Community 367"
-Cohesion: 0.16
-Nodes (16): _audit_recompute(), _is_service_role(), Eligibility API.  Endpoints (mirrors the reference repo):     POST /api/eligi, recompute(), RecomputeBody, _get_results_supabase_client(), Eligibility API.  Endpoints (mirrors the reference repo):     POST /api/eligi, Prefer async Supabase client; fall back to sync client for compatibility. (+8 more)
+Cohesion: 0.19
+Nodes (18): classify_persona(), Pure function: signals -> persona dict. Safe with empty or partial input., _base_signals(), test_budget_sensitive_never_inferred_from_category(), test_budget_sensitive_only_from_explicit_flag(), test_consistent_executor_when_completion_high(), test_empty_signals_produce_unknown_or_insufficient_data(), test_high_miss_low_completion_is_planner_poor_executor_and_high_risk() (+10 more)
 
 ### Community 368 - "Community 368"
-Cohesion: 0.2
-Nodes (16): normalize_source_registry(), Build a :class:`ScrapeSource` from a ``source_registry`` row.      Reads every, Pick the URL the runner should fetch for this source.          Returns ``None`, test_aggregator_source_prefers_crawl_url(), test_api_adapter_picks_api_url(), test_direct_source_prefers_notification_url(), test_discovery_only_flag_routes_to_crawl_url_even_without_source_type(), test_pdf_adapter_picks_pdf_bulletin_url() (+8 more)
+Cohesion: 0.16
+Nodes (17): _build_db(), _opt(), _question(), Pipeline gate — verify draft questions cannot reach live without reviewer verify, Questions that reached reviewer_status='verified' are selectable., published' questions (already past verified) remain selectable (backward compat), In a bank with mixed statuses, only verified/published questions are     includ, Return a seeded DB where all questions have *question_status*. (+9 more)
 
 ### Community 369 - "Community 369"
-Cohesion: 0.18
-Nodes (16): eligibility_input_me(), build_user_eligibility_profile(), _meaningful_pwbd_value(), Return the PwBD value when it carries information, else ``None``.      The leg, _SB, test_debug_endpoint(), test_invalid_numeric_rows_skipped(), test_mapper_contract_and_precedence() (+8 more)
+Cohesion: 0.11
+Nodes (9): chip, compEl, eligEl, first, last, middle, observerInstances, renderNav() (+1 more)
 
 ### Community 370 - "Community 370"
-Cohesion: 0.17
-Nodes (14): _client(), Tests for the universal /api/evidence/{kind}/{id} endpoint.  Admin-permission, pyq_option is now a registered evidence kind so the review-queue     EvidenceDr, test_evidence_400_for_unknown_kind(), test_evidence_404_for_missing_row(), test_evidence_pyq_option_kind_returns_row(), test_evidence_requires_admin_permission(), test_evidence_returns_row_and_trust_envelope() (+6 more)
+Cohesion: 0.11
+Nodes (5): VARIANTS, SAMPLE_OFFICIAL, SAMPLE_UNVERIFIED, SourceTrustBadge(), TRUST_MAP
 
 ### Community 371 - "Community 371"
-Cohesion: 0.19
-Nodes (16): PR3 promotion gate tests — gate strengthens with consensus.  Plan §4 ship gate, _report(), test_missing_conflicts_field_is_treated_as_no_conflicts(), test_tier_a_blocks_on_unresolved_conflict(), test_tier_a_official_proof_missing_takes_priority_over_conflict(), test_tier_a_passes_when_all_conflicts_resolved(), test_tier_b_still_passes_with_open_conflict_at_pr3(), test_tier_c_passes_unconditionally() (+8 more)
+Cohesion: 0.12
+Nodes (12): App(), App(), useHash(), useTweaks(), App(), App(), GROUP_LABELS, NAV_GLYPHS (+4 more)
 
 ### Community 372 - "Community 372"
-Cohesion: 0.12
-Nodes (17): 4. State Machine, Application lifecycle, code:text (discovered), code:text (pending), code:text (scrape_queue item must not become promoted unless canonical ), code:text (viewed), code:text (visible), code:text (app/backend/app/common/state_machine.py) (+9 more)
+Cohesion: 0.11
+Nodes (17): Before editing code — read order, Career Copilot — AI/Agent Context, code:block1 (Database entity  = recruitment        (public.recruitments)), code:bash (npm run lint), code:bash (grep -R "public.exams\|from(\"exams\"\|from('exams'" app act), code:block4 (027_user_events_and_form_submissions.sql), code:block5 (Trust > Speed), Current implementation state (Sprint 8 in progress) (+9 more)
 
 ### Community 373 - "Community 373"
-Cohesion: 0.12
-Nodes (12): 1. `candidate_field_registry`, 2. `recruitment_question_requirements`, 3. `funnel_sessions`, 4. `onboarding_sessions`, 5. `onboarding_answers`, 6. `funnel_events`, 7. Optional `knowledge_base_university_thresholds`, code:sql (create table if not exists public.knowledge_base_university_) (+4 more)
+Cohesion: 0.25
+Nodes (17): Pick this run's queries and the next cursor (pure; unit-tested).      Rotates, _select_queries_for_run(), _latest_cursor(), P1.1: SerpApi query rotation via the scrape_config cursor.  A permanent ``quer, _src(), test_cursor_advances_on_mid_loop_exception(), test_cursor_advances_on_zero_result_queries(), test_cursor_four_wraps_to_two() (+9 more)
 
 ### Community 374 - "Community 374"
 Cohesion: 0.12
-Nodes (16): Admin visibility (PR4), code:json ({), code:block2 (1. incomplete today task   → study_task           (first non), code:json ({), Deterministic next-best-action, Exam intelligence wiring (PR5), Future PRs, How persona / study_policy affects the UI (+8 more)
+Nodes (4): _ExplodingQ, _Q, _R, Queue table that raises on every read; used to simulate missing     eligibility
 
 ### Community 375 - "Community 375"
-Cohesion: 0.12
-Nodes (17): 12. Recommended implementation phases, code:text (rss_url), code:text (title), code:text (official_source_resolved = true/false), code:text (% aggregator listings resolved to official sources), Phase 0: Preserve the trust gate, Phase 10: Admin review and promotion, Phase 11: Eligibility recompute (+9 more)
+Cohesion: 0.23
+Nodes (16): create_mistake(), delete_mistake(), _is_uuid(), list_mistakes(), MistakeCreate, MistakePatch, _now_iso(), promote_to_card() (+8 more)
 
 ### Community 376 - "Community 376"
-Cohesion: 0.12
-Nodes (17): 0.1 Transition Matrix — Single Source of Truth, 0.2 Orchestrator Owner, 0.3 Execution Mode Flag, 0.4 Hook Points Per Stage, 0.5 Promotion Gate Timing, 0.6 `recommended_action` Enum Growth Plan, 0.7 PR Ordering, 0. Cross-cutting Glue (+9 more)
+Cohesion: 0.17
+Nodes (16): book_mentor(), cancel_booking(), CancelBody, GroupJoinBody, _is_uuid(), join_group(), list_bookings(), list_groups() (+8 more)
 
 ### Community 377 - "Community 377"
-Cohesion: 0.12
-Nodes (13): Health, Career Copilot backend (Phase 1.5).  Authentication is delegated to Supabase A, # NOTE: community_people_router was removed — every route under that prefix, # NOTE: community_people_router was removed — every route under that prefix, # NOTE: community_people_router was removed — every route under that prefix, # NOTE: community_people_router was removed — every route under that prefix, # NOTE: community_people_router was removed — every route under that prefix, # NOTE: community_people_router was removed — every route under that prefix (+5 more)
+Cohesion: 0.26
+Nodes (16): build_user_eligibility_profile(), _meaningful_pwbd_value(), Return the PwBD value when it carries information, else ``None``.      The leg, AttemptRow, _Base, CertificationRow, CredentialRow, EducationRow (+8 more)
 
 ### Community 378 - "Community 378"
-Cohesion: 0.15
-Nodes (15): Consensus engine for the Recruitment Verification Gateway (PR plan §4).  Compa, ConsensusResult, _extract_post_names(), FieldConflict, _flatten_observation(), _make_conflict_id(), _norm_value(), Consensus engine for the Recruitment Verification Gateway (PR plan §4).  Compa (+7 more)
+Cohesion: 0.16
+Nodes (10): FakeQuery, FakeSB, PR6 — Onboarding ``fields=`` allowlist + cross-session boundary.  Asserts the, The hint-filter touches only candidate_field_registry — make sure     no other, test_all_unknown_collapses_to_empty(), test_duplicate_hints_deduped_pre_registry_check(), test_empty_input_returns_empty_list(), test_filter_does_not_consult_user_or_session_tables() (+2 more)
 
 ### Community 379 - "Community 379"
 Cohesion: 0.12
-Nodes (16): build_task_reasoning_response(), _load_persona_snapshot(), _load_task_for_user(), Load a study task, but only if its plan belongs to ``user_id``.      Returns `, Load a study task, but only if its plan belongs to ``user_id``.      Returns `, Compose the GET /api/study/task-reasoning/:task_id response.      Returns ``No, Compose the GET /api/study/task-reasoning/:task_id response.      Returns ``No, Load a study task, but only if its plan belongs to ``user_id``.      Returns ` (+8 more)
+Nodes (9): _annotate(), list_recruitments(), saved_recruitments(), test_needs_review_visible_admin_hidden_public(), Query, Resp, test_list_recruitments_with_q_uses_trimmed_string(), test_list_recruitments_without_q_does_not_ilike() (+1 more)
 
 ### Community 380 - "Community 380"
-Cohesion: 0.13
-Nodes (8): _annotate(), list_recruitments(), saved_recruitments(), Query, Resp, test_list_recruitments_with_q_uses_trimmed_string(), test_list_recruitments_without_q_does_not_ilike(), test_public_list_only_published()
-
-### Community 381 - "Community 381"
-Cohesion: 0.23
-Nodes (11): _build_app(), _FakeAdmin, _FakeAuth, _FakeUser, Cross-request token cache in app.core.auth.  Dashboard boot fires 5+ protected, _reset_cache(), test_invalid_token_returns_401_and_is_not_cached(), test_invalidate_token_evicts_cache_entry() (+3 more)
+Cohesion: 0.21
+Nodes (16): has_unresolved_conflict(), Return True if any conflict on the report still has ``status='open'``., compare_observations(), Group observations by field and produce the conflict list.      Rules:, _obs(), Tests for ``app.scraping.consensus_engine``.  Plan §4 acceptance:  * officia, test_aggregator_only_disagreement_is_not_canonical(), test_conflict_id_is_unique_per_field() (+8 more)
 
 ### Community 382 - "Community 382"
-Cohesion: 0.17
-Nodes (15): _active_dismissals(), _confidence(), Next-question selection for the tiny-question card.  Selection rules (v1, dete, Return ``{question, reason, persona_context}``; question may be None., A very rough confidence proxy: share of known dimensions × completeness., _reason_for(), _safe(), select_next_question() (+7 more)
+Cohesion: 0.21
+Nodes (11): Props, QuestionPanel(), styles, hashQuestionText(), normalizeQuestionText(), sha256Hex(), result, cleanWhitespace() (+3 more)
 
-### Community 383 - "Community 383"
-Cohesion: 0.23
-Nodes (13): _app(), _expect_target_exam_required(), Canonical-exam enforcement on plan endpoints + ``/target-exam`` contract.  Cov, test_get_plan_draft_enforces_canonical_target_when_flag_on(), test_get_target_exam_returns_exam_when_set(), test_get_target_exam_returns_none_when_unset(), test_plan_endpoints_skip_enforcement_when_flag_off(), test_post_plan_apply_enforces_canonical_target_when_flag_on() (+5 more)
-
-### Community 384 - "Community 384"
-Cohesion: 0.14
-Nodes (10): App(), useHash(), App(), App(), GROUP_LABELS, NAV_GLYPHS, ROUTES, TWEAK_DEFAULTS (+2 more)
-
-### Community 385 - "Community 385"
+### Community 386 - "Community 386"
 Cohesion: 0.12
-Nodes (10): NUMERIC_TYPES, RULE_TYPES, SCOPES, STATUSES, TEXT_TYPES, mockDel, mockGet, mockPost (+2 more)
+Nodes (8): body, checked, cleaned, content, fs, lines, placeholderPhrases, requiredSections
 
 ### Community 387 - "Community 387"
-Cohesion: 0.13
-Nodes (4): DATA, BACKEND_GAPS, COMPONENTS, SURFACE_MATRIX
+Cohesion: 0.12
+Nodes (16): Admin visibility (PR4), code:json ({), code:block2 (1. incomplete today task   → study_task           (first non), code:json ({), Deterministic next-best-action, Exam intelligence wiring (PR5), Future PRs, How persona / study_policy affects the UI (+8 more)
 
 ### Community 388 - "Community 388"
 Cohesion: 0.12
-Nodes (15): 1) Consolidate common helpers, 2) Improve error propagation, 3) Security & permissions hardening, 4) Optimize queue queries, 5) Introduce asynchronous APIs (incrementally), 6) Enhance documentation, 7) Add unit + integration tests, Code Review & Pipeline Analysis — Implementation Steps (+7 more)
+Nodes (12): 1. `candidate_field_registry`, 2. `recruitment_question_requirements`, 3. `funnel_sessions`, 4. `onboarding_sessions`, 5. `onboarding_answers`, 6. `funnel_events`, 7. Optional `knowledge_base_university_thresholds`, code:sql (create table if not exists public.knowledge_base_university_) (+4 more)
 
 ### Community 389 - "Community 389"
 Cohesion: 0.12
-Nodes (16): 3. Queue and Priority Queue, code:sql (alter table public.eligibility_recompute_queue), code:text (app/backend/app/queues/priority.py), code:python (def deadline_priority(days_left: int | None) -> int:), code:text (priority_score =), code:text (priority_score =), code:text (priority_score =), code:text (priority_score =) (+8 more)
+Nodes (17): 4. State Machine, Application lifecycle, code:text (discovered), code:text (pending), code:text (scrape_queue item must not become promoted unless canonical ), code:text (viewed), code:text (visible), code:text (app/backend/app/common/state_machine.py) (+9 more)
 
 ### Community 390 - "Community 390"
 Cohesion: 0.12
-Nodes (15): Acceptance criteria, Architecture, code:block1 (profile facts ─┐), code:json ({), code:json ({), code:block4 (PersonaSnapshot.v1 ──► StudyPolicy.v1 ──► MissionControl.v1), First PR scope, GET /api/study/mission-control (+7 more)
+Nodes (16): 1) Create import SQL from template, 2) Fill evidence-first, 3) Add coverage only after evidence exists, 4) Add competition and policy context safely, 5) Validate readiness before planner activation, code:bash (python app/backend/scripts/validate_exam_intelligence_seed.p), code:bash (psql "$DATABASE_URL" -f app/supabase/seeds/exam_intelligence), Column-name inconsistency (+8 more)
 
 ### Community 391 - "Community 391"
-Cohesion: 0.15
-Nodes (16): get_plan_preferences(), Validate + persist plan preferences for ``user_id``.      Only known fields ar, Return the user's plan preferences, falling back to defaults., _safe(), upsert_plan_preferences(), _active_plan(), Regenerate the user's plan in response to a runtime signal.      No-ops (retur, Refresh every active plan that hasn't been regenerated today.      Intended fo (+8 more)
+Cohesion: 0.12
+Nodes (16): Career Copilot — Monetization Strategy, Community monetization specifics, Core principle, Demo eligibility design, Elite, Feature paywall matrix, Forum access, Free (authenticated, no paid plan) (+8 more)
 
 ### Community 392 - "Community 392"
-Cohesion: 0.25
-Nodes (13): Pick the official-source URL referenced by an aggregator detail page.      Ret, resolve_official_source(), _src(), test_resolve_with_registry_falls_back_to_generic_resolver(), test_resolve_with_registry_uses_first_match(), test_resolver_picks_deepest_gov_anchor_when_multiple(), test_resolver_picks_gov_anchor(), test_resolver_prefers_registry_host_when_present() (+5 more)
+Cohesion: 0.12
+Nodes (16): admin_only (6) — trust / moderation / verification / KYC sensitive, authenticated_owner_only (31) — per-user; need owner-column policy first, Classification legend, code:sql (-- Every public table with RLS enabled and zero policies (re), Live RLS-enabled / zero-policy tables (100), grouped by classification, Live verification, needs product decision (13) — blog / community / forum public content, public_catalog_read (19) — recruitment catalog/criteria + static reference (+8 more)
 
 ### Community 393 - "Community 393"
 Cohesion: 0.12
-Nodes (15): _list_queue(), ``q`` translates to a PostgREST ``or_`` ILIKE filter on     source_name + sourc, ``source_type`` lives on source_registry, not scrape_queue.     The endpoint pu, The response carries ``filters`` so the UI can confirm the active     set. Test, test_queue_list_default_filters_to_pending(), test_queue_list_pagination_translates_to_postgrest_range(), test_queue_list_q_param_sends_ilike_clause(), test_queue_list_response_carries_filter_echo() (+7 more)
+Nodes (17): 0.1 Transition Matrix — Single Source of Truth, 0.2 Orchestrator Owner, 0.3 Execution Mode Flag, 0.4 Hook Points Per Stage, 0.5 Promotion Gate Timing, 0.6 `recommended_action` Enum Growth Plan, 0.7 PR Ordering, 0. Cross-cutting Glue (+9 more)
 
 ### Community 394 - "Community 394"
-Cohesion: 0.29
-Nodes (15): _client(), PR 1 — API integration via the FastAPI test client., _seed_min_db(), test_compare_me_self_view_only(), test_leaderboard_endpoint_returns_empty_shape_when_no_rows(), test_put_settings_persists(), test_settings_get_returns_safe_defaults_when_unset(), test_titles_endpoint_returns_catalog_even_when_empty() (+7 more)
+Cohesion: 0.17
+Nodes (14): _client(), Tests for the universal /api/evidence/{kind}/{id} endpoint.  Admin-permission, pyq_option is now a registered evidence kind so the review-queue     EvidenceDr, test_evidence_400_for_unknown_kind(), test_evidence_404_for_missing_row(), test_evidence_pyq_option_kind_returns_row(), test_evidence_requires_admin_permission(), test_evidence_returns_row_and_trust_envelope() (+6 more)
 
 ### Community 395 - "Community 395"
-Cohesion: 0.12
-Nodes (15): 1) Consolidate common helpers, 2) Improve error propagation, 3) Security & permissions hardening, 4) Optimize queue queries, 5) Introduce asynchronous APIs (incrementally), 6) Enhance documentation, 7) Add unit + integration tests, Code Review & Pipeline Analysis — Implementation Steps (+7 more)
+Cohesion: 0.16
+Nodes (17): test_canonical_hash_post_order_irrelevant(), test_canonical_hash_requires_posts_argument(), test_canonical_hash_uses_post_names(), test_normalize_drops_none_and_empty(), test_normalize_rejects_non_dict(), test_source_and_canonical_share_normalisation(), build_canonical_snapshot_hash(), _extract_post_names() (+9 more)
 
 ### Community 396 - "Community 396"
-Cohesion: 0.12
-Nodes (16): 3. Queue and Priority Queue, code:sql (alter table public.eligibility_recompute_queue), code:text (app/backend/app/queues/priority.py), code:python (def deadline_priority(days_left: int | None) -> int:), code:text (priority_score =), code:text (priority_score =), code:text (priority_score =), code:text (priority_score =) (+8 more)
+Cohesion: 0.19
+Nodes (16): PR3 promotion gate tests — gate strengthens with consensus.  Plan §4 ship gate, _report(), test_missing_conflicts_field_is_treated_as_no_conflicts(), test_tier_a_blocks_on_unresolved_conflict(), test_tier_a_official_proof_missing_takes_priority_over_conflict(), test_tier_a_passes_when_all_conflicts_resolved(), test_tier_b_still_passes_with_open_conflict_at_pr3(), test_tier_c_passes_unconditionally() (+8 more)
 
 ### Community 397 - "Community 397"
 Cohesion: 0.12
-Nodes (16): 5.4 Layer 4: Official-source resolution, 5.5 Layer 5: Official extraction, 5.6 Layer 6: Scrape queue and admin review, 5.7 Layer 7: Canonical promotion, 5.8 Layer 8: Eligibility recompute and alerts, 5. Target ingestion architecture, code:text (official_notification_documents), code:text (id) (+8 more)
+Nodes (17): 4. State Machine, Application lifecycle, code:text (discovered), code:text (pending), code:text (scrape_queue item must not become promoted unless canonical ), code:text (viewed), code:text (visible), code:text (app/backend/app/common/state_machine.py) (+9 more)
 
 ### Community 398 - "Community 398"
+Cohesion: 0.12
+Nodes (12): 1. `candidate_field_registry`, 2. `recruitment_question_requirements`, 3. `funnel_sessions`, 4. `onboarding_sessions`, 5. `onboarding_answers`, 6. `funnel_events`, 7. Optional `knowledge_base_university_thresholds`, code:sql (create table if not exists public.knowledge_base_university_) (+4 more)
+
+### Community 399 - "Community 399"
+Cohesion: 0.12
+Nodes (16): Admin visibility (PR4), code:json ({), code:block2 (1. incomplete today task   → study_task           (first non), code:json ({), Deterministic next-best-action, Exam intelligence wiring (PR5), Future PRs, How persona / study_policy affects the UI (+8 more)
+
+### Community 400 - "Community 400"
+Cohesion: 0.12
+Nodes (17): 12. Recommended implementation phases, code:text (rss_url), code:text (title), code:text (official_source_resolved = true/false), code:text (% aggregator listings resolved to official sources), Phase 0: Preserve the trust gate, Phase 10: Admin review and promotion, Phase 11: Eligibility recompute (+9 more)
+
+### Community 401 - "Community 401"
+Cohesion: 0.12
+Nodes (17): 0.1 Transition Matrix — Single Source of Truth, 0.2 Orchestrator Owner, 0.3 Execution Mode Flag, 0.4 Hook Points Per Stage, 0.5 Promotion Gate Timing, 0.6 `recommended_action` Enum Growth Plan, 0.7 PR Ordering, 0. Cross-cutting Glue (+9 more)
+
+### Community 402 - "Community 402"
+Cohesion: 0.15
+Nodes (7): canonical_level(), Return the canonical level slug for ``text``, or ``None`` if no     alias match, Unit tests for ``app.eligibility.education_taxonomy``.  The taxonomy replaces, test_canonical_level(), test_canonical_level_does_not_match_inside_unrelated_word(), test_canonical_level_handles_punctuation_and_separators(), test_canonical_level_prefers_longer_alias_in_phrase()
+
+### Community 403 - "Community 403"
+Cohesion: 0.17
+Nodes (15): _active_dismissals(), _confidence(), Next-question selection for the tiny-question card.  Selection rules (v1, dete, Return ``{question, reason, persona_context}``; question may be None., A very rough confidence proxy: share of known dimensions × completeness., _reason_for(), _safe(), select_next_question() (+7 more)
+
+### Community 404 - "Community 404"
+Cohesion: 0.12
+Nodes (16): start(), _question_snapshot(), Frozen copy of a question + its options, stored in mock_attempt_responses., Frozen copy of a question + its options, stored in mock_attempt_responses., Frozen copy of a question + its options, stored in mock_attempt_responses., Create a new in_progress attempt.      Raises:         LookupError — template, Create a new in_progress attempt.      Raises:         LookupError — template, Create a new in_progress attempt.      Raises:         LookupError — template (+8 more)
+
+### Community 405 - "Community 405"
+Cohesion: 0.23
+Nodes (15): _criteria_difficulty_targets(), Apportion ``total`` questions across difficulty buckets by ``mix`` fractions., Apportion ``total`` questions across difficulty buckets by ``mix`` fractions., _db_with_section(), _q(), PR-fix-6 Fix 3 — runtime ``criteria`` selector.  ``select_questions_for_templa, End-to-end: a criteria-only template no longer needs the PR1 seed fallback., test_criteria_backfills_short_bucket() (+7 more)
+
+### Community 406 - "Community 406"
+Cohesion: 0.23
+Nodes (11): _build_app(), _FakeAdmin, _FakeAuth, _FakeUser, Cross-request token cache in app.core.auth.  Dashboard boot fires 5+ protected, _reset_cache(), test_invalid_token_returns_401_and_is_not_cached(), test_invalidate_token_evicts_cache_entry() (+3 more)
+
+### Community 407 - "Community 407"
+Cohesion: 0.2
+Nodes (14): seed_lesson(), seed_section(), Entitlement, lesson read, and progress write tests., test_access_state_for_enrolled_user(), test_enrolled_user_reads_locked_lesson(), test_locked_lesson_returns_403_without_enrollment(), test_preview_lesson_readable_without_enrollment(), test_progress_write_requires_enrollment_and_upserts() (+6 more)
+
+### Community 408 - "Community 408"
+Cohesion: 0.23
+Nodes (13): _app(), _expect_target_exam_required(), Canonical-exam enforcement on plan endpoints + ``/target-exam`` contract.  Cov, test_get_plan_draft_enforces_canonical_target_when_flag_on(), test_get_target_exam_returns_exam_when_set(), test_get_target_exam_returns_none_when_unset(), test_plan_endpoints_skip_enforcement_when_flag_off(), test_post_plan_apply_enforces_canonical_target_when_flag_on() (+5 more)
+
+### Community 409 - "Community 409"
+Cohesion: 0.12
+Nodes (10): NUMERIC_TYPES, RULE_TYPES, SCOPES, STATUSES, TEXT_TYPES, mockDel, mockGet, mockPost (+2 more)
+
+### Community 411 - "Community 411"
+Cohesion: 0.13
+Nodes (4): DATA, BACKEND_GAPS, COMPONENTS, SURFACE_MATRIX
+
+### Community 412 - "Community 412"
+Cohesion: 0.12
+Nodes (15): 1) Consolidate common helpers, 2) Improve error propagation, 3) Security & permissions hardening, 4) Optimize queue queries, 5) Introduce asynchronous APIs (incrementally), 6) Enhance documentation, 7) Add unit + integration tests, Code Review & Pipeline Analysis — Implementation Steps (+7 more)
+
+### Community 413 - "Community 413"
+Cohesion: 0.12
+Nodes (16): 3. Queue and Priority Queue, code:sql (alter table public.eligibility_recompute_queue), code:text (app/backend/app/queues/priority.py), code:python (def deadline_priority(days_left: int | None) -> int:), code:text (priority_score =), code:text (priority_score =), code:text (priority_score =), code:text (priority_score =) (+8 more)
+
+### Community 414 - "Community 414"
+Cohesion: 0.12
+Nodes (15): Acceptance criteria, Architecture, code:block1 (profile facts ─┐), code:json ({), code:json ({), code:block4 (PersonaSnapshot.v1 ──► StudyPolicy.v1 ──► MissionControl.v1), First PR scope, GET /api/study/mission-control (+7 more)
+
+### Community 415 - "Community 415"
+Cohesion: 0.12
+Nodes (16): 5.4 Layer 4: Official-source resolution, 5.5 Layer 5: Official extraction, 5.6 Layer 6: Scrape queue and admin review, 5.7 Layer 7: Canonical promotion, 5.8 Layer 8: Eligibility recompute and alerts, 5. Target ingestion architecture, code:text (official_notification_documents), code:text (id) (+8 more)
+
+### Community 416 - "Community 416"
+Cohesion: 0.29
+Nodes (15): _client(), PR 1 — API integration via the FastAPI test client., _seed_min_db(), test_compare_me_self_view_only(), test_leaderboard_endpoint_returns_empty_shape_when_no_rows(), test_put_settings_persists(), test_settings_get_returns_safe_defaults_when_unset(), test_titles_endpoint_returns_catalog_even_when_empty() (+7 more)
+
+### Community 417 - "Community 417"
+Cohesion: 0.12
+Nodes (15): 1) Consolidate common helpers, 2) Improve error propagation, 3) Security & permissions hardening, 4) Optimize queue queries, 5) Introduce asynchronous APIs (incrementally), 6) Enhance documentation, 7) Add unit + integration tests, Code Review & Pipeline Analysis — Implementation Steps (+7 more)
+
+### Community 418 - "Community 418"
+Cohesion: 0.12
+Nodes (16): 3. Queue and Priority Queue, code:sql (alter table public.eligibility_recompute_queue), code:text (app/backend/app/queues/priority.py), code:python (def deadline_priority(days_left: int | None) -> int:), code:text (priority_score =), code:text (priority_score =), code:text (priority_score =), code:text (priority_score =) (+8 more)
+
+### Community 419 - "Community 419"
 Cohesion: 0.16
 Nodes (13): audit_feed(), community_forum_flags(), _count(), _count_since(), _is_uuid(), list_users(), overview(), Admin overview / users / audit — Supabase-backed.  Replaces the hardcoded stub (+5 more)
 
-### Community 399 - "Community 399"
+### Community 420 - "Community 420"
 Cohesion: 0.16
 Nodes (14): Admin eligibility, audit, and publish-impact endpoints.  Endpoints (all under, _audit(), list_audit_entries(), list_recompute_queue(), publish_impact(), Admin eligibility, audit, and publish-impact endpoints.  Endpoints (all under, Reset a single recompute queue row to ``pending`` so the worker picks it up., Enqueue an eligibility recompute for every onboarded user, scoped to     one re (+6 more)
 
-### Community 400 - "Community 400"
-Cohesion: 0.14
-Nodes (15): archive_item(), enqueue_ocr(), get_latest_ocr(), get_ocr_job(), _is_uuid(), list_pages(), list_processing_jobs(), _owner_check_item() (+7 more)
+### Community 421 - "Community 421"
+Cohesion: 0.18
+Nodes (12): _field_is_sensitive(), Allowlisted canonical profile writes for the unified engine.  ``onboarding_ses, Return (row_exists, current_value). On read failure assume no row., Append onboarding provenance under ``profiles.metadata``.      Best-effort: on, _read_existing(), _record_provenance(), _RecruitmentMapping, _safe() (+4 more)
 
-### Community 402 - "Community 402"
+### Community 422 - "Community 422"
+Cohesion: 0.13
+Nodes (12): build_task_reasoning_response(), _load_persona_snapshot(), Compose the GET /api/study/task-reasoning/:task_id response.      Returns ``No, Compose the GET /api/study/task-reasoning/:task_id response.      Returns ``No, Compose the GET /api/study/task-reasoning/:task_id response.      Returns ``No, Compose the GET /api/study/task-reasoning/:task_id response.      Returns ``No, Compose the GET /api/study/task-reasoning/:task_id response.      Returns ``No, Wrap a supabase client so reads dedupe within one request.      Thread-safe: ` (+4 more)
+
+### Community 423 - "Community 423"
 Cohesion: 0.25
-Nodes (14): _criteria_difficulty_targets(), Apportion ``total`` questions across difficulty buckets by ``mix`` fractions., _db_with_section(), _q(), PR-fix-6 Fix 3 — runtime ``criteria`` selector.  ``select_questions_for_templa, End-to-end: a criteria-only template no longer needs the PR1 seed fallback., test_criteria_backfills_short_bucket(), test_criteria_excludes_unpublished() (+6 more)
+Nodes (14): build_group_leaderboard(), build_leaderboard(), _percentile_rank(), _rank_band(), Study OS — leaderboard build (PR 4 + PR 11).  Builds opt-in leaderboard rows., Build leaderboard rows for one cohort/metric window. Returns counts., Read the latest leaderboard rows the caller is allowed to see.      RLS does t, PR 11: write subject_type='group' rows ranked by avg member adherence     over (+6 more)
 
-### Community 403 - "Community 403"
-Cohesion: 0.22
-Nodes (13): difficulty_heatmap(), _normalize_difficulty(), PYQ paper inventory + difficulty heatmap (Phase 12).  Surfaces only PYQ papers, Subject × difficulty count grid built from verified PYQ questions.      Return, Return verified PYQ papers for ``exam_id`` newest first., _safe(), verified_pyq_papers(), Tests for the PYQ paper list + difficulty heatmap. (+5 more)
+### Community 425 - "Community 425"
+Cohesion: 0.15
+Nodes (13): drain_recompute_queue(), _finalise_failure(), _now(), Eligibility recompute worker — drains ``eligibility_recompute_queue``.  The qu, Process up to ``limit`` queued recompute rows. Returns a summary dict., _job_recompute(), _now(), Eligibility recompute worker — drains ``eligibility_recompute_queue``.  The qu (+5 more)
 
-### Community 404 - "Community 404"
-Cohesion: 0.19
-Nodes (7): _build_app(), Dedup is mounted at /questions/{id}/dedup-check, not /{id}/dedup-check., A frontend that built the URL from a missing id sends "undefined"., A well-formed but unseeded UUID clears validation → 404, not 422., A non-reviewer hitting /approve gets 403 even with a bad id —         the permi, TestDedupCheck, TestUUIDValidation
-
-### Community 405 - "Community 405"
+### Community 426 - "Community 426"
 Cohesion: 0.27
 Nodes (10): _build_app(), _encode(), _FakeAdmin, _FakeAuth, _FakeUser, Tests for the ``is_anonymous`` plumbing in core.auth.  The unified anonymous o, test_anonymous_jwt_is_accepted_and_flag_exposed(), test_permanent_endpoint_accepts_real_user() (+2 more)
 
-### Community 406 - "Community 406"
-Cohesion: 0.3
-Nodes (14): Tests for ``app.core.permissions`` (PR6 plan §7).  Role mapping coverage:  *, Return True if ``user`` can perform ``action``.      ``super_admin`` always pa, user_has_action(), Tests for ``app.core.permissions`` (PR6 plan §7).  Role mapping coverage:  *, test_admin_role_covers_most_actions(), test_admin_role_does_not_cover_override_conflict_without_explicit_permission(), test_admin_with_recruitments_manage_can_override(), test_scraping_manage_user_can_acknowledge_batch() (+6 more)
+### Community 427 - "Community 427"
+Cohesion: 0.16
+Nodes (6): AGGREGATOR_HINTS, detectRecruitmentHosts(), hostOf(), hostsInRegistry(), looksAggregator(), OFFICIAL_URL_FIELDS
 
-### Community 414 - "Community 414"
+### Community 434 - "Community 434"
 Cohesion: 0.13
 Nodes (14): Backfill, code:block1 (TRUST_WEIGHT = {), code:json ({), Correction task lineage, Decision, Mock Trust Model, RLS, Scheduled re-evaluation (+6 more)
 
-### Community 415 - "Community 415"
-Cohesion: 0.17
-Nodes (8): ACCEPTED_STATUSES, ageRange(), findDomicileDetail(), listValue(), POST_FIELDS, PostRow(), STATUS_BADGE, unitValue()
-
-### Community 416 - "Community 416"
-Cohesion: 0.13
-Nodes (14): sample_template_cmd(), `study_sessions.duration_minutes` does not exist (migration 017     defines onl, test_source_does_not_select_nonexistent_duration_minutes(), ADMIN_DIRS, FORBIDDEN, fs, full, hits (+6 more)
-
-### Community 417 - "Community 417"
-Cohesion: 0.32
-Nodes (14): build_user_eligibility_profile(), _meaningful_pwbd_value(), Return the PwBD value when it carries information, else ``None``.      The leg, AttemptRow, _Base, CertificationRow, CredentialRow, EducationRow (+6 more)
-
-### Community 418 - "Community 418"
+### Community 436 - "Community 436"
 Cohesion: 0.27
 Nodes (14): _build_app(), API-level tests for the Study OS routes (Phase 5).  Covers GET /api/study/miss, _snapshot(), test_mission_control_returns_contract_shape(), test_task_reasoning_404_for_task_owned_by_other_user(), test_task_reasoning_404_for_unknown_task(), test_task_reasoning_returns_detail_for_owned_task(), _build_app() (+6 more)
 
-### Community 419 - "Community 419"
-Cohesion: 0.14
-Nodes (3): _Exec, _Query, Tiny in-memory stand-in for the Supabase query builder.
-
-### Community 420 - "Community 420"
-Cohesion: 0.2
-Nodes (12): Tests for snapshot persistence + safe defaults when sources are missing., build_snapshot_payload(), _hash_signals(), _now_iso(), Pure helper: build the snapshot row payload from a signals dict., Tests for snapshot persistence + safe defaults when sources are missing., _SB, test_build_snapshot_payload_shape_and_version() (+4 more)
-
-### Community 421 - "Community 421"
-Cohesion: 0.19
-Nodes (14): compare_observations(), ConsensusResult, FieldConflict, _make_conflict_id(), uuid4 string — exposed as a hook so tests can monkeypatch deterministically., Group observations by field and produce the conflict list.      Rules:, Result of comparing one field across multiple observations., Aggregate engine output for one report. (+6 more)
-
-### Community 422 - "Community 422"
-Cohesion: 0.3
-Nodes (13): createAuthUser(), deleteAuthUser(), getQueueRows(), main(), requestJson(), serviceHeaders, supabaseRest(), createAuthUser() (+5 more)
-
-### Community 423 - "Community 423"
-Cohesion: 0.19
-Nodes (6): _Exec, _Q, Schema-drift / read-only behaviour for /api/metadata/certifications.  This pin, _SB, test_endpoint_logs_warning_with_missing_column_on_drift(), test_endpoint_returns_only_baseline_columns()
-
-### Community 424 - "Community 424"
-Cohesion: 0.23
-Nodes (12): _build_app(), _FakeUser, Per-token single-flight in app.core.auth.  Without the lock, N concurrent firs, A 401 path must drop the per-token lock so the next retry runs cleanly., After the cache warms, subsequent requests must not even acquire the lock., Three parallel requests, same bearer ⇒ exactly one Supabase call., 5 distinct bearers ⇒ 5 distinct Supabase calls (the lock keys per-token)., _reset_state() (+4 more)
-
-### Community 425 - "Community 425"
-Cohesion: 0.14
-Nodes (4): Query, Resp, test_list_recruitments_with_q_uses_trimmed_string(), test_list_recruitments_without_q_does_not_ilike()
-
-### Community 427 - "Community 427"
-Cohesion: 0.14
-Nodes (13): invalidate_planner_cache(), Drop the planner's process-local caches (test hook / admin reset)., Cross-test setup hooks for the backend test suite., The question-bank TTL cache (cachetools, 10min) lives at module scope.      St, The exam-lookup TTL cache (cachetools, 10min) lives at module scope., The eligibility-rules TTL cache (cachetools, 10min) lives at module scope., The planner's days-remaining TTL cache lives at module scope., Item 5's per-exam intelligence TTL cache lives at module scope.      Without a (+5 more)
-
-### Community 428 - "Community 428"
-Cohesion: 0.33
-Nodes (13): _build_app(), _profile(), Tests for ``POST /api/profile/onboarding-answer``.  Idempotency on re-submit i, _seed_bank(), test_anonymous_and_permanent_share_the_same_path(), test_answer_writes_canonical_column_and_returns_next_question(), test_last_question_flips_onboarding_completed_true(), test_onboarding_next_returns_completed_when_no_questions_remain() (+5 more)
-
-### Community 429 - "Community 429"
-Cohesion: 0.31
-Nodes (13): _client(), _monday_of(), Weekly Review service + API tests with the in-memory Supabase stub., Build a stub DB seeded with sessions/tasks/mocks for one week., _seed_week(), test_api_compute_writes_fresh_snapshot(), test_api_get_returns_shape(), test_compute_persists_snapshot_and_items() (+5 more)
-
-### Community 430 - "Community 430"
-Cohesion: 0.15
-Nodes (14): flairTone(), ReplyItem(), ThreadCard(), ThreadDetail(), FeaturedSessions(), DailyCheckinPartner(), PartnerCandidates(), PartnerCandidatesCard() (+6 more)
-
-### Community 431 - "Community 431"
-Cohesion: 0.23
-Nodes (12): ELIGIBILITY_CRITICAL_FIELDS, getProfileGaps(), hasGoalMatch(), normalizeState(), scoreRecruitment(), STAGE_ORDER, toDays(), getProfileGaps() (+4 more)
-
-### Community 432 - "Community 432"
-Cohesion: 0.14
-Nodes (12): PrototypeAdminCommunity, PrototypeAdminEligibility, PrototypeAdminFunnel, PrototypeAdminMarket, PrototypeEligibility, PrototypeGroups, PrototypeHandoff, PrototypeIndex (+4 more)
-
-### Community 433 - "Community 433"
-Cohesion: 0.26
-Nodes (9): formatDDMMYYYY(), isoToLocalDate(), localDateToIso(), parseDDMMYYYY(), d, DateField(), { container }, onChange (+1 more)
-
-### Community 434 - "Community 434"
-Cohesion: 0.14
-Nodes (13): ACCOUNTABILITY, ADMIN_COMM, CHANNEL_RULES, COMMUNITY_SPACES, COMMUNITY_USERS, FLAIRS, MENTOR_EARNINGS, MENTOR_SESSIONS (+5 more)
-
-### Community 435 - "Community 435"
-Cohesion: 0.14
-Nodes (13): code:block1 (sb.table("recruitments")), code:block2 (sb.table("recruitments")), code:block3 (sb.table("scrape_queue")), code:block4 (# Stage 1 — narrow by indexed key, NO extracted_data), CURRENT (every open row, with extracted_data), CURRENT (full table, no filter, no limit), Dedup query plan (PR: targeted dedup queries), Match handling (both tables) (+5 more)
-
-### Community 436 - "Community 436"
-Cohesion: 0.14
-Nodes (13): AI / agent instruction, Canonical entity model, code:txt (027_user_events_and_form_submissions.sql), code:sql (public.exams), code:sql (recruitment_id uuid references public.recruitments(id)), code:txt (Database = recruitment), Database Domain Model: Recruitment vs Exam, Do not do this (+5 more)
-
 ### Community 437 - "Community 437"
-Cohesion: 0.14
-Nodes (14): code:text (app/backend/app/common/indexing.py), code:text (app/backend/app/recommendations/), code:text (POST /api/onboarding/next-step), code:text (app/backend/app/graph/eligibility_graph.py), Implementation roadmap, Phase 0: Low-risk utilities, Phase 1: Priority queues for existing flows, Phase 2: Backend recommendation service (+6 more)
+Cohesion: 0.21
+Nodes (12): PR 1 — behavior snapshot aggregation tests., _session(), _task(), test_completion_and_adherence(), test_focus_rule_only_counts_25min_blocks(), test_mock_review_rate_when_no_mocks_is_neutral_not_negative(), PR 1 — behavior snapshot aggregation tests., _session() (+4 more)
 
 ### Community 438 - "Community 438"
-Cohesion: 0.14
-Nodes (14): 2. Set, code:python (from dataclasses import dataclass), code:python (def normalize_token(value: str | None) -> str:), code:python (required_exam_keys = {normalize_token(x) for x in criteria.r), code:python (resource_exams = {normalize_token(x) for x in resource["exam), code:python (already_voted = user_id in thread_voter_ids), code:text (app/backend/app/recommendations/context.py), Community usage (+6 more)
+Cohesion: 0.22
+Nodes (13): difficulty_heatmap(), _normalize_difficulty(), PYQ paper inventory + difficulty heatmap (Phase 12).  Surfaces only PYQ papers, Subject × difficulty count grid built from verified PYQ questions.      Return, Return verified PYQ papers for ``exam_id`` newest first., _safe(), verified_pyq_papers(), Tests for the PYQ paper list + difficulty heatmap. (+5 more)
 
 ### Community 439 - "Community 439"
-Cohesion: 0.14
-Nodes (13): code:block1 (Profile      = facts about the aspirant), code:json ({), code:json ({), Conceptual model, Deterministic derivation rules (v1, no AI), Persona dimensions, Persona → policy mapping, Persona snapshot v1 (+5 more)
+Cohesion: 0.13
+Nodes (15): 5.1 Layer 1: Source registry, 5.2 Layer 2: Discovery ingestion, 5.5 Layer 5: Official extraction, 5.7 Layer 7: Canonical promotion, 5.8 Layer 8: Eligibility recompute and alerts, 5. Target ingestion architecture, code:text (1. Official JSON/API parser), code:text (organizations) (+7 more)
 
 ### Community 440 - "Community 440"
 Cohesion: 0.14
-Nodes (13): Clean Supabase Baseline Plan (Fresh Project Bootstrapping), code:sql (select table_name), Core runtime tables included, Deferred / docs-only review tables, Indirect DB dependency tables, Known migration fixes to preserve, Optional feature modules intentionally deferred, Proposed clean migration structure (+5 more)
+Nodes (13): all_aliases(), EducationLevel, Education-level taxonomy for the eligibility engine.  Replaces the engine's pr, Yield ``(alias, slug)`` pairs. Useful for admin docs., One node in the education ladder.      ``rank`` is a coarse numeric ordering u, all_aliases(), EducationLevel, _normalise() (+5 more)
 
 ### Community 441 - "Community 441"
-Cohesion: 0.14
-Nodes (13): Execution checklist, Immediate recommendation, Priority 0: unblock current runtime, Priority 1: marketplace and mentor/course runtime, Priority 2: payments and subscriptions, Priority 3: notifications governance, Priority 4: AI chat and AI governance, Priority 5: Study OS and mock analytics (+5 more)
+Cohesion: 0.33
+Nodes (13): _build_app(), _profile(), Tests for ``POST /api/profile/onboarding-answer``.  Idempotency on re-submit i, _seed_bank(), test_anonymous_and_permanent_share_the_same_path(), test_answer_writes_canonical_column_and_returns_next_question(), test_last_question_flips_onboarding_completed_true(), test_onboarding_next_returns_completed_when_no_questions_remain() (+5 more)
 
 ### Community 442 - "Community 442"
 Cohesion: 0.14
-Nodes (14): 11.1 RSS parser, 11.2 Site-specific HTML parsers, 11.3 Regex extraction, 11.4 PDF extraction, 11.5 Manual admin entry, 11.6 Rule-based normalization, 11.7 Change detection, 11.8 Human verification (+6 more)
+Nodes (13): invalidate_planner_cache(), Drop the planner's process-local caches (test hook / admin reset)., Cross-test setup hooks for the backend test suite., The question-bank TTL cache (cachetools, 10min) lives at module scope.      St, The exam-lookup TTL cache (cachetools, 10min) lives at module scope., The eligibility-rules TTL cache (cachetools, 10min) lives at module scope., The planner's days-remaining TTL cache lives at module scope., Item 5's per-exam intelligence TTL cache lives at module scope.      Without a (+5 more)
 
 ### Community 443 - "Community 443"
-Cohesion: 0.21
-Nodes (14): _path_depth(), Walk the resolver chain and return the first match.      Tests can pass a cust, Pick the official-source URL referenced by an aggregator detail page.      Ret, resolve_official_source(), resolve_with_registry(), _src(), test_resolve_with_registry_falls_back_to_generic_resolver(), test_resolve_with_registry_uses_first_match() (+6 more)
+Cohesion: 0.19
+Nodes (6): _Exec, _Q, Schema-drift / read-only behaviour for /api/metadata/certifications.  This pin, _SB, test_endpoint_logs_warning_with_missing_column_on_drift(), test_endpoint_returns_only_baseline_columns()
 
 ### Community 444 - "Community 444"
-Cohesion: 0.14
-Nodes (14): 2. Set, code:python (from dataclasses import dataclass), code:python (def normalize_token(value: str | None) -> str:), code:python (required_exam_keys = {normalize_token(x) for x in criteria.r), code:python (resource_exams = {normalize_token(x) for x in resource["exam), code:python (already_voted = user_id in thread_voter_ids), code:text (app/backend/app/recommendations/context.py), Community usage (+6 more)
-
-### Community 445 - "Community 445"
-Cohesion: 0.14
-Nodes (14): code:text (app/backend/app/common/indexing.py), code:text (app/backend/app/recommendations/), code:text (POST /api/onboarding/next-step), code:text (app/backend/app/graph/eligibility_graph.py), Implementation roadmap, Phase 0: Low-risk utilities, Phase 1: Priority queues for existing flows, Phase 2: Backend recommendation service (+6 more)
+Cohesion: 0.23
+Nodes (12): _build_app(), _FakeUser, Per-token single-flight in app.core.auth.  Without the lock, N concurrent firs, A 401 path must drop the per-token lock so the next retry runs cleanly., After the cache warms, subsequent requests must not even acquire the lock., Three parallel requests, same bearer ⇒ exactly one Supabase call., 5 distinct bearers ⇒ 5 distinct Supabase calls (the lock keys per-token)., _reset_state() (+4 more)
 
 ### Community 446 - "Community 446"
 Cohesion: 0.14
-Nodes (13): AI / agent instruction, Canonical entity model, code:txt (027_user_events_and_form_submissions.sql), code:sql (public.exams), code:sql (recruitment_id uuid references public.recruitments(id)), code:txt (Database = recruitment), Database Domain Model: Recruitment vs Exam, Do not do this (+5 more)
+Nodes (4): Query, Resp, test_list_recruitments_with_q_uses_trimmed_string(), test_list_recruitments_without_q_does_not_ilike()
 
 ### Community 447 - "Community 447"
-Cohesion: 0.14
-Nodes (14): 11.1 RSS parser, 11.2 Site-specific HTML parsers, 11.3 Regex extraction, 11.4 PDF extraction, 11.5 Manual admin entry, 11.6 Rule-based normalization, 11.7 Change detection, 11.8 Human verification (+6 more)
+Cohesion: 0.19
+Nodes (14): compare_observations(), ConsensusResult, FieldConflict, _make_conflict_id(), uuid4 string — exposed as a hook so tests can monkeypatch deterministically., Group observations by field and produce the conflict list.      Rules:, Result of comparing one field across multiple observations., Aggregate engine output for one report. (+6 more)
 
 ### Community 448 - "Community 448"
-Cohesion: 0.22
-Nodes (9): preview_selection(), TemplateValidationError, _validate_selector(), list_templates(), publish_template(), template_preview_selection(), test_validate_selector_criteria_mix_invalid_sum(), test_validate_selector_criteria_mix_sum() (+1 more)
+Cohesion: 0.14
+Nodes (11): mockApiPost, mockClearAnonymousId, mockClearMergeClaim, mockExchangeCodeForSession, mockGetSession, mockPeekAnonymousId, mockPeekMergeClaim, mockToastError (+3 more)
 
 ### Community 449 - "Community 449"
 Cohesion: 0.26
-Nodes (12): create_reminder(), _decode_cursor(), delete_reminder(), _encode_cursor(), list_reminders(), _load_owned(), Reminders API (PR4).  User-owned reminders with CRUD. ``source='system'`` rows, Return the reminder row when owned by ``user_id``; 404 otherwise.      Combini (+4 more)
+Nodes (9): formatDDMMYYYY(), isoToLocalDate(), localDateToIso(), parseDDMMYYYY(), d, DateField(), { container }, onChange (+1 more)
 
 ### Community 450 - "Community 450"
+Cohesion: 0.14
+Nodes (12): PrototypeAdminCommunity, PrototypeAdminEligibility, PrototypeAdminFunnel, PrototypeAdminMarket, PrototypeEligibility, PrototypeGroups, PrototypeHandoff, PrototypeIndex (+4 more)
+
+### Community 451 - "Community 451"
+Cohesion: 0.14
+Nodes (13): ACCOUNTABILITY, ADMIN_COMM, CHANNEL_RULES, COMMUNITY_SPACES, COMMUNITY_USERS, FLAIRS, MENTOR_EARNINGS, MENTOR_SESSIONS (+5 more)
+
+### Community 452 - "Community 452"
+Cohesion: 0.14
+Nodes (13): code:block1 (sb.table("recruitments")), code:block2 (sb.table("recruitments")), code:block3 (sb.table("scrape_queue")), code:block4 (# Stage 1 — narrow by indexed key, NO extracted_data), CURRENT (every open row, with extracted_data), CURRENT (full table, no filter, no limit), Dedup query plan (PR: targeted dedup queries), Match handling (both tables) (+5 more)
+
+### Community 453 - "Community 453"
+Cohesion: 0.14
+Nodes (13): AI / agent instruction, Canonical entity model, code:txt (027_user_events_and_form_submissions.sql), code:sql (public.exams), code:sql (recruitment_id uuid references public.recruitments(id)), code:txt (Database = recruitment), Database Domain Model: Recruitment vs Exam, Do not do this (+5 more)
+
+### Community 454 - "Community 454"
+Cohesion: 0.14
+Nodes (14): 2. Set, code:python (from dataclasses import dataclass), code:python (def normalize_token(value: str | None) -> str:), code:python (required_exam_keys = {normalize_token(x) for x in criteria.r), code:python (resource_exams = {normalize_token(x) for x in resource["exam), code:python (already_voted = user_id in thread_voter_ids), code:text (app/backend/app/recommendations/context.py), Community usage (+6 more)
+
+### Community 455 - "Community 455"
+Cohesion: 0.14
+Nodes (14): code:text (app/backend/app/common/indexing.py), code:text (app/backend/app/recommendations/), code:text (POST /api/onboarding/next-step), code:text (app/backend/app/graph/eligibility_graph.py), Implementation roadmap, Phase 0: Low-risk utilities, Phase 1: Priority queues for existing flows, Phase 2: Backend recommendation service (+6 more)
+
+### Community 456 - "Community 456"
+Cohesion: 0.14
+Nodes (13): AI / agent instruction, Canonical entity model, code:txt (027_user_events_and_form_submissions.sql), code:sql (public.exams), code:sql (recruitment_id uuid references public.recruitments(id)), code:txt (Database = recruitment), Database Domain Model: Recruitment vs Exam, Do not do this (+5 more)
+
+### Community 457 - "Community 457"
+Cohesion: 0.14
+Nodes (13): code:bash (# Single-page test first), ImageMagick (fastest for Drishti's "Al Vision" watermark), Other coaching distributions, Quality check before upload, Quality target, Recommended tooling, Sanitization SOP — v1, Source kind taxonomy (+5 more)
+
+### Community 458 - "Community 458"
+Cohesion: 0.14
+Nodes (13): code:block1 (Profile      = facts about the aspirant), code:json ({), code:json ({), Conceptual model, Deterministic derivation rules (v1, no AI), Persona dimensions, Persona → policy mapping, Persona snapshot v1 (+5 more)
+
+### Community 459 - "Community 459"
+Cohesion: 0.14
+Nodes (13): Clean Supabase Baseline Plan (Fresh Project Bootstrapping), code:sql (select table_name), Core runtime tables included, Deferred / docs-only review tables, Indirect DB dependency tables, Known migration fixes to preserve, Optional feature modules intentionally deferred, Proposed clean migration structure (+5 more)
+
+### Community 460 - "Community 460"
+Cohesion: 0.14
+Nodes (13): Execution checklist, Immediate recommendation, Priority 0: unblock current runtime, Priority 1: marketplace and mentor/course runtime, Priority 2: payments and subscriptions, Priority 3: notifications governance, Priority 4: AI chat and AI governance, Priority 5: Study OS and mock analytics (+5 more)
+
+### Community 461 - "Community 461"
+Cohesion: 0.14
+Nodes (14): 11.1 RSS parser, 11.2 Site-specific HTML parsers, 11.3 Regex extraction, 11.4 PDF extraction, 11.5 Manual admin entry, 11.6 Rule-based normalization, 11.7 Change detection, 11.8 Human verification (+6 more)
+
+### Community 462 - "Community 462"
+Cohesion: 0.14
+Nodes (3): _Exec, _Query, Tiny in-memory stand-in for the Supabase query builder.
+
+### Community 463 - "Community 463"
+Cohesion: 0.3
+Nodes (13): createAuthUser(), deleteAuthUser(), getQueueRows(), main(), requestJson(), serviceHeaders, supabaseRest(), createAuthUser() (+5 more)
+
+### Community 464 - "Community 464"
+Cohesion: 0.23
+Nodes (12): ELIGIBILITY_CRITICAL_FIELDS, getProfileGaps(), hasGoalMatch(), normalizeState(), scoreRecruitment(), STAGE_ORDER, toDays(), getProfileGaps() (+4 more)
+
+### Community 465 - "Community 465"
+Cohesion: 0.14
+Nodes (14): code:text (app/backend/app/common/indexing.py), code:text (app/backend/app/recommendations/), code:text (POST /api/onboarding/next-step), code:text (app/backend/app/graph/eligibility_graph.py), Implementation roadmap, Phase 0: Low-risk utilities, Phase 1: Priority queues for existing flows, Phase 2: Backend recommendation service (+6 more)
+
+### Community 466 - "Community 466"
+Cohesion: 0.14
+Nodes (14): 2. Set, code:python (from dataclasses import dataclass), code:python (def normalize_token(value: str | None) -> str:), code:python (required_exam_keys = {normalize_token(x) for x in criteria.r), code:python (resource_exams = {normalize_token(x) for x in resource["exam), code:python (already_voted = user_id in thread_voter_ids), code:text (app/backend/app/recommendations/context.py), Community usage (+6 more)
+
+### Community 467 - "Community 467"
+Cohesion: 0.14
+Nodes (14): 11.1 RSS parser, 11.2 Site-specific HTML parsers, 11.3 Regex extraction, 11.4 PDF extraction, 11.5 Manual admin entry, 11.6 Rule-based normalization, 11.7 Change detection, 11.8 Human verification (+6 more)
+
+### Community 468 - "Community 468"
+Cohesion: 0.22
+Nodes (5): allowed_transitions(), Return the list of actions available from *status*., Return the list of actions available from *status*., draft → in_review → verified → published via sequential transitions., TestStateMachine
+
+### Community 469 - "Community 469"
 Cohesion: 0.29
 Nodes (12): cancel(), complete(), CompleteBody, create_revision(), _is_uuid(), list_revisions(), _now_iso(), Revision Calendar API.  Read endpoints fan out a date range into a per-day map (+4 more)
 
-### Community 451 - "Community 451"
-Cohesion: 0.15
-Nodes (3): _Exec, _Query, Tiny in-memory stand-in for the Supabase query builder.
+### Community 470 - "Community 470"
+Cohesion: 0.26
+Nodes (12): create_reminder(), _decode_cursor(), delete_reminder(), _encode_cursor(), list_reminders(), _load_owned(), Reminders API (PR4).  User-owned reminders with CRUD. ``source='system'`` rows, Return the reminder row when owned by ``user_id``; 404 otherwise.      Combini (+4 more)
 
-### Community 452 - "Community 452"
-Cohesion: 0.19
-Nodes (9): AssertionError, test_save_persona_snapshot_requires_user_id(), Profile completion fan-out must parallelise the optional reads.  `profile_comp, Inert supabase; the fetcher monkeypatches are what actually sleep., _SBStub, _sleep_returning(), test_profile_completion_runs_eight_fetchers_in_parallel(), _user() (+1 more)
+### Community 471 - "Community 471"
+Cohesion: 0.22
+Nodes (9): preview_selection(), TemplateValidationError, _validate_selector(), list_templates(), publish_template(), template_preview_selection(), test_validate_selector_criteria_mix_invalid_sum(), test_validate_selector_criteria_mix_sum() (+1 more)
 
-### Community 453 - "Community 453"
+### Community 472 - "Community 472"
 Cohesion: 0.26
 Nodes (12): _persona_row(), PR5: mission-control surfaces verified exam intelligence when present., test_mission_control_engine_trace_is_not_connected_when_user_has_no_target_exam(), test_mission_control_falls_back_to_preferences_target_exams(), test_mission_control_flips_engine_trace_to_available_with_verified_data(), test_mission_control_ignores_unverified_pyq_tags(), _persona_row(), PR5: mission-control surfaces verified exam intelligence when present. (+4 more)
 
-### Community 454 - "Community 454"
+### Community 473 - "Community 473"
+Cohesion: 0.18
+Nodes (9): _load_questions_for_template must filter by published + valid TTL., Return a MagicMock supabase that intercepts the question query chain., Selector gates on reviewer_status IN ('verified','published','live')         —, valid_until in the past should be excluded., valid_until in the past should be excluded., TestSelectorHardening, _load_questions_for_template(), Load questions + options for a template, ordered by template config.      PR2 (+1 more)
+
+### Community 474 - "Community 474"
 Cohesion: 0.18
 Nodes (11): _async_options(), get_supabase_admin_async(), get_supabase_public(), _log_keepalive(), Supabase client factories.  We used to call ``create_client`` on every request, Drop the cached sync admin client so the next get_supabase_admin()     rebuilds, Drop cached clients. Tests-only helper — do not call in app code., Verify keepalive_expiry actually reached postgrest's httpx pool.      supabase (+3 more)
 
-### Community 455 - "Community 455"
-Cohesion: 0.37
-Nodes (12): _adaptation(), _build_app(), _mastery(), Contract + PR5-flag behaviour for GET /api/study/reports/plan-timeline.  The e, test_adaptation_events_map_to_canonical_shape(), test_admin_trigger_carries_actor(), test_flag_live_derives_missing_delta(), test_flag_live_includes_mastery_delta() (+4 more)
+### Community 475 - "Community 475"
+Cohesion: 0.21
+Nodes (12): _alert_users_for_deadline(), Notification alert helpers — port of ``lib/scraping/alerts.ts``.  These run **, Daily sweep — alert eligible users about apply windows closing in 1 / 3 days., send_deadline_alerts(), my_mark_read(), _job_deadline_sweep(), _alert_users_for_deadline(), alert_users_for_new_recruitment() (+4 more)
 
-### Community 456 - "Community 456"
-Cohesion: 0.35
-Nodes (12): Pick this run's queries and the next cursor (pure; unit-tested).      Rotates, _select_queries_for_run(), P1.1: SerpApi query rotation via the scrape_config cursor.  A permanent ``quer, _src(), test_cursor_four_wraps_to_two(), test_cursor_three_wraps_to_one(), test_cursor_zero_takes_first_three(), test_empty_queries_returns_empty_and_zero() (+4 more)
+### Community 476 - "Community 476"
+Cohesion: 0.31
+Nodes (12): _accumulate(), compute_exam_snapshots(), _exam_weights(), Study OS — per-exam daily snapshot aggregation (PR 2).  Where `study_behavior_, _safe(), upsert_exam_snapshots(), _accumulate(), compute_exam_snapshots() (+4 more)
 
-### Community 457 - "Community 457"
-Cohesion: 0.15
-Nodes (12): promote_run_endpoint(), promote_run(), Promote every ``status='pending'`` queue item from a run.      Returns ``{prom, Promote every ``status='pending'`` queue item from a run.      Returns ``{prom, Dry-run isolation (PR: scraper-quality-gates #1).  A dry-run (``mock=True``) s, ``promote_run`` filters ``status='pending'``; a dry-run row     (``status='dry_, The open-queue dedup read must filter out ``dry_run`` status so a real     run, test_dedup_read_excludes_dry_run_rows() (+4 more)
+### Community 477 - "Community 477"
+Cohesion: 0.31
+Nodes (10): _mk_rec(), _set_sb(), test_missing_apply_when_open(), test_missing_notification(), test_publish_ready(), test_reversed_dates(), test_unverified_org(), test_unverified_source() (+2 more)
 
-### Community 458 - "Community 458"
-Cohesion: 0.18
-Nodes (3): _ExtendedQuery, _NotProxy, Adds ilike, range, not_.in_, and count='exact' on top of the base stub.      T
-
-### Community 459 - "Community 459"
+### Community 478 - "Community 478"
 Cohesion: 0.38
 Nodes (12): _client(), exam_phase_sections CMS + exam_topic_coverage.section_id (migrations 030)., _seed(), test_bulk_50_sections_one_bad(), test_coverage_section_phase_match_ok(), test_coverage_section_phase_mismatch_422(), test_coverage_without_section_ok(), test_create_section() (+4 more)
 
-### Community 461 - "Community 461"
-Cohesion: 0.15
-Nodes (12): ACCOUNTABILITY, CHANNEL_RULES, COMMUNITY_SPACES, COMMUNITY_USERS, FLAIRS, MENTOR_EARNINGS, MENTOR_SESSIONS, MENTORS (+4 more)
+### Community 479 - "Community 479"
+Cohesion: 0.37
+Nodes (12): _adaptation(), _build_app(), _mastery(), Contract + PR5-flag behaviour for GET /api/study/reports/plan-timeline.  The e, test_adaptation_events_map_to_canonical_shape(), test_admin_trigger_carries_actor(), test_flag_live_derives_missing_delta(), test_flag_live_includes_mastery_delta() (+4 more)
 
-### Community 462 - "Community 462"
+### Community 480 - "Community 480"
 Cohesion: 0.17
 Nodes (6): formatAt(), KIND_TITLE, actual, mockGet, mockNavigate, toItem()
 
-### Community 464 - "Community 464"
+### Community 482 - "Community 482"
 Cohesion: 0.15
 Nodes (12): Claim A — Deprecation marker on `community_people` (no router move), Claim B — DB-backed reply vote, Claim C — "Hide" actually hides, Claim D — Frontend mentor adapter, Claim E — Atomic counters, Community layer — P0 verification + fix pass, Files changed, Open questions / things I refused to do (+4 more)
 
-### Community 465 - "Community 465"
+### Community 483 - "Community 483"
 Cohesion: 0.15
 Nodes (12): API documentation, Architecture overview, Backend, Background scheduler (APScheduler), Career Copilot (`ccp-mainbuild-v1`), Data flow (scrape to user-visible outcomes), Frontend prototype build gate, Key tables (confirmed from migration themes and backend usage) (+4 more)
 
-### Community 466 - "Community 466"
+### Community 484 - "Community 484"
 Cohesion: 0.15
 Nodes (12): Blast-radius conflicts found (need a decision before fixing), Claim verification (all CONFIRMED), code:sql (-- (a) Does the stuck item have posts, and is raw extraction), code:text ((c) GET /api/admin/scrape/queue?include_detail=true&item_id=), Implementation status (this PR), Live verification — TO RUN (results pending), Method, Out of scope (confirmed, not fixed here) (+4 more)
 
-### Community 467 - "Community 467"
+### Community 485 - "Community 485"
 Cohesion: 0.15
 Nodes (12): Admin UX Graph, Backend Module Graph, code:mermaid (flowchart LR), code:mermaid (flowchart TD), code:mermaid (flowchart TD), code:mermaid (flowchart TD), code:mermaid (flowchart LR), Data And Deployment Assets (+4 more)
 
-### Community 468 - "Community 468"
+### Community 486 - "Community 486"
 Cohesion: 0.15
 Nodes (13): 7. DAG, code:text (Number System -> Percentage -> Profit & Loss -> Data Interpr), code:text (source fetched), code:text (official source verified), code:text (app/backend/app/common/dag.py), code:python (def topological_sort(nodes: list[str], edges: list[tuple[str), Impact, Implementation priority (+5 more)
 
-### Community 469 - "Community 469"
+### Community 487 - "Community 487"
 Cohesion: 0.15
 Nodes (12): Additive migration rule, code:text (graph_nodes), code:text (resource_exam_links), code:text (tests/common/test_indexing.py), Database and schema guidance, Do not persist runtime data structures too early, Final guidance, Integration tests (+4 more)
 
-### Community 470 - "Community 470"
+### Community 488 - "Community 488"
 Cohesion: 0.15
 Nodes (12): Admin visibility (PR4), Answer validation, Consumed by Study OS Mission Control (PR3), Data model (migration 085), Frontend behavior, Non-goals (must not appear in PR2), Profile adapter (allowlist), Progressive Persona Questions — PR2 (+4 more)
 
-### Community 471 - "Community 471"
+### Community 489 - "Community 489"
 Cohesion: 0.15
 Nodes (12): Anti-Cheat Foundation (source=client, record-only — no enforcement in PR2b), Attempt Events — Design Reference (PR2b), Client events, code:python (# In submit_attempt, after UPDATE mock_attempts SET status='), Downstream Consumers, Drift Detection (source=client), Event Catalogue v1, Lifecycle (source=server) (+4 more)
 
-### Community 472 - "Community 472"
+### Community 490 - "Community 490"
 Cohesion: 0.15
 Nodes (12): Attempt answer-save semantics, client_seq, Client sync state, code:block1 (user change              → unsaved   (clears any existing fa), Non-goals, Retry policy, Server idempotency, Source of truth invariant (+4 more)
 
-### Community 473 - "Community 473"
+### Community 491 - "Community 491"
 Cohesion: 0.15
 Nodes (12): 1) scrape queue list path, 2) eligibility queue pending panel, 3) eligibility recompute backlog count, 4) queue cleanup candidate report (read-only), code:sql (EXPLAIN ANALYZE), code:sql (EXPLAIN ANALYZE), code:sql (EXPLAIN ANALYZE), code:sql (SELECT *) (+4 more)
 
-### Community 474 - "Community 474"
+### Community 492 - "Community 492"
 Cohesion: 0.15
 Nodes (12): Advisory now, blocking later, CI enforcement, Click-Through Review Discipline, Emergency hotfixes, Exception process, Labels, Non-goals, Retroactive audit (+4 more)
 
-### Community 475 - "Community 475"
+### Community 493 - "Community 493"
 Cohesion: 0.15
 Nodes (13): 9. Per-PR Ship Gates, code:text (- emits only PR1 enum values), code:text (- ALTER migration applies cleanly to all existing PR1 + PR7 ), code:text (- consensus_pending/conflict/admin_override_required lifecyc), code:text (- complexity_detected lifecycle state added), code:text (- staleness columns added), code:text (- backend API surface live before any component ships), PR2 (+5 more)
 
-### Community 476 - "Community 476"
+### Community 494 - "Community 494"
 Cohesion: 0.15
 Nodes (13): 20. Implementation Phases, code:text (recruitment_classifier.py), code:text (official_resolver.py), code:text (consensus_engine.py), code:text (eligibility_complexity.py), code:text (source hash watcher), code:text (Setup & Run mode), PR1 — Gateway shell (+5 more)
 
-### Community 477 - "Community 477"
+### Community 495 - "Community 495"
 Cohesion: 0.27
 Nodes (13): create_reply(), create_thread(), _find_channel(), _find_thread(), list_channel_threads(), _net_reply_votes(), _net_thread_votes(), _shape_reply_runtime() (+5 more)
 
-### Community 478 - "Community 478"
+### Community 496 - "Community 496"
 Cohesion: 0.27
 Nodes (13): create_reply(), create_thread(), _find_channel(), _find_thread(), list_channel_threads(), _net_reply_votes(), _net_thread_votes(), _shape_reply_runtime() (+5 more)
 
-### Community 481 - "Community 481"
+### Community 497 - "Community 497"
 Cohesion: 0.15
-Nodes (12): Additive migration rule, code:text (graph_nodes), code:text (resource_exam_links), code:text (tests/common/test_indexing.py), Database and schema guidance, Do not persist runtime data structures too early, Final guidance, Integration tests (+4 more)
+Nodes (3): _Exec, _Query, Tiny in-memory stand-in for the Supabase query builder.
 
-### Community 482 - "Community 482"
+### Community 499 - "Community 499"
 Cohesion: 0.15
 Nodes (13): 7. DAG, code:text (Number System -> Percentage -> Profit & Loss -> Data Interpr), code:text (source fetched), code:text (official source verified), code:text (app/backend/app/common/dag.py), code:python (def topological_sort(nodes: list[str], edges: list[tuple[str), Impact, Implementation priority (+5 more)
 
-### Community 483 - "Community 483"
+### Community 500 - "Community 500"
 Cohesion: 0.15
 Nodes (12): 1) scrape queue list path, 2) eligibility queue pending panel, 3) eligibility recompute backlog count, 4) queue cleanup candidate report (read-only), code:sql (EXPLAIN ANALYZE), code:sql (EXPLAIN ANALYZE), code:sql (EXPLAIN ANALYZE), code:sql (SELECT *) (+4 more)
 
-### Community 484 - "Community 484"
+### Community 501 - "Community 501"
 Cohesion: 0.15
 Nodes (13): 9. Per-PR Ship Gates, code:text (- emits only PR1 enum values), code:text (- ALTER migration applies cleanly to all existing PR1 + PR7 ), code:text (- consensus_pending/conflict/admin_override_required lifecyc), code:text (- complexity_detected lifecycle state added), code:text (- staleness columns added), code:text (- backend API surface live before any component ships), PR2 (+5 more)
 
-### Community 485 - "Community 485"
+### Community 502 - "Community 502"
 Cohesion: 0.15
 Nodes (13): 20. Implementation Phases, code:text (recruitment_classifier.py), code:text (official_resolver.py), code:text (consensus_engine.py), code:text (eligibility_complexity.py), code:text (source hash watcher), code:text (Setup & Run mode), PR1 — Gateway shell (+5 more)
 
-### Community 486 - "Community 486"
-Cohesion: 0.17
-Nodes (11): Safety net for any endpoint that didn't wrap a Supabase transport     disconnec, Safety net for any endpoint that didn't wrap a Supabase transport     disconnec, Safety net for any endpoint that didn't wrap a Supabase transport     disconnec, Safety net for any endpoint that didn't wrap a Supabase transport     disconnec, Safety net for any endpoint that didn't wrap a Supabase transport     disconnec, transient_transport_handler(), unhandled_exception_handler(), a (+3 more)
-
-### Community 487 - "Community 487"
-Cohesion: 0.33
-Nodes (11): create_note(), delete_note(), get_note(), _is_pro(), _is_uuid(), list_notes(), NotePatch, NoteUpsert (+3 more)
-
-### Community 488 - "Community 488"
+### Community 503 - "Community 503"
 Cohesion: 0.23
 Nodes (11): create_rule(), delete_rule(), list_exams_with_rule_counts(), list_rules_for_exam(), Admin CRUD for ``exam_eligibility_rules`` (PR-D2).  Endpoint group (all requir, RuleCreate, RuleUpdate, update_rule() (+3 more)
 
-### Community 489 - "Community 489"
+### Community 504 - "Community 504"
+Cohesion: 0.33
+Nodes (11): create_note(), delete_note(), get_note(), _is_pro(), _is_uuid(), list_notes(), NotePatch, NoteUpsert (+3 more)
+
+### Community 505 - "Community 505"
 Cohesion: 0.38
 Nodes (10): _compute_commercial(), _compute_outcome(), _compute_quality(), _compute_trust(), get_dashboard(), Leadership KPI dashboard API.  Reads the latest kpi_snapshots row per (family,, recompute(), _safe_count() (+2 more)
 
-### Community 490 - "Community 490"
+### Community 506 - "Community 506"
 Cohesion: 0.24
 Nodes (11): build_readiness(), _Feature, _is_present(), _load_sources(), _missing_for(), profile_readiness(), Feature-unlock readiness — the honest replacement for a single "% ready".  The, One query per backing table. None of these are hot loops. (+3 more)
 
-### Community 491 - "Community 491"
+### Community 507 - "Community 507"
 Cohesion: 0.32
 Nodes (11): build_contract_from_schemas(), _discover_models(), _field_descriptor(), _is_optional(), _load_contract(), Drift detection between the Python source-of-truth and the shared frontend contr, Derive the canonical contract dict directly from the Pydantic models., _strip_optional() (+3 more)
 
-### Community 494 - "Community 494"
+### Community 510 - "Community 510"
 Cohesion: 0.17
 Nodes (9): _FanoutSB, Publish must enqueue one recompute row per onboarded user; without this     the, Empty fan-out must succeed (no users to enqueue) and the publish should     sti, Publish must enqueue one recompute row per onboarded user; without this     the, Empty fan-out must succeed (no users to enqueue) and the publish should     sti, Stub that satisfies validate_recruitment_publish_readiness, recruitments     up, Stub that satisfies validate_recruitment_publish_readiness, recruitments     up, test_publish_enqueues_recompute_for_every_onboarded_user() (+1 more)
 
-### Community 495 - "Community 495"
+### Community 511 - "Community 511"
 Cohesion: 0.24
 Nodes (7): _build_app(), _FakeAdmin, _FakeAuth, _FakeUser, Regression test for the per-request auth memoisation in core.auth.  `get_curre, test_separate_requests_with_different_tokens_each_validate(), test_single_request_hits_supabase_get_user_once()
 
-### Community 496 - "Community 496"
+### Community 512 - "Community 512"
 Cohesion: 0.44
 Nodes (11): _install(), SB, test_critical_edit_to_published_recruitment_resets_needs_review(), test_needs_review_visible_admin_hidden_public(), test_publish_blocked_when_eligibility_rules_missing(), test_publish_blocked_when_official_notification_url_missing(), test_publish_blocked_when_organization_unverified(), test_publish_blocked_when_posts_missing() (+3 more)
 
-### Community 498 - "Community 498"
+### Community 513 - "Community 513"
 Cohesion: 0.2
 Nodes (11): _authoritative_role(), me(), _mentor_capability(), Auth router: Supabase-backed `/api/auth/me`.  Phase 1.5 removed the local JWT/, Return the Supabase-authenticated user that owns the access token., Re-read the role from the Supabase admin user record.      ``get_current_user`, Source ``capabilities.mentor`` from profiles.is_mentor (never role)., Return the Supabase-authenticated user that owns the access token.      Role i (+3 more)
 
-### Community 500 - "Community 500"
-Cohesion: 0.17
-Nodes (11): all_aliases(), EducationLevel, Education-level taxonomy for the eligibility engine.  Replaces the engine's pr, Yield ``(alias, slug)`` pairs. Useful for admin docs., One node in the education ladder.      ``rank`` is a coarse numeric ordering u, all_aliases(), EducationLevel, Education-level taxonomy for the eligibility engine.  Replaces the engine's pr (+3 more)
-
-### Community 501 - "Community 501"
+### Community 514 - "Community 514"
 Cohesion: 0.38
 Nodes (11): _cms_client(), CMS create / bulk-import contract for PYQ topic tags (migration 032).  Tags ar, _review_client(), _seed(), test_bulk_import_1000_tags_mixed_valid_invalid(), test_bulk_import_tags_allows_more_than_default_cap_but_subjects_do_not(), test_create_pyq_source_lands_pending(), test_create_tag_forces_pending_even_if_caller_sends_verified() (+3 more)
 
-### Community 502 - "Community 502"
+### Community 515 - "Community 515"
 Cohesion: 0.35
 Nodes (11): _build_app(), Aspirant-facing /exam-intelligence/exams/{slug}/option-insights tests., Slug resolves but no rollup rows → has_data=False, empty arrays., An exam with the rollup tables populated by the admin recompute.      Two pape, _seed_populated(), test_option_insights_distractor_tip_uses_year_range(), test_option_insights_empty_when_rollups_not_populated(), test_option_insights_limit_caps_results() (+3 more)
 
-### Community 503 - "Community 503"
-Cohesion: 0.29
-Nodes (12): Return True if ``user`` can perform ``action``.      ``super_admin`` always pa, user_has_action(), test_admin_role_covers_most_actions(), test_admin_role_does_not_cover_override_conflict_without_explicit_permission(), test_admin_with_recruitments_manage_can_override(), test_scraping_manage_user_can_acknowledge_batch(), test_scraping_review_user_can_promote(), test_scraping_review_user_cannot_override() (+4 more)
+### Community 516 - "Community 516"
+Cohesion: 0.21
+Nodes (4): Synthetic acceptance test for the extraction segmentation pipeline.  Builds ~6, Regression tests for the gutter-band column split (right-column recall fix)., TestDetectColumnsRobust, _w()
 
-### Community 504 - "Community 504"
+### Community 517 - "Community 517"
 Cohesion: 0.35
 Nodes (11): _app(), Tracked-exams endpoints — PR-C.  Covers ``GET /api/study/tracked-exams`` and `, Drift guard: an older user may have ``profiles.target_exam`` set     but ``aspi, _seed_two_exams(), test_delete_non_primary_drops_slug_only(), test_delete_primary_with_confirm_clears_primary_and_slug(), test_delete_primary_without_confirm_returns_409(), test_delete_unknown_exam_returns_404() (+3 more)
 
-### Community 505 - "Community 505"
-Cohesion: 0.24
-Nodes (10): coerce(), parseCsvToRows(), parseImportFile(), bad, md, ok, pdf, { rows } (+2 more)
-
-### Community 506 - "Community 506"
-Cohesion: 0.17
-Nodes (11): Admin API (`/api/admin/exam-intelligence/*`), Admin viewer (`/admin/exam-intelligence`), Backend service (`app/backend/app/exam_intelligence/`), Exam Intelligence Contracts — v1 (PR5), Future PRs, Mission Control integration, Purpose, Safety contract (+3 more)
-
-### Community 507 - "Community 507"
-Cohesion: 0.17
-Nodes (12): 1. HashMap / Dictionary, code:text (app/backend/app/common/indexing.py), code:python (from collections import defaultdict), code:python (criteria_by_post_id = index_by(criteria_rows, "post_id")), code:python (resources_by_id = index_by(resources, "id")), code:python (threads_by_slug = index_by(threads, "slug")), Current signs in the repo, Impact (+4 more)
-
-### Community 508 - "Community 508"
-Cohesion: 0.17
-Nodes (12): 5. Decision Tree, code:text (Landing intent: check_eligibility), code:text (app/backend/app/onboarding/field_requirements.py), code:python (REQUIRED_FIELDS_BY_INTENT = {), code:text (app/backend/app/onboarding/flow_engine.py), code:python (class OnboardingNextStep(BaseModel):), Flow engine, Impact (+4 more)
-
-### Community 509 - "Community 509"
-Cohesion: 0.17
-Nodes (12): 2. PR7 — Soft Backfill Operationalization, Acceptance, Behavior, code:text (app/backend/app/scraping/verification_backfill.py), code:python (# verification_policy.py), code:text (- create active report per existing canonical recruitment), code:text (recommended_action ∈ {request_admin_review, promote_eligible), code:text (re-running backfill for same recruitment:) (+4 more)
-
-### Community 510 - "Community 510"
-Cohesion: 0.17
-Nodes (12): 17. Admin UI (PR6), Admin Action Rationalization, Checklist, code:text (source selector), code:text (queue item list), code:text (keep: useAdminNextActions.js), code:text (run live scrape, review required fields, review verification), code:text (resolve official proof, preview merge, mark duplicate,) (+4 more)
-
-### Community 511 - "Community 511"
-Cohesion: 0.17
-Nodes (12): An ExtractedRecruitment-shaped payload that satisfies the Pydantic     schema w, Healthy queue item with all evidence verified → blocking_issues     empty, orga, ``rejected`` and ``duplicate`` items must not be promotable. The     real promo, An ExtractedRecruitment-shaped payload that satisfies the Pydantic     schema w, Healthy queue item with all evidence verified → blocking_issues     empty, orga, ``rejected`` and ``duplicate`` items must not be promotable. The     real promo, test_promotion_preview_blocks_on_unverified_high_risk_fields(), test_promotion_preview_blocks_when_official_source_unresolved() (+4 more)
-
-### Community 512 - "Community 512"
+### Community 518 - "Community 518"
 Cohesion: 0.3
 Nodes (11): CurrentActionCard(), pickBlocker(), pickRecommendedAction(), actionKindFor(), actionLabelFor(), CurrentActionCard(), findCurrentStep(), findPhaseForStep() (+3 more)
 
-### Community 513 - "Community 513"
-Cohesion: 0.17
-Nodes (12): 1. HashMap / Dictionary, code:text (app/backend/app/common/indexing.py), code:python (from collections import defaultdict), code:python (criteria_by_post_id = index_by(criteria_rows, "post_id")), code:python (resources_by_id = index_by(resources, "id")), code:python (threads_by_slug = index_by(threads, "slug")), Current signs in the repo, Impact (+4 more)
+### Community 519 - "Community 519"
+Cohesion: 0.26
+Nodes (8): clearSession(), key(), loadSession(), saveSession(), DEFAULT_PAPER, styles, SessionState, TweakColor()
 
-### Community 514 - "Community 514"
-Cohesion: 0.17
-Nodes (12): 5. Decision Tree, code:text (Landing intent: check_eligibility), code:text (app/backend/app/onboarding/field_requirements.py), code:python (REQUIRED_FIELDS_BY_INTENT = {), code:text (app/backend/app/onboarding/flow_engine.py), code:python (class OnboardingNextStep(BaseModel):), Flow engine, Impact (+4 more)
-
-### Community 515 - "Community 515"
+### Community 520 - "Community 520"
 Cohesion: 0.17
 Nodes (11): Admin API (`/api/admin/exam-intelligence/*`), Admin viewer (`/admin/exam-intelligence`), Backend service (`app/backend/app/exam_intelligence/`), Exam Intelligence Contracts — v1 (PR5), Future PRs, Mission Control integration, Purpose, Safety contract (+3 more)
 
-### Community 516 - "Community 516"
+### Community 521 - "Community 521"
+Cohesion: 0.17
+Nodes (12): 1. HashMap / Dictionary, code:text (app/backend/app/common/indexing.py), code:python (from collections import defaultdict), code:python (criteria_by_post_id = index_by(criteria_rows, "post_id")), code:python (resources_by_id = index_by(resources, "id")), code:python (threads_by_slug = index_by(threads, "slug")), Current signs in the repo, Impact (+4 more)
+
+### Community 522 - "Community 522"
+Cohesion: 0.17
+Nodes (12): 5. Decision Tree, code:text (Landing intent: check_eligibility), code:text (app/backend/app/onboarding/field_requirements.py), code:python (REQUIRED_FIELDS_BY_INTENT = {), code:text (app/backend/app/onboarding/flow_engine.py), code:python (class OnboardingNextStep(BaseModel):), Flow engine, Impact (+4 more)
+
+### Community 523 - "Community 523"
 Cohesion: 0.17
 Nodes (12): 2. PR7 — Soft Backfill Operationalization, Acceptance, Behavior, code:text (app/backend/app/scraping/verification_backfill.py), code:python (# verification_policy.py), code:text (- create active report per existing canonical recruitment), code:text (recommended_action ∈ {request_admin_review, promote_eligible), code:text (re-running backfill for same recruitment:) (+4 more)
 
-### Community 517 - "Community 517"
+### Community 524 - "Community 524"
 Cohesion: 0.17
 Nodes (12): 17. Admin UI (PR6), Admin Action Rationalization, Checklist, code:text (source selector), code:text (queue item list), code:text (keep: useAdminNextActions.js), code:text (run live scrape, review required fields, review verification), code:text (resolve official proof, preview merge, mark duplicate,) (+4 more)
 
-### Community 520 - "Community 520"
-Cohesion: 0.33
-Nodes (11): _install(), SB, test_critical_edit_to_published_recruitment_resets_needs_review(), test_needs_review_visible_admin_hidden_public(), test_publish_blocked_when_eligibility_rules_missing(), test_publish_blocked_when_official_notification_url_missing(), test_publish_blocked_when_organization_unverified(), test_publish_blocked_when_posts_missing() (+3 more)
-
-### Community 521 - "Community 521"
-Cohesion: 0.22
-Nodes (3): _FakeAuth, _FakeAuthAdmin, _UserResp
-
-### Community 522 - "Community 522"
-Cohesion: 0.44
-Nodes (10): _build_app(), Trust invariant for the Exam-Intelligence CMS (data import/seed pipeline).  Th, _seeded_exam(), test_bulk_import_pyq_papers_forces_pending_trust(), test_bulk_import_rejects_unknown_entity(), test_bulk_import_topic_coverage_forces_pending_review_over_caller_status(), test_create_competition_metric_is_forced_draft(), test_create_pyq_paper_is_forced_pending_even_if_caller_sends_verified() (+2 more)
-
-### Community 523 - "Community 523"
-Cohesion: 0.27
-Nodes (4): allowed_transitions(), Return the list of actions available from *status*., draft → in_review → verified → published via sequential transitions., TestStateMachine
-
-### Community 524 - "Community 524"
-Cohesion: 0.45
-Nodes (10): _cms_client(), _payload(), CMS create / bulk-import contract for syllabus_topic_mentions (migration 031)., _review_client(), _seed(), test_bulk_import_100_rows_one_bad_topic_isolated(), test_create_mention_forces_pending_even_if_caller_sends_verified(), test_create_mention_lands_pending() (+2 more)
+### Community 525 - "Community 525"
+Cohesion: 0.17
+Nodes (11): code:block1 (cd tools/extraction-labeler), code:block2 (app/backend/tests/fixtures/exam_intelligence_extraction/upsc), code:block3 (npm test), Extraction Labeler — UPSC CSE PYQ v1 bbox tool, How to export, How to load a PDF, How to run, Labeling workflow (+3 more)
 
 ### Community 526 - "Community 526"
-Cohesion: 0.33
-Nodes (10): generate_next_actions(), _now_iso(), _already_exists_today(), _candidate_from_recommendation(), _day_bucket(), _dedupe_key(), generate_next_actions_for_user(), _load_preferences() (+2 more)
+Cohesion: 0.17
+Nodes (4): _KillExec, _KillQ, _KillSB, test_dispatch_respects_notification_kill_switch()
 
 ### Community 527 - "Community 527"
-Cohesion: 0.22
-Nodes (4): proofState(), VerificationReportCard(), proofState(), VerificationReportCard()
+Cohesion: 0.17
+Nodes (11): Safety net for any endpoint that didn't wrap a Supabase transport     disconnec, Safety net for any endpoint that didn't wrap a Supabase transport     disconnec, Safety net for any endpoint that didn't wrap a Supabase transport     disconnec, Safety net for any endpoint that didn't wrap a Supabase transport     disconnec, Safety net for any endpoint that didn't wrap a Supabase transport     disconnec, transient_transport_handler(), unhandled_exception_handler(), a (+3 more)
+
+### Community 528 - "Community 528"
+Cohesion: 0.17
+Nodes (12): _drill(), fetch_api_paginated(), _first_field(), Walk a dotted path through a JSON object. Returns ``None`` when     any interme, Return the first non-empty string value among ``candidates`` keys     on ``entr, Return ``url`` with ``params`` merged into its query string., Fetch a JSON endpoint across multiple pages and return the first     page's ``F, _with_query() (+4 more)
 
 ### Community 529 - "Community 529"
-Cohesion: 0.22
-Nodes (9): detailCalls(), inspect, listCalls(), mockGet, mockPost, queueCalls(), reload, runCalls (+1 more)
+Cohesion: 0.27
+Nodes (11): on_recruitment_critical_field_edit(), Fire staleness when an admin edits a critical recruitment field.      Only tri, Tests for the PR5 canonical-edit hook.  Plan §6 ship gate:  * canonical edit, _seed(), test_hook_does_not_fire_on_non_critical_field_edit(), test_hook_does_not_fire_when_hash_unchanged(), test_hook_fires_when_apply_end_date_drifts(), test_hook_returns_none_when_no_active_report() (+3 more)
 
 ### Community 530 - "Community 530"
-Cohesion: 0.31
-Nodes (10): checkboxStats(), clickThroughSection(), emit(), fs, getBody(), getChangedFiles(), getLabels(), main() (+2 more)
+Cohesion: 0.17
+Nodes (12): 5. Decision Tree, code:text (Landing intent: check_eligibility), code:text (app/backend/app/onboarding/field_requirements.py), code:python (REQUIRED_FIELDS_BY_INTENT = {), code:text (app/backend/app/onboarding/flow_engine.py), code:python (class OnboardingNextStep(BaseModel):), Flow engine, Impact (+4 more)
 
 ### Community 531 - "Community 531"
-Cohesion: 0.18
-Nodes (10): Backend setup, code:bash (cd app/backend), code:bash (uvicorn server:app --reload --port 8000), code:bash (pytest), code:bash (pytest tests/test_error_utils.py tests/test_eligibility_mapp), Contributing to Career Copilot, Development workflow, Review checklist (+2 more)
+Cohesion: 0.17
+Nodes (12): 1. HashMap / Dictionary, code:text (app/backend/app/common/indexing.py), code:python (from collections import defaultdict), code:python (criteria_by_post_id = index_by(criteria_rows, "post_id")), code:python (resources_by_id = index_by(resources, "id")), code:python (threads_by_slug = index_by(threads, "slug")), Current signs in the repo, Impact (+4 more)
 
 ### Community 532 - "Community 532"
-Cohesion: 0.18
-Nodes (11): API Endpoints, Backend Implementation, code:txt (app/backend/app/api/onboarding_chat.py), code:python (from app.api.onboarding_chat import router as onboarding_cha), code:txt (intent=check_eligibility), code:json ({), code:json ({), `GET /api/funnel/resolve` (+3 more)
+Cohesion: 0.17
+Nodes (11): Admin API (`/api/admin/exam-intelligence/*`), Admin viewer (`/admin/exam-intelligence`), Backend service (`app/backend/app/exam_intelligence/`), Exam Intelligence Contracts — v1 (PR5), Future PRs, Mission Control integration, Purpose, Safety contract (+3 more)
 
 ### Community 533 - "Community 533"
-Cohesion: 0.18
-Nodes (11): 6. Tree, code:text (Exam), code:json ({), code:text (Course), code:text (Recruitment), Document checklist tree, Impact, Implementation priority (+3 more)
+Cohesion: 0.17
+Nodes (12): 2. PR7 — Soft Backfill Operationalization, Acceptance, Behavior, code:text (app/backend/app/scraping/verification_backfill.py), code:python (# verification_policy.py), code:text (- create active report per existing canonical recruitment), code:text (recommended_action ∈ {request_admin_review, promote_eligible), code:text (re-running backfill for same recruitment:) (+4 more)
 
 ### Community 534 - "Community 534"
-Cohesion: 0.18
-Nodes (11): 10. Inverted Index, code:python (index = {), code:text (app/backend/app/discovery/), code:text (search_documents), Entities to index, Example, Future tables, Impact (+3 more)
+Cohesion: 0.17
+Nodes (12): 17. Admin UI (PR6), Admin Action Rationalization, Checklist, code:text (source selector), code:text (queue item list), code:text (keep: useAdminNextActions.js), code:text (run live scrape, review required fields, review verification), code:text (resolve official proof, preview merge, mark duplicate,) (+4 more)
 
 ### Community 535 - "Community 535"
-Cohesion: 0.18
-Nodes (11): Behavior Index (weighted composite), code:text (behavior_adherence_score), code:text (Behavior Index =), code:json ({), code:text (plan_adherence_score), code:text (group_presence_minutes), code:text (focus_minutes), Layer 1 — Behavior (+3 more)
+Cohesion: 0.27
+Nodes (4): _make_actor(), Author and reviewer are the same person → ConflictError (→ 409)., TestConflictOfInterest, TestCreateQuestion
 
 ### Community 536 - "Community 536"
 Cohesion: 0.18
-Nodes (10): 1. Check for client_seq overflow corruption, 2. Check for events sequence_no overflow, 3. Identify submitted attempts with suspiciously low answer counts, 4. Identify in-progress attempts that may be heading toward bad submit, Background, code:sql (SELECT COUNT(*) FROM mock_attempt_responses WHERE client_seq), code:sql (SELECT COUNT(*) FROM mock_attempt_events WHERE sequence_no >), code:sql (SELECT ma.user_id, ma.id, ma.submitted_at,) (+2 more)
+Nodes (10): CommitImportIn, CreateQuestionIn, ForceStatusIn, LinkTranslationIn, OptionIn, Admin mock question bank API.  All endpoints require at minimum mock_questions, SourceIn, TopicTagIn (+2 more)
 
 ### Community 537 - "Community 537"
-Cohesion: 0.18
-Nodes (10): Adding a flow, Bundle regression gate, code:block1 (e2e/), code:bash (# 1. Local Supabase (applies migrations) + content seed), code:bash (npm run e2e:ui                       # Playwright UI mode (w), Debugging failures, End-to-end tests (Playwright), In CI (+2 more)
+Cohesion: 0.22
+Nodes (3): _FakeAuth, _FakeAuthAdmin, _UserResp
 
 ### Community 538 - "Community 538"
-Cohesion: 0.18
-Nodes (10): Dashboard + entry surfaces, File-by-file audit ledger, Major gaps (actionable), Recommended remediation sequence, Scope, Study feature components (all reviewed), Study OS Frontend Full Audit (Code-Only), Study planning + execution pages (+2 more)
-
-### Community 539 - "Community 539"
-Cohesion: 0.24
-Nodes (10): AppError, Raised when scrape pipeline orchestration fails., Base class for predictable application-level errors., Raised for invalid request/input state., ScraperPipelineError, ValidationError, AppError, Raised when scrape pipeline orchestration fails. (+2 more)
+Cohesion: 0.45
+Nodes (10): _cms_client(), _payload(), CMS create / bulk-import contract for syllabus_topic_mentions (migration 031)., _review_client(), _seed(), test_bulk_import_100_rows_one_bad_topic_isolated(), test_create_mention_forces_pending_even_if_caller_sends_verified(), test_create_mention_lands_pending() (+2 more)
 
 ### Community 540 - "Community 540"
-Cohesion: 0.18
-Nodes (11): 10. Inverted Index, code:python (index = {), code:text (app/backend/app/discovery/), code:text (search_documents), Entities to index, Example, Future tables, Impact (+3 more)
+Cohesion: 0.22
+Nodes (4): proofState(), VerificationReportCard(), proofState(), VerificationReportCard()
 
 ### Community 541 - "Community 541"
 Cohesion: 0.18
-Nodes (11): 6. Tree, code:text (Exam), code:json ({), code:text (Course), code:text (Recruitment), Document checklist tree, Impact, Implementation priority (+3 more)
+Nodes (9): actual, cbs, mockExecute, mockLoginWithGoogle, mockNavigate, mockRegister, mockReset, ReactInner (+1 more)
 
 ### Community 542 - "Community 542"
 Cohesion: 0.18
-Nodes (11): API Endpoints, Backend Implementation, code:txt (app/backend/app/api/onboarding_chat.py), code:python (from app.api.onboarding_chat import router as onboarding_cha), code:txt (intent=check_eligibility), code:json ({), code:json ({), `GET /api/funnel/resolve` (+3 more)
+Nodes (10): Capture(), get, mockAuthMe, mockGetSession, mockOnAuthStateChange, mockSignInWithOAuth, mockSignInWithPassword, mockSignUp (+2 more)
 
 ### Community 543 - "Community 543"
 Cohesion: 0.22
-Nodes (9): _Bucket, configure(), _consume(), enforce(), In-process per-user / per-route token-bucket rate limiter.  In-memory only — s, Register or override the limit for ``route``. Tests use this., Consume one token; raise 429 if the bucket is empty., Drop all in-memory state. Tests only. (+1 more)
-
-### Community 544 - "Community 544"
-Cohesion: 0.24
-Nodes (6): create_order(), get_client(), Shared Razorpay helpers used by subscriptions and marketplace.  Everything tha, Create a Razorpay order. ``amount_inr`` is the integer amount in INR     (whole, Issue a refund against a captured payment. ``amount_inr`` is whole INR., refund()
+Nodes (9): detailCalls(), inspect, listCalls(), mockGet, mockPost, queueCalls(), reload, runCalls (+1 more)
 
 ### Community 545 - "Community 545"
-Cohesion: 0.2
-Nodes (10): collect_observations(), _host_of(), Build the flat observation list from one queue item + peers.      The primary, Classify a host into an engine trust tier.      ``source_registry.trust_tier``, _trust_of(), test_collect_observations_classifies_govt_host_as_official(), test_collect_observations_classifies_unknown_host_as_unknown(), test_collect_observations_extracts_consensus_fields_from_primary() (+2 more)
+Cohesion: 0.31
+Nodes (10): checkboxStats(), clickThroughSection(), emit(), fs, getBody(), getChangedFiles(), getLabels(), main() (+2 more)
 
 ### Community 546 - "Community 546"
-Cohesion: 0.31
-Nodes (9): Counter(), _collect_routes(), Phase 5 regression guard — fail CI if any (path, method) is registered by more, Importing server.py loads every router. Every (path, method) pair     under ``/, App-wide variant of the Phase 5 guard — extended by the Phase 5     follow-up c, Specific guard for the 5 paths Phase 5 consolidated.      These were the canon, test_no_duplicate_route_registrations_anywhere(), test_no_duplicate_study_route_registrations() (+1 more)
+Cohesion: 0.18
+Nodes (10): Backend setup, code:bash (cd app/backend), code:bash (uvicorn server:app --reload --port 8000), code:bash (pytest), code:bash (pytest tests/test_error_utils.py tests/test_eligibility_mapp), Contributing to Career Copilot, Development workflow, Review checklist (+2 more)
 
 ### Community 547 - "Community 547"
-Cohesion: 0.29
-Nodes (9): get_events(), ingest_client_events(), _now_iso(), Attempt event service (PR2b).  Responsibilities:   - record_server_event : sy, Return events for an attempt ordered by occurred_at ascending, paginated., Insert one server-authoritative event row.      Called from inside mock_engine, Validate, deduplicate, and insert a batch of client events.      Returns:, record_server_event() (+1 more)
+Cohesion: 0.18
+Nodes (10): code:bash (# Ubuntu / Debian (CI and Docker)), code:block2 (PyMuPDF>=1.23), code:python (from app.exam_intelligence.extraction import extract, fetch_), Corpus assumptions (v1), Exam Intelligence Extraction v1, Module overview, Non-goals (v1), Python dependencies (+2 more)
 
 ### Community 548 - "Community 548"
-Cohesion: 0.38
-Nodes (9): _build_app(), Schema-truth contract for ``PATCH /api/admin/exam-intelligence/topic-coverage/{i, Belt and suspenders. The full DB row after a successful PATCH must     never ca, Regression guard: the old, drifted column name must NOT silently     succeed. `, _seed_coverage_row(), test_patch_does_not_persist_legacy_key_under_any_circumstance(), test_patch_with_legacy_reviewer_notes_returns_422(), test_patch_with_no_fields_returns_400() (+1 more)
+Cohesion: 0.18
+Nodes (11): API Endpoints, Backend Implementation, code:txt (app/backend/app/api/onboarding_chat.py), code:python (from app.api.onboarding_chat import router as onboarding_cha), code:txt (intent=check_eligibility), code:json ({), code:json ({), `GET /api/funnel/resolve` (+3 more)
+
+### Community 549 - "Community 549"
+Cohesion: 0.18
+Nodes (11): 6. Tree, code:text (Exam), code:json ({), code:text (Course), code:text (Recruitment), Document checklist tree, Impact, Implementation priority (+3 more)
 
 ### Community 550 - "Community 550"
-Cohesion: 0.33
-Nodes (10): _mk_rec(), The rules-present path now comes from age_criteria, not a recruitment     colum, _set_sb(), test_missing_apply_when_open(), test_missing_notification(), test_publish_ready(), test_publish_ready_uses_age_criteria_join(), test_reversed_dates() (+2 more)
+Cohesion: 0.18
+Nodes (11): 10. Inverted Index, code:python (index = {), code:text (app/backend/app/discovery/), code:text (search_documents), Entities to index, Example, Future tables, Impact (+3 more)
 
 ### Community 551 - "Community 551"
-Cohesion: 0.42
-Nodes (9): _app(), _mixed_lifecycle_seed(), Aspirant-facing endpoints must surface only ``reviewer_status='locked'`` covera, One topic in each reviewer_status state, plus topic hierarchy., test_mission_control_exam_context_high_yield_topics_are_locked_only(), test_mission_control_today_tasks_carry_priority_and_reasoning(), test_topics_endpoint_carries_parent_topic_id_and_level(), test_topics_endpoint_returns_locked_rows_only() (+1 more)
+Cohesion: 0.18
+Nodes (11): Behavior Index (weighted composite), code:text (behavior_adherence_score), code:text (Behavior Index =), code:json ({), code:text (plan_adherence_score), code:text (group_presence_minutes), code:text (focus_minutes), Layer 1 — Behavior (+3 more)
 
 ### Community 552 - "Community 552"
-Cohesion: 0.29
-Nodes (7): _pool(), Task 2 — the cached Supabase clients pin a 30s httpx keepalive window.  Supaba, Sync client runs HTTP/1.1: no multiplexing (~10-15% slower per request)     is, test_admin_client_passes_keepalive_options(), test_async_options_httpx_pool_uses_limits(), test_sync_client_http1_latency_tradeoff(), test_sync_options_httpx_pool_uses_limits()
+Cohesion: 0.18
+Nodes (10): 1. Check for client_seq overflow corruption, 2. Check for events sequence_no overflow, 3. Identify submitted attempts with suspiciously low answer counts, 4. Identify in-progress attempts that may be heading toward bad submit, Background, code:sql (SELECT COUNT(*) FROM mock_attempt_responses WHERE client_seq), code:sql (SELECT COUNT(*) FROM mock_attempt_events WHERE sequence_no >), code:sql (SELECT ma.user_id, ma.id, ma.submitted_at,) (+2 more)
 
 ### Community 553 - "Community 553"
-Cohesion: 0.42
-Nodes (9): _cms_client(), Schema-truth contract for the exam_topic_coverage CMS write path.  ``exam_topi, _review_client(), _seed(), test_create_coverage_rejects_legacy_is_active_with_422(), test_create_coverage_rejects_legacy_priority_with_422(), test_create_coverage_with_real_fields_persists_and_forces_pending_review(), test_readiness_validator_passes_after_coverage_created_and_locked() (+1 more)
+Cohesion: 0.18
+Nodes (10): Adding a flow, Bundle regression gate, code:block1 (e2e/), code:bash (# 1. Local Supabase (applies migrations) + content seed), code:bash (npm run e2e:ui                       # Playwright UI mode (w), Debugging failures, End-to-end tests (Playwright), In CI (+2 more)
 
 ### Community 554 - "Community 554"
-Cohesion: 0.29
-Nodes (9): _allowed_event_types(), _code_event_types(), Every ``event_type`` the app writes into ``study_adaptation_events`` must be ad, Union of every event_type listed in any migration's     ``study_adaptation_even, Map ``event_type`` literal → files that pass it, scanning the     backend app f, Regression: the illegal default fixed in PR #367 must never return., test_manual_application_is_gone(), test_migration_admits_expanded_event_types() (+1 more)
+Cohesion: 0.18
+Nodes (10): Dashboard + entry surfaces, File-by-file audit ledger, Major gaps (actionable), Recommended remediation sequence, Scope, Study feature components (all reviewed), Study OS Frontend Full Audit (Code-Only), Study planning + execution pages (+2 more)
 
 ### Community 555 - "Community 555"
-Cohesion: 0.33
-Nodes (8): _profile(), _rec(), test_continue_application_exact_text(), test_recommendations_counts(), _profile(), _rec(), test_continue_application_exact_text(), test_recommendations_counts()
+Cohesion: 0.24
+Nodes (10): AppError, Raised when scrape pipeline orchestration fails., Base class for predictable application-level errors., Raised for invalid request/input state., ScraperPipelineError, ValidationError, AppError, Raised when scrape pipeline orchestration fails. (+2 more)
 
 ### Community 556 - "Community 556"
-Cohesion: 0.22
-Nodes (3): ProfileOnboardingShell(), mockSession, useProfileOnboarding()
+Cohesion: 0.44
+Nodes (10): _build_app(), Trust invariant for the Exam-Intelligence CMS (data import/seed pipeline).  Th, _seeded_exam(), test_bulk_import_pyq_papers_forces_pending_trust(), test_bulk_import_rejects_unknown_entity(), test_bulk_import_topic_coverage_forces_pending_review_over_caller_status(), test_create_competition_metric_is_forced_draft(), test_create_pyq_paper_is_forced_pending_even_if_caller_sends_verified() (+2 more)
 
-### Community 557 - "Community 557"
-Cohesion: 0.2
-Nodes (9): actual, btn, mockNavigate, mockSignInAnonymously, mockTurnstileCallbacks, mockTurnstileExecute, mockTurnstileReset, ReactInner (+1 more)
-
-### Community 558 - "Community 558"
-Cohesion: 0.2
-Nodes (9): AuthCallback, BlogDetail, Blogs, CopyrightSubmit, ForgotPassword, Login, OnboardingChat, ResetPassword (+1 more)
+### Community 559 - "Community 559"
+Cohesion: 0.38
+Nodes (10): PR 5 / PR 9 — mock verification tier rules., _sb(), test_mentor_attestation_is_tier_1(), test_partner_must_not_be_self_collusion_risk(), test_partner_with_evidence_is_tier_1_5(), test_provider_with_attempt_id_is_tier_1(), test_screenshot_alone_is_tier_2_pending(), test_self_report_lands_at_tier_3() (+2 more)
 
 ### Community 560 - "Community 560"
-Cohesion: 0.2
-Nodes (10): code:js (case "new":), code:js (case "new":), F-P0-1. `PartnersScreen` crashes on live backend response, F-P0-2. `PartnersScreen` shows blank partner name / no streak after live load, F-P0-3. "New thread" / vote optimistic state silently diverges on POST failure, F-P0-4. Channel-creation hits the deprecated seed-only endpoint, F-P0-5. "New" sort is broken — pinned-only, never sorts by recency, F-P0-6. "My groups" tab silently empties when backend wins (+2 more)
+Cohesion: 0.18
+Nodes (11): 6. Tree, code:text (Exam), code:json ({), code:text (Course), code:text (Recruitment), Document checklist tree, Impact, Implementation priority (+3 more)
 
 ### Community 561 - "Community 561"
-Cohesion: 0.2
-Nodes (9): Backend confirmation (read-only — no changes), Blast-radius files checked but NOT modified, code:block1 (grep -rn '"rejected"\|reviewer_status.*rejected' app/fronten), Field-level `reviewer_status` checks (the bug — IN SCOPE), Flagged ("rejected") status audit — admin scrape field review, Pre-flight grep results, Queue-item-level `status` checks (different domain — LEAVE ALONE), Scope summary (+1 more)
+Cohesion: 0.18
+Nodes (11): 10. Inverted Index, code:python (index = {), code:text (app/backend/app/discovery/), code:text (search_documents), Entities to index, Example, Future tables, Impact (+3 more)
 
 ### Community 562 - "Community 562"
-Cohesion: 0.2
-Nodes (9): Eligibility/recompute and candidate fit, Foundation and core data model, Migration history summary, Notes, Notifications and user lifecycle, Payments and policy/admin, Product feature expansions, Scraper/trust pipeline hardening (+1 more)
+Cohesion: 0.18
+Nodes (11): API Endpoints, Backend Implementation, code:txt (app/backend/app/api/onboarding_chat.py), code:python (from app.api.onboarding_chat import router as onboarding_cha), code:txt (intent=check_eligibility), code:json ({), code:json ({), `GET /api/funnel/resolve` (+3 more)
 
 ### Community 563 - "Community 563"
-Cohesion: 0.2
-Nodes (8): code:text (if every_source_errored:        failed), Column type, Decision order (first match wins), Run metrics, Scrape-run severity policy, Status values, Thresholds, Worked examples
+Cohesion: 0.38
+Nodes (9): _now_iso(), _already_exists_today(), _candidate_from_recommendation(), _day_bucket(), _dedupe_key(), generate_next_actions_for_user(), _load_preferences(), _now_iso() (+1 more)
 
 ### Community 564 - "Community 564"
-Cohesion: 0.2
-Nodes (9): Admin Persona Controls — v1 (PR4), Backend endpoints (all under `/api/admin/persona`), Frontend page, Future admin roadmap, Purpose, Route, Safety constraints, What admins can edit (+1 more)
+Cohesion: 0.22
+Nodes (10): create_question(), [author] Create a new draft question., [author] Create a new draft question., [author] Create a new draft question., [author] Edit own draft or needs_changes question.     Publisher may override f, [author] Edit own draft or needs_changes question.     Publisher may override f, [reviewer] draft → reviewed (pipeline first-pass review).      Marks the quest, review_question() (+2 more)
 
 ### Community 565 - "Community 565"
-Cohesion: 0.2
-Nodes (10): code:text (high adherence + moderate/low hours + high completion), code:text ("You perform better with structure."), code:text (flaky · grinder · lone wolf · unreliable · unfocused), code:json ({), code:text (relative_consistency_percentile), Internal trait mapping, New persona signals to extend the collector, Persona JSON additions (+2 more)
+Cohesion: 0.22
+Nodes (10): get_question(), _handle(), [author] Question detail: row + options + sources + tags + review log., [author] Question detail: row + options + sources + tags + review log., [author] Question detail: row + options + sources + tags + review log., [author] Submit draft / needs_changes → in_review., [author] Submit draft / needs_changes → in_review., Map service exceptions to HTTP responses. (+2 more)
 
 ### Community 566 - "Community 566"
-Cohesion: 0.2
-Nodes (9): Auth endpoints, Career Copilot · Test Credentials (Phase 1.5 + Phase 2), code:block1 (email:    razortest+1778018301@inbox.testreal.dev), code:bash (curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \), code:bash (curl -X PUT "$SUPABASE_URL/auth/v1/admin/users/<user_id>" \), Granting admin role, How to sign in for testing, Razorpay test cards (Razorpay Checkout) (+1 more)
-
-### Community 567 - "Community 567"
-Cohesion: 0.22
-Nodes (10): book_mentor_session(), cancel_booking(), end_partnership(), _get_group(), group_detail(), invite_partner(), join_group(), _now_iso() (+2 more)
-
-### Community 568 - "Community 568"
-Cohesion: 0.22
-Nodes (10): book_mentor_session(), cancel_booking(), end_partnership(), _get_group(), group_detail(), invite_partner(), join_group(), _now_iso() (+2 more)
-
-### Community 570 - "Community 570"
 Cohesion: 0.29
 Nodes (10): Endpoint decorator: map an unrecovered Supabase transport disconnect     into a, _surface_transient_as_503(), F(), The request-boundary decorator must let a schema error fall through to     the, An unrecovered ReadError reaching the boundary now maps to 503 (same as     Rem, test_decorator_maps_transient_to_503(), test_decorator_passes_through_non_transient(), test_decorator_returns_value_on_success() (+2 more)
 
+### Community 567 - "Community 567"
+Cohesion: 0.33
+Nodes (8): _profile(), _rec(), test_continue_application_exact_text(), test_recommendations_counts(), _profile(), _rec(), test_continue_application_exact_text(), test_recommendations_counts()
+
+### Community 568 - "Community 568"
+Cohesion: 0.27
+Nodes (9): get_option_insights(), Aspirant-facing trap-awareness + elimination-heuristic tips.      Reads the ma, Aspirant-facing trap-awareness + elimination-heuristic tips.      Reads the ma, _distractor_tip(), _elimination_tip(), option_insights(), Aspirant-facing reader for option-level analytics rollups.  Reads from the mat, Return the aspirant-shaped option-insights payload for one exam.      Reads on (+1 more)
+
+### Community 569 - "Community 569"
+Cohesion: 0.22
+Nodes (9): _Bucket, configure(), _consume(), enforce(), In-process per-user / per-route token-bucket rate limiter.  In-memory only — s, Register or override the limit for ``route``. Tests use this., Consume one token; raise 429 if the bucket is empty., Drop all in-memory state. Tests only. (+1 more)
+
+### Community 570 - "Community 570"
+Cohesion: 0.24
+Nodes (6): create_order(), get_client(), Shared Razorpay helpers used by subscriptions and marketplace.  Everything tha, Create a Razorpay order. ``amount_inr`` is the integer amount in INR     (whole, Issue a refund against a captured payment. ``amount_inr`` is whole INR., refund()
+
+### Community 571 - "Community 571"
+Cohesion: 0.29
+Nodes (9): get_events(), ingest_client_events(), _now_iso(), Attempt event service (PR2b).  Responsibilities:   - record_server_event : sy, Return events for an attempt ordered by occurred_at ascending, paginated., Insert one server-authoritative event row.      Called from inside mock_engine, Validate, deduplicate, and insert a batch of client events.      Returns:, record_server_event() (+1 more)
+
 ### Community 572 - "Community 572"
+Cohesion: 0.24
+Nodes (9): get_evidence(), Universal evidence read API.  Surfaces the row that backs a TrustStamp / Sourc, Return the raw evidence row for ``(kind, row_id)`` plus a trust envelope., Return the raw evidence row for ``(kind, row_id)`` plus a trust envelope., _safe(), get_evidence(), Universal evidence read API.  Surfaces the row that backs a TrustStamp / Sourc, Return the raw evidence row for ``(kind, row_id)`` plus a trust envelope. (+1 more)
+
+### Community 573 - "Community 573"
+Cohesion: 0.38
+Nodes (9): _build_app(), Schema-truth contract for ``PATCH /api/admin/exam-intelligence/topic-coverage/{i, Belt and suspenders. The full DB row after a successful PATCH must     never ca, Regression guard: the old, drifted column name must NOT silently     succeed. `, _seed_coverage_row(), test_patch_does_not_persist_legacy_key_under_any_circumstance(), test_patch_with_legacy_reviewer_notes_returns_422(), test_patch_with_no_fields_returns_400() (+1 more)
+
+### Community 575 - "Community 575"
+Cohesion: 0.33
+Nodes (10): _mk_rec(), The rules-present path now comes from age_criteria, not a recruitment     colum, _set_sb(), test_missing_apply_when_open(), test_missing_notification(), test_publish_ready(), test_publish_ready_uses_age_criteria_join(), test_reversed_dates() (+2 more)
+
+### Community 578 - "Community 578"
+Cohesion: 0.36
+Nodes (10): _install(), SB, test_critical_edit_to_published_recruitment_resets_needs_review(), test_publish_blocked_when_eligibility_rules_missing(), test_publish_blocked_when_official_notification_url_missing(), test_publish_blocked_when_organization_unverified(), test_publish_blocked_when_posts_missing(), test_publish_blocked_when_source_provenance_missing() (+2 more)
+
+### Community 579 - "Community 579"
+Cohesion: 0.29
+Nodes (7): _pool(), Task 2 — the cached Supabase clients pin a 30s httpx keepalive window.  Supaba, Sync client runs HTTP/1.1: no multiplexing (~10-15% slower per request)     is, test_admin_client_passes_keepalive_options(), test_async_options_httpx_pool_uses_limits(), test_sync_client_http1_latency_tradeoff(), test_sync_options_httpx_pool_uses_limits()
+
+### Community 580 - "Community 580"
+Cohesion: 0.42
+Nodes (9): _cms_client(), Schema-truth contract for the exam_topic_coverage CMS write path.  ``exam_topi, _review_client(), _seed(), test_create_coverage_rejects_legacy_is_active_with_422(), test_create_coverage_rejects_legacy_priority_with_422(), test_create_coverage_with_real_fields_persists_and_forces_pending_review(), test_readiness_validator_passes_after_coverage_created_and_locked() (+1 more)
+
+### Community 581 - "Community 581"
+Cohesion: 0.2
+Nodes (7): Rows with source_document_id=NULL (manual entry) must be fetched by pyq_paper_id, A row present in both by_paper and by_doc results is returned only once., _create_pyq_question(), _fetch_existing_rows(), Writer. Translates ExtractionResult into pyq_questions rows.  ALL writes via a, Call create_pyq_question as a regular Python function (not via HTTP).      Con, Fetch existing pyq_questions for dedup comparison.      Queries by pyq_paper_i
+
+### Community 582 - "Community 582"
+Cohesion: 0.2
+Nodes (10): collect_observations(), _host_of(), Build the flat observation list from one queue item + peers.      The primary, Classify a host into an engine trust tier.      ``source_registry.trust_tier``, _trust_of(), test_collect_observations_classifies_govt_host_as_official(), test_collect_observations_classifies_unknown_host_as_unknown(), test_collect_observations_extracts_consensus_fields_from_primary() (+2 more)
+
+### Community 583 - "Community 583"
+Cohesion: 0.29
+Nodes (9): _allowed_event_types(), _code_event_types(), Every ``event_type`` the app writes into ``study_adaptation_events`` must be ad, Union of every event_type listed in any migration's     ``study_adaptation_even, Map ``event_type`` literal → files that pass it, scanning the     backend app f, Regression: the illegal default fixed in PR #367 must never return., test_manual_application_is_gone(), test_migration_admits_expanded_event_types() (+1 more)
+
+### Community 584 - "Community 584"
+Cohesion: 0.2
+Nodes (9): AuthCallback, BlogDetail, Blogs, CopyrightSubmit, ForgotPassword, Login, OnboardingChat, ResetPassword (+1 more)
+
+### Community 586 - "Community 586"
+Cohesion: 0.2
+Nodes (10): code:js (case "new":), code:js (case "new":), F-P0-1. `PartnersScreen` crashes on live backend response, F-P0-2. `PartnersScreen` shows blank partner name / no streak after live load, F-P0-3. "New thread" / vote optimistic state silently diverges on POST failure, F-P0-4. Channel-creation hits the deprecated seed-only endpoint, F-P0-5. "New" sort is broken — pinned-only, never sorts by recency, F-P0-6. "My groups" tab silently empties when backend wins (+2 more)
+
+### Community 587 - "Community 587"
+Cohesion: 0.2
+Nodes (9): Backend confirmation (read-only — no changes), Blast-radius files checked but NOT modified, code:block1 (grep -rn '"rejected"\|reviewer_status.*rejected' app/fronten), Field-level `reviewer_status` checks (the bug — IN SCOPE), Flagged ("rejected") status audit — admin scrape field review, Pre-flight grep results, Queue-item-level `status` checks (different domain — LEAVE ALONE), Scope summary (+1 more)
+
+### Community 588 - "Community 588"
+Cohesion: 0.2
+Nodes (9): Eligibility/recompute and candidate fit, Foundation and core data model, Migration history summary, Notes, Notifications and user lifecycle, Payments and policy/admin, Product feature expansions, Scraper/trust pipeline hardening (+1 more)
+
+### Community 589 - "Community 589"
+Cohesion: 0.2
+Nodes (8): code:text (if every_source_errored:        failed), Column type, Decision order (first match wins), Run metrics, Scrape-run severity policy, Status values, Thresholds, Worked examples
+
+### Community 590 - "Community 590"
 Cohesion: 0.2
 Nodes (9): Admin Persona Controls — v1 (PR4), Backend endpoints (all under `/api/admin/persona`), Frontend page, Future admin roadmap, Purpose, Route, Safety constraints, What admins can edit (+1 more)
 
-### Community 573 - "Community 573"
-Cohesion: 0.28
-Nodes (8): _assert_attempt_accepts_events(), ClientEvent, _fetch_attempt_for_user(), get_events(), post_events(), PostEventsBody, Mock Attempt Events API (PR2b).  Routes (mounted under /api/study/mocks/attemp, Raise 409 if the attempt is in a terminal state past the grace window.
-
-### Community 574 - "Community 574"
-Cohesion: 0.22
-Nodes (9): collect_observations(), _host_of(), Build the flat observation list from one queue item + peers.      The primary, Classify a host into an engine trust tier.      ``source_registry.trust_tier``, _trust_of(), test_collect_observations_classifies_govt_host_as_official(), test_collect_observations_classifies_unknown_host_as_unknown(), test_collect_observations_extracts_consensus_fields_from_primary() (+1 more)
-
-### Community 575 - "Community 575"
-Cohesion: 0.22
-Nodes (9): fetch_rss(), parse_rss_feed(), Parse an RSS 2.0 or Atom feed into a flat list of entries.      Uses stdlib ``, Fetch an RSS / Atom feed and return both the raw FetchResult and     the parsed, test_fetch_rss_returns_not_modified_on_304(), test_parse_atom_returns_entries_with_href_link(), test_parse_rss_2_returns_each_item(), test_parse_rss_empty_input() (+1 more)
-
-### Community 576 - "Community 576"
-Cohesion: 0.31
-Nodes (7): _all_users(), _app_metadata(), main(), Promote an existing Supabase auth user to ``super_admin``.  Usage (from the re, Core logic. Returns ``(exit_code, message)`` for testability., run(), test_bootstrap_no_user_exit_2()
-
-### Community 577 - "Community 577"
-Cohesion: 0.47
-Nodes (8): _client(), _opts(), Bulk import for pyq-questions (with inline options) and pyq-options., _seed(), test_bulk_100_questions_with_inline_options(), test_bulk_bad_question_type_row_error_rest_succeed(), test_bulk_cap_exceeded_422(), test_bulk_options_standalone()
-
-### Community 578 - "Community 578"
-Cohesion: 0.22
-Nodes (9): is_at_least(), Convenience: ``True`` iff the user's level is at least the required.      Both, test_is_at_least_accepts_aliases_on_either_side(), test_is_at_least_higher_satisfies_lower(), test_is_at_least_lower_does_not_satisfy_higher(), test_is_at_least_satisfies_self(), test_is_at_least_unknown_requirement_passes(), test_is_at_least_unknown_user_level_fails_known_requirement() (+1 more)
-
-### Community 579 - "Community 579"
-Cohesion: 0.28
-Nodes (4): asOptionList(), optionsToText(), asOptionList(), optionsToText()
-
-### Community 581 - "Community 581"
-Cohesion: 0.31
-Nodes (4): PersonaQuestionCard(), usePersonaQuestion(), PersonaQuestionCard(), usePersonaQuestion()
-
-### Community 582 - "Community 582"
-Cohesion: 0.31
-Nodes (6): dimensionLine(), evidenceLine(), humanize(), PersonaSummaryCard(), MY_PERSONA_QUERY_KEY, useMyPersona()
-
-### Community 583 - "Community 583"
-Cohesion: 0.22
-Nodes (8): ADMIN_MARKET, CART, LIBRARY, MARKET_CATEGORIES, PRODUCTS, RECENTLY_VIEWED, SELLER_DASH, SELLERS
-
-### Community 584 - "Community 584"
-Cohesion: 0.22
-Nodes (8): Bundle Budget Policy, code:bash (cd app/frontend), code:bash (cd app/frontend && npm run build && npm run check:bundle-bud), code:jsx (const Dashboard = lazy(() => import('../pages/Dashboard'));), Lazy-Splitting Guardrail, Local Run, Raising the Budget, Thresholds
-
-### Community 585 - "Community 585"
-Cohesion: 0.22
-Nodes (8): Competition Metrics, Exam Intelligence Import Checklist (Real Data Only), Exam + Registry, Final Readiness Gate, Policy Updates, PYQ Evidence, Syllabus Evidence, Topic Coverage
-
-### Community 586 - "Community 586"
-Cohesion: 0.22
-Nodes (9): C. Onboarding, code:text (check_eligibility), code:text (app/backend/app/onboarding/intent.py), code:text (POST /api/onboarding/next-step), code:text (app/frontend/src/features/onboarding/ChatOnboarding.jsx), Current situation, Expected impact, Implementation steps (+1 more)
-
-### Community 587 - "Community 587"
-Cohesion: 0.22
-Nodes (9): 9. Trie / Prefix Tree, code:text (GET /api/search/suggest?q=ssc&type=exam), code:text (app/backend/app/discovery/suggest.py), code:text (app/backend/app/discovery/trie.py), Impact, Implementation priority, Initial endpoint, Suggested module (+1 more)
-
-### Community 588 - "Community 588"
-Cohesion: 0.22
-Nodes (9): code:text (app/backend/app/discovery/search.py), code:text (/blogs/{slug}?cta=check_eligibility), code:text (blog -> recruitment), code:text (GET /api/discovery/resolve?source=blog&slug=...&cta=...), Current situation, Expected impact, I. Search and blog funnel, Implementation steps (+1 more)
-
-### Community 589 - "Community 589"
-Cohesion: 0.22
-Nodes (9): code:text (app/backend/app/marketplace/indexes.py), code:python (resources_by_exam = group_by(resource_exam_links, "exam_key"), code:text (score =), code:json ({), Current situation, Expected impact, F. Marketplace, Implementation steps (+1 more)
-
-### Community 590 - "Community 590"
-Cohesion: 0.22
-Nodes (8): Build first, Do not do this, Emergent Implementation Prompt — Eligibility + Scraper Migration, Expected API endpoints, Product doctrine, Task, Then build scraper, Use existing modules
-
 ### Community 591 - "Community 591"
-Cohesion: 0.22
-Nodes (9): 8.1 Listing-level dedup, 8.2 Candidate-level dedup, 8.3 Recruitment-level dedup, 8.4 Document-level dedup, 8. Deduplication and candidate merge strategy, code:text (source_id + listing_url), code:text (normalized_organization), code:text (organization_id) (+1 more)
+Cohesion: 0.2
+Nodes (9): Admin Persona Controls — v1 (PR4), Backend endpoints (all under `/api/admin/persona`), Frontend page, Future admin roadmap, Purpose, Route, Safety constraints, What admins can edit (+1 more)
 
 ### Community 592 - "Community 592"
-Cohesion: 0.22
-Nodes (9): 12.1 Current hardening already in place, 12.2 Remaining gaps (ordered), 12.3 Target data-layer additions, 12.4 Code-level execution plan, 12.5 Testing and release gate, 12. Trusted Ingestion Implementation Strategy (Detailed), P0 — must complete before eligibility can rely on scraper data, P1 — required for robust discovery quality (+1 more)
+Cohesion: 0.2
+Nodes (10): code:text (high adherence + moderate/low hours + high completion), code:text ("You perform better with structure."), code:text (flaky · grinder · lone wolf · unreliable · unfocused), code:json ({), code:text (relative_consistency_percentile), Internal trait mapping, New persona signals to extend the collector, Persona JSON additions (+2 more)
 
 ### Community 593 - "Community 593"
-Cohesion: 0.22
-Nodes (8): 9. Schema, code:sql (create or replace function public.touch_verification_report_), code:sql (create unique index if not exists uq_active_verification_rep), code:text (Tier A → request_admin_review), code:python (if tier == "C_STANDARD_LONG_TAIL" and not exam_family_id and), exam_family service rule, Indexes, recommended_action default mapping (service)
+Cohesion: 0.2
+Nodes (9): Auth endpoints, Career Copilot · Test Credentials (Phase 1.5 + Phase 2), code:block1 (email:    razortest+1778018301@inbox.testreal.dev), code:bash (curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \), code:bash (curl -X PUT "$SUPABASE_URL/auth/v1/admin/users/<user_id>" \), Granting admin role, How to sign in for testing, Razorpay test cards (Razorpay Checkout) (+1 more)
 
 ### Community 594 - "Community 594"
 Cohesion: 0.22
-Nodes (7): extracted, input, { onFieldAction }, renderGroup(), row, summary, verifyAll
+Nodes (10): book_mentor_session(), cancel_booking(), end_partnership(), _get_group(), group_detail(), invite_partner(), join_group(), _now_iso() (+2 more)
 
 ### Community 595 - "Community 595"
-Cohesion: 0.28
-Nodes (8): get_settings(), Settings, get_settings(), Settings, _is_service_role(), _rzp_client(), _verify_checkout_signature(), _verify_webhook_signature()
+Cohesion: 0.22
+Nodes (10): book_mentor_session(), cancel_booking(), end_partnership(), _get_group(), group_detail(), invite_partner(), join_group(), _now_iso() (+2 more)
 
 ### Community 596 - "Community 596"
-Cohesion: 0.25
-Nodes (4): getUnreadAlertCount(), markAlertsRead(), alertUsersForDeadline(), sendDeadlineAlerts()
+Cohesion: 0.42
+Nodes (9): _app(), _mixed_lifecycle_seed(), Aspirant-facing endpoints must surface only ``reviewer_status='locked'`` covera, One topic in each reviewer_status state, plus topic hierarchy., test_mission_control_exam_context_high_yield_topics_are_locked_only(), test_mission_control_today_tasks_carry_priority_and_reasoning(), test_topics_endpoint_carries_parent_topic_id_and_level(), test_topics_endpoint_returns_locked_rows_only() (+1 more)
 
 ### Community 597 - "Community 597"
-Cohesion: 0.39
-Nodes (8): _accumulate(), Study OS — per-exam daily snapshot aggregation (PR 2).  Where `study_behavior_, _accumulate(), compute_exam_snapshots(), _exam_weights(), Study OS — per-exam daily snapshot aggregation (PR 2).  Where `study_behavior_, _safe(), upsert_exam_snapshots()
-
-### Community 598 - "Community 598"
-Cohesion: 0.22
-Nodes (9): An ExtractedRecruitment-shaped payload that satisfies the Pydantic     schema w, Healthy queue item with all evidence verified → blocking_issues     empty, orga, ``rejected`` and ``duplicate`` items must not be promotable. The     real promo, test_promotion_preview_blocks_on_unverified_high_risk_fields(), test_promotion_preview_blocks_when_official_source_unresolved(), test_promotion_preview_blocks_when_queue_in_wrong_status(), test_promotion_preview_happy_path_creates_new_org(), test_promotion_preview_links_existing_organization() (+1 more)
+Cohesion: 0.27
+Nodes (10): fetch_sitemap(), fetch_sitemap_recursive(), parse_sitemap(), Parse a sitemap.xml (urlset) or sitemapindex into entries.      For ``sitemapi, Fetch a sitemap, recursing into child sitemaps up to ``max_depth``.      Retur, Fetch a sitemap.xml and return both the FetchResult and parsed     entries. Sam, SitemapEntry, test_parse_sitemap_empty_or_malformed() (+2 more)
 
 ### Community 599 - "Community 599"
-Cohesion: 0.22
-Nodes (9): code:text (app/backend/app/discovery/search.py), code:text (/blogs/{slug}?cta=check_eligibility), code:text (blog -> recruitment), code:text (GET /api/discovery/resolve?source=blog&slug=...&cta=...), Current situation, Expected impact, I. Search and blog funnel, Implementation steps (+1 more)
+Cohesion: 0.28
+Nodes (8): _assert_attempt_accepts_events(), ClientEvent, _fetch_attempt_for_user(), get_events(), post_events(), PostEventsBody, Mock Attempt Events API (PR2b).  Routes (mounted under /api/study/mocks/attemp, Raise 409 if the attempt is in a terminal state past the grace window.
 
 ### Community 600 - "Community 600"
 Cohesion: 0.22
-Nodes (9): code:text (app/backend/app/marketplace/indexes.py), code:python (resources_by_exam = group_by(resource_exam_links, "exam_key"), code:text (score =), code:json ({), Current situation, Expected impact, F. Marketplace, Implementation steps (+1 more)
+Nodes (9): An ExtractedRecruitment-shaped payload that satisfies the Pydantic     schema w, Healthy queue item with all evidence verified → blocking_issues     empty, orga, ``rejected`` and ``duplicate`` items must not be promotable. The     real promo, test_promotion_preview_blocks_on_unverified_high_risk_fields(), test_promotion_preview_blocks_when_official_source_unresolved(), test_promotion_preview_blocks_when_queue_in_wrong_status(), test_promotion_preview_happy_path_creates_new_org(), test_promotion_preview_links_existing_organization() (+1 more)
 
 ### Community 601 - "Community 601"
 Cohesion: 0.22
-Nodes (9): C. Onboarding, code:text (check_eligibility), code:text (app/backend/app/onboarding/intent.py), code:text (POST /api/onboarding/next-step), code:text (app/frontend/src/features/onboarding/ChatOnboarding.jsx), Current situation, Expected impact, Implementation steps (+1 more)
+Nodes (9): is_at_least(), Convenience: ``True`` iff the user's level is at least the required.      Both, test_is_at_least_accepts_aliases_on_either_side(), test_is_at_least_higher_satisfies_lower(), test_is_at_least_lower_does_not_satisfy_higher(), test_is_at_least_satisfies_self(), test_is_at_least_unknown_requirement_passes(), test_is_at_least_unknown_user_level_fails_known_requirement() (+1 more)
 
 ### Community 602 - "Community 602"
 Cohesion: 0.22
-Nodes (9): 9. Trie / Prefix Tree, code:text (GET /api/search/suggest?q=ssc&type=exam), code:text (app/backend/app/discovery/suggest.py), code:text (app/backend/app/discovery/trie.py), Impact, Implementation priority, Initial endpoint, Suggested module (+1 more)
+Nodes (9): is_at_least(), Convenience: ``True`` iff the user's level is at least the required.      Both, test_is_at_least_accepts_aliases_on_either_side(), test_is_at_least_higher_satisfies_lower(), test_is_at_least_lower_does_not_satisfy_higher(), test_is_at_least_satisfies_self(), test_is_at_least_unknown_requirement_passes(), test_is_at_least_unknown_user_level_fails_known_requirement() (+1 more)
 
 ### Community 603 - "Community 603"
+Cohesion: 0.28
+Nodes (8): compare_titles(), evaluate_titles(), Study OS — earned titles (spec § "Titles").  Pure-function evaluator over rece, _safe(), _variance(), Study OS — earned titles (spec § "Titles").  Pure-function evaluator over rece, _safe(), _variance()
+
+### Community 604 - "Community 604"
+Cohesion: 0.25
+Nodes (9): get_plan_preferences(), Validate + persist plan preferences for ``user_id``.      Only known fields ar, Return the user's plan preferences, falling back to defaults., _safe(), upsert_plan_preferences(), get_plan_prefs(), put_plan_prefs(), Return the user's Study OS plan preferences (defaults if none saved). (+1 more)
+
+### Community 606 - "Community 606"
+Cohesion: 0.31
+Nodes (6): validate_cmd(), load_schema(), _is_bool(), validate_frame(), test_validate_broken_rows(), test_validate_clean_sample()
+
+### Community 607 - "Community 607"
+Cohesion: 0.19
+Nodes (9): get_current_user(), get_optional_user(), Normalise a Supabase user object (gotrue User) into a plain dict., Validate the Supabase access token and return the resolved user., _serialize_user(), require_permission(), test_require_permission_admin_without_perm_403(), test_require_permission_anonymous_403() (+1 more)
+
+### Community 608 - "Community 608"
+Cohesion: 0.31
+Nodes (7): _all_users(), _app_metadata(), main(), Promote an existing Supabase auth user to ``super_admin``.  Usage (from the re, Core logic. Returns ``(exit_code, message)`` for testability., run(), test_bootstrap_promotes_and_audits()
+
+### Community 609 - "Community 609"
+Cohesion: 0.47
+Nodes (8): _client(), _opts(), Bulk import for pyq-questions (with inline options) and pyq-options., _seed(), test_bulk_100_questions_with_inline_options(), test_bulk_bad_question_type_row_error_rest_succeed(), test_bulk_cap_exceeded_422(), test_bulk_options_standalone()
+
+### Community 610 - "Community 610"
+Cohesion: 0.22
+Nodes (9): collect_observations(), _host_of(), Build the flat observation list from one queue item + peers.      The primary, Classify a host into an engine trust tier.      ``source_registry.trust_tier``, _trust_of(), test_collect_observations_classifies_govt_host_as_official(), test_collect_observations_classifies_unknown_host_as_unknown(), test_collect_observations_extracts_consensus_fields_from_primary() (+1 more)
+
+### Community 611 - "Community 611"
+Cohesion: 0.28
+Nodes (4): asOptionList(), optionsToText(), asOptionList(), optionsToText()
+
+### Community 613 - "Community 613"
+Cohesion: 0.33
+Nodes (8): CompetitionContextCard(), fmtInt(), fmtRatio(), CompetitionContextCard(), fmtInt(), fmtRatio(), PRESSURE_LABEL, PRESSURE_STATUS
+
+### Community 614 - "Community 614"
+Cohesion: 0.22
+Nodes (8): ADMIN_MARKET, CART, LIBRARY, MARKET_CATEGORIES, PRODUCTS, RECENTLY_VIEWED, SELLER_DASH, SELLERS
+
+### Community 615 - "Community 615"
+Cohesion: 0.22
+Nodes (8): Bundle Budget Policy, code:bash (cd app/frontend), code:bash (cd app/frontend && npm run build && npm run check:bundle-bud), code:jsx (const Dashboard = lazy(() => import('../pages/Dashboard'));), Lazy-Splitting Guardrail, Local Run, Raising the Budget, Thresholds
+
+### Community 616 - "Community 616"
+Cohesion: 0.22
+Nodes (8): Competition Metrics, Exam Intelligence Import Checklist (Real Data Only), Exam + Registry, Final Readiness Gate, Policy Updates, PYQ Evidence, Syllabus Evidence, Topic Coverage
+
+### Community 617 - "Community 617"
+Cohesion: 0.22
+Nodes (9): C. Onboarding, code:text (check_eligibility), code:text (app/backend/app/onboarding/intent.py), code:text (POST /api/onboarding/next-step), code:text (app/frontend/src/features/onboarding/ChatOnboarding.jsx), Current situation, Expected impact, Implementation steps (+1 more)
+
+### Community 618 - "Community 618"
+Cohesion: 0.22
+Nodes (9): code:text (app/backend/app/marketplace/indexes.py), code:python (resources_by_exam = group_by(resource_exam_links, "exam_key"), code:text (score =), code:json ({), Current situation, Expected impact, F. Marketplace, Implementation steps (+1 more)
+
+### Community 619 - "Community 619"
+Cohesion: 0.22
+Nodes (9): code:text (app/backend/app/discovery/search.py), code:text (/blogs/{slug}?cta=check_eligibility), code:text (blog -> recruitment), code:text (GET /api/discovery/resolve?source=blog&slug=...&cta=...), Current situation, Expected impact, I. Search and blog funnel, Implementation steps (+1 more)
+
+### Community 620 - "Community 620"
+Cohesion: 0.22
+Nodes (9): 9. Trie / Prefix Tree, code:text (GET /api/search/suggest?q=ssc&type=exam), code:text (app/backend/app/discovery/suggest.py), code:text (app/backend/app/discovery/trie.py), Impact, Implementation priority, Initial endpoint, Suggested module (+1 more)
+
+### Community 621 - "Community 621"
+Cohesion: 0.22
+Nodes (8): Build first, Do not do this, Emergent Implementation Prompt — Eligibility + Scraper Migration, Expected API endpoints, Product doctrine, Task, Then build scraper, Use existing modules
+
+### Community 622 - "Community 622"
 Cohesion: 0.22
 Nodes (9): 8.1 Listing-level dedup, 8.2 Candidate-level dedup, 8.3 Recruitment-level dedup, 8.4 Document-level dedup, 8. Deduplication and candidate merge strategy, code:text (source_id + listing_url), code:text (normalized_organization), code:text (organization_id) (+1 more)
 
-### Community 604 - "Community 604"
-Cohesion: 0.22
-Nodes (8): 9. Schema, code:sql (create or replace function public.touch_verification_report_), code:sql (create unique index if not exists uq_active_verification_rep), code:text (Tier A → request_admin_review), code:python (if tier == "C_STANDARD_LONG_TAIL" and not exam_family_id and), exam_family service rule, Indexes, recommended_action default mapping (service)
-
-### Community 605 - "Community 605"
+### Community 623 - "Community 623"
 Cohesion: 0.22
 Nodes (9): 12.1 Current hardening already in place, 12.2 Remaining gaps (ordered), 12.3 Target data-layer additions, 12.4 Code-level execution plan, 12.5 Testing and release gate, 12. Trusted Ingestion Implementation Strategy (Detailed), P0 — must complete before eligibility can rely on scraper data, P1 — required for robust discovery quality (+1 more)
 
-### Community 606 - "Community 606"
-Cohesion: 0.25
-Nodes (8): _bootstrap_mock_publishers(), db_health(), DbHealth, lifespan(), Grant mock_questions:publish permission to emails in MOCK_PUBLISHER_BOOTSTRAP_EM, Grant mock_questions:publish permission to emails in MOCK_PUBLISHER_BOOTSTRAP_EM, get_pool(), stop_scheduler()
-
-### Community 607 - "Community 607"
-Cohesion: 0.25
-Nodes (8): _load_required_router(), Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message.
-
-### Community 608 - "Community 608"
-Cohesion: 0.32
-Nodes (7): consume_merge_claim(), create_merge_claim(), _hash_token(), MergeClaimConsumeBody, Anonymous → permanent profile merge claims.  The v2 onboarding flow writes a g, Mint a single-use merge token for the calling anonymous profile., Consume a merge token, merging the referenced anon profile into the caller.
-
-### Community 609 - "Community 609"
-Cohesion: 0.29
-Nodes (7): get_evidence(), Universal evidence read API.  Surfaces the row that backs a TrustStamp / Sourc, Return the raw evidence row for ``(kind, row_id)`` plus a trust envelope., Return the raw evidence row for ``(kind, row_id)`` plus a trust envelope., _safe(), Universal evidence read API.  Surfaces the row that backs a TrustStamp / Sourc, _safe()
-
-### Community 610 - "Community 610"
-Cohesion: 0.25
-Nodes (8): _extract_post_names(), _flatten_observation(), _norm_value(), Normalise a value for comparison.      Strings → lower + stripped. Lists → sor, Project an extracted-data blob into per-field observations., One observation of a field's value, tagged with its source trust., SourceObservation, Tests for ``app.scraping.consensus_engine``.  Plan §4 acceptance:  * officia
-
-### Community 611 - "Community 611"
-Cohesion: 0.29
-Nodes (7): ghJson(), headers, here, labels, labelsPath, [owner, repo], upsertLabel()
-
-### Community 613 - "Community 613"
-Cohesion: 0.43
-Nodes (8): _capture_profile(), _sb_with(), test_runner_default_pwbd_stays_none(), test_runner_propagates_ex_serviceman_from_aspirant_reservations(), test_runner_propagates_pwbd_from_aspirant_reservations_when_profiles_default(), test_runner_propagates_pwbd_from_profiles_when_aspirant_reservations_empty(), test_runner_propagates_service_years_from_profiles(), test_runner_service_years_missing_when_neither_source_set()
-
-### Community 614 - "Community 614"
-Cohesion: 0.39
-Nodes (8): _capture_attempts_and_criteria(), SB stub seeded with both attempt tables AND a `recruitments.exam_id`., _sb_with_attempts(), test_runner_constructs_exam_family_attempts_from_aspirant_exam_attempts(), test_runner_constructs_post_attempts_when_post_id_present(), test_runner_constructs_recruitment_attempts_from_new_table(), test_runner_recruitment_exam_id_defaults_to_none_for_unlinked_recruitments(), test_runner_surfaces_recruitment_exam_id_on_post_criteria()
-
-### Community 615 - "Community 615"
-Cohesion: 0.29
-Nodes (7): _decide_tier(), Study OS — mock score verification flow (PR 5 + PR 9 + PR 10).  The verificati, _safe(), _decide_tier(), Study OS — mock score verification flow (PR 5 + PR 9 + PR 10).  The verificati, read_verification(), _safe()
-
-### Community 617 - "Community 617"
-Cohesion: 0.25
-Nodes (8): canonical_level(), _normalise(), Lowercase, strip, collapse separators, fuse abbreviation pieces.      Rules in, Return the canonical level slug for ``text``, or ``None`` if no     alias match, test_canonical_level(), test_canonical_level_does_not_match_inside_unrelated_word(), test_canonical_level_handles_punctuation_and_separators(), test_canonical_level_prefers_longer_alias_in_phrase()
-
-### Community 618 - "Community 618"
-Cohesion: 0.25
-Nodes (8): canonical_level(), _normalise(), Lowercase, strip, collapse separators, fuse abbreviation pieces.      Rules in, Return the canonical level slug for ``text``, or ``None`` if no     alias match, test_canonical_level(), test_canonical_level_does_not_match_inside_unrelated_word(), test_canonical_level_handles_punctuation_and_separators(), test_canonical_level_prefers_longer_alias_in_phrase()
-
-### Community 619 - "Community 619"
-Cohesion: 0.46
-Nodes (7): _count_question_answered(), _count_responses(), PR-fix-7 — answer-save retry idempotency (AC9).  A client whose first /answer, A genuinely newer write (higher client_seq) is processed normally., test_higher_seq_after_failed_retry_records_new_write(), test_multiple_retries_same_seq_stay_idempotent(), test_retry_same_client_seq_does_not_double_insert()
-
-### Community 620 - "Community 620"
-Cohesion: 0.25
-Nodes (7): Columns Audit — `recruitments` schema drift (Bug 1), `max_age`, Method, `min_age`, `posts_unavailable`, `rules_unavailable`, Summary
-
-### Community 621 - "Community 621"
-Cohesion: 0.25
-Nodes (7): Career Copilot — Docs, code:block1 (Database entity  = recruitment        (public.recruitments)), code:block2 (Trust > Speed), Doc types, How to navigate, Non-negotiable domain rules, Strategic rule
-
-### Community 622 - "Community 622"
-Cohesion: 0.25
-Nodes (7): Career Copilot — Feature Registry, code:text (Database = recruitment), Core aspirant experience, Domain invariant, Governance and trust foundations, Intelligence and AI, Phase 8 active build target
-
-### Community 623 - "Community 623"
-Cohesion: 0.25
-Nodes (7): Backend gap → endpoint, Ground rules, Out of scope for this PR, Prototype → Production E2E Integration Plan, Shared UI primitives, Surface tracker, Test plan
-
 ### Community 624 - "Community 624"
-Cohesion: 0.25
-Nodes (8): code:txt (discovery), code:json ({), code:txt ("18 years to 30 years" -> date_of_birth), code:python (def map_rule_to_field_keys(rule_text: str) -> list[str]:), Deterministic mapper first, Extracted rule shape, Rule-to-field mapping examples, Scraper and Extraction Pipeline Changes
+Cohesion: 0.22
+Nodes (8): 9. Schema, code:sql (create or replace function public.touch_verification_report_), code:sql (create unique index if not exists uq_active_verification_rep), code:text (Tier A → request_admin_review), code:python (if tier == "C_STANDARD_LONG_TAIL" and not exam_family_id and), exam_family service rule, Indexes, recommended_action default mapping (service)
 
 ### Community 625 - "Community 625"
-Cohesion: 0.25
-Nodes (8): code:text (subjects), code:text (app/backend/app/study/syllabus_tree.py), code:text (exam target), Current situation, Expected impact, H. Study OS, Implementation steps, Recommended data structures
+Cohesion: 0.22
+Nodes (9): code:text (app/backend/app/discovery/search.py), code:text (/blogs/{slug}?cta=check_eligibility), code:text (blog -> recruitment), code:text (GET /api/discovery/resolve?source=blog&slug=...&cta=...), Current situation, Expected impact, I. Search and blog funnel, Implementation steps (+1 more)
 
 ### Community 626 - "Community 626"
-Cohesion: 0.25
-Nodes (8): code:text (app/backend/app/recommendations/scoring.py), code:text (GET /api/recommendations/me), code:json ({), Current situation, D. Dashboard and recommendations, Expected impact, Implementation steps, Recommended data structures
+Cohesion: 0.22
+Nodes (9): C. Onboarding, code:text (check_eligibility), code:text (app/backend/app/onboarding/intent.py), code:text (POST /api/onboarding/next-step), code:text (app/frontend/src/features/onboarding/ChatOnboarding.jsx), Current situation, Expected impact, Implementation steps (+1 more)
 
 ### Community 627 - "Community 627"
-Cohesion: 0.25
-Nodes (8): 12. Bloom Filter / Probabilistic Duplicate Filter, Caution, code:text (probably_seen), code:text (app/backend/app/scraping/dedup_filter.py), Impact, Implementation priority, Suggested module, Why this matters
+Cohesion: 0.22
+Nodes (9): code:text (app/backend/app/marketplace/indexes.py), code:python (resources_by_exam = group_by(resource_exam_links, "exam_key"), code:text (score =), code:json ({), Current situation, Expected impact, F. Marketplace, Implementation steps (+1 more)
 
 ### Community 628 - "Community 628"
-Cohesion: 0.25
-Nodes (8): code:text (Supabase relational tables), code:text (sources / source_registry), code:text (Supabase tables), Core principle, Current application baseline, Data Structures Implementation Guide, Purpose, Recommended data structures by domain
+Cohesion: 0.22
+Nodes (9): 8.1 Listing-level dedup, 8.2 Candidate-level dedup, 8.3 Recruitment-level dedup, 8.4 Document-level dedup, 8. Deduplication and candidate merge strategy, code:text (source_id + listing_url), code:text (normalized_organization), code:text (organization_id) (+1 more)
 
 ### Community 629 - "Community 629"
-Cohesion: 0.25
-Nodes (8): 11. LRU / TTL Cache, Caution, code:text (app/backend/app/cache/ttl_cache.py), code:python (from time import time), Impact, Implementation priority, Suggested module, Why this matters
+Cohesion: 0.22
+Nodes (8): 9. Schema, code:sql (create or replace function public.touch_verification_report_), code:sql (create unique index if not exists uq_active_verification_rep), code:text (Tier A → request_admin_review), code:python (if tier == "C_STANDARD_LONG_TAIL" and not exam_family_id and), exam_family service rule, Indexes, recommended_action default mapping (service)
 
 ### Community 630 - "Community 630"
-Cohesion: 0.25
-Nodes (7): 10. Operating Rule for Future Updates, 2. RSS / JSON Strategy, Practical use, Product rule, Purpose, Source Intelligence Strategy Notes, Why RSS matters for Career Copilot
+Cohesion: 0.22
+Nodes (9): 12.1 Current hardening already in place, 12.2 Remaining gaps (ordered), 12.3 Target data-layer additions, 12.4 Code-level execution plan, 12.5 Testing and release gate, 12. Trusted Ingestion Implementation Strategy (Detailed), P0 — must complete before eligibility can rely on scraper data, P1 — required for robust discovery quality (+1 more)
 
 ### Community 631 - "Community 631"
 Cohesion: 0.25
-Nodes (7): 10. What This Plan Does NOT Cover, 1. PR1 (Reference Only), 8. Final Cumulative Transition Matrix, code:text (recruitment_classifier.py), code:python ({), code:text (- AI-assisted resolver (L6) — separate later PR with its own), Recruitment Verification Gateway — PR Plan (Corrected)
-
-### Community 632 - "Community 632"
-Cohesion: 0.25
-Nodes (8): 12. Promotion Gate (PR3+), code:text (official_source_resolved = true), code:text (aggregator_only = true), code:text (official source resolved OR trusted source available), code:text (domicile/language/GATE/discipline/experience flags exist), Tier A allow if, Tier B allow draft if, Tier C
+Nodes (6): ConflictError, Fingerprint collision or self-review conflict., Fingerprint collision or self-review conflict., _bootstrap_mock_publishers reads env var and grants permission., _bootstrap_mock_publishers reads env var and grants permission., TestBootstrap
 
 ### Community 633 - "Community 633"
 Cohesion: 0.25
-Nodes (6): Apply guarantees (live), Cutover plan, Flag states, Mock Mastery Write-back (PR5), Rollback SQL (last N days), Trust weighting
+Nodes (8): BulkImportBody, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread
 
 ### Community 634 - "Community 634"
-Cohesion: 0.25
-Nodes (7): Decision 1 — derivation → mastery ordering: **Implementation B**, Decision 2 — one sweeper, switchable job kinds, Idempotency + atomicity, Mastery cap vs clamp (two distinct invariants), Mock Submit Flow & Background Jobs, Relationship to `mock_attempt_derivation_retry`, Submit paths
+Cohesion: 0.32
+Nodes (7): consume_merge_claim(), create_merge_claim(), _hash_token(), MergeClaimConsumeBody, Anonymous → permanent profile merge claims.  The v2 onboarding flow writes a g, Mint a single-use merge token for the calling anonymous profile., Consume a merge token, merging the referenced anon profile into the caller.
 
-### Community 638 - "Community 638"
-Cohesion: 0.57
-Nodes (7): _client(), _seed_channel_db(), test_admin_hide_thread_flips_target_status_in_same_action(), test_channel_thread_reply_vote_report_are_db_backed(), test_reply_vote_is_db_backed_and_atomic(), test_resource_contribute_vote_report_and_admin_resolve_are_db_backed(), test_thread_reply_count_uses_atomic_increment()
-
-### Community 639 - "Community 639"
+### Community 635 - "Community 635"
 Cohesion: 0.25
-Nodes (7): Career Copilot — Feature Registry, code:text (Database = recruitment), Core aspirant experience, Domain invariant, Governance and trust foundations, Intelligence and AI, Phase 8 active build target
+Nodes (8): archive_question(), [publisher] published → archived., [reviewer] reviewed → verified.      Promotes a reviewed question to verified,, [publisher] published → archived., [publisher] published → archived., Reject non-UUID path params with 422 before they reach Supabase.      Without, _validate_uuid_param(), verify_question()
+
+### Community 636 - "Community 636"
+Cohesion: 0.25
+Nodes (8): canonical_level(), _normalise(), Lowercase, strip, collapse separators, fuse abbreviation pieces.      Rules in, Return the canonical level slug for ``text``, or ``None`` if no     alias match, test_canonical_level(), test_canonical_level_does_not_match_inside_unrelated_word(), test_canonical_level_handles_punctuation_and_separators(), test_canonical_level_prefers_longer_alias_in_phrase()
 
 ### Community 640 - "Community 640"
 Cohesion: 0.25
-Nodes (8): code:text (app/backend/app/recommendations/scoring.py), code:text (GET /api/recommendations/me), code:json ({), Current situation, D. Dashboard and recommendations, Expected impact, Implementation steps, Recommended data structures
+Nodes (6): Simulates a deploy that hasn't applied migration 041 yet., Pre-migration-041 deploy: no RPC AND no migration 009 columns., SBLegacyQueue, SBRpcMissing, test_enqueue_falls_back_when_queue_hardening_columns_missing(), test_enqueue_falls_back_when_rpc_missing()
 
 ### Community 641 - "Community 641"
-Cohesion: 0.25
-Nodes (8): 11. LRU / TTL Cache, Caution, code:text (app/backend/app/cache/ttl_cache.py), code:python (from time import time), Impact, Implementation priority, Suggested module, Why this matters
+Cohesion: 0.29
+Nodes (5): build_app(), client(), _LessonQuery, Shared fixtures for marketplace API tests.  Builds a FastAPI app mounting the, Lessons read path hydrates the inner ``course_sections`` join.
 
 ### Community 642 - "Community 642"
-Cohesion: 0.25
-Nodes (8): code:text (subjects), code:text (app/backend/app/study/syllabus_tree.py), code:text (exam target), Current situation, Expected impact, H. Study OS, Implementation steps, Recommended data structures
+Cohesion: 0.46
+Nodes (7): _count_question_answered(), _count_responses(), PR-fix-7 — answer-save retry idempotency (AC9).  A client whose first /answer, A genuinely newer write (higher client_seq) is processed normally., test_higher_seq_after_failed_retry_records_new_write(), test_multiple_retries_same_seq_stay_idempotent(), test_retry_same_client_seq_does_not_double_insert()
 
 ### Community 643 - "Community 643"
-Cohesion: 0.25
-Nodes (8): 12. Bloom Filter / Probabilistic Duplicate Filter, Caution, code:text (probably_seen), code:text (app/backend/app/scraping/dedup_filter.py), Impact, Implementation priority, Suggested module, Why this matters
+Cohesion: 0.29
+Nodes (5): fmtDate(), RecruitmentDetail(), STAGE_INDEX, STAGES, VERDICT
 
 ### Community 644 - "Community 644"
 Cohesion: 0.25
-Nodes (8): code:text (Supabase relational tables), code:text (sources / source_registry), code:text (Supabase tables), Core principle, Current application baseline, Data Structures Implementation Guide, Purpose, Recommended data structures by domain
+Nodes (7): Columns Audit — `recruitments` schema drift (Bug 1), `max_age`, Method, `min_age`, `posts_unavailable`, `rules_unavailable`, Summary
 
 ### Community 645 - "Community 645"
 Cohesion: 0.25
-Nodes (7): Backend gap → endpoint, Ground rules, Out of scope for this PR, Prototype → Production E2E Integration Plan, Shared UI primitives, Surface tracker, Test plan
+Nodes (7): Career Copilot — Docs, code:block1 (Database entity  = recruitment        (public.recruitments)), code:block2 (Trust > Speed), Doc types, How to navigate, Non-negotiable domain rules, Strategic rule
 
 ### Community 646 - "Community 646"
 Cohesion: 0.25
-Nodes (8): code:txt (discovery), code:json ({), code:txt ("18 years to 30 years" -> date_of_birth), code:python (def map_rule_to_field_keys(rule_text: str) -> list[str]:), Deterministic mapper first, Extracted rule shape, Rule-to-field mapping examples, Scraper and Extraction Pipeline Changes
+Nodes (7): Career Copilot — Feature Registry, code:text (Database = recruitment), Core aspirant experience, Domain invariant, Governance and trust foundations, Intelligence and AI, Phase 8 active build target
 
 ### Community 647 - "Community 647"
 Cohesion: 0.25
-Nodes (7): 10. What This Plan Does NOT Cover, 1. PR1 (Reference Only), 8. Final Cumulative Transition Matrix, code:text (recruitment_classifier.py), code:python ({), code:text (- AI-assisted resolver (L6) — separate later PR with its own), Recruitment Verification Gateway — PR Plan (Corrected)
+Nodes (7): Backend gap → endpoint, Ground rules, Out of scope for this PR, Prototype → Production E2E Integration Plan, Shared UI primitives, Surface tracker, Test plan
 
 ### Community 648 - "Community 648"
 Cohesion: 0.25
-Nodes (8): 12. Promotion Gate (PR3+), code:text (official_source_resolved = true), code:text (aggregator_only = true), code:text (official source resolved OR trusted source available), code:text (domicile/language/GATE/discipline/experience flags exist), Tier A allow if, Tier B allow draft if, Tier C
+Nodes (8): code:txt (discovery), code:json ({), code:txt ("18 years to 30 years" -> date_of_birth), code:python (def map_rule_to_field_keys(rule_text: str) -> list[str]:), Deterministic mapper first, Extracted rule shape, Rule-to-field mapping examples, Scraper and Extraction Pipeline Changes
 
 ### Community 649 - "Community 649"
 Cohesion: 0.25
-Nodes (7): 10. Operating Rule for Future Updates, 13. Status cross-check (2026-05-02), Implemented in code, Not yet implemented (important), Operational truth, Purpose, Source Intelligence Strategy Notes
+Nodes (8): 11. LRU / TTL Cache, Caution, code:text (app/backend/app/cache/ttl_cache.py), code:python (from time import time), Impact, Implementation priority, Suggested module, Why this matters
 
 ### Community 650 - "Community 650"
-Cohesion: 0.33
-Nodes (6): get_my_persona(), Persona API (internal aspirant persona v1).  Surface:     GET  /api/persona/m, RecomputeBody, _serialize_snapshot(), Persona API (internal aspirant persona v1).  Surface:     GET  /api/persona/m, _serialize_snapshot()
+Cohesion: 0.25
+Nodes (8): code:text (app/backend/app/recommendations/scoring.py), code:text (GET /api/recommendations/me), code:json ({), Current situation, D. Dashboard and recommendations, Expected impact, Implementation steps, Recommended data structures
 
 ### Community 651 - "Community 651"
-Cohesion: 0.29
-Nodes (5): SB, test_approve_updates_status(), test_promote_never_publishes(), test_reject_duplicate_mock_queue_rows_safely(), test_reject_writes_audit()
+Cohesion: 0.25
+Nodes (8): code:text (subjects), code:text (app/backend/app/study/syllabus_tree.py), code:text (exam target), Current situation, Expected impact, H. Study OS, Implementation steps, Recommended data structures
 
 ### Community 652 - "Community 652"
-Cohesion: 0.29
-Nodes (5): SB, test_approve_updates_status(), test_promote_never_publishes(), test_reject_duplicate_mock_queue_rows_safely(), test_reject_writes_audit()
+Cohesion: 0.25
+Nodes (8): code:text (Supabase relational tables), code:text (sources / source_registry), code:text (Supabase tables), Core principle, Current application baseline, Data Structures Implementation Guide, Purpose, Recommended data structures by domain
 
 ### Community 653 - "Community 653"
-Cohesion: 0.29
-Nodes (5): _bare_rec(), Fake covering every table admin_recruitments touches, returning rows     that D, Rows lacking min_age/max_age/posts_unavailable/rules_unavailable must     produ, _RecListSB, test_admin_recruitments_200_without_dropped_columns()
+Cohesion: 0.25
+Nodes (8): 12. Bloom Filter / Probabilistic Duplicate Filter, Caution, code:text (probably_seen), code:text (app/backend/app/scraping/dedup_filter.py), Impact, Implementation priority, Suggested module, Why this matters
 
 ### Community 654 - "Community 654"
-Cohesion: 0.48
-Nodes (6): _build_app(), Per-feature readiness cards., test_empty_string_and_empty_list_count_as_missing_not_present(), test_fresh_user_has_everything_locked_with_explicit_missing_fields(), test_personalized_strategy_locked_when_prefs_lacks_study_hours(), test_seeded_profile_unlocks_relevant_features_only()
+Cohesion: 0.25
+Nodes (7): 10. Operating Rule for Future Updates, 6. Curated Feed Candidates to Track, A. Official / semi-official opportunity feeds, B. Aggregator discovery feeds, Classification guidance, Purpose, Source Intelligence Strategy Notes
 
 ### Community 655 - "Community 655"
-Cohesion: 0.29
-Nodes (7): list_verification_reports(), Subset of columns surfaced in the listing view.      The detail endpoint retur, Subset of columns surfaced in the listing view.      The detail endpoint retur, List verification reports for the admin attention queue.      Defaults to acti, List verification reports for the admin attention queue.      Defaults to acti, VerificationReportListItem, VerificationReportListResponse
+Cohesion: 0.25
+Nodes (7): 10. What This Plan Does NOT Cover, 1. PR1 (Reference Only), 8. Final Cumulative Transition Matrix, code:text (recruitment_classifier.py), code:python ({), code:text (- AI-assisted resolver (L6) — separate later PR with its own), Recruitment Verification Gateway — PR Plan (Corrected)
+
+### Community 656 - "Community 656"
+Cohesion: 0.25
+Nodes (8): 12. Promotion Gate (PR3+), code:text (official_source_resolved = true), code:text (aggregator_only = true), code:text (official source resolved OR trusted source available), code:text (domicile/language/GATE/discipline/experience flags exist), Tier A allow if, Tier B allow draft if, Tier C
 
 ### Community 657 - "Community 657"
-Cohesion: 0.29
-Nodes (5): mockEnv, mockGet, mockSignInAnonymously, { result }, { useProfileOnboarding }
+Cohesion: 0.25
+Nodes (6): Apply guarantees (live), Cutover plan, Flag states, Mock Mastery Write-back (PR5), Rollback SQL (last N days), Trust weighting
 
 ### Community 658 - "Community 658"
-Cohesion: 0.29
-Nodes (5): LANDING_SRC, lines, offenders, PROOF_PATTERNS, statMatch
+Cohesion: 0.25
+Nodes (7): Decision 1 — derivation → mastery ordering: **Implementation B**, Decision 2 — one sweeper, switchable job kinds, Idempotency + atomicity, Mastery cap vs clamp (two distinct invariants), Mock Submit Flow & Background Jobs, Relationship to `mock_attempt_derivation_retry`, Submit paths
+
+### Community 659 - "Community 659"
+Cohesion: 0.36
+Nodes (6): Profile completion fan-out must parallelise the optional reads.  `profile_comp, Inert supabase; the fetcher monkeypatches are what actually sleep., _SBStub, _sleep_returning(), test_profile_completion_runs_eight_fetchers_in_parallel(), _user()
 
 ### Community 660 - "Community 660"
-Cohesion: 0.29
-Nodes (6): Admin Frontend Review (Critical Gap Analysis), Executive Classification, High-Priority Gaps (P0/P1), Key Findings, Recommended Next UX Moves, Scope Reviewed
+Cohesion: 0.25
+Nodes (8): _load_required_router(), Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message., Load a required APIRouter with an explicit runtime error message.
 
 ### Community 661 - "Community 661"
-Cohesion: 0.29
-Nodes (7): code:txt (Recruitment: CNP-style recruitment from uploaded notificatio), Phase 0 - Manual pilot, Phase 1 - Post-wise coverage, Phase 2 - Scraper integration, Phase 3 - AI parser, Phase 4 - Analytics and optimization, Rollout Plan
+Cohesion: 0.39
+Nodes (8): _capture_attempts_and_criteria(), SB stub seeded with both attempt tables AND a `recruitments.exam_id`., _sb_with_attempts(), test_runner_constructs_exam_family_attempts_from_aspirant_exam_attempts(), test_runner_constructs_post_attempts_when_post_id_present(), test_runner_constructs_recruitment_attempts_from_new_table(), test_runner_recruitment_exam_id_defaults_to_none_for_unlinked_recruitments(), test_runner_surfaces_recruitment_exam_id_on_post_criteria()
 
 ### Community 662 - "Community 662"
-Cohesion: 0.29
-Nodes (6): Action Phases, Admin Scrape Workflow, Duplicate Strategy, Field Correction Strategy, Publishing Warning, Source Pattern Strategy
+Cohesion: 0.39
+Nodes (8): _capture_attempts_and_criteria(), SB stub seeded with both attempt tables AND a `recruitments.exam_id`., _sb_with_attempts(), test_runner_constructs_exam_family_attempts_from_aspirant_exam_attempts(), test_runner_constructs_post_attempts_when_post_id_present(), test_runner_constructs_recruitment_attempts_from_new_table(), test_runner_recruitment_exam_id_defaults_to_none_for_unlinked_recruitments(), test_runner_surfaces_recruitment_exam_id_on_post_criteria()
 
 ### Community 663 - "Community 663"
 Cohesion: 0.29
-Nodes (6): Admin CRUD fields in Phase 1, Blog Funnel Implementation Plan (Mapped to Current Codebase), DB migration map, Event tracking schema (Phase 3 target), Phase sequencing mapped to repo, Route map
+Nodes (7): ghJson(), headers, here, labels, labelsPath, [owner, repo], upsertLabel()
 
 ### Community 664 - "Community 664"
-Cohesion: 0.29
-Nodes (7): code:text (app/backend/app/community/ranking.py), code:text (hot_score =), Current situation, Expected impact, G. Community layer, Implementation steps, Recommended data structures
+Cohesion: 0.57
+Nodes (7): _client(), _seed_channel_db(), test_admin_hide_thread_flips_target_status_in_same_action(), test_channel_thread_reply_vote_report_are_db_backed(), test_reply_vote_is_db_backed_and_atomic(), test_resource_contribute_vote_report_and_admin_resolve_are_db_backed(), test_thread_reply_count_uses_atomic_increment()
 
 ### Community 665 - "Community 665"
-Cohesion: 0.29
-Nodes (7): API surface, code:text (GET  /api/study/compare/me), code:text (GET  /api/study/social/groups), code:text (POST /api/study/mocks/:id/attest), Compare / benchmark, Mock verification, Social commitment
+Cohesion: 0.25
+Nodes (7): Career Copilot — Feature Registry, code:text (Database = recruitment), Core aspirant experience, Domain invariant, Governance and trust foundations, Intelligence and AI, Phase 8 active build target
 
 ### Community 666 - "Community 666"
-Cohesion: 0.29
-Nodes (6): Correction task type rules, Delta formula, Error signal extraction, Mastery Engine (PR5a), Priority formula, Scale contract handoff to PR5 wiring
+Cohesion: 0.25
+Nodes (8): code:text (subjects), code:text (app/backend/app/study/syllabus_tree.py), code:text (exam target), Current situation, Expected impact, H. Study OS, Implementation steps, Recommended data structures
 
 ### Community 667 - "Community 667"
-Cohesion: 0.29
-Nodes (5): docs_only_review (48), migration_only_or_indirect (5), runtime_used (51), schema_only_candidate (0), Schema Usage Summary v2
+Cohesion: 0.25
+Nodes (8): 11. LRU / TTL Cache, Caution, code:text (app/backend/app/cache/ttl_cache.py), code:python (from time import time), Impact, Implementation priority, Suggested module, Why this matters
 
 ### Community 668 - "Community 668"
-Cohesion: 0.29
-Nodes (7): 21. PR1 Deliverables (Detailed), code:text (app/backend/app/scraping/recruitment_classifier.py), code:text (classification), code:text (1. first insert bootstraps chain_root_id atomically via RPC), Files, Ship Gate, Tests
+Cohesion: 0.25
+Nodes (8): code:text (Supabase relational tables), code:text (sources / source_registry), code:text (Supabase tables), Core principle, Current application baseline, Data Structures Implementation Guide, Purpose, Recommended data structures by domain
 
 ### Community 669 - "Community 669"
-Cohesion: 0.29
-Nodes (7): 2. Tier Model (A / B / C), code:text (official_source_required = true), code:text (official_source_preferred = true), code:text (official_source_preferred = true), Tier A — high-stakes / mass-volume, Tier B — technical / conditional, Tier C — long-tail / low-risk standard
+Cohesion: 0.25
+Nodes (8): 12. Bloom Filter / Probabilistic Duplicate Filter, Caution, code:text (probably_seen), code:text (app/backend/app/scraping/dedup_filter.py), Impact, Implementation priority, Suggested module, Why this matters
 
 ### Community 670 - "Community 670"
-Cohesion: 0.29
-Nodes (6): code:bash (cd tools/mock_content), Commands, Fingerprint contract, Install, mock-content CLI, Snapshot contract
+Cohesion: 0.25
+Nodes (7): Backend gap → endpoint, Ground rules, Out of scope for this PR, Prototype → Production E2E Integration Plan, Shared UI primitives, Surface tracker, Test plan
 
 ### Community 671 - "Community 671"
-Cohesion: 0.38
-Nodes (4): EvidenceDiffViewer(), toObj(), EvidenceDiffViewer(), toObj()
+Cohesion: 0.25
+Nodes (8): code:txt (discovery), code:json ({), code:txt ("18 years to 30 years" -> date_of_birth), code:python (def map_rule_to_field_keys(rule_text: str) -> list[str]:), Deterministic mapper first, Extracted rule shape, Rule-to-field mapping examples, Scraper and Extraction Pipeline Changes
 
 ### Community 672 - "Community 672"
-Cohesion: 0.29
-Nodes (7): _find_resource(), list_resources(), report_resource(), resource_detail(), _resource_shape(), _vote_count(), vote_resource()
+Cohesion: 0.25
+Nodes (7): 10. What This Plan Does NOT Cover, 1. PR1 (Reference Only), 8. Final Cumulative Transition Matrix, code:text (recruitment_classifier.py), code:python ({), code:text (- AI-assisted resolver (L6) — separate later PR with its own), Recruitment Verification Gateway — PR Plan (Corrected)
 
 ### Community 673 - "Community 673"
-Cohesion: 0.29
-Nodes (7): _find_resource(), list_resources(), report_resource(), resource_detail(), _resource_shape(), _vote_count(), vote_resource()
+Cohesion: 0.25
+Nodes (8): 12. Promotion Gate (PR3+), code:text (official_source_resolved = true), code:text (aggregator_only = true), code:text (official source resolved OR trusted source available), code:text (domicile/language/GATE/discipline/experience flags exist), Tier A allow if, Tier B allow draft if, Tier C
 
 ### Community 674 - "Community 674"
-Cohesion: 0.38
-Nodes (6): Enqueue an eligibility recompute for every onboarded user, scoped to     one re, recompute_eligibility_for_recruitment(), RecruitmentRecomputeBody, ``max_users`` is a per-call safety bound. The endpoint must surface     ``cap_h, test_recompute_fanout_enqueues_one_row_per_onboarded_user(), test_recompute_fanout_respects_max_users_cap()
+Cohesion: 0.25
+Nodes (7): 10. Operating Rule for Future Updates, 8. Personalization Logic for Opportunity Feeds, Location-aware filtering, Notification channel rule, Profile-aware routing rules, Purpose, Source Intelligence Strategy Notes
 
 ### Community 675 - "Community 675"
 Cohesion: 0.29
-Nodes (7): _candidate_to_dict(), _persist_resolver_outcome(), Write the resolver outcome onto the report + audit table., Validate ``suggested_official_urls`` jsonb. Returns canonical dict form., validate_suggested_official_urls(), Write resolver outcome onto a verification report.      The resolver itself ne, set_resolver_state()
+Nodes (7): force_status(), link_translation(), [publisher] Force any status transition, logged with reason., [publisher] Force any status transition, logged with reason., [author] Link question to a translation partner in a question group., [publisher] Force any status transition, logged with reason., [author] Link question to a translation partner in a question group.
 
 ### Community 676 - "Community 676"
-Cohesion: 0.29
-Nodes (7): normalize_legacy_source(), Legacy-only adapter for the deprecated ``scrape_sources`` table.      .. depre, Legacy-only adapter for the deprecated ``scrape_sources`` table.      .. depre, Runtime callers should not use this adapter; the warning makes     accidental i, test_normalize_legacy_source_emits_deprecation_warning(), test_normalize_legacy_source_joins_path(), test_normalize_legacy_source_with_only_base_url()
+Cohesion: 0.48
+Nodes (6): apply_safe_profile_mapping(), Safe mapping of question answers to canonical profile/preference fields.  Most, Apply the allowlisted safe mapping (if any) for this question.      Returns a, _read_preferences(), _safe(), _upsert_preferences()
+
+### Community 677 - "Community 677"
+Cohesion: 0.57
+Nodes (6): _build_app(), Verify the CMS write path auto-fills normalized_*_hash columns.  The full CMS, _seed(), test_create_pyq_option_autofills_hash_when_omitted(), test_create_pyq_option_respects_caller_supplied_hash(), test_create_pyq_question_autofills_question_and_option_hashes()
 
 ### Community 678 - "Community 678"
 Cohesion: 0.29
-Nodes (7): code:text (app/backend/app/community/ranking.py), code:text (hot_score =), Current situation, Expected impact, G. Community layer, Implementation steps, Recommended data structures
+Nodes (5): SB, test_approve_updates_status(), test_promote_never_publishes(), test_reject_duplicate_mock_queue_rows_safely(), test_reject_writes_audit()
 
 ### Community 679 - "Community 679"
 Cohesion: 0.29
-Nodes (7): code:txt (Recruitment: CNP-style recruitment from uploaded notificatio), Phase 0 - Manual pilot, Phase 1 - Post-wise coverage, Phase 2 - Scraper integration, Phase 3 - AI parser, Phase 4 - Analytics and optimization, Rollout Plan
+Nodes (5): SB, test_approve_updates_status(), test_promote_never_publishes(), test_reject_duplicate_mock_queue_rows_safely(), test_reject_writes_audit()
 
 ### Community 680 - "Community 680"
 Cohesion: 0.29
-Nodes (7): 2. Tier Model (A / B / C), code:text (official_source_required = true), code:text (official_source_preferred = true), code:text (official_source_preferred = true), Tier A — high-stakes / mass-volume, Tier B — technical / conditional, Tier C — long-tail / low-risk standard
+Nodes (5): _bare_rec(), Fake covering every table admin_recruitments touches, returning rows     that D, Rows lacking min_age/max_age/posts_unavailable/rules_unavailable must     produ, _RecListSB, test_admin_recruitments_200_without_dropped_columns()
 
-### Community 681 - "Community 681"
+### Community 683 - "Community 683"
+Cohesion: 0.29
+Nodes (3): E, _EnqueueRpcSimulator, Mirrors the SQL contract of `enqueue_eligibility_recompute` in     migration 04
+
+### Community 685 - "Community 685"
+Cohesion: 0.29
+Nodes (5): LANDING_SRC, lines, offenders, PROOF_PATTERNS, statMatch
+
+### Community 687 - "Community 687"
+Cohesion: 0.29
+Nodes (6): Admin Frontend Review (Critical Gap Analysis), Executive Classification, High-Priority Gaps (P0/P1), Key Findings, Recommended Next UX Moves, Scope Reviewed
+
+### Community 688 - "Community 688"
+Cohesion: 0.29
+Nodes (7): code:txt (Recruitment: CNP-style recruitment from uploaded notificatio), Phase 0 - Manual pilot, Phase 1 - Post-wise coverage, Phase 2 - Scraper integration, Phase 3 - AI parser, Phase 4 - Analytics and optimization, Rollout Plan
+
+### Community 689 - "Community 689"
+Cohesion: 0.29
+Nodes (6): Action Phases, Admin Scrape Workflow, Duplicate Strategy, Field Correction Strategy, Publishing Warning, Source Pattern Strategy
+
+### Community 690 - "Community 690"
+Cohesion: 0.29
+Nodes (6): Admin CRUD fields in Phase 1, Blog Funnel Implementation Plan (Mapped to Current Codebase), DB migration map, Event tracking schema (Phase 3 target), Phase sequencing mapped to repo, Route map
+
+### Community 691 - "Community 691"
+Cohesion: 0.29
+Nodes (7): code:text (app/backend/app/community/ranking.py), code:text (hot_score =), Current situation, Expected impact, G. Community layer, Implementation steps, Recommended data structures
+
+### Community 692 - "Community 692"
+Cohesion: 0.29
+Nodes (7): API surface, code:text (GET  /api/study/compare/me), code:text (GET  /api/study/social/groups), code:text (POST /api/study/mocks/:id/attest), Compare / benchmark, Mock verification, Social commitment
+
+### Community 693 - "Community 693"
+Cohesion: 0.29
+Nodes (6): Correction task type rules, Delta formula, Error signal extraction, Mastery Engine (PR5a), Priority formula, Scale contract handoff to PR5 wiring
+
+### Community 694 - "Community 694"
+Cohesion: 0.29
+Nodes (5): docs_only_review (48), migration_only_or_indirect (5), runtime_used (51), schema_only_candidate (0), Schema Usage Summary v2
+
+### Community 695 - "Community 695"
 Cohesion: 0.29
 Nodes (7): 21. PR1 Deliverables (Detailed), code:text (app/backend/app/scraping/recruitment_classifier.py), code:text (classification), code:text (1. first insert bootstraps chain_root_id atomically via RPC), Files, Ship Gate, Tests
 
-### Community 682 - "Community 682"
-Cohesion: 0.4
-Nodes (5): close_pool(), close_pool(), get_pool(), stop_scheduler(), lifespan()
-
-### Community 683 - "Community 683"
-Cohesion: 0.33
-Nodes (6): ``ENABLE_SCHEDULER`` gates the in-process APScheduler.      Default ``false``, ``ENABLE_SCHEDULER`` gates the in-process APScheduler.      Default ``false``, ``ENABLE_SCHEDULER`` gates the in-process APScheduler.      Default ``false``, ``ENABLE_SCHEDULER`` gates the in-process APScheduler.      Default ``false``, ``ENABLE_SCHEDULER`` gates the in-process APScheduler.      Default ``false``, _scheduler_enabled()
-
-### Community 684 - "Community 684"
-Cohesion: 0.33
-Nodes (6): BulkImportBody, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread, Body for ``POST /bulk-import``.      ``entity`` is one of the CMS slugs alread
-
-### Community 685 - "Community 685"
-Cohesion: 0.33
-Nodes (6): has_unresolved_conflict(), Return True if any conflict on the report still has ``status='open'``., test_has_unresolved_conflict_default_status_is_open(), test_has_unresolved_conflict_false_when_all_resolved(), test_has_unresolved_conflict_handles_missing_or_empty(), test_has_unresolved_conflict_true_when_any_open()
-
-### Community 686 - "Community 686"
-Cohesion: 0.33
-Nodes (6): parse_pdf_bytes(), parse_pdf_pages(), Extract text from a PDF byte string using pypdf.      Returns an empty string, Like ``parse_pdf_bytes`` but returns one stripped string per page.      Empty, test_parse_pdf_bytes_empty_input(), test_parse_pdf_bytes_malformed_input_returns_empty()
-
-### Community 687 - "Community 687"
-Cohesion: 0.33
-Nodes (6): parse_pdf_bytes(), parse_pdf_pages(), Extract text from a PDF byte string using pypdf.      Returns an empty string, Like ``parse_pdf_bytes`` but returns one stripped string per page.      Empty, test_parse_pdf_bytes_empty_input(), test_parse_pdf_bytes_malformed_input_returns_empty()
-
-### Community 688 - "Community 688"
-Cohesion: 0.4
-Nodes (4): Spaced-repetition (SM-2-lite) scheduler.  Shared between flashcards, mistake-b, Compute the next SRS state given a rating., schedule(), SrsState
-
-### Community 689 - "Community 689"
-Cohesion: 0.33
-Nodes (4): Counts rows in eligibility_results matching .eq filters and returns     .count, _StaleSB, test_eligibility_ops_stale_counts_rules_version_mismatch(), test_eligibility_ops_stale_zero_when_all_current()
-
-### Community 690 - "Community 690"
-Cohesion: 0.53
-Nodes (5): _build_app(), _count(), Hot-fix regression tests for PR #328.  PR2's review-round commit accidentally, test_no_duplicate_library_routes(), test_openapi_no_duplicate_library_paths()
-
-### Community 691 - "Community 691"
-Cohesion: 0.33
-Nodes (6): Allow any admin-tier role (``admin`` or ``super_admin``).      Centralised sec, require_admin(), test_require_admin_admin_ok(), test_require_admin_anonymous_403(), test_require_admin_super_admin_ok(), test_require_admin_user_403()
-
-### Community 692 - "Community 692"
-Cohesion: 0.4
-Nodes (3): _paths(), Route-prefix regression guard (PR-fix-5).  Introspects the mounted FastAPI app, test_admin_mocks_question_routes_under_questions()
-
-### Community 693 - "Community 693"
-Cohesion: 0.33
-Nodes (6): level_rank(), Return the rank for a slug OR a free-form text input.      Unknown inputs retu, _edu_level_rank(), test_level_rank_aliases_resolve_to_same_rank_as_canonical(), test_level_rank_legacy_slugs(), test_level_rank_unknown_returns_zero()
-
-### Community 694 - "Community 694"
-Cohesion: 0.33
-Nodes (6): level_rank(), Return the rank for a slug OR a free-form text input.      Unknown inputs retu, _edu_level_rank(), test_level_rank_aliases_resolve_to_same_rank_as_canonical(), test_level_rank_legacy_slugs(), test_level_rank_unknown_returns_zero()
-
 ### Community 696 - "Community 696"
-Cohesion: 0.33
-Nodes (5): COLD_INTENTS, INTENT_ALIASES, LANDING_SRC, seen, unknown
+Cohesion: 0.29
+Nodes (7): 2. Tier Model (A / B / C), code:text (official_source_required = true), code:text (official_source_preferred = true), code:text (official_source_preferred = true), Tier A — high-stakes / mass-volume, Tier B — technical / conditional, Tier C — long-tail / low-risk standard
+
+### Community 697 - "Community 697"
+Cohesion: 0.29
+Nodes (6): code:bash (cd tools/mock_content), Commands, Fingerprint contract, Install, mock-content CLI, Snapshot contract
+
+### Community 698 - "Community 698"
+Cohesion: 0.29
+Nodes (7): _find_resource(), list_resources(), report_resource(), resource_detail(), _resource_shape(), _vote_count(), vote_resource()
 
 ### Community 699 - "Community 699"
-Cohesion: 0.33
-Nodes (5): FUNNEL_ANALYTICS, QUESTION_BANK, QUEUE_BY_INTENT, QUEUE_CTA_EXAMPLE, SAMPLE_SESSION
+Cohesion: 0.29
+Nodes (7): _find_resource(), list_resources(), report_resource(), resource_detail(), _resource_shape(), _vote_count(), vote_resource()
 
 ### Community 700 - "Community 700"
 Cohesion: 0.33
-Nodes (5): code:json ({), Common gap reasons, Mock Templates (PR2d), Preview selection contract, Selector schema
+Nodes (3): _BrokenSB, test_require_select_raises_database_error(), test_collect_signals_safe_when_tables_missing()
 
 ### Community 701 - "Community 701"
-Cohesion: 0.33
-Nodes (6): code:jsx (<Route path="/go/:intent/:recruitmentSlug/:postSlug?" elemen), code:txt (app/frontend/src/pages/OnboardingChat.jsx), code:txt (I will check your eligibility for Safety Officer.), Frontend Implementation, `FunnelLandingRouter`, `OnboardingChat`
+Cohesion: 0.48
+Nodes (6): _build_app(), Per-feature readiness cards., test_empty_string_and_empty_list_count_as_missing_not_present(), test_fresh_user_has_everything_locked_with_explicit_missing_fields(), test_personalized_strategy_locked_when_prefs_lacks_study_hours(), test_seeded_profile_unlocks_relevant_features_only()
 
 ### Community 702 - "Community 702"
-Cohesion: 0.33
-Nodes (6): Check-constraint summary, code:text (study_behavior_daily_snapshots), code:text (study_behavior_daily_snapshots), Indexes (per table), RLS, indexes, and check constraints, RLS policies (per table)
+Cohesion: 0.29
+Nodes (7): code:text (app/backend/app/community/ranking.py), code:text (hot_score =), Current situation, Expected impact, G. Community layer, Implementation steps, Recommended data structures
 
 ### Community 703 - "Community 703"
-Cohesion: 0.33
-Nodes (6): code:text (Tier 1   — platform-hosted mock / provider API verified), code:text (1.00  platform / provider verified), code:text (18.5 hrs total), Hours trust hierarchy (weights for trust-adjusted hours), Mock score tiers, Trust tiers
+Cohesion: 0.29
+Nodes (7): code:text (app/backend/app/notifications/dedupe.py), code:text (app/backend/app/notifications/priority.py), Current situation, E. Notifications, Expected impact, Implementation steps, Recommended data structures
 
 ### Community 704 - "Community 704"
-Cohesion: 0.33
-Nodes (5): Core tables (expected), Important notes, Migration constraints, Phase usage, Supabase Migrations — Summary for Emergent
+Cohesion: 0.29
+Nodes (7): code:txt (Recruitment: CNP-style recruitment from uploaded notificatio), Phase 0 - Manual pilot, Phase 1 - Post-wise coverage, Phase 2 - Scraper integration, Phase 3 - AI parser, Phase 4 - Analytics and optimization, Rollout Plan
 
 ### Community 705 - "Community 705"
-Cohesion: 0.33
-Nodes (5): Eligibility reference, Key rules, Migration Reference — Eligibility and Scraper, Scraper reference, When to use
+Cohesion: 0.29
+Nodes (7): 2. Tier Model (A / B / C), code:text (official_source_required = true), code:text (official_source_preferred = true), code:text (official_source_preferred = true), Tier A — high-stakes / mass-volume, Tier B — technical / conditional, Tier C — long-tail / low-risk standard
 
 ### Community 706 - "Community 706"
-Cohesion: 0.33
-Nodes (5): Current active paths from `/app`, Important external folders in the full GitHub repo, Non-negotiable product doctrine, Read order, Reference Context Visible to Emergent
+Cohesion: 0.29
+Nodes (7): 21. PR1 Deliverables (Detailed), code:text (app/backend/app/scraping/recruitment_classifier.py), code:text (classification), code:text (1. first insert bootstraps chain_root_id atomically via RPC), Files, Ship Gate, Tests
 
 ### Community 707 - "Community 707"
 Cohesion: 0.33
-Nodes (6): 7. Official Qualification Distribution Snapshot (Strategic Reference), Eligibility implications, Key strategic takeaways, Marketplace / coaching implications, Official snapshot captured, Product implications
+Nodes (6): level_rank(), Return the rank for a slug OR a free-form text input.      Unknown inputs retu, _edu_level_rank(), test_level_rank_aliases_resolve_to_same_rank_as_canonical(), test_level_rank_legacy_slugs(), test_level_rank_unknown_returns_zero()
 
 ### Community 708 - "Community 708"
 Cohesion: 0.33
-Nodes (6): 4. Sarkari Result (sarkariresult.com.cm) — Working Interpretation, How to use it, Notification / eligibility implication, Observed technical signals, Registry guidance, Strategic interpretation
+Nodes (6): level_rank(), Return the rank for a slug OR a free-form text input.      Unknown inputs retu, _edu_level_rank(), test_level_rank_aliases_resolve_to_same_rank_as_canonical(), test_level_rank_legacy_slugs(), test_level_rank_unknown_returns_zero()
 
 ### Community 709 - "Community 709"
-Cohesion: 0.33
-Nodes (6): 3. GovtJobsBlog — Working Interpretation, How to use it, Notification / eligibility implication, Observed technical signals, Registry guidance, Strategic interpretation
+Cohesion: 0.4
+Nodes (4): Spaced-repetition (SM-2-lite) scheduler.  Shared between flashcards, mistake-b, Compute the next SRS state given a rating., schedule(), SrsState
 
 ### Community 710 - "Community 710"
 Cohesion: 0.33
-Nodes (6): 11.1 Non-negotiable policy, 11.2 Required state machine for aggregator items, 11.3 Official-link resolution requirements, 11.4 Operational verification checklist (weekly), 11.5 Metrics to track, 11. Aggregator Strategy v1 (Operational)
+Nodes (4): Counts rows in eligibility_results matching .eq filters and returns     .count, _StaleSB, test_eligibility_ops_stale_counts_rules_version_mismatch(), test_eligibility_ops_stale_zero_when_all_current()
 
 ### Community 711 - "Community 711"
 Cohesion: 0.33
-Nodes (6): 8. Atomicity — PostgreSQL RPC Functions, chain_root bootstrap, code:sql (create or replace function public.create_verification_report), code:sql (create or replace function public.supersede_and_create_verif), code:python (def _validate_supersession(old, new_payload):), supersede + insert atomic
+Nodes (5): Execute a select query and return rows, or [] if the query fails., safe_select(), _ErrSB, test_mapper_raises_database_error_on_critical_read_failure(), test_safe_select_returns_empty_on_failure()
 
 ### Community 712 - "Community 712"
-Cohesion: 0.33
-Nodes (6): 3. Backend Modules, classifier output, code:text (app/backend/app/scraping/recruitment_classifier.py), code:json ({), code:python (def get_active_report(scrape_queue_id=None, recruitment_id=N), verification_reports.py service surface
+Cohesion: 0.53
+Nodes (5): _build_app(), _count(), Hot-fix regression tests for PR #328.  PR2's review-round commit accidentally, test_no_duplicate_library_routes(), test_openapi_no_duplicate_library_paths()
 
 ### Community 713 - "Community 713"
 Cohesion: 0.33
-Nodes (5): test_normalise_plan_row_keeps_uuid_id_when_plan_code_missing(), test_normalise_plan_row_uses_plan_code_as_public_id(), test_normalise_subscription_row_maps_nested_plan_to_public_plan_id(), test_normalise_plan_row_keeps_uuid_id_when_plan_code_missing(), test_normalise_plan_row_uses_plan_code_as_public_id()
+Nodes (6): Allow any admin-tier role (``admin`` or ``super_admin``).      Centralised sec, require_admin(), test_require_admin_admin_ok(), test_require_admin_anonymous_403(), test_require_admin_super_admin_ok(), test_require_admin_user_403()
 
 ### Community 714 - "Community 714"
-Cohesion: 0.33
-Nodes (5): Execute a select query and return rows, or [] if the query fails., safe_select(), _ErrSB, test_mapper_raises_database_error_on_critical_read_failure(), test_safe_select_returns_empty_on_failure()
+Cohesion: 0.4
+Nodes (3): _paths(), Route-prefix regression guard (PR-fix-5).  Introspects the mounted FastAPI app, test_admin_mocks_question_routes_under_questions()
 
 ### Community 715 - "Community 715"
-Cohesion: 0.6
-Nodes (5): _build_client(), End-to-end-ish tests for the exam intelligence layer.  Covers admin review wri, _seed(), test_exam_intelligence_layer_exams_list_stays_verified_only(), test_exam_intelligence_layer_review_to_read_contract()
+Cohesion: 0.33
+Nodes (6): has_unresolved_conflict(), Return True if any conflict on the report still has ``status='open'``., test_has_unresolved_conflict_default_status_is_open(), test_has_unresolved_conflict_false_when_all_resolved(), test_has_unresolved_conflict_handles_missing_or_empty(), test_has_unresolved_conflict_true_when_any_open()
 
 ### Community 716 - "Community 716"
-Cohesion: 0.33
-Nodes (6): code:jsx (<Route path="/go/:intent/:recruitmentSlug/:postSlug?" elemen), code:txt (app/frontend/src/pages/OnboardingChat.jsx), code:txt (I will check your eligibility for Safety Officer.), Frontend Implementation, `FunnelLandingRouter`, `OnboardingChat`
-
-### Community 717 - "Community 717"
-Cohesion: 0.33
-Nodes (6): 8. Atomicity — PostgreSQL RPC Functions, chain_root bootstrap, code:sql (create or replace function public.create_verification_report), code:sql (create or replace function public.supersede_and_create_verif), code:python (def _validate_supersession(old, new_payload):), supersede + insert atomic
+Cohesion: 0.53
+Nodes (6): _affiliate_payload(), _seed_partner(), test_affiliate_course_created_when_partner_active_and_url_allowed(), test_affiliate_course_rejected_when_disclosure_missing(), test_affiliate_course_rejected_when_partner_suspended(), test_affiliate_course_rejected_when_url_host_not_in_allowlist()
 
 ### Community 718 - "Community 718"
 Cohesion: 0.33
-Nodes (6): 3. Backend Modules, classifier output, code:text (app/backend/app/scraping/recruitment_classifier.py), code:json ({), code:python (def get_active_report(scrape_queue_id=None, recruitment_id=N), verification_reports.py service surface
-
-### Community 719 - "Community 719"
-Cohesion: 0.33
-Nodes (6): 11.1 Non-negotiable policy, 11.2 Required state machine for aggregator items, 11.3 Official-link resolution requirements, 11.4 Operational verification checklist (weekly), 11.5 Metrics to track, 11. Aggregator Strategy v1 (Operational)
+Nodes (5): COLD_INTENTS, INTENT_ALIASES, LANDING_SRC, seen, unknown
 
 ### Community 720 - "Community 720"
 Cohesion: 0.33
-Nodes (6): 7. Official Qualification Distribution Snapshot (Strategic Reference), Eligibility implications, Key strategic takeaways, Marketplace / coaching implications, Official snapshot captured, Product implications
+Nodes (5): FUNNEL_ANALYTICS, QUESTION_BANK, QUEUE_BY_INTENT, QUEUE_CTA_EXAMPLE, SAMPLE_SESSION
 
 ### Community 721 - "Community 721"
 Cohesion: 0.33
-Nodes (6): 4. Sarkari Result (sarkariresult.com.cm) — Working Interpretation, How to use it, Notification / eligibility implication, Observed technical signals, Registry guidance, Strategic interpretation
+Nodes (5): code:block1 (SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \), graphify, Known-flaky CI checks, RBAC bootstrap, Study OS frontend contract
 
 ### Community 722 - "Community 722"
 Cohesion: 0.33
-Nodes (6): 3. GovtJobsBlog — Working Interpretation, How to use it, Notification / eligibility implication, Observed technical signals, Registry guidance, Strategic interpretation
+Nodes (5): code:json ({), Common gap reasons, Mock Templates (PR2d), Preview selection contract, Selector schema
 
 ### Community 723 - "Community 723"
+Cohesion: 0.33
+Nodes (6): code:jsx (<Route path="/go/:intent/:recruitmentSlug/:postSlug?" elemen), code:txt (app/frontend/src/pages/OnboardingChat.jsx), code:txt (I will check your eligibility for Safety Officer.), Frontend Implementation, `FunnelLandingRouter`, `OnboardingChat`
+
+### Community 724 - "Community 724"
+Cohesion: 0.33
+Nodes (5): Error Handling Audit — `_safe()` Near Write Operations, Fix Applied (PR-fix-12), Future Work, Root Cause, Triage of `_safe` Usages in `mock_engine.py`
+
+### Community 725 - "Community 725"
+Cohesion: 0.33
+Nodes (6): Check-constraint summary, code:text (study_behavior_daily_snapshots), code:text (study_behavior_daily_snapshots), Indexes (per table), RLS, indexes, and check constraints, RLS policies (per table)
+
+### Community 726 - "Community 726"
+Cohesion: 0.33
+Nodes (6): code:text (Tier 1   — platform-hosted mock / provider API verified), code:text (1.00  platform / provider verified), code:text (18.5 hrs total), Hours trust hierarchy (weights for trust-adjusted hours), Mock score tiers, Trust tiers
+
+### Community 727 - "Community 727"
+Cohesion: 0.33
+Nodes (5): Core tables (expected), Important notes, Migration constraints, Phase usage, Supabase Migrations — Summary for Emergent
+
+### Community 728 - "Community 728"
+Cohesion: 0.33
+Nodes (5): Eligibility reference, Key rules, Migration Reference — Eligibility and Scraper, Scraper reference, When to use
+
+### Community 729 - "Community 729"
+Cohesion: 0.33
+Nodes (5): Current active paths from `/app`, Important external folders in the full GitHub repo, Non-negotiable product doctrine, Read order, Reference Context Visible to Emergent
+
+### Community 730 - "Community 730"
+Cohesion: 0.33
+Nodes (6): 4. Sarkari Result (sarkariresult.com.cm) — Working Interpretation, How to use it, Notification / eligibility implication, Observed technical signals, Registry guidance, Strategic interpretation
+
+### Community 731 - "Community 731"
+Cohesion: 0.33
+Nodes (6): 3. GovtJobsBlog — Working Interpretation, How to use it, Notification / eligibility implication, Observed technical signals, Registry guidance, Strategic interpretation
+
+### Community 732 - "Community 732"
+Cohesion: 0.33
+Nodes (6): 7. Official Qualification Distribution Snapshot (Strategic Reference), Eligibility implications, Key strategic takeaways, Marketplace / coaching implications, Official snapshot captured, Product implications
+
+### Community 733 - "Community 733"
+Cohesion: 0.33
+Nodes (6): 11.1 Non-negotiable policy, 11.2 Required state machine for aggregator items, 11.3 Official-link resolution requirements, 11.4 Operational verification checklist (weekly), 11.5 Metrics to track, 11. Aggregator Strategy v1 (Operational)
+
+### Community 734 - "Community 734"
+Cohesion: 0.33
+Nodes (6): 8. Atomicity — PostgreSQL RPC Functions, chain_root bootstrap, code:sql (create or replace function public.create_verification_report), code:sql (create or replace function public.supersede_and_create_verif), code:python (def _validate_supersession(old, new_payload):), supersede + insert atomic
+
+### Community 735 - "Community 735"
+Cohesion: 0.33
+Nodes (6): 3. Backend Modules, classifier output, code:text (app/backend/app/scraping/recruitment_classifier.py), code:json ({), code:python (def get_active_report(scrape_queue_id=None, recruitment_id=N), verification_reports.py service surface
+
+### Community 736 - "Community 736"
+Cohesion: 0.4
+Nodes (5): close_pool(), close_pool(), get_pool(), stop_scheduler(), lifespan()
+
+### Community 737 - "Community 737"
+Cohesion: 0.33
+Nodes (3): E, _EnqueueRpcSimulator, Mirrors the SQL contract of `enqueue_eligibility_recompute` in     migration 04
+
+### Community 738 - "Community 738"
+Cohesion: 0.33
+Nodes (6): parse_pdf_bytes(), parse_pdf_pages(), Extract text from a PDF byte string using pypdf.      Returns an empty string, Like ``parse_pdf_bytes`` but returns one stripped string per page.      Empty, test_parse_pdf_bytes_empty_input(), test_parse_pdf_bytes_malformed_input_returns_empty()
+
+### Community 739 - "Community 739"
+Cohesion: 0.33
+Nodes (6): parse_pdf_bytes(), parse_pdf_pages(), Extract text from a PDF byte string using pypdf.      Returns an empty string, Like ``parse_pdf_bytes`` but returns one stripped string per page.      Empty, test_parse_pdf_bytes_empty_input(), test_parse_pdf_bytes_malformed_input_returns_empty()
+
+### Community 740 - "Community 740"
+Cohesion: 0.6
+Nodes (5): _build_client(), End-to-end-ish tests for the exam intelligence layer.  Covers admin review wri, _seed(), test_exam_intelligence_layer_exams_list_stays_verified_only(), test_exam_intelligence_layer_review_to_read_contract()
+
+### Community 741 - "Community 741"
+Cohesion: 0.33
+Nodes (6): code:jsx (<Route path="/go/:intent/:recruitmentSlug/:postSlug?" elemen), code:txt (app/frontend/src/pages/OnboardingChat.jsx), code:txt (I will check your eligibility for Safety Officer.), Frontend Implementation, `FunnelLandingRouter`, `OnboardingChat`
+
+### Community 742 - "Community 742"
+Cohesion: 0.33
+Nodes (6): 8. Atomicity — PostgreSQL RPC Functions, chain_root bootstrap, code:sql (create or replace function public.create_verification_report), code:sql (create or replace function public.supersede_and_create_verif), code:python (def _validate_supersession(old, new_payload):), supersede + insert atomic
+
+### Community 743 - "Community 743"
+Cohesion: 0.33
+Nodes (6): 3. Backend Modules, classifier output, code:text (app/backend/app/scraping/recruitment_classifier.py), code:json ({), code:python (def get_active_report(scrape_queue_id=None, recruitment_id=N), verification_reports.py service surface
+
+### Community 744 - "Community 744"
+Cohesion: 0.33
+Nodes (6): 3. GovtJobsBlog — Working Interpretation, How to use it, Notification / eligibility implication, Observed technical signals, Registry guidance, Strategic interpretation
+
+### Community 745 - "Community 745"
+Cohesion: 0.33
+Nodes (6): 4. Sarkari Result (sarkariresult.com.cm) — Working Interpretation, How to use it, Notification / eligibility implication, Observed technical signals, Registry guidance, Strategic interpretation
+
+### Community 746 - "Community 746"
+Cohesion: 0.33
+Nodes (6): 11.1 Non-negotiable policy, 11.2 Required state machine for aggregator items, 11.3 Official-link resolution requirements, 11.4 Operational verification checklist (weekly), 11.5 Metrics to track, 11. Aggregator Strategy v1 (Operational)
+
+### Community 747 - "Community 747"
+Cohesion: 0.33
+Nodes (6): 7. Official Qualification Distribution Snapshot (Strategic Reference), Eligibility implications, Key strategic takeaways, Marketplace / coaching implications, Official snapshot captured, Product implications
+
+### Community 748 - "Community 748"
 Cohesion: 0.7
 Nodes (4): CheckResult, main(), _print(), _rows()
 
-### Community 724 - "Community 724"
-Cohesion: 0.4
-Nodes (5): _list_queue(), ``last_error`` and ``attempt_count`` flow through so the drawer can     show wh, test_list_recompute_queue_carries_failure_metadata_for_ui(), test_list_recompute_queue_filters_by_status_and_recruitment(), test_list_recompute_queue_returns_counts_per_status()
-
-### Community 725 - "Community 725"
-Cohesion: 0.4
-Nodes (5): _list_queue(), ``last_error`` and ``attempt_count`` flow through so the drawer can     show wh, test_list_recompute_queue_carries_failure_metadata_for_ui(), test_list_recompute_queue_filters_by_status_and_recruitment(), test_list_recompute_queue_returns_counts_per_status()
-
-### Community 726 - "Community 726"
-Cohesion: 0.6
-Nodes (4): _mounted_paths(), Route-prefix regression guard.  Sub-routers are mounted inside ``APIRouter(pre, test_admin_mock_templates_mounted_under_single_api(), test_no_doubled_api_prefix()
-
-### Community 727 - "Community 727"
-Cohesion: 0.4
-Nodes (3): test_async_safe_select_delegates_to_safe_select(), async_safe_select(), Async wrapper around safe_select for async API boundaries.      supabase-py ca
-
-### Community 729 - "Community 729"
-Cohesion: 0.4
-Nodes (5): ancestors(), Return slug + all parent slugs walking up the ladder.      Useful for inherita, test_ancestors_for_root_returns_singleton(), test_ancestors_for_unknown_returns_chain_from_input(), test_ancestors_returns_chain_to_root()
-
-### Community 730 - "Community 730"
-Cohesion: 0.4
-Nodes (5): ancestors(), Return slug + all parent slugs walking up the ladder.      Useful for inherita, test_ancestors_for_root_returns_singleton(), test_ancestors_for_unknown_returns_chain_from_input(), test_ancestors_returns_chain_to_root()
-
-### Community 731 - "Community 731"
-Cohesion: 0.4
-Nodes (5): confirm_suggested_proof(), Admin confirms one of the suggested URLs.      The ``chosen_url`` MUST match o, Admin confirms one of the suggested URLs.      The ``chosen_url`` MUST match o, attach_admin_official_url(), Record an admin's manual confirmation of a suggested URL.      Audit-truthful:
-
-### Community 733 - "Community 733"
-Cohesion: 0.6
-Nodes (4): BulkActionPreview(), groupBlockers(), BulkActionPreview(), groupBlockers()
-
-### Community 737 - "Community 737"
-Cohesion: 0.4
-Nodes (4): code:block1 (SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \), graphify, RBAC bootstrap, Study OS frontend contract
-
-### Community 738 - "Community 738"
-Cohesion: 0.4
-Nodes (4): Frontend Code Review (Code-Only), Major gaps, Priority fixes (high-level), Scope and method
-
-### Community 739 - "Community 739"
-Cohesion: 0.4
-Nodes (4): Cross-language contracts, Mastery engine (PR5a) output shapes, Mock attempt → `mock_tests` compat row, Why this approach (hand-synced + drift test)
-
-### Community 740 - "Community 740"
-Cohesion: 0.4
-Nodes (4): ADR 0001: Keep eligibility decisions deterministic and rule-based, Consequences, Context, Decision
-
-### Community 741 - "Community 741"
-Cohesion: 0.4
-Nodes (4): ADR 0002: Add async API boundaries while retaining sync Supabase calls internally, Consequences, Context, Decision
-
-### Community 742 - "Community 742"
-Cohesion: 0.4
-Nodes (4): ADR 0003: Queue trust-gate model and no-auto-approval invariant, Consequences, Decision, Status
-
-### Community 743 - "Community 743"
-Cohesion: 0.4
-Nodes (4): ADR 0004: Promotion atomicity and async Supabase strategy, Consequences, Decision, Status
-
-### Community 744 - "Community 744"
-Cohesion: 0.4
-Nodes (5): code:text (Behavior metrics: pooled once across all exams.), code:text (single_exam       → credit to that exam), code:text (multi_exam_load = active_exam_count × pending_backlog × days), code:text (Overall discipline score), Multi-exam handling
-
-### Community 745 - "Community 745"
-Cohesion: 0.4
-Nodes (4): Eligibility migration target, Migration Reference Files, Scraper migration target, Target architecture
-
-### Community 746 - "Community 746"
-Cohesion: 0.4
-Nodes (4): Attempt Analytics (PR4a), Classifier rule order (first match wins), Output contract, Time analytics fallback
-
-### Community 747 - "Community 747"
-Cohesion: 0.4
-Nodes (4): Background sweeper (`mock:sweeper`), code:sql (select job_kind, status, count(*), max(attempts) as max_atte), Runbook: Mock Mastery Write-back, Submit flow & ordering
-
-### Community 748 - "Community 748"
-Cohesion: 0.4
-Nodes (5): 5.3 Layer 3: Candidate merge layer, code:text (recruitment_candidates), code:text (unverified), code:text (candidate_id), code:text (FreeJobAlert -> IBPS PO 2026 notification)
-
 ### Community 749 - "Community 749"
 Cohesion: 0.4
-Nodes (5): 1. Source Taxonomy, A. Canonical / Source-of-Truth sources, B. Secondary discovery / aggregator sources, C. Research / enrichment sources, D. Opportunity / adjacent-opportunity sources
+Nodes (5): ancestors(), Return slug + all parent slugs walking up the ladder.      Useful for inherita, test_ancestors_for_root_returns_singleton(), test_ancestors_for_unknown_returns_chain_from_input(), test_ancestors_returns_chain_to_root()
 
 ### Community 750 - "Community 750"
 Cohesion: 0.4
-Nodes (5): 5. OGD India / data.gov.in — Working Interpretation, Product posture, What it is, Why it is NOT a direct recruitment source by default, Why it is relevant
+Nodes (5): ancestors(), Return slug + all parent slugs walking up the ladder.      Useful for inherita, test_ancestors_for_root_returns_singleton(), test_ancestors_for_unknown_returns_chain_from_input(), test_ancestors_returns_chain_to_root()
 
 ### Community 751 - "Community 751"
 Cohesion: 0.4
-Nodes (4): 15. Consensus + Override (PR3), code:text (title, organization, notification_number,), code:text (official source wins over aggregator), code:json ({)
+Nodes (5): _list_queue(), ``last_error`` and ``attempt_count`` flow through so the drawer can     show wh, test_list_recompute_queue_carries_failure_metadata_for_ui(), test_list_recompute_queue_filters_by_status_and_recruitment(), test_list_recompute_queue_returns_counts_per_status()
 
 ### Community 752 - "Community 752"
 Cohesion: 0.4
-Nodes (4): 13. Official Resolver (PR2), code:text (L1  direct official links on scraped page), code:python (OFFICIAL_RESOLUTION_THRESHOLDS = {), code:text (≥ 0.85 → auto-resolved, still auditable)
-
-### Community 753 - "Community 753"
-Cohesion: 0.4
-Nodes (5): 4. Hash Contract, code:python (def normalize_verification_snapshot(extracted_data: dict) ->), code:python ({), code:text (lowercase strings, strip whitespace), code:text (scrape_queue_id present → source_snapshot_hash = hash(extrac)
-
-### Community 754 - "Community 754"
-Cohesion: 0.4
-Nodes (4): In-flight, Known Gaps, Operational, Real but rough
-
-### Community 755 - "Community 755"
-Cohesion: 0.4
-Nodes (3): onFieldAction, renderGroup(), warn
+Nodes (5): _list_queue(), ``last_error`` and ``attempt_count`` flow through so the drawer can     show wh, test_list_recompute_queue_carries_failure_metadata_for_ui(), test_list_recompute_queue_filters_by_status_and_recruitment(), test_list_recompute_queue_returns_counts_per_status()
 
 ### Community 756 - "Community 756"
-Cohesion: 0.4
-Nodes (5): Counts, Frontend audit — Study OS (Today, StudyPlan, Tracker, Mocks, Focus, WeeklyReview, Subjects, Dashboard, Compare + 32 components), Recommended ship order, Well-built (no findings), What I did not verify
-
-### Community 759 - "Community 759"
-Cohesion: 0.4
-Nodes (5): 5.3 Layer 3: Candidate merge layer, code:text (recruitment_candidates), code:text (unverified), code:text (candidate_id), code:text (FreeJobAlert -> IBPS PO 2026 notification)
-
-### Community 760 - "Community 760"
-Cohesion: 0.4
-Nodes (5): 4. Hash Contract, code:python (def normalize_verification_snapshot(extracted_data: dict) ->), code:python ({), code:text (lowercase strings, strip whitespace), code:text (scrape_queue_id present → source_snapshot_hash = hash(extrac)
+Cohesion: 0.6
+Nodes (4): _mounted_paths(), Route-prefix regression guard.  Sub-routers are mounted inside ``APIRouter(pre, test_admin_mock_templates_mounted_under_single_api(), test_no_doubled_api_prefix()
 
 ### Community 761 - "Community 761"
 Cohesion: 0.4
-Nodes (4): 15. Consensus + Override (PR3), code:text (title, organization, notification_number,), code:text (official source wins over aggregator), code:json ({)
+Nodes (4): Frontend Code Review (Code-Only), Major gaps, Priority fixes (high-level), Scope and method
 
 ### Community 762 - "Community 762"
 Cohesion: 0.4
-Nodes (4): 13. Official Resolver (PR2), code:text (L1  direct official links on scraped page), code:python (OFFICIAL_RESOLUTION_THRESHOLDS = {), code:text (≥ 0.85 → auto-resolved, still auditable)
+Nodes (4): Cross-language contracts, Mastery engine (PR5a) output shapes, Mock attempt → `mock_tests` compat row, Why this approach (hand-synced + drift test)
 
 ### Community 763 - "Community 763"
 Cohesion: 0.4
-Nodes (5): 5. OGD India / data.gov.in — Working Interpretation, Product posture, What it is, Why it is NOT a direct recruitment source by default, Why it is relevant
+Nodes (4): ADR 0001: Keep eligibility decisions deterministic and rule-based, Consequences, Context, Decision
 
 ### Community 764 - "Community 764"
 Cohesion: 0.4
-Nodes (5): 1. Source Taxonomy, A. Canonical / Source-of-Truth sources, B. Secondary discovery / aggregator sources, C. Research / enrichment sources, D. Opportunity / adjacent-opportunity sources
+Nodes (4): ADR 0002: Add async API boundaries while retaining sync Supabase calls internally, Consequences, Context, Decision
 
 ### Community 765 - "Community 765"
-Cohesion: 0.5
-Nodes (4): get_scrape_run_detail(), Return one scrape_runs row plus a per-source breakdown.      The frontend "Rec, Return one scrape_runs row plus a per-source breakdown.      The frontend "Rec, Return one scrape_runs row plus a per-source breakdown.      The frontend "Rec
+Cohesion: 0.4
+Nodes (4): ADR 0003: Queue trust-gate model and no-auto-approval invariant, Consequences, Decision, Status
 
 ### Community 766 - "Community 766"
-Cohesion: 0.5
-Nodes (3): normalize_url(), Pure URL normalisation for dedup key comparison.  One function, ``normalize_ur, Canonicalise ``url`` for equality comparison.      * lowercase scheme + host;
+Cohesion: 0.4
+Nodes (4): ADR 0004: Promotion atomicity and async Supabase strategy, Consequences, Decision, Status
 
 ### Community 767 - "Community 767"
-Cohesion: 0.83
-Nodes (3): _paths(), test_admin_exam_intelligence_cms_routes_are_registered(), test_admin_study_os_routes_are_registered_in_openapi()
+Cohesion: 0.4
+Nodes (5): code:text (Behavior metrics: pooled once across all exams.), code:text (single_exam       → credit to that exam), code:text (multi_exam_load = active_exam_count × pending_backlog × days), code:text (Overall discipline score), Multi-exam handling
 
 ### Community 768 - "Community 768"
-Cohesion: 0.5
-Nodes (4): require_permission(), test_require_permission_admin_without_perm_403(), test_require_permission_anonymous_403(), test_require_permission_super_admin_bypass()
+Cohesion: 0.4
+Nodes (4): Eligibility migration target, Migration Reference Files, Scraper migration target, Target architecture
 
 ### Community 769 - "Community 769"
-Cohesion: 0.5
-Nodes (4): Allow only ``super_admin``.      ``super_admin`` passes both this and :func:`r, require_super_admin(), test_require_super_admin_admin_403(), test_require_super_admin_super_admin_ok()
+Cohesion: 0.4
+Nodes (4): Attempt Analytics (PR4a), Classifier rule order (first match wins), Output contract, Time analytics fallback
+
+### Community 770 - "Community 770"
+Cohesion: 0.4
+Nodes (4): Background sweeper (`mock:sweeper`), code:sql (select job_kind, status, count(*), max(attempts) as max_atte), Runbook: Mock Mastery Write-back, Submit flow & ordering
+
+### Community 771 - "Community 771"
+Cohesion: 0.4
+Nodes (5): 5.3 Layer 3: Candidate merge layer, code:text (recruitment_candidates), code:text (unverified), code:text (candidate_id), code:text (FreeJobAlert -> IBPS PO 2026 notification)
+
+### Community 772 - "Community 772"
+Cohesion: 0.4
+Nodes (5): 1. Source Taxonomy, A. Canonical / Source-of-Truth sources, B. Secondary discovery / aggregator sources, C. Research / enrichment sources, D. Opportunity / adjacent-opportunity sources
+
+### Community 773 - "Community 773"
+Cohesion: 0.4
+Nodes (5): 5. OGD India / data.gov.in — Working Interpretation, Product posture, What it is, Why it is NOT a direct recruitment source by default, Why it is relevant
+
+### Community 774 - "Community 774"
+Cohesion: 0.4
+Nodes (5): 4. Hash Contract, code:python (def normalize_verification_snapshot(extracted_data: dict) ->), code:python ({), code:text (lowercase strings, strip whitespace), code:text (scrape_queue_id present → source_snapshot_hash = hash(extrac)
+
+### Community 775 - "Community 775"
+Cohesion: 0.4
+Nodes (4): 13. Official Resolver (PR2), code:text (L1  direct official links on scraped page), code:python (OFFICIAL_RESOLUTION_THRESHOLDS = {), code:text (≥ 0.85 → auto-resolved, still auditable)
+
+### Community 776 - "Community 776"
+Cohesion: 0.4
+Nodes (4): 15. Consensus + Override (PR3), code:text (title, organization, notification_number,), code:text (official source wins over aggregator), code:json ({)
+
+### Community 777 - "Community 777"
+Cohesion: 0.4
+Nodes (4): In-flight, Known Gaps, Operational, Real but rough
+
+### Community 778 - "Community 778"
+Cohesion: 0.4
+Nodes (5): Counts, Frontend audit — Study OS (Today, StudyPlan, Tracker, Mocks, Focus, WeeklyReview, Subjects, Dashboard, Compare + 32 components), Recommended ship order, Well-built (no findings), What I did not verify
+
+### Community 779 - "Community 779"
+Cohesion: 0.4
+Nodes (3): test_async_safe_select_delegates_to_safe_select(), async_safe_select(), Async wrapper around safe_select for async API boundaries.      supabase-py ca
+
+### Community 780 - "Community 780"
+Cohesion: 0.6
+Nodes (4): BulkActionPreview(), groupBlockers(), BulkActionPreview(), groupBlockers()
 
 ### Community 781 - "Community 781"
-Cohesion: 0.5
-Nodes (3): Frontend audit — community / study-groups / partners / mentors / resources, Routing surface, Summary count
+Cohesion: 0.4
+Nodes (5): 5.3 Layer 3: Candidate merge layer, code:text (recruitment_candidates), code:text (unverified), code:text (candidate_id), code:text (FreeJobAlert -> IBPS PO 2026 notification)
 
 ### Community 782 - "Community 782"
-Cohesion: 0.5
-Nodes (3): Exports, Patterns, Reports Components Library
+Cohesion: 0.4
+Nodes (5): 5.4 Layer 4: Official-source resolution, code:text (official_notification_documents), code:text (id), code:text (html_page), code:text (direct_link_from_aggregator)
 
 ### Community 783 - "Community 783"
-Cohesion: 0.5
-Nodes (3): Add new type, Props, Question Rendering Library
+Cohesion: 0.4
+Nodes (4): 15. Consensus + Override (PR3), code:text (title, organization, notification_number,), code:text (official source wins over aggregator), code:json ({)
 
 ### Community 784 - "Community 784"
-Cohesion: 0.5
-Nodes (3): Attempt shell primitives, code:jsx (<AntiCheatProvider enforceFullscreen blockCopy blockPaste on), Composition example
+Cohesion: 0.4
+Nodes (4): 13. Official Resolver (PR2), code:text (L1  direct official links on scraped page), code:python (OFFICIAL_RESOLUTION_THRESHOLDS = {), code:text (≥ 0.85 → auto-resolved, still auditable)
 
 ### Community 785 - "Community 785"
-Cohesion: 0.5
-Nodes (4): code:text (exam_id + exam_phase_id + preparation_stage + availability_b), code:text ("SSC CGL Tier 1 · final window · 1–2 hrs/day"), code:text (exam_phase → exam → exam_family → all competitive-exam aspir), Cohorts (default for all comparison)
+Cohesion: 0.4
+Nodes (5): 5. OGD India / data.gov.in — Working Interpretation, Product posture, What it is, Why it is NOT a direct recruitment source by default, Why it is relevant
 
 ### Community 786 - "Community 786"
-Cohesion: 0.5
-Nodes (3): Common Failures, First Response, Incident Runbook
+Cohesion: 0.4
+Nodes (5): 1. Source Taxonomy, A. Canonical / Source-of-Truth sources, B. Secondary discovery / aggregator sources, C. Research / enrichment sources, D. Opportunity / adjacent-opportunity sources
 
 ### Community 787 - "Community 787"
 Cohesion: 0.5
-Nodes (4): 5.6 Layer 6: Scrape queue and admin review, code:text (source_url), code:text (pending       -- new item awaiting admin review), code:text (Aggregator-origin queue items must not be promotable unless )
+Nodes (4): get_scrape_run_detail(), Return one scrape_runs row plus a per-source breakdown.      The frontend "Rec, Return one scrape_runs row plus a per-source breakdown.      The frontend "Rec, Return one scrape_runs row plus a per-source breakdown.      The frontend "Rec
 
 ### Community 788 - "Community 788"
 Cohesion: 0.5
-Nodes (4): 10.1 Suitable API categories, 10.2 API usage policy, 10. External API strategy, code:text (1. Official RSS / Atom / JSON API)
+Nodes (4): import_commit(), [publisher] Commit a dry-run import by token. Idempotent: re-commit skips duplic, [publisher] Commit a dry-run import by token. Idempotent: re-commit skips duplic, [publisher] Commit a dry-run import by token. Idempotent: re-commit skips duplic
 
 ### Community 789 - "Community 789"
 Cohesion: 0.5
-Nodes (4): 13. Status cross-check (2026-05-02), Implemented in code, Not yet implemented (important), Operational truth
+Nodes (4): [author] Replace all topic tags for a question., [author] Replace all topic tags for a question., [author] Replace all topic tags for a question., set_topic_tags()
 
 ### Community 790 - "Community 790"
 Cohesion: 0.5
-Nodes (4): 8. Personalization Logic for Opportunity Feeds, Location-aware filtering, Notification channel rule, Profile-aware routing rules
+Nodes (4): [author] Replace all sources for a question., [author] Replace all sources for a question., [author] Replace all sources for a question., set_sources()
 
 ### Community 791 - "Community 791"
 Cohesion: 0.5
-Nodes (4): 9. Strategy Update for Scraper + Eligibility + Notification Engine, Eligibility strategy, Notification strategy, Scraper strategy
+Nodes (4): dedup_check(), [author] Fingerprint match + top-5 trigram neighbors at given similarity thresho, [author] Fingerprint match + top-5 trigram neighbors at given similarity thresho, [author] Fingerprint match + top-5 trigram neighbors at given similarity thresho
 
 ### Community 792 - "Community 792"
 Cohesion: 0.5
-Nodes (4): 6. Curated Feed Candidates to Track, A. Official / semi-official opportunity feeds, B. Aggregator discovery feeds, Classification guidance
+Nodes (4): import_dry_run(), [publisher] Parse CSV/JSON upload, return per-row preview + import_token., [publisher] Parse CSV/JSON upload, return per-row preview + import_token., [publisher] Parse CSV/JSON upload, return per-row preview + import_token.
 
 ### Community 793 - "Community 793"
 Cohesion: 0.5
-Nodes (4): 16. Eligibility Complexity Contract (PR4), code:text (domicile, language, GATE score, experience,), code:python (@dataclass), code:text (promotion_blocker          → cannot promote until represente)
+Nodes (4): [reviewer] Questions awaiting review, newest first., [reviewer] Questions awaiting review, newest first., [reviewer] Questions awaiting review, newest first., review_queue()
 
 ### Community 794 - "Community 794"
 Cohesion: 0.5
-Nodes (4): 18. Bulk Operations (PR6), code:text (bulk classify), code:text (admin_override_conflict), code:json ({)
+Nodes (4): publish_question(), [publisher] verified → published., [publisher] verified → published., [publisher] verified → published.
 
 ### Community 795 - "Community 795"
 Cohesion: 0.5
-Nodes (4): 1. Architecture, code:text (source_registry), code:text (classify criticality), code:text (AI may suggest URLs or classify ambiguity.)
+Nodes (4): [reviewer] in_review → needs_changes., [reviewer] in_review → needs_changes., [reviewer] in_review → needs_changes., request_changes()
 
 ### Community 796 - "Community 796"
 Cohesion: 0.5
-Nodes (3): 14. AI Resolver Budget (PR2), code:python (AI_RESOLVER_LIMITS = {), code:text (error_rate / low_confidence_rate computed per source within )
+Nodes (4): list_questions(), [author] List questions with filters. Authors see only their own., [author] List questions with filters. Authors see only their own., [author] List questions with filters. Authors see only their own.
 
 ### Community 797 - "Community 797"
 Cohesion: 0.5
-Nodes (4): _ensure_profile(), user_subscriptions.user_id FKs into profiles — bootstrap if missing., user_subscriptions.user_id FKs into profiles — bootstrap if missing., user_subscriptions.user_id FKs into profiles — bootstrap if missing.
+Nodes (4): approve_question(), [reviewer] in_review → verified. Rejects self-review with 409., [reviewer] in_review → verified. Rejects self-review with 409., [reviewer] in_review → verified. Rejects self-review with 409.
+
+### Community 798 - "Community 798"
+Cohesion: 0.5
+Nodes (3): normalize_url(), Pure URL normalisation for dedup key comparison.  One function, ``normalize_ur, Canonicalise ``url`` for equality comparison.      * lowercase scheme + host;
 
 ### Community 799 - "Community 799"
 Cohesion: 0.5
-Nodes (4): 10.1 Suitable API categories, 10.2 API usage policy, 10. External API strategy, code:text (1. Official RSS / Atom / JSON API)
+Nodes (4): list_topic_coverage(), Read-only view of ``exam_topic_coverage``.      PR scope is strictly read: no, Read-only view of ``exam_topic_coverage``.      PR scope is strictly read: no, Read-only view of ``exam_topic_coverage``.      PR scope is strictly read: no
 
 ### Community 800 - "Community 800"
-Cohesion: 0.5
-Nodes (4): 5.2 Layer 2: Discovery ingestion, code:text (aggregator_listings), code:text (id), code:text (discovered)
+Cohesion: 0.33
+Nodes (4): The split between eligible / conditional / ineligible is computed     by inspec, test_publish_impact_counts_eligibility_results_split(), Retrying a row that's currently being processed would double-run     the eligib, test_retry_recompute_refuses_processing_row()
 
 ### Community 801 - "Community 801"
-Cohesion: 0.5
-Nodes (4): 5.1 Layer 1: Source registry, code:text (official_central), code:text (rss), code:text (source_name)
+Cohesion: 0.83
+Nodes (3): _paths(), test_admin_exam_intelligence_cms_routes_are_registered(), test_admin_study_os_routes_are_registered_in_openapi()
 
 ### Community 802 - "Community 802"
 Cohesion: 0.5
-Nodes (4): code:text (rss_adapter.py), code:text (DiscoveredListing), code:python (class DiscoveredListing:), Phase 2: Build RSS and WordPress JSON adapters
-
-### Community 803 - "Community 803"
-Cohesion: 0.5
-Nodes (4): 18. Bulk Operations (PR6), code:text (bulk classify), code:text (admin_override_conflict), code:json ({)
+Nodes (3): _ErrSB, test_mapper_raises_database_error_on_critical_read_failure(), test_safe_select_returns_empty_on_failure()
 
 ### Community 804 - "Community 804"
 Cohesion: 0.5
-Nodes (3): 14. AI Resolver Budget (PR2), code:python (AI_RESOLVER_LIMITS = {), code:text (error_rate / low_confidence_rate computed per source within )
+Nodes (4): Allow only ``super_admin``.      ``super_admin`` passes both this and :func:`r, require_super_admin(), test_require_super_admin_admin_403(), test_require_super_admin_super_admin_ok()
 
-### Community 805 - "Community 805"
+### Community 814 - "Community 814"
 Cohesion: 0.5
-Nodes (4): 16. Eligibility Complexity Contract (PR4), code:text (domicile, language, GATE score, experience,), code:python (@dataclass), code:text (promotion_blocker          → cannot promote until represente)
+Nodes (3): Frontend audit — community / study-groups / partners / mentors / resources, Routing surface, Summary count
 
-### Community 806 - "Community 806"
+### Community 815 - "Community 815"
 Cohesion: 0.5
-Nodes (4): 1. Architecture, code:text (source_registry), code:text (classify criticality), code:text (AI may suggest URLs or classify ambiguity.)
+Nodes (3): Exports, Patterns, Reports Components Library
 
-### Community 807 - "Community 807"
+### Community 816 - "Community 816"
 Cohesion: 0.5
-Nodes (4): 9. Strategy Update for Scraper + Eligibility + Notification Engine, Eligibility strategy, Notification strategy, Scraper strategy
+Nodes (3): Add new type, Props, Question Rendering Library
 
-### Community 808 - "Community 808"
+### Community 817 - "Community 817"
 Cohesion: 0.5
-Nodes (4): 6. Curated Feed Candidates to Track, A. Official / semi-official opportunity feeds, B. Aggregator discovery feeds, Classification guidance
+Nodes (3): Attempt shell primitives, code:jsx (<AntiCheatProvider enforceFullscreen blockCopy blockPaste on), Composition example
 
-### Community 809 - "Community 809"
+### Community 818 - "Community 818"
 Cohesion: 0.5
-Nodes (4): 2. RSS / JSON Strategy, Practical use, Product rule, Why RSS matters for Career Copilot
+Nodes (4): code:text (exam_id + exam_phase_id + preparation_stage + availability_b), code:text ("SSC CGL Tier 1 · final window · 1–2 hrs/day"), code:text (exam_phase → exam → exam_family → all competitive-exam aspir), Cohorts (default for all comparison)
 
-### Community 810 - "Community 810"
+### Community 819 - "Community 819"
+Cohesion: 0.5
+Nodes (3): Common Failures, First Response, Incident Runbook
+
+### Community 820 - "Community 820"
+Cohesion: 0.5
+Nodes (4): 5.1 Layer 1: Source registry, code:text (official_central), code:text (rss), code:text (source_name)
+
+### Community 821 - "Community 821"
+Cohesion: 0.5
+Nodes (4): 6. Event type strategy, code:text (new_recruitment), code:text (recruitment_events), code:text (id)
+
+### Community 822 - "Community 822"
+Cohesion: 0.5
+Nodes (4): 5.2 Layer 2: Discovery ingestion, code:text (aggregator_listings), code:text (id), code:text (discovered)
+
+### Community 823 - "Community 823"
+Cohesion: 0.5
+Nodes (4): 10.1 Suitable API categories, 10.2 API usage policy, 10. External API strategy, code:text (1. Official RSS / Atom / JSON API)
+
+### Community 824 - "Community 824"
+Cohesion: 0.5
+Nodes (4): 13. Status cross-check (2026-05-02), Implemented in code, Not yet implemented (important), Operational truth
+
+### Community 825 - "Community 825"
 Cohesion: 0.5
 Nodes (4): 8. Personalization Logic for Opportunity Feeds, Location-aware filtering, Notification channel rule, Profile-aware routing rules
 
-### Community 813 - "Community 813"
-Cohesion: 0.67
-Nodes (3): Wrap ``select_next_question`` so failures don't break a gather., Wrap ``select_next_question`` so failures don't break a gather., _select_next_question_safe()
+### Community 826 - "Community 826"
+Cohesion: 0.5
+Nodes (4): 2. RSS / JSON Strategy, Practical use, Product rule, Why RSS matters for Career Copilot
 
-### Community 816 - "Community 816"
-Cohesion: 0.67
-Nodes (3): list_reverification_batches(), List reverification batches.      Defaults to unacknowledged-only so the admin, List reverification batches.      Defaults to unacknowledged-only so the admin
+### Community 827 - "Community 827"
+Cohesion: 0.5
+Nodes (4): 9. Strategy Update for Scraper + Eligibility + Notification Engine, Eligibility strategy, Notification strategy, Scraper strategy
 
-### Community 818 - "Community 818"
-Cohesion: 0.67
-Nodes (3): override_conflict(), Resolve one verification conflict with an explicit admin choice.      Permissi, Resolve one verification conflict with an explicit admin choice.      Permissi
+### Community 828 - "Community 828"
+Cohesion: 0.5
+Nodes (4): 16. Eligibility Complexity Contract (PR4), code:text (domicile, language, GATE score, experience,), code:python (@dataclass), code:text (promotion_blocker          → cannot promote until represente)
 
-### Community 824 - "Community 824"
-Cohesion: 0.67
-Nodes (3): ExploreFooterLink(), guestSafe(), ScreenLinkCard()
+### Community 829 - "Community 829"
+Cohesion: 0.5
+Nodes (4): 6. Lifecycle States + Transitions, code:python (PR1_LIFECYCLE_STATES = {), code:text (superseded is terminal), code:text (official_resolution_pending)
+
+### Community 830 - "Community 830"
+Cohesion: 0.5
+Nodes (4): 18. Bulk Operations (PR6), code:text (bulk classify), code:text (admin_override_conflict), code:json ({)
+
+### Community 831 - "Community 831"
+Cohesion: 0.5
+Nodes (4): Validate ``suggested_official_urls`` jsonb. Returns canonical dict form., validate_suggested_official_urls(), Write resolver outcome onto a verification report.      The resolver itself ne, set_resolver_state()
+
+### Community 832 - "Community 832"
+Cohesion: 0.5
+Nodes (4): 5.6 Layer 6: Scrape queue and admin review, code:text (source_url), code:text (pending       -- new item awaiting admin review), code:text (Aggregator-origin queue items must not be promotable unless )
+
+### Community 833 - "Community 833"
+Cohesion: 0.5
+Nodes (4): code:text (rss_adapter.py), code:text (DiscoveredListing), code:python (class DiscoveredListing:), Phase 2: Build RSS and WordPress JSON adapters
+
+### Community 834 - "Community 834"
+Cohesion: 0.5
+Nodes (4): 6. Event type strategy, code:text (new_recruitment), code:text (recruitment_events), code:text (id)
+
+### Community 835 - "Community 835"
+Cohesion: 0.5
+Nodes (4): 10.1 Suitable API categories, 10.2 API usage policy, 10. External API strategy, code:text (1. Official RSS / Atom / JSON API)
 
 ### Community 836 - "Community 836"
-Cohesion: 0.67
-Nodes (3): AI Usage Boundary, code:txt (You are a guided onboarding assistant for Career Copilot.), code:json ({)
+Cohesion: 0.5
+Nodes (4): 18. Bulk Operations (PR6), code:text (bulk classify), code:text (admin_override_conflict), code:json ({)
 
 ### Community 837 - "Community 837"
-Cohesion: 0.67
-Nodes (3): code:txt (/go/check-eligibility/cnp-nashik-2026/safety-officer), code:txt (Blog CTA), Target User Flow
+Cohesion: 0.5
+Nodes (4): 16. Eligibility Complexity Contract (PR4), code:text (domicile, language, GATE score, experience,), code:python (@dataclass), code:text (promotion_blocker          → cannot promote until represente)
+
+### Community 838 - "Community 838"
+Cohesion: 0.5
+Nodes (4): 1. Architecture, code:text (source_registry), code:text (classify criticality), code:text (AI may suggest URLs or classify ambiguity.)
+
+### Community 839 - "Community 839"
+Cohesion: 0.5
+Nodes (3): 14. AI Resolver Budget (PR2), code:python (AI_RESOLVER_LIMITS = {), code:text (error_rate / low_confidence_rate computed per source within )
 
 ### Community 840 - "Community 840"
-Cohesion: 0.67
-Nodes (3): code:text (start intent), code:text (group_quorum_streak  = ≥70% members attended), Study group rules
+Cohesion: 0.5
+Nodes (4): 2. RSS / JSON Strategy, Practical use, Product rule, Why RSS matters for Career Copilot
 
 ### Community 841 - "Community 841"
-Cohesion: 0.67
-Nodes (3): code:text (Individual behavior board   (cohort-default, opt-in for publ), code:text (quorum_streak), Leaderboard design
+Cohesion: 0.5
+Nodes (4): 6. Curated Feed Candidates to Track, A. Official / semi-official opportunity feeds, B. Aggregator discovery feeds, Classification guidance
 
 ### Community 842 - "Community 842"
-Cohesion: 0.67
-Nodes (3): code:text (Plan Keeper        — 90%+ adherence, 60+ days), code:text (Synced Squad / Unbroken Cell / Iron Circle  — group), Titles
+Cohesion: 0.5
+Nodes (4): 13. Status cross-check (2026-05-02), Implemented in code, Not yet implemented (important), Operational truth
+
+### Community 843 - "Community 843"
+Cohesion: 0.5
+Nodes (4): 9. Strategy Update for Scraper + Eligibility + Notification Engine, Eligibility strategy, Notification strategy, Scraper strategy
 
 ### Community 844 - "Community 844"
 Cohesion: 0.67
-Nodes (3): findDetail(), Row(), statusFor()
+Nodes (3): get_review_queue(), Return questions in `in_review` status, newest first., Return questions in `in_review` status, newest first.
 
 ### Community 845 - "Community 845"
 Cohesion: 0.67
-Nodes (3): code:js (defaultValue={a.submitted_at ? new Date(a.submitted_at).toIS), code:js (const d = new Date(a.submitted_at);), S-P1-11. `Tracker` `datetime-local` round-trip is UTC-vs-local broken
-
-### Community 846 - "Community 846"
-Cohesion: 0.67
-Nodes (3): ``source_type`` lives on source_registry, not scrape_queue.     The endpoint pu, ``source_type`` lives on source_registry, not scrape_queue.     The endpoint pu, test_queue_list_source_type_filters_in_python_after_fetch()
-
-### Community 847 - "Community 847"
-Cohesion: 0.67
-Nodes (3): The point of the run-detail endpoint is the per-source split.     Pre-Sprint 2, The point of the run-detail endpoint is the per-source split.     Pre-Sprint 2, test_run_detail_aggregates_per_source_status_counts()
-
-### Community 848 - "Community 848"
-Cohesion: 0.67
-Nodes (3): If a source had errors before producing any queue rows, the     per-source buck, If a source had errors before producing any queue rows, the     per-source buck, test_run_detail_falls_back_to_registry_name_for_orphan_source()
+Nodes (3): list_questions(), Return paginated question list filtered by actor visibility.      Authors see, Return paginated question list filtered by actor visibility.      Authors see
 
 ### Community 849 - "Community 849"
 Cohesion: 0.67
-Nodes (3): error_log entries on scrape_runs are flat — the endpoint groups     them by ``e, error_log entries on scrape_runs are flat — the endpoint groups     them by ``e, test_run_detail_indexes_errors_by_source_name()
+Nodes (3): Simulates a deploy that hasn't applied migration 041 yet., SBRpcMissing, test_enqueue_falls_back_when_rpc_missing()
 
 ### Community 850 - "Community 850"
 Cohesion: 0.67
+Nodes (3): Pre-migration-041 deploy: no RPC AND no migration 009 columns., SBLegacyQueue, test_enqueue_falls_back_when_queue_hardening_columns_missing()
+
+### Community 868 - "Community 868"
+Cohesion: 0.67
 Nodes (3): code:txt (/go/check-eligibility/cnp-nashik-2026/safety-officer), code:txt (Blog CTA), Target User Flow
 
-### Community 851 - "Community 851"
+### Community 870 - "Community 870"
+Cohesion: 0.67
+Nodes (3): code:text (start intent), code:text (group_quorum_streak  = ≥70% members attended), Study group rules
+
+### Community 871 - "Community 871"
+Cohesion: 0.67
+Nodes (3): code:text (Plan Keeper        — 90%+ adherence, 60+ days), code:text (Synced Squad / Unbroken Cell / Iron Circle  — group), Titles
+
+### Community 872 - "Community 872"
+Cohesion: 0.67
+Nodes (3): code:text (Individual behavior board   (cohort-default, opt-in for publ), code:text (quorum_streak), Leaderboard design
+
+### Community 874 - "Community 874"
+Cohesion: 0.67
+Nodes (3): code:js (defaultValue={a.submitted_at ? new Date(a.submitted_at).toIS), code:js (const d = new Date(a.submitted_at);), S-P1-11. `Tracker` `datetime-local` round-trip is UTC-vs-local broken
+
+### Community 876 - "Community 876"
+Cohesion: 0.67
+Nodes (3): code:txt (/go/check-eligibility/cnp-nashik-2026/safety-officer), code:txt (Blog CTA), Target User Flow
+
+### Community 877 - "Community 877"
 Cohesion: 0.67
 Nodes (3): AI Usage Boundary, code:txt (You are a guided onboarding assistant for Career Copilot.), code:json ({)
 
 ## Knowledge Gaps
-- **5425 isolated node(s):** `Career Copilot backend (Phase 1.5).  Authentication is delegated to Supabase A`, `Grant mock_questions:publish permission to emails in MOCK_PUBLISHER_BOOTSTRAP_EM`, ```ENABLE_SCHEDULER`` gates the in-process APScheduler.      Default ``false```, `Safety net for any endpoint that didn't wrap a Supabase transport     disconnec`, `Load a required APIRouter with an explicit runtime error message.` (+5420 more)
+- **5774 isolated node(s):** `Career Copilot backend (Phase 1.5).  Authentication is delegated to Supabase A`, `Grant mock_questions:publish permission to emails in MOCK_PUBLISHER_BOOTSTRAP_EM`, ```ENABLE_SCHEDULER`` gates the in-process APScheduler.      Default ``false```, `Safety net for any endpoint that didn't wrap a Supabase transport     disconnec`, `Load a required APIRouter with an explicit runtime error message.` (+5769 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **145 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **148 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `get_supabase_admin()` connect `Community 10` to `Community 0`, `Community 8`, `Community 11`, `Community 12`, `Community 13`, `Community 526`, `Community 18`, `Community 25`, `Community 26`, `Community 29`, `Community 31`, `Community 34`, `Community 35`, `Community 47`, `Community 48`, `Community 54`, `Community 55`, `Community 573`, `Community 63`, `Community 64`, `Community 576`, `Community 70`, `Community 71`, `Community 83`, `Community 84`, `Community 606`, `Community 608`, `Community 609`, `Community 115`, `Community 124`, `Community 126`, `Community 127`, `Community 130`, `Community 650`, `Community 142`, `Community 655`, `Community 149`, `Community 151`, `Community 162`, `Community 163`, `Community 164`, `Community 171`, `Community 178`, `Community 191`, `Community 206`, `Community 207`, `Community 209`, `Community 210`, `Community 723`, `Community 731`, `Community 236`, `Community 246`, `Community 253`, `Community 765`, `Community 261`, `Community 275`, `Community 278`, `Community 797`, `Community 294`, `Community 295`, `Community 296`, `Community 300`, `Community 816`, `Community 818`, `Community 331`, `Community 336`, `Community 343`, `Community 347`, `Community 348`, `Community 367`, `Community 369`, `Community 398`, `Community 399`, `Community 400`, `Community 448`, `Community 449`, `Community 450`, `Community 452`, `Community 454`, `Community 457`, `Community 487`, `Community 488`, `Community 489`, `Community 490`, `Community 498`?**
-  _High betweenness centrality (0.094) - this node is a cross-community bridge._
-- **Why does `Today()` connect `Community 354` to `Community 0`, `Community 1`, `Community 128`, `Community 194`, `Community 37`, `Community 394`, `Community 555`, `Community 301`, `Community 15`, `Community 20`, `Community 88`, `Community 218`, `Community 30`?**
-  _High betweenness centrality (0.088) - this node is a cross-community bridge._
-- **Why does `Info()` connect `Community 7` to `Community 33`, `Community 2`, `Community 34`, `Community 41`, `Community 682`, `Community 142`, `Community 15`, `Community 48`, `Community 79`, `Community 55`, `Community 88`, `Community 56`?**
-  _High betweenness centrality (0.066) - this node is a cross-community bridge._
-- **Are the 581 inferred relationships involving `get_supabase_admin()` (e.g. with `_bootstrap_mock_publishers()` and `db_health()`) actually correct?**
-  _`get_supabase_admin()` has 581 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 298 inferred relationships involving `SBStub` (e.g. with `_PromoteSB` and `_Raising23502SB`) actually correct?**
-  _`SBStub` has 298 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `get_supabase_admin()` connect `Community 14` to `Community 1`, `Community 513`, `Community 3`, `Community 6`, `Community 8`, `Community 15`, `Community 17`, `Community 26`, `Community 30`, `Community 31`, `Community 36`, `Community 47`, `Community 50`, `Community 564`, `Community 53`, `Community 55`, `Community 568`, `Community 57`, `Community 572`, `Community 63`, `Community 66`, `Community 73`, `Community 81`, `Community 83`, `Community 599`, `Community 89`, `Community 94`, `Community 608`, `Community 101`, `Community 108`, `Community 117`, `Community 634`, `Community 126`, `Community 129`, `Community 132`, `Community 135`, `Community 136`, `Community 139`, `Community 146`, `Community 147`, `Community 153`, `Community 167`, `Community 174`, `Community 200`, `Community 204`, `Community 214`, `Community 215`, `Community 225`, `Community 748`, `Community 256`, `Community 259`, `Community 260`, `Community 261`, `Community 266`, `Community 267`, `Community 272`, `Community 274`, `Community 787`, `Community 275`, `Community 284`, `Community 285`, `Community 799`, `Community 298`, `Community 314`, `Community 315`, `Community 319`, `Community 320`, `Community 321`, `Community 322`, `Community 323`, `Community 335`, `Community 350`, `Community 361`, `Community 362`, `Community 375`, `Community 376`, `Community 404`, `Community 419`, `Community 420`, `Community 425`, `Community 469`, `Community 470`, `Community 471`, `Community 474`, `Community 475`, `Community 503`, `Community 504`, `Community 505`, `Community 506`?**
+  _High betweenness centrality (0.128) - this node is a cross-community bridge._
+- **Why does `Today()` connect `Community 38` to `Community 0`, `Community 416`, `Community 3`, `Community 567`, `Community 27`, `Community 142`, `Community 16`, `Community 80`, `Community 49`, `Community 54`, `Community 119`, `Community 475`?**
+  _High betweenness centrality (0.076) - this node is a cross-community bridge._
+- **Why does `All()` connect `Community 18` to `Community 514`, `Community 510`, `Community 262`, `Community 137`, `Community 140`, `Community 13`, `Community 271`, `Community 15`, `Community 145`, `Community 17`, `Community 147`, `Community 20`, `Community 405`, `Community 23`, `Community 152`, `Community 24`, `Community 154`, `Community 538`, `Community 25`, `Community 159`, `Community 289`, `Community 33`, `Community 162`, `Community 35`, `Community 168`, `Community 556`, `Community 557`, `Community 45`, `Community 303`, `Community 46`, `Community 304`, `Community 443`, `Community 187`, `Community 445`, `Community 701`, `Community 324`, `Community 75`, `Community 82`, `Community 596`, `Community 84`, `Community 119`, `Community 216`, `Community 217`, `Community 89`, `Community 603`, `Community 606`, `Community 479`, `Community 609`, `Community 610`, `Community 232`, `Community 111`, `Community 754`, `Community 244`, `Community 246`, `Community 247`, `Community 632`, `Community 123`, `Community 638`?**
+  _High betweenness centrality (0.074) - this node is a cross-community bridge._
+- **Are the 591 inferred relationships involving `get_supabase_admin()` (e.g. with `_bootstrap_mock_publishers()` and `db_health()`) actually correct?**
+  _`get_supabase_admin()` has 591 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 299 inferred relationships involving `SBStub` (e.g. with `_PromoteSB` and `_Raising23502SB`) actually correct?**
+  _`SBStub` has 299 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 289 inferred relationships involving `SBStub` (e.g. with `_seed_two_conflicts()` and `_PromoteSB`) actually correct?**
   _`SBStub` has 289 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 213 inferred relationships involving `get_supabase_admin()` (e.g. with `db_health()` and `list_queue_item_conflicts()`) actually correct?**

@@ -1,7 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
 import { readEnv } from "./env";
 import { getAccessToken } from "./seedUser";
-
+import { createNodeSupabaseClient } from "./supabaseNodeClient";
 /**
  * Attempt factory. Builds attempts through the REAL backend API so scoring and
  * analytics derivation run exactly as in production — we never hand-write
@@ -40,9 +39,10 @@ async function apiCall(method: string, path: string, token: string, body?: unkno
 
 /** Delete the seeded user's attempts on the E2E template (cascades responses). */
 export async function resetAttempts(userId: string): Promise<void> {
-  const admin = createClient(env().supabaseURL, env().supabaseServiceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const admin = createNodeSupabaseClient(
+  env().supabaseURL,
+  env().supabaseServiceRoleKey,
+);
   const { data: tmpl } = await admin
     .from("mock_templates")
     .select("id")

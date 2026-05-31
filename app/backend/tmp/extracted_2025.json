@@ -1,0 +1,647 @@
+{
+  "document_id": "afc8e285-0ea1-41a1-a524-83b8b3121154",
+  "extractor_version": "0.1.0",
+  "pages_processed": [
+    1,
+    3,
+    5,
+    7,
+    9,
+    11,
+    13,
+    15,
+    17,
+    19,
+    21,
+    23,
+    25,
+    27,
+    29,
+    31,
+    33,
+    35,
+    37,
+    39,
+    41,
+    43,
+    45,
+    47
+  ],
+  "pages_skipped": [
+    2,
+    4,
+    6,
+    8,
+    10,
+    12,
+    14,
+    16,
+    18,
+    20,
+    22,
+    24,
+    26,
+    28,
+    30,
+    32,
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46,
+    48
+  ],
+  "errors": [],
+  "expected_questions": [
+    {
+      "question_number": 4,
+      "question_text": "Consider the following statements :\nThe I. Reserve Bank of India\nmandates all the listed companies\nsubline Report (BRSR).\nIl. In India, submitting a company\nBRSR makes disclosures in the a\nlargely non-financial od are in\nA\nWhich of the given above statements\nis/are correct?\n(a) only 1 (b) only II\n(c) Both and I II (d) Neither I II nor\n5. Consider : the following : statements :",
+      "regions": [
+        {
+          "page": 3,
+          "bbox": [
+            0.5246618933969769,
+            0.09271523178807947,
+            0.8910103420843277,
+            0.3090507726269316
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 95.5,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 7,
+      "question_text": "Consider the following statements :\nI Statement :\nAs regards from returns an\nda a company generally mk\nconsidered be relatively lower to at\nrisk than stockholders.\nStatement II\n:\nBondholders lenders to are a\nwhereas stockholders company are\nits owners.\nStatement III :\nFor repayment bond- purpose,\nholders prioritized over\nstockholders by a company.\nWhich of the following is in correct one\nof the above respect statements?\n(a) Both Statement II and Statement III\nand both of them correct are\nZ\nexplain Statement I\n(b) Both Statement I and Statement II\nand Statement correct I are\nexplains Statement II\n(c) Only of the Statements II one\nand III is and that explains correct",
+      "regions": [
+        {
+          "page": 5,
+          "bbox": [
+            0.02027027027027027,
+            0.09656042915746292,
+            0.4562798092209857,
+            0.49605553802461344
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 9,
+      "question_text": "Consider the following statements :\nI Statement :\nCircular : reduces the economy\nof greenhouse emissions gases.\nStatement II :\nCircular reduces the economy use\nof materials inputs. raw as\nStatement III :\nCircular reduces wastage economy\nin the production process.",
+      "regions": [
+        {
+          "page": 5,
+          "bbox": [
+            0.5266295707472178,
+            0.09813821394761754,
+            0.8918918918918919,
+            0.28810350268223417
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 10,
+      "question_text": "Consider the following statements :\na I. Capital ; ; liability Ber receipts create or\nreduction in the of assets cause a\nthe\nII. Borrowings and disinvestment are\ncapital receipts.\ni tes ved :\nliability of the Government.",
+      "regions": [
+        {
+          "page": 5,
+          "bbox": [
+            0.5155007949125596,
+            0.5714736509940044,
+            0.8914944356120826,
+            0.7150520668980751
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 11,
+      "question_text": "Consider the following about statements\nRaja Ram Mohan Roy :",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.07958615200955034,
+            0.09949463044851548,
+            0.4520493434142459,
+            0.1301326595072647
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 12,
+      "question_text": "Consider the following subjects with\n: regard Non-Cooperation to Programme\nI. Boycott of law-courts and foreign\ncloth",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.07680063668921608,
+            0.49368288060644344,
+            0.4488658973338639,
+            0.5644346178142767
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 95.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 13,
+      "question_text": "The irrigation device called ‘Araghatta’\nwas",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.5137286112216475,
+            0.10233733417561591,
+            0.889375248706725,
+            0.12950094756790903
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 14,
+      "question_text": "Who the following rulers in among\nancient India had assumed the titles\nMattavilasa’ Vichitrachitta’ and\n‘Gunabhara’”?",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.5113410266613609,
+            0.4156664560960202,
+            0.8857938718662952,
+            0.47725837018319645
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 95.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 15,
+      "question_text": "Fa-hien (Faxian), the Chinese pilgrim,\ntravelled India during to the reign of",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.5089534421010744,
+            0.6803537586860392,
+            0.8826104257859132,
+            0.7122552116234997
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 3,
+      "question_text": "above : of the How are pairs given many\ntl",
+      "regions": [
+        {
+          "page": 9,
+          "bbox": [
+            0.014782261286456252,
+            0.6728298339078659,
+            0.4818218138234119,
+            0.7094954559699154
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 9,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 9,
+          "bbox": [
+            0.09628445864962046,
+            0.8896897524287057,
+            0.5125848981222533,
+            0.9015982450642431
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 90.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 11,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 11,
+          "bbox": [
+            0.08293460925039872,
+            0.8930363864491845,
+            0.5027910685805422,
+            0.9052697616060226
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 92.5,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 13,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 13,
+          "bbox": [
+            0.08778930566640064,
+            0.8929020100502513,
+            0.5083798882681564,
+            0.905464824120603
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 92.5,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 15,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 15,
+          "bbox": [
+            0.10256410256410256,
+            0.8960833859759949,
+            0.5191321499013807,
+            0.910612760581175
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 90.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 36,
+      "question_text": "following statements the Consider : 34.\nI Statement :\nAgreement Paris the of 6 Article\nfrequently is change climate phe\nglobal discussions discussed in\nand development sustainable on\nchange. climate\nIl :\nAgreement Paris of the 6 Article on\nthe out change sets climate\nmarkets. of carbon principles\nIII Statement :\nParis Agreement of the 6 Article\nintends change to climate on\nnon-market inter-country promote\nclimate their reach strategies to\ntargets.\n:\nsee,\nfollowing correct of the Which : in is one\nstatements? above of the respect\nIII and Statement II Both Statement (a)\nof them both and correct are\nI Statement explain\nIII and Statement II Both Statement (b)\nof them only but correct one are\n37.\nI Statement explains\nand II Statements of the Only (c) one\nexplains and that is Ill correct\nI Statement\nStatement II Statement Neither (d) nor\nis III correct",
+      "regions": [
+        {
+          "page": 17,
+          "bbox": [
+            0.08029197080291971,
+            0.09487904492617028,
+            0.556772100567721,
+            0.647502356267672
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 17,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 17,
+          "bbox": [
+            0.08150851581508516,
+            0.8994659126610116,
+            0.5101378751013788,
+            0.9129751806471882
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 91.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 40,
+      "question_text": "above given the of statements Which\ncorrect? is/are",
+      "regions": [
+        {
+          "page": 19,
+          "bbox": [
+            0.14054927302100162,
+            0.361198738170347,
+            0.5593699515347335,
+            0.3971608832807571
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 19,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 19,
+          "bbox": [
+            0.08925686591276252,
+            0.8952681388012619,
+            0.5161550888529887,
+            0.9091482649842272
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 90.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 21,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 21,
+          "bbox": [
+            0.08252818035426732,
+            0.899273760656773,
+            0.5064412238325282,
+            0.9131670350489423
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 87.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 23,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 23,
+          "bbox": [
+            0.08138597904915391,
+            0.8985781990521327,
+            0.5064464141821112,
+            0.9127962085308057
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 89.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 27,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 27,
+          "bbox": [
+            0.10358726320032245,
+            0.89614898989899,
+            0.5296251511487303,
+            0.9100378787878788
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 90.5,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 29,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 29,
+          "bbox": [
+            0.0935483870967742,
+            0.8986422481844016,
+            0.5193548387096775,
+            0.9125355225765709
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 91.5,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 31,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 31,
+          "bbox": [
+            0.08663967611336032,
+            0.8967357187696171,
+            0.5137651821862348,
+            0.908662900188324
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 93.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 74,
+      "question_text": "religion” become has “Sedition was 71. my\nGandhiji by given statement the famous\nof time the at",
+      "regions": [
+        {
+          "page": 33,
+          "bbox": [
+            0.11128650355169692,
+            0.08441353145747708,
+            0.5678768745067088,
+            0.13246917483401835
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 33,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 33,
+          "bbox": [
+            0.11562746645619573,
+            0.8934555801454316,
+            0.531965272296764,
+            0.9108441353145748
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 90.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 37,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 37,
+          "bbox": [
+            0.10434782608695652,
+            0.896998420221169,
+            0.5213438735177865,
+            0.9102685624012639
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 92.5,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 39,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 39,
+          "bbox": [
+            0.1063410791650256,
+            0.895484685822545,
+            0.5222528554549035,
+            0.9093779602147143
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 91.5,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 41,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 41,
+          "bbox": [
+            0.1083957430035475,
+            0.8940543959519291,
+            0.535672053606622,
+            0.9187223276407337
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 83.5,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 43,
+      "question_text": "LVPK-O-PSO/56A",
+      "regions": [
+        {
+          "page": 43,
+          "bbox": [
+            0.09742574257425743,
+            0.8966489195114312,
+            0.5152475247524753,
+            0.9119949890385217
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 92.0,
+        "segmentation": 1.0
+      }
+    }
+  ],
+  "_stats": {
+    "total_questions": 29,
+    "total_pages_processed": 24,
+    "total_pages_skipped": 24,
+    "total_errors": 0,
+    "question_numbers": [
+      3,
+      4,
+      7,
+      9,
+      9,
+      10,
+      11,
+      11,
+      12,
+      13,
+      13,
+      14,
+      15,
+      15,
+      17,
+      19,
+      21,
+      23,
+      27,
+      29,
+      31,
+      33,
+      36,
+      37,
+      39,
+      40,
+      41,
+      43,
+      74
+    ]
+  }
+}

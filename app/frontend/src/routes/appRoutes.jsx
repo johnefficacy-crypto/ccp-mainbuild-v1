@@ -92,6 +92,7 @@ export const appRouteElements = (
       <Route path="/app/flashcards" element={<Flashcards />} />
       <Route path="/app/flashcards/:deckId" element={<FlashcardsDeck />} />
       <Route path="/app/study/mistakes" element={<Mistakes />} />
+      <Route path="/app/study/resources" element={<ResourcesScreen />} />
       <Route path="/app/study/revision" element={<Revision />} />
       <Route path="/app/reports" element={<Reports />} />
       <Route path="/app/community" element={<CommunityScreen />} />

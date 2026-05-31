@@ -16,6 +16,7 @@ import {
 import { api } from "../lib/api";
 import ExamIntelligenceTab from "../features/exams/ExamIntelligenceTab";
 import ExamDetailAnchorNav from "../features/exams/ExamDetailAnchorNav";
+import PyqExplorerSection from "../features/exams/PyqExplorerSection";
 
 // PR11: ExamDetail is now a single scrollable page with a sticky anchor
 // chip strip and IntersectionObserver-driven scroll-spy. The old
@@ -46,7 +47,9 @@ const SECTIONS = [
   { id: "about", label: "About" },
   { id: "eligibility", label: "Eligibility" },
   { id: "docs-fees", label: "Docs & Fees" },
+  { id: "important-documents", label: "Documents" },
   { id: "competition", label: "Competition" },
+  { id: "pyq-explorer", label: "PYQ Explorer" },
   { id: "resources", label: "Resources" },
   { id: "groups", label: "Groups" },
 ];
@@ -482,6 +485,15 @@ export default function ExamDetail() {
           </div>
         </Section>
 
+        {/* ─── Important Documents ───────────────────────────────── */}
+        <Section
+          id="important-documents"
+          eyebrow="Official resources"
+          title="Important Documents"
+        >
+          <ExamDocumentsSection examSlug={examSlug} />
+        </Section>
+
         {/* ─── Competition ───────────────────────────────────────── */}
         <Section
           id="competition"
@@ -491,23 +503,30 @@ export default function ExamDetail() {
           <ExamIntelligenceTab examSlug={examSlug} />
         </Section>
 
+        {/* ─── PYQ Explorer ──────────────────────────────────────── */}
+        <Section
+          id="pyq-explorer"
+          eyebrow="Previous year questions"
+          title="PYQ Explorer"
+        >
+          <PyqExplorerSection examSlug={examSlug} />
+        </Section>
+
         {/* ─── Resources ─────────────────────────────────────────── */}
         <Section
           id="resources"
           eyebrow="Resources"
-          title="Books, courses, and notes"
+          title="Subjectwise Booklist"
         >
-          <div className="soft-card rounded-2xl p-6">
-            <p className="text-sm text-muted-foreground">
-              Curated resources for this exam live in the marketplace.
-            </p>
+          <SubjectBooklistSection examSlug={examSlug} />
+          <div className="mt-4">
             <Link
               to={
                 examSlug
                   ? `/app/marketplace?exam=${encodeURIComponent(examSlug)}`
                   : "/app/marketplace"
               }
-              className="btn btn-ghost mt-3 inline-flex"
+              className="btn btn-ghost inline-flex"
               data-testid="resources-marketplace-cta"
             >
               <Library className="h-4 w-4" /> Browse marketplace

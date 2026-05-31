@@ -76,6 +76,9 @@ pandas==3.0.2
 passlib==1.7.4
 pathspec==1.1.1
 pillow==12.2.0
+PyMuPDF==1.24.11
+pytesseract==0.3.13
+python-Levenshtein==0.25.1
 platformdirs==4.9.6
 pluggy==1.6.0
 postgrest==2.29.0

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { GraduationCap } from "lucide-react";
+import { Link } from "react-router-dom";
 import { api } from "../../lib/api";
 import ExamIntelligenceOverviewCards from "../../features/admin/exam-intelligence/ExamIntelligenceOverviewCards";
 import ExamListTable from "../../features/admin/exam-intelligence/ExamListTable";
@@ -453,6 +454,9 @@ export default function AdminExamIntelligence() {
               {reviewError}
             </div>
           ) : null}
+          {selectedExam && kind === "pyq_question" ? (
+            <PyqWorkspaceBanner examId={selectedExam.id} />
+          ) : null}
           {selectedExam ? (
             <ReviewQueueTable
               items={items.items}
@@ -708,6 +712,36 @@ export default function AdminExamIntelligence() {
           <PlanImpactPreview />
         </section>
       ) : null}
+    </div>
+  );
+}
+
+function PyqWorkspaceBanner({ examId }) {
+  const [papers, setPapers] = useState([]);
+  useEffect(() => {
+    api
+      .get(`/api/admin/exam-intelligence-cms/pyq-papers?exam_id=${encodeURIComponent(examId)}&limit=50`)
+      .then((r) => setPapers(r.items || []))
+      .catch(() => {});
+  }, [examId]);
+
+  if (!papers.length) return null;
+  return (
+    <div className="rounded-xl bg-indigo-50 border border-indigo-200 px-4 py-3 text-[12px] text-indigo-900 space-y-2">
+      <p className="font-semibold">
+        PYQ questions are best reviewed in the per-paper workspace.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {papers.map((p) => (
+          <Link
+            key={p.id}
+            to={`/admin/exam-intelligence/pyq-papers/${p.id}/workspace`}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-medium transition-colors"
+          >
+            {[p.year, p.paper_code, p.shift].filter(Boolean).join(" · ")} →
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

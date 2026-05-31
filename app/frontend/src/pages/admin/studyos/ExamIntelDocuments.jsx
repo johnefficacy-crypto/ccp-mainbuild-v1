@@ -6,6 +6,47 @@ import CmsRefField from "../../../features/admin/shared/CmsRefField";
 const DOC_BASE = "/api/admin/exam-intelligence-cms/documents";
 const DOC_KINDS = ["syllabus", "pyq_paper", "notification", "corrigendum", "answer_key"];
 
+const EXAM_IDENTITIES = [
+  "upsc_cse_prelims_gs1", "upsc_cse_prelims_csat",
+  "upsc_cse_mains_essay", "upsc_cse_mains_gs1", "upsc_cse_mains_gs2",
+  "upsc_cse_mains_gs3", "upsc_cse_mains_gs4",
+  "upsc_cse_mains_optional_sociology", "upsc_cse_mains_optional_psir",
+  "upsc_cse_mains_optional_history", "upsc_cse_mains_optional_anthropology",
+  "upsc_cse_mains_optional_technical",
+  "upsc_other", "state_psc_other", "banking_other", "unknown",
+];
+
+const STRUCTURAL_FORMATS = [
+  "mcq_bilingual_two_column", "mcq_monolingual_single", "essay_long_form",
+  "mixed_objective_subjective", "technical_with_figures", "vernacular_non_devanagari", "unknown",
+];
+
+const SOURCE_KINDS = [
+  { value: "official_archive", label: "Official UPSC archive (no watermark, authoritative)" },
+  { value: "sanitized_coaching", label: "Sanitized coaching PDF (watermark removed)" },
+  { value: "raw_coaching", label: "Raw coaching PDF (will need sanitization)" },
+  { value: "sme_authored", label: "SME-authored test content" },
+  { value: "official_scan", label: "Official scan (legacy; use official_archive instead)" },
+  { value: "crowd_sourced", label: "Crowd-sourced (not eligible for extraction)" },
+  { value: "unknown", label: "(not classified)" },
+];
+
+// exam_identity → inferred structural_format (mirrors dispatch.py EXAM_TO_FORMAT_DEFAULT)
+const EXAM_TO_FORMAT_DEFAULT = {
+  upsc_cse_prelims_gs1: "mcq_bilingual_two_column",
+  upsc_cse_prelims_csat: "mcq_bilingual_two_column",
+  upsc_cse_mains_essay: "essay_long_form",
+  upsc_cse_mains_gs1: "essay_long_form",
+  upsc_cse_mains_gs2: "essay_long_form",
+  upsc_cse_mains_gs3: "essay_long_form",
+  upsc_cse_mains_gs4: "essay_long_form",
+  upsc_cse_mains_optional_sociology: "essay_long_form",
+  upsc_cse_mains_optional_psir: "essay_long_form",
+  upsc_cse_mains_optional_history: "essay_long_form",
+  upsc_cse_mains_optional_anthropology: "essay_long_form",
+  upsc_cse_mains_optional_technical: "technical_with_figures",
+};
+
 const REF_EXAM = { endpoint: "exams", labelKey: "name", secondaryKey: "slug" };
 const refCycle = (filters) => ({ endpoint: "exam-cycles", labelKey: "cycle_name", secondaryKey: "year", filters });
 const refPhase = (filters) => ({ endpoint: "exam-phases", labelKey: "phase_name", secondaryKey: "phase_slug", filters });
@@ -17,7 +58,8 @@ const refPhase = (filters) => ({ endpoint: "exam-phases", labelKey: "phase_name"
  * PYQ-paper row. Reuses the shared Combobox pickers.
  */
 export default function ExamIntelDocuments() {
-  const [form, setForm] = useState({});
+  const [form, setForm] = useState({ structural_format: "unknown", source_kind: "unknown" });
+  const [formatOverridden, setFormatOverridden] = useState(false);
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(null);
@@ -75,6 +117,10 @@ export default function ExamIntelDocuments() {
         filename: file.name,
         mime_type: file.type,
         size_bytes: file.size,
+        exam_identity: form.exam_identity || null,
+        structural_format: form.structural_format || null,
+        source_kind: form.source_kind || null,
+        sanitized_from_document_id: form.sanitized_from_document_id || null,
       });
       // PUT the bytes straight into Supabase Storage via the signed URL.
       const put = await fetch(signed.upload_url, {
@@ -143,6 +189,18 @@ export default function ExamIntelDocuments() {
     setForm((p) => ({ ...p, [key]: val }));
   }
 
+  function handleExamIdentityChange(val) {
+    setForm((p) => {
+      const inferred = EXAM_TO_FORMAT_DEFAULT[val] || "unknown";
+      return { ...p, exam_identity: val, structural_format: formatOverridden ? p.structural_format : inferred };
+    });
+  }
+
+  function handleFormatChange(val) {
+    setFormatOverridden(true);
+    setForm((p) => ({ ...p, structural_format: val }));
+  }
+
   return (
     <div className="space-y-4" data-testid="exam-intel-documents">
       <form onSubmit={doUpload} className="rounded border border-border/60 bg-card p-4 space-y-2" data-testid="doc-upload-form">
@@ -175,6 +233,63 @@ export default function ExamIntelDocuments() {
             <span className="block text-xs text-muted-foreground mb-1">exam_phase_id</span>
             <CmsRefField field={{ key: "exam_phase_id", ref: refPhase({ exam_id: "exam_id" }) }} value={form.exam_phase_id || ""} formValues={form} onChange={(v) => setRef("exam_phase_id", v)} testId="doc-field-exam_phase_id" />
           </label>
+          <label className="block">
+            <span className="block text-xs text-muted-foreground mb-1">exam_identity</span>
+            <select
+              value={form.exam_identity || ""}
+              onChange={(e) => handleExamIdentityChange(e.target.value)}
+              className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+              data-testid="doc-field-exam_identity"
+            >
+              <option value="">(select)</option>
+              {EXAM_IDENTITIES.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="block text-xs text-muted-foreground mb-1">
+              structural_format <span className="text-muted-foreground/60 font-normal">(auto-inferred; override if needed)</span>
+            </span>
+            <select
+              value={form.structural_format || "unknown"}
+              onChange={(e) => handleFormatChange(e.target.value)}
+              className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+              data-testid="doc-field-structural_format"
+            >
+              {STRUCTURAL_FORMATS.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="block text-xs text-muted-foreground mb-1">
+              source_kind <span className="text-red-700">*</span>
+            </span>
+            <select
+              value={form.source_kind || "unknown"}
+              onChange={(e) => setRef("source_kind", e.target.value)}
+              className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+              data-testid="doc-field-source_kind"
+            >
+              {SOURCE_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+            </select>
+            {form.source_kind === "raw_coaching" && (
+              <p className="text-xs text-amber-700 mt-1" data-testid="raw-coaching-warning">
+                raw_coaching PDFs cannot be extracted until sanitized. Set source_kind to
+                sanitized_coaching after removing watermarks/overlays. See sanitization-sop-v1.md.
+              </p>
+            )}
+          </label>
+          {form.source_kind === "sanitized_coaching" && (
+            <label className="block" data-testid="sanitized-from-field">
+              <span className="block text-xs text-muted-foreground mb-1">sanitized_from_document_id <span className="text-muted-foreground/60 font-normal">(UUID of the raw_coaching source document)</span></span>
+              <input
+                type="text"
+                value={form.sanitized_from_document_id || ""}
+                onChange={(e) => setRef("sanitized_from_document_id", e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background font-mono"
+                data-testid="doc-field-sanitized_from_document_id"
+              />
+            </label>
+          )}
         </div>
         <label className="block">
           <span className="block text-xs text-muted-foreground mb-1">PDF file</span>

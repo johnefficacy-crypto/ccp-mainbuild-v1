@@ -73,10 +73,11 @@ def _load_questions_for_template(supabase: Any, template: dict) -> list[dict]:
     from datetime import datetime, timezone
     now_iso = datetime.now(timezone.utc).isoformat()
 
+    _SELECTABLE = ["verified", "published", "live"]
     q_exec = supabase.table("mock_question_bank") \
         .select("*") \
         .in_("id", question_ids) \
-        .eq("reviewer_status", "published") \
+        .in_("reviewer_status", _SELECTABLE) \
         .or_(f"valid_until.is.null,valid_until.gt.{now_iso}") \
         .execute()
     questions = {r["id"]: r for r in (q_exec.data or [])}
@@ -162,7 +163,8 @@ def _select_criteria_question_ids(supabase: Any, selector: dict, question_count:
     if question_count <= 0:
         return []
     filters = selector.get("filters") or {}
-    q = supabase.table("mock_question_bank").select("*").eq("reviewer_status", "published")
+    _SELECTABLE = ["verified", "published", "live"]
+    q = supabase.table("mock_question_bank").select("*").in_("reviewer_status", _SELECTABLE)
     if filters.get("exam_family"):
         q = q.eq("exam_family", filters["exam_family"])
     if filters.get("subject_id"):

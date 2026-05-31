@@ -1,8 +1,10 @@
+
 {
   "compilerOptions": {
     "target": "ES2021",
     "module": "CommonJS",
     "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
     "lib": ["ES2021", "DOM"],
     "types": ["node"],
     "strict": true,
