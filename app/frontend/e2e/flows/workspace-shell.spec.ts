@@ -1,7 +1,5 @@
-import { test, expect } from "@playwright/test";
-import { ensureAdminUser } from "../fixtures/seedWorkspace";
-import { WORKSPACE } from "../fixtures/seedWorkspace";
-import { createNodeSupabaseClient } from "../fixtures/supabaseNodeClient";
+import { test, expect, type Page } from "@playwright/test";
+import { WORKSPACE, ensureAdminUser } from "../fixtures/seedWorkspace";
 import { readEnv } from "../fixtures/env";
 
 /**
@@ -10,16 +8,15 @@ import { readEnv } from "../fixtures/env";
  * Covers:
  *   - Admin user can log in and reach the workspace URL
  *   - Workspace context endpoint returns the seeded exam (exam-name visible)
- *   - All six tab buttons render in the tab-strip
+ *   - All tab buttons render in the tab-strip
  *   - PYQ Workbench tab is enabled (seed has a pyq_paper → readiness "partial")
- *   - Clicking Setup and PYQ tabs does not crash the shell
+ *   - Clicking PYQ tab renders pyq-workbench-panel
  *
  * Does NOT require the NLP/Tesseract pipeline — syllabus tab stays disabled,
- * which is verified as the expected state given no syllabus documents.
+ * which is the expected state given no syllabus documents.
  */
 
-async function loginAsAdmin(page: import("@playwright/test").Page) {
-  const env = readEnv();
+async function loginAsAdmin(page: Page): Promise<void> {
   const email    = process.env.E2E_ADMIN_EMAIL    || "e2e-admin@example.com";
   const password = process.env.E2E_ADMIN_PASSWORD || "E2e-admin-passw0rd!";
 
@@ -33,6 +30,18 @@ async function loginAsAdmin(page: import("@playwright/test").Page) {
   ]);
 }
 
+/**
+ * Navigate to a workspace URL and wait for the shell to finish loading.
+ * Mirrors the gotoProtectedPage pattern from seedUser.ts: waits for
+ * auth-checking and backend-sync-pending to clear before asserting content.
+ */
+async function gotoWorkspace(page: Page): Promise<void> {
+  await page.goto(`/admin/exam-intelligence/workspace/${WORKSPACE.examId}`);
+  await expect(page.getByTestId("auth-checking")).toBeHidden({ timeout: 90_000 });
+  await expect(page.getByTestId("backend-sync-pending")).toBeHidden({ timeout: 90_000 });
+  await expect(page.getByTestId("workspace-loading")).toBeHidden({ timeout: 30_000 });
+}
+
 test.describe("Flow: workspace shell", () => {
   test.beforeAll(async () => {
     await ensureAdminUser();
@@ -40,20 +49,17 @@ test.describe("Flow: workspace shell", () => {
 
   test("workspace loads exam name and tab strip", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(`/admin/exam-intelligence/workspace/${WORKSPACE.examId}`);
+    await gotoWorkspace(page);
 
-    // Shell shows exam name from the seeded exam row
     await expect(page.getByTestId("exam-name")).toContainText("E2E Workspace Exam", {
       timeout: 30_000,
     });
-
-    // Tab strip present
     await expect(page.getByTestId("tab-strip")).toBeVisible();
   });
 
   test("all workspace tabs are rendered", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(`/admin/exam-intelligence/workspace/${WORKSPACE.examId}`);
+    await gotoWorkspace(page);
     await expect(page.getByTestId("exam-name")).toBeVisible({ timeout: 30_000 });
 
     for (const tabId of ["setup", "documents", "syllabus", "pyq", "updates", "competition", "review"]) {
@@ -63,7 +69,7 @@ test.describe("Flow: workspace shell", () => {
 
   test("PYQ Workbench tab is enabled when pyq_paper exists", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(`/admin/exam-intelligence/workspace/${WORKSPACE.examId}`);
+    await gotoWorkspace(page);
     await expect(page.getByTestId("exam-name")).toBeVisible({ timeout: 30_000 });
 
     // PYQ tab must NOT be disabled — seed has 1 paper → readiness "partial" != "empty"
@@ -74,15 +80,14 @@ test.describe("Flow: workspace shell", () => {
 
   test("clicking PYQ tab renders pyq-workbench-panel", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(`/admin/exam-intelligence/workspace/${WORKSPACE.examId}`);
+    await gotoWorkspace(page);
     await expect(page.getByTestId("exam-name")).toBeVisible({ timeout: 30_000 });
 
     await page.getByTestId("tab-pyq").click();
     await expect(page.getByTestId("pyq-workbench-panel")).toBeVisible({ timeout: 20_000 });
   });
 
-  test("non-admin user is redirected or blocked from the workspace", async ({ page }) => {
-    // Aspirant credentials from the existing e2e seed
+  test("non-admin user is redirected away from workspace", async ({ page }) => {
     const env = readEnv();
     await page.goto("/login");
     await expect(page.getByTestId("login-email")).toBeVisible({ timeout: 30_000 });
@@ -92,14 +97,11 @@ test.describe("Flow: workspace shell", () => {
       page.waitForURL(/\/app(\/|$)/, { timeout: 90_000 }),
       page.getByTestId("login-submit").click(),
     ]);
+    await expect(page.getByTestId("auth-checking")).toBeHidden({ timeout: 90_000 });
+    await expect(page.getByTestId("backend-sync-pending")).toBeHidden({ timeout: 90_000 });
 
     await page.goto(`/admin/exam-intelligence/workspace/${WORKSPACE.examId}`);
-
-    // Either redirected away from admin or a workspace-error is shown
-    await page.waitForTimeout(4_000);
-    const url = page.url();
-    const hasError = await page.getByTestId("workspace-error").isVisible().catch(() => false);
-    const isRedirected = !url.includes("/admin/exam-intelligence/workspace");
-    expect(hasError || isRedirected).toBe(true);
+    // ProtectedRoute redirects non-admin users back to /app
+    await expect(page).toHaveURL(/\/app(\/|$)/, { timeout: 20_000 });
   });
 });

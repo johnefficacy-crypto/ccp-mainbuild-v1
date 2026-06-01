@@ -187,6 +187,9 @@ async function loginAsAdmin(page: import("@playwright/test").Page) {
     page.waitForURL(/\/app(\/|$)/, { timeout: 90_000 }),
     page.getByTestId("login-submit").click(),
   ]);
+  // Wait for backend session sync before navigating to protected admin route
+  await expect(page.getByTestId("auth-checking")).toBeHidden({ timeout: 90_000 });
+  await expect(page.getByTestId("backend-sync-pending")).toBeHidden({ timeout: 90_000 });
 }
 
 test.describe("Flow: PYQ bulk import UI modal", () => {
@@ -208,6 +211,7 @@ test.describe("Flow: PYQ bulk import UI modal", () => {
   test("upload CSV → preflight preview → commit → result screen", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto(`/admin/exam-intelligence/workspace/${WORKSPACE.examId}`);
+    await expect(page.getByTestId("workspace-loading")).toBeHidden({ timeout: 30_000 });
     await expect(page.getByTestId("exam-name")).toBeVisible({ timeout: 30_000 });
 
     // Navigate to PYQ tab
