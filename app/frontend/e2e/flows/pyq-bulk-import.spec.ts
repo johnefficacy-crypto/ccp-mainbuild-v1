@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { WORKSPACE, ensureAdminUser, getAdminAccessToken } from "../fixtures/seedWorkspace";
+import { createNodeSupabaseClient } from "../fixtures/supabaseNodeClient";
 import { readEnv } from "../fixtures/env";
 import * as path from "path";
 import * as fs from "fs";
@@ -52,7 +53,6 @@ async function makeApi(): Promise<(method: string, path: string, body?: unknown,
 
 async function cleanupPaperQuestions(): Promise<void> {
   const env = readEnv();
-  const { createNodeSupabaseClient } = await import("../fixtures/supabaseNodeClient");
   const client = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
   await client.from("pyq_questions").delete().eq("pyq_paper_id", WORKSPACE.paperId);
 }

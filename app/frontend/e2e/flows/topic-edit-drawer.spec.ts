@@ -140,21 +140,16 @@ test.describe("Flow: topic-edit CMS API contract", () => {
 // UI path — requires NLP pipeline (Tesseract). Skipped in CI until #537 resolved.
 // ---------------------------------------------------------------------------
 test.describe("Flow: topic-edit drawer UI (requires Tesseract)", () => {
-  test.fixme(
-    !process.env.E2E_TESSERACT_AVAILABLE,
-    "Requires Tesseract + syllabus document — enable with E2E_TESSERACT_AVAILABLE=1",
-  );
-
-  test("Edit button opens drawer and dirty-check blocks close without reason", async ({ page }) => {
-    // This test exercises the full UI path:
-    // 1. Admin logs in, navigates to workspace
-    // 2. Syllabus Mapper tab enabled (requires propose to return proposals)
-    // 3. Edit button (data-testid="edit-topic-{id}") opens TopicEditDrawer
-    // 4. Changing name field marks drawer dirty
-    // 5. Cancel without reason triggers window.confirm
-    // 6. Save with reason + dirty field calls PATCH and closes drawer
-    //
-    // Left as a skeleton — fill in once Tesseract is available in CI.
+  test("Edit button opens drawer and dirty-check blocks close without reason", async () => {
+    // test.skip inside the test is valid in all Playwright versions
+    test.skip(
+      !process.env.E2E_TESSERACT_AVAILABLE,
+      "Requires Tesseract + syllabus document — enable with E2E_TESSERACT_AVAILABLE=1",
+    );
+    // Skeleton — fill in once Tesseract is available in CI.
+    // Full flow: login as admin → workspace → Syllabus Mapper tab → run propose
+    // → Edit button appears in TopicTreePanel → drawer opens → dirty field →
+    // Cancel shows confirm dialog → Save with reason + dirty closes drawer.
     throw new Error("Skeleton: implement when Tesseract available");
   });
 });
