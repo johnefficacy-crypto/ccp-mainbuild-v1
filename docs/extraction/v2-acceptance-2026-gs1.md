@@ -1,55 +1,28 @@
-# v2 Acceptance — UPSC CSE 2026 GS-I
+# v2 Extractor — Acceptance Gate Results: 2026 GS-I
 
-## Run context
+Fixture: `tests/fixtures/exam_intelligence_extraction/upsc_cse_pyq_v1/questions.json`  
+Document ID: `83722a86-610b-471d-8b6b-4a8397aa1791`  
+Threshold: recall ≥ 0.80 (hard gate), precision ≥ 0.85 (target)
 
-- Date:
-- Runner: GitHub Actions `extractor-acceptance`
-- Environment strategy: CI dispatch only
-- Workflow: `.github/workflows/extractor-acceptance.yml`
-- Test: `app/backend/tests/exam_intelligence/extraction/test_pipeline_against_fixture.py`
-- Current checked-in stem recall threshold: `0.80`
+---
 
-## Stem/question extraction result
+## Run history
 
-Status: FAIL
+| Date       | Extractor | Recall         | Precision      | Extracted | Fixture | Status |
+|------------|-----------|----------------|----------------|-----------|---------|--------|
+| 2026-05-31 | v2 / PR #528 | 0.707 (65/92) | 0.774 (65/84) | 84        | 92      | **FAIL** |
 
-CI run completed with valid environment:
+### FAIL run detail — 2026-05-31
 
-- Supabase env: present
-- Tesseract installed in CI
-- Runner: Ubuntu 24.04
-- Python: 3.12.13
+```
+required: 0.80
+recall:   0.707  (65/92 matched)
+precision: 0.774 (19 spurious of 84 extracted)
+invented Q#: none
+duplicate Q#: none
 
-Result:
-
-- Recall: 0.707
-- Required threshold: 0.80
-- Precision: 0.774
-- Extracted: 84
-- Fixture: 92
-- Invented question numbers: none
-- Duplicate question numbers: none
-- Matched: 65
-- Missed: 27
-
-Failure:
-
-```text
-AssertionError: Recall 0.707 < 0.8.
-Missed: [1, 2, 3, 5, 6, 7, 8, 9, 12, 13, 19, 20, 22, 27, 31, 40, 54, 55, 64, 66, 80, 81, 88, 90, 92, 93, 94]
-Total extracted: 84
+missed Q#: [1, 2, 3, 5, 6, 7, 8, 9, 12, 13, 19, 20, 22, 27, 31,
+            40, 54, 55, 64, 66, 80, 81, 88, 90, 92, 93, 94]
 ```
 
-## Options extraction result
-
-Status: not covered by checked-in acceptance test.
-
-## Decision
-
-- [ ] PASS
-- [x] FAIL
-
-Notes:
-
-Paper #2 ingest remains blocked. The CI environment is valid, but stem recall is below threshold. Options recall is still not measured by the checked-in acceptance gate.
-
+Gap analysis: `docs/extraction/v2-recall-fix-gap-analysis.md`
