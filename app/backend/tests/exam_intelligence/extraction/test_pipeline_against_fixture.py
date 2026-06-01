@@ -1,5 +1,5 @@
 """Acceptance gate test: extractor vs. 2026 GS-I fixture.
-
+# Acceptance rerun marker: 2026 GS-I v2 report capture.
 Marked as 'integration' and 'slow'. Requires live Supabase credentials
 (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY) and the Tesseract binary.
 
