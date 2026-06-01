@@ -15,3 +15,4 @@ Paste CI output here:
 
 ```text
 <EXTRACTOR ACCEPTANCE REPORT>
+```
