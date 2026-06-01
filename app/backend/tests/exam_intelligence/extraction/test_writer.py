@@ -5,6 +5,7 @@ import pytest
 from unittest.mock import MagicMock, patch, call
 
 from app.exam_intelligence.extraction.types import (
+    ExtractedOption,
     ExtractedQuestion,
     ExtractionResult,
     Region,
@@ -18,13 +19,18 @@ from app.exam_intelligence.extraction.writer import (
 from app.exam_intelligence.extraction.run import RunMetrics
 
 
-def _make_question(qnum: int, page: int = 3, text: str = "What is X?") -> ExtractedQuestion:
+def _make_question(qnum: int, page: int = 3, text: str = "What is X?", options=()) -> ExtractedQuestion:
     return ExtractedQuestion(
         question_number=qnum,
         question_text=text,
         regions=[Region(page=page, bbox=(0.1, 0.1, 0.9, 0.3))],
         confidence_by_field={'ocr_p50': 87.0},
+        options=tuple(options),
     )
+
+
+def _make_options(labels=('a', 'b', 'c', 'd')):
+    return [ExtractedOption(label=l, option_text=f"Option {l.upper()}") for l in labels]
 
 
 def _make_result(questions=None, document_id='doc-a') -> ExtractionResult:
@@ -300,3 +306,127 @@ class TestFetchExistingRowsByPaper:
 
         rows = _fetch_existing_rows(sb, 'doc-a', 'paper-1')
         assert len(rows) == 1
+
+
+class TestBuildRowPayloadOptions:
+    def test_options_included_when_non_empty(self):
+        q = _make_question(1, options=_make_options())
+        p = _build_row_payload(q, 'doc-a', 'run-1', '0.2.0', 'paper-1', 'idem-key', 'c-hash')
+        assert 'options' in p
+        assert len(p['options']) == 4
+
+    def test_options_omitted_when_empty(self):
+        q = _make_question(1)  # no options
+        p = _build_row_payload(q, 'doc-a', 'run-1', '0.2.0', 'paper-1', 'idem-key', 'c-hash')
+        assert 'options' not in p
+
+    def test_label_normalization_lowercase(self):
+        """Extractor emits lowercase labels; payload must be uppercase."""
+        opts = [ExtractedOption(label=l, option_text=f"Opt {l}") for l in ('a', 'b', 'c', 'd')]
+        q = _make_question(1, options=opts)
+        p = _build_row_payload(q, 'doc-a', 'run-1', '0.2.0', 'paper-1', 'idem-key', 'c-hash')
+        labels = [o['option_label'] for o in p['options']]
+        assert labels == ['A', 'B', 'C', 'D']
+
+    def test_label_normalization_mixed_case(self):
+        """Mixed-case labels ('A', 'b', 'C', 'd') all normalize to uppercase."""
+        opts = [ExtractedOption(label=l, option_text=f"Opt {l}") for l in ('A', 'b', 'C', 'd')]
+        q = _make_question(1, options=opts)
+        p = _build_row_payload(q, 'doc-a', 'run-1', '0.2.0', 'paper-1', 'idem-key', 'c-hash')
+        labels = [o['option_label'] for o in p['options']]
+        assert labels == ['A', 'B', 'C', 'D']
+
+
+class TestDryRunWithOptions:
+    def test_dry_run_with_options_has_metadata_options(self):
+        sb = _make_sb()
+        q = _make_question(1, options=_make_options())
+        result = _make_result([q])
+        with patch('app.exam_intelligence.extraction.writer._create_pyq_question'):
+            metrics = write_extraction_result(sb, result, 'run-1', 'paper-1', dry_run=True)
+        row = metrics.dry_run_rows[0]
+        assert 'metadata' in row
+        assert 'options' in row['metadata']
+        labels = [o['option_label'] for o in row['metadata']['options']]
+        assert labels == ['A', 'B', 'C', 'D']
+
+    def test_dry_run_without_options_no_metadata_key(self):
+        """Backward compat: empty options => no metadata.options key."""
+        sb = _make_sb()
+        q = _make_question(1)  # no options
+        result = _make_result([q])
+        with patch('app.exam_intelligence.extraction.writer._create_pyq_question'):
+            metrics = write_extraction_result(sb, result, 'run-1', 'paper-1', dry_run=True)
+        row = metrics.dry_run_rows[0]
+        assert 'metadata' not in row
+
+    def test_dry_run_options_in_payload_too(self):
+        sb = _make_sb()
+        q = _make_question(1, options=_make_options())
+        result = _make_result([q])
+        with patch('app.exam_intelligence.extraction.writer._create_pyq_question'):
+            metrics = write_extraction_result(sb, result, 'run-1', 'paper-1', dry_run=True)
+        assert 'options' in metrics.dry_run_rows[0]['payload']
+
+
+class TestLiveWriteWithOptions:
+    def test_live_passes_options_in_payload(self):
+        sb = _make_sb(existing_rows=[])
+        q = _make_question(1, options=_make_options())
+        result = _make_result([q])
+        with patch('app.exam_intelligence.extraction.writer._create_pyq_question') as mock_cms:
+            mock_cms.return_value = {'ok': True}
+            write_extraction_result(sb, result, 'run-1', 'paper-1', dry_run=False)
+        called_payload = mock_cms.call_args[1]['payload']
+        assert 'options' in called_payload
+        assert len(called_payload['options']) == 4
+
+    def test_live_omits_options_key_when_empty(self):
+        """Backward compat: must NOT pass options=[] when no options extracted."""
+        sb = _make_sb(existing_rows=[])
+        q = _make_question(1)  # no options
+        result = _make_result([q])
+        with patch('app.exam_intelligence.extraction.writer._create_pyq_question') as mock_cms:
+            mock_cms.return_value = {'ok': True}
+            write_extraction_result(sb, result, 'run-1', 'paper-1', dry_run=False)
+        called_payload = mock_cms.call_args[1]['payload']
+        assert 'options' not in called_payload
+
+    def test_live_ok_false_with_child_errors_increments_error_counter(self):
+        sb = _make_sb(existing_rows=[])
+        q = _make_question(1, options=_make_options())
+        result = _make_result([q])
+        with patch('app.exam_intelligence.extraction.writer._create_pyq_question') as mock_cms:
+            mock_cms.return_value = {'ok': False, 'child_errors': [{'msg': 'constraint violation'}]}
+            metrics = write_extraction_result(sb, result, 'run-1', 'paper-1', dry_run=False)
+        assert metrics.error_count == 1
+        assert metrics.rows_inserted == 0
+
+    def test_live_ok_false_logs_question_number_and_child_errors(self):
+        sb = _make_sb(existing_rows=[])
+        q = _make_question(5, options=_make_options())
+        result = _make_result([q])
+        with patch('app.exam_intelligence.extraction.writer._create_pyq_question') as mock_cms:
+            mock_cms.return_value = {'ok': False, 'child_errors': [{'msg': 'bad label'}]}
+            metrics = write_extraction_result(sb, result, 'run-1', 'paper-1', dry_run=False)
+        err = metrics.error_log[0]
+        assert err['kind'] == 'create_pyq_question_ok_false'
+        assert err['question_number'] == 5
+        assert err['child_errors'] == [{'msg': 'bad label'}]
+
+    def test_live_ok_false_continues_to_next_question(self):
+        """A failed row must not abort the run; subsequent questions are still processed."""
+        sb = _make_sb(existing_rows=[])
+        q1 = _make_question(1, options=_make_options())
+        q2 = _make_question(2)
+        result = _make_result([q1, q2])
+        call_results = [
+            {'ok': False, 'child_errors': [{'msg': 'fail'}]},
+            {'ok': True},
+        ]
+        with patch('app.exam_intelligence.extraction.writer._create_pyq_question') as mock_cms:
+            mock_cms.side_effect = call_results
+            metrics = write_extraction_result(sb, result, 'run-1', 'paper-1', dry_run=False)
+        assert mock_cms.call_count == 2
+        assert metrics.rows_inserted == 1
+        assert metrics.error_count == 1
