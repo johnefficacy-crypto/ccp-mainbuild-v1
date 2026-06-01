@@ -11,10 +11,6 @@
 
 ## Stem/question extraction result
 
-```text
-
-## Stem/question extraction result
-
 Status: FAIL
 
 CI run completed with valid environment:
@@ -42,7 +38,18 @@ Failure:
 AssertionError: Recall 0.707 < 0.8.
 Missed: [1, 2, 3, 5, 6, 7, 8, 9, 12, 13, 19, 20, 22, 27, 31, 40, 54, 55, 64, 66, 80, 81, 88, 90, 92, 93, 94]
 Total extracted: 84
-
-
 ```
+
+## Options extraction result
+
+Status: not covered by checked-in acceptance test.
+
+## Decision
+
+- [ ] PASS
+- [x] FAIL
+
+Notes:
+
+Paper #2 ingest remains blocked. The CI environment is valid, but stem recall is below threshold. Options recall is still not measured by the checked-in acceptance gate.
 
