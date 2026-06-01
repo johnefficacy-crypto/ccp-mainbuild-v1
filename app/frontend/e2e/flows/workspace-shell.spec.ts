@@ -1,5 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
-import { WORKSPACE, ensureAdminUser, ensureWorkspaceSeed } from "../fixtures/seedWorkspace";
+import {
+  WORKSPACE,
+  ensureAdminUser,
+  ensureWorkspaceSeed,
+  ensureSyllabusMapperSeed,
+  cleanupSyllabusMapperSeed,
+} from "../fixtures/seedWorkspace";
 import { readEnv } from "../fixtures/env";
 
 /**
@@ -104,5 +110,40 @@ test.describe("Flow: workspace shell", () => {
     await page.goto(`/admin/exam-intelligence/workspace/${WORKSPACE.examId}`);
     // ProtectedRoute redirects non-admin users back to /app
     await expect(page).toHaveURL(/\/app(\/|$)/, { timeout: 20_000 });
+  });
+
+  test("cycle picker is present (URLSearchParams.size regression guard)", async ({ page }) => {
+    await loginAsAdmin(page);
+    await gotoWorkspace(page);
+    await expect(page.getByTestId("exam-name")).toBeVisible({ timeout: 30_000 });
+    // Regression: ExamWorkspace must render cycle-picker regardless of cycles count.
+    // A URLSearchParams.size bug previously caused a crash before the tab strip rendered.
+    await expect(page.getByTestId("cycle-picker")).toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Syllabus tab enabled when mentions exist
+// ---------------------------------------------------------------------------
+
+test.describe("Flow: workspace shell — Syllabus tab (PR8)", () => {
+  test.beforeAll(async () => {
+    await ensureWorkspaceSeed();
+    await ensureAdminUser();
+    await ensureSyllabusMapperSeed();
+  });
+
+  test.afterAll(async () => {
+    await cleanupSyllabusMapperSeed();
+  });
+
+  test("Syllabus Mapper tab is enabled when syllabus_topic_mentions exist", async ({ page }) => {
+    await loginAsAdmin(page);
+    await gotoWorkspace(page);
+    await expect(page.getByTestId("exam-name")).toBeVisible({ timeout: 30_000 });
+
+    const syllabusTab = page.getByTestId("tab-syllabus");
+    await expect(syllabusTab).toBeVisible();
+    await expect(syllabusTab).not.toBeDisabled();
   });
 });

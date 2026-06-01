@@ -57,8 +57,8 @@ ESM = [
     {"subject_id": "subj-reasoning"},
 ]
 ALIASES = [
-    {"id": "a1", "topic_id": "topic-math", "alias_text": "Arithmetic", "normalized_alias": "arithmetic"},
-    {"id": "a2", "topic_id": "topic-reasoning", "alias_text": "Logical Reasoning", "normalized_alias": "logical reasoning"},
+    {"id": "a1", "topic_id": "topic-math", "alias": "Arithmetic", "normalized_alias": "arithmetic"},
+    {"id": "a2", "topic_id": "topic-reasoning", "alias": "Logical Reasoning", "normalized_alias": "logical reasoning"},
 ]
 
 # ── Stub helpers ──────────────────────────────────────────────────────────────
@@ -264,7 +264,7 @@ class TestFuzzyMatch:
         """A slightly misspelled alias at exactly the threshold should be accepted."""
         # "arithmetik" vs "arithmetic" — should be close enough at 0.85
         pages = [{"page_number": 1, "text_content": "This covers arithmetik fundamentals."}]
-        aliases = [{"id": "a1", "topic_id": "topic-math", "alias_text": "Arithmetic", "normalized_alias": "arithmetic"}]
+        aliases = [{"id": "a1", "topic_id": "topic-math", "alias": "Arithmetic", "normalized_alias": "arithmetic"}]
         sb = _make_sb(pages=pages, aliases=aliases)
         # Use a low threshold to guarantee we get a fuzzy match
         proposals = propose_syllabus_mentions(
@@ -276,7 +276,7 @@ class TestFuzzyMatch:
     def test_fuzzy_match_below_threshold_rejected(self):
         """Very different text should not produce proposals at the default threshold."""
         pages = [{"page_number": 1, "text_content": "xyz xyz xyz xyz xyz."}]
-        aliases = [{"id": "a1", "topic_id": "topic-math", "alias_text": "Arithmetic", "normalized_alias": "arithmetic"}]
+        aliases = [{"id": "a1", "topic_id": "topic-math", "alias": "Arithmetic", "normalized_alias": "arithmetic"}]
         sb = _make_sb(pages=pages, aliases=aliases)
         proposals = propose_syllabus_mentions(
             sb, exam_id=EXAM_ID, syllabus_document_id=DOC_ID, threshold=0.99
@@ -285,7 +285,7 @@ class TestFuzzyMatch:
 
     def test_override_threshold_via_param(self):
         pages = [{"page_number": 1, "text_content": "arith: fundamental number operations."}]
-        aliases = [{"id": "a1", "topic_id": "topic-math", "alias_text": "Arithmetic", "normalized_alias": "arithmetic"}]
+        aliases = [{"id": "a1", "topic_id": "topic-math", "alias": "Arithmetic", "normalized_alias": "arithmetic"}]
         sb = _make_sb(pages=pages, aliases=aliases)
         # Very tight threshold — no match
         proposals_tight = propose_syllabus_mentions(
@@ -303,8 +303,8 @@ class TestDeduplication:
         """Two alias rows for the same topic on same page → only one proposal."""
         pages = [{"page_number": 1, "text_content": "Arithmetic and arithmetic again."}]
         aliases = [
-            {"id": "a1", "topic_id": "topic-math", "alias_text": "Arithmetic", "normalized_alias": "arithmetic"},
-            {"id": "a2", "topic_id": "topic-math", "alias_text": "arithmetic", "normalized_alias": "arithmetic"},
+            {"id": "a1", "topic_id": "topic-math", "alias": "Arithmetic", "normalized_alias": "arithmetic"},
+            {"id": "a2", "topic_id": "topic-math", "alias": "arithmetic", "normalized_alias": "arithmetic"},
         ]
         sb = _make_sb(pages=pages, aliases=aliases)
         proposals = propose_syllabus_mentions(sb, exam_id=EXAM_ID, syllabus_document_id=DOC_ID)
@@ -315,7 +315,7 @@ class TestDeduplication:
         """If exact and fuzzy both exist for same topic+page, keep exact (higher confidence)."""
         pages = [{"page_number": 1, "text_content": "Arithmetic fundamentals are taught."}]
         aliases = [
-            {"id": "a1", "topic_id": "topic-math", "alias_text": "Arithmetic", "normalized_alias": "arithmetic"},
+            {"id": "a1", "topic_id": "topic-math", "alias": "Arithmetic", "normalized_alias": "arithmetic"},
         ]
         sb = _make_sb(pages=pages, aliases=aliases)
         proposals = propose_syllabus_mentions(sb, exam_id=EXAM_ID, syllabus_document_id=DOC_ID)
