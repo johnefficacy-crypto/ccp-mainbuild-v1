@@ -20,8 +20,6 @@ This produces divergent results that are hard to reason about:
 - Impact: the acceptance gate (recall ≥ 0.815) and any locally-run dry
   runs cannot be trusted as equivalent unless the environment is pinned.
 
-## Decision:
-Option A — CI dispatch only (no Dockerfile)
 ## Decision: Option A — CI dispatch only
 
 For paper-grade extraction acceptance measurements, CI dispatch is the source of truth.
@@ -131,3 +129,4 @@ must pass (stem recall ≥ 0.815) before paper #2 ingest.
 - `docs/engineering/exam-intelligence-extraction-v1-corpus.md` — corpus contract,
   acceptance thresholds, extractor stack
 - Issue: "Choose extraction environment strategy" (TBD)
+
