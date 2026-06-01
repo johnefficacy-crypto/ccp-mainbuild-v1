@@ -188,3 +188,11 @@ When extracting a service module from a multi-consumer function (e.g.
 compute_exam_workspace_readiness out of overview() in PR #530), pin
 the pre-refactor output byte-identical with a test. The shared
 consumer (review kanban for that case) breaks silently otherwise.
+
+### 10. Guarded geometry gates over blunt thresholds
+Spatial gates that work on one corpus can silently miss on another
+when coordinates drift (e.g. PR #528's _ANCHOR_X_GAP=0.04 failed on
+2026 GS-I where option labels sit at x+0.05–0.08). Fix is rarely
+"widen the threshold" or "remove the gate". Instead, guard the gate
+with a look-ahead that distinguishes the two cases it conflates
+(body enumerator vs real option). See PR #553 find_stem_end rule.
