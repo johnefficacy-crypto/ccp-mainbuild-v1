@@ -49,6 +49,7 @@ come only from CI artifacts.
   number that diverges silently.
 
 ### Option B — Dockerfile
+Option B remains the preferred future upgrade when we decide to make local and CI extraction environments identical.
 
 A `Dockerfile` in `app/backend/` pins Python + Tesseract + all shared-library
 versions. Local runs use `docker run`; CI uses the same image via a registry
