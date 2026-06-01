@@ -6,14 +6,14 @@ import { readEnv } from "./env";
  * can reference them by constant rather than querying the DB.
  */
 export const WORKSPACE = {
-  examId:    "e2ew0000-0000-4000-8000-000000000002",
-  subjectId: "e2ew0000-0000-4000-8000-000000000003",
-  topicId:   "e2ew0000-0000-4000-8000-000000000004",
-  paperId:   "e2ew0000-0000-4000-8000-000000000005",
+  examId:    "e2e0e2e0-0000-4000-8000-000000000002",
+  subjectId: "e2e0e2e0-0000-4000-8000-000000000003",
+  topicId:   "e2e0e2e0-0000-4000-8000-000000000004",
+  paperId:   "e2e0e2e0-0000-4000-8000-000000000005",
   topicSlug: "e2e-federalism",
 };
 
-const FAMILY_ID = "e2ew0000-0000-4000-8000-000000000001";
+const FAMILY_ID = "e2e0e2e0-0000-4000-8000-000000000001";
 
 /**
  * Idempotently ensure all workspace seed rows exist. Uses the Supabase
