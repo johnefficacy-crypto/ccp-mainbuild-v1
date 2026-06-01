@@ -236,14 +236,18 @@ test.describe("Flow: PYQ bulk import UI modal", () => {
     await page.getByTestId("run-preflight-btn").click();
     await expect(page.getByTestId("preflight-preview")).toBeVisible({ timeout: 20_000 });
 
-    // Preview shows 2 inserts, 0 dups, 0 invalid
-    await expect(page.getByTestId("preview-insert-count")).toContainText("2");
-    await expect(page.getByTestId("preview-dup-count")).toContainText("0");
-    await expect(page.getByTestId("preview-invalid-count")).toContainText("0");
+    // Preview shows 2 ok, 0 dups, 0 errors
+    await expect(page.getByTestId("summary-ok")).toContainText("2");
+    await expect(page.getByTestId("summary-duplicate")).toContainText("0");
+    await expect(page.getByTestId("summary-error")).toContainText("0");
+
+    // Advance to commit confirmation step
+    await page.getByTestId("continue-to-commit-btn").click();
+    await expect(page.getByTestId("commit-confirmation")).toBeVisible({ timeout: 10_000 });
 
     // Enter commit reason and commit
-    await page.getByTestId("accept-reason-input").fill("E2E regression: UI bulk import commit");
-    await page.getByTestId("commit-btn").click();
+    await page.getByTestId("commit-reason-input").fill("E2E regression: UI bulk import commit");
+    await page.getByTestId("commit-import-btn").click();
 
     // Result screen
     await expect(page.getByTestId("commit-result")).toBeVisible({ timeout: 20_000 });
