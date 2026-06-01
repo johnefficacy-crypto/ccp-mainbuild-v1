@@ -3,6 +3,9 @@ Marked as 'integration' and 'slow'. Requires live Supabase credentials
 (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY) and the Tesseract binary.
 
 Recall threshold: >= 0.80 (80% of fixture questions matched).
+Options-recall threshold: >= 0.70 (fraction of matched questions with a
+  complete, valid a→d options tuple extracted).  This is a presence-rate
+  baseline; tighten once fixture is annotated with ground-truth option text.
 Zero invented question_numbers. Zero duplicate question_numbers.
 
 This test gates merge. Run locally with:
@@ -18,8 +21,10 @@ import statistics
 import pytest
 
 RECALL_THRESHOLD = 0.80
+OPTIONS_RECALL_THRESHOLD = 0.70
 IOU_THRESHOLD = 0.50
 TEXT_SIM_THRESHOLD = 0.95
+_VALID_OPTION_LABELS = frozenset("abcd")
 
 
 def _percentiles(values: list[float], ps=(10, 25, 50, 75, 90)) -> dict[int, float]:
@@ -100,6 +105,26 @@ def _text_similarity(a: str, b: str) -> float:
     return ratio(_normalize_text(a), _normalize_text(b))
 
 
+def _options_complete(extracted_q) -> bool:
+    """True when the extracted question has a full, valid a→d options tuple.
+
+    Validity conditions:
+    - Exactly 4 options.
+    - Labels are exactly {'a', 'b', 'c', 'd'} in that order.
+    - Each option_text is non-empty after stripping.
+    This is the Phase 4 presence-rate baseline; no fixture ground-truth needed.
+    """
+    opts = extracted_q.options
+    if len(opts) != 4:
+        return False
+    for expected, opt in zip("abcd", opts):
+        if opt.label != expected:
+            return False
+        if not opt.option_text.strip():
+            return False
+    return True
+
+
 def _matches(extracted, fixture_q: dict) -> bool:
     """True if extracted question matches a fixture question per corpus contract."""
     fix_page = fixture_q["regions"][0]["page"]
@@ -139,11 +164,16 @@ def test_recall_against_2026_fixture(stub_fetch_doc_row_for_fixtures, pdf_bytes_
     fixture_qs = questions_fixture["expected_questions"]
 
     # Count matched fixture questions.
+    # matched_eq maps fixture Q# → the first ExtractedQuestion that matched it.
     matched_fix_nums: list[int] = []
     unmatched_fix_nums: list[int] = []
+    matched_eq: dict[int, object] = {}
     for fq in fixture_qs:
-        if any(_matches(eq, fq) for eq in extracted):
-            matched_fix_nums.append(fq["question_number"])
+        for eq in extracted:
+            if _matches(eq, fq):
+                matched_fix_nums.append(fq["question_number"])
+                matched_eq[fq["question_number"]] = eq
+                break
         else:
             unmatched_fix_nums.append(fq["question_number"])
 
@@ -164,6 +194,17 @@ def test_recall_against_2026_fixture(stub_fetch_doc_row_for_fixtures, pdf_bytes_
     matched_set = set(matched_fix_nums)
     precision = (len(matched_fix_nums) / len(extracted)) if extracted else 0.0
 
+    # Phase 4 — options presence-rate baseline.
+    # For each matched stem, check whether the extractor produced a complete
+    # valid a→d options tuple.  options_recall = coverage over matched stems;
+    # options_precision = coverage over all extracted questions.
+    matched_with_opts = sum(
+        1 for qnum, eq in matched_eq.items() if _options_complete(eq)
+    )
+    options_recall = matched_with_opts / len(matched_fix_nums) if matched_fix_nums else 0.0
+    all_with_opts = sum(1 for eq in extracted if _options_complete(eq))
+    options_precision = all_with_opts / len(extracted) if extracted else 0.0
+
     ious = [_best_metrics(extracted, fq)[0] for fq in fixture_qs]
     sims = [_best_metrics(extracted, fq)[1] for fq in fixture_qs]
     iou_pct = _percentiles(ious)
@@ -181,6 +222,9 @@ def test_recall_against_2026_fixture(stub_fetch_doc_row_for_fixtures, pdf_bytes_
     print("\n========== EXTRACTOR ACCEPTANCE REPORT (2026 GS-I) ==========")
     print(f"Aggregate: recall={recall:.3f}  precision={precision:.3f}  "
           f"extracted={len(extracted)}  fixture={len(fixture_qs)}")
+    print(f"Options (presence-rate baseline): "
+          f"options_recall={options_recall:.3f} ({matched_with_opts}/{len(matched_fix_nums)} matched stems)  "
+          f"options_precision={options_precision:.3f} ({all_with_opts}/{len(extracted)} all extracted)")
     print(f"text-sim percentiles: " + "  ".join(f"p{p}={sim_pct[p]:.3f}" for p in (10, 25, 50, 75, 90)))
     print(f"IoU      percentiles: " + "  ".join(f"p{p}={iou_pct[p]:.3f}" for p in (10, 25, 50, 75, 90)))
     print(f"invented Q#s: {sorted(invented_qnums)}")
@@ -211,4 +255,9 @@ def test_recall_against_2026_fixture(stub_fetch_doc_row_for_fixtures, pdf_bytes_
         f"Matched ({len(matched_fix_nums)}): {sorted(matched_fix_nums)}\n"
         f"Missed  ({len(unmatched_fix_nums)}): {sorted(unmatched_fix_nums)}\n"
         f"Total extracted: {len(extracted)}"
+    )
+    assert options_recall >= OPTIONS_RECALL_THRESHOLD, (
+        f"Options recall {options_recall:.3f} < {OPTIONS_RECALL_THRESHOLD}.\n"
+        f"Matched stems with complete options: {matched_with_opts}/{len(matched_fix_nums)}.\n"
+        f"(Presence-rate baseline: options tuple must be exactly a,b,c,d with non-empty text.)"
     )
