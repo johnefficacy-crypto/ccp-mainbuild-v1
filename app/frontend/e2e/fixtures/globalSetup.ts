@@ -1,7 +1,6 @@
 import { createNodeSupabaseClient } from "./supabaseNodeClient";
 import { readEnv } from "./env";
 import { ensureSeededUser } from "./seedUser";
-import { ensureAdminUser, verifyWorkspaceSeed } from "./seedWorkspace";
 
 /**
  * Runs once before the suite. Ensures the seeded aspirant exists and sanity
@@ -11,12 +10,14 @@ import { ensureAdminUser, verifyWorkspaceSeed } from "./seedWorkspace";
  * The mock CONTENT (template + questions) is applied out-of-band by
  * `app/supabase/seeds/e2e_fixtures.sql` (CI applies it during DB setup; locally
  * see docs/testing/e2e.md). We only verify it is present.
+ *
+ * Workspace-specific setup (admin user, workspace seed verification) is handled
+ * in each workspace spec's beforeAll to avoid failing the entire suite if the
+ * workspace seed has not been applied.
  */
 export default async function globalSetup() {
   const env = readEnv();
   await ensureSeededUser();
-  await ensureAdminUser();
-  await verifyWorkspaceSeed();
 
   const admin = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
   const { data: tmpl, error } = await admin

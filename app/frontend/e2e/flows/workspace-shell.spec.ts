@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { WORKSPACE, ensureAdminUser } from "../fixtures/seedWorkspace";
+import { WORKSPACE, ensureAdminUser, verifyWorkspaceSeed } from "../fixtures/seedWorkspace";
 import { readEnv } from "../fixtures/env";
 
 /**
@@ -44,6 +44,7 @@ async function gotoWorkspace(page: Page): Promise<void> {
 
 test.describe("Flow: workspace shell", () => {
   test.beforeAll(async () => {
+    await verifyWorkspaceSeed();
     await ensureAdminUser();
   });
 

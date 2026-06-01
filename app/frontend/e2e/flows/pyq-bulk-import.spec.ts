@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { WORKSPACE, ensureAdminUser, getAdminAccessToken } from "../fixtures/seedWorkspace";
+import { WORKSPACE, ensureAdminUser, getAdminAccessToken, verifyWorkspaceSeed } from "../fixtures/seedWorkspace";
 import { createNodeSupabaseClient } from "../fixtures/supabaseNodeClient";
 import { readEnv } from "../fixtures/env";
 import * as path from "path";
@@ -59,6 +59,7 @@ async function cleanupPaperQuestions(): Promise<void> {
 
 test.describe("Flow: PYQ bulk import API contract", () => {
   test.beforeAll(async () => {
+    await verifyWorkspaceSeed();
     await ensureAdminUser();
     await cleanupPaperQuestions();
   });
@@ -196,6 +197,7 @@ test.describe("Flow: PYQ bulk import UI modal", () => {
   let csvFile: string;
 
   test.beforeAll(async () => {
+    await verifyWorkspaceSeed();
     await ensureAdminUser();
     await cleanupPaperQuestions();
     // Write CSV to a temp file so Playwright can set it as file input
