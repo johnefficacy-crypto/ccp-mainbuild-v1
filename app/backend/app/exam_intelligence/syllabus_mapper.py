@@ -166,7 +166,7 @@ def propose_syllabus_mentions(
         batch_rows = _safe(
             lambda b=batch: (
                 sb.table("topic_aliases")
-                .select("id, topic_id, alias_text, normalized_alias")
+                .select("id, topic_id, alias, normalized_alias")
                 .in_("topic_id", b)
                 .limit(10000)
                 .execute()
@@ -180,7 +180,7 @@ def propose_syllabus_mentions(
         return []
 
     alias_norms = [
-        (a["topic_id"], a.get("alias_text") or "", a.get("normalized_alias") or normalize_text(a.get("alias_text") or ""))
+        (a["topic_id"], a.get("alias") or "", a.get("normalized_alias") or normalize_text(a.get("alias") or ""))
         for a in aliases
     ]
 
@@ -582,7 +582,7 @@ def propose_syllabus_mentions(
         batch_rows = _safe(
             lambda b=batch: (
                 sb.table("topic_aliases")
-                .select("id, topic_id, alias_text, normalized_alias")
+                .select("id, topic_id, alias, normalized_alias")
                 .in_("topic_id", b)
                 .limit(10000)
                 .execute()
@@ -597,7 +597,7 @@ def propose_syllabus_mentions(
 
     # Precompute normalized alias texts
     alias_norms = [
-        (a["topic_id"], a.get("alias_text") or "", a.get("normalized_alias") or normalize_text(a.get("alias_text") or ""))
+        (a["topic_id"], a.get("alias") or "", a.get("normalized_alias") or normalize_text(a.get("alias") or ""))
         for a in aliases
     ]
 

@@ -6,11 +6,13 @@ import { readEnv } from "./env";
  * can reference them by constant rather than querying the DB.
  */
 export const WORKSPACE = {
-  examId:    "e2e0e2e0-0000-4000-8000-000000000002",
-  subjectId: "e2e0e2e0-0000-4000-8000-000000000003",
-  topicId:   "e2e0e2e0-0000-4000-8000-000000000004",
-  paperId:   "e2e0e2e0-0000-4000-8000-000000000005",
-  topicSlug: "e2e-federalism",
+  examId:         "e2e0e2e0-0000-4000-8000-000000000002",
+  subjectId:      "e2e0e2e0-0000-4000-8000-000000000003",
+  topicId:        "e2e0e2e0-0000-4000-8000-000000000004",
+  paperId:        "e2e0e2e0-0000-4000-8000-000000000005",
+  topicSlug:      "e2e-federalism",
+  syllabusDocId:  "e2e0e2e0-0000-4000-8000-000000000006",
+  mentionId:      "e2e0e2e0-0000-4000-8000-000000000007",
 };
 
 const FAMILY_ID = "e2e0e2e0-0000-4000-8000-000000000001";
@@ -142,4 +144,54 @@ export async function resetTopicAliases(): Promise<void> {
   const env = readEnv();
   const client = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
   await client.from("topic_aliases").delete().eq("topic_id", WORKSPACE.topicId);
+}
+
+/**
+ * Seed a syllabus_documents row and a syllabus_topic_mention so that the
+ * Syllabus Mapper tab is enabled (readiness != "empty").  Uses fixed UUIDs
+ * so rows can be torn down deterministically.
+ */
+export async function ensureSyllabusMapperSeed(): Promise<void> {
+  const env = readEnv();
+  const client = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
+
+  // 1) syllabus_documents row — required FK for syllabus_topic_mentions
+  const { error: sdErr } = await client.from("syllabus_documents").upsert(
+    {
+      id:            WORKSPACE.syllabusDocId,
+      exam_id:       WORKSPACE.examId,
+      document_type: "syllabus_pdf",
+      title:         "E2E Syllabus Doc",
+      trust_status:  "verified",
+      metadata:      {},
+    },
+    { onConflict: "id" },
+  );
+  if (sdErr) throw new Error(`syllabus_documents upsert: ${sdErr.message}`);
+
+  // 2) syllabus_topic_mention — makes readiness status "partial" → tab enabled
+  const { error: smErr } = await client.from("syllabus_topic_mentions").upsert(
+    {
+      id:                   WORKSPACE.mentionId,
+      exam_id:              WORKSPACE.examId,
+      syllabus_document_id: WORKSPACE.syllabusDocId,
+      topic_id:             WORKSPACE.topicId,
+      normalized_text:      "e2e-federalism-seed",
+      mention_type:         "explicit",
+      confidence_score:     1.0,
+      reviewer_status:      "pending",
+      metadata:             {},
+    },
+    { onConflict: "id" },
+  );
+  if (smErr) throw new Error(`syllabus_topic_mentions upsert: ${smErr.message}`);
+}
+
+/** Remove syllabus_topic_mentions and syllabus_documents for the E2E exam. */
+export async function cleanupSyllabusMapperSeed(): Promise<void> {
+  const env = readEnv();
+  const client = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
+  // mentions first (FK child), then document
+  await client.from("syllabus_topic_mentions").delete().eq("exam_id", WORKSPACE.examId);
+  await client.from("syllabus_documents").delete().eq("id", WORKSPACE.syllabusDocId);
 }
