@@ -2,24 +2,99 @@ import { createNodeSupabaseClient } from "./supabaseNodeClient";
 import { readEnv } from "./env";
 
 /**
- * Fixed UUIDs that mirror app/supabase/seeds/e2e_workspace_fixtures.sql.
- * Import these constants in specs so the tests never hard-code raw strings.
+ * Fixed UUIDs for workspace E2E rows. These are stable across runs so specs
+ * can reference them by constant rather than querying the DB.
  */
 export const WORKSPACE = {
-  examId:   "e2ew0000-0000-4000-8000-000000000002",
-  subjectId:"e2ew0000-0000-4000-8000-000000000003",
-  topicId:  "e2ew0000-0000-4000-8000-000000000004",
-  paperId:  "e2ew0000-0000-4000-8000-000000000005",
-  examSlug: "e2e-workspace-exam",
-  topicSlug:"e2e-federalism",
+  examId:    "e2ew0000-0000-4000-8000-000000000002",
+  subjectId: "e2ew0000-0000-4000-8000-000000000003",
+  topicId:   "e2ew0000-0000-4000-8000-000000000004",
+  paperId:   "e2ew0000-0000-4000-8000-000000000005",
+  topicSlug: "e2e-federalism",
 };
+
+const FAMILY_ID = "e2ew0000-0000-4000-8000-000000000001";
+
+/**
+ * Idempotently ensure all workspace seed rows exist. Uses the Supabase
+ * service-role client (bypasses RLS) and upserts on primary key.
+ *
+ * Called from each workspace spec's beforeAll so a failure only affects
+ * that spec, not the entire suite.
+ */
+export async function ensureWorkspaceSeed(): Promise<void> {
+  const env = readEnv();
+  const db = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
+
+  // 1) Exam family
+  const { error: efErr } = await db.from("exam_families").upsert(
+    { id: FAMILY_ID, slug: "e2e-workspace-family", name: "E2E Workspace Family", is_active: true },
+    { onConflict: "id" },
+  );
+  if (efErr) throw new Error(`exam_families upsert: ${efErr.message}`);
+
+  // 2) Exam
+  const { error: exErr } = await db.from("exams").upsert(
+    {
+      id: WORKSPACE.examId,
+      exam_family_id: FAMILY_ID,
+      slug: "e2e-workspace-exam",
+      name: "E2E Workspace Exam",
+      exam_type: "recruitment",
+      is_active: true,
+    },
+    { onConflict: "id" },
+  );
+  if (exErr) throw new Error(`exams upsert: ${exErr.message}`);
+
+  // 3) Subject
+  const { error: subErr } = await db.from("subjects").upsert(
+    {
+      id: WORKSPACE.subjectId,
+      name: "E2E Polity",
+      slug: "e2e-polity",
+      subject_group: "social_science",
+      is_active: true,
+    },
+    { onConflict: "id" },
+  );
+  if (subErr) throw new Error(`subjects upsert: ${subErr.message}`);
+
+  // 4) Topic
+  const { error: topErr } = await db.from("topics").upsert(
+    {
+      id: WORKSPACE.topicId,
+      subject_id: WORKSPACE.subjectId,
+      parent_topic_id: null,
+      slug: WORKSPACE.topicSlug,
+      name: "E2E Federalism",
+      level: "topic",
+      default_difficulty_level: "medium",
+      is_active: true,
+      metadata: {},
+    },
+    { onConflict: "id" },
+  );
+  if (topErr) throw new Error(`topics upsert: ${topErr.message}`);
+
+  // 5) PYQ paper — presence makes pyq_workbench readiness "partial", enabling the tab
+  const { error: ppErr } = await db.from("pyq_papers").upsert(
+    {
+      id: WORKSPACE.paperId,
+      exam_id: WORKSPACE.examId,
+      year: 2024,
+      source_type: "community",
+      trust_status: "pending",
+      metadata: {},
+    },
+    { onConflict: "id" },
+  );
+  if (ppErr) throw new Error(`pyq_papers upsert: ${ppErr.message}`);
+}
 
 /**
  * Ensure the seeded admin user exists with super_admin role.
- *
- * super_admin bypasses all require_permission() checks, so one user
- * covers both exam_intelligence.review (workspace context) and
- * exam_intelligence.cms (topic/alias/PYQ CMS endpoints).
+ * super_admin bypasses all require_permission() checks.
  */
 export async function ensureAdminUser(): Promise<{ id: string; email: string; password: string }> {
   const env = readEnv();
@@ -50,7 +125,7 @@ export async function ensureAdminUser(): Promise<{ id: string; email: string; pa
   return { id: existing.id, email, password };
 }
 
-/** Sign in as the seeded admin and return the access token. */
+/** Sign in as the seeded admin and return a Bearer access token. */
 export async function getAdminAccessToken(): Promise<string> {
   const env = readEnv();
   const email    = process.env.E2E_ADMIN_EMAIL    || "e2e-admin@example.com";
@@ -60,27 +135,6 @@ export async function getAdminAccessToken(): Promise<string> {
   const { data, error } = await client.auth.signInWithPassword({ email, password });
   if (error || !data.session) throw error || new Error("No session for seeded admin");
   return data.session.access_token;
-}
-
-/** Verify the workspace seed rows are present (fail fast with a clear message). */
-export async function verifyWorkspaceSeed(): Promise<void> {
-  const env = readEnv();
-  const client = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
-
-  const { data: exam } = await client
-    .from("exams")
-    .select("id")
-    .eq("id", WORKSPACE.examId)
-    .maybeSingle();
-
-  if (!exam) {
-    throw new Error(
-      `E2E workspace exam "${WORKSPACE.examId}" missing.\n` +
-      "Apply the seed first:\n" +
-      "  psql \"$DATABASE_URL\" -f app/supabase/seeds/e2e_workspace_fixtures.sql\n" +
-      "See docs/testing/e2e.md.",
-    );
-  }
 }
 
 /** Clean up any topic-aliases the tests may have created for the E2E topic. */

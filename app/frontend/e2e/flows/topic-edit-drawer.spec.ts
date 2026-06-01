@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { WORKSPACE, ensureAdminUser, getAdminAccessToken, resetTopicAliases, verifyWorkspaceSeed } from "../fixtures/seedWorkspace";
+import { WORKSPACE, ensureAdminUser, getAdminAccessToken, resetTopicAliases, ensureWorkspaceSeed } from "../fixtures/seedWorkspace";
 import { readEnv } from "../fixtures/env";
 
 /**
@@ -37,7 +37,7 @@ const CMS = "/api/admin/exam-intelligence-cms";
 
 test.describe("Flow: topic-edit CMS API contract", () => {
   test.beforeAll(async () => {
-    await verifyWorkspaceSeed();
+    await ensureWorkspaceSeed();
     await ensureAdminUser();
     await resetTopicAliases();
   });
