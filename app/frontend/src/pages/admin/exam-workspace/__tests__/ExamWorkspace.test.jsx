@@ -146,7 +146,7 @@ describe("ExamWorkspace shell", () => {
     expect(picker.options[2].text).toBe("2025");
   });
 
-  test("renders exactly 7 tabs all disabled", async () => {
+  test("renders exactly 7 tabs all clickable", async () => {
     mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
@@ -154,8 +154,7 @@ describe("ExamWorkspace shell", () => {
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(7);
     tabs.forEach((tab) => {
-      expect(tab.disabled).toBe(true);
-      expect(tab.getAttribute("aria-disabled")).toBe("true");
+      expect(tab.disabled).toBeFalsy();
     });
   });
 
@@ -173,13 +172,12 @@ describe("ExamWorkspace shell", () => {
     });
   });
 
-  test("renders placeholder content area", async () => {
+  test("defaults to Setup tab active", async () => {
     mockBothEndpoints();
     renderWorkspace();
-    await waitFor(() => screen.getByTestId("workspace-placeholder"));
-    expect(screen.getByTestId("workspace-placeholder").textContent).toBe(
-      "Select a section to begin",
-    );
+    await waitFor(() => screen.getByTestId("tab-setup"));
+    const setupTab = screen.getByTestId("tab-setup");
+    expect(setupTab.getAttribute("aria-selected")).toBe("true");
   });
 
   test("changing cycle picker navigates to cycle URL", async () => {
