@@ -363,3 +363,63 @@ class TestFindStemEndOptionGate:
         lines = [anchor1, anchor2]
         end = find_stem_end(lines, anchor_idx=0, column_left_edge=COL_LEFT)
         assert end == 1
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — find_stem_end stops at option labels regardless of x-position
+# ---------------------------------------------------------------------------
+
+from app.exam_intelligence.extraction.segmentation import find_anchor_lines  # noqa: E402
+
+
+class TestFindStemEndNoXGate:
+    """After removing the left-edge gate, find_stem_end must stop at any
+    (a)/(b)/(c)/(d) line regardless of how far it is indented from the
+    column left edge.
+    """
+
+    def test_option_at_col_left_plus_006_stops_stem(self):
+        # Simulates 2026 GS-I geometry: option label 6 pp past left edge.
+        anchor = _line(_w("1.", COL_LEFT, 0.02), _w("Stem text", 0.12, 0.02))
+        opt_a  = _line(_w("(a)", COL_LEFT + 0.06, 0.06), _w("Alpha", 0.20, 0.06))
+        lines  = [anchor, opt_a]
+        end    = find_stem_end(lines, anchor_idx=0, column_left_edge=COL_LEFT)
+        assert end == 1
+
+    def test_option_at_col_left_plus_008_stops_stem(self):
+        # Simulates 2026 GS-I geometry: option label 8 pp past left edge.
+        anchor = _line(_w("1.", COL_LEFT, 0.02), _w("Stem text", 0.12, 0.02))
+        opt_a  = _line(_w("(a)", COL_LEFT + 0.08, 0.06), _w("Beta", 0.22, 0.06))
+        lines  = [anchor, opt_a]
+        end    = find_stem_end(lines, anchor_idx=0, column_left_edge=COL_LEFT)
+        assert end == 1
+
+    def test_next_question_anchor_still_stops_stem(self):
+        anchor1 = _line(_w("5.", COL_LEFT, 0.02), _w("Question five", 0.12, 0.02))
+        anchor2 = _line(_w("6.", COL_LEFT, 0.10), _w("Question six",  0.12, 0.10))
+        lines   = [anchor1, anchor2]
+        end     = find_stem_end(lines, anchor_idx=0, column_left_edge=COL_LEFT)
+        assert end == 1
+
+    def test_body_inline_ordinal_is_not_a_question_anchor(self):
+        # A line like "(i)" (Roman) or "(1)" inside a body must not be picked up
+        # by find_anchor_lines — that function only recognises Arabic question ordinals.
+        anchor  = _line(_w("3.", COL_LEFT, 0.02), _w("Consider:", 0.12, 0.02))
+        enum_i  = _line(_w("(i)",  0.08, 0.06), _w("First item",  0.18, 0.06))
+        enum_ii = _line(_w("(ii)", 0.08, 0.09), _w("Second item", 0.18, 0.09))
+        lines   = [anchor, enum_i, enum_ii]
+        # find_anchor_lines should only see the "3." anchor, not the (i)/(ii) lines.
+        anchors = find_anchor_lines(lines, COL_LEFT, last_accepted_ordinal=0)
+        assert len(anchors) == 1
+        assert anchors[0].ordinal == 3
+
+    def test_extract_options_module_b_still_rejects_indented_labels(self):
+        # Module B left-edge gate in extract_options must still filter out
+        # option candidates whose x_min > column_left_edge + 0.04.
+        # Indented labels at COL_LEFT + 0.06 must NOT appear in the returned tuple.
+        indented_a = _line(_w("(a)", COL_LEFT + 0.06, 0.00), _w("Rio",    0.22, 0.00))
+        indented_b = _line(_w("(b)", COL_LEFT + 0.06, 0.02), _w("Thames", 0.22, 0.02))
+        indented_c = _line(_w("(c)", COL_LEFT + 0.06, 0.04), _w("Nile",   0.22, 0.04))
+        indented_d = _line(_w("(d)", COL_LEFT + 0.06, 0.06), _w("Amazon", 0.22, 0.06))
+        opts = extract_options([indented_a, indented_b, indented_c, indented_d], COL_LEFT)
+        assert opts == ()

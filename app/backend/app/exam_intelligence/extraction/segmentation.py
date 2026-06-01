@@ -179,11 +179,12 @@ def find_stem_end(
         text = _LEADING_NOISE_RE.sub('', ' '.join(w.text for w in line[ci:]))
 
         if _OPTION_RE.match(content_word.text):
-            # Module B gate: only treat as option boundary if the label sits
-            # at the column left edge.  Body enumerators — (a), (b) inside a
-            # matching-column statement — are indented and must not split the stem.
-            if content_word.bbox[0] <= column_left_edge + _ANCHOR_X_GAP:
-                return i
+            # Any (a)/(b)/(c)/(d) line ends the stem, regardless of x-position.
+            # The left-edge gate belongs only in extract_options (Module B), where
+            # it filters genuine column-option markers from body enumerators when
+            # assembling the option tuple.  find_stem_end's job is solely to bound
+            # the stem region for bbox computation.
+            return i
 
         for pat in _MCQ_FOOTER_RES:
             if pat.search(text):
