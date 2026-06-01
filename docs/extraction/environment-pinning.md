@@ -20,11 +20,13 @@ This produces divergent results that are hard to reason about:
 - Impact: the acceptance gate (recall ≥ 0.815) and any locally-run dry
   runs cannot be trusted as equivalent unless the environment is pinned.
 
-## Decision: TBD
+## Decision: Option A — CI dispatch only
 
-Two viable strategies are on the table. The operator has not yet chosen one.
+For paper-grade extraction acceptance measurements, CI dispatch is the source of truth.
 
-### Option A — CI dispatch only (no Dockerfile)
+Local extractor runs are allowed only for debugging and preview. Local recall, question count, option count, bbox quality, and confidence metrics are not acceptance-gate numbers because local Tesseract/Leptonica builds can diverge from CI.
+
+This decision is intentionally lightweight until the extraction environment is Docker-pinned. A future Dockerfile may replace this decision when local and CI extraction can be made comparable.
 
 All paper-grade extraction runs are submitted as CI jobs (GitHub Actions).
 Local dry runs are permitted but explicitly not equivalent; recall measurements
@@ -45,6 +47,7 @@ come only from CI artifacts.
   number that diverges silently.
 
 ### Option B — Dockerfile
+Option B remains the preferred future upgrade when we decide to make local and CI extraction environments identical.
 
 A `Dockerfile` in `app/backend/` pins Python + Tesseract + all shared-library
 versions. Local runs use `docker run`; CI uses the same image via a registry
@@ -126,3 +129,4 @@ must pass (stem recall ≥ 0.815) before paper #2 ingest.
 - `docs/engineering/exam-intelligence-extraction-v1-corpus.md` — corpus contract,
   acceptance thresholds, extractor stack
 - Issue: "Choose extraction environment strategy" (TBD)
+
