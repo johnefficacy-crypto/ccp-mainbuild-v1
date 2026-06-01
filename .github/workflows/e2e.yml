@@ -46,7 +46,9 @@ jobs:
           echo "SB_SERVICE_ROLE_KEY=$(jq -r '.SERVICE_ROLE_KEY' /tmp/sb.json)" >> "$GITHUB_ENV"
 
       - name: Seed E2E fixtures
-        run: psql "$SB_DB_URL" -v ON_ERROR_STOP=1 -f app/supabase/seeds/e2e_fixtures.sql
+        run: |
+          psql "$SB_DB_URL" -v ON_ERROR_STOP=1 -f app/supabase/seeds/e2e_fixtures.sql
+          psql "$SB_DB_URL" -v ON_ERROR_STOP=1 -f app/supabase/seeds/e2e_workspace_fixtures.sql
 
       - name: Install backend deps
         working-directory: app/backend

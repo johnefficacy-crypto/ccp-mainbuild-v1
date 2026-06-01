@@ -1,6 +1,7 @@
 import { createNodeSupabaseClient } from "./supabaseNodeClient";
 import { readEnv } from "./env";
 import { ensureSeededUser } from "./seedUser";
+import { ensureAdminUser, verifyWorkspaceSeed } from "./seedWorkspace";
 
 /**
  * Runs once before the suite. Ensures the seeded aspirant exists and sanity
@@ -14,6 +15,8 @@ import { ensureSeededUser } from "./seedUser";
 export default async function globalSetup() {
   const env = readEnv();
   await ensureSeededUser();
+  await ensureAdminUser();
+  await verifyWorkspaceSeed();
 
   const admin = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
   const { data: tmpl, error } = await admin
