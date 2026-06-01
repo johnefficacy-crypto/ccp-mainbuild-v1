@@ -10,6 +10,10 @@ import { ensureSeededUser } from "./seedUser";
  * The mock CONTENT (template + questions) is applied out-of-band by
  * `app/supabase/seeds/e2e_fixtures.sql` (CI applies it during DB setup; locally
  * see docs/testing/e2e.md). We only verify it is present.
+ *
+ * Workspace-specific setup (admin user, workspace seed verification) is handled
+ * in each workspace spec's beforeAll to avoid failing the entire suite if the
+ * workspace seed has not been applied.
  */
 export default async function globalSetup() {
   const env = readEnv();
