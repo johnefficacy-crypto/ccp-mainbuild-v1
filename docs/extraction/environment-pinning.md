@@ -20,11 +20,15 @@ This produces divergent results that are hard to reason about:
 - Impact: the acceptance gate (recall ≥ 0.815) and any locally-run dry
   runs cannot be trusted as equivalent unless the environment is pinned.
 
-## Decision: TBD
+## Decision:
+Option A — CI dispatch only (no Dockerfile)
+## Decision: Option A — CI dispatch only
 
-Two viable strategies are on the table. The operator has not yet chosen one.
+For paper-grade extraction acceptance measurements, CI dispatch is the source of truth.
 
-### Option A — CI dispatch only (no Dockerfile)
+Local extractor runs are allowed only for debugging and preview. Local recall, question count, option count, bbox quality, and confidence metrics are not acceptance-gate numbers because local Tesseract/Leptonica builds can diverge from CI.
+
+This decision is intentionally lightweight until the extraction environment is Docker-pinned. A future Dockerfile may replace this decision when local and CI extraction can be made comparable.
 
 All paper-grade extraction runs are submitted as CI jobs (GitHub Actions).
 Local dry runs are permitted but explicitly not equivalent; recall measurements
