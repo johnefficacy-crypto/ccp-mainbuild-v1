@@ -164,6 +164,15 @@ def find_stem_end(
     * An MCQ footer: line text matches a footer pattern.
     * The next anchor candidate: first word within x-gate AND detect_ordinal succeeds.
     Returns len(lines) if no stop is found.
+
+    Option-label rule (two cases):
+    1. Left-edge option label (bbox[0] <= column_left_edge + _ANCHOR_X_GAP):
+       stop immediately.
+    2. Indented option label (outside the gate): scan forward to the next
+       question anchor or end of lines.  If a left-edge option label appears
+       before the terminator, the current line is a body enumerator inside a
+       matching-column stem — do not stop.  If no left-edge option is found,
+       the indented label is the genuine start of options — stop.
     """
     for i in range(anchor_idx + 1, len(lines)):
         line = lines[i]
@@ -179,12 +188,34 @@ def find_stem_end(
         text = _LEADING_NOISE_RE.sub('', ' '.join(w.text for w in line[ci:]))
 
         if _OPTION_RE.match(content_word.text):
-            # Any (a)/(b)/(c)/(d) line ends the stem, regardless of x-position.
-            # The left-edge gate belongs only in extract_options (Module B), where
-            # it filters genuine column-option markers from body enumerators when
-            # assembling the option tuple.  find_stem_end's job is solely to bound
-            # the stem region for bbox computation.
-            return i
+            if content_word.bbox[0] <= column_left_edge + _ANCHOR_X_GAP:
+                # Left-edge option label — stop immediately.
+                return i
+            # Indented option label: look ahead for a left-edge option label
+            # before the next question anchor.
+            found_left_edge_option = False
+            for j in range(i + 1, len(lines)):
+                jline = lines[j]
+                if not jline:
+                    continue
+                jci = 0
+                while jci < len(jline) and _NOISE_WORD_RE.match(jline[jci].text):
+                    jci += 1
+                if jci >= len(jline):
+                    continue
+                jcw = jline[jci]
+                if jcw.bbox[0] > column_left_edge + _ANCHOR_X_GAP:
+                    continue
+                # Left-edge token — determine which kind.
+                jtext = _LEADING_NOISE_RE.sub('', ' '.join(w.text for w in jline[jci:]))
+                if _OPTION_RE.match(jcw.text):
+                    found_left_edge_option = True
+                    break
+                if detect_ordinal(jtext) is not None:
+                    break  # next anchor reached; no left-edge option found
+            if not found_left_edge_option:
+                return i
+            # Body enumerator — continue scanning.
 
         for pat in _MCQ_FOOTER_RES:
             if pat.search(text):
