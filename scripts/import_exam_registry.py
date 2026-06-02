@@ -593,6 +593,8 @@ _STATE_ABBREVS = {
 
 def _extract_state_from_body(body: str) -> str | None:
     b = re.sub(r"\s*&\s*", " and ", body.lower())
+    if normalize_short_name(b) in {"UPSC", "SSC", "IBPS"}:
+        return None
     for state, slug_prefix in _STATE_ABBREVS.items():
         if state in b:
             return slug_prefix

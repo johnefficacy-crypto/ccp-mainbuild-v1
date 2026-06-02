@@ -251,6 +251,13 @@ class TestStripLeadingBodyFromExamName:
             assert "jammu-kashmir-jammu-kashmir-psc" not in slug
 
 
+# ── _extract_state_from_body ─────────────────────────────────────────────────
+
+class TestExtractStateFromBody:
+    def test_upsc_stays_national_not_uttar_pradesh(self):
+        assert _extract_state_from_body("UPSC") is None
+
+
 class TestExamSlug:
     def test_state_prefix_prepended(self):
         slug = exam_slug("andhra-pradesh", "Group I Services")
