@@ -14,7 +14,7 @@ function TopicItem({ group, selectedKeys, onToggle, onEdit }) {
   const [expanded, setExpanded] = useState(true);
   const topicLabel = group.matched_alias || group.topic_id;
   return (
-    <li role="treeitem" aria-expanded={expanded} className="mb-1">
+    <li role="treeitem" aria-expanded={expanded} aria-selected={false} className="mb-1">
       <div className="flex items-center gap-1">
         <button
           type="button"
