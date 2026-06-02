@@ -82,6 +82,43 @@ def exam_slug(state_prefix: str | None, exam_name: str) -> str:
     return f"{prefix}-{slugify(exam_name)}"
 
 
+def _strip_leading_body_from_exam_name(exam_name: str, conducting_body: str) -> str:
+    """Remove a leading conducting-body prefix from an exam-registry name.
+
+    Some workbook rows repeat the conducting body in the Exam column before a
+    visual separator, which would otherwise duplicate the state/PSC in slugs.
+    Treat ``&`` and ``and`` as equivalent in the body prefix, but only strip
+    when a known separator follows the matched body.
+    """
+    name = str(exam_name or "").strip()
+    body = str(conducting_body or "").strip()
+    if not name or not body:
+        return name
+
+    body_tokens = re.findall(r"[A-Za-z0-9]+|&", body)
+    if not body_tokens:
+        return name
+
+    body_parts = []
+    for token in body_tokens:
+        if token == "&" or token.lower() == "and":
+            body_parts.append(r"(?:&|and)")
+        else:
+            body_parts.append(re.escape(token))
+
+    body_pattern = r"\s*".join(body_parts)
+    separator_pattern = r"[-–—:|/→ù]"
+    match = re.match(
+        rf"^\s*{body_pattern}\s*{separator_pattern}+\s*(?P<rest>.+?)\s*$",
+        name,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return name
+
+    return match.group("rest").strip()
+
+
 # ── calendar_status derivation ────────────────────────────────────────────────
 
 _PUBLISHED_KWS = re.compile(
@@ -466,11 +503,12 @@ def process_exam_registry_sheet(
 
         # Determine state prefix: if conducting_body looks like a state PSC, extract state
         state_prefix = _extract_state_from_body(conducting_body)
-        e_slug = exam_slug(state_prefix, exam_name)
+        clean_exam_name = _strip_leading_body_from_exam_name(exam_name, conducting_body)
+        e_slug = exam_slug(state_prefix, clean_exam_name)
         exam_id = upsert_exam(
             sb,
             slug=e_slug,
-            name=exam_name,
+            name=clean_exam_name,
             exam_type="recruitment",
             conducting_org_id=org_id,
             dry_run=dry_run,
@@ -528,7 +566,7 @@ _STATE_ABBREVS = {
 
 
 def _extract_state_from_body(body: str) -> str | None:
-    b = body.lower()
+    b = re.sub(r"\s*&\s*", " and ", body.lower())
     for state, slug_prefix in _STATE_ABBREVS.items():
         if state in b:
             return slug_prefix

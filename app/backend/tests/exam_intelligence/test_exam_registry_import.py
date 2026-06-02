@@ -22,6 +22,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts"))
 
 from import_exam_registry import (
     _abbrev_from_name,
+    _extract_state_from_body,
+    _strip_leading_body_from_exam_name,
     derive_calendar_status,
     exam_slug,
     normalize_short_name,
@@ -116,6 +118,73 @@ class TestOrgDedupeKey:
 
 
 # ── exam slug ─────────────────────────────────────────────────────────────────
+
+
+# ── exam registry name cleanup ───────────────────────────────────────────────
+
+class TestStripLeadingBodyFromExamName:
+    def test_strips_mojibake_separator(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu & Kashmir PSC ù Civil Judge / Judicial Service",
+                "Jammu & Kashmir PSC",
+            )
+            == "Civil Judge / Judicial Service"
+        )
+
+    def test_strips_dash_separator(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu & Kashmir PSC - Combined Competitive Examination",
+                "Jammu & Kashmir PSC",
+            )
+            == "Combined Competitive Examination"
+        )
+
+    def test_strips_arrow_separator_with_and_variant(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu and Kashmir PSC → Departmental Examinations",
+                "Jammu & Kashmir PSC",
+            )
+            == "Departmental Examinations"
+        )
+
+    def test_does_not_modify_names_without_body_prefix(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Civil Judge / Judicial Service",
+                "Jammu & Kashmir PSC",
+            )
+            == "Civil Judge / Judicial Service"
+        )
+
+    def test_cleaned_names_generate_expected_jammu_kashmir_slugs(self):
+        cases = [
+            (
+                "Jammu & Kashmir PSC - Combined Competitive Examination",
+                "jammu-kashmir-combined-competitive-examination",
+            ),
+            (
+                "Jammu & Kashmir PSC ù Civil Judge / Judicial Service",
+                "jammu-kashmir-civil-judge-judicial-service",
+            ),
+            (
+                "Jammu and Kashmir PSC → Departmental Examinations",
+                "jammu-kashmir-departmental-examinations",
+            ),
+        ]
+        for exam_name, expected_slug in cases:
+            conducting_body = "Jammu & Kashmir PSC"
+            clean_exam_name = _strip_leading_body_from_exam_name(
+                exam_name, conducting_body
+            )
+            slug = exam_slug(_extract_state_from_body(conducting_body), clean_exam_name)
+
+            assert slug == expected_slug
+            assert "national-jammu-kashmir-psc" not in slug
+            assert "jammu-kashmir-jammu-kashmir-psc" not in slug
+
 
 class TestExamSlug:
     def test_state_prefix_prepended(self):
