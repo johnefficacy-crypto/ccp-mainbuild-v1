@@ -59,8 +59,6 @@ export default function BulkImportModal({ papers, initialPaperId, onClose }) {
     );
   }
 
-  const stepToRender = state.step === "committing" ? "committing" : state.step;
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
