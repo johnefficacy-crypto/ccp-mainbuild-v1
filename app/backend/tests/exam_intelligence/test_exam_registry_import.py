@@ -123,13 +123,31 @@ class TestOrgDedupeKey:
 # ── exam registry name cleanup ───────────────────────────────────────────────
 
 class TestStripLeadingBodyFromExamName:
-    def test_strips_mojibake_separator(self):
+    def test_strips_mojibake_separator_combined_competitive(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu & Kashmir PSC ù Combined Competitive Examination",
+                "Jammu & Kashmir Public Service Commission",
+            )
+            == "Combined Competitive Examination"
+        )
+
+    def test_strips_mojibake_separator_civil_judge(self):
         assert (
             _strip_leading_body_from_exam_name(
                 "Jammu & Kashmir PSC ù Civil Judge / Judicial Service",
                 "Jammu & Kashmir PSC",
             )
             == "Civil Judge / Judicial Service"
+        )
+
+    def test_strips_mojibake_separator_departmental(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu & Kashmir PSC ù Departmental Examinations",
+                "JKPSC",
+            )
+            == "Departmental Examinations"
         )
 
     def test_strips_dash_separator(self):
@@ -141,6 +159,26 @@ class TestStripLeadingBodyFromExamName:
             == "Combined Competitive Examination"
         )
 
+    def test_strips_jkpsc_dash_separator(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "JKPSC - Combined Competitive Examination",
+                "Jammu & Kashmir PSC",
+            )
+            == "Combined Competitive Examination"
+        )
+
+    def test_jkpsc_body_generates_jammu_kashmir_slug(self):
+        clean_exam_name = _strip_leading_body_from_exam_name(
+            "JKPSC - Combined Competitive Examination",
+            "JKPSC",
+        )
+        slug = exam_slug(_extract_state_from_body("JKPSC"), clean_exam_name)
+
+        assert slug == "jammu-kashmir-combined-competitive-examination"
+        assert "national-jammu-kashmir-psc" not in slug
+        assert "jammu-kashmir-jammu-kashmir-psc" not in slug
+
     def test_strips_arrow_separator_with_and_variant(self):
         assert (
             _strip_leading_body_from_exam_name(
@@ -148,6 +186,24 @@ class TestStripLeadingBodyFromExamName:
                 "Jammu & Kashmir PSC",
             )
             == "Departmental Examinations"
+        )
+
+    def test_strips_literal_unicode_escape_separator(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                r"Jammu & Kashmir PSC \u00f9 Departmental Examinations",
+                "Jammu & Kashmir PSC",
+            )
+            == "Departmental Examinations"
+        )
+
+    def test_strips_repeated_whitespace_separator(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu & Kashmir PSC   Combined Competitive Examination",
+                "Jammu & Kashmir PSC",
+            )
+            == "Combined Competitive Examination"
         )
 
     def test_does_not_modify_names_without_body_prefix(self):
@@ -159,10 +215,19 @@ class TestStripLeadingBodyFromExamName:
             == "Civil Judge / Judicial Service"
         )
 
+    def test_does_not_strip_single_space_after_psc(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "PSC Civil Services Aptitude Test",
+                "Jammu & Kashmir PSC",
+            )
+            == "PSC Civil Services Aptitude Test"
+        )
+
     def test_cleaned_names_generate_expected_jammu_kashmir_slugs(self):
         cases = [
             (
-                "Jammu & Kashmir PSC - Combined Competitive Examination",
+                "Jammu & Kashmir PSC ù Combined Competitive Examination",
                 "jammu-kashmir-combined-competitive-examination",
             ),
             (
@@ -170,7 +235,7 @@ class TestStripLeadingBodyFromExamName:
                 "jammu-kashmir-civil-judge-judicial-service",
             ),
             (
-                "Jammu and Kashmir PSC → Departmental Examinations",
+                "Jammu & Kashmir PSC ù Departmental Examinations",
                 "jammu-kashmir-departmental-examinations",
             ),
         ]
