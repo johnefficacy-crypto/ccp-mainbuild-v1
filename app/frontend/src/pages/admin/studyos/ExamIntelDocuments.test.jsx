@@ -108,11 +108,15 @@ test("link-to-syllabus opens a picker (no window.prompt) and links the selection
   // A picker appears — not a prompt.
   fireEvent.focus(await screen.findByTestId("doc-link-target-d1"));
   fireEvent.mouseDown(await screen.findByTestId("doc-link-target-d1-option-sd1"));
+  // link-to-syllabus requires a reason (>=8 chars) per LinkSyllabusRequest.
+  fireEvent.change(screen.getByTestId("doc-link-reason-d1"), {
+    target: { value: "Linking official syllabus PDF to CMS row" },
+  });
   fireEvent.click(screen.getByTestId("doc-link-confirm-d1"));
 
   await waitFor(() => expect(api.post).toHaveBeenCalledWith(
     expect.stringContaining("/d1/link-to-syllabus"),
-    expect.objectContaining({ syllabus_document_id: "sd1" }),
+    expect.objectContaining({ syllabus_document_id: "sd1", reason: "Linking official syllabus PDF to CMS row" }),
   ));
   expect(promptSpy).not.toHaveBeenCalled();
   promptSpy.mockRestore();

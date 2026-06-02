@@ -29,7 +29,7 @@ const ExamWorkspaceContext = require("../../ExamWorkspaceContext");
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const EXAM = { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" };
-const DOCS = [{ id: "doc-1", file_name: "Syllabus 2026.pdf" }];
+const DOCS = [{ id: "doc-1", title: "Syllabus 2026.pdf", document_type: "syllabus_pdf" }];
 
 const PROPOSALS = [
   {
@@ -106,6 +106,11 @@ function mockContextApi({ contextOk = true, readinessOk = true } = {}) {
     }
     if (url.includes("/documents/doc-1/pages/")) {
       return Promise.resolve({ text_content: "Arithmetic fundamentals and number theory." });
+    }
+    // DocumentSelector loads from the real CMS endpoint (syllabus-documents),
+    // not the old /workspace/{id}/documents path which does not exist.
+    if (url.includes("syllabus-documents")) {
+      return Promise.resolve({ items: DOCS });
     }
     if (url.includes("/documents")) {
       return Promise.resolve({ items: DOCS });
