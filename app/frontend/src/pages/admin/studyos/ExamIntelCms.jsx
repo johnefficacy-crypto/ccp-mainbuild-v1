@@ -98,6 +98,8 @@ const ENTITY_CONFIG = {
       { key: "total_questions", label: "total_questions", type: "int" },
       { key: "total_marks", label: "total_marks", type: "int" },
       { key: "status", label: "status (expected|active|completed|cancelled)" },
+      { key: "phase_start", label: "phase_start (dd-mm-yyyy)", type: "date", mode: "any" },
+      { key: "phase_end",   label: "phase_end (dd-mm-yyyy)",   type: "date", mode: "any" },
     ],
     columns: ["exam_id", "phase_name", "phase_order", "status"],
   },

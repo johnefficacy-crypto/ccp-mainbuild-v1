@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
+import DateField from "../../../../shared/ui/DateField";
+import { formatDDMMYYYY } from "../../../../shared/forms/dateFormat";
 
 function TrustBadge({ status }) {
   const map = {
@@ -24,12 +26,23 @@ function slugify(s) {
     .replace(/^-+|-+$/g, "");
 }
 
+function formatPhaseWindow(phase) {
+  if (phase.phase_start) {
+    const start = formatDDMMYYYY(phase.phase_start);
+    const end = phase.phase_end ? ` – ${formatDDMMYYYY(phase.phase_end)}` : "";
+    return start + end;
+  }
+  // Legacy freeform fallback for un-backfilled rows.
+  return phase.metadata?.phase_window ?? phase.phase_window ?? "TBD";
+}
+
 export default function SetupPanel() {
   const { exam, cycles, phases } = useExamWorkspace();
 
   const [addingPhase, setAddingPhase] = useState(false);
   const [pName, setPName] = useState("");
-  const [pWindow, setPWindow] = useState("");
+  const [pStart, setPStart] = useState(null);
+  const [pEnd, setPEnd] = useState(null);
   const [phaseOrder, setPhaseOrder] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
@@ -51,11 +64,12 @@ export default function SetupPanel() {
           phase_order: phaseOrder ? parseInt(phaseOrder, 10) : (phases.length + 1),
           // status enum: expected | active | completed | cancelled.
           status: "expected",
-          // phase_window is not a column — carry the display window in metadata.
-          metadata: { phase_window: pWindow.trim() || "TBD" },
+          phase_start: pStart || null,
+          phase_end: pEnd || null,
+          metadata: {},
         },
       });
-      setPName(""); setPWindow(""); setPhaseOrder(""); setAddingPhase(false);
+      setPName(""); setPStart(null); setPEnd(null); setPhaseOrder(""); setAddingPhase(false);
       // context will refetch on next load; prompt user to refresh
     } catch (e) {
       setSaveErr(e?.message || "Failed to add phase");
@@ -153,7 +167,7 @@ export default function SetupPanel() {
                 >
                   <div className="phase-num">PH-{i + 1}</div>
                   <div className="phase-name">{p.phase_name ?? p.name}</div>
-                  <div className="phase-count">{p.metadata?.phase_window ?? p.phase_window ?? "TBD"}</div>
+                  <div className="phase-count">{formatPhaseWindow(p)}</div>
                 </div>
               ))}
             </div>
@@ -177,13 +191,26 @@ export default function SetupPanel() {
               onChange={(e) => setPName(e.target.value)}
               autoFocus
             />
-            <input
-              className="input"
-              style={{ maxWidth: 240 }}
-              placeholder="Window (e.g. 24 May 2026)"
-              value={pWindow}
-              onChange={(e) => setPWindow(e.target.value)}
-            />
+            <div style={{ minWidth: 180 }}>
+              <DateField
+                value={pStart}
+                onChange={setPStart}
+                mode="any"
+                label="Phase start"
+                name="phase_start"
+                id="setup-phase-start"
+              />
+            </div>
+            <div style={{ minWidth: 180 }}>
+              <DateField
+                value={pEnd}
+                onChange={setPEnd}
+                mode="any"
+                label="Phase end"
+                name="phase_end"
+                id="setup-phase-end"
+              />
+            </div>
             <input
               className="input"
               style={{ maxWidth: 80 }}

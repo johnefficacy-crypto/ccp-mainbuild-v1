@@ -434,6 +434,7 @@ _PHASE_FIELDS = {
     "exam_id", "exam_cycle_id", "phase_name", "phase_slug", "phase_order",
     "mode", "duration_mins", "total_questions", "total_marks",
     "negative_marking", "status", "metadata",
+    "phase_start", "phase_end",
 }
 _PHASE_STATUSES = ("expected", "active", "completed", "cancelled")
 
