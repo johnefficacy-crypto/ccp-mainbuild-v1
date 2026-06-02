@@ -21,6 +21,7 @@ review_cadence: per-sprint
 ## In-flight
 
 - **AI chat response contract** — `/api/ai/chat` is now durable, but the frontend expects a text `reply` while the backend returns a shaped message object. Align the shape before production.
+- **Notification CTA route contract** — alert CTAs need a route matrix so every emitted link lands on an existing frontend route before launch.
 - **Placeholder/static runtime surfaces** — `placeholders.py` still mounts static/in-memory fallbacks for non-canonical surfaces and a few static admin endpoints. Gate or remove these in production.
 
 ## Real but rough
