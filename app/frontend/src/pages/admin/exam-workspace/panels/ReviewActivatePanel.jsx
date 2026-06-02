@@ -216,6 +216,34 @@ export default function ReviewActivatePanel({ onGotoTab }) {
         </div>
       </div>
 
+      {/* Created ≠ planner-ready callout — always visible so operators don't mistake
+          row existence for planner activation. */}
+      <div
+        className="card"
+        style={{ borderLeft: "3px solid var(--info)", padding: "10px 14px" }}
+        role="note"
+        aria-label="Planner readiness note"
+        data-testid="created-not-planner-ready-note"
+      >
+        <p className="csub" style={{ lineHeight: 1.6, margin: 0 }}>
+          <strong>Created ≠ planner-ready.</strong> An exam with rows in the
+          database is <em>not</em> automatically visible in Study OS. The planner
+          requires at least one topic-coverage row at{" "}
+          <span className="font-mono" style={{ fontSize: 11 }}>
+            locked
+          </span>{" "}
+          status (
+          <span className="font-mono" style={{ fontSize: 11 }}>
+            reviewed
+          </span>{" "}
+          is also accepted). Until that threshold is met, the exam shows{" "}
+          <span className="font-mono" style={{ fontSize: 11 }}>
+            planner_ready: false
+          </span>{" "}
+          to aspirants.
+        </p>
+      </div>
+
       {!canReview && (
         <div
           className="card"

@@ -21,7 +21,9 @@ from app.core.auth import (
 def _encode(payload: dict) -> str:
     # Unsigned token — the test stub's get_user ignores the signature and
     # the dependency only decodes for unverified claims.
-    return jwt.encode(payload, "", algorithm="HS256")
+    # PyJWT ≥2.13.0 rejects empty HMAC keys at encode time. The backend
+    # decodes with verify_signature=False so any non-empty key is fine.
+    return jwt.encode(payload, "test-secret", algorithm="HS256")
 
 
 class _FakeUser:
