@@ -101,11 +101,13 @@ export default function ExamDetail() {
   const [r, setR] = useState(null);
   const [examMeta, setExamMeta] = useState(null);
   const [error, setError] = useState("");
+  const [errorStatus, setErrorStatus] = useState(null);
   const [busy, setBusy] = useState(false);
 
   async function load() {
     try {
       setError("");
+      setErrorStatus(null);
       // 1. Validate the exam slug against /api/exams/:slug. This is the
       //    only endpoint that resolves exam slugs; calling
       //    /api/recruitments/<exam-slug> would return a real 404.
@@ -141,7 +143,8 @@ export default function ExamDetail() {
       const d = await api.get(`/api/recruitments/${recruitment.id}`);
       setR(d);
     } catch (e) {
-      setError("Couldn't load this exam.");
+      setErrorStatus(e?.status ?? null);
+      setError(e?.status === 404 ? "Exam not found." : "Couldn't load this exam.");
       if (process.env.NODE_ENV !== "production") console.error(e);
     }
   }
@@ -203,9 +206,11 @@ export default function ExamDetail() {
     return (
       <div className="soft-card rounded-2xl p-6 border border-destructive/30">
         <p className="text-sm">{error}</p>
-        <button type="button" onClick={load} className="btn btn-ghost mt-3">
-          Retry
-        </button>
+        {errorStatus !== 404 && (
+          <button type="button" onClick={load} className="btn btn-ghost mt-3">
+            Retry
+          </button>
+        )}
       </div>
     );
   }
