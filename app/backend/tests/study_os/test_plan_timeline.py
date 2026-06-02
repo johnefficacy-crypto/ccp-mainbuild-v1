@@ -176,7 +176,52 @@ def test_milestones_include_today_and_exam_day():
     kinds = [m["kind"] for m in out["milestones"]]
     assert "today" in kinds
     assert "exam" in kinds
-    assert "phase" in kinds  # exam_phases produce non-dated markers
+    assert "phase" in kinds
+
+
+def test_milestones_phase_date_none_without_structured():
+    """Phases without phase_start produce date=None, status='preview'."""
+    today = date.today()
+    exam_start = today + timedelta(days=60)
+    seed = _exam_seed()
+    seed.update(_plan_with_tasks(today, exam_start, completed=1, planned=4))
+    sb = SBStub(seed)
+    out = service.get_plan_timeline(sb, "u-1")
+    phase_ms = [m for m in out["milestones"] if m["kind"] == "phase"]
+    assert len(phase_ms) == 2
+    assert all(m["date"] is None for m in phase_ms)
+    assert all(m["status"] == "preview" for m in phase_ms)
+
+
+def test_milestones_use_phase_start_when_structured():
+    """phase_start populates the milestone date and correct past/upcoming status."""
+    today = date.today()
+    exam_start = today + timedelta(days=60)
+    seed = _exam_seed()
+    prelims_start = (today + timedelta(days=10)).isoformat()
+    seed["exam_phases"][0]["phase_start"] = prelims_start
+    seed.update(_plan_with_tasks(today, exam_start, completed=1, planned=4))
+    sb = SBStub(seed)
+    out = service.get_plan_timeline(sb, "u-1")
+    phase_ms = {m["phase_slug"]: m for m in out["milestones"] if m["kind"] == "phase"}
+    assert phase_ms["prelims"]["date"] == prelims_start
+    assert phase_ms["prelims"]["status"] == "upcoming"
+    # Phase without phase_start still gets date=None.
+    assert phase_ms["mains"]["date"] is None
+    assert phase_ms["mains"]["status"] == "preview"
+
+
+def test_milestones_phase_start_past_status():
+    """phase_start in the past produces status='past'."""
+    today = date.today()
+    exam_start = today + timedelta(days=60)
+    seed = _exam_seed()
+    seed["exam_phases"][0]["phase_start"] = (today - timedelta(days=5)).isoformat()
+    seed.update(_plan_with_tasks(today, exam_start, completed=1, planned=4))
+    sb = SBStub(seed)
+    out = service.get_plan_timeline(sb, "u-1")
+    phase_ms = {m["phase_slug"]: m for m in out["milestones"] if m["kind"] == "phase"}
+    assert phase_ms["prelims"]["status"] == "past"
 
 
 # ── API-level ────────────────────────────────────────────────────────────

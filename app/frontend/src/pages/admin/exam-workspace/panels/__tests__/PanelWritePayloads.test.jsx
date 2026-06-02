@@ -68,14 +68,15 @@ describe("SetupPanel.addPhase", () => {
     });
   });
 
-  test("sends reason≥8, phase_slug, status enum; no phase_window/state top-level", async () => {
+  test("sends reason≥8, phase_slug, status enum; phase_start/phase_end top-level", async () => {
     render(<SetupPanel />);
     fireEvent.click(screen.getByText("+ Add phase"));
     fireEvent.change(screen.getByPlaceholderText("Phase name"), {
       target: { value: "Prelims" },
     });
-    fireEvent.change(screen.getByPlaceholderText("Window (e.g. 24 May 2026)"), {
-      target: { value: "24 May 2026" },
+    // Enter a date into the Phase start DateField (dd-mm-yyyy format).
+    fireEvent.change(screen.getByLabelText(/phase start/i), {
+      target: { value: "24-05-2026" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add phase" }));
 
@@ -92,9 +93,11 @@ describe("SetupPanel.addPhase", () => {
     // W3: status enum, not state
     expect(VALID_PHASE_STATUSES).toContain(body.payload.status);
     expect(body.payload).not.toHaveProperty("state");
-    // W3: phase_window not top-level — lives in metadata jsonb
+    // W3: structured dates sent top-level; no freeform phase_window
     expect(body.payload).not.toHaveProperty("phase_window");
-    expect(body.payload.metadata).toEqual({ phase_window: "24 May 2026" });
+    expect(body.payload.phase_start).toBe("2026-05-24");
+    expect(body.payload.phase_end).toBeNull();
+    expect(body.payload.metadata).toEqual({});
   });
 
   test("trust: phase create never requests verified/locked", async () => {

@@ -167,7 +167,7 @@ def _load_phases(supabase: Any, exam_id: str, cycle_id: str | None) -> list[dict
     rows = _safe(
         lambda: (
             supabase.table("exam_phases")
-            .select("id, phase_name, phase_slug, phase_order, status")
+            .select("id, phase_name, phase_slug, phase_order, status, phase_start, phase_end")
             .eq("exam_id", exam_id)
             .eq("exam_cycle_id", cycle_id)
             .order("phase_order")
@@ -333,13 +333,12 @@ def _build_milestones(
                 "status": "past" if exam_start < today else "upcoming",
             })
     for p in phases:
-        # exam_phases doesn't carry per-phase dates in this schema — surface
-        # the name as a non-dated marker so the UI can still list them.
+        phase_date = _to_date(p.get("phase_start"))
         items.append({
             "kind": "phase",
             "label": p.get("phase_name") or p.get("phase_slug") or "Phase",
-            "date": None,
-            "status": "preview",
+            "date": _iso(phase_date),
+            "status": ("past" if phase_date < today else "upcoming") if phase_date else "preview",
             "phase_slug": p.get("phase_slug"),
             "phase_order": p.get("phase_order"),
         })
