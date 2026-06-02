@@ -1,7 +1,7 @@
 ---
 owner: ops
 status: live
-last_verified_against_code: 2026-05-16
+last_verified_against_code: 2026-06-02
 source_of_truth: code
 related_code:
   - app/backend
@@ -15,3 +15,4 @@ review_cadence: per-sprint
 | path | owner | status | last verified | action |
 |---|---|---|---|---|
 | docs/* | mixed | live/proposal/archived | 2026-05-16 | Reorganized into domain folders |
+| docs/audits/production-readiness-review-2026-06-02.md | ops | live | 2026-06-02 | Production deployability blockers and contract-risk evidence |
