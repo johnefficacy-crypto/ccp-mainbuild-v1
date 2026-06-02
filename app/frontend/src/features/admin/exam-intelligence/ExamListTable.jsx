@@ -8,7 +8,7 @@ const READINESS_STATUS = {
   not_ready: "missing",
 };
 
-export default function ExamListTable({ items, onSelect }) {
+export default function ExamListTable({ items }) {
   const rows = Array.isArray(items) ? items : [];
   if (!rows.length) {
     return (
@@ -53,23 +53,13 @@ export default function ExamListTable({ items, onSelect }) {
                 />
               </td>
               <td className="right">
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onSelect && onSelect(e)}
-                    className="text-[11px] px-3 py-1 rounded-full bg-[#2E2218] text-[#F3EADB] font-semibold"
-                    data-testid={`exam-intel-review-${e.slug}`}
-                  >
-                    Pending review →
-                  </button>
-                  <Link
-                    to={`/admin/exam-intelligence/workspace/${e.id}`}
-                    className="text-[11px] px-3 py-1 rounded-full border border-indigo-300 text-indigo-700 font-semibold hover:bg-indigo-50"
-                    data-testid={`exam-intel-workspace-${e.slug}`}
-                  >
-                    Open workspace
-                  </Link>
-                </div>
+                <Link
+                  to={`/admin/exam-intelligence/workspace/${e.id}`}
+                  className="text-[11px] px-3 py-1 rounded-full border border-indigo-300 text-indigo-700 font-semibold hover:bg-indigo-50"
+                  data-testid={`exam-intel-workspace-${e.slug}`}
+                >
+                  Open workspace
+                </Link>
               </td>
             </tr>
           ))}

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
-  Award, Bell, Bot, BookText, ChevronDown, Copyright as CopyrightIcon, CreditCard, Database, ExternalLink,
+  Award, Bell, Bot, ChevronDown, Copyright as CopyrightIcon, CreditCard, Database, ExternalLink,
   FileSearch, Files, Flag, GaugeCircle, GraduationCap, LayoutGrid, LineChart,
   NotebookPen, Library, ClipboardList, Upload,
   LogOut, Menu, MessagesSquare, Network, Radar, ScrollText, ShieldCheck,
@@ -47,7 +47,6 @@ const STUDY_OS = [
   { to: "/admin/study-os/mocks", label: "Mock Trust", icon: Award, testId: "admin-nav-studyos-mocks" },
   { to: "/admin/study-os/reports", label: "Report Jobs", icon: NotebookPen, testId: "admin-nav-studyos-reports" },
   { to: "/admin/study-os/social", label: "Social Admin", icon: Network, testId: "admin-nav-studyos-social" },
-  { to: "/admin/study-os/exam-intel-cms", label: "Exam Intel CMS", icon: BookText, testId: "admin-nav-studyos-exam-intel-cms" },
   { to: "/admin/study-os/content-access", label: "Content Access (4-eyes)", icon: ShieldCheck, testId: "admin-nav-studyos-content-access" },
 ];
 
@@ -75,6 +74,18 @@ const SECTIONS = [
   { id: "mock-content", label: "Mock Content", items: MOCK_CONTENT, defaultOpen: false },
   { id: "safety", label: "Safety", items: SAFETY, defaultOpen: false },
 ];
+
+function getPageTitle(pathname) {
+  for (const section of SECTIONS) {
+    for (const item of section.items) {
+      const matches = item.end
+        ? pathname === item.to
+        : pathname === item.to || pathname.startsWith(`${item.to}/`);
+      if (matches) return item.label;
+    }
+  }
+  return "Admin operations console";
+}
 
 function formatSync(now) {
   const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -216,6 +227,7 @@ export default function AdminShell() {
   const toggleSection = (id) => setOpenMap((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const sync = useMemo(() => formatSync(now), [now]);
+  const pageTitle = getPageTitle(location.pathname);
   const userEmail = auth.user?.email || "admin";
   const userRole = auth.user?.role || "admin";
   const userHandle = userEmail.includes("@") ? userEmail.split("@")[0] : userEmail;
@@ -263,7 +275,7 @@ export default function AdminShell() {
               <div className="min-w-0">
                 <div className="lbl">Career Copilot · admin</div>
                 <h1 className="oc-title disp" style={{ fontSize: "22px", marginTop: "2px" }}>
-                  Admin operations console
+                  {pageTitle}
                 </h1>
               </div>
             </div>
