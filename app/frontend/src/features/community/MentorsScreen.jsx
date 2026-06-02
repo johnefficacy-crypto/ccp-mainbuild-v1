@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
+import { ENABLE_DEMO_DATA } from "../../shared/config/env";
 import { MENTORS, MENTOR_EARNINGS, MENTOR_SESSIONS } from "./data";
 import {
   FieldAvatar,
@@ -63,14 +64,15 @@ function MentorBadgeTag({ badge }) {
 export default function MentorsScreen() {
   const [view, setView] = useState("browse");
   const [activeMentor, setActiveMentor] = useState(null);
-  const [mentors, setMentors] = useState(SEED_MENTORS);
-  const [sessions, setSessions] = useState(MENTOR_SESSIONS);
+  const [mentors, setMentors] = useState(ENABLE_DEMO_DATA ? SEED_MENTORS : []);
+  const [sessions, setSessions] = useState(ENABLE_DEMO_DATA ? MENTOR_SESSIONS : []);
   const [earnings, setEarnings] = useState(MENTOR_EARNINGS);
+  const [mentorsError, setMentorsError] = useState(false);
 
   const reloadSessions = useCallback(async () => {
     try {
       const d = await api.get("/api/community/mentor-sessions");
-      if (Array.isArray(d?.items) && d.items.length) {
+      if (Array.isArray(d?.items)) {
         setSessions(
           d.items.map((s, i) => ({
             ...s,
@@ -78,7 +80,9 @@ export default function MentorsScreen() {
           })),
         );
       }
-    } catch {}
+    } catch {
+      if (!ENABLE_DEMO_DATA) setSessions([]);
+    }
   }, []);
 
   useEffect(() => {
@@ -89,7 +93,12 @@ export default function MentorsScreen() {
         if (cancelled || !Array.isArray(d?.items) || d.items.length === 0) return;
         setMentors(d.items.map((m, i) => adaptMentor(m, i)));
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          if (!ENABLE_DEMO_DATA) setMentors([]);
+          setMentorsError(true);
+        }
+      });
     reloadSessions();
     return () => {
       cancelled = true;
@@ -123,6 +132,12 @@ export default function MentorsScreen() {
           />
         }
       />
+
+      {mentorsError && (
+        <div role="alert" className="rounded-md border border-field-danger/40 bg-field-danger/10 px-4 py-3 text-[13px] text-field-danger mb-4">
+          Could not load mentors — check your connection and refresh.
+        </div>
+      )}
 
       {view === "browse" ? (
         <>
