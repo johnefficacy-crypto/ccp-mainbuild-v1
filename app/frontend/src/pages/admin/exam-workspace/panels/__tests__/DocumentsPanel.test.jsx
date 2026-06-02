@@ -1,0 +1,342 @@
+/**
+ * Tests for DocumentsPanel.
+ *
+ * Covers:
+ * - loading state (skeleton)
+ * - empty state ("Upload syllabus PDF to enable Syllabus Mapper" + upload form inline)
+ * - error state on list fetch failure
+ * - populated state (linked-docs table renders)
+ * - full upload → complete → poll → link-to-syllabus round trip:
+ *     POST upload-url → PUT bytes (fetch) → POST complete-upload
+ *     → in-flight row appears → link form → POST link-to-syllabus
+ *     → in-flight row removed, syllabus-documents refetched (unblocks mapper)
+ * - link-to-pyq-paper path: picker fetches existing papers
+ * - upload form rejects non-PDF files
+ * - Refresh button re-fetches the list
+ *
+ * Implementation note: useExamWorkspace is mocked directly so the test has
+ * stable exam/cycle values without the async ExamWorkspaceProvider fetch chain
+ * (which would race against panel state transitions).
+ */
+import React from "react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+
+jest.mock("../../../../../lib/api", () => ({
+  __esModule: true,
+  api: { get: jest.fn(), post: jest.fn() },
+}));
+
+jest.mock("../../ExamWorkspaceContext", () => ({
+  useExamWorkspace: () => ({
+    exam:   { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" },
+    cycle:  null,
+    cycles: [{ id: "cy-1", exam_id: "exam-1", year: 2026, cycle_name: "2026" }],
+    phases: [],
+  }),
+}));
+
+const { api } = require("../../../../../lib/api");
+const DocumentsPanel = require("../DocumentsPanel").default;
+
+// ── Fixtures ──────────────────────────────────────────────────────────────────
+
+const SYL_DOC = {
+  id: "syl-1", exam_id: "exam-1", title: "SSC CGL Syllabus 2026",
+  document_type: "syllabus_pdf", trust_status: "pending",
+  created_at: "2026-01-15T10:00:00Z",
+};
+const PYQ_PAPER = { id: "pyq-1", exam_id: "exam-1", year: 2025, paper_code: "Tier-I", shift: "S1" };
+
+// ── Setup helpers ─────────────────────────────────────────────────────────────
+
+function mockEmptyLists() {
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers"))         return Promise.resolve({ items: [] });
+    return Promise.resolve({ items: [] });
+  });
+}
+
+function mockPopulatedLists() {
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [SYL_DOC] });
+    if (url.includes("pyq-papers"))         return Promise.resolve({ items: [] });
+    return Promise.resolve({ items: [] });
+  });
+}
+
+function renderPanel(props = {}) {
+  return render(<DocumentsPanel {...props} />);
+}
+
+beforeEach(() => {
+  jest.resetAllMocks();
+  global.fetch = jest.fn(() => Promise.resolve({ ok: true, status: 200 }));
+});
+
+// ── 1. Loading state ──────────────────────────────────────────────────────────
+
+test("shows loading skeleton while list fetch is in flight", () => {
+  // Never resolves → loading stays true
+  api.get.mockImplementation(() => new Promise(() => {}));
+  renderPanel();
+  expect(screen.getByTestId("docs-loading")).toBeTruthy();
+});
+
+// ── 2. Empty state ────────────────────────────────────────────────────────────
+
+test("empty state: shows actionable copy and upload form inline; no 'Exam CMS' redirect text", async () => {
+  mockEmptyLists();
+  renderPanel();
+
+  await waitFor(() => screen.getByTestId("docs-empty"));
+  expect(screen.getByTestId("docs-empty-title").textContent).toBe(
+    "Upload syllabus PDF to enable Syllabus Mapper",
+  );
+  // Upload form must be visible without clicking a toggle button
+  expect(screen.getByTestId("doc-upload-form")).toBeTruthy();
+  // Must NOT suggest going to a separate Exam CMS page
+  expect(screen.queryByText(/Exam CMS/)).toBeNull();
+});
+
+// ── 3. Error state ────────────────────────────────────────────────────────────
+
+test("error state: shows error message when list fetch rejects", async () => {
+  api.get.mockRejectedValue(new Error("network timeout"));
+  renderPanel();
+
+  await waitFor(() => screen.getByTestId("docs-list-error"));
+  expect(screen.getByTestId("docs-list-error").textContent).toMatch(/network timeout/i);
+});
+
+// ── 4. Populated state ────────────────────────────────────────────────────────
+
+test("populated state: renders linked-docs table with syllabus row", async () => {
+  mockPopulatedLists();
+  renderPanel();
+
+  await waitFor(() => screen.getByTestId("docs-populated"));
+  expect(screen.getByTestId("linked-docs-table")).toBeTruthy();
+  expect(screen.getByTestId(`linked-doc-row-${SYL_DOC.id}`)).toBeTruthy();
+  expect(screen.getByText("SSC CGL Syllabus 2026")).toBeTruthy();
+});
+
+// ── 5. Full upload → complete → poll → link-to-syllabus round trip ─────────────
+
+test("upload → complete-upload → in-flight row → link-to-syllabus → linked list reloads", async () => {
+  // POST mocks
+  api.post.mockImplementation((url) => {
+    if (url.endsWith("/upload-url")) {
+      return Promise.resolve({
+        document_id: "doc-new",
+        upload_url:  "https://storage.test/p?sig=abc",
+        upload_token: "tok",
+      });
+    }
+    if (url.endsWith("/complete-upload")) {
+      return Promise.resolve({ ok: true, text_extract_enqueued: true });
+    }
+    if (url.includes("/link-to-syllabus")) {
+      return Promise.resolve({ ok: true, audit_id: "aud-1", syllabus_document: SYL_DOC });
+    }
+    return Promise.resolve({ ok: true });
+  });
+
+  // GET mocks: lists start empty, then after link the reload returns the doc
+  let syllabusCalls = 0;
+  api.get.mockImplementation((url) => {
+    if (url.includes("documents/doc-new")) {
+      return Promise.resolve({
+        document: { id: "doc-new", status: "processing" },
+        pages_count: 0,
+        extraction: { status: "running" },
+      });
+    }
+    if (url.includes("syllabus-documents")) {
+      syllabusCalls++;
+      return Promise.resolve({ items: syllabusCalls >= 2 ? [SYL_DOC] : [] });
+    }
+    if (url.includes("pyq-papers")) return Promise.resolve({ items: [] });
+    return Promise.resolve({ items: [] });
+  });
+
+  renderPanel();
+  await waitFor(() => screen.getByTestId("doc-upload-form"));
+
+  // Fill upload form
+  fireEvent.change(screen.getByTestId("doc-kind"), { target: { value: "syllabus" } });
+  const file = new File(
+    [new Uint8Array([37, 80, 68, 70])],
+    "syllabus-2026.pdf",
+    { type: "application/pdf" },
+  );
+  fireEvent.change(screen.getByTestId("doc-file"), { target: { files: [file] } });
+
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("doc-upload-submit"));
+  });
+
+  // Steps 1+2+3: verify the three sequential API calls
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith(
+      expect.stringContaining("/upload-url"),
+      expect.objectContaining({ exam_id: "exam-1", document_kind: "syllabus" }),
+    ),
+  );
+  expect(global.fetch).toHaveBeenCalledWith(
+    "https://storage.test/p?sig=abc",
+    expect.objectContaining({ method: "PUT" }),
+  );
+  expect(api.post).toHaveBeenCalledWith(
+    expect.stringContaining("/complete-upload"),
+    expect.objectContaining({ document_id: "doc-new" }),
+  );
+
+  // In-flight row appears
+  await waitFor(() => screen.getByTestId("inflight-row-doc-new"));
+
+  // Open link form
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("doc-link-open-doc-new"));
+  });
+  await waitFor(() => screen.getByTestId("doc-link-form-doc-new"));
+
+  // Reason too short → validation error
+  fireEvent.change(screen.getByTestId("doc-link-reason-doc-new"), {
+    target: { value: "short" },
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("doc-link-submit-doc-new"));
+  });
+  await waitFor(() => screen.getByTestId("doc-link-err-doc-new"));
+
+  // Valid reason → link succeeds
+  fireEvent.change(screen.getByTestId("doc-link-reason-doc-new"), {
+    target: { value: "Linking official SSC CGL syllabus 2026" },
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("doc-link-submit-doc-new"));
+  });
+
+  // Step 5: link-to-syllabus called without syllabus_document_id (creates new row)
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith(
+      expect.stringContaining("doc-new/link-to-syllabus"),
+      expect.objectContaining({ reason: "Linking official SSC CGL syllabus 2026" }),
+    ),
+  );
+  // No syllabus_document_id should be in the payload (auto-create)
+  const linkCall = api.post.mock.calls.find((c) => c[0].includes("link-to-syllabus"));
+  expect(linkCall[1].syllabus_document_id).toBeUndefined();
+
+  // In-flight row removed after link
+  await waitFor(() =>
+    expect(screen.queryByTestId("inflight-row-doc-new")).toBeNull(),
+  );
+
+  // syllabus-documents was refetched after link (unblocks DocumentSelector / Mapper)
+  expect(
+    api.get.mock.calls.filter((c) => c[0].includes("syllabus-documents")).length,
+  ).toBeGreaterThanOrEqual(2);
+});
+
+// ── 6. link-to-pyq-paper path ──────────────────────────────────────────────────
+
+test("link-to-pyq-paper: fetches papers list for picker and posts correct payload", async () => {
+  api.post.mockImplementation((url) => {
+    if (url.endsWith("/upload-url"))     return Promise.resolve({ document_id: "doc-pyq", upload_url: "https://s.test/x", upload_token: "t" });
+    if (url.endsWith("/complete-upload")) return Promise.resolve({ ok: true });
+    if (url.includes("/link-to-pyq-paper")) return Promise.resolve({ ok: true, audit_id: "a2", pyq_paper: PYQ_PAPER });
+    return Promise.resolve({ ok: true });
+  });
+
+  // First pyq-papers call is the panel's list load (returns empty → shows upload form).
+  // Second call is openLink's picker fetch (returns the paper).
+  let pyqCallCount = 0;
+  api.get.mockImplementation((url) => {
+    if (url.includes("documents/doc-pyq")) return Promise.resolve({ document: { id: "doc-pyq", status: "processing" }, pages_count: 0, extraction: { status: "running" } });
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers")) {
+      pyqCallCount++;
+      return Promise.resolve({ items: pyqCallCount >= 2 ? [PYQ_PAPER] : [] });
+    }
+    return Promise.resolve({ items: [] });
+  });
+
+  renderPanel();
+  await waitFor(() => screen.getByTestId("doc-upload-form"));
+
+  // Upload a pyq_paper
+  fireEvent.change(screen.getByTestId("doc-kind"), { target: { value: "pyq_paper" } });
+  const file = new File([new Uint8Array([37, 80])], "pyq-2025.pdf", { type: "application/pdf" });
+  fireEvent.change(screen.getByTestId("doc-file"), { target: { files: [file] } });
+  await act(async () => { fireEvent.click(screen.getByTestId("doc-upload-submit")); });
+
+  await waitFor(() => screen.getByTestId("inflight-row-doc-pyq"));
+
+  // Open link form (triggers pyq-papers fetch internally)
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("doc-link-open-doc-pyq"));
+  });
+  await waitFor(() => screen.getByTestId("doc-link-form-doc-pyq"));
+  // Picker should be populated after async fetch
+  await waitFor(() => screen.getByTestId("doc-link-pyq-select-doc-pyq"));
+
+  fireEvent.change(screen.getByTestId("doc-link-pyq-select-doc-pyq"), {
+    target: { value: PYQ_PAPER.id },
+  });
+  fireEvent.change(screen.getByTestId("doc-link-reason-doc-pyq"), {
+    target: { value: "Linking Tier-I 2025 PYQ paper" },
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("doc-link-submit-doc-pyq"));
+  });
+
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith(
+      expect.stringContaining("doc-pyq/link-to-pyq-paper"),
+      expect.objectContaining({
+        reason:       "Linking Tier-I 2025 PYQ paper",
+        pyq_paper_id: PYQ_PAPER.id,
+      }),
+    ),
+  );
+});
+
+// ── 7. Upload form rejects non-PDF ────────────────────────────────────────────
+
+test("upload form rejects non-PDF files with inline error", async () => {
+  mockEmptyLists();
+  renderPanel();
+
+  await waitFor(() => screen.getByTestId("doc-upload-form"));
+
+  const txtFile = new File(["text"], "doc.txt", { type: "text/plain" });
+  fireEvent.change(screen.getByTestId("doc-file"), { target: { files: [txtFile] } });
+
+  // Click submit — handleSubmit is synchronous up to the validation check
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("doc-upload-submit"));
+  });
+
+  // Error div should appear
+  await waitFor(() => screen.getByTestId("doc-upload-err"), { timeout: 3000 });
+  expect(screen.getByTestId("doc-upload-err").textContent).toMatch(/pdf/i);
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+// ── 8. Refresh re-fetches the list ────────────────────────────────────────────
+
+test("Refresh button re-fetches the linked docs list", async () => {
+  mockPopulatedLists();
+  renderPanel();
+  await waitFor(() => screen.getByTestId("docs-populated"));
+
+  const before = api.get.mock.calls.filter((c) => c[0].includes("syllabus-documents")).length;
+  fireEvent.click(screen.getByTestId("doc-refresh"));
+  await waitFor(() =>
+    expect(
+      api.get.mock.calls.filter((c) => c[0].includes("syllabus-documents")).length,
+    ).toBeGreaterThan(before),
+  );
+});

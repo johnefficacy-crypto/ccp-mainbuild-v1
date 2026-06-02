@@ -68,12 +68,16 @@ export default function UpdatesPanel() {
     setError("");
     try {
       await api.post("/api/admin/exam-intelligence-cms/policy-updates", {
+        reason: "Add policy update via workspace updates panel",
         payload: {
           exam_id: exam?.id || null,
+          // update_type is required and must be in _POLICY_UPDATE_TYPES
+          // (admin_exam_intel_cms.py:1256). "notification_change" is the
+          // generic default for an operator-entered update.
+          update_type: "notification_change",
           title: newTitle.trim(),
           source_url: newSource.trim() || null,
           source_type: newKind,
-          reviewer_status: "pending",
         },
       });
       setNewTitle(""); setNewSource(""); setNewKind("official"); setAdding(false);
