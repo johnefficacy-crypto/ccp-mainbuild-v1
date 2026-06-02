@@ -228,20 +228,15 @@ export default function ReviewActivatePanel({ onGotoTab }) {
         <p className="csub" style={{ lineHeight: 1.6, margin: 0 }}>
           <strong>Created ≠ planner-ready.</strong> An exam with rows in the
           database is <em>not</em> automatically visible in Study OS. The planner
-          reads only{" "}
+          requires at least one topic-coverage row at{" "}
           <span className="font-mono" style={{ fontSize: 11 }}>
             locked
           </span>{" "}
-          topic-coverage rows (
+          status (
           <span className="font-mono" style={{ fontSize: 11 }}>
             reviewed
           </span>{" "}
-          also accepted, locked preferred). Until at least one coverage row
-          reaches{" "}
-          <span className="font-mono" style={{ fontSize: 11 }}>
-            locked
-          </span>
-          , the exam shows{" "}
+          is also accepted). Until that threshold is met, the exam shows{" "}
           <span className="font-mono" style={{ fontSize: 11 }}>
             planner_ready: false
           </span>{" "}
