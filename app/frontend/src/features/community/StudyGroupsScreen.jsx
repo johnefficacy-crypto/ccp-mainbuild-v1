@@ -32,6 +32,7 @@ export default function StudyGroupsScreen() {
   const [hasLiveGroups, setHasLiveGroups] = useState(false);
   const [hasLiveRooms, setHasLiveRooms] = useState(false);
   const [groupsError, setGroupsError] = useState(false);
+  const [roomsError, setRoomsError] = useState(false);
   const [activeId, setActiveId] = useState((ENABLE_DEMO_DATA ? STUDY_GROUPS : [])[0]?.id || null);
 
   useEffect(() => {
@@ -63,6 +64,7 @@ export default function StudyGroupsScreen() {
       .catch(() => {
         if (!cancelled) {
           if (!ENABLE_DEMO_DATA) setRooms([]);
+          setRoomsError(true);
         }
       });
     return () => {
