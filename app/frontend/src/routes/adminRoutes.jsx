@@ -34,6 +34,7 @@ const AdminStudyOsReports = lazy(() => import("../pages/admin/studyos/Reports"))
 const AdminStudyOsSocial = lazy(() => import("../pages/admin/studyos/Social"));
 const AdminPyqPaperWorkspace = lazy(() => import("../pages/admin/studyos/PyqPaperWorkspace"));
 const AdminExamWorkspace = lazy(() => import("../pages/admin/exam-workspace/ExamWorkspace"));
+const AdminExamIntelCms = lazy(() => import("../pages/admin/studyos/ExamIntelCms"));
 const AdminContentAccessRequests = lazy(() => import("../pages/admin/studyos/ContentAccessRequests"));
 const AdminGroupsConsole = lazy(() => import("../pages/admin/community/GroupsConsole"));
 const AdminPartnersConsole = lazy(() => import("../pages/admin/community/PartnersConsole"));
@@ -72,6 +73,7 @@ export const adminRouteElements = (
     <Route path="/admin/ai-policy" element={<AdminAIPolicy />} />
     <Route path="/admin/persona" element={<AdminPersona />} />
     <Route path="/admin/exam-intelligence" element={<AdminExamIntelligence />} />
+    <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
     <Route path="/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace" element={<AdminPyqPaperWorkspace />} />
     <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<AdminExamWorkspace />} />
     <Route path="/admin/exam-intelligence/workspace/:exam_id/:cycle_id" element={<AdminExamWorkspace />} />

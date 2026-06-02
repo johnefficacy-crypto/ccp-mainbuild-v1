@@ -43,6 +43,11 @@ import { api } from "../../../lib/api";
 import AdminExamIntelligence from "../ExamIntelligence";
 import AdminShell from "../AdminShell";
 
+jest.mock("../studyos/ExamIntelCms", () => ({
+  __esModule: true,
+  default: () => <div data-testid="exam-intel-cms-page">CMS page</div>,
+}));
+
 beforeEach(() => {
   api.get.mockResolvedValue({ items: [], count: 0 });
   try { window.localStorage.setItem("cc-admin-nav-open", "1"); } catch { /* ignore */ }
@@ -136,6 +141,45 @@ test("AdminShell header shows dynamic page title for exam-intelligence", () => {
   const h1 = screen.getByRole("heading", { level: 1 });
   expect(h1.textContent).toBe("Exam Intelligence");
   expect(h1.textContent).not.toBe("Admin operations console");
+});
+
+// ── 5a. /admin/exam-intelligence/cms route renders ExamIntelCms ──
+
+test("cms route renders ExamIntelCms", async () => {
+  const { Suspense } = require("react");
+  const AdminExamIntelCms = require("../studyos/ExamIntelCms").default;
+  render(
+    <MemoryRouter initialEntries={["/admin/exam-intelligence/cms"]}>
+      <Routes>
+        <Route
+          path="/admin/exam-intelligence/cms"
+          element={
+            <Suspense fallback={null}>
+              <AdminExamIntelCms />
+            </Suspense>
+          }
+        />
+      </Routes>
+    </MemoryRouter>,
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("exam-intel-cms-page")).toBeTruthy(),
+  );
+});
+
+// ── 5b. ExamIntelligence page shows Create / Import CMS link ──
+
+test("ExamIntelligence page has Create / Import CMS link to /admin/exam-intelligence/cms", async () => {
+  api.get.mockResolvedValue({ items: [], count: 0 });
+  render(
+    <MemoryRouter initialEntries={["/admin/exam-intelligence"]}>
+      <AdminExamIntelligence />
+    </MemoryRouter>,
+  );
+  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  const link = screen.getByTestId("exam-intel-cms-link");
+  expect(link).toBeTruthy();
+  expect(link.getAttribute("href")).toBe("/admin/exam-intelligence/cms");
 });
 
 // ── 5. Exam Intel CMS entry is absent from the Study OS sidebar group ──
