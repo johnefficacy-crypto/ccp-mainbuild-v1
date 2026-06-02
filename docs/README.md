@@ -1,7 +1,7 @@
 ---
 owner: ops
 status: live
-last_verified_against_code: 2026-05-16
+last_verified_against_code: 2026-06-02
 source_of_truth: code
 related_code:
   - app/backend
@@ -12,7 +12,7 @@ review_cadence: per-sprint
 
 # Career Copilot — Docs
 
-_Last updated: 2026-05-09_
+_Last updated: 2026-06-02_
 
 This directory is the single source of context for the product, engineering strategy, and operations of Career Copilot.
 
@@ -32,6 +32,7 @@ This directory is the single source of context for the product, engineering stra
 | What has been built (current truth) | [operations/implementation-checklist.md](operations/implementation-checklist.md) |
 | How to operate the system (runbook) | [operations/runbook.md](operations/runbook.md) |
 | Manual click-through review discipline (process) | [process/click_through_review.md](process/click_through_review.md) |
+| Production readiness blockers and contract risks | [audits/production-readiness-review-2026-06-02.md](audits/production-readiness-review-2026-06-02.md) |
 | AI/agent context summary | [00-ai-context.md](00-ai-context.md) |
 | Build history and past sprint reports | [history/README.md](history/README.md) |
 
