@@ -114,6 +114,139 @@ Exam can be considered planner-ready only when all are true:
 - policy rows with `affects_*` true are official+verified;
 - discovery policy rows remain non-impacting (`affects_*` all false).
 
+## UPSC CSE 2024 — Concrete Workflow
+
+### Template location
+
+```
+app/supabase/seeds/imports/upsc_cse_2024_import_template.sql
+```
+
+This file covers all 19 tables in FK-safe order. Every row defaults to
+`pending`/`pending_review`/`draft` trust states. No row is planner-ready
+on first apply.
+
+### Step 1 — Fill placeholders
+
+Open the template and replace every `<placeholder>` with a real value:
+
+- UUID fields: generate with `python3 -c "import uuid; print(uuid.uuid4())"` or `select gen_random_uuid()` in psql. Keep a local record of each UUID.
+- Date fields: copy verbatim from the official UPSC notification at `upsc.gov.in`. Never guess or interpolate.
+- `source_url` fields: paste the direct URL to the official document. If the URL is not yet public, leave the field as `null` and note `"awaiting_official_release"` in the `review_notes`/`reviewer_notes` jsonb.
+- PYQ rows (§14–16): the template ships those as commented-out examples. Uncomment and populate only when you have a verified official question paper source.
+
+### Step 2 — Apply the template
+
+```bash
+psql "$DATABASE_URL" -f app/supabase/seeds/imports/upsc_cse_2024_import_template.sql
+```
+
+Verify the transaction committed (no `ROLLBACK` in output).
+
+### Step 3 — Non-strict validation (PASS/WARN/FAIL report, exits 0)
+
+```bash
+python app/backend/scripts/validate_exam_intelligence_seed.py --exam-slug upsc-cse
+```
+
+Expected result immediately after apply:
+- **PASS**: exam + cycle + phase rows present; taxonomy rows present.
+- **WARN**: topic coverage is `pending_review`, not `locked` — expected at this stage.
+- **WARN**: PYQ sections empty if question rows are still commented out — expected.
+- **FAIL**: any required FK missing, any `affects_* = true` on a non-official/non-verified row.
+
+Resolve all FAILs before continuing.
+
+### Step 4 — Review in Exam Workspace UI
+
+Open: `/admin/exam-intelligence/workspace/<upsc-cse-exam-uuid>`
+
+Use the **Readiness & Activation** panel to see per-section blockers:
+- `setup` — exam + cycle + phases present
+- `documents` — syllabus doc uploaded + extraction status
+- `syllabus_mapper` — mention rows in `pending` → promote to `reviewed` after checking source
+- `pyq_workbench` — paper + question + tag rows; promote tags after verifying mapping rationale
+- `competition` — competition metrics row; promote to `reviewed`/`locked` after evidence confirmed
+- `updates` — policy rows; promote official rows to `verified` after source confirmed
+
+The panel copy explicitly states **"created ≠ planner-ready"** — do not confuse row existence with planner activation.
+
+### Step 5 — Promote statuses via PATCH (never via direct SQL in production)
+
+**Topic coverage** (required for planner):
+```
+PATCH /api/admin/exam-intelligence/topic-coverage/<id>/review
+Body: {"reviewer_status": "reviewed"}    # after first human review
+Body: {"reviewer_status": "locked"}      # after full evidence chain confirmed
+```
+`reviewer_status` CHECK on `exam_topic_coverage` (migration 030):
+`draft | pending_review | reviewed | locked | rejected`
+
+**Policy updates** (official-only, after evidence confirmed):
+```
+PATCH /api/admin/exam-intelligence/policy-updates/<id>/review
+Body: {"reviewer_status": "verified"}
+```
+Then, and only then, set `affects_*` flags via a second PATCH if the update
+genuinely affects plan/deadline/eligibility/documents/syllabus/vacancy.
+
+**Competition metrics**:
+```
+PATCH /api/admin/exam-intelligence/competition-metrics/<id>/review
+Body: {"reviewer_status": "reviewed"}    # or "locked"
+```
+`reviewer_status` CHECK on `exam_competition_metrics` (migration 055):
+`draft | pending_review | reviewed | locked | rejected`
+Note: `verified` is **not** valid for competition metrics or topic coverage.
+Use `locked` (planner-preferred) or `reviewed`. See AGENTS.md §11.
+
+### Step 6 — Strict validation (exits non-zero on hard failures)
+
+```bash
+python app/backend/scripts/validate_exam_intelligence_seed.py --exam-slug upsc-cse --strict
+```
+
+**Interpretation:**
+| Output | Meaning |
+|--------|---------|
+| `PASS` (all sections) | Safe to enable planner reliance |
+| `WARN` on coverage | Coverage exists but not yet `locked`; planner will not use it |
+| `WARN` on PYQ | PYQ rows present but not fully verified; Study OS will not surface them |
+| `FAIL` | Hard failure — FK violation, illegal `affects_*` flag, or missing required row |
+| exit code 0 | Non-strict run always exits 0; check output for FAIL lines manually |
+| exit code ≠ 0 | Strict run: at least one FAIL present; do not enable planner reliance |
+
+### Step 7 — Verify endpoints
+
+After strict validation passes, confirm the aspirant-facing contract:
+
+```bash
+# Exam listed and active
+curl -H "Authorization: Bearer <token>" "$API_URL/api/exams" | jq '.items[] | select(.slug=="upsc-cse")'
+
+# Exam detail returns shaped exam
+curl -H "Authorization: Bearer <token>" "$API_URL/api/exams/upsc-cse"
+
+# Exam intelligence returns partial/empty gracefully pre-review (must not 500)
+curl -H "Authorization: Bearer <token>" "$API_URL/api/exam-intelligence/exams/upsc-cse"
+
+# Study OS exam list includes upsc-cse
+curl -H "Authorization: Bearer <token>" "$API_URL/api/study/exams"
+```
+
+A 404 on `/api/exams/upsc-cse` is a **missing-row 404** (the route exists at
+`app/backend/app/api/exams.py:188`). It means the `exams` table has no row
+with `slug='upsc-cse'` — apply the template to fix it.
+
+### Step 8 — Planner readiness confirmation
+
+`planner_ready` on a Study OS exam is `true` only when:
+1. `exams.is_active = true`; AND
+2. at least one `exam_topic_coverage` row with `reviewer_status = 'locked'` exists for this exam.
+
+Until both are true, the Study OS planner shows the exam as not ready and the
+`/api/study/exams` response will have `planner_ready: false`.
+
 ## Column-name inconsistency
 
 - `exam_topic_coverage.review_notes`
