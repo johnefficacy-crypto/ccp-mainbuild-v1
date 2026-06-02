@@ -36,9 +36,14 @@ function formatPhaseWindow(phase) {
   return phase.metadata?.phase_window ?? phase.phase_window ?? "TBD";
 }
 
+function legacyWindow(phase) {
+  return phase.metadata?.phase_window || phase.phase_window || null;
+}
+
 export default function SetupPanel() {
   const { exam, cycles, phases } = useExamWorkspace();
 
+  // ── add-phase form ──────────────────────────────────────────────────────
   const [addingPhase, setAddingPhase] = useState(false);
   const [pName, setPName] = useState("");
   const [pStart, setPStart] = useState(null);
@@ -46,6 +51,28 @@ export default function SetupPanel() {
   const [phaseOrder, setPhaseOrder] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
+
+  // ── worklist: inline patch state per phase id ───────────────────────────
+  // { [id]: { start: ISO|null, end: ISO|null, saving: bool, err: string } }
+  const [patchEdits, setPatchEdits] = useState({});
+  // Track phase IDs that were successfully dated this session so they drop
+  // out of the worklist without a full context refetch.
+  const [datedPhaseIds, setDatedPhaseIds] = useState(new Set());
+
+  function editFor(id) {
+    return patchEdits[id] ?? { start: null, end: null, saving: false, err: "" };
+  }
+  function setEdit(id, updates) {
+    setPatchEdits(prev => ({ ...prev, [id]: { ...editFor(id), ...updates } }));
+  }
+
+  // Worklist: phases that have a legacy window string but no structured start
+  // date. Keyed off phase_start IS NULL — not the phase_window_needs_review
+  // flag, which has a known hole for TBD/excluded rows.
+  const legacyWindowPhases = phases.filter(p => legacyWindow(p));
+  const needsDates = legacyWindowPhases.filter(
+    p => !p.phase_start && !datedPhaseIds.has(p.id)
+  );
 
   async function addPhase() {
     if (!pName.trim()) return;
@@ -75,6 +102,23 @@ export default function SetupPanel() {
       setSaveErr(e?.message || "Failed to add phase");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function patchPhaseDate(phase) {
+    const edit = editFor(phase.id);
+    setEdit(phase.id, { saving: true, err: "" });
+    try {
+      await api.patch(`/api/admin/exam-intelligence-cms/exam-phases/${phase.id}`, {
+        reason: "Set structured phase dates via worklist",
+        payload: {
+          phase_start: edit.start || null,
+          phase_end: edit.end || null,
+        },
+      });
+      setDatedPhaseIds(prev => new Set([...prev, phase.id]));
+    } catch (e) {
+      setEdit(phase.id, { saving: false, err: e?.message || "Failed to save" });
     }
   }
 
@@ -234,6 +278,93 @@ export default function SetupPanel() {
           </div>
         )}
       </div>
+
+      {/* Phases needing dates — worklist keyed off phase_start IS NULL */}
+      {legacyWindowPhases.length > 0 && (
+        <div className="card" data-testid="phase-date-worklist">
+          <div className="card-head">
+            <h3 className="oc-title">Phases needing dates</h3>
+            <span className="anno">
+              {needsDates.length === 0
+                ? "All phases have structured dates ✓"
+                : `${needsDates.length} phase${needsDates.length !== 1 ? "s" : ""} without a structured start date`}
+            </span>
+          </div>
+          {needsDates.length === 0 ? (
+            <div className="card-body">
+              <div className="empty" style={{ padding: "12px 0" }}>
+                <div className="empty-title" data-testid="worklist-all-dated">
+                  All phases have structured dates
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="card-body">
+              {needsDates.map(phase => {
+                const edit = editFor(phase.id);
+                return (
+                  <div
+                    key={phase.id}
+                    data-testid={`worklist-row-${phase.id}`}
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 10,
+                      alignItems: "flex-start",
+                      padding: "10px 0",
+                      borderBottom: "1px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ minWidth: 160, flex: "0 0 auto" }}>
+                      <div className="field-lbl">{phase.phase_name ?? phase.name}</div>
+                      <div
+                        className="row-sub"
+                        data-testid={`worklist-legacy-${phase.id}`}
+                        style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}
+                      >
+                        Legacy: {legacyWindow(phase)}
+                      </div>
+                    </div>
+                    <div style={{ minWidth: 170 }}>
+                      <DateField
+                        value={edit.start}
+                        onChange={v => setEdit(phase.id, { start: v })}
+                        mode="any"
+                        label="Phase start"
+                        name={`worklist-phase-start-${phase.id}`}
+                        id={`worklist-phase-start-${phase.id}`}
+                      />
+                    </div>
+                    <div style={{ minWidth: 170 }}>
+                      <DateField
+                        value={edit.end}
+                        onChange={v => setEdit(phase.id, { end: v })}
+                        mode="any"
+                        label="Phase end"
+                        name={`worklist-phase-end-${phase.id}`}
+                        id={`worklist-phase-end-${phase.id}`}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end", paddingTop: 20 }}>
+                      <button
+                        className="btn primary small"
+                        data-testid={`worklist-save-${phase.id}`}
+                        onClick={() => patchPhaseDate(phase)}
+                        disabled={edit.saving || !edit.start}
+                      >
+                        {edit.saving ? "Saving…" : "Set dates"}
+                      </button>
+                      {edit.err && (
+                        <span className="err-row" style={{ fontSize: 11 }}>{edit.err}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Exam info */}
       <div className="card">
