@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
 import { useAuth } from "../../lib/authContext";
+import { ENABLE_DEMO_DATA } from "../../shared/config/env";
 import { COMMUNITY_USERS, RESOURCES } from "./data";
 import {
   FieldAvatar,
@@ -38,7 +39,8 @@ export default function ResourcesScreen() {
   const [type, setType] = useState("all");
   const [trust, setTrust] = useState("all");
   const [exam, setExam] = useState(defaultExam);
-  const [items, setItems] = useState(RESOURCES);
+  const [items, setItems] = useState(ENABLE_DEMO_DATA ? RESOURCES : []);
+  const [resourcesError, setResourcesError] = useState(false);
   const [contributeOpen, setContributeOpen] = useState(false);
   const [reportFor, setReportFor] = useState(null);
   const { run } = useApiAction();
@@ -48,9 +50,13 @@ export default function ResourcesScreen() {
       const cleanedEntries = Object.entries(params).filter(([, v]) => v && v !== "all");
       const qs = new URLSearchParams(cleanedEntries).toString();
       const d = await api.get(`/api/community/resources${qs ? `?${qs}` : ""}`);
-      if (Array.isArray(d?.items)) setItems(d.items);
+      if (Array.isArray(d?.items)) {
+        setItems(d.items);
+        setResourcesError(false);
+      }
     } catch {
-      // Keep seed visible.
+      if (!ENABLE_DEMO_DATA) setItems([]);
+      setResourcesError(true);
     }
   }, []);
 
@@ -115,6 +121,12 @@ export default function ResourcesScreen() {
           </FieldButton>
         }
       />
+
+      {resourcesError && (
+        <div role="alert" className="rounded-md border border-field-danger/40 bg-field-danger/10 px-4 py-3 text-[13px] text-field-danger mb-4">
+          Could not load resources — check your connection and refresh.
+        </div>
+      )}
 
       <LaneFilter lane={lane} setLane={setLane} />
 

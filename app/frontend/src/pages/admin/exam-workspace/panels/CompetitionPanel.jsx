@@ -53,16 +53,20 @@ export default function CompetitionPanel() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function verifyMetric(id) {
+  async function lockMetric(id) {
     setBusyId(id);
     setError("");
     try {
+      // Competition review uses the coverage lifecycle
+      // (draft|pending_review|reviewed|locked|rejected) — "verified" is not a
+      // valid status here and 422s. Only "locked" rows feed competition_context
+      // in Study OS, so the promote action locks the row directly.
       await api.patch(`${EI_BASE}/competition-metrics/${encodeURIComponent(id)}/review`, {
-        reviewer_status: "verified",
+        reviewer_status: "locked",
       });
       await load();
     } catch (e) {
-      setError(e?.message || "Verify failed");
+      setError(e?.message || "Lock failed");
     } finally {
       setBusyId(null);
     }
@@ -253,13 +257,13 @@ export default function CompetitionPanel() {
                     </td>
                     <td><TrustBadge status={m.reviewer_status ?? "pending"} /></td>
                     <td style={{ textAlign: "right" }}>
-                      {m.reviewer_status !== "verified" && m.reviewer_status !== "locked" && (
+                      {m.reviewer_status !== "locked" && (
                         <button
                           className="btn small primary"
                           disabled={busyId === m.id}
-                          onClick={() => verifyMetric(m.id)}
+                          onClick={() => lockMetric(m.id)}
                         >
-                          {busyId === m.id ? "…" : "Verify"}
+                          {busyId === m.id ? "…" : "Lock"}
                         </button>
                       )}
                     </td>

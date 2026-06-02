@@ -756,7 +756,13 @@ async def reports_mock_trend(days: int = 90, user: dict = Depends(get_current_us
 @router.get("/reports/mistakes")
 async def reports_mistakes(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
     sb = get_supabase_admin(); user_id = user.get("id")
-    rows = (sb.table("attempt_question_analytics").select("error_type, topic_id, question_id").eq("user_id", user_id).limit(5000).execute().data or [])
+    try:
+        rows = (sb.table("attempt_question_analytics").select("error_type, topic_id, question_id").eq("user_id", user_id).limit(5000).execute().data or [])
+    except Exception as exc:
+        _msg = str(exc)
+        if "PGRST205" in _msg or "attempt_question_analytics" in _msg:
+            return {"items": [], "degraded": True, "reason": "attempt_question_analytics_missing"}
+        raise
     agg = {}
     for r in rows:
         e = r.get("error_type") or "unknown"; a = agg.setdefault(e,{"error_type":e,"count":0,"topics":{},"recent_question_ids":[]}); a["count"] += 1
