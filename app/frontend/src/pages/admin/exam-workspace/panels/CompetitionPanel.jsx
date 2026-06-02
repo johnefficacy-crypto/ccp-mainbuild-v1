@@ -72,17 +72,24 @@ export default function CompetitionPanel() {
     setSavingNew(true);
     setError("");
     try {
+      // Allowed fields = _COMPETITION_FIELDS (admin_exam_intel_cms.py:1366).
+      // Column names are vacancy_total / applicant_count (not vacancies /
+      // total_applicants); source_url is not a column, so it rides in
+      // metadata. reviewer_status is server-controlled (lands 'draft').
       const payload = {
         exam_id: exam?.id || null,
         exam_cycle_id: cycle?.id || null,
-        reviewer_status: "pending",
-        source_url: form.source_url.trim() || null,
         cutoff_trend: form.cutoff_trend,
         difficulty_trend: form.difficulty_trend,
       };
-      if (form.vacancies) payload.vacancies = parseInt(form.vacancies, 10);
-      if (form.applicants) payload.total_applicants = parseInt(form.applicants.replace(/,/g, ""), 10);
-      await api.post(`${CMS_BASE}/exam-topic-coverage`, { payload });
+      if (form.vacancies) payload.vacancy_total = parseInt(form.vacancies, 10);
+      if (form.applicants) payload.applicant_count = parseInt(form.applicants.replace(/,/g, ""), 10);
+      const sourceUrl = form.source_url.trim();
+      if (sourceUrl) payload.metadata = { source_url: sourceUrl };
+      await api.post(`${CMS_BASE}/exam-competition-metrics`, {
+        reason: "Add competition metric via workspace panel",
+        payload,
+      });
       setAdding(false);
       setForm({ vacancies: "", applicants: "", cutoff_trend: "rising", difficulty_trend: "harder", source_url: "" });
       await load();
@@ -229,14 +236,14 @@ export default function CompetitionPanel() {
               {metrics.map((m) => {
                 const ratio =
                   m.applicant_ratio ??
-                  (m.vacancies && m.total_applicants
-                    ? (m.total_applicants / m.vacancies).toFixed(0) + ":1"
+                  (m.vacancy_total && m.applicant_count
+                    ? (m.applicant_count / m.vacancy_total).toFixed(0) + ":1"
                     : "—");
                 return (
                   <tr key={m.id}>
                     <td className="row-sub">{m.exam_cycle_id ?? cycle?.cycle_name ?? "—"}</td>
-                    <td className="num">{m.vacancies?.toLocaleString() ?? "—"}</td>
-                    <td className="num">{m.total_applicants?.toLocaleString() ?? "—"}</td>
+                    <td className="num">{m.vacancy_total?.toLocaleString() ?? "—"}</td>
+                    <td className="num">{m.applicant_count?.toLocaleString() ?? "—"}</td>
                     <td className="num">{ratio}</td>
                     <td>
                       <span className="badge neutral no-dot">{m.cutoff_trend ?? "—"}</span>
