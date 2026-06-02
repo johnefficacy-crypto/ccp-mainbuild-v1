@@ -101,7 +101,7 @@ const ENTITY_CONFIG = {
       { key: "phase_start", label: "phase_start (dd-mm-yyyy)", type: "date", mode: "any" },
       { key: "phase_end",   label: "phase_end (dd-mm-yyyy)",   type: "date", mode: "any" },
     ],
-    columns: ["exam_id", "phase_name", "phase_order", "status"],
+    columns: ["exam_id", "phase_name", "phase_order", "status", "phase_start"],
   },
   "syllabus-documents": {
     label: "Syllabus documents",
