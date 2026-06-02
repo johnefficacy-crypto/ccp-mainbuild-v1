@@ -224,8 +224,7 @@ single scheduler instance.
 
 ## Data/schema notes
 
-- Confirmed mismatch: active subscription uniqueness is documented in backend
-  comments but not enforced by the migration.
+- Remediation status on current branch: fixed by `app/supabase/migrations/164_subscription_active_unique_index.sql`, which cancels older duplicate active/past_due rows and recreates `user_subscriptions_user_active_idx` as a unique partial index.
 - Confirmed alignment: migration `151` makes `auth.users.raw_app_meta_data.role`
   the canonical admin source, matching backend role direction.
 - Confirmed persistence: AI conversations/messages have durable tables and RLS in
@@ -244,7 +243,7 @@ single scheduler instance.
 ### Day 1–2
 
 1. Fix AI chat response shape.
-2. Add unique active-subscription schema guard.
+2. Completed on current branch: add unique active-subscription schema guard.
 3. Replace silent frontend catches with visible error states.
 4. Production-gate placeholder routes.
 5. Add deploy/runtime documentation for CORS, env, scheduler, OCR, Supabase, and
@@ -257,6 +256,13 @@ single scheduler instance.
    and admin moderation/copyright.
 2. Add route inventory tests proving every `/api/admin/*` route has backend auth.
 3. Add public route abuse controls and monitoring evidence.
+
+## Remediation status on current branch
+
+- **PR-001 — Protect Blog/CMS admin API:** fixed after the original audit. Admin blog reads now require `require_admin`; create/update/publish/archive now require `require_permission("blogs.manage")`; `app/backend/tests/test_blogs_admin_auth.py` covers missing auth, normal-user denial, admin list/read, and content-admin mutations.
+- **PR-002 — Make backend startup independent of missing Tesseract:** fixed after the original audit. The OCR wrapper no longer validates the Tesseract binary at module import; OCR calls check lazily and raise a deterministic `TesseractUnavailableError`; E2E now installs `tesseract-ocr` and `tesseract-ocr-eng`; `app/backend/tests/test_server_import.py` pins server import and OCR-missing error behavior.
+- **PR-003 — Add active subscription unique partial index:** fixed after the original audit. Migration `164_subscription_active_unique_index.sql` deduplicates active/past_due rows before recreating the active-subscription guard as a unique partial index, and `app/backend/tests/test_subscription_active_invariant.py` pins the migration shape.
+- Remaining items in the plan are still launch blockers/risks until their implementation PRs land.
 
 ## Parallel execution-ready PR plan
 
@@ -276,6 +282,7 @@ readable.
   this audit confirm `/api/admin/blogs*` admin routes lack backend auth.
 - **Work:** Add `Depends(require_admin)` or `Depends(require_permission("blogs.manage"))`
   to every admin blog route.
+- **Status on current branch:** fixed.
 - **Acceptance:** unauthenticated callers get 401/403; normal users get 403;
   admins can list/read; authorized content admins can create/update/publish/archive;
   tests cover `GET`, `POST`, `PUT`, `publish`, and `archive`.
@@ -295,12 +302,14 @@ readable.
 - **Work:** Prefer lazy-loading OCR inside OCR-specific extraction paths rather
   than server import. Also install `tesseract-ocr` and `tesseract-ocr-eng` in any
   runtime where OCR is enabled.
+- **Status on current branch:** fixed.
 - **Acceptance:** `python -c "import server; print('ok')"` passes without Tesseract
   when OCR is disabled; OCR endpoint/job returns a clear 503/config error when the
   binary is missing; E2E/runtime image installs Tesseract when OCR is expected.
 
 #### PR-003 — Add active subscription unique partial index
 
+- **Status on current branch:** fixed by `app/supabase/migrations/164_subscription_active_unique_index.sql` and pinned by `app/backend/tests/test_subscription_active_invariant.py`.
 - **Branch:** `fix/subscription-active-unique-index`
 - **Priority:** P1, revenue-critical
 - **Parallel:** yes, but coordinate with payment tests
@@ -308,9 +317,9 @@ readable.
   `app/backend/app/api/payments.py`, `app/backend/tests/test_subscription_active_invariant.py`
 - **Evidence:** backend comments claim `user_subscriptions_user_active_idx` is a
   partial unique index, but migration `014` creates a plain non-unique index.
-- **Work:** Add a forward migration that detects/resolves duplicates for
-  `status in ('active','past_due')`, then creates a unique partial index:
-  `create unique index if not exists user_subscriptions_user_active_unique_idx on public.user_subscriptions(user_id) where status in ('active','past_due');`
+- **Work:** completed on the current branch by detecting/resolving duplicates for
+  `status in ('active','past_due')`, then recreating `user_subscriptions_user_active_idx`
+  as a unique partial index.
 - **Acceptance:** the DB rejects two active/past_due subscriptions for one user;
   payment verify/webhook tests still pass; duplicate active rows are resolved
   safely before index creation.

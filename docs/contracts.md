@@ -54,9 +54,7 @@ The following cross-surface contracts are known exceptions and must be fixed bef
 
 | Surface | Frontend expectation | Backend behavior | Status | Required fix |
 |---|---|---|---|---|
-| Blog CMS admin | `app/frontend/src/pages/admin/Blogs.jsx` calls `/api/admin/blogs*` as an admin-only CMS surface. | `app/backend/app/api/blogs.py` exposes list/read/create/update/publish/archive without backend auth dependencies. | P0 security mismatch | Add `require_admin` or `require_permission("blogs.manage")` to every admin blog route and add 401/403 tests. |
 | AI chat | `app/frontend/src/pages/AIChat.jsx` stores `r.reply` as renderable text. | `app/backend/app/api/ai.py` returns `reply` as a shaped message object. | P1 shape mismatch | Return a string `reply`/`reply_text` or update the frontend to render `reply.content`. |
-| Subscription activation | Backend comments say a partial unique index prevents multiple active subscriptions. | `app/supabase/migrations/014_payments_runtime_schema.sql` creates a non-unique active-subscription index. | P1 schema invariant mismatch | Add a forward migration with a unique partial index after deduplicating existing active rows. |
 | Marketplace/community failure states | Pages should distinguish backend failure from empty/locked/seed data. | Several callers swallow errors or keep seed data. | P1 operational risk | Render explicit error states and reserve fallback seed data for prototype/demo mode. |
 | Notification CTAs | Notification UI should route users only to mounted app pages. | Alert generation/link emission must normalize to `/app/eligibility/exams/:slug`, `/app/eligibility/recruitments/:id`, `/app/eligibility/tracker`, or `/app/profile`. | P1 route contract risk | Add a route matrix test covering all alert types. |
 

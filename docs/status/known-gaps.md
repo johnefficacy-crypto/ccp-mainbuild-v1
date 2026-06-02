@@ -15,8 +15,13 @@ review_cadence: per-sprint
 
 ## Production-readiness blockers (verified 2026-06-02)
 
-- **Unauthenticated Blog CMS admin API** — `/api/admin/blogs*` is registered as an admin surface but the backend routes in `app/backend/app/api/blogs.py` do not require `require_admin`, `require_permission`, or an equivalent dependency. See [production readiness review](../audits/production-readiness-review-2026-06-02.md).
-- **Backend startup depends on the Tesseract OS binary** — `server.py` imports the exam-intelligence document router, which reaches `ocr.py`; `ocr.py` raises at import time if `tesseract` is missing. Ensure every runtime image and E2E install the OS package, or lazy-load OCR. See [production readiness review](../audits/production-readiness-review-2026-06-02.md).
+- No P0 production-readiness blockers from Wave 0 PR-001/PR-002 remain open on the current branch; remaining P1 contract/runtime-hardening items remain below.
+
+## Recently resolved
+
+- **Blog CMS admin API backend auth** — `/api/admin/blogs*` now requires backend auth: reads use `require_admin`, and create/update/publish/archive use `require_permission("blogs.manage")`. Regression tests cover unauthenticated, normal-user, admin-read, and content-admin mutation paths.
+- **OCR/Tesseract startup guard** — importing `server.py` is no longer blocked by a missing Tesseract binary; OCR checks happen lazily at OCR call time, and E2E installs `tesseract-ocr` / `tesseract-ocr-eng` for OCR-enabled runtime coverage.
+- **Subscription active-row invariant** — migration `164_subscription_active_unique_index.sql` retires duplicate active/past_due rows and recreates `user_subscriptions_user_active_idx` as a unique partial index.
 
 ## In-flight
 
@@ -28,7 +33,6 @@ review_cadence: per-sprint
 
 - **Real LLM provider behind `/api/ai/chat`** — scripted replies today; durable conversation/message persistence exists, but model/provider integration and response-copy accuracy remain pending.
 - **Marketplace / community error handling** — several pages silently suppress API failures or keep seed data, which can mask broken production data paths.
-- **Subscription active-row invariant** — backend comments describe a unique active-subscription guard, but the current migration creates a non-unique index. Add a forward migration for a unique partial index.
 - **Downloadable Reports** — PDF generation still queued only; CSV/JSON work inline. Needs a worker.
 - **Leadership KPIs** — recompute is admin-triggered today; nightly snapshot job not yet scheduled.
 - **Supabase Auth invite delivery** — `/admin/users/create` writes an audit log but doesn't yet send the email invite. Hook this into the existing notifications dispatcher.

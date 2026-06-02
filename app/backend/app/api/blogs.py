@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.core.auth import require_admin, require_permission
 from app.db.supabase_client import get_supabase_admin
 
 router = APIRouter(tags=["blogs"])
@@ -70,6 +71,7 @@ def admin_list_blogs(
     status: str | None = Query(default=None),
     missing_seo: bool = Query(default=False),
     missing_cta: bool = Query(default=False),
+    _admin: dict = Depends(require_admin),
 ):
     sb = get_supabase_admin()
     query = sb.table("blog_posts").select("*").order("updated_at", desc=True)
@@ -86,7 +88,7 @@ def admin_list_blogs(
 
 
 @admin_router.get("/{blog_id}")
-def admin_get_blog(blog_id: int):
+def admin_get_blog(blog_id: int, _admin: dict = Depends(require_admin)):
     sb = get_supabase_admin()
     row = sb.table("blog_posts").select("*").eq("id", blog_id).limit(1).execute().data
     if not row:
@@ -95,7 +97,10 @@ def admin_get_blog(blog_id: int):
 
 
 @admin_router.post("")
-def admin_create_blog(payload: BlogPostUpsert):
+def admin_create_blog(
+    payload: BlogPostUpsert,
+    _admin: dict = Depends(require_permission("blogs.manage")),
+):
     sb = get_supabase_admin()
     body = payload.model_dump()
     body["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -106,7 +111,11 @@ def admin_create_blog(payload: BlogPostUpsert):
 
 
 @admin_router.put("/{blog_id}")
-def admin_update_blog(blog_id: int, payload: BlogPostUpsert):
+def admin_update_blog(
+    blog_id: int,
+    payload: BlogPostUpsert,
+    _admin: dict = Depends(require_permission("blogs.manage")),
+):
     sb = get_supabase_admin()
     body = payload.model_dump()
     body["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -119,7 +128,10 @@ def admin_update_blog(blog_id: int, payload: BlogPostUpsert):
 
 
 @admin_router.post("/{blog_id}/publish")
-def admin_publish_blog(blog_id: int):
+def admin_publish_blog(
+    blog_id: int,
+    _admin: dict = Depends(require_permission("blogs.manage")),
+):
     sb = get_supabase_admin()
     now = datetime.now(timezone.utc).isoformat()
     updated = sb.table("blog_posts").update({"status": "published", "published_at": now, "updated_at": now}).eq("id", blog_id).execute().data
@@ -129,7 +141,10 @@ def admin_publish_blog(blog_id: int):
 
 
 @admin_router.post("/{blog_id}/archive")
-def admin_archive_blog(blog_id: int):
+def admin_archive_blog(
+    blog_id: int,
+    _admin: dict = Depends(require_permission("blogs.manage")),
+):
     sb = get_supabase_admin()
     now = datetime.now(timezone.utc).isoformat()
     updated = sb.table("blog_posts").update({"status": "archived", "updated_at": now}).eq("id", blog_id).execute().data
