@@ -23,6 +23,11 @@ export default function useNotifications(filters) {
       const d = await api.get(`/api/notifications/me${q ? `?${q}` : ""}`);
       return Array.isArray(d?.items) ? d.items : [];
     },
+    // Notifications are time-sensitive: refetch when the user returns to the
+    // tab or reconnects so the unread badge and list stay current.
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   const markReadMutation = useMutation({
