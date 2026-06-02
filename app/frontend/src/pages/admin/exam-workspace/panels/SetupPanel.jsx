@@ -14,6 +14,16 @@ function TrustBadge({ status }) {
   return <span className={b.cls}>{b.text}</span>;
 }
 
+// exam_phases.phase_slug is a required column with no server-side default —
+// it must be sent explicitly (see _PHASE_FIELDS, admin_exam_intel_cms.py:433).
+function slugify(s) {
+  return String(s || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export default function SetupPanel() {
   const { exam, cycles, phases } = useExamWorkspace();
 
@@ -30,14 +40,19 @@ export default function SetupPanel() {
     setSaveErr("");
     try {
       const activeCycle = cycles.find((c) => c.status === "active") || cycles[0];
+      const name = pName.trim();
       await api.post("/api/admin/exam-intelligence-cms/exam-phases", {
+        reason: "Add exam phase via workspace setup panel",
         payload: {
           exam_id: exam?.id,
           exam_cycle_id: activeCycle?.id || null,
-          phase_name: pName.trim(),
-          phase_window: pWindow || "TBD",
+          phase_name: name,
+          phase_slug: slugify(name),
           phase_order: phaseOrder ? parseInt(phaseOrder, 10) : (phases.length + 1),
-          state: "upcoming",
+          // status enum: expected | active | completed | cancelled.
+          status: "expected",
+          // phase_window is not a column — carry the display window in metadata.
+          metadata: { phase_window: pWindow.trim() || "TBD" },
         },
       });
       setPName(""); setPWindow(""); setPhaseOrder(""); setAddingPhase(false);
@@ -133,12 +148,12 @@ export default function SetupPanel() {
                   key={p.id}
                   className={
                     "phase" +
-                    (p.state === "active" ? " active" : p.state === "done" ? " done" : "")
+                    (p.status === "active" ? " active" : p.status === "completed" ? " done" : "")
                   }
                 >
                   <div className="phase-num">PH-{i + 1}</div>
                   <div className="phase-name">{p.phase_name ?? p.name}</div>
-                  <div className="phase-count">{p.phase_window ?? p.window ?? "TBD"}</div>
+                  <div className="phase-count">{p.metadata?.phase_window ?? p.phase_window ?? "TBD"}</div>
                 </div>
               ))}
             </div>
