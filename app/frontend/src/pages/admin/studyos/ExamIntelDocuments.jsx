@@ -66,7 +66,7 @@ export default function ExamIntelDocuments() {
   const [docs, setDocs] = useState([]);
   const [pages, setPages] = useState({ docId: null, items: null });
   const [pollId, setPollId] = useState(null);
-  const [linkTarget, setLinkTarget] = useState({ docId: null, kind: null, targetId: "" });
+  const [linkTarget, setLinkTarget] = useState({ docId: null, kind: null, targetId: "", reason: "" });
 
   const filterExamId = form.exam_id || "";
 
@@ -170,16 +170,19 @@ export default function ExamIntelDocuments() {
   }
 
   async function confirmLink() {
-    const { docId, kind, targetId } = linkTarget;
+    const { docId, kind, targetId, reason } = linkTarget;
     if (!targetId) return setStatus({ ok: false, message: "Pick a target first." });
+    if (!reason || reason.trim().length < 8) {
+      return setStatus({ ok: false, message: "Reason must be at least 8 characters." });
+    }
     const path = kind === "syllabus" ? "link-to-syllabus" : "link-to-pyq-paper";
     const payload = kind === "syllabus"
-      ? { reason: "link uploaded admin document", syllabus_document_id: targetId }
-      : { reason: "link uploaded admin document", pyq_paper_id: targetId };
+      ? { reason: reason.trim(), syllabus_document_id: targetId }
+      : { reason: reason.trim(), pyq_paper_id: targetId };
     try {
       await api.post(`${DOC_BASE}/${docId}/${path}`, payload);
       setStatus({ ok: true, message: `Linked document to ${kind}.` });
-      setLinkTarget({ docId: null, kind: null, targetId: "" });
+      setLinkTarget({ docId: null, kind: null, targetId: "", reason: "" });
     } catch (e) {
       setStatus({ ok: false, message: getApiErrorMessage(e) });
     }
@@ -330,13 +333,13 @@ export default function ExamIntelDocuments() {
                   <td className="p-2 space-x-1">
                     <button type="button" className="btn small" onClick={() => viewPages(d.id)} data-testid={`doc-pages-${d.id}`}><FileText className="h-3 w-3" /> Pages</button>
                     <button type="button" className="btn small" onClick={() => refreshStatus(d.id)} data-testid={`doc-refresh-${d.id}`}>Status</button>
-                    <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: d.id, kind: "syllabus", targetId: "" })} data-testid={`doc-link-syllabus-${d.id}`}>→ Syllabus</button>
-                    <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: d.id, kind: "pyq", targetId: "" })} data-testid={`doc-link-pyq-${d.id}`}>→ PYQ paper</button>
+                    <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: d.id, kind: "syllabus", targetId: "", reason: "" })} data-testid={`doc-link-syllabus-${d.id}`}>→ Syllabus</button>
+                    <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: d.id, kind: "pyq", targetId: "", reason: "" })} data-testid={`doc-link-pyq-${d.id}`}>→ PYQ paper</button>
                   </td>
                 </tr>
                 {linkTarget.docId === d.id ? (
                   <tr className="border-t border-border/40 bg-muted/30"><td colSpan={6} className="p-2">
-                    <div className="flex items-end gap-2" data-testid={`doc-link-picker-${d.id}`}>
+                    <div className="flex items-end gap-2 flex-wrap" data-testid={`doc-link-picker-${d.id}`}>
                       <label className="block flex-1">
                         <span className="block text-xs text-muted-foreground mb-1">
                           {linkTarget.kind === "syllabus" ? "Pick a syllabus_document" : "Pick a pyq_paper"}
@@ -351,8 +354,19 @@ export default function ExamIntelDocuments() {
                           testId={`doc-link-target-${d.id}`}
                         />
                       </label>
+                      <label className="block flex-1">
+                        <span className="block text-xs text-muted-foreground mb-1">Reason (≥ 8 chars)</span>
+                        <input
+                          type="text"
+                          className="w-full px-2 py-1.5 text-xs border border-border/60 rounded bg-background"
+                          value={linkTarget.reason}
+                          onChange={(e) => setLinkTarget((p) => ({ ...p, reason: e.target.value }))}
+                          placeholder="e.g. Linking official syllabus PDF"
+                          data-testid={`doc-link-reason-${d.id}`}
+                        />
+                      </label>
                       <button type="button" className="btn small" onClick={confirmLink} data-testid={`doc-link-confirm-${d.id}`}>Link</button>
-                      <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: null, kind: null, targetId: "" })}>Cancel</button>
+                      <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: null, kind: null, targetId: "", reason: "" })}>Cancel</button>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-1">No target? Create it in the matching CMS entity first.</p>
                   </td></tr>
