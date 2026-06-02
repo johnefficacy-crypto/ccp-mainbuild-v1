@@ -107,7 +107,7 @@ function mockContextApi({ contextOk = true, readinessOk = true } = {}) {
     if (url.includes("/documents/doc-1/pages/")) {
       return Promise.resolve({ text_content: "Arithmetic fundamentals and number theory." });
     }
-    if (url.includes("/documents")) {
+    if (url.includes("/syllabus-documents") || url.includes("/documents")) {
       return Promise.resolve({ items: DOCS });
     }
     return Promise.resolve({});
