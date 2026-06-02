@@ -2,6 +2,7 @@
 - [graphify](#graphify)
 - [Known-flaky CI checks](#known-flaky-ci-checks)
 - [Study OS frontend contract](#study-os-frontend-contract)
+- [Frontend governance](#frontend-governance)
 - [Migration discipline](#migration-discipline)
 - [Before adding new modules, verify they don't already exist](#before-adding-new-modules-verify-they-dont-already-exist)
 - [Patterns and Lessons](#patterns-and-lessons)
@@ -71,6 +72,44 @@ RLS verification protocol for Supabase Studio:
 - A read that returns rows OUTSIDE a wrapped transaction proves nothing
   about RLS — it just proves Studio's connection has bypass privileges
 
+
+## Frontend governance
+
+Three mandatory patterns for all new frontend code. PRs that skip them will be
+rejected in review.
+
+### Routes
+Every new route goes inside `<RouteErrorBoundary>` in `routes/appRoutes.jsx` or
+`routes/adminRoutes.jsx`. No inline error handling or custom try/catch at the
+route level.
+
+### Mutations
+Every user-triggered mutation (`api.post`, `api.patch`, `api.delete`) must use
+`useApiAction` from `lib/hooks/useApiAction.js`. Pattern:
+
+```js
+const { run, busy } = useApiAction();
+run({
+  action: () => api.post("/api/...", body),
+  optimistic: () => setLocal(optimisticState),
+  rollback: () => setLocal(previousState),
+  successMessage: "Done.",       // omit for silent-success (e.g. votes)
+  errorMessage: "Action failed.",
+});
+```
+
+Background read/check calls (dedup probes, preview fetches) are exempt, but
+must carry a comment explaining why they are non-blocking.
+
+### Collections
+Every data collection fetched from the API must use `useApiCollection` from
+`lib/hooks/useApiCollection.js`, or manually implement the same four-state
+contract (`idle → loading → data | empty | error`).
+
+- Error state must NOT render seed fixtures; seeds are only visible when
+  `REACT_APP_ENABLE_DEMO_DATA=true`.
+- Pass `<ErrorState />` (from `shared/ui`) when `status === "error"` if the
+  screen doesn't handle it inline.
 
   ## Migration discipline
 
@@ -196,3 +235,31 @@ when coordinates drift (e.g. PR #528's _ANCHOR_X_GAP=0.04 failed on
 "widen the threshold" or "remove the gate". Instead, guard the gate
 with a look-ahead that distinguishes the two cases it conflates
 (body enumerator vs real option). See PR #553 find_stem_end rule.
+
+### 11. Coverage Lifecycle (CL) statuses — competition & topic-coverage
+The competition-metrics and topic-coverage review endpoints use
+`CoverageReviewBody`, which accepts ONLY
+`draft | pending_review | reviewed | locked | rejected`
+(admin_exam_intelligence.py ~L522). `verified` is NOT a valid status for
+these resources and returns 422 — it belongs to the items/policy review
+flow, not the coverage lifecycle. Only `locked` rows feed
+`competition_context` in Study OS (`reviewed`/`locked` for topic-coverage,
+locked preferred). Frontend promote actions on these surfaces must send
+`locked` (or `reviewed`), never `verified`. The exam-workspace
+CompetitionPanel "Verify" button hit this: it PATCHed `verified` and
+silently 422'd once the create flow started landing real rows. Fix renamed
+it to "Lock" and sends `locked`. See PR #565 (Codex P2 on #563).
+
+### 12. A red `npm ci` masks the entire frontend test suite
+`ci.yml`'s `frontend` job runs `npm ci` BEFORE `npm test`/`build`. When the
+lockfile is out of sync, `npm ci` fails fast (~11s) and the tests never run —
+so PRs can merge with failing/never-executed frontend tests while the check
+is red "for the lockfile". Two consequences: (a) a frontend failure at ~11s
+is almost always the lockfile, not your code; a failure at ≥40s means
+`npm ci` passed and a later step (tests/build) is the real cause; (b) fixing
+the lockfile can UNMASK pre-existing test failures that were hidden behind
+the install error. Root cause of the recurring drift: local npm 11 treats
+`tailwindcss`'s `yaml@^2.4.2` as an optional peer and reports no drift, but
+CI's Node 20 / npm 10 expects `node_modules/tailwindcss/node_modules/yaml@2.9.0`
+pinned in the lock. Regenerate the lock with the CI npm major to reproduce:
+`npx -y npm@10 install --package-lock-only`. See PR #566.

@@ -113,7 +113,7 @@ test("link-to-syllabus opens a picker (no window.prompt) and links the selection
 
   await waitFor(() => expect(api.post).toHaveBeenCalledWith(
     expect.stringContaining("/d1/link-to-syllabus"),
-    expect.objectContaining({ syllabus_document_id: "sd1" }),
+    expect.objectContaining({ syllabus_document_id: "sd1", reason: "Linking official syllabus PDF to CMS row" }),
   ));
   expect(promptSpy).not.toHaveBeenCalled();
   promptSpy.mockRestore();
