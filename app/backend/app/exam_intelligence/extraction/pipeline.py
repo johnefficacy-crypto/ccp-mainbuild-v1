@@ -30,7 +30,7 @@ from .dispatch import (
     is_source_eligible_v1,
 )
 from .layout import assign_words_to_columns, detect_columns
-from .ocr import DPI, ocr_page
+from .ocr import DPI, TesseractUnavailableError, ocr_page
 from .segmentation import reconstruct_lines, segment_column
 from .types import ExtractionResult, ExtractedQuestion, Word
 
@@ -355,6 +355,9 @@ def extract(
                 "page %d: %d words → %d questions",
                 page_num, len(words), len(page_questions),
             )
+        except TesseractUnavailableError:
+            doc.close()
+            raise
         except Exception as exc:
             logger.warning("non-fatal error on page %d: %s", page_num, exc)
             errors.append({"page": page_num, "error": str(exc)})

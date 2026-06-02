@@ -1,7 +1,8 @@
 """Tesseract OCR wrapper — word-level bbox output, normalized coordinates.
 
-Fails fast at import time if the tesseract binary is not on PATH so that
-missing-system-dependency errors surface immediately, not at first use.
+The Python module is import-safe even when the Tesseract OS binary is absent so
+FastAPI can boot non-OCR routes in constrained runtimes. OCR calls still fail
+with a clear configuration error at first use.
 
 Local install:
     sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
@@ -18,15 +19,37 @@ from pytesseract import Output
 
 from .types import Word
 
-# Fail fast at import time if tesseract binary is not on PATH.
-try:
-    pytesseract.get_tesseract_version()
-except pytesseract.TesseractNotFoundError as e:
-    raise RuntimeError(
-        "Tesseract OCR binary not found. "
-        "Install: sudo apt-get install -y tesseract-ocr tesseract-ocr-eng\n"
-        "Verify:  python -c \"import pytesseract; print(pytesseract.get_tesseract_version())\""
-    ) from e
+TESSERACT_UNAVAILABLE_DETAIL = (
+    "Tesseract OCR binary not found. "
+    "Install: sudo apt-get install -y tesseract-ocr tesseract-ocr-eng\n"
+    "Verify:  python -c \"import pytesseract; print(pytesseract.get_tesseract_version())\""
+)
+
+
+class TesseractUnavailableError(RuntimeError):
+    """Raised when an OCR call is attempted without the Tesseract binary."""
+
+
+_tesseract_checked = False
+
+
+def ensure_tesseract_available() -> None:
+    """Validate the Tesseract binary lazily before OCR work starts.
+
+    Importing this module must not take down the whole API process. The actual
+    OCR path still checks once per process and raises a deterministic error if
+    the OS dependency is missing.
+    """
+
+    global _tesseract_checked
+    if _tesseract_checked:
+        return
+    try:
+        pytesseract.get_tesseract_version()
+    except pytesseract.TesseractNotFoundError as exc:
+        raise TesseractUnavailableError(TESSERACT_UNAVAILABLE_DETAIL) from exc
+    _tesseract_checked = True
+
 
 TESSERACT_PSM = 3      # Fully automatic page segmentation (handles multi-column)
 TESSERACT_LANG = "eng"
@@ -41,6 +64,8 @@ def ocr_page(page_image: Image.Image, page_number: int) -> list[Word]:
     using the image dimensions. Words with empty text or confidence below
     MIN_WORD_CONFIDENCE are filtered out.
     """
+    ensure_tesseract_available()
+
     width, height = page_image.size
     if width == 0 or height == 0:
         return []

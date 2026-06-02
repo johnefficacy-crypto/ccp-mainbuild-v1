@@ -47,3 +47,14 @@ passes; the JS PropTypes follow automatically.
 Study OS → Mocks.jsx compat row written by `mock_engine._emit_mock_tests_row`; the
 table has no `metadata` column, and the legacy `/api/study/mocks` reader treats a
 missing payload as `{}`.
+
+## Production readiness contract exceptions (verified 2026-06-02)
+
+The following cross-surface contracts are known exceptions and must be fixed before production deploy. Detailed evidence lives in [audits/production-readiness-review-2026-06-02.md](audits/production-readiness-review-2026-06-02.md).
+
+| Surface | Frontend expectation | Backend behavior | Status | Required fix |
+|---|---|---|---|---|
+| AI chat | `app/frontend/src/pages/AIChat.jsx` stores `r.reply` as renderable text. | `app/backend/app/api/ai.py` returns `reply` as a shaped message object. | P1 shape mismatch | Return a string `reply`/`reply_text` or update the frontend to render `reply.content`. |
+| Marketplace/community failure states | Pages should distinguish backend failure from empty/locked/seed data. | Several callers swallow errors or keep seed data. | P1 operational risk | Render explicit error states and reserve fallback seed data for prototype/demo mode. |
+| Notification CTAs | Notification UI should route users only to mounted app pages. | Alert generation/link emission must normalize to `/app/eligibility/exams/:slug`, `/app/eligibility/recruitments/:id`, `/app/eligibility/tracker`, or `/app/profile`. | P1 route contract risk | Add a route matrix test covering all alert types. |
+
