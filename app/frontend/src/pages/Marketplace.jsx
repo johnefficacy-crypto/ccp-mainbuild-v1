@@ -16,20 +16,14 @@ export default function Marketplace() {
   const [providers, setProviders] = useState([]);
   const [affiliates, setAffiliates] = useState([]);
   const [filter, setFilter] = useState("all");
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    api
-      .get("/api/marketplace/resources")
-      .then((d) => setResources(Array.isArray(d?.items) ? d.items : []))
-      .catch(() => {});
-    api
-      .get("/api/marketplace/providers")
-      .then((d) => setProviders(Array.isArray(d?.items) ? d.items : []))
-      .catch(() => {});
-    api
-      .get("/api/marketplace/affiliates")
-      .then((d) => setAffiliates(Array.isArray(d?.items) ? d.items : []))
-      .catch(() => {});
+    Promise.all([
+      api.get("/api/marketplace/resources").then((d) => setResources(Array.isArray(d?.items) ? d.items : [])),
+      api.get("/api/marketplace/providers").then((d) => setProviders(Array.isArray(d?.items) ? d.items : [])),
+      api.get("/api/marketplace/affiliates").then((d) => setAffiliates(Array.isArray(d?.items) ? d.items : [])),
+    ]).catch(() => setLoadError(true));
   }, []);
 
   const filtered = filter === "all" ? resources : resources.filter((r) => r.type === filter);
@@ -37,6 +31,11 @@ export default function Marketplace() {
 
   return (
     <div className="space-y-6" data-testid="marketplace-page">
+      {loadError && (
+        <div role="alert" className="rounded-md border border-field-danger/40 bg-field-danger/10 px-4 py-3 text-[13px] text-field-danger">
+          Could not load marketplace data — check your connection and refresh.
+        </div>
+      )}
       <PageHeader
         eyebrow="Marketplace"
         title="Curated commerce, the same trust rules as the rest of Study OS."

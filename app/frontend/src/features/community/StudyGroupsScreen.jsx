@@ -133,6 +133,11 @@ export default function StudyGroupsScreen() {
       </div>
 
       <div className="mt-8">
+        {roomsError && (
+          <div role="alert" className="rounded-md border border-field-danger/40 bg-field-danger/10 px-4 py-3 text-[13px] text-field-danger mb-4">
+            Could not load study rooms — check your connection and refresh.
+          </div>
+        )}
         <UpcomingStudyRooms rooms={rooms} groups={groups} hasLiveRooms={hasLiveRooms} />
       </div>
 

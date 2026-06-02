@@ -23,12 +23,8 @@ jest.mock("../../../../lib/api", () => ({
 }));
 
 jest.mock("../../../../lib/supabase", () => ({
-  supabase: {
-    auth: {
-      getSession: jest.fn(() => Promise.resolve({ data: { session: null } })),
-      onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
-    },
-  },
+  __esModule: true,
+  supabase: { auth: { getSession: jest.fn(), onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })) } },
 }));
 
 const { api } = require("../../../../lib/api");
