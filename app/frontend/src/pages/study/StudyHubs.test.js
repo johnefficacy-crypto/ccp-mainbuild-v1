@@ -54,7 +54,7 @@ describe("StudyLearningHub (PR10)", () => {
     renderAt(StudyLearningHub);
     await waitFor(() =>
       expect(screen.getByTestId("learning-card-exam-intelligence").getAttribute("href")).toBe(
-        "/app/eligibility/exams/ssc-cgl-2026#intelligence",
+        "/app/eligibility/exams/ssc-cgl-2026#competition",
       ),
     );
   });

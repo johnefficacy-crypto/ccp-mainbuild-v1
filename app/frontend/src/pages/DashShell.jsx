@@ -7,6 +7,8 @@ import AppSidebar from "../shared/layouts/AppSidebar";
 import TopBar from "../shared/layouts/TopBar";
 import UserMenu from "../shared/layouts/UserMenu";
 import HowItWorksProvider from "../shared/components/HowItWorksProvider";
+import AppBreadcrumbs from "../shared/components/AppBreadcrumbs";
+import { BreadcrumbLeafProvider } from "../shared/navigation/BreadcrumbLeafContext";
 
 const SECTIONS = [
   {
@@ -91,6 +93,7 @@ export default function DashShell() {
   useEffect(() => { api.get("/api/notifications/me/unread-count").then((d) => setUnreadCount(Number(d?.count || 0))).catch(() => setUnreadCount(0)); }, [pathname]);
 
   return (
+    <BreadcrumbLeafProvider>
     <HowItWorksProvider>
     <div className="min-h-screen flex linen-bg">
       {immersive ? null : (
@@ -100,9 +103,10 @@ export default function DashShell() {
 
       <div className="flex-1 min-w-0">
         <TopBar className="bg-[#FBF6EF]/80 backdrop-blur" left={<button className="lg:hidden h-9 w-9 grid place-items-center rounded-lg border border-border" onClick={() => setSidebarOpen(true)} data-testid="mobile-menu-toggle" aria-label="Open navigation menu"><Menu className="h-4 w-4" /></button>} center={<div className="flex-1" />} right={<><Link to="/app/notifications" data-testid="notif-btn" aria-label="Open notifications" className="h-9 w-9 grid place-items-center rounded-lg border border-border bg-white/70 relative"><Bell className="h-4 w-4" />{unreadCount > 0 && <span className="absolute -top-1 -right-1 text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-clay-500 text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}</Link><Link to="/app/profile" className="h-9 w-9 grid place-items-center rounded-lg border border-border bg-white/70" data-testid="settings-btn" aria-label="Open profile settings"><Settings className="h-4 w-4" /></Link><UserMenu user={auth.user} onLogout={auth.logout} /></>} />
-        <main key={pathname} className={immersive ? "animate-fade-up" : "p-5 lg:p-8 max-w-7xl mx-auto animate-fade-up"}><Outlet /></main>
+        <main key={pathname} className={immersive ? "animate-fade-up" : "p-5 lg:p-8 max-w-7xl mx-auto animate-fade-up"}>{!immersive && <AppBreadcrumbs />}<Outlet /></main>
       </div>
     </div>
     </HowItWorksProvider>
+    </BreadcrumbLeafProvider>
   );
 }

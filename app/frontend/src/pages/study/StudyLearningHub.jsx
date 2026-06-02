@@ -115,7 +115,7 @@ function useExamIntelligenceTarget() {
 
 function ExamIntelligenceCard() {
   const { slug, loading } = useExamIntelligenceTarget();
-  const to = slug ? `/app/eligibility/exams/${slug}#intelligence` : "/app/eligibility/exams";
+  const to = slug ? `/app/eligibility/exams/${slug}#competition` : "/app/eligibility/exams";
   const description = slug
     ? "What we know about the exam itself — pattern, weights, history."
     : "Choose an exam to view intelligence";
