@@ -82,6 +82,68 @@ def exam_slug(state_prefix: str | None, exam_name: str) -> str:
     return f"{prefix}-{slugify(exam_name)}"
 
 
+_BODY_PREFIX_SEPARATOR = r"(?:[-–—:|/→ù]|\\u00f9|u00f9|Ã¹)"
+
+
+def _body_name_pattern(body: str) -> str | None:
+    """Build a loose regex for matching a conducting body at string start."""
+    body_tokens = re.findall(r"[A-Za-z0-9]+|&", body)
+    if not body_tokens:
+        return None
+
+    body_parts = []
+    for token in body_tokens:
+        if token == "&" or token.lower() == "and":
+            body_parts.append(r"(?:&|and)")
+        else:
+            body_parts.append(re.escape(token))
+    return r"\s*".join(body_parts)
+
+
+def _strip_prefixed_name(name: str, prefix_pattern: str) -> str | None:
+    boundary = rf"(?:\s*{_BODY_PREFIX_SEPARATOR}+\s*|\s{{2,}})"
+    match = re.match(
+        rf"^\s*{prefix_pattern}{boundary}(?P<rest>\S.*?)\s*$",
+        name,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    return match.group("rest").strip()
+
+
+def _strip_leading_body_from_exam_name(exam_name: str, conducting_body: str) -> str:
+    """Remove a leading PSC/body prefix from an exam-registry name.
+
+    Workbook rows sometimes repeat the conducting body in the Exam column before
+    a visual separator, and the body text is not always identical to the
+    Conducting Body column.  Prefer the explicit conducting body when it matches,
+    then fall back to any leading body-like token ending in ``PSC`` before a
+    separator or repeated whitespace.
+    """
+    name = str(exam_name or "").replace("\xa0", " ").strip()
+    body = str(conducting_body or "").replace("\xa0", " ").strip()
+    if not name:
+        return name
+
+    body_pattern = _body_name_pattern(body) if body else None
+    if body_pattern:
+        stripped = _strip_prefixed_name(name, body_pattern)
+        if stripped:
+            return stripped
+
+    # Fallback for workbook rows whose Exam prefix is a PSC label that does not
+    # exactly match Conducting Body, e.g. "JKPSC - ..." or
+    # "Jammu & Kashmir PSC ù ...".  The separator/repeated-space boundary keeps
+    # ordinary exam names that merely contain "PSC" intact.
+    psc_prefix_pattern = r"(?:[A-Za-z][A-Za-z0-9 .&()]*?\bPSC\b|[A-Za-z]{2,}PSC\b)"
+    stripped = _strip_prefixed_name(name, psc_prefix_pattern)
+    if stripped:
+        return stripped
+
+    return name
+
+
 # ── calendar_status derivation ────────────────────────────────────────────────
 
 _PUBLISHED_KWS = re.compile(
@@ -466,11 +528,12 @@ def process_exam_registry_sheet(
 
         # Determine state prefix: if conducting_body looks like a state PSC, extract state
         state_prefix = _extract_state_from_body(conducting_body)
-        e_slug = exam_slug(state_prefix, exam_name)
+        clean_exam_name = _strip_leading_body_from_exam_name(exam_name, conducting_body)
+        e_slug = exam_slug(state_prefix, clean_exam_name)
         exam_id = upsert_exam(
             sb,
             slug=e_slug,
-            name=exam_name,
+            name=clean_exam_name,
             exam_type="recruitment",
             conducting_org_id=org_id,
             dry_run=dry_run,
@@ -523,12 +586,13 @@ _STATE_ABBREVS = {
     "west bengal": "west-bengal", "wb": "west-bengal",
     "delhi": "delhi",
     "jammu and kashmir": "jammu-kashmir", "j&k": "jammu-kashmir",
+    "jkpsc": "jammu-kashmir",
     "ladakh": "ladakh",
 }
 
 
 def _extract_state_from_body(body: str) -> str | None:
-    b = body.lower()
+    b = re.sub(r"\s*&\s*", " and ", body.lower())
     for state, slug_prefix in _STATE_ABBREVS.items():
         if state in b:
             return slug_prefix
