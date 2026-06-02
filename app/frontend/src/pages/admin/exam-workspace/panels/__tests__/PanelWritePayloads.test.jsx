@@ -218,4 +218,27 @@ describe("CompetitionPanel.saveMetric", () => {
     expect(lastPostUrl()).not.toMatch(/exam-topic-coverage/);
     expect(JSON.stringify(lastPostBody())).not.toMatch(/verified|locked/);
   });
+
+  // The competition review endpoint uses the coverage lifecycle
+  // (draft|pending_review|reviewed|locked|rejected); "verified" 422s. The
+  // promote action must send a valid status — only "locked" feeds the planner.
+  test("promote action PATCHes a valid coverage status (locked), never 'verified'", async () => {
+    api.get.mockResolvedValue({
+      items: [{ id: "metric-1", exam_cycle_id: "cyc-1", vacancy_total: 1056, applicant_count: 1100000, reviewer_status: "pending_review" }],
+      count: 1,
+    });
+    api.patch.mockResolvedValue({ ok: true });
+
+    render(<CompetitionPanel />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole("button", { name: "Lock" }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+
+    const [url, body] = api.patch.mock.calls[api.patch.mock.calls.length - 1];
+    expect(url).toBe("/api/admin/exam-intelligence/competition-metrics/metric-1/review");
+    expect(body.reviewer_status).toBe("locked");
+    expect(["draft", "pending_review", "reviewed", "locked", "rejected"]).toContain(body.reviewer_status);
+    expect(body.reviewer_status).not.toBe("verified");
+  });
 });
