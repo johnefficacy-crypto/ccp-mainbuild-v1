@@ -1,6 +1,6 @@
 import React from "react";
 import { AlertTriangle } from "lucide-react";
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 
 class ErrorBoundaryInner extends React.Component {
   constructor(props) {
@@ -19,6 +19,9 @@ class ErrorBoundaryInner extends React.Component {
   }
 }
 
+// Keying by location.key causes the class component to remount on every
+// navigation, resetting hasError so a crash on one route can't poison another.
 export default function RouteErrorBoundary() {
-  return <ErrorBoundaryInner><Outlet /></ErrorBoundaryInner>;
+  const location = useLocation();
+  return <ErrorBoundaryInner key={location.key}><Outlet /></ErrorBoundaryInner>;
 }

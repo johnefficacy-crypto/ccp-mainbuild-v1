@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
+import { ENABLE_DEMO_DATA } from "../../shared/config/env";
 import { COMMUNITY_USERS, STUDY_GROUPS, STUDY_ROOM_SESSIONS } from "./data";
 import {
   FieldButton,
@@ -26,11 +27,13 @@ function normalizeUrl(link) {
 }
 
 export default function StudyGroupsScreen() {
-  const [groups, setGroups] = useState(STUDY_GROUPS);
-  const [rooms, setRooms] = useState(STUDY_ROOM_SESSIONS);
+  const [groups, setGroups] = useState(ENABLE_DEMO_DATA ? STUDY_GROUPS : []);
+  const [rooms, setRooms] = useState(ENABLE_DEMO_DATA ? STUDY_ROOM_SESSIONS : []);
   const [hasLiveGroups, setHasLiveGroups] = useState(false);
   const [hasLiveRooms, setHasLiveRooms] = useState(false);
-  const [activeId, setActiveId] = useState(groups[0]?.id || null);
+  const [groupsError, setGroupsError] = useState(false);
+  const [roomsError, setRoomsError] = useState(false);
+  const [activeId, setActiveId] = useState((ENABLE_DEMO_DATA ? STUDY_GROUPS : [])[0]?.id || null);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +47,12 @@ export default function StudyGroupsScreen() {
         if (d.items.length > 0)
           setActiveId((cur) => (d.items.some((g) => g.id === cur) ? cur : d.items[0].id));
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          if (!ENABLE_DEMO_DATA) setGroups([]);
+          setGroupsError(true);
+        }
+      });
     api
       .get("/api/community/study-rooms")
       .then((d) => {
@@ -53,7 +61,12 @@ export default function StudyGroupsScreen() {
         setRooms(d.items);
         setHasLiveRooms(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          if (!ENABLE_DEMO_DATA) setRooms([]);
+          setRoomsError(true);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -82,6 +95,11 @@ export default function StudyGroupsScreen() {
         title="Pace yourself with people on the same exam."
         sub="2–8 members per group. Shared weekly goals. Daily check-ins. Study rooms with your link — we don't host video; we coordinate around it."
       />
+      {groupsError && (
+        <div role="alert" className="rounded-md border border-field-danger/40 bg-field-danger/10 px-4 py-3 text-[13px] text-field-danger mb-4">
+          Could not load groups — check your connection and refresh.
+        </div>
+      )}
 
       <div className="flex items-end justify-between gap-3 flex-wrap mb-5">
         <FieldTabs

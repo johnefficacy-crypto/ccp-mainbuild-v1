@@ -139,7 +139,7 @@ export default function QuestionEditor() {
     dedupTimer.current = setTimeout(() => {
       api.post(`/api/admin/mocks/questions/${id}/dedup-check`, {})
         .then((res) => { setDedupResult(res); setDedupDismissed(false); })
-        .catch(() => {});
+        .catch(() => {}); // Background check — failure is non-blocking; user can still save.
     }, 600);
     return () => clearTimeout(dedupTimer.current);
   }, [form.question_text, id, isNew, invalidId]);

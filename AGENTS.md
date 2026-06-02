@@ -2,6 +2,7 @@
 - [graphify](#graphify)
 - [Known-flaky CI checks](#known-flaky-ci-checks)
 - [Study OS frontend contract](#study-os-frontend-contract)
+- [Frontend governance](#frontend-governance)
 - [Migration discipline](#migration-discipline)
 - [Before adding new modules, verify they don't already exist](#before-adding-new-modules-verify-they-dont-already-exist)
 - [Patterns and Lessons](#patterns-and-lessons)
@@ -71,6 +72,44 @@ RLS verification protocol for Supabase Studio:
 - A read that returns rows OUTSIDE a wrapped transaction proves nothing
   about RLS — it just proves Studio's connection has bypass privileges
 
+
+## Frontend governance
+
+Three mandatory patterns for all new frontend code. PRs that skip them will be
+rejected in review.
+
+### Routes
+Every new route goes inside `<RouteErrorBoundary>` in `routes/appRoutes.jsx` or
+`routes/adminRoutes.jsx`. No inline error handling or custom try/catch at the
+route level.
+
+### Mutations
+Every user-triggered mutation (`api.post`, `api.patch`, `api.delete`) must use
+`useApiAction` from `lib/hooks/useApiAction.js`. Pattern:
+
+```js
+const { run, busy } = useApiAction();
+run({
+  action: () => api.post("/api/...", body),
+  optimistic: () => setLocal(optimisticState),
+  rollback: () => setLocal(previousState),
+  successMessage: "Done.",       // omit for silent-success (e.g. votes)
+  errorMessage: "Action failed.",
+});
+```
+
+Background read/check calls (dedup probes, preview fetches) are exempt, but
+must carry a comment explaining why they are non-blocking.
+
+### Collections
+Every data collection fetched from the API must use `useApiCollection` from
+`lib/hooks/useApiCollection.js`, or manually implement the same four-state
+contract (`idle → loading → data | empty | error`).
+
+- Error state must NOT render seed fixtures; seeds are only visible when
+  `REACT_APP_ENABLE_DEMO_DATA=true`.
+- Pass `<ErrorState />` (from `shared/ui`) when `status === "error"` if the
+  screen doesn't handle it inline.
 
   ## Migration discipline
 

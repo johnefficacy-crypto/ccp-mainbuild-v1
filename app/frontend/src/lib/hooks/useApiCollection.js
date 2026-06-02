@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
+import { ENABLE_DEMO_DATA } from "../../shared/config/env";
 
 /**
  * Fetch a collection from the API, with seed-vs-live disambiguation.
@@ -47,7 +48,9 @@ export default function useApiCollection(url, seed = [], options = {}) {
       setItems(next);
       setStatus(next.length === 0 ? "empty" : "live");
     } catch {
-      // Keep seed visible; flag error so screens can show a banner if they care.
+      // In demo mode, keep seeds visible as offline-friendly fallback.
+      // In production, clear items so real error UI shows instead of fake data.
+      if (!ENABLE_DEMO_DATA) setItems([]);
       setStatus("error");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
