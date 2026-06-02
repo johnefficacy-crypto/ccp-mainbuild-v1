@@ -326,27 +326,33 @@ async def list_tracked_exams(user: dict = Depends(get_current_user)) -> dict[str
         if slug not in ordered_slugs and slug in exam_lookup:
             ordered_slugs.append(slug)
 
+    exam_ids = [exam_lookup[slug]["id"] for slug in ordered_slugs if exam_lookup.get(slug)]
+    locked_exam_ids: set[str] = set()
+    if exam_ids:
+        cov_rows = (
+            supabase.table("exam_topic_coverage")
+            .select("exam_id")
+            .in_("exam_id", exam_ids)
+            .eq("reviewer_status", "locked")
+            .limit(len(exam_ids) * 500)
+            .execute()
+            .data
+            or []
+        )
+        locked_exam_ids = {str(r["exam_id"]) for r in cov_rows if r.get("exam_id")}
+
     items: list[dict[str, Any]] = []
     for slug in ordered_slugs:
         exam = exam_lookup.get(slug)
         if not exam:
             continue
-        cov = (
-            supabase.table("exam_topic_coverage")
-            .select("id", count="exact")
-            .eq("exam_id", exam["id"])
-            .eq("reviewer_status", "locked")
-            .limit(1)
-            .execute()
-        )
-        locked_count = int(getattr(cov, "count", 0) or 0)
         items.append(
             {
                 "id": exam.get("id"),
                 "slug": exam.get("slug"),
                 "name": exam.get("name"),
                 "is_active": bool(exam.get("is_active")),
-                "planner_ready": bool(exam.get("is_active")) and locked_count > 0,
+                "planner_ready": bool(exam.get("is_active")) and str(exam.get("id")) in locked_exam_ids,
                 "is_primary": primary_exam_id is not None
                 and str(exam.get("id")) == str(primary_exam_id),
             }
@@ -756,24 +762,39 @@ async def reports_mock_trend(days: int = 90, user: dict = Depends(get_current_us
 @router.get("/reports/mistakes")
 async def reports_mistakes(days: int = 90, user: dict = Depends(get_current_user)) -> dict[str, Any]:
     sb = get_supabase_admin(); user_id = user.get("id")
-    try:
-        rows = (sb.table("attempt_question_analytics").select("error_type, topic_id, question_id").eq("user_id", user_id).limit(5000).execute().data or [])
-    except Exception as exc:
-        _msg = str(exc)
-        if "PGRST205" in _msg or "attempt_question_analytics" in _msg:
-            return {"items": [], "degraded": True, "reason": "attempt_question_analytics_missing"}
-        raise
-    agg = {}
+    from datetime import datetime, timezone, timedelta
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    rows = (
+        sb.table("user_topic_error_patterns")
+        .select("error_type, topic_id, question_id, frequency_count")
+        .eq("user_id", user_id)
+        .gte("last_seen_at", since)
+        .limit(5000)
+        .execute()
+        .data
+        or []
+    )
+    agg: dict[str, Any] = {}
     for r in rows:
-        e = r.get("error_type") or "unknown"; a = agg.setdefault(e,{"error_type":e,"count":0,"topics":{},"recent_question_ids":[]}); a["count"] += 1
+        e = r.get("error_type") or "unknown"
+        a = agg.setdefault(e, {"error_type": e, "count": 0, "topics": {}, "recent_question_ids": []})
+        freq = int(r.get("frequency_count") or 1)
+        a["count"] += freq
         t = r.get("topic_id")
-        if t: a["topics"][t] = a["topics"].get(t,0)+1
+        if t:
+            a["topics"][t] = a["topics"].get(t, 0) + freq
         q = r.get("question_id")
-        if q and q not in a["recent_question_ids"]: a["recent_question_ids"].append(q)
-    items=[]
+        if q and q not in a["recent_question_ids"]:
+            a["recent_question_ids"].append(q)
+    items = []
     for v in agg.values():
-        items.append({"error_type":v["error_type"],"count":v["count"],"topics":[{"topic_id":k,"count":c} for k,c in v["topics"].items()],"recent_question_ids":v["recent_question_ids"][:10]})
-    return {"items":items}
+        items.append({
+            "error_type": v["error_type"],
+            "count": v["count"],
+            "topics": [{"topic_id": k, "count": c} for k, c in v["topics"].items()],
+            "recent_question_ids": v["recent_question_ids"][:10],
+        })
+    return {"items": items}
 
 # ─── Plan-change timeline (PR6 page set: /app/study/plan) ────────────────────
 # Maps the raw planner audit + (PR5-live) mastery audit into the canonical
