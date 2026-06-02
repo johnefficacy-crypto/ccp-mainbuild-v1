@@ -107,12 +107,7 @@ function mockContextApi({ contextOk = true, readinessOk = true } = {}) {
     if (url.includes("/documents/doc-1/pages/")) {
       return Promise.resolve({ text_content: "Arithmetic fundamentals and number theory." });
     }
-    // DocumentSelector loads from the real CMS endpoint (syllabus-documents),
-    // not the old /workspace/{id}/documents path which does not exist.
-    if (url.includes("syllabus-documents")) {
-      return Promise.resolve({ items: DOCS });
-    }
-    if (url.includes("/documents")) {
+    if (url.includes("/syllabus-documents") || url.includes("/documents")) {
       return Promise.resolve({ items: DOCS });
     }
     return Promise.resolve({});

@@ -185,4 +185,29 @@ async def eligibility_me(user: dict = Depends(get_current_user)) -> dict[str, An
     }
 
 
+@router.get("/{slug}")
+async def get_exam_by_slug(slug: str, user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    rows = (
+        supabase.table("exams")
+        .select("id, slug, name, exam_type, metadata, is_active, created_at")
+        .eq("slug", slug)
+        .eq("is_active", True)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "exam_not_found", "slug": slug},
+        )
+    saved_slugs = _user_saved_exam_slugs(supabase, user["id"])
+    overlay = _build_eligibility_overlay(supabase, user["id"])
+    row = rows[0]
+    row["_saved"] = bool(slug in saved_slugs)
+    return {"exam": _shape_exam(row, overlay)}
+
+
 __all__ = ["router"]
