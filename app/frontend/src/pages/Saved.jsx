@@ -5,8 +5,11 @@ import { api } from "../lib/api";
 
 export default function Saved() {
   const [items, setItems] = useState([]);
+  const [loadError, setLoadError] = useState(false);
   useEffect(() => {
-    api.get("/api/recruitments/saved").then((d) => setItems(d.items || [])).catch(() => {});
+    api.get("/api/recruitments/saved")
+      .then((d) => setItems(d.items || []))
+      .catch(() => { setItems([]); setLoadError(true); });
   }, []);
 
   return (
@@ -17,14 +20,21 @@ export default function Saved() {
         <p className="text-muted-foreground mt-1">Add any exam from the listing to keep deadlines nearby.</p>
       </div>
 
-      {items.length === 0 ? (
+      {loadError && (
+        <div role="alert" className="rounded-md border border-field-danger/40 bg-field-danger/10 px-4 py-3 text-[13px] text-field-danger">
+          Could not load saved items — check your connection and refresh.
+        </div>
+      )}
+
+      {!loadError && items.length === 0 && (
         <div className="soft-card rounded-2xl p-10 text-center">
           <Bookmark className="h-6 w-6 text-clay-500 mx-auto" />
           <div className="mt-3 font-heading text-lg font-semibold">Nothing saved yet</div>
           <div className="text-sm text-muted-foreground">Save exams from the listing to have them here.</div>
           <Link to="/app/eligibility/exams" className="inline-flex mt-5 btn btn-primary" data-testid="saved-empty-cta">Browse exams</Link>
         </div>
-      ) : (
+      )}
+      {!loadError && items.length > 0 && (
         <div className="space-y-3">
           {items.map((e) => (
             <Link key={e.slug} to={`/app/eligibility/exams/${e.slug}`} className="soft-card rounded-2xl p-5 flex items-center gap-4">

@@ -22,6 +22,11 @@ jest.mock("../../../../lib/api", () => ({
   api: { get: jest.fn() },
 }));
 
+jest.mock("../../../../lib/supabase", () => ({
+  __esModule: true,
+  supabase: { auth: { getSession: jest.fn(), onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })) } },
+}));
+
 const { api } = require("../../../../lib/api");
 
 // Lazy-require after mock is set up
