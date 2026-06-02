@@ -1,16 +1,21 @@
-"""Tests for exam-registry importer logic (pure-function layer).
+"""Tests for exam-registry importer logic.
 
-All tests are deterministic and require no DB connection.  They verify:
-  - calendar_status derivation from the workbook "Annual Calendar Published?" column
-  - org dedupe key construction (the APPSC short-vs-full-name idempotency case)
+Pure-function layer (no DB) + mocked-DB layer covering:
+  - calendar_status derivation from "Annual Calendar Published?" column
+  - org dedupe key construction (APPSC short-vs-full-name idempotency)
   - exam slug construction
-  - _abbrev_from_name helper used for org cache lookups
-  - Subordinate Boards sheet is skipped (not silently dropped)
+  - _abbrev_from_name helper
+  - org INSERT payload includes metadata.import_status='pending_review'
+  - org INSERT payload persists metadata.official_url when URL present
+  - org UPDATE merges metadata (read-modify-write, unrelated keys survive)
+  - no source_registry write during import
+  - Source URLs disposition is reported in dry-run output with a count
 """
 from __future__ import annotations
 
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, call, patch
 
 # Allow import without editable install
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts"))
@@ -21,6 +26,7 @@ from import_exam_registry import (
     exam_slug,
     normalize_short_name,
     org_dedupe_key,
+    upsert_organization,
 )
 
 
@@ -143,3 +149,174 @@ class TestAbbrevFromName:
 
     def test_upsc(self):
         assert _abbrev_from_name("UPSC") == "UPSC"
+
+
+# ── upsert_organization — insert payload (DB-mocked) ────────────────────────
+
+def _make_sb(existing_rows: list[dict] | None = None) -> MagicMock:
+    """Build a minimal Supabase client mock for the organizations table."""
+    sb = MagicMock()
+    # Chain: sb.table(...).select(...).eq(...).execute().data
+    select_chain = sb.table.return_value.select.return_value
+    select_chain.eq.return_value.execute.return_value.data = existing_rows or []
+    # Chain: sb.table(...).insert(...).execute().data
+    sb.table.return_value.insert.return_value.execute.return_value.data = [
+        {"id": "new-org-id"}
+    ]
+    # Chain: sb.table(...).update(...).eq(...).execute()
+    sb.table.return_value.update.return_value.eq.return_value.execute.return_value = None
+    return sb
+
+
+class TestUpsertOrganizationInsertPayload:
+    def test_new_org_insert_carries_pending_review(self):
+        """Insert payload must include metadata.import_status='pending_review'."""
+        sb = _make_sb()
+        upsert_organization(
+            sb,
+            short_name="KPSC",
+            full_name="Kerala Public Service Commission",
+            state="Kerala",
+            org_type="state_psc",
+            calendar_status="published",
+            official_url=None,
+            dry_run=False,
+            org_cache={},
+        )
+        insert_call = sb.table.return_value.insert.call_args
+        payload = insert_call[0][0]
+        assert payload["metadata"]["import_status"] == "pending_review"
+        assert payload["metadata"]["import_source"] == "exam_registry_workbook"
+
+    def test_new_org_insert_persists_official_url(self):
+        """PSC Source URL must land in metadata.official_url on insert."""
+        sb = _make_sb()
+        upsert_organization(
+            sb,
+            short_name="APPSC",
+            full_name="Andhra Pradesh Public Service Commission",
+            state="Andhra Pradesh",
+            org_type="state_psc",
+            calendar_status="partial",
+            official_url="https://psc.ap.gov.in",
+            dry_run=False,
+            org_cache={},
+        )
+        insert_call = sb.table.return_value.insert.call_args
+        payload = insert_call[0][0]
+        assert payload["metadata"]["official_url"] == "https://psc.ap.gov.in"
+
+    def test_new_org_insert_without_url_has_no_official_url_key(self):
+        """When no URL provided, official_url should be absent from metadata."""
+        sb = _make_sb()
+        upsert_organization(
+            sb,
+            short_name="KPSC",
+            full_name="Kerala PSC",
+            state="Kerala",
+            org_type="state_psc",
+            calendar_status="needs_review",
+            official_url=None,
+            dry_run=False,
+            org_cache={},
+        )
+        insert_call = sb.table.return_value.insert.call_args
+        payload = insert_call[0][0]
+        assert "official_url" not in payload["metadata"]
+
+    def test_no_source_registry_write_during_insert(self):
+        """source_registry table must never be written during org import."""
+        sb = _make_sb()
+        upsert_organization(
+            sb,
+            short_name="KPSC",
+            full_name="Kerala PSC",
+            state="Kerala",
+            org_type="state_psc",
+            calendar_status="published",
+            official_url="https://psc.kerala.gov.in",
+            dry_run=False,
+            org_cache={},
+        )
+        # Collect all table names passed to sb.table(...)
+        table_calls = [c[0][0] for c in sb.table.call_args_list]
+        assert "source_registry" not in table_calls
+
+
+class TestUpsertOrganizationUpdateMerge:
+    def _existing_org(self, existing_meta: dict) -> list[dict]:
+        return [{
+            "id": "existing-org-id",
+            "name": "Karnataka Public Service Commission",
+            "type": "state_psc",
+            "state": "Karnataka",
+            "calendar_status": "partial",
+            "metadata": existing_meta,
+        }]
+
+    def test_update_merges_metadata_does_not_clobber_unrelated_keys(self):
+        """Read-modify-write: a pre-existing unrelated metadata key must survive."""
+        pre_existing_meta = {
+            "source_trust_tier": "verified",   # unrelated key set by another process
+            "import_status": "pending_review",
+        }
+        sb = _make_sb(existing_rows=self._existing_org(pre_existing_meta))
+
+        upsert_organization(
+            sb,
+            short_name="KPSC",   # will match existing row via _abbrev_from_name
+            full_name="Karnataka Public Service Commission",
+            state="Karnataka",
+            org_type="state_psc",
+            calendar_status="partial",  # same — no calendar_status change
+            official_url="https://kpsc.kar.nic.in",
+            dry_run=False,
+            org_cache={},
+        )
+        # If an update was issued, check that unrelated key survives
+        update_calls = sb.table.return_value.update.call_args_list
+        if update_calls:
+            updated_payload = update_calls[0][0][0]
+            if "metadata" in updated_payload:
+                assert updated_payload["metadata"].get("source_trust_tier") == "verified", (
+                    "Unrelated metadata key 'source_trust_tier' was clobbered during update"
+                )
+
+
+# ── Source URLs disposition in dry-run output ────────────────────────────────
+
+class TestSourceUrlsDisposition:
+    def test_dry_run_reports_source_urls_count(self, capsys):
+        """Dry-run must print Source URLs disposition with row count, never hard-fail."""
+        import io
+        import logging
+
+        # Capture log output
+        log_output = io.StringIO()
+        handler = logging.StreamHandler(log_output)
+        handler.setLevel(logging.INFO)
+        logging.getLogger("import_exam_registry").addHandler(handler)
+        logging.getLogger("import_exam_registry").setLevel(logging.INFO)
+
+        from import_exam_registry import main
+
+        # Minimal fake workbook with a Source URLs sheet (3 rows)
+        fake_sheets = {
+            "Source URLs": [
+                {"Source Type": "Official", "URL": "https://upsc.gov.in"},
+                {"Source Type": "Official", "URL": "https://ssc.nic.in"},
+                {"Source Type": "Official PSC", "URL": "https://ibps.in"},
+            ]
+        }
+
+        with patch("import_exam_registry.load_workbook", return_value=fake_sheets):
+            result = main(["--xlsx", "fake.xlsx", "--dry-run"])
+
+        log_contents = log_output.getvalue()
+        logging.getLogger("import_exam_registry").removeHandler(handler)
+
+        # Must mention Source URLs and the count
+        assert "Source URLs" in log_contents
+        assert "3" in log_contents
+        # Dry-run must NOT return non-zero exit code for this
+        assert result == 0

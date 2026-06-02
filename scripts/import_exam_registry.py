@@ -10,7 +10,12 @@ Sheets processed (in order):
 
 Sheets skipped:
     - PSC Coverage Summary          — aggregate/summary only, no actionable rows
-    - Source URLs                   — metadata-only; URLs written to exam metadata fields
+    - Source URLs                   — 45 rows of central-exam URLs (UPSC/SSC/IBPS etc.)
+                                      that do NOT appear on the Exam Registry sheet.
+                                      DEFERRED: rows are counted and reported every run.
+                                      Live import refuses to proceed unless
+                                      --acknowledge-missing-central-urls is passed.
+                                      Dry-run always reports the count; never hard-fails.
     - Subordinate Boards (Draft)    — DEFERRED (Phase 2 follow-up): rows are self-flagged
                                       as unverified draft; import once data is confirmed.
 
@@ -179,17 +184,30 @@ def upsert_organization(
                 _abbrev_from_name(row["name"]), row.get("state"), row["type"] or ""
             )
             if rkey == key:
-                # Exists — patch calendar_status if it changed
+                # Exists — read-modify-write: merge only importer-owned keys so
+                # unrelated metadata set by other processes is never clobbered.
+                update: dict = {}
                 if row.get("calendar_status") != calendar_status:
-                    sb.table("organizations").update(
-                        {"calendar_status": calendar_status}
-                    ).eq("id", row["id"]).execute()
+                    update["calendar_status"] = calendar_status
+                existing_meta: dict = row.get("metadata") or {}
+                merged_meta = {**existing_meta}
+                merged_meta["import_status"] = "pending_review"
+                merged_meta["import_source"] = "exam_registry_workbook"
+                if official_url:
+                    merged_meta["official_url"] = official_url
+                if merged_meta != existing_meta:
+                    update["metadata"] = merged_meta
+                if update:
+                    sb.table("organizations").update(update).eq("id", row["id"]).execute()
                 org_cache[key] = row["id"]
                 logger.debug("org found (existing): %s → %s", key, row["id"])
                 return row["id"]
 
-        # Insert new
-        meta: dict = {"import_status": "pending_review"}
+        # Insert new — metadata column added by migration 168
+        meta: dict = {
+            "import_status": "pending_review",
+            "import_source": "exam_registry_workbook",
+        }
         if official_url:
             meta["official_url"] = official_url
         payload = {
@@ -198,9 +216,8 @@ def upsert_organization(
             "state": state,
             "is_active": True,
             "calendar_status": calendar_status,
+            "metadata": meta,
         }
-        # organizations table has no metadata column — store url in name annotation
-        # (metadata column does not exist on organizations; url lives on exam metadata)
         resp = sb.table("organizations").insert(payload).execute()
         org_id = resp.data[0]["id"]
         org_cache[key] = org_id
@@ -525,6 +542,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--xlsx", required=True, type=Path, help="Path to .xlsx workbook.")
     parser.add_argument("--dry-run", action="store_true", help="Preview only; no DB writes.")
     parser.add_argument("--verbose", "-v", action="store_true")
+    parser.add_argument(
+        "--acknowledge-missing-central-urls",
+        action="store_true",
+        dest="ack_missing_urls",
+        help=(
+            "Acknowledge that central-exam URLs (UPSC/SSC/IBPS etc.) from the "
+            "'Source URLs' sheet are deferred and will not be imported. "
+            "Required for live import when that sheet is present."
+        ),
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -546,13 +573,38 @@ def main(argv: list[str] | None = None) -> int:
     # Sanity-check expected sheets
     found = set(sheets.keys())
     logger.info("Sheets found: %s", sorted(found))
+
+    # Subordinate Boards — always count and report; never silently drop
+    sub_board_rows = len(sheets.get("Subordinate Boards (Draft)", []))
     if "Subordinate Boards (Draft)" in found:
         logger.info(
             "SKIP: 'Subordinate Boards (Draft)' — DEFERRED to Phase 2 follow-up. "
-            "Rows are self-flagged as draft/unverified; import once data is confirmed."
+            "%d rows; self-flagged draft/unverified. Import once data is confirmed.",
+            sub_board_rows,
         )
+
     if "PSC Coverage Summary" in found:
         logger.info("SKIP: 'PSC Coverage Summary' — aggregate only, no actionable rows.")
+
+    # Source URLs sheet — central exam URLs not present on Exam Registry rows.
+    # Always print disposition with count.  Live import hard-fails unless operator
+    # passes --acknowledge-missing-central-urls.
+    source_url_rows = len(sheets.get("Source URLs", []))
+    if "Source URLs" in found:
+        logger.info(
+            "Source URLs sheet: %d rows NOT imported; central exam URLs (UPSC/SSC/IBPS "
+            "etc.) not captured elsewhere in this workbook. "
+            "Deferred — pass --acknowledge-missing-central-urls to proceed with live import.",
+            source_url_rows,
+        )
+        if not args.dry_run and not args.ack_missing_urls:
+            logger.error(
+                "Live import aborted: %d central URLs on 'Source URLs' sheet are not "
+                "captured by the Exam Registry or State PSC sheets. "
+                "Pass --acknowledge-missing-central-urls to proceed anyway.",
+                source_url_rows,
+            )
+            return 1
 
     org_cache: dict[str, str] = {}
     exam_cache: dict[str, str] = {}
