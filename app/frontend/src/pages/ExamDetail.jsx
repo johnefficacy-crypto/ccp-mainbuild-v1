@@ -245,7 +245,7 @@ export default function ExamDetail() {
         to="/app/eligibility/exams"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground link-under"
       >
-        <ArrowLeft className="h-4 w-4" /> All recruitments
+        <ArrowLeft className="h-4 w-4" /> All exams
       </Link>
 
       <div className="soft-card rounded-3xl p-6 lg:p-8">
