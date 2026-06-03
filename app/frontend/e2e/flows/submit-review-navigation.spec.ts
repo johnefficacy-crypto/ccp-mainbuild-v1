@@ -35,6 +35,7 @@ test.describe("Flow 2: submit → review navigation", () => {
     // Filter to wrong answers: the list reduces and the URL reflects the filter.
     await page.getByTestId("review-filter-wrong").click();
     await expect(page).toHaveURL(/[?&]filter=wrong/);
+    await expect(page.getByTestId("review-filter-wrong")).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByTestId("review-result-count")).toContainText("5");
 
     const wrongItems = page
