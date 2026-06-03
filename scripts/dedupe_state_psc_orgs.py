@@ -2,9 +2,10 @@
 """Collapse duplicate state_psc (and central) org clusters.
 
 Usage:
-    python scripts/dedupe_state_psc_orgs.py [--live] [--verbose]
+    python scripts/dedupe_state_psc_orgs.py [--live] [--xlsx PATH] [--verbose]
 
 Default is dry-run (read-only). Pass --live to apply changes.
+--xlsx is required for --live; dry-run warns and skips backfill if absent.
 
 What it does:
   1. Reads all state_psc / central_commission org rows from the DB.
@@ -19,9 +20,10 @@ What it does:
   4. Repoints ALL 7 FK tables loser→survivor BEFORE deleting the loser.
   5. Merges loser metadata onto survivor (no official_url / provenance loss).
   6. Deletes losers.
-  7. Backfills short_name for ALL state_psc + central orgs that lack it,
-     matched by (name + state) — the same key used for cluster detection —
-     from the authoritative PSC Short Name source.  Never from _abbrev_from_name.
+  7. Backfills short_name for ALL state_psc orgs that lack it, derived from the
+     workbook using the SAME normalize_short_name(_cell("PSC Short Name","Short Name"))
+     call the importer uses on INSERT — so backfill key and importer key are
+     identical by construction and cannot diverge.
 
 Idempotent: a second run finds 0 clusters, 0 changes.
 """
@@ -42,46 +44,51 @@ logger = logging.getLogger("dedupe_state_psc_orgs")
 
 def _bootstrap_path() -> None:
     repo_root = Path(__file__).resolve().parent.parent
+    scripts_dir = Path(__file__).resolve().parent
+    # scripts/ must be on path so import_exam_registry is importable.
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
     sys.path.insert(0, str(repo_root / "app" / "backend"))
 
 
-# ── authoritative short-name map ───────────────────────────────────────────────
-# Source: "PSC Short Name" column in the State PSC Detailed Registry workbook sheet.
-# NOT derived from _abbrev_from_name. Keep in sync with the workbook.
+# ── authoritative short-name fixture ──────────────────────────────────────────
+# NOT the live backfill source — backfill derives from the workbook via the
+# importer's own normalize_short_name(_cell(...)) call.
+# Keep here only as a test fixture / reference.
 
-_STATE_PSC_SHORT_NAMES: dict[str, str] = {
-    # state (lower)                : authoritative short_name
-    "andhra pradesh"               : "APPSC",
-    "arunachal pradesh"            : "APPSC",   # Arunachal Pradesh PSC
-    "assam"                        : "APSC",
-    "bihar"                        : "BPSC",
-    "chhattisgarh"                 : "CGPSC",
-    "goa"                          : "GPSC",
-    "gujarat"                      : "GPSC",
-    "haryana"                      : "HPSC",
-    "himachal pradesh"             : "HPPSC",
-    "jharkhand"                    : "JPSC",
-    "jammu and kashmir"            : "JKPSC",
-    "karnataka"                    : "KPSC",
-    "kerala"                       : "KPSC",
-    "madhya pradesh"               : "MPPSC",
-    "maharashtra"                  : "MPSC",
-    "manipur"                      : "MPSC",
-    "meghalaya"                    : "MPSC",
-    "mizoram"                      : "MPSC",
-    "nagaland"                     : "NPSC",
-    "odisha"                       : "OPSC",
-    "punjab"                       : "PPSC",
-    "rajasthan"                    : "RPSC",
-    "sikkim"                       : "SPSC",
-    "tamil nadu"                   : "TNPSC",
-    "telangana"                    : "TSPSC",
-    "tripura"                      : "TPSC",
-    "uttar pradesh"                : "UPPSC",
-    "uttarakhand"                  : "UKPSC",
-    "west bengal"                  : "WBPSC",
-    "delhi"                        : "DSSSB",
-    "ladakh"                       : "LAHDC",
+_FIXTURE_STATE_PSC_SHORT_NAMES: dict[str, str] = {
+    # state (lower, workbook-normalised)   : authoritative short_name
+    "andhra pradesh"                       : "APPSC",
+    "arunachal pradesh"                    : "APPSC",
+    "assam"                                : "APSC",
+    "bihar"                                : "BPSC",
+    "chhattisgarh"                         : "CGPSC",
+    "goa"                                  : "GPSC",
+    "gujarat"                              : "GPSC",
+    "haryana"                              : "HPSC",
+    "himachal pradesh"                     : "HPPSC",
+    "jharkhand"                            : "JPSC",
+    "jammu & kashmir"                      : "JKPSC",
+    "karnataka"                            : "KPSC",
+    "kerala"                               : "KPSC",
+    "madhya pradesh"                       : "MPPSC",
+    "maharashtra"                          : "MPSC",
+    "manipur"                              : "MPSC",
+    "meghalaya"                            : "MPSC",
+    "mizoram"                              : "MPSC",
+    "nagaland"                             : "NPSC",
+    "odisha"                               : "OPSC",
+    "punjab"                               : "PPSC",
+    "rajasthan"                            : "RPSC",
+    "sikkim"                               : "SPSC",
+    "tamil nadu"                           : "TNPSC",
+    "telangana"                            : "TSPSC",
+    "tripura"                              : "TPSC",
+    "uttar pradesh"                        : "UPPSC",
+    "uttarakhand"                          : "UKPSC",
+    "west bengal"                          : "WBPSC",
+    "delhi"                                : "DSSSB",
+    "ladakh"                               : "LAHDC",
 }
 
 _CENTRAL_SHORT_NAMES: dict[str, str] = {
@@ -194,11 +201,12 @@ def _merge_metadata(survivor_meta: dict, loser_meta: dict) -> dict:
     return merged
 
 
-def run(sb: Any, dry_run: bool) -> None:
+def run(sb: Any, dry_run: bool, xlsx_path: Path | None = None) -> None:
     clusters = _find_clusters(sb)
     logger.info("duplicate_clusters_found=%d", len(clusters))
     if not clusters:
         logger.info("No duplicate clusters found. Nothing to do.")
+        _backfill_short_names(sb, dry_run, xlsx_path)
         return
 
     # Pre-fetch all FK refs for every org in every cluster
@@ -266,17 +274,62 @@ def run(sb: Any, dry_run: bool) -> None:
                 sb.table("organizations").delete().eq("id", loser["id"]).execute()
 
     # Backfill short_name for ALL state_psc and central orgs (survivors + never-duplicated)
-    _backfill_short_names(sb, dry_run)
+    _backfill_short_names(sb, dry_run, xlsx_path)
 
 
-def _backfill_short_names(sb: Any, dry_run: bool) -> None:
+def _build_workbook_short_name_map(xlsx_path: Path) -> dict[str, str]:
+    """Build state→short_name map from the workbook using the importer's exact derivation.
+
+    Calls normalize_short_name(_cell(row, "PSC Short Name", "Short Name")) — the same
+    expression process_state_psc_sheet uses on INSERT — so the map values are
+    identical to the short_names the importer would write.  Cannot diverge.
+
+    Keyed by _norm_text(state) so lookups against DB org.state values are consistent.
+    """
+    # Import the shared helpers from the importer — same derivation, not a reimplementation.
+    from import_exam_registry import normalize_short_name, _cell, load_workbook  # type: ignore[import]
+
+    sheets = load_workbook(xlsx_path)
+    sheet_rows = sheets.get("State PSC Detailed Registry")
+    if sheet_rows is None:
+        raise RuntimeError(
+            "Workbook is missing sheet 'State PSC Detailed Registry'. "
+            f"Sheets found: {sorted(sheets)}"
+        )
+
+    state_map: dict[str, str] = {}
+    for row in sheet_rows:
+        state = _cell(row, "State/UT", "State")
+        raw_short = _cell(row, "PSC Short Name", "Short Name")
+        if not state or not raw_short:
+            continue
+        norm_state = _norm_text(state)
+        short_name = normalize_short_name(raw_short)
+        if short_name:
+            state_map[norm_state] = short_name
+
+    return state_map
+
+
+def _backfill_short_names(sb: Any, dry_run: bool, xlsx_path: Path | None = None) -> None:
     """Set short_name on every state_psc / central org that lacks it.
 
-    Match key is (normalized_name, normalized_state) — same key used by cluster
-    detection — so a state with >1 body doesn't backfill the wrong short_name.
-    Source is the authoritative _STATE_PSC_SHORT_NAMES / _CENTRAL_SHORT_NAMES
-    maps; never _abbrev_from_name.
+    state_psc: derived from the workbook via the importer's exact
+        normalize_short_name(_cell(row, "PSC Short Name", "Short Name")) call.
+        Fails fast if any state_psc org's state is absent from the workbook map.
+
+    central_commission: derived from _CENTRAL_SHORT_NAMES (no workbook column).
     """
+    if xlsx_path is None:
+        logger.warning(
+            "No --xlsx provided; skipping short_name backfill. "
+            "Re-run with --xlsx PATH to backfill state_psc short names."
+        )
+        return
+
+    state_map = _build_workbook_short_name_map(xlsx_path)
+    logger.info("Workbook-derived state→short_name map: %d states", len(state_map))
+
     orgs = (
         sb.table("organizations")
         .select("id,type,state,name,short_name")
@@ -290,39 +343,32 @@ def _backfill_short_names(sb: Any, dry_run: bool) -> None:
         if org.get("short_name"):
             continue  # already set
 
-        norm_name = _norm_text(org.get("name"))
-        norm_state = _norm_text(org.get("state"))
-
-        short_name: str | None = None
         if org["type"] == "state_psc":
-            # Match by state first; if ambiguous use name too
-            candidates = {
-                state_key: sn
-                for state_key, sn in _STATE_PSC_SHORT_NAMES.items()
-                if state_key == norm_state
-            }
-            if len(candidates) == 1:
-                short_name = next(iter(candidates.values()))
-            elif candidates:
-                # Multiple bodies in same state — match by name substring
-                for state_key, sn in candidates.items():
-                    if state_key in norm_name or sn.lower() in norm_name:
-                        short_name = sn
-                        break
+            norm_state = _norm_text(org.get("state"))
+            if norm_state not in state_map:
+                raise RuntimeError(
+                    f"state_psc org {org['id']!r} ({org.get('name')!r}) has state "
+                    f"{org.get('state')!r} (normalized: {norm_state!r}) not found in "
+                    f"workbook-derived map. Known states: {sorted(state_map)}. "
+                    "Add the state to the workbook or investigate the org's state value."
+                )
+            short_name = state_map[norm_state]
+
         elif org["type"] == "central_commission":
-            name_lower = norm_name
-            short_name = _CENTRAL_SHORT_NAMES.get(name_lower)
+            norm_name = _norm_text(org.get("name"))
+            short_name = _CENTRAL_SHORT_NAMES.get(norm_name)
             if not short_name:
                 for alias, sn in _CENTRAL_SHORT_NAMES.items():
-                    if name_lower.startswith(alias):
+                    if norm_name.startswith(alias):
                         short_name = sn
                         break
+            if not short_name:
+                logger.warning(
+                    "No short_name for central org %s (%s)", org["id"], org.get("name")
+                )
+                continue
 
-        if not short_name:
-            logger.warning(
-                "No authoritative short_name for org %s (%s / %s / %s)",
-                org["id"], org["type"], org.get("state"), org.get("name"),
-            )
+        else:
             continue
 
         logger.info("Backfill short_name=%s for org %s (%s)", short_name, org["id"], org.get("name"))
@@ -336,6 +382,11 @@ def _backfill_short_names(sb: Any, dry_run: bool) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Collapse duplicate state_psc org clusters.")
     parser.add_argument("--live", action="store_true", help="Apply changes (default: dry-run).")
+    parser.add_argument(
+        "--xlsx", type=Path, default=None, metavar="PATH",
+        help="Path to exam-registry workbook (.xlsx). Required for --live; "
+             "dry-run warns and skips backfill if absent.",
+    )
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
 
@@ -345,6 +396,15 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
     )
+
+    if args.live and not args.xlsx:
+        logger.error("--xlsx PATH is required when running --live. Aborting.")
+        return 1
+
+    if dry_run and not args.xlsx:
+        logger.warning(
+            "No --xlsx provided; short_name backfill will be skipped in this dry-run."
+        )
 
     if dry_run:
         logger.info("=== DRY-RUN MODE — no rows will be written ===")
@@ -360,7 +420,7 @@ def main(argv: list[str] | None = None) -> int:
     from supabase import create_client
     sb = create_client(supabase_url, supabase_key)
 
-    run(sb, dry_run=dry_run)
+    run(sb, dry_run=dry_run, xlsx_path=args.xlsx)
     return 0
 
 
