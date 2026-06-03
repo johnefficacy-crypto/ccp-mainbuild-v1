@@ -10,14 +10,13 @@ Sheets processed (in order):
 
 Sheets skipped:
     - PSC Coverage Summary          — aggregate/summary only, no actionable rows
-    - Source URLs                   — 45 rows of central-exam URLs (UPSC/SSC/IBPS etc.)
-                                      that do NOT appear on the Exam Registry sheet.
-                                      DEFERRED: rows are counted and reported every run.
-                                      Live import refuses to proceed unless
-                                      --acknowledge-missing-central-urls is passed.
-                                      Dry-run always reports the count; never hard-fails.
     - Subordinate Boards (Draft)    — DEFERRED (Phase 2 follow-up): rows are self-flagged
                                       as unverified draft; import once data is confirmed.
+
+Sheets processed (in order):
+    1. State PSC Detailed Registry  — organizations + exams + cycles
+    2. Exam Registry                — exams + cycles (orgs resolved by short-name lookup)
+    3. Source URLs                  — central recruiting-body orgs (UPSC/SSC/IBPS/RRB etc.)
 
 Dedupe keys:
     organizations : normalize(short_name).upper() + '|' + (state or '').lower() + '|' + type
@@ -226,22 +225,39 @@ def upsert_organization(
     official_url: str | None,
     dry_run: bool,
     org_cache: dict[str, str],
+    extra_metadata: dict | None = None,
 ) -> str | None:
-    """Return org id (or None on dry-run). Idempotent by dedupe key."""
+    """Return org id (or None on dry-run). Idempotent by dedupe key.
+
+    extra_metadata: caller-supplied keys merged ON TOP of the standard importer keys
+    (import_status, import_source, official_url).  Used by central-body import to add
+    import_source='exam_registry_source_urls', source_sheet, source_urls etc.
+    Unrelated pre-existing keys are never clobbered (read-modify-write).
+    """
     key = org_dedupe_key(short_name, state, org_type)
     if key in org_cache:
         logger.debug("org cache hit: %s", key)
         return org_cache[key]
 
+    def _build_meta(existing: dict | None = None) -> dict:
+        base = dict(existing or {})
+        base["import_status"] = "pending_review"
+        base["import_source"] = "exam_registry_workbook"  # default; extra may override
+        if official_url:
+            base["official_url"] = official_url
+        if extra_metadata:
+            base.update(extra_metadata)
+        return base
+
     if not dry_run:
-        existing = (
+        existing_rows = (
             sb.table("organizations")
             .select("id,name,type,state,calendar_status,metadata")
             .eq("type", org_type)
             .execute()
             .data or []
         )
-        for row in existing:
+        for row in existing_rows:
             rkey = org_dedupe_key(
                 _abbrev_from_name(row["name"]), row.get("state"), row["type"] or ""
             )
@@ -252,11 +268,7 @@ def upsert_organization(
                 if row.get("calendar_status") != calendar_status:
                     update["calendar_status"] = calendar_status
                 existing_meta: dict = row.get("metadata") or {}
-                merged_meta = {**existing_meta}
-                merged_meta["import_status"] = "pending_review"
-                merged_meta["import_source"] = "exam_registry_workbook"
-                if official_url:
-                    merged_meta["official_url"] = official_url
+                merged_meta = _build_meta(existing_meta)
                 if merged_meta != existing_meta:
                     update["metadata"] = merged_meta
                 if update:
@@ -266,19 +278,13 @@ def upsert_organization(
                 return row["id"]
 
         # Insert new — metadata column added by migration 168
-        meta: dict = {
-            "import_status": "pending_review",
-            "import_source": "exam_registry_workbook",
-        }
-        if official_url:
-            meta["official_url"] = official_url
         payload = {
             "name": full_name,
             "type": org_type,
             "state": state,
             "is_active": True,
             "calendar_status": calendar_status,
-            "metadata": meta,
+            "metadata": _build_meta(),
         }
         resp = sb.table("organizations").insert(payload).execute()
         org_id = resp.data[0]["id"]
@@ -576,6 +582,147 @@ def process_exam_registry_sheet(
             )
 
 
+# ── central org / Source URLs sheet ──────────────────────────────────────────
+
+# Canonical name for each central body.  Multiple raw name variants from the
+# workbook collapse to a single canonical key so only one org row is created.
+# The abbreviation becomes the canonical short_name used for the dedupe key.
+_CENTRAL_BODY_ALIASES: dict[str, str] = {
+    # UPSC
+    "upsc": "UPSC",
+    "union public service commission": "UPSC",
+    # SSC
+    "ssc": "SSC",
+    "staff selection commission": "SSC",
+    # IBPS
+    "ibps": "IBPS",
+    "institute of banking personnel selection": "IBPS",
+    # RRB / Railway Recruitment Board(s)
+    "rrb": "RRB",
+    "railway recruitment board": "RRB",
+    "railway recruitment boards": "RRB",
+    "rrbs": "RRB",
+    # RRC (Railway Recruitment Cell)
+    "rrc": "RRC",
+    "railway recruitment cell": "RRC",
+    # SBI / banking
+    "sbi": "SBI",
+    "state bank of india": "SBI",
+    # NTA
+    "nta": "NTA",
+    "national testing agency": "NTA",
+    # DSSSB
+    "dsssb": "DSSSB",
+    "delhi subordinate services selection board": "DSSSB",
+    # LIC
+    "lic": "LIC",
+    "life insurance corporation": "LIC",
+}
+
+_OFFICIAL_SOURCE_TYPES = {"official"}
+
+
+def _canonical_central_name(raw: str) -> str | None:
+    """Return canonical abbreviation for a central body name, or None if unrecognised."""
+    key = str(raw or "").lower().strip()
+    # Direct lookup
+    if key in _CENTRAL_BODY_ALIASES:
+        return _CENTRAL_BODY_ALIASES[key]
+    # Prefix-match: "RRB Ahmedabad" → "RRB"
+    for alias, canonical in _CENTRAL_BODY_ALIASES.items():
+        if key.startswith(alias):
+            return canonical
+    return None
+
+
+def _group_source_url_rows(rows: list[dict]) -> dict[str, dict]:
+    """Group Source URLs sheet rows by canonical body name.
+
+    Returns {canonical_name: {"full_name": str, "urls": [{"type": str, "url": str}]}}
+    Rows whose name cannot be mapped to a known central body are counted as skipped.
+    """
+    groups: dict[str, dict] = {}
+    for row in rows:
+        # Workbook column name candidates for body name
+        raw_name = _cell(row, "Name", "Body", "Organisation", "Organization", "Source") or ""
+        raw_type = _cell(row, "Source Type", "Type") or ""
+        raw_url = _cell(row, "URL", "Source URL", "Link") or ""
+
+        canonical = _canonical_central_name(raw_name)
+        if not canonical:
+            continue
+
+        if canonical not in groups:
+            groups[canonical] = {"full_name": raw_name, "urls": []}
+        if raw_url:
+            entry = {"type": raw_type, "url": raw_url}
+            if entry not in groups[canonical]["urls"]:
+                groups[canonical]["urls"].append(entry)
+
+    return groups
+
+
+def process_source_urls_sheet(
+    sb: Any, rows: list[dict], dry_run: bool,
+    org_cache: dict, stats: dict,
+) -> None:
+    """Source URLs — central recruiting-body orgs (UPSC/SSC/IBPS/RRB etc.)."""
+    groups = _group_source_url_rows(rows)
+    skipped_ungroupable = len(rows) - sum(len(g["urls"]) for g in groups.values())
+
+    for canonical, group in groups.items():
+        full_name = group["full_name"] or canonical
+        all_urls = group["urls"]
+
+        # official_url = first URL where Source Type matches "Official"
+        official_url: str | None = None
+        for entry in all_urls:
+            if entry["type"].lower().strip() in _OFFICIAL_SOURCE_TYPES:
+                official_url = entry["url"]
+                break
+
+        # source_urls: deduped list preserving type/url pairs
+        source_urls = all_urls
+
+        calendar_status = "needs_review"  # Source URLs sheet carries no calendar signal
+
+        # Build extra metadata — these are central-body-specific fields merged on top
+        # of the standard importer-owned keys set by upsert_organization.
+        extra_meta = {
+            "import_source": "exam_registry_source_urls",
+            "source_sheet": "Source URLs",
+            "source_urls": source_urls,
+        }
+
+        org_id = upsert_organization(
+            sb,
+            short_name=canonical,
+            full_name=full_name,
+            state=None,
+            org_type="central_commission",
+            calendar_status=calendar_status,
+            official_url=official_url,
+            dry_run=dry_run,
+            org_cache=org_cache,
+            extra_metadata=extra_meta,
+        )
+        stats["central_orgs"] = stats.get("central_orgs", 0) + 1
+
+        if not dry_run:
+            logger.info("central org processed: %s (id=%s)", canonical, org_id)
+        else:
+            logger.info(
+                "[DRY-RUN] central org: %s  urls=%d  official_url=%s",
+                canonical, len(source_urls), official_url or "(none)",
+            )
+
+    if skipped_ungroupable:
+        logger.info(
+            "Source URLs: %d row(s) skipped (body name not recognised as a central body).",
+            skipped_ungroupable,
+        )
+
+
 _STATE_ABBREVS = {
     "andhra pradesh": "andhra-pradesh",
     "arunachal pradesh": "arunachal-pradesh",
@@ -662,16 +809,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--xlsx", required=True, type=Path, help="Path to .xlsx workbook.")
     parser.add_argument("--dry-run", action="store_true", help="Preview only; no DB writes.")
     parser.add_argument("--verbose", "-v", action="store_true")
-    parser.add_argument(
-        "--acknowledge-missing-central-urls",
-        action="store_true",
-        dest="ack_missing_urls",
-        help=(
-            "Acknowledge that central-exam URLs (UPSC/SSC/IBPS etc.) from the "
-            "'Source URLs' sheet are deferred and will not be imported. "
-            "Required for live import when that sheet is present."
-        ),
-    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -706,31 +843,12 @@ def main(argv: list[str] | None = None) -> int:
     if "PSC Coverage Summary" in found:
         logger.info("SKIP: 'PSC Coverage Summary' — aggregate only, no actionable rows.")
 
-    # Source URLs sheet — central exam URLs not present on Exam Registry rows.
-    # Always print disposition with count.  Live import hard-fails unless operator
-    # passes --acknowledge-missing-central-urls.
-    source_url_rows = len(sheets.get("Source URLs", []))
-    if "Source URLs" in found:
-        logger.info(
-            "Source URLs sheet: %d rows NOT imported; central exam URLs (UPSC/SSC/IBPS "
-            "etc.) not captured elsewhere in this workbook. "
-            "Deferred — pass --acknowledge-missing-central-urls to proceed with live import.",
-            source_url_rows,
-        )
-        if not args.dry_run and not args.ack_missing_urls:
-            logger.error(
-                "Live import aborted: %d central URLs on 'Source URLs' sheet are not "
-                "captured by the Exam Registry or State PSC sheets. "
-                "Pass --acknowledge-missing-central-urls to proceed anyway.",
-                source_url_rows,
-            )
-            return 1
-
     org_cache: dict[str, str] = {}
     exam_cache: dict[str, str] = {}
-    stats: dict[str, int] = {"orgs": 0, "exams": 0, "cycles": 0, "cycles_updated": 0}
+    stats: dict[str, int] = {"orgs": 0, "exams": 0, "cycles": 0, "cycles_updated": 0,
+                              "central_orgs": 0}
 
-    # Process State PSC sheet first so orgs are cached before Exam Registry sheet
+    # Process sheets: PSC first (populates org_cache), then Exam Registry, then central.
     for sheet_name, processor in [
         ("State PSC Detailed Registry", process_state_psc_sheet),
         ("Exam Registry", process_exam_registry_sheet),
@@ -740,6 +858,14 @@ def main(argv: list[str] | None = None) -> int:
             continue
         logger.info("Processing sheet: %s (%d rows)", sheet_name, len(sheets[sheet_name]))
         processor(sb, sheets[sheet_name], args.dry_run, org_cache, exam_cache, stats)
+
+    # Process Source URLs sheet — central recruiting-body orgs
+    source_url_rows = sheets.get("Source URLs", [])
+    if source_url_rows:
+        logger.info("Processing sheet: Source URLs (%d rows)", len(source_url_rows))
+        process_source_urls_sheet(sb, source_url_rows, args.dry_run, org_cache, stats)
+    elif "Source URLs" not in found:
+        logger.info("Source URLs sheet not present in workbook.")
 
     # Report undated-phase backlog count
     undated_phases = 0
@@ -753,8 +879,10 @@ def main(argv: list[str] | None = None) -> int:
         undated_phases = getattr(result, "count", None) or 0
 
     logger.info(
-        "Import complete. orgs=%d  exams=%d  cycles_inserted=%d  cycles_updated=%d",
-        stats["orgs"], stats["exams"], stats["cycles"], stats.get("cycles_updated", 0),
+        "Import complete. state_orgs=%d  central_orgs=%d  exams=%d  "
+        "cycles_inserted=%d  cycles_updated=%d",
+        stats["orgs"], stats.get("central_orgs", 0),
+        stats["exams"], stats["cycles"], stats.get("cycles_updated", 0),
     )
     if not args.dry_run:
         logger.info("Undated exam_phases backlog (phase_start IS NULL): %d", undated_phases)
