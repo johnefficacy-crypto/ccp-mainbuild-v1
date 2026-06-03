@@ -40,7 +40,8 @@ def derive_seed_exam_slug(exam_name: str, conducting_body: str) -> tuple[str, st
     """Return ``(slug, clean_exam_name)`` using importer-identical slug logic."""
     state_prefix = _extract_state_from_body(conducting_body)
     clean_exam_name = _strip_leading_body_from_exam_name(exam_name, conducting_body)
-    return exam_slug(state_prefix, clean_exam_name), clean_exam_name
+    slug = exam_slug(state_prefix, clean_exam_name)
+    return slug, clean_exam_name
 
 
 # ── phase parsing / seeding ───────────────────────────────────────────────────
