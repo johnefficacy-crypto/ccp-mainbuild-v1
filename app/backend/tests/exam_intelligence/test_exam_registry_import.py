@@ -364,7 +364,7 @@ class TestExamSlugFormula:
         assert slug == "national-ssc-gd-constable"
 
     def test_jk_combined_competitive_examination_slug(self):
-        """Exact slugify trace for a real J&K exam name with em-dash and ampersand.
+        """Exact slugify trace for a real J&K exam name with hyphen and ampersand.
 
         slugify rules (import_exam_registry.py:64-67):
           1. lower + strip
@@ -372,13 +372,13 @@ class TestExamSlugFormula:
           3. re.sub(r"-{2,}", "-", ...)         — redundant but harmless
           4. strip("-")
 
-        Input: "Jammu & Kashmir PSC — Combined Competitive Examination"
+        Input: "Jammu & Kashmir PSC - Combined Competitive Examination"
           " & " (space-ampersand-space) → "-"   (entire run = non-alnum)
-          " — " (space-emdash-space)  → "-"   (same rule)
+          " - " (space-hyphen-space)   → "-"   (same rule)
         slugify result: "jammu-kashmir-psc-combined-competitive-examination"
 
-        Conducting body: "Jammu and Kashmir PSC" (official "and" spelling).
-        _extract_state_from_body: "jammu and kashmir" in body.lower() → "jammu-kashmir".
+        Conducting body: "Jammu & Kashmir Public Service Commission" (real body, ampersand).
+        _extract_state_from_body: "jammu & kashmir" in body.lower() → "jammu-kashmir".
 
         Slug = state_prefix + "-" + slugify(exam_name)
              = "jammu-kashmir" + "-" + "jammu-kashmir-psc-combined-competitive-examination"
@@ -389,8 +389,8 @@ class TestExamSlugFormula:
         This test documents the CURRENT formula output, not a corrected form.
         DB confirmation deferred (DB not reachable in CI).
         """
-        exam_name = "Jammu & Kashmir PSC — Combined Competitive Examination"
-        body = "Jammu and Kashmir PSC"
+        exam_name = "Jammu & Kashmir PSC - Combined Competitive Examination"
+        body = "Jammu & Kashmir Public Service Commission"
         state_prefix = _extract_state_from_body(body)
         assert state_prefix == "jammu-kashmir"
         assert slugify(exam_name) == "jammu-kashmir-psc-combined-competitive-examination"

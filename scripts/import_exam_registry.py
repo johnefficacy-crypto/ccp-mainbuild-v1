@@ -695,7 +695,7 @@ _STATE_ABBREVS = {
     "uttarakhand": "uttarakhand",
     "west bengal": "west-bengal", "wb": "west-bengal",
     "delhi": "delhi",
-    "jammu and kashmir": "jammu-kashmir", "j&k": "jammu-kashmir",
+    "jammu and kashmir": "jammu-kashmir", "jammu & kashmir": "jammu-kashmir", "j&k": "jammu-kashmir",
     "ladakh": "ladakh",
 }
 
