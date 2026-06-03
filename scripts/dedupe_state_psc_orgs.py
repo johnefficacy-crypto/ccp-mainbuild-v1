@@ -2,9 +2,10 @@
 """Collapse duplicate state_psc (and central) org clusters.
 
 Usage:
-    python scripts/dedupe_state_psc_orgs.py [--live] [--verbose]
+    python scripts/dedupe_state_psc_orgs.py --xlsx PATH [--live] [--verbose]
 
 Default is dry-run (read-only). Pass --live to apply changes.
+The --xlsx workbook is required in both dry-run and live mode.
 
 What it does:
   1. Reads all state_psc / central_commission org rows from the DB.
@@ -34,6 +35,8 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+
+from import_exam_registry import _cell, load_workbook, normalize_short_name
 
 logger = logging.getLogger("dedupe_state_psc_orgs")
 
@@ -114,6 +117,58 @@ def _norm_text(value: str | None) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().lower())
 
 
+def _norm_state(value: str | None) -> str:
+    """Normalize state labels for workbook/DB matching.
+
+    The registry and downstream rows may spell Jammu and Kashmir with either
+    "&" or "and"; canonicalize that separator while keeping the visible DB
+    state value unchanged.
+    """
+    text = _norm_text(value).replace("&", " and ")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def load_state_short_names_from_workbook(xlsx_path: Path) -> dict[str, str]:
+    """Load authoritative state PSC short names from the cleaned workbook."""
+    sheets = load_workbook(xlsx_path)
+    sheet_name = "State PSC Detailed Registry"
+    if sheet_name not in sheets:
+        raise ValueError(f"Workbook is missing required sheet: {sheet_name}")
+
+    state_short_names: dict[str, str] = {}
+    for row_num, row in enumerate(sheets[sheet_name], start=2):
+        state = _cell(row, "State/UT", "State")
+        if not state:
+            continue
+
+        short_name_raw = _cell(row, "PSC Short Name", "Short Name")
+        if not short_name_raw:
+            raise ValueError(f"Workbook row {row_num} for state {state!r} is missing PSC Short Name")
+
+        state_key = _norm_state(state)
+        short_name = normalize_short_name(short_name_raw)
+        if not short_name:
+            raise ValueError(f"Workbook row {row_num} for state {state!r} has a blank PSC Short Name")
+
+        existing = state_short_names.get(state_key)
+        if existing and existing != short_name:
+            raise ValueError(
+                f"Workbook has conflicting PSC Short Name values for state {state!r}: "
+                f"{existing!r} vs {short_name!r}"
+            )
+        state_short_names[state_key] = short_name
+
+    expected_count = 29
+    if len(state_short_names) != expected_count:
+        raise ValueError(
+            f"Expected {expected_count} PSC short_name mappings from workbook, "
+            f"loaded {len(state_short_names)}"
+        )
+
+    logger.info("Loaded %d PSC short_name mappings from workbook", len(state_short_names))
+    return state_short_names
+
+
 def _find_clusters(sb: Any) -> list[list[dict]]:
     """Return list of clusters (each a list of ≥2 org rows) that need collapsing.
 
@@ -135,7 +190,7 @@ def _find_clusters(sb: Any) -> list[list[dict]]:
         bucket_key = (
             row["type"],
             _norm_text(row.get("name")),
-            _norm_text(row.get("state")),
+            _norm_state(row.get("state")),
         )
         buckets[bucket_key].append(row)
 
@@ -193,11 +248,33 @@ def _merge_metadata(survivor_meta: dict, loser_meta: dict) -> dict:
     return merged
 
 
-def run(sb: Any, dry_run: bool) -> None:
+
+def _validate_state_psc_org_states(sb: Any, state_short_names: dict[str, str]) -> None:
+    """Fail before mutations if any state_psc row lacks a workbook mapping."""
+    orgs = (
+        sb.table("organizations")
+        .select("id,type,state,name")
+        .in_("type", ["state_psc"])
+        .execute()
+        .data or []
+    )
+    for org in orgs:
+        norm_state = _norm_state(org.get("state"))
+        if norm_state not in state_short_names:
+            message = (
+                f"No authoritative short_name for state_psc org {org['id']} "
+                f"with state {org.get('state')!r} from workbook"
+            )
+            logger.error(message)
+            raise ValueError(message)
+
+def run(sb: Any, dry_run: bool, state_short_names: dict[str, str]) -> None:
+    _validate_state_psc_org_states(sb, state_short_names)
     clusters = _find_clusters(sb)
     logger.info("duplicate_clusters_found=%d", len(clusters))
     if not clusters:
         logger.info("No duplicate clusters found. Nothing to do.")
+        _backfill_short_names(sb, dry_run, state_short_names)
         return
 
     # Pre-fetch all FK refs for every org in every cluster
@@ -265,16 +342,16 @@ def run(sb: Any, dry_run: bool) -> None:
                 sb.table("organizations").delete().eq("id", loser["id"]).execute()
 
     # Backfill short_name for ALL state_psc and central orgs (survivors + never-duplicated)
-    _backfill_short_names(sb, dry_run)
+    _backfill_short_names(sb, dry_run, state_short_names)
 
 
-def _backfill_short_names(sb: Any, dry_run: bool) -> None:
+def _backfill_short_names(sb: Any, dry_run: bool, state_short_names: dict[str, str]) -> None:
     """Set short_name on every state_psc / central org that lacks it.
 
     Match key is (normalized_name, normalized_state) — same key used by cluster
     detection — so a state with >1 body doesn't backfill the wrong short_name.
-    Source is the authoritative _STATE_PSC_SHORT_NAMES / _CENTRAL_SHORT_NAMES
-    maps; never _abbrev_from_name.
+    State PSC source is the workbook-derived state_short_names map. Central
+    commissions continue to use _CENTRAL_SHORT_NAMES. Never _abbrev_from_name.
     """
     orgs = (
         sb.table("organizations")
@@ -290,24 +367,18 @@ def _backfill_short_names(sb: Any, dry_run: bool) -> None:
             continue  # already set
 
         norm_name = _norm_text(org.get("name"))
-        norm_state = _norm_text(org.get("state"))
+        norm_state = _norm_state(org.get("state"))
 
         short_name: str | None = None
         if org["type"] == "state_psc":
-            # Match by state first; if ambiguous use name too
-            candidates = {
-                state_key: sn
-                for state_key, sn in _STATE_PSC_SHORT_NAMES.items()
-                if state_key == norm_state
-            }
-            if len(candidates) == 1:
-                short_name = next(iter(candidates.values()))
-            elif candidates:
-                # Multiple bodies in same state — match by name substring
-                for state_key, sn in candidates.items():
-                    if state_key in norm_name or sn.lower() in norm_name:
-                        short_name = sn
-                        break
+            short_name = state_short_names.get(norm_state)
+            if not short_name:
+                message = (
+                    f"No authoritative short_name for state_psc org {org['id']} "
+                    f"with state {org.get('state')!r} from workbook"
+                )
+                logger.error(message)
+                raise ValueError(message)
         elif org["type"] == "central_commission":
             name_lower = norm_name
             short_name = _CENTRAL_SHORT_NAMES.get(name_lower)
@@ -334,6 +405,7 @@ def _backfill_short_names(sb: Any, dry_run: bool) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Collapse duplicate state_psc org clusters.")
+    parser.add_argument("--xlsx", type=Path, required=True, help="Cleaned exam registry workbook path.")
     parser.add_argument("--live", action="store_true", help="Apply changes (default: dry-run).")
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
@@ -356,10 +428,20 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.")
         return 1
 
+    try:
+        state_short_names = load_state_short_names_from_workbook(args.xlsx)
+    except Exception as exc:
+        logger.error("Failed to load PSC short_name mappings: %s", exc)
+        return 1
+
     from supabase import create_client
     sb = create_client(supabase_url, supabase_key)
 
-    run(sb, dry_run=dry_run)
+    try:
+        run(sb, dry_run=dry_run, state_short_names=state_short_names)
+    except Exception as exc:
+        logger.error("Dedupe cleanup failed: %s", exc)
+        return 1
     return 0
 
 
