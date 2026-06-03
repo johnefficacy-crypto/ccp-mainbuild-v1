@@ -35,15 +35,14 @@ test.describe("Flow 2: submit → review navigation", () => {
     // Filter to wrong answers: the list reduces and the URL reflects the filter.
     await page.getByTestId("review-filter-wrong").click();
     await expect(page).toHaveURL(/[?&]filter=wrong/);
-    const wrongCount = await page
+    await expect(page.getByTestId("review-result-count")).toContainText("5");
+
+    const wrongItems = page
       .getByTestId("review-palette")
-      .locator('[data-testid^="review-palette-item-"]')
-      .count();
-    const wrongPaletteText = await page.getByTestId("review-palette").textContent();
-    expect(
-      wrongCount,
-      `Wrong-answer filter produced no palette rows for seeded attempt ${attemptId}; palette=${wrongPaletteText}`,
-    ).toBeGreaterThan(0);
+      .locator('[data-testid^="review-palette-item-"]');
+    await expect(wrongItems).toHaveCount(5);
+
+    const wrongCount = await wrongItems.count();
     expect(wrongCount).toBeLessThan(15);
 
     // option_trap is a derived classification (may be empty), but the filter
