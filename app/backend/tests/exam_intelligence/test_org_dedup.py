@@ -22,18 +22,68 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts"))
 
 from import_exam_registry import normalize_short_name, upsert_organization
+import dedupe_state_psc_orgs as dedupe_script
 from dedupe_state_psc_orgs import (
     _STATE_PSC_SHORT_NAMES,
+    _FK_TABLES,
     _backfill_short_names,
+    load_state_short_names_from_workbook,
     _find_clusters,
     _merge_metadata,
     _norm_text,
     _pick_survivor,
     run as dedup_run,
 )
+
+CLEANED_STATE_SHORT_NAMES: dict[str, str] = {
+    "andhra pradesh": "APPSC",
+    "arunachal pradesh": "ARPSC",
+    "assam": "APSC",
+    "bihar": "BPSC",
+    "chhattisgarh": "CGPSC",
+    "goa": "GOAPSC",
+    "gujarat": "GPSC",
+    "haryana": "HPSC",
+    "himachal pradesh": "HPPSC",
+    "jharkhand": "JPSC",
+    "jammu and kashmir": "JKPSC",
+    "karnataka": "KPSC",
+    "kerala": "KERALAPSC",
+    "madhya pradesh": "MPPSC",
+    "maharashtra": "MHPSC",
+    "manipur": "MNPSC",
+    "meghalaya": "MGPSC",
+    "mizoram": "MZPSC",
+    "nagaland": "NPSC",
+    "odisha": "OPSC",
+    "punjab": "PPSC",
+    "rajasthan": "RPSC",
+    "sikkim": "SPSC",
+    "tamil nadu": "TNPSC",
+    "telangana": "TGPSC",
+    "tripura": "TPSC",
+    "uttar pradesh": "UPPSC",
+    "uttarakhand": "UKPSC",
+    "west bengal": "WBPSC",
+}
+
+
+def _state_short_names(**overrides: str) -> dict[str, str]:
+    mapping = dict(CLEANED_STATE_SHORT_NAMES)
+    mapping.update(overrides)
+    return mapping
+
+
+def _workbook_rows(mapping: dict[str, str] | None = None) -> list[dict]:
+    return [
+        {"State/UT": state.title().replace(" And ", " & "), "PSC Short Name": short_name}
+        for state, short_name in (mapping or CLEANED_STATE_SHORT_NAMES).items()
+    ]
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -268,6 +318,19 @@ class TestDedupCleanup:
         ]
         return orgs
 
+    def test_fk_tables_match_actual_org_foreign_keys(self):
+        fk_targets = {(fk["table"], fk["col"]) for fk in _FK_TABLES}
+
+        assert ("courses", "organization_id") not in fk_targets
+        assert fk_targets == {
+            ("recruitment_units", "organization_id"),
+            ("recruitments", "organization_id"),
+            ("source_registry", "organization_id"),
+            ("exams", "conducting_organization_id"),
+            ("blog_posts", "related_organization_id"),
+            ("blog_recruitment_links", "organization_id"),
+        }
+
     def test_survivor_has_official_url(self):
         """Row with official_url wins over row without (all else equal)."""
         orgs = [
@@ -291,7 +354,7 @@ class TestDedupCleanup:
         orgs = self._goa_cluster()
         fk_refs = {"goa-2": {"exams": ["exam-ref-1"]}, "goa-1": {}}
         sb = _make_dedup_sb(orgs, fk_refs)
-        dedup_run(sb, dry_run=False)
+        dedup_run(sb, dry_run=False, state_short_names=_state_short_names())
         # Verify no None was written to conducting_organization_id
         for call in sb.table.return_value.update.call_args_list:
             payload = call[0][0] if call[0] else {}
@@ -315,7 +378,7 @@ class TestDedupCleanup:
         }
         sb = _make_dedup_sb(orgs, fk_refs)
         with caplog.at_level(logging.WARNING, logger="dedupe_state_psc_orgs"):
-            dedup_run(sb, dry_run=False)
+            dedup_run(sb, dry_run=False, state_short_names=_state_short_names())
         assert any("RESTRICT" in r.message for r in caplog.records)
 
     def test_rerun_is_noop(self, caplog):
@@ -324,7 +387,7 @@ class TestDedupCleanup:
         orgs = [_org("goa-only", "Goa PSC", "goa", short_name="GPSC")]
         sb = _make_dedup_sb(orgs, {})
         with caplog.at_level(logging.INFO, logger="dedupe_state_psc_orgs"):
-            dedup_run(sb, dry_run=False)
+            dedup_run(sb, dry_run=False, state_short_names=_state_short_names())
         assert any("Nothing to do" in r.message for r in caplog.records)
         sb.table("organizations").delete.assert_not_called()
 
@@ -342,7 +405,7 @@ class TestBackfillShortNames:
         sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = orgs
         sb.table.return_value.update.return_value.eq.return_value.execute.return_value = None
 
-        _backfill_short_names(sb, dry_run=False)
+        _backfill_short_names(sb, dry_run=False, state_short_names=_state_short_names())
 
         sb.table.return_value.update.assert_called_once_with({"short_name": "APSC"})
 
@@ -354,85 +417,111 @@ class TestBackfillShortNames:
         sb = MagicMock()
         sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = orgs
 
-        _backfill_short_names(sb, dry_run=False)
+        _backfill_short_names(sb, dry_run=False, state_short_names=_state_short_names())
 
         sb.table.return_value.update.assert_not_called()
 
-    def test_backfill_from_authoritative_map_not_abbrev(self):
-        """UKPSC must come from _STATE_PSC_SHORT_NAMES, not _abbrev_from_name.
-        _abbrev_from_name('Uttarakhand Public Service Commission') = 'UPSC' (wrong).
-        """
-        assert _STATE_PSC_SHORT_NAMES.get("uttarakhand") == "UKPSC"
-        assert _STATE_PSC_SHORT_NAMES.get("chhattisgarh") == "CGPSC"
+    def test_workbook_derived_map_is_used_for_backfill_not_hardcoded(self):
+        orgs = [{
+            "id": "goa-only", "type": "state_psc", "state": "goa",
+            "name": "Goa Public Service Commission", "short_name": None,
+        }]
+        sb = MagicMock()
+        sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = orgs
+        sb.table.return_value.update.return_value.eq.return_value.execute.return_value = None
 
-    def test_all_29_state_psc_states_covered(self):
-        """Every standard state must have an authoritative short_name."""
-        expected = [
-            "andhra pradesh", "arunachal pradesh", "assam", "bihar",
-            "chhattisgarh", "goa", "gujarat", "haryana", "himachal pradesh",
-            "jharkhand", "jammu and kashmir", "karnataka", "kerala",
-            "madhya pradesh", "maharashtra", "manipur", "meghalaya",
-            "mizoram", "nagaland", "odisha", "punjab", "rajasthan",
-            "sikkim", "tamil nadu", "telangana", "tripura",
-            "uttar pradesh", "uttarakhand", "west bengal",
-        ]
-        missing = [s for s in expected if s not in _STATE_PSC_SHORT_NAMES]
-        assert not missing, f"Missing: {missing}"
-
-    def test_map_matches_workbook_psc_short_name_column(self):
-        """Assert _STATE_PSC_SHORT_NAMES equals normalize_short_name(workbook 'PSC Short Name')
-        for every state. This table IS the workbook column — transcribed here so any drift
-        between the map and the authoritative workbook source fails CI immediately.
-        If a workbook value changes, update BOTH this table and _STATE_PSC_SHORT_NAMES.
-        """
-        from import_exam_registry import normalize_short_name
-
-        # Workbook "PSC Short Name" column values, keyed by normalized state name.
-        # Source: State PSC Detailed Registry sheet.
-        WORKBOOK_PSC_SHORT_NAMES: dict[str, str] = {
-            "andhra pradesh"    : "APPSC",
-            "arunachal pradesh" : "APPSC",
-            "assam"             : "APSC",
-            "bihar"             : "BPSC",
-            "chhattisgarh"      : "CGPSC",
-            "goa"               : "GPSC",
-            "gujarat"           : "GPSC",
-            "haryana"           : "HPSC",
-            "himachal pradesh"  : "HPPSC",
-            "jharkhand"         : "JPSC",
-            "jammu and kashmir" : "JKPSC",
-            "karnataka"         : "KPSC",
-            "kerala"            : "KPSC",
-            "madhya pradesh"    : "MPPSC",
-            "maharashtra"       : "MPSC",
-            "manipur"           : "MPSC",
-            "meghalaya"         : "MPSC",
-            "mizoram"           : "MPSC",
-            "nagaland"          : "NPSC",
-            "odisha"            : "OPSC",
-            "punjab"            : "PPSC",
-            "rajasthan"         : "RPSC",
-            "sikkim"            : "SPSC",
-            "tamil nadu"        : "TNPSC",
-            "telangana"         : "TSPSC",
-            "tripura"           : "TPSC",
-            "uttar pradesh"     : "UPPSC",
-            "uttarakhand"       : "UKPSC",
-            "west bengal"       : "WBPSC",
-        }
-
-        mismatches = []
-        for state, workbook_value in WORKBOOK_PSC_SHORT_NAMES.items():
-            expected = normalize_short_name(workbook_value)
-            actual = _STATE_PSC_SHORT_NAMES.get(state)
-            if actual != expected:
-                mismatches.append(
-                    f"  {state}: map={actual!r}, workbook={workbook_value!r} → normalized={expected!r}"
-                )
-        assert not mismatches, (
-            "_STATE_PSC_SHORT_NAMES diverges from workbook 'PSC Short Name' column:\n"
-            + "\n".join(mismatches)
+        assert _STATE_PSC_SHORT_NAMES["goa"] != "WORKBOOKPSC"
+        _backfill_short_names(
+            sb,
+            dry_run=False,
+            state_short_names=_state_short_names(goa="WORKBOOKPSC"),
         )
+
+        sb.table.return_value.update.assert_called_once_with({"short_name": "WORKBOOKPSC"})
+
+    def test_cleaned_workbook_values_are_accepted(self, monkeypatch, caplog):
+        monkeypatch.setattr(
+            dedupe_script,
+            "load_workbook",
+            lambda _path: {"State PSC Detailed Registry": _workbook_rows()},
+        )
+
+        with caplog.at_level("INFO", logger="dedupe_state_psc_orgs"):
+            mapping = load_state_short_names_from_workbook(Path("cleaned.xlsx"))
+
+        expected_cleaned = {
+            "arunachal pradesh": "ARPSC",
+            "goa": "GOAPSC",
+            "kerala": "KERALAPSC",
+            "maharashtra": "MHPSC",
+            "manipur": "MNPSC",
+            "meghalaya": "MGPSC",
+            "mizoram": "MZPSC",
+            "telangana": "TGPSC",
+            "jammu and kashmir": "JKPSC",
+        }
+        for state, short_name in expected_cleaned.items():
+            assert mapping[state] == short_name
+        assert any("Loaded 29 PSC short_name mappings from workbook" in r.message for r in caplog.records)
+
+    def test_missing_workbook_state_causes_fail_fast(self):
+        orgs = [{
+            "id": "unknown-state", "type": "state_psc", "state": "ladakh",
+            "name": "Ladakh Public Service Commission", "short_name": None,
+        }]
+        sb = MagicMock()
+        sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = orgs
+
+        with pytest.raises(ValueError, match="No authoritative short_name"):
+            _backfill_short_names(sb, dry_run=True, state_short_names=_state_short_names())
+        sb.table.return_value.update.assert_not_called()
+
+    def test_conflicting_short_names_for_same_workbook_state_causes_fail_fast(self, monkeypatch):
+        rows = _workbook_rows() + [{"State/UT": "Goa", "PSC Short Name": "GPSC-CONFLICT"}]
+        monkeypatch.setattr(
+            dedupe_script,
+            "load_workbook",
+            lambda _path: {"State PSC Detailed Registry": rows},
+        )
+
+        with pytest.raises(ValueError, match="conflicting PSC Short Name"):
+            load_state_short_names_from_workbook(Path("cleaned.xlsx"))
+
+    def test_dry_run_does_not_write(self):
+        orgs = [{
+            "id": "assam-only", "type": "state_psc", "state": "assam",
+            "name": "Assam Public Service Commission", "short_name": None,
+        }]
+        sb = MagicMock()
+        sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = orgs
+
+        _backfill_short_names(sb, dry_run=True, state_short_names=_state_short_names())
+
+        sb.table.return_value.update.assert_not_called()
+
+    def test_live_writes_only_when_live(self):
+        orgs = [{
+            "id": "assam-only", "type": "state_psc", "state": "assam",
+            "name": "Assam Public Service Commission", "short_name": None,
+        }]
+        sb = MagicMock()
+        sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = orgs
+        sb.table.return_value.update.return_value.eq.return_value.execute.return_value = None
+
+        _backfill_short_names(sb, dry_run=False, state_short_names=_state_short_names())
+
+        sb.table.return_value.update.assert_called_once_with({"short_name": "APSC"})
+
+
+class TestDedupeCli:
+    def test_xlsx_argument_is_accepted(self):
+        result = subprocess.run(
+            [sys.executable, "scripts/dedupe_state_psc_orgs.py", "--help"],
+            capture_output=True, text=True,
+            cwd=str(Path(__file__).resolve().parents[4]),
+        )
+        assert result.returncode == 0
+        assert "--xlsx" in result.stdout
 
 
 # ── zero diff to state/slug machinery ────────────────────────────────────────
