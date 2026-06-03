@@ -40,6 +40,22 @@ function legacyWindow(phase) {
   return phase.metadata?.phase_window || phase.phase_window || null;
 }
 
+function needsPhaseDateAuthoring(phase) {
+  if (phase.phase_start) return false;
+  const metadata = phase.metadata || {};
+  return Boolean(
+    legacyWindow(phase) ||
+    metadata.needs_phase_date_authoring === true ||
+    metadata.import_source === "exam_registry_workbook"
+  );
+}
+
+function phaseDateSourceLabel(phase) {
+  const windowText = legacyWindow(phase);
+  if (windowText) return `Legacy: ${windowText}`;
+  return "Imported workbook phase stub";
+}
+
 export default function SetupPanel() {
   const { exam, cycles, phases } = useExamWorkspace();
 
@@ -66,12 +82,12 @@ export default function SetupPanel() {
     setPatchEdits(prev => ({ ...prev, [id]: { ...editFor(id), ...updates } }));
   }
 
-  // Worklist: phases that have a legacy window string but no structured start
-  // date. Keyed off phase_start IS NULL — not the phase_window_needs_review
-  // flag, which has a known hole for TBD/excluded rows.
-  const legacyWindowPhases = phases.filter(p => legacyWindow(p));
-  const needsDates = legacyWindowPhases.filter(
-    p => !p.phase_start && !datedPhaseIds.has(p.id)
+  // Worklist: phases that need manual structured date authoring. Legacy rows
+  // still qualify via phase_window, while workbook-imported stubs qualify via an
+  // explicit metadata signal instead of overloading phase_window with labels.
+  const phaseDateWorklistPhases = phases.filter(needsPhaseDateAuthoring);
+  const needsDates = phaseDateWorklistPhases.filter(
+    p => !datedPhaseIds.has(p.id)
   );
 
   async function addPhase() {
@@ -279,8 +295,8 @@ export default function SetupPanel() {
         )}
       </div>
 
-      {/* Phases needing dates — worklist keyed off phase_start IS NULL */}
-      {legacyWindowPhases.length > 0 && (
+      {/* Phases needing dates — missing phase_start plus explicit worklist signal */}
+      {phaseDateWorklistPhases.length > 0 && (
         <div className="card" data-testid="phase-date-worklist">
           <div className="card-head">
             <h3 className="oc-title">Phases needing dates</h3>
@@ -322,7 +338,7 @@ export default function SetupPanel() {
                         data-testid={`worklist-legacy-${phase.id}`}
                         style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}
                       >
-                        Legacy: {legacyWindow(phase)}
+                        {phaseDateSourceLabel(phase)}
                       </div>
                     </div>
                     <div style={{ minWidth: 170 }}>
