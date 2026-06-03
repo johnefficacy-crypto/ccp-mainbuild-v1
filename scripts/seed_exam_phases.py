@@ -40,8 +40,7 @@ def derive_seed_exam_slug(exam_name: str, conducting_body: str) -> tuple[str, st
     """Return ``(slug, clean_exam_name)`` using importer-identical slug logic."""
     state_prefix = _extract_state_from_body(conducting_body)
     clean_exam_name = _strip_leading_body_from_exam_name(exam_name, conducting_body)
-    slug = exam_slug(state_prefix, clean_exam_name)
-    return slug, clean_exam_name
+    return exam_slug(state_prefix, clean_exam_name), clean_exam_name
 
 
 # ── phase parsing / seeding ───────────────────────────────────────────────────
@@ -68,6 +67,105 @@ def _phase_rows_for_sheet(
             exam_name = _cell(row, "Exam") or ""
             conducting_body = _cell(row, "Conducting Body") or ""
             phases_text = _cell(row, "Main Phases", "Typical Phases")
+
+        if not exam_name:
+            continue
+
+        phase_names = parse_phase_names(phases_text)
+        if not phase_names:
+            continue
+
+        slug, clean_exam_name = derive_seed_exam_slug(exam_name, conducting_body)
+        derived.append((slug, clean_exam_name, phase_names))
+    return derived
+
+
+def _find_exam_id(sb: Any, slug: str) -> str | None:
+    rows = (
+        sb.table("exams")
+        .select("id,slug")
+        .eq("slug", slug)
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    return rows[0]["id"] if rows else None
+
+
+def _phase_exists(sb: Any, exam_id: str, phase_slug: str) -> bool:
+    rows = (
+        sb.table("exam_phases")
+        .select("id")
+        .eq("exam_id", exam_id)
+        .eq("phase_slug", phase_slug)
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    return bool(rows)
+
+
+def seed_phase_rows(
+    sb: Any, rows: list[tuple[str, str, list[str]]], *, dry_run: bool
+) -> dict[str, int]:
+    stats = {"exams_seen": 0, "phases": 0, "existing": 0, "not_found": 0}
+    for slug, clean_exam_name, phase_names in rows:
+        stats["exams_seen"] += 1
+
+        if dry_run:
+            logger.info(
+                "[DRY-RUN] would seed %d phases for %s (slug=%s)",
+                len(phase_names),
+                clean_exam_name,
+                slug,
+            )
+            stats["phases"] += len(phase_names)
+            continue
+
+        exam_id = _find_exam_id(sb, slug)
+        if not exam_id:
+            logger.warning(
+                "exam not found for phase seeding: %s (slug=%s)",
+                clean_exam_name,
+                slug,
+            )
+            stats["not_found"] += 1
+            continue
+
+        for order, phase_name in enumerate(phase_names, start=1):
+            phase_slug = slugify(phase_name)
+            if _phase_exists(sb, exam_id, phase_slug):
+                stats["existing"] += 1
+                continue
+            payload = {
+                "exam_id": exam_id,
+                "phase_name": phase_name,
+                "phase_slug": phase_slug,
+                "phase_order": order,
+                "status": "expected",
+                "metadata": {
+                    "import_status": "pending_review",
+                    "import_source": "exam_registry_workbook",
+                    "needs_phase_date_authoring": True,
+                },
+            }
+            sb.table("exam_phases").insert(payload).execute()
+            stats["phases"] += 1
+            logger.info("phase inserted: exam=%s phase=%s", slug, phase_name)
+    return stats
+
+
+def process_workbook(
+    sb: Any, sheets: dict[str, list[dict]], *, dry_run: bool
+) -> dict[str, int]:
+    rows: list[tuple[str, str, list[str]]] = []
+    for sheet_name in ("State PSC Detailed Registry", "Exam Registry"):
+        sheet_rows = sheets.get(sheet_name, [])
+        if not sheet_rows:
+            logger.warning("Sheet not found or empty: %s", sheet_name)
+            continue
+        rows.extend(_phase_rows_for_sheet(sheet_name, sheet_rows))
+    return seed_phase_rows(sb, rows, dry_run=dry_run)
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
