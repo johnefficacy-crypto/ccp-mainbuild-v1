@@ -154,11 +154,18 @@ class TestAbbrevFromName:
 # ── upsert_organization — insert payload (DB-mocked) ────────────────────────
 
 def _make_sb(existing_rows: list[dict] | None = None) -> MagicMock:
-    """Build a minimal Supabase client mock for the organizations table."""
+    """Build a minimal Supabase client mock for the organizations table.
+
+    The new upsert_organization SELECT chain is:
+      .table().select().eq(type).eq(short_name).[eq|is_](state).execute()
+    We make the chain self-referential so any number of .eq()/.is_() calls resolve.
+    """
     sb = MagicMock()
-    # Chain: sb.table(...).select(...).eq(...).execute().data
+    # Self-referential SELECT chain: any number of .eq()/.is_() chaining supported
     select_chain = sb.table.return_value.select.return_value
-    select_chain.eq.return_value.execute.return_value.data = existing_rows or []
+    select_chain.eq.return_value = select_chain
+    select_chain.is_.return_value = select_chain
+    select_chain.execute.return_value.data = existing_rows or []
     # Chain: sb.table(...).insert(...).execute().data
     sb.table.return_value.insert.return_value.execute.return_value.data = [
         {"id": "new-org-id"}

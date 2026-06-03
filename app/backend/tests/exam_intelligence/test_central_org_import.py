@@ -98,8 +98,12 @@ class TestGroupSourceUrlRows:
 
 def _make_sb_central(existing_rows=None):
     sb = MagicMock()
+    # Self-referential SELECT chain: upsert_organization now uses
+    # .eq(type).eq(short_name).is_(state).execute() — any depth supported.
     select_chain = sb.table.return_value.select.return_value
-    select_chain.eq.return_value.execute.return_value.data = existing_rows or []
+    select_chain.eq.return_value = select_chain
+    select_chain.is_.return_value = select_chain
+    select_chain.execute.return_value.data = existing_rows or []
     sb.table.return_value.insert.return_value.execute.return_value.data = [
         {"id": "central-org-id"}
     ]
