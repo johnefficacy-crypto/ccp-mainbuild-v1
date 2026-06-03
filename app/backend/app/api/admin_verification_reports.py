@@ -35,7 +35,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.core.auth import require_admin
+from app.core.auth import require_admin, require_permission
 from app.core.permissions import (
     ACTION_ACK_BATCH,
     ACTION_PROMOTE,
@@ -737,11 +737,14 @@ class ApplyRegistryActionRequest(BaseModel):
     reason: str = Field(..., min_length=8, max_length=500)
 
 
+_PERM_REGISTRY_ACTION = "exam_intelligence.cms"
+
+
 @router.post("/admin/verification-reports/{report_id}/apply-registry-action")
 def apply_registry_action(
     report_id: str,
     payload: ApplyRegistryActionRequest = Body(...),
-    admin: dict = Depends(require_admin),
+    admin: dict = Depends(require_permission(_PERM_REGISTRY_ACTION)),
 ) -> dict[str, Any]:
     """Apply a verified corrigendum / lifecycle event to the exam registry.
 
@@ -791,6 +794,25 @@ def apply_registry_action(
     )
     if not report_rows:
         raise HTTPException(status_code=404, detail="verification_report not found")
+
+    # Pre-validate event_source_id before any registry write so the action
+    # row insert cannot fail on a stale FK after the target mutation has
+    # already been committed (atomicity guard — Codex P1).
+    if payload.event_source_id:
+        event_check = (
+            supabase.table("recruitment_events")
+            .select("id")
+            .eq("id", payload.event_source_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not event_check:
+            raise HTTPException(
+                status_code=422,
+                detail="event_source_id does not resolve to a recruitment_events row",
+            )
 
     # Dispatch to the single-sourced write+audit logic.
     action_type = payload.action_type

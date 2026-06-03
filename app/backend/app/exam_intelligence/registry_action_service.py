@@ -133,7 +133,7 @@ def apply_cycle_date_update(
     existing = _safe_select(supabase, "exam_cycles", id=cycle_id)
     if not existing:
         raise HTTPException(status_code=404, detail="exam_cycle not found")
-    cleaned = {k: v for k, v in patch.items() if k in _CYCLE_ALL_FIELDS}
+    cleaned = {k: v for k, v in patch.items() if k in _CYCLE_DATE_FIELDS}
     if not cleaned:
         raise HTTPException(status_code=422, detail="No allowed cycle fields in patch")
     if cleaned.get("status") and cleaned["status"] not in _CYCLE_STATUSES:
@@ -162,7 +162,7 @@ def apply_phase_date_update(
     existing = _safe_select(supabase, "exam_phases", id=phase_id)
     if not existing:
         raise HTTPException(status_code=404, detail="exam_phase not found")
-    cleaned = {k: v for k, v in patch.items() if k in _PHASE_ALL_FIELDS}
+    cleaned = {k: v for k, v in patch.items() if k in _PHASE_DATE_FIELDS}
     if not cleaned:
         raise HTTPException(status_code=422, detail="No allowed phase fields in patch")
     if cleaned.get("status") and cleaned["status"] not in _PHASE_STATUSES:

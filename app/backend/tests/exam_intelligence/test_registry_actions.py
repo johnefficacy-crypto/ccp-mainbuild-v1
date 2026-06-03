@@ -39,7 +39,18 @@ from tests.persona_questions._stub import SBStub
 # ── Test helpers ─────────────────────────────────────────────────────────
 
 
-_ADMIN = {"id": "admin-uuid-1", "email": "admin@test.local", "role": "admin", "permissions": ["recruitments.manage"]}
+_ADMIN = {
+    "id": "admin-uuid-1",
+    "email": "admin@test.local",
+    "role": "admin",
+    "permissions": ["recruitments.manage", "exam_intelligence.cms"],
+}
+_ADMIN_NO_CMS = {
+    "id": "admin-uuid-2",
+    "email": "review-only@test.local",
+    "role": "admin",
+    "permissions": ["recruitments.manage"],  # no exam_intelligence.cms
+}
 _REPORT_ID = "report-uuid-1"
 _CYCLE_ID = "cycle-uuid-1"
 _PHASE_ID = "phase-uuid-1"
@@ -47,11 +58,12 @@ _POLICY_ID = "policy-uuid-1"
 _EVENT_ID = "event-uuid-1"
 
 
-def _build_app(sb: SBStub) -> TestClient:
+def _build_app(sb: SBStub, *, actor: dict | None = None) -> TestClient:
     app = FastAPI()
     app.include_router(vr_api.router, prefix="/api")
     vr_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
-    app.dependency_overrides[get_current_user] = lambda: _ADMIN
+    _actor = actor if actor is not None else _ADMIN
+    app.dependency_overrides[get_current_user] = lambda: _actor
 
     # Patch the service module's supabase calls to use the same stub.
     import app.exam_intelligence.registry_action_service as svc
@@ -69,6 +81,7 @@ def _seeded_db(*, with_cycle=True, with_phase=True, with_policy=True) -> dict:
                 "lifecycle_status": "stale_source_changed",
             }
         ],
+        "recruitment_events": [{"id": _EVENT_ID, "event_type": "corrigendum"}],
         "admin_audit_logs": [],
         "exam_registry_actions": [],
     }
@@ -573,6 +586,55 @@ def test_cycle_date_update_missing_target_id_field_rejected():
         },
     )
     assert r.status_code == 422
+
+
+def test_admin_without_cms_permission_rejected():
+    """An admin without exam_intelligence.cms must be denied the apply endpoint."""
+    sb = SBStub(_seeded_db())
+    client = _build_app(sb, actor=_ADMIN_NO_CMS)
+
+    r = client.post(
+        f"/api/admin/verification-reports/{_REPORT_ID}/apply-registry-action",
+        json={
+            "action_type": "cycle_date_update",
+            "exam_cycle_id": _CYCLE_ID,
+            "patch": {"exam_start": "2025-06-01"},
+            "reason": "This admin lacks exam_intelligence.cms — must be rejected",
+        },
+    )
+    assert r.status_code == 403
+    assert sb.db.get("exam_registry_actions", []) == []
+    assert sb.db.get("admin_audit_logs", []) == []
+
+
+def test_stale_event_source_id_rejected_before_write():
+    """A stale event_source_id must be caught before any registry mutation.
+
+    This is the atomicity guard: if event_source_id doesn't resolve, we
+    reject before the target write so the registry is never mutated without
+    a corresponding exam_registry_actions row.
+    """
+    sb = SBStub(_seeded_db())
+    # recruitment_events table is empty — the ID doesn't exist
+    sb.db["recruitment_events"] = []
+    client = _build_app(sb)
+
+    r = client.post(
+        f"/api/admin/verification-reports/{_REPORT_ID}/apply-registry-action",
+        json={
+            "action_type": "cycle_date_update",
+            "exam_cycle_id": _CYCLE_ID,
+            "event_source_id": "stale-event-uuid",
+            "patch": {"exam_start": "2025-06-01"},
+            "reason": "Stale event_source_id must be rejected before cycle write",
+        },
+    )
+    assert r.status_code == 422
+    # Registry must be untouched — no partial mutation
+    assert sb.db.get("exam_registry_actions", []) == []
+    cycle = sb.db["exam_cycles"][0]
+    assert "exam_start" not in cycle or cycle.get("exam_start") != "2025-06-01", \
+        "exam_cycles must not be mutated when event_source_id validation fails"
 
 
 def test_policy_update_create_forced_to_pending():
