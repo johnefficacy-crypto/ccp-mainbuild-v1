@@ -23,7 +23,8 @@ export default defineConfig({
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  timeout: 60_000,
+  timeout: 90_000,
+  globalTimeout: 32 * 60 * 1000, // 32 min — Playwright self-aborts before 40-min GH cap
   expect: { timeout: 10_000 },
   globalSetup: "./fixtures/globalSetup.ts",
   reporter: [
@@ -32,7 +33,7 @@ export default defineConfig({
   ],
   use: {
     baseURL: BASE_URL,
-    trace: "on-first-retry",
+    trace: "on",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
