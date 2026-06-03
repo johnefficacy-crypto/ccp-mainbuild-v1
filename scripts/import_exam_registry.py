@@ -227,14 +227,20 @@ def upsert_organization(
     org_cache: dict[str, str],
     extra_metadata: dict | None = None,
 ) -> str | None:
-    """Return org id (or None on dry-run). Idempotent by dedupe key.
+    """Return org id (or None on dry-run). DB-idempotent by exact (type, short_name, state) lookup.
+
+    Lookup uses an exact SELECT on organizations.short_name (migration 169), not the
+    lossy _abbrev_from_name reconstruction that caused 11 duplicate clusters.  Two calls
+    with identical (short_name, state, org_type) always resolve to ONE row regardless of
+    in-memory cache state.
 
     extra_metadata: caller-supplied keys merged ON TOP of the standard importer keys
     (import_status, import_source, official_url).  Used by central-body import to add
     import_source='exam_registry_source_urls', source_sheet, source_urls etc.
     Unrelated pre-existing keys are never clobbered (read-modify-write).
     """
-    key = org_dedupe_key(short_name, state, org_type)
+    norm_short = normalize_short_name(short_name)
+    key = org_dedupe_key(norm_short, state, org_type)
     if key in org_cache:
         logger.debug("org cache hit: %s", key)
         return org_cache[key]
@@ -250,36 +256,37 @@ def upsert_organization(
         return base
 
     if not dry_run:
-        existing_rows = (
+        # Exact DB lookup on (type, short_name, state) — no abbreviation reconstruction.
+        query = (
             sb.table("organizations")
-            .select("id,name,type,state,calendar_status,metadata")
+            .select("id,name,type,state,calendar_status,metadata,short_name")
             .eq("type", org_type)
-            .execute()
-            .data or []
+            .eq("short_name", norm_short)
         )
-        for row in existing_rows:
-            rkey = org_dedupe_key(
-                _abbrev_from_name(row["name"]), row.get("state"), row["type"] or ""
-            )
-            if rkey == key:
-                # Exists — read-modify-write: merge only importer-owned keys so
-                # unrelated metadata set by other processes is never clobbered.
-                update: dict = {}
-                if row.get("calendar_status") != calendar_status:
-                    update["calendar_status"] = calendar_status
-                existing_meta: dict = row.get("metadata") or {}
-                merged_meta = _build_meta(existing_meta)
-                if merged_meta != existing_meta:
-                    update["metadata"] = merged_meta
-                if update:
-                    sb.table("organizations").update(update).eq("id", row["id"]).execute()
-                org_cache[key] = row["id"]
-                logger.debug("org found (existing): %s → %s", key, row["id"])
-                return row["id"]
+        query = query.is_("state", "null") if state is None else query.eq("state", state)
+        existing_rows = query.execute().data or []
 
-        # Insert new — metadata column added by migration 168
+        if existing_rows:
+            row = existing_rows[0]
+            # Exists — read-modify-write: merge only importer-owned keys so
+            # unrelated metadata set by other processes is never clobbered.
+            update: dict = {}
+            if row.get("calendar_status") != calendar_status:
+                update["calendar_status"] = calendar_status
+            existing_meta: dict = row.get("metadata") or {}
+            merged_meta = _build_meta(existing_meta)
+            if merged_meta != existing_meta:
+                update["metadata"] = merged_meta
+            if update:
+                sb.table("organizations").update(update).eq("id", row["id"]).execute()
+            org_cache[key] = row["id"]
+            logger.debug("org found (existing): %s → %s", key, row["id"])
+            return row["id"]
+
+        # Insert new
         payload = {
             "name": full_name,
+            "short_name": norm_short,
             "type": org_type,
             "state": state,
             "is_active": True,

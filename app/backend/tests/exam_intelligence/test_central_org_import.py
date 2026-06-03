@@ -99,7 +99,14 @@ class TestGroupSourceUrlRows:
 def _make_sb_central(existing_rows=None):
     sb = MagicMock()
     select_chain = sb.table.return_value.select.return_value
-    select_chain.eq.return_value.execute.return_value.data = existing_rows or []
+    leaf = MagicMock()
+    leaf.execute.return_value.data = existing_rows or []
+    depth1 = select_chain.eq.return_value
+    depth1.execute.return_value.data = existing_rows or []
+    depth2 = depth1.eq.return_value
+    depth2.execute.return_value.data = existing_rows or []
+    depth2.eq.return_value = leaf
+    depth2.is_.return_value = leaf
     sb.table.return_value.insert.return_value.execute.return_value.data = [
         {"id": "central-org-id"}
     ]
