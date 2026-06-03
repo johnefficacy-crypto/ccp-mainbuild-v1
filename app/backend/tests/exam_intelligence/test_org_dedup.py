@@ -379,6 +379,61 @@ class TestBackfillShortNames:
         missing = [s for s in expected if s not in _STATE_PSC_SHORT_NAMES]
         assert not missing, f"Missing: {missing}"
 
+    def test_map_matches_workbook_psc_short_name_column(self):
+        """Assert _STATE_PSC_SHORT_NAMES equals normalize_short_name(workbook 'PSC Short Name')
+        for every state. This table IS the workbook column — transcribed here so any drift
+        between the map and the authoritative workbook source fails CI immediately.
+        If a workbook value changes, update BOTH this table and _STATE_PSC_SHORT_NAMES.
+        """
+        from import_exam_registry import normalize_short_name
+
+        # Workbook "PSC Short Name" column values, keyed by normalized state name.
+        # Source: State PSC Detailed Registry sheet.
+        WORKBOOK_PSC_SHORT_NAMES: dict[str, str] = {
+            "andhra pradesh"    : "APPSC",
+            "arunachal pradesh" : "APPSC",
+            "assam"             : "APSC",
+            "bihar"             : "BPSC",
+            "chhattisgarh"      : "CGPSC",
+            "goa"               : "GPSC",
+            "gujarat"           : "GPSC",
+            "haryana"           : "HPSC",
+            "himachal pradesh"  : "HPPSC",
+            "jharkhand"         : "JPSC",
+            "jammu and kashmir" : "JKPSC",
+            "karnataka"         : "KPSC",
+            "kerala"            : "KPSC",
+            "madhya pradesh"    : "MPPSC",
+            "maharashtra"       : "MPSC",
+            "manipur"           : "MPSC",
+            "meghalaya"         : "MPSC",
+            "mizoram"           : "MPSC",
+            "nagaland"          : "NPSC",
+            "odisha"            : "OPSC",
+            "punjab"            : "PPSC",
+            "rajasthan"         : "RPSC",
+            "sikkim"            : "SPSC",
+            "tamil nadu"        : "TNPSC",
+            "telangana"         : "TSPSC",
+            "tripura"           : "TPSC",
+            "uttar pradesh"     : "UPPSC",
+            "uttarakhand"       : "UKPSC",
+            "west bengal"       : "WBPSC",
+        }
+
+        mismatches = []
+        for state, workbook_value in WORKBOOK_PSC_SHORT_NAMES.items():
+            expected = normalize_short_name(workbook_value)
+            actual = _STATE_PSC_SHORT_NAMES.get(state)
+            if actual != expected:
+                mismatches.append(
+                    f"  {state}: map={actual!r}, workbook={workbook_value!r} → normalized={expected!r}"
+                )
+        assert not mismatches, (
+            "_STATE_PSC_SHORT_NAMES diverges from workbook 'PSC Short Name' column:\n"
+            + "\n".join(mismatches)
+        )
+
 
 # ── zero diff to state/slug machinery ────────────────────────────────────────
 
