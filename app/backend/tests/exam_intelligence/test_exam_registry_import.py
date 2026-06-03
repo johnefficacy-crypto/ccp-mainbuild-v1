@@ -22,10 +22,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts"))
 
 from import_exam_registry import (
     _abbrev_from_name,
+    _extract_state_from_body,
+    _strip_leading_body_from_exam_name,
     derive_calendar_status,
     exam_slug,
     normalize_short_name,
     org_dedupe_key,
+    upsert_cycle,
+    upsert_exam,
     upsert_organization,
 )
 
@@ -117,6 +121,167 @@ class TestOrgDedupeKey:
 
 # ── exam slug ─────────────────────────────────────────────────────────────────
 
+
+# ── exam registry name cleanup ───────────────────────────────────────────────
+
+class TestStripLeadingBodyFromExamName:
+    def test_strips_mojibake_separator_combined_competitive(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu & Kashmir PSC ù Combined Competitive Examination",
+                "Jammu & Kashmir Public Service Commission",
+            )
+            == "Combined Competitive Examination"
+        )
+
+    def test_strips_mojibake_separator_civil_judge(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu & Kashmir PSC ù Civil Judge / Judicial Service",
+                "Jammu & Kashmir PSC",
+            )
+            == "Civil Judge / Judicial Service"
+        )
+
+    def test_strips_mojibake_separator_departmental(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu & Kashmir PSC ù Departmental Examinations",
+                "JKPSC",
+            )
+            == "Departmental Examinations"
+        )
+
+    def test_strips_dash_separator(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu & Kashmir PSC - Combined Competitive Examination",
+                "Jammu & Kashmir PSC",
+            )
+            == "Combined Competitive Examination"
+        )
+
+    def test_strips_jkpsc_dash_separator(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "JKPSC - Combined Competitive Examination",
+                "Jammu & Kashmir PSC",
+            )
+            == "Combined Competitive Examination"
+        )
+
+    def test_jkpsc_body_generates_jammu_kashmir_slug(self):
+        clean_exam_name = _strip_leading_body_from_exam_name(
+            "JKPSC - Combined Competitive Examination",
+            "JKPSC",
+        )
+        slug = exam_slug(_extract_state_from_body("JKPSC"), clean_exam_name)
+
+        assert slug == "jammu-kashmir-combined-competitive-examination"
+        assert "national-jammu-kashmir-psc" not in slug
+        assert "jammu-kashmir-jammu-kashmir-psc" not in slug
+
+    def test_strips_arrow_separator_with_and_variant(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu and Kashmir PSC → Departmental Examinations",
+                "Jammu & Kashmir PSC",
+            )
+            == "Departmental Examinations"
+        )
+
+    def test_strips_literal_unicode_escape_separator(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                r"Jammu & Kashmir PSC \u00f9 Departmental Examinations",
+                "Jammu & Kashmir PSC",
+            )
+            == "Departmental Examinations"
+        )
+
+    def test_strips_repeated_whitespace_separator(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Jammu & Kashmir PSC   Combined Competitive Examination",
+                "Jammu & Kashmir PSC",
+            )
+            == "Combined Competitive Examination"
+        )
+
+    def test_does_not_modify_names_without_body_prefix(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "Civil Judge / Judicial Service",
+                "Jammu & Kashmir PSC",
+            )
+            == "Civil Judge / Judicial Service"
+        )
+
+    def test_does_not_strip_single_space_after_psc(self):
+        assert (
+            _strip_leading_body_from_exam_name(
+                "PSC Civil Services Aptitude Test",
+                "Jammu & Kashmir PSC",
+            )
+            == "PSC Civil Services Aptitude Test"
+        )
+
+    def test_cleaned_names_generate_expected_jammu_kashmir_slugs(self):
+        cases = [
+            (
+                "Jammu & Kashmir PSC ù Combined Competitive Examination",
+                "jammu-kashmir-combined-competitive-examination",
+            ),
+            (
+                "Jammu & Kashmir PSC ù Civil Judge / Judicial Service",
+                "jammu-kashmir-civil-judge-judicial-service",
+            ),
+            (
+                "Jammu & Kashmir PSC ù Departmental Examinations",
+                "jammu-kashmir-departmental-examinations",
+            ),
+        ]
+        for exam_name, expected_slug in cases:
+            conducting_body = "Jammu & Kashmir PSC"
+            clean_exam_name = _strip_leading_body_from_exam_name(
+                exam_name, conducting_body
+            )
+            slug = exam_slug(_extract_state_from_body(conducting_body), clean_exam_name)
+
+            assert slug == expected_slug
+            assert "national-jammu-kashmir-psc" not in slug
+            assert "jammu-kashmir-jammu-kashmir-psc" not in slug
+
+
+# ── _extract_state_from_body ─────────────────────────────────────────────────
+
+class TestExtractStateFromBody:
+    def test_upsc_stays_national_not_uttar_pradesh(self):
+        assert _extract_state_from_body("UPSC") is None
+
+    def test_ssc_and_ibps_stay_national(self):
+        assert _extract_state_from_body("SSC") is None
+        assert _extract_state_from_body("IBPS") is None
+
+    def test_mpsc_is_maharashtra_not_madhya_pradesh(self):
+        assert _extract_state_from_body("MPSC") == "maharashtra"
+
+    def test_appsc_acronym_does_not_match_ap_alias(self):
+        assert _extract_state_from_body("APPSC") is None
+
+    def test_appsc_full_body_identifies_andhra_pradesh(self):
+        assert (
+            _extract_state_from_body("Andhra Pradesh Public Service Commission")
+            == "andhra-pradesh"
+        )
+
+    def test_mpsc_rajyaseva_generates_maharashtra_slug(self):
+        exam_name = "MPSC Rajyaseva (Maharashtra Civil Services)"
+        slug = exam_slug(_extract_state_from_body("MPSC"), exam_name)
+        assert slug == "maharashtra-mpsc-rajyaseva-maharashtra-civil-services"
+        assert not slug.startswith("madhya-pradesh")
+
+
 class TestExamSlug:
     def test_state_prefix_prepended(self):
         slug = exam_slug("andhra-pradesh", "Group I Services")
@@ -149,6 +314,117 @@ class TestAbbrevFromName:
 
     def test_upsc(self):
         assert _abbrev_from_name("UPSC") == "UPSC"
+
+
+# ── upsert_exam / upsert_cycle metadata ──────────────────────────────────────
+
+def _make_table_sb(
+    select_rows: list[dict] | None = None,
+    insert_rows: list[dict] | None = None,
+) -> MagicMock:
+    sb = MagicMock()
+    table = sb.table.return_value
+    table.select.return_value.eq.return_value.execute.return_value.data = select_rows or []
+    table.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = (
+        select_rows or []
+    )
+    table.insert.return_value.execute.return_value.data = insert_rows or [
+        {"id": "new-id"}
+    ]
+    table.update.return_value.eq.return_value.execute.return_value = None
+    return sb
+
+
+class TestUpsertExamMetadata:
+    def test_insert_payload_carries_import_source(self):
+        sb = _make_table_sb(insert_rows=[{"id": "exam-new"}])
+
+        upsert_exam(
+            sb,
+            slug="kerala-civil-service",
+            name="Civil Service",
+            exam_type="recruitment",
+            conducting_org_id="org-1",
+            dry_run=False,
+            exam_cache={},
+        )
+
+        payload = sb.table.return_value.insert.call_args[0][0]
+        assert payload["metadata"]["import_status"] == "pending_review"
+        assert payload["metadata"]["import_source"] == "exam_registry_workbook"
+
+    def test_existing_exam_update_merges_import_metadata(self):
+        sb = _make_table_sb(
+            select_rows=[{"id": "exam-1", "metadata": {"owner": "manual"}}]
+        )
+
+        upsert_exam(
+            sb,
+            slug="kerala-civil-service",
+            name="Civil Service",
+            exam_type="recruitment",
+            conducting_org_id="org-1",
+            dry_run=False,
+            exam_cache={},
+        )
+
+        update = sb.table.return_value.update.call_args[0][0]
+        assert update["conducting_organization_id"] == "org-1"
+        assert update["metadata"]["owner"] == "manual"
+        assert update["metadata"]["import_status"] == "pending_review"
+        assert update["metadata"]["import_source"] == "exam_registry_workbook"
+
+
+class TestUpsertCycleMetadata:
+    def test_insert_payload_carries_import_source(self):
+        sb = _make_table_sb()
+        stats = {}
+
+        upsert_cycle(
+            sb,
+            exam_id="exam-1",
+            year=2026,
+            cycle_name="2026",
+            phases_text="Prelims; Mains",
+            calendar_url="https://example.com/calendar",
+            dry_run=False,
+            stats=stats,
+        )
+
+        payload = sb.table.return_value.insert.call_args[0][0]
+        assert payload["metadata"]["import_status"] == "pending_review"
+        assert payload["metadata"]["import_source"] == "exam_registry_workbook"
+        assert payload["metadata"]["typical_phases"] == "Prelims; Mains"
+        assert payload["metadata"]["calendar_url"] == "https://example.com/calendar"
+
+    def test_existing_cycle_update_merges_import_metadata(self):
+        sb = _make_table_sb(
+            select_rows=[
+                {
+                    "id": "cycle-1",
+                    "year": 2026,
+                    "metadata": {"operator_note": "keep"},
+                }
+            ]
+        )
+        stats = {}
+
+        upsert_cycle(
+            sb,
+            exam_id="exam-1",
+            year=2026,
+            cycle_name="2026",
+            phases_text="Prelims; Mains",
+            calendar_url=None,
+            dry_run=False,
+            stats=stats,
+        )
+
+        update = sb.table.return_value.update.call_args[0][0]
+        assert update["metadata"]["operator_note"] == "keep"
+        assert update["metadata"]["import_status"] == "pending_review"
+        assert update["metadata"]["import_source"] == "exam_registry_workbook"
+        assert update["metadata"]["typical_phases"] == "Prelims; Mains"
 
 
 # ── upsert_organization — insert payload (DB-mocked) ────────────────────────

@@ -1,9 +1,11 @@
 /**
  * Tests for the "Phases needing dates" worklist in SetupPanel.
  *
- * The worklist is keyed off phase_start IS NULL + legacy phase_window present.
- * It must NOT key off phase_window_needs_review (regression guard for the
- * 165 flag hole where TBD rows were neither dated nor flagged).
+ * The worklist is keyed off phase_start IS NULL plus an explicit authoring
+ * signal: legacy phase_window, workbook import_source, or
+ * needs_phase_date_authoring. It must NOT key off phase_window_needs_review
+ * (regression guard for the 165 flag hole where TBD rows were neither dated
+ * nor flagged).
  */
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -62,12 +64,61 @@ describe("worklist visibility", () => {
     expect(screen.getByTestId("worklist-legacy-ph-1").textContent).toMatch("May–June 2026");
   });
 
-  test("hides worklist card when no phases have a legacy window", () => {
+  test("hides worklist card when no phases have a date-authoring signal", () => {
     useExamWorkspace.mockReturnValue({
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
         { id: "ph-1", phase_name: "Prelims", phase_start: "2026-05-24", metadata: {} },
+      ],
+    });
+    render(<SetupPanel />);
+    expect(screen.queryByTestId("phase-date-worklist")).toBeNull();
+  });
+
+  test("shows workbook-imported stubs without overloading phase_window", () => {
+    useExamWorkspace.mockReturnValue({
+      exam: BASE_EXAM,
+      cycles: BASE_CYCLES,
+      phases: [
+        { id: "ph-import", phase_name: "Prelims", phase_start: null,
+          metadata: {
+            import_source: "exam_registry_workbook",
+            needs_phase_date_authoring: true,
+          } },
+      ],
+    });
+    render(<SetupPanel />);
+    expect(screen.getByTestId("phase-date-worklist")).toBeTruthy();
+    expect(screen.getByTestId("worklist-row-ph-import")).toBeTruthy();
+    expect(screen.getByTestId("worklist-legacy-ph-import").textContent).toMatch(
+      "Imported workbook phase stub"
+    );
+  });
+
+  test("shows explicit authoring stubs without phase_window or import_source", () => {
+    useExamWorkspace.mockReturnValue({
+      exam: BASE_EXAM,
+      cycles: BASE_CYCLES,
+      phases: [
+        { id: "ph-author", phase_name: "Mains", phase_start: null,
+          metadata: { needs_phase_date_authoring: true } },
+      ],
+    });
+    render(<SetupPanel />);
+    expect(screen.getByTestId("worklist-row-ph-author")).toBeTruthy();
+  });
+
+  test("does not include imported stubs that already have phase_start", () => {
+    useExamWorkspace.mockReturnValue({
+      exam: BASE_EXAM,
+      cycles: BASE_CYCLES,
+      phases: [
+        { id: "ph-import-dated", phase_name: "Prelims", phase_start: "2026-05-24",
+          metadata: {
+            import_source: "exam_registry_workbook",
+            needs_phase_date_authoring: true,
+          } },
       ],
     });
     render(<SetupPanel />);
