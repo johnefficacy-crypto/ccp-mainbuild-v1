@@ -27,6 +27,7 @@ from import_exam_registry import (
     exam_slug,
     normalize_short_name,
     org_dedupe_key,
+    slugify,
     upsert_exam,
     upsert_organization,
 )
@@ -362,18 +363,39 @@ class TestExamSlugFormula:
         slug = exam_slug(state_prefix, "SSC GD Constable")
         assert slug == "national-ssc-gd-constable"
 
-    def test_jk_combined_services_slug(self):
-        """J&K exam → jammu-kashmir- prefix.  Formula-derived; DB confirmation pending.
+    def test_jk_combined_competitive_examination_slug(self):
+        """Exact slugify trace for a real J&K exam name with em-dash and ampersand.
 
-        Note: if exam_name itself contains 'Jammu & Kashmir', the slug will double
-        the state prefix.  Tracked as a latent issue; this test documents current
-        formula output, not corrected behaviour.
+        slugify rules (import_exam_registry.py:64-67):
+          1. lower + strip
+          2. re.sub(r"[^a-z0-9]+", "-", ...)  — any non-alnum run → single "-"
+          3. re.sub(r"-{2,}", "-", ...)         — redundant but harmless
+          4. strip("-")
+
+        Input: "Jammu & Kashmir PSC — Combined Competitive Examination"
+          " & " (space-ampersand-space) → "-"   (entire run = non-alnum)
+          " — " (space-emdash-space)  → "-"   (same rule)
+        slugify result: "jammu-kashmir-psc-combined-competitive-examination"
+
+        Conducting body: "Jammu and Kashmir PSC" (official "and" spelling).
+        _extract_state_from_body: "jammu and kashmir" in body.lower() → "jammu-kashmir".
+
+        Slug = state_prefix + "-" + slugify(exam_name)
+             = "jammu-kashmir" + "-" + "jammu-kashmir-psc-combined-competitive-examination"
+             = "jammu-kashmir-jammu-kashmir-psc-combined-competitive-examination"
+
+        The doubled "jammu-kashmir" prefix is a latent slug bug (exam_name already
+        contains the state); tracked for a separate follow-up once DB is accessible.
+        This test documents the CURRENT formula output, not a corrected form.
+        DB confirmation deferred (DB not reachable in CI).
         """
+        exam_name = "Jammu & Kashmir PSC — Combined Competitive Examination"
         body = "Jammu and Kashmir PSC"
         state_prefix = _extract_state_from_body(body)
         assert state_prefix == "jammu-kashmir"
-        slug = exam_slug(state_prefix, "Combined Services Examination")
-        assert slug == "jammu-kashmir-combined-services-examination"
+        assert slugify(exam_name) == "jammu-kashmir-psc-combined-competitive-examination"
+        slug = exam_slug(state_prefix, exam_name)
+        assert slug == "jammu-kashmir-jammu-kashmir-psc-combined-competitive-examination"
 
     def test_kerala_group_i_slug(self):
         """Kerala PSC Group I → kerala-group-i-services.  Formula-derived."""
