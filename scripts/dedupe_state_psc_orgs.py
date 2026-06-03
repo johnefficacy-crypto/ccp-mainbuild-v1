@@ -335,8 +335,7 @@ def run(sb: Any, workbook_path: Path, dry_run: bool, stats: dict) -> None:
         dedupe_cluster(sb, cluster, auth_short_names, dry_run, stats)
 
     # Phase B: backfill short_name for all importer orgs (incl. never-duplicated ones)
-    if not dry_run or True:  # always report in dry-run; only write in live
-        backfill_short_names(sb, auth_short_names, dry_run, stats)
+    backfill_short_names(sb, auth_short_names, dry_run, stats)
 
 
 def main(argv: list[str] | None = None) -> int:

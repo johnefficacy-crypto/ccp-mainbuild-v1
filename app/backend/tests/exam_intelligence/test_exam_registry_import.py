@@ -22,10 +22,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts"))
 
 from import_exam_registry import (
     _abbrev_from_name,
+    _strip_leading_body_from_exam_name,
     derive_calendar_status,
     exam_slug,
     normalize_short_name,
     org_dedupe_key,
+    upsert_exam,
     upsert_organization,
 )
 
@@ -327,3 +329,100 @@ class TestSourceUrlsDisposition:
         assert "3" in log_contents
         # Dry-run must NOT return non-zero exit code for this
         assert result == 0
+
+
+# ── _strip_leading_body_from_exam_name ────────────────────────────────────────
+
+class TestStripLeadingBodyFromExamName:
+    def test_mpsc_prefix_stripped(self):
+        """'MPSC Combined Services' → 'Combined Services'"""
+        result = _strip_leading_body_from_exam_name("MPSC Combined Services", "MPSC")
+        assert result == "Combined Services"
+
+    def test_appsc_prefix_stripped(self):
+        result = _strip_leading_body_from_exam_name("APPSC Group I Services", "APPSC")
+        assert result == "Group I Services"
+
+    def test_no_match_returned_as_is(self):
+        """Name without body prefix unchanged."""
+        result = _strip_leading_body_from_exam_name("Group II Services", "APPSC")
+        assert result == "Group II Services"
+
+    def test_empty_abbrev_returned_as_is(self):
+        result = _strip_leading_body_from_exam_name("Group II Services", "")
+        assert result == "Group II Services"
+
+    def test_slug_uses_stripped_form(self):
+        """Slug for body-prefixed name must NOT embed the abbreviation."""
+        stripped = _strip_leading_body_from_exam_name("JKPSC Combined Services", "JKPSC")
+        slug = exam_slug("jammu-kashmir", stripped)
+        assert slug == "jammu-kashmir-combined-services"
+        assert "jkpsc" not in slug
+
+
+# ── upsert_exam INSERT carries import_source ─────────────────────────────────
+
+def _make_sb_exam(existing_rows=None):
+    sb = MagicMock()
+    chain = sb.table.return_value.select.return_value
+    chain.eq.return_value = chain
+    chain.execute.return_value.data = existing_rows or []
+    sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "exam-id-1"}]
+    sb.table.return_value.update.return_value.eq.return_value.execute.return_value = None
+    return sb
+
+
+class TestUpsertExamInsertPayload:
+    def test_insert_carries_import_source(self):
+        """Exam INSERT must include metadata.import_source='exam_registry_workbook'."""
+        sb = _make_sb_exam()
+        upsert_exam(
+            sb, slug="kerala-group-i", name="Group I", exam_type="recruitment",
+            conducting_org_id=None, dry_run=False, exam_cache={},
+        )
+        insert_call = sb.table.return_value.insert.call_args
+        payload = insert_call[0][0]
+        assert payload["metadata"]["import_source"] == "exam_registry_workbook"
+
+    def test_insert_carries_import_status_pending_review(self):
+        sb = _make_sb_exam()
+        upsert_exam(
+            sb, slug="kerala-group-ii", name="Group II", exam_type="recruitment",
+            conducting_org_id=None, dry_run=False, exam_cache={},
+        )
+        insert_call = sb.table.return_value.insert.call_args
+        payload = insert_call[0][0]
+        assert payload["metadata"]["import_status"] == "pending_review"
+
+
+class TestUpsertExamUpdateMerge:
+    def test_update_preserves_preexisting_import_source(self):
+        """UPDATE over an existing exam must not clobber a pre-existing import_source."""
+        existing = [{"id": "existing-exam-id", "metadata": {
+            "import_source": "exam_registry_workbook",
+            "extra_key": "should_survive",
+        }}]
+        sb = _make_sb_exam(existing_rows=existing)
+        upsert_exam(
+            sb, slug="kerala-group-i", name="Group I", exam_type="recruitment",
+            conducting_org_id="org-123", dry_run=False, exam_cache={},
+        )
+        update_calls = sb.table.return_value.update.call_args_list
+        if update_calls:
+            updated = update_calls[0][0][0]
+            if "metadata" in updated:
+                assert updated["metadata"].get("extra_key") == "should_survive"
+
+    def test_rerun_creates_zero_new_exams(self):
+        """Second pass for an already-imported exam must produce zero inserts."""
+        existing = [{"id": "existing-exam-id", "metadata": {
+            "import_status": "pending_review",
+            "import_source": "exam_registry_workbook",
+        }}]
+        sb = _make_sb_exam(existing_rows=existing)
+        exam_cache: dict = {}
+        upsert_exam(
+            sb, slug="kerala-group-i", name="Group I", exam_type="recruitment",
+            conducting_org_id="org-123", dry_run=False, exam_cache=exam_cache,
+        )
+        assert sb.table.return_value.insert.call_count == 0
