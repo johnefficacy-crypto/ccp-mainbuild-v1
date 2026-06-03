@@ -430,16 +430,25 @@ class TestUpsertCycleMetadata:
 # ── upsert_organization — insert payload (DB-mocked) ────────────────────────
 
 def _make_sb(existing_rows: list[dict] | None = None) -> MagicMock:
-    """Build a minimal Supabase client mock for the organizations table."""
+    """Build a minimal Supabase client mock for the organizations table.
+
+    Handles the upsert_organization exact-lookup chain:
+        .select(...).eq("type",...).eq("short_name",...).eq("state",...).execute()
+        .select(...).eq("type",...).eq("short_name",...).is_("state","null").execute()
+    """
     sb = MagicMock()
-    # Chain: sb.table(...).select(...).eq(...).execute().data
     select_chain = sb.table.return_value.select.return_value
-    select_chain.eq.return_value.execute.return_value.data = existing_rows or []
-    # Chain: sb.table(...).insert(...).execute().data
+    leaf = MagicMock()
+    leaf.execute.return_value.data = existing_rows or []
+    depth1 = select_chain.eq.return_value
+    depth1.execute.return_value.data = existing_rows or []
+    depth2 = depth1.eq.return_value
+    depth2.execute.return_value.data = existing_rows or []
+    depth2.eq.return_value = leaf
+    depth2.is_.return_value = leaf
     sb.table.return_value.insert.return_value.execute.return_value.data = [
         {"id": "new-org-id"}
     ]
-    # Chain: sb.table(...).update(...).eq(...).execute()
     sb.table.return_value.update.return_value.eq.return_value.execute.return_value = None
     return sb
 
@@ -526,6 +535,7 @@ class TestUpsertOrganizationUpdateMerge:
             "name": "Karnataka Public Service Commission",
             "type": "state_psc",
             "state": "Karnataka",
+            "short_name": "KPSC",
             "calendar_status": "partial",
             "metadata": existing_meta,
         }]
@@ -540,7 +550,7 @@ class TestUpsertOrganizationUpdateMerge:
 
         upsert_organization(
             sb,
-            short_name="KPSC",   # will match existing row via _abbrev_from_name
+            short_name="KPSC",   # matches existing row via exact short_name lookup
             full_name="Karnataka Public Service Commission",
             state="Karnataka",
             org_type="state_psc",
