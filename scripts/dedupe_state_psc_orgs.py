@@ -201,12 +201,19 @@ def _merge_metadata(survivor_meta: dict, loser_meta: dict) -> dict:
     return merged
 
 
-def run(sb: Any, dry_run: bool, xlsx_path: Path | None = None) -> None:
+def run(sb: Any, dry_run: bool, state_map: dict[str, str] | None = None) -> None:
+    """Run dedup and backfill.
+
+    state_map: workbook-derived state→short_name map, pre-loaded and validated by
+        main() BEFORE this function is called so any bad workbook fails before the
+        first mutation.  None means no workbook provided — backfill is skipped.
+    """
+
     clusters = _find_clusters(sb)
     logger.info("duplicate_clusters_found=%d", len(clusters))
     if not clusters:
         logger.info("No duplicate clusters found. Nothing to do.")
-        _backfill_short_names(sb, dry_run, xlsx_path)
+        _backfill_short_names(sb, dry_run, state_map)
         return
 
     # Pre-fetch all FK refs for every org in every cluster
@@ -274,7 +281,7 @@ def run(sb: Any, dry_run: bool, xlsx_path: Path | None = None) -> None:
                 sb.table("organizations").delete().eq("id", loser["id"]).execute()
 
     # Backfill short_name for ALL state_psc and central orgs (survivors + never-duplicated)
-    _backfill_short_names(sb, dry_run, xlsx_path)
+    _backfill_short_names(sb, dry_run, state_map)
 
 
 def _build_workbook_short_name_map(xlsx_path: Path) -> dict[str, str]:
@@ -311,24 +318,21 @@ def _build_workbook_short_name_map(xlsx_path: Path) -> dict[str, str]:
     return state_map
 
 
-def _backfill_short_names(sb: Any, dry_run: bool, xlsx_path: Path | None = None) -> None:
+def _backfill_short_names(sb: Any, dry_run: bool, state_map: dict[str, str] | None = None) -> None:
     """Set short_name on every state_psc / central org that lacks it.
 
-    state_psc: derived from the workbook via the importer's exact
-        normalize_short_name(_cell(row, "PSC Short Name", "Short Name")) call.
-        Fails fast if any state_psc org's state is absent from the workbook map.
+    state_map: workbook-derived state→short_name map pre-loaded by run() before
+        any mutations.  None means no workbook was provided — backfill is skipped.
 
+    state_psc: looked up in state_map; fails fast if an org's state is absent.
     central_commission: derived from _CENTRAL_SHORT_NAMES (no workbook column).
     """
-    if xlsx_path is None:
+    if state_map is None:
         logger.warning(
             "No --xlsx provided; skipping short_name backfill. "
             "Re-run with --xlsx PATH to backfill state_psc short names."
         )
         return
-
-    state_map = _build_workbook_short_name_map(xlsx_path)
-    logger.info("Workbook-derived state→short_name map: %d states", len(state_map))
 
     orgs = (
         sb.table("organizations")
@@ -411,6 +415,13 @@ def main(argv: list[str] | None = None) -> int:
 
     _bootstrap_path()
 
+    # Load and validate the workbook map HERE — before opening a DB connection —
+    # so a bad path or missing sheet fails before any mutations are attempted.
+    state_map: dict[str, str] | None = None
+    if args.xlsx:
+        state_map = _build_workbook_short_name_map(args.xlsx)
+        logger.info("Workbook-derived state→short_name map: %d states", len(state_map))
+
     supabase_url = os.environ.get("SUPABASE_URL", "")
     supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
     if not supabase_url or not supabase_key:
@@ -420,7 +431,7 @@ def main(argv: list[str] | None = None) -> int:
     from supabase import create_client
     sb = create_client(supabase_url, supabase_key)
 
-    run(sb, dry_run=dry_run, xlsx_path=args.xlsx)
+    run(sb, dry_run=dry_run, state_map=state_map)
     return 0
 
 

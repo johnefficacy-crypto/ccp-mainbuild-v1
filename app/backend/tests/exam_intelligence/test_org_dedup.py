@@ -35,7 +35,6 @@ from dedupe_state_psc_orgs import (
     _pick_survivor,
     run as dedup_run,
 )
-from unittest.mock import patch
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -344,9 +343,7 @@ class TestBackfillShortNames:
         sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = orgs
         sb.table.return_value.update.return_value.eq.return_value.execute.return_value = None
 
-        with patch("dedupe_state_psc_orgs._build_workbook_short_name_map",
-                   return_value={"assam": "APSC"}):
-            _backfill_short_names(sb, dry_run=False, xlsx_path=Path("dummy.xlsx"))
+        _backfill_short_names(sb, dry_run=False, state_map={"assam": "APSC"})
 
         sb.table.return_value.update.assert_called_once_with({"short_name": "APSC"})
 
@@ -358,9 +355,7 @@ class TestBackfillShortNames:
         sb = MagicMock()
         sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = orgs
 
-        with patch("dedupe_state_psc_orgs._build_workbook_short_name_map",
-                   return_value={"kerala": "KPSC"}):
-            _backfill_short_names(sb, dry_run=False, xlsx_path=Path("dummy.xlsx"))
+        _backfill_short_names(sb, dry_run=False, state_map={"kerala": "KPSC"})
 
         sb.table.return_value.update.assert_not_called()
 

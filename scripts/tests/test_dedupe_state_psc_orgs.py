@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch  # patch still used by test_missing_sheet
 
 import pytest
 
@@ -186,9 +186,8 @@ class TestFailFast:
         sb = self._make_sb([unknown_org])
         small_map = {"andhra pradesh": "APPSC"}
 
-        with patch.object(ded, "_build_workbook_short_name_map", return_value=small_map):
-            with pytest.raises(RuntimeError, match="not found in workbook-derived map"):
-                ded._backfill_short_names(sb, dry_run=False, xlsx_path=Path("dummy.xlsx"))
+        with pytest.raises(RuntimeError, match="not found in workbook-derived map"):
+            ded._backfill_short_names(sb, dry_run=False, state_map=small_map)
 
     def test_skips_orgs_that_already_have_short_name(self):
         """Fail-fast must NOT fire for orgs that already have short_name set."""
@@ -201,17 +200,15 @@ class TestFailFast:
         }
         sb = self._make_sb([already_set])
         sb.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
-        small_map: dict[str, str] = {}
 
-        with patch.object(ded, "_build_workbook_short_name_map", return_value=small_map):
-            # Should not raise — org already has short_name, nothing to backfill.
-            ded._backfill_short_names(sb, dry_run=False, xlsx_path=Path("dummy.xlsx"))
+        # Should not raise — org already has short_name, nothing to backfill.
+        ded._backfill_short_names(sb, dry_run=False, state_map={})
 
-    def test_no_xlsx_skips_backfill_without_raising(self):
-        """When xlsx_path is None the backfill warns and returns cleanly."""
+    def test_no_state_map_skips_backfill_without_raising(self):
+        """When state_map is None the backfill warns and returns cleanly."""
         sb = self._make_sb([])
         # Should not raise or call the DB at all.
-        ded._backfill_short_names(sb, dry_run=False, xlsx_path=None)
+        ded._backfill_short_names(sb, dry_run=False, state_map=None)
         sb.table.assert_not_called()
 
     def test_missing_sheet_raises_runtime_error(self):
