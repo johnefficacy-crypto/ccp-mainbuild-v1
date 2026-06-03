@@ -13,11 +13,11 @@ What it does:
      is a duplicate cluster.  The number of clusters is a runtime observation,
      not a fixed expectation.
   3. For each cluster, picks ONE survivor:
-       - Prefer the row referenced by a RESTRICT FK table (recruitment_units, courses).
+       - Prefer the row referenced by a RESTRICT FK table (recruitment_units).
        - Then prefer the row referenced by any FK table.
        - Then prefer the row with official_url in metadata.
        - Then the earliest created_at.
-  4. Repoints ALL 7 FK tables loser→survivor BEFORE deleting the loser.
+  4. Repoints ALL 6 FK tables loser→survivor BEFORE deleting the loser.
   5. Merges loser metadata onto survivor (no official_url / provenance loss).
   6. Deletes losers.
   7. Backfills short_name for ALL state_psc + central orgs that lack it,
@@ -103,7 +103,6 @@ _CENTRAL_SHORT_NAMES: dict[str, str] = {
 _FK_TABLES: list[dict] = [
     # RESTRICT + NOT NULL — must repoint before delete
     {"table": "recruitment_units",  "col": "organization_id",         "on_delete": "RESTRICT"},
-    {"table": "courses",            "col": "organization_id",         "on_delete": "RESTRICT"},
     # SET NULL — silently null on delete; repoint anyway to preserve data
     {"table": "recruitments",       "col": "organization_id",         "on_delete": "SET NULL"},
     {"table": "source_registry",    "col": "organization_id",         "on_delete": "SET NULL"},
@@ -217,7 +216,7 @@ def _pick_survivor(cluster: list[dict], all_refs: dict[str, dict[str, list[str]]
     """Choose the row to keep.
 
     Priority:
-      1. Referenced by a RESTRICT table (recruitment_units, courses) — hard-fail risk.
+      1. Referenced by a RESTRICT table (recruitment_units) — hard-fail risk.
       2. Referenced by any FK table.
       3. Has official_url in metadata.
       4. Earliest created_at.

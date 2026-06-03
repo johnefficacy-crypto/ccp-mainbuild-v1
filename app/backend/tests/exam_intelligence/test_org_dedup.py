@@ -30,6 +30,7 @@ from import_exam_registry import normalize_short_name, upsert_organization
 import dedupe_state_psc_orgs as dedupe_script
 from dedupe_state_psc_orgs import (
     _STATE_PSC_SHORT_NAMES,
+    _FK_TABLES,
     _backfill_short_names,
     load_state_short_names_from_workbook,
     _find_clusters,
@@ -316,6 +317,19 @@ class TestDedupCleanup:
                  metadata={"extra_key": "keep_me"}, created_at="2025-02-01T00:00:00"),
         ]
         return orgs
+
+    def test_fk_tables_match_actual_org_foreign_keys(self):
+        fk_targets = {(fk["table"], fk["col"]) for fk in _FK_TABLES}
+
+        assert ("courses", "organization_id") not in fk_targets
+        assert fk_targets == {
+            ("recruitment_units", "organization_id"),
+            ("recruitments", "organization_id"),
+            ("source_registry", "organization_id"),
+            ("exams", "conducting_organization_id"),
+            ("blog_posts", "related_organization_id"),
+            ("blog_recruitment_links", "organization_id"),
+        }
 
     def test_survivor_has_official_url(self):
         """Row with official_url wins over row without (all else equal)."""
