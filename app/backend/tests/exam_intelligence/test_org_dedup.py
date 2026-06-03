@@ -443,15 +443,6 @@ class TestStateSlugMachineryUnchanged:
 
     def test_protected_symbols_not_in_diff(self):
         repo_root = Path(__file__).resolve().parents[4]
-        # Only check modifications — if the file is new relative to origin/main
-        # (entire file is additions), there are no pre-existing symbols to protect.
-        file_on_main = subprocess.run(
-            ["git", "cat-file", "-e", "origin/main:scripts/import_exam_registry.py"],
-            capture_output=True, cwd=str(repo_root),
-        )
-        if file_on_main.returncode != 0:
-            return  # file is new on this branch; no modification check needed
-
         result = subprocess.run(
             ["git", "diff", "origin/main", "--", "scripts/import_exam_registry.py"],
             capture_output=True, text=True,
