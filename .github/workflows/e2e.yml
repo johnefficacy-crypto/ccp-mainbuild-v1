@@ -14,7 +14,7 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -99,11 +99,13 @@ jobs:
         run: npm run e2e
 
       - name: Upload Playwright report
-        if: ${{ !cancelled() }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: app/frontend/e2e/playwright-report
+          path: |
+            app/frontend/e2e/playwright-report
+            app/frontend/e2e/test-results
           retention-days: 7
 
       - name: Backend log (on failure)
