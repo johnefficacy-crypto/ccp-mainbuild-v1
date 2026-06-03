@@ -32,12 +32,10 @@ diagnosing them unless the failure pattern changes.
 - Observed on PR #480 and PR #481.
 
 **e2e**
-- The `e2e` check is not defined in `.github/workflows/ci.yml` or
-  `pr-body-check.yml` (the only two local workflow files).
-- It fails on every PR observed so far and PRs merge despite it.
-- Likely requires live Supabase / app-server infra not available in CI.
-- Treat as non-blocking until the check definition and required secrets
-  are traced down.
+- The `e2e` check is defined in `.github/workflows/e2e.yml` and exercises the
+  live frontend/backend/Supabase stack.
+- Treat failures as actionable unless the failure matches a documented
+  environment/secrets outage pattern.
 
 **validate-pr-body (first run only)**
 - `pr-body-check.yml` triggers on `pull_request` events including

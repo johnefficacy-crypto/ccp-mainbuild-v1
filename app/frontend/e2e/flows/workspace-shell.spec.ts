@@ -5,6 +5,7 @@ import {
   ensureWorkspaceSeed,
   ensureSyllabusMapperSeed,
   cleanupSyllabusMapperSeed,
+  loginAsAdmin,
 } from "../fixtures/seedWorkspace";
 import { readEnv } from "../fixtures/env";
 
@@ -22,19 +23,6 @@ import { readEnv } from "../fixtures/env";
  * which is the expected state given no syllabus documents.
  */
 
-async function loginAsAdmin(page: Page): Promise<void> {
-  const email    = process.env.E2E_ADMIN_EMAIL    || "e2e-admin@example.com";
-  const password = process.env.E2E_ADMIN_PASSWORD || "E2e-admin-passw0rd!";
-
-  await page.goto("/login");
-  await expect(page.getByTestId("login-email")).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId("login-email").fill(email);
-  await page.getByTestId("login-password").fill(password);
-  await Promise.all([
-    page.waitForURL(/\/app(\/|$)/, { timeout: 90_000 }),
-    page.getByTestId("login-submit").click(),
-  ]);
-}
 
 /**
  * Navigate to a workspace URL and wait for the shell to finish loading.

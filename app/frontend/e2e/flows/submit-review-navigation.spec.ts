@@ -39,7 +39,11 @@ test.describe("Flow 2: submit → review navigation", () => {
       .getByTestId("review-palette")
       .locator('[data-testid^="review-palette-item-"]')
       .count();
-    expect(wrongCount).toBeGreaterThan(0);
+    const wrongPaletteText = await page.getByTestId("review-palette").textContent();
+    expect(
+      wrongCount,
+      `Wrong-answer filter produced no palette rows for seeded attempt ${attemptId}; palette=${wrongPaletteText}`,
+    ).toBeGreaterThan(0);
     expect(wrongCount).toBeLessThan(15);
 
     // option_trap is a derived classification (may be empty), but the filter

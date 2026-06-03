@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { WORKSPACE, ensureAdminUser, getAdminAccessToken, ensureWorkspaceSeed } from "../fixtures/seedWorkspace";
+import { WORKSPACE, ensureAdminUser, getAdminAccessToken, ensureWorkspaceSeed, loginAsAdmin } from "../fixtures/seedWorkspace";
 import { createNodeSupabaseClient } from "../fixtures/supabaseNodeClient";
 import { readEnv } from "../fixtures/env";
 import * as path from "path";
@@ -76,7 +76,7 @@ test.describe("Flow: PYQ bulk import API contract", () => {
       CSV_WITH_OPTIONS,
       "text/csv",
     );
-    expect(res.status).toBe(200);
+    expect(res.status, await res.clone().text()).toBe(200);
     const data = await res.json();
 
     expect(typeof data.import_token).toBe("string");
@@ -89,8 +89,9 @@ test.describe("Flow: PYQ bulk import API contract", () => {
       expect(row.status).toBe("ok");
     }
 
-    expect(typeof data.ok_count).toBe("number");
-    expect(data.ok_count).toBe(2);
+    expect(data.summary).toBeDefined();
+    expect(typeof data.summary.ok).toBe("number");
+    expect(data.summary.ok).toBe(2);
   });
 
   test("commit uses import_token and inserts rows", async () => {
@@ -103,7 +104,7 @@ test.describe("Flow: PYQ bulk import API contract", () => {
       CSV_WITH_OPTIONS,
       "text/csv",
     );
-    expect(pre.status).toBe(200);
+    expect(pre.status, await pre.clone().text()).toBe(200);
     const { import_token } = await pre.json();
 
     // Step 2: commit
@@ -112,7 +113,7 @@ test.describe("Flow: PYQ bulk import API contract", () => {
       override_errors: false,
       reason: "E2E regression: commit bulk import",
     });
-    expect(commit.status).toBe(200);
+    expect(commit.status, await commit.clone().text()).toBe(200);
     const result = await commit.json();
 
     expect(result.committed).toBe(2);
@@ -130,6 +131,7 @@ test.describe("Flow: PYQ bulk import API contract", () => {
       CSV_WITH_OPTIONS,
       "text/csv",
     );
+    expect(pre.status, await pre.clone().text()).toBe(200);
     const { import_token, rows } = await pre.json();
 
     // Both rows should be duplicates now
@@ -143,7 +145,7 @@ test.describe("Flow: PYQ bulk import API contract", () => {
       override_errors: false,
       reason: "E2E regression: idempotent re-import",
     });
-    expect(commit.status).toBe(200);
+    expect(commit.status, await commit.clone().text()).toBe(200);
     const result = await commit.json();
 
     // committed + skipped must equal total rows; none failed
@@ -177,21 +179,6 @@ test.describe("Flow: PYQ bulk import API contract", () => {
 // ---------------------------------------------------------------------------
 // UI path — drives the BulkImportModal through the browser
 // ---------------------------------------------------------------------------
-async function loginAsAdmin(page: import("@playwright/test").Page) {
-  const email    = process.env.E2E_ADMIN_EMAIL    || "e2e-admin@example.com";
-  const password = process.env.E2E_ADMIN_PASSWORD || "E2e-admin-passw0rd!";
-  await page.goto("/login");
-  await expect(page.getByTestId("login-email")).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId("login-email").fill(email);
-  await page.getByTestId("login-password").fill(password);
-  await Promise.all([
-    page.waitForURL(/\/app(\/|$)/, { timeout: 90_000 }),
-    page.getByTestId("login-submit").click(),
-  ]);
-  // Wait for backend session sync before navigating to protected admin route
-  await expect(page.getByTestId("auth-checking")).toBeHidden({ timeout: 90_000 });
-  await expect(page.getByTestId("backend-sync-pending")).toBeHidden({ timeout: 90_000 });
-}
 
 test.describe("Flow: PYQ bulk import UI modal", () => {
   let csvFile: string;
