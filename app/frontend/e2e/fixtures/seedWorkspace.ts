@@ -1,3 +1,4 @@
+import { expect, type Page } from "@playwright/test";
 import { createNodeSupabaseClient } from "./supabaseNodeClient";
 import { readEnv } from "./env";
 
@@ -16,6 +17,28 @@ export const WORKSPACE = {
 };
 
 const FAMILY_ID = "e2e0e2e0-0000-4000-8000-000000000001";
+const DEFAULT_ADMIN_EMAIL = "e2e-admin@example.com";
+const DEFAULT_ADMIN_PASSWORD = "E2e-admin-passw0rd!";
+
+/**
+ * Ensure FK-backed admin audit tables can reference the seeded auth user.
+ * The committed schema defines profiles(id, email, full_name, ...); keep this
+ * minimal so the helper remains safe on stale local databases with only the
+ * baseline profile columns applied.
+ */
+async function ensureAdminProfileRow(args: { id: string; email: string }): Promise<void> {
+  const env = readEnv();
+  const client = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
+  const { error } = await client.from("profiles").upsert(
+    {
+      id: args.id,
+      email: args.email,
+      full_name: "E2E Admin",
+    },
+    { onConflict: "id" },
+  );
+  if (error) throw new Error(`profiles upsert for E2E admin: ${error.message}`);
+}
 
 /**
  * Idempotently ensure all workspace seed rows exist. Uses the Supabase
@@ -100,8 +123,8 @@ export async function ensureWorkspaceSeed(): Promise<void> {
  */
 export async function ensureAdminUser(): Promise<{ id: string; email: string; password: string }> {
   const env = readEnv();
-  const email    = process.env.E2E_ADMIN_EMAIL    || "e2e-admin@example.com";
-  const password = process.env.E2E_ADMIN_PASSWORD || "E2e-admin-passw0rd!";
+  const email    = process.env.E2E_ADMIN_EMAIL    || DEFAULT_ADMIN_EMAIL;
+  const password = process.env.E2E_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
 
   const client = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
 
@@ -112,7 +135,10 @@ export async function ensureAdminUser(): Promise<{ id: string; email: string; pa
     app_metadata: { role: "super_admin" },
   });
 
-  if (created?.user) return { id: created.user.id, email, password };
+  if (created?.user) {
+    await ensureAdminProfileRow({ id: created.user.id, email });
+    return { id: created.user.id, email, password };
+  }
 
   // Already exists — find and patch
   const { data: list } = await client.auth.admin.listUsers();
@@ -124,14 +150,32 @@ export async function ensureAdminUser(): Promise<{ id: string; email: string; pa
     email_confirm: true,
     app_metadata: { role: "super_admin" },
   });
+  await ensureAdminProfileRow({ id: existing.id, email });
   return { id: existing.id, email, password };
+}
+
+/** Sign in through the UI as the seeded admin and wait for auth sync to settle. */
+export async function loginAsAdmin(page: Page): Promise<void> {
+  const email    = process.env.E2E_ADMIN_EMAIL    || DEFAULT_ADMIN_EMAIL;
+  const password = process.env.E2E_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
+
+  await page.goto("/login");
+  await expect(page.getByTestId("login-email")).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId("login-email").fill(email);
+  await page.getByTestId("login-password").fill(password);
+  await Promise.all([
+    page.waitForURL(/\/(?:app|admin)(\/|$)/, { timeout: 90_000 }),
+    page.getByTestId("login-submit").click(),
+  ]);
+  await expect(page.getByTestId("auth-checking")).toBeHidden({ timeout: 90_000 });
+  await expect(page.getByTestId("backend-sync-pending")).toBeHidden({ timeout: 90_000 });
 }
 
 /** Sign in as the seeded admin and return a Bearer access token. */
 export async function getAdminAccessToken(): Promise<string> {
   const env = readEnv();
-  const email    = process.env.E2E_ADMIN_EMAIL    || "e2e-admin@example.com";
-  const password = process.env.E2E_ADMIN_PASSWORD || "E2e-admin-passw0rd!";
+  const email    = process.env.E2E_ADMIN_EMAIL    || DEFAULT_ADMIN_EMAIL;
+  const password = process.env.E2E_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
 
   const client = createNodeSupabaseClient(env.supabaseURL, env.supabaseAnonKey);
   const { data, error } = await client.auth.signInWithPassword({ email, password });

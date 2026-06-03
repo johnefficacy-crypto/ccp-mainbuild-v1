@@ -6,6 +6,7 @@ import {
   ensureSyllabusMapperSeed,
   cleanupSyllabusMapperSeed,
   getAdminAccessToken,
+  loginAsAdmin,
 } from "../fixtures/seedWorkspace";
 import { createNodeSupabaseClient } from "../fixtures/supabaseNodeClient";
 import { readEnv } from "../fixtures/env";
@@ -216,20 +217,6 @@ test.describe("Flow: syllabus mapper API roundtrip", () => {
 // UI test — Syllabus Mapper tab enabled when mentions exist
 // ---------------------------------------------------------------------------
 
-async function loginAsAdmin(page: import("@playwright/test").Page) {
-  const email    = process.env.E2E_ADMIN_EMAIL    || "e2e-admin@example.com";
-  const password = process.env.E2E_ADMIN_PASSWORD || "E2e-admin-passw0rd!";
-  await page.goto("/login");
-  await expect(page.getByTestId("login-email")).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId("login-email").fill(email);
-  await page.getByTestId("login-password").fill(password);
-  await Promise.all([
-    page.waitForURL(/\/app(\/|$)/, { timeout: 90_000 }),
-    page.getByTestId("login-submit").click(),
-  ]);
-  await expect(page.getByTestId("auth-checking")).toBeHidden({ timeout: 90_000 });
-  await expect(page.getByTestId("backend-sync-pending")).toBeHidden({ timeout: 90_000 });
-}
 
 test.describe("Flow: syllabus mapper UI", () => {
   test.beforeAll(async () => {

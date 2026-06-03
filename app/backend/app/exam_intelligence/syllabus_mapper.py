@@ -345,8 +345,6 @@ def commit_accept(
     actor_id: str | None = None,
 ) -> dict:
     """Write accepted proposals to syllabus_topic_mentions with reviewer_status=pending."""
-    from datetime import datetime, timezone
-
     per_row: list[dict] = []
     committed = skipped_duplicate = skipped_stale = failed = 0
 
@@ -409,10 +407,9 @@ def commit_accept(
                 "proposer_match_method": prop.get("match_method"),
                 "review_reason": reason,
                 "proposal_key": recomputed_key,
+                "accepted_by": actor_id,
             },
         }
-        if actor_id:
-            row["reviewed_by"] = actor_id
 
         try:
             result = sb.table("syllabus_topic_mentions").insert(row).execute()
