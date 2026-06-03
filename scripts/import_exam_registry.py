@@ -303,6 +303,19 @@ def _abbrev_from_name(name: str) -> str:
     return abbrev or normalize_short_name(name)
 
 
+# ── importer metadata helpers ─────────────────────────────────────────────────
+
+def _with_import_metadata(existing: dict | None = None, **owned: Any) -> dict:
+    """Merge importer-owned metadata keys without clobbering unrelated keys."""
+    meta = {**(existing or {})}
+    meta["import_status"] = "pending_review"
+    meta["import_source"] = "exam_registry_workbook"
+    for key, value in owned.items():
+        if value:
+            meta[key] = value
+    return meta
+
+
 # ── exam upsert ───────────────────────────────────────────────────────────────
 
 def upsert_exam(
@@ -319,14 +332,21 @@ def upsert_exam(
         return exam_cache[slug]
 
     if not dry_run:
-        existing = sb.table("exams").select("id").eq("slug", slug).execute().data or []
+        existing = (
+            sb.table("exams")
+            .select("id,metadata")
+            .eq("slug", slug)
+            .execute()
+            .data or []
+        )
         if existing:
-            exam_id = existing[0]["id"]
+            row = existing[0]
+            exam_id = row["id"]
+            update = {"metadata": _with_import_metadata(row.get("metadata") or {})}
             # Patch conducting_org_id if missing
             if conducting_org_id:
-                sb.table("exams").update(
-                    {"conducting_organization_id": conducting_org_id}
-                ).eq("id", exam_id).execute()
+                update["conducting_organization_id"] = conducting_org_id
+            sb.table("exams").update(update).eq("id", exam_id).execute()
             exam_cache[slug] = exam_id
             logger.debug("exam found: %s → %s", slug, exam_id)
             return exam_id
@@ -337,7 +357,7 @@ def upsert_exam(
             "exam_type": exam_type,
             "is_active": True,
             "conducting_organization_id": conducting_org_id,
-            "metadata": {"import_status": "pending_review"},
+            "metadata": _with_import_metadata(),
         }
         resp = sb.table("exams").insert(payload).execute()
         exam_id = resp.data[0]["id"]
@@ -363,11 +383,10 @@ def upsert_cycle(
     dry_run: bool,
     stats: dict,
 ) -> None:
-    meta: dict = {"import_status": "pending_review"}
-    if phases_text:
-        meta["typical_phases"] = phases_text
-    if calendar_url:
-        meta["calendar_url"] = calendar_url
+    meta = _with_import_metadata(
+        typical_phases=phases_text,
+        calendar_url=calendar_url,
+    )
 
     if dry_run:
         logger.info("[DRY-RUN] would upsert cycle: exam=%s year=%s name=%s",
@@ -377,7 +396,7 @@ def upsert_cycle(
 
     existing = (
         sb.table("exam_cycles")
-        .select("id")
+        .select("id,year,metadata")
         .eq("exam_id", exam_id)
         .eq("cycle_name", cycle_name)
         .execute()
@@ -387,7 +406,7 @@ def upsert_cycle(
         existing = [
             r for r in (
                 sb.table("exam_cycles")
-                .select("id,year")
+                .select("id,year,metadata")
                 .eq("exam_id", exam_id)
                 .eq("cycle_name", cycle_name)
                 .execute()
@@ -397,8 +416,10 @@ def upsert_cycle(
         ]
 
     if existing:
-        sb.table("exam_cycles").update({"metadata": meta}).eq(
-            "id", existing[0]["id"]
+        row = existing[0]
+        merged_meta = {**(row.get("metadata") or {}), **meta}
+        sb.table("exam_cycles").update({"metadata": merged_meta}).eq(
+            "id", row["id"]
         ).execute()
         stats["cycles_updated"] = stats.get("cycles_updated", 0) + 1
         logger.debug("cycle updated: %s / %s", exam_id, cycle_name)
@@ -411,7 +432,7 @@ def upsert_cycle(
             "metadata": meta,
         }
         sb.table("exam_cycles").insert(payload).execute()
-        stats["cycles"] += 1
+        stats["cycles"] = stats.get("cycles", 0) + 1
         logger.info("cycle inserted: exam=%s year=%s name=%s", exam_id, year, cycle_name)
 
 
@@ -556,7 +577,7 @@ def process_exam_registry_sheet(
 
 
 _STATE_ABBREVS = {
-    "andhra pradesh": "andhra-pradesh", "ap": "andhra-pradesh",
+    "andhra pradesh": "andhra-pradesh",
     "arunachal pradesh": "arunachal-pradesh",
     "assam": "assam",
     "bihar": "bihar",
@@ -564,11 +585,11 @@ _STATE_ABBREVS = {
     "goa": "goa",
     "gujarat": "gujarat",
     "haryana": "haryana",
-    "himachal pradesh": "himachal-pradesh", "hp": "himachal-pradesh",
+    "himachal pradesh": "himachal-pradesh",
     "jharkhand": "jharkhand",
     "karnataka": "karnataka",
     "kerala": "kerala",
-    "madhya pradesh": "madhya-pradesh", "mp": "madhya-pradesh",
+    "madhya pradesh": "madhya-pradesh",
     "maharashtra": "maharashtra",
     "manipur": "manipur",
     "meghalaya": "meghalaya",
@@ -578,25 +599,58 @@ _STATE_ABBREVS = {
     "punjab": "punjab",
     "rajasthan": "rajasthan",
     "sikkim": "sikkim",
-    "tamil nadu": "tamil-nadu", "tn": "tamil-nadu",
+    "tamil nadu": "tamil-nadu",
     "telangana": "telangana",
     "tripura": "tripura",
-    "uttar pradesh": "uttar-pradesh", "up": "uttar-pradesh",
+    "uttar pradesh": "uttar-pradesh",
     "uttarakhand": "uttarakhand",
-    "west bengal": "west-bengal", "wb": "west-bengal",
+    "west bengal": "west-bengal",
     "delhi": "delhi",
-    "jammu and kashmir": "jammu-kashmir", "j&k": "jammu-kashmir",
-    "jkpsc": "jammu-kashmir",
+    "jammu and kashmir": "jammu-kashmir",
+    "j and k": "jammu-kashmir",
     "ladakh": "ladakh",
 }
 
+_STATE_TOKEN_ABBREVS = {
+    "ap": "andhra-pradesh",
+    "hp": "himachal-pradesh",
+    "mp": "madhya-pradesh",
+    "tn": "tamil-nadu",
+    "up": "uttar-pradesh",
+    "wb": "west-bengal",
+    "j&k": "jammu-kashmir",
+    "j and k": "jammu-kashmir",
+}
+
+_BODY_ABBREV_STATES = {
+    "JKPSC": "jammu-kashmir",
+    "MPSC": "maharashtra",
+}
+
+_NATIONAL_BODY_ABBREVS = {"UPSC", "SSC", "IBPS"}
+
 
 def _extract_state_from_body(body: str) -> str | None:
-    b = re.sub(r"\s*&\s*", " and ", body.lower())
-    if normalize_short_name(b) in {"UPSC", "SSC", "IBPS"}:
+    raw = str(body or "").strip()
+    normalized_short = normalize_short_name(raw)
+    if normalized_short in _NATIONAL_BODY_ABBREVS:
         return None
+    if normalized_short in _BODY_ABBREV_STATES:
+        return _BODY_ABBREV_STATES[normalized_short]
+
+    b = re.sub(r"\s*&\s*", " and ", raw.lower())
     for state, slug_prefix in _STATE_ABBREVS.items():
         if state in b:
+            return slug_prefix
+
+    tokens = set(re.findall(r"[a-z]+", b))
+    for alias, slug_prefix in _STATE_TOKEN_ABBREVS.items():
+        alias_tokens = alias.split()
+        if len(alias_tokens) == 1 and alias_tokens[0] in tokens:
+            return slug_prefix
+        if len(alias_tokens) > 1 and re.search(
+            rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", b
+        ):
             return slug_prefix
     return None
 

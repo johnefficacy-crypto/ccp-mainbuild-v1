@@ -69,6 +69,27 @@ class TestSeedExamPhaseSlugDerivation:
         assert clean_exam_name == exam_name
         assert slug == "rajasthan-assistant-engineer-lecturer-medical-officer"
 
+    def test_mpsc_rajyaseva_matches_importer(self):
+        exam_name = "MPSC Rajyaseva (Maharashtra Civil Services)"
+        conducting_body = "MPSC"
+
+        slug, clean_exam_name = derive_seed_exam_slug(exam_name, conducting_body)
+
+        assert slug == _importer_slug(exam_name, conducting_body)
+        assert clean_exam_name == exam_name
+        assert slug == "maharashtra-mpsc-rajyaseva-maharashtra-civil-services"
+        assert not slug.startswith("madhya-pradesh")
+
+    def test_upsc_civil_services_matches_importer(self):
+        exam_name = "UPSC Civil Services Examination"
+        conducting_body = "UPSC"
+
+        slug, clean_exam_name = derive_seed_exam_slug(exam_name, conducting_body)
+
+        assert slug == _importer_slug(exam_name, conducting_body)
+        assert clean_exam_name == exam_name
+        assert slug == "national-upsc-civil-services-examination"
+
     def test_normal_national_row_without_body_prefix_matches_importer(self):
         exam_name = "Civil Services Examination"
         conducting_body = "UPSC"
