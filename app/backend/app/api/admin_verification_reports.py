@@ -4,6 +4,17 @@ PR7 scope — read-only listing + detail. No state mutation endpoints
 yet (resolver re-run, override-conflict, promote, reject, bulk-apply
 all land in PR2/PR3/PR6 as the plan ships them).
 
+Track-3 (PR5 corrigendum continuation) adds:
+
+    POST /api/admin/verification-reports/{report_id}/apply-registry-action
+
+The endpoint is the ONLY path from a verification report/event into
+the exam registry. It requires an explicit operator submission (no
+auto-apply), writes one ``exam_registry_actions`` row (report_id NOT
+NULL), and delegates the actual DB mutation to
+``exam_intelligence.registry_action_service`` so the write + audit
+logic is single-sourced with the CMS handlers.
+
 Endpoints:
 
     GET /api/admin/verification-reports
@@ -24,7 +35,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.core.auth import require_admin
+from app.core.auth import require_admin, require_permission
 from app.core.permissions import (
     ACTION_ACK_BATCH,
     ACTION_PROMOTE,
@@ -35,6 +46,12 @@ from app.db.supabase_client import get_supabase_admin
 from app.scraping.promotion_gate import (
     check_gateway_promotion,
     check_gateway_publish,
+)
+from app.exam_intelligence.registry_action_service import (
+    apply_cycle_date_update,
+    apply_phase_date_update,
+    apply_policy_update_create,
+    apply_policy_update_edit,
 )
 from app.scraping.source_watch import acknowledge_batch
 from app.scraping.verification_gateway import run_resolver_stage
@@ -685,3 +702,199 @@ def acknowledge_reverification_batch(
     except LookupError:
         raise HTTPException(status_code=404, detail="reverification_batch not found")
     return {"batch_id": batch_id, "promoted": promoted}
+
+
+# ── Track-3: corrigendum review → exam registry ──────────────────────
+
+
+_APPLY_ACTION_TYPES = {
+    "cycle_date_update",
+    "phase_date_update",
+    "policy_update_create",
+    "policy_update_edit",
+}
+
+
+class ApplyRegistryActionRequest(BaseModel):
+    """Body for POST /admin/verification-reports/{report_id}/apply-registry-action.
+
+    Exactly one of ``exam_cycle_id``, ``exam_phase_id``, or
+    ``policy_update_id`` must be provided (the DB CHECK enforces it;
+    we also validate here for a friendly 422).
+
+    ``patch`` carries the date/field values to write to the target row.
+    For ``policy_update_create`` it is the full row payload; for the
+    three update variants it is the partial patch.
+    """
+
+    action_type: str = Field(..., description="One of the four action_type values.")
+    exam_cycle_id: str | None = Field(default=None)
+    exam_phase_id: str | None = Field(default=None)
+    policy_update_id: str | None = Field(default=None)
+    event_source_id: str | None = Field(default=None)
+    patch: dict[str, Any] = Field(default_factory=dict)
+    notes: str | None = Field(default=None, max_length=2000)
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+_PERM_REGISTRY_ACTION = "exam_intelligence.cms"
+
+
+@router.post("/admin/verification-reports/{report_id}/apply-registry-action")
+def apply_registry_action(
+    report_id: str,
+    payload: ApplyRegistryActionRequest = Body(...),
+    admin: dict = Depends(require_permission(_PERM_REGISTRY_ACTION)),
+) -> dict[str, Any]:
+    """Apply a verified corrigendum / lifecycle event to the exam registry.
+
+    This is the ONLY path that moves a value from a verification
+    report or recruitment_event into exam_cycles, exam_phases, or
+    exam_policy_updates. Nothing auto-applies; every mutation requires
+    an explicit operator submission with a report_id.
+
+    The endpoint:
+      1. Validates the report exists.
+      2. Dispatches to the appropriate registry_action_service function
+         (reusing the exact same write + audit logic as the CMS handlers).
+      3. Writes one ``exam_registry_actions`` row (report_id NOT NULL,
+         enforced structurally).
+
+    The admin_audit_logs row is written inside the service call, so the
+    audit trail captures the operator, source report, target row, and
+    old→new values regardless of which action_type is used.
+    """
+    if payload.action_type not in _APPLY_ACTION_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"action_type must be one of {sorted(_APPLY_ACTION_TYPES)}",
+        )
+
+    # Validate at least one target is set (mirrors the DB CHECK constraint).
+    # policy_update_create is exempt: the policy_update_id is produced by the
+    # write itself and is set on the action row after the insert.
+    if payload.action_type != "policy_update_create":
+        if not any([payload.exam_cycle_id, payload.exam_phase_id, payload.policy_update_id]):
+            raise HTTPException(
+                status_code=422,
+                detail="At least one of exam_cycle_id, exam_phase_id, policy_update_id is required",
+            )
+
+    supabase = get_supabase_admin()
+
+    # Confirm the report exists — report_id is the trust gate.
+    report_rows = (
+        supabase.table("recruitment_verification_reports")
+        .select("id, trigger_reason, lifecycle_status")
+        .eq("id", report_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not report_rows:
+        raise HTTPException(status_code=404, detail="verification_report not found")
+
+    # Pre-validate event_source_id before any registry write so the action
+    # row insert cannot fail on a stale FK after the target mutation has
+    # already been committed (atomicity guard — Codex P1).
+    if payload.event_source_id:
+        event_check = (
+            supabase.table("recruitment_events")
+            .select("id")
+            .eq("id", payload.event_source_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not event_check:
+            raise HTTPException(
+                status_code=422,
+                detail="event_source_id does not resolve to a recruitment_events row",
+            )
+
+    # Dispatch to the single-sourced write+audit logic.
+    action_type = payload.action_type
+    write_result: dict[str, Any]
+
+    if action_type == "cycle_date_update":
+        if not payload.exam_cycle_id:
+            raise HTTPException(status_code=422, detail="exam_cycle_id required for cycle_date_update")
+        write_result = apply_cycle_date_update(
+            supabase, admin,
+            cycle_id=payload.exam_cycle_id,
+            patch=payload.patch,
+            reason=payload.reason,
+        )
+        target_id = payload.exam_cycle_id
+
+    elif action_type == "phase_date_update":
+        if not payload.exam_phase_id:
+            raise HTTPException(status_code=422, detail="exam_phase_id required for phase_date_update")
+        write_result = apply_phase_date_update(
+            supabase, admin,
+            phase_id=payload.exam_phase_id,
+            patch=payload.patch,
+            reason=payload.reason,
+        )
+        target_id = payload.exam_phase_id
+
+    elif action_type == "policy_update_create":
+        write_result = apply_policy_update_create(
+            supabase, admin,
+            payload=payload.patch,
+            reason=payload.reason,
+        )
+        target_id = write_result.get("row", {}).get("id")
+
+    else:  # policy_update_edit
+        if not payload.policy_update_id:
+            raise HTTPException(status_code=422, detail="policy_update_id required for policy_update_edit")
+        write_result = apply_policy_update_edit(
+            supabase, admin,
+            policy_id=payload.policy_update_id,
+            patch=payload.patch,
+            reason=payload.reason,
+        )
+        target_id = payload.policy_update_id
+
+    # Record the action — report_id NOT NULL is the structural trust gate.
+    action_row_payload: dict[str, Any] = {
+        "report_id": report_id,
+        "action_type": action_type,
+        "applied_by": admin["id"],
+        "metadata": {
+            "reason": payload.reason,
+            "target_id": target_id,
+            "audit_id": write_result.get("audit_id"),
+        },
+    }
+    if payload.event_source_id:
+        action_row_payload["event_source_id"] = payload.event_source_id
+    if payload.exam_cycle_id:
+        action_row_payload["exam_cycle_id"] = payload.exam_cycle_id
+    if payload.exam_phase_id:
+        action_row_payload["exam_phase_id"] = payload.exam_phase_id
+    if payload.policy_update_id or (action_type == "policy_update_create" and target_id):
+        action_row_payload["policy_update_id"] = payload.policy_update_id or target_id
+    if payload.notes:
+        action_row_payload["notes"] = payload.notes
+
+    action_rows = (
+        supabase.table("exam_registry_actions")
+        .insert(action_row_payload)
+        .execute()
+        .data
+        or []
+    )
+    action_row = action_rows[0] if action_rows else action_row_payload
+
+    return {
+        "ok": True,
+        "action_id": action_row.get("id"),
+        "audit_id": write_result.get("audit_id"),
+        "action_type": action_type,
+        "report_id": report_id,
+        "target_row": write_result.get("row"),
+    }
