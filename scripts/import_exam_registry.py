@@ -259,22 +259,6 @@ def _abbrev_from_name(name: str) -> str:
     return abbrev or normalize_short_name(name)
 
 
-def _strip_leading_body_from_exam_name(exam_name: str, body_abbrev: str) -> str:
-    """Strip a leading body abbreviation from an exam name.
-
-    Ensures slugs don't embed the body prefix.  E.g. 'APPSC Group I Services'
-    with body_abbrev='APPSC' → 'Group I Services'.  If the name doesn't start
-    with the abbreviation (case-insensitive, word boundary) it is returned as-is.
-    """
-    if not body_abbrev or not exam_name:
-        return exam_name
-    norm = normalize_short_name(body_abbrev)
-    # Match abbreviation at start followed by a space or end-of-string
-    pattern = re.compile(r"^" + re.escape(norm) + r"(?:\s+|$)", re.IGNORECASE)
-    stripped = pattern.sub("", exam_name).strip()
-    return stripped if stripped else exam_name
-
-
 # ── exam upsert ───────────────────────────────────────────────────────────────
 
 def upsert_exam(
@@ -449,12 +433,11 @@ def process_state_psc_sheet(
         if not exam_family:
             continue
 
-        stripped_exam_family = _strip_leading_body_from_exam_name(exam_family, short_name)
-        e_slug = exam_slug(state, stripped_exam_family)
+        e_slug = exam_slug(state, exam_family)
         exam_id = upsert_exam(
             sb,
             slug=e_slug,
-            name=stripped_exam_family,
+            name=exam_family,
             exam_type=exam_type,
             conducting_org_id=org_id,
             dry_run=dry_run,
@@ -515,13 +498,11 @@ def process_exam_registry_sheet(
 
         # Determine state prefix: if conducting_body looks like a state PSC, extract state
         state_prefix = _extract_state_from_body(conducting_body)
-        body_abbrev = _abbrev_from_name(conducting_body) if conducting_body else ""
-        stripped_exam_name = _strip_leading_body_from_exam_name(exam_name, body_abbrev)
-        e_slug = exam_slug(state_prefix, stripped_exam_name)
+        e_slug = exam_slug(state_prefix, exam_name)
         exam_id = upsert_exam(
             sb,
             slug=e_slug,
-            name=stripped_exam_name,
+            name=exam_name,
             exam_type="recruitment",
             conducting_org_id=org_id,
             dry_run=dry_run,
