@@ -26,14 +26,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts"))
 
 from import_exam_registry import normalize_short_name, upsert_organization
 from dedupe_state_psc_orgs import (
-    _STATE_PSC_SHORT_NAMES,
+    _FIXTURE_STATE_PSC_SHORT_NAMES,
     _backfill_short_names,
+    _build_workbook_short_name_map,
     _find_clusters,
     _merge_metadata,
     _norm_text,
     _pick_survivor,
     run as dedup_run,
 )
+from unittest.mock import patch
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -342,7 +344,9 @@ class TestBackfillShortNames:
         sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = orgs
         sb.table.return_value.update.return_value.eq.return_value.execute.return_value = None
 
-        _backfill_short_names(sb, dry_run=False)
+        with patch("dedupe_state_psc_orgs._build_workbook_short_name_map",
+                   return_value={"assam": "APSC"}):
+            _backfill_short_names(sb, dry_run=False, xlsx_path=Path("dummy.xlsx"))
 
         sb.table.return_value.update.assert_called_once_with({"short_name": "APSC"})
 
@@ -354,36 +358,38 @@ class TestBackfillShortNames:
         sb = MagicMock()
         sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = orgs
 
-        _backfill_short_names(sb, dry_run=False)
+        with patch("dedupe_state_psc_orgs._build_workbook_short_name_map",
+                   return_value={"kerala": "KPSC"}):
+            _backfill_short_names(sb, dry_run=False, xlsx_path=Path("dummy.xlsx"))
 
         sb.table.return_value.update.assert_not_called()
 
     def test_backfill_from_authoritative_map_not_abbrev(self):
-        """UKPSC must come from _STATE_PSC_SHORT_NAMES, not _abbrev_from_name.
+        """UKPSC must come from the authoritative fixture, not _abbrev_from_name.
         _abbrev_from_name('Uttarakhand Public Service Commission') = 'UPSC' (wrong).
         """
-        assert _STATE_PSC_SHORT_NAMES.get("uttarakhand") == "UKPSC"
-        assert _STATE_PSC_SHORT_NAMES.get("chhattisgarh") == "CGPSC"
+        assert _FIXTURE_STATE_PSC_SHORT_NAMES.get("uttarakhand") == "UKPSC"
+        assert _FIXTURE_STATE_PSC_SHORT_NAMES.get("chhattisgarh") == "CGPSC"
 
     def test_all_29_state_psc_states_covered(self):
         """Every standard state must have an authoritative short_name."""
         expected = [
             "andhra pradesh", "arunachal pradesh", "assam", "bihar",
             "chhattisgarh", "goa", "gujarat", "haryana", "himachal pradesh",
-            "jharkhand", "jammu and kashmir", "karnataka", "kerala",
+            "jharkhand", "jammu & kashmir", "karnataka", "kerala",
             "madhya pradesh", "maharashtra", "manipur", "meghalaya",
             "mizoram", "nagaland", "odisha", "punjab", "rajasthan",
             "sikkim", "tamil nadu", "telangana", "tripura",
             "uttar pradesh", "uttarakhand", "west bengal",
         ]
-        missing = [s for s in expected if s not in _STATE_PSC_SHORT_NAMES]
+        missing = [s for s in expected if s not in _FIXTURE_STATE_PSC_SHORT_NAMES]
         assert not missing, f"Missing: {missing}"
 
     def test_map_matches_workbook_psc_short_name_column(self):
-        """Assert _STATE_PSC_SHORT_NAMES equals normalize_short_name(workbook 'PSC Short Name')
+        """Assert _FIXTURE_STATE_PSC_SHORT_NAMES equals normalize_short_name(workbook 'PSC Short Name')
         for every state. This table IS the workbook column — transcribed here so any drift
         between the map and the authoritative workbook source fails CI immediately.
-        If a workbook value changes, update BOTH this table and _STATE_PSC_SHORT_NAMES.
+        If a workbook value changes, update BOTH this table and _FIXTURE_STATE_PSC_SHORT_NAMES.
         """
         from import_exam_registry import normalize_short_name
 
@@ -400,7 +406,7 @@ class TestBackfillShortNames:
             "haryana"           : "HPSC",
             "himachal pradesh"  : "HPPSC",
             "jharkhand"         : "JPSC",
-            "jammu and kashmir" : "JKPSC",
+            "jammu & kashmir"   : "JKPSC",
             "karnataka"         : "KPSC",
             "kerala"            : "KPSC",
             "madhya pradesh"    : "MPPSC",
@@ -424,13 +430,13 @@ class TestBackfillShortNames:
         mismatches = []
         for state, workbook_value in WORKBOOK_PSC_SHORT_NAMES.items():
             expected = normalize_short_name(workbook_value)
-            actual = _STATE_PSC_SHORT_NAMES.get(state)
+            actual = _FIXTURE_STATE_PSC_SHORT_NAMES.get(state)
             if actual != expected:
                 mismatches.append(
                     f"  {state}: map={actual!r}, workbook={workbook_value!r} → normalized={expected!r}"
                 )
         assert not mismatches, (
-            "_STATE_PSC_SHORT_NAMES diverges from workbook 'PSC Short Name' column:\n"
+            "_FIXTURE_STATE_PSC_SHORT_NAMES diverges from workbook 'PSC Short Name' column:\n"
             + "\n".join(mismatches)
         )
 
@@ -441,10 +447,20 @@ class TestStateSlugMachineryUnchanged:
     """Assert _extract_state_from_body and exam_slug are byte-identical to origin/main."""
 
     def test_protected_symbols_not_in_diff(self):
+        repo_root = Path(__file__).resolve().parents[4]
+        # Only check modifications — if the file is new relative to origin/main
+        # (entire file is additions), there are no pre-existing symbols to protect.
+        file_on_main = subprocess.run(
+            ["git", "cat-file", "-e", "origin/main:scripts/import_exam_registry.py"],
+            capture_output=True, cwd=str(repo_root),
+        )
+        if file_on_main.returncode != 0:
+            return  # file is new on this branch; no modification check needed
+
         result = subprocess.run(
             ["git", "diff", "origin/main", "--", "scripts/import_exam_registry.py"],
             capture_output=True, text=True,
-            cwd=str(Path(__file__).resolve().parents[4]),
+            cwd=str(repo_root),
         )
         diff = result.stdout
         protected = [
