@@ -197,18 +197,18 @@ def _find_clusters(sb: Any) -> list[list[dict]]:
 
 
 def _fk_refs(sb: Any, org_id: str) -> dict[str, list[str]]:
-    """Return {table: [ref_ids]} for all FK tables pointing at org_id."""
+    """Return {table: [ref markers]} for all FK tables pointing at org_id."""
     result: dict[str, list[str]] = {}
     for fk in _FK_TABLES:
         refs = (
             sb.table(fk["table"])
-            .select("id")
+            .select(fk["col"])
             .eq(fk["col"], org_id)
             .execute()
             .data or []
         )
         if refs:
-            result[fk["table"]] = [r["id"] for r in refs]
+            result[fk["table"]] = [str(r.get(fk["col"], "")) for r in refs]
     return result
 
 
