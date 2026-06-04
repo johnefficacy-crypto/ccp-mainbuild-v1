@@ -45,6 +45,7 @@ const AdminMockReviewQueue = lazy(() => import("../pages/admin/mocks/ReviewQueue
 const AdminMockQuestionEditor = lazy(() => import("../pages/admin/mocks/QuestionEditor"));
 const AdminMockImportWizard = lazy(() => import("../pages/admin/mocks/ImportWizard"));
 const AdminVerificationReports = lazy(() => import("../pages/admin/VerificationReports"));
+const AdminReverificationBatches = lazy(() => import("../pages/admin/ReverificationBatches"));
 
 export const adminRouteElements = (
   <>
@@ -101,6 +102,7 @@ export const adminRouteElements = (
     {/* Verification reports — exam_intelligence.cms permission checked inside page */}
     <Route element={<RouteErrorBoundary />}>
       <Route path="/admin/verification-reports" element={<AdminVerificationReports />} />
+      <Route path="/admin/reverification-batches" element={<AdminReverificationBatches />} />
     </Route>
     </Route>
   </>

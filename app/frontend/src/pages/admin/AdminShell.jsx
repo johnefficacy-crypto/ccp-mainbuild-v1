@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   Award, Bell, Bot, ChevronDown, Copyright as CopyrightIcon, CreditCard, Database, ExternalLink,
   FileSearch, Files, Flag, GaugeCircle, GraduationCap, LayoutGrid, LineChart,
-  NotebookPen, Library, ClipboardList, Upload, ClipboardCheck,
+  NotebookPen, Library, ClipboardList, Upload, ClipboardCheck, RefreshCcw,
   LogOut, Menu, MessagesSquare, Network, Radar, ScrollText, ShieldCheck,
   ShoppingBag, Sparkles, UserSearch, Users2, Wrench, X,
 } from "lucide-react";
@@ -27,6 +27,7 @@ const KNOWLEDGE_GOVERNANCE = [
   { to: "/admin/exam-eligibility", label: "Exam Eligibility", icon: ShieldCheck, testId: "admin-nav-exam-eligibility" },
   { to: "/admin/organizations", label: "Organizations", icon: Users2, testId: "admin-nav-organizations" },
   { to: "/admin/verification-reports", label: "Verification Reports", icon: ClipboardCheck, testId: "admin-nav-verification-reports" },
+  { to: "/admin/reverification-batches", label: "Reverification Batches", icon: RefreshCcw, testId: "admin-nav-reverification-batches" },
   { to: "/admin/ai-policy", label: "AI Governance", icon: Bot, testId: "admin-nav-ai-policy" },
   { to: "/admin/persona", label: "Persona", icon: Sparkles, testId: "admin-nav-persona" },
 ];
