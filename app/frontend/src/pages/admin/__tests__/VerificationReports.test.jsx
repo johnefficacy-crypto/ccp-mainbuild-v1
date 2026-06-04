@@ -287,3 +287,103 @@ test("shows inline error when api.post rejects", async () => {
     expect(screen.queryByTestId("rar-error")).toBeTruthy();
   });
 });
+
+// ─── promote / reject panel ───────────────────────────────────────────────────
+
+async function openDrawer() {
+  render(<AdminVerificationReports />);
+  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
+  await waitFor(() => expect(screen.queryByTestId("promote-reject-panel")).toBeTruthy());
+}
+
+test("promote button is enabled when recruitment_id is null", async () => {
+  // Default MOCK_REPORT has no recruitment_id
+  await openDrawer();
+  const btn = screen.getByTestId("promote-btn");
+  expect(btn.disabled).toBe(false);
+  expect(btn.textContent).toContain("Promote");
+});
+
+test("promote button is disabled when recruitment_id is set", async () => {
+  api.get.mockImplementation((url) => {
+    if (url === "/api/admin/verification-reports/rpt-1") {
+      return Promise.resolve({ ...MOCK_REPORT, recruitment_id: "rec-999" });
+    }
+    return Promise.resolve({ items: [] });
+  });
+
+  await openDrawer();
+  const btn = screen.getByTestId("promote-btn");
+  expect(btn.disabled).toBe(true);
+  expect(btn.textContent).toContain("Promoted");
+  expect(screen.queryByTestId("already-promoted-note")).toBeTruthy();
+});
+
+test("promote sends POST to /promote endpoint and fires onSuccess", async () => {
+  api.post.mockResolvedValueOnce({ ok: true, recruitment_id: "rec-new" });
+
+  render(<AdminVerificationReports />);
+  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
+  await waitFor(() => screen.queryByTestId("promote-btn"));
+
+  fireEvent.click(screen.getByTestId("promote-btn"));
+
+  await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+    "/api/admin/verification-reports/rpt-1/promote",
+    {},
+  ));
+});
+
+test("promote shows inline error when POST returns rejection", async () => {
+  api.post.mockRejectedValueOnce(new Error("gate_blocker"));
+
+  await openDrawer();
+  fireEvent.click(screen.getByTestId("promote-btn"));
+
+  await waitFor(() => expect(screen.queryByTestId("promote-error")).toBeTruthy());
+});
+
+test("promote/reject panel is hidden for non-admin user", async () => {
+  useAuth.mockReturnValue({
+    user: { role: "viewer", permissions: ["exam_intelligence.cms"] },
+  });
+
+  render(<AdminVerificationReports />);
+  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
+
+  await waitFor(() => screen.queryByTestId("report-detail-card"));
+  expect(screen.queryByTestId("promote-reject-panel")).toBeFalsy();
+});
+
+test("reject button opens reason form", async () => {
+  await openDrawer();
+  expect(screen.queryByTestId("reject-form")).toBeFalsy();
+  fireEvent.click(screen.getByTestId("reject-open-btn"));
+  expect(screen.queryByTestId("reject-form")).toBeTruthy();
+});
+
+test("reject shows client-side error when reason is fewer than 8 chars", async () => {
+  await openDrawer();
+  fireEvent.click(screen.getByTestId("reject-open-btn"));
+  fireEvent.change(screen.getByTestId("reject-reason-input"), { target: { value: "short" } });
+  fireEvent.click(screen.getByTestId("reject-submit-btn"));
+
+  await waitFor(() => expect(screen.queryByTestId("reject-error")).toBeTruthy());
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+test("reject sends POST with reason when valid", async () => {
+  api.post.mockResolvedValueOnce({ ok: true });
+
+  await openDrawer();
+  fireEvent.click(screen.getByTestId("reject-open-btn"));
+  fireEvent.change(screen.getByTestId("reject-reason-input"), {
+    target: { value: "Confirmed duplicate — exam already covered." },
+  });
+  fireEvent.click(screen.getByTestId("reject-submit-btn"));
+
+  await waitFor(() => expect(api.post).toHaveBeenCalled());
+  const [url, body] = api.post.mock.calls[0];
+  expect(url).toBe("/api/admin/verification-reports/rpt-1/reject");
+  expect(body.reason).toBe("Confirmed duplicate — exam already covered.");
+});

@@ -240,6 +240,148 @@ function ApplyRegistryActionPanel({ reportId, onSuccess }) {
   );
 }
 
+// ─── Promote / Reject panel ───────────────────────────────────────────────────
+
+function PromoteRejectPanel({ report, onSuccess }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState(null);
+  const [promoteError, setPromoteError] = useState(null);
+  const { run: runPromote, busy: promoteBusy } = useApiAction();
+  const { run: runReject, busy: rejectBusy } = useApiAction();
+
+  if (!isAdmin) return null;
+
+  const alreadyPromoted = !!report.recruitment_id;
+
+  async function handlePromote() {
+    setPromoteError(null);
+    const res = await runPromote({
+      action: () => api.post(`/api/admin/verification-reports/${report.id}/promote`, {}),
+      successMessage: "Report promoted to recruitment.",
+      errorMessage: "Failed to promote report.",
+      onSuccess,
+    });
+    if (!res.ok && !res.cancelled) {
+      setPromoteError(res.error?.message || "Promotion failed.");
+    }
+  }
+
+  async function handleReject(e) {
+    e.preventDefault();
+    setRejectError(null);
+    const trimmed = rejectReason.trim();
+    if (trimmed.length < 8 || trimmed.length > 500) {
+      setRejectError("Reason must be 8–500 characters.");
+      return;
+    }
+    const res = await runReject({
+      action: () => api.post(`/api/admin/verification-reports/${report.id}/reject`, { reason: trimmed }),
+      successMessage: "Report rejected.",
+      errorMessage: "Failed to reject report.",
+      onSuccess,
+    });
+    if (!res.ok && !res.cancelled) {
+      setRejectError(res.error?.message || "Rejection failed.");
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-white/60 px-5 py-4 space-y-4" data-testid="promote-reject-panel">
+      <h4 className="text-sm font-semibold text-gray-900">Promote / Reject</h4>
+
+      {/* Promote */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="btn btn-primary text-sm"
+            onClick={handlePromote}
+            disabled={promoteBusy || alreadyPromoted}
+            data-testid="promote-btn"
+            aria-disabled={alreadyPromoted}
+          >
+            {promoteBusy ? "Promoting…" : alreadyPromoted ? "Promoted" : "Promote"}
+          </button>
+          {alreadyPromoted && (
+            <span className="text-xs text-muted-foreground" data-testid="already-promoted-note">
+              Already linked to recruitment {report.recruitment_id}
+            </span>
+          )}
+        </div>
+        {promoteError && (
+          <div
+            className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+            data-testid="promote-error"
+          >
+            {promoteError}
+          </div>
+        )}
+      </div>
+
+      {/* Reject */}
+      {!rejectOpen ? (
+        <button
+          type="button"
+          className="btn btn-ghost text-sm text-destructive"
+          onClick={() => { setRejectOpen(true); setRejectError(null); }}
+          data-testid="reject-open-btn"
+        >
+          Reject…
+        </button>
+      ) : (
+        <form onSubmit={handleReject} className="space-y-3" noValidate data-testid="reject-form">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1" htmlFor="reject-reason">
+              Reason * (8–500 chars)
+            </label>
+            <textarea
+              id="reject-reason"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={3}
+              className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+              data-testid="reject-reason-input"
+              required
+            />
+          </div>
+
+          {rejectError && (
+            <div
+              className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              data-testid="reject-error"
+            >
+              {rejectError}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="btn btn-destructive text-sm"
+              disabled={rejectBusy}
+              data-testid="reject-submit-btn"
+            >
+              {rejectBusy ? "Rejecting…" : "Confirm reject"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost text-sm"
+              onClick={() => { setRejectOpen(false); setRejectReason(""); setRejectError(null); }}
+              data-testid="reject-cancel-btn"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 // ─── Detail drawer ─────────────────────────────────────────────────────────────
 
 function VerificationReportDetail({ reportId, onClose, onActionApplied }) {
@@ -296,6 +438,7 @@ function VerificationReportDetail({ reportId, onClose, onActionApplied }) {
             <div className="mt-4" data-testid="report-detail-card">
               <VerificationReportCard report={report} />
             </div>
+            <PromoteRejectPanel report={report} onSuccess={onActionApplied} />
             <div className="mt-6 rounded-2xl border border-border bg-white/60 px-5 py-4">
               <ApplyRegistryActionPanel
                 reportId={reportId}
