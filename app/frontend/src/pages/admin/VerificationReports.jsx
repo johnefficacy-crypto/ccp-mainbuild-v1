@@ -355,28 +355,16 @@ function VerificationReportsTable({ items, onOpen }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function AdminVerificationReports() {
-  const { user } = useAuth();
+// Separate component so useApiCollection only mounts — and fetches — when the
+// user actually has the required permission. The parent renders the denial UI
+// before this component ever mounts, preventing the GET from leaking report
+// data to admins who lack exam_intelligence.cms.
+function VerificationReportsContent() {
   const [selectedId, setSelectedId] = useState(null);
-
-  const hasPerm =
-    user?.role === "super_admin" ||
-    (Array.isArray(user?.permissions) && user.permissions.includes(PERM));
-
   const { items, status, refresh } = useApiCollection(
     "/api/admin/verification-reports",
     [],
   );
-
-  if (!hasPerm) {
-    return (
-      <div className="p-6" data-testid="vr-permission-denied">
-        <p className="text-sm text-muted-foreground">
-          You need the <code>{PERM}</code> permission to access this console.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 space-y-4">
@@ -411,4 +399,24 @@ export default function AdminVerificationReports() {
       />
     </div>
   );
+}
+
+export default function AdminVerificationReports() {
+  const { user } = useAuth();
+
+  const hasPerm =
+    user?.role === "super_admin" ||
+    (Array.isArray(user?.permissions) && user.permissions.includes(PERM));
+
+  if (!hasPerm) {
+    return (
+      <div className="p-6" data-testid="vr-permission-denied">
+        <p className="text-sm text-muted-foreground">
+          You need the <code>{PERM}</code> permission to access this console.
+        </p>
+      </div>
+    );
+  }
+
+  return <VerificationReportsContent />;
 }
