@@ -7,6 +7,7 @@ import { useAuth } from "../../lib/authContext";
 import { useFocusTrap } from "../../shared/a11y/useFocusTrap";
 import { EmptyState, ErrorState, LoadingSkeleton, StatusBadge } from "../../shared/ui/core";
 import VerificationReportCard from "../../features/admin/workflow/VerificationReportCard";
+import BulkActionPreview from "../../features/admin/workflow/BulkActionPreview";
 
 const PERM = "exam_intelligence.cms";
 
@@ -788,12 +789,27 @@ function VerificationReportDetail({ reportId, onClose, onActionApplied }) {
 
 // ─── List table ───────────────────────────────────────────────────────────────
 
-function VerificationReportsTable({ items, onOpen }) {
+// ─── Multi-select table ───────────────────────────────────────────────────────
+
+function VerificationReportsTable({ items, onOpen, selectedIds, onToggle, onToggleAll }) {
+  const allSelected = items.length > 0 && items.every((r) => selectedIds.includes(r.id));
+  const someSelected = items.some((r) => selectedIds.includes(r.id));
+
   return (
     <div className="soft-card grain relative overflow-hidden rounded-[18px]">
       <table className="tbl" data-testid="vr-table">
         <thead>
           <tr>
+            <th>
+              <input
+                type="checkbox"
+                aria-label="Select all"
+                checked={allSelected}
+                ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                onChange={() => onToggleAll(items.map((r) => r.id))}
+                data-testid="vr-select-all"
+              />
+            </th>
             <th>ID</th>
             <th>Exam family</th>
             <th>Lifecycle</th>
@@ -806,6 +822,15 @@ function VerificationReportsTable({ items, onOpen }) {
         <tbody>
           {items.map((r) => (
             <tr key={r.id} data-testid={`vr-row-${r.id}`}>
+              <td>
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${r.id}`}
+                  checked={selectedIds.includes(r.id)}
+                  onChange={() => onToggle(r.id)}
+                  data-testid={`vr-check-${r.id}`}
+                />
+              </td>
               <td className="num-mono text-xs">{r.id}</td>
               <td>{r.exam_family_key || "—"}</td>
               <td><StatusBadge status={r.lifecycle_status} /></td>
@@ -830,6 +855,63 @@ function VerificationReportsTable({ items, onOpen }) {
   );
 }
 
+// ─── Bulk toolbar ─────────────────────────────────────────────────────────────
+
+function BulkToolbar({ selectedIds, onClear, onDryRun, dryRunResult, onApply, busy }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const [action, setAction] = useState("bulk_promote");
+
+  if (!isAdmin || selectedIds.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-border bg-white/80 px-4 py-3 flex flex-wrap items-center gap-3" data-testid="bulk-toolbar">
+      <span className="text-sm font-medium text-gray-900">
+        {selectedIds.length} selected
+      </span>
+
+      <select
+        value={action}
+        onChange={(e) => setAction(e.target.value)}
+        className="rounded-xl border border-border bg-white/80 px-3 py-1.5 text-sm"
+        data-testid="bulk-action-select"
+      >
+        <option value="bulk_promote">Bulk promote</option>
+        <option value="bulk_reject">Bulk reject</option>
+      </select>
+
+      <button
+        type="button"
+        className="btn btn-ghost text-sm"
+        onClick={() => onDryRun(selectedIds, action)}
+        disabled={busy}
+        data-testid="bulk-dry-run-btn"
+      >
+        {busy ? "Checking…" : "Preview"}
+      </button>
+
+      <button
+        type="button"
+        className="btn btn-ghost text-xs text-muted-foreground"
+        onClick={onClear}
+        data-testid="bulk-clear-btn"
+      >
+        Clear
+      </button>
+
+      {dryRunResult && (
+        <div className="w-full mt-2" data-testid="bulk-preview-wrapper">
+          <BulkActionPreview
+            dryRun={dryRunResult}
+            onApply={() => onApply(selectedIds, action)}
+            disabled={busy}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 // Separate component so useApiCollection only mounts — and fetches — when the
@@ -838,10 +920,68 @@ function VerificationReportsTable({ items, onOpen }) {
 // data to admins who lack exam_intelligence.cms.
 function VerificationReportsContent() {
   const [selectedId, setSelectedId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [dryRunResult, setDryRunResult] = useState(null);
+  const [bulkError, setBulkError] = useState(null);
   const { items, status, refresh } = useApiCollection(
     "/api/admin/verification-reports",
     [],
   );
+  const { run: runBulk, busy: bulkBusy } = useApiAction();
+
+  function toggleOne(id) {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+    setDryRunResult(null);
+  }
+
+  function toggleAll(ids) {
+    const allSelected = ids.every((id) => selectedIds.includes(id));
+    setSelectedIds(allSelected ? [] : ids);
+    setDryRunResult(null);
+  }
+
+  function clearSelection() {
+    setSelectedIds([]);
+    setDryRunResult(null);
+    setBulkError(null);
+  }
+
+  async function handleDryRun(ids, action) {
+    setBulkError(null);
+    setDryRunResult(null);
+    const res = await runBulk({
+      action: () => api.post("/api/admin/verification-reports/bulk-dry-run", {
+        selected_ids: ids,
+        action,
+        dry_run: true,
+      }),
+      errorMessage: "Bulk dry-run failed.",
+    });
+    if (res.ok) {
+      setDryRunResult(res.data);
+    } else if (!res.cancelled) {
+      setBulkError(res.error?.message || "Bulk dry-run failed.");
+    }
+  }
+
+  async function handleApply(ids, action) {
+    setBulkError(null);
+    const res = await runBulk({
+      action: () => api.post("/api/admin/verification-reports/bulk-apply", {
+        selected_ids: ids,
+        action,
+        dry_run: false,
+      }),
+      successMessage: "Bulk action applied.",
+      errorMessage: "Bulk action failed.",
+      onSuccess: () => { clearSelection(); refresh(); },
+    });
+    if (!res.ok && !res.cancelled) {
+      setBulkError(res.error?.message || "Bulk action failed.");
+    }
+  }
 
   return (
     <div className="p-6 space-y-4">
@@ -862,11 +1002,35 @@ function VerificationReportsContent() {
         </button>
       </div>
 
+      <BulkToolbar
+        selectedIds={selectedIds}
+        onClear={clearSelection}
+        onDryRun={handleDryRun}
+        dryRunResult={dryRunResult}
+        onApply={handleApply}
+        busy={bulkBusy}
+      />
+
+      {bulkError && (
+        <div
+          className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+          data-testid="bulk-error"
+        >
+          {bulkError}
+        </div>
+      )}
+
       {status === "loading" && <LoadingSkeleton />}
       {status === "error" && <ErrorState message="Failed to load verification reports." onRetry={refresh} />}
       {status === "empty" && <EmptyState message="No verification reports in the attention queue." />}
       {status === "live" && (
-        <VerificationReportsTable items={items} onOpen={(r) => setSelectedId(r.id)} />
+        <VerificationReportsTable
+          items={items}
+          onOpen={(r) => setSelectedId(r.id)}
+          selectedIds={selectedIds}
+          onToggle={toggleOne}
+          onToggleAll={toggleAll}
+        />
       )}
 
       <VerificationReportDetail
