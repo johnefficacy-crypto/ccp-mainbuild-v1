@@ -270,26 +270,6 @@ def list_exams(
     return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
 
 
-def _generate_exam_slug(name: str, org: dict | None) -> str:
-    """Generate a deterministic slug for a new exam.
-
-    Rules (in priority order):
-    1. state_psc org with a non-empty state → ``{state_slug}-{name_slug}``
-    2. Everything else → ``{name_slug}``
-
-    Payload-supplied slugs are intentionally discarded; the operator cannot
-    override slug generation.  Collision (unique constraint) → 409.
-    """
-    from app.common.strings import slugify as _slugify
-
-    name_slug = _slugify(name, fallback="exam")
-    if org and org.get("type") == "state_psc" and org.get("state"):
-        state_slug = _slugify(org["state"], fallback="")
-        if state_slug:
-            return f"{state_slug}-{name_slug}"
-    return name_slug
-
-
 @router.post("/exams")
 def create_exam(
     body: WriteEnvelope,
