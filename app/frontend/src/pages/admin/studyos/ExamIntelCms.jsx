@@ -6,6 +6,35 @@ import CmsRefField from "../../../features/admin/shared/CmsRefField";
 import { DateField } from "../../../shared/ui/heavy";
 import ExamIntelDocuments from "./ExamIntelDocuments";
 
+function OrgRefSelect({ value, onChange, testId }) {
+  const [orgs, setOrgs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    api.get("/api/admin/organizations?limit=200")
+      .then((d) => { if (active) setOrgs(Array.isArray(d?.items) ? d.items : []); })
+      .catch(() => {})
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+  return (
+    <select
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+      data-testid={testId}
+    >
+      <option value="">(none)</option>
+      {loading && <option disabled>Loading…</option>}
+      {orgs.map((o) => (
+        <option key={o.id} value={o.id}>
+          {o.name}{o.state ? ` — ${o.state}` : ""}{o.type ? ` (${o.type})` : ""}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 // Reusable ref-picker descriptors. Each points at a CMS list endpoint that
 // already exists; child pickers cascade off a sibling form field.
 const REF_EXAM = { endpoint: "exams", labelKey: "name", secondaryKey: "slug" };
@@ -60,8 +89,8 @@ const ENTITY_CONFIG = {
   exams: {
     label: "Exams",
     fields: [
-      { key: "slug", label: "slug", required: true },
       { key: "name", label: "name", required: true },
+      { key: "conducting_organization_id", label: "conducting_organization_id (org)", type: "org-ref" },
       { key: "exam_family_id", label: "exam_family_id", type: "ref", ref: REF_FAMILY },
       { key: "exam_type", label: "exam_type (recruitment|entrance|certification|opportunity|other)" },
       { key: "description", label: "description" },
@@ -400,6 +429,9 @@ const DATE_FIELD_HELP = {
 function renderFieldControl(f, values, setValues, idPrefix, entityKey) {
   const testId = `${idPrefix}field-${f.key}`;
   const set = (val) => setValues((p) => ({ ...p, [f.key]: val }));
+  if (f.type === "org-ref") {
+    return <OrgRefSelect value={values[f.key] ?? ""} onChange={(val) => set(val)} testId={testId} />;
+  }
   if (f.type === "ref") {
     return (
       <CmsRefField
