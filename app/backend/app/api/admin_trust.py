@@ -984,7 +984,9 @@ def create_organization(body: dict, admin: dict = Depends(require_permission("or
             .eq("type", org_type)
             .eq("short_name", short_name)
         )
-        if state is not None:
+        if state is None:
+            q = q.is_("state", None)
+        else:
             q = q.eq("state", state)
         dup_rows = q.limit(1).execute().data or []
     except Exception:  # noqa: BLE001

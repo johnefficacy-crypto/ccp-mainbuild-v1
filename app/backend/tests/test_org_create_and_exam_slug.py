@@ -427,6 +427,10 @@ def test_org_create_dedup_normalizes_short_name_case(monkeypatch):
             self._filters[col] = val
             return self
 
+        def is_(self, col, val):
+            self._filters[col] = val
+            return self
+
         def ilike(self, col, val):
             self._mode = "name_match"
             return self
@@ -551,3 +555,204 @@ def test_org_create_dedup_different_state_both_succeed(monkeypatch):
             "state": "Punjab"}
     result = admin_trust.create_organization(body, _org_admin())
     assert result["ok"] is True
+
+
+# ─────────────────────────────────────────────────────────────────
+# Concern 1 — list_exams includes conducting_organization_id
+# ─────────────────────────────────────────────────────────────────
+
+class _ListExamsSB:
+    """Stub that records the select column string so the test can assert it."""
+
+    def __init__(self):
+        self.select_cols = None
+
+    def table(self, name):
+        return _ListExamsTable(self)
+
+
+class _ListExamsTable:
+    def __init__(self, sb):
+        self._sb = sb
+
+    def select(self, cols, **k):
+        self._sb.select_cols = cols
+        return self
+
+    def order(self, *a, **k): return self
+    def eq(self, *a, **k): return self
+    def range(self, *a, **k): return self
+
+    def execute(self):
+        r = R([])
+        r.count = 0
+        return r
+
+
+def test_list_exams_includes_conducting_organization_id(monkeypatch):
+    """list_exams .select() must include conducting_organization_id so the edit form can prefill."""
+    sb = _ListExamsSB()
+    monkeypatch.setattr(cms, "get_supabase_admin", lambda: sb)
+    monkeypatch.setattr(cms, "_flag_enabled", lambda: None)
+
+    cms.list_exams(
+        is_active=None, exam_family_id=None, limit=50, offset=0,
+        _admin={"id": "admin-1"}, __=None,
+    )
+    assert sb.select_cols is not None
+    assert "conducting_organization_id" in sb.select_cols, (
+        f"conducting_organization_id missing from list_exams select: {sb.select_cols!r}"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────
+# Concern 2 — dedup null-state branch
+# ─────────────────────────────────────────────────────────────────
+
+class _NullStateDedupSB:
+    """Stub that tracks whether .is_() or .eq() was used for the state filter,
+    and returns existing rows ONLY when the query has no state filter (simulating
+    the buggy path where null-state creates match all rows regardless of state)."""
+
+    def __init__(self, *, existing_row=None, raise_on_insert=None):
+        self.existing_row = existing_row  # row to return on dedup check
+        self._raise_on_insert = raise_on_insert
+        self.inserted = None
+        self._dedup_done = False
+
+    def table(self, name):
+        return _NullStateTable(self, name)
+
+
+class _NullStateTable:
+    def __init__(self, sb, name):
+        self._sb = sb
+        self._name = name
+        self._mode = None
+        self._state_filter = "none"  # "none" | "is_null" | "eq_value"
+
+    def select(self, *a, **k): return self
+
+    def eq(self, col, val):
+        if col == "state":
+            self._state_filter = "eq_value"
+        return self
+
+    def is_(self, col, val):
+        if col == "state":
+            self._state_filter = "is_null"
+        return self
+
+    def ilike(self, col, val):
+        self._mode = "name_match"
+        return self
+
+    def limit(self, *a, **k): return self
+
+    def execute(self):
+        if self._mode == "name_match":
+            return R([])
+        if self._name == "organizations" and not self._sb._dedup_done:
+            self._sb._dedup_done = True
+            # Only return existing row if state filter is correct IS NULL check
+            # or no filter (buggy: no filter should NOT return when existing is non-null state)
+            if self._sb.existing_row and self._state_filter == "is_null":
+                return R([self._sb.existing_row])
+            # "none" (buggy: no state filter) — simulates current code returning non-null-state rows
+            if self._sb.existing_row and self._state_filter == "none":
+                return R([self._sb.existing_row])
+            return R([])
+        return R([])
+
+    def insert(self, payload):
+        if self._sb._raise_on_insert:
+            raise self._sb._raise_on_insert
+        self._sb.inserted = payload
+        echo = dict(payload)
+        echo.setdefault("id", "org-null-new")
+        return _EchoQ([echo])
+
+
+def test_org_dedup_null_state_no_false_409_when_nonnull_exists(monkeypatch):
+    """null-state create must NOT 409 when same (type, short_name) exists under a non-null state.
+
+    Buggy code: drops state filter entirely → dedup query returns the non-null-state row → false 409.
+    Fixed code: uses .is_("state", None) → dedup query returns nothing → succeeds.
+    """
+    # Stub returns existing row ONLY when state_filter == "none" (buggy) or "is_null".
+    # We simulate: existing org has state="Punjab" (non-null), new org has state=None.
+    # After fix: stub must use is_null filter → returns empty → no 409.
+    # We achieve this by using a stub that returns the row only for "none" (missing filter),
+    # simulating the non-null-state row being present in the DB under no filter.
+
+    class _FalsePositiveSB:
+        """Returns a non-null-state row when no state filter applied (buggy path)."""
+        def __init__(self):
+            self.inserted = None
+            self._dedup_done = False
+
+        def table(self, name):
+            return _FPTable(self, name)
+
+    class _FPTable:
+        def __init__(self, sb, name):
+            self._sb = sb
+            self._name = name
+            self._mode = None
+            self._state_filter = "none"
+            self._non_null_row = {"id": "org-punjab-1", "type": "state_psc",
+                                  "short_name": "RPSC", "state": "Punjab"}
+
+        def select(self, *a, **k): return self
+        def eq(self, col, val):
+            if col == "state":
+                self._state_filter = "eq_value"
+            return self
+        def is_(self, col, val):
+            if col == "state":
+                self._state_filter = "is_null"
+            return self
+        def ilike(self, *a, **k):
+            self._mode = "name_match"
+            return self
+        def limit(self, *a, **k): return self
+
+        def execute(self):
+            if self._mode == "name_match":
+                return R([])
+            if self._name == "organizations" and not self._sb._dedup_done:
+                self._sb._dedup_done = True
+                # Return the non-null-state row ONLY when no state filter applied (the bug)
+                if self._state_filter == "none":
+                    return R([self._non_null_row])  # buggy: false positive
+                return R([])  # fixed: is_null filter → no match → no false 409
+            return R([])
+
+        def insert(self, payload):
+            self._sb.inserted = payload
+            echo = dict(payload)
+            echo.setdefault("id", "org-null-new")
+            return _EchoQ([echo])
+
+    sb = _FalsePositiveSB()
+    monkeypatch.setattr(admin_trust, "get_supabase_admin", lambda: sb)
+
+    # null-state create — after fix must succeed (no 409)
+    body = {"name": "Rajasthan PSC", "type": "state_psc", "short_name": "RPSC"}
+    result = admin_trust.create_organization(body, _org_admin())
+    assert result["ok"] is True
+
+
+def test_org_dedup_two_null_state_same_short_name_409(monkeypatch):
+    """Two null-state orgs with same (type, short_name) → second must 409."""
+    existing = {"id": "org-null-1", "name": "Rajasthan PSC",
+                "type": "state_psc", "short_name": "RPSC", "state": None}
+    # Use _NullStateTable with is_null filter returning the existing row
+    sb = _NullStateDedupSB(existing_row=existing)
+    monkeypatch.setattr(admin_trust, "get_supabase_admin", lambda: sb)
+
+    body = {"name": "Rajasthan PSC 2", "type": "state_psc", "short_name": "RPSC"}
+    with pytest.raises(HTTPException) as exc_info:
+        admin_trust.create_organization(body, _org_admin())
+    assert exc_info.value.status_code == 409
+    assert "org-null-1" in str(exc_info.value.detail)
