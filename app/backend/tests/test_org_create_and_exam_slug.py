@@ -252,23 +252,25 @@ class _ExamTable:
         if self._name == "organizations":
             return R([self._sb._org] if self._sb._org else [])
         if self._name == "exams":
-            # slug uniqueness check
             if "slug" in self._filters:
                 return R(list(self._sb._slug_rows))
-            # exam_families check → not found (None) is fine for our tests
-            if "id" in self._filters and self._sb._org is None:
-                return R([])
             return R([])
         if self._name == "exam_families":
             return R([])
         return R([])
 
     def insert(self, payload):
-        if self._sb._raise_on_insert:
-            raise self._sb._raise_on_insert
-        self._sb.inserted = payload
+        # Only capture exam inserts (not audit log or other tables)
+        if self._name == "exams":
+            if self._sb._raise_on_insert:
+                raise self._sb._raise_on_insert
+            self._sb.inserted = payload
+            echo = dict(payload)
+            echo.setdefault("id", "exam-new-1")
+            return _EchoQ([echo])
+        # For admin_audit_logs and other tables: no-op
         echo = dict(payload)
-        echo.setdefault("id", "exam-new-1")
+        echo.setdefault("id", "other-id")
         return _EchoQ([echo])
 
 
