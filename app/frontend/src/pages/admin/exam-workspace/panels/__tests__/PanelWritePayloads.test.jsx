@@ -26,6 +26,20 @@ jest.mock("../../ExamWorkspaceContext", () => ({
   useExamWorkspace: jest.fn(),
 }));
 
+// SetupPanel now imports useApiAction (for cycle create/edit). Mock it so
+// tests never need a ToastProvider context — mirrors Organizations.create.test.jsx.
+jest.mock("../../../../../lib/hooks/useApiAction", () => ({
+  __esModule: true,
+  default: () => ({
+    run: jest.fn(async ({ action, onSuccess }) => {
+      const result = await action();
+      if (onSuccess) onSuccess(result);
+      return { ok: true, data: result };
+    }),
+    busy: false,
+  }),
+}));
+
 const { api } = require("../../../../../lib/api");
 const { useExamWorkspace } = require("../../ExamWorkspaceContext");
 const SetupPanel = require("../SetupPanel").default;
