@@ -575,13 +575,9 @@ def reject_report(
         raise HTTPException(status_code=404, detail="verification_report not found")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
-    if payload.reason:
-        # Note is informational; we don't have a dedicated audit column
-        # on the report row, so it goes onto recommended_action context.
-        # A future migration can pull this into a proper note column.
-        supabase.table("recruitment_verification_reports").update(
-            {"recommended_action": "no_action"}
-        ).eq("id", report_id).execute()
+    supabase.table("recruitment_verification_reports").update(
+        {"rejection_notes": payload.reason}
+    ).eq("id", report_id).execute()
     return updated
 
 
