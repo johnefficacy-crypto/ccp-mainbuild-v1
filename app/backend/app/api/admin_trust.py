@@ -936,6 +936,54 @@ def eligibility_ops(_admin: dict = Depends(require_permission("scraper.manage"))
     return result
 
 
+_ORG_CREATE_ALLOWED = {"name", "type", "short_name", "state", "website_url"}
+
+
+@router.post("/admin/organizations")
+def create_organization(body: dict, admin: dict = Depends(require_permission("organizations.manage"))):
+    if not body.get("name"):
+        raise HTTPException(status_code=422, detail="name is required")
+    if not body.get("type"):
+        raise HTTPException(status_code=422, detail="type is required")
+    if not body.get("short_name"):
+        raise HTTPException(status_code=422, detail="short_name is required")
+
+    sb = get_supabase_admin()
+
+    # Soft warning: same (type, name, state) already exists?
+    warnings = []
+    try:
+        name_lower = (body.get("name") or "").strip().lower()
+        q = (
+            sb.table("organizations")
+            .select("id, name")
+            .eq("type", body["type"])
+            .ilike("name", name_lower)
+        )
+        if body.get("state"):
+            q = q.eq("state", body["state"])
+        matches = q.limit(5).execute().data or []
+        for m in matches:
+            warnings.append({"existing_id": m.get("id"), "existing_name": m.get("name")})
+    except Exception:
+        pass  # soft check — never blocks
+
+    payload = {k: v for k, v in body.items() if k in _ORG_CREATE_ALLOWED}
+    # Server always forces these — client values ignored
+    payload["is_verified"] = False
+    payload["trust_tier"] = "unverified"
+    payload["metadata"] = {}
+
+    try:
+        rows = sb.table("organizations").insert(payload).execute().data or []
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=f"Duplicate organization: {exc}")
+
+    new = rows[0] if rows else payload
+    _audit(sb, admin, "organization.create", "organization", new.get("id"), after_payload=payload)
+    return {"ok": True, "item": new, "warnings": warnings}
+
+
 @router.put("/admin/organizations/{organization_id}")
 def update_organization(organization_id: str, body: dict, admin: dict = Depends(require_permission("organizations.manage"))):
     sb=get_supabase_admin(); old=(sb.table("organizations").select("*").eq("id",organization_id).limit(1).execute().data or [None])[0]
