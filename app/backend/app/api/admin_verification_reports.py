@@ -43,10 +43,14 @@ from app.core.permissions import (
     user_has_action,
 )
 from app.db.supabase_client import get_supabase_admin
+from app.api.admin_scrape import build_effective_extracted_data
+from app.core.errors import PromotionError
 from app.scraping.promotion_gate import (
     check_gateway_promotion,
     check_gateway_publish,
 )
+from app.scraping.runner import promote_to_recruitments
+from app.scraping.schemas import VerifiedRecruitmentForPromotion
 from app.exam_intelligence.registry_action_service import (
     apply_cycle_date_update,
     apply_phase_date_update,
@@ -470,14 +474,73 @@ def promote_report(
     blocker = _gate_blocker(report, mode="promote")
     if blocker is not None:
         raise HTTPException(status_code=409, detail=blocker)
-    # PR6 does not run the canonical promote here — that handoff lives
-    # in admin_trust.py and is left as a follow-up wiring (the plan
-    # §7 explicitly says "does not bypass admin_trust.py"). We mark
-    # the gateway side promoted via the recommended_action column so
-    # the existing promote flow can be triggered separately.
+
+    queue_id = report.get("scrape_queue_id")
+    if queue_id is None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "id": report_id,
+                "entity_type": "verification_report",
+                "reason_code": "no_queue_item",
+                "message": (
+                    "Report has no attached scrape queue item; "
+                    "cannot promote from queue."
+                ),
+                "blocking_level": "promotion_blocker",
+            },
+        )
+
+    # Resolve source_id from the queue row (not on the report itself).
+    queue_row = (
+        supabase.table("scrape_queue")
+        .select("source_id")
+        .eq("id", queue_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    source_id: str | None = queue_row[0]["source_id"] if queue_row else None
+
+    # Build effective extracted data (base + reviewer corrections).
+    effective_data = build_effective_extracted_data(supabase, queue_id)
+    try:
+        extracted = VerifiedRecruitmentForPromotion(**effective_data)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "id": report_id,
+                "entity_type": "verification_report",
+                "reason_code": "invalid_extraction_data",
+                "message": str(exc),
+            },
+        ) from exc
+
+    # Delegate to the shared canonical promote — RPC-first + compensation
+    # fallback inside promote_to_recruitments(); we never reimplement it.
+    try:
+        rec_id = promote_to_recruitments(
+            extracted,
+            supabase,
+            source_id=source_id,
+            queue_id=queue_id,
+        )
+    except PromotionError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "id": report_id,
+                "entity_type": "verification_report",
+                "reason_code": "promotion_failed",
+                "message": str(exc),
+            },
+        ) from exc
+
     updated = (
         supabase.table("recruitment_verification_reports")
-        .update({"recommended_action": "promote_eligible"})
+        .update({"recommended_action": "promote_eligible", "recruitment_id": rec_id})
         .eq("id", report_id)
         .execute()
         .data
