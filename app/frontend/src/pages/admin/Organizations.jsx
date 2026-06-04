@@ -5,6 +5,7 @@ import { api } from "../../lib/api";
 import { EmptyState, ErrorState, LoadingSkeleton, RowActions, StatusBadge } from "../../shared/ui/core";
 import { useFocusTrap } from "../../shared/a11y/useFocusTrap";
 import useAdminAction from "../../features/admin/shared/useAdminAction";
+import useApiAction from "../../lib/hooks/useApiAction";
 import AuditTimelineDrawer from "../../features/admin/shared/AuditTimelineDrawer";
 import { adminTrustService } from "../../services/adminTrustService";
 
@@ -73,8 +74,8 @@ function NewOrgModal({ onClose, onCreated }) {
   const [shortName, setShortName] = useState("");
   const [state, setState] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const { run, busy } = useApiAction();
   const panelRef = useRef(null);
   const closeRef = useRef(null);
   useFocusTrap({ active: true, containerRef: panelRef, onEscape: onClose, initialFocusRef: closeRef });
@@ -85,16 +86,17 @@ function NewOrgModal({ onClose, onCreated }) {
     const payload = { name, type, short_name: shortName };
     if (state.trim()) payload.state = state.trim();
     if (websiteUrl.trim()) payload.website_url = websiteUrl.trim();
-    setBusy(true);
-    try {
-      const result = await api.post("/api/admin/organizations", payload);
-      const warnings = result.warnings && result.warnings.length > 0 ? result.warnings : null;
-      onCreated(warnings);
-      onClose();
-    } catch (err) {
-      setError(err.message || "Failed to create organization");
-    } finally {
-      setBusy(false);
+    const res = await run({
+      action: () => api.post("/api/admin/organizations", payload),
+      onSuccess: (result) => {
+        const warnings = result.warnings?.length > 0 ? result.warnings : null;
+        onCreated(warnings);
+        onClose();
+      },
+      errorMessage: "Failed to create organization",
+    });
+    if (!res.ok && !res.cancelled) {
+      setError(res.error?.message || "Failed to create organization");
     }
   }
 
