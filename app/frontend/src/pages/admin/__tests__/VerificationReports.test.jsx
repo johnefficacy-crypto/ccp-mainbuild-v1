@@ -54,6 +54,25 @@ jest.mock("../../../features/admin/workflow/VerificationReportCard", () => ({
   default: ({ report }) => <div data-testid="vr-card">{report?.id}</div>,
 }));
 
+jest.mock("../../../features/admin/workflow/BulkActionPreview", () => ({
+  __esModule: true,
+  default: ({ dryRun, onApply, disabled }) => (
+    <div data-testid="bulk-action-preview">
+      <span data-testid="bap-eligible">{dryRun?.result?.eligible_count}</span>
+      <span data-testid="bap-blocked">{dryRun?.result?.blocked_count}</span>
+      <span data-testid="bap-action">{dryRun?.action}</span>
+      <button
+        type="button"
+        disabled={disabled || (dryRun?.result?.eligible_count || 0) === 0}
+        onClick={onApply}
+        data-testid="bap-apply-btn"
+      >
+        Apply
+      </button>
+    </div>
+  ),
+}));
+
 const { api } = require("../../../lib/api");
 const { useAuth } = require("../../../lib/authContext");
 const useApiCollection = require("../../../lib/hooks/useApiCollection").default;
@@ -520,4 +539,153 @@ test("override-conflict sends POST with correct payload", async () => {
   expect(body.override_scope).toBe("field");
   expect(body.reason).toBe("Official gazette confirms this date");
   expect(body.override_scope).not.toBe("report");
+});
+
+// ─── bulk multi-select + toolbar ─────────────────────────────────────────────
+
+const MOCK_REPORT_2 = {
+  id: "rpt-2",
+  lifecycle_status: "classified",
+  criticality_tier: "tier_b",
+  exam_family_key: "ssc-cgl",
+  recommended_action: "request_admin_review",
+  report_version: 1,
+  created_at: "2026-06-02T10:00:00Z",
+  suggested_official_urls: [],
+  conflicts: [],
+};
+
+function renderWithTwo() {
+  useApiCollection.mockReturnValue({
+    items: [MOCK_REPORT, MOCK_REPORT_2],
+    status: "live",
+    refresh: jest.fn(),
+  });
+  render(<AdminVerificationReports />);
+}
+
+// Concern 1 — selection state
+
+test("row checkboxes exist for each item", async () => {
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  expect(screen.queryByTestId("vr-check-rpt-2")).toBeTruthy();
+});
+
+test("checking a row adds it to selection and shows bulk toolbar", async () => {
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  expect(screen.queryByTestId("bulk-toolbar")).toBeTruthy();
+});
+
+test("select-all checks all rows", async () => {
+  renderWithTwo();
+  await screen.findByTestId("vr-select-all");
+  fireEvent.click(screen.getByTestId("vr-select-all"));
+  expect(screen.queryByTestId("bulk-toolbar")).toBeTruthy();
+  // Both checkboxes should be checked
+  expect(screen.getByTestId("vr-check-rpt-1").checked).toBe(true);
+  expect(screen.getByTestId("vr-check-rpt-2").checked).toBe(true);
+});
+
+test("clear button removes selection and hides toolbar", async () => {
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  await screen.findByTestId("bulk-toolbar");
+  fireEvent.click(screen.getByTestId("bulk-clear-btn"));
+  expect(screen.queryByTestId("bulk-toolbar")).toBeFalsy();
+});
+
+// Concern 2 — dry-run renders BulkActionPreview
+
+test("bulk toolbar hidden for non-admin even with rows selected", async () => {
+  useAuth.mockReturnValue({ user: { role: "viewer", permissions: ["exam_intelligence.cms"] } });
+  useApiCollection.mockReturnValue({ items: [MOCK_REPORT], status: "live", refresh: jest.fn() });
+  render(<AdminVerificationReports />);
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  expect(screen.queryByTestId("bulk-toolbar")).toBeFalsy();
+});
+
+test("dry-run sends POST to bulk-dry-run and renders BulkActionPreview", async () => {
+  const dryRunResp = {
+    selected_ids: ["rpt-1"],
+    action: "bulk_promote",
+    dry_run: true,
+    result: { eligible_count: 1, blocked_count: 0, blockers: [] },
+  };
+  api.post.mockResolvedValueOnce(dryRunResp);
+
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  fireEvent.click(screen.getByTestId("bulk-dry-run-btn"));
+
+  await waitFor(() => expect(api.post).toHaveBeenCalled());
+  const [url, body] = api.post.mock.calls[0];
+  expect(url).toBe("/api/admin/verification-reports/bulk-dry-run");
+  expect(body.selected_ids).toEqual(["rpt-1"]);
+  expect(body.action).toBe("bulk_promote");
+  expect(body.dry_run).toBe(true);
+
+  await waitFor(() => expect(screen.queryByTestId("bulk-action-preview")).toBeTruthy());
+  expect(screen.getByTestId("bap-eligible").textContent).toBe("1");
+  expect(screen.getByTestId("bap-blocked").textContent).toBe("0");
+  expect(screen.getByTestId("bap-action").textContent).toBe("bulk_promote");
+});
+
+test("dry-run with bulk_reject action sends correct action value", async () => {
+  api.post.mockResolvedValueOnce({
+    selected_ids: ["rpt-1"],
+    action: "bulk_reject",
+    dry_run: true,
+    result: { eligible_count: 1, blocked_count: 0, blockers: [] },
+  });
+
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  fireEvent.change(screen.getByTestId("bulk-action-select"), { target: { value: "bulk_reject" } });
+  fireEvent.click(screen.getByTestId("bulk-dry-run-btn"));
+
+  await waitFor(() => expect(api.post).toHaveBeenCalled());
+  expect(api.post.mock.calls[0][1].action).toBe("bulk_reject");
+});
+
+// Concern 3 — confirm/apply
+
+test("apply sends bulk-apply with selected_ids + action and clears selection on success", async () => {
+  const refresh = jest.fn();
+  useApiCollection.mockReturnValue({ items: [MOCK_REPORT, MOCK_REPORT_2], status: "live", refresh });
+
+  const dryRunResp = {
+    selected_ids: ["rpt-1"],
+    action: "bulk_promote",
+    dry_run: true,
+    result: { eligible_count: 1, blocked_count: 0, blockers: [] },
+  };
+  api.post
+    .mockResolvedValueOnce(dryRunResp)       // dry-run
+    .mockResolvedValueOnce({ applied: 1 }); // apply
+
+  render(<AdminVerificationReports />);
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  fireEvent.click(screen.getByTestId("bulk-dry-run-btn"));
+  await screen.findByTestId("bap-apply-btn");
+
+  fireEvent.click(screen.getByTestId("bap-apply-btn"));
+  await waitFor(() => expect(api.post).toHaveBeenCalledTimes(2));
+
+  const [applyUrl, applyBody] = api.post.mock.calls[1];
+  expect(applyUrl).toBe("/api/admin/verification-reports/bulk-apply");
+  expect(applyBody.selected_ids).toEqual(["rpt-1"]);
+  expect(applyBody.action).toBe("bulk_promote");
+  expect(applyBody.dry_run).toBe(false);
+
+  // Selection cleared → toolbar gone
+  await waitFor(() => expect(screen.queryByTestId("bulk-toolbar")).toBeFalsy());
+  expect(refresh).toHaveBeenCalledTimes(1);
 });
