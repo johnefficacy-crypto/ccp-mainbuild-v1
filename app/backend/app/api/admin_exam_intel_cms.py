@@ -259,7 +259,7 @@ def list_exams(
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
     q = supabase.table("exams").select(
-        "id, exam_family_id, slug, name, exam_type, default_difficulty_level, description, is_active, metadata, created_at, updated_at",
+        "id, exam_family_id, slug, name, exam_type, default_difficulty_level, description, is_active, metadata, conducting_organization_id, created_at, updated_at",
         count="exact",
     ).order("created_at", desc=True)
     if is_active is not None:
