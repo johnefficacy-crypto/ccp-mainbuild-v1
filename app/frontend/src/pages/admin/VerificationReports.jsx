@@ -9,7 +9,6 @@ import { EmptyState, ErrorState, LoadingSkeleton, StatusBadge } from "../../shar
 import VerificationReportCard from "../../features/admin/workflow/VerificationReportCard";
 import BulkActionPreview from "../../features/admin/workflow/BulkActionPreview";
 
-const PERM = "exam_intelligence.cms";
 
 const ACTION_TYPES = [
   { value: "cycle_date_update", label: "Cycle date update" },
@@ -1047,13 +1046,13 @@ export default function AdminVerificationReports() {
 
   const hasPerm =
     user?.role === "super_admin" ||
-    (Array.isArray(user?.permissions) && user.permissions.includes(PERM));
+    user?.role === "admin";
 
   if (!hasPerm) {
     return (
       <div className="p-6" data-testid="vr-permission-denied">
         <p className="text-sm text-muted-foreground">
-          You need the <code>{PERM}</code> permission to access this console.
+          Admin or super_admin role is required to access this console.
         </p>
       </div>
     );
