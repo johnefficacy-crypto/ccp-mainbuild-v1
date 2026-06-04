@@ -235,10 +235,17 @@ def soft_delete_exam_family(
 
 
 _EXAM_FIELDS = {
-    "exam_family_id", "slug", "name", "exam_type", "default_difficulty_level",
-    "description", "is_active", "metadata",
+    "exam_family_id", "name", "exam_type", "default_difficulty_level",
+    "description", "is_active", "metadata", "conducting_organization_id",
 }
 _EXAM_TYPES = ("recruitment", "entrance", "certification", "opportunity", "other")
+
+
+def _exam_slug(name: str, org: dict | None) -> str:
+    from app.common.strings import slugify
+    if org and org.get("type") == "state_psc" and org.get("state"):
+        return slugify(org["state"]) + "-" + slugify(name)
+    return slugify(name)
 
 
 @router.get("/exams")
@@ -271,16 +278,25 @@ def create_exam(
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
     row = {k: v for k, v in body.payload.items() if k in _EXAM_FIELDS}
-    if not row.get("slug") or not row.get("name"):
-        raise HTTPException(status_code=422, detail="slug and name are required")
+    if not row.get("name"):
+        raise HTTPException(status_code=422, detail="name is required")
     if row.get("exam_type") and row["exam_type"] not in _EXAM_TYPES:
         raise HTTPException(status_code=422, detail=f"exam_type must be one of {_EXAM_TYPES}")
     if row.get("exam_family_id") and not _safe_select(supabase, "exam_families", id=row["exam_family_id"]):
         raise HTTPException(status_code=422, detail="exam_family_id does not resolve")
+
+    # Resolve conducting org for slug generation (Concern 3)
+    org: dict | None = None
+    if row.get("conducting_organization_id"):
+        org = _safe_select(supabase, "organizations", id=row["conducting_organization_id"])
+
+    slug = _exam_slug(row["name"], org)
+    row["slug"] = slug  # payload-supplied slug is always overwritten
+
     try:
         inserted = supabase.table("exams").insert(row).execute().data or []
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+        raise HTTPException(status_code=409, detail=f"Slug '{slug}' already exists: {exc}")
     new = inserted[0] if inserted else row
     invalidate_exam_lookup_cache()
     audit_id = _audit(
