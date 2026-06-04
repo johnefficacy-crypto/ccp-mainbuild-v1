@@ -336,3 +336,21 @@ class TestPayloadShape:
         meta = sb.table.return_value.insert.call_args[0][0]["metadata"]
         assert meta["source_urls"]["board"] == "https://board.gov"
         assert meta["source_urls"]["calendar"] == "https://cal.gov"
+
+    def test_metadata_board_short_name_raw_preserved(self):
+        """Raw Board Short Name cell is stored so operators can review fused values."""
+        sb = _mock_sb()
+        rows = [_make_row(**{"Board Short Name": "SLRC (ADRE)"})]
+        process_subordinate_boards_sheet(sb, rows, False, _cell, normalize_short_name)
+        meta = sb.table.return_value.insert.call_args[0][0]["metadata"]
+        # short_name is fused; raw value must be preserved for operator review
+        assert meta["board_short_name_raw"] == "SLRC (ADRE)"
+
+    def test_metadata_board_short_name_raw_differs_from_short_name(self):
+        """board_short_name_raw != short_name when the raw value had spaces."""
+        sb = _mock_sb()
+        rows = [_make_row(**{"Board Short Name": "UP SSSC"})]
+        process_subordinate_boards_sheet(sb, rows, False, _cell, normalize_short_name)
+        payload = sb.table.return_value.insert.call_args[0][0]
+        assert payload["short_name"] == "UPSSSC"
+        assert payload["metadata"]["board_short_name_raw"] == "UP SSSC"
