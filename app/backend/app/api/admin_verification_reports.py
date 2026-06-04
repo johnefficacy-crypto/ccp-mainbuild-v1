@@ -34,7 +34,7 @@ from collections import defaultdict
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.auth import require_admin, require_permission
 from app.core.permissions import (
@@ -588,6 +588,13 @@ class BulkRequest(BaseModel):
     selected_ids: list[str] = Field(min_length=1)
     action: str = Field(min_length=1)
     dry_run: bool = True
+    reason: str | None = Field(default=None, min_length=8, max_length=500)
+
+    @model_validator(mode="after")
+    def _reason_required_for_bulk_reject(self) -> "BulkRequest":
+        if self.action == "bulk_reject" and not self.reason:
+            raise ValueError("reason is required for bulk_reject (8–500 chars)")
+        return self
 
 
 _BULK_ACTIONS: set[str] = {"bulk_promote", "bulk_reject"}
@@ -702,7 +709,7 @@ def bulk_apply(
             if payload.action == "bulk_promote":
                 promote_report(rid, PromoteRequest(), admin)
             else:
-                reject_report(rid, RejectRequest(), admin)
+                reject_report(rid, RejectRequest(reason=payload.reason), admin)
             applied_ids.append(rid)
         except HTTPException:
             # Race between dry-run and apply — skip; the dry-run output
