@@ -2,6 +2,7 @@ import React, {lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
 import { ADMIN_ROLES } from "../lib/rbac";
+import RouteErrorBoundary from "../components/RouteErrorBoundary";
 
 const AdminShell = lazy(() => import("../pages/admin/AdminShell"));
 const AdminOverview = lazy(() => import("../pages/admin/Overview"));
@@ -43,6 +44,7 @@ const AdminMockQuestionList = lazy(() => import("../pages/admin/mocks/QuestionLi
 const AdminMockReviewQueue = lazy(() => import("../pages/admin/mocks/ReviewQueue"));
 const AdminMockQuestionEditor = lazy(() => import("../pages/admin/mocks/QuestionEditor"));
 const AdminMockImportWizard = lazy(() => import("../pages/admin/mocks/ImportWizard"));
+const AdminVerificationReports = lazy(() => import("../pages/admin/VerificationReports"));
 
 export const adminRouteElements = (
   <>
@@ -96,6 +98,10 @@ export const adminRouteElements = (
     <Route path="/admin/mocks/questions/:id" element={<AdminMockQuestionEditor />} />
     <Route path="/admin/mocks/review-queue" element={<AdminMockReviewQueue />} />
     <Route path="/admin/mocks/import" element={<AdminMockImportWizard />} />
+    {/* Verification reports — exam_intelligence.cms permission checked inside page */}
+    <Route element={<RouteErrorBoundary />}>
+      <Route path="/admin/verification-reports" element={<AdminVerificationReports />} />
+    </Route>
     </Route>
   </>
 );
