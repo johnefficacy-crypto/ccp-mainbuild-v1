@@ -86,3 +86,18 @@ row), so the simplified predicates are equivalent:
 - `if not posts and not rec.get("posts_unavailable")` → `if not posts`
 - `if not rec.get("rules_unavailable"): if not has_post_rules and not rec.get("min_age") and not rec.get("max_age")` → `if not has_post_rules`
 - `if post_ids and not rec.get("rules_unavailable")` → `if post_ids`
+
+---
+
+## Additive column: `recruitment_verification_reports.rejection_notes`
+
+Pre-implementation entry for migration 171 (fix/verification-reject-reason-audit).
+
+- **Purpose**: Persist the admin-supplied reason when a report is rejected (single or bulk). Previously the reason was silently discarded after being stored in `recommended_action='no_action'` (which is not an audit trail).
+- **Type**: `text null` — nullable so pre-existing rejected rows are unaffected.
+- **Set by**: `reject_report()` endpoint on every rejection; `bulk_apply()` threads the same reason to each per-report call.
+- **Read by**: Admin audit queries; not exposed on the list endpoint (detail fetch only, future).
+- **Migration**: `171_rejection_notes.sql`
+- **Backend references**: `app/backend/app/api/admin_verification_reports.py` — `reject_report`, `bulk_apply`.
+- **Frontend references**: none (display deferred).
+- **Decision: ADD.** Additive nullable column — safe to apply to existing rows without backfill.
