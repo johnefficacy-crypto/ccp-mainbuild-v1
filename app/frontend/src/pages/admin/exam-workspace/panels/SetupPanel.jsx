@@ -3,6 +3,7 @@ import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
 import DateField from "../../../../shared/ui/DateField";
 import { formatDDMMYYYY } from "../../../../shared/forms/dateFormat";
+import useApiAction from "../../../../lib/hooks/useApiAction";
 
 function TrustBadge({ status }) {
   const map = {
@@ -56,8 +57,10 @@ function phaseDateSourceLabel(phase) {
   return "Imported workbook phase stub";
 }
 
+const CYCLE_STATUSES = ["expected", "open", "active", "closed", "completed", "cancelled"];
+
 export default function SetupPanel() {
-  const { exam, cycles, phases } = useExamWorkspace();
+  const { exam, cycles, phases, refetch } = useExamWorkspace();
 
   // ── add-phase form ──────────────────────────────────────────────────────
   const [addingPhase, setAddingPhase] = useState(false);
@@ -65,15 +68,33 @@ export default function SetupPanel() {
   const [pStart, setPStart] = useState(null);
   const [pEnd, setPEnd] = useState(null);
   const [phaseOrder, setPhaseOrder] = useState("");
+  const [pickedCycleId, setPickedCycleId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
 
   // ── worklist: inline patch state per phase id ───────────────────────────
-  // { [id]: { start: ISO|null, end: ISO|null, saving: bool, err: string } }
   const [patchEdits, setPatchEdits] = useState({});
-  // Track phase IDs that were successfully dated this session so they drop
-  // out of the worklist without a full context refetch.
   const [datedPhaseIds, setDatedPhaseIds] = useState(new Set());
+
+  // ── cycle create form ───────────────────────────────────────────────────
+  const [addingCycle, setAddingCycle] = useState(false);
+  const [cReason, setCReason] = useState("");
+  const [cYear, setCYear] = useState("");
+  const [cName, setCName] = useState("");
+  const [cStatus, setCStatus] = useState("expected");
+  const [cNotifDate, setCNotifDate] = useState(null);
+  const [cAppStart, setCAppStart] = useState(null);
+  const [cAppEnd, setCAppEnd] = useState(null);
+  const [cExamStart, setCExamStart] = useState(null);
+  const [cExamEnd, setCExamEnd] = useState(null);
+  const [cSourceUrl, setCSourceUrl] = useState("");
+  const { run: runCycleCreate, busy: cycleCreateBusy } = useApiAction();
+
+  // ── cycle edit state ────────────────────────────────────────────────────
+  const [editingCycleId, setEditingCycleId] = useState(null);
+  const [editCycle, setEditCycle] = useState({});
+  const [editReason, setEditReason] = useState("");
+  const { run: runCycleEdit, busy: cycleEditBusy } = useApiAction();
 
   function editFor(id) {
     return patchEdits[id] ?? { start: null, end: null, saving: false, err: "" };
@@ -82,13 +103,75 @@ export default function SetupPanel() {
     setPatchEdits(prev => ({ ...prev, [id]: { ...editFor(id), ...updates } }));
   }
 
-  // Worklist: phases that need manual structured date authoring. Legacy rows
-  // still qualify via phase_window, while workbook-imported stubs qualify via an
-  // explicit metadata signal instead of overloading phase_window with labels.
   const phaseDateWorklistPhases = phases.filter(needsPhaseDateAuthoring);
   const needsDates = phaseDateWorklistPhases.filter(
     p => !datedPhaseIds.has(p.id)
   );
+
+  // ── cycle create/edit handlers ──────────────────────────────────────────
+
+  function openCreateCycle() {
+    setAddingCycle(true);
+    setCReason(""); setCYear(""); setCName(""); setCStatus("expected");
+    setCNotifDate(null); setCAppStart(null); setCAppEnd(null);
+    setCExamStart(null); setCExamEnd(null); setCSourceUrl("");
+  }
+
+  async function createCycle() {
+    if (!cName.trim() || !cYear || cReason.length < 8) return;
+    await runCycleCreate({
+      action: () => api.post("/api/admin/exam-intelligence-cms/exam-cycles", {
+        reason: cReason,
+        payload: {
+          exam_id: exam?.id,
+          year: parseInt(cYear, 10),
+          cycle_name: cName.trim(),
+          status: cStatus,
+          notification_date: cNotifDate || null,
+          application_start: cAppStart || null,
+          application_end: cAppEnd || null,
+          exam_start: cExamStart || null,
+          exam_end: cExamEnd || null,
+          source_url: cSourceUrl.trim() || null,
+        },
+      }),
+      successMessage: "Cycle created",
+      onSuccess: () => { setAddingCycle(false); refetch(); },
+    });
+  }
+
+  function openEditCycle(c) {
+    setEditingCycleId(c.id);
+    setEditCycle({
+      cycle_name: c.cycle_name ?? "",
+      year: c.year ?? "",
+      status: c.status ?? "expected",
+      notification_date: c.notification_date ?? null,
+      application_start: c.application_start ?? null,
+      application_end: c.application_end ?? null,
+      exam_start: c.exam_start ?? null,
+      exam_end: c.exam_end ?? null,
+      source_url: c.source_url ?? "",
+    });
+    setEditReason("");
+  }
+
+  async function saveCycleEdit(cycleId) {
+    if (editReason.length < 8) return;
+    await runCycleEdit({
+      action: () => api.patch(`/api/admin/exam-intelligence-cms/exam-cycles/${cycleId}`, {
+        reason: editReason,
+        payload: {
+          ...editCycle,
+          year: editCycle.year ? parseInt(String(editCycle.year), 10) : undefined,
+        },
+      }),
+      successMessage: "Cycle updated",
+      onSuccess: () => { setEditingCycleId(null); refetch(); },
+    });
+  }
+
+  // ── add-phase handler ───────────────────────────────────────────────────
 
   async function addPhase() {
     if (!pName.trim()) return;
@@ -96,24 +179,24 @@ export default function SetupPanel() {
     setSaveErr("");
     try {
       const activeCycle = cycles.find((c) => c.status === "active") || cycles[0];
+      const targetCycleId = pickedCycleId || activeCycle?.id || null;
       const name = pName.trim();
       await api.post("/api/admin/exam-intelligence-cms/exam-phases", {
         reason: "Add exam phase via workspace setup panel",
         payload: {
           exam_id: exam?.id,
-          exam_cycle_id: activeCycle?.id || null,
+          exam_cycle_id: targetCycleId,
           phase_name: name,
           phase_slug: slugify(name),
           phase_order: phaseOrder ? parseInt(phaseOrder, 10) : (phases.length + 1),
-          // status enum: expected | active | completed | cancelled.
           status: "expected",
           phase_start: pStart || null,
           phase_end: pEnd || null,
           metadata: {},
         },
       });
-      setPName(""); setPStart(null); setPEnd(null); setPhaseOrder(""); setAddingPhase(false);
-      // context will refetch on next load; prompt user to refresh
+      setPName(""); setPStart(null); setPEnd(null); setPhaseOrder("");
+      setPickedCycleId(null); setAddingPhase(false);
     } catch (e) {
       setSaveErr(e?.message || "Failed to add phase");
     } finally {
@@ -138,6 +221,8 @@ export default function SetupPanel() {
     }
   }
 
+  const activeCycle = cycles.find((c) => c.status === "active");
+
   return (
     <div className="stack">
       <div className="scrn-head">
@@ -156,13 +241,23 @@ export default function SetupPanel() {
       <div className="card">
         <div className="card-head">
           <h3 className="oc-title">Cycles</h3>
+          {!addingCycle && (
+            <button
+              className="btn small"
+              data-testid="add-cycle-btn"
+              onClick={openCreateCycle}
+            >
+              + Create cycle
+            </button>
+          )}
         </div>
-        {cycles.length === 0 ? (
+
+        {cycles.length === 0 && !addingCycle ? (
           <div className="empty">
             <div className="empty-title">No cycles yet</div>
-            <div>Create cycles in the Exam CMS.</div>
+            <div>Use the button above to create the first cycle.</div>
           </div>
-        ) : (
+        ) : cycles.length > 0 ? (
           <table className="t">
             <thead>
               <tr>
@@ -170,25 +265,177 @@ export default function SetupPanel() {
                 <th>Year</th>
                 <th>Status</th>
                 <th>Trust</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {cycles.map((c) => (
-                <tr key={c.id}>
-                  <td className="row-ttl">{c.cycle_name ?? c.name ?? c.id}</td>
-                  <td className="num">{c.year}</td>
-                  <td>
-                    {c.status === "active"
-                      ? <span className="badge info no-dot">active</span>
-                      : <span className="badge neutral no-dot">{c.status ?? "archived"}</span>}
-                  </td>
-                  <td>
-                    <TrustBadge status={c.status === "active" ? "locked" : "verified"} />
-                  </td>
-                </tr>
+                <React.Fragment key={c.id}>
+                  {editingCycleId === c.id ? (
+                    <tr>
+                      <td colSpan={5}>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "8px 0", alignItems: "center" }}>
+                          <input
+                            data-testid={`edit-cycle-name-${c.id}`}
+                            className="input"
+                            style={{ maxWidth: 200 }}
+                            placeholder="Cycle name"
+                            value={editCycle.cycle_name || ""}
+                            onChange={e => setEditCycle(prev => ({ ...prev, cycle_name: e.target.value }))}
+                          />
+                          <input
+                            className="input"
+                            style={{ maxWidth: 80 }}
+                            placeholder="Year"
+                            type="number"
+                            value={editCycle.year || ""}
+                            onChange={e => setEditCycle(prev => ({ ...prev, year: e.target.value }))}
+                          />
+                          <select
+                            className="input"
+                            style={{ maxWidth: 130 }}
+                            value={editCycle.status || "expected"}
+                            onChange={e => setEditCycle(prev => ({ ...prev, status: e.target.value }))}
+                          >
+                            {CYCLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          <input
+                            data-testid={`edit-cycle-reason-${c.id}`}
+                            className="input"
+                            style={{ flex: 1, minWidth: 200 }}
+                            placeholder="Reason for edit (required)"
+                            value={editReason}
+                            onChange={e => setEditReason(e.target.value)}
+                          />
+                          <button
+                            data-testid={`save-cycle-${c.id}`}
+                            className="btn primary small"
+                            onClick={() => saveCycleEdit(c.id)}
+                            disabled={cycleEditBusy || editReason.length < 8}
+                          >
+                            {cycleEditBusy ? "Saving…" : "Save"}
+                          </button>
+                          <button
+                            className="btn ghost small"
+                            onClick={() => setEditingCycleId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <td className="row-ttl">{c.cycle_name ?? c.name ?? c.id}</td>
+                      <td className="num">{c.year}</td>
+                      <td>
+                        {c.status === "active"
+                          ? <span className="badge info no-dot">active</span>
+                          : <span className="badge neutral no-dot">{c.status ?? "archived"}</span>}
+                      </td>
+                      <td>
+                        <TrustBadge status={c.status === "active" ? "locked" : "verified"} />
+                      </td>
+                      <td>
+                        <button
+                          data-testid={`edit-cycle-${c.id}`}
+                          className="btn ghost small"
+                          onClick={() => openEditCycle(c)}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
+        ) : null}
+
+        {addingCycle && (
+          <div
+            className="card-foot"
+            style={{
+              flexDirection: "column",
+              gap: 10,
+              background: "var(--paper)",
+              padding: "12px 16px",
+            }}
+          >
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                className="input"
+                style={{ maxWidth: 220 }}
+                placeholder="Cycle name"
+                value={cName}
+                onChange={e => setCName(e.target.value)}
+                autoFocus
+              />
+              <input
+                className="input"
+                style={{ maxWidth: 80 }}
+                placeholder="Year"
+                type="number"
+                value={cYear}
+                onChange={e => setCYear(e.target.value)}
+              />
+              <select
+                className="input"
+                style={{ maxWidth: 130 }}
+                value={cStatus}
+                onChange={e => setCStatus(e.target.value)}
+              >
+                {CYCLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <input
+                className="input"
+                style={{ minWidth: 200 }}
+                placeholder="Source URL (optional)"
+                value={cSourceUrl}
+                onChange={e => setCSourceUrl(e.target.value)}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ minWidth: 170 }}>
+                <DateField value={cNotifDate} onChange={setCNotifDate} mode="any" label="Notification date" name="cycle_notif_date" id="cycle-notif-date" />
+              </div>
+              <div style={{ minWidth: 170 }}>
+                <DateField value={cAppStart} onChange={setCAppStart} mode="any" label="Application start" name="cycle_app_start" id="cycle-app-start" />
+              </div>
+              <div style={{ minWidth: 170 }}>
+                <DateField value={cAppEnd} onChange={setCAppEnd} mode="any" label="Application end" name="cycle_app_end" id="cycle-app-end" />
+              </div>
+              <div style={{ minWidth: 170 }}>
+                <DateField value={cExamStart} onChange={setCExamStart} mode="any" label="Exam start" name="cycle_exam_start" id="cycle-exam-start" />
+              </div>
+              <div style={{ minWidth: 170 }}>
+                <DateField value={cExamEnd} onChange={setCExamEnd} mode="any" label="Exam end" name="cycle_exam_end" id="cycle-exam-end" />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                className="input"
+                style={{ flex: 1, minWidth: 220 }}
+                placeholder="Reason (required, ≥ 8 chars)"
+                value={cReason}
+                onChange={e => setCReason(e.target.value)}
+              />
+              <button
+                className="btn primary small"
+                onClick={createCycle}
+                disabled={cycleCreateBusy || !cName.trim() || !cYear || cReason.length < 8}
+              >
+                {cycleCreateBusy ? "Creating…" : "Create cycle"}
+              </button>
+              <button
+                className="btn ghost small"
+                onClick={() => setAddingCycle(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -197,14 +444,21 @@ export default function SetupPanel() {
         <div className="card-head">
           <h3 className="oc-title">
             Phases
-            {cycles.find((c) => c.status === "active") && (
+            {activeCycle && (
               <span className="row-sub" style={{ marginLeft: 8, fontWeight: 400 }}>
-                · {cycles.find((c) => c.status === "active")?.cycle_name}
+                · {activeCycle.cycle_name}
               </span>
             )}
           </h3>
           {!addingPhase && (
-            <button className="btn small" onClick={() => setAddingPhase(true)}>
+            <button
+              className="btn small"
+              onClick={() => {
+                const ac = cycles.find((c) => c.status === "active") || cycles[0];
+                setPickedCycleId(ac?.id || null);
+                setAddingPhase(true);
+              }}
+            >
               + Add phase
             </button>
           )}
@@ -251,6 +505,21 @@ export default function SetupPanel() {
               onChange={(e) => setPName(e.target.value)}
               autoFocus
             />
+            {cycles.length > 0 && (
+              <select
+                className="input"
+                style={{ maxWidth: 180 }}
+                data-testid="cycle-picker"
+                value={pickedCycleId || ""}
+                onChange={e => setPickedCycleId(e.target.value)}
+              >
+                {cycles.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.cycle_name ?? c.id}{c.year ? ` (${c.year})` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
             <div style={{ minWidth: 180 }}>
               <DateField
                 value={pStart}
@@ -284,7 +553,9 @@ export default function SetupPanel() {
             </button>
             <button
               className="btn ghost small"
-              onClick={() => { setAddingPhase(false); setSaveErr(""); }}
+              onClick={() => {
+                setAddingPhase(false); setSaveErr(""); setPickedCycleId(null);
+              }}
             >
               Cancel
             </button>
