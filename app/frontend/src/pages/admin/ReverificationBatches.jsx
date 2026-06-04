@@ -1,7 +1,9 @@
 import React from "react";
 import { RefreshCcw } from "lucide-react";
+import { api } from "../../lib/api";
 import { useAuth } from "../../lib/authContext";
 import useApiCollection from "../../lib/hooks/useApiCollection";
+import useApiAction from "../../lib/hooks/useApiAction";
 import ReverificationBatchAlert from "../../features/admin/workflow/ReverificationBatchAlert";
 
 // Backend enforces this via user_has_action(admin, ACTION_ACK_BATCH).
@@ -14,11 +16,25 @@ export default function ReverificationBatches() {
   const { items, status, refresh } = useApiCollection(
     "/api/admin/reverification-batches",
   );
+  const { run, busy } = useApiAction();
 
   const canAcknowledge =
     user?.role === "super_admin" ||
     user?.role === "admin" ||
     (Array.isArray(user?.permissions) && user.permissions.includes(ACK_PERM));
+
+  async function handleAcknowledge(batchId) {
+    await run({
+      action: () =>
+        api.post(
+          `/api/admin/verification-reports/acknowledge-batch/${batchId}`,
+          {},
+        ),
+      successMessage: "Batch acknowledged — reports released to queue",
+      errorMessage: "Failed to acknowledge batch",
+      onSuccess: () => refresh(),
+    });
+  }
 
   return (
     <div className="admin-page">
@@ -79,10 +95,10 @@ export default function ReverificationBatches() {
             <li key={batch.id}>
               <ReverificationBatchAlert
                 batch={batch}
-                onAcknowledge={null}
+                onAcknowledge={canAcknowledge ? handleAcknowledge : null}
                 onOpenAffected={null}
                 onSnooze={null}
-                disabled={!canAcknowledge}
+                disabled={busy || !canAcknowledge}
               />
             </li>
           ))}
