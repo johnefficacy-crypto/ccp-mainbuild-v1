@@ -240,6 +240,337 @@ function ApplyRegistryActionPanel({ reportId, onSuccess }) {
   );
 }
 
+// ─── Run-resolver panel ───────────────────────────────────────────────────────
+
+function RunResolverPanel({ report, onSuccess }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const [cooldownMsg, setCooldownMsg] = useState(null);
+  const [resolverError, setResolverError] = useState(null);
+  const { run, busy } = useApiAction();
+
+  if (!isAdmin) return null;
+
+  async function handleRun() {
+    setCooldownMsg(null);
+    setResolverError(null);
+    const res = await run({
+      action: () => api.post(`/api/admin/verification-reports/${report.id}/run-resolver`, {}),
+      successMessage: "Resolver re-run complete.",
+      errorMessage: "Resolver re-run failed.",
+      onSuccess,
+    });
+    if (!res.ok && !res.cancelled) {
+      const msg = res.error?.message || "";
+      if (msg.toLowerCase().includes("cooldown") || msg.toLowerCase().includes("cap") || res.error?.status === 429) {
+        setCooldownMsg(msg || "Resolver cooldown active. Please wait before retrying.");
+      } else {
+        setResolverError(msg || "Resolver re-run failed.");
+      }
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-white/60 px-5 py-4 space-y-3" data-testid="run-resolver-panel">
+      <h4 className="text-sm font-semibold text-gray-900">Run resolver</h4>
+      <p className="text-xs text-muted-foreground">
+        Force a resolver re-run to re-check the official URL. Subject to per-report cooldown and hourly cap.
+      </p>
+      <button
+        type="button"
+        className="btn btn-ghost text-sm"
+        onClick={handleRun}
+        disabled={busy || !!cooldownMsg}
+        data-testid="run-resolver-btn"
+      >
+        {busy ? "Running…" : "Re-run resolver"}
+      </button>
+      {cooldownMsg && (
+        <div
+          className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+          data-testid="resolver-cooldown-msg"
+        >
+          {cooldownMsg}
+        </div>
+      )}
+      {resolverError && (
+        <div
+          className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+          data-testid="resolver-error"
+        >
+          {resolverError}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Confirm-proof panel ──────────────────────────────────────────────────────
+
+function ConfirmProofPanel({ report, onSuccess }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const [chosenUrl, setChosenUrl] = useState("");
+  const [proofError, setProofError] = useState(null);
+  const { run, busy } = useApiAction();
+
+  const suggestedUrls = report.suggested_official_urls || [];
+
+  if (!isAdmin || suggestedUrls.length === 0) return null;
+
+  async function handleConfirm(e) {
+    e.preventDefault();
+    setProofError(null);
+    if (!chosenUrl) {
+      setProofError("Select a URL to confirm.");
+      return;
+    }
+    const valid = suggestedUrls.some((u) => u.url === chosenUrl);
+    if (!valid) {
+      setProofError("Chosen URL is not in the suggested set.");
+      return;
+    }
+    const res = await run({
+      action: () => api.post(`/api/admin/verification-reports/${report.id}/confirm-suggested-proof`, { chosen_url: chosenUrl }),
+      successMessage: "Official proof confirmed.",
+      errorMessage: "Failed to confirm proof.",
+      onSuccess,
+    });
+    if (!res.ok && !res.cancelled) {
+      setProofError(res.error?.message || "Failed to confirm proof.");
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-white/60 px-5 py-4 space-y-3" data-testid="confirm-proof-panel">
+      <h4 className="text-sm font-semibold text-gray-900">Confirm official proof</h4>
+      <form onSubmit={handleConfirm} className="space-y-3" noValidate>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="proof-url-select">
+            Suggested official URL *
+          </label>
+          <select
+            id="proof-url-select"
+            value={chosenUrl}
+            onChange={(e) => setChosenUrl(e.target.value)}
+            className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+            data-testid="proof-url-select"
+          >
+            <option value="">— choose a URL —</option>
+            {suggestedUrls.map((u) => (
+              <option key={u.url} value={u.url}>
+                {u.url} ({u.method}, conf {u.confidence?.toFixed?.(2)})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {proofError && (
+          <div
+            className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+            data-testid="proof-error"
+          >
+            {proofError}
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="btn btn-primary text-sm"
+            disabled={busy}
+            data-testid="proof-submit-btn"
+          >
+            {busy ? "Confirming…" : "Confirm proof"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ─── Override-conflict panel ──────────────────────────────────────────────────
+
+function OverrideConflictPanel({ report, onSuccess }) {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
+  const hasOverridePerm = isSuperAdmin || (
+    (user?.role === "admin") &&
+    Array.isArray(user?.permissions) &&
+    user.permissions.includes("recruitments.manage")
+  );
+
+  const [activeConflictId, setActiveConflictId] = useState(null);
+  const [chosenValue, setChosenValue] = useState("");
+  const [overrideScope, setOverrideScope] = useState("field");
+  const [overrideReason, setOverrideReason] = useState("");
+  const [evidenceUrl, setEvidenceUrl] = useState("");
+  const [overrideError, setOverrideError] = useState(null);
+  const { run, busy } = useApiAction();
+
+  const openConflicts = (report.conflicts || []).filter(
+    (c) => c.status !== "resolved_by_admin" && c.status !== "resolved",
+  );
+
+  if (!hasOverridePerm || openConflicts.length === 0) return null;
+
+  const activeConflict = openConflicts.find((c) => c.conflict_id === activeConflictId);
+
+  function openConflict(c) {
+    setActiveConflictId(c.conflict_id);
+    setChosenValue("");
+    setOverrideScope("field");
+    setOverrideReason("");
+    setEvidenceUrl("");
+    setOverrideError(null);
+  }
+
+  async function handleOverride(e) {
+    e.preventDefault();
+    setOverrideError(null);
+    if (!chosenValue.trim()) {
+      setOverrideError("Chosen value is required.");
+      return;
+    }
+    if (!overrideReason.trim()) {
+      setOverrideError("Reason is required.");
+      return;
+    }
+    const res = await run({
+      action: () => api.post(`/api/admin/verification-reports/${report.id}/override-conflict`, {
+        conflict_id: activeConflictId,
+        chosen_value: chosenValue.trim(),
+        override_scope: overrideScope,
+        reason: overrideReason.trim(),
+        evidence_url: evidenceUrl.trim() || null,
+      }),
+      successMessage: "Conflict overridden.",
+      errorMessage: "Failed to override conflict.",
+      onSuccess: () => { setActiveConflictId(null); onSuccess(); },
+    });
+    if (!res.ok && !res.cancelled) {
+      setOverrideError(res.error?.message || "Override failed.");
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-white/60 px-5 py-4 space-y-3" data-testid="override-conflict-panel">
+      <h4 className="text-sm font-semibold text-gray-900">Override conflict</h4>
+
+      {!activeConflictId ? (
+        <ul className="space-y-1">
+          {openConflicts.map((c) => (
+            <li key={c.conflict_id} className="flex items-center justify-between text-xs">
+              <span className="font-mono text-gray-900">{c.field_path}</span>
+              <button
+                type="button"
+                className="btn btn-ghost text-xs"
+                onClick={() => openConflict(c)}
+                data-testid={`override-open-${c.conflict_id}`}
+              >
+                Override
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <form onSubmit={handleOverride} className="space-y-3" noValidate data-testid="override-form">
+          <p className="text-xs text-gray-500">
+            Conflict: <span className="font-mono">{activeConflict?.field_path}</span>
+          </p>
+
+          <div>
+            <label className="block text-xs text-gray-500 mb-1" htmlFor="override-chosen-value">
+              Chosen value *
+            </label>
+            <input
+              id="override-chosen-value"
+              type="text"
+              value={chosenValue}
+              onChange={(e) => setChosenValue(e.target.value)}
+              className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+              data-testid="override-chosen-value"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-500 mb-1" htmlFor="override-scope-select">
+              Scope *
+            </label>
+            <select
+              id="override-scope-select"
+              value={overrideScope}
+              onChange={(e) => setOverrideScope(e.target.value)}
+              className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+              data-testid="override-scope-select"
+            >
+              <option value="field">field</option>
+              <option value="recruitment">recruitment</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-500 mb-1" htmlFor="override-reason">
+              Reason *
+            </label>
+            <textarea
+              id="override-reason"
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              rows={2}
+              className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+              data-testid="override-reason"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-500 mb-1" htmlFor="override-evidence-url">
+              Evidence URL (optional)
+            </label>
+            <input
+              id="override-evidence-url"
+              type="url"
+              value={evidenceUrl}
+              onChange={(e) => setEvidenceUrl(e.target.value)}
+              className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+              data-testid="override-evidence-url"
+            />
+          </div>
+
+          {overrideError && (
+            <div
+              className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              data-testid="override-error"
+            >
+              {overrideError}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="btn btn-primary text-sm"
+              disabled={busy}
+              data-testid="override-submit-btn"
+            >
+              {busy ? "Saving…" : "Save override"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost text-sm"
+              onClick={() => setActiveConflictId(null)}
+              data-testid="override-cancel-btn"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 // ─── Promote / Reject panel ───────────────────────────────────────────────────
 
 function PromoteRejectPanel({ report, onSuccess }) {
@@ -439,6 +770,9 @@ function VerificationReportDetail({ reportId, onClose, onActionApplied }) {
               <VerificationReportCard report={report} />
             </div>
             <PromoteRejectPanel report={report} onSuccess={onActionApplied} />
+            <RunResolverPanel report={report} onSuccess={onActionApplied} />
+            <ConfirmProofPanel report={report} onSuccess={onActionApplied} />
+            <OverrideConflictPanel report={report} onSuccess={onActionApplied} />
             <div className="mt-6 rounded-2xl border border-border bg-white/60 px-5 py-4">
               <ApplyRegistryActionPanel
                 reportId={reportId}
