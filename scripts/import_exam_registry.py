@@ -551,8 +551,9 @@ def process_exam_registry_sheet(
             if not org_id and not dry_run:
                 existing = (
                     sb.table("organizations")
-                    .select("id,name")
+                    .select("id,name,type")
                     .ilike("name", f"%{conducting_body}%")
+                    .in_("type", ["state_psc", "central_commission"])
                     .limit(1)
                     .execute()
                     .data or []

@@ -606,3 +606,71 @@ class TestSourceUrlsDisposition:
         assert "3" in log_contents
         # Dry-run must NOT return non-zero exit code for this
         assert result == 0
+
+
+# ── conducting-org resolution type-scope guard ───────────────────────────────
+
+class TestConductingOrgResolutionTypeScope:
+    """The DB fallback ilike lookup must never match a subordinate_board org."""
+
+    def _make_sb_with_org(self, org_type: str) -> MagicMock:
+        """Return a mock Supabase client whose ilike chain returns a single org row."""
+        sb = MagicMock()
+        table = sb.table.return_value
+        # Build the call chain: .select().ilike().in_().limit().execute()
+        in_chain = (
+            table.select.return_value
+            .ilike.return_value
+            .in_.return_value
+        )
+        in_chain.limit.return_value.execute.return_value.data = [
+            {"id": f"org-{org_type}", "name": "Bihar Staff Selection Board", "type": org_type}
+        ]
+        table.insert.return_value.execute.return_value.data = [{"id": "exam-new"}]
+        table.update.return_value.eq.return_value.execute.return_value = None
+        return sb
+
+    def test_type_filter_includes_state_psc_and_central_commission(self):
+        """in_() must be called with exactly ['state_psc', 'central_commission']."""
+        from import_exam_registry import process_exam_registry_sheet
+
+        sb = self._make_sb_with_org("state_psc")
+        rows = [{"Exam": "Staff Selection Exam", "Conducting Body": "Bihar"}]
+        stats: dict = {"exams": 0, "cycles": 0}
+
+        process_exam_registry_sheet(sb, rows, False, {}, {}, stats)
+
+        # Find the call to .in_() on the organizations query chain
+        in_calls = sb.table.return_value.select.return_value.ilike.return_value.in_.call_args_list
+        assert in_calls, "Expected .in_() to be called on the org lookup query"
+        called_types = in_calls[0][0][1]  # second positional arg: the list of types
+        assert set(called_types) == {"state_psc", "central_commission"}
+
+    def test_subordinate_board_org_not_returned_as_conducting_org(self):
+        """A subordinate_board org whose name matches the conducting body must NOT be
+        assigned as conducting_organization_id on the upserted exam."""
+        from import_exam_registry import process_exam_registry_sheet
+
+        sb = MagicMock()
+        table = sb.table.return_value
+
+        # ilike().in_() returns empty (type filter excludes subordinate_board)
+        in_chain = table.select.return_value.ilike.return_value.in_.return_value
+        in_chain.limit.return_value.execute.return_value.data = []  # no match after type filter
+
+        table.select.return_value.eq.return_value.execute.return_value.data = []
+        table.insert.return_value.execute.return_value.data = [{"id": "exam-inserted"}]
+        table.update.return_value.eq.return_value.execute.return_value = None
+
+        rows = [{"Exam": "Subordinate Services Exam", "Conducting Body": "Bihar Subordinate Board"}]
+        stats: dict = {"exams": 0, "cycles": 0}
+
+        process_exam_registry_sheet(sb, rows, False, {}, {}, stats)
+
+        # Exam must be inserted with conducting_organization_id=None (no match)
+        insert_calls = table.insert.call_args_list
+        assert insert_calls, "Expected an exam insert"
+        exam_payload = insert_calls[0][0][0]
+        assert exam_payload.get("conducting_organization_id") is None, (
+            "A subordinate_board org must not be resolved as conducting_organization_id"
+        )
