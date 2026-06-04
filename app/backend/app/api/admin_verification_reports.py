@@ -628,6 +628,7 @@ def bulk_dry_run(
     rows = (
         supabase.table("recruitment_verification_reports")
         .select("*")
+        .in_("id", list(payload.selected_ids))
         .execute()
         .data
         or []
