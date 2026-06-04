@@ -380,3 +380,174 @@ def test_exam_create_persists_conducting_organization_id(monkeypatch):
 
     assert result["ok"] is True
     assert sb.inserted.get("conducting_organization_id") == "org-1"
+
+
+# ─────────────────────────────────────────────────────────────────
+# Concern 1 extras — empty-warnings + dedup normalization
+# ─────────────────────────────────────────────────────────────────
+
+def test_org_create_no_warning_when_no_same_name(monkeypatch):
+    """No existing name match → warnings list is empty."""
+    sb = _OrgCreateSB(name_match_rows=[])
+    monkeypatch.setattr(admin_trust, "get_supabase_admin", lambda: sb)
+
+    body = {"name": "Unique Org", "type": "central", "short_name": "UNQ"}
+    result = admin_trust.create_organization(body, _org_admin())
+
+    assert result["ok"] is True
+    assert result["warnings"] == []
+
+
+def test_org_create_dedup_normalizes_short_name_case(monkeypatch):
+    """short_name 'rpsc' and 'RPSC' with same type/state → second is 409."""
+    existing_org = {"id": "org-exist-1", "name": "Rajasthan PSC",
+                    "type": "state_psc", "short_name": "RPSC", "state": None}
+
+    # Stub that returns the existing row on the pre-insert check
+    class _DedupSB:
+        def __init__(self, existing):
+            self._existing = existing
+            self.inserted = None
+            self._check_done = False
+
+        def table(self, name):
+            return _DedupTable(self, name)
+
+    class _DedupTable:
+        def __init__(self, sb, name):
+            self._sb = sb
+            self._name = name
+            self._filters = {}
+            self._mode = None
+
+        def select(self, *a, **k):
+            return self
+
+        def eq(self, col, val):
+            self._filters[col] = val
+            return self
+
+        def ilike(self, col, val):
+            self._mode = "name_match"
+            return self
+
+        def limit(self, *a, **k):
+            return self
+
+        def execute(self):
+            if self._mode == "name_match":
+                return R([])
+            # pre-insert existence check: return existing row
+            if self._name == "organizations" and not self._sb._check_done:
+                self._sb._check_done = True
+                return R([self._sb._existing])
+            return R([])
+
+        def insert(self, payload):
+            self._sb.inserted = payload
+            echo = dict(payload)
+            echo.setdefault("id", "org-new-2")
+            return _EchoQ([echo])
+
+    sb = _DedupSB(existing_org)
+    monkeypatch.setattr(admin_trust, "get_supabase_admin", lambda: sb)
+
+    body = {"name": "Rajasthan PSC 2", "type": "state_psc", "short_name": "rpsc"}
+    with pytest.raises(HTTPException) as exc_info:
+        admin_trust.create_organization(body, _org_admin())
+    assert exc_info.value.status_code == 409
+    assert "org-exist-1" in str(exc_info.value.detail)
+
+
+def test_org_create_dedup_normalizes_spaces(monkeypatch):
+    """'AP PSC' and 'APPSC' with same type/state must collide → 409."""
+    existing_org = {"id": "org-exist-2", "name": "AP PSC",
+                    "type": "state_psc", "short_name": "APPSC", "state": "Andhra Pradesh"}
+
+    class _SpaceSB:
+        def __init__(self, existing):
+            self._existing = existing
+            self.inserted = None
+            self._check_done = False
+
+        def table(self, name):
+            return _SpaceTable(self, name)
+
+    class _SpaceTable:
+        def __init__(self, sb, name):
+            self._sb = sb
+            self._name = name
+            self._mode = None
+
+        def select(self, *a, **k): return self
+        def eq(self, *a, **k): return self
+        def ilike(self, *a, **k):
+            self._mode = "name_match"
+            return self
+        def limit(self, *a, **k): return self
+
+        def execute(self):
+            if self._mode == "name_match":
+                return R([])
+            if self._name == "organizations" and not self._sb._check_done:
+                self._sb._check_done = True
+                return R([self._sb._existing])
+            return R([])
+
+        def insert(self, payload):
+            self._sb.inserted = payload
+            echo = dict(payload)
+            echo.setdefault("id", "org-new-3")
+            return _EchoQ([echo])
+
+    sb = _SpaceSB(existing_org)
+    monkeypatch.setattr(admin_trust, "get_supabase_admin", lambda: sb)
+
+    body = {"name": "AP PSC Alt", "type": "state_psc", "short_name": "AP PSC",
+            "state": "Andhra Pradesh"}
+    with pytest.raises(HTTPException) as exc_info:
+        admin_trust.create_organization(body, _org_admin())
+    assert exc_info.value.status_code == 409
+
+
+def test_org_create_dedup_different_state_both_succeed(monkeypatch):
+    """Same type+short_name but different non-null states → both are distinct → no 409."""
+    # This stub never returns an existing row for the dedup check.
+    class _NoDupSB:
+        def __init__(self):
+            self.inserted = None
+
+        def table(self, name):
+            return _NoDupTable(self, name)
+
+    class _NoDupTable:
+        def __init__(self, sb, name):
+            self._sb = sb
+            self._name = name
+            self._mode = None
+
+        def select(self, *a, **k): return self
+        def eq(self, *a, **k): return self
+        def ilike(self, *a, **k):
+            self._mode = "name_match"
+            return self
+        def limit(self, *a, **k): return self
+
+        def execute(self):
+            # No existing rows — distinct states never collide
+            return R([])
+
+        def insert(self, payload):
+            self._sb.inserted = payload
+            echo = dict(payload)
+            echo.setdefault("id", "org-new-4")
+            return _EchoQ([echo])
+
+    sb = _NoDupSB()
+    monkeypatch.setattr(admin_trust, "get_supabase_admin", lambda: sb)
+
+    # Different state → should succeed (no 409)
+    body = {"name": "Punjab PSC", "type": "state_psc", "short_name": "PPSC",
+            "state": "Punjab"}
+    result = admin_trust.create_organization(body, _org_admin())
+    assert result["ok"] is True
