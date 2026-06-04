@@ -37,6 +37,22 @@ jest.mock("../../../shared/a11y/useFocusTrap", () => ({
   useFocusTrap: () => {},
 }));
 
+jest.mock("../../../lib/hooks/useApiAction", () => ({
+  __esModule: true,
+  default: () => {
+    const run = jest.fn(async ({ action, onSuccess }) => {
+      try {
+        const result = await action();
+        if (onSuccess) onSuccess(result);
+        return { ok: true, data: result };
+      } catch (e) {
+        return { ok: false, error: e };
+      }
+    });
+    return { run, busy: false };
+  },
+}));
+
 const { api } = require("../../../lib/api");
 const Organizations = require("../Organizations").default;
 
