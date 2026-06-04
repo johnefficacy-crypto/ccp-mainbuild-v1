@@ -106,13 +106,13 @@ const MOCK_REPORT = {
 
 function withPerm() {
   useAuth.mockReturnValue({
-    user: { role: "admin", permissions: ["exam_intelligence.cms"] },
+    user: { role: "admin", permissions: [] },
   });
 }
 
 function withoutPerm() {
   useAuth.mockReturnValue({
-    user: { role: "admin", permissions: [] },
+    user: { role: "viewer", permissions: ["exam_intelligence.cms"] },
   });
 }
 
@@ -145,11 +145,21 @@ beforeEach(() => {
 
 // ─── permission gate ──────────────────────────────────────────────────────────
 
-test("shows permission-denied state when user lacks exam_intelligence.cms", async () => {
+test("shows permission-denied state for non-admin role", async () => {
   withoutPerm();
   render(<AdminVerificationReports />);
   const msg = await screen.findByTestId("vr-permission-denied");
   expect(msg).toBeTruthy();
+});
+
+test("plain admin role is admitted (not denied)", async () => {
+  // Gate changed from permissions.includes(PERM) to role ∈ {admin, super_admin}
+  useAuth.mockReturnValue({ user: { role: "admin", permissions: [] } });
+  useApiCollection.mockReturnValue({ items: [], status: "empty", refresh: jest.fn() });
+  render(<AdminVerificationReports />);
+  // No permission-denied state
+  await new Promise((r) => setTimeout(r, 0));
+  expect(screen.queryByTestId("vr-permission-denied")).toBeFalsy();
 });
 
 // ─── list renders from collection ─────────────────────────────────────────────
@@ -377,15 +387,13 @@ test("promote shows inline error when POST returns rejection", async () => {
   await waitFor(() => expect(screen.queryByTestId("promote-error")).toBeTruthy());
 });
 
-test("promote/reject panel is hidden for non-admin user", async () => {
+test("non-admin role is denied the page entirely — promote/reject never reached", async () => {
   useAuth.mockReturnValue({
     user: { role: "viewer", permissions: ["exam_intelligence.cms"] },
   });
-
   render(<AdminVerificationReports />);
-  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
-
-  await waitFor(() => screen.queryByTestId("report-detail-card"));
+  const denied = await screen.findByTestId("vr-permission-denied");
+  expect(denied).toBeTruthy();
   expect(screen.queryByTestId("promote-reject-panel")).toBeFalsy();
 });
 
@@ -445,11 +453,11 @@ test("run-resolver shows cooldown message on 429-shaped error", async () => {
   expect(screen.queryByTestId("run-resolver-btn").disabled).toBe(true);
 });
 
-test("run-resolver hidden for non-admin", async () => {
+test("non-admin role is denied the page — run-resolver never reached", async () => {
   useAuth.mockReturnValue({ user: { role: "viewer", permissions: ["exam_intelligence.cms"] } });
   render(<AdminVerificationReports />);
-  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
-  await waitFor(() => screen.queryByTestId("report-detail-card"));
+  const denied = await screen.findByTestId("vr-permission-denied");
+  expect(denied).toBeTruthy();
   expect(screen.queryByTestId("run-resolver-panel")).toBeFalsy();
 });
 
@@ -600,12 +608,12 @@ test("clear button removes selection and hides toolbar", async () => {
 
 // Concern 2 — dry-run renders BulkActionPreview
 
-test("bulk toolbar hidden for non-admin even with rows selected", async () => {
+test("non-admin role is denied the page — bulk toolbar never reached", async () => {
   useAuth.mockReturnValue({ user: { role: "viewer", permissions: ["exam_intelligence.cms"] } });
   useApiCollection.mockReturnValue({ items: [MOCK_REPORT], status: "live", refresh: jest.fn() });
   render(<AdminVerificationReports />);
-  await screen.findByTestId("vr-check-rpt-1");
-  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  const denied = await screen.findByTestId("vr-permission-denied");
+  expect(denied).toBeTruthy();
   expect(screen.queryByTestId("bulk-toolbar")).toBeFalsy();
 });
 
