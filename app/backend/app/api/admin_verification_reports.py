@@ -1,8 +1,9 @@
-"""Admin read API for the Recruitment Verification Gateway.
+"""Admin API for the Recruitment Verification Gateway.
 
-PR7 scope — read-only listing + detail. No state mutation endpoints
-yet (resolver re-run, override-conflict, promote, reject, bulk-apply
-all land in PR2/PR3/PR6 as the plan ships them).
+Full PR6 mutation surface: resolver re-run (PR2), conflict override (PR3),
+promote / reject / bulk-dry-run / bulk-apply (PR6), and registry-action
+(PR5) endpoints all live in this module alongside the PR7 listing/detail
+surface they were originally split from.
 
 Track-3 (PR5 corrigendum continuation) adds:
 
