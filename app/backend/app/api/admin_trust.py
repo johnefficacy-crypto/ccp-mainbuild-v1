@@ -936,52 +936,54 @@ def eligibility_ops(_admin: dict = Depends(require_permission("scraper.manage"))
     return result
 
 
-_ORG_CREATE_ALLOWED = {"name", "type", "short_name", "state", "website_url"}
-
-
-@router.post("/admin/organizations")
+@router.post("/admin/organizations", status_code=201)
 def create_organization(body: dict, admin: dict = Depends(require_permission("organizations.manage"))):
-    if not body.get("name"):
-        raise HTTPException(status_code=422, detail="name is required")
-    if not body.get("type"):
-        raise HTTPException(status_code=422, detail="type is required")
-    if not body.get("short_name"):
-        raise HTTPException(status_code=422, detail="short_name is required")
-
     sb = get_supabase_admin()
 
-    # Soft warning: same (type, name, state) already exists?
-    warnings = []
+    name = (body.get("name") or "").strip()
+    short_name = (body.get("short_name") or "").strip() or None
+    if not name:
+        raise HTTPException(status_code=422, detail="name is required")
+    if not short_name:
+        raise HTTPException(status_code=422, detail="short_name is required")
+    if not body.get("type"):
+        raise HTTPException(status_code=422, detail="type is required")
+
+    # Soft same-name warning (non-blocking).
     try:
-        name_lower = (body.get("name") or "").strip().lower()
-        q = (
+        existing = (
             sb.table("organizations")
             .select("id, name")
-            .eq("type", body["type"])
-            .ilike("name", name_lower)
+            .ilike("name", name)
+            .limit(10)
+            .execute()
+            .data
+            or []
         )
-        if body.get("state"):
-            q = q.eq("state", body["state"])
-        matches = q.limit(5).execute().data or []
-        for m in matches:
-            warnings.append({"existing_id": m.get("id"), "existing_name": m.get("name")})
-    except Exception:
-        pass  # soft check — never blocks
+    except Exception:  # noqa: BLE001
+        existing = []
+    warnings = [{"existing_id": r["id"], "existing_name": r["name"]} for r in existing]
 
-    payload = {k: v for k, v in body.items() if k in _ORG_CREATE_ALLOWED}
-    # Server always forces these — client values ignored
-    payload["is_verified"] = False
-    payload["trust_tier"] = "unverified"
-    payload["metadata"] = {}
+    payload = {
+        "name": name,
+        "type": body.get("type"),
+        "short_name": short_name,
+        "is_verified": False,
+        "trust_tier": "unverified",
+        "metadata": {},
+    }
+    if body.get("state"):
+        payload["state"] = body["state"]
+    if body.get("website_url"):
+        payload["website_url"] = body["website_url"]
 
     try:
         rows = sb.table("organizations").insert(payload).execute().data or []
-    except Exception as exc:
-        raise HTTPException(status_code=409, detail=f"Duplicate organization: {exc}")
-
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
     new = rows[0] if rows else payload
-    _audit(sb, admin, "organization.create", "organization", new.get("id"), after_payload=payload)
-    return {"ok": True, "item": new, "warnings": warnings}
+    _audit(sb, admin, "organization.create", "organization", new.get("id"), after_payload=new)
+    return {"ok": True, "id": new.get("id"), "row": new, "warnings": warnings}
 
 
 @router.put("/admin/organizations/{organization_id}")
