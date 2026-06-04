@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date, datetime, timezone
 from urllib.parse import urlparse
 import requests
@@ -936,18 +937,27 @@ def eligibility_ops(_admin: dict = Depends(require_permission("scraper.manage"))
     return result
 
 
+def _normalize_short_name(raw: str) -> str:
+    """Upper-case, strip whitespace, collapse internal spaces (mirrors import_exam_registry)."""
+    return re.sub(r"\s+", "", str(raw or "").strip().upper())
+
+
 @router.post("/admin/organizations", status_code=201)
 def create_organization(body: dict, admin: dict = Depends(require_permission("organizations.manage"))):
     sb = get_supabase_admin()
 
     name = (body.get("name") or "").strip()
-    short_name = (body.get("short_name") or "").strip() or None
+    raw_short = (body.get("short_name") or "").strip()
     if not name:
         raise HTTPException(status_code=422, detail="name is required")
-    if not short_name:
+    if not raw_short:
         raise HTTPException(status_code=422, detail="short_name is required")
     if not body.get("type"):
         raise HTTPException(status_code=422, detail="type is required")
+
+    short_name = _normalize_short_name(raw_short)
+    org_type = body["type"]
+    state = (body.get("state") or "").strip() or None
 
     # Soft same-name warning (non-blocking).
     try:
@@ -964,16 +974,38 @@ def create_organization(body: dict, admin: dict = Depends(require_permission("or
         existing = []
     warnings = [{"existing_id": r["id"], "existing_name": r["name"]} for r in existing]
 
-    payload = {
+    # Hard dedup: explicit pre-insert check on (type, normalized short_name, state).
+    # Catches case/space variants that the DB unique index would also reject, but
+    # surfaces a useful 409 with the existing id before hitting the DB constraint.
+    try:
+        q = (
+            sb.table("organizations")
+            .select("id")
+            .eq("type", org_type)
+            .eq("short_name", short_name)
+        )
+        if state is not None:
+            q = q.eq("state", state)
+        dup_rows = q.limit(1).execute().data or []
+    except Exception:  # noqa: BLE001
+        dup_rows = []
+    if dup_rows:
+        existing_id = dup_rows[0].get("id", "unknown")
+        raise HTTPException(
+            status_code=409,
+            detail=f"Organization already exists (id={existing_id}) with same type/short_name/state",
+        )
+
+    payload: dict = {
         "name": name,
-        "type": body.get("type"),
+        "type": org_type,
         "short_name": short_name,
         "is_verified": False,
         "trust_tier": "unverified",
         "metadata": {},
     }
-    if body.get("state"):
-        payload["state"] = body["state"]
+    if state is not None:
+        payload["state"] = state
     if body.get("website_url"):
         payload["website_url"] = body["website_url"]
 
