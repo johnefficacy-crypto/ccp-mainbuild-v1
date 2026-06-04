@@ -68,6 +68,21 @@ const MOCK_REPORT = {
   trigger_reason: "date_changed",
   report_version: 1,
   created_at: "2026-06-01T10:00:00Z",
+  suggested_official_urls: [
+    { url: "https://upsc.gov.in/official", method: "serpapi", confidence: 0.95 },
+    { url: "https://upsc.gov.in/alternate", method: "crawl", confidence: 0.72 },
+  ],
+  conflicts: [
+    {
+      conflict_id: "conf-1",
+      field_path: "apply_end_date",
+      status: "open",
+      values: [
+        { source: "scraper_a", value: "2026-08-01" },
+        { source: "scraper_b", value: "2026-08-15" },
+      ],
+    },
+  ],
 };
 
 function withPerm() {
@@ -386,4 +401,123 @@ test("reject sends POST with reason when valid", async () => {
   const [url, body] = api.post.mock.calls[0];
   expect(url).toBe("/api/admin/verification-reports/rpt-1/reject");
   expect(body.reason).toBe("Confirmed duplicate — exam already covered.");
+});
+
+// ─── run-resolver panel ───────────────────────────────────────────────────────
+
+test("run-resolver panel shown for admin", async () => {
+  await openDrawer();
+  expect(screen.queryByTestId("run-resolver-panel")).toBeTruthy();
+});
+
+test("run-resolver sends POST to /run-resolver", async () => {
+  api.post.mockResolvedValueOnce({ ok: true, resolver_status: "resolved" });
+  await openDrawer();
+  fireEvent.click(screen.getByTestId("run-resolver-btn"));
+  await waitFor(() => expect(api.post).toHaveBeenCalled());
+  expect(api.post.mock.calls[0][0]).toBe("/api/admin/verification-reports/rpt-1/run-resolver");
+});
+
+test("run-resolver shows cooldown message on 429-shaped error", async () => {
+  api.post.mockRejectedValueOnce(Object.assign(new Error("Resolver cooldown active for this report; retry in 47s."), { status: 429 }));
+  await openDrawer();
+  fireEvent.click(screen.getByTestId("run-resolver-btn"));
+  await waitFor(() => expect(screen.queryByTestId("resolver-cooldown-msg")).toBeTruthy());
+  expect(screen.queryByTestId("run-resolver-btn").disabled).toBe(true);
+});
+
+test("run-resolver hidden for non-admin", async () => {
+  useAuth.mockReturnValue({ user: { role: "viewer", permissions: ["exam_intelligence.cms"] } });
+  render(<AdminVerificationReports />);
+  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
+  await waitFor(() => screen.queryByTestId("report-detail-card"));
+  expect(screen.queryByTestId("run-resolver-panel")).toBeFalsy();
+});
+
+// ─── confirm-proof panel ──────────────────────────────────────────────────────
+
+test("confirm-proof panel shown when report has suggested URLs", async () => {
+  await openDrawer();
+  expect(screen.queryByTestId("confirm-proof-panel")).toBeTruthy();
+});
+
+test("confirm-proof rejects off-list URL client-side", async () => {
+  await openDrawer();
+  // Manually set the select value to something not in the list
+  const sel = screen.getByTestId("proof-url-select");
+  // Submit without selecting
+  fireEvent.click(screen.getByTestId("proof-submit-btn"));
+  await waitFor(() => expect(screen.queryByTestId("proof-error")).toBeTruthy());
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+test("confirm-proof sends POST with chosen_url when valid", async () => {
+  api.post.mockResolvedValueOnce({ ok: true });
+  await openDrawer();
+  fireEvent.change(screen.getByTestId("proof-url-select"), {
+    target: { value: "https://upsc.gov.in/official" },
+  });
+  fireEvent.click(screen.getByTestId("proof-submit-btn"));
+  await waitFor(() => expect(api.post).toHaveBeenCalled());
+  const [url, body] = api.post.mock.calls[0];
+  expect(url).toBe("/api/admin/verification-reports/rpt-1/confirm-suggested-proof");
+  expect(body.chosen_url).toBe("https://upsc.gov.in/official");
+});
+
+// ─── override-conflict panel ──────────────────────────────────────────────────
+
+function withAdminAndRecruitments() {
+  useAuth.mockReturnValue({
+    user: { role: "admin", permissions: ["exam_intelligence.cms", "recruitments.manage"] },
+  });
+}
+
+function withSuperAdmin() {
+  useAuth.mockReturnValue({
+    user: { role: "super_admin", permissions: [] },
+  });
+}
+
+async function openDrawerAs(setupFn) {
+  setupFn();
+  render(<AdminVerificationReports />);
+  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
+  await waitFor(() => expect(screen.queryByTestId("override-conflict-panel")).toBeTruthy());
+}
+
+test("override-conflict panel hidden for admin without recruitments.manage", async () => {
+  // withPerm() sets admin without recruitments.manage
+  render(<AdminVerificationReports />);
+  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
+  await waitFor(() => screen.queryByTestId("report-detail-card"));
+  expect(screen.queryByTestId("override-conflict-panel")).toBeFalsy();
+});
+
+test("override-conflict panel shown for admin with recruitments.manage", async () => {
+  await openDrawerAs(withAdminAndRecruitments);
+  expect(screen.queryByTestId("override-conflict-panel")).toBeTruthy();
+});
+
+test("override-conflict panel shown for super_admin without recruitments.manage", async () => {
+  await openDrawerAs(withSuperAdmin);
+  expect(screen.queryByTestId("override-conflict-panel")).toBeTruthy();
+});
+
+test("override-conflict sends POST with correct payload", async () => {
+  api.post.mockResolvedValueOnce({ ok: true });
+  await openDrawerAs(withAdminAndRecruitments);
+
+  fireEvent.click(screen.getByTestId("override-open-conf-1"));
+  fireEvent.change(screen.getByTestId("override-chosen-value"), { target: { value: "2026-08-01" } });
+  fireEvent.change(screen.getByTestId("override-reason"), { target: { value: "Official gazette confirms this date" } });
+  fireEvent.click(screen.getByTestId("override-submit-btn"));
+
+  await waitFor(() => expect(api.post).toHaveBeenCalled());
+  const [url, body] = api.post.mock.calls[0];
+  expect(url).toBe("/api/admin/verification-reports/rpt-1/override-conflict");
+  expect(body.conflict_id).toBe("conf-1");
+  expect(body.chosen_value).toBe("2026-08-01");
+  expect(body.override_scope).toBe("field");
+  expect(body.reason).toBe("Official gazette confirms this date");
+  expect(body.override_scope).not.toBe("report");
 });

@@ -6,10 +6,7 @@ import useApiCollection from "../../lib/hooks/useApiCollection";
 import useApiAction from "../../lib/hooks/useApiAction";
 import ReverificationBatchAlert from "../../features/admin/workflow/ReverificationBatchAlert";
 
-// Backend enforces this via user_has_action(admin, ACTION_ACK_BATCH).
-// Frontend mirrors it to disable the acknowledge button for lower-permission
-// admins rather than sending a doomed request.
-const ACK_PERM = "scraping.manage";
+// Backend gate is require_admin-effective; mirror with role only.
 
 export default function ReverificationBatches() {
   const { user } = useAuth();
@@ -20,8 +17,7 @@ export default function ReverificationBatches() {
 
   const canAcknowledge =
     user?.role === "super_admin" ||
-    user?.role === "admin" ||
-    (Array.isArray(user?.permissions) && user.permissions.includes(ACK_PERM));
+    user?.role === "admin";
 
   async function handleAcknowledge(batchId) {
     await run({
@@ -69,8 +65,7 @@ export default function ReverificationBatches() {
           <p>No unacknowledged reverification batches. All clear.</p>
           {!canAcknowledge && (
             <p style={{ marginTop: 8, opacity: 0.7 }}>
-              You need the <code>{ACK_PERM}</code> permission to acknowledge
-              batches.
+              Admin or super_admin role is required to acknowledge batches.
             </p>
           )}
         </div>
