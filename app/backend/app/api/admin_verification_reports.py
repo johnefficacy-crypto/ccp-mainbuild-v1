@@ -551,13 +551,13 @@ def promote_report(
 
 
 class RejectRequest(BaseModel):
-    reason: str | None = None
+    reason: str = Field(..., min_length=8, max_length=500)
 
 
 @router.post("/admin/verification-reports/{report_id}/reject")
 def reject_report(
     report_id: str,
-    payload: RejectRequest = Body(default_factory=RejectRequest),
+    payload: RejectRequest,
     admin: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """Mark a report ``rejected``.
