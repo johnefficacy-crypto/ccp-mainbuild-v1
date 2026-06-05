@@ -34,7 +34,7 @@ from collections import defaultdict
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.auth import require_admin, require_permission
 from app.core.permissions import (
@@ -575,13 +575,9 @@ def reject_report(
         raise HTTPException(status_code=404, detail="verification_report not found")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
-    if payload.reason:
-        # Note is informational; we don't have a dedicated audit column
-        # on the report row, so it goes onto recommended_action context.
-        # A future migration can pull this into a proper note column.
-        supabase.table("recruitment_verification_reports").update(
-            {"recommended_action": "no_action"}
-        ).eq("id", report_id).execute()
+    supabase.table("recruitment_verification_reports").update(
+        {"rejection_notes": payload.reason}
+    ).eq("id", report_id).execute()
     return updated
 
 
@@ -592,6 +588,13 @@ class BulkRequest(BaseModel):
     selected_ids: list[str] = Field(min_length=1)
     action: str = Field(min_length=1)
     dry_run: bool = True
+    reason: str | None = Field(default=None, min_length=8, max_length=500)
+
+    @model_validator(mode="after")
+    def _reason_required_for_bulk_reject(self) -> "BulkRequest":
+        if self.action == "bulk_reject" and not self.reason:
+            raise ValueError("reason is required for bulk_reject (8–500 chars)")
+        return self
 
 
 _BULK_ACTIONS: set[str] = {"bulk_promote", "bulk_reject"}
@@ -706,7 +709,7 @@ def bulk_apply(
             if payload.action == "bulk_promote":
                 promote_report(rid, PromoteRequest(), admin)
             else:
-                reject_report(rid, RejectRequest(), admin)
+                reject_report(rid, RejectRequest(reason=payload.reason), admin)
             applied_ids.append(rid)
         except HTTPException:
             # Race between dry-run and apply — skip; the dry-run output

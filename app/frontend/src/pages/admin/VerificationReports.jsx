@@ -9,7 +9,6 @@ import { EmptyState, ErrorState, LoadingSkeleton, StatusBadge } from "../../shar
 import VerificationReportCard from "../../features/admin/workflow/VerificationReportCard";
 import BulkActionPreview from "../../features/admin/workflow/BulkActionPreview";
 
-const PERM = "exam_intelligence.cms";
 
 const ACTION_TYPES = [
   { value: "cycle_date_update", label: "Cycle date update" },
@@ -857,12 +856,17 @@ function VerificationReportsTable({ items, onOpen, selectedIds, onToggle, onTogg
 
 // ─── Bulk toolbar ─────────────────────────────────────────────────────────────
 
-function BulkToolbar({ selectedIds, onClear, onDryRun, dryRunResult, onApply, busy }) {
+function BulkToolbar({ selectedIds, onClear, onDryRun, dryRunResult, onApply, busy, bulkReason, onReasonChange }) {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const [action, setAction] = useState("bulk_promote");
 
   if (!isAdmin || selectedIds.length === 0) return null;
+
+  const isBulkReject = action === "bulk_reject";
+  const reasonTrimLen = bulkReason.trim().length;
+  const reasonValid = reasonTrimLen >= 8 && reasonTrimLen <= 500;
+  const previewDisabled = busy || (isBulkReject && !reasonValid);
 
   return (
     <div className="rounded-2xl border border-border bg-white/80 px-4 py-3 flex flex-wrap items-center gap-3" data-testid="bulk-toolbar">
@@ -880,11 +884,27 @@ function BulkToolbar({ selectedIds, onClear, onDryRun, dryRunResult, onApply, bu
         <option value="bulk_reject">Bulk reject</option>
       </select>
 
+      {isBulkReject && (
+        <div className="w-full">
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="bulk-reason-input">
+            Rejection reason * (8–500 chars)
+          </label>
+          <textarea
+            id="bulk-reason-input"
+            value={bulkReason}
+            onChange={(e) => onReasonChange(e.target.value)}
+            rows={2}
+            className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+            data-testid="bulk-reason-input"
+          />
+        </div>
+      )}
+
       <button
         type="button"
         className="btn btn-ghost text-sm"
         onClick={() => onDryRun(selectedIds, action)}
-        disabled={busy}
+        disabled={previewDisabled}
         data-testid="bulk-dry-run-btn"
       >
         {busy ? "Checking…" : "Preview"}
@@ -904,7 +924,7 @@ function BulkToolbar({ selectedIds, onClear, onDryRun, dryRunResult, onApply, bu
           <BulkActionPreview
             dryRun={dryRunResult}
             onApply={() => onApply(selectedIds, action)}
-            disabled={busy}
+            disabled={busy || (isBulkReject && !reasonValid)}
           />
         </div>
       )}
@@ -923,6 +943,7 @@ function VerificationReportsContent() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [dryRunResult, setDryRunResult] = useState(null);
   const [bulkError, setBulkError] = useState(null);
+  const [bulkReason, setBulkReason] = useState("");
   const { items, status, refresh } = useApiCollection(
     "/api/admin/verification-reports",
     [],
@@ -946,6 +967,7 @@ function VerificationReportsContent() {
     setSelectedIds([]);
     setDryRunResult(null);
     setBulkError(null);
+    setBulkReason("");
   }
 
   async function handleDryRun(ids, action) {
@@ -956,6 +978,7 @@ function VerificationReportsContent() {
         selected_ids: ids,
         action,
         dry_run: true,
+        ...(action === "bulk_reject" && { reason: bulkReason }),
       }),
       errorMessage: "Bulk dry-run failed.",
     });
@@ -973,6 +996,7 @@ function VerificationReportsContent() {
         selected_ids: ids,
         action,
         dry_run: false,
+        ...(action === "bulk_reject" && { reason: bulkReason }),
       }),
       successMessage: "Bulk action applied.",
       errorMessage: "Bulk action failed.",
@@ -1009,6 +1033,8 @@ function VerificationReportsContent() {
         dryRunResult={dryRunResult}
         onApply={handleApply}
         busy={bulkBusy}
+        bulkReason={bulkReason}
+        onReasonChange={setBulkReason}
       />
 
       {bulkError && (
@@ -1047,13 +1073,13 @@ export default function AdminVerificationReports() {
 
   const hasPerm =
     user?.role === "super_admin" ||
-    (Array.isArray(user?.permissions) && user.permissions.includes(PERM));
+    user?.role === "admin";
 
   if (!hasPerm) {
     return (
       <div className="p-6" data-testid="vr-permission-denied">
         <p className="text-sm text-muted-foreground">
-          You need the <code>{PERM}</code> permission to access this console.
+          Admin or super_admin role is required to access this console.
         </p>
       </div>
     );

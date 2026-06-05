@@ -106,13 +106,13 @@ const MOCK_REPORT = {
 
 function withPerm() {
   useAuth.mockReturnValue({
-    user: { role: "admin", permissions: ["exam_intelligence.cms"] },
+    user: { role: "admin", permissions: [] },
   });
 }
 
 function withoutPerm() {
   useAuth.mockReturnValue({
-    user: { role: "admin", permissions: [] },
+    user: { role: "viewer", permissions: ["exam_intelligence.cms"] },
   });
 }
 
@@ -145,11 +145,21 @@ beforeEach(() => {
 
 // ─── permission gate ──────────────────────────────────────────────────────────
 
-test("shows permission-denied state when user lacks exam_intelligence.cms", async () => {
+test("shows permission-denied state for non-admin role", async () => {
   withoutPerm();
   render(<AdminVerificationReports />);
   const msg = await screen.findByTestId("vr-permission-denied");
   expect(msg).toBeTruthy();
+});
+
+test("plain admin role is admitted (not denied)", async () => {
+  // Gate changed from permissions.includes(PERM) to role ∈ {admin, super_admin}
+  useAuth.mockReturnValue({ user: { role: "admin", permissions: [] } });
+  useApiCollection.mockReturnValue({ items: [], status: "empty", refresh: jest.fn() });
+  render(<AdminVerificationReports />);
+  // No permission-denied state
+  await new Promise((r) => setTimeout(r, 0));
+  expect(screen.queryByTestId("vr-permission-denied")).toBeFalsy();
 });
 
 // ─── list renders from collection ─────────────────────────────────────────────
@@ -377,15 +387,13 @@ test("promote shows inline error when POST returns rejection", async () => {
   await waitFor(() => expect(screen.queryByTestId("promote-error")).toBeTruthy());
 });
 
-test("promote/reject panel is hidden for non-admin user", async () => {
+test("non-admin role is denied the page entirely — promote/reject never reached", async () => {
   useAuth.mockReturnValue({
     user: { role: "viewer", permissions: ["exam_intelligence.cms"] },
   });
-
   render(<AdminVerificationReports />);
-  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
-
-  await waitFor(() => screen.queryByTestId("report-detail-card"));
+  const denied = await screen.findByTestId("vr-permission-denied");
+  expect(denied).toBeTruthy();
   expect(screen.queryByTestId("promote-reject-panel")).toBeFalsy();
 });
 
@@ -445,11 +453,11 @@ test("run-resolver shows cooldown message on 429-shaped error", async () => {
   expect(screen.queryByTestId("run-resolver-btn").disabled).toBe(true);
 });
 
-test("run-resolver hidden for non-admin", async () => {
+test("non-admin role is denied the page — run-resolver never reached", async () => {
   useAuth.mockReturnValue({ user: { role: "viewer", permissions: ["exam_intelligence.cms"] } });
   render(<AdminVerificationReports />);
-  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
-  await waitFor(() => screen.queryByTestId("report-detail-card"));
+  const denied = await screen.findByTestId("vr-permission-denied");
+  expect(denied).toBeTruthy();
   expect(screen.queryByTestId("run-resolver-panel")).toBeFalsy();
 });
 
@@ -600,12 +608,12 @@ test("clear button removes selection and hides toolbar", async () => {
 
 // Concern 2 — dry-run renders BulkActionPreview
 
-test("bulk toolbar hidden for non-admin even with rows selected", async () => {
+test("non-admin role is denied the page — bulk toolbar never reached", async () => {
   useAuth.mockReturnValue({ user: { role: "viewer", permissions: ["exam_intelligence.cms"] } });
   useApiCollection.mockReturnValue({ items: [MOCK_REPORT], status: "live", refresh: jest.fn() });
   render(<AdminVerificationReports />);
-  await screen.findByTestId("vr-check-rpt-1");
-  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  const denied = await screen.findByTestId("vr-permission-denied");
+  expect(denied).toBeTruthy();
   expect(screen.queryByTestId("bulk-toolbar")).toBeFalsy();
 });
 
@@ -648,6 +656,10 @@ test("dry-run with bulk_reject action sends correct action value", async () => {
   await screen.findByTestId("vr-check-rpt-1");
   fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
   fireEvent.change(screen.getByTestId("bulk-action-select"), { target: { value: "bulk_reject" } });
+  // reason required before dry-run button is enabled
+  fireEvent.change(screen.getByTestId("bulk-reason-input"), {
+    target: { value: "Confirmed duplicate — same exam already published." },
+  });
   fireEvent.click(screen.getByTestId("bulk-dry-run-btn"));
 
   await waitFor(() => expect(api.post).toHaveBeenCalled());
@@ -688,4 +700,132 @@ test("apply sends bulk-apply with selected_ids + action and clears selection on 
   // Selection cleared → toolbar gone
   await waitFor(() => expect(screen.queryByTestId("bulk-toolbar")).toBeFalsy());
   expect(refresh).toHaveBeenCalledTimes(1);
+});
+
+// ─── bulk-reject reason input ─────────────────────────────────────────────────
+
+test("bulk_reject shows reason textarea; bulk_promote does not", async () => {
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  await screen.findByTestId("bulk-toolbar");
+
+  // Default action is bulk_promote — no textarea
+  expect(screen.queryByTestId("bulk-reason-input")).toBeFalsy();
+
+  // Switch to bulk_reject — textarea appears
+  fireEvent.change(screen.getByTestId("bulk-action-select"), { target: { value: "bulk_reject" } });
+  expect(screen.queryByTestId("bulk-reason-input")).toBeTruthy();
+
+  // Switch back to bulk_promote — textarea gone
+  fireEvent.change(screen.getByTestId("bulk-action-select"), { target: { value: "bulk_promote" } });
+  expect(screen.queryByTestId("bulk-reason-input")).toBeFalsy();
+});
+
+test("bulk_reject dry-run button disabled until reason is >= 8 chars", async () => {
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  fireEvent.change(screen.getByTestId("bulk-action-select"), { target: { value: "bulk_reject" } });
+
+  const dryRunBtn = screen.getByTestId("bulk-dry-run-btn");
+  // No reason — disabled
+  expect(dryRunBtn.disabled).toBe(true);
+
+  // Short reason (7 chars) — still disabled
+  fireEvent.change(screen.getByTestId("bulk-reason-input"), { target: { value: "short!!" } });
+  expect(dryRunBtn.disabled).toBe(true);
+
+  // Valid reason (8+ chars) — enabled
+  fireEvent.change(screen.getByTestId("bulk-reason-input"), { target: { value: "valid reason here" } });
+  expect(dryRunBtn.disabled).toBe(false);
+});
+
+test("bulk_reject dry-run includes reason in POST body", async () => {
+  const REASON = "Confirmed duplicate — same exam already published by another source.";
+  api.post.mockResolvedValueOnce({
+    selected_ids: ["rpt-1"],
+    action: "bulk_reject",
+    dry_run: true,
+    result: { eligible_count: 1, blocked_count: 0, blockers: [] },
+  });
+
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  fireEvent.change(screen.getByTestId("bulk-action-select"), { target: { value: "bulk_reject" } });
+  fireEvent.change(screen.getByTestId("bulk-reason-input"), { target: { value: REASON } });
+  fireEvent.click(screen.getByTestId("bulk-dry-run-btn"));
+
+  await waitFor(() => expect(api.post).toHaveBeenCalled());
+  const body = api.post.mock.calls[0][1];
+  expect(body.action).toBe("bulk_reject");
+  expect(body.reason).toBe(REASON);
+});
+
+test("bulk_reject apply includes reason in POST body", async () => {
+  const REASON = "Confirmed duplicate — same exam already published by another source.";
+  const dryRunResp = {
+    selected_ids: ["rpt-1"],
+    action: "bulk_reject",
+    dry_run: true,
+    result: { eligible_count: 1, blocked_count: 0, blockers: [] },
+  };
+  api.post
+    .mockResolvedValueOnce(dryRunResp)
+    .mockResolvedValueOnce({ applied: 1 });
+
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  fireEvent.change(screen.getByTestId("bulk-action-select"), { target: { value: "bulk_reject" } });
+  fireEvent.change(screen.getByTestId("bulk-reason-input"), { target: { value: REASON } });
+  fireEvent.click(screen.getByTestId("bulk-dry-run-btn"));
+  await screen.findByTestId("bap-apply-btn");
+
+  fireEvent.click(screen.getByTestId("bap-apply-btn"));
+  await waitFor(() => expect(api.post).toHaveBeenCalledTimes(2));
+
+  const applyBody = api.post.mock.calls[1][1];
+  expect(applyBody.action).toBe("bulk_reject");
+  expect(applyBody.dry_run).toBe(false);
+  expect(applyBody.reason).toBe(REASON);
+});
+
+test("bulk_promote dry-run does NOT include reason in POST body", async () => {
+  api.post.mockResolvedValueOnce({
+    selected_ids: ["rpt-1"],
+    action: "bulk_promote",
+    dry_run: true,
+    result: { eligible_count: 1, blocked_count: 0, blockers: [] },
+  });
+
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  // action stays bulk_promote (default)
+  fireEvent.click(screen.getByTestId("bulk-dry-run-btn"));
+
+  await waitFor(() => expect(api.post).toHaveBeenCalled());
+  const body = api.post.mock.calls[0][1];
+  expect(body.action).toBe("bulk_promote");
+  expect(body.reason).toBeUndefined();
+});
+
+test("clear button resets reason textarea", async () => {
+  renderWithTwo();
+  await screen.findByTestId("vr-check-rpt-1");
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  fireEvent.change(screen.getByTestId("bulk-action-select"), { target: { value: "bulk_reject" } });
+  fireEvent.change(screen.getByTestId("bulk-reason-input"), { target: { value: "some reason here" } });
+  expect(screen.getByTestId("bulk-reason-input").value).toBe("some reason here");
+
+  fireEvent.click(screen.getByTestId("bulk-clear-btn"));
+  // Toolbar gone (selection cleared)
+  expect(screen.queryByTestId("bulk-toolbar")).toBeFalsy();
+
+  // Re-select and check reason is cleared
+  fireEvent.click(screen.getByTestId("vr-check-rpt-1"));
+  fireEvent.change(screen.getByTestId("bulk-action-select"), { target: { value: "bulk_reject" } });
+  expect(screen.getByTestId("bulk-reason-input").value).toBe("");
 });
