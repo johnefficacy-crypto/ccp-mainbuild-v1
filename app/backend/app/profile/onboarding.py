@@ -363,13 +363,8 @@ async def onboarding_answer(
     current_seed = profile.get("persona_seed") or {}
 
     if body.skipped:
-        _write_canonical(
-            supabase,
-            user_id,
-            question.get("profile_table"),
-            question.get("profile_column"),
-            None,
-        )
+        # Skip means "defer this question", not "clear the field". Leave any
+        # existing canonical value intact — only update persona_seed + audit.
         save_question_skip(
             supabase, user_id, body.question_key, dismissed_until_days=0
         )
