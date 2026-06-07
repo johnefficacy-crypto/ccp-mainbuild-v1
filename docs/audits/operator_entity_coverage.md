@@ -1,7 +1,7 @@
 # Operator Entity Coverage Audit
 
-**Branch:** `audit/operator-entity-coverage`
-**Date:** 2026-06-07
+**Branch:** `audit/operator-entity-coverage`  
+**Date:** 2026-06-07  
 **Method:** Read-only audit of live source files. Graph (`graphify-out/GRAPH_REPORT.md`) treated as stale — all cells backed by cited live files. No code was changed.
 
 ---
