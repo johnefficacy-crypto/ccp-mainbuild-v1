@@ -1,244 +1,101 @@
 # Operator Entity Coverage Audit
 
-**Branch:** `audit/operator-entity-coverage`  
-**Date:** 2026-06-07  
-**Method:** Read-only audit of live source files. Graph (`graphify-out/GRAPH_REPORT.md`) treated as stale — all cells backed by cited live files. No code was changed.
+**Branch requested:** `audit/operator-entity-coverage`
+**Audit date:** 2026-06-07
+**Mode:** read-only auditor. The only repository change is this audit document. The graph was used only for orientation after reading `graphify-out/GRAPH_REPORT.md`; every matrix cell below is based on live source files.
 
----
+## Pre-flight findings: files read
 
-## Entities That Do NOT Exist as Standalone Tables
+- `AGENTS.md` — repo instructions and audit constraints.
+- `graphify-out/GRAPH_REPORT.md` and `graphify-out/wiki/index.md` — required orientation; treated as stale.
+- `app/supabase/migrations/002_core_runtime_schema.sql` — core `vacancies`, `alert_events`, `notification_alerts`, `notification_preferences`, `notification_generation_runs`, and `notification_group_state` tables.
+- `app/supabase/migrations/011_verified_domain_gap_p1.sql` — canonical `vacancy_reservations` table.
+- `app/supabase/migrations/015_notifications_runtime_schema.sql` — notification runtime columns and admin read policies.
+- `app/supabase/migrations/029_exam_intelligence_taxonomy.sql` — `subjects` and `topics` definitions.
+- `app/supabase/migrations/030_exam_registry_cycles_phases.sql` — `exam_families`, `exams`, `exam_cycles`, `exam_phases`, `exam_phase_sections`, `exam_topic_coverage` definitions.
+- `app/supabase/migrations/032_pyq_question_intelligence.sql` — `pyq_sources`, `pyq_papers`, `pyq_questions`, `pyq_options`, `pyq_question_topic_tags` definitions.
+- `app/supabase/migrations/056_exam_policy_updates.sql` — `exam_policy_updates` definition and review/status checks.
+- `app/supabase/migrations/103_pyq_options_review.sql` — later `pyq_options` review columns.
+- `app/supabase/migrations/119_policy_updates_publish_status.sql` — `exam_policy_updates.publish_status` freshness/publish field.
+- `app/supabase/migrations/165_exam_phase_structured_dates.sql` and `166_phase_window_flag_backfill.sql` — structured phase date fields and worklist metadata.
+- `app/supabase/migrations/167_exam_registry_conducting_org_calendar_status.sql` — exam-to-organization calendar metadata.
+- `app/supabase/migrations/170_exam_registry_actions.sql` — registry action audit table for verification-report applies.
+- `app/backend/app/api/admin_exam_intel_cms.py` — CMS CRUD, entity import allowlist, PYQ bulk endpoints.
+- `app/backend/app/api/admin_exam_intelligence.py` — review queues, review endpoints, overview counts/readiness.
+- `app/backend/app/api/admin_verification_reports.py` — verification-gateway report listing/apply actions.
+- `app/backend/app/api/admin_scrape.py` — scrape queue operator surface and freshness columns.
+- `app/backend/app/api/notifications.py` — notification admin overview and generation run endpoints.
+- `app/backend/app/exam_intelligence/registry_action_service.py` — single-sourced registry apply functions and audit logging.
+- `app/backend/app/exam_intelligence/pyq_bulk_import.py` — PYQ preflight/commit bulk service.
+- `app/backend/app/scraping/runner.py` — promotion path that persists vacancies.
+- `app/backend/app/scraping/promotion_gate.py` and `app/backend/app/scraping/verification_gateway.py` — scrape verification/promotion gates.
+- `app/frontend/src/routes/adminRoutes.jsx` — admin routes.
+- `app/frontend/src/pages/admin/studyos/ExamIntelCms.jsx` — CMS entity config, create/edit, generic bulk UI.
+- `app/frontend/src/pages/admin/exam-workspace/panels/SetupPanel.jsx` — cycle/phase workspace editor and phase-date worklist.
+- `app/frontend/src/pages/admin/exam-workspace/pyq-workbench/PyqWorkbenchPanel.jsx` and `app/frontend/src/pages/admin/exam-workspace/pyq-workbench/bulk-import/useBulkImport.js` — PYQ bulk UI.
+- `app/frontend/src/pages/admin/VerificationReports.jsx` — verification reports operator UI.
+- `app/frontend/src/pages/admin/Notifications.jsx` — notification operator UI.
+- `app/frontend/src/pages/admin/Scraper.jsx` and `app/frontend/src/pages/admin/OperationsConsole.jsx` — scrape queue operator UI.
 
-| Named Entity | Finding | Authority |
+## Entities that do not exist as standalone schema tables
+
+| Requested entity | Schema finding | Evidence |
 |---|---|---|
-| `microtopic` | Not a table. Microtopics are rows in `public.topics` with `level = 'microtopic'` and a non-null `parent_topic_id`. The `level` CHECK constraint is `('topic','microtopic','concept')`. | `app/supabase/migrations/029_exam_intelligence_taxonomy.sql` lines 29–44 |
-| `important_date` | Not a table. Important dates are columns on `exam_cycles` (`notification_date`, `application_start`, `application_end`, `exam_start`, `exam_end`) and `exam_phases` (`phase_start`, `phase_end`). No standalone entity. | `app/supabase/migrations/030_exam_registry_cycles_phases.sql` lines 31–48, 50–67 |
-| `notification` | Not a single entity. Five related tables exist: `notification_alerts`, `notification_preferences`, `notification_generation_runs`, `alert_events`, `notification_group_state`. None are admin-created via exam intel console — all are system-generated. | `app/supabase/migrations/002_core_runtime_schema.sql` lines 59–65; migration 015 |
+| `microtopic` | **No standalone table.** Microtopics are `public.topics` rows where `level = 'microtopic'`; the same table also allows `topic` and `concept`. | `app/supabase/migrations/029_exam_intelligence_taxonomy.sql:topics` creates `public.topics` with `parent_topic_id` and `level check (level in ('topic', 'microtopic', 'concept'))`. |
+| `important_date` | **No standalone table.** Important dates are fields on `exam_cycles` (`notification_date`, `application_start`, `application_end`, `exam_start`, `exam_end`) and `exam_phases` (`phase_start`, `phase_end`). | `app/supabase/migrations/030_exam_registry_cycles_phases.sql:exam_cycles`; `app/supabase/migrations/165_exam_phase_structured_dates.sql:exam_phases.phase_start/phase_end`. |
+| `notification` | **No single table named `notification`.** Runtime tables are `notification_alerts`, `notification_preferences`, `notification_generation_runs`, `notification_group_state`, plus `alert_events`. | `app/supabase/migrations/002_core_runtime_schema.sql:notification_*`; `app/supabase/migrations/015_notifications_runtime_schema.sql:notification runtime columns`. |
+| `pyq` | **No standalone table named `pyq`.** The real hierarchy is `pyq_sources` → `pyq_papers` → `pyq_questions` → `pyq_options`, with `pyq_question_topic_tags` as question-topic mapping. | `app/supabase/migrations/032_pyq_question_intelligence.sql:pyq_* tables`. |
+| `vacancy` | **`vacancies` exists, but the live richer promotion path writes `vacancy_reservations`.** This audit treats the requested entity as the vacancy data domain and cites both schema tables. | `app/supabase/migrations/002_core_runtime_schema.sql:vacancies`; `app/supabase/migrations/011_verified_domain_gap_p1.sql:vacancy_reservations`. |
 
----
+## Coverage matrix
 
-## Coverage Matrix
+Legend: **YES** = explicit operator path exists; **PARTIAL** = only part of the requested column exists; **NO** = none found in live source.
 
-Columns:
-1. **CREATE/EDIT UI** — admin surface to create AND edit. Note if create-only or edit-only.
-2. **BULK IMPORT** — any batch/CSV/paste/structured ingestion path. `scripts/import_exam_registry.py` is RETIRED; not counted as live.
-3. **VERIFY PIPELINE** — candidate → human gate → apply → audit flow.
-4. **FRESHNESS / COVERAGE** — stored indicator of staleness or completeness, plus whether it is surfaced to the operator in a worklist or dashboard.
+| Entity | CREATE / EDIT UI | BULK IMPORT | VERIFY PIPELINE | FRESHNESS / COVERAGE |
+|---|---|---|---|---|
+| `exam_family` (`exam_families`) | **YES — create + edit.** CMS fields and columns are in `ExamIntelCms.jsx:ENTITY_CONFIG.exam-families`; the UI enables editing only for `exam-families`, `exams`, `exam-cycles`, and `exam-phases` via `EDITABLE_ENTITIES`; admin route is `/admin/exam-intelligence/cms`; backend routes are `admin_exam_intel_cms.py:list_exam_families`, `create_exam_family`, `update_exam_family`, `deactivate_exam_family`. | **YES.** Generic `admin_exam_intel_cms.py:bulk_import` includes `_IMPORT_CONFIG['exam-families']`; `ExamIntelCms.jsx:submitBulk` posts to `/api/admin/exam-intelligence-cms/bulk-import`. | **NO.** Table has no `reviewer_status`; `admin_exam_intelligence.py:_REVIEWABLE` includes only syllabus mentions, PYQ tags/questions/options; `registry_action_service.py` targets only cycle dates, phase dates, and policy updates. | **PARTIAL — field present, not surfaced as worklist.** `exam_families` has `updated_at`; CMS list columns show `created_at`, not `updated_at`, and no family freshness worklist was found. |
+| `exam` (`exams`) | **YES — create + edit.** CMS fields are in `ExamIntelCms.jsx:ENTITY_CONFIG.exams`; edit is enabled by `EDITABLE_ENTITIES`; admin route is `/admin/exam-intelligence/cms`; backend routes are `list_exams`, `create_exam`, `update_exam`, `deactivate_exam`. | **YES.** `_IMPORT_CONFIG['exams']` supports generic `bulk_import`; CMS bulk UI posts to the same endpoint. | **NO.** `exams` has no `reviewer_status`; not present in `_REVIEWABLE`; no registry action function targets whole-exam rows. | **PARTIAL — fields nearby, not surfaced as exam worklist.** `exams` has `updated_at`; `conducting_organization_id` links to `organizations.calendar_status`, but the cited calendar status field is on organizations, not an exam-level operator worklist. |
+| `exam_cycle` (`exam_cycles`) | **YES — create + edit.** CMS fields include dates/status in `ENTITY_CONFIG['exam-cycles']`; edit is enabled by `EDITABLE_ENTITIES`; `SetupPanel.jsx:createCycle` and `saveCycleEdit` also create/edit cycles; backend routes are `list_exam_cycles`, `create_exam_cycle`, `update_exam_cycle`. | **YES.** `_IMPORT_CONFIG['exam-cycles']` supports generic `bulk_import`. | **PARTIAL — registry-action target, not self-gated CMS entity.** `admin_verification_reports.py:apply_registry_action` dispatches `cycle_date_update` to `registry_action_service.py:apply_cycle_date_update` and records `exam_registry_actions`; `exam_cycles` itself has no `reviewer_status`. | **PARTIAL — fields surfaced inline, no dedicated freshness worklist.** `exam_cycles` has status/date fields and `updated_at`; `SetupPanel.jsx` renders cycle status/date editor, but no cycle-specific stale/missing-date worklist was found. |
+| `exam_phase` (`exam_phases`) | **YES — create + edit.** CMS fields include phase dates/status in `ENTITY_CONFIG['exam-phases']`; edit is enabled by `EDITABLE_ENTITIES`; `SetupPanel.jsx:addPhase` and `patchPhaseDate` create/update phases; backend routes are `list_exam_phases`, `create_exam_phase`, `update_exam_phase`. | **YES.** `_IMPORT_CONFIG['exam-phases']` supports generic `bulk_import`. | **PARTIAL — registry-action target, not self-gated CMS entity.** `apply_registry_action` dispatches `phase_date_update` to `registry_action_service.py:apply_phase_date_update` and records `exam_registry_actions`; `exam_phases` itself has no `reviewer_status`. | **YES — surfaced worklist.** `exam_phases` has `phase_start`/`phase_end`; `SetupPanel.jsx:needsPhaseDateAuthoring` derives a missing-date worklist and renders “Phases needing dates.” |
+| `subject` (`subjects`) | **PARTIAL — create backend + UI, backend edit exists, UI edit not exposed.** `ENTITY_CONFIG.subjects` defines a create form; backend has `list_subjects`, `create_subject`, `update_subject`; however `EDITABLE_ENTITIES` excludes `subjects`, so the CMS UI is create/list-only for subjects. | **YES.** `_IMPORT_CONFIG['subjects']` supports generic `bulk_import` and upserts by `slug`. | **NO.** `subjects` has no `reviewer_status`; not present in `_REVIEWABLE`; no registry action target. | **PARTIAL — field present, not surfaced as worklist.** `subjects` has `is_active` and `updated_at`; CMS columns show `is_active`, but no subject freshness/completeness dashboard was found. |
+| `topic` (`topics`) | **PARTIAL — create backend + UI, backend edit exists, UI edit not exposed.** `ENTITY_CONFIG.topics` defines the form including `level`; backend has `list_topics`, `create_topic`, `update_topic`; `EDITABLE_ENTITIES` excludes `topics`, so CMS UI is create/list-only. | **YES.** `_IMPORT_CONFIG['topics']` supports generic `bulk_import` and upserts by `subject_id,parent_topic_id,slug`. | **NO.** `topics` has no `reviewer_status`; not present in `_REVIEWABLE`; no registry action target. | **PARTIAL — fields present, not topic-row freshness worklist.** `topics` has `is_active`/`updated_at`; exam topic coverage counts are surfaced in `admin_exam_intelligence.py:overview`, but that is coverage rows, not stale topic taxonomy rows. |
+| `microtopic` (resolved as `topics.level='microtopic'`) | **PARTIAL — same as topic.** UI supports `level` values including `microtopic` and requires a parent for microtopic/concept in `ExamIntelCms.jsx:submitCreate`; backend edit exists through `update_topic`, but UI edit is excluded by `EDITABLE_ENTITIES`. | **YES.** Same `topics` bulk path via `_IMPORT_CONFIG['topics']`. | **NO.** Same as `topic`: no reviewer gate on taxonomy rows. | **PARTIAL — fields present, not surfaced as microtopic freshness.** Same `topics` `is_active`/`updated_at`; no microtopic-specific worklist found. |
+| `pyq` (`pyq_sources`, `pyq_papers`, `pyq_questions`, `pyq_options`, `pyq_question_topic_tags`) | **PARTIAL — split by subentity.** CMS defines create forms for all five real PYQ entities; backend PATCH routes exist for all five. The generic CMS edit UI is not exposed because `EDITABLE_ENTITIES` excludes PYQ entities; the paper workspace route `/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace` provides a PYQ operator surface. | **YES.** Generic `_IMPORT_CONFIG` supports `pyq-papers`, `pyq-sources`, `pyq-question-topic-tags`, `pyq-questions` (with inline options), and `pyq-options`; specialized two-phase paper import uses `pyq_bulk_import.py:preflight` and `commit`, called by `useBulkImport.js`. | **PARTIAL / YES by child.** `pyq_questions`, `pyq_options`, and `pyq_question_topic_tags` are in `_REVIEWABLE` and reviewed by `review_item`; `pyq_question` review cascades to options via RPC. `pyq_sources` and `pyq_papers` use `trust_status` but are not in `_REVIEWABLE`. | **PARTIAL — surfaced for review queue, not every PYQ row.** Reviewable PYQ rows contribute status counts, low-confidence, stale-review counts, and user-facing readiness in `admin_exam_intelligence.py:overview`; `pyq_papers` show `trust_status` in CMS columns, but no paper/source freshness worklist was found. |
+| `notification` (resolved notification runtime tables) | **PARTIAL — admin controls, not create/edit notification records.** `/admin/notifications` route renders `Notifications.jsx`; backend `notifications.py:admin_notifications` surfaces overview and `toggle_kill` updates kill switch, but no UI/backend path was found to create or edit individual `notification_alerts`. | **YES — generator batch path.** `notifications.py:generate_next_actions` inserts a `notification_generation_runs` row and can generate next-action alerts for one/all users; `Notifications.jsx:runNextActions` calls it. No CSV/paste import path found. | **NO for candidate→human gate→apply.** Notification generation is permissioned and audited through generation runs/kill switch, but no human verification spine for individual alerts was found. | **YES — surfaced operational freshness.** Admin overview returns `pending_dispatch`, `sent_24h`, `recent_generation`, and `recent_runs`; `Notifications.jsx` renders those counts and recent generation rows. |
+| `important_date` (resolved cycle/phase date fields) | **YES through parent entities.** Cycle important dates are created/edited in `ENTITY_CONFIG['exam-cycles']` and `SetupPanel.jsx:createCycle/saveCycleEdit`; phase dates are created/edited in `ENTITY_CONFIG['exam-phases']` and `SetupPanel.jsx:addPhase/patchPhaseDate`. | **YES through parent entities.** Generic bulk import supports `exam-cycles` and `exam-phases` date fields. | **PARTIAL — verification-report apply path exists for cycle/phase date changes.** `apply_registry_action` supports `cycle_date_update` and `phase_date_update`; `exam_registry_actions` stores the report-tied action. Direct CMS date edits do not require this verification spine. | **YES for phase dates; PARTIAL for cycle dates.** Phase date gaps are surfaced by `SetupPanel.jsx:needsPhaseDateAuthoring` and the “Phases needing dates” worklist; cycle date/status fields are shown inline but no cycle missing-date worklist was found. |
+| `vacancy` (`vacancies` / `vacancy_reservations`) | **NO standalone admin create/edit UI found.** `vacancies` and `vacancy_reservations` exist in schema, but no `ExamIntelCms.jsx` entity config or `admin_exam_intel_cms.py` route targets them; scrape queue UI operates on candidates before promotion, not direct vacancy rows. | **PARTIAL — live scrape/promotion ingestion, no CSV/paste import found.** Scrape extraction/promotion persists post vacancy data to `vacancy_reservations` via `runner.py:_persist_post_vacancies`; no direct vacancy bulk import endpoint was found. | **YES through scrape pipeline, not direct row review.** Scrape queue rows flow through field review and `evaluate_promotion_gate`; `promote_run` promotes gated candidates and writes `reviewed_at`/`promoted_recruitment_id`; vacancy rows themselves do not carry reviewer status. | **PARTIAL — source freshness surfaced, vacancy-row freshness not.** `scrape_queue` list selects `confidence_score`, `data_quality_score`, `reviewed_at`, `scraped_at`, and risk filters for operator freshness; `vacancy_reservations` only has `created_at`, and no vacancy-row freshness worklist was found. |
+| `policy_update` (`exam_policy_updates`) | **PARTIAL — create UI, backend edit exists, UI edit not exposed.** CMS defines `ENTITY_CONFIG['policy-updates']`; backend has `create_policy_update` and `update_policy_update`; `EDITABLE_ENTITIES` excludes policy updates, so generic CMS edit UI is not exposed. Review UI exists under `/admin/exam-intelligence` via policy review endpoints. | **YES.** `_IMPORT_CONFIG['policy-updates']` supports generic `bulk_import` and forces `reviewer_status='pending'`. | **YES.** `admin_exam_intelligence.py:list_policy_updates` and `review_policy_update` provide pending/verified/rejected/needs-correction review; verification reports can also `policy_update_create` or `policy_update_edit` through `apply_registry_action`, with `exam_registry_actions` audit rows and `registry_action_service` audit logging. | **YES.** Schema has `claim_status`, `reviewer_status`, `reviewed_at`, `updated_at`, and `publish_status`; list endpoint filters by `reviewer_status`/`source_type`, and policy rows are surfaced in admin review. |
 
----
+## Gap summary ranked by operator burden
 
-### exam_family
+Burden flags used here:
 
-| Column | Result | Evidence |
+- **Manual-only / no direct bulk** — no direct CSV/paste/batch import for the resolved entity rows.
+- **No verify spine** — no candidate → human gate → apply → audit path for the entity's live data.
+- **No surfaced freshness** — stale/completeness fields exist, but no operator worklist/dashboard was found for the entity.
+
+### Highest burden
+
+| Entity | Burden flags | Factual basis |
 |---|---|---|
-| **CREATE/EDIT UI** | **YES — create + edit** | `ExamIntelCms.jsx:78–87` defines `ENTITY_CONFIG["exam-families"]` with fields `slug, name, description, is_active`. Entity appears in `EDITABLE_ENTITIES` set (line 395) and `DEACTIVATABLE_ENTITIES` set (line 397). Backend: `admin_exam_intel_cms.py` POST `/exam-families` line 154, PATCH `/exam-families/{family_id}` line 179. |
-| **BULK IMPORT** | **YES — live** | Generic POST `/api/admin/exam-intelligence-cms/bulk-import` (`admin_exam_intel_cms.py:2596`) supports `exam-families` via `_IMPORT_CONFIG`. Frontend CSV parser: `app/frontend/src/lib/bulkImportFile.js`. |
-| **VERIFY PIPELINE** | **NONE** | No `reviewer_status` column on `exam_families` table (`migration 030:5–14`). Table not in `_REVIEWABLE` dict in `admin_exam_intelligence.py:80–99`. Not targeted by any `registry_action_service.py` action. |
-| **FRESHNESS / COVERAGE** | **PARTIAL — field present, not surfaced** | `updated_at` present in table definition (migration 030:14). No worklist, dashboard widget, or admin query exposes `updated_at` to the operator for `exam_families`. |
+| `exam_family` | No verify spine; no surfaced freshness | Has create/edit and bulk, but no reviewer gate and no family freshness worklist. |
+| `exam` | No verify spine; no surfaced freshness | Has create/edit and bulk, but no whole-exam reviewer gate or exam-level staleness worklist. |
+| `subject` | UI edit gap; no verify spine; no surfaced freshness | Backend edit exists, but CMS UI edit excludes subjects; no review/freshness worklist. |
+| `topic` / `microtopic` | UI edit gap; no verify spine; no surfaced freshness | Backend edit exists, but CMS UI edit excludes topics; no taxonomy review/freshness worklist. |
+| `vacancy` | No direct CRUD; no direct bulk; no vacancy-row freshness | Vacancy data is scrape/promotion-driven; operator reviews candidates/source fields, not direct vacancy rows. |
 
----
+### Medium burden
 
-### exam
-
-| Column | Result | Evidence |
+| Entity | Burden flags | Factual basis |
 |---|---|---|
-| **CREATE/EDIT UI** | **YES — create + edit** | `ExamIntelCms.jsx:89–100` defines `ENTITY_CONFIG["exams"]` with fields `name, conducting_organization_id (org-ref), exam_family_id (ref), exam_type, description, is_active`. In `EDITABLE_ENTITIES` and `DEACTIVATABLE_ENTITIES`. Backend: `admin_exam_intel_cms.py` POST `/exams` line 273, PATCH `/exams/{exam_id}` line 310. |
-| **BULK IMPORT** | **YES — live** | Same generic `/bulk-import` endpoint; `exams` listed in `_IMPORT_CONFIG` (`admin_exam_intel_cms.py:2360+`). |
-| **VERIFY PIPELINE** | **NONE** | No `reviewer_status` on `exams` (migration 030:16–29). Not in `_REVIEWABLE`. Not targeted by `registry_action_service.py`. |
-| **FRESHNESS / COVERAGE** | **PARTIAL — field present, not surfaced** | `updated_at` on table. The related `organizations.calendar_status` (migration 167) is linked via `conducting_organization_id` but is surfaced on the `organizations` entity, not on `exams` themselves. No exam-level staleness worklist. |
+| `exam_cycle` | Partial verify only; no dedicated surfaced freshness | Registry action can apply date updates from reports, but direct CMS edits are ungated and there is no cycle date-gap worklist. |
+| `pyq` | Mixed verify/freshness by subentity | Questions/options/tags are reviewable; sources/papers are trust-status rows outside `_REVIEWABLE`, and source/paper freshness worklists were not found. |
+| `important_date` | Parent-dependent verification; cycle freshness gap | Phase date gaps are surfaced; cycle date gaps are only inline fields. |
+| `notification` | No individual-alert verify spine; no create/edit alert UI | Operational generation/run metrics are surfaced, but individual notification records are generated, not human-gated. |
 
----
+### Lower burden
 
-### exam_cycle
-
-| Column | Result | Evidence |
+| Entity | Coverage status | Factual basis |
 |---|---|---|
-| **CREATE/EDIT UI** | **YES — create + edit** | `ExamIntelCms.jsx:101–116` defines `ENTITY_CONFIG["exam-cycles"]` with fields `exam_id, year, cycle_name, status, notification_date, application_start, application_end, exam_start, exam_end, source_url`. Also exposed in `SetupPanel.jsx:62–440` with date fields editable. Backend: `admin_exam_intel_cms.py` POST `/exam-cycles` line 391, PATCH `/exam-cycles/{cycle_id}` line 418. |
-| **BULK IMPORT** | **YES — live** | `/bulk-import` supports `exam-cycles` via `_IMPORT_CONFIG`. |
-| **VERIFY PIPELINE** | **PARTIAL — registry action target only** | `registry_action_service.py:35–44` defines `apply_cycle_date_update` which mutates `exam_cycles`. However cycles themselves do not carry `reviewer_status`; the mutation is triggered from a verification report apply-action (`admin_verification_reports.py`), not from a CMS-side human gate. No `candidate → pending → review` flow on the cycle entity itself. |
-| **FRESHNESS / COVERAGE** | **PARTIAL — field present, not surfaced** | `updated_at` present (migration 030:48). `status` column exists (`draft/active/completed/cancelled`). `SetupPanel.jsx` renders status inline but there is no dedicated staleness worklist for cycles with `status='draft'` or cycles missing date fields (unlike phases which have an explicit worklist). |
-
----
-
-### exam_phase
-
-| Column | Result | Evidence |
-|---|---|---|
-| **CREATE/EDIT UI** | **YES — create + edit** | `ExamIntelCms.jsx:117–134` defines `ENTITY_CONFIG["exam-phases"]` with fields `exam_id, phase_name, phase_slug, exam_cycle_id, phase_order, mode, duration_mins, total_questions, total_marks, status, phase_start, phase_end`. `SetupPanel.jsx:442–567` renders phase rail with edit UI. Backend: `admin_exam_intel_cms.py` POST `/exam-phases` line 477, PATCH `/exam-phases/{phase_id}` line 499. |
-| **BULK IMPORT** | **YES — live** | `/bulk-import` supports `exam-phases` via `_IMPORT_CONFIG`. |
-| **VERIFY PIPELINE** | **PARTIAL — registry action target only** | `registry_action_service.py:46–53` defines `apply_phase_date_update`. Same caveat as exam_cycle: phases are mutated by apply-action from a verification report, but do not carry their own `reviewer_status` gate. |
-| **FRESHNESS / COVERAGE** | **YES — surfaced** | `SetupPanel.jsx:569–640` explicitly implements `needsPhaseDateAuthoring()` worklist that surfaces phases missing `phase_start` to the operator. `updated_at`, `phase_start`, `phase_end` are stored. This is the only entity in the registry tier with an explicit operator-facing completeness worklist. |
-
----
-
-### subject
-
-| Column | Result | Evidence |
-|---|---|---|
-| **CREATE/EDIT UI** | **YES — create + edit** | `ExamIntelCms.jsx:219–229` defines `ENTITY_CONFIG["subjects"]` with fields `slug, name, subject_group, default_difficulty_level, description, is_active`. In `EDITABLE_ENTITIES`. Backend: `admin_exam_intel_cms.py` POST `/subjects` line 1530, PATCH `/subjects/{subject_id}` line 1556. |
-| **BULK IMPORT** | **YES — live** | `/bulk-import` supports `subjects` via `_IMPORT_CONFIG`. |
-| **VERIFY PIPELINE** | **NONE** | No `reviewer_status` on `subjects` table (migration 029:6–17). Not in `_REVIEWABLE`. Subjects are reference taxonomy only. |
-| **FRESHNESS / COVERAGE** | **PARTIAL — field present, not surfaced** | `updated_at` on table. No operator-facing staleness worklist. |
-
----
-
-### topic
-
-| Column | Result | Evidence |
-|---|---|---|
-| **CREATE/EDIT UI** | **YES — create + edit** | `ExamIntelCms.jsx:231–247` defines `ENTITY_CONFIG["topics"]` with fields `subject_id, level (enum: topic\|microtopic\|concept), parent_topic_id, slug, name, default_difficulty_level, description, is_active`. In `EDITABLE_ENTITIES`. Backend: `admin_exam_intel_cms.py` POST `/topics` line 1626, PATCH `/topics/{topic_id}` line 1672. |
-| **BULK IMPORT** | **YES — live** | `/bulk-import` supports `topics` via `_IMPORT_CONFIG`. Microtopic-level rows are created via the same endpoint with `level='microtopic'`. |
-| **VERIFY PIPELINE** | **NONE (direct); YES (indirect via coverage/PYQ tags)** | `topics` table has no `reviewer_status`. However, `exam_topic_coverage` and `pyq_question_topic_tags` (both reference topics) do carry `reviewer_status` and flow through `_REVIEWABLE` in `admin_exam_intelligence.py:80–99`. The topic record itself is not gated. |
-| **FRESHNESS / COVERAGE** | **PARTIAL — field present, not surfaced** | `updated_at` on table. Coverage of a topic (how many questions, syllabus mentions) is computed dynamically in `admin_exam_intelligence.py:~330` and is not stored as a column. No stored `coverage_count`. No operator worklist for orphaned or uncovered topics. |
-
----
-
-### microtopic
-
-| Column | Result | Evidence |
-|---|---|---|
-| **CREATE/EDIT UI** | **YES — via topic entity** | Microtopics are created as `topics` rows with `level='microtopic'`. Same UI, same endpoint. No dedicated surface. `ExamIntelCms.jsx:231–247`; `admin_exam_intel_cms.py:1626`. |
-| **BULK IMPORT** | **YES — via topic entity** | `/bulk-import` with `level='microtopic'` in the row. |
-| **VERIFY PIPELINE** | **NONE** | Same as topics — no `reviewer_status` on the row itself. |
-| **FRESHNESS / COVERAGE** | **PARTIAL — field present, not surfaced** | `updated_at` inherited from topics table. No standalone worklist. |
-
----
-
-### pyq (covers pyq_source, pyq_paper, pyq_question, pyq_option, pyq_question_topic_tag)
-
-| Sub-entity | Column | Result | Evidence |
-|---|---|---|---|
-| **pyq_source** | CREATE/EDIT UI | YES — create + edit | `ExamIntelCms.jsx` ENTITY_CONFIG["pyq-sources"]; backend `admin_exam_intel_cms.py` POST line 2164, PATCH line 2194. |
-| **pyq_source** | BULK IMPORT | YES — live | `/bulk-import` supports `pyq-sources`. |
-| **pyq_source** | VERIFY PIPELINE | NONE | No `reviewer_status` on `pyq_sources` (migration 032:5–17). |
-| **pyq_source** | FRESHNESS | PARTIAL | No `updated_at` or staleness field on `pyq_sources`. Not surfaced. |
-| **pyq_paper** | CREATE/EDIT UI | YES — create + edit | `ExamIntelCms.jsx` ENTITY_CONFIG["pyq-papers"]; backend `admin_exam_intel_cms.py` POST line 637, PATCH line 660. |
-| **pyq_paper** | BULK IMPORT | YES — dedicated two-phase + generic | Dedicated preflight/commit: `admin_exam_intel_cms.py:886` (POST `/pyq-papers/{paper_id}/bulk-import/preflight`), line 920 (POST `.../commit`). Generic `/bulk-import` also supports `pyq-papers`. Frontend: `app/frontend/src/pages/admin/exam-workspace/pyq-workbench/bulk-import/`. |
-| **pyq_paper** | VERIFY PIPELINE | PARTIAL — trust_status only | `pyq_papers.trust_status` (pending/verified/rejected) exists (migration 032:19–38) but is mutated via direct PATCH, not via the `_REVIEWABLE` review queue in `admin_exam_intelligence.py`. Not in the candidate→human→apply→audit spine. |
-| **pyq_paper** | FRESHNESS | PARTIAL — field present, partially surfaced | `trust_status` shown in ExamIntelCms list view (columns line 171). `content_hash` present for dedup. No `updated_at`. No staleness worklist for papers with `trust_status='pending'`. |
-| **pyq_question** | CREATE/EDIT UI | YES — create + edit | `ExamIntelCms.jsx` ENTITY_CONFIG["pyq-questions"]; backend `admin_exam_intel_cms.py` POST line 1003, PATCH line 1075. |
-| **pyq_question** | BULK IMPORT | YES — dedicated two-phase + generic | Same two-phase bulk import as pyq_paper. |
-| **pyq_question** | VERIFY PIPELINE | YES — full spine | `pyq_questions.reviewer_status` (pending/verified/rejected/needs_correction) (migration 032:44–62). In `_REVIEWABLE` dict (`admin_exam_intelligence.py:80–99`). Reviewed via `/admin/exam-intelligence` queue. Registry action path: `admin_verification_reports.py` `/apply-registry-action`. |
-| **pyq_question** | FRESHNESS | YES — surfaced | `reviewer_status` shown in `/admin/exam-intelligence` review queue. `updated_at` on table. Pending questions appear in review worklist. |
-| **pyq_option** | CREATE/EDIT UI | YES — create + edit | `ExamIntelCms.jsx` ENTITY_CONFIG["pyq-options"]; backend endpoints in `admin_exam_intel_cms.py`. |
-| **pyq_option** | BULK IMPORT | YES — as inline child of pyq_question | Created as inline children in pyq_question bulk import; rollback if any child fails. |
-| **pyq_option** | VERIFY PIPELINE | NONE direct | No `reviewer_status` on `pyq_options` (migration 032:64–75). Inherits from parent `pyq_question` review. |
-| **pyq_option** | FRESHNESS | NONE | No staleness field. Not surfaced. |
-| **pyq_question_topic_tag** | CREATE/EDIT UI | YES — create + edit | `ExamIntelCms.jsx` ENTITY_CONFIG["pyq-question-topic-tags"]; backend `admin_exam_intel_cms.py`. |
-| **pyq_question_topic_tag** | BULK IMPORT | YES — live | `/bulk-import` supports `pyq-question-topic-tags`. |
-| **pyq_question_topic_tag** | VERIFY PIPELINE | YES — full spine | `pyq_question_topic_tags.reviewer_status` present (migration 032:91–108). In `_REVIEWABLE` (`admin_exam_intelligence.py:80–99`). Review queue + apply-action path. Also has `reviewed_at`. |
-| **pyq_question_topic_tag** | FRESHNESS | YES — surfaced | `reviewer_status` in review queue worklist. `reviewed_at` stored (migration 032:108). |
-
----
-
-### notification
-
-| Column | Result | Evidence |
-|---|---|---|
-| **CREATE/EDIT UI** | **NONE — system-generated only** | No admin CRUD for notification entities in `ExamIntelCms.jsx`, `SetupPanel.jsx`, or `adminRoutes.jsx`. `notification_alerts` are generated by backend scheduled tasks (`notification_generation_runs`). Kill-switch only: `admin_notifications.py` POST `/admin/notifications/kill-switch` line 221. |
-| **BULK IMPORT** | **NONE** | No bulk import path. Generation is via scheduled fanout triggered by `alert_events`. |
-| **VERIFY PIPELINE** | **NONE** | Not in exam intel verification flow. Delivery tracked by `email_sent`, `email_sent_at`, `delivery_error` on `notification_alerts` but these are system-written, not operator-reviewed. |
-| **FRESHNESS / COVERAGE** | **PARTIAL — system fields only, not an operator worklist** | `notification_generation_runs.finished_at`, `notification_alerts.sent_at`, `alert_events.fanout_status` exist (migration 002, 015). Admin GET `/admin/notifications` (line 156) shows history but is a log view, not a staleness worklist. |
-
----
-
-### important_date
-
-| Column | Result | Evidence |
-|---|---|---|
-| **CREATE/EDIT UI** | **N/A — not a standalone entity** | Dates are columns on `exam_cycles` and `exam_phases`. Edited via those entities' UI (`ExamIntelCms.jsx`, `SetupPanel.jsx`). No standalone "important_date" create/edit surface. |
-| **BULK IMPORT** | **N/A — not a standalone entity** | Imported as fields within `exam-cycles` or `exam-phases` rows via `/bulk-import`. |
-| **VERIFY PIPELINE** | **N/A — not a standalone entity** | Date mutations flow through `apply_cycle_date_update` / `apply_phase_date_update` in `registry_action_service.py:35–53`. |
-| **FRESHNESS / COVERAGE** | **N/A — not a standalone entity** | `SetupPanel.jsx:569–640` `needsPhaseDateAuthoring()` partially surfaces missing dates for phases. Cycle dates have no equivalent worklist. |
-
----
-
-### vacancy
-
-| Column | Result | Evidence |
-|---|---|---|
-| **CREATE/EDIT UI** | **NONE** | `public.vacancies(id, post_id, category, vacancy_count)` defined in migration 002:37. No admin CRUD in `admin_exam_intel_cms.py`, `ExamIntelCms.jsx`, or any admin route. Vacancies are child rows of recruitment posts populated by the scraper pipeline. |
-| **BULK IMPORT** | **NONE** | No bulk import path. Vacancies are created via the recruitment scraper (`admin_scrape.py`, `promotion_gate.py`) not via CMS. |
-| **VERIFY PIPELINE** | **INDIRECT only** | `vacancy_total` appears as a field in `exam_competition_metrics` (migration 033), which is a reviewable entity. The `vacancies` table itself carries no `reviewer_status` and is not in `_REVIEWABLE`. |
-| **FRESHNESS / COVERAGE** | **NONE** | No `updated_at` on `vacancies` table (migration 002:37 — only `id, post_id, category, vacancy_count`). Not surfaced to operator. Vacancy count staleness is tracked at the `recruitment_verification_reports` level (migration 075 `staleness_status`, `last_checked_at`) — one level up from the vacancies table. |
-
----
-
-### policy_update
-
-| Column | Result | Evidence |
-|---|---|---|
-| **CREATE/EDIT UI** | **YES — create + edit** | `ExamIntelCms.jsx:193–218` defines `ENTITY_CONFIG["policy-updates"]` with fields `exam_id, update_type, title, summary, source_type, source_url, exam_cycle_id, source_id, claim_status, affects_plan, affects_deadline, affects_eligibility, affects_documents, affects_syllabus, affects_vacancy, change_summary, evidence, published_at, effective_from`. In `EDITABLE_ENTITIES`. Backend: `admin_exam_intel_cms.py` POST `/policy-updates` line 1302, PATCH `/policy-updates/{policy_id}` line 1335. |
-| **BULK IMPORT** | **YES — live** | `/bulk-import` supports `policy-updates` via `_IMPORT_CONFIG`. All rows land at `reviewer_status='pending'` on create (CMS guard `admin_exam_intel_cms.py:12–19`). |
-| **VERIFY PIPELINE** | **YES — full spine** | `exam_policy_updates.reviewer_status` (pending/verified/rejected/needs_correction) (migration 056:36–37). In `_REVIEWABLE` (`admin_exam_intelligence.py:80–99`). Review queue at `admin_exam_intelligence.py:789, 847`. Registry action path: `apply_policy_update_create` / `apply_policy_update_edit` in `registry_action_service.py:113–200`. Triggered via `admin_verification_reports.py` `/apply-registry-action`. Full candidate→human gate→apply→audit spine confirmed. |
-| **FRESHNESS / COVERAGE** | **YES — surfaced** | `updated_at`, `reviewed_at`, `reviewer_status` stored (migration 056). `reviewer_status` shown in ExamIntelCms list view (columns line 217) and in `/admin/exam-intelligence` review queue. Pending policy updates appear in review worklist. |
-
----
-
-## Gap Summary — Entities Ranked by Operator Burden
-
-Flags:
-- 🔴 **MANUAL-ONLY** — no bulk import path (operator must create records one by one)
-- 🟠 **NO-VERIFY-SPINE** — no reviewer_status gate; changes go live immediately on PATCH
-- 🟡 **NO-SURFACED-FRESHNESS** — a staleness/completeness field exists but is not exposed in any operator worklist or dashboard
-
-### High Burden
-
-| Entity | Burden Flags | Notes |
-|---|---|---|
-| `vacancy` | 🔴 MANUAL-ONLY · 🟠 NO-VERIFY-SPINE · 🟡 NO-SURFACED-FRESHNESS | No admin CRUD at all; entirely scraper-populated. Zero operator touchpoints. |
-| `notification` | 🔴 MANUAL-ONLY · 🟠 NO-VERIFY-SPINE · 🟡 NO-SURFACED-FRESHNESS | System-generated only; no exam-intel admin surface; no staleness worklist. Delivery errors exist in DB but are not surfaced to the exam operator. |
-
-### Medium Burden
-
-| Entity | Burden Flags | Notes |
-|---|---|---|
-| `exam_family` | 🟠 NO-VERIFY-SPINE · 🟡 NO-SURFACED-FRESHNESS | Has UI + bulk import. Changes go live immediately (no pending→review gate). `updated_at` stored but not in any worklist. |
-| `exam` | 🟠 NO-VERIFY-SPINE · 🟡 NO-SURFACED-FRESHNESS | Has UI + bulk import. No gate; no staleness surface. `conducting_organization_id` calendar status is on the org entity, not the exam. |
-| `exam_cycle` | 🟠 NO-VERIFY-SPINE · 🟡 NO-SURFACED-FRESHNESS | Has UI + bulk import. Registry action can mutate cycles but only as a downstream target, not as a guarded create/edit path. Cycles with `status='draft'` or missing dates have no operator worklist (unlike phases). |
-| `subject` | 🟠 NO-VERIFY-SPINE · 🟡 NO-SURFACED-FRESHNESS | Has UI + bulk import. Pure reference taxonomy; no staleness surface. |
-| `topic` / `microtopic` | 🟠 NO-VERIFY-SPINE · 🟡 NO-SURFACED-FRESHNESS | Has UI + bulk import. Topic coverage computed dynamically (not stored). Orphaned/uncovered topics have no operator worklist. |
-| `pyq_source` | 🟠 NO-VERIFY-SPINE · 🟡 NO-SURFACED-FRESHNESS | Has UI + bulk import. No `reviewer_status`, no `updated_at`, not in review queue. |
-| `pyq_paper` | 🟠 NO-VERIFY-SPINE (partial) · 🟡 NO-SURFACED-FRESHNESS (partial) | Has `trust_status` shown in list view but it is mutated via direct PATCH, not the review queue spine. No staleness worklist for `trust_status='pending'` papers. |
-| `pyq_option` | 🟠 NO-VERIFY-SPINE · 🟡 NO-SURFACED-FRESHNESS | No `reviewer_status`. Correctness depends entirely on parent `pyq_question` review. |
-
-### Low Burden (Well-Covered)
-
-| Entity | Status | Notes |
-|---|---|---|
-| `exam_phase` | ✅ UI + bulk + partial verify spine + surfaced worklist | `SetupPanel.jsx` `needsPhaseDateAuthoring()` explicitly surfaces missing dates. Registry action target. Best-covered registry entity. |
-| `pyq_question` | ✅ UI + bulk + full verify spine + surfaced queue | Full `reviewer_status` gate, review queue, registry apply-action. |
-| `pyq_question_topic_tag` | ✅ UI + bulk + full verify spine + surfaced queue | Full `reviewer_status` gate + `reviewed_at`. |
-| `policy_update` | ✅ UI + bulk + full verify spine + surfaced queue | Richest verify spine: pending→review→apply-action→audit. `affects_*` flags + `claim_status` provide coverage semantics. |
-
----
-
-## Pre-flight: Files Read to Fill This Matrix
-
-| File | Purpose |
-|---|---|
-| `app/supabase/migrations/002_core_runtime_schema.sql` | `vacancies`, `notification_alerts`, `notification_preferences` table definitions |
-| `app/supabase/migrations/015_*.sql` | Notification generation tables |
-| `app/supabase/migrations/029_exam_intelligence_taxonomy.sql` | `subjects`, `topics` table definitions |
-| `app/supabase/migrations/030_exam_registry_cycles_phases.sql` | `exam_families`, `exams`, `exam_cycles`, `exam_phases` table definitions |
-| `app/supabase/migrations/032_pyq_question_intelligence.sql` | `pyq_sources`, `pyq_papers`, `pyq_questions`, `pyq_options`, `pyq_question_topic_tags` table definitions |
-| `app/supabase/migrations/033_exam_competition_metrics.sql` | `exam_competition_metrics` (`vacancy_total` denormalized field) |
-| `app/supabase/migrations/056_exam_policy_updates.sql` | `exam_policy_updates` table definition + `reviewer_status` enum |
-| `app/supabase/migrations/075_*.sql` | `recruitment_verification_reports` (`staleness_status`, `last_checked_at`) |
-| `app/supabase/migrations/083_add_staleness_fields.sql` | Staleness field additions |
-| `app/supabase/migrations/167_exam_registry_conducting_org_calendar_status.sql` | `conducting_organization_id` + `organizations.calendar_status` |
-| `app/backend/app/api/admin_exam_intel_cms.py` | All CMS CRUD endpoints + `/bulk-import` + `_IMPORT_CONFIG` + `_REVIEWABLE` guard |
-| `app/backend/app/api/admin_exam_intelligence.py` | Review queue endpoints + `_REVIEWABLE` dict (lines 80–99) |
-| `app/backend/app/api/admin_verification_reports.py` | Verification report apply-action endpoint |
-| `app/backend/app/api/admin_notifications.py` (notifications.py) | Notification admin endpoints |
-| `app/backend/app/exam_intelligence/registry_action_service.py` | `apply_cycle_date_update`, `apply_phase_date_update`, `apply_policy_update_*` action handlers |
-| `app/backend/app/scraping/verification_gateway.py` | Scrape verification gateway |
-| `app/backend/app/scraping/promotion_gate.py` | Scrape promotion gate |
-| `app/backend/app/api/admin_scrape.py` | Scrape admin routes (vacancy population path) |
-| `app/frontend/src/pages/admin/studyos/ExamIntelCms.jsx` | `ENTITY_CONFIG`, `EDITABLE_ENTITIES`, `DEACTIVATABLE_ENTITIES`, column definitions |
-| `app/frontend/src/pages/admin/exam-workspace/panels/SetupPanel.jsx` | Cycle + phase editor, `needsPhaseDateAuthoring()` worklist |
-| `app/frontend/src/pages/admin/VerificationReports.jsx` | Verification reports operator surface |
-| `app/frontend/src/routes/adminRoutes.jsx` | Admin route definitions |
-| `app/frontend/src/lib/bulkImportFile.js` | Frontend CSV bulk import parser |
-| `app/frontend/src/pages/admin/exam-workspace/pyq-workbench/bulk-import/` | PYQ two-phase bulk import frontend |
-| `AGENTS.md` | Repo context / agent instructions |
-| `graphify-out/wiki/index.md` | Stale graph context (used for orientation only; all cells verified against live source) |
+| `exam_phase` | UI + bulk + report-apply path + surfaced phase-date worklist | Best-covered registry row in this audit because missing structured phase dates have an explicit operator worklist. |
+| `policy_update` | Bulk + review + report-apply/audit + surfaced status | Rich review and audit path; only generic CMS edit UI is not exposed. |
