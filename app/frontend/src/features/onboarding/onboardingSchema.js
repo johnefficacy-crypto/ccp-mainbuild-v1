@@ -24,7 +24,6 @@ export const onboardingSchema = z.object({
   willing_to_relocate: z.boolean().default(true),
   study_mode: z.string().optional(),
   weekly_hours_goal: z.union([z.string(), z.number()]).optional(),
-  target_exam_year: z.union([z.string(), z.number()]).optional(),
 }).superRefine((v, ctx) => {
   try { parseYear(v.qualification_year); } catch { ctx.addIssue({ code: 'custom', path: ['qualification_year'], message: 'Passing year is invalid' }); }
   if (v.marks_type === 'percentage' && parseOptionalNumber(v.percentage) == null) ctx.addIssue({ code: 'custom', path: ['percentage'], message: 'Percentage is required' });
@@ -32,8 +31,6 @@ export const onboardingSchema = z.object({
   if ((v.goal_exams?.length || 0) + (v.preferred_sectors?.length || 0) === 0) ctx.addIssue({ code: 'custom', path: ['goal_exams'], message: 'Select at least one target exam family or preferred sector' });
   const weekly = parseOptionalNumber(v.weekly_hours_goal);
   if (weekly != null && weekly <= 0) ctx.addIssue({ code: 'custom', path: ['weekly_hours_goal'], message: 'Weekly hours goal must be positive' });
-  const targetYear = parseOptionalNumber(v.target_exam_year);
-  if (targetYear != null && targetYear < currentYear) ctx.addIssue({ code: 'custom', path: ['target_exam_year'], message: `Target exam year must be ${currentYear} or later` });
 });
 
 export function toOnboardingPayload(formValues) {
@@ -57,6 +54,5 @@ export function toOnboardingPayload(formValues) {
     willing_to_relocate: v.willing_to_relocate,
     study_mode: v.study_mode || undefined,
     weekly_hours_goal: parseOptionalNumber(v.weekly_hours_goal),
-    target_exam_year: parseOptionalNumber(v.target_exam_year),
   };
 }

@@ -16,7 +16,7 @@ const STEPS = [
   { id: "identity", title: "Identity minimum", subtitle: "These fields power your base eligibility profile.", fields: ["name", "date_of_birth", "gender", "category", "state"] },
   { id: "education", title: "Education minimum", subtitle: "Qualification decides post-level eligibility.", fields: ["education_level", "qualification", "qualification_year", "marks_type", "percentage", "cgpa"] },
   { id: "preferences", title: "Preferences", subtitle: "Tell us where and what you want to target.", fields: ["goal_exams", "preferred_sectors", "preferred_states", "willing_to_relocate"] },
-  { id: "study", title: "Study rhythm", subtitle: "We'll adapt recommendations to your weekly capacity.", fields: ["study_mode", "weekly_hours_goal", "target_exam_year"] },
+  { id: "study", title: "Study rhythm", subtitle: "We'll adapt recommendations to your weekly capacity.", fields: ["study_mode", "weekly_hours_goal"] },
 ];
 
 export default function Onboarding() {
@@ -29,7 +29,7 @@ export default function Onboarding() {
   const methods = useForm({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      name: auth.user?.name || "", date_of_birth: "", gender: "", category: "", pwbd_status: "", state: "", education_level: "", qualification: "", stream: "", qualification_year: "", marks_type: "percentage", percentage: "", cgpa: "", goal_exams: [], preferred_sectors: [], preferred_states: [], willing_to_relocate: true, study_mode: "", weekly_hours_goal: "", target_exam_year: "",
+      name: auth.user?.name || "", date_of_birth: "", gender: "", category: "", pwbd_status: "", state: "", education_level: "", qualification: "", stream: "", qualification_year: "", marks_type: "percentage", percentage: "", cgpa: "", goal_exams: [], preferred_sectors: [], preferred_states: [], willing_to_relocate: true, study_mode: "", weekly_hours_goal: "",
     },
     mode: "onTouched",
   });

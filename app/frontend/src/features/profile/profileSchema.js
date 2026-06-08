@@ -4,6 +4,7 @@ import { parseDateString, validateDOBRange } from '../../shared/forms/dateParser
 
 export const profileSchema = z.object({
   name: z.string().trim().min(1),
+  phone: z.string().optional(),
   gender: z.string().optional(),
   date_of_birth: z.string().optional(),
   category: z.string().optional(),
@@ -25,7 +26,6 @@ export const profileSchema = z.object({
   willing_to_relocate: z.boolean().optional(),
   study_mode: z.string().optional(),
   weekly_hours_goal: z.union([z.string(), z.number()]).optional(),
-  target_exam_year: z.union([z.string(), z.number()]).optional(),
 }).superRefine((v, ctx) => {
   if (v.date_of_birth && !validateDOBRange(v.date_of_birth)) ctx.addIssue({ code: 'custom', path: ['date_of_birth'], message: 'Date of birth is out of range' });
   try { parseYear(v.qualification_year); } catch { ctx.addIssue({ code: 'custom', path: ['qualification_year'], message: 'Qualification year is invalid' }); }
@@ -40,7 +40,6 @@ export function toProfilePayload(formValues) {
     percentage: parseOptionalNumber(v.percentage),
     cgpa: parseOptionalNumber(v.cgpa),
     weekly_hours_goal: parseOptionalNumber(v.weekly_hours_goal),
-    target_exam_year: parseOptionalNumber(v.target_exam_year),
     service_years: parseOptionalNumber(v.service_years),
   };
 }
