@@ -109,18 +109,13 @@ def _classify_discovery(signals: dict[str, Any], evidence: list) -> str:
 
 
 def _classify_preparation(signals: dict[str, Any], evidence: list) -> str:
-    target_year = signals.get("target_exam_year")
     completeness = float(signals.get("profile_completeness") or 0.0)
     total_tasks_14d = int(signals.get("_total_tasks_14d") or 0)
     mocks = int(signals.get("mocks_taken_30d") or 0)
-    now_year = datetime.now(timezone.utc).year
 
-    if target_year is None and total_tasks_14d == 0 and mocks == 0:
+    if total_tasks_14d == 0 and mocks == 0:
         value = "unknown" if completeness < 0.3 else "beginner"
-        reason = "no_target_year_no_activity"
-    elif target_year is not None and target_year <= now_year:
-        value = "final_window_aspirant"
-        reason = "target_year_within_current_year"
+        reason = "no_activity"
     elif mocks >= 4:
         value = "intermediate"
         reason = "regular_mock_activity"
@@ -139,7 +134,6 @@ def _classify_preparation(signals: dict[str, Any], evidence: list) -> str:
         value,
         reason,
         {
-            "target_exam_year": target_year,
             "total_tasks_14d": total_tasks_14d,
             "mocks_taken_30d": mocks,
         },
@@ -264,18 +258,13 @@ def _classify_execution_risk(signals: dict[str, Any], behavior: str, evidence: l
 
 
 def _classify_motivation(signals: dict[str, Any], behavior: str, evidence: list) -> str:
-    target_year = signals.get("target_exam_year")
-    now_year = datetime.now(timezone.utc).year
     total_tasks_14d = int(signals.get("_total_tasks_14d") or 0)
     focus_minutes = int(signals.get("focus_minutes_7d") or 0)
     completion_rate = signals.get("task_completion_rate_14d")
 
-    if target_year is None and total_tasks_14d == 0 and focus_minutes == 0:
+    if total_tasks_14d == 0 and focus_minutes == 0:
         value = "unknown"
         reason = "no_motivation_signals"
-    elif target_year is not None and target_year <= now_year:
-        value = "deadline_sensitive"
-        reason = "target_year_imminent"
     elif behavior in {"planner_poor_executor", "revision_backlog_heavy"} or (
         total_tasks_14d > 0 and focus_minutes == 0 and (completion_rate or 0) < 0.3
     ):
@@ -290,7 +279,6 @@ def _classify_motivation(signals: dict[str, Any], behavior: str, evidence: list)
         value,
         reason,
         {
-            "target_exam_year": target_year,
             "total_tasks_14d": total_tasks_14d,
             "focus_minutes_7d": focus_minutes,
             "completion_rate_14d": completion_rate,

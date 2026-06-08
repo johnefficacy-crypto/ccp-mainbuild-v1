@@ -562,7 +562,7 @@ REQUIRED_FIELDS_BY_INTENT = {
         "education": ["level", "degree"],
     },
     "study_group": {
-        "preferences": ["target_exams", "study_mode", "target_exam_year"],
+        "preferences": ["target_exams", "study_mode"],
     },
     "apply": {
         "profile": ["date_of_birth", "category", "phone"],

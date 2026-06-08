@@ -26,6 +26,7 @@ export const profileSchema = z.object({
   willing_to_relocate: z.boolean().optional(),
   study_mode: z.string().optional(),
   weekly_hours_goal: z.union([z.string(), z.number()]).optional(),
+  target_exam: z.string().optional(),
 }).superRefine((v, ctx) => {
   if (v.date_of_birth && !validateDOBRange(v.date_of_birth)) ctx.addIssue({ code: 'custom', path: ['date_of_birth'], message: 'Date of birth is out of range' });
   try { parseYear(v.qualification_year); } catch { ctx.addIssue({ code: 'custom', path: ['qualification_year'], message: 'Qualification year is invalid' }); }

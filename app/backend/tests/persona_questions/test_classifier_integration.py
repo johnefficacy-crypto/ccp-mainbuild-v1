@@ -13,7 +13,6 @@ def _signals(**overrides):
         "preferred_states_count": 0,
         "weekly_hours_goal": None,
         "study_mode": None,
-        "target_exam_year": None,
         "task_completion_rate_14d": None,
         "missed_task_count_14d": 0,
         "skipped_task_count_14d": 0,

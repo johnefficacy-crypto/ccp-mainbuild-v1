@@ -24,6 +24,7 @@ export const onboardingSchema = z.object({
   willing_to_relocate: z.boolean().default(true),
   study_mode: z.string().optional(),
   weekly_hours_goal: z.union([z.string(), z.number()]).optional(),
+  target_exam: z.string().optional(),
 }).superRefine((v, ctx) => {
   try { parseYear(v.qualification_year); } catch { ctx.addIssue({ code: 'custom', path: ['qualification_year'], message: 'Passing year is invalid' }); }
   if (v.marks_type === 'percentage' && parseOptionalNumber(v.percentage) == null) ctx.addIssue({ code: 'custom', path: ['percentage'], message: 'Percentage is required' });
@@ -54,5 +55,6 @@ export function toOnboardingPayload(formValues) {
     willing_to_relocate: v.willing_to_relocate,
     study_mode: v.study_mode || undefined,
     weekly_hours_goal: parseOptionalNumber(v.weekly_hours_goal),
+    target_exam: v.target_exam || undefined,
   };
 }

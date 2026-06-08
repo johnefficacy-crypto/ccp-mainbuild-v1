@@ -45,6 +45,7 @@ const FIELD_TO_SECTION = {
   willing_to_relocate: "preference",
   study_mode: "study-rhythm",
   weekly_hours_goal: "study-rhythm",
+  target_exam: "study-rhythm",
 };
 
 const ELIGIBILITY_PROFILES = ["identity_profile", "education_profile"];
