@@ -429,9 +429,19 @@ const NULLABLE_ON_EDIT = {
 // These fields are still shown in the create form (backend overrides them
 // on insert); the edit path skips them entirely.
 const EDIT_EXCLUDED_FIELDS = {
-  // trust_status on pyq_sources is forced to 'pending' on create and is
-  // moved only by the trust pipeline — not via CMS edit.
-  "pyq-sources": new Set(["trust_status"]),
+  // slug is the bulk-import upsert key for subjects (upsert_on="slug" in
+  // _IMPORT_CONFIG). Editing it would turn a re-import into a duplicate insert
+  // instead of an idempotent update, and breaks any slug-keyed references.
+  subjects: new Set(["slug"]),
+  // slug is part of the compound upsert key for topics
+  // (upsert_on="subject_id,parent_topic_id,slug"). Same risk as subjects.
+  // level/subject_id/parent_topic_id stay editable for legitimate re-parenting.
+  topics: new Set(["slug"]),
+  // trust_status is pipeline-owned (forced to 'pending' on create, promoted
+  // only by the trust pipeline — not via CMS edit).
+  // source_id is the external dedup key — same risk class as slug.
+  // exam_id stays editable for re-filing a mis-imported source to the right exam.
+  "pyq-sources": new Set(["trust_status", "source_id"]),
 };
 
 // Helper copy shown under specific date fields. exam_start is the Study OS

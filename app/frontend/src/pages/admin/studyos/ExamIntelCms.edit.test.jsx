@@ -46,6 +46,7 @@ const mockListRows = {
     {
       id: "src-11111111", exam_id: "exam-11111111", source_type: "official",
       title: "Official 2024 Paper", source_url: null, trust_status: "pending",
+      source_id: "ext-dedup-key-001",
     },
   ],
 };
@@ -353,4 +354,109 @@ test("reviewable entities (exam-topic-coverage) have no Edit button", async () =
   selectEntity("exam-topic-coverage");
   // Table renders with rows column header but no actions column.
   await waitFor(() => expect(screen.queryByText("actions")).toBeNull());
+});
+
+// ── Identity / dedup-key fencing tests ────────────────────────────────
+
+test("subjects: slug field is NOT rendered in the edit form", async () => {
+  renderWithClient();
+  selectEntity("subjects");
+  fireEvent.click(await screen.findByTestId("cms-edit-sub-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.queryByTestId("cms-edit-field-slug")).toBeNull();
+});
+
+test("subjects: PATCH does not include slug even if row has it", async () => {
+  renderWithClient();
+  selectEntity("subjects");
+  fireEvent.click(await screen.findByTestId("cms-edit-sub-11111111"));
+  await screen.findByTestId("cms-edit-form");
+
+  fireEvent.change(screen.getByTestId("cms-edit-field-name"), {
+    target: { value: "Quantitative Aptitude" },
+  });
+  fireEvent.change(screen.getByTestId("cms-edit-reason"), {
+    target: { value: "rename the subject" },
+  });
+  fireEvent.click(screen.getByTestId("cms-edit-submit"));
+
+  await waitFor(() => expect(api.patch).toHaveBeenCalled());
+  const [, body] = api.patch.mock.calls[0];
+  expect(body.payload).not.toHaveProperty("slug");
+  expect(body.payload).toEqual({ name: "Quantitative Aptitude" });
+});
+
+test("topics: slug field is NOT rendered in the edit form", async () => {
+  renderWithClient();
+  selectEntity("topics");
+  fireEvent.click(await screen.findByTestId("cms-edit-top-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.queryByTestId("cms-edit-field-slug")).toBeNull();
+});
+
+test("topics: PATCH does not include slug even if row has it", async () => {
+  renderWithClient();
+  selectEntity("topics");
+  fireEvent.click(await screen.findByTestId("cms-edit-top-11111111"));
+  await screen.findByTestId("cms-edit-form");
+
+  fireEvent.change(screen.getByTestId("cms-edit-field-name"), {
+    target: { value: "Linear Algebra" },
+  });
+  fireEvent.change(screen.getByTestId("cms-edit-reason"), {
+    target: { value: "rename topic" },
+  });
+  fireEvent.click(screen.getByTestId("cms-edit-submit"));
+
+  await waitFor(() => expect(api.patch).toHaveBeenCalled());
+  const [, body] = api.patch.mock.calls[0];
+  expect(body.payload).not.toHaveProperty("slug");
+  expect(body.payload).toEqual({ name: "Linear Algebra" });
+});
+
+test("topics: level, subject_id, parent_topic_id ARE rendered (not over-fenced)", async () => {
+  renderWithClient();
+  selectEntity("topics");
+  fireEvent.click(await screen.findByTestId("cms-edit-top-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  // level and subject_id must be present — legitimate re-parenting use case.
+  expect(screen.getByTestId("cms-edit-field-level")).toBeTruthy();
+  expect(screen.getByTestId("cms-edit-field-subject_id")).toBeTruthy();
+  expect(screen.getByTestId("cms-edit-field-parent_topic_id")).toBeTruthy();
+});
+
+test("pyq-sources: source_id field is NOT rendered in the edit form", async () => {
+  renderWithClient();
+  selectEntity("pyq-sources");
+  fireEvent.click(await screen.findByTestId("cms-edit-src-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.queryByTestId("cms-edit-field-source_id")).toBeNull();
+});
+
+test("pyq-sources: PATCH does not include source_id", async () => {
+  renderWithClient();
+  selectEntity("pyq-sources");
+  fireEvent.click(await screen.findByTestId("cms-edit-src-11111111"));
+  await screen.findByTestId("cms-edit-form");
+
+  fireEvent.change(screen.getByTestId("cms-edit-field-title"), {
+    target: { value: "Official 2024 Paper (revised)" },
+  });
+  fireEvent.change(screen.getByTestId("cms-edit-reason"), {
+    target: { value: "correct the title" },
+  });
+  fireEvent.click(screen.getByTestId("cms-edit-submit"));
+
+  await waitFor(() => expect(api.patch).toHaveBeenCalled());
+  const [, body] = api.patch.mock.calls[0];
+  expect(body.payload).not.toHaveProperty("source_id");
+  expect(body.payload).not.toHaveProperty("trust_status");
+});
+
+test("pyq-sources: exam_id IS rendered (not over-fenced)", async () => {
+  renderWithClient();
+  selectEntity("pyq-sources");
+  fireEvent.click(await screen.findByTestId("cms-edit-src-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.getByTestId("cms-edit-field-exam_id")).toBeTruthy();
 });
