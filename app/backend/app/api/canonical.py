@@ -960,7 +960,7 @@ async def profile_completion(user: dict = Depends(get_current_user)):
     out = {}
     for k, meta in checks.items():
         fields = meta["fields"]
-        missing = [f for f in fields if not assembled.get(f)]
+        missing = [f for f in fields if assembled.get(f) in (None, "")]
         out[k] = {
             "missing_fields": missing,
             "completion_pct": int(round(((len(fields) - len(missing)) / len(fields)) * 100)),

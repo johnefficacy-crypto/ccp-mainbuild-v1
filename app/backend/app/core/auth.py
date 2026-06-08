@@ -405,7 +405,7 @@ def get_optional_user(
 ) -> dict | None:
     if credentials is None or not credentials.credentials:
         return None
-    try:
-        return get_current_user(request, credentials)
-    except HTTPException:
-        return None
+    # Token was supplied — validate it. An invalid/expired token must surface
+    # as 401 so callers don't silently degrade to anonymous behaviour. Only
+    # the "no Authorization header" path should return None.
+    return get_current_user(request, credentials)

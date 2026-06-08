@@ -75,9 +75,20 @@ export function AuthProvider({ children }) {
       const { user: backendUser } = await authApi.me();
       setUser(mergeUser(session.user, backendUser));
       setStatus("backend_authed");
-    } catch {
-      setUser(mergeUser(session.user, null));
-      setStatus("session_authed");
+    } catch (err) {
+      if (err?.status === 401) {
+        // Token rejected by the backend — treat as a real auth loss and
+        // clear state so the user gets a clean login prompt.
+        lastHydratedTokenRef.current = null;
+        setUser(null);
+        setStatus("guest");
+      } else {
+        // Network error or 5xx — backend is temporarily unreachable.
+        // Retain the previous user/status rather than fabricating a role
+        // from unverified session metadata. Reset the dedup ref so the
+        // next session event retries the backend call.
+        lastHydratedTokenRef.current = null;
+      }
     }
   }, []);
 
