@@ -392,7 +392,13 @@ const ENTITY_KEYS = Object.keys(ENTITY_CONFIG);
 // Entities that expose a full PATCH route in admin_exam_intel_cms.py and so
 // can be edited from the UI. Everything else stays create-only (lifecycle
 // rows go through the review queue, not here).
-const EDITABLE_ENTITIES = new Set(["exam-families", "exams", "exam-cycles", "exam-phases"]);
+const EDITABLE_ENTITIES = new Set([
+  "exam-families", "exams", "exam-cycles", "exam-phases",
+  // Taxonomy — non-reviewable, backend update routes exist (admin_exam_intel_cms.py:1557,1673,2195).
+  "subjects", "topics",
+  // pyq-sources has a PATCH route but trust_status is pipeline-owned; edit form excludes it.
+  "pyq-sources",
+]);
 // Only these two have a DELETE (soft-delete → is_active=false) route.
 const DEACTIVATABLE_ENTITIES = new Set(["exam-families", "exams"]);
 
@@ -411,6 +417,21 @@ const NULLABLE_ON_EDIT = {
   "exam-phases": new Set([
     "exam_cycle_id", "mode", "duration_mins", "total_questions", "total_marks",
   ]),
+  // Taxonomy nullable columns (migration 029).
+  subjects: new Set(["subject_group", "default_difficulty_level", "description"]),
+  topics: new Set(["parent_topic_id", "default_difficulty_level", "description"]),
+  // pyq_sources nullable columns (migration 032); exam_id is required.
+  "pyq-sources": new Set(["source_id", "source_type", "source_url", "title", "metadata"]),
+};
+
+// Fields present in ENTITY_CONFIG but excluded from the edit form because
+// the backend owns them (pipeline-managed) and direct mutation is unsafe.
+// These fields are still shown in the create form (backend overrides them
+// on insert); the edit path skips them entirely.
+const EDIT_EXCLUDED_FIELDS = {
+  // trust_status on pyq_sources is forced to 'pending' on create and is
+  // moved only by the trust pipeline — not via CMS edit.
+  "pyq-sources": new Set(["trust_status"]),
 };
 
 // Helper copy shown under specific date fields. exam_start is the Study OS
@@ -749,9 +770,10 @@ export default function AdminExamIntelCms() {
     // Diff against the original row: only keys the admin actually changed are
     // submitted. uiOnly (cascade-only) and readonly (server-derived) fields are
     // never sent.
+    const editExcluded = EDIT_EXCLUDED_FIELDS[entity] || new Set();
     const patch = {};
     for (const f of cfg.fields) {
-      if (f.uiOnly || f.type === "readonly") continue;
+      if (f.uiOnly || f.type === "readonly" || editExcluded.has(f.key)) continue;
       let parsed;
       try {
         parsed = parseValue(f, editValues[f.key]);
@@ -1015,7 +1037,7 @@ export default function AdminExamIntelCms() {
             row-version check, so the most recent save wins if two admins edit the same row.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {cfg.fields.map((f) => (
+            {cfg.fields.filter((f) => !EDIT_EXCLUDED_FIELDS[entity]?.has(f.key)).map((f) => (
               <label key={f.key} className="block">
                 <span className="block text-xs text-muted-foreground mb-1">
                   {f.label}{f.required ? <span className="text-red-700"> *</span> : null}
