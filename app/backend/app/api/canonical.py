@@ -530,13 +530,12 @@ class ProfileUpdate(BaseModel):
     percentage: float | None = Field(default=None, ge=0, le=100)
     cgpa: float | None = Field(default=None, ge=0, le=10)
     weekly_hours_goal: int | None = Field(default=None, ge=0, le=120)
-    target_exam_year: int | None = Field(default=None, ge=2024, le=2040)
     goal_exams: list[str] | None = None
     career_stage: str | None = None
     career_goal: str | None = None
     target_type: str | None = None
     target_exam: str | None = None
-    onboarding_step: int | None = Field(default=None, ge=0, le=10)
+    onboarding_step: str | None = None
     onboarding_completed: bool | None = None
     onboarded: bool | None = None
     avatar_url: str | None = None

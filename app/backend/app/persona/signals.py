@@ -138,11 +138,6 @@ def collect_user_signals(supabase: Any, user_id: str) -> dict[str, Any]:
         except (TypeError, ValueError):
             weekly_hours_goal = None
 
-    # `target_exam_year` was a planned profile column that never landed
-    # in the schema — the older code path tried to read it and produced
-    # a 42703 every signal collection. We no longer surface it.
-    target_exam_year: int | None = None
-
     study_mode = prefs.get("study_mode") or profile.get("study_mode") or None
 
     # Study task signals — last 14 days.
@@ -259,7 +254,6 @@ def collect_user_signals(supabase: Any, user_id: str) -> dict[str, Any]:
         "preferred_states_count": _count_list(prefs.get("preferred_states")),
         "weekly_hours_goal": weekly_hours_goal,
         "study_mode": study_mode,
-        "target_exam_year": target_exam_year,
         "task_completion_rate_14d": completion_rate,
         "missed_task_count_14d": missed,
         "skipped_task_count_14d": skipped,
@@ -413,7 +407,6 @@ def _empty_signals() -> dict[str, Any]:
         "preferred_states_count": 0,
         "weekly_hours_goal": None,
         "study_mode": None,
-        "target_exam_year": None,
         "task_completion_rate_14d": None,
         "missed_task_count_14d": 0,
         "skipped_task_count_14d": 0,

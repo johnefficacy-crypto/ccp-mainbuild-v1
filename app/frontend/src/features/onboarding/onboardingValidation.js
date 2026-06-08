@@ -26,7 +26,6 @@ export function validateStep(stepId, form) {
 
   if (stepId === "study") {
     if (form.weekly_hours_goal !== "" && Number(form.weekly_hours_goal) <= 0) errors.weekly_hours_goal = "Weekly hours goal must be a positive number.";
-    if (form.target_exam_year !== "" && Number(form.target_exam_year) < year) errors.target_exam_year = `Target exam year must be ${year} or later.`;
   }
 
   return { ok: Object.keys(errors).length === 0, errors };

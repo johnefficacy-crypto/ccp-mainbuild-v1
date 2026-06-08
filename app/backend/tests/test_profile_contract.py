@@ -90,7 +90,7 @@ class _SB:
                     "target_exam": None,
                     "career_stage": None,
                     "career_goal": None,
-                    "onboarding_step": 0,
+                    "onboarding_step": None,
                     "onboarding_completed": False,
                     "is_admin": False,
                     "plan_id": "free",
@@ -302,12 +302,55 @@ def test_profile_completion_detects_missing_education(monkeypatch):
     assert "why_it_matters" in out["education_profile"]
 
 
-def test_unsupported_fields_do_not_break_profile_update(monkeypatch):
+def test_empty_patch_does_not_mutate_profile(monkeypatch):
+    """PUT /profile/me with no meaningful fields is a no-op."""
     sb = _SB()
     monkeypatch.setattr(canonical, "get_supabase_admin", lambda: sb)
-    body = canonical.ProfileUpdate(target_exam_year=2028)
+    body = canonical.ProfileUpdate()
 
     out = asyncio.run(canonical.update_profile(body=body, user=_user()))
 
     assert out["id"] == "u1"
     assert sb.db["profiles"][0]["full_name"] == "Old Name"
+
+
+def test_onboarding_step_accepts_string_values(monkeypatch):
+    """ProfileUpdate.onboarding_step must accept string question_keys and 'deferred'."""
+    sb = _SB()
+    monkeypatch.setattr(canonical, "get_supabase_admin", lambda: sb)
+
+    for value in ("deferred", "intro_dob", "career_goal_q1"):
+        body = canonical.ProfileUpdate(onboarding_step=value)
+        assert body.onboarding_step == value, f"Expected {value!r}, got {body.onboarding_step!r}"
+
+    out = asyncio.run(canonical.update_profile(
+        body=canonical.ProfileUpdate(onboarding_step="deferred"),
+        user=_user(),
+    ))
+    assert sb.db["profiles"][0]["onboarding_step"] == "deferred"
+    assert out["profile"]["onboarding_step"] == "deferred"
+
+
+def test_phone_persists_via_profile_update(monkeypatch):
+    """PUT /profile/me with phone must write phone to profiles.phone."""
+    sb = _SB()
+    monkeypatch.setattr(canonical, "get_supabase_admin", lambda: sb)
+    body = canonical.ProfileUpdate(phone="9876543210")
+
+    out = asyncio.run(canonical.update_profile(body=body, user=_user()))
+
+    assert sb.db["profiles"][0]["phone"] == "9876543210"
+    assert out["profile"]["phone"] == "9876543210"
+
+
+def test_dob_write_goes_to_date_of_birth_not_dob(monkeypatch):
+    """dob input must be translated to date_of_birth; profiles.dob column must not be written."""
+    sb = _SB()
+    monkeypatch.setattr(canonical, "get_supabase_admin", lambda: sb)
+    body = canonical.ProfileUpdate(dob="1990-05-15")
+
+    asyncio.run(canonical.update_profile(body=body, user=_user()))
+
+    profile_row = sb.db["profiles"][0]
+    assert profile_row["date_of_birth"] == "1990-05-15"
+    assert "dob" not in profile_row or profile_row.get("dob") is None

@@ -27,8 +27,14 @@ jest.mock("../features/profile/hooks/useMyPersona", () => ({
   default: () => ({ snapshot: null, loading: false, error: null }),
 }));
 
+import { api } from "../lib/api";
 import useProfileData from "../features/profile/hooks/useProfileData";
 import Profile from "./Profile";
+
+beforeEach(() => {
+  // Default: api.get resolves to empty-items so useExamOptions doesn't crash.
+  api.get.mockResolvedValue({ items: [] });
+});
 
 function setProfileState(overrides) {
   useProfileData.mockReturnValue({

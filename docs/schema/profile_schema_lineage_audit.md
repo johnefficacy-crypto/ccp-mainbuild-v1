@@ -24,7 +24,7 @@ The requested reference files (`types/onboarding.ts`, `types/aspirant.types.ts`,
 - **Normalized aspirant model** already present in live schema (`aspirant_education`, `aspirant_certifications`, `aspirant_experience`, `aspirant_preferences`, etc.).
 
 ### Highest-risk drift
-1. **Frontend writes fields not represented in backend `ProfileUpdate` or `_PROFILE_COLS`** (`qualification`, `percentage`, `target_exam_year`, `onboarded`). These are sent in onboarding/profile PUTs but are not canonical in live schema usage.
+1. **Frontend writes fields not represented in backend `ProfileUpdate` or `_PROFILE_COLS`** (`qualification`, `percentage`, `onboarded`). These are sent in onboarding/profile PUTs but are not canonical in live schema usage.
 2. **DOB duplication** (`dob` and `date_of_birth`) exists in live schema and backend uses both; completion checker only requires `date_of_birth`, while eligibility engine reads `dob || date_of_birth`.
 3. **Exam attempts table mismatch**:
    - Live schema lists `aspirant_exam_attempts`.
