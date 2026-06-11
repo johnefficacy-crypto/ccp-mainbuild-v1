@@ -70,7 +70,12 @@ def _resolve(sb_data, *, today=TODAY, manual_phase_id=None):
 # ---------------------------------------------------------------------------
 
 def test_case01_manual_future_active_phase_wins():
-    """manual_phase_id pointing to a valid future active phase returns connected/manual_phase."""
+    """Future manual phase: target_date = phase_start (not phase_end).
+
+    phase_start=2026-09-01, phase_end=2026-10-31, today=2026-06-11.
+    The phase has not started yet so it is a future manual selection;
+    the contract says target = phase_start so users count down to kick-off.
+    """
     ph = _phase("ph-1", status="active", phase_start="2026-09-01", phase_end="2026-10-31")
     out = _resolve(
         {"exam_cycles": [_cycle()], "exam_phases": [ph]},
@@ -80,9 +85,9 @@ def test_case01_manual_future_active_phase_wins():
     assert out["reason"] == "manual_phase"
     assert out["target_kind"] == "phase"
     assert out["target_phase_id"] == "ph-1"
-    # target_date = phase_end when present
-    assert out["target_date"] == "2026-10-31"
-    assert out["days_remaining"] == (date(2026, 10, 31) - TODAY).days
+    # Future manual → target_date = phase_start, not phase_end
+    assert out["target_date"] == "2026-09-01"
+    assert out["days_remaining"] == (date(2026, 9, 1) - TODAY).days
 
 
 # ---------------------------------------------------------------------------

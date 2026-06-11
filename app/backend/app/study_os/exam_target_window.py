@@ -72,6 +72,9 @@ def resolve_exam_target_window(sb, *, exam_id, manual_phase_id=None, today=None)
     if manual_phase_id is not None:
         manual = next((p for p in cycle_phases if p["id"] == manual_phase_id), None)
         if manual is not None and _is_valid(manual, today_str):
+            # Current/open manual phase → target the end; future manual phase → target the start
+            manual_is_current = _find_current([manual], today_str) is not None
+            target_date = manual.get("phase_end") if manual_is_current else manual.get("phase_start")
             return _make(
                 status="connected",
                 reason="manual_phase",
@@ -80,7 +83,7 @@ def resolve_exam_target_window(sb, *, exam_id, manual_phase_id=None, today=None)
                 cycle_id=cycle_id,
                 cycle_name=cycle_name,
                 phase=manual,
-                target_date=manual.get("phase_end"),
+                target_date=target_date,
                 today=today,
                 diagnostics=diagnostics or None,
             )
@@ -118,9 +121,9 @@ def resolve_exam_target_window(sb, *, exam_id, manual_phase_id=None, today=None)
             diagnostics=diagnostics or None,
         )
 
-    # 4. cycle exam_start in the future
+    # 4. cycle exam_start today or in the future (exam-day counts as connected, 0 days remaining)
     cycle_exam_start = chosen_cycle.get("exam_start")
-    if cycle_exam_start is not None and cycle_exam_start > today_str:
+    if cycle_exam_start is not None and cycle_exam_start >= today_str:
         return _make(
             status="connected",
             reason="cycle_exam_start",
@@ -180,7 +183,9 @@ def _pick_cycle(non_cancelled: list[dict], today_str: str) -> dict | None:
     if expected_future:
         return expected_future[0]
 
-    # 4. most-recent non-cancelled by exam_start desc, then created_at desc
+    # 4. most-recent non-cancelled by exam_start desc, then created_at desc.
+    # Mixing date (YYYY-MM-DD) and timestamptz in one key is coherent only because
+    # a date string is a prefix of its timestamp — fragile same-day, acceptable fallback.
     return sorted(
         non_cancelled,
         key=lambda c: c.get("exam_start") or c.get("created_at") or "",
