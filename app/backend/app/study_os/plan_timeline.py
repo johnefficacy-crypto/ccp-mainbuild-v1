@@ -26,6 +26,7 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
+from app.study_os.exam_target_window import resolve_exam_target_window
 from app.study_os.planner import (  # type: ignore
     _load_locked_coverage,
     _load_user_signals,
@@ -588,6 +589,10 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
     phases = _load_phases(supabase, exam_id, cycle_id) if exam_id else []
     primary_phase = next((p for p in phases if p.get("status") in {None, "active"}), phases[0] if phases else None)
     today = _today()
+    resolver_result = (
+        resolve_exam_target_window(supabase, exam_id=exam_id, manual_phase_id=None, today=today)
+        if exam_id else None
+    )
 
     plan = _load_active_plan(supabase, user_id)
     plan_id = plan.get("id") if plan else None
@@ -599,9 +604,9 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
 
     version_row = _latest_plan_version(supabase, plan_id)
 
-    # Even when there's no plan or no exam_start, we still want to surface
-    # the exam_context + an empty payload rather than a hard 404.
-    if not plan and not exam_start:
+    # Even when there's no plan or the resolver has no target, we still want
+    # to surface the exam_context + an empty payload rather than a hard 404.
+    if not plan and (not resolver_result or resolver_result["status"] == "not_connected"):
         empty = _empty_payload({
             "exam_context": {
                 "exam_id": exam_id,
@@ -609,8 +614,14 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
                 "cycle": cycle.get("cycle_name") if cycle else None,
                 "phase": primary_phase.get("phase_name") if primary_phase else None,
                 "exam_start": _iso(exam_start),
-                "days_remaining": None,
+                "days_remaining": resolver_result["days_remaining"] if resolver_result else None,
                 "trust_status": "preview",
+                "target_date": resolver_result["target_date"] if resolver_result else None,
+                "target_kind": resolver_result["target_kind"] if resolver_result else None,
+                "target_phase_id": resolver_result["target_phase_id"] if resolver_result else None,
+                "target_phase_slug": resolver_result["target_phase_slug"] if resolver_result else None,
+                "target_phase_name": resolver_result["target_phase_name"] if resolver_result else None,
+                "diagnostic": resolver_result["diagnostic"] if resolver_result else None,
             },
         })
         empty["risk_flags"] = _build_risk_flags(
@@ -651,7 +662,7 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
     actual_progress_pct = _pct(completed_units, total_units) if total_units else 0
     gap_pct = planned_progress_pct - actual_progress_pct
 
-    if not exam_start:
+    if not resolver_result or resolver_result["status"] == "not_connected":
         status = "not_connected"
     elif gap_pct >= 10:
         status = "behind"
@@ -715,9 +726,17 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
             "exam_name": exam_name,
             "cycle": cycle.get("cycle_name") if cycle else None,
             "phase": primary_phase.get("phase_name") if primary_phase else None,
+            # exam_start: compat alias — frontend still reads this; resolver is the
+            # authoritative target source via target_date below.
             "exam_start": _iso(exam_start),
-            "days_remaining": (exam_start - today).days if exam_start else None,
-            "trust_status": "locked" if exam_start else "preview",
+            "days_remaining": resolver_result["days_remaining"] if resolver_result else None,
+            "trust_status": "locked" if (resolver_result and resolver_result["status"] == "connected") else "preview",
+            "target_date": resolver_result["target_date"] if resolver_result else None,
+            "target_kind": resolver_result["target_kind"] if resolver_result else None,
+            "target_phase_id": resolver_result["target_phase_id"] if resolver_result else None,
+            "target_phase_slug": resolver_result["target_phase_slug"] if resolver_result else None,
+            "target_phase_name": resolver_result["target_phase_name"] if resolver_result else None,
+            "diagnostic": resolver_result["diagnostic"] if resolver_result else None,
         },
         "plan_context": {
             "plan_id": plan_id,
