@@ -220,26 +220,71 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
     return out
 
 
+_Q_STRIP_RE = re.compile(r'[`,()"\\]')
+
+
+def _sanitize_q(raw: str) -> str:
+    """Strip PostgREST structural chars and escape SQL wildcard chars."""
+    q = _Q_STRIP_RE.sub("", raw).strip()
+    q = q.replace("%", r"\%").replace("_", r"\_")
+    return q
+
+
 # ─── 2. Exam list with verified/pending counts ────────────────────────────
 @router.get("/exams")
 def list_exams(
     limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    q: str | None = Query(None),
+    exam_type: str | None = Query(None),
+    is_active: bool | None = Query(None),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     sb = get_supabase_admin()
-    exams = _safe(
+
+    def _filtered(cols: str, count: str | None = None):
+        kw = {"count": count} if count else {}
+        qb = sb.table("exams").select(cols, **kw)
+        q_trimmed = _sanitize_q(q or "")
+        if q_trimmed:
+            qb = qb.or_(f"name.ilike.%{q_trimmed}%,slug.ilike.%{q_trimmed}%")
+        if exam_type is not None:
+            qb = qb.eq("exam_type", exam_type)
+        if is_active is not None:
+            qb = qb.eq("is_active", is_active)
+        return qb
+
+    resp = _safe(
         lambda: (
-            sb.table("exams")
-            .select("id, slug, name, exam_type, is_active, exam_family_id")
+            _filtered("id, slug, name, exam_type, is_active, exam_family_id", count="exact")
             .order("name")
-            .limit(limit)
+            .range(offset, offset + limit - 1)
             .execute()
-            .data
         ),
-        default=[],
-    ) or []
+        default=None,
+    )
+
+    if resp is None:
+        return {"items": [], "count": 0, "total_count": 0, "limit": limit, "offset": offset, "has_next": False}
+
+    if hasattr(resp, "count") and resp.count is not None:
+        # Production: PostgREST returns exact count header and range-sliced data.
+        total_count = resp.count
+        exams = resp.data or []
+    else:
+        # Test stub: range() and count are no-ops; emulate pagination manually.
+        total_count = len(resp.data or [])
+        exams = (resp.data or [])[offset: offset + limit]
+
     if not exams:
-        return {"items": [], "count": 0}
+        return {
+            "items": [],
+            "count": 0,
+            "total_count": total_count,
+            "limit": limit,
+            "offset": offset,
+            "has_next": False,
+        }
     exam_ids = [e["id"] for e in exams if e.get("id")]
 
     syllabus = _safe(
@@ -321,7 +366,14 @@ def list_exams(
                 "readiness_level": readiness_level,
             }
         )
-    return {"items": items, "count": len(items)}
+    return {
+        "items": items,
+        "count": len(items),
+        "total_count": total_count,
+        "limit": limit,
+        "offset": offset,
+        "has_next": offset + len(items) < total_count,
+    }
 
 
 # ─── 3. Items for a specific exam (filtered by reviewer_status) ───────────

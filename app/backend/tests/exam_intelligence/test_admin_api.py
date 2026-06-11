@@ -816,3 +816,317 @@ def test_options_repetitions_uses_hash_when_present():
     # Four canonical groups, each still at count 4 — the variants merged.
     assert body["total_groups"] == 4
     assert all(g["occurrence_count"] == 4 for g in body["groups"])
+
+
+# ─── list_exams pagination + filters (new) ───────────────────────────────────
+
+
+def _paginated_seed():
+    """Three exams across two types/active states for filter/pagination tests."""
+    return {
+        "exams": [
+            {"id": "e1", "slug": "ssc-cgl", "name": "SSC CGL",
+             "exam_type": "recruitment", "is_active": True, "exam_family_id": None},
+            {"id": "e2", "slug": "ibps-po", "name": "IBPS PO",
+             "exam_type": "recruitment", "is_active": False, "exam_family_id": None},
+            {"id": "e3", "slug": "upsc-cse", "name": "UPSC CSE",
+             "exam_type": "entrance", "is_active": True, "exam_family_id": None},
+        ],
+        "syllabus_topic_mentions": [],
+        "exam_topic_coverage": [],
+    }
+
+
+# ── q filter ────────────────────────────────────────────────────────────────
+
+def test_list_exams_q_present_fires_or_filter():
+    """When q is non-empty the query must include an or_ ilike on name+slug."""
+    sb = SBStub(_paginated_seed())
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_or = q_obj.or_
+
+        def _capture(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return original_or(expr, **kw)
+
+        q_obj.or_ = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?q=ssc")
+    assert r.status_code == 200
+    assert fired_or, "or_ was not called on the exams table when q is present"
+    assert any("name.ilike" in expr and "slug.ilike" in expr for expr in fired_or), (
+        f"or_ expression missing name/slug ilike: {fired_or}"
+    )
+
+
+def test_list_exams_q_absent_no_or_filter():
+    """When q is absent the query must NOT include an or_ ilike."""
+    sb = SBStub(_paginated_seed())
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_or = q_obj.or_
+
+        def _capture(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return original_or(expr, **kw)
+
+        q_obj.or_ = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams")
+    assert r.status_code == 200
+    assert not fired_or, f"or_ should not be called when q is absent; got: {fired_or}"
+
+
+def test_list_exams_q_whitespace_only_no_or_filter():
+    """Whitespace-only q must not trigger or_ (mirrors canonical.py q.strip() precedent)."""
+    sb = SBStub(_paginated_seed())
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_or = q_obj.or_
+
+        def _capture(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return original_or(expr, **kw)
+
+        q_obj.or_ = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?q=   ")
+    assert r.status_code == 200
+    assert not fired_or, "Whitespace-only q must not trigger or_"
+
+
+# ── exam_type filter ─────────────────────────────────────────────────────────
+
+def test_list_exams_exam_type_filter_applies_eq():
+    """exam_type filter must restrict results to matching rows."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?exam_type=entrance")
+    assert r.status_code == 200
+    body = r.json()
+    assert all(e["exam_type"] == "entrance" for e in body["items"]), body["items"]
+    assert body["total_count"] == 1
+
+
+def test_list_exams_exam_type_absent_returns_all():
+    """Absent exam_type must not filter anything."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams")
+    assert r.status_code == 200
+    assert r.json()["total_count"] == 3
+
+
+# ── is_active filter ─────────────────────────────────────────────────────────
+
+def test_list_exams_is_active_true_filters_correctly():
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?is_active=true")
+    assert r.status_code == 200
+    body = r.json()
+    assert all(e["is_active"] is True for e in body["items"]), body["items"]
+    assert body["total_count"] == 2
+
+
+def test_list_exams_is_active_false_filters_correctly():
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?is_active=false")
+    assert r.status_code == 200
+    body = r.json()
+    assert all(e["is_active"] is False for e in body["items"]), body["items"]
+    assert body["total_count"] == 1
+
+
+def test_list_exams_is_active_absent_returns_all():
+    """Absent is_active means all rows — not just active ones."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams")
+    assert r.status_code == 200
+    assert r.json()["total_count"] == 3
+
+
+# ── offset / limit / has_next ────────────────────────────────────────────────
+
+def test_list_exams_offset_limit_in_response():
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=2&offset=0")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["limit"] == 2
+    assert body["offset"] == 0
+    assert body["total_count"] == 3
+    assert body["count"] <= 2
+    assert body["has_next"] is True
+
+
+def test_list_exams_last_page_has_next_false():
+    """On the final page has_next must be False."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    # All 3 rows fit in limit=10; offset=0 → last (and only) page.
+    r = client.get("/api/admin/exam-intelligence/exams?limit=10&offset=0")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["has_next"] is False
+    assert body["total_count"] == 3
+
+
+def test_list_exams_total_count_reflects_filtered_set():
+    """total_count must be the filtered count, not the whole-table count."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?exam_type=entrance&limit=1&offset=0")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_count"] == 1
+    assert body["has_next"] is False
+
+
+# ── readiness still present on paginated rows ────────────────────────────────
+
+def test_list_exams_paginated_rows_carry_readiness():
+    """Every returned row must carry readiness_level regardless of pagination."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=2&offset=0")
+    assert r.status_code == 200
+    for item in r.json()["items"]:
+        assert "readiness_level" in item, f"missing readiness_level on {item.get('slug')}"
+        assert item["readiness_level"] in {"ready", "partial", "not_ready"}
+
+
+# ── range() called with correct args ────────────────────────────────────────
+
+def test_list_exams_range_args_recorded():
+    """range(offset, offset+limit-1) must be called on the exams query."""
+    sb = SBStub(_paginated_seed())
+    range_calls: list[tuple] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_range = q_obj.range
+
+        def _capture(*args, **kw):
+            if name == "exams":
+                range_calls.append(args)
+            return original_range(*args, **kw)
+
+        q_obj.range = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=2&offset=4")
+    assert r.status_code == 200
+    assert range_calls, "range() was not called on the exams table"
+    assert range_calls[0] == (4, 5), f"Expected range(4, 5), got {range_calls[0]}"
+
+
+# ── 12-row seed, total_count uncapped ───────────────────────────────────────
+
+def _large_seed(n: int = 12):
+    """Seed with n exams so total_count exceeds a small page size."""
+    exams = [
+        {"id": f"ex{i}", "slug": f"exam-{i}", "name": f"Exam {i:02d}",
+         "exam_type": "recruitment", "is_active": True, "exam_family_id": None}
+        for i in range(n)
+    ]
+    return {"exams": exams, "syllabus_topic_mentions": [], "exam_topic_coverage": []}
+
+
+def test_list_exams_total_count_uncapped():
+    """total_count must equal the full filtered count, not a page-size cap."""
+    sb = SBStub(_large_seed(12))
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=5&offset=0")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_count"] == 12
+    assert body["count"] == 5
+    assert body["has_next"] is True
+
+
+def test_list_exams_second_page():
+    """Second page returns the correct slice and has_next based on total."""
+    sb = SBStub(_large_seed(12))
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=5&offset=5")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_count"] == 12
+    assert body["count"] == 5
+    assert body["has_next"] is True
+
+
+def test_list_exams_last_page_partial():
+    """Last (partial) page has has_next=False and count < limit."""
+    sb = SBStub(_large_seed(12))
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=5&offset=10")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_count"] == 12
+    assert body["count"] == 2
+    assert body["has_next"] is False
+
+
+# ── q sanitization ──────────────────────────────────────────────────────────
+
+def test_list_exams_q_strips_structural_chars():
+    """PostgREST structural chars in q must be stripped before building or_()."""
+    sb = SBStub(_paginated_seed())
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_or = q_obj.or_
+
+        def _capture(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return original_or(expr, **kw)
+
+        q_obj.or_ = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    # Injection attempt: comma and parens are structural in PostgREST or_() expressions.
+    r = client.get("/api/admin/exam-intelligence/exams?q=ssc,(cgl)")
+    assert r.status_code == 200
+    assert fired_or, "or_ should still fire (sanitized q is non-empty after stripping)"
+    expr = fired_or[0]
+    assert "," not in expr.split("ilike.%")[1].split("%")[0], (
+        f"Structural comma leaked into ilike value: {expr}"
+    )
+    assert "(" not in expr and ")" not in expr or expr.count("(") <= 2, (
+        "Parens from user input leaked into or_() expression"
+    )

@@ -8,15 +8,29 @@ const READINESS_STATUS = {
   not_ready: "missing",
 };
 
-export default function ExamListTable({ items }) {
+export default function ExamListTable({
+  items,
+  page = 0,
+  pageSize = 25,
+  total_count = 0,
+  has_next = false,
+  offset = 0,
+  onPageChange,
+}) {
   const rows = Array.isArray(items) ? items : [];
-  if (!rows.length) {
+
+  const hasPrev = page > 0;
+  const rangeStart = total_count === 0 ? 0 : offset + 1;
+  const rangeEnd = Math.max(rangeStart, offset + rows.length);
+
+  if (!rows.length && page === 0) {
     return (
       <div className="soft-card grain relative overflow-hidden rounded-[18px] p-5 text-sm text-clay-700">
         No exams registered yet.
       </div>
     );
   }
+
   return (
     <div className="soft-card grain relative overflow-hidden rounded-[18px]">
       <table className="tbl" data-testid="exam-intel-exam-table">
@@ -65,6 +79,39 @@ export default function ExamListTable({ items }) {
           ))}
         </tbody>
       </table>
+
+      <div
+        className="flex items-center justify-between px-4 py-2 border-t border-[#E7DECB] text-xs text-clay-700"
+        data-testid="exam-intel-pagination"
+      >
+        <span data-testid="exam-intel-range">
+          {total_count === 0
+            ? "No results"
+            : `${rangeStart}–${rangeEnd} of ${total_count}`}
+        </span>
+        <span className="flex gap-2">
+          <button
+            type="button"
+            disabled={!hasPrev}
+            onClick={() => onPageChange?.(page - 1)}
+            className="btn btn-ghost text-xs disabled:opacity-40"
+            data-testid="exam-intel-prev"
+            aria-label="Previous page"
+          >
+            ← Prev
+          </button>
+          <button
+            type="button"
+            disabled={!has_next}
+            onClick={() => onPageChange?.(page + 1)}
+            className="btn btn-ghost text-xs disabled:opacity-40"
+            data-testid="exam-intel-next"
+            aria-label="Next page"
+          >
+            Next →
+          </button>
+        </span>
+      </div>
     </div>
   );
 }

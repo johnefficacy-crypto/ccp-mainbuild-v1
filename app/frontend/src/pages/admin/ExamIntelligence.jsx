@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useReducer, useRef } from "react";
 import { Link } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
 import { api } from "../../lib/api";
@@ -6,6 +6,21 @@ import ExamIntelligenceOverviewCards from "../../features/admin/exam-intelligenc
 import ExamListTable from "../../features/admin/exam-intelligence/ExamListTable";
 import { AdminSafetyBanner } from "../../shared/ui/core";
 import { PageHeader, StatusDot } from "../../shared/ui/studyos";
+
+const EXAM_TYPES = ["recruitment", "entrance", "certification", "opportunity", "other"];
+
+const INITIAL_FILTERS = { search: "", examType: "", isActive: "", page: 0 };
+
+function filtersReducer(state, action) {
+  switch (action.type) {
+    case "SET_FILTER":
+      return { ...state, [action.key]: action.value, page: 0 };
+    case "SET_PAGE":
+      return { ...state, page: action.page };
+    default:
+      return state;
+  }
+}
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -17,14 +32,23 @@ const TAB_HELPER_COPY = {
   exams: "Exams visible to users come from this list.",
 };
 
+const PAGE_SIZE = 25;
+
 export default function AdminExamIntelligence() {
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = React.useState("overview");
 
-  const [overview, setOverview] = useState(null);
-  const [overviewError, setOverviewError] = useState("");
+  const [overview, setOverview] = React.useState(null);
+  const [overviewError, setOverviewError] = React.useState("");
 
-  const [exams, setExams] = useState({ items: [], count: 0 });
-  const [examsLoading, setExamsLoading] = useState(false);
+  const [exams, setExams] = React.useState({ items: [], count: 0, total_count: 0, has_next: false, limit: PAGE_SIZE, offset: 0 });
+  const [examsStatus, setExamsStatus] = React.useState("idle"); // idle | loading | data | empty | error
+  const [examsError, setExamsError] = React.useState("");
+
+  const [filters, dispatch] = useReducer(filtersReducer, INITIAL_FILTERS);
+  const { search, examType: examTypeFilter, isActive: isActiveFilter, page } = filters;
+
+  // Monotonic sequence to discard stale API responses.
+  const seqRef = useRef(0);
 
   const loadOverview = useCallback(async () => {
     setOverviewError("");
@@ -36,22 +60,49 @@ export default function AdminExamIntelligence() {
     }
   }, []);
 
-  const loadExams = useCallback(async () => {
-    setExamsLoading(true);
+  const loadExams = useCallback(async (f) => {
+    const { search: q, examType: et, isActive: ia, page: pg } = f;
+    const offset = pg * PAGE_SIZE;
+    const qs = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
+    if (q.trim()) qs.set("q", q.trim());
+    if (et) qs.set("exam_type", et);
+    if (ia === "true") qs.set("is_active", "true");
+    else if (ia === "false") qs.set("is_active", "false");
+
+    const mySeq = ++seqRef.current;
+    setExamsStatus("loading");
+    setExamsError("");
     try {
-      const d = await api.get("/api/admin/exam-intelligence/exams?limit=200");
-      setExams({ items: d?.items || [], count: d?.count || 0 });
-    } catch {
-      setExams({ items: [], count: 0 });
-    } finally {
-      setExamsLoading(false);
+      const d = await api.get(`/api/admin/exam-intelligence/exams?${qs}`);
+      if (mySeq !== seqRef.current) return;
+      const items = d?.items || [];
+      setExams({
+        items,
+        count: d?.count ?? items.length,
+        total_count: d?.total_count ?? items.length,
+        has_next: d?.has_next ?? false,
+        limit: d?.limit ?? PAGE_SIZE,
+        offset: d?.offset ?? offset,
+      });
+      setExamsStatus(items.length ? "data" : "empty");
+    } catch (e) {
+      if (mySeq !== seqRef.current) return;
+      setExamsError(e?.message || "Could not load exams");
+      setExamsStatus("error");
     }
   }, []);
 
   useEffect(() => {
     if (tab === "overview") loadOverview();
-    if (tab === "exams") loadExams();
-  }, [tab, loadOverview, loadExams]);
+  }, [tab, loadOverview]);
+
+  useEffect(() => {
+    if (tab === "exams") loadExams(filters);
+  }, [tab, filters, loadExams]);
+
+  const handlePageChange = useCallback((next) => dispatch({ type: "SET_PAGE", page: next }), []);
+
+  const isLoading = examsStatus === "loading";
 
   return (
     <div className="space-y-6" data-testid="admin-exam-intelligence-page">
@@ -138,18 +189,87 @@ export default function AdminExamIntelligence() {
 
       {tab === "exams" ? (
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              {exams.count} exam{exams.count === 1 ? "" : "s"} registered.
-            </p>
-            <button type="button" onClick={loadExams} className="btn btn-ghost text-xs">
-              {examsLoading ? "Loading…" : "Refresh"}
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="search"
+              placeholder="Search name or slug…"
+              value={search}
+              onChange={(e) => dispatch({ type: "SET_FILTER", key: "search", value: e.target.value })}
+              className="input input-sm w-48"
+              data-testid="exam-intel-search"
+              aria-label="Search exams"
+            />
+            <select
+              value={examTypeFilter}
+              onChange={(e) => dispatch({ type: "SET_FILTER", key: "examType", value: e.target.value })}
+              className="select select-sm w-40"
+              data-testid="exam-intel-type-filter"
+              aria-label="Filter by exam type"
+            >
+              <option value="">All types</option>
+              {EXAM_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <select
+              value={isActiveFilter}
+              onChange={(e) => dispatch({ type: "SET_FILTER", key: "isActive", value: e.target.value })}
+              className="select select-sm w-28"
+              data-testid="exam-intel-active-filter"
+              aria-label="Filter by active status"
+            >
+              <option value="">All</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+            <div className="ml-auto flex items-center gap-2">
+              {examsStatus !== "idle" && (
+                <p className="text-xs text-muted-foreground" data-testid="exam-intel-count-label">
+                  {exams.total_count} exam{exams.total_count === 1 ? "" : "s"}
+                  {exams.total_count !== exams.count && exams.count > 0
+                    ? ` · showing ${exams.offset + 1}–${Math.max(exams.offset + 1, exams.offset + exams.count)}`
+                    : ""}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => loadExams(filters)}
+                className="btn btn-ghost text-xs"
+                data-testid="exam-intel-refresh"
+              >
+                {isLoading ? "Loading…" : "Refresh"}
+              </button>
+            </div>
           </div>
-          <ExamListTable items={exams.items} />
+
+          {examsStatus === "error" && (
+            <div
+              className="rounded-xl bg-dusk-50 text-dusk-800 text-xs px-3 py-2"
+              data-testid="exam-intel-error"
+            >
+              {examsError}
+            </div>
+          )}
+
+          {examsStatus === "loading" && (
+            <div className="text-xs text-muted-foreground py-4" data-testid="exam-intel-loading">
+              Loading…
+            </div>
+          )}
+
+          {(examsStatus === "data" || examsStatus === "empty") && (
+            <ExamListTable
+              items={exams.items}
+              page={page}
+              pageSize={PAGE_SIZE}
+              total_count={exams.total_count}
+              has_next={exams.has_next}
+              offset={exams.offset}
+              onPageChange={handlePageChange}
+            />
+          )}
         </section>
       ) : null}
     </div>
   );
 }
-
