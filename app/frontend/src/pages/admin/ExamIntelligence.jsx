@@ -226,8 +226,8 @@ export default function AdminExamIntelligence() {
               {examsStatus !== "idle" && (
                 <p className="text-xs text-muted-foreground" data-testid="exam-intel-count-label">
                   {exams.total_count} exam{exams.total_count === 1 ? "" : "s"}
-                  {exams.total_count !== exams.count
-                    ? ` · showing ${exams.offset + 1}–${exams.offset + exams.count}`
+                  {exams.total_count !== exams.count && exams.count > 0
+                    ? ` · showing ${exams.offset + 1}–${Math.max(exams.offset + 1, exams.offset + exams.count)}`
                     : ""}
                 </p>
               )}

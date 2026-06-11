@@ -262,3 +262,43 @@ test("changing a filter triggers exactly one load (no double-fetch from separate
   // Must be exactly one additional call — not two (which would happen with two separate effects).
   expect(callsAfter - callsBefore).toBe(1);
 });
+
+// ── header count label never inverted ─────────────────────────────────────
+
+test("header count label does not render inverted span when non-first page returns zero rows", async () => {
+  // First call returns page 0 with 1 item and total_count=30 (so offset branch fires).
+  // Second call (after a data change) returns page 1 with 0 items — offset=25, count=0.
+  let callCount = 0;
+  api.get.mockImplementation((url) => {
+    if (!url.includes("/exams")) return Promise.resolve(makeOverviewResponse());
+    callCount++;
+    if (callCount === 1) {
+      return Promise.resolve(makeExamsResponse({ total_count: 30, has_next: true }));
+    }
+    // Page 1 returns zero rows.
+    return Promise.resolve({
+      items: [], count: 0, total_count: 30, limit: 25, offset: 25, has_next: false,
+    });
+  });
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+
+  // Navigate to page 1 — backend returns 0 rows for that page.
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("exam-intel-next"));
+  });
+
+  await waitFor(() => {
+    const label = screen.getByTestId("exam-intel-count-label");
+    const text = label.textContent;
+    // The label must not contain an inverted "end < start" range like "26–25".
+    const match = text.match(/showing (\d+)–(\d+)/);
+    if (match) {
+      expect(Number(match[2])).toBeGreaterThanOrEqual(Number(match[1]));
+    }
+    // When count=0, the "showing X–Y" part must be absent entirely.
+    expect(text).not.toMatch(/showing \d+–\d+/);
+  });
+});
