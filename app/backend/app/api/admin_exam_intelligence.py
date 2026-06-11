@@ -238,6 +238,8 @@ def list_exams(
     q: str | None = Query(None),
     exam_type: str | None = Query(None),
     is_active: bool | None = Query(None),
+    management_mode: str | None = Query(None),
+    cadence: str | None = Query(None),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     sb = get_supabase_admin()
@@ -252,11 +254,18 @@ def list_exams(
             qb = qb.eq("exam_type", exam_type)
         if is_active is not None:
             qb = qb.eq("is_active", is_active)
+        if management_mode is not None:
+            qb = qb.eq("management_mode", management_mode)
+        else:
+            # Default: hide archive rows; show core/light/index_only/NULL.
+            qb = qb.or_("management_mode.is.null,management_mode.neq.archive")
+        if cadence is not None:
+            qb = qb.eq("cadence", cadence)
         return qb
 
     resp = _safe(
         lambda: (
-            _filtered("id, slug, name, exam_type, is_active, exam_family_id", count="exact")
+            _filtered("id, slug, name, exam_type, is_active, exam_family_id, management_mode, cadence", count="exact")
             .order("name")
             .range(offset, offset + limit - 1)
             .execute()

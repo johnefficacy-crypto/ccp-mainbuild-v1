@@ -302,3 +302,129 @@ test("header count label does not render inverted span when non-first page retur
     expect(text).not.toMatch(/showing \d+–\d+/);
   });
 });
+
+// ── PR-B1: portfolio lane filters ──────────────────────────────────────────
+
+test("selecting 'All (non-archive)' (empty value) sends no management_mode param", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+
+  // The default option value is "" — verify no management_mode in URL.
+  const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
+  const lastUrl = calls[calls.length - 1][0];
+  expect(lastUrl).not.toContain("management_mode");
+});
+
+test("selecting a specific lane sends management_mode param and resets to page 0", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+
+  // Navigate to page 1.
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("exam-intel-next"));
+  });
+
+  // Change lane filter.
+  await act(async () => {
+    fireEvent.change(screen.getByTestId("exam-intel-lane-filter"), {
+      target: { value: "core" },
+    });
+  });
+
+  await waitFor(() => {
+    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
+    const lastUrl = calls[calls.length - 1][0];
+    expect(lastUrl).toContain("management_mode=core");
+    expect(lastUrl).toContain("offset=0");
+  });
+});
+
+test("selecting archive lane sends management_mode=archive", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+
+  await act(async () => {
+    fireEvent.change(screen.getByTestId("exam-intel-lane-filter"), {
+      target: { value: "archive" },
+    });
+  });
+
+  await waitFor(() => {
+    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
+    const lastUrl = calls[calls.length - 1][0];
+    expect(lastUrl).toContain("management_mode=archive");
+  });
+});
+
+test("selecting a cadence filter sends cadence param and resets to page 0", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+
+  await act(async () => {
+    fireEvent.change(screen.getByTestId("exam-intel-cadence-filter"), {
+      target: { value: "annual" },
+    });
+  });
+
+  await waitFor(() => {
+    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
+    const lastUrl = calls[calls.length - 1][0];
+    expect(lastUrl).toContain("cadence=annual");
+    expect(lastUrl).toContain("offset=0");
+  });
+});
+
+test("lane filter change fires exactly one load (single dispatch)", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+
+  const before = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
+
+  await act(async () => {
+    fireEvent.change(screen.getByTestId("exam-intel-lane-filter"), {
+      target: { value: "light" },
+    });
+  });
+  await waitFor(() => {
+    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
+    expect(calls[calls.length - 1][0]).toContain("management_mode=light");
+  });
+
+  const after = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
+  expect(after - before).toBe(1);
+});

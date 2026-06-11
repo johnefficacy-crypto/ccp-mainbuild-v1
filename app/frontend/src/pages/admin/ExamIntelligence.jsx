@@ -8,8 +8,10 @@ import { AdminSafetyBanner } from "../../shared/ui/core";
 import { PageHeader, StatusDot } from "../../shared/ui/studyos";
 
 const EXAM_TYPES = ["recruitment", "entrance", "certification", "opportunity", "other"];
+const MANAGEMENT_MODES = ["core", "light", "index_only", "archive"];
+const CADENCES = ["annual", "recurring", "irregular", "one_off", "unknown"];
 
-const INITIAL_FILTERS = { search: "", examType: "", isActive: "", page: 0 };
+const INITIAL_FILTERS = { search: "", examType: "", isActive: "", managementMode: "", cadence: "", page: 0 };
 
 function filtersReducer(state, action) {
   switch (action.type) {
@@ -61,13 +63,15 @@ export default function AdminExamIntelligence() {
   }, []);
 
   const loadExams = useCallback(async (f) => {
-    const { search: q, examType: et, isActive: ia, page: pg } = f;
+    const { search: q, examType: et, isActive: ia, managementMode: mm, cadence: cad, page: pg } = f;
     const offset = pg * PAGE_SIZE;
     const qs = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
     if (q.trim()) qs.set("q", q.trim());
     if (et) qs.set("exam_type", et);
     if (ia === "true") qs.set("is_active", "true");
     else if (ia === "false") qs.set("is_active", "false");
+    if (mm) qs.set("management_mode", mm);
+    if (cad) qs.set("cadence", cad);
 
     const mySeq = ++seqRef.current;
     setExamsStatus("loading");
@@ -221,6 +225,30 @@ export default function AdminExamIntelligence() {
               <option value="">All</option>
               <option value="true">Active</option>
               <option value="false">Inactive</option>
+            </select>
+            <select
+              value={filters.managementMode}
+              onChange={(e) => dispatch({ type: "SET_FILTER", key: "managementMode", value: e.target.value })}
+              className="select select-sm w-44"
+              data-testid="exam-intel-lane-filter"
+              aria-label="Filter by management mode"
+            >
+              <option value="">All (non-archive)</option>
+              {MANAGEMENT_MODES.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+            <select
+              value={filters.cadence}
+              onChange={(e) => dispatch({ type: "SET_FILTER", key: "cadence", value: e.target.value })}
+              className="select select-sm w-36"
+              data-testid="exam-intel-cadence-filter"
+              aria-label="Filter by cadence"
+            >
+              <option value="">All cadences</option>
+              {CADENCES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
             </select>
             <div className="ml-auto flex items-center gap-2">
               {examsStatus !== "idle" && (
