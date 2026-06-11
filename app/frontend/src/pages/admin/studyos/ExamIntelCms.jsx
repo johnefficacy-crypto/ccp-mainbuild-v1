@@ -829,22 +829,22 @@ export default function AdminExamIntelCms() {
 
   async function deactivateRow(row) {
     // Soft-delete only (backend flips is_active=false; child rows keep their
-    // FK). UI never says "Delete".
+    // FK).
     if (!isDeactivatable) return;
     const label = (row.name || row.slug || row.id || "").toString();
-    if (!window.confirm(`Deactivate ${cfg.label} "${label}"? It will be hidden (is_active=false), not deleted.`)) {
+    if (!window.confirm(`Retire ${cfg.label} "${label}"? It will be hidden (is_active=false) and no longer active.`)) {
       return;
     }
-    const reasonText = window.prompt("Reason for deactivating (≥8 chars, recorded in audit):") || "";
+    const reasonText = window.prompt("Reason for retiring (≥8 chars, recorded in audit):") || "";
     if (reasonText.trim().length < 8) {
-      setStatus({ ok: false, message: "Deactivate reason must be ≥8 chars." });
+      setStatus({ ok: false, message: "Retire reason must be ≥8 chars." });
       return;
     }
     try {
       const r = await api.del(
         `/api/admin/exam-intelligence-cms/${entity}/${row.id}?reason=${encodeURIComponent(reasonText.trim())}`,
       );
-      setStatus({ ok: true, message: `Deactivated. audit_id=${r.audit_id}` });
+      setStatus({ ok: true, message: `Retired. audit_id=${r.audit_id}` });
       if (editingRow && editingRow.id === row.id) cancelEdit();
       load();
     } catch (ex) {
@@ -1122,9 +1122,9 @@ export default function AdminExamIntelCms() {
                         type="button"
                         className="btn small ml-1"
                         onClick={() => deactivateRow(r)}
-                        data-testid={`cms-deactivate-${r.id}`}
+                        data-testid={`cms-retire-${r.id}`}
                       >
-                        Deactivate
+                        Retire
                       </button>
                     ) : null}
                   </td>

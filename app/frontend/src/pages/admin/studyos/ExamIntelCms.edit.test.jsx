@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// One row per entity so each Edit/Deactivate button has a stable test id.
+// One row per entity so each Edit/Retire button has a stable test id.
 const mockListRows = {
   "exam-families": [
     { id: "fam-11111111", slug: "ssc", name: "SSC", description: "old desc", is_active: true },
@@ -209,15 +209,14 @@ test("successful PATCH closes the form and reloads the list", async () => {
   expect(api.get.mock.calls.length).toBeGreaterThan(getCallsBefore);
 });
 
-test("Deactivate (exams): confirm + reason required, soft-deletes via DELETE with reason query", async () => {
+test("Retire (exams): confirm + reason required, soft-deletes via DELETE with reason query", async () => {
   const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
   const promptSpy = jest.spyOn(window, "prompt").mockReturnValue("retiring this exam from the catalogue");
   try {
     renderWithClient();
     selectEntity("exams");
-    const btn = await screen.findByTestId("cms-deactivate-exam-11111111");
-    // Never labelled "Delete".
-    expect(btn.textContent).toMatch("Deactivate");
+    const btn = await screen.findByTestId("cms-retire-exam-11111111");
+    expect(btn.textContent).toMatch("Retire");
     expect(btn.textContent).not.toMatch(/Delete/i);
     fireEvent.click(btn);
 
@@ -233,15 +232,15 @@ test("Deactivate (exams): confirm + reason required, soft-deletes via DELETE wit
   }
 });
 
-test("Deactivate with a too-short reason does not call DELETE", async () => {
+test("Retire with a too-short reason does not call DELETE", async () => {
   const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
   const promptSpy = jest.spyOn(window, "prompt").mockReturnValue("short");
   try {
     renderWithClient();
     selectEntity("exams");
-    fireEvent.click(await screen.findByTestId("cms-deactivate-exam-11111111"));
+    fireEvent.click(await screen.findByTestId("cms-retire-exam-11111111"));
     await waitFor(() =>
-      expect(screen.getByRole("status").textContent).toMatch(/Deactivate reason must be ≥8 chars/),
+      expect(screen.getByRole("status").textContent).toMatch(/Retire reason must be ≥8 chars/),
     );
     expect(api.del).not.toHaveBeenCalled();
   } finally {
