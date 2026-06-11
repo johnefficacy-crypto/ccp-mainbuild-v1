@@ -404,3 +404,131 @@ def test_tw6_contract_guard_no_existing_keys_dropped():
     for key in ("total_days", "elapsed_days", "planned_progress_pct",
                 "actual_progress_pct", "gap_pct", "status", "unit"):
         assert key in cp, f"cycle_progress key dropped: {key}"
+
+
+# ── single-source-of-truth integration tests ─────────────────────────────
+
+
+def test_v2_1_series_and_phase_bands_use_timeline_target_date():
+    """series and phase_bands are built from timeline_target_date (a future phase start),
+    not from the raw cycle exam_start which may be in the past."""
+    today = date.today()
+    past_exam_start = (today - timedelta(days=10)).isoformat()
+    future_phase_start = (today + timedelta(days=40)).isoformat()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active", "exam_start": past_exam_start, "year": 2026}],
+        "exam_phases": [{"id": "ph-mains", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+                         "phase_name": "Mains", "phase_slug": "mains", "phase_order": 2,
+                         "status": "expected", "phase_start": future_phase_start, "phase_end": None}],
+    }
+    seed.update(_plan_with_tasks(today, today + timedelta(days=40), completed=1, planned=4))
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    # series is non-empty — proves cycle_end used future phase_start, not past exam_start
+    assert len(out["series"]) >= 1
+    # phase_bands are populated — proves _build_phase_bands got a future target, not past
+    assert len(out["phase_bands"]) == 5
+    # target_date is the phase start, not the past exam_start
+    assert out["exam_context"]["target_date"] == future_phase_start
+
+
+def test_v2_2_cycle_loaded_from_resolver_cycle_id():
+    """Cycle name in exam_context comes from the resolver's chosen cycle, not _load_active_cycle."""
+    today = date.today()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [
+            {"id": "cyc-old", "exam_id": "exam-1", "cycle_name": "2025 Cycle",
+             "status": "completed", "exam_start": (today - timedelta(days=365)).isoformat(), "year": 2025},
+            {"id": "cyc-new", "exam_id": "exam-1", "cycle_name": "2026 Cycle",
+             "status": "active", "exam_start": (today + timedelta(days=90)).isoformat(), "year": 2026},
+        ],
+        "exam_phases": [],
+    }
+    seed.update(_plan_with_tasks(today, today + timedelta(days=90), completed=0, planned=2))
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    # Active cycle wins in the resolver → cycle name should be the 2026 one
+    assert out["exam_context"]["cycle"] == "2026 Cycle"
+
+
+def test_v2_3_exam_start_in_exam_context_equals_target_date():
+    """exam_context.exam_start is now the resolver target_date, not raw cycle exam_start."""
+    today = date.today()
+    future_phase_start = (today + timedelta(days=30)).isoformat()
+    past_raw_exam_start = (today - timedelta(days=5)).isoformat()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active", "exam_start": past_raw_exam_start, "year": 2026}],
+        "exam_phases": [{"id": "ph-mains", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+                         "phase_name": "Mains", "phase_slug": "mains", "phase_order": 2,
+                         "status": "expected", "phase_start": future_phase_start, "phase_end": None}],
+    }
+    seed.update(_plan_with_tasks(today, today + timedelta(days=30), completed=0, planned=2))
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    ec = out["exam_context"]
+    # exam_start = target_date (phase start), not the raw past exam_start
+    assert ec["exam_start"] == future_phase_start
+    assert ec["exam_start"] != past_raw_exam_start
+    # null when resolver has no target
+    seed2 = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active", "exam_start": past_raw_exam_start, "year": 2026}],
+        "exam_phases": [],
+    }
+    seed2.update(_plan_with_tasks(today, today + timedelta(days=30), completed=0, planned=2))
+    out2 = service.get_plan_timeline(SBStub(seed2), "u-1")
+    assert out2["exam_context"]["exam_start"] is None
+
+
+def test_v2_4_no_exam_date_flag_keyed_off_resolver_not_raw_exam_start():
+    """no_exam_date risk flag fires when resolver is not_connected, not when exam_start is None.
+    Inverse: resolver connected via a future phase → no no_exam_date, even if exam_start is past."""
+    today = date.today()
+    past_raw = (today - timedelta(days=5)).isoformat()
+    future_phase = (today + timedelta(days=30)).isoformat()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active", "exam_start": past_raw, "year": 2026}],
+        "exam_phases": [{"id": "ph-mains", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+                         "phase_name": "Mains", "phase_slug": "mains", "phase_order": 2,
+                         "status": "expected", "phase_start": future_phase, "phase_end": None}],
+    }
+    seed.update(_plan_with_tasks(today, today + timedelta(days=30), completed=1, planned=3))
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    # Resolver is connected via next_future_phase → no no_exam_date flag
+    flag_codes = {r["code"] for r in out["risk_flags"]}
+    assert "no_exam_date" not in flag_codes
+    assert out["cycle_progress"]["status"] != "not_connected"
+
+
+def test_v2_5_not_connected_fires_no_exam_date_flag():
+    """When resolver is not_connected (no future phase, past exam_start), no_exam_date fires."""
+    today = date.today()
+    past_raw = (today - timedelta(days=5)).isoformat()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active", "exam_start": past_raw, "year": 2026}],
+        "exam_phases": [],
+    }
+    seed.update(_plan_with_tasks(today, today + timedelta(days=30), completed=1, planned=3))
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    flag_codes = {r["code"] for r in out["risk_flags"]}
+    assert "no_exam_date" in flag_codes
+    assert out["cycle_progress"]["status"] == "not_connected"
