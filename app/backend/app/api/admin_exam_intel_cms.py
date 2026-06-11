@@ -237,8 +237,11 @@ def soft_delete_exam_family(
 _EXAM_FIELDS = {
     "exam_family_id", "name", "exam_type", "default_difficulty_level",
     "description", "is_active", "metadata", "conducting_organization_id",
+    "management_mode", "cadence",
 }
 _EXAM_TYPES = ("recruitment", "entrance", "certification", "opportunity", "other")
+_EXAM_MGMT_MODES = ("core", "light", "index_only", "archive")
+_EXAM_CADENCES = ("annual", "recurring", "irregular", "one_off", "unknown")
 
 
 def _exam_slug(name: str, org: dict | None) -> str:
@@ -282,8 +285,16 @@ def create_exam(
         raise HTTPException(status_code=422, detail="name is required")
     if row.get("exam_type") and row["exam_type"] not in _EXAM_TYPES:
         raise HTTPException(status_code=422, detail=f"exam_type must be one of {_EXAM_TYPES}")
+    if row.get("management_mode") and row["management_mode"] not in _EXAM_MGMT_MODES:
+        raise HTTPException(status_code=422, detail=f"management_mode must be one of {_EXAM_MGMT_MODES}")
+    if row.get("cadence") and row["cadence"] not in _EXAM_CADENCES:
+        raise HTTPException(status_code=422, detail=f"cadence must be one of {_EXAM_CADENCES}")
     if row.get("exam_family_id") and not _safe_select(supabase, "exam_families", id=row["exam_family_id"]):
         raise HTTPException(status_code=422, detail="exam_family_id does not resolve")
+
+    # Apply create-only defaults after validation so invalid explicit values still 422.
+    row.setdefault("management_mode", "light")
+    row.setdefault("cadence", "unknown")
 
     # Resolve conducting org for slug generation (nullable — no 422 if absent).
     org: dict | None = None
@@ -321,6 +332,10 @@ def update_exam(
     patch = {k: v for k, v in body.payload.items() if k in _EXAM_FIELDS}
     if not patch:
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("management_mode") and patch["management_mode"] not in _EXAM_MGMT_MODES:
+        raise HTTPException(status_code=422, detail=f"management_mode must be one of {_EXAM_MGMT_MODES}")
+    if patch.get("cadence") and patch["cadence"] not in _EXAM_CADENCES:
+        raise HTTPException(status_code=422, detail=f"cadence must be one of {_EXAM_CADENCES}")
     patch["updated_at"] = _now_iso()
     updated = supabase.table("exams").update(patch).eq("id", exam_id).execute().data or []
     invalidate_exam_lookup_cache()

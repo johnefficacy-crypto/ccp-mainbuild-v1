@@ -93,6 +93,8 @@ const ENTITY_CONFIG = {
       { key: "conducting_organization_id", label: "conducting_organization_id (org)", type: "org-ref" },
       { key: "exam_family_id", label: "exam_family_id", type: "ref", ref: REF_FAMILY },
       { key: "exam_type", label: "exam_type (recruitment|entrance|certification|opportunity|other)" },
+      { key: "management_mode", label: "management_mode", type: "enum", options: ["core", "light", "index_only", "archive"], defaultValue: "light" },
+      { key: "cadence", label: "cadence", type: "enum", options: ["annual", "recurring", "irregular", "one_off", "unknown"], defaultValue: "unknown" },
       { key: "description", label: "description" },
       { key: "is_active", label: "is_active", type: "bool" },
     ],
@@ -409,7 +411,7 @@ const DEACTIVATABLE_ENTITIES = new Set(["exam-families", "exams"]);
 // status/is_active/phase_order). Source: docs/schema/supabase-current.md.
 const NULLABLE_ON_EDIT = {
   "exam-families": new Set(["description"]),
-  exams: new Set(["exam_family_id", "exam_type", "description"]),
+  exams: new Set(["exam_family_id", "exam_type", "management_mode", "cadence", "description"]),
   "exam-cycles": new Set([
     "notification_date", "application_start", "application_end",
     "exam_start", "exam_end", "source_url",
@@ -491,7 +493,7 @@ function renderFieldControl(f, values, setValues, idPrefix, entityKey) {
   if (f.type === "enum") {
     return (
       <select
-        value={values[f.key] ?? ""}
+        value={values[f.key] ?? f.defaultValue ?? ""}
         onChange={(e) => set(e.target.value)}
         className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
         data-testid={testId}
