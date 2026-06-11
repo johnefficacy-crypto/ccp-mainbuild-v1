@@ -759,6 +759,10 @@
     "mtime": 1778852555.8178952,
     "hash": "65c092f089f1128458ae93cb88308751"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\exam_target_window.py": {
+    "mtime": 1781177394.89115,
+    "hash": "26f77d8dca41c9caef26e8a8522b2a8c"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\leaderboards.py": {
     "mtime": 1779898592.4479117,
     "hash": "70dc992d1a16151b52945147a85989d9"
@@ -1890,6 +1894,10 @@
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\study_os\\test_competition_update_context.py": {
     "mtime": 1778762782.258983,
     "hash": "ea258e9df8808909989ddddcf9f7dbbd"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\study_os\\test_exam_target_window.py": {
+    "mtime": 1781177394.8921502,
+    "hash": "0939ba824f02727b33f8fb17015fe5bf"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\study_os\\test_mastery.py": {
     "mtime": 1779026762.8516915,
