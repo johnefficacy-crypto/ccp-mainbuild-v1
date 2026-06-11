@@ -39,6 +39,8 @@ export default function ExamListTable({
             <th>Slug</th>
             <th>Name</th>
             <th>Type</th>
+            <th>Lane</th>
+            <th>Cadence</th>
             <th className="right">Syllabus ✓</th>
             <th className="right">Syllabus ⏳</th>
             <th className="right">Verified topics</th>
@@ -53,6 +55,8 @@ export default function ExamListTable({
               <td className="num-mono">{e.slug}</td>
               <td>{e.name}</td>
               <td className="text-clay-700">{e.exam_type}</td>
+              <td className="text-clay-700" data-testid={`exam-intel-lane-${e.slug}`}>{e.management_mode ?? "—"}</td>
+              <td className="text-clay-700" data-testid={`exam-intel-cadence-${e.slug}`}>{e.cadence ?? "—"}</td>
               <td className="right num-mono text-sage-700">{e.syllabus_verified ?? 0}</td>
               <td className="right num-mono text-dusk-700">{e.syllabus_pending ?? 0}</td>
               <td className="right num-mono">

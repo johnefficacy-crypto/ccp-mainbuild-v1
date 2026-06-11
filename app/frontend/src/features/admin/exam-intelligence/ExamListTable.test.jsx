@@ -9,12 +9,14 @@ const ITEMS = [
     is_active: true, syllabus_verified: 2, syllabus_pending: 1,
     verified_topic_count: 3, coverage_total: 5, high_yield_topic_count: 2,
     readiness_level: "ready", pyq_coverage_status: "covered",
+    management_mode: "core", cadence: "annual",
   },
   {
     id: "e2", slug: "ibps-po", name: "IBPS PO", exam_type: "recruitment",
     is_active: false, syllabus_verified: 0, syllabus_pending: 1,
     verified_topic_count: 0, coverage_total: 0, high_yield_topic_count: 0,
     readiness_level: "not_ready", pyq_coverage_status: "none",
+    management_mode: null, cadence: null,
   },
 ];
 
@@ -114,4 +116,32 @@ test("range label is never inverted when rows is empty on a non-first page", () 
       expect(Number(match[2])).toBeGreaterThanOrEqual(Number(match[1]));
     }
   }
+});
+
+// ── PR-B1: lane + cadence columns ─────────────────────────────────────────
+
+test("renders management_mode column value for each row", () => {
+  wrap(<ExamListTable items={ITEMS} total_count={2} />);
+  expect(screen.getByTestId("exam-intel-lane-ssc-cgl")).toHaveTextContent("core");
+});
+
+test("renders cadence column value for each row", () => {
+  wrap(<ExamListTable items={ITEMS} total_count={2} />);
+  expect(screen.getByTestId("exam-intel-cadence-ssc-cgl")).toHaveTextContent("annual");
+});
+
+test("renders '—' for null management_mode", () => {
+  wrap(<ExamListTable items={ITEMS} total_count={2} />);
+  expect(screen.getByTestId("exam-intel-lane-ibps-po")).toHaveTextContent("—");
+});
+
+test("renders '—' for null cadence", () => {
+  wrap(<ExamListTable items={ITEMS} total_count={2} />);
+  expect(screen.getByTestId("exam-intel-cadence-ibps-po")).toHaveTextContent("—");
+});
+
+test("Lane and Cadence column headers are present", () => {
+  wrap(<ExamListTable items={ITEMS} total_count={2} />);
+  expect(screen.getByText("Lane")).toBeInTheDocument();
+  expect(screen.getByText("Cadence")).toBeInTheDocument();
 });
