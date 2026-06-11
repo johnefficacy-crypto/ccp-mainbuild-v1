@@ -224,22 +224,52 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
 @router.get("/exams")
 def list_exams(
     limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    q: str | None = Query(None),
+    exam_type: str | None = Query(None),
+    is_active: bool | None = Query(None),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     sb = get_supabase_admin()
-    exams = _safe(
+
+    def _filtered(cols: str):
+        qb = sb.table("exams").select(cols)
+        q_trimmed = (q or "").strip()
+        if q_trimmed:
+            qb = qb.or_(f"name.ilike.%{q_trimmed}%,slug.ilike.%{q_trimmed}%")
+        if exam_type is not None:
+            qb = qb.eq("exam_type", exam_type)
+        if is_active is not None:
+            qb = qb.eq("is_active", is_active)
+        return qb
+
+    count_resp = _safe(
+        lambda: _filtered("id").limit(10000).execute(),
+        default=None,
+    )
+    total_count = len(count_resp.data) if count_resp is not None else 0
+
+    all_exams = _safe(
         lambda: (
-            sb.table("exams")
-            .select("id, slug, name, exam_type, is_active, exam_family_id")
+            _filtered("id, slug, name, exam_type, is_active, exam_family_id")
             .order("name")
-            .limit(limit)
+            .limit(offset + limit)
             .execute()
             .data
         ),
         default=[],
     ) or []
+    exams = all_exams[offset : offset + limit]
+
     if not exams:
-        return {"items": [], "count": 0}
+        return {
+            "items": [],
+            "count": 0,
+            "total_count": total_count,
+            "limit": limit,
+            "offset": offset,
+            "has_next": False,
+        }
     exam_ids = [e["id"] for e in exams if e.get("id")]
 
     syllabus = _safe(
@@ -321,7 +351,14 @@ def list_exams(
                 "readiness_level": readiness_level,
             }
         )
-    return {"items": items, "count": len(items)}
+    return {
+        "items": items,
+        "count": len(items),
+        "total_count": total_count,
+        "limit": limit,
+        "offset": offset,
+        "has_next": offset + len(items) < total_count,
+    }
 
 
 # ─── 3. Items for a specific exam (filtered by reviewer_status) ───────────
