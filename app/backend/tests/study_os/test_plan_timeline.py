@@ -250,3 +250,157 @@ def test_api_safe_fallback_when_user_has_no_exam():
     sb = SBStub({"profiles": [{"id": "u-1", "target_exam": None}]})
     body = _client(sb).get("/api/study/plan/timeline").json()
     assert body["cycle_progress"]["status"] == "not_connected"
+
+
+# ── resolver wiring tests ────────────────────────────────────────────────
+
+
+def test_tw1_past_exam_start_but_future_phase_connected():
+    """Cycle exam_start in the past + cycle-bound Mains with future phase_start
+    → connected via next_future_phase; target_date = phase_start; exam_start still present."""
+    today = date.today()
+    past_exam_start = (today - timedelta(days=5)).isoformat()
+    future_phase_start = (today + timedelta(days=30)).isoformat()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active", "exam_start": past_exam_start, "year": 2026}],
+        "exam_phases": [{"id": "ph-mains", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+                         "phase_name": "Mains", "phase_slug": "mains", "phase_order": 2,
+                         "status": "expected", "phase_start": future_phase_start, "phase_end": None}],
+    }
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    ec = out["exam_context"]
+    # Resolver says connected → cycle_progress is on_track (no tasks = 0 gap, not behind)
+    assert out["cycle_progress"]["status"] != "not_connected"
+    assert ec["target_kind"] == "phase"
+    assert ec["target_date"] == future_phase_start
+    assert ec["target_phase_slug"] == "mains"
+    # days_remaining > 0 — counting to phase_start
+    assert ec["days_remaining"] == (date.fromisoformat(future_phase_start) - today).days
+    # compat alias still present
+    assert "exam_start" in ec
+
+
+def test_tw2_no_target_exam_not_connected_no_crash():
+    """User with no target exam → not_connected, no crash, new keys present with None."""
+    sb = SBStub({"profiles": [{"id": "u-1", "target_exam": None}]})
+    out = service.get_plan_timeline(sb, "u-1")
+    assert out["cycle_progress"]["status"] == "not_connected"
+    ec = out["exam_context"]
+    for key in ("target_date", "target_kind", "target_phase_id", "target_phase_slug",
+                "target_phase_name", "diagnostic"):
+        assert key in ec, f"exam_context missing {key}"
+        assert ec[key] is None
+
+
+def test_tw3_resolver_not_connected_exam_start_still_surfaced():
+    """Resolver not_connected (past exam_start, no future phase) → not_connected status;
+    exam_start compat alias still populated."""
+    today = date.today()
+    past = (today - timedelta(days=10)).isoformat()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active", "exam_start": past, "year": 2026}],
+        "exam_phases": [],
+    }
+    seed.update(_plan_with_tasks(today, today + timedelta(days=30), completed=1, planned=3))
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    ec = out["exam_context"]
+    assert out["cycle_progress"]["status"] == "not_connected"
+    # compat alias still surfaced from cycle
+    assert "exam_start" in ec
+    assert ec["target_date"] is None
+
+
+def test_tw4_current_active_phase_target_date():
+    """Current active phase → target_date = phase_end; null phase_end → target_date null."""
+    today = date.today()
+    phase_end = (today + timedelta(days=20)).isoformat()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active", "exam_start": (today + timedelta(days=60)).isoformat(),
+                         "year": 2026}],
+        "exam_phases": [{"id": "ph-pre", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+                         "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1,
+                         "status": "active",
+                         "phase_start": (today - timedelta(days=5)).isoformat(),
+                         "phase_end": phase_end}],
+    }
+    seed.update(_plan_with_tasks(today, today + timedelta(days=60), completed=1, planned=3))
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    ec = out["exam_context"]
+    assert ec["target_kind"] == "phase"
+    assert ec["target_date"] == phase_end
+    assert ec["days_remaining"] == (date.fromisoformat(phase_end) - today).days
+
+    # Null phase_end → target_date null, days_remaining null
+    seed["exam_phases"][0]["phase_end"] = None
+    out2 = service.get_plan_timeline(SBStub(seed), "u-1")
+    ec2 = out2["exam_context"]
+    assert ec2["target_date"] is None
+    assert ec2["days_remaining"] is None
+
+
+def test_tw5_diagnostic_surfaced_in_exam_context():
+    """generic_templates_available_but_unattached diagnostic reaches exam_context."""
+    today = date.today()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active", "exam_start": (today - timedelta(days=5)).isoformat(),
+                         "year": 2026}],
+        # exam_cycle_id=None → template phase, unattached
+        "exam_phases": [{"id": "ph-tmpl", "exam_id": "exam-1", "exam_cycle_id": None,
+                         "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1,
+                         "status": "active", "phase_start": None, "phase_end": None}],
+    }
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    diagnostic = out["exam_context"].get("diagnostic") or []
+    assert "generic_templates_available_but_unattached" in diagnostic
+
+
+def test_tw6_contract_guard_no_existing_keys_dropped():
+    """Every key present in a connected-exam response before wiring is still present after."""
+    today = date.today()
+    exam_start = today + timedelta(days=60)
+    seed = _exam_seed()
+    seed.update(_plan_with_tasks(today, exam_start, completed=2, planned=4))
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+
+    # Top-level keys
+    for key in ("exam_context", "plan_context", "cycle_progress", "milestones",
+                "phase_bands", "series", "subjects", "risk_flags", "regen_triggers"):
+        assert key in out, f"top-level key dropped: {key}"
+
+    # exam_context keys — original set must all be present
+    ec = out["exam_context"]
+    for key in ("exam_id", "exam_name", "cycle", "phase", "exam_start",
+                "days_remaining", "trust_status"):
+        assert key in ec, f"exam_context key dropped: {key}"
+
+    # New resolver keys also present
+    for key in ("target_date", "target_kind", "target_phase_id",
+                "target_phase_slug", "target_phase_name", "diagnostic"):
+        assert key in ec, f"exam_context missing new resolver key: {key}"
+
+    # plan_context keys
+    pc = out["plan_context"]
+    for key in ("plan_id", "plan_version", "created_at", "last_adapted_at", "planner_version"):
+        assert key in pc, f"plan_context key dropped: {key}"
+
+    # cycle_progress keys
+    cp = out["cycle_progress"]
+    for key in ("total_days", "elapsed_days", "planned_progress_pct",
+                "actual_progress_pct", "gap_pct", "status", "unit"):
+        assert key in cp, f"cycle_progress key dropped: {key}"
