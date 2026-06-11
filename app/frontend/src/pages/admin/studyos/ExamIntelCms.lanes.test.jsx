@@ -93,6 +93,21 @@ test("exam edit form pre-fills management_mode and cadence from the row", async 
   expect(screen.getByTestId("cms-edit-field-cadence").value).toBe("annual");
 });
 
+test("edit form shows row value not create default when row carries management_mode", async () => {
+  // Regression: the create default ('light') must not bleed into the edit form when the
+  // row already has a different value ('core'). This test uses the mock as-returned by
+  // the fixed list endpoint (management_mode/cadence present in items).
+  renderWithClient();
+  selectEntity("exams");
+  fireEvent.click(await screen.findByTestId("cms-edit-exam-11111111"));
+  await screen.findByTestId("cms-edit-form");
+
+  // 'core' row should show 'core', not the create default 'light'.
+  expect(screen.getByTestId("cms-edit-field-management_mode").value).toBe("core");
+  // 'annual' row should show 'annual', not the create default 'unknown'.
+  expect(screen.getByTestId("cms-edit-field-cadence").value).toBe("annual");
+});
+
 test("exam edit form allows changing management_mode and submits only the diff", async () => {
   renderWithClient();
   selectEntity("exams");
