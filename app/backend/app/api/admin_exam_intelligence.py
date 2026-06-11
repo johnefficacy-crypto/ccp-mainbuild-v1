@@ -237,11 +237,13 @@ def list_exams(
     offset: int = Query(0, ge=0),
     q: str | None = Query(None),
     exam_type: str | None = Query(None),
-    is_active: bool | None = Query(None),
+    active_state: str = Query("active"),
     management_mode: str | None = Query(None),
     cadence: str | None = Query(None),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
+    if active_state not in {"active", "inactive", "all"}:
+        raise HTTPException(status_code=422, detail="active_state must be one of: active, inactive, all")
     sb = get_supabase_admin()
 
     def _filtered(cols: str, count: str | None = None):
@@ -252,8 +254,11 @@ def list_exams(
             qb = qb.or_(f"name.ilike.%{q_trimmed}%,slug.ilike.%{q_trimmed}%")
         if exam_type is not None:
             qb = qb.eq("exam_type", exam_type)
-        if is_active is not None:
-            qb = qb.eq("is_active", is_active)
+        if active_state == "active":
+            qb = qb.eq("is_active", True)
+        elif active_state == "inactive":
+            qb = qb.eq("is_active", False)
+        # active_state == "all": no is_active filter
         if management_mode is not None:
             qb = qb.eq("management_mode", management_mode)
         else:

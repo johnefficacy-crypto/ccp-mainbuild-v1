@@ -176,7 +176,7 @@ test("changing exam_type filter resets to page 0", async () => {
   });
 });
 
-test("changing is_active filter resets to page 0", async () => {
+test("changing active_state filter resets to page 0", async () => {
   api.get.mockImplementation((url) =>
     url.includes("/exams")
       ? Promise.resolve(makeExamsResponse())
@@ -189,13 +189,13 @@ test("changing is_active filter resets to page 0", async () => {
 
   await act(async () => {
     fireEvent.change(screen.getByTestId("exam-intel-active-filter"), {
-      target: { value: "true" },
+      target: { value: "inactive" },
     });
   });
   await waitFor(() => {
     const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
     const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("is_active=true");
+    expect(lastUrl).toContain("active_state=inactive");
     expect(lastUrl).toContain("offset=0");
   });
 });
@@ -423,6 +423,93 @@ test("lane filter change fires exactly one load (single dispatch)", async () => 
   await waitFor(() => {
     const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
     expect(calls[calls.length - 1][0]).toContain("management_mode=light");
+  });
+
+  const after = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
+  expect(after - before).toBe(1);
+});
+
+// ── PR-C1: active_state filter ────────────────────────────────────────────
+
+test("default load sends active_state=active", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+
+  const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
+  expect(calls[calls.length - 1][0]).toContain("active_state=active");
+});
+
+test("active_state select renders with Active as default selected option", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+
+  const select = screen.getByTestId("exam-intel-active-filter");
+  expect(select.value).toBe("active");
+});
+
+test("selecting 'all' sends active_state=all and resets to page 0", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+
+  // Navigate to page 1 first.
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("exam-intel-next"));
+  });
+
+  await act(async () => {
+    fireEvent.change(screen.getByTestId("exam-intel-active-filter"), {
+      target: { value: "all" },
+    });
+  });
+  await waitFor(() => {
+    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
+    const lastUrl = calls[calls.length - 1][0];
+    expect(lastUrl).toContain("active_state=all");
+    expect(lastUrl).toContain("offset=0");
+  });
+});
+
+test("active_state change fires exactly one load (single dispatch)", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+
+  const before = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
+
+  await act(async () => {
+    fireEvent.change(screen.getByTestId("exam-intel-active-filter"), {
+      target: { value: "inactive" },
+    });
+  });
+  await waitFor(() => {
+    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
+    expect(calls[calls.length - 1][0]).toContain("active_state=inactive");
   });
 
   const after = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
