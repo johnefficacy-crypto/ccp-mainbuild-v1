@@ -11,7 +11,7 @@ const EXAM_TYPES = ["recruitment", "entrance", "certification", "opportunity", "
 const MANAGEMENT_MODES = ["core", "light", "index_only", "archive"];
 const CADENCES = ["annual", "recurring", "irregular", "one_off", "unknown"];
 
-const INITIAL_FILTERS = { search: "", examType: "", isActive: "", managementMode: "", cadence: "", page: 0 };
+const INITIAL_FILTERS = { search: "", examType: "", activeState: "active", managementMode: "", cadence: "", page: 0 };
 
 function filtersReducer(state, action) {
   switch (action.type) {
@@ -47,7 +47,7 @@ export default function AdminExamIntelligence() {
   const [examsError, setExamsError] = React.useState("");
 
   const [filters, dispatch] = useReducer(filtersReducer, INITIAL_FILTERS);
-  const { search, examType: examTypeFilter, isActive: isActiveFilter, page } = filters;
+  const { search, examType: examTypeFilter, page } = filters;
 
   // Monotonic sequence to discard stale API responses.
   const seqRef = useRef(0);
@@ -63,13 +63,12 @@ export default function AdminExamIntelligence() {
   }, []);
 
   const loadExams = useCallback(async (f) => {
-    const { search: q, examType: et, isActive: ia, managementMode: mm, cadence: cad, page: pg } = f;
+    const { search: q, examType: et, activeState: as_, managementMode: mm, cadence: cad, page: pg } = f;
     const offset = pg * PAGE_SIZE;
     const qs = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
     if (q.trim()) qs.set("q", q.trim());
     if (et) qs.set("exam_type", et);
-    if (ia === "true") qs.set("is_active", "true");
-    else if (ia === "false") qs.set("is_active", "false");
+    if (as_) qs.set("active_state", as_);
     if (mm) qs.set("management_mode", mm);
     if (cad) qs.set("cadence", cad);
 
@@ -216,15 +215,15 @@ export default function AdminExamIntelligence() {
               ))}
             </select>
             <select
-              value={isActiveFilter}
-              onChange={(e) => dispatch({ type: "SET_FILTER", key: "isActive", value: e.target.value })}
+              value={filters.activeState}
+              onChange={(e) => dispatch({ type: "SET_FILTER", key: "activeState", value: e.target.value })}
               className="select select-sm w-28"
               data-testid="exam-intel-active-filter"
               aria-label="Filter by active status"
             >
-              <option value="">All</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="all">All</option>
             </select>
             <select
               value={filters.managementMode}
