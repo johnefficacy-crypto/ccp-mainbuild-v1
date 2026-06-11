@@ -21,7 +21,7 @@ export default function ExamListTable({
 
   const hasPrev = page > 0;
   const rangeStart = total_count === 0 ? 0 : offset + 1;
-  const rangeEnd = offset + rows.length;
+  const rangeEnd = Math.max(rangeStart, offset + rows.length);
 
   if (!rows.length && page === 0) {
     return (

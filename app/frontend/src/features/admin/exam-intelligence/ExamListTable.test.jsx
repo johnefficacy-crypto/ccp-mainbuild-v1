@@ -94,3 +94,24 @@ test("readiness badge renders for each row", () => {
   expect(screen.getByText("ready")).toBeInTheDocument();
   expect(screen.getByText("not ready")).toBeInTheDocument();
 });
+
+// ── range label never inverted ─────────────────────────────────────────────
+
+test("range label is never inverted when rows is empty on a non-first page", () => {
+  // Simulate an edge case: we're on page 1 (offset=25) but no rows returned.
+  wrap(
+    <ExamListTable
+      items={[]} page={1} pageSize={25} total_count={30}
+      has_next={false} offset={25}
+    />
+  );
+  const range = screen.getByTestId("exam-intel-range");
+  const text = range.textContent;
+  if (text !== "No results") {
+    // If a range is shown, end must be >= start.
+    const match = text.match(/(\d+)–(\d+)/);
+    if (match) {
+      expect(Number(match[2])).toBeGreaterThanOrEqual(Number(match[1]));
+    }
+  }
+});

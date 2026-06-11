@@ -165,13 +165,13 @@ test("changing exam_type filter resets to page 0", async () => {
 
   await act(async () => {
     fireEvent.change(screen.getByTestId("exam-intel-type-filter"), {
-      target: { value: "civil_services" },
+      target: { value: "entrance" },
     });
   });
   await waitFor(() => {
     const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
     const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("exam_type=civil_services");
+    expect(lastUrl).toContain("exam_type=entrance");
     expect(lastUrl).toContain("offset=0");
   });
 });
@@ -198,4 +198,67 @@ test("changing is_active filter resets to page 0", async () => {
     expect(lastUrl).toContain("is_active=true");
     expect(lastUrl).toContain("offset=0");
   });
+});
+
+// ── stale-response guard ───────────────────────────────────────────────────
+
+test("stale response from earlier request does not overwrite newer state", async () => {
+  let resolveFirst;
+  let callCount = 0;
+
+  api.get.mockImplementation((url) => {
+    if (!url.includes("/exams")) return Promise.resolve(makeOverviewResponse());
+    callCount++;
+    if (callCount === 1) {
+      // First call: held promise (will resolve late — simulating slow response).
+      return new Promise((res) => { resolveFirst = res; });
+    }
+    // Second call: resolves immediately with search results.
+    return Promise.resolve(makeExamsResponse({ items: [{ ...makeExamsResponse().items[0], name: "IBPS PO" }] }));
+  });
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+
+  // The first load is in flight. Change search — triggers second load.
+  await act(async () => {
+    fireEvent.change(screen.getByTestId("exam-intel-search"), { target: { value: "ibps" } });
+  });
+
+  // Now let the first (stale) response land — it should be discarded.
+  await act(async () => { resolveFirst(makeExamsResponse()); });
+
+  // The table should reflect the second (fresh) response, not the first stale one.
+  await waitFor(() => expect(screen.getByTestId("exam-intel-exam-table")).toBeInTheDocument());
+  expect(screen.getByText("IBPS PO")).toBeInTheDocument();
+  expect(screen.queryByText("SSC CGL")).not.toBeInTheDocument();
+});
+
+// ── single dispatch on filter change ──────────────────────────────────────
+
+test("changing a filter triggers exactly one load (no double-fetch from separate effects)", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+
+  const callsBefore = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
+
+  await act(async () => {
+    fireEvent.change(screen.getByTestId("exam-intel-search"), { target: { value: "ssc" } });
+  });
+  await waitFor(() => {
+    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
+    const lastUrl = calls[calls.length - 1][0];
+    expect(lastUrl).toContain("q=ssc");
+  });
+
+  const callsAfter = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
+  // Must be exactly one additional call — not two (which would happen with two separate effects).
+  expect(callsAfter - callsBefore).toBe(1);
 });

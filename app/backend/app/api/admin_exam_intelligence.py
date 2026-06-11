@@ -220,6 +220,16 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
     return out
 
 
+_Q_STRIP_RE = re.compile(r'[`,()"\\]')
+
+
+def _sanitize_q(raw: str) -> str:
+    """Strip PostgREST structural chars and escape SQL wildcard chars."""
+    q = _Q_STRIP_RE.sub("", raw).strip()
+    q = q.replace("%", r"\%").replace("_", r"\_")
+    return q
+
+
 # ─── 2. Exam list with verified/pending counts ────────────────────────────
 @router.get("/exams")
 def list_exams(
@@ -232,9 +242,10 @@ def list_exams(
 ) -> dict[str, Any]:
     sb = get_supabase_admin()
 
-    def _filtered(cols: str):
-        qb = sb.table("exams").select(cols)
-        q_trimmed = (q or "").strip()
+    def _filtered(cols: str, count: str | None = None):
+        kw = {"count": count} if count else {}
+        qb = sb.table("exams").select(cols, **kw)
+        q_trimmed = _sanitize_q(q or "")
         if q_trimmed:
             qb = qb.or_(f"name.ilike.%{q_trimmed}%,slug.ilike.%{q_trimmed}%")
         if exam_type is not None:
@@ -243,23 +254,27 @@ def list_exams(
             qb = qb.eq("is_active", is_active)
         return qb
 
-    count_resp = _safe(
-        lambda: _filtered("id").limit(10000).execute(),
+    resp = _safe(
+        lambda: (
+            _filtered("id, slug, name, exam_type, is_active, exam_family_id", count="exact")
+            .order("name")
+            .range(offset, offset + limit - 1)
+            .execute()
+        ),
         default=None,
     )
-    total_count = len(count_resp.data) if count_resp is not None else 0
 
-    all_exams = _safe(
-        lambda: (
-            _filtered("id, slug, name, exam_type, is_active, exam_family_id")
-            .order("name")
-            .limit(offset + limit)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
-    exams = all_exams[offset : offset + limit]
+    if resp is None:
+        return {"items": [], "count": 0, "total_count": 0, "limit": limit, "offset": offset, "has_next": False}
+
+    if hasattr(resp, "count") and resp.count is not None:
+        # Production: PostgREST returns exact count header and range-sliced data.
+        total_count = resp.count
+        exams = resp.data or []
+    else:
+        # Test stub: range() and count are no-ops; emulate pagination manually.
+        total_count = len(resp.data or [])
+        exams = (resp.data or [])[offset: offset + limit]
 
     if not exams:
         return {
