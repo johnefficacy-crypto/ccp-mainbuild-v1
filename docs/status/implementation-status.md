@@ -76,3 +76,50 @@ After PR 264 merges the only routes still mounted from `placeholders.py`
 will be `router_acc` and `router_admin` whose paths are already shadowed by
 real routers registered earlier in `server.py`. A follow-up cleanup PR can
 delete both for good.
+
+---
+
+## Track 3 — Verification Gateway Reviewer Console (2026-06-12)
+
+Arc: `POST /api/admin/verification-reports/{report_id}/apply-registry-action`
+(Gate #591). Applies a human-reviewed report into `exam_cycles` / `exam_phases`
+/ `exam_policy_updates` and records an `exam_registry_actions` row anchored by
+a NOT-NULL `report_id`. Action types: `cycle_date_update`, `phase_date_update`,
+`policy_update_create`, `policy_update_edit`. Endpoint permission:
+`exam_intelligence.cms` (super_admin bypass).
+
+| PR | Status | Summary |
+|---|---|---|
+| PR-A #639 | **merged 2026-06-12** | Adds derived `exam_id` to report-detail payload via `report.recruitment_id → recruitments.exam_id`. Best-effort, never 500s. `scrape_queue` not consulted. |
+| PR-B #641 | **merged 2026-06-12** | Guided + scoped `ApplyRegistryActionPanel`. Cycle/phase guided forms, exam-scoped FK pickers, merged-row date validation, provenance block, `exam_intelligence.cms` gate. 65 tests. |
+
+Parked items (not shipped): status guided-editing, `event_source_id` UI,
+backend write-path transactionality. See `docs/scraping/verification-gateway-pr-plan.md §11`.
+
+---
+
+## Track 2 — Calendar/Phase Authoring UI (deferred 2026-06-12)
+
+ExamWorkspace `SetupPanel.jsx` already owns cycle create/edit, phase create,
+`phase_start`/`phase_end` inputs, a "Phases needing dates" worklist, and
+`PATCH /exam-phases/:id`. Track 2 would be a hardening/consolidation PR, not
+greenfield.
+
+Operator preflight confirmed all five counts zero: no `exam_phases` row carries
+legacy `metadata.phase_window` without `phase_start`; no
+`phase_window_needs_review` flags; no template-row contamination. The date
+backlog is empty — Track 2 reduces to purely preventive validation; no triage
+filter/badge needed.
+
+Deferred in favor of Track 3 (no live operator pain). Decisions locked if
+un-deferred:
+- D1 cycle-instance phases only, templates out (#635 handles clone)
+- D2 structured dates mandatory; `phase_window` read-only legacy, never write
+  new window text
+- D3 `phase_end` in scope, validate >= `phase_start`
+- D4 `phase_order` is the stored sort authority
+- D5 slug out of scope
+- D6 sections out (`exam_phase_sections → coverage.section_id` blast radius)
+- D7 calendar status derived read-only (past/upcoming/preview from `phase_start`)
+- D8 reject reversed dates; warn-not-block on overlap (warning must name the two
+  overlapping phases)

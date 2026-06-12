@@ -1253,6 +1253,68 @@ Tests assert this exact shape after each PR migration.
 
 ---
 
+## 11. Shipped Status — Track 3 Reviewer Console (2026-06-12)
+
+### PR-A #639 — Derived exam_id on report detail (merged 2026-06-12)
+
+`GET /admin/verification-reports/{report_id}` now includes a derived, read-only
+`exam_id` field resolved via `report.recruitment_id → recruitments.exam_id`.
+
+- Best-effort read: null when `recruitment_id` is null, the recruitment row is
+  missing, its `exam_id` is null, or a transport error occurs. Never 500s.
+- `scrape_queue` deliberately NOT consulted — queue-stage data is unverified;
+  only the post-promotion `recruitments.exam_id` is a trusted scope key.
+- 6 backend tests added:
+  `tests/admin/test_verification_report_detail_exam_id.py`
+- Files touched: `app/backend/app/api/admin_verification_reports.py` only.
+
+### PR-B #641 — Guided + scoped ApplyRegistryActionPanel (merged 2026-06-12)
+
+Frontend-only. Blast radius: `VerificationReports.jsx` and its test file only.
+
+**What shipped:**
+- Permission gate: panel hidden unless user holds `exam_intelligence.cms` OR
+  is `super_admin` (mirrors the endpoint permission; route guard unchanged).
+- `cycle_date_update` and `phase_date_update` get guided structured date forms.
+  POST patch built from CHANGED fields only.
+- Date-order validation runs on the MERGED target row (`{...selectedRow,
+  ...changedFields}`), not just newly-entered fields, so an existing opposite
+  side is honored. Comparison normalizes date-only vs timestamptz (slice to
+  YYYY-MM-DD → UTC compare); equal `start == end` is valid.
+- FK pickers are exam-scoped: cycle picker by `exam_id`; phase via two-step
+  cycle→phase (`exam_id + exam_cycle_id`), which naturally excludes template
+  rows. When `report.exam_id` is null, pickers fall back to global with a
+  visible `data-testid="rar-no-scope-warning"` — no silent global fallback.
+- Inline provenance block rendered from existing report-detail fields
+  (`trigger_reason`, `evidence_summary`, `resolver_status`,
+  `resolver_confidence`); object values render as pretty JSON (no
+  `[object Object]`). No new endpoint.
+- `policy_update_create` / `policy_update_edit` left on existing JSON textarea
+  path unchanged.
+- 65 frontend tests passing.
+
+**Decisions locked:**
+- D1: guided subset = `cycle_date_update` + `phase_date_update` only; policy
+  stays on JSON path.
+- D2: guided date inputs generate patch internally; no raw JSON for
+  cycle/phase actions.
+- D3: provenance from existing detail payload, no new endpoint.
+- D4: panel gating matches endpoint permission; route guard unchanged.
+- D5: single report → single action, no bulk.
+
+**Parked (explicitly not shipped):**
+- Status guided-editing: no endpoint exposes `_CYCLE_STATUSES` /
+  `_PHASE_STATUSES` → enum drift hazard; status shown read-only.
+- `event_source_id` UI affordance.
+- Backend safety on the apply write path: `audit_id` null-swallow;
+  target-mutation + `exam_registry_actions` insert not transactional; write
+  path lacks `execute_or_raise`.
+- Page-route stays `admin/super_admin` while endpoint is
+  `exam_intelligence.cms`; Option-B non-admin-reviewer revisit only when a
+  real scoped reviewer persona lands.
+
+---
+
 ## 10. What This Plan Does NOT Cover
 
 ```text
