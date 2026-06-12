@@ -38,17 +38,42 @@ function emptyPhase() {
   };
 }
 
+// Effective base_slug: explicit trimmed value OR slugify(phase_name)
+function effectiveSlug(p) {
+  return p.base_slug.trim() || slugify(p.phase_name.trim());
+}
+
+// Returns array of human-readable error strings; empty = all valid
+function validatePhases(phases) {
+  const errs = [];
+  const seen = new Set();
+  for (const p of phases) {
+    if (!p.phase_name.trim()) {
+      errs.push("Every phase must have a name");
+      continue;
+    }
+    const slug = effectiveSlug(p);
+    if (!slug) {
+      errs.push(`Phase "${p.phase_name}" has no usable slug`);
+      continue;
+    }
+    if (seen.has(slug)) {
+      errs.push(`Duplicate base slug: "${slug}"`);
+    }
+    seen.add(slug);
+  }
+  return errs;
+}
+
 // ── State / Reducer ───────────────────────────────────────────────────────────
 
 const initialState = {
   step: 0,
-  // Step 0 — org
-  orgMode: "select",          // "select" | "create"
+  // Step 0 — org (orgId only used in select mode)
+  orgMode: "select",
   orgSearch: "",
   orgId: null,
   orgDraft: { name: "", short_name: "", type: "", state: "", website_url: "" },
-  orgWarnings: [],
-  orgError: null,
   // Step 1 — exam
   examDraft: {
     name: "", exam_type: "", exam_family_id: "",
@@ -67,18 +92,17 @@ const initialState = {
   // Step 4 — create state
   creating: false,
   createLog: [],
+  // org id only stored after Step-5 POST (never from Step-1)
   createdIds: { org: null, exam: null, cycle: null, phases: {} },
 };
 
 function reducer(state, action) {
   switch (action.type) {
     case "GOTO_STEP": return { ...state, step: action.step };
-    case "SET_ORG_MODE": return { ...state, orgMode: action.mode, orgError: null };
+    case "SET_ORG_MODE": return { ...state, orgMode: action.mode };
     case "SET_ORG_SEARCH": return { ...state, orgSearch: action.value };
-    case "SET_ORG_ID": return { ...state, orgId: action.id, orgError: null };
+    case "SET_ORG_ID": return { ...state, orgId: action.id };
     case "SET_ORG_DRAFT": return { ...state, orgDraft: { ...state.orgDraft, ...action.patch } };
-    case "SET_ORG_WARNINGS": return { ...state, orgWarnings: action.warnings };
-    case "SET_ORG_ERROR": return { ...state, orgError: action.error };
     case "SET_EXAM_DRAFT": return { ...state, examDraft: { ...state.examDraft, ...action.patch } };
     case "SET_CYCLE_DRAFT": return { ...state, cycleDraft: { ...state.cycleDraft, ...action.patch } };
     case "ADD_PHASE": return { ...state, phases: [...state.phases, emptyPhase()] };
@@ -152,10 +176,9 @@ const SELECT_CLS = INPUT_CLS;
 // ── Step 0: Organization ──────────────────────────────────────────────────────
 
 function StepOrg({ state, dispatch }) {
-  const { orgMode, orgSearch, orgId, orgDraft, orgWarnings, orgError } = state;
+  const { orgMode, orgSearch, orgId, orgDraft } = state;
   const [allOrgs, setAllOrgs] = React.useState(null);
   const [loadingOrgs, setLoadingOrgs] = React.useState(false);
-  const [creating, setCreating] = React.useState(false);
 
   useEffect(() => {
     if (orgMode === "select" && allOrgs === null) {
@@ -177,31 +200,9 @@ function StepOrg({ state, dispatch }) {
     ) : allOrgs;
   }, [allOrgs, orgSearch]);
 
-  async function handleCreate(e) {
-    e.preventDefault();
-    dispatch({ type: "SET_ORG_ERROR", error: null });
-    dispatch({ type: "SET_ORG_WARNINGS", warnings: [] });
-    setCreating(true);
-    try {
-      const r = await api.post("/api/admin/organizations", {
-        name: orgDraft.name.trim(),
-        short_name: orgDraft.short_name.trim(),
-        type: orgDraft.type,
-        state: orgDraft.state.trim() || undefined,
-        website_url: orgDraft.website_url.trim() || undefined,
-      });
-      dispatch({ type: "SET_ORG_ID", id: r.id });
-      if (r.warnings?.length) {
-        dispatch({ type: "SET_ORG_WARNINGS", warnings: r.warnings });
-      }
-    } catch (ex) {
-      dispatch({ type: "SET_ORG_ERROR", error: getApiErrorMessage(ex) });
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  const canAdvance = !!orgId;
+  const canAdvance = orgMode === "select"
+    ? !!orgId
+    : (!!orgDraft.name.trim() && !!orgDraft.short_name.trim() && !!orgDraft.type);
 
   return (
     <div data-testid="wizard-step-org">
@@ -265,7 +266,10 @@ function StepOrg({ state, dispatch }) {
       )}
 
       {orgMode === "create" && (
-        <form onSubmit={handleCreate} className="space-y-3" data-testid="org-create-form">
+        <div className="space-y-3" data-testid="org-create-form">
+          <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1.5">
+            Org will be created in Step 5. Nothing is posted yet.
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <FieldRow label="Name" required>
               <input className={INPUT_CLS} value={orgDraft.name}
@@ -296,31 +300,7 @@ function StepOrg({ state, dispatch }) {
                 data-testid="org-website" />
             </FieldRow>
           </div>
-
-          {orgError && (
-            <p className="text-sm text-destructive" role="alert" data-testid="org-error">{orgError}</p>
-          )}
-          {orgWarnings.length > 0 && !orgError && (
-            <div className="rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800" data-testid="org-warnings">
-              <strong>Heads up:</strong> similar org(s) already exist.
-              <ul className="mt-1 list-disc list-inside">
-                {orgWarnings.map((w, i) => (
-                  <li key={i}>{w.existing_name} (id: {w.existing_id})</li>
-                ))}
-              </ul>
-              <p className="mt-1">You can proceed with the new org or go back and select the existing one.</p>
-            </div>
-          )}
-          {orgId && !orgError && (
-            <p className="text-xs text-green-700" data-testid="org-created-id">✓ Created org: {orgId}</p>
-          )}
-
-          {!orgId && (
-            <button type="submit" className="btn small btn-primary" disabled={creating} data-testid="org-create-submit">
-              {creating ? "Creating…" : "Create organization"}
-            </button>
-          )}
-        </form>
+        </div>
       )}
 
       <div className="mt-6 flex justify-end">
@@ -341,9 +321,10 @@ function StepOrg({ state, dispatch }) {
 // ── Step 1: Exam ──────────────────────────────────────────────────────────────
 
 function StepExam({ state, dispatch }) {
-  const { examDraft, orgId } = state;
+  const { examDraft, orgId, orgMode, orgDraft } = state;
+  // Show resolved org label — for create mode show draft name (not yet posted)
+  const orgLabel = orgMode === "select" ? (orgId || "—") : (orgDraft.name.trim() || "(new org)");
 
-  // NULL-COERCION: ensure management_mode and cadence are never null/blank on advance
   function handleNext() {
     const coerced = {
       ...examDraft,
@@ -366,7 +347,7 @@ function StepExam({ state, dispatch }) {
             data-testid="exam-name" />
         </FieldRow>
         <FieldRow label="Conducting organization">
-          <input className={INPUT_CLS} value={orgId || ""} readOnly data-testid="exam-org-id" />
+          <input className={INPUT_CLS} value={orgLabel} readOnly data-testid="exam-org-id" />
         </FieldRow>
         <FieldRow label="Exam type">
           <select className={SELECT_CLS} value={examDraft.exam_type}
@@ -414,6 +395,14 @@ function StepExam({ state, dispatch }) {
 
 // ── Step 2: Cycle ─────────────────────────────────────────────────────────────
 
+const DATE_FIELDS = [
+  ["notification_date", "Notification date"],
+  ["application_start", "Application start"],
+  ["application_end", "Application end"],
+  ["exam_start", "Exam start"],
+  ["exam_end", "Exam end"],
+];
+
 function StepCycle({ state, dispatch }) {
   const { cycleDraft } = state;
   const canAdvance = cycleDraft.cycle_name.trim() && String(cycleDraft.year).trim();
@@ -440,17 +429,15 @@ function StepCycle({ state, dispatch }) {
             {CYCLE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </FieldRow>
-        {[
-          ["notification_date", "Notification date (dd-mm-yyyy)"],
-          ["application_start", "Application start"],
-          ["application_end", "Application end"],
-          ["exam_start", "Exam start"],
-          ["exam_end", "Exam end"],
-        ].map(([key, label]) => (
+        {DATE_FIELDS.map(([key, label]) => (
           <FieldRow key={key} label={label}>
-            <input className={INPUT_CLS} value={cycleDraft[key]}
+            <input
+              className={INPUT_CLS}
+              type="date"
+              value={cycleDraft[key]}
               onChange={(e) => dispatch({ type: "SET_CYCLE_DRAFT", patch: { [key]: e.target.value } })}
-              data-testid={`cycle-${key}`} />
+              data-testid={`cycle-${key}`}
+            />
           </FieldRow>
         ))}
       </div>
@@ -471,20 +458,33 @@ function StepPhases({ state, dispatch }) {
   const { phases, cycleDraft } = state;
   const year = String(cycleDraft.year || "").trim();
   const cycleName = cycleDraft.cycle_name.trim();
+  const phaseErrs = validatePhases(phases);
+  const canAdvance = phaseErrs.length === 0; // zero phases is also valid
 
   return (
     <div data-testid="wizard-step-phases">
       <h2 className="text-base font-semibold mb-1">Step 4 — Phases</h2>
       <p className="text-xs text-muted-foreground mb-4">
-        Define 0 or more phases. Each phase creates a cycle-bound row (slug suffixed with year).
-        Toggle "also template" to additionally create a bare-slug reusable template row.
+        Define 0 or more phases. Each creates a cycle-bound row (slug suffixed with year).
+        Toggle "also template" to additionally create a bare-slug reusable template. Leave
+        base slug blank to derive it from the phase name.
       </p>
 
       {phases.map((p, idx) => {
-        const cbSlug = p.base_slug ? cycleBoundSlug(p.base_slug, year, cycleName) : "";
-        const tmplSlug = p.base_slug ? slugify(p.base_slug) : "";
+        const effSlug = effectiveSlug(p);
+        const cbSlug = effSlug ? cycleBoundSlug(effSlug, year, cycleName) : "";
+        const tmplSlug = effSlug ? slugify(effSlug) : "";
+        const nameEmpty = !p.phase_name.trim();
+        const dupeSlug = effSlug
+          ? phases.filter((q) => effectiveSlug(q) === effSlug).length > 1
+          : false;
+        const rowInvalid = nameEmpty || !effSlug || dupeSlug;
         return (
-          <div key={p._id} className="rounded border border-border/60 p-3 mb-3 space-y-2" data-testid={`phase-row-${p._id}`}>
+          <div
+            key={p._id}
+            className={`rounded border p-3 mb-3 space-y-2 ${rowInvalid ? "border-destructive/50" : "border-border/60"}`}
+            data-testid={`phase-row-${p._id}`}
+          >
             <div className="flex justify-between items-center">
               <span className="text-xs font-medium text-muted-foreground">Phase {idx + 1}</span>
               <button type="button" className="btn small text-destructive"
@@ -493,14 +493,26 @@ function StepPhases({ state, dispatch }) {
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <FieldRow label="Phase name" required>
-                <input className={INPUT_CLS} value={p.phase_name}
+                <input
+                  className={`${INPUT_CLS}${nameEmpty ? " border-destructive" : ""}`}
+                  value={p.phase_name}
                   onChange={(e) => dispatch({ type: "UPDATE_PHASE", _id: p._id, patch: { phase_name: e.target.value } })}
-                  data-testid={`phase-name-${p._id}`} />
+                  data-testid={`phase-name-${p._id}`}
+                />
               </FieldRow>
-              <FieldRow label="Base slug (e.g. prelims)">
-                <input className={INPUT_CLS} value={p.base_slug}
+              <FieldRow label={`Base slug${!p.base_slug.trim() && p.phase_name.trim() ? " (auto)" : ""}`}>
+                <input
+                  className={`${INPUT_CLS}${dupeSlug ? " border-destructive" : ""}`}
+                  value={p.base_slug}
                   onChange={(e) => dispatch({ type: "UPDATE_PHASE", _id: p._id, patch: { base_slug: e.target.value } })}
-                  data-testid={`phase-base-slug-${p._id}`} />
+                  placeholder={p.phase_name.trim() ? slugify(p.phase_name.trim()) : "e.g. prelims"}
+                  data-testid={`phase-base-slug-${p._id}`}
+                />
+                {dupeSlug && (
+                  <p className="text-xs text-destructive mt-0.5" data-testid={`phase-slug-error-${p._id}`}>
+                    Duplicate slug "{effSlug}"
+                  </p>
+                )}
               </FieldRow>
               <FieldRow label="Phase order">
                 <input className={INPUT_CLS} type="number" value={p.phase_order}
@@ -530,10 +542,18 @@ function StepPhases({ state, dispatch }) {
       <button type="button" className="btn small" onClick={() => dispatch({ type: "ADD_PHASE" })}
         data-testid="add-phase">+ Add phase</button>
 
+      {phaseErrs.length > 0 && (
+        <ul className="mt-3 space-y-0.5" data-testid="phase-errors">
+          {phaseErrs.map((e, i) => (
+            <li key={i} className="text-xs text-destructive">{e}</li>
+          ))}
+        </ul>
+      )}
+
       <div className="mt-6 flex justify-between">
         <button type="button" className="btn small" onClick={() => dispatch({ type: "GOTO_STEP", step: 2 })}
           data-testid="wizard-back-3">← Back</button>
-        <button type="button" className="btn btn-primary"
+        <button type="button" className="btn btn-primary" disabled={!canAdvance}
           onClick={() => dispatch({ type: "GOTO_STEP", step: 4 })}
           data-testid="wizard-next-4">Review & Create →</button>
       </div>
@@ -547,21 +567,23 @@ function phaseRows(phases, cycleId, year, cycleName) {
   const cbRows = [];
   const tmplRows = [];
   for (const p of phases) {
-    const cbSlug = cycleBoundSlug(p.base_slug, year, cycleName);
+    const slug = effectiveSlug(p);
+    const cbSlug = cycleBoundSlug(slug, year, cycleName);
     cbRows.push({ ...p, _kind: "cycle-bound", phase_slug: cbSlug, exam_cycle_id: cycleId });
     if (p.createTemplate) {
-      tmplRows.push({ ...p, _kind: "template", phase_slug: slugify(p.base_slug), exam_cycle_id: null });
+      tmplRows.push({ ...p, _kind: "template", phase_slug: slugify(slug), exam_cycle_id: null });
     }
   }
   return { cbRows, tmplRows };
 }
 
 function buildCreateLog(state) {
-  const { orgMode, orgId, phases, cycleDraft } = state;
+  const { orgMode, phases, cycleDraft } = state;
   const year = String(cycleDraft.year || "").trim();
   const cycleName = cycleDraft.cycle_name.trim();
   const log = [];
-  if (orgMode === "create" && !orgId) {
+  // Org always included for create mode (posted fresh in Step 5)
+  if (orgMode === "create") {
     log.push({ key: "org", label: "Create organization", status: "pending" });
   }
   log.push({ key: "exam", label: "Create exam", status: "pending" });
@@ -595,17 +617,17 @@ function StepReview({ state, dispatch }) {
     dispatch({ type: "INIT_CREATE_LOG", log });
     dispatch({ type: "SET_CREATING", value: true });
 
+    // Resolved org id: select → state.orgId; create → will be set after POST
     let orgId_ = orgMode === "select" ? orgId : createdIds.org;
     let examId_ = createdIds.exam;
     let cycleId_ = createdIds.cycle;
 
-    // Helper: mark log entry
     function mark(key, status, message = "") {
       dispatch({ type: "UPDATE_LOG_ENTRY", key, patch: { status, message } });
     }
 
     try {
-      // Org (skip if select-mode or already created)
+      // ── Org (create mode only; skip if already created in a prior resume) ──
       if (orgMode === "create" && !createdIds.org) {
         try {
           const r = await api.post("/api/admin/organizations", {
@@ -617,17 +639,18 @@ function StepReview({ state, dispatch }) {
           });
           orgId_ = r.id;
           dispatch({ type: "SET_CREATED_IDS", patch: { org: r.id } });
-          mark("org", "ok");
+          mark("org", "ok", r.warnings?.length ? `${r.warnings.length} similar org(s) found` : "");
         } catch (ex) {
           mark("org", "error", getApiErrorMessage(ex));
           dispatch({ type: "SET_CREATING", value: false });
           return;
         }
-      } else if (log.find((e) => e.key === "org")) {
+      } else if (orgMode === "create" && createdIds.org) {
+        // Already created in a previous attempt — skip, mark done
         mark("org", "ok");
       }
 
-      // Exam
+      // ── Exam ──
       if (!createdIds.exam) {
         const examPayload = {
           name: examDraft.name.trim(),
@@ -652,13 +675,14 @@ function StepReview({ state, dispatch }) {
         mark("exam", "ok");
       }
 
-      // Cycle
+      // ── Cycle ──
       if (!createdIds.cycle) {
         const cyclePayload = {
           exam_id: examId_,
           cycle_name: cycleDraft.cycle_name.trim(),
           year: parseInt(cycleDraft.year, 10),
           status: cycleDraft.status || undefined,
+          // Empty date strings → undefined (omit from payload)
           notification_date: cycleDraft.notification_date || undefined,
           application_start: cycleDraft.application_start || undefined,
           application_end: cycleDraft.application_end || undefined,
@@ -679,7 +703,7 @@ function StepReview({ state, dispatch }) {
         mark("cycle", "ok");
       }
 
-      // Phases — templates first, then cycle-bound, both ordered by phase_order
+      // ── Phases — templates first (sorted by phase_order), then cycle-bound ──
       const sortedByOrder = (arr) =>
         [...arr].sort((a, b) => Number(a.phase_order || 0) - Number(b.phase_order || 0));
 
@@ -751,7 +775,7 @@ function StepReview({ state, dispatch }) {
           <h3 className="font-medium text-xs text-muted-foreground uppercase tracking-wide mb-1">Organization</h3>
           {orgMode === "select"
             ? <p>Using existing org: <code className="font-mono text-xs">{orgId}</code></p>
-            : <p>{orgDraft.name} ({orgDraft.type}{orgDraft.state ? ` / ${orgDraft.state}` : ""})</p>
+            : <p>{orgDraft.name} ({orgDraft.type}{orgDraft.state ? ` / ${orgDraft.state}` : ""}){createdIds.org ? <span className="ml-2 text-green-700 text-xs">✓ id: {createdIds.org}</span> : ""}</p>
           }
         </section>
         <section>
@@ -798,7 +822,7 @@ function StepReview({ state, dispatch }) {
                 {e.status === "ok" ? "✓" : e.status === "error" ? "✗" : "·"}
               </span>
               <span>{e.label}</span>
-              {e.message && <span className="text-destructive">{e.message}</span>}
+              {e.message && <span className={e.status === "error" ? "text-destructive" : "text-amber-700"}>{e.message}</span>}
             </div>
           ))}
         </div>

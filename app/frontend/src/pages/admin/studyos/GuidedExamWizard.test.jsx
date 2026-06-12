@@ -31,7 +31,11 @@ function setup() {
 
 beforeEach(() => {
   api.get.mockResolvedValue({ items: ORG_LIST });
-  api.post.mockResolvedValue({ id: "org-new-1", row: { id: "exam-xxx" } });
+  // default happy-path: org create → exam → cycle
+  api.post
+    .mockResolvedValueOnce({ id: "org-new-1" })             // org
+    .mockResolvedValueOnce({ row: { id: "exam-xxx" } })     // exam
+    .mockResolvedValueOnce({ row: { id: "cycle-yyy" } });   // cycle
 });
 
 // ── Slug utilities ────────────────────────────────────────────────────────────
@@ -60,8 +64,7 @@ describe("cycleBoundSlug util", () => {
   });
 
   test("never emits bare-slug for cycle-bound (always has suffix)", () => {
-    const result = cycleBoundSlug("prelims", "2025", "");
-    expect(result).toMatch(/prelims-\d+/);
+    expect(cycleBoundSlug("prelims", "2025", "")).toMatch(/prelims-\d+/);
   });
 });
 
@@ -80,6 +83,16 @@ describe("step navigation", () => {
     expect(screen.getByTestId("wizard-next-1")).not.toBeDisabled();
     fireEvent.click(screen.getByTestId("wizard-next-1"));
     expect(screen.getByTestId("wizard-step-exam")).toBeInTheDocument();
+  });
+
+  test("1→2 create mode: Next enabled after name+short_name+type filled", () => {
+    setup();
+    fireEvent.click(screen.getByTestId("org-mode-create"));
+    expect(screen.getByTestId("wizard-next-1")).toBeDisabled();
+    fireEvent.change(screen.getByTestId("org-name"), { target: { value: "New Org" } });
+    fireEvent.change(screen.getByTestId("org-short-name"), { target: { value: "NO" } });
+    fireEvent.change(screen.getByTestId("org-type"), { target: { value: "central" } });
+    expect(screen.getByTestId("wizard-next-1")).not.toBeDisabled();
   });
 
   test("2→3: advances to cycle step after entering exam name", async () => {
@@ -148,24 +161,40 @@ describe("draft state retained across steps", () => {
 // ── Nothing POSTs before Step 5 ───────────────────────────────────────────────
 
 describe("no network calls before step 5", () => {
-  test("navigating steps 1-4 fires no POST", async () => {
+  test("create-mode: navigating steps 1–4 fires zero api.post calls", () => {
     setup();
-    await waitFor(() => screen.getByTestId("org-list"));
-    fireEvent.click(screen.getByTestId("org-select-org-aaa"));
+    fireEvent.click(screen.getByTestId("org-mode-create"));
+    fireEvent.change(screen.getByTestId("org-name"), { target: { value: "New Org" } });
+    fireEvent.change(screen.getByTestId("org-short-name"), { target: { value: "NO" } });
+    fireEvent.change(screen.getByTestId("org-type"), { target: { value: "central" } });
     fireEvent.click(screen.getByTestId("wizard-next-1"));
-    fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "UPSC CSE" } });
+    fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "Test Exam" } });
     fireEvent.click(screen.getByTestId("wizard-next-2"));
-    fireEvent.change(screen.getByTestId("cycle-name"), { target: { value: "CSE 2025" } });
+    fireEvent.change(screen.getByTestId("cycle-name"), { target: { value: "Cycle 2025" } });
     fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: "2025" } });
     fireEvent.click(screen.getByTestId("wizard-next-3"));
     fireEvent.click(screen.getByTestId("wizard-next-4"));
     expect(screen.getByTestId("wizard-step-review")).toBeInTheDocument();
-    // No POST until "Create all" clicked
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  test("select-mode: navigating steps 1–4 fires zero api.post calls", async () => {
+    setup();
+    await waitFor(() => screen.getByTestId("org-list"));
+    fireEvent.click(screen.getByTestId("org-select-org-aaa"));
+    fireEvent.click(screen.getByTestId("wizard-next-1"));
+    fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "Test Exam" } });
+    fireEvent.click(screen.getByTestId("wizard-next-2"));
+    fireEvent.change(screen.getByTestId("cycle-name"), { target: { value: "Cycle 2025" } });
+    fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: "2025" } });
+    fireEvent.click(screen.getByTestId("wizard-next-3"));
+    fireEvent.click(screen.getByTestId("wizard-next-4"));
+    expect(screen.getByTestId("wizard-step-review")).toBeInTheDocument();
     expect(api.post).not.toHaveBeenCalled();
   });
 });
 
-// ── Step 1 org modes ──────────────────────────────────────────────────────────
+// ── Step 1 org select mode ────────────────────────────────────────────────────
 
 describe("Step 1: org select-existing path", () => {
   test("shows org list, clicking org sets selected id", async () => {
@@ -173,36 +202,6 @@ describe("Step 1: org select-existing path", () => {
     await waitFor(() => screen.getByTestId("org-list"));
     fireEvent.click(screen.getByTestId("org-select-org-aaa"));
     expect(screen.getByTestId("org-selected-id")).toHaveTextContent("org-aaa");
-  });
-});
-
-describe("Step 1: inline-create path", () => {
-  test("creates org, shows created id, shows warnings non-blocking", async () => {
-    api.post.mockResolvedValueOnce({
-      id: "org-new-99",
-      warnings: [{ existing_name: "UPSC Old", existing_id: "org-old-1" }],
-    });
-    setup();
-    fireEvent.click(screen.getByTestId("org-mode-create"));
-    fireEvent.change(screen.getByTestId("org-name"), { target: { value: "New UPSC" } });
-    fireEvent.change(screen.getByTestId("org-short-name"), { target: { value: "NUPSC" } });
-    fireEvent.change(screen.getByTestId("org-type"), { target: { value: "central" } });
-    await act(async () => { fireEvent.click(screen.getByTestId("org-create-submit")); });
-    await waitFor(() => expect(screen.getByTestId("org-created-id")).toHaveTextContent("org-new-99"));
-    // Warnings shown but wizard not blocked — Next button still enabled
-    expect(screen.getByTestId("org-warnings")).toBeInTheDocument();
-    expect(screen.getByTestId("wizard-next-1")).not.toBeDisabled();
-  });
-
-  test("duplicate-block error is surfaced", async () => {
-    api.post.mockRejectedValueOnce({ message: "duplicate org name" });
-    setup();
-    fireEvent.click(screen.getByTestId("org-mode-create"));
-    fireEvent.change(screen.getByTestId("org-name"), { target: { value: "UPSC" } });
-    fireEvent.change(screen.getByTestId("org-short-name"), { target: { value: "UPSC" } });
-    fireEvent.change(screen.getByTestId("org-type"), { target: { value: "central" } });
-    await act(async () => { fireEvent.click(screen.getByTestId("org-create-submit")); });
-    await waitFor(() => expect(screen.getByTestId("org-error")).toHaveTextContent("duplicate org name"));
   });
 });
 
@@ -224,16 +223,14 @@ describe("Step 2: exam fields", () => {
   test("management_mode defaults to 'light'; null/blank coerced on advance", async () => {
     await goToExamStep();
     expect(screen.getByTestId("exam-management-mode")).toHaveValue("light");
-    // Clear to blank and advance — should coerce to 'light'
     fireEvent.change(screen.getByTestId("exam-management-mode"), { target: { value: "" } });
     fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "Test Exam" } });
     fireEvent.click(screen.getByTestId("wizard-next-2"));
-    // After coercion, going back shows 'light'
     fireEvent.click(screen.getByTestId("wizard-back-2"));
     expect(screen.getByTestId("exam-management-mode")).toHaveValue("light");
   });
 
-  test("cadence defaults to 'unknown'; blank coerced on advance", async () => {
+  test("cadence defaults to 'unknown'", async () => {
     await goToExamStep();
     expect(screen.getByTestId("exam-cadence")).toHaveValue("unknown");
   });
@@ -258,12 +255,18 @@ describe("Step 3: cycle", () => {
     fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: "2025" } });
     expect(screen.getByTestId("wizard-next-3")).not.toBeDisabled();
   });
+
+  test("date inputs have type=date", async () => {
+    await goToCycleStep();
+    expect(screen.getByTestId("cycle-notification_date")).toHaveAttribute("type", "date");
+    expect(screen.getByTestId("cycle-exam_start")).toHaveAttribute("type", "date");
+  });
 });
 
 // ── Step 4: phases ────────────────────────────────────────────────────────────
 
 describe("Step 4: phases", () => {
-  async function goToPhaseStep(cycleYear = "2025", cycleName = "CSE 2025") {
+  async function goToPhaseStep(cycleName = "CSE 2025", year = "2025") {
     setup();
     await waitFor(() => screen.getByTestId("org-list"));
     fireEvent.click(screen.getByTestId("org-select-org-aaa"));
@@ -271,129 +274,294 @@ describe("Step 4: phases", () => {
     fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "UPSC CSE" } });
     fireEvent.click(screen.getByTestId("wizard-next-2"));
     fireEvent.change(screen.getByTestId("cycle-name"), { target: { value: cycleName } });
-    fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: cycleYear } });
+    fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: year } });
     fireEvent.click(screen.getByTestId("wizard-next-3"));
   }
 
-  test("adds a phase row and shows cb-slug preview = slugify(base+year)", async () => {
-    await goToPhaseStep("2025", "CSE 2025");
+  test("zero phases: Next (Review) enabled immediately", async () => {
+    await goToPhaseStep();
+    expect(screen.getByTestId("wizard-next-4")).not.toBeDisabled();
+  });
+
+  test("blank phase_name blocks Next", async () => {
+    await goToPhaseStep();
+    fireEvent.click(screen.getByTestId("add-phase"));
+    // Name is empty — Next should be disabled
+    expect(screen.getByTestId("wizard-next-4")).toBeDisabled();
+    expect(screen.getByTestId("phase-errors")).toBeInTheDocument();
+  });
+
+  test("base_slug auto-derives from phase_name when left blank", async () => {
+    await goToPhaseStep();
+    fireEvent.click(screen.getByTestId("add-phase"));
+    const rowId = screen.getAllByTestId(/^phase-row-/)[0]
+      .getAttribute("data-testid").replace("phase-row-", "");
+    fireEvent.change(screen.getByTestId(`phase-name-${rowId}`), { target: { value: "Prelims" } });
+    // base_slug input is empty — placeholder shows derived slug
+    expect(screen.getByTestId(`phase-base-slug-${rowId}`)).toHaveAttribute("placeholder", "prelims");
+    // cb-slug preview uses derived slug
+    await waitFor(() => {
+      expect(screen.getByTestId(`phase-cb-slug-preview-${rowId}`)).toHaveTextContent("prelims-2025");
+    });
+    // Next should now be enabled
+    expect(screen.getByTestId("wizard-next-4")).not.toBeDisabled();
+  });
+
+  test("duplicate base_slug across rows blocks Next and shows error", async () => {
+    await goToPhaseStep();
+    fireEvent.click(screen.getByTestId("add-phase"));
     fireEvent.click(screen.getByTestId("add-phase"));
     const rows = screen.getAllByTestId(/^phase-row-/);
-    expect(rows).toHaveLength(1);
-    const rowId = rows[0].getAttribute("data-testid").replace("phase-row-", "");
+    const id1 = rows[0].getAttribute("data-testid").replace("phase-row-", "");
+    const id2 = rows[1].getAttribute("data-testid").replace("phase-row-", "");
+    fireEvent.change(screen.getByTestId(`phase-name-${id1}`), { target: { value: "Prelims" } });
+    fireEvent.change(screen.getByTestId(`phase-name-${id2}`), { target: { value: "Prelims" } });
+    expect(screen.getByTestId("wizard-next-4")).toBeDisabled();
+    expect(screen.getByTestId("phase-errors")).toHaveTextContent("Duplicate base slug");
+  });
+
+  test("unique slugs unblock Next", async () => {
+    await goToPhaseStep();
+    fireEvent.click(screen.getByTestId("add-phase"));
+    fireEvent.click(screen.getByTestId("add-phase"));
+    const rows = screen.getAllByTestId(/^phase-row-/);
+    const id1 = rows[0].getAttribute("data-testid").replace("phase-row-", "");
+    const id2 = rows[1].getAttribute("data-testid").replace("phase-row-", "");
+    fireEvent.change(screen.getByTestId(`phase-name-${id1}`), { target: { value: "Prelims" } });
+    fireEvent.change(screen.getByTestId(`phase-name-${id2}`), { target: { value: "Mains" } });
+    expect(screen.getByTestId("wizard-next-4")).not.toBeDisabled();
+  });
+
+  test("cb-slug preview = slugify(base+year)", async () => {
+    await goToPhaseStep("CSE 2025", "2025");
+    fireEvent.click(screen.getByTestId("add-phase"));
+    const rowId = screen.getAllByTestId(/^phase-row-/)[0]
+      .getAttribute("data-testid").replace("phase-row-", "");
+    fireEvent.change(screen.getByTestId(`phase-name-${rowId}`), { target: { value: "Prelims" } });
     fireEvent.change(screen.getByTestId(`phase-base-slug-${rowId}`), { target: { value: "prelims" } });
     await waitFor(() => {
-      const preview = screen.getByTestId(`phase-cb-slug-preview-${rowId}`);
-      expect(preview).toHaveTextContent("prelims-2025");
+      expect(screen.getByTestId(`phase-cb-slug-preview-${rowId}`)).toHaveTextContent("prelims-2025");
     });
   });
 
   test("toggle ON 'also template' emits bare slug template (cycle=null)", async () => {
-    await goToPhaseStep("2025", "CSE 2025");
+    await goToPhaseStep();
     fireEvent.click(screen.getByTestId("add-phase"));
     const rowId = screen.getAllByTestId(/^phase-row-/)[0]
       .getAttribute("data-testid").replace("phase-row-", "");
-    fireEvent.change(screen.getByTestId(`phase-base-slug-${rowId}`), { target: { value: "prelims" } });
     fireEvent.change(screen.getByTestId(`phase-name-${rowId}`), { target: { value: "Prelims" } });
-    // Check the template toggle checkbox
     const toggle = screen.getByTestId(`phase-template-toggle-${rowId}`).querySelector("input");
     fireEvent.click(toggle);
     fireEvent.click(screen.getByTestId("wizard-next-4"));
-    // Review should show template phases section with bare slug
     await waitFor(() => {
       expect(screen.getByTestId("review-template-phases")).toHaveTextContent("prelims");
     });
-    // And cycle-bound slug for cb row (not bare)
     expect(screen.getByTestId("review-cb-phases")).toHaveTextContent("prelims-2025");
   });
 
-  test("wizard never emits bare-slug cycle-bound phase (cb slug always has suffix)", async () => {
-    await goToPhaseStep("2025", "CSE 2025");
+  test("wizard never emits bare-slug cycle-bound phase", async () => {
+    await goToPhaseStep();
     fireEvent.click(screen.getByTestId("add-phase"));
     const rowId = screen.getAllByTestId(/^phase-row-/)[0]
       .getAttribute("data-testid").replace("phase-row-", "");
-    fireEvent.change(screen.getByTestId(`phase-base-slug-${rowId}`), { target: { value: "prelims" } });
     fireEvent.change(screen.getByTestId(`phase-name-${rowId}`), { target: { value: "Prelims" } });
     fireEvent.click(screen.getByTestId("wizard-next-4"));
     const cbSection = screen.getByTestId("review-cb-phases");
-    // cb slug must not be bare "prelims" — must be "prelims-2025"
     expect(cbSection).not.toHaveTextContent(/slug: prelims(?!-)/);
     expect(cbSection).toHaveTextContent("prelims-2025");
   });
 });
 
-// ── Step 5: create sequence ───────────────────────────────────────────────────
+// ── Step 5: sequential create POSTs ──────────────────────────────────────────
 
-async function fillAndGoToReview({ withPhase = false, cycleName = "CSE 2025", year = "2025" } = {}) {
+async function fillSelectAndGoToReview({ withPhase = false } = {}) {
   await waitFor(() => screen.getByTestId("org-list"));
   fireEvent.click(screen.getByTestId("org-select-org-aaa"));
   fireEvent.click(screen.getByTestId("wizard-next-1"));
   fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "UPSC CSE" } });
   fireEvent.click(screen.getByTestId("wizard-next-2"));
-  fireEvent.change(screen.getByTestId("cycle-name"), { target: { value: cycleName } });
-  fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: year } });
+  fireEvent.change(screen.getByTestId("cycle-name"), { target: { value: "CSE 2025" } });
+  fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: "2025" } });
   fireEvent.click(screen.getByTestId("wizard-next-3"));
   if (withPhase) {
     fireEvent.click(screen.getByTestId("add-phase"));
     const rowId = screen.getAllByTestId(/^phase-row-/)[0]
       .getAttribute("data-testid").replace("phase-row-", "");
     fireEvent.change(screen.getByTestId(`phase-name-${rowId}`), { target: { value: "Prelims" } });
-    fireEvent.change(screen.getByTestId(`phase-base-slug-${rowId}`), { target: { value: "prelims" } });
   }
   fireEvent.click(screen.getByTestId("wizard-next-4"));
 }
 
-describe("Step 5: sequential create POSTs", () => {
-  test("fires exam → cycle POSTs in order (existing org skips org POST)", async () => {
+async function fillCreateAndGoToReview() {
+  fireEvent.click(screen.getByTestId("org-mode-create"));
+  fireEvent.change(screen.getByTestId("org-name"), { target: { value: "New Org" } });
+  fireEvent.change(screen.getByTestId("org-short-name"), { target: { value: "NO" } });
+  fireEvent.change(screen.getByTestId("org-type"), { target: { value: "central" } });
+  fireEvent.click(screen.getByTestId("wizard-next-1"));
+  fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "Test Exam" } });
+  fireEvent.click(screen.getByTestId("wizard-next-2"));
+  fireEvent.change(screen.getByTestId("cycle-name"), { target: { value: "Cycle 2025" } });
+  fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: "2025" } });
+  fireEvent.click(screen.getByTestId("wizard-next-3"));
+  fireEvent.click(screen.getByTestId("wizard-next-4"));
+}
+
+describe("Step 5: create mode — org POSTed first", () => {
+  test("posts org → exam → cycle in order; exam uses org id from POST", async () => {
     api.post
-      .mockResolvedValueOnce({ row: { id: "exam-created" } })   // exam
-      .mockResolvedValueOnce({ row: { id: "cycle-created" } }); // cycle
+      .mockReset()
+      .mockResolvedValueOnce({ id: "org-created-111" })          // org
+      .mockResolvedValueOnce({ row: { id: "exam-222" } })        // exam
+      .mockResolvedValueOnce({ row: { id: "cycle-333" } });      // cycle
     setup();
-    await fillAndGoToReview();
+    await fillCreateAndGoToReview();
     await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
     await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
     const calls = api.post.mock.calls;
-    expect(calls[0][0]).toMatch(/\/exams$/);
-    expect(calls[1][0]).toMatch(/\/exam-cycles$/);
-    // No org POST (select mode)
-    expect(calls.every((c) => !c[0].includes("/organizations"))).toBe(true);
+    expect(calls[0][0]).toContain("/organizations");
+    expect(calls[1][0]).toContain("/exams");
+    expect(calls[2][0]).toContain("/exam-cycles");
+    // Exam payload uses the org id from the org POST
+    expect(calls[1][1].payload.conducting_organization_id).toBe("org-created-111");
   });
 
-  test("phases posted after cycle — cb phase has exam_cycle_id set", async () => {
+  test("no duplicate org POST on resume after exam failure", async () => {
     api.post
+      .mockReset()
+      .mockResolvedValueOnce({ id: "org-created-111" })           // org ok
+      .mockRejectedValueOnce({ message: "exam error" });          // exam fails
+    setup();
+    await fillCreateAndGoToReview();
+    await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
+    await waitFor(() => expect(screen.getByTestId("wizard-create")).toHaveTextContent("Resume creation"));
+
+    // Resume: only exam and cycle re-attempted, NOT org
+    api.post
+      .mockResolvedValueOnce({ row: { id: "exam-222" } })
+      .mockResolvedValueOnce({ row: { id: "cycle-333" } });
+    await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
+    await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
+
+    const orgPosts = api.post.mock.calls.filter((c) => c[0].includes("/organizations"));
+    expect(orgPosts).toHaveLength(1); // posted exactly once
+  });
+});
+
+describe("Step 5: select-existing org — no org POST", () => {
+  test("fires exam → cycle only; conducting_organization_id = selected org id", async () => {
+    api.post
+      .mockReset()
+      .mockResolvedValueOnce({ row: { id: "exam-created" } })
+      .mockResolvedValueOnce({ row: { id: "cycle-created" } });
+    setup();
+    await fillSelectAndGoToReview();
+    await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
+    await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
+    const calls = api.post.mock.calls;
+    expect(calls.every((c) => !c[0].includes("/organizations"))).toBe(true);
+    expect(calls[0][0]).toContain("/exams");
+    expect(calls[0][1].payload.conducting_organization_id).toBe("org-aaa");
+  });
+});
+
+describe("Step 5: phases", () => {
+  test("cb phase has exam_cycle_id set; slug uses derived name slug", async () => {
+    api.post
+      .mockReset()
       .mockResolvedValueOnce({ row: { id: "exam-111" } })
       .mockResolvedValueOnce({ row: { id: "cycle-222" } })
       .mockResolvedValueOnce({ row: { id: "phase-333" } });
     setup();
-    await fillAndGoToReview({ withPhase: true });
+    await fillSelectAndGoToReview({ withPhase: true });
     await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
     await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
     const phasePosts = api.post.mock.calls.filter((c) => c[0].includes("/exam-phases"));
     expect(phasePosts).toHaveLength(1);
     expect(phasePosts[0][1].payload.exam_cycle_id).toBe("cycle-222");
+    // Derived slug from name "Prelims" → "prelims", cb → "prelims-2025"
     expect(phasePosts[0][1].payload.phase_slug).toBe("prelims-2025");
   });
+});
 
-  test("mid-failure keeps created IDs; resume re-posts only remainder", async () => {
+describe("Step 5: mid-failure resume", () => {
+  test("keeps created IDs; resume re-posts only remainder", async () => {
     api.post
-      .mockResolvedValueOnce({ row: { id: "exam-111" } })    // exam ok
-      .mockRejectedValueOnce({ message: "cycle server error" }); // cycle fails
+      .mockReset()
+      .mockResolvedValueOnce({ row: { id: "exam-111" } })
+      .mockRejectedValueOnce({ message: "cycle server error" });
     setup();
-    await fillAndGoToReview();
+    await fillSelectAndGoToReview();
     await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
     await waitFor(() => expect(screen.getByTestId("wizard-create")).toHaveTextContent("Resume creation"));
 
-    // Now fix: next call succeeds
     api.post.mockResolvedValueOnce({ row: { id: "cycle-222" } });
     await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
     await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
 
-    // Exam was NOT posted again on resume
     const examCalls = api.post.mock.calls.filter((c) => c[0].includes("/exams"));
-    expect(examCalls).toHaveLength(1);
+    expect(examCalls).toHaveLength(1); // not double-posted
   });
+});
 
-  test("review labels distinguish template vs cycle-bound groups", async () => {
+describe("Step 5: org Step-5 failure (create mode)", () => {
+  test("surfaces error, exam/cycle NOT posted; retry re-posts org only", async () => {
+    api.post
+      .mockReset()
+      .mockRejectedValueOnce({ message: "duplicate org name" });
+    setup();
+    await fillCreateAndGoToReview();
+    await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
+    await waitFor(() => expect(screen.getByTestId("log-org")).toHaveTextContent("✗"));
+    // Exam and cycle must NOT have been posted
+    expect(api.post.mock.calls.filter((c) => c[0].includes("/exams"))).toHaveLength(0);
+    expect(api.post.mock.calls.filter((c) => c[0].includes("/exam-cycles"))).toHaveLength(0);
+    // Resume button shown
+    expect(screen.getByTestId("wizard-create")).toHaveTextContent("Resume creation");
+
+    // Retry — org now succeeds
+    api.post
+      .mockResolvedValueOnce({ id: "org-retry-1" })
+      .mockResolvedValueOnce({ row: { id: "exam-222" } })
+      .mockResolvedValueOnce({ row: { id: "cycle-333" } });
+    await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
+    await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
+    const orgPosts = api.post.mock.calls.filter((c) => c[0].includes("/organizations"));
+    expect(orgPosts).toHaveLength(2); // first failed, second retry
+  });
+});
+
+describe("Step 5: cycle date payload", () => {
+  test("filled dates submitted as ISO strings; empty dates omitted", async () => {
+    api.post
+      .mockReset()
+      .mockResolvedValueOnce({ row: { id: "exam-111" } })
+      .mockResolvedValueOnce({ row: { id: "cycle-222" } });
+    setup();
+    await waitFor(() => screen.getByTestId("org-list"));
+    fireEvent.click(screen.getByTestId("org-select-org-aaa"));
+    fireEvent.click(screen.getByTestId("wizard-next-1"));
+    fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "UPSC CSE" } });
+    fireEvent.click(screen.getByTestId("wizard-next-2"));
+    fireEvent.change(screen.getByTestId("cycle-name"), { target: { value: "CSE 2025" } });
+    fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: "2025" } });
+    fireEvent.change(screen.getByTestId("cycle-exam_start"), { target: { value: "2025-09-15" } });
+    // Leave all other dates empty
+    fireEvent.click(screen.getByTestId("wizard-next-3"));
+    fireEvent.click(screen.getByTestId("wizard-next-4"));
+    await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
+    await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
+    const cyclePosts = api.post.mock.calls.filter((c) => c[0].includes("/exam-cycles"));
+    const payload = cyclePosts[0][1].payload;
+    expect(payload.exam_start).toBe("2025-09-15");
+    // Empty dates must be omitted (undefined)
+    expect(payload.notification_date).toBeUndefined();
+    expect(payload.application_start).toBeUndefined();
+    expect(payload.exam_end).toBeUndefined();
+  });
+});
+
+describe("Step 5: review labels template vs cycle-bound", () => {
+  test("distinguishes template and cycle-bound groups", async () => {
     setup();
     await waitFor(() => screen.getByTestId("org-list"));
     fireEvent.click(screen.getByTestId("org-select-org-aaa"));
@@ -407,7 +575,6 @@ describe("Step 5: sequential create POSTs", () => {
     const rowId = screen.getAllByTestId(/^phase-row-/)[0]
       .getAttribute("data-testid").replace("phase-row-", "");
     fireEvent.change(screen.getByTestId(`phase-name-${rowId}`), { target: { value: "Prelims" } });
-    fireEvent.change(screen.getByTestId(`phase-base-slug-${rowId}`), { target: { value: "prelims" } });
     const toggle = screen.getByTestId(`phase-template-toggle-${rowId}`).querySelector("input");
     fireEvent.click(toggle);
     fireEvent.click(screen.getByTestId("wizard-next-4"));
