@@ -274,20 +274,78 @@ def _seed_with_phases(*, phase_id_a="ph-prelims", phase_id_b="ph-mains",
 
 
 def test_pr3_resolver_phase_wins_over_coverage_majority():
-    """Resolver target_phase_id → study_plans.active_phase_id, not coverage-majority."""
+    """Resolver target wins over coverage-majority with genuine divergence.
+
+    Seed: stale Prelims (phase_end 10 days ago, skipped by ladder-2) + future Mains.
+    Coverage: 2 rows tagged to Prelims (t1, t2), 1 row to Mains (t3).
+    Coverage-majority  → ph-prelims (2 > 1).
+    Resolver ladder-3  → ph-mains (next_future_phase).
+    Expected: active_phase_id = ph-mains AND all tasks come from Mains coverage (t3).
+    """
     today = date.today()
-    # current active phase = ph-prelims (phase_start 5 days ago, no end)
-    seed = _seed_with_phases(phase_id_a="ph-prelims", phase_id_b="ph-mains",
-                              active_phase_start_delta=-5, active_phase_end=None)
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active",
+                         "exam_start": (today - timedelta(days=5)).isoformat(),
+                         "year": 2026, "created_at": "2026-01-01T00:00:00Z"}],
+        "exam_phases": [
+            {"id": "ph-prelims", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1,
+             "status": "active",
+             "phase_start": (today - timedelta(days=60)).isoformat(),
+             "phase_end": (today - timedelta(days=10)).isoformat()},  # stale
+            {"id": "ph-mains", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "phase_name": "Mains", "phase_slug": "mains", "phase_order": 2,
+             "status": "expected",
+             "phase_start": (today + timedelta(days=30)).isoformat(),
+             "phase_end": None},
+        ],
+        # 2 Prelims rows → coverage-majority = ph-prelims
+        # 1 Mains row  → resolver target = ph-mains (phase-specific filter wins)
+        "exam_topic_coverage": [
+            {"id": "cov-1", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "exam_phase_id": "ph-prelims", "topic_id": "t1",
+             "exam_priority_score": 88, "is_high_yield": True,
+             "confidence_score": 0.86, "reviewer_status": "locked"},
+            {"id": "cov-2", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "exam_phase_id": "ph-prelims", "topic_id": "t2",
+             "exam_priority_score": 80, "is_high_yield": True,
+             "confidence_score": 0.81, "reviewer_status": "locked"},
+            {"id": "cov-3", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "exam_phase_id": "ph-mains", "topic_id": "t3",
+             "exam_priority_score": 70, "is_high_yield": True,
+             "confidence_score": 0.75, "reviewer_status": "locked"},
+        ],
+        "topics": [
+            {"id": "t1", "name": "Percentage", "slug": "percentage",
+             "subject_id": "s1", "is_active": True},
+            {"id": "t2", "name": "Profit and Loss", "slug": "profit-and-loss",
+             "subject_id": "s1", "is_active": True},
+            {"id": "t3", "name": "Time and Work", "slug": "time-and-work",
+             "subject_id": "s1", "is_active": True},
+        ],
+        "subjects": [{"id": "s1", "name": "Quantitative Aptitude"}],
+        "topic_prerequisites": [],
+        "user_topic_mastery": [],
+        "user_topic_error_patterns": [],
+        "aspirant_persona_snapshots": [
+            {"user_id": "u-1", "computed_at": "2026-05-01T00:00:00+00:00",
+             "study_policy": {"max_tasks_per_day": 5, "preferred_task_size": "small"}},
+        ],
+        "pyq_papers": [], "pyq_questions": [], "pyq_question_topic_tags": [],
+    }
     sb = SBStub(seed)
     out = generate_plan(sb, "u-1")
     assert out["generated"] is True
-    # Resolver finds current_phase = ph-prelims (active, started, no end)
     plan = sb.db["study_plans"][0]
-    assert plan["active_phase_id"] == "ph-prelims"
-    # Coverage-majority would also be ph-prelims here (2 rows vs 1), but the
-    # assertion is that resolver drove it, not the fallback path.
-    assert plan["active_phase_id"] != "ph-mains"
+    # Resolver wins: active_phase_id = Mains, not the coverage-majority (Prelims)
+    assert plan["active_phase_id"] == "ph-mains"
+    assert plan["active_phase_id"] != "ph-prelims"
+    # Phase-specific coverage filter: only Mains topic (t3) in tasks
+    assert all(t["topic_id"] == "t3" for t in sb.db["study_tasks"])
 
 
 def test_pr3_resolver_none_phase_falls_back_to_coverage_majority():
@@ -361,27 +419,58 @@ def test_pr3_open_ended_current_phase_days_remaining_none_no_crash():
     assert gen_ctx["days_remaining"] is None  # not coerced to 0
 
 
-def test_pr3_active_phase_id_write_failure_surfaces():
-    """active_phase_id write uses safe_required — failure is not silently swallowed."""
+def test_pr3_active_phase_id_create_path_write_failure_surfaces():
+    """active_phase_id INSERT uses safe_required(op='study_plans.insert') — fail-closed.
+
+    No existing plan → _persist takes the insert branch (line 619 in planner.py).
+    Monkeypatching safe_required to raise on that op causes apply_plan to catch
+    the exception and return {"generated": False} — the write is not silently swallowed.
+    """
     from app.utils.safe import safe_required as real_safe_required
     import app.study_os.planner as planner_mod
 
     seed = _seed_with_phases(active_phase_start_delta=-5, active_phase_end=None)
-    seed["exam_phases"] = [seed["exam_phases"][0]]  # only current phase
+    seed["exam_phases"] = [seed["exam_phases"][0]]  # only current open phase
 
-    call_count = [0]
-
-    def failing_safe_required(fn, *, op, rollback=None):
-        call_count[0] += 1
-        # Fail on the study_plans insert (first safe_required call in _persist)
-        if call_count[0] == 1:
-            return None
-        return real_safe_required(fn, op=op, rollback=rollback)
+    def failing_safe_required(*args, op=None, **kwargs):
+        if op == "study_plans.insert":
+            raise RuntimeError("injected insert failure")
+        return real_safe_required(*args, op=op, **kwargs)
 
     sb = SBStub(seed)
     with patch.object(planner_mod, "safe_required", failing_safe_required):
         out = generate_plan(sb, "u-1")
-    # safe_required returning None causes _persist to short-circuit → not generated
+    # apply_plan catches the exception → fail-closed, not silently swallowed
+    assert out["generated"] is False
+
+
+def test_pr3_active_phase_id_update_path_write_failure_surfaces():
+    """active_phase_id UPDATE uses safe_required(op='study_plans.update_active_version') — fail-closed.
+
+    Pre-existing active plan → _persist takes the update branch (line 724 in planner.py).
+    Monkeypatching safe_required to raise on that op causes apply_plan to catch
+    the exception and return {"generated": False}.
+    """
+    from app.utils.safe import safe_required as real_safe_required
+    import app.study_os.planner as planner_mod
+
+    seed = _seed_with_phases(active_phase_start_delta=-5, active_phase_end=None)
+    seed["exam_phases"] = [seed["exam_phases"][0]]  # only current open phase
+
+    # First generate to create an existing plan
+    sb = SBStub(seed)
+    first = generate_plan(sb, "u-1")
+    assert first["generated"] is True
+    assert len(sb.db["study_plans"]) == 1
+
+    def failing_safe_required(*args, op=None, **kwargs):
+        if op == "study_plans.update_active_version":
+            raise RuntimeError("injected update failure")
+        return real_safe_required(*args, op=op, **kwargs)
+
+    # Second generate takes the update path; the monkeypatched raise is caught
+    with patch.object(planner_mod, "safe_required", failing_safe_required):
+        out = generate_plan(sb, "u-1")
     assert out["generated"] is False
 
 
