@@ -1253,16 +1253,16 @@ function VerificationReportsContent() {
         )
       : undefined;
 
+  const collectionUrl = collectionParams
+    ? `/api/admin/verification-reports?${new URLSearchParams(collectionParams).toString()}`
+    : "/api/admin/verification-reports";
+
   const [selectedId, setSelectedId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [dryRunResult, setDryRunResult] = useState(null);
   const [bulkError, setBulkError] = useState(null);
   const [bulkReason, setBulkReason] = useState("");
-  const { items, status, refresh } = useApiCollection(
-    "/api/admin/verification-reports",
-    [],
-    { params: collectionParams },
-  );
+  const { items, status, refresh } = useApiCollection(collectionUrl, []);
   const { run: runBulk, busy: bulkBusy } = useApiAction();
 
   function toggleOne(id) {
