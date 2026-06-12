@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bot, ClipboardCheck, GraduationCap, RefreshCcw, ShieldCheck, Sparkles, Users2 } from "lucide-react";
+import { Bot, ClipboardCheck, GraduationCap, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
 
 // TODO PR3-BE-enh: add per-lane aggregate counts (exams, eligibility rules,
