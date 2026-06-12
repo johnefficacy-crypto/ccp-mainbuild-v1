@@ -13,9 +13,10 @@ export default function AdminAIPolicy() {
   return (
     <div className="space-y-6" data-testid="admin-ai-policy">
       <div>
-        <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">AI policy</div>
-        <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight">What the model is allowed to say.</h1>
+        <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">AI policy viewer (read-only)</div>
+        <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight">AI policy rules — inspection view.</h1>
         <p className="text-muted-foreground mt-1">Current model: <StatusBadge status="active" label={d.model} /> <span className="mx-1">/</span> Target: <StatusBadge status="pending" label={d.swap_target} /></p>
+        <p className="text-muted-foreground text-sm mt-2">These rules are code-versioned constants surfaced here for inspection. They are not editable toggles — changes require a source-code update and deploy. Enforceable provider-level controls and live rule editing land in Phase 2.</p>
       </div>
       <div className="grid md:grid-cols-2 gap-4">
         {rules.map((r, idx) => (
