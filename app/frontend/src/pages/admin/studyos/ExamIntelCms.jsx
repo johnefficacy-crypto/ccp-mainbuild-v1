@@ -1136,6 +1136,15 @@ export default function AdminExamIntelCms() {
                         Retire
                       </button>
                     ) : null}
+                    {entity === "exams" ? (
+                      <a
+                        href={`/admin/exam-intelligence/exams/${r.id}/add-cycle`}
+                        className="btn small ml-1"
+                        data-testid={`ac-entry-${r.id}`}
+                      >
+                        Add cycle
+                      </a>
+                    ) : null}
                   </td>
                 ) : null}
               </tr>
