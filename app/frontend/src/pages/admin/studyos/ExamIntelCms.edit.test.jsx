@@ -62,6 +62,10 @@ jest.mock("../../../lib/api", () => ({
   getApiErrorMessage: (e) => String(e?.message || e),
 }));
 
+jest.mock("../../../shared/ui/core", () => ({
+  useToast: () => ({ success: jest.fn(), error: jest.fn(), info: jest.fn() }),
+}));
+
 // eslint-disable-next-line global-require
 const { api } = require("../../../lib/api");
 // eslint-disable-next-line global-require
@@ -209,44 +213,41 @@ test("successful PATCH closes the form and reloads the list", async () => {
   expect(api.get.mock.calls.length).toBeGreaterThan(getCallsBefore);
 });
 
-test("Retire (exams): confirm + reason required, soft-deletes via DELETE with reason query", async () => {
-  const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
-  const promptSpy = jest.spyOn(window, "prompt").mockReturnValue("retiring this exam from the catalogue");
-  try {
-    renderWithClient();
-    selectEntity("exams");
-    const btn = await screen.findByTestId("cms-retire-exam-11111111");
-    expect(btn.textContent).toMatch("Retire");
-    expect(btn.textContent).not.toMatch(/Delete/i);
-    fireEvent.click(btn);
+test("Retire (exams): dialog collects reason, soft-deletes via DELETE with reason query", async () => {
+  renderWithClient();
+  selectEntity("exams");
+  const btn = await screen.findByTestId("cms-retire-exam-11111111");
+  expect(btn.textContent).toMatch("Retire");
+  expect(btn.textContent).not.toMatch(/Delete/i);
+  fireEvent.click(btn);
 
-    await waitFor(() => expect(api.del).toHaveBeenCalled());
-    expect(confirmSpy).toHaveBeenCalled();
-    const [url] = api.del.mock.calls[0];
-    expect(url).toBe(
-      "/api/admin/exam-intelligence-cms/exams/exam-11111111?reason=retiring%20this%20exam%20from%20the%20catalogue",
-    );
-  } finally {
-    confirmSpy.mockRestore();
-    promptSpy.mockRestore();
-  }
+  // Dialog opens — no browser confirm/prompt.
+  await screen.findByTestId("cms-retire-dialog");
+  fireEvent.change(screen.getByTestId("cms-retire-reason"), {
+    target: { value: "retiring this exam from the catalogue" },
+  });
+  fireEvent.click(screen.getByTestId("cms-retire"));
+
+  await waitFor(() => expect(api.del).toHaveBeenCalled());
+  const [url] = api.del.mock.calls[0];
+  expect(url).toBe(
+    "/api/admin/exam-intelligence-cms/exams/exam-11111111?reason=retiring%20this%20exam%20from%20the%20catalogue",
+  );
 });
 
 test("Retire with a too-short reason does not call DELETE", async () => {
-  const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
-  const promptSpy = jest.spyOn(window, "prompt").mockReturnValue("short");
-  try {
-    renderWithClient();
-    selectEntity("exams");
-    fireEvent.click(await screen.findByTestId("cms-retire-exam-11111111"));
-    await waitFor(() =>
-      expect(screen.getByRole("status").textContent).toMatch(/Retire reason must be ≥8 chars/),
-    );
-    expect(api.del).not.toHaveBeenCalled();
-  } finally {
-    confirmSpy.mockRestore();
-    promptSpy.mockRestore();
-  }
+  renderWithClient();
+  selectEntity("exams");
+  fireEvent.click(await screen.findByTestId("cms-retire-exam-11111111"));
+
+  // Dialog opens; submit without filling the reason field.
+  await screen.findByTestId("cms-retire-dialog");
+  fireEvent.click(screen.getByTestId("cms-retire"));
+
+  await waitFor(() =>
+    expect(screen.getByTestId("cms-retire-error").textContent).toMatch(/Retire reason must be ≥8 chars/),
+  );
+  expect(api.del).not.toHaveBeenCalled();
 });
 
 // ── Taxonomy edit tests ────────────────────────────────────────────────

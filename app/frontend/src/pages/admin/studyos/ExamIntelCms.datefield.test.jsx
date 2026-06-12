@@ -5,16 +5,25 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 jest.mock("../../../lib/api", () => ({
   __esModule: true,
   api: {
-    get: jest.fn(() => Promise.resolve({ items: [], total: 0 })),
-    post: jest.fn(() => Promise.resolve({ audit_id: "aud-1" })),
+    get: jest.fn(),
+    post: jest.fn(),
   },
   getApiErrorMessage: (e) => String(e),
+}));
+
+jest.mock("../../../shared/ui/core", () => ({
+  useToast: () => ({ success: jest.fn(), error: jest.fn(), info: jest.fn() }),
 }));
 
 // eslint-disable-next-line global-require
 const { api } = require("../../../lib/api");
 // eslint-disable-next-line global-require
 const AdminExamIntelCms = require("./ExamIntelCms").default;
+
+beforeEach(() => {
+  api.get.mockResolvedValue({ items: [], total: 0 });
+  api.post.mockResolvedValue({ audit_id: "aud-1" });
+});
 
 function renderWithClient(ui) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
