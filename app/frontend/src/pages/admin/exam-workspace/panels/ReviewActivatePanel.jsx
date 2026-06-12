@@ -187,7 +187,7 @@ export default function ReviewActivatePanel({ onGotoTab }) {
       <div className={"next-action" + (allClear ? "" : " warn")}>
         <div>
           <span className="lbl">
-            {allClear ? "All sections verified" : "Activation blocked"}
+            {allClear ? "All sections reviewed or locked" : "Activation blocked"}
           </span>
           <div
             className="oc-title"
@@ -345,7 +345,7 @@ export default function ReviewActivatePanel({ onGotoTab }) {
                     </button>
                   ) : ok ? (
                     <span className="seal" style={{ fontSize: 11 }}>
-                      verified
+                      {STATUS_LABELS[s.status] ?? s.status}
                     </span>
                   ) : null}
                 </div>
