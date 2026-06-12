@@ -709,7 +709,7 @@ function QuestionEditor({
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-clay-600">
           <span><span className="inline-block w-2 h-2 rounded-sm bg-amber-300 mr-1 align-middle" />pending — awaiting review</span>
           <span><span className="inline-block w-2 h-2 rounded-sm bg-orange-300 mr-1 align-middle" />needs_correction — sent back for edits</span>
-          <span><span className="inline-block w-2 h-2 rounded-sm bg-emerald-400 mr-1 align-middle" />verified — approved, feeds planner</span>
+          <span><span className="inline-block w-2 h-2 rounded-sm bg-emerald-400 mr-1 align-middle" />verified — approved for downstream scoring</span>
           <span><span className="inline-block w-2 h-2 rounded-sm bg-rose-300 mr-1 align-middle" />rejected — excluded permanently</span>
         </div>
       </div>
