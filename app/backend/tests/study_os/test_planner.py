@@ -203,3 +203,209 @@ def test_generate_plan_route_returns_plan():
     assert body["generated"] is True
     assert body["exam"] == "ssc-cgl"
     assert len(body["tasks"]) == 3
+
+
+# ─── PR3: resolver wiring tests ───────────────────────────────────────────
+
+from datetime import date, timedelta
+from unittest.mock import patch
+
+
+def _seed_with_phases(*, phase_id_a="ph-prelims", phase_id_b="ph-mains",
+                      active_phase_start_delta=-5, active_phase_end=None,
+                      future_phase_start_delta=30):
+    """Seed with two phases: a current active one and a future expected one."""
+    today = date.today()
+    return {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1",
+                         "status": "active",
+                         "exam_start": (today + timedelta(days=90)).isoformat(),
+                         "cycle_name": "2026", "year": 2026,
+                         "created_at": "2026-01-01T00:00:00Z"}],
+        "exam_phases": [
+            {"id": phase_id_a, "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1,
+             "status": "active",
+             "phase_start": (today + timedelta(days=active_phase_start_delta)).isoformat(),
+             "phase_end": active_phase_end},
+            {"id": phase_id_b, "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "phase_name": "Mains", "phase_slug": "mains", "phase_order": 2,
+             "status": "expected",
+             "phase_start": (today + timedelta(days=future_phase_start_delta)).isoformat(),
+             "phase_end": None},
+        ],
+        "exam_topic_coverage": [
+            {"id": "cov-1", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "exam_phase_id": phase_id_a, "topic_id": "t1",
+             "exam_priority_score": 88, "is_high_yield": True,
+             "confidence_score": 0.86, "reviewer_status": "locked"},
+            {"id": "cov-2", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "exam_phase_id": phase_id_a, "topic_id": "t2",
+             "exam_priority_score": 80, "is_high_yield": True,
+             "confidence_score": 0.81, "reviewer_status": "locked"},
+            {"id": "cov-3", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "exam_phase_id": phase_id_b, "topic_id": "t3",
+             "exam_priority_score": 60, "is_high_yield": False,
+             "confidence_score": 0.70, "reviewer_status": "locked"},
+        ],
+        "topics": [
+            {"id": "t1", "name": "Percentage", "slug": "percentage",
+             "subject_id": "s1", "is_active": True},
+            {"id": "t2", "name": "Profit and Loss", "slug": "profit-and-loss",
+             "subject_id": "s1", "is_active": True},
+            {"id": "t3", "name": "Time and Work", "slug": "time-and-work",
+             "subject_id": "s1", "is_active": True},
+        ],
+        "subjects": [{"id": "s1", "name": "Quantitative Aptitude"}],
+        "topic_prerequisites": [],
+        "user_topic_mastery": [],
+        "user_topic_error_patterns": [],
+        "aspirant_persona_snapshots": [
+            {"user_id": "u-1", "computed_at": "2026-05-01T00:00:00+00:00",
+             "study_policy": {"max_tasks_per_day": 5, "preferred_task_size": "small"}},
+        ],
+        "pyq_papers": [],
+        "pyq_questions": [],
+        "pyq_question_topic_tags": [],
+    }
+
+
+def test_pr3_resolver_phase_wins_over_coverage_majority():
+    """Resolver target_phase_id → study_plans.active_phase_id, not coverage-majority."""
+    today = date.today()
+    # current active phase = ph-prelims (phase_start 5 days ago, no end)
+    seed = _seed_with_phases(phase_id_a="ph-prelims", phase_id_b="ph-mains",
+                              active_phase_start_delta=-5, active_phase_end=None)
+    sb = SBStub(seed)
+    out = generate_plan(sb, "u-1")
+    assert out["generated"] is True
+    # Resolver finds current_phase = ph-prelims (active, started, no end)
+    plan = sb.db["study_plans"][0]
+    assert plan["active_phase_id"] == "ph-prelims"
+    # Coverage-majority would also be ph-prelims here (2 rows vs 1), but the
+    # assertion is that resolver drove it, not the fallback path.
+    assert plan["active_phase_id"] != "ph-mains"
+
+
+def test_pr3_resolver_none_phase_falls_back_to_coverage_majority():
+    """When resolver has no target_phase_id (cycle_exam_start path), coverage-majority is used."""
+    today = date.today()
+    # Seed with no phases so resolver returns cycle_exam_start (no target_phase_id)
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "ssc-cgl"}],
+        "exams": [{"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1",
+                         "status": "active",
+                         "exam_start": (today + timedelta(days=60)).isoformat(),
+                         "cycle_name": "2026", "year": 2026,
+                         "created_at": "2026-01-01T00:00:00Z"}],
+        "exam_phases": [],
+        "exam_topic_coverage": [
+            {"id": "cov-1", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "exam_phase_id": "ph-majority", "topic_id": "t1",
+             "exam_priority_score": 88, "is_high_yield": True,
+             "confidence_score": 0.86, "reviewer_status": "locked"},
+            {"id": "cov-2", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "exam_phase_id": "ph-majority", "topic_id": "t2",
+             "exam_priority_score": 80, "is_high_yield": True,
+             "confidence_score": 0.81, "reviewer_status": "locked"},
+        ],
+        "topics": [
+            {"id": "t1", "name": "Percentage", "slug": "percentage",
+             "subject_id": "s1", "is_active": True},
+            {"id": "t2", "name": "Profit and Loss", "slug": "profit-and-loss",
+             "subject_id": "s1", "is_active": True},
+        ],
+        "subjects": [{"id": "s1", "name": "Quantitative Aptitude"}],
+        "topic_prerequisites": [],
+        "user_topic_mastery": [],
+        "user_topic_error_patterns": [],
+        "aspirant_persona_snapshots": [
+            {"user_id": "u-1", "computed_at": "2026-05-01T00:00:00+00:00",
+             "study_policy": {"max_tasks_per_day": 5, "preferred_task_size": "small"}},
+        ],
+        "pyq_papers": [], "pyq_questions": [], "pyq_question_topic_tags": [],
+    }
+    sb = SBStub(seed)
+    out = generate_plan(sb, "u-1")
+    assert out["generated"] is True
+    # Resolver returns cycle_exam_start, target_phase_id=None → fallback to coverage-majority
+    plan = sb.db["study_plans"][0]
+    assert plan["active_phase_id"] == "ph-majority"
+    # days_remaining = countdown to exam_start (numeric, not None)
+    gen_ctx = sb.db["study_plans"][0]["generation_context"]
+    assert isinstance(gen_ctx["days_remaining"], int)
+    assert gen_ctx["days_remaining"] > 0
+
+
+def test_pr3_open_ended_current_phase_days_remaining_none_no_crash():
+    """Open-ended current phase: days_remaining is None; planner must not crash or coerce to 0."""
+    today = date.today()
+    seed = _seed_with_phases(
+        phase_id_a="ph-prelims",
+        phase_id_b="ph-mains",
+        active_phase_start_delta=-5,
+        active_phase_end=None,  # open-ended → resolver returns days_remaining=None
+        future_phase_start_delta=30,
+    )
+    # Remove the future mains phase so resolver picks current_phase (no phase_end)
+    seed["exam_phases"] = [seed["exam_phases"][0]]
+    sb = SBStub(seed)
+    out = generate_plan(sb, "u-1")
+    assert out["generated"] is True
+    gen_ctx = sb.db["study_plans"][0]["generation_context"]
+    assert gen_ctx["days_remaining"] is None  # not coerced to 0
+
+
+def test_pr3_active_phase_id_write_failure_surfaces():
+    """active_phase_id write uses safe_required — failure is not silently swallowed."""
+    from app.utils.safe import safe_required as real_safe_required
+    import app.study_os.planner as planner_mod
+
+    seed = _seed_with_phases(active_phase_start_delta=-5, active_phase_end=None)
+    seed["exam_phases"] = [seed["exam_phases"][0]]  # only current phase
+
+    call_count = [0]
+
+    def failing_safe_required(fn, *, op, rollback=None):
+        call_count[0] += 1
+        # Fail on the study_plans insert (first safe_required call in _persist)
+        if call_count[0] == 1:
+            return None
+        return real_safe_required(fn, op=op, rollback=rollback)
+
+    sb = SBStub(seed)
+    with patch.object(planner_mod, "safe_required", failing_safe_required):
+        out = generate_plan(sb, "u-1")
+    # safe_required returning None causes _persist to short-circuit → not generated
+    assert out["generated"] is False
+
+
+def test_pr3_planner_does_not_re_select_cycle_independently():
+    """Planner uses resolver's cycle; _cached_next_cycle is not called for phase/days selection."""
+    import app.study_os.planner as planner_mod
+
+    seed = _seed_with_phases(active_phase_start_delta=-5, active_phase_end=None)
+    seed["exam_phases"] = [seed["exam_phases"][0]]
+    sb = SBStub(seed)
+
+    cache_calls = []
+    real_cached = planner_mod._cached_next_cycle
+
+    def spy_cached(supabase, exam_id, today_str):
+        cache_calls.append(("_cached_next_cycle", exam_id))
+        return real_cached(supabase, exam_id, today_str)
+
+    with patch.object(planner_mod, "_cached_next_cycle", spy_cached):
+        out = generate_plan(sb, "u-1")
+
+    assert out["generated"] is True
+    # _cached_next_cycle must NOT be called (the old _days_remaining path is gone)
+    assert not any(name == "_cached_next_cycle" for name, _ in cache_calls), (
+        f"_cached_next_cycle was called {len(cache_calls)} time(s) — planner is still "
+        "re-selecting cycle independently of the resolver"
+    )
