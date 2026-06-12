@@ -309,7 +309,29 @@ function ApplyRegistryActionPanel({ report, onSuccess }) {
     }
   }
 
-  if (!hasPerm) return null;
+  if (!hasPerm) {
+    return (
+      <div className="mt-6 rounded-2xl border border-border bg-white/60 px-5 py-4" data-testid="apply-action-locked">
+        <h4 className="text-sm font-semibold text-gray-900">Apply registry action</h4>
+        <p className="mt-2 text-xs text-gray-500">
+          This action requires the{" "}
+          <span className="font-mono font-semibold text-gray-700">exam_intelligence.cms</span>{" "}
+          permission. Contact your administrator to request access.
+        </p>
+        <div className="flex justify-end pt-3">
+          <button
+            type="button"
+            className="btn btn-primary text-sm"
+            disabled
+            aria-disabled="true"
+            data-testid="rar-submit-locked"
+          >
+            Apply action
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const cycleParams = getCycleParams();
   const noScopeWarning = !hasExamScope &&
