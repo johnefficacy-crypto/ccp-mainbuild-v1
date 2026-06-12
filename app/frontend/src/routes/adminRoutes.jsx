@@ -63,7 +63,6 @@ export const adminRouteElements = (
     <Route path="/admin/promotion-queue" element={<Navigate to="/admin/operations?mode=queue" replace />} />
     <Route path="/admin/eligibility-ops" element={<AdminEligibilityOps />} />
     <Route path="/admin/sources" element={<AdminSources />} />
-    <Route path="/admin/organizations" element={<AdminOrganizations />} />
     <Route path="/admin/scraper" element={<AdminScraper />} />
     <Route path="/admin/notifications" element={<AdminNotifications />} />
     <Route path="/admin/marketplace" element={<AdminMarketplace />} />
@@ -75,16 +74,20 @@ export const adminRouteElements = (
     <Route path="/admin/community/groups" element={<AdminGroupsConsole />} />
     <Route path="/admin/community/partners" element={<AdminPartnersConsole />} />
     <Route path="/admin/community/resources" element={<AdminResourcesReviewQueue />} />
-    <Route path="/admin/ai-policy" element={<AdminAIPolicy />} />
-    <Route path="/admin/persona" element={<AdminPersona />} />
-    <Route path="/admin/exam-intelligence" element={<AdminExamIntelligence />} />
-    <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
-    <Route path="/admin/exam-intelligence/new" element={<AdminGuidedExamWizard />} />
-    <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AdminAddCycleWizard />} />
-    <Route path="/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace" element={<AdminPyqPaperWorkspace />} />
-    <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<AdminExamWorkspace />} />
-    <Route path="/admin/exam-intelligence/workspace/:exam_id/:cycle_id" element={<AdminExamWorkspace />} />
-    <Route path="/admin/exam-eligibility" element={<AdminExamEligibility />} />
+    {/* Knowledge governance */}
+    <Route element={<RouteErrorBoundary />}>
+      <Route path="/admin/organizations" element={<AdminOrganizations />} />
+      <Route path="/admin/ai-policy" element={<AdminAIPolicy />} />
+      <Route path="/admin/persona" element={<AdminPersona />} />
+      <Route path="/admin/exam-intelligence" element={<AdminExamIntelligence />} />
+      <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
+      <Route path="/admin/exam-intelligence/new" element={<AdminGuidedExamWizard />} />
+      <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AdminAddCycleWizard />} />
+      <Route path="/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace" element={<AdminPyqPaperWorkspace />} />
+      <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<AdminExamWorkspace />} />
+      <Route path="/admin/exam-intelligence/workspace/:exam_id/:cycle_id" element={<AdminExamWorkspace />} />
+      <Route path="/admin/exam-eligibility" element={<AdminExamEligibility />} />
+    </Route>
     <Route path="/admin/moderation" element={<AdminModerationQueue />} />
     <Route path="/admin/kpis" element={<AdminKPIs />} />
     <Route path="/admin/copyright" element={<AdminCopyright />} />
