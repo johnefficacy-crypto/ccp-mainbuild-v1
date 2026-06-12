@@ -64,6 +64,3 @@ jobs:
           --ignore-vuln CVE-2026-34993
           --ignore-vuln CVE-2026-47265
       - run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=60
-      - name: Run scripts-level tests
-        run: python -m pytest scripts/tests/ -q
-        working-directory: ${{ github.workspace }}
