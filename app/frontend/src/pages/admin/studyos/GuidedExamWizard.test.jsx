@@ -464,6 +464,60 @@ describe("Step 5: select-existing org — no org POST", () => {
   });
 });
 
+describe("Step 5: exam payload — management_mode / cadence coercion", () => {
+  // Helper: reach exam step via select-org path, apply overrides, then proceed to review
+  async function goToReviewWithExamFields(examFieldOverrides = {}) {
+    await waitFor(() => screen.getByTestId("org-list"));
+    fireEvent.click(screen.getByTestId("org-select-org-aaa"));
+    fireEvent.click(screen.getByTestId("wizard-next-1"));
+    // Apply any field overrides before advancing
+    for (const [testId, value] of Object.entries(examFieldOverrides)) {
+      fireEvent.change(screen.getByTestId(testId), { target: { value } });
+    }
+    fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "Test Exam" } });
+    fireEvent.click(screen.getByTestId("wizard-next-2"));
+    fireEvent.change(screen.getByTestId("cycle-name"), { target: { value: "CSE 2025" } });
+    fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: "2025" } });
+    fireEvent.click(screen.getByTestId("wizard-next-3"));
+    fireEvent.click(screen.getByTestId("wizard-next-4"));
+  }
+
+  test("Test A — blank management_mode and cadence coerce to light/unknown in exam POST", async () => {
+    api.post
+      .mockReset()
+      .mockResolvedValueOnce({ row: { id: "exam-111" } })
+      .mockResolvedValueOnce({ row: { id: "cycle-222" } });
+    setup();
+    // Force both fields to blank — coercion must fire in handleNext and/or payload build
+    await goToReviewWithExamFields({
+      "exam-management-mode": "",
+      "exam-cadence": "",
+    });
+    await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
+    await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
+    const examPost = api.post.mock.calls.find((c) => c[0].includes("/exams"));
+    expect(examPost[1].payload.management_mode).toBe("light");
+    expect(examPost[1].payload.cadence).toBe("unknown");
+  });
+
+  test("Test B — explicit management_mode/cadence pass through unchanged", async () => {
+    api.post
+      .mockReset()
+      .mockResolvedValueOnce({ row: { id: "exam-111" } })
+      .mockResolvedValueOnce({ row: { id: "cycle-222" } });
+    setup();
+    await goToReviewWithExamFields({
+      "exam-management-mode": "core",
+      "exam-cadence": "annual",
+    });
+    await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
+    await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
+    const examPost = api.post.mock.calls.find((c) => c[0].includes("/exams"));
+    expect(examPost[1].payload.management_mode).toBe("core");
+    expect(examPost[1].payload.cadence).toBe("annual");
+  });
+});
+
 describe("Step 5: phases", () => {
   test("cb phase has exam_cycle_id set; slug uses derived name slug", async () => {
     api.post
