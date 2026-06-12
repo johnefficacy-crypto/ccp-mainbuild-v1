@@ -30,6 +30,7 @@ from cachetools import TTLCache
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
 from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
 from app.study_os.competition_context import competition_context
+from app.study_os.exam_target_window import resolve_exam_target_window
 from app.study_os.plan_preferences import focus_weights, get_plan_preferences
 from app.study_os.update_context import policy_update_context
 from app.utils.safe import safe_required
@@ -802,6 +803,9 @@ def _compute_plan(
         return {"generated": False, "reason": "no_target_exam"}
     exam_id = exam["id"]
 
+    today = datetime.now(timezone.utc).date()
+    resolver_result = resolve_exam_target_window(supabase, exam_id=exam_id, today=today)
+
     # User autonomy: weighting focus, plan-shape overrides, pin / mute.
     prefs = get_plan_preferences(supabase, user_id)
     muted = set(prefs.get("muted_topic_ids") or [])
@@ -823,12 +827,22 @@ def _compute_plan(
             "exam": exam.get("slug"),
         }
 
+    # Phase-specific coverage: prefer rows tagged to the resolver's target phase;
+    # fall back to exam-wide locked coverage only when none match.
+    resolver_phase_id = resolver_result["target_phase_id"]
+    if resolver_phase_id is not None:
+        phase_coverage = [c for c in coverage if c.get("exam_phase_id") == resolver_phase_id]
+        if phase_coverage:
+            coverage = phase_coverage
+
     topic_ids = [c["topic_id"] for c in coverage]
     pyq_counts = verified_pyq_topic_counts(supabase, exam_id) or {}
     prereqs = _load_prerequisites(supabase, topic_ids)
     mastery, error_topics = _load_user_signals(supabase, user_id, exam_id)
 
-    days_remaining = _days_remaining(supabase, exam_id)
+    # Resolver is the single target authority — days_remaining may be None
+    # (open-ended current phase) and must not be coerced to 0.
+    days_remaining = resolver_result["days_remaining"]
     comp = competition_context(supabase, exam_id, days_remaining=days_remaining)
     pressure_level = (comp.get("cycle_pressure") or {}).get("pressure_level", "unknown")
     policy_updates = policy_update_context(supabase, exam_id)
@@ -888,15 +902,20 @@ def _compute_plan(
     coverage.sort(key=lambda c: c["_priority_score"], reverse=True)
     ordered = _order_topics(coverage, prereqs)
 
-    # the phase carrying the most locked coverage drives the plan's phase
-    phase_counts: dict[str, int] = {}
-    for c in coverage:
-        ph = c.get("exam_phase_id")
-        if ph:
-            phase_counts[ph] = phase_counts.get(ph, 0) + 1
-    plan_phase_id = (
-        max(phase_counts, key=phase_counts.get) if phase_counts else None
-    )
+    # Resolver is single authority for active_phase_id.
+    # Coverage-majority is fallback only when resolver has no target phase
+    # (cycle_exam_start or not_connected paths).
+    if resolver_phase_id is not None:
+        plan_phase_id = resolver_phase_id
+    else:
+        phase_counts: dict[str, int] = {}
+        for c in coverage:
+            ph = c.get("exam_phase_id")
+            if ph:
+                phase_counts[ph] = phase_counts.get(ph, 0) + 1
+        plan_phase_id = (
+            max(phase_counts, key=phase_counts.get) if phase_counts else None
+        )
 
     tasks = _build_tasks(
         ordered,
