@@ -419,59 +419,89 @@ def test_pr3_open_ended_current_phase_days_remaining_none_no_crash():
     assert gen_ctx["days_remaining"] is None  # not coerced to 0
 
 
-def test_pr3_active_phase_id_create_path_write_failure_surfaces():
-    """active_phase_id INSERT uses safe_required(op='study_plans.insert') — fail-closed.
+def test_pr3_active_phase_id_create_path_write_failure_surfaces(caplog):
+    """INSERT failure propagates through safe_required → fail-closed with observable log.
 
-    No existing plan → _persist takes the insert branch (line 619 in planner.py).
-    Monkeypatching safe_required to raise on that op causes apply_plan to catch
-    the exception and return {"generated": False} — the write is not silently swallowed.
+    No existing plan → _persist takes the insert branch.  A SBStub subclass
+    raises inside execute() so safe_required naturally logs the failure and
+    returns None.  generate_plan must return generated=False, reason=plan_persist_failed,
+    and the op tag must appear in the WARNING log — not silently swallowed.
     """
-    from app.utils.safe import safe_required as real_safe_required
-    import app.study_os.planner as planner_mod
+    import logging
+    from tests.persona_questions._stub import SBStub as _SBStub, _Query
+
+    class _FailInsertQuery(_Query):
+        def execute(self):
+            if self._pending_insert is not None:
+                raise RuntimeError("stub: injected insert failure")
+            return super().execute()
+
+    class _FailInsertSBStub(_SBStub):
+        def table(self, name):
+            q = super().table(name)
+            if name == "study_plans":
+                proxy = _FailInsertQuery(name, self.db)
+                return proxy
+            return q
 
     seed = _seed_with_phases(active_phase_start_delta=-5, active_phase_end=None)
-    seed["exam_phases"] = [seed["exam_phases"][0]]  # only current open phase
+    seed["exam_phases"] = [seed["exam_phases"][0]]
 
-    def failing_safe_required(*args, op=None, **kwargs):
-        if op == "study_plans.insert":
-            raise RuntimeError("injected insert failure")
-        return real_safe_required(*args, op=op, **kwargs)
-
-    sb = SBStub(seed)
-    with patch.object(planner_mod, "safe_required", failing_safe_required):
+    sb = _FailInsertSBStub(seed)
+    with caplog.at_level(logging.WARNING):
         out = generate_plan(sb, "u-1")
-    # apply_plan catches the exception → fail-closed, not silently swallowed
+
     assert out["generated"] is False
+    assert out["reason"] == "plan_persist_failed"
+    assert "study_plans.insert" in caplog.text
 
 
-def test_pr3_active_phase_id_update_path_write_failure_surfaces():
-    """active_phase_id UPDATE uses safe_required(op='study_plans.update_active_version') — fail-closed.
+def test_pr3_active_phase_id_update_path_write_failure_surfaces(caplog):
+    """UPDATE failure propagates through safe_required → fail-closed with observable log.
 
-    Pre-existing active plan → _persist takes the update branch (line 724 in planner.py).
-    Monkeypatching safe_required to raise on that op causes apply_plan to catch
-    the exception and return {"generated": False}.
+    Pre-existing active plan → _persist takes the update branch.  A SBStub
+    subclass raises inside execute() on update so safe_required naturally logs
+    the failure and returns None.  generate_plan must return generated=False,
+    reason=plan_persist_failed, and the op tag must appear in the WARNING log.
     """
-    from app.utils.safe import safe_required as real_safe_required
-    import app.study_os.planner as planner_mod
+    import logging
+    from tests.persona_questions._stub import SBStub as _SBStub, _Query
+
+    class _FailUpdateQuery(_Query):
+        def execute(self):
+            if self._pending_update is not None and self._pending_update != "__delete__":
+                raise RuntimeError("stub: injected update failure")
+            return super().execute()
+
+    class _FailUpdateSBStub(_SBStub):
+        def __init__(self, db, *, enabled=False):
+            super().__init__(db)
+            self._fail_enabled = enabled
+
+        def table(self, name):
+            q = super().table(name)
+            if name == "study_plans" and self._fail_enabled:
+                proxy = _FailUpdateQuery(name, self.db)
+                return proxy
+            return q
 
     seed = _seed_with_phases(active_phase_start_delta=-5, active_phase_end=None)
-    seed["exam_phases"] = [seed["exam_phases"][0]]  # only current open phase
+    seed["exam_phases"] = [seed["exam_phases"][0]]
 
-    # First generate to create an existing plan
-    sb = SBStub(seed)
-    first = generate_plan(sb, "u-1")
+    # First generate with normal stub to create an existing plan
+    normal_sb = SBStub(seed)
+    first = generate_plan(normal_sb, "u-1")
     assert first["generated"] is True
-    assert len(sb.db["study_plans"]) == 1
+    assert len(normal_sb.db["study_plans"]) == 1
 
-    def failing_safe_required(*args, op=None, **kwargs):
-        if op == "study_plans.update_active_version":
-            raise RuntimeError("injected update failure")
-        return real_safe_required(*args, op=op, **kwargs)
-
-    # Second generate takes the update path; the monkeypatched raise is caught
-    with patch.object(planner_mod, "safe_required", failing_safe_required):
+    # Second generate with failing stub (update path); failure must surface
+    sb = _FailUpdateSBStub(normal_sb.db, enabled=True)
+    with caplog.at_level(logging.WARNING):
         out = generate_plan(sb, "u-1")
+
     assert out["generated"] is False
+    assert out["reason"] == "plan_persist_failed"
+    assert "study_plans.update_active_version" in caplog.text
 
 
 def test_pr3_planner_does_not_re_select_cycle_independently():
