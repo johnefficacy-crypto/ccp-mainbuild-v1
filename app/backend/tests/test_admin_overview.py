@@ -42,6 +42,11 @@ class Q:
         self.filters[k] = v
         return self
 
+    def is_(self, k, v):
+        # "null" means IS NULL — store as a sentinel so dispatch can match
+        self.filters[f"__is_null_{k}"] = (v == "null")
+        return self
+
     def gte(self, k, v):
         self.gte_filters[k] = v
         return self
@@ -70,10 +75,23 @@ class SB:
 
     def dispatch(self, q):
         rows = self.tables.get(q.table, [])
-        filtered = [
-            row for row in rows
-            if all(row.get(k) == v for k, v in q.filters.items())
-        ]
+        filtered = []
+        for row in rows:
+            match = True
+            for k, v in q.filters.items():
+                if k.startswith("__is_null_"):
+                    col = k[len("__is_null_"):]
+                    if v and row.get(col) is not None:
+                        match = False
+                        break
+                    if not v and row.get(col) is None:
+                        match = False
+                        break
+                elif row.get(k) != v:
+                    match = False
+                    break
+            if match:
+                filtered.append(row)
         if q.gte_filters:
             for k, v in q.gte_filters.items():
                 filtered = [r for r in filtered if (r.get(k) or "") >= v]
@@ -113,17 +131,38 @@ def _seed(sb):
     ]
     sb.tables["scrape_runs"] = []
     sb.tables["admin_audit_logs"] = []
+    sb.tables["exam_eligibility_rules"] = [
+        {"id": "e1", "reviewer_status": "draft"},
+        {"id": "e2", "reviewer_status": "draft"},
+        {"id": "e3", "reviewer_status": "verified"},
+        {"id": "e4", "reviewer_status": "archived"},
+    ]
+    sb.tables["reverification_batches"] = [
+        {"id": "b1", "acknowledged_at": None},
+        {"id": "b2", "acknowledged_at": None},
+        {"id": "b3", "acknowledged_at": "2025-01-01T00:00:00Z"},
+    ]
+    sb.tables["recruitment_verification_reports"] = [
+        {"id": "rv1", "superseded_by": None, "recommended_action": "request_admin_review"},
+        {"id": "rv2", "superseded_by": None, "recommended_action": "request_admin_review"},
+        {"id": "rv3", "superseded_by": "rv1",  "recommended_action": "request_admin_review"},  # superseded
+        {"id": "rv4", "superseded_by": None, "recommended_action": "no_action"},
+    ]
 
 
 def test_overview_response_shape_stable(sb):
     _seed(sb)
     out = admin_overview.overview(user=ADMIN_USER)
-    assert set(out.keys()) == {"kpis", "recent_audit"}
+    assert set(out.keys()) == {"kpis", "kg", "recent_audit"}
     assert set(out["kpis"].keys()) == {
         "users", "recruitments", "threads", "open_flags",
         "scrape_runs_today", "queue_depth", "moderation_p0_open",
         "copyright_open",
     }
+    assert set(out["kg"].keys()) == {
+        "eligibility_rules", "unacked_reverification_batches", "reports_need_action",
+    }
+    assert set(out["kg"]["eligibility_rules"].keys()) == {"draft", "verified", "archived"}
 
 
 def test_overview_kpi_values_match_seeded_state(sb):
@@ -141,6 +180,18 @@ def test_overview_kpi_values_match_seeded_state(sb):
     assert kpis["moderation_p0_open"] == 1
     # received (2) + triage (1)
     assert kpis["copyright_open"] == 3
+
+
+def test_overview_kg_counts_match_seeded_state(sb):
+    _seed(sb)
+    out = admin_overview.overview(user=ADMIN_USER)
+    kg = out["kg"]
+    assert kg["eligibility_rules"] == {"draft": 2, "verified": 1, "archived": 1}
+    # 2 batches have acknowledged_at IS NULL
+    assert kg["unacked_reverification_batches"] == 2
+    # 2 reports: superseded_by IS NULL AND recommended_action='request_admin_review'
+    # rv3 is excluded (superseded_by is set), rv4 is excluded (no_action)
+    assert kg["reports_need_action"] == 2
 
 
 def test_overview_does_not_repeat_open_moderation_or_received_copyright(sb):
@@ -176,9 +227,9 @@ def test_overview_call_count_drops_versus_legacy(sb):
     # Count only the count-style queries (those that asked for
     # count="exact"). The audit-log fetch is `order(...).limit(10)`.
     count_queries = [q for q in sb.queries if q.want_count]
-    # users, recruitments, threads, moderation_items(open),
-    # moderation_items(open,severity=p0), copyright(received),
-    # copyright(triage), scrape_runs gte
-    assert len(count_queries) <= 8, count_queries
-    # Lower bound: must be at least 7 (all KPIs derived). Legacy was 10.
-    assert 7 <= len(count_queries) <= 8
+    # Original 8: users, recruitments, threads, moderation_items(open),
+    # moderation_items(open,p0), copyright(received), copyright(triage), scrape_runs_gte.
+    # +5 kg: eligibility_rules x3 (draft/verified/archived),
+    # reverification_batches(unacked), verification_reports(need_action).
+    assert len(count_queries) <= 13, count_queries
+    assert 12 <= len(count_queries) <= 13
