@@ -929,6 +929,15 @@ export default function AdminExamIntelCms() {
                 <Plus className="h-3 w-3" /> {showBulk ? "Cancel bulk" : "Bulk import"}
               </button>
             ) : null}
+            {entity === "exams" ? (
+              <a
+                href="/admin/exam-intelligence/new"
+                className="btn small"
+                data-testid="cms-new-guided-exam"
+              >
+                <Plus className="h-3 w-3" /> New guided exam
+              </a>
+            ) : null}
           </>
         ) : null}
       </div>
