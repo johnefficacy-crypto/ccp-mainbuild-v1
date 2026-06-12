@@ -655,20 +655,36 @@ export default function SetupPanel() {
       </div>
 
       {/* Promote template to cycle */}
-      {templatePhases.length > 0 && cycles.length > 0 && (
-        <div className="card" data-testid="promote-template-card">
-          <div className="card-head">
-            <h3 className="oc-title">Template phases</h3>
-            {!promotingTemplate && (
-              <button
-                className="btn small"
-                data-testid="promote-template-btn"
-                onClick={openPromoteTemplate}
-              >
-                + Create cycle-bound copy
-              </button>
-            )}
+      <div className="card" data-testid="promote-template-card">
+        <div className="card-head">
+          <h3 className="oc-title">Template phases</h3>
+          {templatePhases.length > 0 && cycles.length > 0 && !promotingTemplate && (
+            <button
+              className="btn small"
+              data-testid="promote-template-btn"
+              onClick={openPromoteTemplate}
+            >
+              + Create cycle-bound copy
+            </button>
+          )}
+        </div>
+
+        {ptSuccess && (
+          <div className="success-row" data-testid="pt-success" style={{ margin: "8px 16px 0" }}>
+            {ptSuccess}
           </div>
+        )}
+
+        {templatePhases.length === 0 ? (
+          <div className="card-body">
+            <div className="empty" style={{ padding: "12px 0" }} data-testid="promote-template-empty">
+              <div className="empty-title">No promotable templates here.</div>
+              <div>
+                Open the exam-level workspace to promote a template into a cycle.
+              </div>
+            </div>
+          </div>
+        ) : (
           <div className="card-body" style={{ paddingBottom: 4 }}>
             <div className="row-sub" style={{ fontSize: 12, marginBottom: 8 }}>
               Generic templates are reusable phase definitions not bound to any cycle.
@@ -685,8 +701,9 @@ export default function SetupPanel() {
               ))}
             </div>
           </div>
+        )}
 
-          {promotingTemplate && (
+        {templatePhases.length > 0 && cycles.length > 0 && promotingTemplate && (
             <div
               className="card-foot"
               style={{ flexDirection: "column", gap: 10, background: "var(--paper)", padding: "12px 16px" }}
@@ -822,10 +839,6 @@ export default function SetupPanel() {
                 </div>
               )}
 
-              {ptSuccess && (
-                <div className="success-row" data-testid="pt-success">{ptSuccess}</div>
-              )}
-
               {ptError && ptError.type === "collision" && (
                 <div className="err-row" data-testid="pt-error-collision">
                   {ptError.message}
@@ -853,8 +866,7 @@ export default function SetupPanel() {
               )}
             </div>
           )}
-        </div>
-      )}
+      </div>
 
       {/* Phases needing dates — missing phase_start plus explicit worklist signal */}
       {phaseDateWorklistPhases.length > 0 && (

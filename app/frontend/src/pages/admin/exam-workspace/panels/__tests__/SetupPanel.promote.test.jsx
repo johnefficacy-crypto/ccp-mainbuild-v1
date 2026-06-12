@@ -330,3 +330,41 @@ test("submit disabled and error shown for reason > 500 chars", () => {
   expect(screen.getByTestId("pt-submit").disabled).toBe(true);
   expect(screen.getByTestId("pt-reason-error").textContent).toMatch(/500 char/i);
 });
+
+// ── A. cycle-scoped / no-template phases → guidance visible ──────────────────
+
+test("A: no template phases → guidance text visible, card not silently absent", () => {
+  useExamWorkspace.mockReturnValue({
+    exam: BASE_EXAM,
+    cycles: CYCLES,
+    phases: [CYCLE_BOUND_PHASE],
+    refetch: REFETCH,
+  });
+  render(<SetupPanel />);
+
+  expect(screen.getByTestId("promote-template-card")).toBeTruthy();
+  expect(screen.getByTestId("promote-template-empty")).toBeTruthy();
+  expect(screen.getByText(/no promotable templates here/i)).toBeTruthy();
+  expect(screen.getByText(/exam-level workspace/i)).toBeTruthy();
+  expect(screen.queryByTestId("promote-template-btn")).toBeNull();
+});
+
+// ── B. happy path → success message visible after form closes ────────────────
+
+test("B: happy path success message is visible after form closes", async () => {
+  setup();
+  openPromoteForm();
+
+  fireEvent.change(screen.getByTestId("pt-template-picker"), { target: { value: TEMPLATE_PHASE.id } });
+  fireEvent.change(screen.getByTestId("pt-cycle-picker"), { target: { value: "cyc-A" } });
+  fireEvent.change(screen.getByTestId("pt-phase-start"), { target: { value: "2026-06-01" } });
+  fireEvent.change(screen.getByTestId("pt-reason"), { target: { value: "Attaching prelims to 2026 cycle" } });
+
+  fireEvent.click(screen.getByTestId("pt-submit"));
+
+  await waitFor(() => expect(REFETCH).toHaveBeenCalled());
+
+  expect(screen.queryByTestId("pt-submit")).toBeNull();
+  expect(screen.getByTestId("pt-success")).toBeTruthy();
+  expect(screen.getByTestId("pt-success").textContent).toMatch(/cycle-bound copy created/i);
+});
