@@ -49,7 +49,7 @@ function TrustLegend() {
     ["draft",    "draft",    "created, not reviewed"],
     ["pending",  "pending",  "in review queue"],
     ["blocker",  "needs fix","sent back to enrichment"],
-    ["info",     "verified", "reviewed, not live"],
+    ["info",     "reviewed", "reviewed, not yet live"],
     ["ink",      "locked",   "live to aspirants"],
   ];
   return (

@@ -703,6 +703,17 @@ function QuestionEditor({
         />
       </WsField>
 
+      {/* PYQ status lifecycle legend */}
+      <div className="border-t border-clay-200 pt-3">
+        <p className="text-[10px] text-clay-500 mb-1 font-semibold uppercase tracking-wide">PYQ status lifecycle</p>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-clay-600">
+          <span><span className="inline-block w-2 h-2 rounded-sm bg-amber-300 mr-1 align-middle" />pending — awaiting review</span>
+          <span><span className="inline-block w-2 h-2 rounded-sm bg-orange-300 mr-1 align-middle" />needs_correction — sent back for edits</span>
+          <span><span className="inline-block w-2 h-2 rounded-sm bg-emerald-400 mr-1 align-middle" />verified — approved for downstream scoring</span>
+          <span><span className="inline-block w-2 h-2 rounded-sm bg-rose-300 mr-1 align-middle" />rejected — excluded permanently</span>
+        </div>
+      </div>
+
       {/* Status actions */}
       <div className="border-t border-clay-200 pt-3 space-y-2">
         {/* Reject controls */}
