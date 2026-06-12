@@ -1,23 +1,37 @@
 # Database Domain Model: Recruitment vs Exam
 
-_Last updated: 2026-04-29_
+_Last updated: 2026-06-12_
 
-## Final decision
+## Dual-entity model (current)
 
-Career Copilot uses `public.recruitments` as the canonical database table for exam/recruitment notifications.
+Career Copilot has **two distinct canonical entities** at the DB level:
 
-There is currently no canonical `public.exams` table.
+| Entity | Table | Purpose |
+|---|---|---|
+| Recruitment notification | `public.recruitments` | A specific recruitment cycle/notification (year, posts, eligibility) |
+| Exam master identity | `public.exams` | The persistent exam (SSC CGL, UPSC CSE, …) that recruitments belong to |
 
-The word `exam` may still be used in frontend/UI copy because aspirants understand terms like `exam summary`, `my exams`, `target exams`, and `exam dashboard`. However, at the database level, these records must map to `public.recruitments`.
+These are **separate entities**. Do not conflate or merge them. `public.exams`
+is a live table with FK dependents: `exam_cycles`, `exam_phases`, `study_plans`,
+exam-intelligence tables, and aspirant target tables all reference `exams.id`.
+
+The word `exam` may be used freely in frontend/UI copy. At the database level,
+always be explicit about which table you mean.
+
+> **Historical note:** The original guidance ("do not introduce public.exams")
+> was correct at project start. It was superseded when the exam-master table was
+> introduced to support Study OS and exam-intelligence. ADR 0005 remains valid
+> for its core intent — recruitments are canonical for notification/eligibility
+> data — but the prohibition on `public.exams` no longer applies.
 
 ## Canonical entity model
 
-Use this mapping consistently:
-
 | Product/UI term | Database table / field |
 |---|---|
-| Exam | `public.recruitments` |
+| Exam (master identity) | `public.exams` |
 | Recruitment notification | `public.recruitments` |
+| Exam cycle | `public.exam_cycles` |
+| Exam phase | `public.exam_phases` |
 | Post / vacancy role | `public.posts` |
 | Organization / exam body | `public.organizations` |
 | User eligibility result | `public.eligibility_results` |
@@ -25,6 +39,19 @@ Use this mapping consistently:
 | User target exam | `public.user_targets` |
 | User activity | `public.user_events` |
 | User application/form activity | `public.form_submissions` |
+
+## Portfolio lanes (migration 172, merged 2026-06)
+
+`public.exams` has two nullable portfolio-management columns:
+
+| Column | Type | Values | Default |
+|---|---|---|---|
+| `management_mode` | enum | `core`, `light`, `index_only`, `archive` | `light` (on create) |
+| `cadence` | enum | `annual`, `recurring`, `irregular`, `one_off`, `unknown` | `unknown` (on create) |
+
+**Retire semantics:** `is_active = false` = retired (hidden from aspirants).
+`management_mode = 'archive'` = low-priority lane for exams that are still
+LIVE. These are **independent** — retiring an exam NEVER writes `archive`.
 
 ## Naming rule
 
@@ -37,14 +64,12 @@ Allowed examples:
 - `ExamSummaryCard`
 - `user_exam_summary`
 
-Database joins and foreign keys should use:
+For recruitment-specific data, use:
 
 - `recruitment_id`
 - `public.recruitments`
 - `public.posts`
 - `public.eligibility_results`
-
-Avoid creating or referencing `public.exams` unless a future architecture decision explicitly introduces a separate exam-master table.
 
 ## Migration dependency order
 
