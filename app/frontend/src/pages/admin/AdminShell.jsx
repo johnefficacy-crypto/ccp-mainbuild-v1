@@ -22,15 +22,29 @@ const TRUST_PIPELINE = [
   { to: "/admin/audit", label: "Audit Trail", icon: ScrollText, testId: "admin-nav-audit-log" },
 ];
 
-const KNOWLEDGE_GOVERNANCE = [
+const KG_LANDING = { to: "/admin/knowledge-governance", label: "Knowledge Governance", icon: LayoutGrid, end: true, testId: "admin-nav-kg-landing" };
+
+const KG_LANE_1 = [
   { to: "/admin/exam-intelligence", label: "Exam Intelligence", icon: GraduationCap, testId: "admin-nav-exam-intelligence" },
-  { to: "/admin/exam-intelligence/new", label: "New guided exam", icon: Sparkles, testId: "admin-nav-guided-exam-wizard" },
+  { to: "/admin/exam-intelligence/new", label: "Guided Exam", icon: Sparkles, testId: "admin-nav-guided-exam-wizard" },
+];
+const KG_LANE_2 = [
   { to: "/admin/exam-eligibility", label: "Exam Eligibility", icon: ShieldCheck, testId: "admin-nav-exam-eligibility" },
+];
+const KG_LANE_3 = [
   { to: "/admin/organizations", label: "Organizations", icon: Users2, testId: "admin-nav-organizations" },
   { to: "/admin/verification-reports", label: "Verification Reports", icon: ClipboardCheck, testId: "admin-nav-verification-reports" },
   { to: "/admin/reverification-batches", label: "Reverification Batches", icon: RefreshCcw, testId: "admin-nav-reverification-batches" },
+];
+const KG_LANE_4 = [
   { to: "/admin/ai-policy", label: "AI Governance", icon: Bot, testId: "admin-nav-ai-policy" },
   { to: "/admin/persona", label: "Persona", icon: Sparkles, testId: "admin-nav-persona" },
+];
+const KG_LANES = [
+  { label: "Exam truth & planner readiness", items: KG_LANE_1 },
+  { label: "User eligibility truth", items: KG_LANE_2 },
+  { label: "Official-source trust & change propagation", items: KG_LANE_3 },
+  { label: "AI + personalization guardrails", items: KG_LANE_4 },
 ];
 
 const COMMUNITY_MARKETPLACE = [
@@ -71,7 +85,7 @@ const SAFETY = [
 const SECTIONS = [
   { id: "command-center", label: "Command Center", items: COMMAND_CENTER, defaultOpen: true },
   { id: "trust-pipeline", label: "Trust Pipeline", items: TRUST_PIPELINE, defaultOpen: true },
-  { id: "knowledge-governance", label: "Knowledge Governance", items: KNOWLEDGE_GOVERNANCE, defaultOpen: false },
+  { id: "knowledge-governance", label: "Knowledge Governance", landing: KG_LANDING, lanes: KG_LANES, items: [KG_LANDING, ...KG_LANE_1, ...KG_LANE_2, ...KG_LANE_3, ...KG_LANE_4], defaultOpen: false },
   { id: "community-marketplace", label: "Community & Marketplace", items: COMMUNITY_MARKETPLACE, defaultOpen: false },
   { id: "study-os", label: "Study OS", items: STUDY_OS, defaultOpen: false },
   { id: "mock-content", label: "Mock Content", items: MOCK_CONTENT, defaultOpen: false },
@@ -133,22 +147,62 @@ function Sidebar({ onClose, openMap, onToggleSection }) {
               </button>
               {open ? (
                 <div id={`admin-nav-section-${section.id}`}>
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
+                  {section.landing ? (() => {
+                    const LandingIcon = section.landing.icon;
                     return (
                       <NavLink
-                        key={item.to}
-                        to={item.to}
-                        end={item.end}
+                        key={section.landing.to}
+                        to={section.landing.to}
+                        end={section.landing.end}
                         onClick={onClose}
                         className={({ isActive }) => `oc-navlink${isActive ? " active" : ""}`}
-                        data-testid={item.testId}
+                        data-testid={section.landing.testId}
                       >
-                        {Icon ? <Icon className="nav-glyph" /> : null}
-                        <span className="truncate">{item.label}</span>
+                        {LandingIcon ? <LandingIcon className="nav-glyph" /> : null}
+                        <span className="truncate">{section.landing.label}</span>
                       </NavLink>
                     );
-                  })}
+                  })() : null}
+                  {section.lanes
+                    ? section.lanes.map((lane) => (
+                        <div key={lane.label}>
+                          <div className="oc-section" style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, paddingTop: 10, paddingBottom: 2, cursor: "default" }}>
+                            {lane.label}
+                          </div>
+                          {lane.items.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <NavLink
+                                key={item.to}
+                                to={item.to}
+                                end={item.end}
+                                onClick={onClose}
+                                className={({ isActive }) => `oc-navlink${isActive ? " active" : ""}`}
+                                data-testid={item.testId}
+                              >
+                                {Icon ? <Icon className="nav-glyph" /> : null}
+                                <span className="truncate">{item.label}</span>
+                              </NavLink>
+                            );
+                          })}
+                        </div>
+                      ))
+                    : section.items.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <NavLink
+                            key={item.to}
+                            to={item.to}
+                            end={item.end}
+                            onClick={onClose}
+                            className={({ isActive }) => `oc-navlink${isActive ? " active" : ""}`}
+                            data-testid={item.testId}
+                          >
+                            {Icon ? <Icon className="nav-glyph" /> : null}
+                            <span className="truncate">{item.label}</span>
+                          </NavLink>
+                        );
+                      })}
                 </div>
               ) : null}
             </div>

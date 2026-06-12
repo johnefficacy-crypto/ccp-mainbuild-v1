@@ -48,6 +48,7 @@ const AdminMockImportWizard = lazy(() => import("../pages/admin/mocks/ImportWiza
 const AdminVerificationReports = lazy(() => import("../pages/admin/VerificationReports"));
 const AdminReverificationBatches = lazy(() => import("../pages/admin/ReverificationBatches"));
 const AdminAddCycleWizard = lazy(() => import("../pages/admin/studyos/AddCycleWizard"));
+const AdminKnowledgeGovernance = lazy(() => import("../pages/admin/KnowledgeGovernance"));
 
 export const adminRouteElements = (
   <>
@@ -76,6 +77,7 @@ export const adminRouteElements = (
     <Route path="/admin/community/resources" element={<AdminResourcesReviewQueue />} />
     {/* Knowledge governance */}
     <Route element={<RouteErrorBoundary />}>
+      <Route path="/admin/knowledge-governance" element={<AdminKnowledgeGovernance />} />
       <Route path="/admin/organizations" element={<AdminOrganizations />} />
       <Route path="/admin/ai-policy" element={<AdminAIPolicy />} />
       <Route path="/admin/persona" element={<AdminPersona />} />
