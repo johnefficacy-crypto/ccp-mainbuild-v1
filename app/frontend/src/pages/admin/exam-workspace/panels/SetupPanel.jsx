@@ -58,6 +58,7 @@ function phaseDateSourceLabel(phase) {
 }
 
 const CYCLE_STATUSES = ["expected", "open", "active", "closed", "completed", "cancelled"];
+const PHASE_STATUSES = ["expected", "active", "completed", "cancelled"];
 
 export default function SetupPanel() {
   const { exam, cycles, phases, refetch } = useExamWorkspace();
@@ -71,6 +72,19 @@ export default function SetupPanel() {
   const [pickedCycleId, setPickedCycleId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
+
+  // ── promote-template form ────────────────────────────────────────────────
+  const [promotingTemplate, setPromotingTemplate] = useState(false);
+  const [ptTemplateId, setPtTemplateId] = useState("");
+  const [ptCycleId, setPtCycleId] = useState("");
+  const [ptStart, setPtStart] = useState(null);
+  const [ptEnd, setPtEnd] = useState(null);
+  const [ptOrder, setPtOrder] = useState("");
+  const [ptStatus, setPtStatus] = useState("expected");
+  const [ptReason, setPtReason] = useState("");
+  const [ptBusy, setPtBusy] = useState(false);
+  const [ptError, setPtError] = useState(null); // null | {type, message, phaseId?, existingId?}
+  const [ptSuccess, setPtSuccess] = useState("");
 
   // ── worklist: inline patch state per phase id ───────────────────────────
   const [patchEdits, setPatchEdits] = useState({});
@@ -101,6 +115,80 @@ export default function SetupPanel() {
   }
   function setEdit(id, updates) {
     setPatchEdits(prev => ({ ...prev, [id]: { ...editFor(id), ...updates } }));
+  }
+
+  const templatePhases = phases.filter(p => p.exam_cycle_id == null);
+
+  const ptDateError =
+    ptEnd && ptStart && ptEnd < ptStart
+      ? "Phase end must be on or after phase start."
+      : null;
+  const ptReasonInvalid = ptReason.length > 0 && (ptReason.length < 8 || ptReason.length > 500);
+  const ptCanSubmit =
+    !ptBusy &&
+    !!ptTemplateId &&
+    !!ptCycleId &&
+    !!ptStart &&
+    !ptDateError &&
+    ptReason.length >= 8 &&
+    ptReason.length <= 500;
+
+  function openPromoteTemplate() {
+    setPromotingTemplate(true);
+    setPtTemplateId(templatePhases[0]?.id || "");
+    setPtCycleId(cycles[0]?.id || "");
+    setPtStart(null); setPtEnd(null); setPtOrder(""); setPtStatus("expected");
+    setPtReason(""); setPtError(null); setPtSuccess("");
+  }
+
+  async function promoteTemplate() {
+    if (!ptCanSubmit) return;
+    setPtBusy(true);
+    setPtError(null);
+    setPtSuccess("");
+    try {
+      await api.post(
+        "/api/admin/exam-intelligence-cms/exam-phases/promote-template",
+        {
+          template_phase_id: ptTemplateId,
+          target_cycle_id: ptCycleId,
+          phase_start: ptStart,
+          ...(ptEnd ? { phase_end: ptEnd } : {}),
+          ...(ptOrder !== "" ? { phase_order: parseInt(ptOrder, 10) } : {}),
+          status: ptStatus,
+          reason: ptReason,
+        },
+      );
+      setPtSuccess("Cycle-bound copy created.");
+      setPromotingTemplate(false);
+      setPtTemplateId(""); setPtCycleId(""); setPtStart(null); setPtEnd(null);
+      setPtOrder(""); setPtStatus("expected"); setPtReason("");
+      refetch();
+    } catch (e) {
+      const status = e?.status;
+      const detail = e?.detail;
+      if (status === 409) {
+        const existingId =
+          detail && typeof detail === "object" ? detail.existing_phase_id : null;
+        setPtError({
+          type: "collision",
+          message: "This cycle already has a phase with this template slug.",
+          existingId,
+        });
+      } else if (status === 500 && e?.code === "audit_write_failed") {
+        const phaseId =
+          detail && typeof detail === "object" ? detail.phase_id : null;
+        setPtError({ type: "audit_write_failed", phaseId });
+      } else {
+        const msg =
+          typeof detail === "string"
+            ? detail
+            : detail?.message || e?.message || "Promote failed.";
+        setPtError({ type: "generic", message: msg });
+      }
+    } finally {
+      setPtBusy(false);
+    }
   }
 
   const phaseDateWorklistPhases = phases.filter(needsPhaseDateAuthoring);
@@ -564,6 +652,220 @@ export default function SetupPanel() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Promote template to cycle */}
+      <div className="card" data-testid="promote-template-card">
+        <div className="card-head">
+          <h3 className="oc-title">Template phases</h3>
+          {templatePhases.length > 0 && cycles.length > 0 && !promotingTemplate && (
+            <button
+              className="btn small"
+              data-testid="promote-template-btn"
+              onClick={openPromoteTemplate}
+            >
+              + Create cycle-bound copy
+            </button>
+          )}
+        </div>
+
+        {ptSuccess && (
+          <div className="success-row" data-testid="pt-success" style={{ margin: "8px 16px 0" }}>
+            {ptSuccess}
+          </div>
+        )}
+
+        {templatePhases.length === 0 ? (
+          <div className="card-body">
+            <div className="empty" style={{ padding: "12px 0" }} data-testid="promote-template-empty">
+              <div className="empty-title">No promotable templates here.</div>
+              <div>
+                Open the exam-level workspace to promote a template into a cycle.
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="card-body" style={{ paddingBottom: 4 }}>
+            <div className="row-sub" style={{ fontSize: 12, marginBottom: 8 }}>
+              Generic templates are reusable phase definitions not bound to any cycle.
+              "Create cycle-bound copy" clones a template into a specific cycle with real dates —
+              the template itself is not moved or modified.
+            </div>
+            <div className="phase-rail">
+              {templatePhases.map(p => (
+                <div key={p.id} className="phase" data-testid={`template-phase-${p.id}`}>
+                  <div className="phase-num">TPL</div>
+                  <div className="phase-name">{p.phase_name ?? p.name}</div>
+                  <div className="phase-count phase-slug">{p.phase_slug}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {templatePhases.length > 0 && cycles.length > 0 && promotingTemplate && (
+            <div
+              className="card-foot"
+              style={{ flexDirection: "column", gap: 10, background: "var(--paper)", padding: "12px 16px" }}
+            >
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                {/* Template picker */}
+                <div style={{ minWidth: 180 }}>
+                  <label className="field-lbl" style={{ display: "block", marginBottom: 3 }}>
+                    Template phase
+                  </label>
+                  <select
+                    className="input"
+                    data-testid="pt-template-picker"
+                    value={ptTemplateId}
+                    onChange={e => setPtTemplateId(e.target.value)}
+                  >
+                    <option value="">— select template —</option>
+                    {templatePhases.map(p => (
+                      <option key={p.id} value={p.id}>{p.phase_name ?? p.phase_slug}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Target cycle picker */}
+                <div style={{ minWidth: 180 }}>
+                  <label className="field-lbl" style={{ display: "block", marginBottom: 3 }}>
+                    Target cycle
+                  </label>
+                  <select
+                    className="input"
+                    data-testid="pt-cycle-picker"
+                    value={ptCycleId}
+                    onChange={e => setPtCycleId(e.target.value)}
+                  >
+                    <option value="">— select cycle —</option>
+                    {cycles.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.cycle_name ?? c.id}{c.year ? ` (${c.year})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status picker — enum only, no free text */}
+                <div style={{ minWidth: 140 }}>
+                  <label className="field-lbl" style={{ display: "block", marginBottom: 3 }}>
+                    Status
+                  </label>
+                  <select
+                    className="input"
+                    data-testid="pt-status-picker"
+                    value={ptStatus}
+                    onChange={e => setPtStatus(e.target.value)}
+                  >
+                    {PHASE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+
+                {/* Phase order */}
+                <div style={{ minWidth: 80 }}>
+                  <label className="field-lbl" style={{ display: "block", marginBottom: 3 }}>
+                    Order
+                  </label>
+                  <input
+                    className="input"
+                    data-testid="pt-order"
+                    type="number"
+                    placeholder="auto"
+                    value={ptOrder}
+                    onChange={e => setPtOrder(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+                <div style={{ minWidth: 180 }}>
+                  <DateField
+                    value={ptStart}
+                    onChange={setPtStart}
+                    mode="any"
+                    label="Phase start (required)"
+                    name="pt_phase_start"
+                    id="pt-phase-start"
+                  />
+                </div>
+                <div style={{ minWidth: 180 }}>
+                  <DateField
+                    value={ptEnd}
+                    onChange={setPtEnd}
+                    mode="any"
+                    label="Phase end (optional)"
+                    name="pt_phase_end"
+                    id="pt-phase-end"
+                  />
+                </div>
+              </div>
+
+              {ptDateError && (
+                <div className="err-row" data-testid="pt-date-error">{ptDateError}</div>
+              )}
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <input
+                  className="input"
+                  data-testid="pt-reason"
+                  style={{ flex: 1, minWidth: 220 }}
+                  placeholder="Reason (required, 8–500 chars)"
+                  value={ptReason}
+                  onChange={e => setPtReason(e.target.value)}
+                  maxLength={500}
+                />
+                <button
+                  className="btn primary small"
+                  data-testid="pt-submit"
+                  onClick={promoteTemplate}
+                  disabled={!ptCanSubmit}
+                >
+                  {ptBusy ? "Creating…" : "Create cycle-bound copy"}
+                </button>
+                <button
+                  className="btn ghost small"
+                  onClick={() => { setPromotingTemplate(false); setPtError(null); setPtSuccess(""); }}
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {ptReasonInvalid && (
+                <div className="err-row" data-testid="pt-reason-error">
+                  {ptReason.length < 8
+                    ? "Reason must be at least 8 characters."
+                    : "Reason must be 500 characters or fewer."}
+                </div>
+              )}
+
+              {ptError && ptError.type === "collision" && (
+                <div className="err-row" data-testid="pt-error-collision">
+                  {ptError.message}
+                  {ptError.existingId && (
+                    <span> Existing phase id: <code>{ptError.existingId}</code></span>
+                  )}
+                </div>
+              )}
+
+              {ptError && ptError.type === "audit_write_failed" && (
+                <div
+                  className="err-row"
+                  data-testid="pt-error-audit-failed"
+                  style={{ background: "var(--color-background-warning, #fff3cd)", borderColor: "var(--color-border-warning, #f0c36d)" }}
+                >
+                  The phase was created
+                  {ptError.phaseId && <> (id: <code data-testid="pt-error-phase-id">{ptError.phaseId}</code>)</>},
+                  but its audit record failed to write. Do NOT re-promote — it will conflict.
+                  Refresh, confirm the phase is present, and reconcile the missing audit record.
+                </div>
+              )}
+
+              {ptError && ptError.type === "generic" && (
+                <div className="err-row" data-testid="pt-error-generic">{ptError.message}</div>
+              )}
+            </div>
+          )}
       </div>
 
       {/* Phases needing dates — missing phase_start plus explicit worklist signal */}
