@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { RotateCcw, Plus, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
+import useApiAction from "../../../lib/hooks/useApiAction";
 import { parseImportFile } from "../../../lib/bulkImportFile";
 import CmsRefField from "../../../features/admin/shared/CmsRefField";
 import { DateField } from "../../../shared/ui/heavy";
@@ -613,8 +614,16 @@ export default function AdminExamIntelCms() {
   const [editingRow, setEditingRow] = useState(null);
   const [editValues, setEditValues] = useState({});
   const [editReason, setEditReason] = useState("");
-  const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState(null);
+  // Retire dialog
+  const [retireTarget, setRetireTarget] = useState(null); // { row, label } | null
+  const [retireReason, setRetireReason] = useState("");
+  const [retireError, setRetireError] = useState(null);
+
+  const { run: runCreate, busy: busyCreate } = useApiAction();
+  const { run: runBulk, busy: busyBulk } = useApiAction();
+  const { run: runEdit, busy: busyEdit } = useApiAction();
+  const { run: runRetire, busy: busyRetire } = useApiAction();
 
   const isDocuments = entity === "documents";
   const cfg = ENTITY_CONFIG[entity];
@@ -677,25 +686,27 @@ export default function AdminExamIntelCms() {
     try {
       rows = JSON.parse(bulkRows);
       if (!Array.isArray(rows)) throw new Error("Top-level JSON must be an array");
-    } catch (e) {
-      setStatus({ ok: false, message: `Could not parse rows JSON: ${e.message}` });
+    } catch (ex) {
+      setStatus({ ok: false, message: `Could not parse rows JSON: ${ex.message}` });
       return;
     }
-    try {
-      const r = await api.post("/api/admin/exam-intelligence-cms/bulk-import", {
-        reason: bulkReason.trim(),
-        entity,
-        rows,
-      });
-      setBulkResult(r);
-      setStatus({
-        ok: r.ok,
-        message: `Bulk import: ${r.ok_count}/${r.total} ok, ${r.error_count} errors. audit_id=${r.audit_id}`,
-      });
-      load();
-    } catch (ex) {
-      setStatus({ ok: false, message: getApiErrorMessage(ex) });
-    }
+    await runBulk({
+      action: () =>
+        api.post("/api/admin/exam-intelligence-cms/bulk-import", {
+          reason: bulkReason.trim(),
+          entity,
+          rows,
+        }),
+      onSuccess: (r) => {
+        setBulkResult(r);
+        setStatus({
+          ok: r.ok,
+          message: `Bulk import: ${r.ok_count}/${r.total} ok, ${r.error_count} errors. audit_id=${r.audit_id}`,
+        });
+        load();
+      },
+      errorMessage: "Bulk import failed.",
+    });
   }
 
   async function submitCreate(e) {
@@ -725,19 +736,21 @@ export default function AdminExamIntelCms() {
       setStatus({ ok: false, message: `A ${payload.level} must have a parent topic (level=topic).` });
       return;
     }
-    try {
-      const r = await api.post(`/api/admin/exam-intelligence-cms/${entity}`, {
-        reason: reason.trim(),
-        payload,
-      });
-      setStatus({ ok: true, message: `Created. audit_id=${r.audit_id}` });
-      setShowCreate(false);
-      setFormValues({});
-      setReason("");
-      load();
-    } catch (ex) {
-      setStatus({ ok: false, message: getApiErrorMessage(ex) });
-    }
+    await runCreate({
+      action: () =>
+        api.post(`/api/admin/exam-intelligence-cms/${entity}`, {
+          reason: reason.trim(),
+          payload,
+        }),
+      onSuccess: (r) => {
+        setStatus({ ok: true, message: `Created. audit_id=${r.audit_id}` });
+        setShowCreate(false);
+        setFormValues({});
+        setReason("");
+        load();
+      },
+      errorMessage: "Create failed.",
+    });
   }
 
   function startEdit(row) {
@@ -811,45 +824,51 @@ export default function AdminExamIntelCms() {
       setEditError("No changes to save.");
       return;
     }
-    setEditBusy(true);
-    try {
-      const r = await api.patch(`/api/admin/exam-intelligence-cms/${entity}/${editingRow.id}`, {
-        reason: editReason.trim(),
-        payload: patch,
-      });
-      setStatus({ ok: true, message: `Updated. audit_id=${r.audit_id}` });
-      cancelEdit();
-      load();
-    } catch (ex) {
-      setEditError(getApiErrorMessage(ex));
-    } finally {
-      setEditBusy(false);
-    }
+    await runEdit({
+      action: () =>
+        api.patch(`/api/admin/exam-intelligence-cms/${entity}/${editingRow.id}`, {
+          reason: editReason.trim(),
+          payload: patch,
+        }),
+      onSuccess: (r) => {
+        setStatus({ ok: true, message: `Updated. audit_id=${r.audit_id}` });
+        cancelEdit();
+        load();
+      },
+      errorMessage: "Save failed.",
+    });
   }
 
-  async function deactivateRow(row) {
+  function deactivateRow(row) {
     // Soft-delete only (backend flips is_active=false; child rows keep their
-    // FK).
+    // FK). Opens the accessible retire dialog instead of window.confirm/prompt.
     if (!isDeactivatable) return;
     const label = (row.name || row.slug || row.id || "").toString();
-    if (!window.confirm(`Retire ${cfg.label} "${label}"? It will be hidden (is_active=false) and no longer active.`)) {
+    setRetireTarget({ row, label });
+    setRetireReason("");
+    setRetireError(null);
+  }
+
+  async function confirmRetire() {
+    if (!retireTarget) return;
+    if (retireReason.trim().length < 8) {
+      setRetireError("Retire reason must be ≥8 chars.");
       return;
     }
-    const reasonText = window.prompt("Reason for retiring (≥8 chars, recorded in audit):") || "";
-    if (reasonText.trim().length < 8) {
-      setStatus({ ok: false, message: "Retire reason must be ≥8 chars." });
-      return;
-    }
-    try {
-      const r = await api.del(
-        `/api/admin/exam-intelligence-cms/${entity}/${row.id}?reason=${encodeURIComponent(reasonText.trim())}`,
-      );
-      setStatus({ ok: true, message: `Retired. audit_id=${r.audit_id}` });
-      if (editingRow && editingRow.id === row.id) cancelEdit();
-      load();
-    } catch (ex) {
-      setStatus({ ok: false, message: getApiErrorMessage(ex) });
-    }
+    const { row } = retireTarget;
+    await runRetire({
+      action: () =>
+        api.del(
+          `/api/admin/exam-intelligence-cms/${entity}/${row.id}?reason=${encodeURIComponent(retireReason.trim())}`,
+        ),
+      onSuccess: (r) => {
+        setStatus({ ok: true, message: `Retired. audit_id=${r.audit_id}` });
+        setRetireTarget(null);
+        if (editingRow && editingRow.id === row.id) cancelEdit();
+        load();
+      },
+      errorMessage: "Retire failed.",
+    });
   }
 
   function insertBulkTemplate() {
@@ -1002,7 +1021,9 @@ export default function AdminExamIntelCms() {
             <span className="block text-xs text-muted-foreground mb-1">Reason (≥8 chars)</span>
             <textarea value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} rows={2} className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background" data-testid="cms-bulk-reason" />
           </label>
-          <button type="submit" className="btn small" data-testid="cms-bulk-submit">Import</button>
+          <button type="submit" className="btn small" disabled={busyBulk} data-testid="cms-bulk-submit">
+            {busyBulk ? "Importing…" : "Import"}
+          </button>
           {bulkResult ? (
             <details className="text-xs mt-2">
               <summary className="cursor-pointer text-muted-foreground">
@@ -1042,8 +1063,8 @@ export default function AdminExamIntelCms() {
               data-testid="cms-reason"
             />
           </label>
-          <button type="submit" className="btn small" data-testid="cms-create-submit">
-            Create
+          <button type="submit" className="btn small" disabled={busyCreate} data-testid="cms-create-submit">
+            {busyCreate ? "Creating…" : "Create"}
           </button>
         </form>
       ) : null}
@@ -1081,8 +1102,8 @@ export default function AdminExamIntelCms() {
             <div className="text-sm text-red-700" role="alert" data-testid="cms-edit-error">{editError}</div>
           ) : null}
           <div className="flex gap-2">
-            <button type="submit" className="btn small" data-testid="cms-edit-submit" disabled={editBusy}>
-              {editBusy ? "Saving…" : "Save changes"}
+            <button type="submit" className="btn small" data-testid="cms-edit-submit" disabled={busyEdit}>
+              {busyEdit ? "Saving…" : "Save changes"}
             </button>
             <button type="button" className="btn small" onClick={cancelEdit} data-testid="cms-edit-cancel">
               Cancel
@@ -1157,6 +1178,65 @@ export default function AdminExamIntelCms() {
           </div>
         ) : null}
       </section>
+      ) : null}
+
+      {retireTarget ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="retire-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          data-testid="cms-retire-dialog"
+        >
+          <div className="bg-background rounded-lg border border-border shadow-lg w-full max-w-md p-6 space-y-4">
+            <h2 id="retire-dialog-title" className="font-semibold text-base">
+              Retire {cfg.label} &ldquo;{retireTarget.label}&rdquo;?
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Retiring sets <code>is_active=false</code> and hides this row from aspirants. Active
+              identity rows linked to this entry will no longer appear in exam listings. This action
+              is recorded in the audit log and is reversible only by an admin edit.
+            </p>
+            <label className="block">
+              <span className="block text-xs text-muted-foreground mb-1">
+                Reason for retiring (≥8 chars, recorded in audit)
+              </span>
+              <textarea
+                value={retireReason}
+                onChange={(e) => setRetireReason(e.target.value)}
+                rows={3}
+                autoFocus
+                className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                data-testid="cms-retire-reason"
+              />
+            </label>
+            {retireError ? (
+              <div className="text-sm text-red-700" role="alert" data-testid="cms-retire-error">
+                {retireError}
+              </div>
+            ) : null}
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => setRetireTarget(null)}
+                disabled={busyRetire}
+                data-testid="cms-retire-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn small"
+                onClick={confirmRetire}
+                disabled={busyRetire}
+                data-testid="cms-retire"
+              >
+                {busyRetire ? "Retiring…" : "Confirm retire"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
