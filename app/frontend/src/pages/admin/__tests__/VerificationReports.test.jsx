@@ -542,6 +542,139 @@ test("phase_end before phase_start rejected", async () => {
   expect(api.post).not.toHaveBeenCalled();
 });
 
+// ─── merged-row date validation (existing opposite side from row) ─────────────
+
+async function setupCycleDateForm(examId = "exam-uuid-1", cycleOverrides = {}) {
+  const cycle = { ...MOCK_CYCLE, ...cycleOverrides };
+  api.get.mockImplementation((url) => {
+    if (url === "/api/admin/verification-reports/rpt-1")
+      return Promise.resolve({ ...MOCK_REPORT, exam_id: examId });
+    if (url.includes("exam-cycles")) return Promise.resolve({ items: [cycle] });
+    return Promise.resolve({ items: [] });
+  });
+  render(<AdminVerificationReports />);
+  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
+  await waitFor(() => screen.queryByTestId("apply-action-form"));
+  fireEvent.change(screen.getByTestId("rar-action-type"), { target: { value: "cycle_date_update" } });
+  await waitFor(() => {
+    if (screen.getByTestId("rar-exam-cycle-id").options.length < 2) throw new Error("opts");
+  });
+  fireEvent.change(screen.getByTestId("rar-exam-cycle-id"), { target: { value: "cycle-123" } });
+  await waitFor(() => expect(screen.queryByTestId("rar-exam-start")).toBeTruthy());
+}
+
+test("existing exam_start in row, input exam_end before it → blocked", async () => {
+  await setupCycleDateForm("exam-uuid-1", { exam_start: "2026-10-01" });
+  fireEvent.change(screen.getByTestId("rar-exam-end"), { target: { value: "2026-09-01" } });
+  fireEvent.change(screen.getByTestId("rar-reason"), { target: { value: "valid reason here" } });
+  fireEvent.click(screen.getByTestId("rar-submit"));
+  await waitFor(() => expect(screen.queryByTestId("rar-error")).toBeTruthy());
+  expect(screen.getByTestId("rar-error").textContent.toLowerCase()).toContain("exam");
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+test("existing application_start in row, input application_end before it → blocked", async () => {
+  await setupCycleDateForm("exam-uuid-1", { application_start: "2026-09-15" });
+  fireEvent.change(screen.getByTestId("rar-application-end"), { target: { value: "2026-09-01" } });
+  fireEvent.change(screen.getByTestId("rar-reason"), { target: { value: "valid reason here" } });
+  fireEvent.click(screen.getByTestId("rar-submit"));
+  await waitFor(() => expect(screen.queryByTestId("rar-error")).toBeTruthy());
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+test("existing exam_end in row, input exam_start after it → blocked", async () => {
+  await setupCycleDateForm("exam-uuid-1", { exam_end: "2026-10-01" });
+  fireEvent.change(screen.getByTestId("rar-exam-start"), { target: { value: "2026-10-15" } });
+  fireEvent.change(screen.getByTestId("rar-reason"), { target: { value: "valid reason here" } });
+  fireEvent.click(screen.getByTestId("rar-submit"));
+  await waitFor(() => expect(screen.queryByTestId("rar-error")).toBeTruthy());
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+test("existing application_start, input application_end after it → allowed", async () => {
+  api.post.mockResolvedValueOnce({ ok: true });
+  await setupCycleDateForm("exam-uuid-1", { application_start: "2026-09-01" });
+  fireEvent.change(screen.getByTestId("rar-application-end"), { target: { value: "2026-09-30" } });
+  fireEvent.change(screen.getByTestId("rar-reason"), { target: { value: "valid reason here" } });
+  fireEvent.click(screen.getByTestId("rar-submit"));
+  await waitFor(() => expect(api.post).toHaveBeenCalled());
+  expect(screen.queryByTestId("rar-error")).toBeFalsy();
+});
+
+test("same-day window: existing exam_start timestamptz, input exam_end date-only same day → allowed", async () => {
+  api.post.mockResolvedValueOnce({ ok: true });
+  await setupCycleDateForm("exam-uuid-1", { exam_start: "2026-10-01T00:00:00Z" });
+  fireEvent.change(screen.getByTestId("rar-exam-end"), { target: { value: "2026-10-01" } });
+  fireEvent.change(screen.getByTestId("rar-reason"), { target: { value: "valid reason here" } });
+  fireEvent.click(screen.getByTestId("rar-submit"));
+  await waitFor(() => expect(api.post).toHaveBeenCalled());
+  expect(screen.queryByTestId("rar-error")).toBeFalsy();
+});
+
+async function setupPhaseDateForm() {
+  api.get.mockImplementation((url) => {
+    if (url === "/api/admin/verification-reports/rpt-1")
+      return Promise.resolve({ ...MOCK_REPORT, exam_id: "exam-uuid-1" });
+    if (url.includes("exam-cycles")) return Promise.resolve({ items: [MOCK_CYCLE] });
+    if (url.includes("exam-phases"))
+      return Promise.resolve({ items: [{ ...MOCK_PHASE, phase_start: "2026-11-15" }] });
+    return Promise.resolve({ items: [] });
+  });
+  render(<AdminVerificationReports />);
+  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
+  await waitFor(() => screen.queryByTestId("apply-action-form"));
+  fireEvent.change(screen.getByTestId("rar-action-type"), { target: { value: "phase_date_update" } });
+  await waitFor(() => {
+    if (screen.getByTestId("rar-phase-cycle-id").options.length < 2) throw new Error("opts");
+  });
+  fireEvent.change(screen.getByTestId("rar-phase-cycle-id"), { target: { value: "cycle-123" } });
+  await waitFor(() => expect(screen.queryByTestId("rar-exam-phase-id")).toBeTruthy());
+  await waitFor(() => {
+    if (screen.getByTestId("rar-exam-phase-id").options.length < 2) throw new Error("phase opts");
+  });
+  fireEvent.change(screen.getByTestId("rar-exam-phase-id"), { target: { value: "phase-456" } });
+  await waitFor(() => expect(screen.queryByTestId("rar-phase-start")).toBeTruthy());
+}
+
+test("existing phase_start in row, input phase_end before it → blocked", async () => {
+  await setupPhaseDateForm();
+  fireEvent.change(screen.getByTestId("rar-phase-end"), { target: { value: "2026-11-01" } });
+  fireEvent.change(screen.getByTestId("rar-reason"), { target: { value: "valid reason here" } });
+  fireEvent.click(screen.getByTestId("rar-submit"));
+  await waitFor(() => expect(screen.queryByTestId("rar-error")).toBeTruthy());
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+test("existing phase_end in row, input phase_start after it → blocked", async () => {
+  api.get.mockImplementation((url) => {
+    if (url === "/api/admin/verification-reports/rpt-1")
+      return Promise.resolve({ ...MOCK_REPORT, exam_id: "exam-uuid-1" });
+    if (url.includes("exam-cycles")) return Promise.resolve({ items: [MOCK_CYCLE] });
+    if (url.includes("exam-phases"))
+      return Promise.resolve({ items: [{ ...MOCK_PHASE, phase_end: "2026-11-01" }] });
+    return Promise.resolve({ items: [] });
+  });
+  render(<AdminVerificationReports />);
+  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
+  await waitFor(() => screen.queryByTestId("apply-action-form"));
+  fireEvent.change(screen.getByTestId("rar-action-type"), { target: { value: "phase_date_update" } });
+  await waitFor(() => {
+    if (screen.getByTestId("rar-phase-cycle-id").options.length < 2) throw new Error("opts");
+  });
+  fireEvent.change(screen.getByTestId("rar-phase-cycle-id"), { target: { value: "cycle-123" } });
+  await waitFor(() => expect(screen.queryByTestId("rar-exam-phase-id")).toBeTruthy());
+  await waitFor(() => {
+    if (screen.getByTestId("rar-exam-phase-id").options.length < 2) throw new Error("phase opts");
+  });
+  fireEvent.change(screen.getByTestId("rar-exam-phase-id"), { target: { value: "phase-456" } });
+  await waitFor(() => expect(screen.queryByTestId("rar-phase-start")).toBeTruthy());
+  fireEvent.change(screen.getByTestId("rar-phase-start"), { target: { value: "2026-11-15" } });
+  fireEvent.change(screen.getByTestId("rar-reason"), { target: { value: "valid reason here" } });
+  fireEvent.click(screen.getByTestId("rar-submit"));
+  await waitFor(() => expect(screen.queryByTestId("rar-error")).toBeTruthy());
+  expect(api.post).not.toHaveBeenCalled();
+});
+
 // ─── before-state current dates rendered ─────────────────────────────────────
 
 test("before-state current dates rendered from selected cycle row", async () => {
@@ -664,6 +797,29 @@ test("apply-action sends correct payload for policy_update_edit", async () => {
   expect(body.action_type).toBe("policy_update_edit");
   expect(body.policy_update_id).toBe("pu-789");
   expect(body.event_source_id).toBeUndefined();
+});
+
+// ─── provenance object value renders as JSON, not [object Object] ────────────
+
+test("evidence_summary with object value renders pretty JSON not [object Object]", async () => {
+  const reportWithObj = {
+    ...MOCK_REPORT,
+    exam_id: null,
+    evidence_summary: { source: "scraper", confidence: 0.9 },
+  };
+  api.get.mockImplementation((url) => {
+    if (url === "/api/admin/verification-reports/rpt-1")
+      return Promise.resolve(reportWithObj);
+    if (url.includes("exam-cycles")) return Promise.resolve({ items: [MOCK_CYCLE] });
+    return Promise.resolve({ items: [] });
+  });
+  render(<AdminVerificationReports />);
+  fireEvent.click(await screen.findByTestId("vr-open-rpt-1"));
+  await waitFor(() => expect(screen.queryByTestId("rar-provenance")).toBeTruthy());
+  const provEl = screen.getByTestId("rar-provenance");
+  expect(provEl.textContent).not.toContain("[object Object]");
+  expect(provEl.textContent).toContain("scraper");
+  expect(provEl.textContent).toContain("0.9");
 });
 
 // ─── 422/409 surfaced inline ──────────────────────────────────────────────────

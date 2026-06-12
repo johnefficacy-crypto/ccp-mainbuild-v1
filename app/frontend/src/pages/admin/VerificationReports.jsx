@@ -69,14 +69,34 @@ function BeforeAfterDate({ fieldKey, label, current, value, onChange }) {
   );
 }
 
+function toDateMs(val) {
+  if (!val) return null;
+  // Accept both "YYYY-MM-DD" and "YYYY-MM-DDT…" (timestamptz from API).
+  // Normalise to midnight UTC by slicing to the leading date part.
+  const dateOnly = String(val).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return NaN;
+  return Date.UTC(
+    Number(dateOnly.slice(0, 4)),
+    Number(dateOnly.slice(5, 7)) - 1,
+    Number(dateOnly.slice(8, 10)),
+  );
+}
 function validateDateOrder({ application_start, application_end, exam_start, exam_end, phase_start, phase_end }) {
-  if (application_start && application_end && application_end < application_start)
-    return "Application end must be on or after application start.";
-  if (exam_start && exam_end && exam_end < exam_start)
-    return "Exam end must be on or after exam start.";
-  if (phase_start && phase_end && phase_end < phase_start)
-    return "Phase end must be on or after phase start.";
-  return null;
+  function checkPair(start, end, label) {
+    if (!start || !end) return null;
+    const s = toDateMs(start);
+    const e = toDateMs(end);
+    if (Number.isNaN(s) || Number.isNaN(e))
+      return `${label}: unrecognised date format — please check the values.`;
+    if (e < s) return `${label} end must be on or after ${label.toLowerCase()} start.`;
+    return null;
+  }
+  return (
+    checkPair(application_start, application_end, "Application") ||
+    checkPair(exam_start, exam_end, "Exam") ||
+    checkPair(phase_start, phase_end, "Phase") ||
+    null
+  );
 }
 
 function buildPatchFromChanges(fields, currentRow, fieldDefs) {
@@ -155,7 +175,11 @@ function RegistryActionProvenance({ report }) {
         {rows.map(([label, value]) => (
           <div key={label} className="flex gap-2">
             <dt className="text-blue-600 min-w-[130px] shrink-0">{label}:</dt>
-            <dd className="text-gray-900">{String(value)}</dd>
+            <dd className="text-gray-900 whitespace-pre-wrap font-mono">
+              {typeof value === "object" && value !== null
+                ? JSON.stringify(value, null, 2)
+                : String(value)}
+            </dd>
           </div>
         ))}
       </dl>
@@ -237,7 +261,7 @@ function ApplyRegistryActionPanel({ report, onSuccess }) {
         setError("No date fields were changed. Update at least one field before applying.");
         return;
       }
-      const dateErr = validateDateOrder(cycleFields);
+      const dateErr = validateDateOrder({ ...selectedCycleRow, ...cycleFields });
       if (dateErr) { setError(dateErr); return; }
     } else if (actionType === "phase_date_update") {
       if (!phaseCycleRow) { setError("Select an exam cycle to scope the phase picker."); return; }
@@ -247,7 +271,7 @@ function ApplyRegistryActionPanel({ report, onSuccess }) {
         setError("No date fields were changed. Update at least one field before applying.");
         return;
       }
-      const dateErr = validateDateOrder(phaseFields);
+      const dateErr = validateDateOrder({ ...selectedPhaseRow, ...phaseFields });
       if (dateErr) { setError(dateErr); return; }
     } else {
       try {
