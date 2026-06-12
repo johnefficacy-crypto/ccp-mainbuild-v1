@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { GraduationCap, Plus, ShieldCheck, X } from "lucide-react";
+import { ChevronDown, ChevronRight, GraduationCap, Plus, ShieldCheck, X } from "lucide-react";
 import { api } from "../../lib/api";
 import { LoadingSkeleton } from "../../shared/ui/core";
+import useApiAction from "../../lib/hooks/useApiAction";
 
 const SCOPES = ["all", "general", "obc", "sc", "st", "ews", "pwd", "ex_serviceman", "women"];
 const RULE_TYPES = ["age_min", "age_max", "education_min_level", "nationality", "gender", "attempts_max"];
@@ -31,6 +32,167 @@ function emptyRuleForm(examId) {
   };
 }
 
+function ConfirmDialog({ type, rule, onClose, onConfirm }) {
+  const [reason, setReason] = useState("");
+  const [sourceUrl, setSourceUrl] = useState(rule?.source_url || "");
+  const [sourceUnavailable, setSourceUnavailable] = useState(false);
+  const [localError, setLocalError] = useState("");
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    setLocalError("");
+    const trimmed = reason.trim();
+    if (trimmed.length < 8) {
+      setLocalError("Reason must be at least 8 characters.");
+      return;
+    }
+    if (trimmed.length > 500) {
+      setLocalError("Reason must be 500 characters or fewer.");
+      return;
+    }
+    if (type === "verify" && !sourceUnavailable && !sourceUrl.trim()) {
+      setLocalError("Provide a source URL or check 'Source unavailable'.");
+      return;
+    }
+    onConfirm({
+      reason: trimmed,
+      sourceUrl: sourceUnavailable ? null : sourceUrl.trim() || null,
+    });
+  }
+
+  const isVerify = type === "verify";
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      data-testid="confirm-dialog"
+    >
+      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
+        <h2 className="font-heading text-lg font-semibold">
+          {isVerify ? "Verify rule" : "Archive rule"}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {isVerify
+            ? "Verified rules immediately feed the user-facing eligibility summary. Confirm this rule is correct."
+            : "Archiving removes this rule from the live eligibility summary. The row is retained for audit."}
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <label className="block text-sm">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+              Reason{" "}
+              <span className="font-normal normal-case tracking-normal">(8–500 chars)</span>
+            </div>
+            <textarea
+              data-testid="dialog-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg border border-clay-300 bg-white text-sm"
+              placeholder={
+                isVerify
+                  ? "Confirmed against official notification…"
+                  : "Superseded by updated regulation…"
+              }
+            />
+          </label>
+          {isVerify && (
+            <>
+              <label className="block text-sm">
+                <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+                  Source URL
+                </div>
+                <input
+                  type="url"
+                  data-testid="dialog-source-url"
+                  value={sourceUrl}
+                  disabled={sourceUnavailable}
+                  onChange={(e) => setSourceUrl(e.target.value)}
+                  placeholder="https://upsc.gov.in/…"
+                  className="w-full px-3 py-2 rounded-lg border border-clay-300 bg-white text-sm disabled:opacity-40"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  data-testid="dialog-source-unavailable"
+                  checked={sourceUnavailable}
+                  onChange={(e) => setSourceUnavailable(e.target.checked)}
+                  className="h-4 w-4 rounded"
+                />
+                Source unavailable — waive URL requirement
+              </label>
+            </>
+          )}
+          {localError && (
+            <div className="text-sm text-destructive" data-testid="dialog-error">
+              {localError}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} className="btn btn-ghost">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              data-testid="dialog-confirm"
+              className={`btn ${isVerify ? "btn-primary" : "btn-destructive"}`}
+            >
+              {isVerify ? "Confirm verify" : "Confirm archive"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AuditTimeline({ ruleId }) {
+  const [status, setStatus] = useState("loading");
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    setStatus("loading");
+    api
+      .get(`/api/admin/audit?entity_type=exam_eligibility_rule&entity_id=${ruleId}`)
+      .then((d) => {
+        setItems(Array.isArray(d?.items) ? d.items : []);
+        setStatus("done");
+      })
+      .catch(() => setStatus("error"));
+  }, [ruleId]);
+
+  if (status === "loading") {
+    return <div className="py-2 text-xs text-muted-foreground">Loading history…</div>;
+  }
+  if (status === "error" || items.length === 0) {
+    return (
+      <div className="py-2 text-xs text-muted-foreground italic" data-testid="audit-empty">
+        No recorded history
+      </div>
+    );
+  }
+
+  return (
+    <ol className="text-xs space-y-1 border-l-2 border-clay-200 pl-3 mt-1" data-testid="audit-list">
+      {items.map((entry) => (
+        <li key={entry.id}>
+          <span className="font-mono text-muted-foreground mr-2">
+            {new Date(entry.created_at).toLocaleDateString()}
+          </span>
+          <span className="font-semibold">{entry.action}</span>
+          {entry.actor_email && (
+            <span className="text-muted-foreground ml-1">by {entry.actor_email}</span>
+          )}
+          {entry.notes && (
+            <span className="text-muted-foreground ml-1">— {entry.notes}</span>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export default function AdminExamEligibility() {
   const [exams, setExams] = useState(null);
   const [selectedExamId, setSelectedExamId] = useState("");
@@ -39,6 +201,12 @@ export default function AdminExamEligibility() {
   const [form, setForm] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [expandedRuleId, setExpandedRuleId] = useState(null);
+
+  const { run: runSave, busy: saveBusy } = useApiAction();
+  const { run: runVerify } = useApiAction();
+  const { run: runArchive } = useApiAction();
 
   useEffect(() => {
     refreshExams();
@@ -119,48 +287,71 @@ export default function AdminExamEligibility() {
       }
       payload.value_text = form.value_text;
     }
-    try {
-      if (editingId) {
-        await api.put(`/api/admin/exam-eligibility/rules/${editingId}`, payload);
-      } else {
-        await api.post(
-          `/api/admin/exam-eligibility/exams/${selectedExamId}/rules`,
-          payload,
-        );
-      }
-      closeForm();
-      await refreshRules(selectedExamId);
-      await refreshExams();
-    } catch (e) {
-      const detail = e?.body?.detail;
+
+    const endpoint = editingId
+      ? `/api/admin/exam-eligibility/rules/${editingId}`
+      : `/api/admin/exam-eligibility/exams/${selectedExamId}/rules`;
+    const method = editingId ? "put" : "post";
+
+    const { ok, error: apiError } = await runSave({
+      action: () => api[method](endpoint, payload),
+      onSuccess: async () => {
+        closeForm();
+        await refreshRules(selectedExamId);
+        await refreshExams();
+      },
+      errorMessage: editingId ? "Save failed" : "Create failed",
+    });
+    if (!ok) {
+      const detail = apiError?.detail;
       if (detail && typeof detail === "object" && detail.code === "RULE_ALREADY_EXISTS") {
         setError("A rule with this scope and type already exists. Edit the existing row.");
-      } else {
-        setError(typeof detail === "string" ? detail : e?.message || "Save failed");
+      } else if (typeof detail === "string") {
+        setError(detail);
       }
     }
   }
 
-  async function archiveRule(ruleId) {
-    if (!window.confirm("Archive this rule? It will stop counting toward user eligibility.")) return;
-    try {
-      await api.del(`/api/admin/exam-eligibility/rules/${ruleId}`);
-      await refreshRules(selectedExamId);
-      await refreshExams();
-    } catch (e) {
-      setError(e?.message || "Archive failed");
-    }
-  }
+  async function handleDialogConfirm({ reason, sourceUrl }) {
+    const { type, rule } = confirmDialog;
+    setConfirmDialog(null);
+    setError("");
 
-  async function verifyRule(ruleId) {
-    try {
-      await api.put(`/api/admin/exam-eligibility/rules/${ruleId}`, {
-        reviewer_status: "verified",
+    if (type === "verify") {
+      const { ok, error: apiError } = await runVerify({
+        action: () =>
+          api.put(`/api/admin/exam-eligibility/rules/${rule.id}`, {
+            reviewer_status: "verified",
+            source_url: sourceUrl || null,
+            waiver_reason: reason,
+          }),
+        onSuccess: async () => {
+          await refreshRules(selectedExamId);
+          await refreshExams();
+        },
+        successMessage: "Rule verified.",
+        errorMessage: "Verify failed.",
       });
-      await refreshRules(selectedExamId);
-      await refreshExams();
-    } catch (e) {
-      setError(e?.message || "Verify failed");
+      if (!ok) {
+        const detail = apiError?.detail;
+        if (typeof detail === "string") setError(detail);
+      }
+    } else {
+      const qs = new URLSearchParams({ waiver_reason: reason }).toString();
+      const { ok, error: apiError } = await runArchive({
+        action: () =>
+          api.del(`/api/admin/exam-eligibility/rules/${rule.id}?${qs}`),
+        onSuccess: async () => {
+          await refreshRules(selectedExamId);
+          await refreshExams();
+        },
+        successMessage: "Rule archived.",
+        errorMessage: "Archive failed.",
+      });
+      if (!ok) {
+        const detail = apiError?.detail;
+        if (typeof detail === "string") setError(detail);
+      }
     }
   }
 
@@ -174,6 +365,15 @@ export default function AdminExamEligibility() {
 
   return (
     <div className="space-y-6" data-testid="admin-exam-eligibility">
+      {confirmDialog && (
+        <ConfirmDialog
+          type={confirmDialog.type}
+          rule={confirmDialog.rule}
+          onClose={() => setConfirmDialog(null)}
+          onConfirm={handleDialogConfirm}
+        />
+      )}
+
       <div>
         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
           Knowledge governance
@@ -227,7 +427,7 @@ export default function AdminExamEligibility() {
           </div>
         </div>
 
-        {/* Right: rules table */}
+        {/* Right: rules panel */}
         <div className="soft-card rounded-2xl p-4" data-testid="rules-panel">
           {!selectedExamId ? (
             <div className="text-sm text-muted-foreground p-6 text-center">
@@ -238,9 +438,7 @@ export default function AdminExamEligibility() {
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
                   <div className="font-heading text-xl font-semibold">{exam?.name}</div>
-                  <div className="text-[11px] text-muted-foreground font-mono">
-                    {exam?.slug}
-                  </div>
+                  <div className="text-[11px] text-muted-foreground font-mono">{exam?.slug}</div>
                 </div>
                 <button
                   type="button"
@@ -282,12 +480,7 @@ export default function AdminExamEligibility() {
                         data-testid="rule-form-type"
                         value={form.rule_type}
                         onChange={(e) =>
-                          setForm({
-                            ...form,
-                            rule_type: e.target.value,
-                            value_num: "",
-                            value_text: "",
-                          })
+                          setForm({ ...form, rule_type: e.target.value, value_num: "", value_text: "" })
                         }
                         className="w-full px-3 py-2 rounded-lg border border-clay-300 bg-white text-sm"
                       >
@@ -331,9 +524,7 @@ export default function AdminExamEligibility() {
                       <select
                         data-testid="rule-form-status"
                         value={form.reviewer_status}
-                        onChange={(e) =>
-                          setForm({ ...form, reviewer_status: e.target.value })
-                        }
+                        onChange={(e) => setForm({ ...form, reviewer_status: e.target.value })}
                         className="w-full px-3 py-2 rounded-lg border border-clay-300 bg-white text-sm"
                       >
                         {STATUSES.map((s) => (
@@ -361,26 +552,21 @@ export default function AdminExamEligibility() {
                       <textarea
                         data-testid="rule-form-source-notes"
                         value={form.source_notes}
-                        onChange={(e) =>
-                          setForm({ ...form, source_notes: e.target.value })
-                        }
+                        onChange={(e) => setForm({ ...form, source_notes: e.target.value })}
                         rows={2}
                         className="w-full px-3 py-2 rounded-lg border border-clay-300 bg-white text-sm"
                       />
                     </label>
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={closeForm}
-                      className="btn btn-ghost"
-                    >
+                    <button type="button" onClick={closeForm} className="btn btn-ghost">
                       Cancel
                     </button>
                     <button
                       type="submit"
                       data-testid="rule-form-submit"
                       className="btn btn-primary"
+                      disabled={saveBusy}
                     >
                       {editingId ? "Save changes" : "Create rule"}
                     </button>
@@ -409,65 +595,90 @@ export default function AdminExamEligibility() {
                       </tr>
                     )}
                     {rules.map((r) => (
-                      <tr
-                        key={r.id}
-                        className="border-b border-clay-100/60 hover:bg-white/40"
-                        data-testid={`rule-row-${r.id}`}
-                      >
-                        <td className="py-2 pr-3 font-mono text-xs">{r.scope}</td>
-                        <td className="py-2 pr-3 font-mono text-xs">{r.rule_type}</td>
-                        <td className="py-2 pr-3">
-                          {r.value_num != null ? r.value_num : r.value_text}
-                        </td>
-                        <td className="py-2 pr-3">
-                          <StatusPill status={r.reviewer_status} />
-                        </td>
-                        <td className="py-2 pr-3 text-xs">
-                          {r.source_url ? (
-                            <a
-                              href={r.source_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="link-under"
-                            >
-                              source
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
-                        <td className="py-2 pr-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openEditRule(r)}
-                              className="text-xs link-under"
-                            >
-                              edit
-                            </button>
-                            {r.reviewer_status !== "verified" && (
+                      <React.Fragment key={r.id}>
+                        <tr
+                          className="border-b border-clay-100/60 hover:bg-white/40"
+                          data-testid={`rule-row-${r.id}`}
+                        >
+                          <td className="py-2 pr-3 font-mono text-xs">{r.scope}</td>
+                          <td className="py-2 pr-3 font-mono text-xs">{r.rule_type}</td>
+                          <td className="py-2 pr-3">
+                            {r.value_num != null ? r.value_num : r.value_text}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <StatusPill status={r.reviewer_status} />
+                          </td>
+                          <td className="py-2 pr-3 text-xs">
+                            {r.source_url ? (
+                              <a
+                                href={r.source_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="link-under"
+                              >
+                                source
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <button
                                 type="button"
-                                onClick={() => verifyRule(r.id)}
-                                className="text-xs link-under text-sage-700"
-                                data-testid={`verify-${r.id}`}
+                                onClick={() => openEditRule(r)}
+                                className="text-xs link-under"
                               >
-                                <ShieldCheck className="inline h-3 w-3" /> verify
+                                edit
                               </button>
-                            )}
-                            {r.reviewer_status !== "archived" && (
                               <button
                                 type="button"
-                                onClick={() => archiveRule(r.id)}
-                                aria-label={`Archive rule ${r.scope} ${r.rule_type}`}
-                                className="text-xs link-under text-destructive"
+                                onClick={() =>
+                                  setExpandedRuleId(expandedRuleId === r.id ? null : r.id)
+                                }
+                                className="text-xs link-under text-muted-foreground"
+                                data-testid={`history-${r.id}`}
+                                aria-expanded={expandedRuleId === r.id}
                               >
-                                <X className="inline h-3 w-3" /> archive
+                                {expandedRuleId === r.id ? (
+                                  <ChevronDown className="inline h-3 w-3" />
+                                ) : (
+                                  <ChevronRight className="inline h-3 w-3" />
+                                )}{" "}
+                                history
                               </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                              {r.reviewer_status !== "verified" && (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDialog({ type: "verify", rule: r })}
+                                  className="text-xs link-under text-sage-700"
+                                  data-testid={`verify-${r.id}`}
+                                >
+                                  <ShieldCheck className="inline h-3 w-3" /> verify
+                                </button>
+                              )}
+                              {r.reviewer_status !== "archived" && (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDialog({ type: "archive", rule: r })}
+                                  aria-label={`Archive rule ${r.scope} ${r.rule_type}`}
+                                  className="text-xs link-under text-destructive"
+                                  data-testid={`archive-${r.id}`}
+                                >
+                                  <X className="inline h-3 w-3" /> archive
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {expandedRuleId === r.id && (
+                          <tr data-testid={`audit-row-${r.id}`}>
+                            <td colSpan={6} className="px-3 pb-3 bg-white/30">
+                              <AuditTimeline ruleId={r.id} />
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
