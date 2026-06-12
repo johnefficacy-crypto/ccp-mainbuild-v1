@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { X } from "lucide-react";
 import { api } from "../../lib/api";
 import useApiCollection from "../../lib/hooks/useApiCollection";
@@ -1239,6 +1240,20 @@ function BulkToolbar({ selectedIds, onClear, onDryRun, dryRunResult, onApply, bu
 // before this component ever mounts, preventing the GET from leaking report
 // data to admins who lack exam_intelligence.cms.
 function VerificationReportsContent() {
+  const [searchParams] = useSearchParams();
+  const incomingSourceId = searchParams.get("source_id") || undefined;
+  const incomingStaleStatus = searchParams.get("staleness_status") || undefined;
+
+  const collectionParams =
+    incomingSourceId || incomingStaleStatus
+      ? Object.fromEntries(
+          [
+            incomingSourceId && ["source_id", incomingSourceId],
+            incomingStaleStatus && ["staleness_status", incomingStaleStatus],
+          ].filter(Boolean),
+        )
+      : undefined;
+
   const [selectedId, setSelectedId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [dryRunResult, setDryRunResult] = useState(null);
@@ -1247,6 +1262,7 @@ function VerificationReportsContent() {
   const { items, status, refresh } = useApiCollection(
     "/api/admin/verification-reports",
     [],
+    { params: collectionParams },
   );
   const { run: runBulk, busy: bulkBusy } = useApiAction();
 
@@ -1325,6 +1341,17 @@ function VerificationReportsContent() {
           Refresh
         </button>
       </div>
+
+      {collectionParams && (
+        <div
+          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-800"
+          data-testid="vr-active-filters"
+        >
+          Filtered by batch source
+          {incomingSourceId && <span className="font-mono ml-1">source_id={incomingSourceId}</span>}
+          {incomingStaleStatus && <span className="ml-1">· staleness_status={incomingStaleStatus}</span>}
+        </div>
+      )}
 
       <BulkToolbar
         selectedIds={selectedIds}
