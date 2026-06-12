@@ -532,3 +532,74 @@ def test_v2_5_not_connected_fires_no_exam_date_flag():
     flag_codes = {r["code"] for r in out["risk_flags"]}
     assert "no_exam_date" in flag_codes
     assert out["cycle_progress"]["status"] == "not_connected"
+
+
+# ---------------------------------------------------------------------------
+# A-guard — stale Prelims + future Mains: phase displays Mains
+# ---------------------------------------------------------------------------
+
+def test_a_guard_stale_prelims_future_mains_phase_displays_mains():
+    """Stale Prelims (phase_end in past) + future Mains: resolver picks Mains;
+    both exam_context.target_phase_name and exam_context.phase show 'Mains'."""
+    today = date.today()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "exam-upsc"}],
+        "exams": [{"id": "exam-1", "slug": "exam-upsc", "name": "UPSC CSE",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active",
+                         "exam_start": (today - timedelta(days=5)).isoformat(),
+                         "year": 2026}],
+        "exam_phases": [
+            {"id": "ph-prelims", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1,
+             "status": "active",
+             "phase_start": (today - timedelta(days=60)).isoformat(),
+             "phase_end": (today - timedelta(days=10)).isoformat()},
+            {"id": "ph-mains", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "phase_name": "Mains", "phase_slug": "mains", "phase_order": 2,
+             "status": "expected",
+             "phase_start": (today + timedelta(days=30)).isoformat(),
+             "phase_end": None},
+        ],
+    }
+    seed.update(_plan_with_tasks(today, today + timedelta(days=60), completed=1, planned=3))
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    ec = out["exam_context"]
+    assert ec["target_phase_name"] == "Mains"
+    assert ec["phase"] == "Mains"
+    assert ec["phase"] != "Prelims"
+
+
+# ---------------------------------------------------------------------------
+# Open-ended current phase — connected, null target, no spurious no_exam_date
+# ---------------------------------------------------------------------------
+
+def test_open_ended_current_phase_no_spurious_no_exam_date():
+    """Active phase with no phase_end: resolver is connected (current_phase),
+    target_date/days_remaining are null, and no_exam_date must NOT fire."""
+    today = date.today()
+    seed = {
+        "profiles": [{"id": "u-1", "target_exam": "exam-upsc"}],
+        "exams": [{"id": "exam-1", "slug": "exam-upsc", "name": "UPSC CSE",
+                   "exam_type": "recruitment", "is_active": True}],
+        "exam_cycles": [{"id": "cyc-1", "exam_id": "exam-1", "cycle_name": "2026",
+                         "status": "active",
+                         "exam_start": (today - timedelta(days=5)).isoformat(),
+                         "year": 2026}],
+        "exam_phases": [
+            {"id": "ph-cur", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+             "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1,
+             "status": "active",
+             "phase_start": (today - timedelta(days=5)).isoformat(),
+             "phase_end": None},
+        ],
+    }
+    seed.update(_plan_with_tasks(today, today + timedelta(days=30), completed=1, planned=3))
+    out = service.get_plan_timeline(SBStub(seed), "u-1")
+    ec = out["exam_context"]
+    assert out["cycle_progress"]["status"] != "not_connected"
+    assert ec["target_date"] is None
+    assert ec["days_remaining"] is None
+    flag_codes = {r["code"] for r in out["risk_flags"]}
+    assert "no_exam_date" not in flag_codes
