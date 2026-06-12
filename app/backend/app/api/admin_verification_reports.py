@@ -220,6 +220,21 @@ def get_verification_report(
     """Return the full report row including jsonb columns.
 
     No mutation; safe to call from an admin detail drawer.
+
+    A derived ``exam_id`` is injected as a top-level key to let the UI scope
+    FK pickers (cycle / phase / policy) to the correct exam without an extra
+    round-trip.  Resolution path:
+
+        report.recruitment_id → recruitments.exam_id   (preferred when present)
+        otherwise → None
+
+    scrape_queue is intentionally not consulted: queue-stage exam linkage is
+    unverified data; only the post-promotion recruitments.exam_id is a trusted
+    scope key.  A queue-only report legitimately has no exam to scope to —
+    returning null is correct behaviour, not a degradation.
+
+    The resolve is READ-ONLY and best-effort: any miss, empty result, or
+    transport error yields exam_id=None without raising.
     """
     supabase = get_supabase_admin()
     rows = (
@@ -233,7 +248,28 @@ def get_verification_report(
     )
     if not rows:
         raise HTTPException(status_code=404, detail="verification_report not found")
-    return rows[0]
+    report = rows[0]
+
+    # Resolve derived exam_id (best-effort, never raises).
+    derived_exam_id: str | None = None
+    recruitment_id = report.get("recruitment_id")
+    if recruitment_id:
+        try:
+            rec_rows = (
+                supabase.table("recruitments")
+                .select("exam_id")
+                .eq("id", recruitment_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            if rec_rows:
+                derived_exam_id = rec_rows[0].get("exam_id")
+        except Exception:  # noqa: BLE001
+            derived_exam_id = None
+
+    return {**report, "exam_id": derived_exam_id}
 
 
 # ── PR2 mutation endpoints ────────────────────────────────────────────
