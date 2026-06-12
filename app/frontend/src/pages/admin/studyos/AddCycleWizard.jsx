@@ -734,7 +734,7 @@ function StepReview({ state, dispatch, examId }) {
                   onClick={() => navigate("/admin/exam-eligibility")}>
                   Exam Eligibility baseline
                 </button>
-                {" "}— confirm qualification and age-limit rules cover this cycle
+                {" "}— confirm the exam-level baseline rules are still current for this cycle
               </li>
             </ul>
           </div>
