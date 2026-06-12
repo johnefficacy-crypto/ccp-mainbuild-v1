@@ -202,6 +202,7 @@ def test_update_rule_promote_draft_to_verified_stamps_metadata():
             "scope": "general",
             "rule_type": "age_max",
             "value_num": 32,
+            "source_url": "https://ssc.gov.in/",
             "reviewer_status": "draft",
             "verified_by": None,
             "verified_at": None,
@@ -272,3 +273,230 @@ def test_delete_unknown_rule_is_404():
         "/api/admin/exam-eligibility/rules/00000000-0000-4000-8000-000000000000"
     )
     assert r.status_code == 404
+
+
+# ── Trust-transition provenance validation ────────────────────────────────
+
+
+def test_create_rule_verified_without_source_or_waiver_is_422():
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "general", "rule_type": "age_max", "value_num": 35, "reviewer_status": "verified"},
+    )
+    assert r.status_code == 422
+    assert "source_url" in r.json()["detail"] or "waiver_reason" in r.json()["detail"]
+
+
+def test_create_rule_verified_with_source_url_passes():
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={
+            "scope": "general",
+            "rule_type": "age_max",
+            "value_num": 35,
+            "source_url": "https://ssc.gov.in/notice",
+            "reviewer_status": "verified",
+        },
+    )
+    assert r.status_code == 200
+
+
+def test_create_rule_verified_with_waiver_reason_passes():
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={
+            "scope": "general",
+            "rule_type": "age_max",
+            "value_num": 35,
+            "waiver_reason": "Official PDF not yet published; sourced from official press release.",
+            "reviewer_status": "verified",
+        },
+    )
+    assert r.status_code == 200
+
+
+def test_create_rule_draft_without_source_url_is_allowed():
+    """Non-trust edits must not be blocked by provenance check."""
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "general", "rule_type": "age_max", "value_num": 35},
+    )
+    assert r.status_code == 200
+
+
+def test_update_rule_verify_without_source_or_waiver_is_422():
+    sb = SBStub(_world())
+    sb.db["exam_eligibility_rules"].append(
+        {
+            "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+            "exam_id": EXAM_A,
+            "scope": "obc",
+            "rule_type": "age_max",
+            "value_num": 35,
+            "source_url": None,
+            "reviewer_status": "draft",
+            "verified_by": None,
+            "verified_at": None,
+        }
+    )
+    r = TestClient(_build_app(sb)).put(
+        "/api/admin/exam-eligibility/rules/cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        json={"reviewer_status": "verified"},
+    )
+    assert r.status_code == 422
+
+
+def test_update_rule_verify_with_waiver_reason_passes():
+    sb = SBStub(_world())
+    sb.db["exam_eligibility_rules"].append(
+        {
+            "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+            "exam_id": EXAM_A,
+            "scope": "obc",
+            "rule_type": "age_max",
+            "value_num": 35,
+            "source_url": None,
+            "reviewer_status": "draft",
+            "verified_by": None,
+            "verified_at": None,
+        }
+    )
+    r = TestClient(_build_app(sb)).put(
+        "/api/admin/exam-eligibility/rules/cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        json={"reviewer_status": "verified", "waiver_reason": "Verified via direct SSC inquiry"},
+    )
+    assert r.status_code == 200
+
+
+def test_soft_delete_without_source_or_waiver_is_422():
+    sb = SBStub(_world())
+    sb.db["exam_eligibility_rules"].append(
+        {
+            "id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+            "exam_id": EXAM_A,
+            "scope": "sc",
+            "rule_type": "age_max",
+            "value_num": 37,
+            "source_url": None,
+            "reviewer_status": "draft",
+        }
+    )
+    r = TestClient(_build_app(sb)).delete(
+        "/api/admin/exam-eligibility/rules/dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+    )
+    assert r.status_code == 422
+
+
+def test_soft_delete_with_waiver_reason_passes():
+    sb = SBStub(_world())
+    sb.db["exam_eligibility_rules"].append(
+        {
+            "id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+            "exam_id": EXAM_A,
+            "scope": "sc",
+            "rule_type": "age_max",
+            "value_num": 37,
+            "source_url": None,
+            "reviewer_status": "draft",
+        }
+    )
+    r = TestClient(_build_app(sb)).delete(
+        "/api/admin/exam-eligibility/rules/dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+        "?waiver_reason=Removing+outdated+rule"
+    )
+    assert r.status_code == 200
+    row = next(r for r in sb.db["exam_eligibility_rules"] if r["id"] == "dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+    assert row["reviewer_status"] == "archived"
+
+
+# ── Audit log writes ──────────────────────────────────────────────────────
+
+
+def test_create_rule_writes_audit_log():
+    sb = SBStub(_world())
+    TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "general", "rule_type": "age_max", "value_num": 35},
+    )
+    logs = sb.db.get("admin_audit_logs", [])
+    assert len(logs) == 1
+    assert logs[0]["action"] == "eligibility_rule.create"
+    assert logs[0]["entity_type"] == "exam_eligibility_rule"
+    assert logs[0]["actor_id"] == "admin-1"
+    assert logs[0]["new_value"] is not None
+
+
+def test_update_rule_non_verify_writes_update_audit_log():
+    sb = SBStub(_world())
+    TestClient(_build_app(sb)).put(
+        f"/api/admin/exam-eligibility/rules/{RULE_A}",
+        json={"value_num": 19},
+    )
+    logs = sb.db.get("admin_audit_logs", [])
+    assert len(logs) == 1
+    assert logs[0]["action"] == "eligibility_rule.update"
+    assert logs[0]["entity_id"] == RULE_A
+    assert logs[0]["old_value"] is not None
+
+
+def test_update_rule_verify_transition_writes_verify_audit_log():
+    sb = SBStub(_world())
+    sb.db["exam_eligibility_rules"].append(
+        {
+            "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+            "exam_id": EXAM_A,
+            "scope": "ews",
+            "rule_type": "age_max",
+            "value_num": 32,
+            "source_url": "https://ssc.gov.in/",
+            "reviewer_status": "draft",
+            "verified_by": None,
+            "verified_at": None,
+        }
+    )
+    TestClient(_build_app(sb)).put(
+        "/api/admin/exam-eligibility/rules/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        json={"reviewer_status": "verified"},
+    )
+    logs = sb.db.get("admin_audit_logs", [])
+    assert len(logs) == 1
+    assert logs[0]["action"] == "eligibility_rule.verify"
+
+
+def test_soft_delete_writes_archive_audit_log():
+    sb = SBStub(_world())
+    TestClient(_build_app(sb)).delete(f"/api/admin/exam-eligibility/rules/{RULE_A}")
+    logs = sb.db.get("admin_audit_logs", [])
+    assert len(logs) == 1
+    assert logs[0]["action"] == "eligibility_rule.archive"
+    assert logs[0]["entity_id"] == RULE_A
+    assert logs[0]["old_value"] is not None
+
+
+def test_hard_delete_writes_delete_audit_log():
+    sb = SBStub(_world())
+    TestClient(_build_app(sb)).delete(f"/api/admin/exam-eligibility/rules/{RULE_A}?hard=true")
+    logs = sb.db.get("admin_audit_logs", [])
+    assert len(logs) == 1
+    assert logs[0]["action"] == "eligibility_rule.delete"
+    assert logs[0]["entity_id"] == RULE_A
+
+
+def test_audit_log_captures_waiver_reason_in_notes():
+    sb = SBStub(_world())
+    TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={
+            "scope": "general",
+            "rule_type": "age_max",
+            "value_num": 35,
+            "waiver_reason": "sourced from official press release",
+            "reviewer_status": "verified",
+        },
+    )
+    logs = sb.db.get("admin_audit_logs", [])
+    assert "sourced from official press release" in logs[0]["notes"]
