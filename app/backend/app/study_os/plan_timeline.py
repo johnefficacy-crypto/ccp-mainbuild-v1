@@ -511,6 +511,7 @@ def _build_subjects(
 def _build_risk_flags(
     *,
     exam_start: date | None,
+    has_connected_target: bool,
     today: date,
     cycle_progress: dict[str, Any],
     overdue_count: int,
@@ -518,7 +519,7 @@ def _build_risk_flags(
     subjects: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     flags: list[dict[str, Any]] = []
-    if exam_start is None:
+    if not has_connected_target:
         flags.append({
             "code": "no_exam_date",
             "label": "No verified exam date",
@@ -634,7 +635,10 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
                 "exam_id": exam_id,
                 "exam_name": exam_name,
                 "cycle": cycle.get("cycle_name") if cycle else None,
-                "phase": primary_phase.get("phase_name") if primary_phase else None,
+                "phase": (
+                    (resolver_result["target_phase_name"] if resolver_result else None)
+                    or (primary_phase.get("phase_name") if primary_phase else None)
+                ),
                 "exam_start": resolver_result["target_date"] if resolver_result else None,
                 "days_remaining": resolver_result["days_remaining"] if resolver_result else None,
                 "trust_status": "preview",
@@ -648,6 +652,7 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
         })
         empty["risk_flags"] = _build_risk_flags(
             exam_start=None,
+            has_connected_target=False,
             today=today,
             cycle_progress=empty["cycle_progress"],
             overdue_count=0,
@@ -724,8 +729,13 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
         "unit": "tasks" if use_counts else "minutes",
     }
 
+    has_connected_target = (
+        resolver_result is not None
+        and resolver_result["status"] == "connected"
+    )
     risk_flags = _build_risk_flags(
         exam_start=timeline_target_date,
+        has_connected_target=has_connected_target,
         today=today,
         cycle_progress=cycle_progress,
         overdue_count=overdue,
@@ -747,7 +757,10 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
             "exam_id": exam_id,
             "exam_name": exam_name,
             "cycle": cycle.get("cycle_name") if cycle else None,
-            "phase": primary_phase.get("phase_name") if primary_phase else None,
+            "phase": (
+                (resolver_result["target_phase_name"] if resolver_result else None)
+                or (primary_phase.get("phase_name") if primary_phase else None)
+            ),
             # exam_start: set to resolver target_date so FE "Exam on" shows the
             # real planning target. Null when resolver has no target (FE handles null).
             "exam_start": resolver_result["target_date"] if resolver_result else None,
