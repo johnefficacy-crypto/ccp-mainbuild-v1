@@ -836,6 +836,68 @@ function StepReview({ state, dispatch }) {
             onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
             Open exam workspace →
           </button>
+          <div className="mt-4 pt-4 border-t border-green-300">
+            <p className="font-semibold text-amber-800">⚠ This exam is not planner-ready yet.</p>
+            <p className="mt-1 text-xs text-green-700">Complete these steps in the exam workspace before the exam appears in student plans:</p>
+            <ul className="mt-2 space-y-1 text-xs text-green-800">
+              <li>
+                <span className="inline-block w-4">☐</span>
+                <button type="button" className="underline hover:no-underline text-left"
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  Documents
+                </button>
+                {" "}— upload the official notification and syllabus PDF
+              </li>
+              <li>
+                <span className="inline-block w-4">☐</span>
+                <button type="button" className="underline hover:no-underline text-left"
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  Syllabus Mapper
+                </button>
+                {" "}— map syllabus topics to the subject taxonomy
+              </li>
+              <li>
+                <span className="inline-block w-4">☐</span>
+                <button type="button" className="underline hover:no-underline text-left"
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  PYQ Workbench
+                </button>
+                {" "}— import and review previous-year questions
+              </li>
+              <li>
+                <span className="inline-block w-4">☐</span>
+                <button type="button" className="underline hover:no-underline text-left"
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  Updates
+                </button>
+                {" "}— add at least one published update for this exam
+              </li>
+              <li>
+                <span className="inline-block w-4">☐</span>
+                <button type="button" className="underline hover:no-underline text-left"
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  Competition
+                </button>
+                {" "}— fill seats, applicants, and selection ratio
+              </li>
+              <li>
+                <span className="inline-block w-4">☐</span>
+                <button type="button" className="underline hover:no-underline text-left"
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  Review &amp; Activate
+                </button>
+                {" "}— resolve all blockers and activate the exam
+              </li>
+              <li>
+                <span className="inline-block w-4">☐</span>
+                <button type="button" className="underline hover:no-underline text-left"
+                  onClick={() => navigate("/admin/exam-eligibility")}>
+                  Exam Eligibility baseline
+                </button>
+                {" "}— set qualification and age-limit rules so eligibility checks pass
+              </li>
+            </ul>
+          </div>
         </div>
       )}
 
