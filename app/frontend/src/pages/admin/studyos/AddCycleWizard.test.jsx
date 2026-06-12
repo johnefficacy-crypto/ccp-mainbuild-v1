@@ -23,7 +23,12 @@ const EXISTING_CYCLES = [
 ];
 
 const TEMPLATE_PHASES = [
-  { id: "ph-tmpl-1", phase_name: "Prelims", phase_slug: "prelims", exam_cycle_id: null, exam_id: EXAM_ID },
+  {
+    id: "ph-tmpl-1", phase_name: "Prelims", phase_slug: "prelims", exam_cycle_id: null, exam_id: EXAM_ID,
+    phase_order: 1, mode: "offline", duration_mins: 120, total_questions: 100, total_marks: 200,
+    negative_marking: "1/3", metadata: { syllabus_note: "GS Paper I" },
+    phase_start: "2025-05-01", phase_end: "2025-05-01",
+  },
   { id: "ph-tmpl-2", phase_name: "Mains", phase_slug: "mains", exam_cycle_id: null, exam_id: EXAM_ID },
 ];
 
@@ -401,6 +406,92 @@ describe("ISO dates", () => {
     const payload = api.post.mock.calls[0][1].payload;
     expect(payload.exam_start).toBeUndefined();
     expect(payload.notification_date).toBeUndefined();
+  });
+});
+
+// ── FIX 1: new-template slug vs existing templates ────────────────────────────
+
+describe("FIX 1: new-template slug collision with existing template", () => {
+  test("new phase createTemplate=true whose slug matches an existing template → error shown, Next disabled", async () => {
+    // ph-tmpl-1 has phase_slug "prelims". Adding a new phase named "Prelims" with createTemplate=true
+    // → slugify("prelims") = "prelims" → collision.
+    await goToPhases();
+    fireEvent.click(screen.getByTestId("ac-add-phase"));
+    const names = screen.getAllByTestId(/^ac-phase-name-/);
+    fireEvent.change(names[names.length - 1], { target: { value: "Prelims" } });
+    const toggles = screen.getAllByTestId(/^ac-phase-template-toggle-/);
+    fireEvent.click(toggles[toggles.length - 1].querySelector("input[type=checkbox]"));
+    await waitFor(() => expect(screen.getByTestId("ac-phase-errors")).toBeInTheDocument());
+    expect(screen.getByTestId("ac-phase-errors").textContent).toMatch(/prelims/);
+    expect(screen.getByTestId("ac-next-2")).toBeDisabled();
+  });
+
+  test("new phase createTemplate=true with a slug that does NOT hit an existing template → passes", async () => {
+    await goToPhases();
+    fireEvent.click(screen.getByTestId("ac-add-phase"));
+    const names = screen.getAllByTestId(/^ac-phase-name-/);
+    fireEvent.change(names[names.length - 1], { target: { value: "Interview" } });
+    const toggles = screen.getAllByTestId(/^ac-phase-template-toggle-/);
+    fireEvent.click(toggles[toggles.length - 1].querySelector("input[type=checkbox]"));
+    // "interview" slug is not in existing templates → no error
+    expect(screen.queryByTestId("ac-phase-errors")).not.toBeInTheDocument();
+    expect(screen.getByTestId("ac-next-2")).not.toBeDisabled();
+  });
+
+  test("createTemplate=false on same name → no template slug error", async () => {
+    await goToPhases();
+    fireEvent.click(screen.getByTestId("ac-add-phase"));
+    const names = screen.getAllByTestId(/^ac-phase-name-/);
+    fireEvent.change(names[names.length - 1], { target: { value: "Prelims" } });
+    // createTemplate is false by default — should not trigger template collision
+    expect(screen.queryByTestId("ac-phase-errors")).not.toBeInTheDocument();
+    expect(screen.getByTestId("ac-next-2")).not.toBeDisabled();
+  });
+});
+
+// ── FIX 2: complete clone payload ─────────────────────────────────────────────
+
+describe("FIX 2: clone payload completeness", () => {
+  test("cloned phase copies negative_marking, metadata, phase_start, phase_end from template", async () => {
+    api.post
+      .mockResolvedValueOnce({ row: { id: "cyc-new" } })
+      .mockResolvedValueOnce({ row: { id: "ph-cloned" } });
+    await goToReview({ withTemplate: true });
+    await act(async () => { fireEvent.click(screen.getByTestId("ac-create")); });
+    await waitFor(() => expect(screen.getByTestId("ac-create-success")).toBeInTheDocument());
+    const phasePosts = api.post.mock.calls.filter((c) => String(c[0]).includes("exam-phases"));
+    expect(phasePosts).toHaveLength(1);
+    const payload = phasePosts[0][1].payload;
+    expect(payload.negative_marking).toBe("1/3");
+    expect(payload.metadata).toEqual({ syllabus_note: "GS Paper I" });
+    expect(payload.phase_start).toBe("2025-05-01");
+    expect(payload.phase_end).toBe("2025-05-01");
+  });
+
+  test("cloned phase has recomputed cycle-bound slug, new exam_cycle_id, and does NOT copy id", async () => {
+    api.post
+      .mockResolvedValueOnce({ row: { id: "cyc-new" } })
+      .mockResolvedValueOnce({ row: { id: "ph-cloned" } });
+    await goToReview({ withTemplate: true });
+    await act(async () => { fireEvent.click(screen.getByTestId("ac-create")); });
+    await waitFor(() => expect(screen.getByTestId("ac-create-success")).toBeInTheDocument());
+    const phasePosts = api.post.mock.calls.filter((c) => String(c[0]).includes("exam-phases"));
+    const payload = phasePosts[0][1].payload;
+    expect(payload.phase_slug).toBe("prelims-2025");
+    expect(payload.exam_cycle_id).toBe("cyc-new");
+    expect(payload.id).toBeUndefined();
+  });
+
+  test("cloned phase does NOT copy status (defers to DB default)", async () => {
+    api.post
+      .mockResolvedValueOnce({ row: { id: "cyc-new" } })
+      .mockResolvedValueOnce({ row: { id: "ph-cloned" } });
+    await goToReview({ withTemplate: true });
+    await act(async () => { fireEvent.click(screen.getByTestId("ac-create")); });
+    await waitFor(() => expect(screen.getByTestId("ac-create-success")).toBeInTheDocument());
+    const phasePosts = api.post.mock.calls.filter((c) => String(c[0]).includes("exam-phases"));
+    const payload = phasePosts[0][1].payload;
+    expect(payload.status).toBeUndefined();
   });
 });
 

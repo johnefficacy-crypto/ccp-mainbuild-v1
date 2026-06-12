@@ -146,6 +146,17 @@ function validatePhaseStep(state) {
     seen.add(s);
   }
 
+  // New-template slug vs existing templates
+  const existingTemplateSlugs = new Set(
+    existingPhases.filter((p) => !p.exam_cycle_id).map((p) => p.phase_slug)
+  );
+  for (const p of newPhases.filter((ph) => ph.createTemplate)) {
+    const tmplSlug = slugify(effectiveSlug(p));
+    if (tmplSlug && existingTemplateSlugs.has(tmplSlug)) {
+      errs.push(`Template slug "${tmplSlug}" already exists — uncheck "Also create template" or change the phase name`);
+    }
+  }
+
   // Existing-phase collision (same year, already-posted cycle-bound phases)
   const sameYearCycleIds = new Set(
     existingCycles.filter((c) => String(c.year) === year).map((c) => c.id)
@@ -545,6 +556,10 @@ function StepReview({ state, dispatch, examId }) {
               duration_mins: t.duration_mins || undefined,
               total_questions: t.total_questions || undefined,
               total_marks: t.total_marks || undefined,
+              negative_marking: t.negative_marking || undefined,
+              metadata: t.metadata || undefined,
+              phase_start: t.phase_start || undefined,
+              phase_end: t.phase_end || undefined,
             },
           });
           dispatch({ type: "SET_PHASE_CREATED", key, id: r.row.id });
