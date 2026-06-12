@@ -24,6 +24,7 @@ const TRUST_PIPELINE = [
 
 const KNOWLEDGE_GOVERNANCE = [
   { to: "/admin/exam-intelligence", label: "Exam Intelligence", icon: GraduationCap, testId: "admin-nav-exam-intelligence" },
+  { to: "/admin/exam-intelligence/new", label: "New guided exam", icon: Sparkles, testId: "admin-nav-guided-exam-wizard" },
   { to: "/admin/exam-eligibility", label: "Exam Eligibility", icon: ShieldCheck, testId: "admin-nav-exam-eligibility" },
   { to: "/admin/organizations", label: "Organizations", icon: Users2, testId: "admin-nav-organizations" },
   { to: "/admin/verification-reports", label: "Verification Reports", icon: ClipboardCheck, testId: "admin-nav-verification-reports" },
