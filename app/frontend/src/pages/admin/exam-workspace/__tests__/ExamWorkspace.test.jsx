@@ -14,7 +14,7 @@
  * - refetchReadiness() re-fires the call (PR2)
  */
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, within, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 jest.mock("../../../../lib/api", () => ({
@@ -166,14 +166,14 @@ describe("ExamWorkspace shell", () => {
   test("renders all 8 tab labels", async () => {
     mockBothEndpoints();
     renderWorkspace();
-    await waitFor(() => screen.getByTestId("tab-strip"));
+    const tabStrip = await screen.findByTestId("tab-strip");
 
     const expectedLabels = [
       "Overview", "Setup", "Documents", "Syllabus Mapper", "PYQ Workbench",
       "Updates", "Competition", "Review & Activate",
     ];
     expectedLabels.forEach((label) => {
-      expect(screen.getByText(label)).toBeTruthy();
+      expect(within(tabStrip).getByText(label)).toBeTruthy();
     });
   });
 
