@@ -3,10 +3,8 @@ import { Link } from "react-router-dom";
 import { StatusBadge } from "../../../shared/ui/core";
 import {
   BUSINESS_PRIORITY_LABELS,
-  BUSINESS_PRIORITY_LABELS as _BP,
   CADENCE_LABELS,
   EXAM_PURPOSE_LABELS,
-  IS_ACTIVE_HELPER,
   REVIEWER_STATUS_PLANNER_NOTE,
 } from "./ExamIntelGlossary";
 
@@ -17,13 +15,13 @@ const READINESS_STATUS = {
 };
 
 function bpLabel(mode) {
-  if (mode == null) return _BP.null.label;
-  return (_BP[mode] ?? _BP.null).label;
+  if (mode == null) return BUSINESS_PRIORITY_LABELS.null.label;
+  return (BUSINESS_PRIORITY_LABELS[mode] ?? BUSINESS_PRIORITY_LABELS.null).label;
 }
 
 function bpHelper(mode) {
-  if (mode == null) return _BP.null.helper;
-  return (_BP[mode] ?? _BP.null).helper;
+  if (mode == null) return BUSINESS_PRIORITY_LABELS.null.helper;
+  return (BUSINESS_PRIORITY_LABELS[mode] ?? BUSINESS_PRIORITY_LABELS.null).helper;
 }
 
 export default function ExamListTable({
@@ -102,7 +100,7 @@ export default function ExamListTable({
                 <span className="text-clay-700"> / {e.coverage_total ?? 0}</span>
               </td>
               <td className="right num-mono">{e.high_yield_topic_count ?? 0}</td>
-              <td title={IS_ACTIVE_HELPER}>
+              <td>
                 <StatusBadge
                   status={READINESS_STATUS[e.readiness_level] || "missing"}
                   label={(e.readiness_level || "not_ready").replaceAll("_", " ")}
