@@ -151,25 +151,25 @@ describe("ExamWorkspace shell", () => {
     expect(picker.options[2].text).toBe("2025");
   });
 
-  test("renders exactly 7 tabs all clickable", async () => {
+  test("renders exactly 8 tabs all clickable", async () => {
     mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(7);
+    expect(tabs).toHaveLength(8);
     tabs.forEach((tab) => {
       expect(tab.disabled).toBeFalsy();
     });
   });
 
-  test("renders all 7 tab labels", async () => {
+  test("renders all 8 tab labels", async () => {
     mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
 
     const expectedLabels = [
-      "Setup", "Documents", "Syllabus Mapper", "PYQ Workbench",
+      "Overview", "Setup", "Documents", "Syllabus Mapper", "PYQ Workbench",
       "Updates", "Competition", "Review & Activate",
     ];
     expectedLabels.forEach((label) => {
@@ -177,12 +177,12 @@ describe("ExamWorkspace shell", () => {
     });
   });
 
-  test("defaults to Setup tab active", async () => {
+  test("defaults to Overview tab active", async () => {
     mockBothEndpoints();
     renderWorkspace();
-    await waitFor(() => screen.getByTestId("tab-setup"));
-    const setupTab = screen.getByTestId("tab-setup");
-    expect(setupTab.getAttribute("aria-selected")).toBe("true");
+    await waitFor(() => screen.getByTestId("tab-overview"));
+    const overviewTab = screen.getByTestId("tab-overview");
+    expect(overviewTab.getAttribute("aria-selected")).toBe("true");
   });
 
   test("changing cycle picker navigates to cycle URL", async () => {

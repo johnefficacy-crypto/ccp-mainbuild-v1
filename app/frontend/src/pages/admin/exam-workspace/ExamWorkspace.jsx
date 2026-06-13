@@ -11,6 +11,7 @@
 import React, { lazy, Suspense, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ExamWorkspaceProvider, useExamWorkspace } from "./ExamWorkspaceContext";
+import OverviewPanel from "./panels/OverviewPanel";
 import SetupPanel from "./panels/SetupPanel";
 import DocumentsPanel from "./panels/DocumentsPanel";
 import UpdatesPanel from "./panels/UpdatesPanel";
@@ -23,6 +24,7 @@ const PyqWorkbenchPanel = lazy(() => import("./pyq-workbench/PyqWorkbenchPanel")
 // ─── Tab definitions ────────────────────────────────────────────────────────
 
 const TAB_ORDER = [
+  { id: "overview",   label: "Overview",           kind: "open" },
   { id: "setup",      label: "Setup",             kind: "open" },
   { id: "documents",  label: "Documents",          kind: "open" },
   { id: "syllabus",   label: "Syllabus Mapper",    kind: "readiness", section: "syllabus_mapper" },
@@ -388,7 +390,7 @@ function AdvancedDrawer() {
 
 function WorkspaceShell() {
   const { loading, error, refetch, readiness } = useExamWorkspace();
-  const [activeTab, setActiveTab] = useState("setup");
+  const [activeTab, setActiveTab] = useState("overview");
 
   function gotoTab(id) { setActiveTab(id); }
 
@@ -422,6 +424,7 @@ function WorkspaceShell() {
       <TabStrip active={activeTab} onChange={setActiveTab} readiness={readiness} />
 
       <main className="oc-main" style={{ paddingTop: 18 }}>
+        {activeTab === "overview" && <OverviewPanel />}
         {activeTab === "setup" && <SetupPanel />}
         {activeTab === "documents" && <DocumentsPanel onGotoTab={gotoTab} />}
         {activeTab === "syllabus" && (

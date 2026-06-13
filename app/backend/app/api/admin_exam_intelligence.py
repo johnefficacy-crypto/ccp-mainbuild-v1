@@ -1592,6 +1592,39 @@ def exam_workspace_context(
         raise HTTPException(status_code=404, detail="exam not found")
     exam = exam[0]
 
+    # Resolve organization and family names for the Overview panel.
+    organization: dict | None = None
+    if exam.get("conducting_organization_id"):
+        org_row = _safe(
+            lambda: (
+                sb.table("organizations")
+                .select("id, name, type, trust_tier")
+                .eq("id", exam["conducting_organization_id"])
+                .limit(1)
+                .execute()
+                .data
+            ),
+            default=[],
+        )
+        if org_row:
+            organization = org_row[0]
+
+    family: dict | None = None
+    if exam.get("exam_family_id"):
+        fam_row = _safe(
+            lambda: (
+                sb.table("exam_families")
+                .select("id, name, slug")
+                .eq("id", exam["exam_family_id"])
+                .limit(1)
+                .execute()
+                .data
+            ),
+            default=[],
+        )
+        if fam_row:
+            family = fam_row[0]
+
     cycles = _safe(
         lambda: (
             sb.table("exam_cycles")
@@ -1648,6 +1681,8 @@ def exam_workspace_context(
         "cycles": cycles,
         "phases": phases,
         "readiness": None,  # populated by /readiness endpoint (PR2)
+        "organization": organization,
+        "family": family,
     }
 
 

@@ -13,6 +13,8 @@ export function ExamWorkspaceProvider({ children }) {
   const [cycle, setCycle] = useState(null);
   const [cycles, setCycles] = useState([]);
   const [phases, setPhases] = useState([]);
+  const [organization, setOrganization] = useState(null);
+  const [family, setFamily] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -35,6 +37,8 @@ export function ExamWorkspaceProvider({ children }) {
       setCycle(d.cycle ?? null);
       setCycles(d.cycles ?? []);
       setPhases(d.phases ?? []);
+      setOrganization(d.organization ?? null);
+      setFamily(d.family ?? null);
     } catch (e) {
       setError(e?.message || "Failed to load workspace context");
     } finally {
@@ -66,7 +70,7 @@ export function ExamWorkspaceProvider({ children }) {
   return (
     <ExamWorkspaceContext.Provider
       value={{
-        exam, cycle, cycles, phases, loading, error, refetch: fetchContext,
+        exam, cycle, cycles, phases, organization, family, loading, error, refetch: fetchContext,
         readiness, readiness_loading, readiness_error, refetchReadiness: fetchReadiness,
       }}
     >
