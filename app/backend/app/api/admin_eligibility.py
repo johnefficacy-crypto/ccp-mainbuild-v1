@@ -418,6 +418,7 @@ _AUDIT_ENTITY_TYPES = frozenset({
     "scrape_runs",
     "eligibility_recompute_queue",
     "eligibility_recompute",
+    "exam_eligibility_rule",
 })
 
 
