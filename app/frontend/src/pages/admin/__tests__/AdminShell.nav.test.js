@@ -21,6 +21,8 @@ function renderShell(path = "/admin") {
         <Route element={<AdminShell />}>
           <Route path="/admin" element={<div>overview</div>} />
           <Route path="/admin/operations" element={<div>ops</div>} />
+          {/* catch-all so layout route renders for any /admin/* path */}
+          <Route path="/admin/*" element={<div>page</div>} />
         </Route>
       </Routes>
     </MemoryRouter>,
