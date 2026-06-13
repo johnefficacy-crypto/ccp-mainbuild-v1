@@ -1,17 +1,26 @@
-import React, { useCallback, useEffect, useReducer, useRef } from "react";
+import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
 import { api } from "../../lib/api";
 import ExamIntelligenceOverviewCards from "../../features/admin/exam-intelligence/ExamIntelligenceOverviewCards";
 import ExamListTable from "../../features/admin/exam-intelligence/ExamListTable";
+import {
+  BUSINESS_PRIORITY_LABELS,
+  CADENCE_LABELS,
+  EXAM_PURPOSE_LABELS,
+} from "../../features/admin/exam-intelligence/ExamIntelGlossary";
 import { AdminSafetyBanner } from "../../shared/ui/core";
 import { PageHeader, StatusDot } from "../../shared/ui/studyos";
 
-const EXAM_TYPES = ["recruitment", "entrance", "certification", "opportunity", "other"];
-const MANAGEMENT_MODES = ["core", "light", "index_only", "archive"];
-const CADENCES = ["annual", "recurring", "irregular", "one_off", "unknown"];
-
-const INITIAL_FILTERS = { search: "", examType: "", activeState: "active", managementMode: "", cadence: "", page: 0 };
+const INITIAL_FILTERS = {
+  search: "",
+  examType: "",
+  activeState: "active",
+  managementMode: "",
+  cadence: "",
+  examFamilyId: "",
+  page: 0,
+};
 
 function filtersReducer(state, action) {
   switch (action.type) {
@@ -46,6 +55,14 @@ export default function AdminExamIntelligence() {
   const [examsStatus, setExamsStatus] = React.useState("idle"); // idle | loading | data | empty | error
   const [examsError, setExamsError] = React.useState("");
 
+  const [families, setFamilies] = useState([]);
+  useEffect(() => {
+    // Non-blocking background fetch — background read, not a mutation.
+    api.get("/api/admin/exam-intelligence-cms/exam-families?is_active=true&limit=200")
+      .then((d) => setFamilies(d?.items || []))
+      .catch(() => {});
+  }, []);
+
   const [filters, dispatch] = useReducer(filtersReducer, INITIAL_FILTERS);
   const { search, examType: examTypeFilter, page } = filters;
 
@@ -63,7 +80,7 @@ export default function AdminExamIntelligence() {
   }, []);
 
   const loadExams = useCallback(async (f) => {
-    const { search: q, examType: et, activeState: as_, managementMode: mm, cadence: cad, page: pg } = f;
+    const { search: q, examType: et, activeState: as_, managementMode: mm, cadence: cad, examFamilyId: efid, page: pg } = f;
     const offset = pg * PAGE_SIZE;
     const qs = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
     if (q.trim()) qs.set("q", q.trim());
@@ -71,6 +88,7 @@ export default function AdminExamIntelligence() {
     if (as_) qs.set("active_state", as_);
     if (mm) qs.set("management_mode", mm);
     if (cad) qs.set("cadence", cad);
+    if (efid) qs.set("exam_family_id", efid);
 
     const mySeq = ++seqRef.current;
     setExamsStatus("loading");
@@ -208,13 +226,13 @@ export default function AdminExamIntelligence() {
             <select
               value={examTypeFilter}
               onChange={(e) => dispatch({ type: "SET_FILTER", key: "examType", value: e.target.value })}
-              className="select select-sm w-40"
+              className="select select-sm w-44"
               data-testid="exam-intel-type-filter"
-              aria-label="Filter by exam type"
+              aria-label="Filter by exam purpose"
             >
-              <option value="">All types</option>
-              {EXAM_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
+              <option value="">All purposes</option>
+              {Object.entries(EXAM_PURPOSE_LABELS).map(([k, { label }]) => (
+                <option key={k} value={k}>{label}</option>
               ))}
             </select>
             <select
@@ -228,17 +246,34 @@ export default function AdminExamIntelligence() {
               <option value="inactive">Inactive</option>
               <option value="all">All</option>
             </select>
+            {families.length > 0 && (
+              <select
+                value={filters.examFamilyId}
+                onChange={(e) => dispatch({ type: "SET_FILTER", key: "examFamilyId", value: e.target.value })}
+                className="select select-sm w-44"
+                data-testid="exam-intel-family-filter"
+                aria-label="Filter by exam family"
+              >
+                <option value="">All families</option>
+                {families.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            )}
             <select
               value={filters.managementMode}
               onChange={(e) => dispatch({ type: "SET_FILTER", key: "managementMode", value: e.target.value })}
               className="select select-sm w-44"
               data-testid="exam-intel-lane-filter"
-              aria-label="Filter by management mode"
+              aria-label="Filter by business priority"
             >
               <option value="">All (non-archive)</option>
-              {MANAGEMENT_MODES.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
+              {Object.entries(BUSINESS_PRIORITY_LABELS)
+                .filter(([k]) => k !== "null")
+                .map(([k, { label }]) => (
+                  <option key={k} value={k}>{label}</option>
+                ))}
+              <option value="__null__">{BUSINESS_PRIORITY_LABELS.null.label}</option>
             </select>
             <select
               value={filters.cadence}
@@ -248,8 +283,8 @@ export default function AdminExamIntelligence() {
               aria-label="Filter by cadence"
             >
               <option value="">All cadences</option>
-              {CADENCES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {Object.entries(CADENCE_LABELS).map(([k, label]) => (
+                <option key={k} value={k}>{label}</option>
               ))}
             </select>
             <div className="ml-auto flex items-center gap-2">

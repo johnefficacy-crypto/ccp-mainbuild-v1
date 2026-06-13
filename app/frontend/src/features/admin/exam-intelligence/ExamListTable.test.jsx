@@ -120,28 +120,28 @@ test("range label is never inverted when rows is empty on a non-first page", () 
 
 // ── PR-B1: lane + cadence columns ─────────────────────────────────────────
 
-test("renders management_mode column value for each row", () => {
+test("renders glossary label for management_mode", () => {
   wrap(<ExamListTable items={ITEMS} total_count={2} />);
-  expect(screen.getByTestId("exam-intel-lane-ssc-cgl")).toHaveTextContent("core");
+  expect(screen.getByTestId("exam-intel-lane-ssc-cgl")).toHaveTextContent("Core");
 });
 
-test("renders cadence column value for each row", () => {
+test("renders glossary label for cadence", () => {
   wrap(<ExamListTable items={ITEMS} total_count={2} />);
-  expect(screen.getByTestId("exam-intel-cadence-ssc-cgl")).toHaveTextContent("annual");
+  expect(screen.getByTestId("exam-intel-cadence-ssc-cgl")).toHaveTextContent("Annual");
 });
 
-test("renders '—' for null management_mode", () => {
+test("renders Unclassified for null management_mode", () => {
   wrap(<ExamListTable items={ITEMS} total_count={2} />);
-  expect(screen.getByTestId("exam-intel-lane-ibps-po")).toHaveTextContent("—");
+  expect(screen.getByTestId("exam-intel-lane-ibps-po")).toHaveTextContent("Unclassified");
 });
 
-test("renders '—' for null cadence", () => {
+test("renders Unknown for null cadence", () => {
   wrap(<ExamListTable items={ITEMS} total_count={2} />);
-  expect(screen.getByTestId("exam-intel-cadence-ibps-po")).toHaveTextContent("—");
+  expect(screen.getByTestId("exam-intel-cadence-ibps-po")).toHaveTextContent("Unknown");
 });
 
-test("Lane and Cadence column headers are present", () => {
+test("Business priority and Cadence column headers are present", () => {
   wrap(<ExamListTable items={ITEMS} total_count={2} />);
-  expect(screen.getByText("Lane")).toBeInTheDocument();
+  expect(screen.getByText("Business priority")).toBeInTheDocument();
   expect(screen.getByText("Cadence")).toBeInTheDocument();
 });
