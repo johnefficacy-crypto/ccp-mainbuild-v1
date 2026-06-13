@@ -175,6 +175,8 @@ def _make_sb(
         rows = coverage_rows
         if "exam_id" in filters:
             rows = [r for r in rows if r.get("exam_id") == filters["exam_id"]]
+        if "exam_cycle_id" in filters:
+            rows = [r for r in rows if r.get("exam_cycle_id") == filters["exam_cycle_id"]]
         return rows
 
     return _SBStub({
@@ -389,6 +391,40 @@ class TestScoreMath:
         assert tc["draft"] == 1
         assert tc["pending"] == 1
         assert tc["high_yield"] == 1
+
+
+class TestTopicCoverageScoping:
+    def test_topic_coverage_scoped_by_cycle(self):
+        all_coverage = [
+            {"id": "tc1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026",
+             "reviewer_status": "locked", "is_high_yield": True},
+            {"id": "tc2", "exam_id": "exam-1", "exam_cycle_id": "cycle-2025",
+             "reviewer_status": "draft", "is_high_yield": False},
+        ]
+        sb = _make_sb(exam=EXAM, topic_coverage=all_coverage)
+        result_scoped = compute_exam_workspace_readiness(sb, "exam-1", "cycle-2026")
+        result_all = compute_exam_workspace_readiness(sb, "exam-1")
+        tc_scoped = result_scoped["topic_coverage"]
+        tc_all = result_all["topic_coverage"]
+        # Cycle-scoped: only cycle-2026 row
+        assert tc_scoped["total"] == 1
+        assert tc_scoped["locked"] == 1
+        assert tc_scoped["high_yield"] == 1
+        assert tc_scoped["draft"] == 0
+        # No cycle filter: both rows
+        assert tc_all["total"] == 2
+        assert tc_all["locked"] == 1
+        assert tc_all["draft"] == 1
+
+    def test_topic_coverage_cycle_not_present(self):
+        coverage = [
+            {"id": "tc1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2025",
+             "reviewer_status": "locked", "is_high_yield": False},
+        ]
+        sb = _make_sb(exam=EXAM, topic_coverage=coverage)
+        result = compute_exam_workspace_readiness(sb, "exam-1", "cycle-2026")
+        tc = result["topic_coverage"]
+        assert tc["total"] == 0
 
 
 class TestRegressionGuard:

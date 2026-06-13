@@ -150,22 +150,16 @@ def _syllabus_mapper(sb, exam_id: str) -> dict:
     }
 
 
-def _topic_coverage_snapshot(sb, exam_id: str) -> dict:
+def _topic_coverage_snapshot(sb, exam_id: str, cycle_id: str | None) -> dict:
     """Non-scoring snapshot of exam_topic_coverage row counts.
 
+    Scoped to cycle_id when provided (mirrors documents/pyq/competition behaviour).
     Returns a plain dict (NOT a section dict) — never included in score.
     """
-    rows = _safe(
-        lambda: (
-            sb.table("exam_topic_coverage")
-            .select("id, reviewer_status, is_high_yield")
-            .eq("exam_id", exam_id)
-            .limit(50000)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
+    q = sb.table("exam_topic_coverage").select("id, reviewer_status, is_high_yield").eq("exam_id", exam_id)
+    if cycle_id:
+        q = q.eq("exam_cycle_id", cycle_id)
+    rows = _safe(lambda: q.limit(50000).execute().data, default=[]) or []
     total = len(rows)
     draft = sum(1 for r in rows if r.get("reviewer_status") == "draft")
     pending = sum(1 for r in rows if r.get("reviewer_status") == "pending_review")
@@ -429,7 +423,7 @@ def compute_exam_workspace_readiness(sb, exam_id: str, cycle_id: str | None = No
 
     Pure read — no writes, no side effects.
     """
-    topic_coverage = _topic_coverage_snapshot(sb, exam_id)
+    topic_coverage = _topic_coverage_snapshot(sb, exam_id, cycle_id)
 
     sections_data = [
         _setup(sb, exam_id),

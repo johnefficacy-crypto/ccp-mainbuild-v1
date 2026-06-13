@@ -12,6 +12,7 @@ import React, { lazy, Suspense, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ExamWorkspaceProvider, useExamWorkspace } from "./ExamWorkspaceContext";
 import OverviewPanel from "./panels/OverviewPanel";
+import { LifecycleLegend } from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
 import SetupPanel from "./panels/SetupPanel";
 import DocumentsPanel from "./panels/DocumentsPanel";
 import UpdatesPanel from "./panels/UpdatesPanel";
@@ -44,30 +45,6 @@ function totalBlockers(readiness) {
     .reduce((n, s) => n + (s.blockers?.length || 0), 0);
 }
 
-// ─── Trust legend ────────────────────────────────────────────────────────────
-
-function TrustLegend() {
-  const items = [
-    ["draft",    "draft",    "created, not reviewed"],
-    ["pending",  "pending",  "in review queue"],
-    ["blocker",  "needs fix","sent back to enrichment"],
-    ["info",     "reviewed", "reviewed, not yet live"],
-    ["ink",      "locked",   "live to aspirants"],
-  ];
-  return (
-    <div className="ctx-strip" style={{ marginTop: 4 }}>
-      <span className="lbl" style={{ marginRight: 2 }}>Trust legend</span>
-      {items.map(([cls, text, desc]) => (
-        <span className="ctx-chip" key={text} title={desc}>
-          <span className={"badge " + cls} style={{ fontSize: 9.5, padding: "1px 6px" }}>
-            {text}
-          </span>
-          <span style={{ color: "var(--ink-mute)", fontSize: 10.5 }}>{desc}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
 
 // ─── Smart readiness header ──────────────────────────────────────────────────
 
@@ -220,7 +197,7 @@ function SmartHeader({ onGotoTab }) {
         </div>
       )}
 
-      <TrustLegend />
+      <LifecycleLegend />
       <div style={{ height: 14 }} />
     </div>
   );

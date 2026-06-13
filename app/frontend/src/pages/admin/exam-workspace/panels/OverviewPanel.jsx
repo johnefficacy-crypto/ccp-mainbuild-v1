@@ -8,7 +8,7 @@ import {
   LifecycleLegend,
   EXAM_PURPOSE_LABELS,
   BUSINESS_PRIORITY_LABELS,
-} from "../ExamIntelGlossary";
+} from "../../../../features/admin/exam-intelligence/ExamIntelGlossary";
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
