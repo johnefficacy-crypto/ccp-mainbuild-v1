@@ -57,24 +57,24 @@ afterEach(() => {
   api.get.mockReset();
 });
 
-// ── 1. redirect: /admin/study-os/exam-intel-cms → /admin/exam-intelligence ──
+// ── 1. redirect: /admin/study-os/exam-intel-cms → /admin/exam-intelligence/cms ──
 
-test("study-os/exam-intel-cms redirects to /admin/exam-intelligence", () => {
+test("study-os/exam-intel-cms redirects to /admin/exam-intelligence/cms", () => {
   render(
     <MemoryRouter initialEntries={["/admin/study-os/exam-intel-cms"]}>
       <Routes>
         <Route
           path="/admin/study-os/exam-intel-cms"
-          element={<Navigate to="/admin/exam-intelligence" replace />}
+          element={<Navigate to="/admin/exam-intelligence/cms" replace />}
         />
         <Route
-          path="/admin/exam-intelligence"
-          element={<div data-testid="exam-intel-landing">landing</div>}
+          path="/admin/exam-intelligence/cms"
+          element={<div data-testid="exam-intel-cms-landing">cms landing</div>}
         />
       </Routes>
     </MemoryRouter>,
   );
-  expect(screen.getByTestId("exam-intel-landing")).toBeTruthy();
+  expect(screen.getByTestId("exam-intel-cms-landing")).toBeTruthy();
 });
 
 // ── 2. ExamIntelligence page does NOT render the 5 removed operational tabs ──
@@ -139,7 +139,7 @@ test("AdminShell header shows dynamic page title for exam-intelligence", () => {
   );
 
   const h1 = screen.getByRole("heading", { level: 1 });
-  expect(h1.textContent).toBe("Exam Intelligence");
+  expect(h1.textContent).toBe("Exam Registry");
   expect(h1.textContent).not.toBe("Admin operations console");
 });
 
