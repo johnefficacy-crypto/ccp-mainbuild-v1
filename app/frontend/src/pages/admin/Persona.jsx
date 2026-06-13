@@ -33,6 +33,7 @@ export default function AdminPersona() {
   const [bankLoading, setBankLoading] = useState(false);
   const [bankError, setBankError] = useState("");
   const [editing, setEditing] = useState(null);
+  const [editorError, setEditorError] = useState("");
 
   // Snapshots state
   const [snapshots, setSnapshots] = useState({ items: [], count: 0 });
@@ -138,7 +139,8 @@ export default function AdminPersona() {
 
   async function patchQuestion(payload) {
     if (!editing) return;
-    await runQuestionMutation({
+    setEditorError("");
+    const result = await runQuestionMutation({
       action: () =>
         api.patch(
           `/api/admin/persona/question-bank/${encodeURIComponent(editing.question_key)}`,
@@ -151,6 +153,9 @@ export default function AdminPersona() {
         loadBank();
       },
     });
+    if (!result?.ok) {
+      setEditorError(result?.error?.message || "Patch failed");
+    }
   }
 
   async function toggleActive(question) {
@@ -285,7 +290,7 @@ export default function AdminPersona() {
           {editing ? (
             <PersonaQuestionEditor
               question={editing}
-              error=""
+              error={editorError}
               saving={questionBusy}
               onClose={() => setEditing(null)}
               onSave={patchQuestion}
