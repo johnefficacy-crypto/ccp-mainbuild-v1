@@ -24,7 +24,7 @@ export const BUSINESS_PRIORITY_LABELS = {
   core:       { label: "Core",          helper: "Full readiness expected." },
   light:      { label: "Managed light", helper: "Essential facts + major updates." },
   index_only: { label: "Index only",    helper: "Searchable reference, no deep Study OS." },
-  archive:    { label: "Archived",      helper: "Hidden from active ops." },
+  archive:    { label: "Archived",      helper: "Low-priority, still live. Does not hide the exam — use is_active=false to retire." },
   null:       { label: "Unclassified",  helper: null },
 };
 
