@@ -3,10 +3,9 @@ import { Link } from "react-router-dom";
 import { Bot, ClipboardCheck, GraduationCap, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
 
-// TODO PR3-BE-enh: add per-lane aggregate counts (exams, eligibility rules,
-// orgs, verification reports, reverification batches, AI policy entries,
-// personas) so the cards below can show real metrics instead of the
-// "not available yet" placeholder.
+// TODO PR3-BE-enh: add per-lane aggregate counts for "Exam truth & planner
+// readiness" and "AI + personalization guardrails" lanes — no kg metrics are
+// available from the overview endpoint for those two lanes yet.
 
 const LANES = [
   {
@@ -27,7 +26,7 @@ const LANES = [
     links: [
       { to: "/admin/exam-eligibility", label: "Exam Eligibility" },
     ],
-    metricKey: null,
+    metricKey: "eligibility_rules",
   },
   {
     label: "Official-source trust & change propagation",
@@ -38,7 +37,7 @@ const LANES = [
       { to: "/admin/verification-reports", label: "Verification Reports" },
       { to: "/admin/reverification-batches", label: "Reverification Batches" },
     ],
-    metricKey: null,
+    metricKey: "trust_propagation",
   },
   {
     label: "AI + personalization guardrails",
@@ -57,10 +56,57 @@ const KG_ENTITY_TYPES = new Set([
   "reverification_batch", "ai_policy", "persona",
 ]);
 
+function LaneMetric({ metricKey, kg, kgLoading, kgError }) {
+  if (metricKey === null) {
+    return (
+      <div className="anno" style={{ fontStyle: "italic" }}>counts: not available yet</div>
+    );
+  }
+
+  if (kgLoading) {
+    return <div className="anno" style={{ fontStyle: "italic" }}>loading…</div>;
+  }
+
+  if (kgError || !kg) {
+    return <div className="anno" style={{ fontStyle: "italic", color: "var(--c-warn, #b45309)" }}>counts unavailable</div>;
+  }
+
+  if (metricKey === "eligibility_rules") {
+    const r = kg.eligibility_rules ?? {};
+    const draft = r.draft ?? 0;
+    const verified = r.verified ?? 0;
+    const archived = r.archived ?? 0;
+    return (
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <span className="anno"><strong>{draft}</strong> draft</span>
+        <span className="anno"><strong>{verified}</strong> verified</span>
+        <span className="anno"><strong>{archived}</strong> archived</span>
+      </div>
+    );
+  }
+
+  if (metricKey === "trust_propagation") {
+    const unacked = kg.unacked_reverification_batches ?? 0;
+    const needsAction = kg.reports_need_action ?? 0;
+    return (
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <span className="anno"><strong>{unacked}</strong> unacked batch{unacked !== 1 ? "es" : ""}</span>
+        <span className="anno"><strong>{needsAction}</strong> report{needsAction !== 1 ? "s" : ""} need action</span>
+      </div>
+    );
+  }
+
+  return <div className="anno" style={{ fontStyle: "italic" }}>counts: not available yet</div>;
+}
+
 export default function AdminKnowledgeGovernance() {
   const [audit, setAudit] = useState([]);
+  const [kg, setKg] = useState(null);
+  const [kgLoading, setKgLoading] = useState(true);
+  const [kgError, setKgError] = useState(false);
 
   useEffect(() => {
+    setKgLoading(true);
     api
       .get("/api/admin/overview")
       .then((data) => {
@@ -68,8 +114,15 @@ export default function AdminKnowledgeGovernance() {
           (r) => !r.target || KG_ENTITY_TYPES.has(r.target),
         );
         setAudit(rows);
+        setKg(data.kg ?? null);
+        setKgError(!data.kg);
       })
-      .catch(() => {});
+      .catch(() => {
+        setKgError(true);
+      })
+      .finally(() => {
+        setKgLoading(false);
+      });
   }, []);
 
   return (
@@ -98,9 +151,12 @@ export default function AdminKnowledgeGovernance() {
                   <strong style={{ fontSize: 13 }}>{lane.label}</strong>
                 </div>
                 <p className="anno" style={{ margin: 0 }}>{lane.description}</p>
-                {/* TODO PR3-BE-enh: replace this placeholder with a real count once the
-                    aggregate endpoint exposes KG-scoped metrics. */}
-                <div className="anno" style={{ fontStyle: "italic" }}>counts: not available yet</div>
+                <LaneMetric
+                  metricKey={lane.metricKey}
+                  kg={kg}
+                  kgLoading={kgLoading && lane.metricKey !== null}
+                  kgError={kgError}
+                />
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
                   {lane.links.map((lk) => (
                     <Link key={lk.to} to={lk.to} className="btn small">
