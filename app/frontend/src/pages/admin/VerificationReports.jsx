@@ -1239,15 +1239,30 @@ function BulkToolbar({ selectedIds, onClear, onDryRun, dryRunResult, onApply, bu
 // before this component ever mounts, preventing the GET from leaking report
 // data to admins who lack exam_intelligence.cms.
 function VerificationReportsContent() {
+  const mountParams = new URLSearchParams(window.location.search);
+  const incomingSourceId = mountParams.get("source_id") || undefined;
+  const incomingStaleStatus = mountParams.get("staleness_status") || undefined;
+
+  const collectionParams =
+    incomingSourceId || incomingStaleStatus
+      ? Object.fromEntries(
+          [
+            incomingSourceId && ["source_id", incomingSourceId],
+            incomingStaleStatus && ["staleness_status", incomingStaleStatus],
+          ].filter(Boolean),
+        )
+      : undefined;
+
+  const collectionUrl = collectionParams
+    ? `/api/admin/verification-reports?${new URLSearchParams(collectionParams).toString()}`
+    : "/api/admin/verification-reports";
+
   const [selectedId, setSelectedId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [dryRunResult, setDryRunResult] = useState(null);
   const [bulkError, setBulkError] = useState(null);
   const [bulkReason, setBulkReason] = useState("");
-  const { items, status, refresh } = useApiCollection(
-    "/api/admin/verification-reports",
-    [],
-  );
+  const { items, status, refresh } = useApiCollection(collectionUrl, []);
   const { run: runBulk, busy: bulkBusy } = useApiAction();
 
   function toggleOne(id) {
@@ -1325,6 +1340,17 @@ function VerificationReportsContent() {
           Refresh
         </button>
       </div>
+
+      {collectionParams && (
+        <div
+          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-800"
+          data-testid="vr-active-filters"
+        >
+          Filtered by batch source
+          {incomingSourceId && <span className="font-mono ml-1">source_id={incomingSourceId}</span>}
+          {incomingStaleStatus && <span className="ml-1">· staleness_status={incomingStaleStatus}</span>}
+        </div>
+      )}
 
       <BulkToolbar
         selectedIds={selectedIds}

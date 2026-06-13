@@ -1,5 +1,6 @@
 import React from "react";
 import { RefreshCcw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/authContext";
 import useApiCollection from "../../lib/hooks/useApiCollection";
@@ -10,10 +11,19 @@ import ReverificationBatchAlert from "../../features/admin/workflow/Reverificati
 
 export default function ReverificationBatches() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { items, status, refresh } = useApiCollection(
     "/api/admin/reverification-batches",
   );
   const { run, busy } = useApiAction();
+
+  function handleOpenAffected(batch) {
+    const params = new URLSearchParams({
+      source_id: batch.source_id,
+      staleness_status: "pending_reverification_batch",
+    });
+    navigate(`/admin/verification-reports?${params.toString()}`);
+  }
 
   const canAcknowledge =
     user?.role === "super_admin" ||
@@ -91,7 +101,7 @@ export default function ReverificationBatches() {
               <ReverificationBatchAlert
                 batch={batch}
                 onAcknowledge={canAcknowledge ? handleAcknowledge : null}
-                onOpenAffected={null}
+                onOpenAffected={batch.source_id ? handleOpenAffected : null}
                 onSnooze={null}
                 disabled={busy || !canAcknowledge}
               />
