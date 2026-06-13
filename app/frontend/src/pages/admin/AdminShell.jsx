@@ -25,8 +25,9 @@ const TRUST_PIPELINE = [
 const KG_LANDING = { to: "/admin/knowledge-governance", label: "Knowledge Governance", icon: LayoutGrid, end: true, testId: "admin-nav-kg-landing" };
 
 const KG_LANE_1 = [
-  { to: "/admin/exam-intelligence", label: "Exam Intelligence", icon: GraduationCap, testId: "admin-nav-exam-intelligence" },
+  { to: "/admin/exam-intelligence", label: "Exam Registry", icon: GraduationCap, testId: "admin-nav-exam-intelligence" },
   { to: "/admin/exam-intelligence/new", label: "Guided Exam", icon: Sparkles, testId: "admin-nav-guided-exam-wizard" },
+  { to: "/admin/exam-intelligence/cms", label: "Raw CMS / Bulk Import", icon: Files, testId: "admin-nav-exam-intel-cms" },
 ];
 const KG_LANE_2 = [
   { to: "/admin/exam-eligibility", label: "Exam Eligibility", icon: ShieldCheck, testId: "admin-nav-exam-eligibility" },

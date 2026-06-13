@@ -115,7 +115,7 @@ export default function AdminExamIntelligence() {
             <GraduationCap className="h-3.5 w-3.5" /> Exam intelligence · internal
           </span>
         }
-        title="Exam Intelligence Review"
+        title="Exam Registry"
         sub={
           <>
             Move coverage rows to <em>reviewed</em> or <em>locked</em>, and PYQ questions to <em>verified</em>, only after checking an
