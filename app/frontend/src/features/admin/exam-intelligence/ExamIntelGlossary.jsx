@@ -24,7 +24,7 @@ export const BUSINESS_PRIORITY_LABELS = {
   core:       { label: "Core",          helper: "Full readiness expected." },
   light:      { label: "Managed light", helper: "Essential facts + major updates." },
   index_only: { label: "Index only",    helper: "Searchable reference, no deep Study OS." },
-  archive:    { label: "Archived",      helper: "Low-priority, still live. Does not hide the exam — use is_active=false to retire." },
+  archive:    { label: "Archive lane",   helper: "Live low-priority exam; retained for reference with minimal active ops." },
   null:       { label: "Unclassified",  helper: null },
 };
 
@@ -58,18 +58,22 @@ export const COVERAGE_DEPTH_HELPER =
 // ---------------------------------------------------------------------------
 
 const _PRIORITY_BANDS = [
-  { min: 0,  max: 30,  band: "low",      label: "Low" },
-  { min: 31, max: 60,  band: "medium",   label: "Medium" },
-  { min: 61, max: 80,  band: "high",     label: "High" },
-  { min: 81, max: 100, band: "critical", label: "Critical" },
+  { min: 0,  max: 30,  band: "low",      label: "≤30 Low" },
+  { min: 30, max: 60,  band: "medium",   label: "≤60 Medium" },
+  { min: 60, max: 80,  band: "high",     label: "≤80 High" },
+  { min: 80, max: 100, band: "critical", label: ">80 Critical" },
 ];
 
 export const PRIORITY_BANDS = _PRIORITY_BANDS;
 
-/** Returns { band, label } for a given numeric priority score. */
+/** Returns { band, label } for a given numeric priority score (0–100, decimals valid). */
 export function band(score) {
   const n = Number(score ?? 0);
-  return _PRIORITY_BANDS.find((b) => n >= b.min && n <= b.max) ?? _PRIORITY_BANDS[0];
+  if (!Number.isFinite(n)) return _PRIORITY_BANDS[0];
+  if (n <= 30) return _PRIORITY_BANDS[0];
+  if (n <= 60) return _PRIORITY_BANDS[1];
+  if (n <= 80) return _PRIORITY_BANDS[2];
+  return _PRIORITY_BANDS[3];
 }
 
 export const PRIORITY_BANDS_GROUP_LABEL = "Planner priority";
@@ -163,7 +167,7 @@ export function LifecycleLegend() {
           <span className="text-sm text-secondary">{description}</span>
         </div>
       ))}
-      <p className="text-sm text-tertiary pt-1">{REVIEWER_STATUS_PLANNER_NOTE}</p>
+      <p className="text-sm text-muted-foreground pt-1">{REVIEWER_STATUS_PLANNER_NOTE}</p>
     </div>
   );
 }
