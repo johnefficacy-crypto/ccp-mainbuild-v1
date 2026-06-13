@@ -9,6 +9,23 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../lib/authContext";
 
+const HAS_OWN_NAV = [
+  "/admin/exam-intelligence/cms",
+  "/admin/exam-intelligence/new",
+];
+
+function isUnder(pathname, base) {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
+function matchesNavItem(pathname, item) {
+  if (item.to === "/admin/exam-intelligence") {
+    if (!isUnder(pathname, item.to)) return false;
+    return !HAS_OWN_NAV.some((base) => isUnder(pathname, base)); // Registry cedes cms + new
+  }
+  return item.end ? pathname === item.to : isUnder(pathname, item.to);
+}
+
 const COMMAND_CENTER = [
   { to: "/admin", label: "Overview", icon: LayoutGrid, end: true, testId: "admin-nav-overview" },
   { to: "/admin/operations", label: "Pipeline Workspace", icon: GaugeCircle, end: true, testId: "admin-nav-operations" },
@@ -96,10 +113,7 @@ const SECTIONS = [
 function getPageTitle(pathname) {
   for (const section of SECTIONS) {
     for (const item of section.items) {
-      const matches = item.end
-        ? pathname === item.to
-        : pathname === item.to || pathname.startsWith(`${item.to}/`);
-      if (matches) return item.label;
+      if (matchesNavItem(pathname, item)) return item.label;
     }
   }
   return "Admin operations console";
@@ -114,6 +128,7 @@ function formatSync(now) {
 }
 
 function Sidebar({ onClose, openMap, onToggleSection }) {
+  const { pathname } = useLocation();
   return (
     <aside className="oc-sidebar flex flex-col" data-testid="admin-sidebar">
       <div className="oc-brand">
@@ -178,7 +193,7 @@ function Sidebar({ onClose, openMap, onToggleSection }) {
                                 to={item.to}
                                 end={item.end}
                                 onClick={onClose}
-                                className={({ isActive }) => `oc-navlink${isActive ? " active" : ""}`}
+                                className={() => `oc-navlink${matchesNavItem(pathname, item) ? " active" : ""}`}
                                 data-testid={item.testId}
                               >
                                 {Icon ? <Icon className="nav-glyph" /> : null}
@@ -227,7 +242,7 @@ function initialOpenMap(pathname) {
   // Auto-open the section that contains the current route so the active
   // link is visible even when its group is collapsed by default.
   for (const section of SECTIONS) {
-    if (section.items.some((item) => pathname === item.to || pathname.startsWith(`${item.to}/`))) {
+    if (section.items.some((item) => matchesNavItem(pathname, item))) {
       map[section.id] = true;
     }
   }
@@ -274,7 +289,7 @@ export default function AdminShell() {
     setOpenMap((prev) => {
       const next = { ...prev };
       for (const section of SECTIONS) {
-        if (section.items.some((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`))) {
+        if (section.items.some((item) => matchesNavItem(location.pathname, item))) {
           next[section.id] = true;
         }
       }
