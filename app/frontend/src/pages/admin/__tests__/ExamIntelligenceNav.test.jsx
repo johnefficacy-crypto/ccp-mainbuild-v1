@@ -102,6 +102,7 @@ test("ExamIntelligence landing does not render removed operational tabs", async 
 // ── 3. Exam row "Open workspace" link targets /workspace/:exam_id ──
 
 test("exam row Open workspace link routes to /admin/exam-intelligence/workspace/:exam_id", async () => {
+  api.get.mockResolvedValueOnce({ items: [], count: 0 }); // families (fires first on mount)
   api.get.mockResolvedValueOnce({ items: [], count: 0 }); // overview
   api.get.mockResolvedValueOnce({
     items: [{ id: "exam-abc", slug: "upsc-cse", name: "UPSC CSE", exam_type: "civil_services" }],
