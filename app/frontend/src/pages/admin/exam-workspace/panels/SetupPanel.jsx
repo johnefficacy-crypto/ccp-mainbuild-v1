@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
 import DateField from "../../../../shared/ui/DateField";
@@ -65,7 +64,6 @@ const PHASE_STATUSES = ["expected", "active", "completed", "cancelled"];
 
 export default function SetupPanel({ action = null }) {
   const { exam, cycles, phases, refetch } = useExamWorkspace();
-  const [searchParams] = useSearchParams();
 
   // ── add-phase form ──────────────────────────────────────────────────────
   const EMPTY_PHASE = {

@@ -31,7 +31,6 @@ const { api } = require("../../../../lib/api");
 
 // Lazy-require after mock is set up
 const ExamWorkspace = require("../ExamWorkspace").default;
-const { AddCycleWorkspaceRedirect } = require("../../../../routes/adminRoutes");
 const { useExamWorkspace, ExamWorkspaceProvider } = require("../ExamWorkspaceContext");
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
