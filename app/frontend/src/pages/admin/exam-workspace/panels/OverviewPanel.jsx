@@ -6,15 +6,15 @@ import {
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 
 export default function OverviewPanel() {
-  const { exam, cycle, readiness } = useExamWorkspace();
+  const { exam, cycle, readiness, organization, family } = useExamWorkspace();
   const mgmtLabel = exam?.management_mode
     ? (BUSINESS_PRIORITY_LABELS[exam.management_mode]?.label ?? exam.management_mode)
     : BUSINESS_PRIORITY_LABELS.null.label;
   const typeLabel = exam?.exam_type
     ? (EXAM_PURPOSE_LABELS[exam.exam_type]?.label ?? exam.exam_type)
     : null;
-  const familyLabel = exam?.family_name ?? exam?.family ?? "—";
-  const orgLabel = exam?.organization_name ?? exam?.organization ?? exam?.org_name ?? "—";
+  const familyLabel = family?.name ?? exam?.family_name ?? exam?.family ?? "—";
+  const orgLabel = organization?.name ?? exam?.organization_name ?? exam?.organization ?? exam?.org_name ?? "—";
 
   return (
     <section className="card" data-testid="overview-panel">

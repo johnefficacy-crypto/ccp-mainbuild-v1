@@ -49,6 +49,8 @@ const CONTEXT_RESPONSE = {
   cycle: null,
   cycles: CYCLES,
   phases: PHASES,
+  organization: null,
+  family: null,
 };
 
 const READINESS_RESPONSE = {
@@ -187,6 +189,20 @@ describe("ExamWorkspace shell", () => {
     expect(screen.getByText("Unclassified")).toBeTruthy();
     expect(screen.getByTestId("overview-family").textContent).toBe("—");
     expect(screen.getByTestId("overview-org").textContent).toBe("—");
+  });
+
+  test("overview renders resolved family and organization from workspace context", async () => {
+    mockBothEndpoints({
+      contextResponse: {
+        ...CONTEXT_RESPONSE,
+        family: { id: "fam-1", name: "Resolved Family", slug: "resolved-family" },
+        organization: { id: "org-1", name: "Resolved Organization", type: "central", trust_tier: "verified" },
+      },
+    });
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("overview-panel"));
+    expect(screen.getByTestId("overview-family").textContent).toBe("Resolved Family");
+    expect(screen.getByTestId("overview-org").textContent).toBe("Resolved Organization");
   });
 
   test("changing cycle picker navigates to cycle URL", async () => {
