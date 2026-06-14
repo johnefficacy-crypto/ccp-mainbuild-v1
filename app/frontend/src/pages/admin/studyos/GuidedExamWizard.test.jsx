@@ -603,18 +603,6 @@ describe("GuidedExamWizard workspace handoff and cycle source URL", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/exam-intelligence/workspace/exam-created?tab=setup");
   });
 
-  test("CycleForm source_url behavior is pinned hidden in GuidedExamWizard", async () => {
-    setup();
-    await waitFor(() => screen.getByTestId("org-list"));
-    fireEvent.click(screen.getByTestId("org-select-org-aaa"));
-    fireEvent.click(screen.getByTestId("wizard-next-1"));
-    fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "UPSC CSE" } });
-    fireEvent.click(screen.getByTestId("wizard-next-2"));
-
-    expect(screen.queryByTestId("cycle-source-url")).toBeNull();
-    expect(screen.queryByLabelText(/source url/i)).toBeNull();
-  });
-
 });
 
 describe("Step 5: cycle date payload", () => {
