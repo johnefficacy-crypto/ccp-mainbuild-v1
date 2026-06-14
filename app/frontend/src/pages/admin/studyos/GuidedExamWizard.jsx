@@ -10,7 +10,6 @@ import PhaseForm from "../../../features/admin/exam-intelligence/forms/PhaseForm
 const EXAM_TYPES = ["recruitment", "entrance", "certification", "opportunity", "other"];
 const MANAGEMENT_MODES = ["core", "light", "index_only", "archive"];
 const CADENCES = ["annual", "recurring", "irregular", "one_off", "unknown"];
-const CYCLE_STATUSES = ["expected", "open", "active", "closed", "completed", "cancelled"];
 const ORG_TYPES = [
   "state_psc", "central", "banking", "insurance", "railways",
   "defence", "police", "teaching", "university", "board", "other",

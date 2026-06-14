@@ -47,9 +47,6 @@ const AdminMockQuestionEditor = lazy(() => import("../pages/admin/mocks/Question
 const AdminMockImportWizard = lazy(() => import("../pages/admin/mocks/ImportWizard"));
 const AdminVerificationReports = lazy(() => import("../pages/admin/VerificationReports"));
 const AdminReverificationBatches = lazy(() => import("../pages/admin/ReverificationBatches"));
-// AdminAddCycleWizard kept as import to avoid breaking any direct imports;
-// the route itself redirects to the workspace setup tab.
-const AdminAddCycleWizard = lazy(() => import("../pages/admin/studyos/AddCycleWizard"));
 const AdminKnowledgeGovernance = lazy(() => import("../pages/admin/KnowledgeGovernance"));
 
 function AddCycleRedirect() {
