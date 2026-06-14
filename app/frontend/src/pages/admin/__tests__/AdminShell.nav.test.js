@@ -21,6 +21,8 @@ function renderShell(path = "/admin") {
         <Route element={<AdminShell />}>
           <Route path="/admin" element={<div>overview</div>} />
           <Route path="/admin/operations" element={<div>ops</div>} />
+          {/* catch-all so layout route renders for any /admin/* path */}
+          <Route path="/admin/*" element={<div>page</div>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -50,5 +52,48 @@ describe("AdminShell sidebar IA", () => {
   test("Promotion Queue is not in the sidebar but /admin/eligibility-queue route remains", () => {
     renderShell("/admin");
     expect(screen.queryByTestId("admin-nav-promotion-queue")).toBeNull();
+  });
+});
+
+describe("AdminShell exam-intel nav title", () => {
+  test("masthead shows Exam Registry at /admin/exam-intelligence", () => {
+    renderShell("/admin/exam-intelligence");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Registry");
+  });
+
+  test("masthead shows Raw CMS / Bulk Import at /admin/exam-intelligence/cms", () => {
+    renderShell("/admin/exam-intelligence/cms");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Raw CMS / Bulk Import");
+  });
+
+  test("masthead shows Guided Exam at /admin/exam-intelligence/new", () => {
+    renderShell("/admin/exam-intelligence/new");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Guided Exam");
+  });
+
+  test("masthead shows Exam Registry at /admin/exam-intelligence/workspace/exam-abc", () => {
+    renderShell("/admin/exam-intelligence/workspace/exam-abc");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Registry");
+  });
+
+  test("masthead shows Exam Registry at /admin/exam-intelligence/exams/exam-abc/add-cycle", () => {
+    renderShell("/admin/exam-intelligence/exams/exam-abc/add-cycle");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Registry");
+  });
+});
+
+describe("AdminShell exam-intel nav active state", () => {
+  test("cms route: Raw CMS nav item active, Registry nav item NOT active", () => {
+    renderShell("/admin/exam-intelligence/cms");
+    const cmsLink = screen.getByTestId("admin-nav-exam-intel-cms");
+    const registryLink = screen.getByTestId("admin-nav-exam-intelligence");
+    expect(cmsLink.className).toContain("active");
+    expect(registryLink.className).not.toContain("active");
+  });
+
+  test("workspace route: Registry nav item active", () => {
+    renderShell("/admin/exam-intelligence/workspace/exam-abc");
+    const registryLink = screen.getByTestId("admin-nav-exam-intelligence");
+    expect(registryLink.className).toContain("active");
   });
 });

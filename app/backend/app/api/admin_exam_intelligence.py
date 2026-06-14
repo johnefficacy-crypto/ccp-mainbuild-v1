@@ -240,6 +240,7 @@ def list_exams(
     active_state: str = Query("active"),
     management_mode: str | None = Query(None),
     cadence: str | None = Query(None),
+    exam_family_id: str | None = Query(None),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     if active_state not in {"active", "inactive", "all"}:
@@ -259,13 +260,18 @@ def list_exams(
         elif active_state == "inactive":
             qb = qb.eq("is_active", False)
         # active_state == "all": no is_active filter
-        if management_mode is not None:
+        if management_mode == "__null__":
+            # Sentinel: filter for rows with no lane assigned (Unclassified).
+            qb = qb.is_("management_mode", "null")
+        elif management_mode is not None:
             qb = qb.eq("management_mode", management_mode)
         else:
             # Default: hide archive rows; show core/light/index_only/NULL.
             qb = qb.or_("management_mode.is.null,management_mode.neq.archive")
         if cadence is not None:
             qb = qb.eq("cadence", cadence)
+        if exam_family_id is not None:
+            qb = qb.eq("exam_family_id", exam_family_id)
         return qb
 
     resp = _safe(
