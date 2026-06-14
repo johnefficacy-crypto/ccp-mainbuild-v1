@@ -367,9 +367,11 @@ function AdvancedDrawer() {
 function WorkspaceShell() {
   const { loading, error, refetch, readiness } = useExamWorkspace();
   const [searchParams] = useSearchParams();
-  const requestedTab = searchParams.get("tab");
-  const initialTab = TAB_ORDER.some((tab) => tab.id === requestedTab) ? requestedTab : "overview";
+  const initialTab = TAB_ORDER.some(t => t.id === searchParams.get("tab"))
+    ? searchParams.get("tab")
+    : "overview";
   const [activeTab, setActiveTab] = useState(initialTab);
+  const action = searchParams.get("action") ?? null;
 
   function gotoTab(id) { setActiveTab(id); }
 
@@ -404,7 +406,7 @@ function WorkspaceShell() {
 
       <main className="oc-main" style={{ paddingTop: 18 }}>
         {activeTab === "overview" && <OverviewPanel />}
-        {activeTab === "setup" && <SetupPanel />}
+        {activeTab === "setup" && <SetupPanel action={action} />}
         {activeTab === "documents" && <DocumentsPanel onGotoTab={gotoTab} />}
         {activeTab === "syllabus" && (
           <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>

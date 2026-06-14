@@ -88,12 +88,14 @@ function ExtractionBadge({ status }) {
 // document_kind, status:"processing", extraction:{}, page_count:null }) on
 // success so the parent can start polling step 4.
 
-function UploadForm({ examId, cycleId, onUploaded }) {
+function UploadForm({ exam, cycles, phases, defaultCycleId, onUploaded }) {
   const [kind, setKind]                   = useState("syllabus");
   const [sourceKind, setSourceKind]       = useState("unknown");
   const [examIdentity, setExamIdentity]   = useState("");
   const [structuralFormat, setStructFmt]  = useState("unknown");
   const [formatOverridden]               = useState(false);
+  const [selectedCycleId, setSelectedCycleId] = useState(defaultCycleId || "");
+  const [selectedPhaseId, setSelectedPhaseId] = useState("");
   const [file, setFile]                   = useState(null);
   const [busy, setBusy]                   = useState(false);
   const [err, setErr]                     = useState("");
@@ -115,8 +117,9 @@ function UploadForm({ examId, cycleId, onUploaded }) {
     try {
       // Step 1 — mint signed URL + create document_assets row
       const signed = await api.post(`${DOC_BASE}/upload-url`, {
-        exam_id:       examId,
-        exam_cycle_id: cycleId || null,
+        exam_id:       exam?.id,
+        exam_cycle_id: selectedCycleId || null,
+        exam_phase_id: selectedPhaseId || null,
         document_kind: kind,
         filename:      file.name,
         mime_type:     file.type,
@@ -161,8 +164,15 @@ function UploadForm({ examId, cycleId, onUploaded }) {
       data-testid="doc-upload-form"
     >
       <div className="card-body">
-        <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14 }}>
+        <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>
           Upload exam-intelligence PDF
+        </div>
+        <div style={{ fontSize: 13, color: "var(--ink-mute)", marginBottom: 12 }} data-testid="doc-upload-exam-label">
+          Exam: {exam?.name ?? exam?.id ?? "—"}
+        </div>
+
+        <div style={{ fontSize: 12, color: "var(--ink-mute)", marginBottom: 10 }}>
+          Syllabus is exam-level unless this document is cycle-specific.
         </div>
 
         <div className="row" style={{ flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
@@ -209,6 +219,44 @@ function UploadForm({ examId, cycleId, onUploaded }) {
             >
               <option value="">— not set —</option>
               {EXAM_IDENTITIES.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <div className="row" style={{ flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+          <label style={{ flex: "1 1 200px" }}>
+            <div className="field-lbl">
+              Cycle{" "}
+              <span style={{ color: "var(--ink-mute)", fontWeight: 400 }}>(optional — exam-level if blank)</span>
+            </div>
+            <select
+              className="field"
+              value={selectedCycleId}
+              onChange={(e) => setSelectedCycleId(e.target.value)}
+              data-testid="doc-cycle-select"
+            >
+              <option value="">Exam-level (no cycle)</option>
+              {cycles.map((c) => (
+                <option key={c.id} value={c.id}>{c.name ?? c.label ?? c.id}</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ flex: "1 1 200px" }}>
+            <div className="field-lbl">
+              Phase{" "}
+              <span style={{ color: "var(--ink-mute)", fontWeight: 400 }}>(optional)</span>
+            </div>
+            <select
+              className="field"
+              value={selectedPhaseId}
+              onChange={(e) => setSelectedPhaseId(e.target.value)}
+              data-testid="doc-phase-select"
+            >
+              <option value="">No phase</option>
+              {phases.map((p) => (
+                <option key={p.id} value={p.id}>{p.name ?? p.label ?? p.id}</option>
+              ))}
             </select>
           </label>
         </div>
@@ -381,7 +429,7 @@ function LinkForm({ docId, docKind, pyqPapers, onLink, onCancel }) {
 // ─── DocumentsPanel (main) ───────────────────────────────────────────────────
 
 export default function DocumentsPanel({ onGotoTab }) {
-  const { exam, cycle } = useExamWorkspace();
+  const { exam, cycle, cycles, phases } = useExamWorkspace();
 
   // ── Linked docs (syllabus_documents + pyq_papers tables) ────────────────
   const [docs,      setDocs]      = useState([]);   // syllabus_documents rows
@@ -586,8 +634,10 @@ export default function DocumentsPanel({ onGotoTab }) {
           </div>
         </div>
         <UploadForm
-          examId={exam?.id}
-          cycleId={cycle?.id}
+          exam={exam}
+          cycles={cycles ?? []}
+          phases={phases ?? []}
+          defaultCycleId={cycle?.id}
           onUploaded={handleUploaded}
         />
       </div>
@@ -765,8 +815,10 @@ export default function DocumentsPanel({ onGotoTab }) {
       {/* Upload form (collapsible when docs already exist) */}
       {formOpen && (
         <UploadForm
-          examId={exam?.id}
-          cycleId={cycle?.id}
+          exam={exam}
+          cycles={cycles ?? []}
+          phases={phases ?? []}
+          defaultCycleId={cycle?.id}
           onUploaded={handleUploaded}
         />
       )}
