@@ -305,6 +305,23 @@ def _competition(sb, exam_id: str, cycle_id: str | None) -> dict:
     }
 
 
+
+def _topic_coverage_snapshot(sb, exam_id: str, cycle_id: str | None) -> dict:
+    q = (
+        sb.table("exam_topic_coverage")
+        .select("id, exam_cycle_id, reviewer_status")
+        .eq("exam_id", exam_id)
+    )
+    rows = _safe(lambda: q.limit(20000).execute().data, default=[]) or []
+    if cycle_id:
+        rows = [
+            r for r in rows
+            if r.get("exam_cycle_id") is None or r.get("exam_cycle_id") == cycle_id
+        ]
+    locked = sum(1 for r in rows if r.get("reviewer_status") == "locked")
+    reviewed = sum(1 for r in rows if r.get("reviewer_status") == "reviewed")
+    return {"total": len(rows), "reviewed": reviewed, "locked": locked}
+
 def _review_activate(sections: list[dict]) -> dict:
     upstream = sections  # all 6 preceding sections
     ready_statuses = {"ready", "locked"}
@@ -361,6 +378,7 @@ def compute_exam_workspace_readiness(sb, exam_id: str, cycle_id: str | None = No
         _updates(sb, exam_id, cycle_id),
         _competition(sb, exam_id, cycle_id),
     ]
+    topic_coverage = _topic_coverage_snapshot(sb, exam_id, cycle_id)
     review_act = _review_activate(sections_data)
     all_sections = sections_data + [review_act]
 
@@ -391,6 +409,7 @@ def compute_exam_workspace_readiness(sb, exam_id: str, cycle_id: str | None = No
         "exam_id": exam_id,
         "cycle_id": cycle_id,
         "generated_at": _now_iso(),
+        "topic_coverage": topic_coverage,
         "overall": {
             "status": overall_status,
             "score_percent": score_percent,
