@@ -35,7 +35,7 @@ const { useExamWorkspace, ExamWorkspaceProvider } = require("../ExamWorkspaceCon
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-const EXAM = { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" };
+const EXAM = { id: "exam-1", name: "SSC CGL", exam_type: "recruitment", management_mode: null, family_name: null, organization_name: null };
 const CYCLES = [
   { id: "cycle-2026", exam_id: "exam-1", year: 2026, cycle_name: "2026" },
   { id: "cycle-2025", exam_id: "exam-1", year: 2025, cycle_name: "2025" },
@@ -151,25 +151,25 @@ describe("ExamWorkspace shell", () => {
     expect(picker.options[2].text).toBe("2025");
   });
 
-  test("renders exactly 7 tabs all clickable", async () => {
+  test("renders exactly 8 tabs all clickable", async () => {
     mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(7);
+    expect(tabs).toHaveLength(8);
     tabs.forEach((tab) => {
       expect(tab.disabled).toBeFalsy();
     });
   });
 
-  test("renders all 7 tab labels", async () => {
+  test("renders all 8 tab labels", async () => {
     mockBothEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
 
     const expectedLabels = [
-      "Setup", "Documents", "Syllabus Mapper", "PYQ Workbench",
+      "Overview", "Setup", "Documents", "Syllabus Mapper", "PYQ Workbench",
       "Updates", "Competition", "Review & Activate",
     ];
     expectedLabels.forEach((label) => {
@@ -177,12 +177,16 @@ describe("ExamWorkspace shell", () => {
     });
   });
 
-  test("defaults to Setup tab active", async () => {
+  test("defaults to Overview tab active and renders overview smoke details", async () => {
     mockBothEndpoints();
     renderWorkspace();
-    await waitFor(() => screen.getByTestId("tab-setup"));
-    const setupTab = screen.getByTestId("tab-setup");
-    expect(setupTab.getAttribute("aria-selected")).toBe("true");
+    await waitFor(() => screen.getByTestId("tab-overview"));
+    const overviewTab = screen.getByTestId("tab-overview");
+    expect(overviewTab.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByTestId("overview-panel")).toBeTruthy();
+    expect(screen.getByText("Unclassified")).toBeTruthy();
+    expect(screen.getByTestId("overview-family").textContent).toBe("—");
+    expect(screen.getByTestId("overview-org").textContent).toBe("—");
   });
 
   test("changing cycle picker navigates to cycle URL", async () => {

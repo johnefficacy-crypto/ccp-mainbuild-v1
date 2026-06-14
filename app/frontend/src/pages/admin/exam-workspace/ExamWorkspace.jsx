@@ -16,6 +16,8 @@ import DocumentsPanel from "./panels/DocumentsPanel";
 import UpdatesPanel from "./panels/UpdatesPanel";
 import CompetitionPanel from "./panels/CompetitionPanel";
 import ReviewActivatePanel from "./panels/ReviewActivatePanel";
+import OverviewPanel from "./panels/OverviewPanel";
+import { LifecycleLegend } from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
 
 const SyllabusMapperPanel = lazy(() => import("./syllabus-mapper/SyllabusMapperPanel"));
 const PyqWorkbenchPanel = lazy(() => import("./pyq-workbench/PyqWorkbenchPanel"));
@@ -23,6 +25,7 @@ const PyqWorkbenchPanel = lazy(() => import("./pyq-workbench/PyqWorkbenchPanel")
 // ─── Tab definitions ────────────────────────────────────────────────────────
 
 const TAB_ORDER = [
+  { id: "overview",   label: "Overview",          kind: "open" },
   { id: "setup",      label: "Setup",             kind: "open" },
   { id: "documents",  label: "Documents",          kind: "open" },
   { id: "syllabus",   label: "Syllabus Mapper",    kind: "readiness", section: "syllabus_mapper" },
@@ -40,31 +43,6 @@ function totalBlockers(readiness) {
   return (readiness?.sections || [])
     .filter((s) => s.section !== "review_activate")
     .reduce((n, s) => n + (s.blockers?.length || 0), 0);
-}
-
-// ─── Trust legend ────────────────────────────────────────────────────────────
-
-function TrustLegend() {
-  const items = [
-    ["draft",    "draft",    "created, not reviewed"],
-    ["pending",  "pending",  "in review queue"],
-    ["blocker",  "needs fix","sent back to enrichment"],
-    ["info",     "reviewed", "reviewed, not yet live"],
-    ["ink",      "locked",   "live to aspirants"],
-  ];
-  return (
-    <div className="ctx-strip" style={{ marginTop: 4 }}>
-      <span className="lbl" style={{ marginRight: 2 }}>Trust legend</span>
-      {items.map(([cls, text, desc]) => (
-        <span className="ctx-chip" key={text} title={desc}>
-          <span className={"badge " + cls} style={{ fontSize: 9.5, padding: "1px 6px" }}>
-            {text}
-          </span>
-          <span style={{ color: "var(--ink-mute)", fontSize: 10.5 }}>{desc}</span>
-        </span>
-      ))}
-    </div>
-  );
 }
 
 // ─── Smart readiness header ──────────────────────────────────────────────────
@@ -218,7 +196,7 @@ function SmartHeader({ onGotoTab }) {
         </div>
       )}
 
-      <TrustLegend />
+      <div className="ctx-strip" style={{ marginTop: 4 }}><LifecycleLegend /></div>
       <div style={{ height: 14 }} />
     </div>
   );
@@ -388,7 +366,7 @@ function AdvancedDrawer() {
 
 function WorkspaceShell() {
   const { loading, error, refetch, readiness } = useExamWorkspace();
-  const [activeTab, setActiveTab] = useState("setup");
+  const [activeTab, setActiveTab] = useState("overview");
 
   function gotoTab(id) { setActiveTab(id); }
 
@@ -422,6 +400,7 @@ function WorkspaceShell() {
       <TabStrip active={activeTab} onChange={setActiveTab} readiness={readiness} />
 
       <main className="oc-main" style={{ paddingTop: 18 }}>
+        {activeTab === "overview" && <OverviewPanel />}
         {activeTab === "setup" && <SetupPanel />}
         {activeTab === "documents" && <DocumentsPanel onGotoTab={gotoTab} />}
         {activeTab === "syllabus" && (

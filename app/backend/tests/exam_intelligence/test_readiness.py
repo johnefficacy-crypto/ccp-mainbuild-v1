@@ -99,6 +99,7 @@ def _make_sb(
     updates=None,
     competition=None,
     exam_cycles=None,
+    topic_coverage=None,
 ):
     exam_rows = [exam] if exam else []
     phases_rows = phases or []
@@ -109,6 +110,7 @@ def _make_sb(
     update_rows = updates or []
     comp_rows = competition or []
     cycles_rows = exam_cycles or []
+    topic_coverage_rows = topic_coverage or []
 
     def _exam_cycles_fn(filters, in_filters):
         rows = cycles_rows
@@ -143,6 +145,14 @@ def _make_sb(
             rows = [r for r in rows if r.get("exam_cycle_id") == filters["exam_cycle_id"]]
         return rows
 
+    def _topic_coverage_fn(filters, in_filters):
+        rows = topic_coverage_rows
+        if "exam_id" in filters:
+            rows = [r for r in rows if r.get("exam_id") == filters["exam_id"]]
+        if "exam_cycle_id" in filters:
+            rows = [r for r in rows if r.get("exam_cycle_id") == filters["exam_cycle_id"]]
+        return rows
+
     def _doc_fn(filters, in_filters):
         rows = doc_rows
         if "exam_id" in filters:
@@ -161,6 +171,7 @@ def _make_sb(
         "pyq_questions": _pyq_q_fn,
         "exam_policy_updates": update_rows,
         "exam_competition_metrics": _comp_fn,
+        "exam_topic_coverage": _topic_coverage_fn,
     })
 
 
@@ -304,6 +315,21 @@ class TestCycleIdScoping:
         result_other = compute_exam_workspace_readiness(sb, "exam-1", "cycle-2025")
         comp_other = next(s for s in result_other["sections"] if s["section"] == "competition")
         assert comp_other["status"] == "empty"
+
+    def test_topic_coverage_includes_exam_level_and_selected_cycle_rows(self):
+        sb = _make_sb(
+            exam=EXAM,
+            exam_cycles=[CYCLE_A],
+            topic_coverage=[
+                {"id": "tc-exam", "exam_id": "exam-1", "exam_cycle_id": None, "reviewer_status": "locked"},
+                {"id": "tc-selected", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "reviewed"},
+                {"id": "tc-other", "exam_id": "exam-1", "exam_cycle_id": "cycle-2025", "reviewer_status": "locked"},
+            ],
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1", "cycle-2026")
+        assert result["topic_coverage"]["total"] == 2
+        assert result["topic_coverage"]["locked"] == 1
+        assert result["topic_coverage"]["reviewed"] == 1
 
 
 class TestScoreMath:
