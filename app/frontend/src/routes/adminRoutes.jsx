@@ -1,5 +1,5 @@
-import React, {lazy } from "react";
-import { Navigate, Route } from "react-router-dom";
+import React, { lazy } from "react";
+import { Navigate, Route, useParams } from "react-router-dom";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
 import { ADMIN_ROLES } from "../lib/rbac";
 import RouteErrorBoundary from "../components/RouteErrorBoundary";
@@ -47,8 +47,12 @@ const AdminMockQuestionEditor = lazy(() => import("../pages/admin/mocks/Question
 const AdminMockImportWizard = lazy(() => import("../pages/admin/mocks/ImportWizard"));
 const AdminVerificationReports = lazy(() => import("../pages/admin/VerificationReports"));
 const AdminReverificationBatches = lazy(() => import("../pages/admin/ReverificationBatches"));
-const AdminAddCycleWizard = lazy(() => import("../pages/admin/studyos/AddCycleWizard"));
 const AdminKnowledgeGovernance = lazy(() => import("../pages/admin/KnowledgeGovernance"));
+
+function AddCycleRedirect() {
+  const { exam_id } = useParams();
+  return <Navigate to={`/admin/exam-intelligence/workspace/${exam_id}?tab=setup&action=add-cycle`} replace />;
+}
 
 export const adminRouteElements = (
   <>
@@ -84,7 +88,7 @@ export const adminRouteElements = (
       <Route path="/admin/exam-intelligence" element={<AdminExamIntelligence />} />
       <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
       <Route path="/admin/exam-intelligence/new" element={<AdminGuidedExamWizard />} />
-      <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AdminAddCycleWizard />} />
+      <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AddCycleRedirect />} />
       <Route path="/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace" element={<AdminPyqPaperWorkspace />} />
       <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<AdminExamWorkspace />} />
       <Route path="/admin/exam-intelligence/workspace/:exam_id/:cycle_id" element={<AdminExamWorkspace />} />
