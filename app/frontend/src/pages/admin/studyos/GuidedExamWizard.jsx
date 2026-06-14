@@ -467,6 +467,7 @@ function StepPhases({ state, dispatch }) {
               showTemplate
               showDates={false}
               isDuplicate={dupeSlug}
+              rowId={p._id}
             />
           </div>
         );

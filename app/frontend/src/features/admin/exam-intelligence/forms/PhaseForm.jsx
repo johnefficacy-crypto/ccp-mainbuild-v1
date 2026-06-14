@@ -46,6 +46,7 @@ export default function PhaseForm({
   showTemplate = true,
   showDates = true,
   isDuplicate = false,
+  rowId = null,
 }) {
   const {
     phase_name = "",
@@ -71,9 +72,10 @@ export default function PhaseForm({
           </label>
           <input
             className={`${INPUT_CLS}${nameEmpty ? " border-destructive" : ""}`}
+            placeholder="Phase name"
             value={phase_name}
             onChange={e => onChange("phase_name", e.target.value)}
-            data-testid="phase-form-name"
+            data-testid={rowId ? `phase-name-${rowId}` : "phase-form-name"}
           />
         </div>
 
@@ -87,7 +89,7 @@ export default function PhaseForm({
               value={base_slug}
               onChange={e => onChange("base_slug", e.target.value)}
               placeholder={phase_name.trim() ? slugify(phase_name.trim()) : "e.g. prelims"}
-              data-testid="phase-form-base-slug"
+              data-testid={rowId ? `phase-base-slug-${rowId}` : "phase-form-base-slug"}
             />
             {isDuplicate && (
               <p className="text-xs text-destructive mt-0.5">Duplicate slug "{effSlug}"</p>
@@ -145,13 +147,13 @@ export default function PhaseForm({
       </div>
 
       {showSlug && cbSlug && (
-        <p className="text-xs text-muted-foreground mt-1" data-testid="phase-form-cb-slug-preview">
+        <p className="text-xs text-muted-foreground mt-1" data-testid={rowId ? `phase-cb-slug-preview-${rowId}` : "phase-form-cb-slug-preview"}>
           Cycle-bound slug: <code className="font-mono">{cbSlug}</code>
         </p>
       )}
 
       {showTemplate && (
-        <label className="flex items-center gap-2 text-xs cursor-pointer mt-2" data-testid="phase-form-template-toggle">
+        <label className="flex items-center gap-2 text-xs cursor-pointer mt-2" data-testid={rowId ? `phase-template-toggle-${rowId}` : "phase-form-template-toggle"}>
           <input
             type="checkbox"
             checked={createTemplate}
