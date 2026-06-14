@@ -9,7 +9,7 @@
  *   /admin/exam-intelligence/workspace/:exam_id/:cycle_id
  */
 import React, { lazy, Suspense, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ExamWorkspaceProvider, useExamWorkspace } from "./ExamWorkspaceContext";
 import SetupPanel from "./panels/SetupPanel";
 import DocumentsPanel from "./panels/DocumentsPanel";
@@ -366,7 +366,10 @@ function AdvancedDrawer() {
 
 function WorkspaceShell() {
   const { loading, error, refetch, readiness } = useExamWorkspace();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const initialTab = TAB_ORDER.some((tab) => tab.id === requestedTab) ? requestedTab : "overview";
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   function gotoTab(id) { setActiveTab(id); }
 

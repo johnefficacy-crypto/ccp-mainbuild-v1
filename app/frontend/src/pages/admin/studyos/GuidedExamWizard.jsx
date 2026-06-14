@@ -833,7 +833,7 @@ function StepReview({ state, dispatch }) {
           <p className="font-semibold">✓ All entities created successfully.</p>
           <p className="mt-1">Exam ID: <code className="font-mono text-xs">{createdIds.exam}</code></p>
           <button type="button" className="btn small mt-3"
-            onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+            onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
             Open exam workspace →
           </button>
           <div className="mt-4 pt-4 border-t border-green-300">
@@ -843,7 +843,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   Documents
                 </button>
                 {" "}— upload the official notification and syllabus PDF
@@ -851,7 +851,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   Syllabus Mapper
                 </button>
                 {" "}— map syllabus topics to the subject taxonomy
@@ -859,7 +859,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   PYQ Workbench
                 </button>
                 {" "}— import and review previous-year questions
@@ -867,7 +867,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   Updates
                 </button>
                 {" "}— add at least one published update for this exam
@@ -875,7 +875,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   Competition
                 </button>
                 {" "}— fill seats, applicants, and selection ratio
@@ -883,7 +883,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   Review &amp; Activate
                 </button>
                 {" "}— resolve all blockers and activate the exam

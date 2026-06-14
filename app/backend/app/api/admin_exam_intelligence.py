@@ -1648,12 +1648,46 @@ def exam_workspace_context(
         default=[],
     ) or []
 
+    organization = None
+    organization_id = exam.get("conducting_organization_id")
+    if organization_id:
+        organization_rows = _safe(
+            lambda: (
+                sb.table("organizations")
+                .select("id, name, type, trust_tier")
+                .eq("id", organization_id)
+                .limit(1)
+                .execute()
+                .data
+            ),
+            default=[],
+        )
+        organization = organization_rows[0] if organization_rows else None
+
+    family = None
+    family_id = exam.get("exam_family_id")
+    if family_id:
+        family_rows = _safe(
+            lambda: (
+                sb.table("exam_families")
+                .select("id, name, slug")
+                .eq("id", family_id)
+                .limit(1)
+                .execute()
+                .data
+            ),
+            default=[],
+        )
+        family = family_rows[0] if family_rows else None
+
     return {
         "exam": exam,
         "cycle": cycle,
         "cycles": cycles,
         "phases": phases,
         "readiness": None,  # populated by /readiness endpoint (PR2)
+        "organization": organization,
+        "family": family,
     }
 
 

@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
 import DateField from "../../../../shared/ui/DateField";
 import { formatDDMMYYYY } from "../../../../shared/forms/dateFormat";
 import useApiAction from "../../../../lib/hooks/useApiAction";
+import { useSearchParams } from "react-router-dom";
 
 function TrustBadge({ status }) {
   const map = {
@@ -62,6 +63,7 @@ const PHASE_STATUSES = ["expected", "active", "completed", "cancelled"];
 
 export default function SetupPanel() {
   const { exam, cycles, phases, refetch } = useExamWorkspace();
+  const [searchParams] = useSearchParams();
 
   // ── add-phase form ──────────────────────────────────────────────────────
   const [addingPhase, setAddingPhase] = useState(false);
@@ -109,6 +111,13 @@ export default function SetupPanel() {
   const [editCycle, setEditCycle] = useState({});
   const [editReason, setEditReason] = useState("");
   const { run: runCycleEdit, busy: cycleEditBusy } = useApiAction();
+
+  useEffect(() => {
+    if (searchParams.get("action") === "add-cycle") {
+      openCreateCycle();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   function editFor(id) {
     return patchEdits[id] ?? { start: null, end: null, saving: false, err: "" };
@@ -444,6 +453,7 @@ export default function SetupPanel() {
         {addingCycle && (
           <div
             className="card-foot"
+            data-testid="cycle-create-section"
             style={{
               flexDirection: "column",
               gap: 10,
