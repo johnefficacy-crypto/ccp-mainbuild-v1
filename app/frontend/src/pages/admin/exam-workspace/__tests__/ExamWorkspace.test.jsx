@@ -15,7 +15,7 @@
  */
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 jest.mock("../../../../lib/api", () => ({
   __esModule: true,
@@ -72,10 +72,10 @@ function mockBothEndpoints({ contextResponse = CONTEXT_RESPONSE, readinessRespon
 
 // ── Render helper ─────────────────────────────────────────────────────────────
 
-function renderWorkspace(examId = "exam-1", cycleId = null) {
+function renderWorkspace(examId = "exam-1", cycleId = null, query = "") {
   const path = cycleId
-    ? `/admin/exam-intelligence/workspace/${examId}/${cycleId}`
-    : `/admin/exam-intelligence/workspace/${examId}`;
+    ? `/admin/exam-intelligence/workspace/${examId}/${cycleId}${query}`
+    : `/admin/exam-intelligence/workspace/${examId}${query}`;
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>

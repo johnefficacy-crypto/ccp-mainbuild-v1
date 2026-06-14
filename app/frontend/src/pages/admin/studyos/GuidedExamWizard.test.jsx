@@ -8,9 +8,11 @@ jest.mock("../../../lib/api", () => ({
   getApiErrorMessage: (e) => String(e?.message || e),
 }));
 
+const mockNavigate = jest.fn();
+
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
-  useNavigate: () => jest.fn(),
+  useNavigate: () => mockNavigate,
 }));
 
 const { api } = require("../../../lib/api");
@@ -30,6 +32,7 @@ function setup() {
 }
 
 beforeEach(() => {
+  mockNavigate.mockClear();
   api.get.mockResolvedValue({ items: ORG_LIST });
   // default happy-path: org create → exam → cycle
   api.post
@@ -582,6 +585,24 @@ describe("Step 5: org Step-5 failure (create mode)", () => {
     const orgPosts = api.post.mock.calls.filter((c) => c[0].includes("/organizations"));
     expect(orgPosts).toHaveLength(2); // first failed, second retry
   });
+});
+
+describe("GuidedExamWizard workspace handoff and cycle source URL", () => {
+  test("GuidedExamWizard success CTA navigates to workspace setup tab", async () => {
+    api.post
+      .mockReset()
+      .mockResolvedValueOnce({ row: { id: "exam-created" } })
+      .mockResolvedValueOnce({ row: { id: "cycle-created" } });
+    setup();
+    await fillSelectAndGoToReview();
+    await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
+    await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /open exam workspace/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/exam-intelligence/workspace/exam-created?tab=setup");
+  });
+
 });
 
 describe("Step 5: cycle date payload", () => {
