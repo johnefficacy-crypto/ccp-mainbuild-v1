@@ -312,6 +312,8 @@ def _topic_coverage_snapshot(sb, exam_id: str, cycle_id: str | None) -> dict:
         .select("id, exam_cycle_id, reviewer_status")
         .eq("exam_id", exam_id)
     )
+    if cycle_id and hasattr(q, "or_"):
+        q = q.or_(f"exam_cycle_id.is.null,exam_cycle_id.eq.{cycle_id}")
     rows = _safe(lambda: q.limit(20000).execute().data, default=[]) or []
     if cycle_id:
         rows = [
@@ -321,6 +323,7 @@ def _topic_coverage_snapshot(sb, exam_id: str, cycle_id: str | None) -> dict:
     locked = sum(1 for r in rows if r.get("reviewer_status") == "locked")
     reviewed = sum(1 for r in rows if r.get("reviewer_status") == "reviewed")
     return {"total": len(rows), "reviewed": reviewed, "locked": locked}
+
 
 def _review_activate(sections: list[dict]) -> dict:
     upstream = sections  # all 6 preceding sections
