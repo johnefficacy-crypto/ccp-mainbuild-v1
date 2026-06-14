@@ -2,6 +2,8 @@ import React, { useEffect, useReducer } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, getApiErrorMessage } from "../../../lib/api";
 import { slugify, cycleBoundSlug } from "../../../lib/slugify";
+import CycleForm from "../../../features/admin/exam-intelligence/forms/CycleForm";
+import PhaseForm from "../../../features/admin/exam-intelligence/forms/PhaseForm";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -395,14 +397,6 @@ function StepExam({ state, dispatch }) {
 
 // ── Step 2: Cycle ─────────────────────────────────────────────────────────────
 
-const DATE_FIELDS = [
-  ["notification_date", "Notification date"],
-  ["application_start", "Application start"],
-  ["application_end", "Application end"],
-  ["exam_start", "Exam start"],
-  ["exam_end", "Exam end"],
-];
-
 function StepCycle({ state, dispatch }) {
   const { cycleDraft } = state;
   const canAdvance = cycleDraft.cycle_name.trim() && String(cycleDraft.year).trim();
@@ -410,37 +404,11 @@ function StepCycle({ state, dispatch }) {
   return (
     <div data-testid="wizard-step-cycle">
       <h2 className="text-base font-semibold mb-4">Step 3 — Exam Cycle</h2>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <FieldRow label="Cycle name" required>
-          <input className={INPUT_CLS} value={cycleDraft.cycle_name}
-            onChange={(e) => dispatch({ type: "SET_CYCLE_DRAFT", patch: { cycle_name: e.target.value } })}
-            data-testid="cycle-name" />
-        </FieldRow>
-        <FieldRow label="Year" required>
-          <input className={INPUT_CLS} type="number" min="2000" max="2100" value={cycleDraft.year}
-            onChange={(e) => dispatch({ type: "SET_CYCLE_DRAFT", patch: { year: e.target.value } })}
-            data-testid="cycle-year" />
-        </FieldRow>
-        <FieldRow label="Status">
-          <select className={SELECT_CLS} value={cycleDraft.status}
-            onChange={(e) => dispatch({ type: "SET_CYCLE_DRAFT", patch: { status: e.target.value } })}
-            data-testid="cycle-status">
-            <option value="">Select…</option>
-            {CYCLE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </FieldRow>
-        {DATE_FIELDS.map(([key, label]) => (
-          <FieldRow key={key} label={label}>
-            <input
-              className={INPUT_CLS}
-              type="date"
-              value={cycleDraft[key]}
-              onChange={(e) => dispatch({ type: "SET_CYCLE_DRAFT", patch: { [key]: e.target.value } })}
-              data-testid={`cycle-${key}`}
-            />
-          </FieldRow>
-        ))}
-      </div>
+      <CycleForm
+        values={cycleDraft}
+        onChange={(key, val) => dispatch({ type: "SET_CYCLE_DRAFT", patch: { [key]: val } })}
+        showReason={false}
+      />
       <div className="mt-6 flex justify-between">
         <button type="button" className="btn small" onClick={() => dispatch({ type: "GOTO_STEP", step: 1 })}
           data-testid="wizard-back-2">← Back</button>
@@ -472,12 +440,10 @@ function StepPhases({ state, dispatch }) {
 
       {phases.map((p, idx) => {
         const effSlug = effectiveSlug(p);
-        const cbSlug = effSlug ? cycleBoundSlug(effSlug, year, cycleName) : "";
-        const tmplSlug = effSlug ? slugify(effSlug) : "";
-        const nameEmpty = !p.phase_name.trim();
         const dupeSlug = effSlug
           ? phases.filter((q) => effectiveSlug(q) === effSlug).length > 1
           : false;
+        const nameEmpty = !p.phase_name.trim();
         const rowInvalid = nameEmpty || !effSlug || dupeSlug;
         return (
           <div
@@ -491,50 +457,17 @@ function StepPhases({ state, dispatch }) {
                 onClick={() => dispatch({ type: "REMOVE_PHASE", _id: p._id })}
                 data-testid={`phase-remove-${p._id}`}>✕ Remove</button>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <FieldRow label="Phase name" required>
-                <input
-                  className={`${INPUT_CLS}${nameEmpty ? " border-destructive" : ""}`}
-                  value={p.phase_name}
-                  onChange={(e) => dispatch({ type: "UPDATE_PHASE", _id: p._id, patch: { phase_name: e.target.value } })}
-                  data-testid={`phase-name-${p._id}`}
-                />
-              </FieldRow>
-              <FieldRow label={`Base slug${!p.base_slug.trim() && p.phase_name.trim() ? " (auto)" : ""}`}>
-                <input
-                  className={`${INPUT_CLS}${dupeSlug ? " border-destructive" : ""}`}
-                  value={p.base_slug}
-                  onChange={(e) => dispatch({ type: "UPDATE_PHASE", _id: p._id, patch: { base_slug: e.target.value } })}
-                  placeholder={p.phase_name.trim() ? slugify(p.phase_name.trim()) : "e.g. prelims"}
-                  data-testid={`phase-base-slug-${p._id}`}
-                />
-                {dupeSlug && (
-                  <p className="text-xs text-destructive mt-0.5" data-testid={`phase-slug-error-${p._id}`}>
-                    Duplicate slug "{effSlug}"
-                  </p>
-                )}
-              </FieldRow>
-              <FieldRow label="Phase order">
-                <input className={INPUT_CLS} type="number" value={p.phase_order}
-                  onChange={(e) => dispatch({ type: "UPDATE_PHASE", _id: p._id, patch: { phase_order: e.target.value } })}
-                  data-testid={`phase-order-${p._id}`} />
-              </FieldRow>
-              <FieldRow label="Mode">
-                <input className={INPUT_CLS} value={p.mode}
-                  onChange={(e) => dispatch({ type: "UPDATE_PHASE", _id: p._id, patch: { mode: e.target.value } })}
-                  data-testid={`phase-mode-${p._id}`} />
-              </FieldRow>
-            </div>
-            {cbSlug && (
-              <p className="text-xs text-muted-foreground" data-testid={`phase-cb-slug-preview-${p._id}`}>
-                Cycle-bound slug: <code className="font-mono">{cbSlug}</code>
-              </p>
-            )}
-            <label className="flex items-center gap-2 text-xs cursor-pointer" data-testid={`phase-template-toggle-${p._id}`}>
-              <input type="checkbox" checked={p.createTemplate}
-                onChange={(e) => dispatch({ type: "UPDATE_PHASE", _id: p._id, patch: { createTemplate: e.target.checked } })} />
-              Also create reusable template{tmplSlug ? ` (slug: ${tmplSlug})` : ""}
-            </label>
+            <PhaseForm
+              values={p}
+              onChange={(key, val) => dispatch({ type: "UPDATE_PHASE", _id: p._id, patch: { [key]: val } })}
+              cycleName={cycleName}
+              year={year}
+              showSlug
+              showMode
+              showTemplate
+              showDates={false}
+              isDuplicate={dupeSlug}
+            />
           </div>
         );
       })}
@@ -833,7 +766,7 @@ function StepReview({ state, dispatch }) {
           <p className="font-semibold">✓ All entities created successfully.</p>
           <p className="mt-1">Exam ID: <code className="font-mono text-xs">{createdIds.exam}</code></p>
           <button type="button" className="btn small mt-3"
-            onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+            onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
             Open exam workspace →
           </button>
           <div className="mt-4 pt-4 border-t border-green-300">
@@ -843,7 +776,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   Documents
                 </button>
                 {" "}— upload the official notification and syllabus PDF
@@ -851,7 +784,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   Syllabus Mapper
                 </button>
                 {" "}— map syllabus topics to the subject taxonomy
@@ -859,7 +792,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   PYQ Workbench
                 </button>
                 {" "}— import and review previous-year questions
@@ -867,7 +800,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   Updates
                 </button>
                 {" "}— add at least one published update for this exam
@@ -875,7 +808,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   Competition
                 </button>
                 {" "}— fill seats, applicants, and selection ratio
@@ -883,7 +816,7 @@ function StepReview({ state, dispatch }) {
               <li>
                 <span className="inline-block w-4">☐</span>
                 <button type="button" className="underline hover:no-underline text-left"
-                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}`)}>
+                  onClick={() => navigate(`/admin/exam-intelligence/workspace/${createdIds.exam}?tab=setup`)}>
                   Review &amp; Activate
                 </button>
                 {" "}— resolve all blockers and activate the exam

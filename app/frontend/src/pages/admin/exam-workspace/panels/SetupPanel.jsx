@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
 import DateField from "../../../../shared/ui/DateField";
 import { formatDDMMYYYY } from "../../../../shared/forms/dateFormat";
 import useApiAction from "../../../../lib/hooks/useApiAction";
+import CycleForm from "../../../../features/admin/exam-intelligence/forms/CycleForm";
+import PhaseForm from "../../../../features/admin/exam-intelligence/forms/PhaseForm";
 
 function TrustBadge({ status }) {
   const map = {
@@ -60,15 +62,16 @@ function phaseDateSourceLabel(phase) {
 const CYCLE_STATUSES = ["expected", "open", "active", "closed", "completed", "cancelled"];
 const PHASE_STATUSES = ["expected", "active", "completed", "cancelled"];
 
-export default function SetupPanel() {
+export default function SetupPanel({ action = null }) {
   const { exam, cycles, phases, refetch } = useExamWorkspace();
 
   // ── add-phase form ──────────────────────────────────────────────────────
+  const EMPTY_PHASE = {
+    phase_name: "", base_slug: "", phase_order: "",
+    mode: "", createTemplate: false, phase_start: null, phase_end: null,
+  };
   const [addingPhase, setAddingPhase] = useState(false);
-  const [pName, setPName] = useState("");
-  const [pStart, setPStart] = useState(null);
-  const [pEnd, setPEnd] = useState(null);
-  const [phaseOrder, setPhaseOrder] = useState("");
+  const [phaseFormValues, setPhaseFormValues] = useState(EMPTY_PHASE);
   const [pickedCycleId, setPickedCycleId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
@@ -91,17 +94,13 @@ export default function SetupPanel() {
   const [datedPhaseIds, setDatedPhaseIds] = useState(new Set());
 
   // ── cycle create form ───────────────────────────────────────────────────
+  const EMPTY_CYCLE = {
+    cycle_name: "", year: "", status: "expected",
+    notification_date: null, application_start: null, application_end: null,
+    exam_start: null, exam_end: null, source_url: "", reason: "",
+  };
   const [addingCycle, setAddingCycle] = useState(false);
-  const [cReason, setCReason] = useState("");
-  const [cYear, setCYear] = useState("");
-  const [cName, setCName] = useState("");
-  const [cStatus, setCStatus] = useState("expected");
-  const [cNotifDate, setCNotifDate] = useState(null);
-  const [cAppStart, setCAppStart] = useState(null);
-  const [cAppEnd, setCAppEnd] = useState(null);
-  const [cExamStart, setCExamStart] = useState(null);
-  const [cExamEnd, setCExamEnd] = useState(null);
-  const [cSourceUrl, setCSourceUrl] = useState("");
+  const [cycleFormValues, setCycleFormValues] = useState(EMPTY_CYCLE);
   const { run: runCycleCreate, busy: cycleCreateBusy } = useApiAction();
 
   // ── cycle edit state ────────────────────────────────────────────────────
@@ -109,6 +108,14 @@ export default function SetupPanel() {
   const [editCycle, setEditCycle] = useState({});
   const [editReason, setEditReason] = useState("");
   const { run: runCycleEdit, busy: cycleEditBusy } = useApiAction();
+
+  // Open the create-cycle form automatically when action=add-cycle is present.
+  useEffect(() => {
+    if (action === "add-cycle") {
+      openCreateCycle();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [action]);
 
   function editFor(id) {
     return patchEdits[id] ?? { start: null, end: null, saving: false, err: "" };
@@ -200,27 +207,31 @@ export default function SetupPanel() {
 
   function openCreateCycle() {
     setAddingCycle(true);
-    setCReason(""); setCYear(""); setCName(""); setCStatus("expected");
-    setCNotifDate(null); setCAppStart(null); setCAppEnd(null);
-    setCExamStart(null); setCExamEnd(null); setCSourceUrl("");
+    setCycleFormValues(EMPTY_CYCLE);
+  }
+
+  function setCycleField(key, val) {
+    setCycleFormValues(prev => ({ ...prev, [key]: val }));
   }
 
   async function createCycle() {
-    if (!cName.trim() || !cYear || cReason.length < 8) return;
+    const { cycle_name, year, status, notification_date, application_start,
+      application_end, exam_start, exam_end, source_url, reason } = cycleFormValues;
+    if (!cycle_name.trim() || !year || reason.length < 8) return;
     await runCycleCreate({
       action: () => api.post("/api/admin/exam-intelligence-cms/exam-cycles", {
-        reason: cReason,
+        reason,
         payload: {
           exam_id: exam?.id,
-          year: parseInt(cYear, 10),
-          cycle_name: cName.trim(),
-          status: cStatus,
-          notification_date: cNotifDate || null,
-          application_start: cAppStart || null,
-          application_end: cAppEnd || null,
-          exam_start: cExamStart || null,
-          exam_end: cExamEnd || null,
-          source_url: cSourceUrl.trim() || null,
+          year: parseInt(year, 10),
+          cycle_name: cycle_name.trim(),
+          status: status || "expected",
+          notification_date: notification_date || null,
+          application_start: application_start || null,
+          application_end: application_end || null,
+          exam_start: exam_start || null,
+          exam_end: exam_end || null,
+          source_url: source_url.trim() || null,
         },
       }),
       successMessage: "Cycle created",
@@ -261,29 +272,35 @@ export default function SetupPanel() {
 
   // ── add-phase handler ───────────────────────────────────────────────────
 
+  function setPhaseField(key, val) {
+    setPhaseFormValues(prev => ({ ...prev, [key]: val }));
+  }
+
   async function addPhase() {
-    if (!pName.trim()) return;
+    const { phase_name, base_slug, phase_order, phase_start, phase_end } = phaseFormValues;
+    if (!phase_name.trim()) return;
     setSaving(true);
     setSaveErr("");
     try {
       const activeCycle = cycles.find((c) => c.status === "active") || cycles[0];
       const targetCycleId = pickedCycleId || activeCycle?.id || null;
-      const name = pName.trim();
+      const name = phase_name.trim();
+      const slug = base_slug.trim() ? slugify(base_slug.trim()) : slugify(name);
       await api.post("/api/admin/exam-intelligence-cms/exam-phases", {
         reason: "Add exam phase via workspace setup panel",
         payload: {
           exam_id: exam?.id,
           exam_cycle_id: targetCycleId,
           phase_name: name,
-          phase_slug: slugify(name),
-          phase_order: phaseOrder ? parseInt(phaseOrder, 10) : (phases.length + 1),
+          phase_slug: slug,
+          phase_order: phase_order ? parseInt(phase_order, 10) : (phases.length + 1),
           status: "expected",
-          phase_start: pStart || null,
-          phase_end: pEnd || null,
+          phase_start: phase_start || null,
+          phase_end: phase_end || null,
           metadata: {},
         },
       });
-      setPName(""); setPStart(null); setPEnd(null); setPhaseOrder("");
+      setPhaseFormValues(EMPTY_PHASE);
       setPickedCycleId(null); setAddingPhase(false);
     } catch (e) {
       setSaveErr(e?.message || "Failed to add phase");
@@ -444,6 +461,7 @@ export default function SetupPanel() {
         {addingCycle && (
           <div
             className="card-foot"
+            data-testid="cycle-create-section"
             style={{
               flexDirection: "column",
               gap: 10,
@@ -451,68 +469,17 @@ export default function SetupPanel() {
               padding: "12px 16px",
             }}
           >
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input
-                className="input"
-                style={{ maxWidth: 220 }}
-                placeholder="Cycle name"
-                value={cName}
-                onChange={e => setCName(e.target.value)}
-                autoFocus
-              />
-              <input
-                className="input"
-                style={{ maxWidth: 80 }}
-                placeholder="Year"
-                type="number"
-                value={cYear}
-                onChange={e => setCYear(e.target.value)}
-              />
-              <select
-                className="input"
-                style={{ maxWidth: 130 }}
-                value={cStatus}
-                onChange={e => setCStatus(e.target.value)}
-              >
-                {CYCLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <input
-                className="input"
-                style={{ minWidth: 200 }}
-                placeholder="Source URL (optional)"
-                value={cSourceUrl}
-                onChange={e => setCSourceUrl(e.target.value)}
-              />
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <div style={{ minWidth: 170 }}>
-                <DateField value={cNotifDate} onChange={setCNotifDate} mode="any" label="Notification date" name="cycle_notif_date" id="cycle-notif-date" />
-              </div>
-              <div style={{ minWidth: 170 }}>
-                <DateField value={cAppStart} onChange={setCAppStart} mode="any" label="Application start" name="cycle_app_start" id="cycle-app-start" />
-              </div>
-              <div style={{ minWidth: 170 }}>
-                <DateField value={cAppEnd} onChange={setCAppEnd} mode="any" label="Application end" name="cycle_app_end" id="cycle-app-end" />
-              </div>
-              <div style={{ minWidth: 170 }}>
-                <DateField value={cExamStart} onChange={setCExamStart} mode="any" label="Exam start" name="cycle_exam_start" id="cycle-exam-start" />
-              </div>
-              <div style={{ minWidth: 170 }}>
-                <DateField value={cExamEnd} onChange={setCExamEnd} mode="any" label="Exam end" name="cycle_exam_end" id="cycle-exam-end" />
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <input
-                className="input"
-                style={{ flex: 1, minWidth: 220 }}
-                placeholder="Reason (required, ≥ 8 chars)"
-                value={cReason}
-                onChange={e => setCReason(e.target.value)}
-              />
+            <CycleForm
+              values={cycleFormValues}
+              onChange={setCycleField}
+              showReason
+            />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 4 }}>
               <button
                 className="btn primary small"
                 onClick={createCycle}
-                disabled={cycleCreateBusy || !cName.trim() || !cYear || cReason.length < 8}
+                disabled={cycleCreateBusy || !cycleFormValues.cycle_name.trim() || !cycleFormValues.year || cycleFormValues.reason.length < 8}
+                data-testid="add-cycle-submit"
               >
                 {cycleCreateBusy ? "Creating…" : "Create cycle"}
               </button>
@@ -579,74 +546,52 @@ export default function SetupPanel() {
           <div
             className="card-foot"
             style={{
-              justifyContent: "flex-start",
+              flexDirection: "column",
               gap: 8,
               background: "var(--paper)",
-              flexWrap: "wrap",
+              padding: "12px 16px",
             }}
           >
-            <input
-              className="input"
-              style={{ maxWidth: 200 }}
-              placeholder="Phase name"
-              value={pName}
-              onChange={(e) => setPName(e.target.value)}
-              autoFocus
-            />
             {cycles.length > 0 && (
-              <select
-                className="input"
-                style={{ maxWidth: 180 }}
-                data-testid="cycle-picker"
-                value={pickedCycleId || ""}
-                onChange={e => setPickedCycleId(e.target.value)}
-              >
-                {cycles.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.cycle_name ?? c.id}{c.year ? ` (${c.year})` : ""}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Cycle</label>
+                <select
+                  className="input"
+                  style={{ maxWidth: 220 }}
+                  data-testid="cycle-picker"
+                  value={pickedCycleId || ""}
+                  onChange={e => setPickedCycleId(e.target.value)}
+                >
+                  {cycles.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.cycle_name ?? c.id}{c.year ? ` (${c.year})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
-            <div style={{ minWidth: 180 }}>
-              <DateField
-                value={pStart}
-                onChange={setPStart}
-                mode="any"
-                label="Phase start"
-                name="phase_start"
-                id="setup-phase-start"
-              />
-            </div>
-            <div style={{ minWidth: 180 }}>
-              <DateField
-                value={pEnd}
-                onChange={setPEnd}
-                mode="any"
-                label="Phase end"
-                name="phase_end"
-                id="setup-phase-end"
-              />
-            </div>
-            <input
-              className="input"
-              style={{ maxWidth: 80 }}
-              placeholder="Order"
-              type="number"
-              value={phaseOrder}
-              onChange={(e) => setPhaseOrder(e.target.value)}
+            <PhaseForm
+              values={phaseFormValues}
+              onChange={setPhaseField}
+              showSlug
+              showMode={false}
+              showTemplate={false}
+              showDates
             />
-            <button className="btn primary small" onClick={addPhase} disabled={saving}>
-              {saving ? "Saving…" : "Add phase"}
-            </button>
-            <button
-              className="btn ghost small"
-              onClick={() => {
-                setAddingPhase(false); setSaveErr(""); setPickedCycleId(null);
-              }}
-            >
-              Cancel
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn primary small" onClick={addPhase} disabled={saving} data-testid="add-phase-submit">
+                {saving ? "Saving…" : "Add phase"}
+              </button>
+              <button
+                className="btn ghost small"
+                onClick={() => {
+                  setAddingPhase(false); setSaveErr(""); setPickedCycleId(null);
+                  setPhaseFormValues(EMPTY_PHASE);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
             {saveErr && (
               <span className="err-row" style={{ padding: "3px 8px" }}>{saveErr}</span>
             )}

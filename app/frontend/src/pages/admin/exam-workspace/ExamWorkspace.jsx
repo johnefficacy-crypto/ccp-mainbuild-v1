@@ -9,7 +9,7 @@
  *   /admin/exam-intelligence/workspace/:exam_id/:cycle_id
  */
 import React, { lazy, Suspense, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ExamWorkspaceProvider, useExamWorkspace } from "./ExamWorkspaceContext";
 import SetupPanel from "./panels/SetupPanel";
 import DocumentsPanel from "./panels/DocumentsPanel";
@@ -366,7 +366,12 @@ function AdvancedDrawer() {
 
 function WorkspaceShell() {
   const { loading, error, refetch, readiness } = useExamWorkspace();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [searchParams] = useSearchParams();
+  const initialTab = TAB_ORDER.some(t => t.id === searchParams.get("tab"))
+    ? searchParams.get("tab")
+    : "overview";
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const action = searchParams.get("action") ?? null;
 
   function gotoTab(id) { setActiveTab(id); }
 
@@ -401,7 +406,7 @@ function WorkspaceShell() {
 
       <main className="oc-main" style={{ paddingTop: 18 }}>
         {activeTab === "overview" && <OverviewPanel />}
-        {activeTab === "setup" && <SetupPanel />}
+        {activeTab === "setup" && <SetupPanel action={action} />}
         {activeTab === "documents" && <DocumentsPanel onGotoTab={gotoTab} />}
         {activeTab === "syllabus" && (
           <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>
