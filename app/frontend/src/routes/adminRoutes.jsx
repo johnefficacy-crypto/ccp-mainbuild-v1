@@ -49,9 +49,14 @@ const AdminVerificationReports = lazy(() => import("../pages/admin/VerificationR
 const AdminReverificationBatches = lazy(() => import("../pages/admin/ReverificationBatches"));
 const AdminKnowledgeGovernance = lazy(() => import("../pages/admin/KnowledgeGovernance"));
 
-function AddCycleRedirect() {
+export function AddCycleRedirect() {
   const { exam_id } = useParams();
-  return <Navigate to={`/admin/exam-intelligence/workspace/${exam_id}?tab=setup&action=add-cycle`} replace />;
+  return (
+    <Navigate
+      to={`/admin/exam-intelligence/workspace/${encodeURIComponent(exam_id || "")}?tab=setup&action=add-cycle`}
+      replace
+    />
+  );
 }
 
 export const adminRouteElements = (

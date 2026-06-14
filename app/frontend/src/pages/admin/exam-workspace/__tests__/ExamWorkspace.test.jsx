@@ -31,6 +31,7 @@ const { api } = require("../../../../lib/api");
 
 // Lazy-require after mock is set up
 const ExamWorkspace = require("../ExamWorkspace").default;
+const { AddCycleRedirect } = require("../../../../routes/adminRoutes");
 const { useExamWorkspace, ExamWorkspaceProvider } = require("../ExamWorkspaceContext");
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -204,6 +205,49 @@ describe("ExamWorkspace shell", () => {
     expect(screen.getByTestId("overview-family").textContent).toBe("Resolved Family");
     expect(screen.getByTestId("overview-org").textContent).toBe("Resolved Organization");
   });
+
+
+  test("workspace/:id?tab=setup starts on Setup tab", async () => {
+    mockBothEndpoints();
+    renderWorkspace("exam-1", null, "?tab=setup");
+    await waitFor(() => screen.getByTestId("tab-setup"));
+    expect(screen.getByTestId("tab-setup").getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText(/Set up this exam's cycles/i)).toBeTruthy();
+  });
+
+  test("workspace/:id?tab=setup&action=add-cycle opens cycle-create-section", async () => {
+    mockBothEndpoints();
+    renderWorkspace("exam-1", null, "?tab=setup&action=add-cycle");
+    await waitFor(() => screen.getByTestId("cycle-create-section"));
+    expect(screen.getByTestId("tab-setup").getAttribute("aria-selected")).toBe("true");
+  });
+
+  test("workspace/:id without query still defaults to Overview", async () => {
+    mockBothEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("tab-overview"));
+    expect(screen.getByTestId("tab-overview").getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByTestId("overview-panel")).toBeTruthy();
+  });
+
+  test("add-cycle route redirects to workspace setup with action=add-cycle", async () => {
+    function LocationCapture() {
+      const location = useLocation();
+      return <div data-testid="location">{location.pathname}{location.search}</div>;
+    }
+
+    render(
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/exams/exam-1/add-cycle"]}>
+        <Routes>
+          <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AddCycleRedirect />} />
+          <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<LocationCapture />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/admin/exam-intelligence/workspace/exam-1?tab=setup&action=add-cycle"));
+  });
+
 
   test("changing cycle picker navigates to cycle URL", async () => {
     mockBothEndpoints();
