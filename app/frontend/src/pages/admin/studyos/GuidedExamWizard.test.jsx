@@ -603,7 +603,6 @@ describe("GuidedExamWizard workspace handoff and cycle source URL", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/exam-intelligence/workspace/exam-created?tab=setup");
   });
 
-
 });
 
 describe("Step 5: cycle date payload", () => {
