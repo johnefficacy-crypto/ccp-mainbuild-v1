@@ -27,10 +27,18 @@ jest.mock("../../../../lib/supabase", () => ({
   supabase: { auth: { getSession: jest.fn(), onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })) } },
 }));
 
+// ReviewActivatePanel (opened by the console rail's Publish row) calls useAuth.
+jest.mock("../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "admin", permissions: [] } }),
+}));
+
 const { api } = require("../../../../lib/api");
 
 // Lazy-require after mock is set up
 const ExamWorkspace = require("../ExamWorkspace").default;
+const { currentStageSection } = require("../ExamWorkspace");
+const { deriveTopicCoverageRow } = require("../ExamTaskRail");
 const { AddCycleRedirect } = require("../../../../routes/adminRoutes");
 const { useExamWorkspace, ExamWorkspaceProvider } = require("../ExamWorkspaceContext");
 
@@ -418,6 +426,145 @@ describe("ExamWorkspace variant gating (Wave 4.6A.1)", () => {
     await waitFor(() => screen.getByTestId("exam-name"));
     expect(screen.getByTestId("exam-name").textContent).toBe("SSC CGL");
     expect(screen.getByTestId("overview-panel")).toBeTruthy();
+  });
+});
+
+// ── Wave 4.6C: console task rail ─────────────────────────────────────────────
+
+const RAIL_READINESS = {
+  exam_id: "exam-1",
+  cycle_id: null,
+  overall: { status: "partial", score_percent: 40, ready_to_activate: false, blockers: [] },
+  sections: [
+    { section: "setup",          label: "Setup",              status: "ready",   blockers: [],                                  metrics: { phase_count: 2 } },
+    { section: "documents",      label: "Documents",          status: "partial", blockers: ["3 documents pending extraction"],  metrics: { total: 5, extracted: 2, pending: 3, failed: 0 } },
+    { section: "syllabus_mapper",label: "Syllabus Mapper",    status: "empty",   blockers: ["2 mentions pending review"],       metrics: { total: 2, pending: 2, verified: 0, locked: 0 } },
+    { section: "pyq_workbench",  label: "PYQ Workbench",      status: "empty",   blockers: ["no PYQ papers uploaded"],          metrics: { papers: 0, questions_total: 0 } },
+    { section: "updates",        label: "Updates",            status: "partial", blockers: [],                                  metrics: { total: 3, pending: 1, verified: 2 } },
+    { section: "competition",    label: "Competition",        status: "ready",   blockers: [],                                  metrics: {} },
+    { section: "review_activate",label: "Review & Activate",  status: "partial", blockers: ["upstream sections incomplete"],     metrics: {} },
+  ],
+  topic_coverage: { total: 20, draft: 1, pending: 12, reviewed: 7, locked: 0, high_yield: 3 },
+};
+
+function renderConsoleWorkspace(readinessResponse = RAIL_READINESS) {
+  mockBothEndpoints({ readinessResponse });
+  return render(
+    <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1"]}>
+      <Routes>
+        <Route
+          path="/admin/exam-intelligence/workspace/:exam_id"
+          element={<ExamWorkspace variant="console" />}
+        />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+describe("ExamWorkspace console task rail (Wave 4.6C)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("renders the 8-group rail with lifecycle label + pending + blocker; no % anywhere", async () => {
+    renderConsoleWorkspace();
+    await waitFor(() => screen.getByTestId("exam-task-rail"));
+
+    ["setup", "documents", "syllabus", "pyq", "topic_coverage", "updates", "competition", "publish"].forEach((id) => {
+      expect(screen.getByTestId(`rail-row-${id}`)).toBeTruthy();
+    });
+
+    // Glossary-free section status tokens (existing vocabulary), no new words.
+    expect(screen.getByTestId("rail-status-setup").textContent).toBe("ready");
+    expect(screen.getByTestId("rail-status-documents").textContent).toBe("partial");
+    expect(screen.getByTestId("rail-status-syllabus").textContent).toBe("empty");
+
+    // Pending count + blocker where the section has them.
+    expect(screen.getByTestId("rail-pending-documents").textContent).toContain("3 pending");
+    expect(screen.getByTestId("rail-blocker-documents").textContent).toContain("pending");
+
+    // Topic coverage = derived snapshot row (no status badge, counts from payload).
+    expect(screen.getByTestId("rail-topic-coverage-derived")).toBeTruthy();
+    // Fixture has reviewed=7, locked=0 → "reviewed · lock preferred".
+    expect(screen.getByTestId("rail-topic-coverage-state").textContent).toContain("reviewed");
+
+    // D-E: no percentage anywhere in the console.
+    expect(document.body.textContent).not.toContain("%");
+  });
+
+  test("blocker-first highlight reuses the existing current-stage derivation", async () => {
+    renderConsoleWorkspace();
+    await waitFor(() => screen.getByTestId("exam-task-rail"));
+
+    // Existing derivation: first non-ready/locked section = documents.
+    const current = currentStageSection(RAIL_READINESS);
+    expect(current.section).toBe("documents");
+
+    expect(screen.getByTestId("rail-row-documents").getAttribute("data-rail-current")).toBe("true");
+    // Only the current row is marked.
+    expect(screen.getByTestId("rail-row-setup").getAttribute("data-rail-current")).toBeNull();
+    expect(screen.getByTestId("rail-row-updates").getAttribute("data-rail-current")).toBeNull();
+    // Its blocker is surfaced on that row.
+    expect(screen.getByTestId("rail-blocker-documents")).toBeTruthy();
+  });
+
+  test("selecting the PYQ row activates the EXISTING PYQ surface scoped to the URL exam", async () => {
+    renderConsoleWorkspace();
+    await waitFor(() => screen.getByTestId("rail-row-pyq"));
+
+    const readinessCallsBefore = api.get.mock.calls.filter((c) => c[0].includes("/readiness")).length;
+
+    await act(async () => { fireEvent.click(screen.getByTestId("rail-row-pyq")); });
+    await waitFor(() => expect(screen.getByTestId("pyq-workbench-panel")).toBeTruthy());
+
+    // No extra readiness fetch triggered by switching panels.
+    const readinessCallsAfter = api.get.mock.calls.filter((c) => c[0].includes("/readiness")).length;
+    expect(readinessCallsAfter).toBe(readinessCallsBefore);
+  });
+
+  test("Publish row opens the existing Review & Activate panel", async () => {
+    renderConsoleWorkspace();
+    await waitFor(() => screen.getByTestId("rail-row-publish"));
+
+    await act(async () => { fireEvent.click(screen.getByTestId("rail-row-publish")); });
+    await waitFor(() => expect(screen.getByRole("heading", { name: /Readiness & Activation/i })).toBeTruthy());
+  });
+
+  test("single source: the readiness GET fires exactly once (rail adds no fetch)", async () => {
+    renderConsoleWorkspace();
+    await waitFor(() => screen.getByTestId("exam-task-rail"));
+    const readinessCalls = api.get.mock.calls.filter((c) => c[0].includes("/readiness"));
+    expect(readinessCalls).toHaveLength(1);
+  });
+
+  test("standalone variant keeps the tab strip and renders no rail (regression)", async () => {
+    mockBothEndpoints({ readinessResponse: RAIL_READINESS });
+    render(
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1"]}>
+        <Routes>
+          <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<ExamWorkspace variant="workspace" />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getByTestId("tab-strip"));
+    expect(screen.queryByTestId("exam-task-rail")).toBeNull();
+  });
+});
+
+describe("deriveTopicCoverageRow (Wave 4.6C)", () => {
+  test("empty → not_started, routes to Syllabus Mapper", () => {
+    expect(deriveTopicCoverageRow({ total: 0 })).toMatchObject({ state: "not_started", targetTab: "syllabus" });
+    expect(deriveTopicCoverageRow(null)).toMatchObject({ state: "not_started", targetTab: "syllabus" });
+  });
+  test("locked > 0 → planner_ready (no blocker), routes to Overview", () => {
+    expect(deriveTopicCoverageRow({ total: 5, locked: 2, reviewed: 1, pending: 1 }))
+      .toMatchObject({ state: "planner_ready", blocker: null, targetTab: "overview" });
+  });
+  test("reviewed but none locked → reviewed_not_locked, routes to Overview", () => {
+    expect(deriveTopicCoverageRow({ total: 5, locked: 0, reviewed: 3, pending: 1 }))
+      .toMatchObject({ state: "reviewed_not_locked", targetTab: "overview" });
+  });
+  test("only pending/draft → needs_review, routes to Overview", () => {
+    expect(deriveTopicCoverageRow({ total: 5, locked: 0, reviewed: 0, pending: 4, draft: 1 }))
+      .toMatchObject({ state: "needs_review", targetTab: "overview" });
   });
 });
 
