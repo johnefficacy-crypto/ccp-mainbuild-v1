@@ -143,3 +143,53 @@ def test_resubmit_after_failed_finalize_rescores_without_double_count():
     # Exactly one compat row — no double-count from the partial first run.
     user_rows = [r for r in sb.db["mock_tests"] if r.get("user_id") == "user-1"]
     assert len(user_rows) == 1
+
+
+# ─── repair of ambiguous commit-then-raise on the resubmit fast path ───────────
+
+def _submitted_attempt(sb: SBStub, template: dict, attempt_id: str) -> None:
+    """Plant an attempt that is already ``submitted`` (as if the finalize UPDATE
+    committed) but with NO post-finalize side effects yet."""
+    sb.db["mock_attempts"].append({
+        "id": attempt_id,
+        "user_id": "user-1",
+        "template_id": template["id"],
+        "template_snapshot": {"name": "Test Mock", "duration_sec": 300},
+        "status": "submitted",
+        "submitted_at": "2026-06-15T00:00:00+00:00",
+        "score_raw": 1.0,
+        "score_percentage": 20.0,
+        "total_correct": 1,
+        "total_wrong": 0,
+        "total_unattempted": 4,
+    })
+    sb.db.setdefault("mock_attempt_jobs", [])
+
+
+def test_resubmit_repairs_missing_compat_row_and_analytics():
+    """A retry of a submitted attempt missing its compat row / analytics must
+    schedule the idempotent retry jobs (self-heal), not silently no-op."""
+    sb, template, _ = _seeded_db()
+    attempt_id = "submitted-no-sideeffects"
+    _submitted_attempt(sb, template, attempt_id)  # no mock_tests row, no summary
+
+    out = svc.submit_attempt(sb, "user-1", attempt_id)
+
+    assert out["status"] == "submitted"
+    kinds = {j["job_kind"] for j in sb.db["mock_attempt_jobs"]}
+    assert svc.JOB_MOCK_TESTS_RETRY in kinds
+    assert svc.JOB_ANALYTICS_RETRY in kinds
+
+
+def test_resubmit_does_not_reschedule_when_side_effects_present():
+    """The common double-submit case (side effects already present) must not
+    schedule any repair jobs."""
+    sb, template, _ = _seeded_db()
+    attempt_id = "submitted-complete"
+    _submitted_attempt(sb, template, attempt_id)
+    sb.db["mock_tests"].append({"id": "mt-1", "user_id": "user-1", "mock_attempt_id": attempt_id})
+    sb.db["mock_attempt_summary"] = [{"attempt_id": attempt_id, "score_raw": 1.0}]
+
+    svc.submit_attempt(sb, "user-1", attempt_id)
+
+    assert sb.db.get("mock_attempt_jobs", []) == []

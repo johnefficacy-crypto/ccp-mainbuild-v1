@@ -675,6 +675,42 @@ def _finalize_submission(
     return updated_attempt, responses, updates
 
 
+def _repair_submitted_side_effects(supabase: Any, attempt_id: str) -> None:
+    """Idempotently reconcile post-finalize side effects for a submitted attempt.
+
+    Covers the ambiguous case where the ``mock_attempts`` finalization UPDATE
+    committed on the server but the client call raised before the submitted
+    event, the ``mock_tests`` compat row, or analytics derivation ran — so the
+    resubmit fast path would otherwise skip them forever. Self-healing and
+    best-effort: when a side effect is missing it schedules the existing retry
+    job (the sweeper drains it and both jobs are idempotent). Never raises — a
+    repair failure must not break an otherwise-successful resubmit. The
+    ATTEMPT_SUBMITTED event is telemetry only (not source of truth) and is
+    intentionally not re-emitted here to avoid duplicate events.
+    """
+    compat = _safe(
+        lambda: supabase.table("mock_tests")
+        .select("id")
+        .eq("mock_attempt_id", attempt_id)
+        .limit(1)
+        .execute(),
+        default=None,
+    )
+    if not getattr(compat, "data", None):
+        schedule_job(supabase, JOB_MOCK_TESTS_RETRY, attempt_id)
+
+    summary = _safe(
+        lambda: supabase.table("mock_attempt_summary")
+        .select("attempt_id")
+        .eq("attempt_id", attempt_id)
+        .limit(1)
+        .execute(),
+        default=None,
+    )
+    if not getattr(summary, "data", None):
+        schedule_job(supabase, JOB_ANALYTICS_RETRY, attempt_id)
+
+
 def submit_attempt(
     supabase: Any,
     user_id: str,
@@ -685,6 +721,11 @@ def submit_attempt(
     attempt = _fetch_attempt(supabase, user_id, attempt_id)
 
     if attempt["status"] == "submitted":
+        # Reconcile the ambiguous "finalization UPDATE committed but the client
+        # raised before the side effects ran" case: a retry would otherwise take
+        # this fast path and never (re)create the mock_tests compat row or
+        # analytics, leaving a submitted attempt missing from history/analytics.
+        _repair_submitted_side_effects(supabase, attempt_id)
         return _build_result(supabase, attempt)
 
     if attempt["status"] != "in_progress":
