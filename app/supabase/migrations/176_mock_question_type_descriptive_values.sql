@@ -1,5 +1,5 @@
 -- =============================================================================
--- 174_mock_question_type_descriptive_values.sql
+-- 176_mock_question_type_descriptive_values.sql
 -- B-PR1: descriptive-answer schema foundation (enum values only).
 --
 -- Adds the descriptive question-type values to the mock_question_type enum so

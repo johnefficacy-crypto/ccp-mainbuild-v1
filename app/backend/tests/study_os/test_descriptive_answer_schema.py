@@ -3,8 +3,8 @@
 Pure file-content assertions (no DB) so the check runs in CI without
 Supabase credentials.  It pins the two forward migrations that:
 
-  * 174 — extend mock_question_type with descriptive/essay/precis/letter.
-  * 175 — add the additive descriptive columns to mock_attempt_responses.
+  * 176 — extend mock_question_type with descriptive/essay/precis/letter.
+  * 177 — add the additive descriptive columns to mock_attempt_responses.
 
 The live-schema equivalents are exercised by
 app/supabase/checks/mock_descriptive_answer_schema.sql against a real DB.
@@ -13,8 +13,8 @@ from pathlib import Path
 
 _MIGRATIONS = Path(__file__).resolve().parents[4] / "app" / "supabase" / "migrations"
 
-_ENUM_MIGRATION = _MIGRATIONS / "174_mock_question_type_descriptive_values.sql"
-_COLUMNS_MIGRATION = _MIGRATIONS / "175_mock_attempt_responses_descriptive_columns.sql"
+_ENUM_MIGRATION = _MIGRATIONS / "176_mock_question_type_descriptive_values.sql"
+_COLUMNS_MIGRATION = _MIGRATIONS / "177_mock_attempt_responses_descriptive_columns.sql"
 
 
 def _executable_sql(path: Path) -> str:

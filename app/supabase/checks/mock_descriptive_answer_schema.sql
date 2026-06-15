@@ -1,6 +1,6 @@
 -- B-PR1 descriptive-answer schema foundation smoke check.
 -- Read-only: SELECT-only assertions, raises an exception on any mismatch.
--- Verifies migrations 174 + 175 landed: the descriptive mock_question_type
+-- Verifies migrations 176 + 177 landed: the descriptive mock_question_type
 -- enum values and the additive mock_attempt_responses columns/constraints.
 --
 -- Manual validation:
@@ -16,7 +16,7 @@ declare
     array['mcq','integer','msq','descriptive','essay','precis','letter'];
   v_count int;
 begin
-  -- ── 1. Enum values (174) ──────────────────────────────────────────────────
+  -- ── 1. Enum values (176) ──────────────────────────────────────────────────
   select array_agg(v)
     into missing_enum
     from unnest(expected_enum) as v
@@ -30,7 +30,7 @@ begin
     raise exception 'mock_question_type is missing enum values: %', missing_enum;
   end if;
 
-  -- ── 2. Additive columns (175) ─────────────────────────────────────────────
+  -- ── 2. Additive columns (177) ─────────────────────────────────────────────
   -- answer_text: text, nullable.
   if not exists (
     select 1 from information_schema.columns
@@ -81,7 +81,7 @@ begin
     raise exception 'mock_attempt_responses.rubric_score (jsonb not null default {}) missing';
   end if;
 
-  -- ── 3. Check constraints (175) ────────────────────────────────────────────
+  -- ── 3. Check constraints (177) ────────────────────────────────────────────
   select count(*)
     into v_count
     from pg_constraint

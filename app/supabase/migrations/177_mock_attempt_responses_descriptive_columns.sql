@@ -1,5 +1,5 @@
 -- =============================================================================
--- 175_mock_attempt_responses_descriptive_columns.sql
+-- 177_mock_attempt_responses_descriptive_columns.sql
 -- B-PR1: descriptive-answer schema foundation (additive response columns).
 --
 -- Adds the per-response columns needed to persist typed descriptive answers and
@@ -18,7 +18,7 @@
 -- assets, or indexes are introduced here — those land in later PRs.
 --
 -- This migration does NOT reference the new mock_question_type enum values added
--- in 174; the descriptive columns are type-agnostic on purpose.
+-- in 176; the descriptive columns are type-agnostic on purpose.
 -- =============================================================================
 
 alter table public.mock_attempt_responses
