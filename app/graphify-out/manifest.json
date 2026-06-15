@@ -48,20 +48,20 @@
     "hash": "3904edf324a12ec7b63116f42b1d79cc"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_eligibility.py": {
-    "mtime": 1778856814.9969265,
-    "hash": "d078a91f5e882ee2459e9e6a8e871414"
+    "mtime": 1781320808.4082477,
+    "hash": "cba1c30d7241514769f406f34368c4e9"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_exam_eligibility.py": {
-    "mtime": 1779180931.645164,
-    "hash": "a554d39e6c1a7f2b0b1ca05a06206a3b"
+    "mtime": 1781320808.4102783,
+    "hash": "2c785055cc3f9fbd01233245ed08dda4"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_exam_intelligence.py": {
-    "mtime": 1781173789.3917499,
-    "hash": "a191bcf2452b964b6c49443a3c1ee9ab"
+    "mtime": 1781496585.7723846,
+    "hash": "cf3d9a30a0343bf37ca7aa20684c22d9"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_exam_intel_cms.py": {
-    "mtime": 1781201053.5684404,
-    "hash": "b346fb419b27b5e5d5d9802eb2a35414"
+    "mtime": 1781259869.8168485,
+    "hash": "fb5a6d0fe2b55f2e936cbbcb800f4706"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_exam_intel_documents.py": {
     "mtime": 1780123753.1633503,
@@ -88,8 +88,8 @@
     "hash": "09d1bf81a5519b212bd9146a6a056136"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_overview.py": {
-    "mtime": 1779630322.4529426,
-    "hash": "c5eeb57f623aeaf01cfe2c7e4791632e"
+    "mtime": 1781320808.4122508,
+    "hash": "e4a9295a36a048ba6130b47a8e796bc7"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_persona.py": {
     "mtime": 1779180931.6521752,
@@ -108,12 +108,12 @@
     "hash": "4be507b9656935ac0bbc61630f14037b"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_trust.py": {
-    "mtime": 1780600881.642986,
-    "hash": "119e8bfddbed1b48839ab6020ef5d623"
+    "mtime": 1781320808.414246,
+    "hash": "a5e7e99e5661707b58ce4dc1b3d547df"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\admin_verification_reports.py": {
-    "mtime": 1780620739.2370992,
-    "hash": "85cec3f0e7c18ac008c4c75edff844a2"
+    "mtime": 1781320808.417274,
+    "hash": "a3982c75fbd0d52e2591e2bd03b6f850"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\api\\ai.py": {
     "mtime": 1779019900.850625,
@@ -388,8 +388,8 @@
     "hash": "6fad9fbc5c5e81e3c3d2d614250e3853"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\readiness.py": {
-    "mtime": 1780260508.0241663,
-    "hash": "944fa19d21dd007f6a80a21e1fc8b734"
+    "mtime": 1781496585.7753983,
+    "hash": "562fb9de77aed1ff294119afdd5d1207"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\registry_action_service.py": {
     "mtime": 1780510262.5648763,
@@ -796,8 +796,8 @@
     "hash": "4ccd3ad8b9ad2dff2a3a079795360cf0"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\planner.py": {
-    "mtime": 1779883692.4538553,
-    "hash": "e7a283f04e9c622bb0db98fb205f3b22"
+    "mtime": 1781246613.2362323,
+    "hash": "c9004c41468de584464529a959d4c8fd"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\plan_by_subject.py": {
     "mtime": 1779054199.9529717,
@@ -812,8 +812,8 @@
     "hash": "c78197f5f763365629f2e0fa4ff7ac16"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\plan_timeline.py": {
-    "mtime": 1781204601.839069,
-    "hash": "40c1311c69ba8aa091487e6a429c17c0"
+    "mtime": 1781244810.090572,
+    "hash": "3de87ac62286c13b130a70360e2aaa31"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\regen.py": {
     "mtime": 1778782769.9301076,
@@ -956,8 +956,8 @@
     "hash": "9ccb8c5f2eb6b2f2dc7ff68dca336bea"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\test_admin_eligibility.py": {
-    "mtime": 1778868483.7026315,
-    "hash": "62702efd64e75bcecab50ef7b85dbe11"
+    "mtime": 1781320808.4282482,
+    "hash": "8cfb5fdb771715267773b07ef7291da7"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\test_admin_frontend_contract.py": {
     "mtime": 1778532509.6719737,
@@ -976,8 +976,8 @@
     "hash": "fd0a4e89daf5c90dc3b400dceedecb45"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\test_admin_overview.py": {
-    "mtime": 1779239532.6299715,
-    "hash": "223d0dd169edc4459b2cbf8b7ee1157c"
+    "mtime": 1781320808.4302561,
+    "hash": "c9e9d7eb955a8aaf1b061550864a81f6"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\test_admin_queue.py": {
     "mtime": 1779042455.678737,
@@ -1000,8 +1000,8 @@
     "hash": "a587304b3c910f9cac10e059c947e9cb"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\test_admin_trust.py": {
-    "mtime": 1779354543.471807,
-    "hash": "adc59dd12b0f7030f26cb57ff11d5ac3"
+    "mtime": 1781320808.432246,
+    "hash": "8c1d727fe54ad72ea6e62e3b14698918"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\test_applications_contract.py": {
     "mtime": 1778234371.3237562,
@@ -1303,6 +1303,14 @@
     "mtime": 1780609539.1059663,
     "hash": "41a2fed512455401d7246a44ce7ab7cf"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\admin\\test_verification_report_detail_exam_id.py": {
+    "mtime": 1781277570.4876778,
+    "hash": "0d819e1f123d23e552bd8cf5c2ba1571"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\admin\\test_verification_report_list_filters.py": {
+    "mtime": 1781320808.4232507,
+    "hash": "3f4dccee286c91681918bbfe1e8ba39c"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\admin\\__init__.py": {
     "mtime": 1778717834.6415715,
     "hash": "d41d8cd98f00b204e9800998ecf8427e"
@@ -1336,8 +1344,8 @@
     "hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_eligibility\\test_admin_api.py": {
-    "mtime": 1779093806.449421,
-    "hash": "cc47ef0bdcaa62a87be040d8eaad20c9"
+    "mtime": 1781320808.4252543,
+    "hash": "db13d3261d364bab7e5f67587df977df"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_eligibility\\test_api.py": {
     "mtime": 1779093806.4514282,
@@ -1366,6 +1374,10 @@
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\test_cms_hash_autofill.py": {
     "mtime": 1779026762.8416946,
     "hash": "11d05a70b5aacb21fdbe1908a700f9ba"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\test_cms_promote_template.py": {
+    "mtime": 1781259869.8188455,
+    "hash": "401b99bba57de8d59f895a63ce9b17d4"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\test_cms_pyq_bulk.py": {
     "mtime": 1779734927.2278936,
@@ -1452,8 +1464,8 @@
     "hash": "1e73950c22e3abae166d61510829a87e"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\test_readiness.py": {
-    "mtime": 1780260508.0292194,
-    "hash": "c65037849330e739788dad07fd30f1f4"
+    "mtime": 1781496585.7783856,
+    "hash": "4036bbf667f9ff557285f41c3c11484c"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\test_registry_actions.py": {
     "mtime": 1780510262.5948563,
@@ -1480,8 +1492,8 @@
     "hash": "412c0050ef2db1f09510e5f256abc159"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\test_workspace_context.py": {
-    "mtime": 1780260508.0331812,
-    "hash": "293959e18250e81c90453650ce7720af"
+    "mtime": 1781496585.7803898,
+    "hash": "8bda65a0b76e0b523cf9ab1d0ad41a67"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\__init__.py": {
     "mtime": 1778719967.072062,
@@ -1924,8 +1936,8 @@
     "hash": "98a5f508373a28397a6d112d78c18a5b"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\study_os\\test_planner.py": {
-    "mtime": 1779240873.6507404,
-    "hash": "06318f138d802743de330ff328222967"
+    "mtime": 1781246613.2402415,
+    "hash": "1a5f7e0a264fb438cf6204cacaacbbfb"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\study_os\\test_plan_by_subject.py": {
     "mtime": 1779054200.1339612,
@@ -1944,8 +1956,8 @@
     "hash": "ffe59ec16e0627efa1d6a65d7f8be6e5"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\study_os\\test_plan_timeline.py": {
-    "mtime": 1781204601.8410542,
-    "hash": "a56b8e018c331add973e11e6fb506006"
+    "mtime": 1781244810.0935664,
+    "hash": "5b6f32e201f907fcbcfac64fa4f83989"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\study_os\\test_plan_timeline_report.py": {
     "mtime": 1779875643.9199317,
@@ -2199,17 +2211,21 @@
     "mtime": 1779873555.45481,
     "hash": "e0976d4085ce886c3a96f4719406a4b0"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\features\\admin\\exam-intelligence\\ExamIntelGlossary.jsx": {
+    "mtime": 1781496585.826394,
+    "hash": "055015fb8beac546b9c1ce3a61d44975"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\features\\admin\\exam-intelligence\\ExamIntelligenceOverviewCards.jsx": {
     "mtime": 1778841152.9424617,
     "hash": "c3a7159a38cd20ee1abc9046029bf9c4"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\features\\admin\\exam-intelligence\\ExamListTable.jsx": {
-    "mtime": 1781168942.5467331,
-    "hash": "6d47da54304be5a84f46f6fcc7d1c117"
+    "mtime": 1781496585.8333938,
+    "hash": "efb0439d860408b9850c7de914ee5bb4"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\features\\admin\\exam-intelligence\\ExamListTable.test.jsx": {
-    "mtime": 1781168942.5487206,
-    "hash": "af157ebb0e6b018a5e8e1e447fe22966"
+    "mtime": 1781496585.8343985,
+    "hash": "05f8105183c8713ed1817324cbde5b02"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\features\\admin\\exam-intelligence\\PlanImpactPreview.intent.test.jsx": {
     "mtime": 1779240873.7007322,
@@ -2234,6 +2250,14 @@
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\features\\admin\\exam-intelligence\\TopicCoveragePreview.jsx": {
     "mtime": 1779873555.4658127,
     "hash": "12e1b794df7f86d28dc1dfb9d131646e"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\features\\admin\\exam-intelligence\\forms\\CycleForm.jsx": {
+    "mtime": 1781496585.8613935,
+    "hash": "03e9a326fe021dacabd6593c6ccb7482"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\features\\admin\\exam-intelligence\\forms\\PhaseForm.jsx": {
+    "mtime": 1781496585.86239,
+    "hash": "4b0f17bb3cf8300d2ec9f999f31c2232"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\features\\admin\\organizations\\OrganizationEditPanel.jsx": {
     "mtime": 1779873555.467811,
@@ -2919,6 +2943,10 @@
     "mtime": 1779227983.415565,
     "hash": "14523e6246788afab9c6b5fa491c70b4"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\lib\\slugify.js": {
+    "mtime": 1781244810.095571,
+    "hash": "f81a9a1c624c98f54336862f1a9a5952"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\lib\\supabase.js": {
     "mtime": 1777966165.2602005,
     "hash": "8a8056673574fcf40e038df8fc3dd10d"
@@ -3068,12 +3096,12 @@
     "hash": "ce5253427f8cd976ebba762e2eaf8b9b"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\AdminShell.jsx": {
-    "mtime": 1780606690.8595755,
-    "hash": "9b273a7e9f272f18c0213774fcd2fc39"
+    "mtime": 1781496585.8883977,
+    "hash": "9d155ac14c32e418a7ced7d6cf9cd5e1"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\AIPolicy.jsx": {
-    "mtime": 1779873555.5428174,
-    "hash": "e146717a56067af51079900e5c26f5c5"
+    "mtime": 1781320808.4352489,
+    "hash": "afe962ba1d255a15da8b5ee1cd861b31"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\Audit.jsx": {
     "mtime": 1779105217.0039551,
@@ -3096,16 +3124,20 @@
     "hash": "ff82f809e2b17d72f034651267bea85b"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\ExamEligibility.jsx": {
-    "mtime": 1779873555.54381,
-    "hash": "7a98f289a958822e24f2dacc494a8075"
+    "mtime": 1781320808.4402583,
+    "hash": "1174bad06fd5d6db1c8202499c2db531"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\ExamIntelligence.jsx": {
-    "mtime": 1781173789.4027588,
-    "hash": "67eeb7108c558bc5788a7a8273e010b8"
+    "mtime": 1781496585.903387,
+    "hash": "8ad8935359e38dc2b3059f140b77ca7b"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\ExamIntelligence.test.jsx": {
     "mtime": 1781173789.40675,
     "hash": "87338b39afa03f68553e267bafa56e2e"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\KnowledgeGovernance.jsx": {
+    "mtime": 1781326945.835924,
+    "hash": "01b127128a23b2e28029aaca56c18142"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\KPIs.jsx": {
     "mtime": 1778966587.5582426,
@@ -3132,16 +3164,16 @@
     "hash": "267cc9136cd84522e7687323adc0faf8"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\Organizations.jsx": {
-    "mtime": 1780600881.7689912,
-    "hash": "8bca9faa6b52e63d2627e7a2a1f84514"
+    "mtime": 1781320808.4462705,
+    "hash": "07e893b8919d3637f0f132df220f3a99"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\Overview.jsx": {
     "mtime": 1779314064.7997193,
     "hash": "3409f267f433f071aeb687649c3ee937"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\Persona.jsx": {
-    "mtime": 1779873555.5548112,
-    "hash": "4b4edcaf88dd656a55fdec1ecfd154ce"
+    "mtime": 1781320808.4492624,
+    "hash": "2b0b4e87be29552fc0dc32272553c4e2"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\Plans.jsx": {
     "mtime": 1779873555.5568163,
@@ -3160,8 +3192,8 @@
     "hash": "6cb78e752d063c5e9f72b978dc4551ce"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\ReverificationBatches.jsx": {
-    "mtime": 1780612506.9344854,
-    "hash": "0850a475b2fd05c2efc18e94d0db7cc3"
+    "mtime": 1781320808.4512484,
+    "hash": "b4ad768a91fb8699b22952aac372f6ae"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\Scraper.jsx": {
     "mtime": 1779873555.5638225,
@@ -3176,8 +3208,8 @@
     "hash": "54ebb1684c36be6f355ae548d78b94cc"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\VerificationReports.jsx": {
-    "mtime": 1780620739.2540994,
-    "hash": "117e460077b629fe515eeccccfb50434"
+    "mtime": 1781320808.4542534,
+    "hash": "877beac91db4d654c89e8d15e7eacc55"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\community\\GroupsConsole.jsx": {
     "mtime": 1779035457.137258,
@@ -3192,28 +3224,32 @@
     "hash": "5e3ce3022a7ea76c50b18d14b2c87378"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\ExamWorkspace.jsx": {
-    "mtime": 1780344425.4590025,
-    "hash": "b1cca034c89519e38d2109ef1ad5fe52"
+    "mtime": 1781496585.9653919,
+    "hash": "71c6d1b79583b95fcef69a698e0d1f09"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\ExamWorkspaceContext.jsx": {
-    "mtime": 1780260508.0461762,
-    "hash": "35a129b2b85e00a476f9650891a63011"
+    "mtime": 1781496585.967391,
+    "hash": "e06a2672677c51de3573b4a7b1475323"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\CompetitionPanel.jsx": {
     "mtime": 1780397328.3807316,
     "hash": "03c965bc6ce6d2c909079156380d2d3a"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\DocumentsPanel.jsx": {
-    "mtime": 1780386514.8538787,
-    "hash": "e2febb38cd417a0252eb8f0c57af74c1"
+    "mtime": 1781496586.0133977,
+    "hash": "773e491a5ef36660c4ecb48fc9f3f0af"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\OverviewPanel.jsx": {
+    "mtime": 1781496586.0183868,
+    "hash": "dde9afa6c972c1c82aa085a99fa58f43"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\ReviewActivatePanel.jsx": {
-    "mtime": 1780403899.462452,
-    "hash": "06b07bb2198b8d000c6f3d1aab2a082a"
+    "mtime": 1781320808.4612465,
+    "hash": "5c45343a8af7c6ef4477f75c735ee293"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\SetupPanel.jsx": {
-    "mtime": 1780603897.2332103,
-    "hash": "750d984025c22e103faf8eac9304473c"
+    "mtime": 1781496586.0223992,
+    "hash": "4c2c4e58697a2b585452445d2cf61257"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\UpdatesPanel.jsx": {
     "mtime": 1780386514.8698795,
@@ -3238,6 +3274,10 @@
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\__tests__\\SetupPanel.cycles.test.jsx": {
     "mtime": 1780603897.3652043,
     "hash": "f733061fe2f7a4fbdb4a38cec6e8c6e4"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\__tests__\\SetupPanel.promote.test.jsx": {
+    "mtime": 1781259869.8378453,
+    "hash": "6597b2b65fced952d7cea2d1ea7034ad"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\pyq-workbench\\PyqWorkbenchPanel.jsx": {
     "mtime": 1780267799.1328435,
@@ -3352,8 +3392,8 @@
     "hash": "f2006b2cd597942b7dd31da8c6887872"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\__tests__\\ExamWorkspace.test.jsx": {
-    "mtime": 1780399134.704907,
-    "hash": "220b4e9e3848f2948cf057f1d2773da7"
+    "mtime": 1781496585.999396,
+    "hash": "07b539b676e402874969db91894c7f64"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\mocks\\ImportWizard.jsx": {
     "mtime": 1779873555.5768123,
@@ -3387,6 +3427,14 @@
     "mtime": 1779868904.4571664,
     "hash": "4b406f7aa7090c5d637b07fef3b967ac"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\AddCycleWizard.jsx": {
+    "mtime": 1781320808.4642503,
+    "hash": "5c75a9c011d48b4afb634fb645b2e053"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\AddCycleWizard.test.jsx": {
+    "mtime": 1781251446.2350862,
+    "hash": "05fdc0d6c021e99bc5f63d510219fd20"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\Artifacts.jsx": {
     "mtime": 1779023680.7864604,
     "hash": "64d88d217a9ae936f564f5527d995ed1"
@@ -3400,20 +3448,20 @@
     "hash": "c58d0597cbab548e8fca156042b6e6db"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\ExamIntelCms.datefield.test.jsx": {
-    "mtime": 1779738737.012324,
-    "hash": "63b2b6211de932bbbb03e21a553607f0"
+    "mtime": 1781320808.4662466,
+    "hash": "52d61e0a68bebeab8e22f69cf876cb1b"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\ExamIntelCms.docpicker.test.jsx": {
     "mtime": 1779734612.6299922,
     "hash": "80e1d1c4b95c493f73ee423c3e924705"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\ExamIntelCms.edit.test.jsx": {
-    "mtime": 1781203974.012766,
-    "hash": "e17861e9344443a509e39f6c2be1d6c0"
+    "mtime": 1781320808.467252,
+    "hash": "402e4334d9f7e0472fce014420f0458e"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\ExamIntelCms.jsx": {
-    "mtime": 1781203974.0167565,
-    "hash": "aaf093806dd1fe2ed341762645752a45"
+    "mtime": 1781496586.0283976,
+    "hash": "524444fe8af51d544049404bd6587bda"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\ExamIntelCms.lanes.test.jsx": {
     "mtime": 1781201053.6854382,
@@ -3455,6 +3503,14 @@
     "mtime": 1780399134.72591,
     "hash": "de15ab15341bdb68f3ea223b992296d0"
   },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\GuidedExamWizard.jsx": {
+    "mtime": 1781496586.0303998,
+    "hash": "93605c40c13e1058043b4b1de24da7f1"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\GuidedExamWizard.test.jsx": {
+    "mtime": 1781496586.0323975,
+    "hash": "976aaa493bdcdcf9bd51042e12ae20f4"
+  },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\MockTrust.jsx": {
     "mtime": 1779019901.0957408,
     "hash": "0970966a4cb64ce5fa9df32ec7db18f7"
@@ -3464,8 +3520,8 @@
     "hash": "2de457a3b64d19ec6b3022165dd3edfc"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\PyqPaperWorkspace.jsx": {
-    "mtime": 1780266723.6771522,
-    "hash": "39c290228ae2a1b219cbc822df6ebe76"
+    "mtime": 1781320808.4762762,
+    "hash": "6b43cf15b769fbcdf38fb0b69f5d6ab3"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\studyos\\Reports.jsx": {
     "mtime": 1779019901.0987506,
@@ -3492,20 +3548,20 @@
     "hash": "ae1e825303e73833e744e3c58c106afa"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\__tests__\\AdminShell.nav.test.js": {
-    "mtime": 1779868904.4371727,
-    "hash": "b7598efd655ee7a25695a6e78878f4d9"
+    "mtime": 1781496585.9403985,
+    "hash": "0a6cfe419f7b24f991290dfaaa0b6980"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\__tests__\\Audit.test.js": {
     "mtime": 1779105217.025932,
     "hash": "b2a19f22690bc93f0ba1bc19892cb658"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\__tests__\\ExamEligibility.test.js": {
-    "mtime": 1779873555.5698497,
-    "hash": "172638597970472bf00124a7750b72b3"
+    "mtime": 1781320808.45627,
+    "hash": "c0e35f4c7867fdc93caaa9cc225b4b52"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\__tests__\\ExamIntelligenceNav.test.jsx": {
-    "mtime": 1780403899.4594488,
-    "hash": "0b51b6085a56ebab01407f928a562449"
+    "mtime": 1781496585.9423993,
+    "hash": "ad0e60cbd9b650278c5bfd74f26e471f"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\__tests__\\OperationsConsole.test.js": {
     "mtime": 1779314064.810724,
@@ -3536,8 +3592,8 @@
     "hash": "d5f930030e7ded90fb1a9daa3f659932"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\__tests__\\VerificationReports.test.jsx": {
-    "mtime": 1780620739.2561007,
-    "hash": "03f481c3556a1185d24a6b78809350d6"
+    "mtime": 1781277570.4936793,
+    "hash": "150f3c3f25e8efef2eda9bcb4ec1a92b"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\auth\\AuthCallback.jsx": {
     "mtime": 1779353907.5093112,
@@ -3972,8 +4028,8 @@
     "hash": "f7c53d73273dfd3b4757ca3c0c531412"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\routes\\adminRoutes.jsx": {
-    "mtime": 1780606690.8695498,
-    "hash": "f70a4dfb7a6c49963bdd7add7e4e4b6b"
+    "mtime": 1781496586.0344,
+    "hash": "4dc9c7904bfad1bce3062619ab1c7fb4"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\routes\\appRoutes.jsx": {
     "mtime": 1780166525.6974728,
@@ -5260,8 +5316,8 @@
     "hash": "6976ed12e4f3a3974ea61c6f0b74a2b5"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\requirements.txt": {
-    "mtime": 1780403899.4134512,
-    "hash": "b02c81d954d38cbc61f2a106fa4d2fa7"
+    "mtime": 1781320808.4212482,
+    "hash": "6d3423461d0d23d17e2912ad6bc26ec3"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\extraction\\README.md": {
     "mtime": 1779997659.3447995,
