@@ -143,6 +143,13 @@ describe("ExamWorkspace shell", () => {
     expect(screen.getByTestId("exam-name").textContent).toBe("SSC CGL");
   });
 
+  test("no longer renders the Advanced raw-table-editor drawer (Wave 4.6B)", async () => {
+    mockBothEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("exam-name"));
+    expect(screen.queryByText(/raw table editor/i)).toBeNull();
+  });
+
   test("renders cycle picker populated from cycles[]", async () => {
     mockBothEndpoints();
     renderWorkspace();

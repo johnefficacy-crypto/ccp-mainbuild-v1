@@ -295,82 +295,6 @@ function TabStrip({ active, onChange, readiness }) {
   );
 }
 
-// ─── Advanced raw table editor drawer ────────────────────────────────────────
-
-function AdvancedDrawer() {
-  const [open, setOpen] = useState(false);
-  const [entity, setEntity] = useState("syllabus_topic_mentions");
-
-  return (
-    <div
-      style={{
-        borderTop: "1px solid var(--rule)",
-        marginTop: 22,
-        background: "var(--paper-sunk)",
-      }}
-    >
-      <button
-        className="oc-section-toggle"
-        style={{ padding: "12px 22px", fontSize: 11 }}
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <span>
-          ⚙ Advanced — raw table editor{" "}
-          <span style={{ color: "var(--ink-mute)", textTransform: "none", letterSpacing: 0 }}>
-            · bulk import &amp; edge fixes
-          </span>
-        </span>
-        <span
-          className="nav-chevron"
-          style={{ transform: open ? "rotate(180deg)" : "none" }}
-        >
-          ▾
-        </span>
-      </button>
-      {open && (
-        <div style={{ padding: "0 22px 22px" }}>
-          <div
-            className="banner"
-            style={{
-              padding: "8px 12px",
-              borderRadius: 4,
-              border: "1px dashed var(--rule)",
-              background: "var(--paper)",
-              fontSize: 11.5,
-              color: "var(--ink-mute)",
-              marginBottom: 10,
-            }}
-          >
-            Secondary path. Direct row edits skip the guided workflow above — use only for bulk
-            import or edge fixes. Rows still land at{" "}
-            <span className="mono">pending</span>.
-          </div>
-          <div className="ctx-strip" style={{ marginBottom: 10 }}>
-            <span className="ctx-kind">Entity</span>
-            <select
-              className="input"
-              style={{ maxWidth: 280 }}
-              value={entity}
-              onChange={(e) => setEntity(e.target.value)}
-            >
-              <option value="syllabus_topic_mentions">syllabus_topic_mentions</option>
-              <option value="pyq_questions">pyq_questions</option>
-              <option value="exam_competition_metrics">exam_competition_metrics</option>
-            </select>
-            <span
-              className="row-sub"
-              style={{ fontSize: 11, color: "var(--ink-mute)", marginLeft: 4 }}
-            >
-              Navigate to the dedicated panel above to manage rows.
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Main shell ───────────────────────────────────────────────────────────────
 
 function WorkspaceShell() {
@@ -431,9 +355,6 @@ function WorkspaceShell() {
         {activeTab === "competition" && <CompetitionPanel />}
         {activeTab === "review" && <ReviewActivatePanel onGotoTab={gotoTab} />}
       </main>
-
-      <AdvancedDrawer />
-
     </div>
   );
 }

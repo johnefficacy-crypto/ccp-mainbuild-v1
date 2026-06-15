@@ -10,6 +10,7 @@ import {
 import { useAuth } from "../../lib/authContext";
 
 const HAS_OWN_NAV = [
+  "/admin/exam-intelligence/console",
   "/admin/exam-intelligence/cms",
   "/admin/exam-intelligence/new",
 ];
@@ -41,9 +42,16 @@ const TRUST_PIPELINE = [
 
 const KG_LANDING = { to: "/admin/knowledge-governance", label: "Knowledge Governance", icon: LayoutGrid, end: true, testId: "admin-nav-kg-landing" };
 
+// Primary entries for the Exam-truth lane: the 4.6A governance console is the
+// front door; the Registry stays alongside it.
 const KG_LANE_1 = [
+  { to: "/admin/exam-intelligence/console", label: "Exam Governance Console", icon: ClipboardList, testId: "admin-nav-exam-governance-console" },
   { to: "/admin/exam-intelligence", label: "Exam Registry", icon: GraduationCap, testId: "admin-nav-exam-intelligence" },
-  { to: "/admin/exam-intelligence/new", label: "Guided Exam", icon: Sparkles, testId: "admin-nav-guided-exam-wizard" },
+];
+// Secondary "Advanced" entries: create-exam routes to the EXISTING wizard
+// (no new path); Raw CMS keeps its /cms route. Demoted from primary siblings.
+const KG_LANE_1_ADVANCED = [
+  { to: "/admin/exam-intelligence/new", label: "Create exam", icon: Sparkles, testId: "admin-nav-guided-exam-wizard" },
   { to: "/admin/exam-intelligence/cms", label: "Raw CMS / Bulk Import", icon: Files, testId: "admin-nav-exam-intel-cms" },
 ];
 const KG_LANE_2 = [
@@ -59,7 +67,7 @@ const KG_LANE_4 = [
   { to: "/admin/persona", label: "Persona", icon: Sparkles, testId: "admin-nav-persona" },
 ];
 const KG_LANES = [
-  { label: "Exam truth & planner readiness", items: KG_LANE_1 },
+  { label: "Exam truth & planner readiness", items: KG_LANE_1, advanced: { label: "Advanced", items: KG_LANE_1_ADVANCED } },
   { label: "User eligibility truth", items: KG_LANE_2 },
   { label: "Official-source trust & change propagation", items: KG_LANE_3 },
   { label: "AI + personalization guardrails", items: KG_LANE_4 },
@@ -103,7 +111,7 @@ const SAFETY = [
 const SECTIONS = [
   { id: "command-center", label: "Command Center", items: COMMAND_CENTER, defaultOpen: true },
   { id: "trust-pipeline", label: "Trust Pipeline", items: TRUST_PIPELINE, defaultOpen: true },
-  { id: "knowledge-governance", label: "Knowledge Governance", landing: KG_LANDING, lanes: KG_LANES, items: [KG_LANDING, ...KG_LANE_1, ...KG_LANE_2, ...KG_LANE_3, ...KG_LANE_4], defaultOpen: false },
+  { id: "knowledge-governance", label: "Knowledge Governance", landing: KG_LANDING, lanes: KG_LANES, items: [KG_LANDING, ...KG_LANE_1, ...KG_LANE_1_ADVANCED, ...KG_LANE_2, ...KG_LANE_3, ...KG_LANE_4], defaultOpen: false },
   { id: "community-marketplace", label: "Community & Marketplace", items: COMMUNITY_MARKETPLACE, defaultOpen: false },
   { id: "study-os", label: "Study OS", items: STUDY_OS, defaultOpen: false },
   { id: "mock-content", label: "Mock Content", items: MOCK_CONTENT, defaultOpen: false },
@@ -201,6 +209,29 @@ function Sidebar({ onClose, openMap, onToggleSection }) {
                               </NavLink>
                             );
                           })}
+                          {lane.advanced ? (
+                            <div data-testid="admin-nav-exam-advanced">
+                              <div className="oc-section" style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.4, paddingTop: 8, paddingBottom: 2, cursor: "default" }}>
+                                {lane.advanced.label}
+                              </div>
+                              {lane.advanced.items.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                  <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    end={item.end}
+                                    onClick={onClose}
+                                    className={() => `oc-navlink${matchesNavItem(pathname, item) ? " active" : ""}`}
+                                    data-testid={item.testId}
+                                  >
+                                    {Icon ? <Icon className="nav-glyph" /> : null}
+                                    <span className="truncate">{item.label}</span>
+                                  </NavLink>
+                                );
+                              })}
+                            </div>
+                          ) : null}
                         </div>
                       ))
                     : section.items.map((item) => {
