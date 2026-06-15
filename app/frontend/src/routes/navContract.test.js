@@ -106,6 +106,7 @@ const ADMIN_NAV_PATHS = [
   "/admin/eligibility-ops",
   "/admin/audit",
   // Knowledge Governance
+  "/admin/exam-intelligence/console",
   "/admin/exam-intelligence",
   "/admin/exam-eligibility",
   "/admin/organizations",
