@@ -235,21 +235,45 @@ def status_value_census(sb) -> dict:
     return census
 
 
-def section_structure_completeness(sb, exam_id: str) -> dict:
-    """Per-section authored-structure completeness for one exam.
+def list_exam_phases(sb, exam_id: str, *, exam_phase_id: str | None = None) -> list[dict]:
+    """Return the exam's phases (or just the one named by ``exam_phase_id``).
 
-    Joins exam → exam_phases (exam_id) → exam_phase_sections and flags each
-    section that is missing question_count / marks / duration_mins.
+    Ordered by phase_order so the report surfaces phases in exam sequence.
     """
     phases = _fetch_all(
         lambda: sb.table("exam_phases")
-        .select("id, exam_id, phase_name, phase_slug")
+        .select("id, exam_id, phase_name, phase_slug, phase_order")
         .eq("exam_id", exam_id)
     )
-    phase_ids = [p["id"] for p in phases]
+    if exam_phase_id:
+        phases = [p for p in phases if p.get("id") == exam_phase_id]
+    phases.sort(key=lambda p: (p.get("phase_order") if p.get("phase_order") is not None else 0))
+    return phases
+
+
+def section_structure_completeness(
+    sb, exam_id: str, *, exam_phase_id: str | None = None
+) -> dict:
+    """Per-section authored-structure completeness, scoped to one phase if given.
+
+    Joins exam → exam_phases (exam_id) → exam_phase_sections and flags each
+    section that is missing question_count / marks / duration_mins. When
+    ``exam_phase_id`` is supplied, only that phase's sections are returned
+    (mock structure is phase-level, so the caller scopes per phase).
+    """
+    if exam_phase_id:
+        phase_ids = [exam_phase_id]
+    else:
+        phases = _fetch_all(
+            lambda: sb.table("exam_phases")
+            .select("id, exam_id, phase_name, phase_slug")
+            .eq("exam_id", exam_id)
+        )
+        phase_ids = [p["id"] for p in phases]
     if not phase_ids:
         return {
             "exam_id": exam_id,
+            "exam_phase_id": exam_phase_id,
             "phase_count": 0,
             "section_count": 0,
             "sections": [],
@@ -291,6 +315,7 @@ def section_structure_completeness(sb, exam_id: str) -> dict:
     out_sections.sort(key=lambda r: (r.get("section_label") or ""))
     return {
         "exam_id": exam_id,
+        "exam_phase_id": exam_phase_id,
         "phase_count": len(phase_ids),
         "section_count": len(out_sections),
         "sections": out_sections,
@@ -311,12 +336,23 @@ def selectable_mcq_depth(
     Current-affairs items (is_current OR is_current_based) are segmented INTO a
     separate ``current_depth`` and kept OUT of ``base_depth`` so the durable
     pool is never inflated by time-bound questions.
+
+    SCOPE: this read is EXAM-level. ``mock_question_bank`` has no phase column
+    (only exam_id / subject_id / topic_id), so depth cannot be filtered by
+    exam_phase_id directly. Phase/section attribution is INDIRECT: a section's
+    pool is the depth of the subject_ids that belong to that phase's
+    exam_phase_sections. ``readiness_verdict`` performs that section→subject→
+    bank attribution; ``pool_scope`` records that the pool is subject-level.
     """
     statuses = list(selectable_statuses or [])
     now_iso = (now or datetime.now(timezone.utc)).isoformat()
     base: dict = {
         "exam_id": exam_id,
         "selectable_statuses": statuses,
+        "scope": "exam",
+        "pool_scope": "subject",
+        "attribution": "per-section via subject_id; mock_question_bank has no "
+        "phase column",
         "base_depth": [],
         "current_depth": [],
         "base_total": 0,
@@ -372,36 +408,14 @@ def selectable_mcq_depth(
     return base
 
 
-def source_distribution(sb, exam_id: str, selectable_statuses) -> dict:
-    """Report counts across all THREE provenance signals for one exam.
-
-    They may disagree; this reports each independently and leaves the
-    authority decision to the caller:
-      - mock_question_bank.source_type
-      - mock_question_bank.source_kind  (in-row, added migration 161)
-      - mock_question_sources.source_kind (join table, migration 136)
-    """
-    statuses = list(selectable_statuses or [])
-    out = {
-        "exam_id": exam_id,
-        "selectable_statuses": statuses,
-        "by_bank_source_type": {},
-        "by_bank_source_kind": {},
+def _segment_source_distribution(sb, rows: list[dict]) -> dict:
+    """Compute the three provenance signal maps over one segment of bank rows."""
+    seg = {
+        "by_bank_source_type": _count_by(rows, "source_type"),
+        "by_bank_source_kind": _count_by(rows, "source_kind"),
         "by_sources_table_source_kind": {},
     }
-    if not statuses:
-        return out
-
-    bank_rows = _fetch_all(
-        lambda: sb.table("mock_question_bank")
-        .select("id, source_type, source_kind")
-        .eq("exam_id", exam_id)
-        .in_("reviewer_status", statuses)
-    )
-    out["by_bank_source_type"] = _count_by(bank_rows, "source_type")
-    out["by_bank_source_kind"] = _count_by(bank_rows, "source_kind")
-
-    question_ids = [r["id"] for r in bank_rows if r.get("id")]
+    question_ids = [r["id"] for r in rows if r.get("id")]
     source_counts: Counter = Counter()
     for chunk in _chunked(question_ids):
         source_rows = _fetch_all(
@@ -410,20 +424,86 @@ def source_distribution(sb, exam_id: str, selectable_statuses) -> dict:
             .in_("question_id", c)
         )
         source_counts.update(_count_by(source_rows, "source_kind"))
-    out["by_sources_table_source_kind"] = dict(source_counts)
+    seg["by_sources_table_source_kind"] = dict(source_counts)
+    return seg
+
+
+def source_distribution(
+    sb, exam_id: str, selectable_statuses, *, now: datetime | None = None
+) -> dict:
+    """Provenance-signal counts over the SAME eligible pool as
+    ``selectable_mcq_depth``, segmented into base and current.
+
+    The eligible-pool filter is identical to ``selectable_mcq_depth``:
+    reviewer_status IN ``selectable_statuses`` (passed in, never hardcoded),
+    answerable question_type, and not expired (valid_until NULL or future).
+    Current-affairs items (is_current OR is_current_based) are reported in
+    ``current_source_distribution`` and kept OUT of
+    ``base_source_distribution``.
+
+    Each segment reports all THREE signals independently (they may disagree;
+    authority is the caller's call):
+      - mock_question_bank.source_type
+      - mock_question_bank.source_kind  (in-row, added migration 161)
+      - mock_question_sources.source_kind (join table, migration 136)
+    """
+    statuses = list(selectable_statuses or [])
+    empty = {
+        "by_bank_source_type": {},
+        "by_bank_source_kind": {},
+        "by_sources_table_source_kind": {},
+    }
+    out = {
+        "exam_id": exam_id,
+        "selectable_statuses": statuses,
+        "base_source_distribution": dict(empty),
+        "current_source_distribution": dict(empty),
+    }
+    if not statuses:
+        return out
+
+    now_iso = (now or datetime.now(timezone.utc)).isoformat()
+    rows = _fetch_all(
+        lambda: sb.table("mock_question_bank")
+        .select(
+            "id, source_type, source_kind, question_type, "
+            "is_current, is_current_based, valid_until"
+        )
+        .eq("exam_id", exam_id)
+        .in_("reviewer_status", statuses)
+        .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
+    )
+
+    base_rows: list[dict] = []
+    current_rows: list[dict] = []
+    for r in rows:
+        if not _not_expired(r.get("valid_until"), now_iso):
+            continue
+        if bool(r.get("is_current")) or bool(r.get("is_current_based")):
+            current_rows.append(r)
+        else:
+            base_rows.append(r)
+
+    out["base_source_distribution"] = _segment_source_distribution(sb, base_rows)
+    out["current_source_distribution"] = _segment_source_distribution(sb, current_rows)
     return out
 
 
-def verified_pyq_tag_depth(sb, exam_id: str, verified_status: str) -> dict:
-    """Verified pyq topic-tag depth for one exam, grouped by topic + tag role.
+def verified_pyq_tag_depth(
+    sb, exam_id: str, verified_status: str, *, exam_phase_id: str | None = None
+) -> dict:
+    """Verified pyq topic-tag depth, grouped by topic + tag role.
 
     All three lifecycle gates (pyq_papers.trust_status,
     pyq_questions.reviewer_status, pyq_question_topic_tags.reviewer_status) are
     filtered to ``verified_status`` — the verified-equivalent value surfaced by
-    ``status_value_census``, PASSED IN, never hardcoded.
+    ``status_value_census``, PASSED IN, never hardcoded. When ``exam_phase_id``
+    is supplied, papers are scoped via pyq_papers.exam_phase_id (pyq is
+    phase-level).
     """
     out = {
         "exam_id": exam_id,
+        "exam_phase_id": exam_phase_id,
         "verified_status": verified_status,
         "depth": [],
         "total": 0,
@@ -431,12 +511,18 @@ def verified_pyq_tag_depth(sb, exam_id: str, verified_status: str) -> dict:
     if not verified_status:
         return out
 
-    papers = _fetch_all(
-        lambda: sb.table("pyq_papers")
-        .select("id, exam_id, trust_status")
-        .eq("exam_id", exam_id)
-        .eq("trust_status", verified_status)
-    )
+    def _papers_query():
+        q = (
+            sb.table("pyq_papers")
+            .select("id, exam_id, exam_phase_id, trust_status")
+            .eq("exam_id", exam_id)
+            .eq("trust_status", verified_status)
+        )
+        if exam_phase_id:
+            q = q.eq("exam_phase_id", exam_phase_id)
+        return q
+
+    papers = _fetch_all(_papers_query)
     paper_ids = [p["id"] for p in papers]
     if not paper_ids:
         return out
@@ -474,19 +560,28 @@ def verified_pyq_tag_depth(sb, exam_id: str, verified_status: str) -> dict:
     return out
 
 
-def locked_coverage_count(sb, exam_id: str) -> dict:
-    """exam_topic_coverage counts for one exam, by status and per section.
+def locked_coverage_count(
+    sb, exam_id: str, *, exam_phase_id: str | None = None
+) -> dict:
+    """exam_topic_coverage counts, by status and per section.
 
     Reports the raw breakdown (locked vs reviewed vs pending vs …) so the
     caller decides what "locked enough" means. ``by_section`` is a nested
     {section_id → {status → count}} map so ``readiness_verdict`` can resolve
-    locked depth per section.
+    locked depth per section. When ``exam_phase_id`` is supplied, coverage is
+    scoped via exam_topic_coverage.exam_phase_id (coverage is phase-level).
     """
-    rows = _fetch_all(
-        lambda: sb.table("exam_topic_coverage")
-        .select("id, exam_id, section_id, reviewer_status")
-        .eq("exam_id", exam_id)
-    )
+    def _coverage_query():
+        q = (
+            sb.table("exam_topic_coverage")
+            .select("id, exam_id, exam_phase_id, section_id, reviewer_status")
+            .eq("exam_id", exam_id)
+        )
+        if exam_phase_id:
+            q = q.eq("exam_phase_id", exam_phase_id)
+        return q
+
+    rows = _fetch_all(_coverage_query)
     by_status = _count_by(rows, "reviewer_status")
     by_section: dict = defaultdict(lambda: defaultdict(int))
     for r in rows:
@@ -496,6 +591,7 @@ def locked_coverage_count(sb, exam_id: str) -> dict:
         by_section[skey]["<null>" if status is None else status] += 1
     return {
         "exam_id": exam_id,
+        "exam_phase_id": exam_phase_id,
         "by_status": by_status,
         "by_section": {sid: dict(counts) for sid, counts in by_section.items()},
         "total": len(rows),
@@ -520,14 +616,19 @@ def readiness_verdict(
 
     Pool depth is attributed to a section by its subject_id (the only link
     between exam_phase_sections and mock_question_bank), using the BASE pool —
-    current-affairs items are excluded from the durable readiness check.
+    current-affairs items are excluded from the durable readiness check. The
+    emitted ``pool_scope: "subject"`` records that the base pool is subject-
+    level, NOT section-selector level (the bank has no phase/section column).
     """
     exam_id = structure.get("exam_id")
+    exam_phase_id = structure.get("exam_phase_id")
     sections = structure.get("sections") or []
 
     if not sections:
         return {
             "exam_id": exam_id,
+            "exam_phase_id": exam_phase_id,
+            "pool_scope": "subject",
             "thresholds": {
                 "min_per_section": min_per_section,
                 "min_locked_coverage": min_locked_coverage,
@@ -594,6 +695,8 @@ def readiness_verdict(
 
     return {
         "exam_id": exam_id,
+        "exam_phase_id": exam_phase_id,
+        "pool_scope": "subject",
         "thresholds": {
             "min_per_section": min_per_section,
             "min_locked_coverage": min_locked_coverage,
@@ -607,61 +710,92 @@ def assemble_mock_readiness_report(
     sb,
     *,
     exam_id: str,
+    exam_phase_id: str | None = None,
     selectable_statuses=None,
     verified_status: str | None = None,
     min_per_section: int | None = None,
     min_locked_coverage: int | None = None,
 ) -> dict:
-    """Assemble the full content-readiness report for one exam.
+    """Assemble the content-readiness report, GROUPED BY PHASE.
 
-    Census is always run (it needs no assumptions). Status-dependent depth and
-    the verdict are only computed when the caller supplies the discovered
-    vocabulary / thresholds — otherwise those blocks are reported as skipped so
-    nothing is silently assumed.
+    Mocks are phase-level, so structure / coverage / verified-pyq depth / the
+    verdict are computed PER phase and never merged across phases. When
+    ``exam_phase_id`` is given only that phase is reported; otherwise every
+    phase of the exam gets its own block.
+
+    Census and the bank-level views (selectable_mcq_depth, source_distribution)
+    are EXAM-level — the bank has no phase column — and live at the top level;
+    per-phase verdicts attribute that depth to sections by subject_id.
+
+    Status-dependent blocks are only computed when the caller supplies the
+    discovered vocabulary / thresholds; otherwise they are reported as skipped
+    so nothing is silently assumed.
     """
     report: dict = {
         "exam_id": exam_id,
+        "exam_phase_id": exam_phase_id,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status_value_census": status_value_census(sb),
-        "section_structure": section_structure_completeness(sb, exam_id),
-        "locked_coverage": locked_coverage_count(sb, exam_id),
+        "phases": [],
         "skipped": [],
     }
 
+    mcq_depth = None
     if selectable_statuses:
-        report["selectable_mcq_depth"] = selectable_mcq_depth(
-            sb, exam_id, selectable_statuses
-        )
+        mcq_depth = selectable_mcq_depth(sb, exam_id, selectable_statuses)
+        report["selectable_mcq_depth"] = mcq_depth
         report["source_distribution"] = source_distribution(
             sb, exam_id, selectable_statuses
         )
     else:
-        report["skipped"].append("selectable_mcq_depth/source_distribution: "
-                                 "pass --selectable-status after reading census")
-
-    if verified_status:
-        report["verified_pyq_tag_depth"] = verified_pyq_tag_depth(
-            sb, exam_id, verified_status
+        report["skipped"].append(
+            "selectable_mcq_depth/source_distribution: pass --selectable-status "
+            "after reading census"
         )
-    else:
-        report["skipped"].append("verified_pyq_tag_depth: "
-                                 "pass --verified-status after reading census")
-
-    if (
-        selectable_statuses
+    if not verified_status:
+        report["skipped"].append(
+            "verified_pyq_tag_depth: pass --verified-status after reading census"
+        )
+    can_verdict = (
+        mcq_depth is not None
         and min_per_section is not None
         and min_locked_coverage is not None
-    ):
-        report["readiness_verdict"] = readiness_verdict(
-            report["section_structure"],
-            report["selectable_mcq_depth"],
-            report["locked_coverage"],
-            min_per_section=min_per_section,
-            min_locked_coverage=min_locked_coverage,
+    )
+    if not can_verdict:
+        report["skipped"].append(
+            "readiness_verdict: pass --selectable-status, --min-per-section, "
+            "--min-locked-coverage"
         )
-    else:
-        report["skipped"].append("readiness_verdict: "
-                                 "pass --selectable-status, --min-per-section, "
-                                 "--min-locked-coverage")
+
+    phases = list_exam_phases(sb, exam_id, exam_phase_id=exam_phase_id)
+    if not phases:
+        report["skipped"].append(
+            "phases: exam has no exam_phases rows (nothing to scope per phase)"
+        )
+
+    for ph in phases:
+        pid = ph["id"]
+        block: dict = {
+            "exam_phase_id": pid,
+            "phase_slug": ph.get("phase_slug"),
+            "phase_name": ph.get("phase_name"),
+            "section_structure": section_structure_completeness(
+                sb, exam_id, exam_phase_id=pid
+            ),
+            "locked_coverage": locked_coverage_count(sb, exam_id, exam_phase_id=pid),
+        }
+        if verified_status:
+            block["verified_pyq_tag_depth"] = verified_pyq_tag_depth(
+                sb, exam_id, verified_status, exam_phase_id=pid
+            )
+        if can_verdict:
+            block["readiness_verdict"] = readiness_verdict(
+                block["section_structure"],
+                mcq_depth,
+                block["locked_coverage"],
+                min_per_section=min_per_section,
+                min_locked_coverage=min_locked_coverage,
+            )
+        report["phases"].append(block)
 
     return report

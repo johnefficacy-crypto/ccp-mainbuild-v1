@@ -81,7 +81,8 @@ def _stocked_sb(*, n_questions: int, coverage_status: str = "locked") -> SBStub:
         ],
         mock_question_bank=[_mcq(i) for i in range(n_questions)],
         exam_topic_coverage=[
-            {"id": "cov-1", "exam_id": EXAM, "section_id": SEC, "reviewer_status": coverage_status}
+            {"id": "cov-1", "exam_id": EXAM, "exam_phase_id": PHASE,
+             "section_id": SEC, "reviewer_status": coverage_status}
         ],
     )
 
@@ -245,21 +246,33 @@ def test_selectable_depth_empty_when_no_statuses_passed():
 
 # ── D. source_distribution ────────────────────────────────────────────────────
 
-def test_source_distribution_reports_all_three_signals():
+def test_source_distribution_segments_base_and_current_over_eligible_pool():
     sb = _sb(
         mock_question_bank=[
             _mcq(1, source_type="pyq", source_kind="pyq"),
             _mcq(2, source_type="authored", source_kind="authored"),
+            _mcq(3, source_type="current_event", source_kind="current_event",
+                 is_current=True),                       # current segment
+            _mcq(4, source_type="pyq", reviewer_status="draft"),   # not selectable
+            _mcq(5, source_type="pyq", question_type="comprehension"),  # not answerable
+            _mcq(6, source_type="pyq", valid_until=_iso_past()),   # expired
         ],
         mock_question_sources=[
             {"question_id": "q-1", "source_kind": "pyq"},
             {"question_id": "q-2", "source_kind": "standard_source"},  # disagrees w/ bank
+            {"question_id": "q-3", "source_kind": "current_event"},
         ],
     )
     out = source_distribution(sb, EXAM, ["verified", "published"])
-    assert out["by_bank_source_type"] == {"pyq": 1, "authored": 1}
-    assert out["by_bank_source_kind"] == {"pyq": 1, "authored": 1}
-    assert out["by_sources_table_source_kind"] == {"pyq": 1, "standard_source": 1}
+    base = out["base_source_distribution"]
+    current = out["current_source_distribution"]
+    # Base pool = q-1, q-2 only (q-4/5/6 excluded by the eligible-pool filter).
+    assert base["by_bank_source_type"] == {"pyq": 1, "authored": 1}
+    assert base["by_bank_source_kind"] == {"pyq": 1, "authored": 1}
+    assert base["by_sources_table_source_kind"] == {"pyq": 1, "standard_source": 1}
+    # Current pool = q-3 only, segmented OUT of base.
+    assert current["by_bank_source_type"] == {"current_event": 1}
+    assert current["by_sources_table_source_kind"] == {"current_event": 1}
 
 
 # ── E. verified_pyq_tag_depth ─────────────────────────────────────────────────
@@ -362,6 +375,87 @@ def test_verdict_thresholds_are_honoured_as_passed():
     assert strict["sections"][0]["verdict"] == "thin_bank"
 
 
+def test_verdict_emits_pool_scope_subject():
+    # Fix 4: consumers must know the base pool is subject-level, not selector.
+    structure, depth, coverage = _chain(_stocked_sb(n_questions=40))
+    verdict = readiness_verdict(
+        structure, depth, coverage, min_per_section=30, min_locked_coverage=1
+    )
+    assert verdict["pool_scope"] == "subject"
+    assert depth["pool_scope"] == "subject"
+
+
+# ── Phase scoping (Fix 2) ─────────────────────────────────────────────────────
+
+def _two_phase_sb() -> SBStub:
+    """Two phases, each with its own subject/section/coverage.
+
+    Phase 1 is fully stocked (ready); phase 2's subject has a thin bank
+    (thin_bank). Proves verdicts are grouped per phase and not cross-polluted.
+    """
+    P1, P2 = "phase-1", "phase-2"
+    SEC1, SEC2 = "sec-1", "sec-2"
+    SUBJ1, SUBJ2 = "subj-1", "subj-2"
+    bank = (
+        [_mcq(i, subject_id=SUBJ1) for i in range(40)]
+        + [_mcq(100 + i, subject_id=SUBJ2) for i in range(3)]  # thin
+    )
+    return _sb(
+        exam_phases=[
+            {"id": P1, "exam_id": EXAM, "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1},
+            {"id": P2, "exam_id": EXAM, "phase_name": "Mains", "phase_slug": "mains", "phase_order": 2},
+        ],
+        exam_phase_sections=[
+            {"id": SEC1, "exam_phase_id": P1, "subject_id": SUBJ1, "section_label": "A",
+             "question_count": 100, "marks": 200, "duration_mins": 120, "sort_order": 0},
+            {"id": SEC2, "exam_phase_id": P2, "subject_id": SUBJ2, "section_label": "B",
+             "question_count": 100, "marks": 200, "duration_mins": 120, "sort_order": 0},
+        ],
+        mock_question_bank=bank,
+        exam_topic_coverage=[
+            {"id": "cov-1", "exam_id": EXAM, "exam_phase_id": P1, "section_id": SEC1, "reviewer_status": "locked"},
+            {"id": "cov-2", "exam_id": EXAM, "exam_phase_id": P2, "section_id": SEC2, "reviewer_status": "locked"},
+        ],
+    )
+
+
+def test_assembler_groups_verdicts_per_phase_without_cross_pollution():
+    report = assemble_mock_readiness_report(
+        _two_phase_sb(),
+        exam_id=EXAM,
+        selectable_statuses=["verified", "published"],
+        min_per_section=30,
+        min_locked_coverage=1,
+    )
+    phases = {p["phase_slug"]: p for p in report["phases"]}
+    assert set(phases) == {"prelims", "mains"}
+    # Each phase verdict is scoped to its own section/subject, not merged.
+    prelims_sec = phases["prelims"]["readiness_verdict"]["sections"][0]
+    mains_sec = phases["mains"]["readiness_verdict"]["sections"][0]
+    assert prelims_sec["section_label"] == "A"
+    assert prelims_sec["verdict"] == "ready"
+    assert prelims_sec["base_pool"] == 40
+    assert mains_sec["section_label"] == "B"
+    assert mains_sec["verdict"] == "thin_bank"        # thin subject does not
+    assert mains_sec["base_pool"] == 3                # borrow phase-1's depth
+    # Each phase verdict carries its own exam_phase_id.
+    assert phases["prelims"]["readiness_verdict"]["exam_phase_id"] == "phase-1"
+    assert phases["mains"]["readiness_verdict"]["exam_phase_id"] == "phase-2"
+
+
+def test_assembler_scopes_to_single_phase_when_phase_id_given():
+    report = assemble_mock_readiness_report(
+        _two_phase_sb(),
+        exam_id=EXAM,
+        exam_phase_id="phase-2",
+        selectable_statuses=["verified", "published"],
+        min_per_section=30,
+        min_locked_coverage=1,
+    )
+    assert [p["phase_slug"] for p in report["phases"]] == ["mains"]
+    assert report["phases"][0]["readiness_verdict"]["sections"][0]["verdict"] == "thin_bank"
+
+
 # ── Assembler ─────────────────────────────────────────────────────────────────
 
 def test_assembler_runs_census_and_marks_skipped_blocks():
@@ -369,10 +463,12 @@ def test_assembler_runs_census_and_marks_skipped_blocks():
     # No selectable statuses / thresholds → status-dependent blocks are skipped.
     report = assemble_mock_readiness_report(sb, exam_id=EXAM)
     assert "status_value_census" in report
-    assert "section_structure" in report
-    assert "locked_coverage" in report
-    assert "selectable_mcq_depth" not in report
-    assert "readiness_verdict" not in report
+    assert "selectable_mcq_depth" not in report     # exam-level, needs statuses
+    # Per-phase structure / coverage are always computed.
+    phase = report["phases"][0]
+    assert "section_structure" in phase
+    assert "locked_coverage" in phase
+    assert "readiness_verdict" not in phase
     assert any("selectable_mcq_depth" in s for s in report["skipped"])
 
 
@@ -386,6 +482,9 @@ def test_assembler_full_report_when_inputs_supplied():
         min_per_section=30,
         min_locked_coverage=1,
     )
-    assert report["readiness_verdict"]["sections"][0]["verdict"] == "ready"
-    assert "verified_pyq_tag_depth" in report
+    assert "selectable_mcq_depth" in report          # exam-level, top of report
+    assert "source_distribution" in report
+    phase = report["phases"][0]
+    assert phase["readiness_verdict"]["sections"][0]["verdict"] == "ready"
+    assert "verified_pyq_tag_depth" in phase
     assert report["skipped"] == []
