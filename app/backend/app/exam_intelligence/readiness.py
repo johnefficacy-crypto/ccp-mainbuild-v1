@@ -193,7 +193,7 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
             "weight": 3,
             "blockers": ["no PYQ papers uploaded"],
             "counts": {"present": 0, "required": 1},
-            "metrics": {"papers": 0, "questions_total": 0, "questions_verified": 0, "questions_locked": 0},
+            "metrics": {"papers": 0, "questions_total": 0, "questions_verified": 0, "questions_locked": 0, "options_total": 0, "topic_tags_total": 0},
         }
 
     paper_ids = [p["id"] for p in papers]
@@ -342,14 +342,17 @@ def _competition(sb, exam_id: str, cycle_id: str | None) -> dict:
         status = "empty"
         reviewer_status_val = None
     else:
-        rs = rows[0].get("reviewer_status") or "pending"
-        reviewer_status_val = rs
-        if rs == "locked":
+        statuses = [r.get("reviewer_status") for r in rows]
+        active = [s for s in statuses if s != "rejected"]
+        if "locked" in active:
             status = "locked"
-        elif rs == "verified":
+        elif "reviewed" in active:
             status = "ready"
+        elif active:
+            status = "partial"
         else:
             status = "partial"
+        reviewer_status_val = rows[0].get("reviewer_status")
 
     blockers = []
     if not rows:
@@ -357,7 +360,7 @@ def _competition(sb, exam_id: str, cycle_id: str | None) -> dict:
 
     breakdown = {
         "draft": sum(1 for r in rows if r.get("reviewer_status") == "draft"),
-        "reviewed": sum(1 for r in rows if r.get("reviewer_status") in {"reviewed", "verified"}),
+        "reviewed": sum(1 for r in rows if r.get("reviewer_status") == "reviewed"),
         "locked": sum(1 for r in rows if r.get("reviewer_status") == "locked"),
     }
 

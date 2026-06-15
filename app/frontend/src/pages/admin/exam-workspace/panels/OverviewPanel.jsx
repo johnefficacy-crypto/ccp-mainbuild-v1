@@ -132,7 +132,7 @@ export default function OverviewPanel() {
         <div className="ctx-chip" style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
           <span className="lbl" style={{ minWidth: 130, flexShrink: 0 }}>Organisation</span>
           <span data-testid="overview-org" style={{ fontSize: 12.5, color: "var(--ink)" }}>
-            {organization?.name ?? "—"}
+            {organization?.name ?? exam?.organization_name ?? exam?.organization ?? exam?.org_name ?? "—"}
           </span>
         </div>
         {organization?.type && <Row label="Org type" value={organization.type} />}
@@ -140,7 +140,7 @@ export default function OverviewPanel() {
         <div className="ctx-chip" style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
           <span className="lbl" style={{ minWidth: 130, flexShrink: 0 }}>Family</span>
           <span data-testid="overview-family" style={{ fontSize: 12.5, color: "var(--ink)" }}>
-            {family?.name ?? "—"}
+            {family?.name ?? exam?.family_name ?? exam?.family ?? "—"}
           </span>
         </div>
       </Section>

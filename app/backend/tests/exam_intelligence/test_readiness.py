@@ -282,7 +282,7 @@ class TestReadyToActivate:
         questions = [
             {"id": f"q{i}", "pyq_paper_id": "p1", "reviewer_status": "verified"} for i in range(5)
         ]
-        comp = [{"id": "c1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "verified"}]
+        comp = [{"id": "c1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "reviewed"}]
         docs = [{"id": "d1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "extraction_status": "succeeded"}]
         updates = [{"id": "u1", "exam_id": "exam-1", "reviewer_status": "verified", "created_at": "2099-01-01"}]
 
@@ -318,7 +318,7 @@ class TestCycleIdScoping:
             {"id": "q2", "pyq_paper_id": "p2", "reviewer_status": "pending"},
         ]
         comp = [
-            {"id": "cm1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "verified"},
+            {"id": "cm1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "reviewed"},
         ]
         cycles = [CYCLE_A]
         return _make_sb(
@@ -491,6 +491,64 @@ class TestRegressionGuard:
     def test_section_count_still_seven(self):
         result = compute_exam_workspace_readiness(self._enriched_sb(), "exam-1")
         assert len(result["sections"]) == 7
+
+
+class TestPYQEmptyMetricsKeys:
+    def test_empty_papers_metrics_includes_options_and_tags(self):
+        sb = _make_sb(exam=EXAM)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["status"] == "empty"
+        assert "options_total" in pyq["metrics"]
+        assert pyq["metrics"]["options_total"] == 0
+        assert "topic_tags_total" in pyq["metrics"]
+        assert pyq["metrics"]["topic_tags_total"] == 0
+
+
+class TestCompetitionStatusSemantics:
+    def test_reviewed_row_gives_ready(self):
+        comp = [{"id": "c1", "exam_id": "exam-1", "reviewer_status": "reviewed"}]
+        sb = _make_sb(exam=EXAM, competition=comp)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "competition")
+        assert sec["status"] == "ready"
+
+    def test_locked_beats_reviewed(self):
+        comp = [
+            {"id": "c1", "exam_id": "exam-1", "reviewer_status": "reviewed"},
+            {"id": "c2", "exam_id": "exam-1", "reviewer_status": "locked"},
+        ]
+        sb = _make_sb(exam=EXAM, competition=comp)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "competition")
+        assert sec["status"] == "locked"
+
+    def test_draft_only_gives_partial(self):
+        comp = [{"id": "c1", "exam_id": "exam-1", "reviewer_status": "draft"}]
+        sb = _make_sb(exam=EXAM, competition=comp)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "competition")
+        assert sec["status"] == "partial"
+
+    def test_rejected_only_does_not_promote_to_ready(self):
+        comp = [{"id": "c1", "exam_id": "exam-1", "reviewer_status": "rejected"}]
+        sb = _make_sb(exam=EXAM, competition=comp)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "competition")
+        assert sec["status"] == "partial"
+
+
+class TestUpdatesRejectedCount:
+    def test_rejected_count_in_metrics(self):
+        updates = [
+            {"id": "u1", "exam_id": "exam-1", "reviewer_status": "verified", "created_at": "2099-01-01"},
+            {"id": "u2", "exam_id": "exam-1", "reviewer_status": "rejected", "created_at": "2099-01-01"},
+            {"id": "u3", "exam_id": "exam-1", "reviewer_status": "rejected", "created_at": "2099-01-01"},
+        ]
+        sb = _make_sb(exam=EXAM, updates=updates)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "updates")
+        assert sec["metrics"]["rejected"] == 2
 
 
 # ── Tests: HTTP endpoint ──────────────────────────────────────────────────────
