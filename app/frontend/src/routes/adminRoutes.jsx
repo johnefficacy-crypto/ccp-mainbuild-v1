@@ -35,6 +35,7 @@ const AdminStudyOsReports = lazy(() => import("../pages/admin/studyos/Reports"))
 const AdminStudyOsSocial = lazy(() => import("../pages/admin/studyos/Social"));
 const AdminPyqPaperWorkspace = lazy(() => import("../pages/admin/studyos/PyqPaperWorkspace"));
 const AdminExamWorkspace = lazy(() => import("../pages/admin/exam-workspace/ExamWorkspace"));
+const AdminExamGovernanceConsole = lazy(() => import("../pages/admin/ExamGovernanceConsole"));
 const AdminExamIntelCms = lazy(() => import("../pages/admin/studyos/ExamIntelCms"));
 const AdminGuidedExamWizard = lazy(() => import("../pages/admin/studyos/GuidedExamWizard"));
 const AdminContentAccessRequests = lazy(() => import("../pages/admin/studyos/ContentAccessRequests"));
@@ -91,6 +92,8 @@ export const adminRouteElements = (
       <Route path="/admin/ai-policy" element={<AdminAIPolicy />} />
       <Route path="/admin/persona" element={<AdminPersona />} />
       <Route path="/admin/exam-intelligence" element={<AdminExamIntelligence />} />
+      <Route path="/admin/exam-intelligence/console" element={<AdminExamGovernanceConsole />} />
+      <Route path="/admin/exam-intelligence/console/:exam_id" element={<AdminExamGovernanceConsole />} />
       <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
       <Route path="/admin/exam-intelligence/new" element={<AdminGuidedExamWizard />} />
       <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AddCycleRedirect />} />
