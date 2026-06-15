@@ -19,7 +19,11 @@ from fastapi.testclient import TestClient
 from app.api import mock_engine as mock_engine_api
 from app.core.auth import get_current_user
 from app.study_os import mock_engine as svc
-from app.study_os.mock_engine import ConflictError
+from app.study_os.mock_engine import (
+    AttemptFinalizationError,
+    ConflictError,
+    SubmissionPersistenceError,
+)
 from tests.persona_questions._stub import SBStub
 
 
@@ -411,6 +415,27 @@ def test_submit_derivation_failure_does_not_block(monkeypatch):
     monkeypatch.setattr(svc.attempt_analytics, "compute_and_persist", lambda *_: (_ for _ in ()).throw(RuntimeError("boom")))
     out = svc.submit_attempt(sb, "user-1", attempt_id)
     assert out["status"] == "submitted"
+
+
+@pytest.mark.parametrize(
+    "exc_cls", [SubmissionPersistenceError, AttemptFinalizationError]
+)
+def test_submit_persistence_failure_returns_503_retry_after(monkeypatch, exc_cls):
+    """API: a finalization-persistence failure surfaces as a retryable 503 with
+    the documented contract. Both exceptions map to the same response, so each
+    path is pinned via parametrization."""
+    sb, _, _ = _seeded_db()
+    client = _client(sb)
+
+    def _raise(*_a, **_k):
+        raise exc_cls("simulated persistence failure")
+
+    monkeypatch.setattr(mock_engine_api, "submit_attempt", _raise)
+
+    r = client.post("/api/study/mocks/attempts/some-attempt/submit")
+    assert r.status_code == 503
+    assert r.json()["detail"]["error"] == "submit_persist_failed"
+    assert r.headers["Retry-After"] == "1"
 
 
 def test_get_review_endpoint_shape():

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.api import canonical as canonical_api
 from app.core.auth import get_current_user
-from tests.persona_questions._stub import SBStub
+from tests.persona_questions._stub import SBStub, _Exec
 
 
 def _seed() -> dict:
@@ -59,6 +59,57 @@ def test_review_404_for_another_users_mock():
         json={"review_status": "reviewed"},
     )
     assert r.status_code == 404
+
+
+def test_review_5xx_when_mock_tests_update_fails_and_does_not_continue():
+    """X-PR0: a silent mock_tests update failure must 5xx, not 200, and must NOT
+    fall through into the breakdown / mastery / regeneration writes."""
+    sb = SBStub(_seed())
+
+    # Force only the mock_tests UPDATE to report an empty write (the ownership
+    # SELECT must still succeed so we reach the hardened update).
+    class _FailUpdateQuery:
+        def __init__(self, inner):
+            self._inner = inner
+
+        def __getattr__(self, name):
+            attr = getattr(self._inner, name)
+            if callable(attr):
+                def wrapper(*a, **k):
+                    res = attr(*a, **k)
+                    return self if res is self._inner else res
+                return wrapper
+            return attr
+
+        def execute(self):
+            i = self._inner
+            if i._pending_update not in (None, "__delete__"):
+                return _Exec([])
+            return i.execute()
+
+    class _FailSB:
+        def __init__(self, inner):
+            self.db = inner.db
+            self._inner = inner
+
+        def table(self, name):
+            q = self._inner.table(name)
+            return _FailUpdateQuery(q) if name == "mock_tests" else q
+
+        def rpc(self, *a, **k):
+            return self._inner.rpc(*a, **k)
+
+    _, client = _client(_FailSB(sb))
+    r = client.post(
+        "/api/study/mocks/m1/review",
+        json={
+            "review_status": "reviewed",
+            "topic_breakdowns": [{"topic_id": "t1", "wrong_answers": 2}],
+        },
+    )
+    assert r.status_code == 500
+    # No continuation: breakdown rows must not have been written.
+    assert sb.db.get("mock_topic_breakdowns", []) == []
 
 
 def test_review_with_topic_breakdowns_aggregates_errors():

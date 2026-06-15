@@ -22,6 +22,7 @@ from app.study_os.attempt_event_types import (
     ATTEMPT_SUBMITTED,
     QUESTION_ANSWERED,
 )
+from app.utils.safe import safe_required
 
 logger = logging.getLogger("career_copilot.study_os.mock_engine")
 
@@ -591,14 +592,25 @@ def _finalize_submission(
             "marks_awarded": awarded,
         })
 
+    # Per-response score writes are correctness-critical: a silent failure here
+    # would flip the attempt to ``submitted`` (below) while individual responses
+    # keep null/stale marks. Use safe_required and raise on failure so the
+    # attempt is left ``in_progress`` (the safe state) and the caller can retry —
+    # re-scoring is idempotent because marks come from the frozen snapshot and
+    # these are overwrites, not increments.
     for upd in updates:
-        _safe(
+        written = safe_required(
             lambda u=upd: supabase.table("mock_attempt_responses")
             .update({"is_correct": u["is_correct"], "marks_awarded": u["marks_awarded"]})
             .eq("id", u["id"])
             .execute(),
-            default=None,
+            op="mock_engine.finalize_response_score",
+            log=logger,
         )
+        if written is None:
+            raise SubmissionPersistenceError(
+                f"response score write failed: attempt={attempt_id} response={upd['id']}"
+            )
 
     total_q = len(responses)
     max_score = sum(
@@ -607,7 +619,12 @@ def _finalize_submission(
     )
     pct = round(score_raw / max_score * 100, 2) if max_score > 0 else 0.0
 
-    _safe(
+    # Attempt finalization is correctness-critical: this flip + aggregate scores
+    # is the headline result the client reads back. A silent failure must not be
+    # reported as a successful submission. Raising here (before the submitted
+    # event and the mock_tests compat row below) leaves the attempt
+    # ``in_progress`` so a retry re-runs cleanly.
+    finalized = safe_required(
         lambda: supabase.table("mock_attempts")
         .update({
             "status": "submitted",
@@ -620,8 +637,13 @@ def _finalize_submission(
         })
         .eq("id", attempt_id)
         .execute(),
-        default=None,
+        op="mock_engine.finalize_attempt",
+        log=logger,
     )
+    if finalized is None:
+        raise AttemptFinalizationError(
+            f"attempt finalization write failed: attempt={attempt_id}"
+        )
 
     # Server-authoritative event — written immediately after the status flip.
     record_server_event(
@@ -653,6 +675,42 @@ def _finalize_submission(
     return updated_attempt, responses, updates
 
 
+def _repair_submitted_side_effects(supabase: Any, attempt_id: str) -> None:
+    """Idempotently reconcile post-finalize side effects for a submitted attempt.
+
+    Covers the ambiguous case where the ``mock_attempts`` finalization UPDATE
+    committed on the server but the client call raised before the submitted
+    event, the ``mock_tests`` compat row, or analytics derivation ran — so the
+    resubmit fast path would otherwise skip them forever. Self-healing and
+    best-effort: when a side effect is missing it schedules the existing retry
+    job (the sweeper drains it and both jobs are idempotent). Never raises — a
+    repair failure must not break an otherwise-successful resubmit. The
+    ATTEMPT_SUBMITTED event is telemetry only (not source of truth) and is
+    intentionally not re-emitted here to avoid duplicate events.
+    """
+    compat = _safe(
+        lambda: supabase.table("mock_tests")
+        .select("id")
+        .eq("mock_attempt_id", attempt_id)
+        .limit(1)
+        .execute(),
+        default=None,
+    )
+    if not getattr(compat, "data", None):
+        schedule_job(supabase, JOB_MOCK_TESTS_RETRY, attempt_id)
+
+    summary = _safe(
+        lambda: supabase.table("mock_attempt_summary")
+        .select("attempt_id")
+        .eq("attempt_id", attempt_id)
+        .limit(1)
+        .execute(),
+        default=None,
+    )
+    if not getattr(summary, "data", None):
+        schedule_job(supabase, JOB_ANALYTICS_RETRY, attempt_id)
+
+
 def submit_attempt(
     supabase: Any,
     user_id: str,
@@ -663,6 +721,11 @@ def submit_attempt(
     attempt = _fetch_attempt(supabase, user_id, attempt_id)
 
     if attempt["status"] == "submitted":
+        # Reconcile the ambiguous "finalization UPDATE committed but the client
+        # raised before the side effects ran" case: a retry would otherwise take
+        # this fast path and never (re)create the mock_tests compat row or
+        # analytics, leaving a submitted attempt missing from history/analytics.
+        _repair_submitted_side_effects(supabase, attempt_id)
         return _build_result(supabase, attempt)
 
     if attempt["status"] != "in_progress":
@@ -1008,6 +1071,22 @@ class ConflictError(Exception):
 
 class AnswerPersistenceError(RuntimeError):
     pass
+
+
+class SubmissionPersistenceError(RuntimeError):
+    """A per-response score write failed during finalization.
+
+    Raised before the attempt is flipped to ``submitted``, so the attempt is
+    left ``in_progress`` and the submission is safely re-runnable.
+    """
+
+
+class AttemptFinalizationError(RuntimeError):
+    """The attempt status/score finalization write failed.
+
+    Raised before the submitted event and mock_tests compat row are emitted, so
+    the attempt is left ``in_progress`` and the submission is safely re-runnable.
+    """
 
 
 class SubmitConsistencyError(RuntimeError):

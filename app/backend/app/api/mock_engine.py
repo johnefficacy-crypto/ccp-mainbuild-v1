@@ -20,7 +20,9 @@ from app.db.supabase_client import get_supabase_admin
 from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
 from app.study_os.mock_engine import (
     AnswerPersistenceError,
+    AttemptFinalizationError,
     ConflictError,
+    SubmissionPersistenceError,
     SubmitConsistencyError,
     get_attempt,
     get_result,
@@ -160,6 +162,16 @@ async def submit(
     except SubmitConsistencyError as exc:
         logger.warning("submit consistency mismatch attempt=%s: %s", attempt_id, exc)
         raise HTTPException(status_code=409, detail={"error": "client_server_mismatch", "detail": str(exc)})
+    except (SubmissionPersistenceError, AttemptFinalizationError) as exc:
+        # A correctness-critical write failed mid-finalization. The attempt is
+        # left in_progress (no silent 200), so signal a retryable 503 rather
+        # than a generic 500 — submit is idempotent and safe to re-run.
+        logger.error("submit persistence failed attempt=%s user=%s", attempt_id, user_id, exc_info=exc)
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "submit_persist_failed", "detail": str(exc)},
+            headers={"Retry-After": "1"},
+        )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:

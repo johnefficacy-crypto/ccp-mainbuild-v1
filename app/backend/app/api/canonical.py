@@ -34,7 +34,7 @@ from app.api.community_seed import (
 )
 from app.core.auth import get_current_user, get_optional_user
 from app.db.supabase_client import get_supabase_admin
-from app.utils.safe import SchemaDriftError, detect_schema_drift
+from app.utils.safe import SchemaDriftError, detect_schema_drift, safe_required
 from app.eligibility.recompute_queue import enqueue_eligibility_recompute
 from app.profile.eligibility_mapper import build_user_eligibility_profile
 
@@ -2177,7 +2177,20 @@ async def review_mock(
     }
     patch = {k: v for k, v in patch.items() if v is not None}
 
-    _safe(lambda: supabase.table("mock_tests").update(patch).eq("id", mock_id).execute())
+    # Correctness-critical: this persists the reviewed status + corrected marks.
+    # A silent failure must not let the request fall through into breakdown /
+    # mastery / regeneration with a stale review state, and must not return 200.
+    updated = safe_required(
+        lambda: supabase.table("mock_tests").update(patch).eq("id", mock_id).execute(),
+        op="review_mock.update_mock_tests",
+        log=logger,
+    )
+    if updated is None:
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "mock_review_persist_failed",
+                    "detail": "Could not persist mock review."},
+        )
 
     if body.topic_breakdowns:
         # idempotency: clear any previous breakdowns for this mock first
