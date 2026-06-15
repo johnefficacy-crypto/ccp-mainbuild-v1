@@ -76,6 +76,11 @@ class _TableStub:
         self._in_filters[k] = v
         return self
 
+    def or_(self, expr):
+        # Parse "field.eq.VALUE,field.is.null" used by topic_coverage_snapshot
+        self._or_expr = expr
+        return self
+
     def order(self, *a, **kw):
         return self
 
@@ -84,8 +89,24 @@ class _TableStub:
 
     def execute(self):
         rows = self._rows if not callable(self._rows) else self._rows(self._filters, self._in_filters)
+        # Apply or_ expr: "field.eq.VALUE,field.is.null"
+        or_expr = getattr(self, "_or_expr", None)
+        if or_expr and isinstance(rows, list):
+            import re
+            parts = or_expr.split(",")
+            def _matches_or(row):
+                for part in parts:
+                    m = re.match(r"(\w+)\.eq\.(.+)", part)
+                    if m and row.get(m.group(1)) == m.group(2):
+                        return True
+                    m2 = re.match(r"(\w+)\.is\.null", part)
+                    if m2 and row.get(m2.group(1)) is None:
+                        return True
+                return False
+            rows = [r for r in rows if _matches_or(r)]
         res = MagicMock()
         res.data = rows
+        res.count = len(rows) if isinstance(rows, list) else 0
         return res
 
 

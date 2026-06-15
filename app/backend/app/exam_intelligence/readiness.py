@@ -158,7 +158,8 @@ def _topic_coverage_snapshot(sb, exam_id: str, cycle_id: str | None) -> dict:
     """
     q = sb.table("exam_topic_coverage").select("id, reviewer_status, is_high_yield").eq("exam_id", exam_id)
     if cycle_id:
-        q = q.eq("exam_cycle_id", cycle_id)
+        # Include both cycle-specific rows AND exam-level rows (exam_cycle_id IS NULL)
+        q = q.or_(f"exam_cycle_id.eq.{cycle_id},exam_cycle_id.is.null")
     rows = _safe(lambda: q.limit(50000).execute().data, default=[]) or []
     total = len(rows)
     draft = sum(1 for r in rows if r.get("reviewer_status") == "draft")
@@ -223,32 +224,33 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
     options_total = 0
     topic_tags_total = 0
     if question_ids:
-        for i in range(0, len(question_ids), 100):
-            batch = question_ids[i : i + 100]
-            opts = _safe(
+        # Use count-only queries (no row data) in larger batches to minimise round trips
+        for i in range(0, len(question_ids), 500):
+            batch = question_ids[i : i + 500]
+            opts_count = _safe(
                 lambda b=batch: (
                     sb.table("pyq_options")
-                    .select("id")
+                    .select("id", count="exact")
                     .in_("question_id", b)
-                    .limit(100000)
+                    .limit(0)
                     .execute()
-                    .data
+                    .count
                 ),
-                default=[],
-            ) or []
-            options_total += len(opts)
-            tags = _safe(
+                default=0,
+            ) or 0
+            options_total += opts_count
+            tags_count = _safe(
                 lambda b=batch: (
                     sb.table("pyq_question_topic_tags")
-                    .select("id")
+                    .select("id", count="exact")
                     .in_("question_id", b)
-                    .limit(100000)
+                    .limit(0)
                     .execute()
-                    .data
+                    .count
                 ),
-                default=[],
-            ) or []
-            topic_tags_total += len(tags)
+                default=0,
+            ) or 0
+            topic_tags_total += tags_count
 
     papers_with_no_questions = sum(
         1 for p in papers
