@@ -6,6 +6,21 @@ import { parseImportFile } from "../../../lib/bulkImportFile";
 import CmsRefField from "../../../features/admin/shared/CmsRefField";
 import { DateField } from "../../../shared/ui/heavy";
 import ExamIntelDocuments from "./ExamIntelDocuments";
+import {
+  COVERAGE_DEPTH_LABELS,
+  COVERAGE_DEPTH_GROUP_LABEL,
+  COVERAGE_DEPTH_HELPER,
+  PRIORITY_BANDS_GROUP_LABEL,
+  PRIORITY_BANDS_HELPER,
+  band,
+  BUSINESS_PRIORITY_LABELS,
+  REVIEWER_STATUS_LABELS,
+  IS_HIGH_YIELD_LABEL,
+  IS_HIGH_YIELD_HELPER,
+  IS_ACTIVE_LABEL,
+  IS_ACTIVE_HELPER,
+  LifecycleLegend,
+} from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
 
 function OrgRefSelect({ value, onChange, testId }) {
   const [orgs, setOrgs] = useState([]);
@@ -94,12 +109,13 @@ const ENTITY_CONFIG = {
       { key: "conducting_organization_id", label: "conducting_organization_id (org)", type: "org-ref" },
       { key: "exam_family_id", label: "exam_family_id", type: "ref", ref: REF_FAMILY },
       { key: "exam_type", label: "exam_type (recruitment|entrance|certification|opportunity|other)" },
-      { key: "management_mode", label: "management_mode", type: "enum", options: ["core", "light", "index_only", "archive"], defaultValue: "light" },
+      { key: "management_mode", label: "Business priority", rawName: "management_mode", type: "enum", options: ["core", "light", "index_only", "archive"], defaultValue: "light",
+        optionLabels: { core: BUSINESS_PRIORITY_LABELS.core.label, light: BUSINESS_PRIORITY_LABELS.light.label, index_only: BUSINESS_PRIORITY_LABELS.index_only.label, archive: BUSINESS_PRIORITY_LABELS.archive.label } },
       { key: "cadence", label: "cadence", type: "enum", options: ["annual", "recurring", "irregular", "one_off", "unknown"], defaultValue: "unknown" },
       { key: "description", label: "description" },
-      { key: "is_active", label: "is_active", type: "bool" },
+      { key: "is_active", label: IS_ACTIVE_LABEL, rawName: "is_active", type: "bool", helperText: IS_ACTIVE_HELPER },
     ],
-    columns: ["slug", "name", "exam_type", "is_active", "created_at"],
+    columns: ["slug", "name", "exam_type", "management_mode", "is_active", "created_at"],
   },
   "exam-cycles": {
     label: "Exam cycles",
@@ -176,18 +192,21 @@ const ENTITY_CONFIG = {
   "exam-topic-coverage": {
     label: "Exam topic coverage",
     fields: [
-      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
-      { key: "topic_id", label: "topic_id", required: true, type: "ref", ref: refTopic({}) },
+      { key: "exam_id", label: "Exam", rawName: "exam_id", required: true, type: "ref", ref: REF_EXAM },
+      { key: "topic_id", label: "Topic", rawName: "topic_id", required: true, type: "ref", ref: refTopic({}) },
       { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
       { key: "exam_phase_id", label: "exam_phase_id", type: "ref", ref: refPhase({ exam_id: "exam_id", exam_cycle_id: "exam_cycle_id" }) },
       { key: "section_id", label: "section_id (cascades from phase)", type: "ref", ref: refSection({ exam_phase_id: "exam_phase_id" }) },
-      { key: "coverage_depth", label: "coverage_depth", type: "enum", options: COVERAGE_DEPTHS },
+      { key: "coverage_depth", label: COVERAGE_DEPTH_GROUP_LABEL, rawName: "coverage_depth", type: "enum", options: COVERAGE_DEPTHS,
+        optionLabels: COVERAGE_DEPTH_LABELS, helperText: COVERAGE_DEPTH_HELPER },
       { key: "expected_difficulty", label: "expected_difficulty" },
-      { key: "exam_priority_score", label: "exam_priority_score (0–100)", type: "number", step: 0.01, min: 0, max: 100 },
-      { key: "is_high_yield", label: "is_high_yield", type: "bool" },
+      { key: "exam_priority_score", label: PRIORITY_BANDS_GROUP_LABEL, rawName: "exam_priority_score", type: "number", step: 0.01, min: 0, max: 100,
+        showBand: true, helperText: PRIORITY_BANDS_HELPER },
+      { key: "is_high_yield", label: IS_HIGH_YIELD_LABEL, rawName: "is_high_yield", type: "bool", helperText: IS_HIGH_YIELD_HELPER },
       { key: "confidence_score", label: "confidence_score (0–1)", type: "number", step: 0.001, min: 0, max: 1 },
       { key: "source_basis", label: "source_basis", type: "enum", options: COVERAGE_SOURCE_BASES },
-      { key: "reviewer_status", label: "reviewer_status (forced to pending_review on create)", type: "enum", options: COVERAGE_REVIEWER_STATUSES },
+      { key: "reviewer_status", label: "Review status", rawName: "reviewer_status", type: "enum", options: COVERAGE_REVIEWER_STATUSES,
+        optionLabels: Object.fromEntries(Object.entries(REVIEWER_STATUS_LABELS).map(([k, v]) => [k, v.label])) },
       { key: "review_notes", label: "review_notes" },
       { key: "metadata", label: "metadata (JSON object)", type: "json" },
     ],
@@ -501,7 +520,7 @@ function renderFieldControl(f, values, setValues, idPrefix, entityKey) {
       >
         <option value="">(skip)</option>
         {f.options.map((o) => (
-          <option key={o} value={o}>{o}</option>
+          <option key={o} value={o}>{f.optionLabels?.[o] ?? o}</option>
         ))}
       </select>
     );
@@ -569,6 +588,26 @@ function renderFieldControl(f, values, setValues, idPrefix, entityKey) {
       className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
       data-testid={testId}
     />
+  );
+}
+
+// Renders sub-text beneath a relabeled field: raw column name in monospace,
+// optional static helper, and dynamic priority band for numeric score fields.
+function renderFieldAnnotation(f, values) {
+  return (
+    <>
+      {f.rawName && (
+        <span className="text-xs font-mono text-muted-foreground">{f.rawName}</span>
+      )}
+      {f.helperText && (
+        <p className="text-xs text-muted-foreground mt-0.5">{f.helperText}</p>
+      )}
+      {f.showBand && values[f.key] !== undefined && values[f.key] !== "" && (
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Band: <strong>{band(values[f.key]).label}</strong>
+        </p>
+      )}
+    </>
   );
 }
 
@@ -901,13 +940,21 @@ export default function AdminExamIntelCms() {
         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
           Study OS · exam intelligence CMS
         </div>
-        <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight">Exam Intelligence CMS</h1>
+        <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight">Raw CMS / Bulk Import</h1>
         <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
           Create exam families, exams, cycles, phases, syllabus documents, PYQ papers/questions, topic
           coverage, and policy updates. Per spec §12 #4: CMS <strong>feeds</strong> the review queue —
           rows with a review_status / trust_status land at <code>pending</code>; promote them via the
           existing review queue, not here.
         </p>
+      </div>
+
+      <div
+        className="rounded border border-amber-300/70 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
+        role="note"
+        data-testid="cms-downgrade-banner"
+      >
+        Use Workspace for normal exam setup. Use this page for bulk import and edge fixes.
       </div>
 
       <div className="flex gap-2 items-end flex-wrap">
@@ -960,6 +1007,13 @@ export default function AdminExamIntelCms() {
           </>
         ) : null}
       </div>
+
+      {entity === "exam-topic-coverage" && (
+        <div className="rounded border border-border/60 bg-card p-4" data-testid="cms-lifecycle-legend">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Review status</h2>
+          <LifecycleLegend />
+        </div>
+      )}
 
       {status ? (
         <div className={`text-sm ${status.ok ? "text-emerald-700" : "text-red-700"}`} role="status" aria-live="polite">
@@ -1050,6 +1104,7 @@ export default function AdminExamIntelCms() {
                   {f.label}{f.required ? <span className="text-red-700"> *</span> : null}
                 </span>
                 {renderFieldControl(f, formValues, setFormValues, "cms-", entity)}
+                {renderFieldAnnotation(f, formValues)}
               </label>
             ))}
           </div>
@@ -1085,6 +1140,7 @@ export default function AdminExamIntelCms() {
                   {f.label}{f.required ? <span className="text-red-700"> *</span> : null}
                 </span>
                 {renderFieldControl(f, editValues, setEditValues, "cms-edit-", entity)}
+                {renderFieldAnnotation(f, editValues)}
               </label>
             ))}
           </div>
@@ -1134,7 +1190,11 @@ export default function AdminExamIntelCms() {
                 <td className="p-2 font-mono">{r.id?.slice(0, 8)}…</td>
                 {cfg.columns.map((c) => (
                   <td key={c} className="p-2">
-                    {r[c] == null ? "—" : typeof r[c] === "boolean" ? String(r[c]) : String(r[c]).slice(0, 60)}
+                    {r[c] == null
+                    ? (entity === "exams" && c === "management_mode"
+                      ? <span className="text-muted-foreground italic">{BUSINESS_PRIORITY_LABELS.null.label}</span>
+                      : "—")
+                    : typeof r[c] === "boolean" ? String(r[c]) : String(r[c]).slice(0, 60)}
                   </td>
                 ))}
                 {isEditable ? (
