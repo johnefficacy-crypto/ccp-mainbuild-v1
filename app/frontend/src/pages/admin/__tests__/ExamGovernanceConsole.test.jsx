@@ -35,8 +35,17 @@ jest.mock("../../../lib/authContext", () => ({
   useAuth: jest.fn(),
 }));
 
+// useApiCollection imports shared/config/env, which throws when
+// REACT_APP_BACKEND_URL is unset (the case in the frontend CI job). Mock it
+// the same way the sibling admin tests do so the env module never loads.
+jest.mock("../../../lib/hooks/useApiCollection", () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
 const { api } = require("../../../lib/api");
 const { useAuth } = require("../../../lib/authContext");
+const useApiCollection = require("../../../lib/hooks/useApiCollection").default;
 
 const ExamGovernanceConsole = require("../ExamGovernanceConsole").default;
 const useSelectedExamId = require("../../../lib/hooks/useSelectedExamId").default;
@@ -107,6 +116,8 @@ beforeEach(() => {
     hasBackendSession: true,
     user: { role: "admin" },
   });
+  // Default exam-list collection: live with both exams (overridden per test).
+  useApiCollection.mockReturnValue({ items: EXAMS, status: "live", refresh: jest.fn() });
 });
 
 // ── Test 1: picker ─────────────────────────────────────────────────────────────
@@ -120,9 +131,12 @@ describe("ExamGovernanceConsole — no exam selected", () => {
     expect(screen.getByTestId("exam-picker-item-exam-1")).toBeTruthy();
     expect(screen.getByTestId("exam-picker-item-exam-2")).toBeTruthy();
 
-    // Reused the Registry read — no new endpoint.
-    const urls = api.get.mock.calls.map((c) => c[0]);
-    expect(urls.some((u) => u.startsWith("/api/admin/exam-intelligence/exams"))).toBe(true);
+    // Reused the Registry read — same endpoint, no new fetch path.
+    expect(useApiCollection).toHaveBeenCalledWith(
+      "/api/admin/exam-intelligence/exams",
+      [],
+      { params: { limit: "200", active_state: "active" } },
+    );
   });
 
   test("selecting an exam navigates to the console exam route (no local state)", async () => {
