@@ -129,20 +129,20 @@ export default function OverviewPanel() {
 
       {/* 2. Organisation & family */}
       <Section title="Organisation & family" testId="overview-section-org">
-        {organization ? (
-          <>
-            <Row label="Organisation" value={organization.name} />
-            {organization.type && <Row label="Org type" value={organization.type} />}
-            {organization.trust_tier && <Row label="Trust tier" value={organization.trust_tier} />}
-          </>
-        ) : (
-          <span style={{ fontSize: 12, color: "var(--ink-mute)" }}>No organisation linked</span>
-        )}
-        {family ? (
-          <Row label="Family" value={family.name} />
-        ) : (
-          <Row label="Family" value="—" />
-        )}
+        <div className="ctx-chip" style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+          <span className="lbl" style={{ minWidth: 130, flexShrink: 0 }}>Organisation</span>
+          <span data-testid="overview-org" style={{ fontSize: 12.5, color: "var(--ink)" }}>
+            {organization?.name ?? "—"}
+          </span>
+        </div>
+        {organization?.type && <Row label="Org type" value={organization.type} />}
+        {organization?.trust_tier && <Row label="Trust tier" value={organization.trust_tier} />}
+        <div className="ctx-chip" style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+          <span className="lbl" style={{ minWidth: 130, flexShrink: 0 }}>Family</span>
+          <span data-testid="overview-family" style={{ fontSize: 12.5, color: "var(--ink)" }}>
+            {family?.name ?? "—"}
+          </span>
+        </div>
       </Section>
 
       {/* 3. Readiness scorecard */}
@@ -206,7 +206,7 @@ export default function OverviewPanel() {
 
       {/* 7. Competition */}
       {secMap.competition && (
-        <Section title="Competition" testId="overview-section-competition">
+        <Section title="Competition coverage" testId="overview-section-competition">
           <MetricGrid items={[
             ["Rows", secMap.competition.counts?.present],
             ["Draft", secMap.competition.metrics?.breakdown?.draft],
@@ -217,7 +217,7 @@ export default function OverviewPanel() {
       )}
 
       {/* 8. Setup / phases */}
-      <Section title="Setup" testId="overview-section-setup">
+      <Section title="Setup & phases" testId="overview-section-setup">
         <MetricGrid items={[
           ["Phases", phases?.length ?? secMap.setup?.metrics?.phase_count ?? 0],
           ["Cycles", cycles?.length ?? 0],
@@ -227,7 +227,7 @@ export default function OverviewPanel() {
 
       {/* 9. Documents */}
       {secMap.documents && (
-        <Section title="Documents" testId="overview-section-documents">
+        <Section title="Source documents" testId="overview-section-documents">
           <MetricGrid items={[
             ["Total", secMap.documents.metrics?.total],
             ["Extracted", secMap.documents.metrics?.extracted],
