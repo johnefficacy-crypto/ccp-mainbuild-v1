@@ -2838,9 +2838,12 @@ def list_source_registry(
 ) -> dict[str, Any]:
     """Source registry picker — returns official sources by default.
 
-    The default filter (is_official_source=true AND discovery_only=false) keeps
-    the picker clean for exam-setup workflows. Pass include_discovery=true to
-    surface aggregator / discovery-only rows (e.g. for advanced auditing).
+    The default filter (is_official_source=true AND discovery_only=false AND
+    is_active=true) keeps the picker clean for exam-setup workflows. Pass
+    include_discovery=true to surface aggregator / discovery-only rows (e.g. for
+    advanced auditing). Note: include_discovery bypasses is_official_source and
+    discovery_only but NEVER is_active — inactive sources are excluded from every
+    response regardless of the toggle.
     """
     supabase = get_supabase_admin()
     query = supabase.table("source_registry").select(
@@ -2848,6 +2851,9 @@ def list_source_registry(
         "discovery_only, can_publish_directly, is_active",
         count="exact",
     ).order("source_name")
+    # is_active is filtered unconditionally — inactive sources never appear,
+    # even when include_discovery=true.
+    query = query.eq("is_active", True)
     if not include_discovery:
         query = query.eq("is_official_source", True).eq("discovery_only", False)
     if source_type:

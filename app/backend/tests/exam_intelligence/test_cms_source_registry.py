@@ -62,6 +62,16 @@ def _seed():
                 "can_publish_directly": False,
                 "is_active": True,
             },
+            {
+                "id": "src-inactive",
+                "source_name": "Retired Official",
+                "official_url": "https://retired.gov.in",
+                "source_type": "official",
+                "is_official_source": True,
+                "discovery_only": False,
+                "can_publish_directly": True,
+                "is_active": False,
+            },
         ]
     }
 
@@ -75,10 +85,11 @@ def test_default_returns_official_only():
     assert "src-official" in ids
     assert "src-aggregator" not in ids, "aggregator row must be excluded by default"
     assert "src-discovery" not in ids, "discovery_only=true row must be excluded by default"
+    assert "src-inactive" not in ids, "is_active=false row must be excluded by default"
 
 
 def test_include_discovery_returns_all():
-    """include_discovery=true bypasses the filter."""
+    """include_discovery=true bypasses is_official_source/discovery_only but NOT is_active."""
     sb = TaxSBStub(_seed())
     r = _client(sb).get(f"{_URL}?include_discovery=true")
     assert r.status_code == 200, r.text
@@ -86,6 +97,7 @@ def test_include_discovery_returns_all():
     assert "src-official" in ids
     assert "src-aggregator" in ids
     assert "src-discovery" in ids
+    assert "src-inactive" not in ids, "is_active=false must stay excluded even with include_discovery=true"
 
 
 def test_response_shape():

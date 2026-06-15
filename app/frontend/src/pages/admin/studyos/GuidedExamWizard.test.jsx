@@ -603,6 +603,28 @@ describe("GuidedExamWizard workspace handoff and cycle source URL", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/exam-intelligence/workspace/exam-created?tab=setup");
   });
 
+  test("source_url entered in cycle step is included in the cycle POST payload", async () => {
+    api.post
+      .mockReset()
+      .mockResolvedValueOnce({ row: { id: "exam-created" } })
+      .mockResolvedValueOnce({ row: { id: "cycle-created" } });
+    setup();
+    await waitFor(() => screen.getByTestId("org-list"));
+    fireEvent.click(screen.getByTestId("org-select-org-aaa"));
+    fireEvent.click(screen.getByTestId("wizard-next-1"));
+    fireEvent.change(screen.getByTestId("exam-name"), { target: { value: "UPSC CSE" } });
+    fireEvent.click(screen.getByTestId("wizard-next-2"));
+    fireEvent.change(screen.getByTestId("cycle-name"), { target: { value: "CSE 2025" } });
+    fireEvent.change(screen.getByTestId("cycle-year"), { target: { value: "2025" } });
+    fireEvent.change(screen.getByTestId("cycle-source-url"), { target: { value: "https://upsc.gov.in/notice" } });
+    fireEvent.click(screen.getByTestId("wizard-next-3"));
+    fireEvent.click(screen.getByTestId("wizard-next-4"));
+    await act(async () => { fireEvent.click(screen.getByTestId("wizard-create")); });
+    await waitFor(() => expect(screen.getByTestId("create-success")).toBeInTheDocument());
+    const cyclePosts = api.post.mock.calls.filter((c) => c[0].includes("/exam-cycles"));
+    expect(cyclePosts[0][1].payload.source_url).toBe("https://upsc.gov.in/notice");
+  });
+
 });
 
 describe("Step 5: cycle date payload", () => {
