@@ -60,14 +60,17 @@ function StatusBadge({ status }) {
   );
 }
 
-function ReadinessRow({ sec }) {
+function ReadinessRow({ sec, variant }) {
   if (!sec) return null;
   const pct = sec.score_percent ?? 0;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
       <span style={{ minWidth: 140, color: "var(--ink-mute)" }}>{sec.label}</span>
       <StatusBadge status={sec.status} />
-      <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-mute)" }}>{pct}%</span>
+      {/* D-E: no readiness percentage in console variant; keep status label. */}
+      {variant !== "console" && (
+        <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-mute)" }}>{pct}%</span>
+      )}
       {sec.blockers?.length > 0 && (
         <span className="mono" style={{ fontSize: 10, color: "var(--blocker)" }}>
           • {sec.blockers[0]}
@@ -95,7 +98,7 @@ function MetricGrid({ items }) {
 // ── panel ──────────────────────────────────────────────────────────────────────
 
 export default function OverviewPanel() {
-  const { exam, cycle, cycles, phases, readiness, organization, family } = useExamWorkspace();
+  const { exam, cycle, cycles, phases, readiness, organization, family, variant } = useExamWorkspace();
 
   const mgmtLabel = exam?.management_mode
     ? (BUSINESS_PRIORITY_LABELS[exam.management_mode]?.label ?? exam.management_mode)
@@ -150,15 +153,18 @@ export default function OverviewPanel() {
         <Section title="Readiness" testId="overview-section-readiness">
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
             <StatusBadge status={overallSec?.status} />
-            <span className="mono" style={{ fontSize: 13, fontWeight: 700 }}>
-              {overallSec?.score_percent ?? 0}%
-            </span>
+            {/* D-E: no readiness percentage in console variant; keep status. */}
+            {variant !== "console" && (
+              <span className="mono" style={{ fontSize: 13, fontWeight: 700 }}>
+                {overallSec?.score_percent ?? 0}%
+              </span>
+            )}
             <span style={{ fontSize: 11.5, color: "var(--ink-mute)" }}>
               {overallSec?.ready_to_activate ? "ready to activate" : "not yet ready"}
             </span>
           </div>
           {["setup", "documents", "syllabus_mapper", "pyq_workbench", "updates", "competition", "review_activate"].map(
-            (k) => <ReadinessRow key={k} sec={secMap[k]} />,
+            (k) => <ReadinessRow key={k} sec={secMap[k]} variant={variant} />,
           )}
         </Section>
       )}

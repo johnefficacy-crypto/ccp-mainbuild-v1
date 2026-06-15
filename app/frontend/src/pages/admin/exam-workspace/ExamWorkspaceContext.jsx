@@ -6,7 +6,7 @@ const ExamWorkspaceContext = createContext(null);
 
 const REVIEW_BASE = "/api/admin/exam-intelligence";
 
-export function ExamWorkspaceProvider({ children }) {
+export function ExamWorkspaceProvider({ children, variant = "workspace" }) {
   const { exam_id, cycle_id } = useParams();
 
   const [exam, setExam] = useState(null);
@@ -70,6 +70,7 @@ export function ExamWorkspaceProvider({ children }) {
   return (
     <ExamWorkspaceContext.Provider
       value={{
+        variant,
         exam, cycle, cycles, phases, organization, family, loading, error, refetch: fetchContext,
         readiness, readiness_loading, readiness_error, refetchReadiness: fetchReadiness,
       }}

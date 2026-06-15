@@ -354,6 +354,66 @@ describe("ExamWorkspace readiness provider (PR2)", () => {
   });
 });
 
+// ── Wave 4.6A.1: variant="console" D-E + cycle-picker gating ─────────────────
+
+function renderWorkspaceVariant(variant, examId = "exam-1") {
+  return render(
+    <MemoryRouter initialEntries={[`/admin/exam-intelligence/workspace/${examId}`]}>
+      <Routes>
+        <Route
+          path="/admin/exam-intelligence/workspace/:exam_id"
+          element={<ExamWorkspace variant={variant} />}
+        />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+describe("ExamWorkspace variant gating (Wave 4.6A.1)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("console variant renders NO readiness percentage anywhere; keeps lifecycle label", async () => {
+    mockBothEndpoints();
+    renderWorkspaceVariant("console");
+    await waitFor(() => screen.getByTestId("exam-name"));
+    // D-E: no "%" anywhere in the rendered workspace (header, tab strip, overview).
+    expect(document.body.textContent).not.toContain("%");
+    // Lifecycle/status context is still present.
+    expect(screen.getByText("Current stage")).toBeTruthy();
+  });
+
+  test("default (workspace) variant STILL renders the readiness percentage", async () => {
+    mockBothEndpoints();
+    renderWorkspaceVariant("workspace");
+    await waitFor(() => screen.getByTestId("exam-name"));
+    expect(document.body.textContent).toContain("%");
+  });
+
+  test("console variant hides the cycle picker", async () => {
+    mockBothEndpoints();
+    renderWorkspaceVariant("console");
+    await waitFor(() => screen.getByTestId("exam-name"));
+    expect(screen.queryByTestId("cycle-picker")).toBeNull();
+  });
+
+  test("default variant still renders the cycle picker", async () => {
+    mockBothEndpoints();
+    renderWorkspaceVariant("workspace");
+    await waitFor(() => screen.getByTestId("cycle-picker"));
+    expect(screen.getByTestId("cycle-picker")).toBeTruthy();
+  });
+
+  test("console variant still renders the embedded workspace body scoped to :exam_id", async () => {
+    mockBothEndpoints();
+    renderWorkspaceVariant("console", "exam-1");
+    await waitFor(() => screen.getByTestId("exam-name"));
+    expect(screen.getByTestId("exam-name").textContent).toBe("SSC CGL");
+    expect(screen.getByTestId("overview-panel")).toBeTruthy();
+  });
+});
+
 // ── useExamWorkspace outside provider ────────────────────────────────────────
 
 describe("useExamWorkspace", () => {

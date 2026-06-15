@@ -127,7 +127,7 @@ function RowLockButton({ entity, rowId, onLocked }) {
 }
 
 export default function ReviewActivatePanel({ onGotoTab }) {
-  const { readiness, readiness_loading, refetchReadiness } = useExamWorkspace();
+  const { readiness, readiness_loading, refetchReadiness, variant } = useExamWorkspace();
   const { user } = useAuth();
 
   const canReview = Array.isArray(user?.permissions)
@@ -180,7 +180,10 @@ export default function ReviewActivatePanel({ onGotoTab }) {
             Readiness &amp; Activation
           </h2>
         </div>
-        <span className="badge pending no-dot">{scorePercent}% ready</span>
+        {/* D-E: no readiness percentage in console variant. */}
+        {variant !== "console" && (
+          <span className="badge pending no-dot">{scorePercent}% ready</span>
+        )}
       </div>
 
       {/* Activation status — informational only; no one-click endpoint exists */}
