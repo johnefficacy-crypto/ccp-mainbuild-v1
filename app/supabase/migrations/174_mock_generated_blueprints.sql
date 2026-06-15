@@ -118,4 +118,12 @@ begin
   end if;
 end $$;
 
+-- Table-level grants. RLS policies gate row visibility, but Postgres still
+-- requires explicit privileges. Migration 173 granted on all tables that
+-- existed at that point and the repo has no ALTER DEFAULT PRIVILEGES, so a
+-- table created after 173 needs its own grants or the service-created flow
+-- (and the authenticated owner-select via PostgREST) hits 42501.
+grant select, insert, update, delete on public.mock_generated_blueprints to service_role;
+grant select on public.mock_generated_blueprints to authenticated;
+
 notify pgrst, 'reload schema';

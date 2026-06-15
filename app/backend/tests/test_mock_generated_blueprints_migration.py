@@ -94,6 +94,16 @@ def test_blueprints_rls_owner_and_service_role_only():
     assert "for delete" not in BLUEPRINTS
 
 
+def test_blueprints_table_level_grants():
+    # 173's bulk grant only covered pre-173 tables; a table created after it
+    # needs explicit grants or service_role/authenticated hit 42501.
+    assert (
+        "grant select, insert, update, delete on public.mock_generated_blueprints to service_role"
+        in BLUEPRINTS
+    )
+    assert "grant select on public.mock_generated_blueprints to authenticated" in BLUEPRINTS
+
+
 def test_blueprints_pgrst_reload_footer():
     assert "notify pgrst, 'reload schema';" in BLUEPRINTS
 
