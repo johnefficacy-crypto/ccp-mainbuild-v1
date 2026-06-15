@@ -154,6 +154,40 @@ def find_stuck_text_extract_jobs(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def _fetch_all(make_query, *, page_size: int = 1000) -> list[dict]:
+    """Page through a PostgREST select so corpus totals are never silently
+    capped at the server's default row limit.
+
+    ``make_query`` is a zero-arg factory returning a fresh query (select +
+    filters, no range) for each page, so each page is an independent request.
+    Pages until a short page (< ``page_size``) is returned. The SBStub ignores
+    ``.range()`` and returns all matching rows on the first call, which is
+    < page_size for test fixtures, so the loop terminates after one iteration.
+    """
+    rows: list[dict] = []
+    start = 0
+    while True:
+        page = (
+            make_query()
+            .range(start, start + page_size - 1)
+            .execute()
+            .data
+            or []
+        )
+        rows.extend(page)
+        if len(page) < page_size:
+            break
+        start += page_size
+    return rows
+
+
+def _chunked(items: list, size: int = 500) -> list[list]:
+    """Split an id list into chunks so a large ``in_(...)`` filter does not
+    exceed PostgREST's URL length limit. Empty input yields no chunks.
+    """
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
 def _count_by(rows: list[dict], key: str) -> dict:
     """Return a raw {distinct value → count} map for ``key`` over ``rows``.
 
@@ -196,7 +230,7 @@ def status_value_census(sb) -> dict:
     ]
     census: dict = {}
     for table, column in columns:
-        rows = sb.table(table).select(column).execute().data or []
+        rows = _fetch_all(lambda t=table, c=column: sb.table(t).select(c))
         census[f"{table}.{column}"] = _count_by(rows, column)
     return census
 
@@ -207,13 +241,10 @@ def section_structure_completeness(sb, exam_id: str) -> dict:
     Joins exam → exam_phases (exam_id) → exam_phase_sections and flags each
     section that is missing question_count / marks / duration_mins.
     """
-    phases = (
-        sb.table("exam_phases")
+    phases = _fetch_all(
+        lambda: sb.table("exam_phases")
         .select("id, exam_id, phase_name, phase_slug")
         .eq("exam_id", exam_id)
-        .execute()
-        .data
-        or []
     )
     phase_ids = [p["id"] for p in phases]
     if not phase_ids:
@@ -225,16 +256,13 @@ def section_structure_completeness(sb, exam_id: str) -> dict:
             "sections_missing_structure": 0,
         }
 
-    sections = (
-        sb.table("exam_phase_sections")
+    sections = _fetch_all(
+        lambda: sb.table("exam_phase_sections")
         .select(
             "id, exam_phase_id, subject_id, section_label, "
             "question_count, marks, duration_mins, sort_order"
         )
         .in_("exam_phase_id", phase_ids)
-        .execute()
-        .data
-        or []
     )
 
     out_sections = []
@@ -297,8 +325,8 @@ def selectable_mcq_depth(
     if not statuses:
         return base
 
-    rows = (
-        sb.table("mock_question_bank")
+    rows = _fetch_all(
+        lambda: sb.table("mock_question_bank")
         .select(
             "id, exam_id, subject_id, topic_id, difficulty, question_type, "
             "reviewer_status, is_current, is_current_based, valid_until"
@@ -306,9 +334,6 @@ def selectable_mcq_depth(
         .eq("exam_id", exam_id)
         .in_("reviewer_status", statuses)
         .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
-        .execute()
-        .data
-        or []
     )
 
     base_groups: dict = defaultdict(int)
@@ -367,29 +392,25 @@ def source_distribution(sb, exam_id: str, selectable_statuses) -> dict:
     if not statuses:
         return out
 
-    bank_rows = (
-        sb.table("mock_question_bank")
+    bank_rows = _fetch_all(
+        lambda: sb.table("mock_question_bank")
         .select("id, source_type, source_kind")
         .eq("exam_id", exam_id)
         .in_("reviewer_status", statuses)
-        .execute()
-        .data
-        or []
     )
     out["by_bank_source_type"] = _count_by(bank_rows, "source_type")
     out["by_bank_source_kind"] = _count_by(bank_rows, "source_kind")
 
     question_ids = [r["id"] for r in bank_rows if r.get("id")]
-    if question_ids:
-        source_rows = (
-            sb.table("mock_question_sources")
+    source_counts: Counter = Counter()
+    for chunk in _chunked(question_ids):
+        source_rows = _fetch_all(
+            lambda c=chunk: sb.table("mock_question_sources")
             .select("question_id, source_kind")
-            .in_("question_id", question_ids)
-            .execute()
-            .data
-            or []
+            .in_("question_id", c)
         )
-        out["by_sources_table_source_kind"] = _count_by(source_rows, "source_kind")
+        source_counts.update(_count_by(source_rows, "source_kind"))
+    out["by_sources_table_source_kind"] = dict(source_counts)
     return out
 
 
@@ -410,45 +431,38 @@ def verified_pyq_tag_depth(sb, exam_id: str, verified_status: str) -> dict:
     if not verified_status:
         return out
 
-    papers = (
-        sb.table("pyq_papers")
+    papers = _fetch_all(
+        lambda: sb.table("pyq_papers")
         .select("id, exam_id, trust_status")
         .eq("exam_id", exam_id)
         .eq("trust_status", verified_status)
-        .execute()
-        .data
-        or []
     )
     paper_ids = [p["id"] for p in papers]
     if not paper_ids:
         return out
 
-    questions = (
-        sb.table("pyq_questions")
-        .select("id, pyq_paper_id, reviewer_status")
-        .in_("pyq_paper_id", paper_ids)
-        .eq("reviewer_status", verified_status)
-        .execute()
-        .data
-        or []
-    )
+    questions: list[dict] = []
+    for chunk in _chunked(paper_ids):
+        questions += _fetch_all(
+            lambda c=chunk: sb.table("pyq_questions")
+            .select("id, pyq_paper_id, reviewer_status")
+            .in_("pyq_paper_id", c)
+            .eq("reviewer_status", verified_status)
+        )
     question_ids = [q["id"] for q in questions]
     if not question_ids:
         return out
 
-    tags = (
-        sb.table("pyq_question_topic_tags")
-        .select("question_id, topic_id, tag_role, reviewer_status")
-        .in_("question_id", question_ids)
-        .eq("reviewer_status", verified_status)
-        .execute()
-        .data
-        or []
-    )
-
     groups: dict = defaultdict(int)
-    for t in tags:
-        groups[(t.get("topic_id"), t.get("tag_role"))] += 1
+    for chunk in _chunked(question_ids):
+        tags = _fetch_all(
+            lambda c=chunk: sb.table("pyq_question_topic_tags")
+            .select("question_id, topic_id, tag_role, reviewer_status")
+            .in_("question_id", c)
+            .eq("reviewer_status", verified_status)
+        )
+        for t in tags:
+            groups[(t.get("topic_id"), t.get("tag_role"))] += 1
 
     out["depth"] = [
         {"topic_id": topic_id, "tag_role": tag_role, "count": count}
@@ -468,13 +482,10 @@ def locked_coverage_count(sb, exam_id: str) -> dict:
     {section_id → {status → count}} map so ``readiness_verdict`` can resolve
     locked depth per section.
     """
-    rows = (
-        sb.table("exam_topic_coverage")
+    rows = _fetch_all(
+        lambda: sb.table("exam_topic_coverage")
         .select("id, exam_id, section_id, reviewer_status")
         .eq("exam_id", exam_id)
-        .execute()
-        .data
-        or []
     )
     by_status = _count_by(rows, "reviewer_status")
     by_section: dict = defaultdict(lambda: defaultdict(int))

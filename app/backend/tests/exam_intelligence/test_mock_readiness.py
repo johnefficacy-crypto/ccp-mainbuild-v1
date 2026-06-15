@@ -10,6 +10,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from app.exam_intelligence.diagnostics import (
+    _chunked,
+    _fetch_all,
     assemble_mock_readiness_report,
     locked_coverage_count,
     readiness_verdict,
@@ -89,6 +91,55 @@ def _chain(sb: SBStub):
     depth = selectable_mcq_depth(sb, EXAM, ["verified", "published"])
     coverage = locked_coverage_count(sb, EXAM)
     return structure, depth, coverage
+
+
+# ── Paging / chunking helpers (corpus totals must not cap at the page limit) ──
+
+def test_fetch_all_pages_until_short_page_and_concatenates():
+    batches = [
+        [{"id": 1}, {"id": 2}],
+        [{"id": 3}, {"id": 4}],
+        [{"id": 5}],  # short page -> stop
+    ]
+    seq = iter(batches)
+
+    class _Exec:
+        def __init__(self, data):
+            self.data = data
+
+    class _Page:
+        def range(self, *_a):
+            return self
+
+        def execute(self):
+            return _Exec(next(seq))
+
+    out = _fetch_all(lambda: _Page(), page_size=2)
+    assert [r["id"] for r in out] == [1, 2, 3, 4, 5]
+
+
+def test_fetch_all_stops_on_exact_multiple_with_empty_trailing_page():
+    batches = [[{"id": 1}, {"id": 2}], []]  # full page then empty -> stop
+    seq = iter(batches)
+
+    class _Exec:
+        def __init__(self, data):
+            self.data = data
+
+    class _Page:
+        def range(self, *_a):
+            return self
+
+        def execute(self):
+            return _Exec(next(seq))
+
+    out = _fetch_all(lambda: _Page(), page_size=2)
+    assert [r["id"] for r in out] == [1, 2]
+
+
+def test_chunked_splits_large_in_lists():
+    assert _chunked([], size=2) == []
+    assert _chunked([1, 2, 3, 4, 5], size=2) == [[1, 2], [3, 4], [5]]
 
 
 # ── A. status_value_census ────────────────────────────────────────────────────
