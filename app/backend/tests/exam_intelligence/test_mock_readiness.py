@@ -203,6 +203,35 @@ def test_structure_no_phases_returns_empty():
     assert out["sections"] == []
 
 
+def test_structure_duration_falls_back_to_phase_common_timer():
+    # Common-timer phase: phase.duration_mins set, section duration NULL by
+    # design -> section is still structurally complete (duration_source=phase).
+    sb = _sb(
+        exam_phases=[{"id": PHASE, "exam_id": EXAM, "duration_mins": 120}],
+        exam_phase_sections=[
+            {"id": SEC, "exam_phase_id": PHASE, "subject_id": SUBJ, "section_label": "A",
+             "question_count": 100, "marks": 200, "duration_mins": None, "sort_order": 0},
+        ],
+    )
+    sec = section_structure_completeness(sb, EXAM)["sections"][0]
+    assert sec["complete"] is True
+    assert sec["duration_source"] == "phase"
+    assert "duration_mins" not in sec["missing"]
+
+
+def test_structure_duration_missing_when_neither_section_nor_phase():
+    sb = _sb(
+        exam_phases=[{"id": PHASE, "exam_id": EXAM}],  # no phase-level duration
+        exam_phase_sections=[
+            {"id": SEC, "exam_phase_id": PHASE, "subject_id": SUBJ, "section_label": "A",
+             "question_count": 100, "marks": 200, "duration_mins": None, "sort_order": 0},
+        ],
+    )
+    sec = section_structure_completeness(sb, EXAM)["sections"][0]
+    assert sec["duration_source"] is None
+    assert "duration_mins" in sec["missing"]
+
+
 # ── C. selectable_mcq_depth ───────────────────────────────────────────────────
 
 def test_selectable_depth_segments_current_out_of_base_pool():
@@ -350,6 +379,31 @@ def test_verdict_blocked_when_no_locked_coverage():
     sec = verdict["sections"][0]
     assert sec["verdict"] == "blocked"
     assert "no_locked_coverage" in sec["reasons"]
+
+
+def test_verdict_counts_phase_level_sectionless_locked_coverage():
+    # Locked coverage recorded at phase level (section_id NULL) applies to the
+    # section and must NOT yield a false no_locked_coverage block.
+    sb = _sb(
+        exam_phases=[{"id": PHASE, "exam_id": EXAM, "duration_mins": 120}],
+        exam_phase_sections=[
+            {"id": SEC, "exam_phase_id": PHASE, "subject_id": SUBJ, "section_label": "A",
+             "question_count": 100, "marks": 200, "duration_mins": 120, "sort_order": 0},
+        ],
+        mock_question_bank=[_mcq(i) for i in range(40)],
+        exam_topic_coverage=[
+            {"id": "cov-pl", "exam_id": EXAM, "exam_phase_id": PHASE,
+             "section_id": None, "reviewer_status": "locked"},  # phase-level
+        ],
+    )
+    structure, depth, coverage = _chain(sb)
+    verdict = readiness_verdict(
+        structure, depth, coverage, min_per_section=30, min_locked_coverage=1
+    )
+    sec = verdict["sections"][0]
+    assert sec["verdict"] == "ready"
+    assert "no_locked_coverage" not in sec["reasons"]
+    assert sec["locked_coverage"] == 1
 
 
 def test_verdict_blocked_when_no_sections():

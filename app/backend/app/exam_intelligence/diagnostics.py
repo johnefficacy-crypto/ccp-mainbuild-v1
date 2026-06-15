@@ -48,6 +48,10 @@ _SELECTABLE_QUESTION_TYPES = ("mcq", "msq", "integer")
 # not a threshold.
 _COVERAGE_LOCKED_STATUS = "locked"
 
+# JSON-safe bucket key for a NULL grouping value (e.g. a coverage row with no
+# section_id — phase/topic-level coverage, which the CMS write path allows).
+_NULL_BUCKET = "<null>"
+
 
 def find_orphan_questions(
     sb, *, exam_id: str | None = None, limit: int = 200
@@ -197,7 +201,7 @@ def _count_by(rows: list[dict], key: str) -> dict:
     counter: Counter = Counter()
     for r in rows:
         val = r.get(key)
-        counter["<null>" if val is None else val] += 1
+        counter[_NULL_BUCKET if val is None else val] += 1
     return dict(counter)
 
 
@@ -260,16 +264,21 @@ def section_structure_completeness(
     section that is missing question_count / marks / duration_mins. When
     ``exam_phase_id`` is supplied, only that phase's sections are returned
     (mock structure is phase-level, so the caller scopes per phase).
+
+    Duration uses a phase fallback: a common-timer phase sets
+    ``exam_phases.duration_mins`` and leaves the per-section ``duration_mins``
+    NULL by design, so a section's duration counts as present when EITHER the
+    section or its parent phase carries one (``duration_source`` records which).
     """
+    phases = _fetch_all(
+        lambda: sb.table("exam_phases")
+        .select("id, exam_id, phase_name, phase_slug, duration_mins")
+        .eq("exam_id", exam_id)
+    )
     if exam_phase_id:
-        phase_ids = [exam_phase_id]
-    else:
-        phases = _fetch_all(
-            lambda: sb.table("exam_phases")
-            .select("id, exam_id, phase_name, phase_slug")
-            .eq("exam_id", exam_id)
-        )
-        phase_ids = [p["id"] for p in phases]
+        phases = [p for p in phases if p.get("id") == exam_phase_id]
+    phase_ids = [p["id"] for p in phases]
+    phase_duration = {p["id"]: p.get("duration_mins") for p in phases}
     if not phase_ids:
         return {
             "exam_id": exam_id,
@@ -294,9 +303,18 @@ def section_structure_completeness(
     for s in sections:
         missing = [
             field
-            for field in ("question_count", "marks", "duration_mins")
+            for field in ("question_count", "marks")
             if s.get(field) is None
         ]
+        section_dur = s.get("duration_mins")
+        phase_dur = phase_duration.get(s.get("exam_phase_id"))
+        if section_dur is not None:
+            duration_source = "section"
+        elif phase_dur is not None:
+            duration_source = "phase"  # common-timer phase covers the section
+        else:
+            duration_source = None
+            missing.append("duration_mins")
         if missing:
             missing_total += 1
         out_sections.append(
@@ -307,7 +325,8 @@ def section_structure_completeness(
                 "section_label": s.get("section_label"),
                 "question_count": s.get("question_count"),
                 "marks": s.get("marks"),
-                "duration_mins": s.get("duration_mins"),
+                "duration_mins": section_dur,
+                "duration_source": duration_source,
                 "missing": missing,
                 "complete": not missing,
             }
@@ -586,9 +605,9 @@ def locked_coverage_count(
     by_section: dict = defaultdict(lambda: defaultdict(int))
     for r in rows:
         section_id = r.get("section_id")
-        skey = "<null>" if section_id is None else section_id
+        skey = _NULL_BUCKET if section_id is None else section_id
         status = r.get("reviewer_status")
-        by_section[skey]["<null>" if status is None else status] += 1
+        by_section[skey][_NULL_BUCKET if status is None else status] += 1
     return {
         "exam_id": exam_id,
         "exam_phase_id": exam_phase_id,
@@ -619,6 +638,13 @@ def readiness_verdict(
     current-affairs items are excluded from the durable readiness check. The
     emitted ``pool_scope: "subject"`` records that the base pool is subject-
     level, NOT section-selector level (the bank has no phase/section column).
+
+    Locked coverage is counted as section-attributed rows PLUS phase-level
+    (section_id NULL) rows: phase/topic-level coverage applies to every section
+    in the phase, so a section is not blocked for ``no_locked_coverage`` when
+    the phase carries locked coverage without a concrete section_id. ``coverage``
+    is expected to be phase-scoped (as the assembler provides), so its NULL
+    bucket is this phase's phase-level coverage.
     """
     exam_id = structure.get("exam_id")
     exam_phase_id = structure.get("exam_phase_id")
@@ -653,6 +679,10 @@ def readiness_verdict(
         pool_by_subject[grp.get("subject_id")] += grp.get("count", 0)
 
     coverage_by_section = coverage.get("by_section") or {}
+    # Phase-level (section_id NULL) locked coverage applies to every section.
+    phase_level_locked = (coverage_by_section.get(_NULL_BUCKET) or {}).get(
+        _COVERAGE_LOCKED_STATUS, 0
+    )
 
     results = []
     summary = {"ready": 0, "thin_bank": 0, "blocked": 0}
@@ -662,7 +692,7 @@ def readiness_verdict(
         base_pool = pool_by_subject.get(subject_id, 0)
         locked = (coverage_by_section.get(section_id) or {}).get(
             _COVERAGE_LOCKED_STATUS, 0
-        )
+        ) + phase_level_locked
 
         reasons = []
         if s.get("missing"):
