@@ -83,7 +83,7 @@ const initialState = {
   examId: null,
   // Step 2 — cycle
   cycleDraft: {
-    cycle_name: "", year: "", status: "",
+    cycle_name: "", year: "", status: "", source_url: "",
     notification_date: "", application_start: "", application_end: "",
     exam_start: "", exam_end: "",
   },
@@ -615,6 +615,7 @@ function StepReview({ state, dispatch }) {
           cycle_name: cycleDraft.cycle_name.trim(),
           year: parseInt(cycleDraft.year, 10),
           status: cycleDraft.status || undefined,
+          source_url: cycleDraft.source_url || undefined,
           // Empty date strings → undefined (omit from payload)
           notification_date: cycleDraft.notification_date || undefined,
           application_start: cycleDraft.application_start || undefined,
