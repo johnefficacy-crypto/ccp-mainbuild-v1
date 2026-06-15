@@ -397,7 +397,7 @@ def selectable_mcq_depth(
         .eq("exam_id", exam_id)
         .in_("reviewer_status", statuses)
         .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
-        .neq("source_type", _E2E_FIXTURE_SOURCE_TYPE)
+        .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
     )
 
     base_groups: dict = defaultdict(int)
@@ -500,7 +500,7 @@ def source_distribution(
         .eq("exam_id", exam_id)
         .in_("reviewer_status", statuses)
         .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
-        .neq("source_type", _E2E_FIXTURE_SOURCE_TYPE)
+        .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
     )
 
     base_rows: list[dict] = []

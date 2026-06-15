@@ -177,12 +177,14 @@ def _select_criteria_question_ids(supabase: Any, selector: dict, question_count:
     _SELECTABLE = ["verified", "published", "live"]
     # Exclude E2E fixtures by construction: the criteria pool builds real
     # (generated) attempts, so a fixture row must never be drawn into one even if
-    # it is published in this DB.
+    # it is published in this DB. Use is.null OR neq so NULL-provenance rows
+    # (e.g. legacy authored questions) are RETAINED — a plain neq would drop them
+    # because NULL <> 'e2e_fixture' is NULL in Postgres.
     q = (
         supabase.table("mock_question_bank")
         .select("*")
         .in_("reviewer_status", _SELECTABLE)
-        .neq("source_type", _E2E_FIXTURE_SOURCE_TYPE)
+        .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
     )
     if filters.get("exam_family"):
         q = q.eq("exam_family", filters["exam_family"])

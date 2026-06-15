@@ -132,22 +132,25 @@ def test_criteria_excludes_unpublished():
     assert len(selected) == 3
 
 
-def test_criteria_excludes_e2e_fixtures():
-    """E2E fixtures (source_type='e2e_fixture') must never enter the criteria
-    pool, even though they are 'published' — otherwise a test row could leak into
-    a real generated/criteria-built attempt in production."""
-    real = [_q("easy") for _ in range(3)]
+def test_criteria_excludes_fixtures_keeps_null_and_authored():
+    """The criteria pool must drop ONLY source_type='e2e_fixture' rows. A plain
+    `neq` would also drop NULL-provenance rows (NULL <> 'e2e_fixture' is NULL in
+    Postgres), so the legacy authored questions with no source_type must still be
+    eligible alongside explicit non-fixture provenance."""
+    null_prov = _q("easy")                              # no source_type → NULL
+    authored = {**_q("easy"), "source_type": "authored"}
     fixture = {**_q("easy"), "source_type": "e2e_fixture"}
     sb, template_id = _db_with_section(
         {"mode": "criteria", "filters": {}},
         10,
-        real + [fixture],
+        [null_prov, authored, fixture],
     )
     selected = svc.select_questions_for_template(sb, template_id, "user-1")
     ids = {q["id"] for q in selected}
-    assert fixture["id"] not in ids
-    # only the 3 real published questions are eligible
-    assert len(selected) == 3
+    assert fixture["id"] not in ids        # fixture excluded
+    assert null_prov["id"] in ids          # NULL provenance retained
+    assert authored["id"] in ids           # non-fixture retained
+    assert len(selected) == 2
 
 
 def test_fixed_selector_still_loads_e2e_fixtures():

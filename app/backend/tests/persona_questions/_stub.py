@@ -68,8 +68,14 @@ class _Query:
         return self
 
     def or_(self, *args, **kwargs):
-        # No-op: SBStub doesn't filter on OR expressions; tests that need OR
-        # semantics should use a MagicMock instead.
+        # Faithfully model PostgREST `.or_("a.op.v,b.op.v")`: the row must
+        # satisfy at least ONE listed condition, and the group is ANDed with the
+        # other filters (and any other or_ groups). NULL handling matches
+        # PostgREST — `col.neq.x` excludes NULL, `col.is.null` includes it — so
+        # `.or_("col.is.null,col.neq.x")` keeps NULL rows and drops col==x.
+        if args and isinstance(args[0], str):
+            conds = [tuple(part.split(".", 2)) for part in args[0].split(",")]
+            self.filters.append(("__or__", "or", conds))
         return self
 
     def range(self, *args, **kwargs):
@@ -95,12 +101,58 @@ class _Query:
         self._pending_update = "__delete__"  # marker
         return self
 
+    @staticmethod
+    def _coerce(raw):
+        """Map PostgREST literal tokens to Python values."""
+        if raw == "null":
+            return None
+        if raw == "true":
+            return True
+        if raw == "false":
+            return False
+        return raw
+
+    def _or_cond_true(self, row, col, op, raw):
+        """Evaluate a single `col.op.value` condition with PostgREST NULL rules."""
+        cell = row.get(col)
+        if op == "is":
+            return cell is self._coerce(raw)
+        if op == "eq":
+            target = self._coerce(raw)
+            if target is None or isinstance(target, bool):
+                return cell is target
+            return str(cell) == str(target)
+        if op == "neq":
+            target = self._coerce(raw)
+            if cell is None:
+                return False  # NULL <> x is NULL → excluded, like PostgREST
+            if isinstance(target, bool):
+                return cell is not target
+            return str(cell) != str(target)
+        if op in ("gt", "gte", "lt", "lte"):
+            if cell is None:
+                return False
+            a, b = str(cell), str(raw)
+            return {"gt": a > b, "gte": a >= b, "lt": a < b, "lte": a <= b}[op]
+        if op in ("ilike", "like"):
+            if cell is None:
+                return False
+            import re
+            pattern = ".*".join(re.escape(p) for p in raw.split("%"))
+            flags = re.IGNORECASE if op == "ilike" else 0
+            return re.fullmatch(pattern, str(cell), flags) is not None
+        return True  # unknown operator: do not exclude
+
     def _matches(self, row):
         for key, op, val in self.filters:
+            if op == "or":
+                if not any(self._or_cond_true(row, c, o, v) for c, o, v in val):
+                    return False
+                continue
             cell = row.get(key)
             if op == "eq" and cell != val:
                 return False
-            if op == "neq" and cell == val:
+            if op == "neq" and (cell is None or cell == val):
                 return False
             if op == "is" and cell is not (None if val is None else val):
                 return False

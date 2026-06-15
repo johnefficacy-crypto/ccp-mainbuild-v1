@@ -3,11 +3,12 @@
 #
 # The E2E seeds write test-only content (mock_question_bank rows tagged
 # source_type='e2e_fixture', a seeded workspace, …) that must NEVER land in a
-# production database. This wrapper mirrors the hard guard the Playwright
-# harness already enforces on E2E_SUPABASE_URL (app/frontend/e2e/fixtures/env.ts
-# assertNotProdSupabase): it REFUSES any database URL whose host ends with
-# `.supabase.co` — the canonical hosted-Supabase pattern — and only then applies
-# the seed SQL with psql.
+# production database. In the spirit of the Playwright harness guard on
+# E2E_SUPABASE_URL (app/frontend/e2e/fixtures/env.ts assertNotProdSupabase),
+# this wrapper enforces a LOCAL-ONLY ALLOWLIST: it applies the seed SQL only when
+# the target DB host is local (127.0.0.1, localhost, ::1, [::1]) and HARD-STOPS
+# on anything else. Failing closed (allowlist, not blacklist) means a new hosted
+# pattern — e.g. a *.supabase.com pooler host — is refused by default.
 #
 # Usage:
 #   apply_e2e_fixtures.sh <db_url> <seed.sql> [<seed.sql> ...]
@@ -24,25 +25,40 @@ fi
 db_url="$1"
 shift
 
-# Extract the host from a postgres(ql)://[user[:pass]@]host[:port][/db] URL.
-host="$(printf '%s' "$db_url" | sed -E 's#^[a-zA-Z+]+://([^@/]*@)?([^:/?]+).*#\2#')"
-
-if [[ "$host" == *.supabase.co ]]; then
-  printf '%s\n' \
-    "──────────────────────────────────────────────────────────────────────" \
-    "HARD STOP — refusing to apply E2E fixtures to a PRODUCTION Supabase host:" \
-    "  host: ${host}" \
-    "" \
-    "The E2E seeds write test-only data (e.g. mock_question_bank rows tagged" \
-    "source_type='e2e_fixture') and must only ever run against a local/E2E DB." \
-    "" \
-    "Fix: point at the local stack instead:" \
-    "  supabase start          # in app/supabase/" \
-    "  supabase status         # DB URL → postgresql://...@127.0.0.1:54322/postgres" \
-    "See docs/testing/e2e.md." \
-    "──────────────────────────────────────────────────────────────────────" >&2
-  exit 1
+# Extract the host from a postgres(ql)://[user[:pass]@]host[:port][/db] URL,
+# handling the bracketed IPv6 form ([::1]).
+authority="${db_url#*://}"      # drop scheme
+authority="${authority%%[/?]*}" # drop /path and ?query
+authority="${authority#*@}"     # drop userinfo (user[:pass]@), if present
+if [[ "$authority" == \[* ]]; then
+  host="${authority%%]*}]"      # [::1]:5432 -> [::1]
+else
+  host="${authority%%:*}"       # 127.0.0.1:5432 -> 127.0.0.1
 fi
+
+# ALLOWLIST: only local hosts may receive the test-only seeds. Anything else —
+# including hosted Supabase (*.supabase.co) and pooler hosts (*.supabase.com) —
+# is refused. Fail closed: an unrecognised host is treated as production.
+case "$host" in
+  127.0.0.1 | localhost | ::1 | "[::1]") ;;
+  *)
+    printf '%s\n' \
+      "──────────────────────────────────────────────────────────────────────" \
+      "HARD STOP — refusing to apply E2E fixtures to a NON-LOCAL host:" \
+      "  host: ${host}" \
+      "" \
+      "The E2E seeds write test-only data (e.g. mock_question_bank rows tagged" \
+      "source_type='e2e_fixture') and may ONLY run against a local/E2E DB" \
+      "(allowed hosts: 127.0.0.1, localhost, ::1, [::1])." \
+      "" \
+      "Fix: point at the local stack instead:" \
+      "  supabase start          # in app/supabase/" \
+      "  supabase status         # DB URL → postgresql://...@127.0.0.1:54322/postgres" \
+      "See docs/testing/e2e.md." \
+      "──────────────────────────────────────────────────────────────────────" >&2
+    exit 1
+    ;;
+esac
 
 for seed in "$@"; do
   echo "Applying E2E seed: ${seed} → ${host}"
