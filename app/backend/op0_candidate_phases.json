@@ -1,0 +1,278 @@
+{
+  "ssc-cgl": {
+    "exam": {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "slug": "ssc-cgl",
+      "name": "SSC CGL"
+    },
+    "phases": [
+      {
+        "id": "44444444-4444-4444-4444-444444444441",
+        "exam_id": "22222222-2222-2222-2222-222222222222",
+        "phase_slug": "tier-1",
+        "phase_name": "Tier 1",
+        "phase_order": 1,
+        "mode": "cbt",
+        "duration_mins": 60,
+        "total_questions": 100,
+        "total_marks": 200,
+        "status": "active"
+      },
+      {
+        "id": "44444444-4444-4444-4444-444444444442",
+        "exam_id": "22222222-2222-2222-2222-222222222222",
+        "phase_slug": "tier-2",
+        "phase_name": "Tier 2",
+        "phase_order": 2,
+        "mode": "cbt",
+        "duration_mins": 150,
+        "total_questions": 150,
+        "total_marks": 450,
+        "status": "expected"
+      }
+    ]
+  },
+  "ssc-chsl": {
+    "error": "exam_slug_not_found"
+  },
+  "ibps-po": {
+    "exam": {
+      "id": "a4fc22ae-c829-4d0e-93ba-1822e5f80872",
+      "slug": "ibps-po",
+      "name": "IBPS Probationary Officer"
+    },
+    "phases": [
+      {
+        "id": "64fa5b7c-c978-4715-800e-8825c3958f29",
+        "exam_id": "a4fc22ae-c829-4d0e-93ba-1822e5f80872",
+        "phase_slug": "prelims",
+        "phase_name": "Prelims",
+        "phase_order": 1,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      },
+      {
+        "id": "cb03d7cc-d484-45c6-b7f8-e575efe1ab78",
+        "exam_id": "a4fc22ae-c829-4d0e-93ba-1822e5f80872",
+        "phase_slug": "mains",
+        "phase_name": "Mains",
+        "phase_order": 2,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      },
+      {
+        "id": "861ae99d-5358-4f17-bb7b-229e9733a1d0",
+        "exam_id": "a4fc22ae-c829-4d0e-93ba-1822e5f80872",
+        "phase_slug": "interview",
+        "phase_name": "Interview",
+        "phase_order": 3,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      }
+    ]
+  },
+  "sbi-po": {
+    "exam": {
+      "id": "f25c6492-3a45-4843-92c9-889a045d8fb4",
+      "slug": "sbi-po",
+      "name": "SBI Probationary Officer"
+    },
+    "phases": [
+      {
+        "id": "ef1e4ec5-26d4-4d01-a401-45476ce0bf97",
+        "exam_id": "f25c6492-3a45-4843-92c9-889a045d8fb4",
+        "phase_slug": "prelims",
+        "phase_name": "Prelims",
+        "phase_order": 1,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      },
+      {
+        "id": "738f82cf-dbb9-4504-9aa8-f2486c113086",
+        "exam_id": "f25c6492-3a45-4843-92c9-889a045d8fb4",
+        "phase_slug": "mains",
+        "phase_name": "Mains",
+        "phase_order": 2,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      },
+      {
+        "id": "6e4482ce-69df-4e8c-a7e5-6807b1165b87",
+        "exam_id": "f25c6492-3a45-4843-92c9-889a045d8fb4",
+        "phase_slug": "psychometric",
+        "phase_name": "Psychometric",
+        "phase_order": 3,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      },
+      {
+        "id": "ff7c992b-d689-4fc7-80b3-048a7e398e87",
+        "exam_id": "f25c6492-3a45-4843-92c9-889a045d8fb4",
+        "phase_slug": "group-exercise",
+        "phase_name": "Group Exercise",
+        "phase_order": 4,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      },
+      {
+        "id": "9d6ff8b1-a4a9-4a21-8641-3ea086a4a56e",
+        "exam_id": "f25c6492-3a45-4843-92c9-889a045d8fb4",
+        "phase_slug": "interview",
+        "phase_name": "Interview",
+        "phase_order": 5,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      }
+    ]
+  },
+  "rbi-grade-b": {
+    "exam": {
+      "id": "aded8ee9-e9ec-4287-9015-6db1919fa67e",
+      "slug": "rbi-grade-b",
+      "name": "RBI Grade B Officer"
+    },
+    "phases": [
+      {
+        "id": "e381788c-d1da-4836-82d1-2f50191def16",
+        "exam_id": "aded8ee9-e9ec-4287-9015-6db1919fa67e",
+        "phase_slug": "phase-i",
+        "phase_name": "Phase I",
+        "phase_order": 1,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      },
+      {
+        "id": "245c232d-930c-4222-be2b-aba9587cf60b",
+        "exam_id": "aded8ee9-e9ec-4287-9015-6db1919fa67e",
+        "phase_slug": "phase-ii",
+        "phase_name": "Phase II",
+        "phase_order": 2,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      },
+      {
+        "id": "917a0f4f-8132-40ed-8e8c-34080176eee9",
+        "exam_id": "aded8ee9-e9ec-4287-9015-6db1919fa67e",
+        "phase_slug": "interview",
+        "phase_name": "Interview",
+        "phase_order": 3,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      }
+    ]
+  },
+  "upsc-cse": {
+    "exam": {
+      "id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+      "slug": "upsc-cse",
+      "name": "UPSC Civil Services Examination"
+    },
+    "phases": [
+      {
+        "id": "6566d50e-7f1c-4410-aa36-8142dfe9a79b",
+        "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+        "phase_slug": "prelims",
+        "phase_name": "upsc-cse-pre-2026",
+        "phase_order": 1,
+        "mode": "offline_omr",
+        "duration_mins": 240,
+        "total_questions": 180,
+        "total_marks": 400,
+        "status": "completed"
+      },
+      {
+        "id": "d813043d-22f5-440b-8992-4a7466191d02",
+        "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+        "phase_slug": "upsc-cse-pre",
+        "phase_name": "upsc-cse-pre-2025",
+        "phase_order": 1,
+        "mode": "offline_omr",
+        "duration_mins": 240,
+        "total_questions": 180,
+        "total_marks": 400,
+        "status": "completed"
+      },
+      {
+        "id": "715de35f-6caa-410a-9805-23bbe561e060",
+        "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+        "phase_slug": "prelims",
+        "phase_name": "Prelims",
+        "phase_order": 1,
+        "mode": "omr",
+        "duration_mins": 120,
+        "total_questions": 100,
+        "total_marks": 200,
+        "status": "active"
+      },
+      {
+        "id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+        "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+        "phase_slug": "mains",
+        "phase_name": "Mains",
+        "phase_order": 2,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      },
+      {
+        "id": "f42ffb84-082e-49db-9154-9fd973e8b6e5",
+        "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+        "phase_slug": "mains",
+        "phase_name": "Mains",
+        "phase_order": 2,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      },
+      {
+        "id": "60a04169-8456-448d-b689-88fcf37aa11a",
+        "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+        "phase_slug": "personality-test",
+        "phase_name": "Personality Test",
+        "phase_order": 3,
+        "mode": null,
+        "duration_mins": null,
+        "total_questions": null,
+        "total_marks": null,
+        "status": "expected"
+      }
+    ]
+  }
+}
