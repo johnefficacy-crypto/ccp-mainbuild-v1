@@ -132,6 +132,39 @@ def test_criteria_excludes_unpublished():
     assert len(selected) == 3
 
 
+def test_criteria_excludes_e2e_fixtures():
+    """E2E fixtures (source_type='e2e_fixture') must never enter the criteria
+    pool, even though they are 'published' — otherwise a test row could leak into
+    a real generated/criteria-built attempt in production."""
+    real = [_q("easy") for _ in range(3)]
+    fixture = {**_q("easy"), "source_type": "e2e_fixture"}
+    sb, template_id = _db_with_section(
+        {"mode": "criteria", "filters": {}},
+        10,
+        real + [fixture],
+    )
+    selected = svc.select_questions_for_template(sb, template_id, "user-1")
+    ids = {q["id"] for q in selected}
+    assert fixture["id"] not in ids
+    # only the 3 real published questions are eligible
+    assert len(selected) == 3
+
+
+def test_fixed_selector_still_loads_e2e_fixtures():
+    """Regression guard: isolation must not break E2E. The fixed-id selector —
+    exactly how app/supabase/seeds/e2e_fixtures.sql wires its template — still
+    loads source_type='e2e_fixture' rows inside the E2E DB."""
+    fixtures = [{**_q("easy"), "source_type": "e2e_fixture"} for _ in range(3)]
+    sb, template_id = _db_with_section(
+        {"mode": "fixed", "question_ids": [q["id"] for q in fixtures]},
+        3,
+        fixtures,
+    )
+    selected = svc.select_questions_for_template(sb, template_id, "user-1")
+    assert {q["id"] for q in selected} == {q["id"] for q in fixtures}
+    assert all(q["source_type"] == "e2e_fixture" for q in selected)
+
+
 def test_start_attempt_uses_criteria_template():
     """End-to-end: a criteria-only template no longer needs the PR1 seed fallback."""
     questions = [_q("easy") for _ in range(5)]

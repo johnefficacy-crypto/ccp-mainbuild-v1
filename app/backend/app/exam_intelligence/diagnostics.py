@@ -52,6 +52,13 @@ _COVERAGE_LOCKED_STATUS = "locked"
 # section_id — phase/topic-level coverage, which the CMS write path allows).
 _NULL_BUCKET = "<null>"
 
+# E2E Playwright fixtures (app/supabase/seeds/e2e_fixtures.sql) tag their
+# mock_question_bank rows with this source_type. They are deliberately
+# 'published' so the E2E fixed-id selector can load them, but they are NOT real
+# catalogue content — so the production readiness depth must exclude them by
+# construction, never counting a test fixture toward an exam's mock-readiness.
+_E2E_FIXTURE_SOURCE_TYPE = "e2e_fixture"
+
 
 def find_orphan_questions(
     sb, *, exam_id: str | None = None, limit: int = 200
@@ -350,7 +357,8 @@ def selectable_mcq_depth(
     ``selectable_statuses`` is supplied by the caller (after reading
     ``status_value_census``) — never hardcoded. A row counts when its
     reviewer_status is in that set, its question_type is an answerable type,
-    and it is not expired (valid_until NULL or in the future).
+    it is not expired (valid_until NULL or in the future), and it is not an E2E
+    test fixture (``source_type = 'e2e_fixture'`` is excluded by construction).
 
     Current-affairs items (is_current OR is_current_based) are segmented INTO a
     separate ``current_depth`` and kept OUT of ``base_depth`` so the durable
@@ -389,6 +397,7 @@ def selectable_mcq_depth(
         .eq("exam_id", exam_id)
         .in_("reviewer_status", statuses)
         .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
+        .neq("source_type", _E2E_FIXTURE_SOURCE_TYPE)
     )
 
     base_groups: dict = defaultdict(int)
@@ -491,6 +500,7 @@ def source_distribution(
         .eq("exam_id", exam_id)
         .in_("reviewer_status", statuses)
         .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
+        .neq("source_type", _E2E_FIXTURE_SOURCE_TYPE)
     )
 
     base_rows: list[dict] = []

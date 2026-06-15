@@ -542,3 +542,33 @@ def test_assembler_full_report_when_inputs_supplied():
     assert phase["readiness_verdict"]["sections"][0]["verdict"] == "ready"
     assert "verified_pyq_tag_depth" in phase
     assert report["skipped"] == []
+
+
+# ── E2E fixture isolation: test rows never count toward production readiness ──
+
+def test_selectable_mcq_depth_excludes_e2e_fixtures():
+    """A published e2e_fixture row must not inflate selectable depth, even when it
+    shares the exam_id / subject_id of a real exam."""
+    sb = _sb(
+        mock_question_bank=[
+            _mcq(1, reviewer_status="published"),
+            _mcq(2, reviewer_status="published", source_type="e2e_fixture"),
+        ]
+    )
+    depth = selectable_mcq_depth(sb, EXAM, ["verified", "published"])
+    assert depth["base_total"] == 1  # the fixture is excluded by construction
+
+
+def test_source_distribution_excludes_e2e_fixtures():
+    """The provenance distribution shares the eligible pool with depth, so the
+    e2e_fixture rows are excluded there too (never reported as a source_type)."""
+    sb = _sb(
+        mock_question_bank=[
+            _mcq(1, reviewer_status="published", source_type="authored"),
+            _mcq(2, reviewer_status="published", source_type="e2e_fixture"),
+        ]
+    )
+    dist = source_distribution(sb, EXAM, ["verified", "published"])
+    by_type = dist["base_source_distribution"]["by_bank_source_type"]
+    assert "e2e_fixture" not in by_type
+    assert by_type.get("authored") == 1

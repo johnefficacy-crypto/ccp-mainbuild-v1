@@ -26,6 +26,16 @@ from app.utils.safe import safe_required
 
 logger = logging.getLogger("career_copilot.study_os.mock_engine")
 
+# E2E Playwright fixtures seed mock_question_bank rows tagged with this
+# source_type (app/supabase/seeds/e2e_fixtures.sql). They are 'published' so the
+# fixed-id E2E selector can load them inside the E2E DB, but they must NEVER be
+# eligible for production POOL selection — otherwise a test fixture could leak
+# into a real generated/criteria-built attempt. The fixed-id path
+# (_load_questions_for_template) loads explicit ids and is intentionally NOT
+# filtered, so E2E keeps working.
+_E2E_FIXTURE_SOURCE_TYPE = "e2e_fixture"
+
+
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -165,7 +175,15 @@ def _select_criteria_question_ids(supabase: Any, selector: dict, question_count:
         return []
     filters = selector.get("filters") or {}
     _SELECTABLE = ["verified", "published", "live"]
-    q = supabase.table("mock_question_bank").select("*").in_("reviewer_status", _SELECTABLE)
+    # Exclude E2E fixtures by construction: the criteria pool builds real
+    # (generated) attempts, so a fixture row must never be drawn into one even if
+    # it is published in this DB.
+    q = (
+        supabase.table("mock_question_bank")
+        .select("*")
+        .in_("reviewer_status", _SELECTABLE)
+        .neq("source_type", _E2E_FIXTURE_SOURCE_TYPE)
+    )
     if filters.get("exam_family"):
         q = q.eq("exam_family", filters["exam_family"])
     if filters.get("subject_id"):
