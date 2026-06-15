@@ -19,24 +19,45 @@
 --   cutoff_trend       : {"<category>": <marks>}
 --   vacancy_by_category: {"<category>": <count>}
 --
--- All rows use deterministic UUIDs and `on conflict (id) do nothing`, so
--- this file is safe to re-run. Apply with:
+-- Registry rows upsert by slug and downstream rows use deterministic UUIDs with
+-- `on conflict (id) do nothing`, so this file is safe to re-run. Apply with:
 --   psql "$DATABASE_URL" -f exam_intelligence_demo_upsc_cse.sql
 
 begin;
 
 -- ── Exam registry ────────────────────────────────────────────────────────
-insert into public.exam_families (id, slug, name, description) values
-  ('a0000001-0000-0000-0000-000000000001', 'upsc',
-   'Union Public Service Commission',
-   'Premier central recruitment for All-India services and Group A officers.')
-on conflict (id) do nothing;
+do $$
+declare
+  upsc_family_id uuid;
+  upsc_exam_id uuid;
+begin
+  insert into public.exam_families (id, slug, name, description) values
+    ('a0000001-0000-0000-0000-000000000001', 'upsc',
+     'Union Public Service Commission',
+     'Premier central recruitment for All-India services and Group A officers.')
+  on conflict (slug) do update
+    set name = excluded.name,
+        description = excluded.description
+  returning id into upsc_family_id;
 
-insert into public.exams (id, exam_family_id, slug, name, exam_type, default_difficulty_level, description) values
-  ('5466e62f-7382-4a38-ba96-2fe5fbfeaba2', 'a0000001-0000-0000-0000-000000000001',
-   'upsc-cse', 'UPSC CSE', 'recruitment', 'high',
-   'Civil Services Examination — Prelims, Mains and Personality Test for IAS, IPS, IFS and allied services.')
-on conflict (id) do nothing;
+  insert into public.exams (id, exam_family_id, slug, name, exam_type, default_difficulty_level, description) values
+    ('5466e62f-7382-4a38-ba96-2fe5fbfeaba2', upsc_family_id,
+     'upsc-cse', 'UPSC CSE', 'recruitment', 'high',
+     'Civil Services Examination — Prelims, Mains and Personality Test for IAS, IPS, IFS and allied services.')
+  on conflict (slug) do update
+    set exam_family_id = excluded.exam_family_id,
+        name = excluded.name,
+        exam_type = excluded.exam_type,
+        default_difficulty_level = excluded.default_difficulty_level,
+        description = excluded.description
+  returning id into upsc_exam_id;
+
+  if upsc_exam_id <> '5466e62f-7382-4a38-ba96-2fe5fbfeaba2'::uuid then
+    raise exception 'UPSC CSE seed expected canonical exam id %, but slug upsc-cse resolved to %. Repair exam identity before re-running this seed.',
+      '5466e62f-7382-4a38-ba96-2fe5fbfeaba2'::uuid,
+      upsc_exam_id;
+  end if;
+end $$;
 
 -- Five cycles so trend lines render with meaningful slope.
 insert into public.exam_cycles

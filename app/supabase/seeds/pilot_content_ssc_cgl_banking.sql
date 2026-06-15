@@ -78,17 +78,38 @@ insert into public.topics (id, subject_id, slug, name, level, default_difficulty
 on conflict (id) do nothing;
 
 -- ── Banking exam family ───────────────────────────────────────────────────────
-insert into public.exam_families (id, slug, name, description) values
-  ('bbbbbb01-0000-0000-0000-000000000001', 'ibps',
-   'Institute of Banking Personnel Selection',
-   'Central body conducting recruitment for public sector banks.')
-on conflict (id) do nothing;
+do $$
+declare
+  ibps_family_id uuid;
+  ibps_exam_id uuid;
+begin
+  insert into public.exam_families (id, slug, name, description) values
+    ('bbbbbb01-0000-0000-0000-000000000001', 'ibps',
+     'Institute of Banking Personnel Selection',
+     'Central body conducting recruitment for public sector banks.')
+  on conflict (slug) do update
+    set name = excluded.name,
+        description = excluded.description
+  returning id into ibps_family_id;
 
-insert into public.exams (id, exam_family_id, slug, name, exam_type, default_difficulty_level, description) values
-  ('bbbbbb02-0000-0000-0000-000000000002', 'bbbbbb01-0000-0000-0000-000000000001',
-   'ibps-po', 'IBPS PO', 'recruitment', 'medium_high',
-   'Probationary Officer recruitment conducted by IBPS for public sector banks.')
-on conflict (id) do nothing;
+  insert into public.exams (id, exam_family_id, slug, name, exam_type, default_difficulty_level, description) values
+    ('bbbbbb02-0000-0000-0000-000000000002', ibps_family_id,
+     'ibps-po', 'IBPS PO', 'recruitment', 'medium_high',
+     'Probationary Officer recruitment conducted by IBPS for public sector banks.')
+  on conflict (slug) do update
+    set exam_family_id = excluded.exam_family_id,
+        name = excluded.name,
+        exam_type = excluded.exam_type,
+        default_difficulty_level = excluded.default_difficulty_level,
+        description = excluded.description
+  returning id into ibps_exam_id;
+
+  if ibps_exam_id <> 'bbbbbb02-0000-0000-0000-000000000002'::uuid then
+    raise exception 'IBPS PO seed expected canonical exam id %, but slug ibps-po resolved to %. Repair exam identity before re-running this seed.',
+      'bbbbbb02-0000-0000-0000-000000000002'::uuid,
+      ibps_exam_id;
+  end if;
+end $$;
 
 insert into public.exam_cycles
   (id, exam_id, year, cycle_name, status, notification_date,
