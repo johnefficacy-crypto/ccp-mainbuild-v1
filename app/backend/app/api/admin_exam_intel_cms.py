@@ -2819,6 +2819,48 @@ def bulk_import(
     }
 
 
+
+# ─── Source registry (picker list) ───────────────────────────────────────────
+
+
+@router.get("/source-registry")
+def list_source_registry(
+    include_discovery: bool = Query(
+        default=False,
+        description="When false (default) only official, non-discovery sources are returned. "
+                    "Set true to include aggregator / discovery-only sources.",
+    ),
+    source_type: str | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Source registry picker — returns official sources by default.
+
+    The default filter (is_official_source=true AND discovery_only=false) keeps
+    the picker clean for exam-setup workflows. Pass include_discovery=true to
+    surface aggregator / discovery-only rows (e.g. for advanced auditing).
+    """
+    supabase = get_supabase_admin()
+    query = supabase.table("source_registry").select(
+        "id, source_name, official_url, source_type, is_official_source, "
+        "discovery_only, can_publish_directly, is_active",
+        count="exact",
+    ).order("source_name")
+    if not include_discovery:
+        query = query.eq("is_official_source", True).eq("discovery_only", False)
+    if source_type:
+        query = query.eq("source_type", source_type)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {
+        "items": res.data or [],
+        "total": getattr(res, "count", None),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
 # ─── Diagnostics ──────────────────────────────────────────────────────────────
 
 

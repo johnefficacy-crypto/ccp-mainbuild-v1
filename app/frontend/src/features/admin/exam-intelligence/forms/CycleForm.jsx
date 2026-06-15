@@ -14,7 +14,8 @@
  *   - GuidedExamWizard.jsx (Step 3 — Cycle)
  *   - SetupPanel.jsx (inline create-cycle section)
  */
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { api } from "../../../../lib/api";
 
 export const CYCLE_STATUSES = ["expected", "open", "active", "closed", "completed", "cancelled"];
 
@@ -35,6 +36,64 @@ const INPUT_CLS = "input";
  *   showReason?: boolean,
  * }} props
  */
+/**
+ * Source registry picker embedded in CycleForm.
+ * Selecting a source auto-fills the source_url field from official_url.
+ * Toggle "Show discovery/aggregator sources" refetches with include_discovery=true.
+ */
+function SourcePicker({ onSelect }) {
+  const [includeDiscovery, setIncludeDiscovery] = useState(false);
+  const [sources, setSources] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    const result = api.get(`/api/admin/exam-intelligence-cms/source-registry?include_discovery=${includeDiscovery}&limit=200`);
+    if (result && typeof result.then === "function") {
+      result
+        .then((d) => { if (active) setSources(Array.isArray(d?.items) ? d.items : []); })
+        .catch(() => {})
+        .finally(() => { if (active) setLoading(false); });
+    } else {
+      setLoading(false);
+    }
+    return () => { active = false; };
+  }, [includeDiscovery]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <select
+        className="input"
+        style={{ minWidth: 220 }}
+        defaultValue=""
+        onChange={(e) => {
+          const src = sources.find((s) => s.id === e.target.value);
+          if (src) onSelect(src);
+        }}
+        data-testid="cycle-source-picker"
+      >
+        <option value="">Pick source registry…</option>
+        {loading && <option disabled>Loading…</option>}
+        {sources.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.source_name}{s.source_type ? ` (${s.source_type})` : ""}
+          </option>
+        ))}
+      </select>
+      <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--ink-mute)" }}>
+        <input
+          type="checkbox"
+          checked={includeDiscovery}
+          onChange={(e) => setIncludeDiscovery(e.target.checked)}
+          data-testid="cycle-source-picker-toggle"
+        />
+        Show discovery/aggregator sources
+      </label>
+    </div>
+  );
+}
+
 export default function CycleForm({ values, onChange, showReason = true }) {
   const {
     cycle_name = "",
@@ -74,6 +133,7 @@ export default function CycleForm({ values, onChange, showReason = true }) {
         >
           {CYCLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
+        <SourcePicker onSelect={(src) => onChange("source_url", src.official_url || "")} />
         <input
           className={INPUT_CLS}
           style={{ minWidth: 200 }}
