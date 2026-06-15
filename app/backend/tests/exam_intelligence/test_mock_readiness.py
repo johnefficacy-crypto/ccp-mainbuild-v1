@@ -542,3 +542,51 @@ def test_assembler_full_report_when_inputs_supplied():
     assert phase["readiness_verdict"]["sections"][0]["verdict"] == "ready"
     assert "verified_pyq_tag_depth" in phase
     assert report["skipped"] == []
+
+
+# ── E2E fixture isolation: test rows never count toward production readiness ──
+
+def test_sbstub_neq_and_or_match_postgrest_null_semantics():
+    """Stub fidelity guard — the bug shipped because the old stub.neq INCLUDED
+    NULL (the opposite of PostgREST). Pin the corrected semantics so a NULL test
+    can no longer pass for the wrong reason."""
+    sb = _sb(t=[{"id": "a", "k": "x"}, {"id": "b", "k": "y"}, {"id": "c"}])  # c: k NULL
+    neq_ids = {r["id"] for r in sb.table("t").select("*").neq("k", "x").execute().data}
+    assert neq_ids == {"b"}  # 'y' kept; NULL row excluded (NULL <> x is NULL)
+    or_ids = {
+        r["id"]
+        for r in sb.table("t").select("*").or_("k.is.null,k.neq.x").execute().data
+    }
+    assert or_ids == {"b", "c"}  # NULL kept, k=='x' dropped
+
+
+def test_selectable_mcq_depth_excludes_fixtures_keeps_null_and_authored():
+    """A published e2e_fixture row must not inflate selectable depth, but
+    NULL-provenance and authored rows must still count (a plain neq would wrongly
+    drop the NULL rows)."""
+    sb = _sb(
+        mock_question_bank=[
+            _mcq(1, reviewer_status="published"),                            # authored
+            _mcq(2, reviewer_status="published", source_type=None),          # NULL provenance
+            _mcq(3, reviewer_status="published", source_type="e2e_fixture"),  # fixture
+        ]
+    )
+    depth = selectable_mcq_depth(sb, EXAM, ["verified", "published"])
+    assert depth["base_total"] == 2  # authored + NULL kept; fixture excluded
+
+
+def test_source_distribution_excludes_fixtures_keeps_null_and_authored():
+    """The provenance distribution shares the eligible pool with depth: the
+    e2e_fixture row is excluded, while authored and NULL ('<null>') are retained."""
+    sb = _sb(
+        mock_question_bank=[
+            _mcq(1, reviewer_status="published", source_type="authored"),
+            _mcq(2, reviewer_status="published", source_type=None),
+            _mcq(3, reviewer_status="published", source_type="e2e_fixture"),
+        ]
+    )
+    dist = source_distribution(sb, EXAM, ["verified", "published"])
+    by_type = dist["base_source_distribution"]["by_bank_source_type"]
+    assert "e2e_fixture" not in by_type
+    assert by_type.get("authored") == 1
+    assert by_type.get("<null>") == 1  # NULL provenance retained
