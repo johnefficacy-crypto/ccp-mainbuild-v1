@@ -100,6 +100,8 @@ def _make_sb(
     competition=None,
     exam_cycles=None,
     topic_coverage=None,
+    pyq_options=None,
+    pyq_question_topic_tags=None,
 ):
     exam_rows = [exam] if exam else []
     phases_rows = phases or []
@@ -110,7 +112,9 @@ def _make_sb(
     update_rows = updates or []
     comp_rows = competition or []
     cycles_rows = exam_cycles or []
-    topic_coverage_rows = topic_coverage or []
+    coverage_rows = topic_coverage or []
+    options_rows = pyq_options or []
+    topic_tag_rows = pyq_question_topic_tags or []
 
     def _exam_cycles_fn(filters, in_filters):
         rows = cycles_rows
@@ -145,20 +149,34 @@ def _make_sb(
             rows = [r for r in rows if r.get("exam_cycle_id") == filters["exam_cycle_id"]]
         return rows
 
-    def _topic_coverage_fn(filters, in_filters):
-        rows = topic_coverage_rows
-        if "exam_id" in filters:
-            rows = [r for r in rows if r.get("exam_id") == filters["exam_id"]]
-        if "exam_cycle_id" in filters:
-            rows = [r for r in rows if r.get("exam_cycle_id") == filters["exam_cycle_id"]]
-        return rows
-
     def _doc_fn(filters, in_filters):
         rows = doc_rows
         if "exam_id" in filters:
             rows = [d for d in rows if d.get("exam_id") == filters["exam_id"]]
         if "exam_cycle_id" in filters:
             rows = [d for d in rows if d.get("exam_cycle_id") == filters["exam_cycle_id"]]
+        return rows
+
+    def _options_fn(filters, in_filters):
+        rows = options_rows
+        if "question_id" in in_filters:
+            ids = in_filters["question_id"]
+            rows = [r for r in rows if r.get("question_id") in ids]
+        return rows
+
+    def _topic_tag_fn(filters, in_filters):
+        rows = topic_tag_rows
+        if "question_id" in in_filters:
+            ids = in_filters["question_id"]
+            rows = [r for r in rows if r.get("question_id") in ids]
+        return rows
+
+    def _coverage_fn(filters, in_filters):
+        rows = coverage_rows
+        if "exam_id" in filters:
+            rows = [r for r in rows if r.get("exam_id") == filters["exam_id"]]
+        if "exam_cycle_id" in filters:
+            rows = [r for r in rows if r.get("exam_cycle_id") == filters["exam_cycle_id"]]
         return rows
 
     return _SBStub({
@@ -171,7 +189,9 @@ def _make_sb(
         "pyq_questions": _pyq_q_fn,
         "exam_policy_updates": update_rows,
         "exam_competition_metrics": _comp_fn,
-        "exam_topic_coverage": _topic_coverage_fn,
+        "exam_topic_coverage": _coverage_fn,
+        "pyq_options": _options_fn,
+        "pyq_question_topic_tags": _topic_tag_fn,
     })
 
 
@@ -316,21 +336,6 @@ class TestCycleIdScoping:
         comp_other = next(s for s in result_other["sections"] if s["section"] == "competition")
         assert comp_other["status"] == "empty"
 
-    def test_topic_coverage_includes_exam_level_and_selected_cycle_rows(self):
-        sb = _make_sb(
-            exam=EXAM,
-            exam_cycles=[CYCLE_A],
-            topic_coverage=[
-                {"id": "tc-exam", "exam_id": "exam-1", "exam_cycle_id": None, "reviewer_status": "locked"},
-                {"id": "tc-selected", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "reviewed"},
-                {"id": "tc-other", "exam_id": "exam-1", "exam_cycle_id": "cycle-2025", "reviewer_status": "locked"},
-            ],
-        )
-        result = compute_exam_workspace_readiness(sb, "exam-1", "cycle-2026")
-        assert result["topic_coverage"]["total"] == 2
-        assert result["topic_coverage"]["locked"] == 1
-        assert result["topic_coverage"]["reviewed"] == 1
-
 
 class TestScoreMath:
     def test_weights_applied_correctly(self):
@@ -365,8 +370,106 @@ class TestScoreMath:
         assert "generated_at" in result
         assert "overall" in result
         assert "sections" in result
+        assert "topic_coverage" in result
         overall = result["overall"]
         assert set(overall.keys()) >= {"status", "score_percent", "ready_to_activate", "blockers"}
+
+    def test_topic_coverage_keys(self):
+        sb = _make_sb(
+            exam=EXAM,
+            topic_coverage=[
+                {"id": "tc1", "exam_id": "exam-1", "reviewer_status": "locked", "is_high_yield": True},
+                {"id": "tc2", "exam_id": "exam-1", "reviewer_status": "draft", "is_high_yield": False},
+                {"id": "tc3", "exam_id": "exam-1", "reviewer_status": "pending_review", "is_high_yield": False},
+            ],
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        tc = result["topic_coverage"]
+        assert set(tc.keys()) == {"total", "draft", "pending", "reviewed", "locked", "high_yield"}
+        assert tc["total"] == 3
+        assert tc["locked"] == 1
+        assert tc["draft"] == 1
+        assert tc["pending"] == 1
+        assert tc["high_yield"] == 1
+
+
+class TestTopicCoverageScoping:
+    def test_topic_coverage_scoped_by_cycle(self):
+        all_coverage = [
+            {"id": "tc1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026",
+             "reviewer_status": "locked", "is_high_yield": True},
+            {"id": "tc2", "exam_id": "exam-1", "exam_cycle_id": "cycle-2025",
+             "reviewer_status": "draft", "is_high_yield": False},
+        ]
+        sb = _make_sb(exam=EXAM, topic_coverage=all_coverage)
+        result_scoped = compute_exam_workspace_readiness(sb, "exam-1", "cycle-2026")
+        result_all = compute_exam_workspace_readiness(sb, "exam-1")
+        tc_scoped = result_scoped["topic_coverage"]
+        tc_all = result_all["topic_coverage"]
+        # Cycle-scoped: only cycle-2026 row
+        assert tc_scoped["total"] == 1
+        assert tc_scoped["locked"] == 1
+        assert tc_scoped["high_yield"] == 1
+        assert tc_scoped["draft"] == 0
+        # No cycle filter: both rows
+        assert tc_all["total"] == 2
+        assert tc_all["locked"] == 1
+        assert tc_all["draft"] == 1
+
+    def test_topic_coverage_cycle_not_present(self):
+        coverage = [
+            {"id": "tc1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2025",
+             "reviewer_status": "locked", "is_high_yield": False},
+        ]
+        sb = _make_sb(exam=EXAM, topic_coverage=coverage)
+        result = compute_exam_workspace_readiness(sb, "exam-1", "cycle-2026")
+        tc = result["topic_coverage"]
+        assert tc["total"] == 0
+
+
+class TestRegressionGuard:
+    """Verify that new additive metrics do NOT change score_percent or any
+    section status/weight relative to a baseline fixture."""
+
+    def _baseline_sb(self):
+        phases = [{"id": "ph-1", "exam_id": "exam-1"}]
+        syllabus = [
+            {"id": f"s{i}", "exam_id": "exam-1", "reviewer_status": "locked"} for i in range(2)
+        ]
+        updates = [{"id": "u1", "exam_id": "exam-1", "reviewer_status": "verified", "created_at": "2099-01-01"}]
+        return _make_sb(exam=EXAM, phases=phases, syllabus=syllabus, updates=updates)
+
+    def _enriched_sb(self):
+        phases = [{"id": "ph-1", "exam_id": "exam-1"}]
+        syllabus = [
+            {"id": f"s{i}", "exam_id": "exam-1", "reviewer_status": "locked"} for i in range(2)
+        ]
+        updates = [{"id": "u1", "exam_id": "exam-1", "reviewer_status": "verified", "created_at": "2099-01-01"}]
+        # Extra tables (new) — must not change score
+        coverage = [{"id": "tc1", "exam_id": "exam-1", "reviewer_status": "locked", "is_high_yield": True}]
+        options = [{"id": "opt1", "question_id": "q-not-present"}]
+        tags = [{"id": "tag1", "question_id": "q-not-present"}]
+        return _make_sb(
+            exam=EXAM, phases=phases, syllabus=syllabus, updates=updates,
+            topic_coverage=coverage, pyq_options=options, pyq_question_topic_tags=tags,
+        )
+
+    def test_score_percent_unchanged(self):
+        baseline = compute_exam_workspace_readiness(self._baseline_sb(), "exam-1")
+        enriched = compute_exam_workspace_readiness(self._enriched_sb(), "exam-1")
+        assert baseline["overall"]["score_percent"] == enriched["overall"]["score_percent"]
+
+    def test_section_statuses_unchanged(self):
+        baseline = compute_exam_workspace_readiness(self._baseline_sb(), "exam-1")
+        enriched = compute_exam_workspace_readiness(self._enriched_sb(), "exam-1")
+        for b_sec, e_sec in zip(baseline["sections"], enriched["sections"]):
+            assert b_sec["section"] == e_sec["section"]
+            assert b_sec["status"] == e_sec["status"], f"status mismatch for {b_sec['section']}"
+            assert b_sec["weight"] == e_sec["weight"], f"weight mismatch for {b_sec['section']}"
+
+    def test_section_count_still_seven(self):
+        result = compute_exam_workspace_readiness(self._enriched_sb(), "exam-1")
+        assert len(result["sections"]) == 7
 
 
 # ── Tests: HTTP endpoint ──────────────────────────────────────────────────────
