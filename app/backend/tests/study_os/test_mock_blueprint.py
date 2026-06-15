@@ -272,3 +272,35 @@ def test_rejects_non_exam_realistic_source():
             _cgl_sb(), exam_id=EXAM, exam_phase_id=PHASE, user_id="u",
             source="personalized", **_CANARY_THRESHOLDS,
         )
+
+
+# ── hard-validation of readiness inputs (a skipped verdict must not pass as a
+#    real 'blocked/no_sections' outcome) ──────────────────────────────────────
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"selectable_statuses": []},        # falsy → diagnostic would SKIP verdict
+        {"selectable_statuses": None},      # falsy → diagnostic would SKIP verdict
+        {"min_per_section": None},          # None → diagnostic would SKIP verdict
+        {"min_locked_coverage": None},      # None → diagnostic would SKIP verdict
+        {"verified_status": None},          # validated for caller consistency
+        {"verified_status": ""},            # validated for caller consistency
+    ],
+)
+def test_readiness_inputs_are_hard_validated(override):
+    kwargs = dict(_CANARY_THRESHOLDS)
+    kwargs.update(override)
+    with pytest.raises(ValueError):
+        build_blueprint_payload(
+            _cgl_sb(), exam_id=EXAM, exam_phase_id=PHASE, user_id="u", **kwargs
+        )
+
+
+def test_valid_call_still_returns_outcome_after_validation_guard():
+    # Regression: the guard must not break the happy path — canary stays thin_bank.
+    payload = build_blueprint_payload(
+        _cgl_sb(), exam_id=EXAM, exam_phase_id=PHASE, user_id="u",
+        **_CANARY_THRESHOLDS,
+    )
+    assert payload["outcome"] == "thin_bank"

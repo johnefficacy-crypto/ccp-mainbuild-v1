@@ -20,9 +20,11 @@ What it DOES:
      vocabulary is the diagnostic's (per-section blocked / thin_bank / ready;
      phase summary {ready, thin_bank, blocked}), not reinvented here.
   3. Returns a structured payload for every outcome (ready / thin_bank /
-     blocked), shaped to mirror the A-PR0 ``mock_generated_blueprints`` columns
-     (template_snapshot / section_snapshot / selector_snapshot / question_ids /
-     readiness_snapshot) so A-PR3 can persist it without reshaping.
+     blocked), shaped to mirror the A-PR0 ``mock_generated_blueprints`` CONTENT
+     columns (template_snapshot / section_snapshot / selector_snapshot /
+     question_ids / readiness_snapshot). A-PR3 supplies the persistence metadata
+     migration 174 requires — ``expires_at`` (NOT NULL, no default) and
+     ``status`` (DB default 'draft') — which this service does not set.
 
 AUTHORED-STRUCTURE SCOPE (important): readiness is computed over AUTHORED
 ``exam_phase_sections`` rows ONLY. There is no source of truth here for whether
@@ -204,10 +206,12 @@ def build_blueprint_payload(
       * selectable_statuses / verified_status / min_per_section /
         min_locked_coverage — threshold/vocabulary PARAMETERS, no defaults.
 
-    Returns a payload mirroring the A-PR0 mock_generated_blueprints columns
-    (template_snapshot / section_snapshot / selector_snapshot / question_ids /
-    readiness_snapshot) plus the outcome, envelope and (for thin_bank) the
-    per-section shortfall. ``persisted`` is always False — nothing is written.
+    Returns a payload mirroring the A-PR0 mock_generated_blueprints CONTENT
+    columns (template_snapshot / section_snapshot / selector_snapshot /
+    question_ids / readiness_snapshot) plus the outcome, envelope and (for
+    thin_bank) the per-section shortfall. A-PR3 supplies the persistence metadata
+    (expires_at NOT NULL/no default, status DB default 'draft'); this service
+    sets neither. ``persisted`` is always False — nothing is written.
 
     Outcomes:
       * ready    → envelope + verdict.
@@ -221,6 +225,22 @@ def build_blueprint_payload(
             f"mock_blueprint.build_blueprint_payload only supports "
             f"source='{_EXAM_REALISTIC}' (got {source!r}); personalized is A-PR5"
         )
+
+    # Hard-validate the readiness inputs up front so a SKIPPED verdict can never
+    # masquerade as a real 'blocked/no_sections' outcome. assemble_mock_readiness_
+    # report skips the verdict (rather than computing it) when selectable_statuses
+    # is falsy or either threshold is None — without this guard that skip would
+    # leave verdict is None and be misread below as "no exam_phases row". Fail
+    # loud instead. verified_status only feeds the informational verified-pyq
+    # depth (not the verdict), but it is validated here for caller consistency.
+    if not selectable_statuses:
+        raise ValueError("selectable_statuses is required and must be non-empty")
+    if min_per_section is None:
+        raise ValueError("min_per_section is required")
+    if min_locked_coverage is None:
+        raise ValueError("min_locked_coverage is required")
+    if not verified_status:
+        raise ValueError("verified_status is required")
 
     # 1. Structural envelope from AUTHORED exam_phase_sections (no selection).
     envelope = _structural_envelope(sb, exam_id=exam_id, exam_phase_id=exam_phase_id)
@@ -309,7 +329,9 @@ def build_blueprint_payload(
         ),
         "thresholds": thresholds,
         "outcome": outcome,
-        # A-PR0 (migration 174) column mirror — A-PR3 persists these as-is.
+        # Snapshot columns mirroring migration 174's CONTENT columns; A-PR3
+        # supplies persistence metadata — expires_at (NOT NULL, no default) and
+        # status (DB default 'draft') — which A-PR1 deliberately does not set.
         "template_snapshot": template_snapshot,
         "section_snapshot": section_snapshot,
         # Question selection + relaxation ladder are A-PR2: left empty here.
