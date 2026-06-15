@@ -48,7 +48,7 @@ function totalBlockers(readiness) {
 // ─── Smart readiness header ──────────────────────────────────────────────────
 
 function SmartHeader({ onGotoTab }) {
-  const { exam, cycles, cycle, readiness } = useExamWorkspace();
+  const { exam, cycles, cycle, readiness, variant } = useExamWorkspace();
   const { exam_id } = useParams();
   const navigate = useNavigate();
 
@@ -121,24 +121,29 @@ function SmartHeader({ onGotoTab }) {
           )}
         </div>
 
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div className="lbl" style={{ marginBottom: 4 }}>Cycle</div>
-          <select
-            className="input"
-            style={{ minWidth: 180 }}
-            value={cycle?.id ?? ""}
-            onChange={handleCycleChange}
-            data-testid="cycle-picker"
-          >
-            <option value="">All cycles</option>
-            {cycles.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.cycle_name ?? c.name ?? c.id}
-                {c.status === "active" ? " · active" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Console frame owns exam selection via the URL; the in-workspace
+            cycle picker navigates to the standalone /workspace route, which
+            would escape the console — so it is hidden in console variant. */}
+        {variant !== "console" && (
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div className="lbl" style={{ marginBottom: 4 }}>Cycle</div>
+            <select
+              className="input"
+              style={{ minWidth: 180 }}
+              value={cycle?.id ?? ""}
+              onChange={handleCycleChange}
+              data-testid="cycle-picker"
+            >
+              <option value="">All cycles</option>
+              {cycles.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.cycle_name ?? c.name ?? c.id}
+                  {c.status === "active" ? " · active" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Readiness strip */}
@@ -159,7 +164,8 @@ function SmartHeader({ onGotoTab }) {
               className="mono"
               style={{ fontSize: 10.5, color: "rgba(250,247,242,0.7)", marginTop: 2 }}
             >
-              {scorePercent}% ready · {overallStatus}
+              {/* D-E: no readiness percentage in console variant; keep status. */}
+              {variant === "console" ? overallStatus : `${scorePercent}% ready · ${overallStatus}`}
             </div>
           </div>
           <div
@@ -205,6 +211,7 @@ function SmartHeader({ onGotoTab }) {
 // ─── 7-tab strip ─────────────────────────────────────────────────────────────
 
 function TabStrip({ active, onChange, readiness }) {
+  const { variant } = useExamWorkspace();
   return (
     <div className="modebar" role="tablist" style={{ paddingTop: 2 }} data-testid="tab-strip">
       {TAB_ORDER.map((t) => {
@@ -276,7 +283,9 @@ function TabStrip({ active, onChange, readiness }) {
                   letterSpacing: 0,
                 }}
               >
-                {readiness.overall?.ready_to_activate ? "ready to activate" : `${readiness.overall?.score_percent ?? 0}%`}
+                {readiness.overall?.ready_to_activate
+                  ? "ready to activate"
+                  : (variant === "console" ? (readiness.overall?.status ?? null) : `${readiness.overall?.score_percent ?? 0}%`)}
               </span>
             )}
           </button>
@@ -429,9 +438,9 @@ function WorkspaceShell() {
   );
 }
 
-export default function ExamWorkspace() {
+export default function ExamWorkspace({ variant = "workspace" }) {
   return (
-    <ExamWorkspaceProvider>
+    <ExamWorkspaceProvider variant={variant}>
       <WorkspaceShell />
     </ExamWorkspaceProvider>
   );

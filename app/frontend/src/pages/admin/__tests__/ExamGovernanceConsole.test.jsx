@@ -177,11 +177,14 @@ describe("ExamGovernanceConsole — exam selected", () => {
     expect(urls.some((u) => u.includes("/workspace/exam-1/context"))).toBe(true);
   });
 
-  test("does not show a readiness percentage in the shell top bar (D-E)", async () => {
+  test("does not show a readiness percentage anywhere on the console (D-E)", async () => {
     mockApi();
     renderConsole("/admin/exam-intelligence/console/exam-1");
-    await waitFor(() => screen.getByTestId("console-top-bar"));
+    await waitFor(() => screen.getByTestId("exam-name"));
+    // The embedded workspace mounts with variant="console", so no "%" should
+    // appear in the top bar, smart header, tab strip, or Overview scorecard.
     expect(screen.getByTestId("console-top-bar").textContent).not.toMatch(/%/);
+    expect(document.body.textContent).not.toContain("%");
   });
 });
 

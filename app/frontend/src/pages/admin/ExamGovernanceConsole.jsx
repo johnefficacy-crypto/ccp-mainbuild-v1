@@ -130,9 +130,11 @@ export default function ExamGovernanceConsole() {
   return (
     <div className="oc" data-testid="exam-governance-console">
       <ConsoleTopBar examId={examId} />
-      {/* Mount the existing workspace as-is. It reads :exam_id from the same
-          route via useParams — no internal edits, no panel decomposition. */}
-      <ExamWorkspace />
+      {/* Mount the existing workspace, scoped to :exam_id via useParams. The
+          "console" variant suppresses readiness percentages (D-E) and the
+          in-workspace cycle picker (which would navigate out of the console
+          frame) — no panel decomposition. */}
+      <ExamWorkspace variant="console" />
     </div>
   );
 }
