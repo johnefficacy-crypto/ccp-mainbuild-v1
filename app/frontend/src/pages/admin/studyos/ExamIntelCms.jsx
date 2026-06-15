@@ -51,6 +51,60 @@ function OrgRefSelect({ value, onChange, testId }) {
   );
 }
 
+/**
+ * Source registry picker with official-only default and toggle.
+ * Fetches /source-registry?include_discovery=false by default.
+ * Toggle "Show discovery/aggregator sources" switches to include_discovery=true.
+ */
+function SourceRegistryRefField({ value, onChange, testId }) {
+  const [includeDiscovery, setIncludeDiscovery] = useState(false);
+  const [sources, setSources] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    const result = api.get(`/api/admin/exam-intelligence-cms/source-registry?include_discovery=${includeDiscovery}&limit=200`);
+    if (result && typeof result.then === "function") {
+      result
+        .then((d) => { if (active) setSources(Array.isArray(d?.items) ? d.items : []); })
+        .catch(() => {})
+        .finally(() => { if (active) setLoading(false); });
+    } else {
+      setLoading(false);
+    }
+    return () => { active = false; };
+  }, [includeDiscovery]);
+
+  return (
+    <div>
+      <select
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+        data-testid={testId}
+      >
+        <option value="">(none)</option>
+        {loading && <option disabled>Loading…</option>}
+        {sources.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.source_name}{s.source_type ? ` (${s.source_type})` : ""}
+          </option>
+        ))}
+      </select>
+      <label style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4, fontSize: 11, color: "var(--ink-mute)" }}>
+        <input
+          type="checkbox"
+          checked={includeDiscovery}
+          onChange={(e) => setIncludeDiscovery(e.target.checked)}
+          data-testid={testId ? `${testId}-toggle` : undefined}
+        />
+        Show discovery/aggregator sources
+      </label>
+    </div>
+  );
+}
+
 // Reusable ref-picker descriptors. Each points at a CMS list endpoint that
 // already exists; child pickers cascade off a sibling form field.
 const REF_EXAM = { endpoint: "exams", labelKey: "name", secondaryKey: "slug" };
@@ -163,7 +217,7 @@ const ENTITY_CONFIG = {
                displayFields: ["original_filename", "created_at"], secondaryKey: "document_kind",
                filters: { exam_id: "exam_id" } } },
       { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
-      { key: "source_id", label: "source_id (source_registry uuid, optional)" },
+      { key: "source_id", label: "source_id (source_registry)", type: "source-registry-ref" },
       { key: "published_at", label: "published_at (dd-mm-yyyy)", type: "date", mode: "any" },
       { key: "fetched_at", label: "fetched_at (dd-mm-yyyy)", type: "date", mode: "any" },
       { key: "content_hash", label: "content_hash (auto-computed by extraction)", type: "readonly" },
@@ -222,7 +276,7 @@ const ENTITY_CONFIG = {
       { key: "source_type", label: "source_type (official|aggregator|research|opportunity|unknown)" },
       { key: "source_url", label: "source_url" },
       { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
-      { key: "source_id", label: "source_id (source_registry uuid, optional)" },
+      { key: "source_id", label: "source_id (source_registry)", type: "source-registry-ref" },
       { key: "claim_status", label: "claim_status", type: "enum", options: POLICY_CLAIM_STATUSES },
       // affects_* may only be true on official sources (DB CHECK + backend guard).
       { key: "affects_plan", label: "affects_plan", type: "bool" },
@@ -318,7 +372,7 @@ const ENTITY_CONFIG = {
       { key: "source_type", label: "source_type", type: "enum", options: PYQ_SOURCE_TYPES },
       { key: "title", label: "title" },
       { key: "source_url", label: "source_url" },
-      { key: "source_id", label: "source_id (source_registry uuid, optional)" },
+      { key: "source_id", label: "source_id (source_registry)", type: "source-registry-ref" },
       { key: "metadata", label: "metadata (JSON object)", type: "json" },
     ],
     columns: ["exam_id", "source_type", "title", "trust_status"],
@@ -484,6 +538,9 @@ function renderFieldControl(f, values, setValues, idPrefix, entityKey) {
   const set = (val) => setValues((p) => ({ ...p, [f.key]: val }));
   if (f.type === "org-ref") {
     return <OrgRefSelect value={values[f.key] ?? ""} onChange={(val) => set(val)} testId={testId} />;
+  }
+  if (f.type === "source-registry-ref") {
+    return <SourceRegistryRefField value={values[f.key] ?? ""} onChange={(val) => set(val)} testId={testId} />;
   }
   if (f.type === "ref") {
     return (
