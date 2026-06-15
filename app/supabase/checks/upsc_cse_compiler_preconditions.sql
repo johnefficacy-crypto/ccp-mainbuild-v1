@@ -33,7 +33,7 @@ begin
     into merged_from_child_count
     from (
       select (
-        xpath(
+        (xpath(
           '/row/c/text()',
           query_to_xml(
             format('select count(*) as c from %I.%I where %I = %L', fk.table_schema, fk.table_name, fk.column_name, merged_from_id),
@@ -41,7 +41,7 @@ begin
             true,
             ''
           )
-        )[1]::text
+        ))[1]::text
       )::bigint as row_count
       from (
         select distinct kcu.table_schema, kcu.table_name, kcu.column_name

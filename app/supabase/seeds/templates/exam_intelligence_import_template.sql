@@ -13,11 +13,19 @@ begin;
 -- -------------------------------------------------------------------------
 insert into public.exam_families (id, slug, name, description)
 values ('<exam-family-uuid>', '<exam-family-slug>', '<Exam Family Name>', '<Description>')
-on conflict (id) do nothing;
+on conflict (slug) do update
+  set name = excluded.name,
+      description = excluded.description;
 
 insert into public.exams (id, exam_family_id, slug, name, exam_type, default_difficulty_level, description, is_active)
 values ('<exam-uuid>', '<exam-family-uuid>', '<exam-slug>', '<Exam Name>', 'recruitment', 'medium', '<Description>', true)
-on conflict (id) do nothing;
+on conflict (slug) do update
+  set exam_family_id = excluded.exam_family_id,
+      name = excluded.name,
+      exam_type = excluded.exam_type,
+      default_difficulty_level = excluded.default_difficulty_level,
+      description = excluded.description,
+      is_active = excluded.is_active;
 
 -- exam_cycles status check enforces ('expected', 'open', 'active', 'closed',
 -- 'completed', 'cancelled') — see migration 030.
