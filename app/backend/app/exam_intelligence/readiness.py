@@ -150,6 +150,33 @@ def _syllabus_mapper(sb, exam_id: str) -> dict:
     }
 
 
+def _topic_coverage_snapshot(sb, exam_id: str, cycle_id: str | None) -> dict:
+    """Non-scoring snapshot of exam_topic_coverage row counts.
+
+    Scoped to cycle_id when provided (mirrors documents/pyq/competition behaviour).
+    Returns a plain dict (NOT a section dict) — never included in score.
+    """
+    q = sb.table("exam_topic_coverage").select("id, reviewer_status, is_high_yield").eq("exam_id", exam_id)
+    if cycle_id:
+        # Include both cycle-specific rows AND exam-level rows (exam_cycle_id IS NULL)
+        q = q.or_(f"exam_cycle_id.eq.{cycle_id},exam_cycle_id.is.null")
+    rows = _safe(lambda: q.limit(50000).execute().data, default=[]) or []
+    total = len(rows)
+    draft = sum(1 for r in rows if r.get("reviewer_status") == "draft")
+    pending = sum(1 for r in rows if r.get("reviewer_status") == "pending_review")
+    reviewed = sum(1 for r in rows if r.get("reviewer_status") == "reviewed")
+    locked = sum(1 for r in rows if r.get("reviewer_status") == "locked")
+    high_yield = sum(1 for r in rows if r.get("is_high_yield"))
+    return {
+        "total": total,
+        "draft": draft,
+        "pending": pending,
+        "reviewed": reviewed,
+        "locked": locked,
+        "high_yield": high_yield,
+    }
+
+
 def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
     papers_q = sb.table("pyq_papers").select("id, exam_cycle_id").eq("exam_id", exam_id)
     if cycle_id:
@@ -166,7 +193,7 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
             "weight": 3,
             "blockers": ["no PYQ papers uploaded"],
             "counts": {"present": 0, "required": 1},
-            "metrics": {"papers": 0, "questions_total": 0, "questions_verified": 0, "questions_locked": 0},
+            "metrics": {"papers": 0, "questions_total": 0, "questions_verified": 0, "questions_locked": 0, "options_total": 0, "topic_tags_total": 0},
         }
 
     paper_ids = [p["id"] for p in papers]
@@ -192,6 +219,38 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
     questions_verified = sum(1 for q in all_questions if q.get("reviewer_status") in {"verified", "locked"})
     questions_locked = sum(1 for q in all_questions if q.get("reviewer_status") == "locked")
     questions_pending = sum(1 for q in all_questions if q.get("reviewer_status") in {"pending", "needs_correction"})
+
+    question_ids = [q["id"] for q in all_questions if q.get("id")]
+    options_total = 0
+    topic_tags_total = 0
+    if question_ids:
+        # Use count-only queries (no row data) in larger batches to minimise round trips
+        for i in range(0, len(question_ids), 500):
+            batch = question_ids[i : i + 500]
+            opts_count = _safe(
+                lambda b=batch: (
+                    sb.table("pyq_options")
+                    .select("id", count="exact")
+                    .in_("question_id", b)
+                    .limit(0)
+                    .execute()
+                    .count
+                ),
+                default=0,
+            ) or 0
+            options_total += opts_count
+            tags_count = _safe(
+                lambda b=batch: (
+                    sb.table("pyq_question_topic_tags")
+                    .select("id", count="exact")
+                    .in_("question_id", b)
+                    .limit(0)
+                    .execute()
+                    .count
+                ),
+                default=0,
+            ) or 0
+            topic_tags_total += tags_count
 
     papers_with_no_questions = sum(
         1 for p in papers
@@ -226,6 +285,8 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
             "questions_total": questions_total,
             "questions_verified": questions_verified,
             "questions_locked": questions_locked,
+            "options_total": options_total,
+            "topic_tags_total": topic_tags_total,
         },
     }
 
@@ -244,6 +305,7 @@ def _updates(sb, exam_id: str, cycle_id: str | None) -> dict:
         and (r.get("created_at") or "") < stale_cutoff
     )
     verified = sum(1 for r in rows if r.get("reviewer_status") in {"verified", "locked"})
+    rejected = sum(1 for r in rows if r.get("reviewer_status") == "rejected")
 
     if total == 0:
         status = "empty"
@@ -266,7 +328,7 @@ def _updates(sb, exam_id: str, cycle_id: str | None) -> dict:
         "weight": 1,
         "blockers": blockers,
         "counts": {"present": verified, "required": 0},
-        "metrics": {"total": total, "pending": pending, "verified": verified, "stale": stale},
+        "metrics": {"total": total, "pending": pending, "verified": verified, "stale": stale, "rejected": rejected},
     }
 
 
@@ -280,18 +342,27 @@ def _competition(sb, exam_id: str, cycle_id: str | None) -> dict:
         status = "empty"
         reviewer_status_val = None
     else:
-        rs = rows[0].get("reviewer_status") or "pending"
-        reviewer_status_val = rs
-        if rs == "locked":
+        statuses = [r.get("reviewer_status") for r in rows]
+        active = [s for s in statuses if s != "rejected"]
+        if "locked" in active:
             status = "locked"
-        elif rs == "verified":
+        elif "reviewed" in active:
             status = "ready"
+        elif active:
+            status = "partial"
         else:
             status = "partial"
+        reviewer_status_val = rows[0].get("reviewer_status")
 
     blockers = []
     if not rows:
         blockers.append("no competition metric for this cycle")
+
+    breakdown = {
+        "draft": sum(1 for r in rows if r.get("reviewer_status") == "draft"),
+        "reviewed": sum(1 for r in rows if r.get("reviewer_status") == "reviewed"),
+        "locked": sum(1 for r in rows if r.get("reviewer_status") == "locked"),
+    }
 
     return {
         "section": "competition",
@@ -301,28 +372,12 @@ def _competition(sb, exam_id: str, cycle_id: str | None) -> dict:
         "weight": 1,
         "blockers": blockers,
         "counts": {"present": len(rows), "required": 1},
-        "metrics": {"present_for_cycle": len(rows) > 0, "reviewer_status": reviewer_status_val},
+        "metrics": {
+            "present_for_cycle": len(rows) > 0,
+            "reviewer_status": reviewer_status_val,
+            "breakdown": breakdown,
+        },
     }
-
-
-
-def _topic_coverage_snapshot(sb, exam_id: str, cycle_id: str | None) -> dict:
-    q = (
-        sb.table("exam_topic_coverage")
-        .select("id, exam_cycle_id, reviewer_status")
-        .eq("exam_id", exam_id)
-    )
-    if cycle_id and hasattr(q, "or_"):
-        q = q.or_(f"exam_cycle_id.is.null,exam_cycle_id.eq.{cycle_id}")
-    rows = _safe(lambda: q.limit(20000).execute().data, default=[]) or []
-    if cycle_id:
-        rows = [
-            r for r in rows
-            if r.get("exam_cycle_id") is None or r.get("exam_cycle_id") == cycle_id
-        ]
-    locked = sum(1 for r in rows if r.get("reviewer_status") == "locked")
-    reviewed = sum(1 for r in rows if r.get("reviewer_status") == "reviewed")
-    return {"total": len(rows), "reviewed": reviewed, "locked": locked}
 
 
 def _review_activate(sections: list[dict]) -> dict:
@@ -373,6 +428,8 @@ def compute_exam_workspace_readiness(sb, exam_id: str, cycle_id: str | None = No
 
     Pure read — no writes, no side effects.
     """
+    topic_coverage = _topic_coverage_snapshot(sb, exam_id, cycle_id)
+
     sections_data = [
         _setup(sb, exam_id),
         _documents(sb, exam_id, cycle_id),
@@ -381,7 +438,6 @@ def compute_exam_workspace_readiness(sb, exam_id: str, cycle_id: str | None = No
         _updates(sb, exam_id, cycle_id),
         _competition(sb, exam_id, cycle_id),
     ]
-    topic_coverage = _topic_coverage_snapshot(sb, exam_id, cycle_id)
     review_act = _review_activate(sections_data)
     all_sections = sections_data + [review_act]
 
@@ -412,7 +468,6 @@ def compute_exam_workspace_readiness(sb, exam_id: str, cycle_id: str | None = No
         "exam_id": exam_id,
         "cycle_id": cycle_id,
         "generated_at": _now_iso(),
-        "topic_coverage": topic_coverage,
         "overall": {
             "status": overall_status,
             "score_percent": score_percent,
@@ -420,4 +475,5 @@ def compute_exam_workspace_readiness(sb, exam_id: str, cycle_id: str | None = No
             "blockers": all_blockers,
         },
         "sections": all_sections,
+        "topic_coverage": topic_coverage,
     }
