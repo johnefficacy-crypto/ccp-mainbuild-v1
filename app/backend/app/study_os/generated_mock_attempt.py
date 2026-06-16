@@ -4,7 +4,7 @@ This is the FIRST mutating Track A service. ``persist_and_start`` assembles a
 generated-mock blueprint (A-PR1 envelope + A-PR2 selection) using SERVER-SIDE
 thresholds, and — ONLY when the readiness outcome is 'ready' — atomically
 persists the blueprint and starts an attempt from it via the
-``start_attempt_from_blueprint`` plpgsql function (migration 178).
+``start_attempt_from_blueprint`` plpgsql function (migration 179).
 
 Hardening invariants ("born hardened"):
 
@@ -135,6 +135,8 @@ def _build_attempt_payload(
     snapshot_sections: list[dict] = []
     response_rows: list[dict] = []
     ordered_ids: list[str] = []
+    missing_ids: list[str] = []          # selected ids that failed to load a bank row
+    bad_snapshot_ids: list[str] = []     # MCQ snapshots missing options/correct_option_id
     cursor = 0
 
     for idx, sel in enumerate(selector_sections):
@@ -155,15 +157,24 @@ def _build_attempt_payload(
         for qid in sec_ids:
             q = questions_by_id.get(qid)
             if q is None:
+                # FAIL CLOSED: a selected id that does not resolve to a bank row
+                # (data drift / race) must NOT silently shrink the attempt. Record
+                # it and raise after the loop — never `continue` into a short freeze.
+                missing_ids.append(qid)
                 continue
+            snapshot = _question_snapshot(
+                q,
+                marks_per_correct=per_q_correct,
+                marks_per_wrong=per_q_wrong,
+            )
+            # MCQ integrity: a scoreable single-option item needs both options and
+            # a correct_option_id frozen, or the scorer cannot mark it.
+            if not snapshot.get("options") or not snapshot.get("correct_option_id"):
+                bad_snapshot_ids.append(qid)
             response_rows.append(
                 {
                     "question_id": qid,
-                    "question_snapshot": _question_snapshot(
-                        q,
-                        marks_per_correct=per_q_correct,
-                        marks_per_wrong=per_q_wrong,
-                    ),
+                    "question_snapshot": snapshot,
                 }
             )
             section_ids_loaded.append(qid)
@@ -181,6 +192,28 @@ def _build_attempt_payload(
                 "marks_per_correct": per_q_correct,
                 "marks_per_wrong": per_q_wrong,
             }
+        )
+
+    # FAIL-CLOSED freeze invariant (checked BEFORE the RPC, so a violation writes
+    # nothing): every selected question must resolve to a usable MCQ snapshot and
+    # the frozen set must equal the selection exactly — a ready 100-question
+    # selection can never persist as a 99-question attempt.
+    if missing_ids:
+        raise RuntimeError(
+            "generated attempt freeze aborted: "
+            f"{len(missing_ids)} selected question(s) failed to load a bank row "
+            f"(e.g. {missing_ids[:5]}); refusing to start a shrunk attempt"
+        )
+    if bad_snapshot_ids:
+        raise RuntimeError(
+            "generated attempt freeze aborted: "
+            f"{len(bad_snapshot_ids)} MCQ snapshot(s) missing options/"
+            f"correct_option_id (e.g. {bad_snapshot_ids[:5]})"
+        )
+    if len(response_rows) != len(flat_ids):
+        raise RuntimeError(
+            "generated attempt freeze aborted: frozen response count "
+            f"{len(response_rows)} != selected question count {len(flat_ids)}"
         )
 
     template_snapshot = {
@@ -216,7 +249,8 @@ def persist_and_start(
     """Build a generated blueprint and atomically start an attempt from it.
 
     Returns a dict carrying ``outcome``:
-      * ready    → {outcome:'ready', blueprint_id, attempt_id, question_count}.
+      * ready    → {outcome:'ready', blueprint_id, attempt_id, question_count,
+        expires_at, selector_snapshot}.
       * non-ready (thin_bank / blocked) → {outcome, readiness, section_shortfall,
         thresholds} and performs ZERO writes (the endpoint maps this to 409).
 
@@ -296,4 +330,8 @@ def persist_and_start(
         "blueprint_id": row.get("blueprint_id"),
         "attempt_id": row.get("attempt_id"),
         "question_count": len(ordered_ids),
+        # Surfaced to the caller: the 24h blueprint validity window (server-set)
+        # and the honest per-section selector snapshot (eligible/selected/relaxed).
+        "expires_at": expires_at,
+        "selector_snapshot": payload.get("selector_snapshot"),
     }

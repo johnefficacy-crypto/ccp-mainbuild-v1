@@ -319,6 +319,13 @@ class SBStub:
         if getattr(self, "_force_response_freeze_failure", False):
             raise RuntimeError("forced response-freeze failure (atomicity test)")
 
+        # HARDENING (migration 179): a brand-new attempt must freeze >=1 response.
+        # Mirrors the PL/pgSQL guard; raising here models the full rollback.
+        if not p_response_rows:
+            raise RuntimeError(
+                "start_attempt_from_blueprint: refusing zero-response attempt"
+            )
+
         # Build everything in locals; commit at the very end so a mid-build raise
         # leaves the store untouched (models the single-transaction rollback).
         existing_bp = next((bp for bp in blueprints if bp.get("id") == bp_id), None)
