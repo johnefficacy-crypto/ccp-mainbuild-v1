@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.auth import require_permission
 from app.db.supabase_client import get_supabase_admin
+from app.exam_intelligence.diagnostics import assemble_mock_readiness_report
 from app.exam_intelligence.option_normalize import option_hash, question_hash
 from app.exam_intelligence.readiness import compute_exam_workspace_readiness
 from app.exam_intelligence.syllabus_mapper import (
@@ -1750,6 +1751,66 @@ def exam_workspace_readiness(
     sb = get_supabase_admin()
     _resolve_exam_and_cycle(sb, exam_id, cycle_id)
     return compute_exam_workspace_readiness(sb, exam_id, cycle_id)
+
+
+# ─── Mock readiness (Wave 4.6D0-BE — read-only mock/template impact) ───────
+@router.get("/exams/{exam_id}/mock-readiness")
+def exam_mock_readiness(
+    exam_id: str,
+    exam_phase_id: str | None = Query(default=None),
+    selectable_status: list[str] = Query(default=["verified", "published"]),
+    verified_status: str = Query(default="verified"),
+    min_per_section: int = Query(default=30, ge=0),
+    min_locked_coverage: int = Query(default=1, ge=0),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Exam-scoped mock content-readiness ("mock/template impact") — read-only.
+
+    A thin wrapper over the existing pure ``assemble_mock_readiness_report``
+    diagnostic; no readiness logic is re-implemented here. Verdict tokens
+    (``ready`` / ``thin_bank`` / ``blocked``) come straight from that report.
+
+    Per D-E, NO percentage is surfaced — counts, lists, and lifecycle/verdict
+    tokens only. This is exam-scoped and is NOT the recruitment publish-impact
+    read; it never touches eligibility.
+    """
+    sb = get_supabase_admin()
+    # 404 when the exam doesn't exist — same validation as the /workspace reads.
+    _resolve_exam_and_cycle(sb, exam_id, None)
+
+    # Call the pure diagnostic directly. Deliberately NOT wrapped in _safe: a
+    # real read failure must surface as 5xx, never be swallowed into a
+    # misleading "blocked" verdict.
+    report = assemble_mock_readiness_report(
+        sb,
+        exam_id=exam_id,
+        exam_phase_id=exam_phase_id,
+        selectable_statuses=selectable_status,
+        verified_status=verified_status,
+        min_per_section=min_per_section,
+        min_locked_coverage=min_locked_coverage,
+    )
+
+    # Aggregate the per-phase verdict summaries into one exam-level summary.
+    phases = report.get("phases") or []
+    summary = {"ready": 0, "thin_bank": 0, "blocked": 0}
+    for ph in phases:
+        verdict_summary = (ph.get("readiness_verdict") or {}).get("summary") or {}
+        for key in summary:
+            summary[key] += int(verdict_summary.get(key, 0) or 0)
+
+    return {
+        "exam_id": report.get("exam_id"),
+        "exam_phase_id": report.get("exam_phase_id"),
+        "generated_at": report.get("generated_at"),
+        "thresholds": {
+            "min_per_section": min_per_section,
+            "min_locked_coverage": min_locked_coverage,
+        },
+        "summary": summary,
+        "phases": phases,
+        "skipped": report.get("skipped") or [],
+    }
 
 
 # ════════════════════════════════════════════════════════════════════════
