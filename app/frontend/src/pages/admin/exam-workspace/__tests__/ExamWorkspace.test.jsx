@@ -568,6 +568,34 @@ describe("deriveTopicCoverageRow (Wave 4.6C)", () => {
   });
 });
 
+// ── Wave 4.6D: console Publish surface ──────────────────────────────────────
+
+describe("Publish surface (Wave 4.6D)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("console Publish renders ExamPublishImpact (which mounts ReviewActivatePanel)", async () => {
+    renderConsoleWorkspace();
+    await waitFor(() => screen.getByTestId("rail-row-publish"));
+    await act(async () => { fireEvent.click(screen.getByTestId("rail-row-publish")); });
+    await waitFor(() => expect(screen.getByTestId("exam-publish-impact")).toBeTruthy());
+    // The impact view mounts the existing Review & Activate panel as-is.
+    expect(screen.getByRole("heading", { name: /Readiness & Activation/i })).toBeTruthy();
+  });
+
+  test("standalone review tab renders the bare ReviewActivatePanel, not ExamPublishImpact", async () => {
+    mockBothEndpoints({ readinessResponse: RAIL_READINESS });
+    render(
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1?tab=review"]}>
+        <Routes>
+          <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<ExamWorkspace variant="workspace" />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getByRole("heading", { name: /Readiness & Activation/i }));
+    expect(screen.queryByTestId("exam-publish-impact")).toBeNull();
+  });
+});
+
 // ── useExamWorkspace outside provider ────────────────────────────────────────
 
 describe("useExamWorkspace", () => {
