@@ -15,15 +15,25 @@ CSV schema (header row required):
     is_conceptual (true/false),
     is_factual (true/false),
     is_current (true/false),
+    is_current_based (true/false),
+    valid_until (ISO-8601 datetime, optional),
     explanation,
     language,
     exam_id,
+    subject_id,
+    topic_id,
     source_kind (pyq|official_syllabus|standard_source|current_event|authored),
     source_trust (verified|provisional|unverified),
     source_url,
     external_id   <- used for idempotency key; dedup on (exam_id, source_kind, external_id)
 
 JSON schema: list of objects with same field names.
+
+Mapping validation:
+    If the uploaded file contains subject_id or topic_id columns/keys, dry-run treats
+    it as a mapped import. Every parsed row must then carry both ids, both ids must
+    resolve, and topic_id must belong to subject_id. Invalid rows are reported as
+    missing_mapping and are not committed.
 """
 from __future__ import annotations
 
@@ -35,7 +45,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from app.admin.mock_questions import compute_fingerprint, _write_log, ConflictError
+from app.admin.mock_questions import _write_log
 
 logger = logging.getLogger("career_copilot.admin.mock_import")
 
@@ -49,10 +59,36 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _clean(value: Any) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
 # ── Parse ──────────────────────────────────────────────────────────────────────
 
 _REQUIRED_COLS = {"question_text", "correct_option"}
-_OPTION_COLS   = ["option_1", "option_2", "option_3", "option_4", "option_5", "option_6"]
+_OPTION_COLS = ["option_1", "option_2", "option_3", "option_4", "option_5", "option_6"]
+
+
+def _row_has_mapping_keys(row: dict) -> bool:
+    """Whether a raw CSV/JSON row opts into canary-safe mapped import mode."""
+    return "subject_id" in row or "topic_id" in row
+
+
+def _parse_bool(row: dict, key: str) -> bool:
+    v = str(row.get(key) or "false").strip().lower()
+    return v in ("true", "1", "yes")
+
+
+def _parse_valid_until(row: dict, errors: list[str]) -> str | None:
+    valid_until = _clean(row.get("valid_until"))
+    if not valid_until:
+        return None
+    try:
+        datetime.fromisoformat(valid_until.replace("Z", "+00:00"))
+    except ValueError:
+        errors.append("valid_until must be ISO-8601 datetime")
+    return valid_until
 
 
 def _parse_row(row: dict, row_num: int) -> tuple[dict | None, list[str]]:
@@ -87,10 +123,6 @@ def _parse_row(row: dict, row_num: int) -> tuple[dict | None, list[str]]:
         errors.append(f"difficulty must be easy|medium|hard; got {difficulty!r}")
         difficulty = "medium"
 
-    def _bool(key: str) -> bool:
-        v = str(row.get(key) or "false").strip().lower()
-        return v in ("true", "1", "yes")
-
     source_kind = (row.get("source_kind") or "authored").strip()
     valid_kinds = {"pyq", "official_syllabus", "standard_source", "current_event", "authored"}
     if source_kind not in valid_kinds:
@@ -99,6 +131,8 @@ def _parse_row(row: dict, row_num: int) -> tuple[dict | None, list[str]]:
     source_trust = (row.get("source_trust") or "unverified").strip()
     if source_trust not in ("verified", "provisional", "unverified"):
         source_trust = "unverified"
+
+    valid_until = _parse_valid_until(row, errors)
 
     if errors:
         return None, errors
@@ -123,16 +157,20 @@ def _parse_row(row: dict, row_num: int) -> tuple[dict | None, list[str]]:
         "question_text": q_text,
         "difficulty": difficulty,
         "question_type": "mcq",
-        "is_conceptual": _bool("is_conceptual"),
-        "is_factual": _bool("is_factual"),
-        "is_current": _bool("is_current"),
+        "is_conceptual": _parse_bool(row, "is_conceptual"),
+        "is_factual": _parse_bool(row, "is_factual"),
+        "is_current": _parse_bool(row, "is_current"),
+        "is_current_based": _parse_bool(row, "is_current_based"),
+        "valid_until": valid_until,
         "explanation": (row.get("explanation") or "").strip() or None,
         "language": (row.get("language") or "en").strip(),
-        "exam_id": (row.get("exam_id") or "").strip() or None,
+        "exam_id": _clean(row.get("exam_id")),
+        "subject_id": _clean(row.get("subject_id")),
+        "topic_id": _clean(row.get("topic_id")),
         "source_kind": source_kind,
         "source_trust": source_trust,
-        "source_url": (row.get("source_url") or "").strip() or None,
-        "external_id": (row.get("external_id") or "").strip() or None,
+        "source_url": _clean(row.get("source_url")),
+        "external_id": _clean(row.get("external_id")),
         "options": options,
         "correct_option_text": correct_opt_text,
         "fingerprint": fingerprint,
@@ -160,6 +198,23 @@ def parse_file(content: bytes, content_type: str) -> list[dict]:
     return rows
 
 
+def _fetch_id_map(supabase: Any, table: str, ids: set[str], select_cols: str) -> dict[str, dict]:
+    if not ids:
+        return {}
+    try:
+        rows = (
+            supabase.table(table)
+            .select(select_cols)
+            .in_("id", sorted(ids))
+            .execute()
+            .data
+        ) or []
+        return {r["id"]: r for r in rows if r.get("id")}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("%s mapping validation query failed: %s", table, exc)
+        return {}
+
+
 # ── Dry-run ────────────────────────────────────────────────────────────────────
 
 def dry_run(
@@ -172,13 +227,16 @@ def dry_run(
     """Parse file and return per-row preview without writing anything.
 
     Returns:
-        {import_token, total, ok_count, error_count, duplicate_count, rows: [...]}
-    Each row: {row_num, status: ok|duplicate|parse_error|missing_tags, preview, issues}
+        {import_token, total, ok_count, error_count, duplicate_count,
+         missing_mapping_count, rows: [...]}
+    Each row: {row_num, status: ok|duplicate|parse_error|missing_mapping, preview, issues}
     """
     try:
         raw_rows = parse_file(content, content_type)
     except Exception as exc:
         raise ValueError(f"file parse failed: {exc}") from exc
+
+    mapping_mode = any(_row_has_mapping_keys(r) for r in raw_rows)
 
     # Collect all fingerprints in one query for dedup check
     parsed_rows: list[dict] = []
@@ -208,6 +266,11 @@ def dry_run(
                     "options_count": len(parsed["options"]),
                     "fingerprint": parsed["fingerprint"],
                     "external_id": parsed["external_id"],
+                    "exam_id": parsed.get("exam_id"),
+                    "subject_id": parsed.get("subject_id"),
+                    "topic_id": parsed.get("topic_id"),
+                    "is_current_based": parsed.get("is_current_based"),
+                    "valid_until": parsed.get("valid_until"),
                 },
                 "issues": [],
             })
@@ -249,8 +312,16 @@ def dry_run(
         except Exception as exc:  # noqa: BLE001
             logger.warning("external_id dedup query failed: %s", exc)
 
+    subject_rows: dict[str, dict] = {}
+    topic_rows: dict[str, dict] = {}
+    if mapping_mode:
+        subject_ids = {p["subject_id"] for p in parsed_rows if p.get("subject_id")}
+        topic_ids = {p["topic_id"] for p in parsed_rows if p.get("topic_id")}
+        subject_rows = _fetch_id_map(supabase, "subjects", subject_ids, "id")
+        topic_rows = _fetch_id_map(supabase, "topics", topic_ids, "id, subject_id")
+
     # Update statuses
-    ok_count = dup_count = err_count = 0
+    ok_count = dup_count = err_count = missing_mapping_count = 0
     parsed_idx = 0
     for result in preview_results:
         if result["status"] == "parse_error":
@@ -258,6 +329,30 @@ def dry_run(
             continue
         p = parsed_rows[parsed_idx]
         parsed_idx += 1
+
+        mapping_issues: list[str] = []
+        if mapping_mode:
+            subject_id = p.get("subject_id")
+            topic_id = p.get("topic_id")
+            if not subject_id:
+                mapping_issues.append("subject_id is required for mapped import")
+            elif subject_id not in subject_rows:
+                mapping_issues.append(f"subject_id {subject_id!r} does not resolve")
+            if not topic_id:
+                mapping_issues.append("topic_id is required for mapped import")
+            elif topic_id not in topic_rows:
+                mapping_issues.append(f"topic_id {topic_id!r} does not resolve")
+            elif subject_id and topic_rows[topic_id].get("subject_id") != subject_id:
+                mapping_issues.append("topic_id belongs to a different subject_id")
+
+        if mapping_issues:
+            result["status"] = "missing_mapping"
+            result["issues"] = mapping_issues
+            p["_import_status"] = "missing_mapping"
+            p["_import_issues"] = mapping_issues
+            missing_mapping_count += 1
+            continue
+
         is_dup_fp = p["fingerprint"] in existing_fps
         is_dup_ext = p.get("external_id") and p["external_id"] in existing_ext_ids
         if is_dup_fp or is_dup_ext:
@@ -265,8 +360,12 @@ def dry_run(
             result["issues"] = [
                 "fingerprint already exists" if is_dup_fp else "external_id already imported"
             ]
+            p["_import_status"] = "duplicate"
+            p["_import_issues"] = result["issues"]
             dup_count += 1
         else:
+            p["_import_status"] = "ok"
+            p["_import_issues"] = []
             ok_count += 1
 
     # Generate import token
@@ -277,6 +376,7 @@ def dry_run(
         "actor_id": actor.get("id"),
         "created_at": datetime.now(timezone.utc).timestamp(),
         "exam_id_override": exam_id_override,
+        "mapping_mode": mapping_mode,
     }
 
     return {
@@ -284,6 +384,7 @@ def dry_run(
         "total": len(raw_rows),
         "ok_count": ok_count,
         "duplicate_count": dup_count,
+        "missing_mapping_count": missing_mapping_count,
         "error_count": err_count,
         "rows": preview_results,
     }
@@ -292,7 +393,7 @@ def dry_run(
 # ── Commit ─────────────────────────────────────────────────────────────────────
 
 def commit_import(supabase: Any, actor: dict, import_token: str) -> dict:
-    """Commit a previously dry-run import. Idempotent: duplicate rows are skipped.
+    """Commit a previously dry-run import. Idempotent: duplicate/invalid rows are skipped.
 
     Returns {created, skipped, failed, question_ids}
     """
@@ -311,10 +412,18 @@ def commit_import(supabase: Any, actor: dict, import_token: str) -> dict:
     exam_id_override: str | None = store.get("exam_id_override")
 
     created: list[str] = []
-    skipped: list[str] = []
+    skipped: list[dict | str] = []
     failed: list[dict] = []
 
     for p in parsed_rows:
+        if p.get("_import_status", "ok") != "ok":
+            skipped.append({
+                "row_num": p.get("_row_num"),
+                "status": p.get("_import_status"),
+                "issues": p.get("_import_issues", []),
+            })
+            continue
+
         fp = p["fingerprint"]
         ext_id = p.get("external_id")
         exam_id = p.get("exam_id") or exam_id_override
@@ -343,9 +452,13 @@ def commit_import(supabase: Any, actor: dict, import_token: str) -> dict:
                 "is_conceptual": p["is_conceptual"],
                 "is_factual": p["is_factual"],
                 "is_current": p["is_current"],
+                "is_current_based": p["is_current_based"],
+                "valid_until": p["valid_until"],
                 "explanation": p["explanation"],
                 "language": p["language"],
                 "exam_id": exam_id,
+                "subject_id": p.get("subject_id"),
+                "topic_id": p.get("topic_id"),
                 "reviewer_status": "draft",
                 "created_by": actor_id,
                 "question_fingerprint": fp,
