@@ -13,9 +13,9 @@ const LANES = [
     icon: GraduationCap,
     description: "Master exam catalogue, guided exam setup, add-cycle wizard, workspace, and CMS / PYQ paper management.",
     links: [
-      { to: "/admin/exam-intelligence", label: "Exam Intelligence" },
-      { to: "/admin/exam-intelligence/new", label: "Guided Exam" },
-      { to: "/admin/exam-intelligence/cms", label: "CMS / PYQ" },
+      { to: "/admin/exam-intelligence/console", label: "Exam Governance Console" },
+      { to: "/admin/exam-intelligence", label: "Exam Registry" },
+      { to: "/admin/exam-intelligence/new", label: "Create exam" },
     ],
     metricKey: null,
   },

@@ -107,13 +107,22 @@ export default function ExamListTable({
                 />
               </td>
               <td className="right">
-                <Link
-                  to={`/admin/exam-intelligence/workspace/${e.id}`}
-                  className="text-[11px] px-3 py-1 rounded-full border border-indigo-300 text-indigo-700 font-semibold hover:bg-indigo-50"
-                  data-testid={`exam-intel-workspace-${e.slug}`}
-                >
-                  Open workspace
-                </Link>
+                <div className="inline-flex items-center justify-end gap-2">
+                  <Link
+                    to={`/admin/exam-intelligence/console/${e.id}`}
+                    className="text-[11px] px-3 py-1 rounded-full border border-indigo-300 text-indigo-700 font-semibold hover:bg-indigo-50"
+                    data-testid={`exam-intel-console-${e.slug}`}
+                  >
+                    Open console
+                  </Link>
+                  <Link
+                    to={`/admin/exam-intelligence/workspace/${e.id}`}
+                    className="text-[11px] px-2 py-1 rounded-full text-clay-600 hover:text-clay-900 hover:underline underline-offset-2"
+                    data-testid={`exam-intel-workspace-${e.slug}`}
+                  >
+                    Advanced workspace
+                  </Link>
+                </div>
               </td>
             </tr>
           ))}
