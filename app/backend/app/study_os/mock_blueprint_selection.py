@@ -10,7 +10,8 @@ WHAT IT DOES
   1. For each AUTHORED section in the A-PR1 envelope, builds the eligible pool
      using the EXACT readiness base-pool predicate from
      ``diagnostics.selectable_mcq_depth`` — reviewer_status in the caller's
-     selectable set, answerable types only (mcq/msq/integer),
+     selectable set, MCQ only (``_SELECTABLE_QUESTION_TYPES``; 'msq'/'integer'
+     are NOT generated-selectable while scoring is single-option — §4a / D1),
      is_current/is_current_based EXCLUDED, e2e_fixture excluded (#683) / NULL
      provenance retained, not-expired — scoped to the section's subject_id. The
      selection pool is therefore EQUAL to the pool the A-PR1 verdict was computed
@@ -78,9 +79,10 @@ _NON_RELAXABLE = (
 
 _POOL_PREDICATE_NOTE = (
     "diagnostics.selectable_mcq_depth base pool: reviewer_status in selectable, "
-    "answerable types (mcq/msq/integer), is_current/is_current_based excluded, "
-    "e2e_fixture excluded / NULL provenance retained, not-expired; scoped by "
-    "section subject_id. Equals the pool the readiness verdict was computed over."
+    "MCQ only (msq/integer not generated-selectable while scoring is "
+    "single-option), is_current/is_current_based excluded, e2e_fixture excluded "
+    "/ NULL provenance retained, not-expired; scoped by section subject_id. "
+    "Equals the pool the readiness verdict was computed over."
 )
 
 

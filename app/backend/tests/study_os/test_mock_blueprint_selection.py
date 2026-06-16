@@ -145,6 +145,52 @@ def test_descriptive_non_answerable_rows_are_not_selected():
     assert _by_section(payload)["sec-quant"]["eligible_pool_count"] == 35
 
 
+# ── MCQ-only safety restriction: msq/integer never generated-selectable (§4a/D1)
+
+def test_msq_and_integer_rows_are_not_generated_selectable():
+    """A-PR2 selection is MCQ-only (it shares ``_SELECTABLE_QUESTION_TYPES`` with
+    readiness). msq/integer rows that are otherwise fully eligible (published,
+    right subject, mapped, non-expired, not current, not a fixture) must neither
+    enter ``question_ids`` nor inflate the eligible pool — the live scorer is
+    single-option. A subject with 25 MCQ + 5 msq + 5 integer counts as 25
+    selectable, NOT 35. See §4a / D1 of the decision doc."""
+    bank = [_mcq(i, "subj-quant") for i in range(25)]                          # 25 MCQ
+    bank += [_mcq(500 + i, "subj-quant", question_type="msq") for i in range(5)]
+    bank += [_mcq(600 + i, "subj-quant", question_type="integer") for i in range(5)]
+    sb = _cgl_sb(bank=bank, question_count=25)
+    payload = build_blueprint_with_selection(
+        sb, exam_id=EXAM, exam_phase_id=PHASE, user_id="u", **_THRESHOLDS
+    )
+    non_mcq_ids = (
+        {f"q-{500 + i:04d}" for i in range(5)}
+        | {f"q-{600 + i:04d}" for i in range(5)}
+    )
+    assert non_mcq_ids.isdisjoint(set(payload["question_ids"]))
+    # Counts the 25 MCQs only — the 10 msq/integer rows do not inflate the pool.
+    assert _by_section(payload)["sec-quant"]["eligible_pool_count"] == 25
+
+
+def test_selection_pool_equals_readiness_under_mcq_only_restriction():
+    """selection ≡ readiness still holds with the MCQ-only constant: a mixed bank
+    yields the SAME count on the A-PR2 eligible pool and the readiness base depth,
+    because both filter on the single shared ``_SELECTABLE_QUESTION_TYPES``."""
+    from app.exam_intelligence.diagnostics import _SELECTABLE_QUESTION_TYPES
+
+    assert _SELECTABLE_QUESTION_TYPES == ("mcq",)
+    bank = [_mcq(i, "subj-quant") for i in range(20)]                          # 20 MCQ
+    bank += [_mcq(700 + i, "subj-quant", question_type="msq") for i in range(8)]
+    bank += [_mcq(800 + i, "subj-quant", question_type="integer") for i in range(8)]
+    sb = _cgl_sb(bank=bank, question_count=15)
+    payload = build_blueprint_with_selection(
+        sb, exam_id=EXAM, exam_phase_id=PHASE, user_id="u", **_THRESHOLDS
+    )
+    depth = selectable_mcq_depth(sb, EXAM, ["published"])
+    base_for_quant = sum(
+        g["count"] for g in depth["base_depth"] if g["subject_id"] == "subj-quant"
+    )
+    assert _by_section(payload)["sec-quant"]["eligible_pool_count"] == base_for_quant == 20
+
+
 def test_e2e_fixtures_excluded_null_provenance_retained():
     bank = [_mcq(i, "subj-quant") for i in range(10)]                       # authored
     bank += [_mcq(100 + i, "subj-quant", source_type=None) for i in range(5)]   # NULL kept

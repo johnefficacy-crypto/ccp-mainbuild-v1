@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from app.exam_intelligence.diagnostics import (
+    _SELECTABLE_QUESTION_TYPES,
     _chunked,
     _fetch_all,
     assemble_mock_readiness_report,
@@ -271,6 +272,62 @@ def test_selectable_depth_empty_when_no_statuses_passed():
     out = selectable_mcq_depth(sb, EXAM, [])
     assert out["base_total"] == 0
     assert out["base_depth"] == []
+
+
+# ── MCQ-only safety restriction (§4a / D1) ────────────────────────────────────
+
+def test_selectable_question_types_is_mcq_only():
+    """The shared generated-selectable constant is MCQ only. msq/integer remain
+    authorable enum values but are not generated-selectable while the live answer/
+    scoring path is single-option. Pins the safety invariant so a future widen is
+    a deliberate, visible change. See docs/study_os/
+    mock-engine-v2-study-os-integration.md §4a / D1."""
+    assert _SELECTABLE_QUESTION_TYPES == ("mcq",)
+
+
+def test_selectable_depth_excludes_msq_rows():
+    """An msq row is excluded from the readiness pool even when EVERY other
+    selectable condition holds: selectable reviewer_status, matching exam_id,
+    mapped subject_id/topic_id, non-expired, not current/current_based, not an
+    e2e fixture."""
+    sb = _sb(
+        mock_question_bank=[
+            _mcq(1),                                       # mcq → counts
+            _mcq(2),                                       # mcq → counts
+            _mcq(3, question_type="msq"),                  # excluded
+            _mcq(4, question_type="msq"),                  # excluded
+        ],
+    )
+    out = selectable_mcq_depth(sb, EXAM, ["verified", "published"])
+    assert out["base_total"] == 2  # only the two MCQs
+
+
+def test_selectable_depth_excludes_integer_rows():
+    """An integer row is excluded from the readiness pool under the same
+    fully-eligible conditions — the scorer has no numeric answer path."""
+    sb = _sb(
+        mock_question_bank=[
+            _mcq(1),                                       # mcq → counts
+            _mcq(2, question_type="integer"),              # excluded
+            _mcq(3, question_type="integer"),              # excluded
+        ],
+    )
+    out = selectable_mcq_depth(sb, EXAM, ["verified", "published"])
+    assert out["base_total"] == 1  # only the single MCQ
+
+
+def test_selectable_depth_counts_only_mcq_in_mixed_bank():
+    """Worked example from the decision doc: 5 MCQ + msq + integer in one fully
+    eligible bank counts as the MCQ total only — never the combined total."""
+    sb = _sb(
+        mock_question_bank=(
+            [_mcq(i) for i in range(5)]                                  # 5 mcq
+            + [_mcq(100 + i, question_type="msq") for i in range(3)]      # 3 msq
+            + [_mcq(200 + i, question_type="integer") for i in range(3)]  # 3 integer
+        ),
+    )
+    out = selectable_mcq_depth(sb, EXAM, ["verified", "published"])
+    assert out["base_total"] == 5
 
 
 # ── D. source_distribution ────────────────────────────────────────────────────
