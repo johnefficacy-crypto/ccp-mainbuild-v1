@@ -1737,6 +1737,27 @@ def _resolve_exam_and_cycle(sb, exam_id: str, cycle_id: str | None) -> None:
                 raise HTTPException(status_code=422, detail="cycle does not belong to exam")
 
 
+def _resolve_exam_phase(sb, exam_id: str, exam_phase_id: str) -> None:
+    """Validate exam_phase_id against exam_id, mirroring the cycle-branch
+    strictness in ``_resolve_exam_and_cycle``: a phase that does not exist is
+    404; a phase that exists but belongs to a different exam is 422. Uses a
+    surfacing read (no ``_safe``) so a real read failure becomes a 5xx rather
+    than a misleading 404/422.
+    """
+    rows = (
+        sb.table("exam_phases")
+        .select("id, exam_id")
+        .eq("id", exam_phase_id)
+        .limit(1)
+        .execute()
+        .data
+    ) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="phase not found")
+    if rows[0].get("exam_id") != exam_id:
+        raise HTTPException(status_code=422, detail="phase does not belong to exam")
+
+
 @router.get("/workspace/{exam_id}/readiness")
 def exam_workspace_readiness(
     exam_id: str,
@@ -1777,6 +1798,10 @@ def exam_mock_readiness(
     sb = get_supabase_admin()
     # 404 when the exam doesn't exist — same validation as the /workspace reads.
     _resolve_exam_and_cycle(sb, exam_id, None)
+    # When scoping to a phase, validate it as strictly as cycles are validated:
+    # unknown phase → 404, phase of another exam → 422.
+    if exam_phase_id is not None:
+        _resolve_exam_phase(sb, exam_id, exam_phase_id)
 
     # Call the pure diagnostic directly. Deliberately NOT wrapped in _safe: a
     # real read failure must surface as 5xx, never be swallowed into a

@@ -172,6 +172,35 @@ def test_unknown_exam_returns_404():
     assert r.status_code == 404
 
 
+# ─── 5b. exam_phase_id validation (mirrors cycle strictness) ───────────────
+def test_unknown_phase_returns_404():
+    r = _admin_app(SBStub(_seed())).get(
+        f"{BASE}/{EXAM}/mock-readiness", params={"exam_phase_id": "no-such-phase"}
+    )
+    assert r.status_code == 404
+
+
+def test_phase_belonging_to_another_exam_returns_422():
+    seed = _seed()
+    seed["exams"].append({"id": "other-exam", "slug": "other", "name": "Other",
+                          "exam_type": "recruitment", "is_active": True})
+    seed["exam_phases"].append({"id": "foreign-phase", "exam_id": "other-exam",
+                                "phase_name": "X", "phase_slug": "x"})
+    r = _admin_app(SBStub(seed)).get(
+        f"{BASE}/{EXAM}/mock-readiness", params={"exam_phase_id": "foreign-phase"}
+    )
+    assert r.status_code == 422
+
+
+def test_valid_phase_under_exam_returns_200_narrowed():
+    r = _admin_app(SBStub(_seed(two_phases=True))).get(
+        f"{BASE}/{EXAM}/mock-readiness", params={"exam_phase_id": PHASE}
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert [p["exam_phase_id"] for p in body["phases"]] == [PHASE]
+
+
 # ─── 6. No percentage anywhere in the response (D-E) ───────────────────────
 def test_no_percentage_in_response():
     body = _admin_app(SBStub(_seed(two_phases=True))).get(f"{BASE}/{EXAM}/mock-readiness").json()
