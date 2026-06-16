@@ -266,7 +266,118 @@ class SBStub:
             return _RpcCall(self._apply_mock_mastery_delta(params))
         if name == "update_pyq_question_review_atomic":
             return _RpcCall(self._update_pyq_question_review_atomic(params))
+        if name == "start_attempt_from_blueprint":
+            return _RpcCall(self._start_attempt_from_blueprint(params))
         return _RpcCall(None)
+
+    def _start_attempt_from_blueprint(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        """Emulate the atomic generated-attempt write RPC (migration 178).
+
+        Mirrors the PL/pgSQL transaction: insert blueprint (status 'draft'),
+        insert the owner-scoped attempt (template_id NULL, generated_blueprint_id
+        set, in_progress), freeze the N response rows, flip blueprint -> 'started'
+        — ALL OR NOTHING. Idempotent on (user, blueprint) via the in_progress
+        unique index: a second call with the same blueprint id returns the
+        existing attempt and never double-inserts responses.
+
+        Atomicity is testable: set ``sb._force_response_freeze_failure = True`` to
+        make the response-freeze step raise; because the emulation commits only at
+        the very end, NOTHING is persisted (full rollback).
+        """
+        import uuid as _uuid
+        from datetime import datetime, timezone
+
+        p_user = params.get("p_user")
+        p_exam = params.get("p_exam")
+        p_exam_phase = params.get("p_exam_phase")
+        p_blueprint = params.get("p_blueprint") or {}
+        p_template_snapshot = params.get("p_template_snapshot") or {}
+        p_response_rows = params.get("p_response_rows") or []
+        p_expires_at = params.get("p_expires_at")
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        blueprints = self.db.setdefault("mock_generated_blueprints", [])
+        attempts = self.db.setdefault("mock_attempts", [])
+        responses = self.db.setdefault("mock_attempt_responses", [])
+
+        bp_id = p_blueprint.get("id") or str(_uuid.uuid4())
+
+        # Idempotency: an in_progress attempt already backs this blueprint.
+        for a in attempts:
+            if (
+                a.get("user_id") == p_user
+                and a.get("generated_blueprint_id") == bp_id
+                and a.get("status") == "in_progress"
+            ):
+                for bp in blueprints:
+                    if bp.get("id") == bp_id:
+                        bp["status"] = "started"
+                        bp.setdefault("started_at", now_iso)
+                return [{"blueprint_id": bp_id, "attempt_id": a["id"]}]
+
+        # Atomic rollback hook — raise BEFORE committing anything.
+        if getattr(self, "_force_response_freeze_failure", False):
+            raise RuntimeError("forced response-freeze failure (atomicity test)")
+
+        # Build everything in locals; commit at the very end so a mid-build raise
+        # leaves the store untouched (models the single-transaction rollback).
+        existing_bp = next((bp for bp in blueprints if bp.get("id") == bp_id), None)
+        new_bp = None
+        if existing_bp is None:
+            new_bp = {
+                "id": bp_id,
+                "user_id": p_user,
+                "exam_id": p_exam,
+                "exam_phase_id": p_exam_phase,
+                "source": p_blueprint.get("source") or "exam_realistic",
+                "status": "draft",
+                "template_snapshot": p_blueprint.get("template_snapshot") or {},
+                "section_snapshot": p_blueprint.get("section_snapshot") or [],
+                "selector_snapshot": p_blueprint.get("selector_snapshot") or {},
+                "question_ids": list(p_blueprint.get("question_ids") or []),
+                "readiness_snapshot": p_blueprint.get("readiness_snapshot") or {},
+                "expires_at": p_expires_at,
+                "created_at": now_iso,
+            }
+
+        attempt_id = str(_uuid.uuid4())
+        attempt_row = {
+            "id": attempt_id,
+            "user_id": p_user,
+            "template_id": None,
+            "generated_blueprint_id": bp_id,
+            "template_snapshot": p_template_snapshot,
+            "status": "in_progress",
+            "started_at": now_iso,
+            "expires_at": p_expires_at,
+            "current_section_index": 0,
+            "section_locks_enabled": bool(
+                p_template_snapshot.get("section_locks_enabled", False)
+            ),
+        }
+        new_responses = [
+            {
+                "id": str(_uuid.uuid4()),
+                "attempt_id": attempt_id,
+                "question_id": r.get("question_id"),
+                "question_snapshot": r.get("question_snapshot") or {},
+                "is_visited": False,
+                "is_marked_for_review": False,
+                "client_seq": 0,
+            }
+            for r in p_response_rows
+        ]
+
+        # Commit.
+        target_bp = new_bp if new_bp is not None else existing_bp
+        if new_bp is not None:
+            blueprints.append(new_bp)
+        attempts.append(attempt_row)
+        responses.extend(new_responses)
+        target_bp["status"] = "started"
+        target_bp["started_at"] = now_iso
+
+        return [{"blueprint_id": bp_id, "attempt_id": attempt_id}]
 
     def _update_pyq_question_review_atomic(self, params: dict[str, Any]) -> dict[str, Any] | None:
         """Emulate the atomic question-review cascade RPC (migration 151)."""
