@@ -135,4 +135,3 @@ def test_legacy_unmapped_import_without_mapping_columns_still_commits():
     row = sb.db["mock_question_bank"][0]
     assert row["subject_id"] is None
     assert row["topic_id"] is None
-}
