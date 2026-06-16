@@ -4,7 +4,7 @@ This is the FIRST mutating Track A service. ``persist_and_start`` assembles a
 generated-mock blueprint (A-PR1 envelope + A-PR2 selection) using SERVER-SIDE
 thresholds, and — ONLY when the readiness outcome is 'ready' — atomically
 persists the blueprint and starts an attempt from it via the
-``start_attempt_from_blueprint`` plpgsql function (migration 178).
+``start_attempt_from_blueprint`` plpgsql function (migration 179).
 
 Hardening invariants ("born hardened"):
 
@@ -216,7 +216,8 @@ def persist_and_start(
     """Build a generated blueprint and atomically start an attempt from it.
 
     Returns a dict carrying ``outcome``:
-      * ready    → {outcome:'ready', blueprint_id, attempt_id, question_count}.
+      * ready    → {outcome:'ready', blueprint_id, attempt_id, question_count,
+        expires_at, selector_snapshot}.
       * non-ready (thin_bank / blocked) → {outcome, readiness, section_shortfall,
         thresholds} and performs ZERO writes (the endpoint maps this to 409).
 
@@ -296,4 +297,8 @@ def persist_and_start(
         "blueprint_id": row.get("blueprint_id"),
         "attempt_id": row.get("attempt_id"),
         "question_count": len(ordered_ids),
+        # Surfaced to the caller: the 24h blueprint validity window (server-set)
+        # and the honest per-section selector snapshot (eligible/selected/relaxed).
+        "expires_at": expires_at,
+        "selector_snapshot": payload.get("selector_snapshot"),
     }

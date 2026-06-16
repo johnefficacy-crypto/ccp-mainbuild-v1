@@ -1,9 +1,10 @@
-"""Schema-contract test for A-PR3 migration 178 (start_attempt_from_blueprint).
+"""Schema-contract test for A-PR3 migration 179 (start_attempt_from_blueprint).
 
+Migration 179 supersedes 178's definition via CREATE OR REPLACE (the clean redo).
 The repo has no live-DB migration harness; existing migration tests assert
 against the migration SQL text. This pins the function signature, the atomic
-step sequence, the idempotency guard, and the service_role-only execute grant
-that the A-PR3 service depends on.
+step sequence, the idempotency guard, the zero-response hardening guard, and the
+service_role-only execute grant that the A-PR3 service depends on.
 
 Manual SQL validation (run against a Supabase branch DB after apply):
 
@@ -23,7 +24,7 @@ Manual SQL validation (run against a Supabase branch DB after apply):
 from pathlib import Path
 
 MIGRATIONS = Path(__file__).resolve().parents[2] / "supabase" / "migrations"
-SQL = (MIGRATIONS / "178_start_attempt_from_blueprint.sql").read_text().lower()
+SQL = (MIGRATIONS / "179_start_attempt_from_blueprint.sql").read_text().lower()
 
 
 def test_function_signature_and_return_shape():
@@ -93,6 +94,13 @@ def test_service_role_only_execute_grant():
         "grant execute on function public.start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz) to service_role"
         in SQL
     )
+
+
+def test_rejects_zero_response_attempt():
+    # HARDENING (redo): a brand-new generated attempt with no frozen responses is
+    # refused (raises -> full rollback), never silently created.
+    assert "jsonb_array_length(coalesce(p_response_rows, '[]'::jsonb)) = 0" in SQL
+    assert "refusing to start a generated" in SQL
 
 
 def test_pgrst_reload_footer():

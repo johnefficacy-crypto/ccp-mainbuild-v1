@@ -1,11 +1,15 @@
-"""Generated-mock attempt API (A-PR3, D4 Option-B).
+"""Generated-mock attempt API (A-PR3, clean redo).
 
-POST /api/study-os/mocks/generated/start
+POST /api/study/mocks/generated/start
   Authed. Body carries ONLY exam_id, exam_phase_id, source — any client-supplied
   threshold fields are ignored (the service fixes them server-side). On a ready
-  outcome it returns {blueprint_id, attempt_id, question_count, outcome}; on a
-  non-ready readiness verdict it returns 409 with the verdict payload and writes
-  nothing.
+  outcome it returns {blueprint_id, attempt_id, question_count, outcome,
+  expires_at, selector_snapshot}; on a non-ready readiness verdict it returns 409
+  with the verdict payload and writes nothing.
+
+  Lives under the same /study/mocks/* family as the existing mock-engine routes
+  (mock_engine.router), so submit/answer/result/review for a generated attempt go
+  through the EXISTING engine endpoints unchanged.
 """
 from __future__ import annotations
 
@@ -21,7 +25,7 @@ from app.study_os.generated_mock_attempt import persist_and_start
 
 logger = logging.getLogger("career_copilot.api.generated_mock")
 
-router = APIRouter(prefix="/study-os/mocks/generated", tags=["generated-mock"])
+router = APIRouter(prefix="/study/mocks/generated", tags=["generated-mock"])
 
 
 class GeneratedStartBody(BaseModel):
@@ -66,4 +70,6 @@ async def start_generated(
         "attempt_id": result["attempt_id"],
         "question_count": result["question_count"],
         "outcome": result["outcome"],
+        "expires_at": result["expires_at"],
+        "selector_snapshot": result["selector_snapshot"],
     }

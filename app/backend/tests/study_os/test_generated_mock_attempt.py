@@ -26,10 +26,20 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api import generated_mock as generated_mock_api
+from app.api import mock_engine as mock_engine_api
 from app.core.auth import get_current_user
 from app.study_os import generated_mock_attempt as svc
 from app.study_os import mock_engine as engine
+from app.study_os.planner import compute_draft_plan
 from tests.persona_questions._stub import SBStub
+
+# The live correction-task vocabulary written by MasteryWriter comes from
+# mastery_engine.correction_tasks (NOT mocks.VALID_CORRECTION_CATEGORIES, which is
+# the separate legacy error-category vocab). A-PR3 reuses MasteryWriter wholesale
+# and defines NO correction vocabulary of its own. See PR notes / preflight finding.
+_MASTERY_ENGINE_CORRECTION_TASK_TYPES = {
+    "concept_review", "trap_review", "pyq_revision", "practice_drill",
+}
 
 EXAM = "exam-cgl"
 PHASE = "phase-tier1"
@@ -189,14 +199,24 @@ def test_ready_via_api_returns_contract():
     sb = _sb()
     client = _client(sb)
     r = client.post(
-        "/api/study-os/mocks/generated/start",
+        "/api/study/mocks/generated/start",
         json={"exam_id": EXAM, "exam_phase_id": PHASE, "source": "exam_realistic"},
     )
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"blueprint_id", "attempt_id", "question_count", "outcome"}
+    assert set(body) == {
+        "blueprint_id", "attempt_id", "question_count", "outcome",
+        "expires_at", "selector_snapshot",
+    }
     assert body["outcome"] == "ready"
     assert body["question_count"] == 100
+    assert body["expires_at"]
+    # selector_snapshot carries the honest per-section eligible/selected breakdown.
+    assert body["selector_snapshot"]["sections"]
+    assert all(
+        s["selected_count"] == QUESTION_COUNT
+        for s in body["selector_snapshot"]["sections"]
+    )
 
 
 # ── atomicity ────────────────────────────────────────────────────────────────
@@ -235,7 +255,7 @@ def test_blocked_gate_returns_409_via_api_with_zero_writes():
     sb.db["exam_phase_sections"] = []  # no authored sections → blocked
     client = _client(sb)
     r = client.post(
-        "/api/study-os/mocks/generated/start",
+        "/api/study/mocks/generated/start",
         json={"exam_id": EXAM, "exam_phase_id": PHASE},
     )
     assert r.status_code == 409
@@ -301,7 +321,7 @@ def test_client_threshold_fields_in_body_are_ignored():
     sb = _sb(per_subject=10)
     client = _client(sb)
     r = client.post(
-        "/api/study-os/mocks/generated/start",
+        "/api/study/mocks/generated/start",
         json={
             "exam_id": EXAM,
             "exam_phase_id": PHASE,
@@ -374,3 +394,138 @@ def test_save_submit_round_trip_scores_correctly():
     assert out["total_correct"] == 3
     assert out["total_wrong"] == 0
     assert out["total_unattempted"] == 97
+
+
+# ── signal-producer: submit goes through the EXISTING engine route ───────────
+#
+# A generated attempt is just a mock_attempts row with template_id NULL, so
+# submit/answer/result/review reuse the engine endpoints unchanged. On submit the
+# engine route runs MasteryWriter inline (api/mock_engine.submit), source-
+# agnostic — these prove the generated attempt feeds Study OS mastery/correction
+# signals through that one path, with no second/divergent writer.
+
+
+def _engine_client(sb: SBStub, user_id: str = USER) -> TestClient:
+    app = FastAPI()
+    app.include_router(mock_engine_api.router, prefix="/api")
+    app.dependency_overrides[get_current_user] = lambda: {"id": user_id}
+    mock_engine_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    return TestClient(app)
+
+
+def _start_generated(sb: SBStub) -> str:
+    res = svc.persist_and_start(sb, user_id=USER, exam_id=EXAM, exam_phase_id=PHASE)
+    assert res["outcome"] == "ready"
+    return res["attempt_id"]
+
+
+def _answer_all(sb: SBStub, attempt_id: str, *, correct: bool) -> None:
+    rows = [r for r in sb.db["mock_attempt_responses"] if r["attempt_id"] == attempt_id]
+    for r in rows:
+        snap = r["question_snapshot"]
+        cid = snap["correct_option_id"]
+        chosen = cid if correct else next(o["id"] for o in snap["options"] if o["id"] != cid)
+        engine.save_answer(
+            sb, USER, attempt_id, r["question_id"], chosen,
+            is_marked_for_review=False, client_seq=1, time_spent_sec=5,
+        )
+
+
+def test_submit_runs_masterywriter_for_template_id_null_attempt_shadow(monkeypatch):
+    # Reframed from "schedules the mastery job": the engine submit route runs
+    # MasteryWriter INLINE (no JOB_MASTERY_RETRY is scheduled in live code). This
+    # proves it fires for a template_id-null (generated) attempt — source-agnostic.
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    assert sb.db["mock_attempts"][0]["template_id"] is None  # generated attempt
+    _answer_all(sb, attempt_id, correct=True)
+
+    r = _engine_client(sb).post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+    assert r.status_code == 200
+
+    # shadow rows written (writer ran), each maps to a frozen-snapshot topic …
+    shadow = sb.db.get("mock_mastery_shadow", [])
+    assert shadow
+    assert all(s["flag_state"] == "shadow" for s in shadow)
+    assert all(s["topic_id"] == "topic-1" for s in shadow)
+    # … and NO live mutation in shadow mode.
+    assert sb.db.get("user_topic_mastery", []) == []
+    assert sb.db.get("user_topic_mastery_audit", []) == []
+    assert sb.db.get("user_topic_error_patterns", []) == []
+    assert sb.db.get("mock_correction_tasks", []) == []
+
+
+def test_ff_live_applies_mastery_exactly_once_no_dual_writer(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    client = _engine_client(sb)
+
+    r1 = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+    assert r1.status_code == 200
+
+    # live mastery applied EXACTLY ONCE for the practised topic.
+    audit = [a for a in sb.db.get("user_topic_mastery_audit", []) if a["topic_id"] == "topic-1"]
+    assert len(audit) == 1
+    assert any(m["topic_id"] == "topic-1" for m in sb.db.get("user_topic_mastery", []))
+
+    # DUAL-WRITER GUARD: the legacy mastery.py recompute path (driven off
+    # mock_topic_breakdowns) is NOT engaged by a generated submit — the engine
+    # emits a mock_tests compat row but no breakdowns, so no second/divergent
+    # recompute runs alongside MasteryWriter.
+    assert sb.db.get("mock_topic_breakdowns", []) == []
+
+    # re-submit is idempotent: NO double-apply (the apply RPC guards on the audit).
+    r2 = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+    assert r2.status_code == 200
+    audit2 = [a for a in sb.db.get("user_topic_mastery_audit", []) if a["topic_id"] == "topic-1"]
+    assert len(audit2) == 1
+
+
+def test_ff_live_correction_drafts_reuse_masterywriter_vocabulary(monkeypatch):
+    # A-PR3 reuses MasteryWriter and hardcodes NO correction vocabulary: any draft
+    # it produces carries a mastery_engine task_type (the single source of truth
+    # for the mock_attempt-driven correction path).
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=False)  # 0% accuracy → error/correction signals
+
+    r = _engine_client(sb).post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+    assert r.status_code == 200
+
+    # the live write-back path ran (mastery applied for the practised topic) …
+    assert any(a["topic_id"] == "topic-1" for a in sb.db.get("user_topic_mastery_audit", []))
+    # … and every correction draft it produced uses the MasteryWriter vocabulary
+    # (A-PR3 hardcodes none of its own).
+    for d in sb.db.get("mock_correction_tasks", []):
+        assert d["task_type"] in _MASTERY_ENGINE_CORRECTION_TASK_TYPES
+
+
+def test_planner_regen_reflects_live_mastery_for_affected_topic(monkeypatch):
+    # After a live mastery/error update, a planner regeneration re-prioritises the
+    # affected topic (planner reads user_topic_mastery + user_topic_error_patterns).
+    from tests.study_os.test_runtime_e2e import _seed as _planner_seed
+
+    sb = SBStub(_planner_seed())
+
+    def _t1(plan):
+        return next((t for t in plan["after_tasks"] if t["topic_id"] == "t1"), None)
+
+    base = _t1(compute_draft_plan(sb, "u-1"))
+    assert base is not None  # baseline: t1 has no mastery row yet (gap default)
+
+    # Simulate the live write-back: low mastery + an error pattern for t1.
+    sb.db.setdefault("user_topic_mastery", []).append(
+        {"id": "m-t1", "user_id": "u-1", "topic_id": "t1", "mastery_score": 15.0}
+    )
+    sb.db.setdefault("user_topic_error_patterns", []).append(
+        {"id": "e-t1", "user_id": "u-1", "topic_id": "t1", "error_type": "concept_gap", "error_count": 3}
+    )
+
+    after = _t1(compute_draft_plan(sb, "u-1"))
+    assert after is not None
+    # Worse mastery + a logged error raises the topic's priority on regen.
+    assert after["priority_score"] > base["priority_score"]
