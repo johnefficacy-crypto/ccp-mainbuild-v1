@@ -17,6 +17,7 @@ import UpdatesPanel from "./panels/UpdatesPanel";
 import CompetitionPanel from "./panels/CompetitionPanel";
 import ReviewActivatePanel from "./panels/ReviewActivatePanel";
 import OverviewPanel from "./panels/OverviewPanel";
+import ExamTaskRail from "./ExamTaskRail";
 import { LifecycleLegend } from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
 
 const SyllabusMapperPanel = lazy(() => import("./syllabus-mapper/SyllabusMapperPanel"));
@@ -45,6 +46,15 @@ function totalBlockers(readiness) {
     .reduce((n, s) => n + (s.blockers?.length || 0), 0);
 }
 
+// Current stage = first non-ready/locked section (excluding the terminal
+// review_activate). Single source of truth for the "what's blocking now"
+// highlight, reused by both the SmartHeader and the console task rail.
+export function currentStageSection(readiness) {
+  return (readiness?.sections || []).find(
+    (s) => s.section !== "review_activate" && !(s.status === "ready" || s.status === "locked"),
+  ) || null;
+}
+
 // ─── Smart readiness header ──────────────────────────────────────────────────
 
 function SmartHeader({ onGotoTab }) {
@@ -65,10 +75,8 @@ function SmartHeader({ onGotoTab }) {
   const scorePercent = readiness?.overall?.score_percent ?? 0;
   const overallStatus = readiness?.overall?.status ?? "empty";
 
-  // Current stage = first non-ready/locked section
-  const currentSec = (readiness?.sections || []).find(
-    (s) => s.section !== "review_activate" && !(s.status === "ready" || s.status === "locked"),
-  );
+  // Current stage = first non-ready/locked section (shared derivation).
+  const currentSec = currentStageSection(readiness);
   const stageLabel = currentSec ? currentSec.label : "Ready to activate";
 
   // Next action = highest-weight blocked section
@@ -298,7 +306,7 @@ function TabStrip({ active, onChange, readiness }) {
 // ─── Main shell ───────────────────────────────────────────────────────────────
 
 function WorkspaceShell() {
-  const { loading, error, refetch, readiness } = useExamWorkspace();
+  const { loading, error, refetch, readiness, variant } = useExamWorkspace();
   const [searchParams] = useSearchParams();
   const initialTab = TAB_ORDER.some(t => t.id === searchParams.get("tab"))
     ? searchParams.get("tab")
@@ -332,28 +340,56 @@ function WorkspaceShell() {
     );
   }
 
+  const panelBody = (
+    <>
+      {activeTab === "overview" && <OverviewPanel />}
+      {activeTab === "setup" && <SetupPanel action={action} />}
+      {activeTab === "documents" && <DocumentsPanel onGotoTab={gotoTab} />}
+      {activeTab === "syllabus" && (
+        <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>
+          <SyllabusMapperPanel />
+        </Suspense>
+      )}
+      {activeTab === "pyq" && (
+        <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>
+          <PyqWorkbenchPanel />
+        </Suspense>
+      )}
+      {activeTab === "updates" && <UpdatesPanel />}
+      {activeTab === "competition" && <CompetitionPanel />}
+      {activeTab === "review" && <ReviewActivatePanel onGotoTab={gotoTab} />}
+    </>
+  );
+
+  // Console variant: blocker-first task rail drives the same panel state
+  // (Wave 4.6C). Standalone variant keeps the tab strip exactly as before.
+  if (variant === "console") {
+    return (
+      <div className="oc">
+        <SmartHeader onGotoTab={gotoTab} />
+        <div style={{ display: "flex", alignItems: "stretch" }} data-testid="console-rail-layout">
+          <ExamTaskRail
+            sections={readiness?.sections}
+            topicCoverage={readiness?.topic_coverage}
+            activeTab={activeTab}
+            currentSectionKey={currentStageSection(readiness)?.section ?? null}
+            onSelect={setActiveTab}
+          />
+          <main className="oc-main" style={{ flex: 1, minWidth: 0, paddingTop: 18 }}>
+            {panelBody}
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="oc">
       <SmartHeader onGotoTab={gotoTab} />
       <TabStrip active={activeTab} onChange={setActiveTab} readiness={readiness} />
 
       <main className="oc-main" style={{ paddingTop: 18 }}>
-        {activeTab === "overview" && <OverviewPanel />}
-        {activeTab === "setup" && <SetupPanel action={action} />}
-        {activeTab === "documents" && <DocumentsPanel onGotoTab={gotoTab} />}
-        {activeTab === "syllabus" && (
-          <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>
-            <SyllabusMapperPanel />
-          </Suspense>
-        )}
-        {activeTab === "pyq" && (
-          <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>
-            <PyqWorkbenchPanel />
-          </Suspense>
-        )}
-        {activeTab === "updates" && <UpdatesPanel />}
-        {activeTab === "competition" && <CompetitionPanel />}
-        {activeTab === "review" && <ReviewActivatePanel onGotoTab={gotoTab} />}
+        {panelBody}
       </main>
     </div>
   );
