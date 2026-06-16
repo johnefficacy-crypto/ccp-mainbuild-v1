@@ -135,6 +135,8 @@ def _build_attempt_payload(
     snapshot_sections: list[dict] = []
     response_rows: list[dict] = []
     ordered_ids: list[str] = []
+    missing_ids: list[str] = []          # selected ids that failed to load a bank row
+    bad_snapshot_ids: list[str] = []     # MCQ snapshots missing options/correct_option_id
     cursor = 0
 
     for idx, sel in enumerate(selector_sections):
@@ -155,15 +157,24 @@ def _build_attempt_payload(
         for qid in sec_ids:
             q = questions_by_id.get(qid)
             if q is None:
+                # FAIL CLOSED: a selected id that does not resolve to a bank row
+                # (data drift / race) must NOT silently shrink the attempt. Record
+                # it and raise after the loop — never `continue` into a short freeze.
+                missing_ids.append(qid)
                 continue
+            snapshot = _question_snapshot(
+                q,
+                marks_per_correct=per_q_correct,
+                marks_per_wrong=per_q_wrong,
+            )
+            # MCQ integrity: a scoreable single-option item needs both options and
+            # a correct_option_id frozen, or the scorer cannot mark it.
+            if not snapshot.get("options") or not snapshot.get("correct_option_id"):
+                bad_snapshot_ids.append(qid)
             response_rows.append(
                 {
                     "question_id": qid,
-                    "question_snapshot": _question_snapshot(
-                        q,
-                        marks_per_correct=per_q_correct,
-                        marks_per_wrong=per_q_wrong,
-                    ),
+                    "question_snapshot": snapshot,
                 }
             )
             section_ids_loaded.append(qid)
@@ -181,6 +192,28 @@ def _build_attempt_payload(
                 "marks_per_correct": per_q_correct,
                 "marks_per_wrong": per_q_wrong,
             }
+        )
+
+    # FAIL-CLOSED freeze invariant (checked BEFORE the RPC, so a violation writes
+    # nothing): every selected question must resolve to a usable MCQ snapshot and
+    # the frozen set must equal the selection exactly — a ready 100-question
+    # selection can never persist as a 99-question attempt.
+    if missing_ids:
+        raise RuntimeError(
+            "generated attempt freeze aborted: "
+            f"{len(missing_ids)} selected question(s) failed to load a bank row "
+            f"(e.g. {missing_ids[:5]}); refusing to start a shrunk attempt"
+        )
+    if bad_snapshot_ids:
+        raise RuntimeError(
+            "generated attempt freeze aborted: "
+            f"{len(bad_snapshot_ids)} MCQ snapshot(s) missing options/"
+            f"correct_option_id (e.g. {bad_snapshot_ids[:5]})"
+        )
+    if len(response_rows) != len(flat_ids):
+        raise RuntimeError(
+            "generated attempt freeze aborted: frozen response count "
+            f"{len(response_rows)} != selected question count {len(flat_ids)}"
         )
 
     template_snapshot = {

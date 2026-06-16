@@ -236,6 +236,53 @@ def test_atomicity_response_freeze_failure_rolls_back_everything():
     assert sb.db["mock_attempt_responses"] == []
 
 
+# ── fail-closed freeze: selected == frozen, no silent shrink ─────────────────
+
+def test_freeze_fails_closed_when_a_selected_question_does_not_load(monkeypatch):
+    # Data drift / race: a selected bank row vanishes before freeze. The attempt
+    # must NOT silently persist with fewer questions — it fails closed, zero writes.
+    sb = _sb()
+    real_load = svc._load_questions
+
+    def _drop_one(sb_, ids):
+        loaded = real_load(sb_, ids)
+        if ids:
+            loaded.pop(ids[0], None)  # one selected id no longer resolves
+        return loaded
+
+    monkeypatch.setattr(svc, "_load_questions", _drop_one)
+    with pytest.raises(RuntimeError):
+        svc.persist_and_start(sb, user_id=USER, exam_id=EXAM, exam_phase_id=PHASE)
+
+    assert sb.db["mock_generated_blueprints"] == []
+    assert sb.db["mock_attempts"] == []
+    assert sb.db["mock_attempt_responses"] == []
+
+
+def test_freeze_fails_closed_on_unscoreable_mcq_snapshot(monkeypatch):
+    # A selected row that loads but has no options / correct_option_id cannot be
+    # scored — fail closed before the RPC rather than freeze an unscoreable item.
+    sb = _sb()
+    real_load = svc._load_questions
+
+    def _corrupt(sb_, ids):
+        loaded = real_load(sb_, ids)
+        if ids:
+            q = dict(loaded[ids[0]])
+            q["options"] = []
+            q["correct_option_id"] = None
+            loaded[ids[0]] = q
+        return loaded
+
+    monkeypatch.setattr(svc, "_load_questions", _corrupt)
+    with pytest.raises(RuntimeError):
+        svc.persist_and_start(sb, user_id=USER, exam_id=EXAM, exam_phase_id=PHASE)
+
+    assert sb.db["mock_generated_blueprints"] == []
+    assert sb.db["mock_attempts"] == []
+    assert sb.db["mock_attempt_responses"] == []
+
+
 # ── ready-gate ───────────────────────────────────────────────────────────────
 
 def test_thin_bank_gate_starts_nothing():
