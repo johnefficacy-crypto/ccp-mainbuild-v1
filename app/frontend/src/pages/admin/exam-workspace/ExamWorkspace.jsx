@@ -18,6 +18,7 @@ import CompetitionPanel from "./panels/CompetitionPanel";
 import ReviewActivatePanel from "./panels/ReviewActivatePanel";
 import OverviewPanel from "./panels/OverviewPanel";
 import ExamTaskRail from "./ExamTaskRail";
+import ExamPublishImpact from "./ExamPublishImpact";
 import { LifecycleLegend } from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
 
 const SyllabusMapperPanel = lazy(() => import("./syllabus-mapper/SyllabusMapperPanel"));
@@ -357,7 +358,11 @@ function WorkspaceShell() {
       )}
       {activeTab === "updates" && <UpdatesPanel />}
       {activeTab === "competition" && <CompetitionPanel />}
-      {activeTab === "review" && <ReviewActivatePanel onGotoTab={gotoTab} />}
+      {/* Console Publish surface frames the read-only impact view (which mounts
+          ReviewActivatePanel as-is); standalone keeps the bare panel (4.6D). */}
+      {activeTab === "review" && (variant === "console"
+        ? <ExamPublishImpact onGotoTab={gotoTab} />
+        : <ReviewActivatePanel onGotoTab={gotoTab} />)}
     </>
   );
 
