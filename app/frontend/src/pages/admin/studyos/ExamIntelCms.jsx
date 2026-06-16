@@ -997,7 +997,7 @@ export default function AdminExamIntelCms() {
         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
           Study OS · exam intelligence CMS
         </div>
-        <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight">Raw CMS / Bulk Import</h1>
+        <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight">Advanced Import / Repair</h1>
         <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
           Create exam families, exams, cycles, phases, syllabus documents, PYQ papers/questions, topic
           coverage, and policy updates. Per spec §12 #4: CMS <strong>feeds</strong> the review queue —
@@ -1009,9 +1009,12 @@ export default function AdminExamIntelCms() {
       <div
         className="rounded border border-amber-300/70 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
         role="note"
-        data-testid="cms-downgrade-banner"
+        data-testid="cms-caution-banner"
       >
-        Use Workspace for normal exam setup. Use this page for bulk import and edge fixes.
+        <strong>Power-user repair surface.</strong> For normal work, use the{" "}
+        <strong>Exam Governance Console</strong> and the <strong>Create-exam wizard</strong> — not this
+        page. Raw edits here can break import idempotency (the exam <code>slug</code> is the upsert key
+        and must not change), and exam-identity changes belong in the operator UI, never raw CMS.
       </div>
 
       <div className="flex gap-2 items-end flex-wrap">
