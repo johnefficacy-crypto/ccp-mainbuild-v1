@@ -78,9 +78,10 @@ _NON_RELAXABLE = (
 
 _POOL_PREDICATE_NOTE = (
     "diagnostics.selectable_mcq_depth base pool: reviewer_status in selectable, "
-    "answerable types (mcq/msq/integer), is_current/is_current_based excluded, "
-    "e2e_fixture excluded / NULL provenance retained, not-expired; scoped by "
-    "section subject_id. Equals the pool the readiness verdict was computed over."
+    "MCQ-only (integer/msq excluded — no scoring path yet), is_current/"
+    "is_current_based excluded, e2e_fixture excluded / NULL provenance retained, "
+    "not-expired; scoped by section subject_id. Equals the pool the readiness "
+    "verdict was computed over."
 )
 
 

@@ -37,9 +37,14 @@ from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger("career_copilot.exam_intelligence.diagnostics")
 
-# Mock question types that count as selectable answerable items. Mirrors the
-# mock_question_type enum (migration 135: 'mcq','integer','msq').
-_SELECTABLE_QUESTION_TYPES = ("mcq", "msq", "integer")
+# Mock question types that count as selectable answerable items. SAFETY: restricted
+# to MCQ only. The mock_question_type enum (migration 135) also defines 'integer'
+# and 'msq', but the platform has NO integer/msq SCORING path yet — counting them
+# as "selectable" would let a generated mock draw items it cannot score correctly.
+# Until integer/msq scoring lands they are excluded everywhere this constant gates
+# (readiness depth, source distribution, and the generated selection pool, which is
+# pinned EQUAL to readiness). Re-add a type here only once its scoring path exists.
+_SELECTABLE_QUESTION_TYPES = ("mcq",)
 
 # Coverage-lifecycle status that gates the Study OS planner. This is a fixed
 # domain enum from migration 030 (exam_topic_coverage.reviewer_status), NOT a

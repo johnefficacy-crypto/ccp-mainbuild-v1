@@ -145,6 +145,22 @@ def test_descriptive_non_answerable_rows_are_not_selected():
     assert _by_section(payload)["sec-quant"]["eligible_pool_count"] == 35
 
 
+def test_integer_and_msq_excluded_mcq_only_safety():
+    # SAFETY: the generated selectable pool is MCQ-only. integer/msq have no
+    # scoring path, so they must never be drawn into a generated attempt nor
+    # counted in the readiness base pool (pool stays EQUAL to readiness).
+    bank = _stocked_bank(35)
+    bank += [_mcq(700 + i, "subj-quant", question_type="integer") for i in range(5)]
+    bank += [_mcq(750 + i, "subj-quant", question_type="msq") for i in range(5)]
+    sb = _cgl_sb(bank=bank, question_count=25)
+    payload = build_blueprint_with_selection(
+        sb, exam_id=EXAM, exam_phase_id=PHASE, user_id="u", **_THRESHOLDS
+    )
+    unscoreable = {f"q-{700 + i:04d}" for i in range(5)} | {f"q-{750 + i:04d}" for i in range(5)}
+    assert unscoreable.isdisjoint(set(payload["question_ids"]))
+    assert _by_section(payload)["sec-quant"]["eligible_pool_count"] == 35
+
+
 def test_e2e_fixtures_excluded_null_provenance_retained():
     bank = [_mcq(i, "subj-quant") for i in range(10)]                       # authored
     bank += [_mcq(100 + i, "subj-quant", source_type=None) for i in range(5)]   # NULL kept
