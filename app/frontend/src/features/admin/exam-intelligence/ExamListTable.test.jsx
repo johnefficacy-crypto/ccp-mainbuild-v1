@@ -145,3 +145,21 @@ test("Business priority and Cadence column headers are present", () => {
   expect(screen.getByText("Business priority")).toBeInTheDocument();
   expect(screen.getByText("Cadence")).toBeInTheDocument();
 });
+
+// ── 4.6F: row action routes the primary path to the console ────────────────
+
+test("primary row action 'Open console' targets /console/:exam_id", () => {
+  wrap(<ExamListTable items={ITEMS} total_count={2} />);
+  const primary = screen.getByTestId("exam-intel-console-ssc-cgl");
+  expect(primary.textContent).toContain("Open console");
+  expect(primary.getAttribute("href")).toBe("/admin/exam-intelligence/console/e1");
+});
+
+test("secondary 'Advanced workspace' still routes to /workspace/:exam_id and is demoted", () => {
+  wrap(<ExamListTable items={ITEMS} total_count={2} />);
+  const secondary = screen.getByTestId("exam-intel-workspace-ssc-cgl");
+  expect(secondary.textContent).toContain("Advanced workspace");
+  expect(secondary.getAttribute("href")).toBe("/admin/exam-intelligence/workspace/e1");
+  // Demoted: not the bordered indigo pill the primary console action uses.
+  expect(secondary.className).not.toContain("border-indigo-300");
+});

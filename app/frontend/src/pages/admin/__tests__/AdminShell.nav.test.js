@@ -61,9 +61,10 @@ describe("AdminShell exam-intel nav title", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Registry");
   });
 
-  test("masthead shows Raw CMS / Bulk Import at /admin/exam-intelligence/cms", () => {
+  test("masthead shows Advanced Import / Repair at /admin/exam-intelligence/cms", () => {
     renderShell("/admin/exam-intelligence/cms");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Raw CMS / Bulk Import");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Advanced Import / Repair");
+    expect(screen.queryByText("Raw CMS / Bulk Import")).toBeNull();
   });
 
   test("masthead shows Create exam at /admin/exam-intelligence/new", () => {
@@ -134,12 +135,14 @@ describe("Wave 4.6B — Exam-truth lane posture", () => {
     expect(advanced.contains(link)).toBe(true);
   });
 
-  test("Raw CMS is demoted into the Advanced affordance and routes to /cms", () => {
+  test("Advanced Import / Repair is demoted into the Advanced affordance and routes to /cms", () => {
     renderShell("/admin/exam-intelligence");
     const advanced = screen.getByTestId("admin-nav-exam-advanced");
     const link = screen.getByTestId("admin-nav-exam-intel-cms");
+    expect(link.textContent).toContain("Advanced Import / Repair");
     expect(link.getAttribute("href")).toBe("/admin/exam-intelligence/cms");
     expect(advanced.contains(link)).toBe(true);
+    expect(screen.queryByText("Raw CMS / Bulk Import")).toBeNull();
   });
 
   test("the four KG lanes (D-A) are unchanged", () => {

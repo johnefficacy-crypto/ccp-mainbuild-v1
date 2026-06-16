@@ -52,7 +52,7 @@ const KG_LANE_1 = [
 // (no new path); Raw CMS keeps its /cms route. Demoted from primary siblings.
 const KG_LANE_1_ADVANCED = [
   { to: "/admin/exam-intelligence/new", label: "Create exam", icon: Sparkles, testId: "admin-nav-guided-exam-wizard" },
-  { to: "/admin/exam-intelligence/cms", label: "Raw CMS / Bulk Import", icon: Files, testId: "admin-nav-exam-intel-cms" },
+  { to: "/admin/exam-intelligence/cms", label: "Advanced Import / Repair", icon: Files, testId: "admin-nav-exam-intel-cms" },
 ];
 const KG_LANE_2 = [
   { to: "/admin/exam-eligibility", label: "Exam Eligibility", icon: ShieldCheck, testId: "admin-nav-exam-eligibility" },
