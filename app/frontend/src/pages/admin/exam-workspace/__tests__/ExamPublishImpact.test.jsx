@@ -64,7 +64,6 @@ const SYLLABUS = {
   ],
 };
 const PAPERS = { items: [{ id: "p1", paper_code: "2025-GS-I" }] };
-const PYQ_QUESTIONS = { items: [{ id: "q1", question_number: 5, reviewer_status: "pending" }] };
 const MOCK = {
   exam_id: "exam-1",
   exam_phase_id: null,
@@ -81,13 +80,26 @@ function routeGet(url, overrides = {}) {
   if (overrides[url] !== undefined) return overrides[url];
   if (url.includes("/api/exam-intelligence/exams/")) return Promise.resolve(SUMMARY);
   if (url.includes("/policy-updates")) return Promise.resolve(OFFICIAL);
-  if (url.includes("/exam-competition-metrics")) return Promise.resolve(LOCKED_COMP);
+  if (url.includes("/competition-metrics")) return Promise.resolve(LOCKED_COMP);
   if (url.includes("/exam-topic-coverage")) return Promise.resolve(COVERAGE);
   if (url.includes("/syllabus-topic-mentions")) return Promise.resolve(SYLLABUS);
   if (url.includes("/pyq-papers")) return Promise.resolve(PAPERS);
-  if (url.includes("/pyq-questions")) return Promise.resolve(PYQ_QUESTIONS);
+  if (url.includes("/pyq-questions")) {
+    // q1 surfaces under both pending and needs_correction → must dedupe to one.
+    if (url.includes("reviewer_status=pending")) {
+      return Promise.resolve({ items: [{ id: "q1", question_number: 5, reviewer_status: "pending" }] });
+    }
+    if (url.includes("reviewer_status=needs_correction")) {
+      return Promise.resolve({ items: [
+        { id: "q1", question_number: 5, reviewer_status: "needs_correction" },
+        { id: "q2", question_number: 6, reviewer_status: "needs_correction" },
+      ] });
+    }
+    if (url.includes("reviewer_status=rejected")) return Promise.resolve({ items: [] });
+    return Promise.resolve({ items: [] });
+  }
   if (url.includes("/mock-readiness")) return Promise.resolve(MOCK);
-  if (url.includes("/api/evidence/")) return Promise.resolve({ row: { reviewer_status: "rejected", source_url: "https://gov.in/x" }, trust: { status: "rejected" } });
+  if (url.includes("/api/evidence/")) return Promise.resolve({ row: { reviewer_status: "rejected", source_url: "https://gov.in/x", confidence_score: 0.86 }, trust: { status: "rejected", confidence_score: 0.86 } });
   return Promise.resolve({});
 }
 
@@ -122,7 +134,7 @@ test("renders the four framing sections + mock-impact, composed from the correct
   expect(urls.some((u) => u.includes("/syllabus-topic-mentions?exam_id=exam-1"))).toBe(true);
   expect(urls.some((u) => u.includes("/pyq-papers?exam_id=exam-1"))).toBe(true);
   expect(urls.some((u) => u.includes("/policy-updates?exam_id=exam-1"))).toBe(true);
-  expect(urls.some((u) => u.includes("/exam-competition-metrics?exam_id=exam-1"))).toBe(true);
+  expect(urls.some((u) => u.includes("/exam-intelligence/competition-metrics?exam_id=exam-1") && u.includes("status=locked"))).toBe(true);
   expect(urls.some((u) => u.includes("/exams/exam-1/mock-readiness"))).toBe(true);
 });
 
@@ -149,7 +161,7 @@ test("excluded section shows reviewed-not-locked + pending/rejected with reasons
   // PYQ resolved through the papers→questions join.
   const pyqCalls = api.get.mock.calls.map((c) => c[0]);
   expect(pyqCalls.some((u) => u.includes("/pyq-papers?exam_id=exam-1"))).toBe(true);
-  await waitFor(() => screen.getByTestId("excluded-pyq-row"));
+  await waitFor(() => expect(screen.getAllByTestId("excluded-pyq-row").length).toBeGreaterThan(0));
   expect(api.get.mock.calls.some((c) => c[0].includes("/pyq-questions?pyq_paper_id=p1"))).toBe(true);
   // syllabus excluded = the non-verified mention only.
   expect(screen.getAllByTestId("excluded-syllabus-row")).toHaveLength(1);
@@ -208,4 +220,40 @@ test("context reuse: readiness from context is not refetched", async () => {
   expect(screen.getByTestId("excluded-tc-snapshot").textContent).toContain("reviewed 3");
   const urls = api.get.mock.calls.map((c) => c[0]);
   expect(urls.some((u) => u.includes("/workspace/") && u.includes("/readiness"))).toBe(false);
+});
+
+// ── 4.6D.1 Fix 1 ────────────────────────────────────────────────────────────
+test("locked competition reads EI /competition-metrics?status=locked, not the CMS path", async () => {
+  renderPanel();
+  await waitFor(() => screen.getByTestId("exam-publish-impact"));
+  const urls = api.get.mock.calls.map((c) => c[0]);
+  expect(urls.some((u) =>
+    u.includes("/api/admin/exam-intelligence/competition-metrics?exam_id=exam-1") && u.includes("status=locked"),
+  )).toBe(true);
+  // The flag-gated CMS write-surface endpoint must NOT be used for this read.
+  expect(urls.some((u) => u.includes("/exam-competition-metrics"))).toBe(false);
+});
+
+// ── 4.6D.1 Fix 2 ────────────────────────────────────────────────────────────
+test("excluded PYQ fetches pending + needs_correction + rejected and dedupes by id", async () => {
+  renderPanel();
+  await waitFor(() => expect(screen.getAllByTestId("excluded-pyq-row").length).toBeGreaterThan(0));
+  const urls = api.get.mock.calls.map((c) => c[0]);
+  ["pending", "needs_correction", "rejected"].forEach((st) => {
+    expect(urls.some((u) => u.includes("/pyq-questions?pyq_paper_id=p1") && u.includes(`reviewer_status=${st}`))).toBe(true);
+  });
+  // q1 surfaced under both pending and needs_correction → appears once; q2 once.
+  expect(screen.getAllByTestId("excluded-pyq-row")).toHaveLength(2);
+});
+
+// ── 4.6D.1 Fix 3 ────────────────────────────────────────────────────────────
+test("no % regression; evidence trace does not mount the shared ExamEvidenceDrawer", async () => {
+  renderPanel();
+  await waitFor(() => screen.getByTestId("evidence-toggle-cov-rev"));
+  // Open the evidence trace (drill returns a row carrying a confidence_score).
+  await act(async () => { fireEvent.click(screen.getByTestId("evidence-toggle-cov-rev")); });
+  await waitFor(() => screen.getByTestId("evidence-trace-cov-rev"));
+  // The shared drawer (which renders a ConfidencePill %) is never mounted.
+  expect(screen.queryByTestId("exam-evidence-drawer-cov-rev")).toBeNull();
+  expect(screen.getByTestId("exam-publish-impact").textContent).not.toContain("%");
 });

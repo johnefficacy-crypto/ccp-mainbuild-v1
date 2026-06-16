@@ -7,7 +7,10 @@
  *   3. WHAT IS EXCLUDED & WHY   — reviewed-not-locked + pending/needs-review/rejected
  *      coverage / syllabus / PYQ, with reviewer_status + notes as the reason
  *   4. MOCK / TEMPLATE IMPACT   — per-phase verdict from /mock-readiness (4.6D0-BE)
- *   + EVIDENCE TRACE via the existing ExamEvidenceDrawer.
+ *   + EVIDENCE TRACE — a minimal in-panel affordance hitting GET /api/evidence/
+ *     {kind}/{id}. It deliberately does NOT reuse the shared ExamEvidenceDrawer:
+ *     that drawer renders a ConfidencePill percentage, which would breach the
+ *     D-E "no percentage" lock. Do not re-wire this through ExamEvidenceDrawer.
  *
  * Locks: read-only (no mutations — the activate action stays in the mounted
  * ReviewActivatePanel); D-E no percentage (scores render as glossary priority
@@ -75,7 +78,12 @@ function useRead(url, enabled = true) {
   return { status, data, error };
 }
 
-// Papers → questions FE join: PYQ has no exam-scoped excluded-questions read.
+// pyq_questions review lifecycle: pending → verified | rejected | needs_correction.
+// "Excluded" = every non-verified token.
+const EXCLUDED_PYQ_STATUSES = ["pending", "needs_correction", "rejected"];
+
+// Papers → questions FE join: PYQ has no exam-scoped excluded-questions read,
+// so fetch each excluded reviewer_status per paper, merge, and dedupe by id.
 function useExcludedPyq(examId) {
   const [status, setStatus] = useState("idle");
   const [rows, setRows] = useState([]);
@@ -93,16 +101,27 @@ function useExcludedPyq(examId) {
       try {
         const p = await api.get(`${CMS_BASE}/pyq-papers?exam_id=${encodeURIComponent(examId)}&limit=200`);
         const papers = p?.items || [];
-        const lists = await Promise.all(
-          papers.map((pp) =>
-            api
-              .get(`${CMS_BASE}/pyq-questions?pyq_paper_id=${encodeURIComponent(pp.id)}&reviewer_status=pending&limit=200`)
-              .then((q) => (q?.items || []).map((row) => ({ ...row, paper_code: pp.paper_code })))
-              .catch(() => []), // one bad paper must not blank the PYQ section
-          ),
-        );
+        // One fetch per (paper, excluded-status); a single failing fetch must
+        // not blank the section — swallow it and keep the rest.
+        const fetches = [];
+        papers.forEach((pp) => {
+          EXCLUDED_PYQ_STATUSES.forEach((st) => {
+            fetches.push(
+              api
+                .get(`${CMS_BASE}/pyq-questions?pyq_paper_id=${encodeURIComponent(pp.id)}&reviewer_status=${st}&limit=200`)
+                .then((q) => (q?.items || []).map((row) => ({ ...row, paper_code: pp.paper_code })))
+                .catch(() => []),
+            );
+          });
+        });
+        const lists = await Promise.all(fetches);
         if (cancelled) return;
-        setRows(lists.flat());
+        // Dedupe by id (a row could surface under more than one status query).
+        const byId = new Map();
+        lists.flat().forEach((row) => {
+          if (row?.id && !byId.has(row.id)) byId.set(row.id, row);
+        });
+        setRows([...byId.values()]);
         setStatus("data");
       } catch (e) {
         if (cancelled) return;
@@ -212,9 +231,11 @@ export default function ExamPublishImpact({ onGotoTab }) {
   const official = useRead(
     examId ? `${EI_BASE}/policy-updates?exam_id=${encodeURIComponent(examId)}&status=verified&source_type=official&limit=200` : null,
   );
-  // locked competition metrics the planner consumes.
+  // locked competition metrics the planner consumes — canonical exam-scoped
+  // read is EI /competition-metrics with `status` (mapped to reviewer_status),
+  // not the flag-gated CMS write-surface endpoint.
   const lockedComp = useRead(
-    examId ? `${CMS_BASE}/exam-competition-metrics?exam_id=${encodeURIComponent(examId)}&reviewer_status=locked&limit=200` : null,
+    examId ? `${EI_BASE}/competition-metrics?exam_id=${encodeURIComponent(examId)}&status=locked&limit=200` : null,
   );
   // all coverage rows (partitioned client-side: locked reaches aspirants,
   // the rest are excluded with their reviewer_status/notes reason).
