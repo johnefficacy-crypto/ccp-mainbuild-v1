@@ -20,14 +20,10 @@
  *   /admin/exam-intelligence/console/:exam_id   → top bar + embedded workspace
  */
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import useSelectedExamId from "../../lib/hooks/useSelectedExamId";
-import useApiCollection from "../../lib/hooks/useApiCollection";
 import ExamWorkspace from "./exam-workspace/ExamWorkspace";
-
-// Reuse the exact list read the Registry uses (no new fetch path / endpoint).
-const EXAM_LIST_URL = "/api/admin/exam-intelligence/exams";
-const EXAM_LIST_PARAMS = { limit: "200", active_state: "active" };
+import ExamListShell from "../../features/admin/exam-intelligence/ExamListShell";
 
 // ─── Thin top bar — identity from the URL only (D-E: no readiness %) ─────────
 
@@ -55,65 +51,41 @@ function ConsoleTopBar({ examId }) {
   );
 }
 
-// ─── No-exam picker — built from the Registry exam-list read ─────────────────
+// ─── No-exam picker — the reusable exam-list shell on the existing /exams read ─
+
+// Per-row actions injected into the shared shell: console-primary (4.6F door)
+// with the advanced standalone workspace demoted to a quiet secondary.
+function consoleRowAction(exam) {
+  return (
+    <span className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+      <Link
+        to={`/admin/exam-intelligence/console/${encodeURIComponent(exam.id)}`}
+        className="btn btn-primary"
+        data-testid={`console-open-${exam.id}`}
+      >
+        Open console
+      </Link>
+      <Link
+        to={`/admin/exam-intelligence/workspace/${encodeURIComponent(exam.id)}`}
+        className="btn btn-ghost"
+        style={{ color: "var(--ink-mute)" }}
+        data-testid={`console-workspace-${exam.id}`}
+      >
+        Advanced workspace
+      </Link>
+    </span>
+  );
+}
 
 function ExamPicker() {
-  const navigate = useNavigate();
-  const { items, status, refresh } = useApiCollection(EXAM_LIST_URL, [], {
-    params: EXAM_LIST_PARAMS,
-  });
-
-  function select(id) {
-    // URL is the store — navigation IS the selection. No local state.
-    navigate(`/admin/exam-intelligence/console/${encodeURIComponent(id)}`);
-  }
-
   return (
-    <div className="oc-main" style={{ padding: 22 }} data-testid="exam-picker">
-      <div className="lbl" style={{ marginBottom: 4 }}>Exam Governance Console</div>
-      <h1 className="oc-title disp" style={{ fontSize: 24, marginBottom: 12 }}>
-        Select an exam
-      </h1>
-
-      {status === "loading" && (
-        <div className="row-sub" data-testid="exam-picker-loading">Loading exams…</div>
-      )}
-
-      {status === "error" && (
-        <div className="err-row" data-testid="exam-picker-error">
-          Could not load exams.{" "}
-          <button className="btn" onClick={refresh}>Retry</button>
-        </div>
-      )}
-
-      {status === "empty" && (
-        <div className="row-sub" data-testid="exam-picker-empty">No exams available.</div>
-      )}
-
-      {status === "live" && (
-        <ul
-          style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 6 }}
-          data-testid="exam-picker-list"
-        >
-          {items.map((exam) => (
-            <li key={exam.id}>
-              <button
-                className="btn"
-                style={{ width: "100%", justifyContent: "flex-start", textAlign: "left" }}
-                onClick={() => select(exam.id)}
-                data-testid={`exam-picker-item-${exam.id}`}
-              >
-                <span>{exam.name ?? exam.slug ?? exam.id}</span>
-                {exam.slug && (
-                  <span className="mono" style={{ marginLeft: 8, fontSize: 10, color: "var(--ink-mute)" }}>
-                    {exam.slug}
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div data-testid="exam-picker">
+      <ExamListShell
+        eyebrow="Exam Governance Console"
+        title="Select an exam"
+        helper="Open an exam in the console to work its blockers, or drop into the advanced workspace."
+        rowAction={consoleRowAction}
+      />
     </div>
   );
 }

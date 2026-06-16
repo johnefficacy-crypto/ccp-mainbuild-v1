@@ -45,7 +45,6 @@ jest.mock("../../../lib/hooks/useApiCollection", () => ({
 
 const { api } = require("../../../lib/api");
 const { useAuth } = require("../../../lib/authContext");
-const useApiCollection = require("../../../lib/hooks/useApiCollection").default;
 
 const ExamGovernanceConsole = require("../ExamGovernanceConsole").default;
 const useSelectedExamId = require("../../../lib/hooks/useSelectedExamId").default;
@@ -116,46 +115,105 @@ beforeEach(() => {
     hasBackendSession: true,
     user: { role: "admin" },
   });
-  // Default exam-list collection: live with both exams (overridden per test).
-  useApiCollection.mockReturnValue({ items: EXAMS, status: "live", refresh: jest.fn() });
 });
 
-// ── Test 1: picker ─────────────────────────────────────────────────────────────
+// ── Test 1: picker is now the reusable ExamListShell (searchable + paginated) ──
 
-describe("ExamGovernanceConsole — no exam selected", () => {
-  test("renders the exam picker from the Registry exam-list read", async () => {
+describe("ExamGovernanceConsole — no exam selected (4.6G list shell)", () => {
+  test("renders a searchable + filterable list (not flat buttons) from /exams", async () => {
     mockApi();
     renderConsole("/admin/exam-intelligence/console");
 
-    await waitFor(() => expect(screen.getByTestId("exam-picker-list")).toBeTruthy());
-    expect(screen.getByTestId("exam-picker-item-exam-1")).toBeTruthy();
-    expect(screen.getByTestId("exam-picker-item-exam-2")).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId("exam-list-shell")).toBeTruthy());
+    // Real search input + the supported /exams filters, not a flat button list.
+    expect(screen.getByTestId("exam-list-search")).toBeTruthy();
+    expect(screen.getByTestId("exam-list-filter-type")).toBeTruthy();
+    expect(screen.getByTestId("exam-list-filter-active")).toBeTruthy();
+    expect(screen.getByTestId("exam-list-filter-lane")).toBeTruthy();
+    expect(screen.getByTestId("exam-list-filter-cadence")).toBeTruthy();
+    expect(screen.queryByTestId("exam-picker-list")).toBeNull(); // old flat picker gone
 
-    // Reused the Registry read — same endpoint, no new fetch path.
-    expect(useApiCollection).toHaveBeenCalledWith(
-      "/api/admin/exam-intelligence/exams",
-      [],
-      { params: { limit: "200", active_state: "active" } },
+    await waitFor(() => expect(screen.getByTestId("exam-list-table")).toBeTruthy());
+    expect(screen.getByTestId("exam-list-row-exam-1")).toBeTruthy();
+    expect(screen.getByTestId("exam-list-row-exam-2")).toBeTruthy();
+  });
+
+  test("row primary opens the console, secondary opens the advanced workspace", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console");
+    await waitFor(() => expect(screen.getByTestId("console-open-exam-1")).toBeTruthy());
+
+    expect(screen.getByTestId("console-open-exam-1").getAttribute("href")).toBe(
+      "/admin/exam-intelligence/console/exam-1",
+    );
+    expect(screen.getByTestId("console-workspace-exam-1").getAttribute("href")).toBe(
+      "/admin/exam-intelligence/workspace/exam-1",
+    );
+    expect(screen.getByTestId("console-open-exam-1").textContent).toContain("Open console");
+    expect(screen.getByTestId("console-workspace-exam-1").textContent).toContain("Advanced workspace");
+  });
+
+  test("the list read targets /exams with the supported params (limit/offset/active_state)", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console");
+    await waitFor(() => expect(screen.getByTestId("exam-list-table")).toBeTruthy());
+
+    const examUrl = api.get.mock.calls.map((c) => c[0]).find((u) => u.includes("/exam-intelligence/exams"));
+    expect(examUrl).toContain("limit=25");
+    expect(examUrl).toContain("offset=0");
+    expect(examUrl).toContain("active_state=active");
+  });
+
+  test("typing a search term sends q to /exams", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console");
+    await waitFor(() => expect(screen.getByTestId("exam-list-table")).toBeTruthy());
+
+    api.get.mockClear();
+    mockApi();
+    fireEvent.change(screen.getByTestId("exam-list-search"), { target: { value: "upsc" } });
+
+    await waitFor(() =>
+      expect(api.get.mock.calls.some((c) => c[0].includes("q=upsc"))).toBe(true),
     );
   });
 
-  test("selecting an exam navigates to the console exam route (no local state)", async () => {
+  test("renders no workflow chips and no fake work-queue counts", async () => {
     mockApi();
-    function LocationProbe() {
-      const id = useSelectedExamId();
-      return <div data-testid="sel">{id ?? "none"}</div>;
-    }
-    render(
-      <MemoryRouter initialEntries={["/admin/exam-intelligence/console"]}>
-        <Routes>
-          <Route path="/admin/exam-intelligence/console" element={<ExamGovernanceConsole />} />
-          <Route path="/admin/exam-intelligence/console/:exam_id" element={<LocationProbe />} />
-        </Routes>
-      </MemoryRouter>,
+    renderConsole("/admin/exam-intelligence/console");
+    await waitFor(() => expect(screen.getByTestId("exam-list-table")).toBeTruthy());
+
+    // 4.6H concepts must NOT appear in 4.6G.
+    ["Needs action", "Blocked", "Missing PYQ", "Missing coverage", "Stale", "Ready to activate"].forEach(
+      (label) => expect(screen.queryByText(label)).toBeNull(),
     );
-    await waitFor(() => screen.getByTestId("exam-picker-item-exam-2"));
-    fireEvent.click(screen.getByTestId("exam-picker-item-exam-2"));
-    await waitFor(() => expect(screen.getByTestId("sel").textContent).toBe("exam-2"));
+    // The honest count reflects returned rows only (2), never a synthesized total.
+    expect(screen.getByTestId("exam-list-count").textContent).toContain("2 exam");
+  });
+
+  test("empty state renders no seed/mock data and offers a reset", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/exam-intelligence/exams")) return Promise.resolve({ items: [], total_count: 0 });
+      return Promise.resolve({});
+    });
+    renderConsole("/admin/exam-intelligence/console");
+
+    await waitFor(() => expect(screen.getByTestId("exam-list-empty")).toBeTruthy());
+    expect(screen.queryByTestId("exam-list-table")).toBeNull();
+    expect(screen.queryByText("SSC CGL")).toBeNull();
+    expect(screen.queryByText("UPSC CSE")).toBeNull();
+  });
+
+  test("error state renders no seed/mock data", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/exam-intelligence/exams")) return Promise.reject(new Error("boom"));
+      return Promise.resolve({});
+    });
+    renderConsole("/admin/exam-intelligence/console");
+
+    await waitFor(() => expect(screen.getByTestId("exam-list-error")).toBeTruthy());
+    expect(screen.queryByTestId("exam-list-table")).toBeNull();
+    expect(screen.queryByText("SSC CGL")).toBeNull();
   });
 });
 
