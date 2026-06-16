@@ -17,6 +17,12 @@ This wiki should be replaced by the real generated Graphify wiki when `graphify 
 
 ## Notes / Change Log
 
+- [Mock Engine v2 ↔ Study OS — Findings, Decisions & Implementation Plan](../../docs/study_os/mock-engine-v2-study-os-integration.md) —
+  how the Track A generated-mock engine connects to the Study OS planner: the
+  three verified feedback loops, the wired-vs-open edge map, the MSQ/integer
+  scoring + dual-writer + question-fidelity risks, the `mcq`-only Safety PR and
+  A-PR3 signal-producer decisions, and the ordered plan to `FF=live` then
+  Track C. Doc-only; cross-references the living PR tracker for status.
 - [Marketplace Delivery Split — PR1](./marketplace-delivery-split-pr1.md) —
   `delivery_model` on `courses`, new `affiliate_partners` registry, admin
   review view, API allowlist enforcement. Migration `112`.
