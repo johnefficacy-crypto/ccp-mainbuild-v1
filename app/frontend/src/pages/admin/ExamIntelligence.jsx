@@ -141,13 +141,28 @@ export default function AdminExamIntelligence() {
           </>
         }
         right={
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex items-center gap-2 flex-wrap justify-end">
+            <Link
+              to="/admin/exam-intelligence/new"
+              className="btn text-xs"
+              data-testid="registry-create-exam"
+            >
+              Create exam
+            </Link>
+            <Link
+              to="/admin/exam-intelligence/console"
+              className="btn text-xs"
+              data-testid="registry-open-console"
+            >
+              Open console
+            </Link>
             <Link
               to="/admin/exam-intelligence/cms"
-              className="btn btn-ghost text-xs"
-              data-testid="exam-intel-cms-link"
+              className="btn btn-ghost text-xs text-amber-700 border border-amber-300/70"
+              data-testid="registry-advanced-cms"
+              title="Low-level repair / bulk import — power users only"
             >
-              Create / Import CMS
+              Advanced import / repair
             </Link>
             <StatusDot state="live" label="Live · /api/admin/exam-intelligence" />
           </span>

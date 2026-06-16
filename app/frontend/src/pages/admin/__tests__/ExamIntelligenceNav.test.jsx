@@ -168,9 +168,9 @@ test("cms route renders ExamIntelCms", async () => {
   );
 });
 
-// ── 5b. ExamIntelligence page shows Create / Import CMS link ──
+// ── 5b. Registry CTAs (Wave 4.6E): Create exam / Open console / Advanced import-repair ──
 
-test("ExamIntelligence page has Create / Import CMS link to /admin/exam-intelligence/cms", async () => {
+test("ExamIntelligence page replaces the Create/Import CMS CTA with Create exam, Open console, and a de-emphasized Advanced import/repair", async () => {
   api.get.mockResolvedValue({ items: [], count: 0 });
   render(
     <MemoryRouter initialEntries={["/admin/exam-intelligence"]}>
@@ -178,9 +178,18 @@ test("ExamIntelligence page has Create / Import CMS link to /admin/exam-intellig
     </MemoryRouter>,
   );
   await waitFor(() => expect(api.get).toHaveBeenCalled());
-  const link = screen.getByTestId("exam-intel-cms-link");
-  expect(link).toBeTruthy();
-  expect(link.getAttribute("href")).toBe("/admin/exam-intelligence/cms");
+
+  // The old primary "Create / Import CMS" CTA is gone.
+  expect(screen.queryByTestId("exam-intel-cms-link")).toBeNull();
+  expect(screen.queryByText("Create / Import CMS")).toBeNull();
+
+  expect(screen.getByTestId("registry-create-exam").getAttribute("href")).toBe("/admin/exam-intelligence/new");
+  expect(screen.getByTestId("registry-open-console").getAttribute("href")).toBe("/admin/exam-intelligence/console");
+
+  const advanced = screen.getByTestId("registry-advanced-cms");
+  expect(advanced.getAttribute("href")).toBe("/admin/exam-intelligence/cms");
+  // De-emphasized (ghost) styling, not a primary CTA.
+  expect(advanced.className).toContain("btn-ghost");
 });
 
 // ── 5. Exam Intel CMS entry is absent from the Study OS sidebar group ──
