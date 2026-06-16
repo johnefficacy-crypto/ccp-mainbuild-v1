@@ -37,9 +37,16 @@ from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger("career_copilot.exam_intelligence.diagnostics")
 
-# Mock question types that count as selectable answerable items. Mirrors the
-# mock_question_type enum (migration 135: 'mcq','integer','msq').
-_SELECTABLE_QUESTION_TYPES = ("mcq", "msq", "integer")
+# Mock question types that count as selectable answerable items for GENERATED
+# mocks / readiness. Restricted to MCQ only: the live answer + scoring path is
+# single-option (one selected_option_id compared to one correct_option_id in
+# mock_engine._finalize_submission), with no multi-select or numeric payload, so
+# admitting 'msq'/'integer' here would let the selector pick questions the scorer
+# silently mis-scores. 'msq'/'integer' remain authorable enum values (migration
+# 135: 'mcq','integer','msq') — they are simply not generated-selectable until
+# their answer/scoring paths exist. See docs/study_os/
+# mock-engine-v2-study-os-integration.md §4a / D1.
+_SELECTABLE_QUESTION_TYPES = ("mcq",)
 
 # Coverage-lifecycle status that gates the Study OS planner. This is a fixed
 # domain enum from migration 030 (exam_topic_coverage.reviewer_status), NOT a
@@ -356,7 +363,9 @@ def selectable_mcq_depth(
 
     ``selectable_statuses`` is supplied by the caller (after reading
     ``status_value_census``) — never hardcoded. A row counts when its
-    reviewer_status is in that set, its question_type is an answerable type,
+    reviewer_status is in that set, its question_type is MCQ (the only
+    generated-selectable type — ``_SELECTABLE_QUESTION_TYPES``; 'msq'/'integer'
+    are excluded because the live scoring path is single-option only),
     it is not expired (valid_until NULL or in the future), and it is not an E2E
     test fixture (``source_type = 'e2e_fixture'`` is excluded by construction).
 
@@ -464,7 +473,8 @@ def source_distribution(
 
     The eligible-pool filter is identical to ``selectable_mcq_depth``:
     reviewer_status IN ``selectable_statuses`` (passed in, never hardcoded),
-    answerable question_type, and not expired (valid_until NULL or future).
+    MCQ question_type only (``_SELECTABLE_QUESTION_TYPES``), and not expired
+    (valid_until NULL or future).
     Current-affairs items (is_current OR is_current_based) are reported in
     ``current_source_distribution`` and kept OUT of
     ``base_source_distribution``.
