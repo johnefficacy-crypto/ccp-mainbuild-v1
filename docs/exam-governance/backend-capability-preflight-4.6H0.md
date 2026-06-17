@@ -127,7 +127,7 @@ It does **not** universally normalize `source_label / source_url / source_kind /
 | Pending-review count (flag) | none | `syllabus_topic_mentions`/`exam_topic_coverage` `reviewer_status` | [needs-join] | flag §5 | 4.6H |
 | `stale_review_queue` (flag) | yes, 14-day, catalogue KPI | `admin_exam_intelligence.py:45 _STALE_REVIEW_DAYS=14`, `overview().stale_review_items` | [needs-join] | flag §5/§12 | 4.6H |
 | `stale_official_intelligence` (flag) | partial (per-exam 30-day in readiness `_updates`) | `readiness.py:35 _STALE_DAYS=30` | [needs-join] (per-exam) / OPEN (catalogue) | OPEN DECISION §12 | 4.6H? |
-| `thin_mock_bank` (flag, **not a blocker**) | yes (advisory) | mock-readiness `summary.thin_bank` (§3b) | [needs-join] | flag §5 | 4.6H |
+| `thin_mock_bank` (flag, **not a blocker**) | advisory | mock-readiness `summary.thin_bank` (§3b) | [needs-join] | **DEFERRED** — an exam-total approximation is not equivalent to the section-attributed diagnostic; exact list aggregation is future work | 4.6I-BE+ |
 | Workflow chips | none | the counts/flags above | [needs-join] | server-side filter+count | 4.6H |
 | Blocker-first sort | none | activation verdict per exam | [needs-join] | **server-side only** | 4.6H |
 | Management-lane sort | column exists, no sort | `exams.management_mode` | [derivable] | add `sort` value | 4.6H |
@@ -179,9 +179,11 @@ Exactly one of:
 - **`needs_action`** — no hard blocker, but ≥1 pending/partial/stale-review/incomplete check remains.
 - **`ready`** — all required activation gates pass; **must satisfy locked planner-consumable coverage** (`planner._compute_plan` would not return `no_locked_coverage`). "Reviewed coverage exists" alone is NOT ready.
 
-**Orthogonal flags** (may overlap with any non-`ready` status; may overlap each other): `pending_review`, `missing_pyq`, `missing_coverage`, `stale_review_queue`, `stale_official_intelligence`, `thin_mock_bank`.
+**Orthogonal flags shipped in 4.6H** (may overlap with any non-`ready` status; may overlap each other): `pending_review`, `missing_pyq`, `missing_coverage`, `stale_review_queue`.
 
-Rules: the three primary statuses are **mutually exclusive** and their summary counts **do not overlap**. Flag counts **may** overlap. **`thin_mock_bank` is never, by itself, a global blocker** (a planner-ready exam can have a thin mock bank).
+`thin_mock_bank` is **deferred from 4.6H**: a truthful flag needs the section-attributed, `question_type`/`valid_until`-aware diagnostic (`assemble_mock_readiness_report`, per-exam), not an exam-total count. It remains an advisory object for 4.6I-BE (one diagnostic call for the selected exam); a set-based catalogue/list aggregation is future work and is NOT automatically solved by 4.6I-BE. `stale_official_intelligence` likewise stays excluded (open threshold, §12).
+
+Rules: the three primary statuses are **mutually exclusive** and their summary counts **do not overlap**. Flag counts **may** overlap.
 
 ### `GET /console/exams` row (concrete)
 ```json
@@ -191,7 +193,7 @@ Rules: the three primary statuses are **mutually exclusive** and their summary c
       "management_mode": "core", "cadence": "annual", "exam_family_id": "…",
       "organization_name": "Staff Selection Commission",
       "status": "blocked",
-      "flags": ["missing_coverage","missing_pyq","stale_review_queue","thin_mock_bank"],
+      "flags": ["missing_coverage","missing_pyq","stale_review_queue"],
       "blocker_count": 2, "first_blocker_text": "No locked topic coverage",
       "locked_coverage_count": 0, "verified_pyq_count": 0, "total_pyq_count": 42,
       "last_touched": "2026-05-30T12:00:00Z" }
@@ -199,7 +201,7 @@ Rules: the three primary statuses are **mutually exclusive** and their summary c
   "count": 25, "total_count": 130, "limit": 25, "offset": 0, "has_next": true
 }
 ```
-- **Filters:** existing six [derivable] + workflow filters `needs_action|blocked|missing_pyq|missing_coverage|stale_review_queue|thin_mock_bank|ready` — each [needs-join].
+- **Filters:** existing six [derivable] + workflow filters `needs_action|blocked|missing_pyq|missing_coverage|stale_review_queue|ready` — each [needs-join]. (`thin_mock_bank` deferred, above.)
 - **Sort:** `management_lane` [derivable]; `blockers_first` [needs-join]; `recent_activity` [needs-join]/[needs-column] (gated on `last_touched`, §12).
 - **No raw DB leakage:** `organization_name` not `conducting_organization_id`; `status`/`flags` tokens not raw `reviewer_status`; no UUIDs in labels; **no `score_percent`, no `confidence_score`.**
 
@@ -208,10 +210,10 @@ Accepts the **same base filters** as the list (`exam_type, active_state, managem
 - **`q` scoping decision: YES** — `q` scopes summary counts, for chip/list consistency during text search. (The FE must never show global counts beside a filtered list.)
 ```json
 { "blocked": 12, "needs_action": 31, "ready": 64,
-  "pending_review": 19, "stale_review_queue": 8, "thin_mock_bank": 6,
-  "generated_at": "…" }
+  "pending_review": 19, "stale_review_queue": 8,
+  "total_count": 107, "generated_at": "…" }
 ```
-Six counts: three mutually-exclusive primaries (`blocked`,`needs_action`,`ready`) + three overlap-allowed flags (`pending_review`,`stale_review_queue`,`thin_mock_bank`). **`stale_official_intelligence` is intentionally excluded** until its semantics/threshold are locked (§12).
+Five counts: three mutually-exclusive primaries (`blocked`,`needs_action`,`ready`) + two overlap-allowed flags (`pending_review`,`stale_review_queue`). **`thin_mock_bank` and `stale_official_intelligence` are intentionally excluded** — the former is deferred (not equivalent set-based), the latter pending a locked threshold (§12).
 
 ---
 
@@ -277,7 +279,7 @@ Rules:
 | `pending_review` flag | `syllabus_topic_mentions`/`exam_topic_coverage` `reviewer_status` | [needs-join] |
 | `stale_review_queue` flag | `admin_exam_intelligence.py:_STALE_REVIEW_DAYS=14` / `overview().stale_review_items` | [needs-join] |
 | `stale_official_intelligence` flag | `readiness.py:_STALE_DAYS=30` (`_updates`) per-exam; catalogue threshold OPEN | [needs-join] / OPEN |
-| `thin_mock_bank` flag | mock-readiness `summary.thin_bank` | [needs-join] |
+| `thin_mock_bank` flag | mock-readiness `summary.thin_bank` (per-exam diagnostic) | [needs-join] — **deferred from 4.6H** |
 | activation checks (setup/documents/updates/competition) | context / `list_documents` / `policy_update_context` / `competition_context` | [derivable] |
 | activation checks (topic_coverage/pyq/publish) | coverage + verified PYQ + `ready_to_activate` | [needs-join] |
 | evidence (normalized) | `evidence.py:get_evidence` + joins to document assets/pages, source registry, PYQ paper/question, policy-update source, competition evidence | [needs-join]/extension |
@@ -289,7 +291,7 @@ Rules:
 
 ## 8. Fields that MUST NOT be faked in the FE
 
-blocked count · needs-action count · ready count · pending_review count · stale_review_queue count · thin_mock_bank count; per-row `missing_pyq`/`missing_coverage`/`stale_*` flags, `blocker_count`, `first_blocker_text`, `verified_pyq_count`, `total_pyq_count`, `locked_coverage_count`, `last_touched`; `blockers_first`/`recent_activity` ordering; per-exam `activation_verdict`, activation-check completion count, evidence count. The FE holds one server-paginated page (`ExamListShell.jsx`); none of these can be honestly synthesized client-side.
+blocked count · needs-action count · ready count · pending_review count · stale_review_queue count; per-row `missing_pyq`/`missing_coverage`/`stale_*` flags, `blocker_count`, `first_blocker_text`, `verified_pyq_count`, `total_pyq_count`, `locked_coverage_count`, `last_touched`; `blockers_first`/`recent_activity` ordering; per-exam `activation_verdict`, activation-check completion count, evidence count. The FE holds one server-paginated page (`ExamListShell.jsx`); none of these can be honestly synthesized client-side.
 
 ---
 
@@ -301,7 +303,7 @@ Live on `main` (`ExamGovernanceConsole.jsx` → `ExamListShell.jsx`, PR #700): s
 
 ## 10. 4.6H implementation recommendation (list + summary only)
 
-- **Endpoints:** `GET /console/exams` (rows: existing filters + `sort` + workflow filters + per-row aggregates) and `GET /console/summary` (the six counts, same-scope filters incl. `q`). Leave `/exams` unchanged.
+- **Endpoints:** `GET /console/exams` (rows: existing filters + `sort` + workflow filters + per-row aggregates) and `GET /console/summary` (the five counts, same-scope filters incl. `q`). Leave `/exams` unchanged.
 - **Canonical semantics:** implement the mutually-exclusive `blocked|needs_action|ready` model + orthogonal flags (§5).
 - **Service module:** new read-only helper, e.g. `app/backend/app/exam_intelligence/work_queue.py`, composing existing reads set-based (group-by over `exam_topic_coverage`/`syllabus_topic_mentions`/`exam_policy_updates`/mock-readiness inputs) — **never N+1 per exam**.
 - **Tests:** unit tests for status derivation (locked gate → `ready`; thin mock bank → flag, not `blocked`), each `sort`, each workflow filter, summary same-scope, and guards that responses carry **no** `confidence_score`, **no** `score_percent`, **no** raw `conducting_organization_id`.

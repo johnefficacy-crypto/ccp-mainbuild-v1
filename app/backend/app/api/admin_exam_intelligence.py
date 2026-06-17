@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from typing import Any, Callable
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -22,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.auth import require_permission
 from app.db.supabase_client import get_supabase_admin
+from app.exam_intelligence import work_queue as _wq
 from app.exam_intelligence.diagnostics import assemble_mock_readiness_report
 from app.exam_intelligence.option_normalize import option_hash, question_hash
 from app.exam_intelligence.readiness import compute_exam_workspace_readiness
@@ -394,6 +396,95 @@ def list_exams(
         "limit": limit,
         "offset": offset,
         "has_next": offset + len(items) < total_count,
+    }
+
+
+# ─── 2b. Console work queue (Wave 4.6H) — read-only, set-based ─────────────
+class _WorkflowFilter(str, Enum):
+    blocked = "blocked"
+    needs_action = "needs_action"
+    ready = "ready"
+    pending_review = "pending_review"
+    missing_pyq = "missing_pyq"
+    missing_coverage = "missing_coverage"
+    stale_review_queue = "stale_review_queue"
+
+
+class _ConsoleSort(str, Enum):
+    blockers_first = "blockers_first"
+    management_lane = "management_lane"
+    name = "name"
+
+
+def _console_base_filters(
+    q: str | None, exam_type: str | None, active_state: str,
+    management_mode: str | None, cadence: str | None, exam_family_id: str | None,
+) -> dict[str, Any]:
+    if active_state not in {"active", "inactive", "all"}:
+        raise HTTPException(status_code=422, detail="active_state must be one of: active, inactive, all")
+    return {
+        "q_sanitized": _sanitize_q(q or ""),
+        "exam_type": exam_type,
+        "active_state": active_state,
+        "management_mode": management_mode,
+        "cadence": cadence,
+        "exam_family_id": exam_family_id,
+    }
+
+
+@router.get("/console/exams")
+def console_exams(
+    limit: int = Query(25, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    q: str | None = Query(None),
+    exam_type: str | None = Query(None),
+    active_state: str = Query("active"),
+    management_mode: str | None = Query(None),
+    cadence: str | None = Query(None),
+    exam_family_id: str | None = Query(None),
+    workflow: _WorkflowFilter | None = Query(None),
+    sort: _ConsoleSort = Query(_ConsoleSort.blockers_first),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Console work-queue list: base-filtered candidate set, classified into one
+    primary status + orthogonal flags, then workflow-filtered, sorted, paginated.
+    Shares the classifier + candidate scope with /console/summary."""
+    base = _console_base_filters(q, exam_type, active_state, management_mode, cadence, exam_family_id)
+    rows = _wq.build_classified_rows(get_supabase_admin(), base)
+    rows = _wq.apply_workflow(rows, workflow.value if workflow else None)
+    rows = _wq.sort_rows(rows, sort.value)
+    total_count = len(rows)
+    page = rows[offset : offset + limit]
+    return {
+        "items": page,
+        "count": len(page),
+        "total_count": total_count,
+        "limit": limit,
+        "offset": offset,
+        "has_next": offset + len(page) < total_count,
+    }
+
+
+@router.get("/console/summary")
+def console_summary(
+    q: str | None = Query(None),
+    exam_type: str | None = Query(None),
+    active_state: str = Query("active"),
+    management_mode: str | None = Query(None),
+    cadence: str | None = Query(None),
+    exam_family_id: str | None = Query(None),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Catalogue counts over the SAME base-filtered candidate set as the list
+    (no pagination, no workflow filter). Primary statuses are mutually
+    exclusive and sum to total_count; flag counts may overlap."""
+    base = _console_base_filters(q, exam_type, active_state, management_mode, cadence, exam_family_id)
+    rows = _wq.build_classified_rows(get_supabase_admin(), base)
+    counts = _wq.summary_counts(rows)
+    return {
+        **counts,
+        "total_count": len(rows),
+        "generated_at": _now_iso(),
     }
 
 
