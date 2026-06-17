@@ -20,10 +20,9 @@
  *   /admin/exam-intelligence/console/:exam_id   → top bar + embedded workspace
  */
 import React from "react";
-import { Link } from "react-router-dom";
 import useSelectedExamId from "../../lib/hooks/useSelectedExamId";
 import ExamWorkspace from "./exam-workspace/ExamWorkspace";
-import ExamListShell from "../../features/admin/exam-intelligence/ExamListShell";
+import ConsoleWorkQueue from "../../features/admin/exam-intelligence/ConsoleWorkQueue";
 
 // ─── Thin top bar — identity from the URL only (D-E: no readiness %) ─────────
 
@@ -51,41 +50,13 @@ function ConsoleTopBar({ examId }) {
   );
 }
 
-// ─── No-exam picker — the reusable exam-list shell on the existing /exams read ─
-
-// Per-row actions injected into the shared shell: console-primary (4.6F door)
-// with the advanced standalone workspace demoted to a quiet secondary.
-function consoleRowAction(exam) {
-  return (
-    <span className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
-      <Link
-        to={`/admin/exam-intelligence/console/${encodeURIComponent(exam.id)}`}
-        className="btn btn-primary"
-        data-testid={`console-open-${exam.id}`}
-      >
-        Open console
-      </Link>
-      <Link
-        to={`/admin/exam-intelligence/workspace/${encodeURIComponent(exam.id)}`}
-        className="btn btn-ghost"
-        style={{ color: "var(--ink-mute)" }}
-        data-testid={`console-workspace-${exam.id}`}
-      >
-        Advanced workspace
-      </Link>
-    </span>
-  );
-}
+// ─── No-exam picker — the truthful work-queue list on the /console reads ─────
+// (ExamListShell stays the generic /exams list for a future Registry adoption.)
 
 function ExamPicker() {
   return (
     <div data-testid="exam-picker">
-      <ExamListShell
-        eyebrow="Exam Governance Console"
-        title="Select an exam"
-        helper="Open an exam in the console to work its blockers, or drop into the advanced workspace."
-        rowAction={consoleRowAction}
-      />
+      <ConsoleWorkQueue />
     </div>
   );
 }
