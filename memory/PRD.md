@@ -520,7 +520,7 @@ Schema notes:
 - Frontend pages: `frontend/src/pages/**/*.jsx`
 
 ## Notes for future contributors
-- Never create `public.exams` — recruitment is the canonical entity.
+- Do not conflate `public.recruitments` and `public.exams`: recruitments are canonical for notices/eligibility/applications; exams are canonical for exam-master identity, cycles, phases, Study OS, and exam intelligence.
 - Never expose `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, AI keys,
   Razorpay secrets, or webhook secrets to the frontend.
 - Existing migrations live in `/app/supabase/migrations/`. Inspect them
