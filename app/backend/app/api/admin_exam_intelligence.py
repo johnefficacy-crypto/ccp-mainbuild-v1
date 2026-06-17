@@ -408,7 +408,6 @@ class _WorkflowFilter(str, Enum):
     missing_pyq = "missing_pyq"
     missing_coverage = "missing_coverage"
     stale_review_queue = "stale_review_queue"
-    thin_mock_bank = "thin_mock_bank"
 
 
 class _ConsoleSort(str, Enum):

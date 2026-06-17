@@ -15,7 +15,6 @@ def _agg(**over):
         "locked_coverage_count": 1,
         "total_pyq_count": 5,
         "verified_pyq_count": 2,
-        "selectable_mock_count": wq.MIN_SELECTABLE_MOCK,
         "pending_review_count": 0,
         "stale_review_count": 0,
     }
@@ -56,20 +55,7 @@ def test_locked_but_no_verified_pyq_is_needs_action_not_blocked():
     c = wq.classify_exam(_agg(verified_pyq_count=0))
     assert c["status"] == "needs_action"
     assert "missing_pyq" in c["flags"]
-    assert c["blocker_count"] == 0
-
-
-def test_thin_mock_bank_only_is_needs_action_never_blocked():
-    c = wq.classify_exam(_agg(selectable_mock_count=wq.MIN_SELECTABLE_MOCK - 1))
-    assert c["status"] == "needs_action"
-    assert c["flags"] == ["thin_mock_bank"]
-    assert c["blocker_count"] == 0  # advisory never counts as a hard blocker
-
-
-def test_thin_mock_bank_not_flagged_without_locked_coverage():
-    # No locked coverage → blocked; mock bank is irrelevant (no thin flag).
-    c = wq.classify_exam(_agg(locked_coverage_count=0, selectable_mock_count=0))
-    assert "thin_mock_bank" not in c["flags"]
+    assert c["blocker_count"] == 0  # missing_pyq is advisory, never a hard blocker
 
 
 def test_pending_review_is_needs_action():
@@ -93,11 +79,18 @@ def test_reviewed_but_not_locked_is_blocked_missing_coverage():
     assert "missing_coverage" in c["flags"]
 
 
+def test_no_thin_mock_bank_flag_exists():
+    # thin_mock_bank was removed in the 4.6H correction pass (not equivalent to
+    # diagnostics mock readiness); it must not reappear from the classifier.
+    for over in [{}, {"verified_pyq_count": 0}, {"pending_review_count": 1}]:
+        assert "thin_mock_bank" not in wq.classify_exam(_agg(**over))["flags"]
+
+
 def test_status_always_exactly_one_primary():
     primaries = {"blocked", "needs_action", "ready"}
     for over in [
         {}, {"phase_count": 0}, {"locked_coverage_count": 0}, {"verified_pyq_count": 0},
-        {"selectable_mock_count": 0}, {"pending_review_count": 5},
+        {"pending_review_count": 5},
         {"phase_count": 0, "locked_coverage_count": 0, "verified_pyq_count": 0},
     ]:
         c = wq.classify_exam(_agg(**over))

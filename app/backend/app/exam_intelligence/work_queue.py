@@ -1,41 +1,51 @@
 """Console work-queue aggregation (Wave 4.6H) — read-only, set-based.
 
-Builds the per-exam console work queue and the catalogue summary from a single
-candidate load plus a bounded, constant number of batched child reads. There is
-NO per-exam round-trip: it never calls ``compute_exam_workspace_readiness`` or
+Builds the per-exam console work queue and the catalogue summary from a paged
+candidate load plus a bounded number of paged, chunked child reads. There is NO
+per-exam round-trip: it never calls ``compute_exam_workspace_readiness`` or
 ``assemble_mock_readiness_report`` per exam. One pure classifier
 (``classify_exam``) derives the primary status + orthogonal flags; the list and
 summary share that classifier and the same candidate scope.
 
-Hard product invariants (see docs/exam-governance/backend-capability-preflight-4.6H0.md):
+Truthfulness guarantees (see docs/exam-governance/backend-capability-preflight-4.6H0.md):
 - Planner-consumable coverage == ``exam_topic_coverage.reviewer_status='locked'``.
   ``reviewed`` does NOT count.
-- Mock readiness is advisory: ``thin_mock_bank`` is never, by itself, a blocker.
+- ``verified_pyq_count`` counts DISTINCT questions clearing all three gates:
+  parent ``pyq_papers.trust_status='verified'`` AND
+  ``pyq_questions.reviewer_status='verified'`` AND at least one
+  ``pyq_question_topic_tags`` row with ``reviewer_status='verified'``.
 - Exactly one primary status per exam: ``blocked`` | ``needs_action`` | ``ready``.
+- Every correctness-critical read pages fully (no silent row cap) and raises
+  ``DatabaseError`` on failure — a failed read never degrades to fabricated
+  empty/blocked truth.
 - No response field carries score_percent / confidence_score / confidence_percent;
   ``state``/``jurisdiction`` are never inferred from the slug.
+
+NOTE: ``thin_mock_bank`` is intentionally NOT produced here. A truthful
+list-level thin-mock signal requires the section-attributed, valid_until- and
+question_type-aware diagnostic (``diagnostics.assemble_mock_readiness_report``)
+which is per-exam; an exam-total approximation is not equivalent and would be a
+misleading governance flag. Exact per-exam mock readiness is deferred to
+4.6I-BE; a set-based catalogue aggregation remains future work.
 """
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable
 
+from app.db.utils import execute_or_raise
+
 # ── Constants (grounded in source) ──────────────────────────────────────────
 # Review-queue staleness threshold. Mirrors
 # admin_exam_intelligence._STALE_REVIEW_DAYS (= 14). NOT the 30-day policy rule
 # (readiness._STALE_DAYS), which is a different KPI and out of scope here.
 STALE_REVIEW_DAYS = 14
-# Selectable mock-bank depth below which the bank is "thin" (advisory). Mirrors
-# the diagnostics mock-readiness default ``min_per_section`` (= 30).
-MIN_SELECTABLE_MOCK = 30
-# Mock reviewer_status values that count as selectable answerable items, mirroring
-# the diagnostics endpoint default (selectable_status = ["verified", "published"]).
-SELECTABLE_MOCK_STATUSES = ("verified", "published")
 
-# Bounded fetch cap — mirrors the existing list_exams child-read convention
-# (.limit(20000)); the admin exam catalogue is far smaller.
-_MAX_ROWS = 20000
-_CHUNK = 500  # batch size for `.in_(...)` reads
+# Page size for required reads. Large enough that normal admin catalogues fetch
+# in one page; small datasets in tests fetch in one page too. Monkeypatched to a
+# small value in the paging tests.
+_PAGE_SIZE = 1000
+_CHUNK = 500  # batch size for `.in_(...)` reads (URL-length safety)
 
 # Per-table "awaiting reviewer action" lifecycle states. Each table has its own
 # vocabulary — do NOT blanket one set across tables.
@@ -63,11 +73,25 @@ def _chunked(items: list[Any], size: int = _CHUNK) -> Iterable[list[Any]]:
         yield items[i : i + size]
 
 
-def _safe(call: Callable[[], Any], default: Any = None) -> Any:
-    try:
-        return call()
-    except Exception:  # pragma: no cover - defensive; mirrors list_exams._safe
-        return default
+def _fetch_all_pages(make_query: Callable[[], Any], *, operation: str,
+                     page_size: int | None = None) -> list[dict[str, Any]]:
+    """Page a required read to completion. ``make_query`` returns a FRESH query
+    (already filtered + deterministically ordered) each call; we apply
+    ``.range`` per page and stop only on a short page. Raises ``DatabaseError``
+    on any failure (never silently truncates or degrades to [])."""
+    size = page_size or _PAGE_SIZE
+    out: list[dict[str, Any]] = []
+    start = 0
+    while True:
+        end = start + size - 1
+        page = execute_or_raise(
+            operation, lambda s=start, e=end: make_query().range(s, e).execute().data
+        ) or []
+        out.extend(page)
+        if len(page) < size:
+            break
+        start += size
+    return out
 
 
 # ── Candidate load (base filters byte-identical to list_exams) ──────────────
@@ -75,54 +99,55 @@ def _safe(call: Callable[[], Any], default: Any = None) -> Any:
 def load_candidates(sb, *, q_sanitized: str, exam_type: str | None, active_state: str,
                     management_mode: str | None, cadence: str | None,
                     exam_family_id: str | None) -> list[dict[str, Any]]:
-    """Load the base-filtered candidate exams (the same predicate as
-    ``GET /exams``), fetching only the columns the work queue needs."""
-    qb = sb.table("exams").select(
-        "id, slug, name, exam_type, is_active, exam_family_id, management_mode, "
-        "cadence, conducting_organization_id"
-    )
-    if q_sanitized:
-        qb = qb.or_(f"name.ilike.%{q_sanitized}%,slug.ilike.%{q_sanitized}%")
-    if exam_type is not None:
-        qb = qb.eq("exam_type", exam_type)
-    if active_state == "active":
-        qb = qb.eq("is_active", True)
-    elif active_state == "inactive":
-        qb = qb.eq("is_active", False)
-    if management_mode == "__null__":
-        # Unclassified sentinel — select rows with no lane. Same rows as
-        # list_exams' `.is_("management_mode","null")`; expressed via or_ so the
-        # NULL match is unambiguous to PostgREST and the in-memory test stub.
-        qb = qb.or_("management_mode.is.null")
-    elif management_mode is not None:
-        qb = qb.eq("management_mode", management_mode)
-    else:
-        qb = qb.or_("management_mode.is.null,management_mode.neq.archive")
-    if cadence is not None:
-        qb = qb.eq("cadence", cadence)
-    if exam_family_id is not None:
-        qb = qb.eq("exam_family_id", exam_family_id)
-    return _safe(lambda: qb.order("name").limit(_MAX_ROWS).execute().data, default=[]) or []
+    """Load the COMPLETE base-filtered candidate set (same predicate as
+    ``GET /exams``), paged. Ordered by id for stable paging; the API's console
+    sort happens later, after classification."""
+    cols = ("id, slug, name, exam_type, is_active, exam_family_id, "
+            "management_mode, cadence, conducting_organization_id")
+
+    def _mk():
+        qb = sb.table("exams").select(cols)
+        if q_sanitized:
+            qb = qb.or_(f"name.ilike.%{q_sanitized}%,slug.ilike.%{q_sanitized}%")
+        if exam_type is not None:
+            qb = qb.eq("exam_type", exam_type)
+        if active_state == "active":
+            qb = qb.eq("is_active", True)
+        elif active_state == "inactive":
+            qb = qb.eq("is_active", False)
+        if management_mode == "__null__":
+            qb = qb.or_("management_mode.is.null")
+        elif management_mode is not None:
+            qb = qb.eq("management_mode", management_mode)
+        else:
+            qb = qb.or_("management_mode.is.null,management_mode.neq.archive")
+        if cadence is not None:
+            qb = qb.eq("cadence", cadence)
+        if exam_family_id is not None:
+            qb = qb.eq("exam_family_id", exam_family_id)
+        return qb.order("id")
+
+    return _fetch_all_pages(_mk, operation="console.candidates")
 
 
-def _batch_rows(sb, table: str, key: str, ids: list[str], columns: str) -> list[dict[str, Any]]:
-    """Fetch ``columns`` from ``table`` where ``key`` IN ``ids`` (chunked)."""
+def _batch_paged(sb, table: str, key: str, ids: list[str], columns: str) -> list[dict[str, Any]]:
+    """Fetch ``columns`` from ``table`` where ``key`` IN ``ids`` — chunked over
+    ids (URL safety) and paged within each chunk (no row cap). Required read:
+    raises ``DatabaseError`` on failure."""
     out: list[dict[str, Any]] = []
     for chunk in _chunked(ids):
-        rows = _safe(
-            lambda c=chunk: sb.table(table).select(columns).in_(key, c).limit(_MAX_ROWS).execute().data,
-            default=[],
-        ) or []
-        out.extend(rows)
+        out.extend(_fetch_all_pages(
+            lambda c=chunk: sb.table(table).select(columns).in_(key, c).order("id"),
+            operation=f"console.{table}",
+        ))
     return out
 
 
-# ── Aggregation (constant number of reads, regardless of exam count) ────────
+# ── Aggregation (reads scale with tables × id-chunks × pages, never per-exam) ─
 
 def aggregate(sb, exams: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """Aggregate per-exam signals for the candidate ``exams``. Returns
-    ``{exam_id: aggregate_dict}``. Bounded reads: one per child table (+ PYQ
-    sub-joins), each chunked — never one read per exam."""
+    ``{exam_id: aggregate_dict}``."""
     exam_ids = [e["id"] for e in exams if e.get("id")]
     stale_cutoff = (_now() - timedelta(days=STALE_REVIEW_DAYS)).isoformat()
 
@@ -132,7 +157,6 @@ def aggregate(sb, exams: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             "locked_coverage_count": 0,
             "total_pyq_count": 0,
             "verified_pyq_count": 0,
-            "selectable_mock_count": 0,
             "pending_review_count": 0,
             "stale_review_count": 0,
         }
@@ -151,14 +175,14 @@ def aggregate(sb, exams: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
                 slot["stale_review_count"] += 1
 
     # Setup: phase count.
-    for r in _batch_rows(sb, "exam_phases", "exam_id", exam_ids, "id, exam_id"):
+    for r in _batch_paged(sb, "exam_phases", "exam_id", exam_ids, "id, exam_id"):
         slot = agg.get(r.get("exam_id"))
         if slot is not None:
             slot["phase_count"] += 1
 
     # Coverage: locked-only planner coverage + pending review.
-    for r in _batch_rows(sb, "exam_topic_coverage", "exam_id", exam_ids,
-                         "exam_id, reviewer_status, created_at"):
+    for r in _batch_paged(sb, "exam_topic_coverage", "exam_id", exam_ids,
+                          "id, exam_id, reviewer_status, created_at"):
         slot = agg.get(r.get("exam_id"))
         if slot is None:
             continue
@@ -168,57 +192,59 @@ def aggregate(sb, exams: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
                       "exam_topic_coverage")
 
     # Syllabus: pending review.
-    for r in _batch_rows(sb, "syllabus_topic_mentions", "exam_id", exam_ids,
-                         "exam_id, reviewer_status, created_at"):
+    for r in _batch_paged(sb, "syllabus_topic_mentions", "exam_id", exam_ids,
+                          "id, exam_id, reviewer_status, created_at"):
         _bump_pending(r.get("exam_id"), r.get("reviewer_status"), r.get("created_at"),
                       "syllabus_topic_mentions")
 
     # Policy updates: pending review.
-    for r in _batch_rows(sb, "exam_policy_updates", "exam_id", exam_ids,
-                         "exam_id, reviewer_status, created_at"):
+    for r in _batch_paged(sb, "exam_policy_updates", "exam_id", exam_ids,
+                          "id, exam_id, reviewer_status, created_at"):
         _bump_pending(r.get("exam_id"), r.get("reviewer_status"), r.get("created_at"),
                       "exam_policy_updates")
 
-    # Mock bank: selectable depth (advisory).
-    for r in _batch_rows(sb, "mock_question_bank", "exam_id", exam_ids,
-                         "exam_id, reviewer_status"):
-        slot = agg.get(r.get("exam_id"))
-        if slot is not None and r.get("reviewer_status") in SELECTABLE_MOCK_STATUSES:
-            slot["selectable_mock_count"] += 1
-
-    # ── PYQ: papers → questions → (tags, options). Bounded sub-joins. ──
-    papers = _batch_rows(sb, "pyq_papers", "exam_id", exam_ids,
-                         "id, exam_id, trust_status")
+    # ── PYQ: papers → questions → tags/options. Three-gate verified count. ──
+    papers = _batch_paged(sb, "pyq_papers", "exam_id", exam_ids, "id, exam_id, trust_status")
     paper_exam = {p["id"]: p.get("exam_id") for p in papers if p.get("id")}
     verified_paper_ids = {p["id"] for p in papers if p.get("trust_status") == "verified"}
     paper_ids = list(paper_exam.keys())
 
     question_exam: dict[str, str] = {}
+    # Questions that clear gates 1+2 (verified paper + verified question), pending
+    # only the verified-tag gate; resolved after the tag read.
+    verified_eligible: dict[str, str] = {}
     if paper_ids:
-        for r in _batch_rows(sb, "pyq_questions", "pyq_paper_id", paper_ids,
-                             "id, pyq_paper_id, reviewer_status, created_at"):
+        for r in _batch_paged(sb, "pyq_questions", "pyq_paper_id", paper_ids,
+                              "id, pyq_paper_id, reviewer_status, created_at"):
             exam_id = paper_exam.get(r.get("pyq_paper_id"))
             slot = agg.get(exam_id)
             if slot is None:
                 continue
-            question_exam[r.get("id")] = exam_id
+            qid = r.get("id")
+            question_exam[qid] = exam_id
             slot["total_pyq_count"] += 1
-            # Verified PYQ requires BOTH a verified parent paper and a verified
-            # question — the planner invariant (coverage.verified_pyq_topic_counts).
             if r.get("reviewer_status") == "verified" and r.get("pyq_paper_id") in verified_paper_ids:
-                slot["verified_pyq_count"] += 1
+                verified_eligible[qid] = exam_id
             _bump_pending(exam_id, r.get("reviewer_status"), r.get("created_at"), "pyq_questions")
 
     question_ids = list(question_exam.keys())
+    verified_tag_qids: set[str] = set()
     if question_ids:
-        for r in _batch_rows(sb, "pyq_question_topic_tags", "question_id", question_ids,
-                             "question_id, reviewer_status, created_at"):
+        for r in _batch_paged(sb, "pyq_question_topic_tags", "question_id", question_ids,
+                              "id, question_id, reviewer_status, created_at"):
+            if r.get("reviewer_status") == "verified" and r.get("question_id") in verified_eligible:
+                verified_tag_qids.add(r.get("question_id"))
             _bump_pending(question_exam.get(r.get("question_id")), r.get("reviewer_status"),
                           r.get("created_at"), "pyq_question_topic_tags")
-        for r in _batch_rows(sb, "pyq_options", "question_id", question_ids,
-                             "question_id, reviewer_status, created_at"):
+        for r in _batch_paged(sb, "pyq_options", "question_id", question_ids,
+                              "id, question_id, reviewer_status, created_at"):
             _bump_pending(question_exam.get(r.get("question_id")), r.get("reviewer_status"),
                           r.get("created_at"), "pyq_options")
+
+    # Gate 3: only questions with ≥1 verified tag count — distinct per question.
+    for qid, exam_id in verified_eligible.items():
+        if qid in verified_tag_qids:
+            agg[exam_id]["verified_pyq_count"] += 1
 
     return agg
 
@@ -228,8 +254,6 @@ def aggregate(sb, exams: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
 def classify_exam(a: dict[str, Any]) -> dict[str, Any]:
     """Derive {status, flags, blocker_count, first_blocker_text} from one exam's
     aggregate. Pure: no I/O. Exactly one primary status."""
-    # Hard gates, in deterministic priority order. blocker_count counts hard
-    # gates only — advisory flags are excluded.
     hard_blockers: list[str] = []
     if a["phase_count"] == 0:
         hard_blockers.append("Setup incomplete — no exam phases defined")
@@ -245,14 +269,10 @@ def classify_exam(a: dict[str, Any]) -> dict[str, Any]:
         flags.append("pending_review")
     if a["stale_review_count"] > 0:
         flags.append("stale_review_queue")
-    # Advisory: only meaningful once the exam is otherwise planner-relevant
-    # (has locked coverage). Never a hard blocker.
-    if a["locked_coverage_count"] > 0 and a["selectable_mock_count"] < MIN_SELECTABLE_MOCK:
-        flags.append("thin_mock_bank")
 
     if hard_blockers:
         status = "blocked"
-    elif flags:  # only non-hard signals remain here (missing_pyq/pending/stale/thin)
+    elif flags:
         status = "needs_action"
     else:
         status = "ready"
@@ -260,7 +280,7 @@ def classify_exam(a: dict[str, Any]) -> dict[str, Any]:
     return {
         "status": status,
         "flags": flags,
-        "blocker_count": len(hard_blockers),
+        "blocker_count": len(hard_blockers),  # hard gates only; advisory flags excluded
         "first_blocker_text": hard_blockers[0] if hard_blockers else None,
     }
 
@@ -327,7 +347,7 @@ def load_org_names(sb, exams: list[dict[str, Any]]) -> dict[str, str]:
     if not org_ids:
         return {}
     names: dict[str, str] = {}
-    for r in _batch_rows(sb, "organizations", "id", org_ids, "id, name"):
+    for r in _batch_paged(sb, "organizations", "id", org_ids, "id, name"):
         if r.get("id"):
             names[r["id"]] = r.get("name")
     return names
@@ -345,11 +365,11 @@ def build_classified_rows(sb, base_filters: dict[str, Any]) -> list[dict[str, An
 def summary_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
     counts = {
         "blocked": 0, "needs_action": 0, "ready": 0,
-        "pending_review": 0, "stale_review_queue": 0, "thin_mock_bank": 0,
+        "pending_review": 0, "stale_review_queue": 0,
     }
     for r in rows:
         counts[r["status"]] += 1
-        for flag in ("pending_review", "stale_review_queue", "thin_mock_bank"):
+        for flag in ("pending_review", "stale_review_queue"):
             if flag in r["flags"]:
                 counts[flag] += 1
     return counts

@@ -1,27 +1,27 @@
 """Endpoint + integration tests for the console work queue (Wave 4.6H).
 
-Exercises GET /console/exams and /console/summary against the in-memory SBStub,
-asserting the canonical status model, base-filter parity with /exams, workflow
-filters, deterministic sort, pagination, summary scoping, response guards, and
-that reads are set-based (constant DB calls regardless of exam count).
+Covers the canonical status model, base-filter parity with /exams, workflow
+filters, deterministic sort, pagination, summary scoping, response guards, the
+three-gate verified-PYQ definition, full child-read paging (signals on later
+pages), required-read failure propagation, and bounded (no per-exam) reads.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api import admin_exam_intelligence as admin_api
 from app.core.auth import get_current_user
+from app.core.errors import DatabaseError
 from app.exam_intelligence import work_queue as wq
-from tests.persona_questions._stub import SBStub
+from tests.persona_questions._stub import SBStub, _Query
 
 
 # ── Harness ─────────────────────────────────────────────────────────────────
 
 class CountingSBStub(SBStub):
-    """SBStub that counts table() calls, to prove reads don't scale per-exam."""
+    """Counts table() calls, to prove reads don't scale per-exam."""
 
     def __init__(self, db=None):
         super().__init__(db)
@@ -29,6 +29,55 @@ class CountingSBStub(SBStub):
 
     def table(self, name):
         self.table_calls += 1
+        return super().table(name)
+
+
+class _RangeQuery(_Query):
+    """A _Query that honours .range() by slicing ordered results."""
+
+    def __init__(self, name, db):
+        super().__init__(name, db)
+        self._range = None
+
+    def range(self, start, end, **kw):
+        self._range = (start, end)
+        return self
+
+    def execute(self):
+        res = super().execute()
+        if self._range is not None:
+            s, e = self._range
+            res.data = res.data[s : e + 1]
+        return res
+
+
+class RangeAwareSBStub(SBStub):
+    """Honours .range() so real pagination can be exercised."""
+
+    def table(self, name):
+        return _RangeQuery(name, self.db)
+
+
+class _RaisingQuery:
+    """A query whose builder methods are no-ops and whose execute() raises."""
+
+    def __getattr__(self, _name):
+        return lambda *a, **k: self
+
+    def execute(self):
+        raise RuntimeError("simulated DB failure")
+
+
+class FailingSBStub(SBStub):
+    """Raises on execute() for one target table; normal elsewhere."""
+
+    def __init__(self, db, fail_table):
+        super().__init__(db)
+        self.fail_table = fail_table
+
+    def table(self, name):
+        if name == self.fail_table:
+            return _RaisingQuery()
         return super().table(name)
 
 
@@ -47,17 +96,15 @@ _STALE = "2026-01-01T00:00:00+00:00"
 
 
 class _Seed:
-    """Accumulates rows across tables for a set of synthetic exams."""
-
     def __init__(self):
         self.db = {t: [] for t in (
             "exams", "exam_phases", "exam_topic_coverage", "syllabus_topic_mentions",
-            "exam_policy_updates", "mock_question_bank", "pyq_papers", "pyq_questions",
+            "exam_policy_updates", "pyq_papers", "pyq_questions",
             "pyq_question_topic_tags", "pyq_options", "organizations",
         )}
 
     def exam(self, eid, *, name, mode, phases=1, locked=1, reviewed=0,
-             verified_pyq=0, total_pyq=0, mock=0, pending=0, stale=0,
+             vpyq=0, q_no_tag=0, pending_pyq=0, pending_syl=0, stale_syl=0,
              active=True, org=None):
         self.db["exams"].append({
             "id": eid, "slug": eid, "name": name, "exam_type": "recruitment",
@@ -74,24 +121,31 @@ class _Seed:
             self.db["exam_topic_coverage"].append(
                 {"id": f"{eid}-cr{i}", "exam_id": eid, "reviewer_status": "reviewed",
                  "created_at": _RECENT})
-        for i in range(mock):
-            self.db["mock_question_bank"].append(
-                {"id": f"{eid}-mk{i}", "exam_id": eid, "reviewer_status": "verified"})
-        # PYQ: one verified paper, verified_pyq verified + (total_pyq-verified) pending questions.
-        if total_pyq:
+        # PYQ — one verified paper hosts all questions.
+        if vpyq or q_no_tag or pending_pyq:
             self.db["pyq_papers"].append(
                 {"id": f"{eid}-pp", "exam_id": eid, "trust_status": "verified"})
-            for i in range(total_pyq):
-                status = "verified" if i < verified_pyq else "pending"
-                self.db["pyq_questions"].append(
-                    {"id": f"{eid}-q{i}", "pyq_paper_id": f"{eid}-pp",
-                     "reviewer_status": status, "created_at": _RECENT})
-        # Pending / stale review rows on the syllabus table.
-        for i in range(pending):
+        for i in range(vpyq):  # full 3-gate verified question
+            qid = f"{eid}-vq{i}"
+            self.db["pyq_questions"].append(
+                {"id": qid, "pyq_paper_id": f"{eid}-pp", "reviewer_status": "verified",
+                 "created_at": _RECENT})
+            self.db["pyq_question_topic_tags"].append(
+                {"id": f"{qid}-t", "question_id": qid, "reviewer_status": "verified",
+                 "created_at": _RECENT})
+        for i in range(q_no_tag):  # verified question, NO verified tag → gate 3 fails
+            self.db["pyq_questions"].append(
+                {"id": f"{eid}-nq{i}", "pyq_paper_id": f"{eid}-pp",
+                 "reviewer_status": "verified", "created_at": _RECENT})
+        for i in range(pending_pyq):
+            self.db["pyq_questions"].append(
+                {"id": f"{eid}-pq{i}", "pyq_paper_id": f"{eid}-pp",
+                 "reviewer_status": "pending", "created_at": _RECENT})
+        for i in range(pending_syl):
             self.db["syllabus_topic_mentions"].append(
                 {"id": f"{eid}-sp{i}", "exam_id": eid, "reviewer_status": "pending",
                  "created_at": _RECENT})
-        for i in range(stale):
+        for i in range(stale_syl):
             self.db["syllabus_topic_mentions"].append(
                 {"id": f"{eid}-ss{i}", "exam_id": eid, "reviewer_status": "pending",
                  "created_at": _STALE})
@@ -101,30 +155,18 @@ class _Seed:
 def _seed():
     s = _Seed()
     s.db["organizations"].append({"id": "org1", "name": "Staff Selection Commission"})
-    # blocked: no phases, no coverage
-    s.exam("b1", name="Blocked Setup", mode=None, phases=0, locked=0, mock=40, org="org1")
-    # blocked: phase present, only reviewed coverage (no locked)
-    s.exam("b2", name="Blocked Coverage", mode="core", locked=0, reviewed=2, mock=40)
-    # ready: locked + verified pyq + healthy mock + no pending
-    s.exam("rdy", name="Ready Exam", mode="core", locked=1, verified_pyq=3, total_pyq=3, mock=40)
-    # needs_action: no verified pyq
-    s.exam("npyq", name="Needs Pyq", mode="light", locked=1, verified_pyq=0, total_pyq=2, mock=40)
-    # needs_action: pending review (recent)
-    s.exam("pend", name="Pending Review", mode="core", locked=1, verified_pyq=1, total_pyq=1,
-           mock=40, pending=1)
-    # needs_action: stale pending review (>14d)
-    s.exam("stale", name="Stale Review", mode="core", locked=1, verified_pyq=1, total_pyq=1,
-           mock=40, stale=1)
-    # needs_action: thin mock bank only
-    s.exam("thin", name="Thin Mock", mode="index_only", locked=1, verified_pyq=1, total_pyq=1,
-           mock=5)
-    # archived (excluded from default scope)
-    s.exam("arch", name="Archived", mode="archive", locked=1, verified_pyq=1, total_pyq=1, mock=40)
+    s.exam("b1", name="Blocked Setup", mode=None, phases=0, locked=0, org="org1")
+    s.exam("b2", name="Blocked Coverage", mode="core", locked=0, reviewed=2)
+    s.exam("rdy", name="Ready Exam", mode="core", locked=1, vpyq=1)
+    s.exam("npyq", name="Needs Pyq", mode="light", locked=1, q_no_tag=1)  # verified q, no tag
+    s.exam("pend", name="Pending Review", mode="core", locked=1, vpyq=1, pending_syl=1)
+    s.exam("stale", name="Stale Review", mode="index_only", locked=1, vpyq=1, stale_syl=1)
+    s.exam("arch", name="Archived", mode="archive", locked=1, vpyq=1)
     return s.db
 
 
-def _client(role="super_admin", db=None):
-    sb = CountingSBStub(db if db is not None else _seed())
+def _client(role="super_admin", db=None, stub_cls=CountingSBStub):
+    sb = stub_cls(db if db is not None else _seed())
     return TestClient(_build_app(sb, role=role)), sb
 
 
@@ -145,17 +187,60 @@ def test_default_scope_excludes_archive_and_classifies():
     client, _ = _client()
     body = client.get("/api/admin/exam-intelligence/console/exams?limit=100").json()
     by_id = {r["id"]: r for r in body["items"]}
-    assert "arch" not in by_id  # archive excluded by default, like /exams
+    assert "arch" not in by_id
     assert by_id["b1"]["status"] == "blocked" and by_id["b1"]["blocker_count"] == 2
     assert by_id["b2"]["status"] == "blocked" and "missing_coverage" in by_id["b2"]["flags"]
     assert by_id["rdy"]["status"] == "ready" and by_id["rdy"]["flags"] == []
     assert by_id["npyq"]["status"] == "needs_action" and "missing_pyq" in by_id["npyq"]["flags"]
-    assert by_id["thin"]["status"] == "needs_action" and "thin_mock_bank" in by_id["thin"]["flags"]
     assert by_id["stale"]["flags"].count("stale_review_queue") == 1
-    # truthful aggregates
     assert by_id["rdy"]["locked_coverage_count"] == 1
-    assert by_id["rdy"]["verified_pyq_count"] == 3
-    assert by_id["npyq"]["verified_pyq_count"] == 0 and by_id["npyq"]["total_pyq_count"] == 2
+    assert by_id["rdy"]["verified_pyq_count"] == 1
+    assert by_id["npyq"]["verified_pyq_count"] == 0 and by_id["npyq"]["total_pyq_count"] == 1
+
+
+# ── Three-gate verified_pyq_count (aggregate-level) ─────────────────────────
+
+def _agg_one(db):
+    sb = SBStub(db)
+    exams = db["exams"]
+    return wq.aggregate(sb, exams)[exams[0]["id"]]
+
+
+def _pyq_db(question_status, tags, *, paper_trust="verified"):
+    return {
+        "exams": [{"id": "e", "slug": "e", "name": "E"}],
+        "pyq_papers": [{"id": "p", "exam_id": "e", "trust_status": paper_trust}],
+        "pyq_questions": [{"id": "q", "pyq_paper_id": "p",
+                           "reviewer_status": question_status, "created_at": _RECENT}],
+        "pyq_question_topic_tags": [
+            {"id": f"t{i}", "question_id": "q", "reviewer_status": st, "created_at": _RECENT}
+            for i, st in enumerate(tags)
+        ],
+    }
+
+
+def test_verified_pyq_gate_no_tag_is_zero():
+    assert _agg_one(_pyq_db("verified", []))["verified_pyq_count"] == 0
+
+
+def test_verified_pyq_gate_pending_tag_is_zero():
+    assert _agg_one(_pyq_db("verified", ["pending"]))["verified_pyq_count"] == 0
+
+
+def test_verified_pyq_gate_all_three_is_one():
+    assert _agg_one(_pyq_db("verified", ["verified"]))["verified_pyq_count"] == 1
+
+
+def test_verified_pyq_two_verified_tags_count_one_distinct():
+    assert _agg_one(_pyq_db("verified", ["verified", "verified"]))["verified_pyq_count"] == 1
+
+
+def test_verified_pyq_unverified_paper_is_zero():
+    assert _agg_one(_pyq_db("verified", ["verified"], paper_trust="pending"))["verified_pyq_count"] == 0
+
+
+def test_verified_pyq_pending_question_is_zero():
+    assert _agg_one(_pyq_db("pending", ["verified"]))["verified_pyq_count"] == 0
 
 
 # ── Base-filter parity with /exams ──────────────────────────────────────────
@@ -172,14 +257,6 @@ def test_management_mode_archive_includes_only_archive():
     assert [r["id"] for r in body["items"]] == ["arch"]
 
 
-def test_active_state_all_includes_archive_scope():
-    client, _ = _client()
-    body = client.get("/api/admin/exam-intelligence/console/exams?active_state=all&limit=100").json()
-    # active_state=all keeps the default archive-exclusion (management_mode rule),
-    # so arch is still excluded; count is the 7 non-archive exams.
-    assert body["total_count"] == 7
-
-
 def test_q_filters_by_name():
     client, _ = _client()
     body = client.get("/api/admin/exam-intelligence/console/exams?q=ready&limit=100").json()
@@ -192,22 +269,21 @@ def test_workflow_primary_and_flag_filters():
     client, _ = _client()
     blocked = client.get("/api/admin/exam-intelligence/console/exams?workflow=blocked&limit=100").json()
     assert {r["id"] for r in blocked["items"]} == {"b1", "b2"}
-    thin = client.get("/api/admin/exam-intelligence/console/exams?workflow=thin_mock_bank&limit=100").json()
-    assert {r["id"] for r in thin["items"]} == {"thin"}
     stale = client.get("/api/admin/exam-intelligence/console/exams?workflow=stale_review_queue&limit=100").json()
     assert {r["id"] for r in stale["items"]} == {"stale"}
+    mpyq = client.get("/api/admin/exam-intelligence/console/exams?workflow=missing_pyq&limit=100").json()
+    assert {r["id"] for r in mpyq["items"]} == {"b1", "b2", "npyq"}
 
 
-def test_unknown_workflow_rejected():
+def test_thin_mock_bank_workflow_is_rejected():
     client, _ = _client()
-    r = client.get("/api/admin/exam-intelligence/console/exams?workflow=on_fire")
-    assert r.status_code == 422
+    assert client.get("/api/admin/exam-intelligence/console/exams?workflow=thin_mock_bank").status_code == 422
 
 
-def test_unknown_sort_rejected():
+def test_unknown_workflow_and_sort_rejected():
     client, _ = _client()
-    r = client.get("/api/admin/exam-intelligence/console/exams?sort=banana")
-    assert r.status_code == 422
+    assert client.get("/api/admin/exam-intelligence/console/exams?workflow=on_fire").status_code == 422
+    assert client.get("/api/admin/exam-intelligence/console/exams?sort=banana").status_code == 422
 
 
 # ── Sort ────────────────────────────────────────────────────────────────────
@@ -217,15 +293,13 @@ def test_blockers_first_orders_blocked_then_needs_then_ready():
     items = client.get("/api/admin/exam-intelligence/console/exams?sort=blockers_first&limit=100").json()["items"]
     ranks = [wq.STATUS_RANK[r["status"]] for r in items]
     assert ranks == sorted(ranks)
-    # first two are blocked, ordered by blocker_count desc (b1 has 2, b2 has 1)
-    assert items[0]["id"] == "b1" and items[1]["id"] == "b2"
+    assert items[0]["id"] == "b1" and items[1]["id"] == "b2"  # 2 blockers before 1
 
 
 def test_name_sort_is_alphabetical():
     client, _ = _client()
     items = client.get("/api/admin/exam-intelligence/console/exams?sort=name&limit=100").json()["items"]
-    names = [r["name"] for r in items]
-    assert names == sorted(names)
+    assert [r["name"] for r in items] == sorted(r["name"] for r in items)
 
 
 def test_management_lane_sort_ranks_lanes():
@@ -241,7 +315,7 @@ def test_pagination_applies_after_filter_and_sort():
     client, _ = _client()
     p0 = client.get("/api/admin/exam-intelligence/console/exams?sort=name&limit=3&offset=0").json()
     p1 = client.get("/api/admin/exam-intelligence/console/exams?sort=name&limit=3&offset=3").json()
-    assert p0["total_count"] == 7 and p1["total_count"] == 7
+    assert p0["total_count"] == 6 and p1["total_count"] == 6
     assert p0["count"] == 3 and p0["has_next"] is True
     full = client.get("/api/admin/exam-intelligence/console/exams?sort=name&limit=100").json()["items"]
     assert [r["id"] for r in p0["items"]] == [r["id"] for r in full[:3]]
@@ -250,15 +324,14 @@ def test_pagination_applies_after_filter_and_sort():
 
 # ── Summary ─────────────────────────────────────────────────────────────────
 
-def test_summary_primaries_sum_to_total_and_flags_overlap():
+def test_summary_five_counts_primaries_sum_to_total():
     client, _ = _client()
     s = client.get("/api/admin/exam-intelligence/console/summary").json()
-    assert s["blocked"] + s["needs_action"] + s["ready"] == s["total_count"] == 7
-    assert s["blocked"] == 2 and s["ready"] == 1 and s["needs_action"] == 4
-    # pend (syllabus) + stale (syllabus) + npyq (2 unverified PYQ questions awaiting review)
-    assert s["pending_review"] == 3
+    assert s["blocked"] + s["needs_action"] + s["ready"] == s["total_count"] == 6
+    assert s["blocked"] == 2 and s["ready"] == 1 and s["needs_action"] == 3
+    assert s["pending_review"] == 2  # pend + stale
     assert s["stale_review_queue"] == 1
-    assert s["thin_mock_bank"] == 1
+    assert "thin_mock_bank" not in s
     assert "stale_official_intelligence" not in s
     assert "generated_at" in s
 
@@ -289,38 +362,114 @@ def test_no_forbidden_fields_in_responses():
                  "conducting_organization_id", "state", "jurisdiction", "reviewer_status"}
     for path in ("/api/admin/exam-intelligence/console/exams?limit=100",
                  "/api/admin/exam-intelligence/console/summary"):
-        body = client.get(path).json()
-        keys = set(_walk_keys(body))
+        keys = set(_walk_keys(client.get(path).json()))
         assert not (keys & forbidden), keys & forbidden
 
 
 def test_organization_name_exposed_not_raw_id():
     client, _ = _client()
     body = client.get("/api/admin/exam-intelligence/console/exams?limit=100").json()
-    b1 = next(r for r in body["items"] if r["id"] == "b1")
-    assert b1["organization_name"] == "Staff Selection Commission"
-    rdy = next(r for r in body["items"] if r["id"] == "rdy")
-    assert rdy["organization_name"] is None  # no conducting org → null, never fabricated
+    assert next(r for r in body["items"] if r["id"] == "b1")["organization_name"] == "Staff Selection Commission"
+    assert next(r for r in body["items"] if r["id"] == "rdy")["organization_name"] is None
 
 
-# ── Set-based: DB calls do not scale per exam ───────────────────────────────
+# ── Full child-read paging: signals on later pages ──────────────────────────
+
+def _paging_db():
+    # One exam; locked coverage, verified tag, and stale row each land on page 2
+    # when page size is 2 (ids ordered).
+    return {
+        "exams": [{"id": "e", "slug": "e", "name": "E", "exam_type": "recruitment",
+                   "is_active": True, "management_mode": "core", "cadence": "annual",
+                   "exam_family_id": None, "conducting_organization_id": None}],
+        "exam_phases": [{"id": "ph", "exam_id": "e"}],
+        "exam_topic_coverage": [
+            {"id": "c1", "exam_id": "e", "reviewer_status": "draft", "created_at": _RECENT},
+            {"id": "c2", "exam_id": "e", "reviewer_status": "draft", "created_at": _RECENT},
+            {"id": "c3", "exam_id": "e", "reviewer_status": "locked", "created_at": _RECENT},
+        ],
+        "pyq_papers": [{"id": "p", "exam_id": "e", "trust_status": "verified"}],
+        "pyq_questions": [{"id": "q", "pyq_paper_id": "p", "reviewer_status": "verified",
+                           "created_at": _RECENT}],
+        "pyq_question_topic_tags": [
+            {"id": "t1", "question_id": "q", "reviewer_status": "pending", "created_at": _RECENT},
+            {"id": "t2", "question_id": "q", "reviewer_status": "pending", "created_at": _RECENT},
+            {"id": "t3", "question_id": "q", "reviewer_status": "verified", "created_at": _RECENT},
+        ],
+        "syllabus_topic_mentions": [
+            {"id": "s1", "exam_id": "e", "reviewer_status": "pending", "created_at": _RECENT},
+            {"id": "s2", "exam_id": "e", "reviewer_status": "pending", "created_at": _RECENT},
+            {"id": "s3", "exam_id": "e", "reviewer_status": "pending", "created_at": _STALE},
+        ],
+    }
+
+
+def test_signals_on_later_pages_are_not_truncated(monkeypatch):
+    monkeypatch.setattr(wq, "_PAGE_SIZE", 2)
+    sb = RangeAwareSBStub(_paging_db())
+    rows = wq.build_classified_rows(sb, {
+        "q_sanitized": "", "exam_type": None, "active_state": "active",
+        "management_mode": None, "cadence": None, "exam_family_id": None,
+    })
+    r = rows[0]
+    assert r["locked_coverage_count"] == 1          # c3 (page 2) counted
+    assert "missing_coverage" not in r["flags"]
+    assert r["verified_pyq_count"] == 1             # t3 verified tag (page 2) counted
+    assert r["total_pyq_count"] == 1                # no duplicate questions across pages
+    assert "stale_review_queue" in r["flags"]       # s3 (page 2) counted
+
+
+def test_paging_produces_no_duplicate_rows(monkeypatch):
+    monkeypatch.setattr(wq, "_PAGE_SIZE", 2)
+    sb = RangeAwareSBStub(_paging_db())
+    # 3 pending syllabus rows + 2 pending PYQ tags, each spanning >1 page.
+    # Correct (de-duplicated) total is 5; duplication across pages would give 10.
+    agg = wq.aggregate(sb, sb.db["exams"])["e"]
+    assert agg["pending_review_count"] == 5
+
+
+# ── Required-read failure propagation ───────────────────────────────────────
+
+_BASE = {"q_sanitized": "", "exam_type": None, "active_state": "active",
+         "management_mode": None, "cadence": None, "exam_family_id": None}
+
+
+@pytest.mark.parametrize("fail_table", ["exams", "exam_topic_coverage", "pyq_papers", "organizations"])
+def test_required_read_failure_raises_databaseerror(fail_table):
+    db = _seed()
+    sb = FailingSBStub(db, fail_table)
+    with pytest.raises(DatabaseError):
+        wq.build_classified_rows(sb, _BASE)
+
+
+@pytest.mark.parametrize("fail_table", ["exams", "exam_topic_coverage", "pyq_papers", "organizations"])
+def test_endpoint_returns_500_not_fabricated_truth_on_failure(fail_table):
+    sb = FailingSBStub(_seed(), fail_table)
+    app = _build_app(sb)
+    client = TestClient(app, raise_server_exceptions=False)
+    r = client.get("/api/admin/exam-intelligence/console/exams?limit=100")
+    assert r.status_code == 500
+    # No fabricated empty/blocked 200 body.
+    assert "items" not in r.json() if r.headers.get("content-type", "").startswith("application/json") else True
+
+
+# ── Bounded reads: no N+1 within one chunk/page ─────────────────────────────
 
 def _seed_n(n):
     s = _Seed()
     for i in range(n):
-        s.exam(f"e{i}", name=f"Exam {i}", mode="core", locked=1, verified_pyq=1,
-               total_pyq=1, mock=40)
+        s.exam(f"e{i}", name=f"Exam {i}", mode="core", locked=1, vpyq=1)
     return s.db
 
 
-def test_reads_are_set_based_not_per_exam():
-    small_client, small_sb = _client(db=_seed_n(2))
+def test_reads_do_not_scale_per_exam_within_one_chunk():
+    _, small = _client(db=_seed_n(2))
+    small_client = TestClient(_build_app(small))
     small_client.get("/api/admin/exam-intelligence/console/exams?limit=100")
-    small_calls = small_sb.table_calls
 
-    big_client, big_sb = _client(db=_seed_n(40))
+    _, big = _client(db=_seed_n(50))
+    big_client = TestClient(_build_app(big))
     big_client.get("/api/admin/exam-intelligence/console/exams?limit=100")
-    big_calls = big_sb.table_calls
 
-    # 20x the exams, same table structure → identical number of DB round-trips.
-    assert small_calls == big_calls
+    # 25x the exams, same chunk/page structure → identical DB round-trips.
+    assert small.table_calls == big.table_calls
