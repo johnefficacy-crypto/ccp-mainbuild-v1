@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -242,3 +243,96 @@ def test_new_payload_passes_063_enforcing_stub():
     # Must not raise — the new writer payload satisfies the 063 contract.
     mw.MasteryWriter(sb, "live")._draft_correction_tasks(ATTEMPT, [_draft()])
     assert len(sb.db["mock_correction_tasks"]) == 1
+
+
+# ── true sweeper-level recovery lifecycle (not a direct redraft call) ──────────
+
+class _FlakyCorrectionSB(SBStub):
+    """SBStub whose FIRST mock_correction_tasks insert raises a transient error,
+    then succeeds — to drive the sweeper's failed-recovery → reschedule → retry
+    → success lifecycle."""
+
+    def __init__(self, db=None):
+        super().__init__(db)
+        self.fail_next_correction_insert = True
+
+    def table(self, name):  # type: ignore[override]
+        q = super().table(name)
+        if name == "mock_correction_tasks":
+            real_insert = q.insert
+
+            def _insert(payload):
+                if getattr(self, "fail_next_correction_insert", False):
+                    self.fail_next_correction_insert = False
+                    raise RuntimeError("transient correction insert failure")
+                return real_insert(payload)
+
+            q.insert = _insert  # type: ignore[assignment]
+        return q
+
+
+def test_sweeper_recovers_correction_after_transient_failure(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    now = datetime(2026, 6, 17, 12, 0, 0, tzinfo=timezone.utc)
+    past = (now - timedelta(seconds=60)).isoformat()
+
+    sb = _FlakyCorrectionSB()
+    sb.db.update({
+        "mock_attempts": [{
+            "id": ATTEMPT, "user_id": USER, "status": "submitted",
+            "template_snapshot": {}, "score_raw": 0, "total_correct": 0,
+            "total_wrong": 3, "submitted_at": past, "expires_at": past,
+        }],
+        "mock_attempt_responses": [
+            {
+                "attempt_id": ATTEMPT, "question_id": f"q{i}", "is_correct": False,
+                "time_spent_sec": 5, "error_type": "concept_gap",
+                "question_snapshot": {
+                    "topic_id": TOPIC, "difficulty": "medium",
+                    "source_type": "authored", "marks": 1,
+                },
+            }
+            for i in range(3)
+        ],
+        "mock_tests": [],
+        "mock_correction_tasks": [],
+        "mock_attempt_jobs": [{
+            "id": "job-1", "job_kind": engine.JOB_MOCK_TESTS_RETRY,
+            "attempt_id": ATTEMPT, "scheduled_for": past, "attempts": 0,
+            "status": "pending", "last_error": None,
+        }],
+        "user_topic_mastery": [], "user_topic_mastery_audit": [],
+        "user_topic_error_patterns": [], "mock_mastery_shadow": [],
+    })
+
+    # ── First sweep: mock_tests emitted, correction insert fails once → reschedule
+    counts1 = engine.run_sweeper(sb, now=now)
+    job = sb.db["mock_attempt_jobs"][0]
+    assert len(sb.db["mock_tests"]) == 1            # compat row created
+    assert sb.db["mock_correction_tasks"] == []      # correction NOT persisted
+    assert job["status"] == "pending"                # NOT done — rescheduled
+    assert job["attempts"] == 1                       # attempts increased
+    assert job["last_error"]                          # records the correction failure
+    assert counts1["errors"] == 1                     # reported error, not success
+
+    # ── Second sweep after backoff, failure no longer fires
+    assert sb.fail_next_correction_insert is False    # consumed on the first attempt
+    later = now + timedelta(seconds=30)               # past the rescheduled scheduled_for
+    engine.run_sweeper(sb, now=later)
+    job = sb.db["mock_attempt_jobs"][0]
+    assert len(sb.db["mock_tests"]) == 1             # retry reused the row — NO duplicate
+    drafts = sb.db["mock_correction_tasks"]
+    assert len(drafts) == 1                           # exactly one valid correction
+    d = drafts[0]
+    assert d["mock_test_id"]
+    assert d["category"] in VALID_CORRECTION_CATEGORIES
+    assert d["title"] and d["state"] == "drafted"
+    for bad in _DISALLOWED:
+        assert bad not in d
+    assert job["status"] == "done"                    # marked done only after success
+    assert job["last_error"] is None                  # cleared
+
+    # ── Third sweep: job done; serial retry must not duplicate the correction
+    engine.run_sweeper(sb, now=later + timedelta(seconds=30))
+    assert len(sb.db["mock_correction_tasks"]) == 1
+    assert len(sb.db["mock_tests"]) == 1

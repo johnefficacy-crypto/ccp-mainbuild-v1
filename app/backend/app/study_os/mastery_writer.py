@@ -116,8 +116,10 @@ class MasteryWriter:
         Called by the mock_tests-retry sweeper hook so a transient missing-row
         miss in :meth:`_draft_correction_tasks` is recovered, not lost. Only
         meaningful at FF=live (corrections are a live-only write); shadow/off
-        return without touching anything. The read-before-insert idempotency
-        guard makes this safe to run after the inline submit-time pass.
+        return without touching anything. The best-effort read-before-insert
+        guard makes this SERIAL-retry safe (re-running after the inline
+        submit-time pass inserts each correction once) — it is NOT concurrency-
+        safe without a DB unique constraint (separate follow-up).
         """
         if self.flag_state != "live":
             return
@@ -296,10 +298,11 @@ class MasteryWriter:
     def _correction_exists(
         self, mock_test_id: str, user_id: str, category: str, topic: str | None
     ) -> bool:
-        """Best-effort idempotency: a drafted correction with the same
+        """Best-effort deduplication: a drafted correction with the same
         (mock_test_id, user_id, category, topic) already exists. mock_correction_
         tasks has no unique constraint for this use case, so this is a read-before-
-        insert guard (robust de-dup via a partial unique index is OUT OF SCOPE)."""
+        insert guard — SERIAL-retry safe but NOT concurrency-safe. Robust de-dup
+        via a partial unique index is OUT OF SCOPE (separate follow-up)."""
         rows = (
             self.supabase.table("mock_correction_tasks")
             .select("id, topic")
@@ -319,9 +322,11 @@ class MasteryWriter:
         Writes only columns that exist (mock_test_id, user_id, category, title,
         topic, source_questions, state) — never the mastery-engine-shaped
         task_type/priority/evidence_json/duration_minutes/source_attempt_id, and
-        never mock_test_id=None. Idempotent (read-before-insert). When the
-        mock_tests compat row is not present yet, corrections are deferred with an
-        observable signal and recovered by the mock_tests-retry sweeper hook.
+        never mock_test_id=None. Serial-retry idempotent via best-effort
+        read-before-insert dedup (NOT concurrency-safe without a DB unique
+        constraint — separate follow-up). When the mock_tests compat row is not
+        present yet, corrections are deferred with an observable signal and
+        recovered by the mock_tests-retry sweeper hook.
         """
         if not drafts:
             return

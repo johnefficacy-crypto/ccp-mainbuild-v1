@@ -1238,20 +1238,26 @@ def _run_job(supabase: Any, job: dict) -> None:
 
 
 def _recover_corrections_after_mock_tests(supabase: Any, attempt_id: str) -> None:
-    """Recovery hook (decision doc §4b): once the best-effort mock_tests compat
-    row is (re-)emitted, re-run correction drafting so a transient missing-row
-    miss in MasteryWriter is recovered rather than silently lost. Best-effort and
-    idempotent — only drafts at FF=live, never re-runs mastery/shadow/error
-    writes, never raises into the sweeper, and adds NO new mock_tests path.
-    """
-    try:
-        from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
+    """Recovery hook (decision doc §4b): once the mock_tests compat row is
+    (re-)emitted, re-run correction drafting so a transient missing-row miss in
+    MasteryWriter is recovered rather than silently lost.
 
-        MasteryWriter(supabase, get_mastery_write_flag()).redraft_corrections(attempt_id)
-    except Exception:  # noqa: BLE001
-        logger.exception(
-            "correction recovery after mock_tests retry failed attempt=%s", attempt_id
-        )
+    Failures INTENTIONALLY propagate: this runs inside ``_run_job`` (after
+    ``_retry_emit_mock_tests_row``), so an exception here flows up to
+    ``run_sweeper``, which reschedules the JOB_MOCK_TESTS_RETRY job with backoff
+    and preserves ``last_error``. The job is therefore marked done only after
+    BOTH the compat-row recovery AND the correction recovery succeed — a failed
+    correction can no longer be swallowed and mismarked as success.
+
+    Serial-retry safe: ``_retry_emit_mock_tests_row`` is idempotent (reuses the
+    existing compat row, never recreates it) and ``redraft_corrections`` is
+    serial-retry idempotent (best-effort read-before-insert dedup), so retrying
+    the whole job inserts the correction exactly once across serial retries. It
+    only drafts at FF=live and adds NO new mock_tests creation path.
+    """
+    from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
+
+    MasteryWriter(supabase, get_mastery_write_flag()).redraft_corrections(attempt_id)
 
 
 def run_sweeper(
