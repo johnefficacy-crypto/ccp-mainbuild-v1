@@ -1,8 +1,8 @@
 ---
 owner: study-os
 status: design + plan
-last_verified_against_code: 2026-06-16
-verified_against: main @ 406648c
+last_verified_against_code: 2026-06-17
+verified_against: fix/unify-mock-correction-policy (§7 #2 closed)
 source_of_truth: code
 related_code:
   - app/backend/app/study_os/planner.py
@@ -311,11 +311,31 @@ answered.
    (`:184-193`) or full-recompute `mastery.py` (`recompute_topic_mastery`,
    `:155-215`)? Do both fire for one attempt? They are not reconciled today.
 2. **Do generated (`MasteryWriter`) and manual (`mocks.py`) corrections use the
-   same categorizer + thresholds?** They do **not** today — different vocabularies
-   (`mastery_engine/correction_tasks.py:48-54` vs `mocks.py:62-68`) **and** an
-   incompatible `mock_correction_tasks` insert shape on the `MasteryWriter` side
-   ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk)). This must be fixed
-   before `FF=live`, or the first live generated submit fails the insert.
+   same categorizer + thresholds?** **RESOLVED.** One shared, source-neutral
+   policy (`app/backend/app/study_os/correction_policy.py`) owns the canonical
+   categories, alias normalization, and selection. Both **production** adapters
+   call `select_categories(...)`, which returns an **ordered canonical correction
+   SET** (one entry per canonical category, count-desc with a stable tie-break)
+   over **aggregated** evidence — raw aliases are normalized and summed first, so
+   collisions like `concept` + `concept_gap` collapse to a single correction and
+   `concept=1, option=3` yields `[option_trap, concept_gap]` for *both* origins.
+   Emission is one source-neutral rule (any recognized canonical error, or an
+   explicit weak-topic / low-accuracy / unrecovered-prior-error fallback);
+   `evidence_mode` is descriptive only. Category comes from EVIDENCE, never
+   `task_type` (action style, derived after, never overrides the category).
+   `CorrectionTaskDraft` carries `category`; `MasteryWriter` is a pure persistence
+   adapter (its `task_type→category` mapping is removed). The generated pipeline
+   feeds the policy from **question-level** `error_type` (not the narrower
+   `error_patterns.TRACKED` write-vocab), so memory/speed/misread evidence
+   survives. Titles are **category-only** (e.g. `Concept drill`) — identical
+   across origins; `topic` stays a separate, source-specific column (manual = display
+   label, generated = canonical id) and is **not** claimed equal. Adapter-level
+   cross-origin parity is test-pinned (`tests/study_os/test_correction_policy.py`,
+   driving both real adapters). The earlier schema-incompatibility was closed in
+   #702 ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk)).
+   *Still open, separately:* DB-enforced correction uniqueness (dedup is
+   **best-effort serial-retry**, not concurrency-safe), `FF_MOCK_MASTERY_WRITES`
+   stays **off**, and operator shadow→live validation is next.
 3. **Is the mastery trigger source-agnostic?** Today the trigger is **inline in
    the user-submit route** (`api/mock_engine.py:155-160`), so a generated submit
    with `template_id=null` going through that route *would* run the writer. But

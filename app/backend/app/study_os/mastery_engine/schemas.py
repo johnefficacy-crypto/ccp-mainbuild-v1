@@ -70,6 +70,9 @@ class CorrectionTaskDraft(BaseModel):
     user_id: str
     topic_id: str
     microtopic_id: str | None = None
+    # Canonical 063 category, derived from error EVIDENCE via correction_policy
+    # (NOT from task_type). MasteryWriter persists this verbatim.
+    category: str | None = None
     task_type: str
     priority: int
     reason: str

@@ -66,11 +66,12 @@ def _seed(sb: SBStub, *, with_mock_tests: bool = True, error_type: str | None = 
     sb.db.setdefault("user_topic_error_patterns", [])
 
 
-def _draft(task_type: str = "concept_review", error_types=None) -> CorrectionTaskDraft:
+def _draft(task_type: str = "concept_review", error_types=None, category: str = "concept_gap") -> CorrectionTaskDraft:
     return CorrectionTaskDraft(
         user_id=USER,
         topic_id=TOPIC,
         microtopic_id=None,
+        category=category,  # set by correction_policy in the real path
         task_type=task_type,
         priority=3,
         reason="because",
@@ -104,22 +105,8 @@ def test_draft_payload_matches_063_schema():
         assert bad not in row
 
 
-# ── 2. mapping: every mastery-engine task_type → a valid 063 category ──────────
-
-def test_task_type_to_category_mapping_all_valid():
-    cases = {
-        ("concept_review", ()): "concept_gap",
-        ("trap_review", ()): "option_trap",
-        ("pyq_revision", ()): "concept_gap",
-        ("pyq_revision", ("memory_gap",)): "memory_gap",
-        ("practice_drill", ()): "concept_gap",
-        ("practice_drill", ("speed_issue",)): "speed_issue",
-        ("something_unknown", ()): "concept_gap",  # safe default
-    }
-    for (task_type, ets), expected in cases.items():
-        got = mw._map_mastery_task_type_to_category(task_type, list(ets))
-        assert got == expected
-        assert got in VALID_CORRECTION_CATEGORIES
+# (category mapping moved to test_correction_policy.py — MasteryWriter no longer
+#  classifies; it persists draft.category from the shared policy.)
 
 
 # ── 3. mock_tests missing → defer (observable), then recover exactly once ──────

@@ -46,12 +46,30 @@ A topic emits one draft when any is true:
 - concept_gap + option_trap signals >= 2
 - topic exists in prior error-pattern topics and is not recovered
 
-Type selection:
+**Category** (the 063 `mock_correction_tasks.category`) is owned by the shared,
+source-neutral `study_os/correction_policy.py` (§7). Both the generated and manual
+adapters call `select_categories(input)`, which:
 
-1. any wrong PYQ -> `pyq_revision`
-2. concept_gap dominant -> `concept_review`
-3. option_trap dominant -> `trap_review`
-4. otherwise -> `practice_drill`
+1. normalizes + **aggregates** raw error aliases into canonical counts (collisions
+   like `concept` + `concept_gap` collapse to one);
+2. returns the canonical correction **set**, ordered count-desc with a stable
+   tie-break — **one correction per canonical category**;
+3. falls back to a single `concept_gap` only on explicit weak-topic / low-accuracy
+   / unrecovered-prior-error signal; unknown-only evidence yields nothing.
+
+The generated pipeline feeds the policy from **question-level** `error_type`
+(not the narrower `error_patterns.TRACKED` write-vocab), so memory/speed/misread
+evidence survives. Titles are **category-only** (`Concept drill`, …) and identical
+across origins; `topic` stays a separate source-specific column. `MasteryWriter`
+persists `draft.category` without re-classifying.
+
+`task_type` is **action style only** (drives `estimated_minutes`/execution),
+derived AFTER category selection and never altering the category:
+
+- `concept_gap` -> `concept_review`
+- `option_trap` -> `trap_review`
+- `memory_gap` + wrong PYQ -> `pyq_revision`; otherwise -> `practice_drill`
+- `careless` / `speed_issue` -> `practice_drill`
 
 ## Priority formula
 

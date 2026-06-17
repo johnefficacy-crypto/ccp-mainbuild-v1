@@ -37,43 +37,13 @@ def _weighted_delta(base_delta: Decimal, trust_level: str) -> Decimal:
     return base_delta * TRUST_WEIGHT.get(trust_level, Decimal("0.3"))
 
 
-# ── correction-task write-back: mastery-engine task_type → legacy 063 category ──
-# The mastery-engine emits task_type ∈ {concept_review, trap_review, pyq_revision,
-# practice_drill} (mastery_engine/correction_tasks.py). The ONLY table that stores
-# corrections (mock_correction_tasks, migration 063) constrains `category` to the
-# five values in mocks.VALID_CORRECTION_CATEGORIES. This is the deterministic,
-# documented bridge (decision doc §4b). It is NOT the categorizer-unification work
-# (§7) — that is a separate PR; here we only make the write SCHEMA-COMPATIBLE.
-_TASK_TYPE_TO_CATEGORY = {
-    "concept_review": "concept_gap",
-    "trap_review": "option_trap",
-}
-# pyq_revision / practice_drill resolve by evidence error-type signal, else default.
-_MEMORY_LIKE_ERROR_TYPES = {"memory_gap", "recall", "fact_recall", "forgetting"}
-_SPEED_LIKE_ERROR_TYPES = {"speed_issue", "time_pressure", "slow", "timeout"}
-_DEFAULT_CORRECTION_CATEGORY = "concept_gap"
+# Correction CATEGORY now comes from the shared correction_policy (§7) on the
+# CorrectionTaskDraft itself — MasteryWriter is a pure persistence adapter and
+# carries NO classification logic. It only persists draft.category verbatim.
 
 # Observable signal for a recoverable deferral (mock_tests compat row not yet
 # present). Tests read this; ops can scrape it. Not a silent skip.
 correction_metrics: Counter = Counter()
-
-
-def _map_mastery_task_type_to_category(task_type: str, error_types) -> str:
-    """Deterministic map from a mastery-engine task_type to a legacy 063 category.
-
-    Targets are taken from the live mock_correction_tasks_category_check (via
-    mocks.VALID_CORRECTION_CATEGORIES), never hardcoded from a prompt. Any
-    unknown input falls back to the safe ``concept_gap`` so the insert can never
-    violate the CHECK constraint.
-    """
-    et = {e for e in (error_types or [])}
-    if task_type in _TASK_TYPE_TO_CATEGORY:
-        return _TASK_TYPE_TO_CATEGORY[task_type]
-    if task_type == "pyq_revision":
-        return "memory_gap" if et & _MEMORY_LIKE_ERROR_TYPES else _DEFAULT_CORRECTION_CATEGORY
-    if task_type == "practice_drill":
-        return "speed_issue" if et & _SPEED_LIKE_ERROR_TYPES else _DEFAULT_CORRECTION_CATEGORY
-    return _DEFAULT_CORRECTION_CATEGORY
 
 
 class MasteryWriter:
@@ -285,16 +255,6 @@ class MasteryWriter:
         ``source_questions`` jsonb column)."""
         return [str(q) for q in (draft.evidence.related_question_ids or [])]
 
-    @staticmethod
-    def _correction_title(category: str, draft: Any) -> str:
-        """Non-empty, deterministic title. Reuses the manual path's per-category
-        title templates (mocks._CORRECTION_DEFAULTS) so both writers read alike."""
-        from app.study_os.mocks import _CORRECTION_DEFAULTS
-
-        base = _CORRECTION_DEFAULTS.get(category, "Correction drill")
-        topic = draft.topic_id
-        return f"{base} · {topic}" if topic else base
-
     def _correction_exists(
         self, mock_test_id: str, user_id: str, category: str, topic: str | None
     ) -> bool:
@@ -317,16 +277,19 @@ class MasteryWriter:
         return any((r.get("topic") or None) == (topic or None) for r in rows)
 
     def _draft_correction_tasks(self, attempt_id: str, drafts: list[Any]) -> None:
-        """Draft corrections into the EXISTING mock_correction_tasks schema (063).
+        """Persist corrections into the EXISTING mock_correction_tasks schema (063).
 
-        Writes only columns that exist (mock_test_id, user_id, category, title,
-        topic, source_questions, state) — never the mastery-engine-shaped
-        task_type/priority/evidence_json/duration_minutes/source_attempt_id, and
-        never mock_test_id=None. Serial-retry idempotent via best-effort
-        read-before-insert dedup (NOT concurrency-safe without a DB unique
-        constraint — separate follow-up). When the mock_tests compat row is not
-        present yet, corrections are deferred with an observable signal and
-        recovered by the mock_tests-retry sweeper hook.
+        Pure persistence adapter: the CATEGORY is taken verbatim from
+        ``draft.category`` (computed by the shared correction_policy from error
+        evidence) — NO classification happens here. Writes only columns that
+        exist (mock_test_id, user_id, category, title, topic, source_questions,
+        state); never the mastery-engine-shaped task_type/priority/evidence_json/
+        duration_minutes/source_attempt_id, and never mock_test_id=None.
+        Serial-retry idempotent via best-effort read-before-insert dedup (NOT
+        concurrency-safe without a DB unique constraint — separate follow-up).
+        When the mock_tests compat row is not present yet, corrections are
+        deferred with an observable signal and recovered by the mock_tests-retry
+        sweeper hook.
         """
         if not drafts:
             return
@@ -342,16 +305,16 @@ class MasteryWriter:
             )
             return
 
-        from app.study_os.mocks import VALID_CORRECTION_CATEGORIES
+        from app.study_os.correction_policy import CANONICAL_CATEGORIES, correction_title
 
         payload: list[dict] = []
         seen: set[tuple[str, str | None]] = set()
         for d in drafts:
-            category = _map_mastery_task_type_to_category(
-                d.task_type, d.evidence.error_types
-            )
-            if category not in VALID_CORRECTION_CATEGORIES:  # defensive — never violate the CHECK
-                category = _DEFAULT_CORRECTION_CATEGORY
+            category = d.category
+            if category not in CANONICAL_CATEGORIES:
+                # Policy could not classify this draft — skip rather than guess
+                # (no blind default; never violate the 063 CHECK).
+                continue
             topic = d.topic_id
             key = (category, topic)
             if key in seen:
@@ -363,7 +326,7 @@ class MasteryWriter:
                 "mock_test_id": mock_test_id,
                 "user_id": d.user_id,
                 "category": category,
-                "title": self._correction_title(category, d),
+                "title": correction_title(category),
                 "topic": topic,
                 "source_questions": self._source_questions_from_evidence(d),
                 "state": "drafted",
