@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections import Counter
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Literal
 from uuid import uuid4
@@ -36,6 +37,45 @@ def _weighted_delta(base_delta: Decimal, trust_level: str) -> Decimal:
     return base_delta * TRUST_WEIGHT.get(trust_level, Decimal("0.3"))
 
 
+# ── correction-task write-back: mastery-engine task_type → legacy 063 category ──
+# The mastery-engine emits task_type ∈ {concept_review, trap_review, pyq_revision,
+# practice_drill} (mastery_engine/correction_tasks.py). The ONLY table that stores
+# corrections (mock_correction_tasks, migration 063) constrains `category` to the
+# five values in mocks.VALID_CORRECTION_CATEGORIES. This is the deterministic,
+# documented bridge (decision doc §4b). It is NOT the categorizer-unification work
+# (§7) — that is a separate PR; here we only make the write SCHEMA-COMPATIBLE.
+_TASK_TYPE_TO_CATEGORY = {
+    "concept_review": "concept_gap",
+    "trap_review": "option_trap",
+}
+# pyq_revision / practice_drill resolve by evidence error-type signal, else default.
+_MEMORY_LIKE_ERROR_TYPES = {"memory_gap", "recall", "fact_recall", "forgetting"}
+_SPEED_LIKE_ERROR_TYPES = {"speed_issue", "time_pressure", "slow", "timeout"}
+_DEFAULT_CORRECTION_CATEGORY = "concept_gap"
+
+# Observable signal for a recoverable deferral (mock_tests compat row not yet
+# present). Tests read this; ops can scrape it. Not a silent skip.
+correction_metrics: Counter = Counter()
+
+
+def _map_mastery_task_type_to_category(task_type: str, error_types) -> str:
+    """Deterministic map from a mastery-engine task_type to a legacy 063 category.
+
+    Targets are taken from the live mock_correction_tasks_category_check (via
+    mocks.VALID_CORRECTION_CATEGORIES), never hardcoded from a prompt. Any
+    unknown input falls back to the safe ``concept_gap`` so the insert can never
+    violate the CHECK constraint.
+    """
+    et = {e for e in (error_types or [])}
+    if task_type in _TASK_TYPE_TO_CATEGORY:
+        return _TASK_TYPE_TO_CATEGORY[task_type]
+    if task_type == "pyq_revision":
+        return "memory_gap" if et & _MEMORY_LIKE_ERROR_TYPES else _DEFAULT_CORRECTION_CATEGORY
+    if task_type == "practice_drill":
+        return "speed_issue" if et & _SPEED_LIKE_ERROR_TYPES else _DEFAULT_CORRECTION_CATEGORY
+    return _DEFAULT_CORRECTION_CATEGORY
+
+
 class MasteryWriter:
     def __init__(self, supabase: Any, flag_state: FlagState) -> None:
         self.supabase = supabase
@@ -67,7 +107,30 @@ class MasteryWriter:
         if self.flag_state == "live":
             self._apply_mastery(attempt_id, result.mastery_deltas, trust_level)
             self._apply_error_patterns(result.error_signals)
-            self._draft_correction_tasks(result.correction_task_drafts)
+            self._draft_correction_tasks(attempt_id, result.correction_task_drafts)
+
+    def redraft_corrections(self, attempt_id: str) -> None:
+        """Recovery entry point: re-derive and (idempotently) draft corrections
+        for ``attempt_id`` AFTER its mock_tests compat row exists.
+
+        Called by the mock_tests-retry sweeper hook so a transient missing-row
+        miss in :meth:`_draft_correction_tasks` is recovered, not lost. Only
+        meaningful at FF=live (corrections are a live-only write); shadow/off
+        return without touching anything. The read-before-insert idempotency
+        guard makes this safe to run after the inline submit-time pass.
+        """
+        if self.flag_state != "live":
+            return
+        analytics = self._load_analytics(attempt_id)
+        if analytics is None:
+            return
+        trust_level = self._load_trust_level(attempt_id)
+        current_mastery = self._load_current_mastery(analytics.user_id)
+        existing_error_topics = self._load_existing_error_topics(analytics.user_id)
+        result = derive_from_analytics(
+            analytics, current_mastery, existing_error_topics, source_trust=trust_level
+        )
+        self._draft_correction_tasks(attempt_id, result.correction_task_drafts)
 
     def _load_analytics(self, attempt_id: str) -> DerivedAttemptAnalytics | None:
         attempt_rows = self.supabase.table("mock_attempts").select("id,user_id").eq("id", attempt_id).limit(1).execute().data or []
@@ -199,18 +262,105 @@ class MasteryWriter:
                 "error_type": s.error_type, "error_count": s.count,
             }, on_conflict="user_id,topic_id,microtopic_id,error_type").execute()
 
-    def _draft_correction_tasks(self, drafts: list[Any]) -> None:
-        payload = []
+    def _load_mock_test_id_for_attempt(self, attempt_id: str) -> str | None:
+        """The mock_tests.id for this attempt's compat row, or None if not emitted
+        yet. mock_correction_tasks.mock_test_id is a NOT NULL FK to mock_tests, so
+        corrections cannot be drafted until that row exists."""
+        rows = (
+            self.supabase.table("mock_tests")
+            .select("id")
+            .eq("mock_attempt_id", attempt_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        return rows[0].get("id") if rows else None
+
+    @staticmethod
+    def _source_questions_from_evidence(draft: Any) -> list[str]:
+        """The wrong/source question ids backing this draft (stored in the legacy
+        ``source_questions`` jsonb column)."""
+        return [str(q) for q in (draft.evidence.related_question_ids or [])]
+
+    @staticmethod
+    def _correction_title(category: str, draft: Any) -> str:
+        """Non-empty, deterministic title. Reuses the manual path's per-category
+        title templates (mocks._CORRECTION_DEFAULTS) so both writers read alike."""
+        from app.study_os.mocks import _CORRECTION_DEFAULTS
+
+        base = _CORRECTION_DEFAULTS.get(category, "Correction drill")
+        topic = draft.topic_id
+        return f"{base} · {topic}" if topic else base
+
+    def _correction_exists(
+        self, mock_test_id: str, user_id: str, category: str, topic: str | None
+    ) -> bool:
+        """Best-effort idempotency: a drafted correction with the same
+        (mock_test_id, user_id, category, topic) already exists. mock_correction_
+        tasks has no unique constraint for this use case, so this is a read-before-
+        insert guard (robust de-dup via a partial unique index is OUT OF SCOPE)."""
+        rows = (
+            self.supabase.table("mock_correction_tasks")
+            .select("id, topic")
+            .eq("mock_test_id", mock_test_id)
+            .eq("user_id", user_id)
+            .eq("category", category)
+            .eq("state", "drafted")
+            .execute()
+            .data
+            or []
+        )
+        return any((r.get("topic") or None) == (topic or None) for r in rows)
+
+    def _draft_correction_tasks(self, attempt_id: str, drafts: list[Any]) -> None:
+        """Draft corrections into the EXISTING mock_correction_tasks schema (063).
+
+        Writes only columns that exist (mock_test_id, user_id, category, title,
+        topic, source_questions, state) — never the mastery-engine-shaped
+        task_type/priority/evidence_json/duration_minutes/source_attempt_id, and
+        never mock_test_id=None. Idempotent (read-before-insert). When the
+        mock_tests compat row is not present yet, corrections are deferred with an
+        observable signal and recovered by the mock_tests-retry sweeper hook.
+        """
+        if not drafts:
+            return
+        mock_test_id = self._load_mock_test_id_for_attempt(attempt_id)
+        if not mock_test_id:
+            # RECOVERABLE, NOT silent: the mock_tests emit is best-effort with a
+            # sweeper retry; redraft_corrections re-runs once the row lands.
+            correction_metrics["correction_deferred_missing_mock_test"] += 1
+            logger.warning(
+                "correction draft deferred: no mock_tests compat row yet for "
+                "attempt=%s (recoverable via mock_tests_retry sweeper)",
+                attempt_id,
+            )
+            return
+
+        from app.study_os.mocks import VALID_CORRECTION_CATEGORIES
+
+        payload: list[dict] = []
+        seen: set[tuple[str, str | None]] = set()
         for d in drafts:
+            category = _map_mastery_task_type_to_category(
+                d.task_type, d.evidence.error_types
+            )
+            if category not in VALID_CORRECTION_CATEGORIES:  # defensive — never violate the CHECK
+                category = _DEFAULT_CORRECTION_CATEGORY
+            topic = d.topic_id
+            key = (category, topic)
+            if key in seen:
+                continue  # de-dup within this batch
+            if self._correction_exists(mock_test_id, d.user_id, category, topic):
+                continue  # de-dup against already-drafted corrections (idempotent)
+            seen.add(key)
             payload.append({
-                "id": str(uuid4()),
+                "mock_test_id": mock_test_id,
                 "user_id": d.user_id,
-                "mock_test_id": None,
-                "task_type": d.task_type,
-                "priority": d.priority,
-                "evidence_json": d.evidence.model_dump(mode="json"),
-                "duration_minutes": d.estimated_minutes,
-                "source_attempt_id": str(d.source_attempt_id),
+                "category": category,
+                "title": self._correction_title(category, d),
+                "topic": topic,
+                "source_questions": self._source_questions_from_evidence(d),
                 "state": "drafted",
             })
         if payload:

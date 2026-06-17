@@ -1232,8 +1232,26 @@ def _run_job(supabase: Any, job: dict) -> None:
         attempt_analytics.compute_and_persist(supabase, attempt_id)
     elif kind == JOB_MOCK_TESTS_RETRY:
         _retry_emit_mock_tests_row(supabase, attempt_id)
+        _recover_corrections_after_mock_tests(supabase, attempt_id)
     else:
         raise RuntimeError(f"unknown job_kind {kind!r}")
+
+
+def _recover_corrections_after_mock_tests(supabase: Any, attempt_id: str) -> None:
+    """Recovery hook (decision doc §4b): once the best-effort mock_tests compat
+    row is (re-)emitted, re-run correction drafting so a transient missing-row
+    miss in MasteryWriter is recovered rather than silently lost. Best-effort and
+    idempotent — only drafts at FF=live, never re-runs mastery/shadow/error
+    writes, never raises into the sweeper, and adds NO new mock_tests path.
+    """
+    try:
+        from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
+
+        MasteryWriter(supabase, get_mastery_write_flag()).redraft_corrections(attempt_id)
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "correction recovery after mock_tests retry failed attempt=%s", attempt_id
+        )
 
 
 def run_sweeper(

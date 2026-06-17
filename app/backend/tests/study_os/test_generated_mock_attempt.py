@@ -30,16 +30,9 @@ from app.api import mock_engine as mock_engine_api
 from app.core.auth import get_current_user
 from app.study_os import generated_mock_attempt as svc
 from app.study_os import mock_engine as engine
+from app.study_os.mocks import VALID_CORRECTION_CATEGORIES
 from app.study_os.planner import compute_draft_plan
 from tests.persona_questions._stub import SBStub
-
-# The live correction-task vocabulary written by MasteryWriter comes from
-# mastery_engine.correction_tasks (NOT mocks.VALID_CORRECTION_CATEGORIES, which is
-# the separate legacy error-category vocab). A-PR3 reuses MasteryWriter wholesale
-# and defines NO correction vocabulary of its own. See PR notes / preflight finding.
-_MASTERY_ENGINE_CORRECTION_TASK_TYPES = {
-    "concept_review", "trap_review", "pyq_revision", "practice_drill",
-}
 
 EXAM = "exam-cgl"
 PHASE = "phase-tier1"
@@ -531,10 +524,11 @@ def test_ff_live_applies_mastery_exactly_once_no_dual_writer(monkeypatch):
     assert len(audit2) == 1
 
 
-def test_ff_live_correction_drafts_reuse_masterywriter_vocabulary(monkeypatch):
-    # A-PR3 reuses MasteryWriter and hardcodes NO correction vocabulary: any draft
-    # it produces carries a mastery_engine task_type (the single source of truth
-    # for the mock_attempt-driven correction path).
+def test_ff_live_correction_drafts_are_063_schema_compatible(monkeypatch):
+    # A generated submit drafts corrections into the EXISTING mock_correction_tasks
+    # schema (migration 063): a valid `category`, a `mock_test_id` (the compat row
+    # emitted on submit), a non-empty `title` — and NONE of the old mastery-engine
+    # columns. The submit emits the mock_tests row, so corrections land inline.
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
     sb = _sb()
     attempt_id = _start_generated(sb)
@@ -545,10 +539,16 @@ def test_ff_live_correction_drafts_reuse_masterywriter_vocabulary(monkeypatch):
 
     # the live write-back path ran (mastery applied for the practised topic) …
     assert any(a["topic_id"] == "topic-1" for a in sb.db.get("user_topic_mastery_audit", []))
-    # … and every correction draft it produced uses the MasteryWriter vocabulary
-    # (A-PR3 hardcodes none of its own).
-    for d in sb.db.get("mock_correction_tasks", []):
-        assert d["task_type"] in _MASTERY_ENGINE_CORRECTION_TASK_TYPES
+    drafts = sb.db.get("mock_correction_tasks", [])
+    assert drafts  # 0% accuracy must produce at least one correction
+    for d in drafts:
+        assert d["category"] in VALID_CORRECTION_CATEGORIES
+        assert d["mock_test_id"]
+        assert d["title"]
+        assert d["state"] == "drafted"
+        # the old mastery-engine-shaped columns must NOT be present.
+        for bad in ("task_type", "priority", "evidence_json", "duration_minutes", "source_attempt_id"):
+            assert bad not in d
 
 
 def test_planner_regen_reflects_live_mastery_for_affected_topic(monkeypatch):
