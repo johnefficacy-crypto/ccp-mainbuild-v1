@@ -20,8 +20,9 @@ from typing import Any, Callable, Iterable
 
 from app.study_os.correction_policy import (
     CANONICAL_CATEGORIES,
+    CorrectionPolicyInput,
     correction_title,
-    normalize_error_type,
+    select_categories,
 )
 from app.utils.safe import safe_required
 
@@ -326,45 +327,44 @@ def set_review_state(
 
 
 def _draft_corrections_from_mock(mock: dict[str, Any]) -> list[dict[str, Any]]:
-    """Pure rule-based correction-task suggestion (manual/logged-mock adapter).
+    """Manual/logged-mock correction adapter — thin wrapper over the shared policy.
 
-    Reads the mock's `error_patterns` and `weak_topics` and emits one task per
-    error CATEGORY that has any signal. Categorization (alias normalization) and
-    titles come from the shared correction_policy — the same answer the generated
-    path gets for equivalent evidence. Deterministic — no randomness.
+    Aggregates the ENTIRE ``error_patterns`` dict through correction_policy
+    (alias collisions collapse to one canonical count), then emits one correction
+    per canonical category the policy returns, in the policy's deterministic
+    order, with category-only titles. The persisted ``topic`` for error-backed
+    corrections is ``weak_topics[0]`` (a display label). Falls back to one
+    concept_gap correction per weak topic (max 3) ONLY when no recognized error
+    evidence is present. No independent per-key categorization here.
     """
-    out: list[dict[str, Any]] = []
     errors = mock.get("error_patterns") or {}
     weak = list(mock.get("weak_topics") or [])
+    topic = weak[0] if weak else None
 
-    for key, count in errors.items():
-        try:
-            n = int(count or 0)
-        except (TypeError, ValueError):
-            n = 0
-        if n <= 0:
-            continue
-        # Alias normalization is owned by the policy; unknown keys are ignored
-        # (never defaulted to concept_gap).
-        cat = normalize_error_type(key)
-        if cat is None:
-            continue
-        topic = weak[0] if weak else None
-        out.append({
+    categories = select_categories(
+        CorrectionPolicyInput(
+            topic=topic,
+            error_counts=dict(errors),
+            evidence_mode="summary",
+        )
+    )
+    out: list[dict[str, Any]] = [
+        {
             "category": cat,
-            "title": correction_title(cat, topic),
+            "title": correction_title(cat),
             "topic": topic,
             "source_questions": [],
-        })
+        }
+        for cat in categories
+    ]
 
-    # If no error_patterns at all but there are weak topics, draft one
-    # concept-gap drill per weak topic (capped at 3) — the explicit weak-topic
-    # fallback (kept here, deliberately, as a manual-granularity behaviour).
+    # No recognized error evidence but weak topics exist → one concept_gap drill
+    # per weak topic (capped at 3). Preserved manual-granularity fallback.
     if not out and weak:
         for t in weak[:3]:
             out.append({
                 "category": "concept_gap",
-                "title": correction_title("concept_gap", t),
+                "title": correction_title("concept_gap"),
                 "topic": t,
                 "source_questions": [],
             })

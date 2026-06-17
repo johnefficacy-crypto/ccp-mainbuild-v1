@@ -326,7 +326,7 @@ class MasteryWriter:
                 "mock_test_id": mock_test_id,
                 "user_id": d.user_id,
                 "category": category,
-                "title": correction_title(category, topic),
+                "title": correction_title(category),
                 "topic": topic,
                 "source_questions": self._source_questions_from_evidence(d),
                 "state": "drafted",

@@ -1,10 +1,11 @@
-"""Shared mock-correction policy (§7): unit behaviour + cross-origin parity.
+"""Shared mock-correction policy (§7): aggregation, aliases, and REAL adapter-level
+cross-origin parity.
 
-The point of §7: equivalent normalized evidence must yield the SAME category and
-title regardless of whether it came from a manually logged mock (mocks.py) or a
-generated/platform attempt (mastery_engine / MasteryWriter). These tests pin the
-policy itself and the parity of both adapters, plus an E2E that both origins
-land the same category into study_tasks.metadata.
+Parity is proven by driving the ACTUAL production adapters
+(``mocks._draft_corrections_from_mock`` and
+``mastery_engine.derive_correction_tasks``) — never by substituting a direct
+shared-policy call for one side. Topic representation is intentionally NOT
+asserted equal (manual carries a display label; generated carries a canonical id).
 
 Stub-only; no live DB.
 """
@@ -19,7 +20,6 @@ from app.study_os import correction_policy as cp
 from app.study_os import mastery_writer as mw
 from app.study_os import mocks
 from app.study_os.mastery_engine.correction_tasks import derive_correction_tasks
-from app.study_os.mastery_engine.error_patterns import derive_error_pattern_signals
 from app.study_os.mastery_engine.schemas import (
     AttemptQuestionAnalytics,
     AttemptTopicAnalytics,
@@ -31,19 +31,69 @@ from tests.persona_questions._stub import SBStub
 TOPIC = "t1"
 USER = "u-1"
 ATTEMPT = "11111111-1111-1111-1111-111111111111"
+_BASE = {
+    "concept_gap": "Concept drill",
+    "memory_gap": "Spaced revision",
+    "careless": "Accuracy drill",
+    "speed_issue": "Timed retrieval set",
+    "option_trap": "Distractor elimination drill",
+}
 
 
-# ── policy unit ───────────────────────────────────────────────────────────────
+# ── 1. shared policy aggregation ──────────────────────────────────────────────
+
+def _inp(error_counts=None, **kw):
+    return cp.CorrectionPolicyInput(topic=TOPIC, error_counts=error_counts or {}, **kw)
+
+
+def test_aggregation_collapses_aliases():
+    assert cp.canonical_counts({"concept": 1, "concept_gap": 2}) == {"concept_gap": 3}
+    assert cp.select_categories(_inp({"concept": 1, "concept_gap": 2})) == ["concept_gap"]
+
+
+def test_ordered_by_count_desc():
+    assert cp.select_categories(_inp({"option": 3, "concept": 1})) == ["option_trap", "concept_gap"]
+
+
+def test_equal_count_stable_tiebreak():
+    got = cp.select_categories(_inp({"option_trap": 2, "concept_gap": 2}))
+    assert got == ["concept_gap", "option_trap"]  # _TIE_BREAK_ORDER
+    assert cp.select_categories(_inp({"concept_gap": 2, "option_trap": 2})) == got  # insertion-order independent
+
+
+def test_unknown_only_no_categories():
+    assert cp.select_categories(_inp({"guess": 5, "marked_unanswered": 2})) == []
+
+
+def test_recognized_plus_unknown_keeps_recognized_only():
+    assert cp.select_categories(_inp({"concept_gap": 2, "gibberish": 9})) == ["concept_gap"]
+
+
+def test_explicit_fallbacks_only():
+    assert cp.select_categories(_inp(weak_topic=True)) == ["concept_gap"]
+    assert cp.select_categories(_inp(attempted=3, accuracy_pct=Decimal("10"))) == ["concept_gap"]
+    assert cp.select_categories(_inp(prior_error=True)) == ["concept_gap"]
+    assert cp.select_categories(_inp()) == []  # no signal at all
+    assert cp.select_categories(_inp(attempted=2, accuracy_pct=Decimal("0"))) == []  # < min attempted
+
+
+# ── 2. full alias coverage ────────────────────────────────────────────────────
 
 @pytest.mark.parametrize(
     "raw,expected",
     [
-        ("concept_gap", "concept_gap"), ("concept", "concept_gap"),
-        ("memory_gap", "memory_gap"), ("memory", "memory_gap"), ("recall", "memory_gap"),
-        ("careless", "careless"), ("calc_error", "careless"),
-        ("speed_issue", "speed_issue"), ("time", "speed_issue"), ("timeout", "speed_issue"),
-        ("option_trap", "option_trap"), ("option", "option_trap"), ("trap", "option_trap"),
-        ("  Option  ", "option_trap"),  # case/space-insensitive
+        ("concept", "concept_gap"), ("concept_gap", "concept_gap"),
+        ("knowledge_gap", "concept_gap"), ("formula_confusion", "concept_gap"),
+        ("memory", "memory_gap"), ("memory_gap", "memory_gap"), ("recall", "memory_gap"),
+        ("fact_recall", "memory_gap"), ("forgetting", "memory_gap"),
+        ("careless", "careless"), ("calc", "careless"), ("calc_error", "careless"),
+        ("calculation_error", "careless"), ("silly", "careless"), ("silly_mistake", "careless"),
+        ("misread", "careless"), ("misread_question", "careless"),
+        ("speed_issue", "speed_issue"), ("time", "speed_issue"), ("time_pressure", "speed_issue"),
+        ("time_pressure_unattempted", "speed_issue"), ("time_management", "speed_issue"),
+        ("slow", "speed_issue"), ("timeout", "speed_issue"),
+        ("option", "option_trap"), ("option_trap", "option_trap"), ("trap", "option_trap"),
+        ("  Misread  ", "careless"),
     ],
 )
 def test_alias_normalization(raw, expected):
@@ -51,162 +101,234 @@ def test_alias_normalization(raw, expected):
     assert expected in VALID_CORRECTION_CATEGORIES
 
 
-@pytest.mark.parametrize("raw", ["", "gibberish", "unknown_error", None])
-def test_unknown_alias_is_none_not_blind_default(raw):
+@pytest.mark.parametrize("raw", ["guess", "marked_unanswered", "correct", "unknown", "", "gibberish", None])
+def test_unknown_alias_is_none(raw):
     assert cp.normalize_error_type(raw) is None
 
 
-def test_select_category_argmax_and_stable_tiebreak():
-    # highest canonical count wins
-    inp = cp.CorrectionPolicyInput(topic=TOPIC, error_counts={"option_trap": 3, "concept_gap": 1})
-    assert cp.select_category(inp) == "option_trap"
-    # equal counts → stable tie-break order (concept_gap precedes option_trap)
-    tie = cp.CorrectionPolicyInput(topic=TOPIC, error_counts={"option_trap": 2, "concept_gap": 2})
-    assert cp.select_category(tie) == "concept_gap"
-    assert cp.select_category(tie) == "concept_gap"  # deterministic across calls
+# ── adapters ──────────────────────────────────────────────────────────────────
+
+def _man(error_patterns, weak=None):
+    out = mocks._draft_corrections_from_mock({"error_patterns": error_patterns, "weak_topics": weak or []})
+    return [d["category"] for d in out], out
 
 
-def test_select_category_unknown_only_is_none():
-    inp = cp.CorrectionPolicyInput(topic=TOPIC, error_counts={"gibberish": 9})
-    assert cp.select_category(inp) is None  # never a blind concept_gap
-
-
-def test_select_category_explicit_fallbacks():
-    assert cp.select_category(cp.CorrectionPolicyInput(topic=TOPIC, weak_topic=True)) == "concept_gap"
-    assert cp.select_category(
-        cp.CorrectionPolicyInput(topic=TOPIC, attempted=3, accuracy_pct=Decimal("10"))
-    ) == "concept_gap"
-    assert cp.select_category(cp.CorrectionPolicyInput(topic=TOPIC, prior_error=True)) == "concept_gap"
-    # no signal at all → no category
-    assert cp.select_category(cp.CorrectionPolicyInput(topic=TOPIC, accuracy_pct=Decimal("100"))) is None
-
-
-def test_titles():
-    assert cp.correction_title("concept_gap", "t1") == "Concept drill · t1"
-    assert cp.correction_title("option_trap", None) == "Distractor elimination drill"
-
-
-def test_should_emit_modes():
-    # summary (manual): any usable signal or weak-topic
-    assert cp.should_emit(cp.CorrectionPolicyInput(topic=TOPIC, error_counts={"concept": 1}, evidence_mode="summary"))
-    assert cp.should_emit(cp.CorrectionPolicyInput(topic=TOPIC, weak_topic=True, evidence_mode="summary"))
-    assert not cp.should_emit(cp.CorrectionPolicyInput(topic=TOPIC, evidence_mode="summary"))
-    # question_level (generated): thresholds
-    assert cp.should_emit(cp.CorrectionPolicyInput(topic=TOPIC, attempted=3, accuracy_pct=Decimal("10")))
-    assert cp.should_emit(cp.CorrectionPolicyInput(topic=TOPIC, error_counts={"concept_gap": 2}))
-    assert not cp.should_emit(cp.CorrectionPolicyInput(topic=TOPIC, attempted=2, accuracy_pct=Decimal("10")))
-
-
-# ── CROSS-ORIGIN PARITY: same normalized evidence → same category + title ─────
-
-# (manual error_patterns key, equivalent canonical, expected category)
-_PARITY = [
-    ("concept", "concept_gap", "concept_gap"),
-    ("option", "option_trap", "option_trap"),
-    ("careless", "careless", "careless"),
-    ("time", "speed_issue", "speed_issue"),
-    ("memory", "memory_gap", "memory_gap"),
-]
-
-
-@pytest.mark.parametrize("manual_key,canonical,expected", _PARITY)
-def test_cross_origin_parity_category_and_title(manual_key, canonical, expected):
-    # Manual adapter (mocks) on the raw key …
-    manual = mocks._draft_corrections_from_mock(
-        {"error_patterns": {manual_key: 2}, "weak_topics": [TOPIC]}
-    )
-    assert len(manual) == 1
-    m = manual[0]
-
-    # … vs the generated adapter's classifier (correction_policy) on equivalent
-    # normalized evidence for the same topic.
-    g_input = cp.CorrectionPolicyInput(topic=TOPIC, error_counts={canonical: 2})
-    g_cat = cp.select_category(g_input)
-    g_title = cp.correction_title(g_cat, TOPIC)
-
-    assert m["category"] == g_cat == expected
-    assert m["title"] == g_title
-    assert m["topic"] == TOPIC
-
-
-def test_cross_origin_parity_low_accuracy_weak_topic_fallback():
-    manual = mocks._draft_corrections_from_mock({"error_patterns": {}, "weak_topics": [TOPIC]})
-    assert manual and manual[0]["category"] == "concept_gap"
-    gen = cp.select_category(
-        cp.CorrectionPolicyInput(topic=TOPIC, attempted=3, accuracy_pct=Decimal("0"))
-    )
-    assert gen == "concept_gap"
-    assert manual[0]["title"] == cp.correction_title("concept_gap", TOPIC)
-
-
-# ── generated PIPELINE really sets draft.category from evidence ───────────────
-
-def _analytics(error_type: str, n: int) -> DerivedAttemptAnalytics:
+def _analytics(error_types, *, source_type="authored"):
     qs = [
         AttemptQuestionAnalytics(
             question_id=f"q{i}", topic_id=TOPIC, is_correct=False,
-            difficulty="medium", source_type="authored", error_type=error_type,
+            difficulty="medium", source_type=source_type, error_type=et,
         )
-        for i in range(n)
+        for i, et in enumerate(error_types)
     ]
-    topics = [AttemptTopicAnalytics(topic_id=TOPIC, attempted=n, correct=0, accuracy_pct=Decimal("0"))]
+    topics = [AttemptTopicAnalytics(topic_id=TOPIC, attempted=len(qs), correct=0, accuracy_pct=Decimal("0"))]
     return DerivedAttemptAnalytics(attempt_id=ATTEMPT, user_id=USER, questions=qs, topics=topics)
 
 
-@pytest.mark.parametrize(
-    "error_type,n,expected",
-    [("concept_gap", 2, "concept_gap"), ("option_trap", 2, "option_trap"), ("calc_error", 3, "careless")],
-)
-def test_generated_pipeline_sets_category(error_type, n, expected):
-    analytics = _analytics(error_type, n)
-    drafts = derive_correction_tasks(analytics, derive_error_pattern_signals(analytics), set())
-    cats = {d.category for d in drafts if d.topic_id == TOPIC}
-    assert expected in cats
-    assert cats <= VALID_CORRECTION_CATEGORIES
+def _gen(error_types, *, source_type="authored"):
+    drafts = derive_correction_tasks(_analytics(error_types, source_type=source_type), [], set())
+    drafts = [d for d in drafts if d.topic_id == TOPIC]
+    return [d.category for d in drafts], drafts
 
 
-# ── E2E: both origins land the SAME category into study_tasks.metadata ────────
+# ── 3. real manual adapter ────────────────────────────────────────────────────
 
-def _apply_and_get_category(sb: SBStub, correction_id: str) -> str:
-    applied = mocks.apply_correction_task(sb, USER, correction_id)
-    task = sb.db["study_tasks"][-1]
-    assert task["metadata"]["category"] == applied["category"]
-    return task["metadata"]["category"]
+def test_manual_mixed_evidence_ordered_no_dup():
+    cats, out = _man({"concept": 1, "option": 3}, weak=[TOPIC])
+    assert cats == ["option_trap", "concept_gap"]
+    assert [d["title"] for d in out] == [_BASE["option_trap"], _BASE["concept_gap"]]
 
 
-def test_e2e_generated_and_manual_apply_same_category(monkeypatch):
-    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+def test_manual_alias_collision_single_concept():
+    cats, _ = _man({"concept": 1, "concept_gap": 2}, weak=[TOPIC])
+    assert cats == ["concept_gap"]
 
-    # ── generated origin: submit-time write-back drafts a correction ──
-    sb_gen = SBStub()
-    sb_gen.db.update({
+
+@pytest.mark.parametrize("ep,expected", [
+    ({"memory": 2}, "memory_gap"),
+    ({"time": 2}, "speed_issue"),
+    ({"misread": 2}, "careless"),
+])
+def test_manual_single_category(ep, expected):
+    cats, out = _man(ep, weak=[TOPIC])
+    assert cats == [expected]
+    assert out[0]["title"] == _BASE[expected]
+
+
+def test_manual_unknown_only_no_corrections():
+    cats, _ = _man({"guess": 3})
+    assert cats == []
+
+
+def test_manual_weak_topic_fallback_limit_3():
+    cats, out = _man({}, weak=["a", "b", "c", "d"])
+    assert cats == ["concept_gap", "concept_gap", "concept_gap"]
+    assert [d["topic"] for d in out] == ["a", "b", "c"]
+    assert all(d["title"] == _BASE["concept_gap"] for d in out)
+
+
+# ── 4. real generated pipeline ────────────────────────────────────────────────
+
+def test_generated_mixed_ordered_no_dup_tasktype_irrelevant():
+    cats, drafts = _gen(["concept_gap", "option_trap", "option_trap", "option_trap"])
+    assert cats == ["option_trap", "concept_gap"]
+    assert len({d.category for d in drafts}) == 2  # no duplicate category
+    # task_type is action style; it does not equal/!alter the category
+    by_cat = {d.category: d.task_type for d in drafts}
+    assert by_cat["concept_gap"] == "concept_review" and by_cat["option_trap"] == "trap_review"
+
+
+def test_generated_alias_collision():
+    cats, _ = _gen(["concept", "concept_gap", "concept_gap"])
+    assert cats == ["concept_gap"]
+
+
+@pytest.mark.parametrize("ets,expected", [
+    (["memory_gap", "recall"], "memory_gap"),
+    (["time_pressure", "time_management"], "speed_issue"),
+    (["calc_error", "misread_question"], "careless"),
+])
+def test_generated_memory_speed_misread_survive(ets, expected):
+    cats, _ = _gen(ets)
+    assert cats == [expected]
+
+
+def test_generated_wrong_pyq_action_style_not_category():
+    cats, drafts = _gen(["memory_gap", "memory_gap"], source_type="pyq")
+    assert cats == ["memory_gap"]                 # category unchanged by pyq
+    assert drafts[0].task_type == "pyq_revision"  # action style upgraded
+
+
+def test_generated_low_accuracy_fallback_no_recognized_error():
+    cats, _ = _gen([None, None, None])  # 3 wrong, no error_type → fallback
+    assert cats == ["concept_gap"]
+
+
+def test_generated_unknown_only_no_fallback():
+    cats, _ = _gen(["guess"])  # 1 wrong unknown, attempted<3 → no fallback
+    assert cats == []
+
+
+# ── 5. REAL cross-origin parity (both adapters) ───────────────────────────────
+
+_PARITY = [
+    ("A", {"concept": 1, "option": 3}, ["concept_gap", "option_trap", "option_trap", "option_trap"], ["option_trap", "concept_gap"]),
+    ("B", {"concept": 1, "concept_gap": 2}, ["concept", "concept_gap", "concept_gap"], ["concept_gap"]),
+    ("C", {"memory": 1, "recall": 1}, ["memory_gap", "recall"], ["memory_gap"]),
+    ("D", {"time": 1, "time_pressure": 1}, ["time_pressure", "time_management"], ["speed_issue"]),
+    ("E", {"calc": 1, "misread": 1}, ["calc_error", "misread_question"], ["careless"]),
+    ("F", {"concept": 2, "option": 2}, ["concept_gap", "concept_gap", "option_trap", "option_trap"], ["concept_gap", "option_trap"]),
+    ("G", {"guess": 3}, ["guess"], []),
+]
+
+
+@pytest.mark.parametrize("name,manual_ep,gen_ets,expected", _PARITY)
+def test_cross_origin_parity(name, manual_ep, gen_ets, expected):
+    man_cats, man_out = _man(manual_ep, weak=[TOPIC] if expected else [])
+    gen_cats, gen_drafts = _gen(gen_ets)
+    assert man_cats == gen_cats == expected
+    # base-title set parity (topic intentionally not compared)
+    man_titles = [d["title"] for d in man_out]
+    gen_titles = [cp.correction_title(d.category) for d in gen_drafts]
+    assert man_titles == gen_titles == [_BASE[c] for c in expected]
+    # one row per canonical category
+    assert len(man_cats) == len(set(man_cats)) == len(gen_cats)
+
+
+def test_cross_origin_parity_fallback_case_H():
+    man_cats, man_out = _man({}, weak=[TOPIC])
+    gen_cats, gen_drafts = _gen([None, None, None])
+    assert man_cats == gen_cats == ["concept_gap"]
+    assert man_out[0]["title"] == cp.correction_title("concept_gap") == _BASE["concept_gap"]
+
+
+# ── 6. persistence ────────────────────────────────────────────────────────────
+
+def _seed_generated(sb, error_types):
+    sb.db.update({
         "mock_attempts": [{"id": ATTEMPT, "user_id": USER}],
         "mock_attempt_responses": [
             {"attempt_id": ATTEMPT, "question_id": f"q{i}", "is_correct": False,
-             "time_spent_sec": 5, "error_type": "concept_gap",
+             "time_spent_sec": 5, "error_type": et,
              "question_snapshot": {"topic_id": TOPIC, "difficulty": "medium", "source_type": "authored"}}
-            for i in range(3)
+            for i, et in enumerate(error_types)
         ],
-        "mock_tests": [{"id": "mt-gen", "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}],
+        "mock_tests": [{"id": "mt-1", "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}],
         "mock_correction_tasks": [], "user_topic_mastery": [], "user_topic_mastery_audit": [],
         "user_topic_error_patterns": [], "mock_mastery_shadow": [], "study_plans": [], "study_tasks": [],
     })
-    asyncio.run(mw.MasteryWriter(sb_gen, "live").process_attempt(ATTEMPT))
-    gen_correction = sb_gen.db["mock_correction_tasks"][0]
-    gen_category = _apply_and_get_category(sb_gen, gen_correction["id"])
 
-    # ── manual origin: equivalent evidence (concept) on the same topic ──
-    sb_man = SBStub()
-    sb_man.db.update({
-        "mock_tests": [{
-            "id": "mt-man", "user_id": USER, "review_state": "reviewed",
-            "error_patterns": {"concept_gap": 3}, "weak_topics": [TOPIC],
-        }],
+
+def test_generated_persist_all_specs_063_and_serial_dedup(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    sb = SBStub()
+    _seed_generated(sb, ["concept_gap", "option_trap", "option_trap", "option_trap"])
+    writer = mw.MasteryWriter(sb, "live")
+    asyncio.run(writer.process_attempt(ATTEMPT))
+
+    rows = sb.db["mock_correction_tasks"]
+    assert {r["category"] for r in rows} == {"concept_gap", "option_trap"}
+    for r in rows:
+        assert r["mock_test_id"] and r["category"] in VALID_CORRECTION_CATEGORIES
+        assert r["title"] == _BASE[r["category"]]      # category-only title
+        assert "task_type" not in r and "priority" not in r  # 063 columns only
+    n = len(rows)
+    asyncio.run(writer.process_attempt(ATTEMPT))        # serial retry
+    assert len(sb.db["mock_correction_tasks"]) == n     # no duplicates
+
+
+def test_manual_persist_redraft_and_apply(monkeypatch):
+    sb = SBStub()
+    sb.db.update({
+        "mock_tests": [{"id": "mt-man", "user_id": USER, "review_state": "reviewed",
+                        "error_patterns": {"concept": 1, "option": 3}, "weak_topics": [TOPIC]}],
         "mock_correction_tasks": [], "study_plans": [], "study_tasks": [],
     })
-    manual_drafts = mocks.draft_correction_tasks(sb_man, USER, "mt-man")
-    man_correction = next(c for c in manual_drafts if c["category"] == "concept_gap")
-    man_category = _apply_and_get_category(sb_man, man_correction["id"])
+    first = mocks.draft_correction_tasks(sb, USER, "mt-man")
+    assert {c["category"] for c in first} == {"concept_gap", "option_trap"}
+    for c in first:
+        assert c["title"] == _BASE[c["category"]]
+    # re-draft replaces prior drafted rows (no accumulation)
+    again = mocks.draft_correction_tasks(sb, USER, "mt-man")
+    assert len([r for r in sb.db["mock_correction_tasks"] if r["state"] == "drafted"]) == len(again) == 2
+    # apply → study_tasks with canonical category
+    applied = mocks.apply_correction_task(sb, USER, again[0]["id"])
+    task = sb.db["study_tasks"][-1]
+    assert task["metadata"]["category"] == applied["category"] in VALID_CORRECTION_CATEGORIES
 
-    # the whole point of §7: same evidence → same category, whatever the origin.
-    assert gen_category == man_category == "concept_gap"
+
+# ── 7. end-to-end cross-origin parity into study_tasks ────────────────────────
+
+def _apply_all(sb, corrections):
+    cats = {}
+    for c in corrections:
+        mocks.apply_correction_task(sb, USER, c["id"])
+    for t in sb.db["study_tasks"]:
+        cats[t["metadata"]["category"]] = t["title"]
+    return cats
+
+
+def test_e2e_generated_and_manual_same_categories_and_titles(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+
+    # generated origin
+    sb_gen = SBStub()
+    _seed_generated(sb_gen, ["concept_gap", "option_trap", "option_trap", "option_trap"])
+    asyncio.run(mw.MasteryWriter(sb_gen, "live").process_attempt(ATTEMPT))
+    gen_cats = _apply_all(sb_gen, list(sb_gen.db["mock_correction_tasks"]))
+
+    # manual origin: equivalent evidence
+    sb_man = SBStub()
+    sb_man.db.update({
+        "mock_tests": [{"id": "mt-man", "user_id": USER, "review_state": "reviewed",
+                        "error_patterns": {"concept": 1, "option": 3}, "weak_topics": [TOPIC]}],
+        "mock_correction_tasks": [], "study_plans": [], "study_tasks": [],
+    })
+    man_drafts = mocks.draft_correction_tasks(sb_man, USER, "mt-man")
+    man_cats = _apply_all(sb_man, man_drafts)
+
+    assert set(gen_cats) == set(man_cats) == {"concept_gap", "option_trap"}
+    # category-only base titles, identical across origins
+    assert gen_cats == man_cats
+    for c, title in gen_cats.items():
+        assert title == _BASE[c]
