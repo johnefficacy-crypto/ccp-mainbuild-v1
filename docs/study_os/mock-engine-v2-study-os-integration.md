@@ -1,8 +1,8 @@
 ---
 owner: study-os
 status: design + plan
-last_verified_against_code: 2026-06-16
-verified_against: main @ 406648c
+last_verified_against_code: 2026-06-17
+verified_against: fix/unify-mock-correction-policy (§7 #2 closed)
 source_of_truth: code
 related_code:
   - app/backend/app/study_os/planner.py
@@ -311,11 +311,19 @@ answered.
    (`:184-193`) or full-recompute `mastery.py` (`recompute_topic_mastery`,
    `:155-215`)? Do both fire for one attempt? They are not reconciled today.
 2. **Do generated (`MasteryWriter`) and manual (`mocks.py`) corrections use the
-   same categorizer + thresholds?** They do **not** today — different vocabularies
-   (`mastery_engine/correction_tasks.py:48-54` vs `mocks.py:62-68`) **and** an
-   incompatible `mock_correction_tasks` insert shape on the `MasteryWriter` side
-   ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk)). This must be fixed
-   before `FF=live`, or the first live generated submit fails the insert.
+   same categorizer + thresholds?** **RESOLVED.** One shared, source-neutral
+   policy (`app/backend/app/study_os/correction_policy.py`) now owns the canonical
+   categories, raw-error alias normalization, deterministic category selection +
+   stable tie-break, emit thresholds (varying only by explicit `evidence_mode`),
+   and the titles. Category is derived from error EVIDENCE, never from
+   `task_type`; `CorrectionTaskDraft` carries `category` and `MasteryWriter` is a
+   pure persistence adapter (its `task_type→category` mapping is removed). The
+   manual path normalizes its `error_patterns` keys through the same policy.
+   Cross-origin parity is test-pinned (`tests/study_os/test_correction_policy.py`).
+   The earlier schema-incompatibility was closed in #702 ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk)).
+   *Still open, separately:* correction de-dup is **best-effort serial-retry**
+   (no DB unique constraint yet), `FF_MOCK_MASTERY_WRITES` stays **off**, and the
+   operator shadow→live rollout is next.
 3. **Is the mastery trigger source-agnostic?** Today the trigger is **inline in
    the user-submit route** (`api/mock_engine.py:155-160`), so a generated submit
    with `template_id=null` going through that route *would* run the writer. But

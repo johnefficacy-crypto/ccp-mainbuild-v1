@@ -141,6 +141,11 @@
         "required": false,
         "nullable": true
       },
+      "category": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
       "task_type": {
         "type": "str",
         "required": true,

@@ -3,6 +3,12 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from decimal import Decimal
 
+from app.study_os.correction_policy import (
+    CorrectionPolicyInput,
+    select_category,
+    should_emit,
+)
+
 from .schemas import CorrectionEvidence, CorrectionTaskDraft, DerivedAttemptAnalytics, ErrorPatternSignal
 
 
@@ -32,19 +38,31 @@ def derive_correction_tasks(
         attempted = topic.attempted if topic else 0
         accuracy = topic.accuracy_pct if topic else Decimal("100")
         counts = signal_counts.get(topic_id, Counter())
-        concept_or_trap = counts.get("concept_gap", 0) + counts.get("option_trap", 0)
-        recovered = bool(topic and accuracy >= Decimal("50"))
-        should_emit = (
-            (attempted >= 3 and accuracy < Decimal("50"))
-            or concept_or_trap >= 2
-            or (topic_id in existing_error_topics and not recovered)
-        )
-        if not should_emit:
-            continue
-
         questions = q_by_topic.get(topic_id, [])
-        wrong_pyq = any((not q.is_correct and q.source_type == "pyq") for q in questions)
-        if wrong_pyq:
+        related_ids = sorted({q.question_id for q in questions if (not q.is_correct) or q.error_type})
+
+        # CATEGORY + emit decision are delegated to the shared, source-neutral
+        # correction policy (§7). Category is derived from normalized error
+        # evidence — never from task_type.
+        policy_input = CorrectionPolicyInput(
+            topic=topic_id,
+            error_counts=dict(counts),
+            attempted=attempted,
+            accuracy_pct=accuracy,
+            prior_error=topic_id in existing_error_topics,
+            wrong_pyq=any((not q.is_correct and q.source_type == "pyq") for q in questions),
+            source_question_ids=tuple(related_ids),
+            evidence_mode="question_level",
+        )
+        if not should_emit(policy_input):
+            continue
+        category = select_category(policy_input)
+        if category is None:
+            continue  # no usable evidence — never a blind default
+
+        # task_type is ACTION STYLE only (drives estimated_minutes/execution); it
+        # no longer determines the category.
+        if policy_input.wrong_pyq:
             task_type = "pyq_revision"
         elif counts.get("concept_gap", 0) > counts.get("option_trap", 0):
             task_type = "concept_review"
@@ -57,7 +75,6 @@ def derive_correction_tasks(
         err_count = sum(counts.values())
         priority = _priority(err_count, has_hard)
         reason = f"{task_type} due to {attempted} attempted with {accuracy}% accuracy"
-        related_ids = sorted({q.question_id for q in questions if (not q.is_correct) or q.error_type})
         is_platform = source_trust == "platform_verified"
         evidence = CorrectionEvidence(
             accuracy_pct=accuracy,
@@ -73,6 +90,7 @@ def derive_correction_tasks(
                 user_id=analytics.user_id,
                 topic_id=topic_id,
                 microtopic_id=(topic.microtopic_id if topic else None),
+                category=category,
                 task_type=task_type,
                 priority=priority,
                 reason=reason,

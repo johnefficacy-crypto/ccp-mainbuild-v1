@@ -46,12 +46,19 @@ A topic emits one draft when any is true:
 - concept_gap + option_trap signals >= 2
 - topic exists in prior error-pattern topics and is not recovered
 
-Type selection:
+`task_type` is **action style only** (drives `estimated_minutes`/execution); it
+does NOT determine the correction `category`:
 
 1. any wrong PYQ -> `pyq_revision`
 2. concept_gap dominant -> `concept_review`
 3. option_trap dominant -> `trap_review`
 4. otherwise -> `practice_drill`
+
+**Category** (the 063 `mock_correction_tasks.category`) is derived from normalized
+error EVIDENCE by the shared, source-neutral `study_os/correction_policy.py` (§7),
+which both the generated and manual paths adapt into — identical evidence yields
+the same category/title regardless of origin. The draft carries `category`;
+`MasteryWriter` persists it without re-classifying.
 
 ## Priority formula
 

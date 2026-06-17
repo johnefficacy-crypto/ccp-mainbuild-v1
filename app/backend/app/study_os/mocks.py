@@ -18,6 +18,11 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterable
 
+from app.study_os.correction_policy import (
+    CANONICAL_CATEGORIES,
+    correction_title,
+    normalize_error_type,
+)
 from app.utils.safe import safe_required
 
 logger = logging.getLogger("career_copilot.study_os.mocks")
@@ -59,13 +64,9 @@ def _percentage(scored: Any, total: Any) -> float | None:
 
 
 VALID_REVIEW_STATES = {"scheduled", "unreviewed", "reviewed", "correction_drafted"}
-VALID_CORRECTION_CATEGORIES = {
-    "concept_gap",
-    "memory_gap",
-    "careless",
-    "speed_issue",
-    "option_trap",
-}
+# Canonical correction categories are owned by correction_policy (§7); re-exported
+# here under the long-standing name for back-compat.
+VALID_CORRECTION_CATEGORIES = set(CANONICAL_CATEGORIES)
 
 
 # ──────────────────────────── serialisers ───────────────────────────────────
@@ -322,34 +323,20 @@ def set_review_state(
 
 
 # ─────────────────────── correction-task generation ─────────────────────────
-# Mapping from prototype categories to a default task title template.
-_CORRECTION_DEFAULTS = {
-    "concept_gap": "Concept drill",
-    "memory_gap": "Spaced revision",
-    "careless": "Accuracy drill",
-    "speed_issue": "Timed retrieval set",
-    "option_trap": "Distractor elimination drill",
-}
 
 
 def _draft_corrections_from_mock(mock: dict[str, Any]) -> list[dict[str, Any]]:
-    """Pure rule-based correction-task suggestion.
+    """Pure rule-based correction-task suggestion (manual/logged-mock adapter).
 
-    Reads the mock's `error_patterns` and `weak_topics` and emits one task
-    per category that has any signal. Deterministic — no randomness.
+    Reads the mock's `error_patterns` and `weak_topics` and emits one task per
+    error CATEGORY that has any signal. Categorization (alias normalization) and
+    titles come from the shared correction_policy — the same answer the generated
+    path gets for equivalent evidence. Deterministic — no randomness.
     """
     out: list[dict[str, Any]] = []
     errors = mock.get("error_patterns") or {}
     weak = list(mock.get("weak_topics") or [])
 
-    # error_patterns keys map directly onto correction categories.
-    mapping = {
-        "concept": "concept_gap",
-        "memory": "memory_gap",
-        "careless": "careless",
-        "time": "speed_issue",
-        "option": "option_trap",
-    }
     for key, count in errors.items():
         try:
             n = int(count or 0)
@@ -357,24 +344,27 @@ def _draft_corrections_from_mock(mock: dict[str, Any]) -> list[dict[str, Any]]:
             n = 0
         if n <= 0:
             continue
-        cat = mapping.get(key, key if key in VALID_CORRECTION_CATEGORIES else None)
-        if not cat or cat not in VALID_CORRECTION_CATEGORIES:
+        # Alias normalization is owned by the policy; unknown keys are ignored
+        # (never defaulted to concept_gap).
+        cat = normalize_error_type(key)
+        if cat is None:
             continue
         topic = weak[0] if weak else None
         out.append({
             "category": cat,
-            "title": f"{_CORRECTION_DEFAULTS[cat]}{' · ' + topic if topic else ''}",
+            "title": correction_title(cat, topic),
             "topic": topic,
             "source_questions": [],
         })
 
     # If no error_patterns at all but there are weak topics, draft one
-    # concept-gap drill per weak topic (capped at 3).
+    # concept-gap drill per weak topic (capped at 3) — the explicit weak-topic
+    # fallback (kept here, deliberately, as a manual-granularity behaviour).
     if not out and weak:
         for t in weak[:3]:
             out.append({
                 "category": "concept_gap",
-                "title": f"{_CORRECTION_DEFAULTS['concept_gap']} · {t}",
+                "title": correction_title("concept_gap", t),
                 "topic": t,
                 "source_questions": [],
             })
