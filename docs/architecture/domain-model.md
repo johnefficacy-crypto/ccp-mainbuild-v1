@@ -1,57 +1,67 @@
 # Database Domain Model: Recruitment vs Exam
 
-_Last updated: 2026-06-12_
+_Last updated: 2026-06-17_
 
-## Dual-entity model (current)
+## Current model
 
-Career Copilot has **two distinct canonical entities** at the DB level:
+Career Copilot now has **two separate canonical database entities**:
 
 | Entity | Table | Purpose |
 |---|---|---|
-| Recruitment notification | `public.recruitments` | A specific recruitment cycle/notification (year, posts, eligibility) |
-| Exam master identity | `public.exams` | The persistent exam (SSC CGL, UPSC CSE, …) that recruitments belong to |
+| Recruitment notification | `public.recruitments` | A specific recruitment/cycle notification, including posts, eligibility, dates, and applicant-facing application state. |
+| Exam master identity | `public.exams` | The persistent exam identity (for example UPSC CSE or SSC CGL) used by Study OS, exam intelligence, cycles, phases, and target-exam planning. |
 
-These are **separate entities**. Do not conflate or merge them. `public.exams`
-is a live table with FK dependents: `exam_cycles`, `exam_phases`, `study_plans`,
-exam-intelligence tables, and aspirant target tables all reference `exams.id`.
+These entities are intentionally separate. Do **not** merge them, alias one to
+the other, or use one table as a drop-in substitute for the other.
 
-The word `exam` may be used freely in frontend/UI copy. At the database level,
-always be explicit about which table you mean.
+## What changed from the old rule
 
-> **Historical note:** The original guidance ("do not introduce public.exams")
-> was correct at project start. It was superseded when the exam-master table was
-> introduced to support Study OS and exam-intelligence. ADR 0005 remains valid
-> for its core intent — recruitments are canonical for notification/eligibility
-> data — but the prohibition on `public.exams` no longer applies.
+Older docs said "avoid `public.exams`" because the product originally treated
+recruitment notifications as the only canonical exam-like entity. That rule is
+now superseded. `public.exams` is a real table and is the canonical
+exam-master identity for Study OS and exam-intelligence workflows.
 
-## Canonical entity model
+The invariant that remains true is narrower:
+
+- `public.recruitments` is canonical for official recruitment notifications,
+  posts, eligibility, application tracking, and scraped-notice promotion.
+- `public.exams` is canonical for exam identity, cycles, phases, Study OS
+  planning, exam intelligence, and target-exam relationships.
+
+## Canonical mapping
 
 | Product/UI term | Database table / field |
 |---|---|
-| Exam (master identity) | `public.exams` |
+| Exam master identity | `public.exams` |
 | Recruitment notification | `public.recruitments` |
 | Exam cycle | `public.exam_cycles` |
 | Exam phase | `public.exam_phases` |
 | Post / vacancy role | `public.posts` |
 | Organization / exam body | `public.organizations` |
 | User eligibility result | `public.eligibility_results` |
-| Saved/tracked exam | `public.tracked_recruitments` |
+| Saved/tracked recruitment | `public.tracked_recruitments` |
 | User target exam | `public.user_targets` |
 | User activity | `public.user_events` |
 | User application/form activity | `public.form_submissions` |
 
-## Portfolio lanes (migration 172, merged 2026-06)
+## Portfolio lanes
 
-`public.exams` has two nullable portfolio-management columns:
+`public.exams` has portfolio-management fields used by the operator wizard and
+exam-governance surfaces:
 
-| Column | Type | Values | Default |
-|---|---|---|---|
-| `management_mode` | enum | `core`, `light`, `index_only`, `archive` | `light` (on create) |
-| `cadence` | enum | `annual`, `recurring`, `irregular`, `one_off`, `unknown` | `unknown` (on create) |
+| Column | Values | Meaning |
+|---|---|---|
+| `management_mode` | `core`, `light`, `index_only`, `archive` | Operator lane for how much ongoing attention a live exam receives. |
+| `cadence` | `annual`, `recurring`, `irregular`, `one_off`, `unknown` | Expected exam cadence. |
+| `is_active` | boolean | Aspirant visibility / retirement flag. |
 
-**Retire semantics:** `is_active = false` = retired (hidden from aspirants).
-`management_mode = 'archive'` = low-priority lane for exams that are still
-LIVE. These are **independent** — retiring an exam NEVER writes `archive`.
+Retirement and archive are distinct states:
+
+- `is_active = false` means the exam is retired and hidden from aspirant
+  catalogue responses.
+- `management_mode = 'archive'` means a live exam is in a low-priority operator
+  lane.
+- Retiring an exam must not automatically set `management_mode = 'archive'`.
 
 ## Naming rule
 
@@ -59,73 +69,36 @@ Frontend and API routes may use `exam` where it improves user clarity.
 
 Allowed examples:
 
-- `/dashboard/exams`
-- `/api/exams/summary`
+- `/api/exams`
+- `/app/study/plan`
 - `ExamSummaryCard`
-- `user_exam_summary`
+- `exam_id` when the row truly references `public.exams.id`
 
-For recruitment-specific data, use:
+For recruitment-notification data, use recruitment names explicitly:
 
 - `recruitment_id`
 - `public.recruitments`
 - `public.posts`
 - `public.eligibility_results`
 
-## Migration dependency order
+## Migration rule
 
-Telemetry must exist before user state views.
+Before adding a foreign key, decide which entity the table belongs to:
 
-Correct order:
+- Use `exam_id references public.exams(id)` for exam identity, cycle/phase,
+  Study OS, exam-intelligence, and target-exam data.
+- Use `recruitment_id references public.recruitments(id)` for notice, post,
+  eligibility, application, scrape-promotion, and notification data.
 
-```txt
-027_user_events_and_form_submissions.sql
-028_user_recruitment_state.sql
-029_exam_summary_support.sql
-```
+Do not add both columns unless there is a documented bridge use case and a
+clear owner for keeping them consistent.
 
-Reason:
+## Agent instruction
 
-1. `user_recruitment_state` depends on `public.user_events`.
-2. `exam_summary` / `user_exam_summary` depends on `public.user_recruitment_state`.
-3. `public.exams` does not exist, so exam summary views must be built on `public.recruitments`.
+When generating SQL, migrations, APIs, or React components:
 
-## Do not do this
-
-Do not reference:
-
-```sql
-public.exams
-```
-
-Do not create a duplicate `public.exams` table just to satisfy old migration code.
-
-Do not use `exam_id` as the main foreign key for new tables.
-
-## Preferred pattern
-
-Use:
-
-```sql
-recruitment_id uuid references public.recruitments(id)
-```
-
-If legacy compatibility is required, `exam_id` may temporarily exist as a nullable field, but it should not be the source of truth.
-
-## AI / agent instruction
-
-When generating SQL, migrations, APIs, or React components for Career Copilot:
-
-- Treat `recruitments` as the canonical exam/recruitment entity.
-- Use `recruitment_id` for joins and foreign keys.
-- Use `exam` only as a user-facing label.
-- Never assume `public.exams` exists.
-- Check migration dependency order before creating views or materialized views.
-
-## Practical project rule
-
-```txt
-Database = recruitment
-Frontend language = exam
-Foreign key = recruitment_id
-Avoid = public.exams
-```
+1. Determine whether the feature is about the **exam identity** or a specific
+   **recruitment notification**.
+2. Use `public.exams` only for exam-master identity workflows.
+3. Use `public.recruitments` only for recruitment/notification workflows.
+4. Preserve the distinction in naming, docs, tests, and UI copy.
