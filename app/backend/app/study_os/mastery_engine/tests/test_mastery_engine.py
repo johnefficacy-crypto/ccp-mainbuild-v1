@@ -64,6 +64,38 @@ def test_pyq_weight_ratio():
     assert ratio == Decimal("1.2")
 
 
+def test_mastery_delta_gates_on_attempted():
+    """A topic mixing attempted + non-attempted rows weights only the attempted
+    rows; an all-non-attempted topic yields no delta at all."""
+    from app.study_os.mastery_engine.mastery_delta import derive_mastery_deltas
+
+    a = DerivedAttemptAnalytics(
+        attempt_id=uuid4(),
+        user_id="u",
+        topics=[
+            AttemptTopicAnalytics(topic_id="t-mixed", attempted=1, correct=1, accuracy_pct=Decimal("100")),
+            AttemptTopicAnalytics(topic_id="t-none", attempted=0, correct=0, accuracy_pct=Decimal("0")),
+        ],
+        questions=[
+            # t-mixed: one answered-correct + one unanswered (must not count).
+            AttemptQuestionAnalytics(question_id="m1", topic_id="t-mixed", is_correct=True, attempted=True),
+            AttemptQuestionAnalytics(question_id="m2", topic_id="t-mixed", is_correct=False, attempted=False),
+            # t-none: only unanswered rows.
+            AttemptQuestionAnalytics(question_id="n1", topic_id="t-none", is_correct=False, attempted=False),
+            AttemptQuestionAnalytics(question_id="n2", topic_id="t-none", is_correct=False, attempted=False),
+        ],
+    )
+    deltas = {d.topic_id: d for d in derive_mastery_deltas(a, {})}
+    # All-non-attempted topic produces no delta.
+    assert "t-none" not in deltas
+    # Mixed topic counts only the single answered row: attempted == 1, and the
+    # observed accuracy reflects the correct answer (positive delta), not the
+    # dragged-down 50% that counting the unanswered row would give.
+    assert deltas["t-mixed"].attempted == 1
+    assert deltas["t-mixed"].observed_accuracy == Decimal("1")
+    assert deltas["t-mixed"].raw_delta > Decimal("0")
+
+
 def test_determinism_random_fixtures():
     rng = random.Random(7)
     for _ in range(100):

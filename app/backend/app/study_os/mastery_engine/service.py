@@ -17,6 +17,11 @@ def derive_from_analytics(
 ) -> DerivationResult:
     if not analytics.questions and not analytics.topics:
         return DerivationResult()
+    # The SAME analytics list (answered + unanswered) feeds BOTH paths. Do not
+    # pre-filter unanswered rows here: mastery gating is internal to
+    # derive_mastery_deltas (it skips q.attempted == False), while the correction
+    # path must still see unanswered rows (e.g. time_pressure_unattempted → speed
+    # correction).
     mastery_deltas = derive_mastery_deltas(analytics, current_mastery_by_topic or {})
     error_signals = derive_error_pattern_signals(analytics)
     correction_tasks = derive_correction_tasks(

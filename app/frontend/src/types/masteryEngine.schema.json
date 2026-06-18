@@ -25,6 +25,11 @@
         "required": true,
         "nullable": false
       },
+      "attempted": {
+        "type": "bool",
+        "required": false,
+        "nullable": false
+      },
       "difficulty": {
         "type": "str",
         "required": false,
