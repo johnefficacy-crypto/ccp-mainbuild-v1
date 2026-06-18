@@ -33,6 +33,7 @@ This directory is the single source of context for the product, engineering stra
 | How to operate the system (runbook) | [operations/runbook.md](operations/runbook.md) |
 | Manual click-through review discipline (process) | [process/click_through_review.md](process/click_through_review.md) |
 | Production readiness blockers and contract risks | [audits/production-readiness-review-2026-06-02.md](audits/production-readiness-review-2026-06-02.md) |
+| SSC CGL generated-mock off/shadow validation (failed; live blocked) | [audits/ssc-cgl-generated-mock-shadow-validation-2026-06-18.md](audits/ssc-cgl-generated-mock-shadow-validation-2026-06-18.md) |
 | AI/agent context summary | [00-ai-context.md](00-ai-context.md) |
 
 ## Doc types
