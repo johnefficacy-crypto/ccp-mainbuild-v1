@@ -164,7 +164,7 @@ export default function AdminExamIntelligence() {
             >
               Advanced import / repair
             </Link>
-            <StatusDot state="live" label="Live · /api/admin/exam-intelligence" />
+            <StatusDot state="live" label="Live" />
           </span>
         }
       />

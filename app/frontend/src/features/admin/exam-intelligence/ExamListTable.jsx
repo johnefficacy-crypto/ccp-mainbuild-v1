@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "../../../shared/ui/core";
+import { humanizeToken } from "./operatorChrome";
 import {
   BUSINESS_PRIORITY_LABELS,
   CADENCE_LABELS,
@@ -78,7 +79,7 @@ export default function ExamListTable({
               <td className="num-mono">{e.slug}</td>
               <td>{e.name}</td>
               <td className="text-clay-700">
-                {EXAM_PURPOSE_LABELS[e.exam_type]?.label ?? e.exam_type}
+                {EXAM_PURPOSE_LABELS[e.exam_type]?.label ?? (humanizeToken(e.exam_type) || "—")}
               </td>
               <td
                 className="text-clay-700"

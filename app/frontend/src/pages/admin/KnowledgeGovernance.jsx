@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bot, ClipboardCheck, GraduationCap, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
+import { humanizeToken, relativeDate, formatOperatorActor, formatAuditNote } from "../../features/admin/exam-intelligence/operatorChrome";
 
 // TODO PR3-BE-enh: add per-lane aggregate counts for "Exam truth & planner
 // readiness" and "AI + personalization guardrails" lanes — no kg metrics are
@@ -196,12 +197,12 @@ export default function AdminKnowledgeGovernance() {
                   style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between" }}
                 >
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{row.action}</div>
-                    <div className="anno">{row.target ?? "—"} · {row.actor}</div>
-                    {row.notes ? <div className="anno" style={{ marginTop: 2 }}>{row.notes}</div> : null}
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{humanizeToken(row.action) || "Activity"}</div>
+                    <div className="anno">{row.target ? humanizeToken(row.target) : "—"} · {formatOperatorActor(row.actor)}</div>
+                    {formatAuditNote(row.notes) ? <div className="anno" style={{ marginTop: 2 }}>{formatAuditNote(row.notes)}</div> : null}
                   </div>
                   <div className="anno" style={{ flexShrink: 0, textAlign: "right" }}>
-                    {row.at ? new Date(row.at).toLocaleString() : "—"}
+                    {relativeDate(row.at)}
                   </div>
                 </li>
               ))}

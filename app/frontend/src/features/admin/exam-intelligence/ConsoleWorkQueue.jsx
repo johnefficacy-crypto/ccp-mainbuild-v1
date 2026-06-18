@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } 
 import { Link } from "react-router-dom";
 import { api } from "../../../lib/api";
 import { StatusBadge } from "../../../shared/ui/core";
+import { humanizeToken } from "./operatorChrome";
 import {
   BUSINESS_PRIORITY_LABELS,
   CADENCE_LABELS,
@@ -360,7 +361,7 @@ export default function ConsoleWorkQueue() {
             </thead>
             <tbody>
               {list.items.map((e) => {
-                const meta = STATUS_META[e.status] || { tone: "pill-dusk", label: e.status };
+                const meta = STATUS_META[e.status] || { tone: "pill-dusk", label: humanizeToken(e.status) };
                 return (
                   <tr key={e.id} data-testid={`console-row-${e.id}`}>
                     <td>
@@ -369,9 +370,9 @@ export default function ConsoleWorkQueue() {
                     </td>
                     <td className="anno" data-testid={`console-org-${e.id}`}>{e.organization_name || "—"}</td>
                     <td className="anno">
-                      {EXAM_PURPOSE_LABELS[e.exam_type]?.label ?? e.exam_type ?? "—"}
+                      {EXAM_PURPOSE_LABELS[e.exam_type]?.label ?? (humanizeToken(e.exam_type) || "—")}
                       <div><span className="badge neutral no-dot">{laneLabel(e.management_mode)}</span>
-                        {e.cadence ? <span className="anno" style={{ marginLeft: 6 }}>{CADENCE_LABELS[e.cadence] ?? e.cadence}</span> : null}
+                        {e.cadence ? <span className="anno" style={{ marginLeft: 6 }}>{CADENCE_LABELS[e.cadence] ?? humanizeToken(e.cadence)}</span> : null}
                       </div>
                     </td>
                     <td data-testid={`console-status-${e.id}`}>
@@ -380,7 +381,7 @@ export default function ConsoleWorkQueue() {
                         <div className="row" style={{ flexWrap: "wrap", gap: 4, marginTop: 4 }}>
                           {e.flags.map((fl) => (
                             <span key={fl} className="pill pill-outline" data-testid={`console-flag-${e.id}-${fl}`}>
-                              {FLAG_LABELS[fl] ?? fl}
+                              {FLAG_LABELS[fl] ?? humanizeToken(fl)}
                             </span>
                           ))}
                         </div>
