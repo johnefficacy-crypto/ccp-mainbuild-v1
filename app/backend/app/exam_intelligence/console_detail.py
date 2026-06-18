@@ -7,12 +7,18 @@ activation checks, and stages — all from NAMED existing reads.
 Status parity is load-bearing: ``activation_verdict.status`` is produced by the
 SAME pure classifier the 4.6H list uses (``work_queue.classify_exam``) over the
 SAME aggregate (``work_queue.aggregate(sb, [exam])``). There is no parallel
-status rule here. Mock readiness is separate and advisory — it never changes the
-activation status.
+status rule here.
+
+Reason parity: every classifier-owned blocker/flag has a matching non-publish
+activation check + action item; ``activation_verdict.reasons`` are stable
+semantic tokens derived from the classifier (never advisory areas). The
+per-area pending detail comes from ``aggregate(..., include_details=True)`` so a
+``needs_action`` verdict is always explained. The endpoint fails closed if a
+non-ready status has no classifier-owned explanation.
 
 Guards: no score_percent/confidence_score/confidence_percent leaves this module;
-correctness-critical reads use ``execute_or_raise`` (failure → 5xx, never a
-fabricated verdict); unknown exam → 404. Read-only; no writes.
+every correctness-critical read pages fully and uses ``execute_or_raise``
+(failure → 5xx, never a fabricated verdict); unknown exam → 404. Read-only.
 """
 from __future__ import annotations
 
@@ -23,8 +29,6 @@ from fastapi import HTTPException
 from app.db.utils import execute_or_raise
 from app.exam_intelligence import work_queue as _wq
 from app.exam_intelligence.diagnostics import assemble_mock_readiness_report
-from app.study_os.competition_context import competition_context
-from app.study_os.update_context import policy_update_context
 
 # Mock-readiness inputs mirror the existing /exams/{id}/mock-readiness defaults.
 _SELECTABLE_MOCK_STATUSES = ["verified", "published"]
@@ -32,12 +36,13 @@ _VERIFIED_STATUS = "verified"
 _MIN_PER_SECTION = 30
 _MIN_LOCKED_COVERAGE = 1
 
-# Deterministic area order (used for action-queue tie-breaking + check order).
 _AREA_ORDER = [
     "setup", "documents", "syllabus", "topic_coverage", "pyq",
     "updates", "competition", "mock_readiness", "publish",
 ]
 _HARD_AREAS = {"setup", "topic_coverage", "publish"}
+# Areas whose state is owned by the shared classifier (must explain a non-ready verdict).
+_CLASSIFIER_AREAS = {"setup", "topic_coverage", "pyq", "syllabus", "updates"}
 
 _STAGES = [
     {"id": "setup", "label": "Setup", "areas": ["setup", "documents"]},
@@ -47,8 +52,14 @@ _STAGES = [
 ]
 
 _SEVERITY_RANK = {"blocker": 0, "action": 1, "advisory": 2}
-_EVIDENCE_CAP = 20  # bound the refs we surface per area
 
+
+def _check(area, gate, state, detail, reasons=None, evidence_refs=None) -> dict[str, Any]:
+    return {"area": area, "gate": gate, "state": state, "detail": detail,
+            "reasons": reasons or [], "evidence_refs": evidence_refs or []}
+
+
+# ── Identity ────────────────────────────────────────────────────────────────
 
 def _require_exam(sb, exam_id: str) -> dict[str, Any]:
     rows = execute_or_raise(
@@ -72,91 +83,49 @@ def _family_name(sb, family_id: str | None) -> str | None:
     return rows[0].get("name") if rows else None
 
 
-# ── Per-area reads (each grounded in a named table/helper) ──────────────────
+# ── Strict, paged per-area reads (areas not owned by the aggregate) ─────────
 
-def _coverage_rows(sb, exam_id: str) -> list[dict[str, Any]]:
-    return execute_or_raise(
-        "console_detail.coverage",
-        lambda: sb.table("exam_topic_coverage").select("id, reviewer_status")
-        .eq("exam_id", exam_id).limit(5000).execute().data,
-    ) or []
+def _paged(sb, make_query, operation: str) -> list[dict[str, Any]]:
+    return _wq._fetch_all_pages(make_query, operation=operation)
 
 
-def _syllabus_rows(sb, exam_id: str) -> list[dict[str, Any]]:
-    return execute_or_raise(
-        "console_detail.syllabus",
-        lambda: sb.table("syllabus_topic_mentions").select("id, reviewer_status")
-        .eq("exam_id", exam_id).limit(5000).execute().data,
-    ) or []
-
-
-def _document_rows(sb, exam_id: str) -> list[dict[str, Any]]:
-    return execute_or_raise(
-        "console_detail.documents",
+def _documents(sb, exam_id: str) -> list[dict[str, Any]]:
+    return _paged(
+        sb,
         lambda: sb.table("document_assets").select("id, extraction_status")
-        .eq("exam_id", exam_id).limit(2000).execute().data,
-    ) or []
+        .eq("exam_id", exam_id).order("id"),
+        "console_detail.documents",
+    )
 
 
-def _setup_check(agg) -> dict[str, Any]:
-    n = agg["phase_count"]
-    if n > 0:
-        return _check("setup", "hard", "done", f"{n} phase{'s' if n != 1 else ''} defined")
-    return _check("setup", "hard", "blocked", "No exam phases defined", ["no_phases"])
+def _syllabus_verified_count(sb, exam_id: str) -> int:
+    rows = _paged(
+        sb,
+        lambda: sb.table("syllabus_topic_mentions").select("id, reviewer_status")
+        .eq("exam_id", exam_id).order("id"),
+        "console_detail.syllabus",
+    )
+    return sum(1 for r in rows if r.get("reviewer_status") == "verified")
 
 
-def _documents_check(rows) -> dict[str, Any]:
-    total = len(rows)
-    extracted = sum(1 for r in rows if r.get("extraction_status") == "succeeded")
-    if extracted >= 1:
-        return _check("documents", "advisory", "done", f"{extracted} document{'s' if extracted != 1 else ''} extracted")
-    if total >= 1:
-        return _check("documents", "advisory", "needs_action", f"{total} uploaded, none extracted yet")
-    return _check("documents", "advisory", "needs_action", "No documents uploaded")
+def _competition(sb, exam_id: str) -> dict[str, Any]:
+    """Strict, paged read of reviewed/locked competition metrics. Selection
+    precedence: locked over reviewed, then newest. Never reads confidence_score."""
+    rows = _paged(
+        sb,
+        lambda: sb.table("exam_competition_metrics").select("id, reviewer_status, created_at")
+        .eq("exam_id", exam_id).in_("reviewer_status", ["locked", "reviewed"]).order("id"),
+        "console_detail.competition",
+    )
+    if not rows:
+        return {"available": False, "row_id": None}
+    locked = [r for r in rows if r.get("reviewer_status") == "locked"]
+    pool = locked or rows
+    best = max(pool, key=lambda r: r.get("created_at") or "")
+    return {"available": True, "row_id": best.get("id")}
 
 
-def _syllabus_check(rows) -> tuple[dict[str, Any], list[str]]:
-    verified = sum(1 for r in rows if r.get("reviewer_status") == "verified")
-    pending = [r["id"] for r in rows if r.get("reviewer_status") in {"pending", "needs_correction"} and r.get("id")]
-    if verified >= 1 and not pending:
-        return _check("syllabus", "advisory", "done", f"{verified} verified, none pending"), []
-    if pending:
-        return _check("syllabus", "advisory", "needs_action", f"{len(pending)} mention(s) pending review"), pending
-    return _check("syllabus", "advisory", "needs_action", "No verified syllabus mentions"), []
-
-
-def _coverage_check(agg, rows) -> tuple[dict[str, Any], list[str]]:
-    locked = agg["locked_coverage_count"]
-    ids = [r["id"] for r in rows if r.get("id")][:_EVIDENCE_CAP]
-    if locked >= 1:
-        return _check("topic_coverage", "hard", "done", f"{locked} locked coverage row(s)"), ids
-    # reviewed-but-not-locked still fails the planner gate.
-    return _check("topic_coverage", "hard", "blocked",
-                  "No locked topic coverage — planner cannot use this exam", ["no_locked_coverage"]), ids
-
-
-def _pyq_check(agg) -> dict[str, Any]:
-    v, t = agg["verified_pyq_count"], agg["total_pyq_count"]
-    if v >= 1:
-        return _check("pyq", "advisory", "done", f"{v} of {t} questions fully verified")
-    return _check("pyq", "advisory", "needs_action",
-                  f"0 of {t} questions clear the verified-paper + question + tag gate", ["missing_pyq"])
-
-
-def _updates_check(ctx) -> tuple[dict[str, Any], list[str]]:
-    pending = ctx.get("needs_verification") or []
-    pending_ids = [u.get("id") for u in pending if u.get("id")][:_EVIDENCE_CAP]
-    if pending_ids:
-        return _check("updates", "advisory", "needs_action", f"{len(pending_ids)} update(s) need verification"), pending_ids
-    return _check("updates", "advisory", "done", "No updates pending verification"), []
-
-
-def _competition_check(ctx) -> tuple[dict[str, Any], list[str]]:
-    if ctx.get("available"):
-        rid = ctx.get("id")
-        return _check("competition", "advisory", "done", "Competition metrics reviewed"), ([rid] if rid else [])
-    return _check("competition", "advisory", "needs_action", "No reviewed competition metrics"), []
-
+# ── Mock readiness (separate + advisory) ────────────────────────────────────
 
 def _mock_readiness(sb, exam_id: str) -> dict[str, str]:
     report = assemble_mock_readiness_report(
@@ -188,50 +157,30 @@ def _mock_readiness(sb, exam_id: str) -> dict[str, str]:
     return {"status": status, "detail": detail}
 
 
-def _mock_check(mock: dict[str, str]) -> dict[str, Any]:
-    state = {"ready": "done", "thin_bank": "needs_action", "blocked": "needs_action",
-             "unknown": "unknown"}[mock["status"]]
-    return _check("mock_readiness", "advisory", state, mock["detail"])
-
-
-def _publish_check(status: str) -> dict[str, Any]:
-    # The publish gate IS the activation outcome — derived from the same status,
-    # never a parallel rule. hard gate.
-    state = {"blocked": "blocked", "needs_action": "needs_action", "ready": "done"}[status]
-    detail = {
-        "blocked": "Blocked by an upstream hard gate",
-        "needs_action": "Outstanding work before activation",
-        "ready": "All activation gates pass",
-    }[status]
-    return _check("publish", "hard", state, detail)
-
-
-def _check(area: str, gate: str, state: str, detail: str, reasons: list[str] | None = None) -> dict[str, Any]:
-    return {"area": area, "gate": gate, "state": state, "detail": detail, "reasons": reasons or []}
-
-
-# ── Action queue ─────────────────────────────────────────────────────────────
+# ── Action queue copy + entity kinds ────────────────────────────────────────
 
 _ACTION_COPY = {
     "setup": ("Define exam phases", "Setup must exist before any activation work."),
     "documents": ("Upload & extract documents", "Source documents feed syllabus and PYQ evidence."),
     "syllabus": ("Review syllabus mentions", "Pending mentions are not yet usable evidence."),
     "topic_coverage": ("Lock topic coverage", "The planner consumes only locked coverage rows."),
-    "pyq": ("Verify PYQ", "No question clears verified paper + question + tag."),
-    "updates": ("Verify official updates", "Unverified updates do not propagate."),
+    "pyq": ("Verify PYQ", "Questions need verified paper + question + topic tag."),
+    "updates": ("Verify official updates", "Pending updates do not propagate."),
     "competition": ("Review competition metrics", "No reviewed competition signal exists yet."),
     "mock_readiness": ("Strengthen the mock bank", "Mock bank is thin or blocked (advisory only)."),
 }
 
+# Area-level entity kind. NULL for PYQ because a PYQ action's causal rows can be
+# questions, tags, OR options — the precise kinds live in evidence_refs.
 _AREA_ENTITY_KIND = {
     "topic_coverage": "exam_topic_coverage",
     "syllabus": "syllabus_topic_mention",
     "updates": "exam_policy_updates",
     "competition": "exam_competition_metrics",
-    "pyq": "pyq_question",
     "documents": "document_assets",
     "setup": "exam_phases",
-    "mock_readiness": "mock_question_bank",
+    "pyq": None,
+    "mock_readiness": None,
 }
 
 
@@ -243,18 +192,14 @@ def _severity_for(area: str, state: str) -> str:
     return "action"
 
 
-def _build_action_queue(checks: list[dict[str, Any]], exam_id: str,
-                        evidence_by_area: dict[str, list[str]]) -> list[dict[str, Any]]:
+def _build_action_queue(checks: list[dict[str, Any]], exam_id: str) -> list[dict[str, Any]]:
     workspace_route = f"/admin/exam-intelligence/workspace/{exam_id}"
     items: list[dict[str, Any]] = []
     for chk in checks:
         area = chk["area"]
-        # publish is the activation OUTCOME, not an action to take.
-        if area == "publish" or chk["state"] in {"done", "unknown"}:
+        if area == "publish" or chk["state"] in {"done", "unknown"}:  # publish is the outcome
             continue
         title, why = _ACTION_COPY[area]
-        kind = _AREA_ENTITY_KIND.get(area)
-        refs = [{"kind": kind, "row_id": rid} for rid in evidence_by_area.get(area, [])] if kind else []
         items.append({
             "id": area,
             "severity": _severity_for(area, chk["state"]),
@@ -263,9 +208,9 @@ def _build_action_queue(checks: list[dict[str, Any]], exam_id: str,
             "why": why,
             "cta_label": "Open workspace",
             "cta_route": workspace_route,  # workspace areas are tabs there (verified route)
-            "entity_kind": kind,
+            "entity_kind": _AREA_ENTITY_KIND.get(area),
             "entity_id": None,
-            "evidence_refs": refs,
+            "evidence_refs": chk["evidence_refs"],
             "status": "open",
         })
     items.sort(key=lambda i: (_SEVERITY_RANK[i["severity"]], _AREA_ORDER.index(i["area"])))
@@ -277,65 +222,170 @@ def _build_action_queue(checks: list[dict[str, Any]], exam_id: str,
 def build_console_detail(sb, exam_id: str) -> dict[str, Any]:
     exam = _require_exam(sb, exam_id)
 
-    # Status parity: same aggregate + same pure classifier as the 4.6H list.
-    agg = _wq.aggregate(sb, [exam])[exam["id"]]
+    # Status parity + reason detail: SAME aggregate + SAME pure classifier.
+    agg = _wq.aggregate(sb, [exam], include_details=True)[exam["id"]]
     classified = _wq.classify_exam(agg)
     status = classified["status"]
+    flags = set(classified["flags"])
+    by_area = agg["pending_by_area"]
 
     org_name = _wq.load_org_names(sb, [exam]).get(exam.get("conducting_organization_id"))
     family_name = _family_name(sb, exam.get("exam_family_id"))
 
-    # Per-area reads (single-exam; each grounded in a named source).
-    cov_rows = _coverage_rows(sb, exam_id)
-    syl_rows = _syllabus_rows(sb, exam_id)
-    doc_rows = _document_rows(sb, exam_id)
-    updates_ctx = policy_update_context(sb, exam_id)
-    competition_ctx = competition_context(sb, exam_id)
+    # Advisory-area reads (not owned by the classifier) — strict + paged.
+    docs = _documents(sb, exam_id)
+    syllabus_verified = _syllabus_verified_count(sb, exam_id)
+    competition = _competition(sb, exam_id)
     mock = _mock_readiness(sb, exam_id)
 
-    setup_chk = _setup_check(agg)
-    docs_chk = _documents_check(doc_rows)
-    syl_chk, syl_ev = _syllabus_check(syl_rows)
-    cov_chk, cov_ev = _coverage_check(agg, cov_rows)
-    pyq_chk = _pyq_check(agg)
-    upd_chk, upd_ev = _updates_check(updates_ctx)
-    comp_chk, comp_ev = _competition_check(competition_ctx)
-    mock_chk = _mock_check(mock)
-    pub_chk = _publish_check(status)
+    def _pending_reasons(area: str) -> list[str]:
+        d = by_area[area]
+        reasons = ["pending_review"]
+        if d["stale_count"] > 0:
+            reasons.append("stale_review_queue")
+        return reasons
 
-    checks = [setup_chk, docs_chk, syl_chk, cov_chk, pyq_chk, upd_chk, comp_chk, mock_chk, pub_chk]
+    checks: list[dict[str, Any]] = []
 
-    evidence_by_area = {
-        "syllabus": syl_ev, "topic_coverage": cov_ev,
-        "updates": upd_ev, "competition": comp_ev,
-    }
-    action_queue = _build_action_queue(checks, exam_id, evidence_by_area)
+    # setup (hard)
+    if agg["phase_count"] > 0:
+        checks.append(_check("setup", "hard", "done", f"{agg['phase_count']} phase(s) defined"))
+    else:
+        checks.append(_check("setup", "hard", "blocked", "No exam phases defined", ["no_phases"]))
 
-    # Top-level evidence_refs = de-duplicated union of action-item refs.
+    # documents (advisory)
+    extracted = sum(1 for r in docs if r.get("extraction_status") == "succeeded")
+    if extracted >= 1:
+        checks.append(_check("documents", "advisory", "done", f"{extracted} document(s) extracted"))
+    elif docs:
+        checks.append(_check("documents", "advisory", "needs_action", f"{len(docs)} uploaded, none extracted"))
+    else:
+        checks.append(_check("documents", "advisory", "needs_action", "No documents uploaded"))
+
+    # syllabus (advisory; needs_action on pending, else verified-presence advisory)
+    syl = by_area["syllabus"]
+    if syl["pending_count"] > 0:
+        checks.append(_check("syllabus", "advisory", "needs_action",
+                             f"{syl['pending_count']} mention(s) pending review",
+                             _pending_reasons("syllabus"), syl["evidence_refs"]))
+    elif syllabus_verified == 0:
+        checks.append(_check("syllabus", "advisory", "needs_action", "No verified syllabus mentions"))
+    else:
+        checks.append(_check("syllabus", "advisory", "done", f"{syllabus_verified} verified, none pending"))
+
+    # topic_coverage (hard)
+    tc = by_area["topic_coverage"]
+    if agg["locked_coverage_count"] == 0:
+        checks.append(_check("topic_coverage", "hard", "blocked",
+                             "No locked topic coverage — planner cannot use this exam",
+                             ["no_locked_coverage"]))
+    elif tc["pending_count"] > 0:
+        checks.append(_check("topic_coverage", "hard", "needs_action",
+                             f"{agg['locked_coverage_count']} locked · {tc['pending_count']} pending review",
+                             _pending_reasons("topic_coverage"), tc["evidence_refs"]))
+    else:
+        checks.append(_check("topic_coverage", "hard", "done", f"{agg['locked_coverage_count']} locked coverage row(s)"))
+
+    # pyq (advisory): missing verified AND/OR pending sub-rows
+    pq = by_area["pyq"]
+    pyq_reasons: list[str] = []
+    if agg["verified_pyq_count"] == 0:
+        pyq_reasons.append("missing_pyq")
+    if pq["pending_count"] > 0:
+        pyq_reasons.extend(_pending_reasons("pyq"))
+    if pyq_reasons:
+        detail = f"{agg['verified_pyq_count']} of {agg['total_pyq_count']} verified"
+        if pq["pending_count"]:
+            detail += f" · {pq['pending_count']} pending review"
+        checks.append(_check("pyq", "advisory", "needs_action", detail, pyq_reasons, pq["evidence_refs"]))
+    else:
+        checks.append(_check("pyq", "advisory", "done", f"{agg['verified_pyq_count']} of {agg['total_pyq_count']} verified"))
+
+    # updates (advisory; classifier-owned via policy pending)
+    up = by_area["updates"]
+    if up["pending_count"] > 0:
+        checks.append(_check("updates", "advisory", "needs_action",
+                             f"{up['pending_count']} update(s) need verification",
+                             _pending_reasons("updates"), up["evidence_refs"]))
+    else:
+        checks.append(_check("updates", "advisory", "done", "No updates pending verification"))
+
+    # competition (advisory) — selected row id is the evidence.
+    if competition["available"]:
+        checks.append(_check("competition", "advisory", "done", "Competition metrics reviewed",
+                             evidence_refs=[{"kind": "exam_competition_metrics", "row_id": competition["row_id"]}]))
+    else:
+        checks.append(_check("competition", "advisory", "needs_action", "No reviewed competition metrics"))
+
+    # mock_readiness (advisory)
+    mock_state = {"ready": "done", "thin_bank": "needs_action", "blocked": "needs_action",
+                  "unknown": "unknown"}[mock["status"]]
+    checks.append(_check("mock_readiness", "advisory", mock_state, mock["detail"]))
+
+    # publish (hard) — the activation outcome, derived from the same status.
+    pub_state = {"blocked": "blocked", "needs_action": "needs_action", "ready": "done"}[status]
+    pub_detail = {
+        "blocked": "Blocked by an upstream hard gate",
+        "needs_action": "Outstanding work before activation",
+        "ready": "All activation gates pass",
+    }[status]
+    checks.append(_check("publish", "hard", pub_state, pub_detail))
+
+    # Order checks deterministically by area.
+    checks.sort(key=lambda c: _AREA_ORDER.index(c["area"]))
+
+    action_queue = _build_action_queue(checks, exam_id)
+
+    # Top-level evidence_refs = de-duplicated union of every check's refs.
     seen: set[tuple] = set()
     evidence_refs: list[dict[str, Any]] = []
-    for item in action_queue:
-        for ref in item["evidence_refs"]:
+    for chk in checks:
+        for ref in chk["evidence_refs"]:
             key = (ref["kind"], ref["row_id"])
             if key not in seen:
                 seen.add(key)
                 evidence_refs.append(ref)
+
+    # ── Verdict: reasons are classifier-derived semantic tokens only. ──
+    reason_tokens: list[str] = []
+    if agg["phase_count"] == 0:
+        reason_tokens.append("no_phases")
+    if "missing_coverage" in flags:
+        reason_tokens.append("no_locked_coverage")
+    if "missing_pyq" in flags:
+        reason_tokens.append("missing_pyq")
+    if "pending_review" in flags:
+        reason_tokens.append("pending_review")
+    if "stale_review_queue" in flags:
+        reason_tokens.append("stale_review_queue")
 
     headline = {
         "blocked": "Not ready for aspirants",
         "needs_action": "Needs work before activation",
         "ready": "Ready for aspirants",
     }[status]
-    reasons = [c["detail"] for c in checks if c["gate"] == "hard" and c["state"] == "blocked"]
-    if status == "needs_action" and not reasons:
-        reasons = [c["detail"] for c in checks if c["state"] == "needs_action"]
+
+    # Fail closed: a non-ready status must be explained by a classifier-owned,
+    # non-publish check AND a matching action item.
+    if status != "ready":
+        explained = any(
+            c["area"] in _CLASSIFIER_AREAS and c["state"] in {"blocked", "needs_action"}
+            for c in checks
+        )
+        if not explained or not action_queue:
+            raise RuntimeError(
+                f"console detail reason-parity violation for {exam_id}: status={status}"
+            )
 
     return {
         "exam": {
             "id": exam["id"], "slug": exam.get("slug"), "name": exam.get("name"),
             "organization_name": org_name, "family_name": family_name,
         },
-        "activation_verdict": {"status": status, "headline": headline, "reasons": reasons},
+        "activation_verdict": {
+            "status": status, "headline": headline,
+            "reasons": reason_tokens if status != "ready" else [],
+        },
         "mock_readiness": mock,
         "action_queue": action_queue,
         "activation_checks": checks,

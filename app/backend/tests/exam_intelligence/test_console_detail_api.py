@@ -250,3 +250,143 @@ def test_endpoint_returns_500_on_read_failure_not_fabricated_verdict():
     client = TestClient(_build_app(sb), raise_server_exceptions=False)
     r = client.get("/api/admin/exam-intelligence/console/exams/rdy")
     assert r.status_code == 500
+
+
+# ── Reason parity: every classifier flag has a matching check + action ──────
+
+from app.exam_intelligence import work_queue as _wq  # noqa: E402
+from tests.persona_questions._stub import _Query  # noqa: E402
+
+
+def _causal_base():
+    return {
+        "exams": [{"id": "e", "slug": "e", "name": "E", "exam_type": "recruitment",
+                   "is_active": True, "management_mode": "core", "cadence": "annual",
+                   "exam_family_id": None, "conducting_organization_id": None}],
+        "exam_phases": [{"id": "e-ph", "exam_id": "e"}],
+        "exam_topic_coverage": [{"id": "e-cl", "exam_id": "e", "reviewer_status": "locked", "created_at": _RECENT}],
+        "pyq_papers": [{"id": "e-pp", "exam_id": "e", "trust_status": "verified"}],
+        "pyq_questions": [{"id": "e-q1", "pyq_paper_id": "e-pp", "reviewer_status": "verified", "created_at": _RECENT}],
+        "pyq_question_topic_tags": [{"id": "e-t1", "question_id": "e-q1", "reviewer_status": "verified", "created_at": _RECENT}],
+    }
+
+
+def _list_status(db, eid):
+    client = TestClient(_build_app(SBStub(db)))
+    listing = client.get("/api/admin/exam-intelligence/console/exams?active_state=all&limit=100").json()
+    return {r["id"]: r["status"] for r in listing["items"]}.get(eid)
+
+
+def _assert_causal(db, area, kind, row_id):
+    client, _ = _client(db=db)
+    detail = _detail(client, "e").json()
+    # detail status still matches the list, and is needs_action (advisory pending)
+    assert detail["activation_verdict"]["status"] == _list_status(db, "e") == "needs_action"
+    chk = next(c for c in detail["activation_checks"] if c["area"] == area)
+    assert chk["state"] == "needs_action"
+    item = next((i for i in detail["action_queue"] if i["area"] == area), None)
+    assert item is not None
+    assert detail["action_queue"]  # non-empty
+    refs = {(r["kind"], r["row_id"]) for r in chk["evidence_refs"]}
+    assert (kind, row_id) in refs
+
+
+def test_reason_parity_pending_coverage():
+    db = _causal_base()
+    db["exam_topic_coverage"].append({"id": "e-cp", "exam_id": "e", "reviewer_status": "pending_review", "created_at": _RECENT})
+    _assert_causal(db, "topic_coverage", "exam_topic_coverage", "e-cp")
+
+
+def test_reason_parity_pending_question():
+    db = _causal_base()
+    db["pyq_questions"].append({"id": "e-q2", "pyq_paper_id": "e-pp", "reviewer_status": "pending", "created_at": _RECENT})
+    _assert_causal(db, "pyq", "pyq_question", "e-q2")
+
+
+def test_reason_parity_pending_topic_tag():
+    db = _causal_base()
+    db["pyq_questions"].append({"id": "e-q2", "pyq_paper_id": "e-pp", "reviewer_status": "verified", "created_at": _RECENT})
+    db["pyq_question_topic_tags"].append({"id": "e-t2", "question_id": "e-q2", "reviewer_status": "pending", "created_at": _RECENT})
+    _assert_causal(db, "pyq", "pyq_question_topic_tag", "e-t2")
+
+
+def test_reason_parity_pending_option():
+    db = _causal_base()
+    db["pyq_options"] = [{"id": "e-o2", "question_id": "e-q1", "reviewer_status": "pending", "created_at": _RECENT}]
+    _assert_causal(db, "pyq", "pyq_option", "e-o2")
+
+
+def test_reason_parity_pending_policy_update():
+    db = _causal_base()
+    db["exam_policy_updates"] = [{"id": "e-u1", "exam_id": "e", "reviewer_status": "pending", "created_at": _RECENT}]
+    _assert_causal(db, "updates", "exam_policy_updates", "e-u1")
+
+
+# ── Strict updates / competition failure propagation ────────────────────────
+
+def test_updates_read_failure_returns_500():
+    sb = FailingSBStub(_full_seed(), "exam_policy_updates")
+    client = TestClient(_build_app(sb), raise_server_exceptions=False)
+    assert client.get("/api/admin/exam-intelligence/console/exams/rdy").status_code == 500
+
+
+def test_competition_read_failure_returns_500():
+    sb = FailingSBStub(_full_seed(), "exam_competition_metrics")
+    client = TestClient(_build_app(sb), raise_server_exceptions=False)
+    assert client.get("/api/admin/exam-intelligence/console/exams/rdy").status_code == 500
+
+
+# ── Paging: later-page rows affect per-area state ───────────────────────────
+
+class _RangeQuery(_Query):
+    def __init__(self, name, db):
+        super().__init__(name, db)
+        self._range = None
+
+    def range(self, start, end, **kw):
+        self._range = (start, end)
+        return self
+
+    def execute(self):
+        res = super().execute()
+        if self._range is not None:
+            s, e = self._range
+            res.data = res.data[s:e + 1]
+        return res
+
+
+class RangeAwareSBStub(SBStub):
+    def table(self, name):
+        return _RangeQuery(name, self.db)
+
+
+def test_pending_coverage_on_later_page_is_counted(monkeypatch):
+    monkeypatch.setattr(_wq, "_PAGE_SIZE", 2)
+    db = _causal_base()
+    # locked + two filler locked rows + a pending row last (id order → page 2+)
+    db["exam_topic_coverage"] = [
+        {"id": "e-cl1", "exam_id": "e", "reviewer_status": "locked", "created_at": _RECENT},
+        {"id": "e-cl2", "exam_id": "e", "reviewer_status": "locked", "created_at": _RECENT},
+        {"id": "e-cp9", "exam_id": "e", "reviewer_status": "pending_review", "created_at": _RECENT},
+    ]
+    client = TestClient(_build_app(RangeAwareSBStub(db)))
+    detail = client.get("/api/admin/exam-intelligence/console/exams/e").json()
+    tc = next(c for c in detail["activation_checks"] if c["area"] == "topic_coverage")
+    assert tc["state"] == "needs_action"  # pending row on page 2 not truncated
+    assert ("exam_topic_coverage", "e-cp9") in {(r["kind"], r["row_id"]) for r in tc["evidence_refs"]}
+
+
+def test_competition_selected_row_on_later_page(monkeypatch):
+    monkeypatch.setattr(_wq, "_PAGE_SIZE", 2)
+    db = _causal_base()
+    db["exam_competition_metrics"] = [
+        {"id": "cm1", "exam_id": "e", "reviewer_status": "reviewed", "created_at": "2026-01-01T00:00:00+00:00"},
+        {"id": "cm2", "exam_id": "e", "reviewer_status": "reviewed", "created_at": "2026-02-01T00:00:00+00:00"},
+        {"id": "cm3", "exam_id": "e", "reviewer_status": "locked", "created_at": "2026-03-01T00:00:00+00:00"},
+    ]
+    client = TestClient(_build_app(RangeAwareSBStub(db)))
+    detail = client.get("/api/admin/exam-intelligence/console/exams/e").json()
+    comp = next(c for c in detail["activation_checks"] if c["area"] == "competition")
+    assert comp["state"] == "done"
+    # locked (cm3, page 2) wins precedence over reviewed
+    assert {(r["kind"], r["row_id"]) for r in comp["evidence_refs"]} == {("exam_competition_metrics", "cm3")}
