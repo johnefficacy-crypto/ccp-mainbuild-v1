@@ -160,6 +160,14 @@ def test_manual_unknown_only_no_corrections():
     assert cats == []
 
 
+def test_manual_unknown_evidence_with_weak_topic_emits_single_policy_fallback():
+    cats, out = _man({"guess": 3, "mystery": 2}, weak=["first", "second"])
+
+    assert cats == ["concept_gap"]
+    assert [d["topic"] for d in out] == ["first"]
+    assert out[0]["title"] == _BASE["concept_gap"]
+
+
 def test_manual_weak_topic_fallback_policy_owned_single_topic():
     cats, out = _man({}, weak=["a", "b", "c", "d"])
     assert cats == ["concept_gap"]

@@ -1,8 +1,8 @@
 ---
 owner: study-os
 status: design + plan
-last_verified_against_code: 2026-06-17
-verified_against: fix/unify-mock-correction-policy (§7 #2 closed)
+last_verified_against_code: 2026-06-18
+verified_against: PR #714 weak-topic fallback documentation/test follow-up; PR #711 closes DEFECT-001/DEFECT-003
 source_of_truth: code
 shadow_validation_date: 2026-06-18
 shadow_validation_status: failed (FF=live blocked)
@@ -332,12 +332,22 @@ answered.
    adapter (its `task_type→category` mapping is removed). The generated pipeline
    feeds the policy from **question-level** `error_type` (not the narrower
    `error_patterns.TRACKED` write-vocab), so memory/speed/misread evidence
-   survives. Titles are **category-only** (e.g. `Concept drill`) — identical
-   across origins; `topic` stays a separate, source-specific column (manual = display
-   label, generated = canonical id) and is **not** claimed equal. Adapter-level
-   cross-origin parity is test-pinned (`tests/study_os/test_correction_policy.py`,
-   driving both real adapters). The earlier schema-incompatibility was closed in
-   #702 ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk)).
+   survives. The manual adapter now passes
+   `weak_topic=bool(weak_topics)` and `topic=weak_topics[0]` into
+   `CorrectionPolicyInput`; its former independent `weak_topics[:3]`
+   `concept_gap` fallback has been removed. Therefore
+   `correction_policy.py` is the sole owner of weak-topic fallback
+   categorization: manual weak-topic fallback emits one policy-owned
+   `concept_gap` for `weak_topics[0]`, and recognized error evidence does not
+   receive an additional weak-topic fallback. Titles are **category-only** (e.g.
+   `Concept drill`) — identical across origins; `topic` stays a separate,
+   source-specific column (manual = display label, generated = canonical id) and
+   is **not** claimed equal. Adapter-level cross-origin parity is test-pinned
+   (`tests/study_os/test_correction_policy.py`, driving both real adapters). The
+   earlier schema-incompatibility was closed in #702
+   ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk)). PR #711 closed
+   DEFECT-001 and DEFECT-003; the shared policy design remains closed and is not
+   reopened by this document update.
    **Code-level categorizer consistency is resolved** (adapter parity
    test-pinned), **but production writer input propagation FAILED operator
    validation on 2026-06-18** — `MasteryWriter._load_analytics()` does not load
