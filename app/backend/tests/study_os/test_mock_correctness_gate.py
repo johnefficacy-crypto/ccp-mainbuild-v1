@@ -457,3 +457,137 @@ def test_retry_emit_mock_tests_row_idempotent():
 
     after = len([r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id])
     assert after == 1
+
+
+@pytest.mark.parametrize(
+    ("max_score", "expected"),
+    [(200.0, 200), (200, 200), (Decimal("200.0"), 200)],
+)
+def test_emit_mock_tests_row_coerces_integral_total_marks(max_score, expected):
+    """Inline compat writer stores integral numeric totals as integer values."""
+    sb = SBStub({"mock_tests": [], "mock_attempt_jobs": []})
+    attempt = {
+        "id": "attempt-inline-integral",
+        "template_snapshot": {
+            "name": "Integral Mock",
+            "exam_family": "TEST",
+            "duration_sec": 300,
+        },
+    }
+
+    svc._emit_mock_tests_row(
+        sb,
+        "user-1",
+        attempt,
+        score_raw=123.45,
+        max_score=max_score,
+        total_correct=10,
+        total_wrong=2,
+        total_q=100,
+        submitted_at=_now_iso(),
+    )
+
+    row = sb.db["mock_tests"][0]
+    assert row["total_marks"] == expected
+    assert type(row["total_marks"]) is int
+    assert row["scored_marks"] == 123.45
+
+
+def test_retry_emit_mock_tests_row_recreates_after_22p02_with_integer_total_marks():
+    """Retry path recomputes 200.0 but emits integer 200 after prior 22P02."""
+    sb, template, _ = _seeded_db()
+    template["marks_per_correct"] = 40.0
+    template["marks_per_wrong"] = 0.0
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+
+    # Simulate the initial insert failing with Postgres 22P02 before the fix.
+    sb.db["mock_tests"] = [
+        r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") != attempt_id
+    ]
+    svc.schedule_job(
+        sb,
+        svc.JOB_MOCK_TESTS_RETRY,
+        attempt_id,
+        last_error='invalid input syntax for type integer: "200.0" (22P02)',
+        scheduled_for=_past_iso(5),
+    )
+
+    svc.run_sweeper(sb)
+
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["total_marks"] == 200
+    assert type(rows[0]["total_marks"]) is int
+
+
+def test_retry_emit_mock_tests_row_coerces_decimal_integral_total_marks():
+    """Retry path accepts Decimal integral marks and persists an int total."""
+    sb, template, _ = _seeded_db()
+    template["marks_per_correct"] = 40.0
+    template["marks_per_wrong"] = 0.0
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+    sb.db["mock_tests"] = [
+        r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") != attempt_id
+    ]
+    for response in sb.db["mock_attempt_responses"]:
+        if response.get("attempt_id") == attempt_id:
+            response["question_snapshot"]["marks"] = Decimal("40.0")
+
+    svc._retry_emit_mock_tests_row(sb, attempt_id)
+
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["total_marks"] == 200
+    assert type(rows[0]["total_marks"]) is int
+
+
+def test_retry_emit_mock_tests_row_non_integral_total_raises_and_remains_retryable():
+    """Non-integral totals are not rounded/truncated and the job is rescheduled."""
+    sb, template, _ = _seeded_db()
+    template["marks_per_correct"] = 40.1
+    template["marks_per_wrong"] = 0.0
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+
+    with pytest.raises(ValueError, match="total_marks must be integral"):
+        svc.submit_attempt(sb, "user-1", attempt_id)
+
+    assert not [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    svc.schedule_job(sb, svc.JOB_MOCK_TESTS_RETRY, attempt_id, scheduled_for=_past_iso(5))
+
+    counts = svc.run_sweeper(sb)
+
+    assert counts["errors"] == 1
+    assert not [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    retry_jobs = [
+        j for j in sb.db["mock_attempt_jobs"]
+        if j.get("job_kind") == svc.JOB_MOCK_TESTS_RETRY
+        and j.get("attempt_id") == attempt_id
+        and j.get("status") == "pending"
+    ]
+    assert len(retry_jobs) == 1
+    assert "total_marks must be integral" in retry_jobs[0].get("last_error", "")
+
+
+def test_retry_emit_mock_tests_row_repeated_retry_is_idempotent_with_integer_total():
+    """Repeated retry calls do not duplicate the recreated compat row."""
+    sb, template, _ = _seeded_db()
+    template["marks_per_correct"] = 40.0
+    template["marks_per_wrong"] = 0.0
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+    sb.db["mock_tests"] = [
+        r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") != attempt_id
+    ]
+
+    svc._retry_emit_mock_tests_row(sb, attempt_id)
+    svc._retry_emit_mock_tests_row(sb, attempt_id)
+
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["total_marks"] == 200
