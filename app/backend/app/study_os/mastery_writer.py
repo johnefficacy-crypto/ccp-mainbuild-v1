@@ -109,7 +109,22 @@ class MasteryWriter:
         if not attempt_rows:
             return None
         attempt = attempt_rows[0]
-        responses = self.supabase.table("mock_attempt_responses").select("question_id,is_correct,time_spent_sec,question_snapshot").eq("attempt_id", attempt_id).execute().data or []
+        responses = self.supabase.table("mock_attempt_responses").select("question_id,selected_option_id,is_correct,time_spent_sec,question_snapshot").eq("attempt_id", attempt_id).execute().data or []
+        # error_type is authoritative ONLY from mock_attempt_response_classification
+        # (keyed (attempt_id, question_id)) — mock_attempt_responses has no
+        # error_type column, so the prior r.get("error_type") was always None.
+        # Unknown/missing classification stays None: never an invented category.
+        classification_rows = (
+            self.supabase.table("mock_attempt_response_classification")
+            .select("question_id,error_type")
+            .eq("attempt_id", attempt_id)
+            .execute()
+            .data
+            or []
+        )
+        error_type_by_qid: dict[str, str | None] = {
+            c.get("question_id"): c.get("error_type") for c in classification_rows
+        }
         by_topic: dict[tuple[str, str | None], dict[str, Any]] = {}
         questions: list[AttemptQuestionAnalytics] = []
         for r in responses:
@@ -119,25 +134,35 @@ class MasteryWriter:
                 continue
             microtopic_id = q.get("microtopic_id")
             is_correct = bool(r.get("is_correct"))
+            # The user answered iff selected_option_id is not null. Only answered
+            # rows move mastery; unanswered/marked rows are kept here (attempted=
+            # False) so the correction path still sees them.
+            attempted = r.get("selected_option_id") is not None
             questions.append(
                 AttemptQuestionAnalytics(
                     question_id=r.get("question_id"),
                     topic_id=topic_id,
                     microtopic_id=microtopic_id,
                     is_correct=is_correct,
+                    attempted=attempted,
                     difficulty=q.get("difficulty") or "medium",
                     source_type=q.get("source_type") or "authored",
                     pyq_year=q.get("pyq_year"),
                     expected_time_sec=q.get("expected_time_sec"),
                     actual_time_sec=r.get("time_spent_sec"),
-                    error_type=r.get("error_type"),
+                    error_type=error_type_by_qid.get(r.get("question_id")),
                     confidence=Decimal(str(q.get("confidence") or "0.5")),
                 )
             )
             key = (topic_id, microtopic_id)
+            # Always register the topic so unanswered-only topics still reach the
+            # correction path, but count attempted/correct (hence accuracy_pct)
+            # from answered rows only — an unanswered row must not masquerade as a
+            # wrong answer and drag accuracy into a false concept_gap.
             stats = by_topic.setdefault(key, {"attempted": 0, "correct": 0})
-            stats["attempted"] += 1
-            stats["correct"] += 1 if is_correct else 0
+            if attempted:
+                stats["attempted"] += 1
+                stats["correct"] += 1 if is_correct else 0
 
         topics = [
             AttemptTopicAnalytics(

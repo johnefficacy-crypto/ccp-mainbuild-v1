@@ -39,13 +39,16 @@ def _reset_metrics():
 
 def _seed(sb: SBStub, *, with_mock_tests: bool = True, error_type: str | None = "concept_gap", n: int = 3) -> None:
     sb.db["mock_attempts"] = [{"id": ATTEMPT, "user_id": USER}]
+    # These are answered (selected_option_id set) wrong questions: attempted=True
+    # so mastery moves. error_type now comes from the classification table, not
+    # from the response row.
     sb.db["mock_attempt_responses"] = [
         {
             "attempt_id": ATTEMPT,
             "question_id": f"q{i}",
+            "selected_option_id": f"opt-{i}",
             "is_correct": False,
             "time_spent_sec": 5,
-            "error_type": error_type,
             "question_snapshot": {
                 "topic_id": TOPIC,
                 "difficulty": "medium",
@@ -54,6 +57,14 @@ def _seed(sb: SBStub, *, with_mock_tests: bool = True, error_type: str | None = 
         }
         for i in range(n)
     ]
+    sb.db["mock_attempt_response_classification"] = (
+        [
+            {"attempt_id": ATTEMPT, "question_id": f"q{i}", "error_type": error_type}
+            for i in range(n)
+        ]
+        if error_type is not None
+        else []
+    )
     sb.db["mock_tests"] = (
         [{"id": MOCK_TEST_ID, "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}]
         if with_mock_tests
@@ -272,13 +283,18 @@ def test_sweeper_recovers_correction_after_transient_failure(monkeypatch):
         }],
         "mock_attempt_responses": [
             {
-                "attempt_id": ATTEMPT, "question_id": f"q{i}", "is_correct": False,
-                "time_spent_sec": 5, "error_type": "concept_gap",
+                "attempt_id": ATTEMPT, "question_id": f"q{i}",
+                "selected_option_id": f"opt-{i}", "is_correct": False,
+                "time_spent_sec": 5,
                 "question_snapshot": {
                     "topic_id": TOPIC, "difficulty": "medium",
                     "source_type": "authored", "marks": 1,
                 },
             }
+            for i in range(3)
+        ],
+        "mock_attempt_response_classification": [
+            {"attempt_id": ATTEMPT, "question_id": f"q{i}", "error_type": "concept_gap"}
             for i in range(3)
         ],
         "mock_tests": [],

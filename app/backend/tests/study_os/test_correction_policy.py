@@ -245,12 +245,19 @@ def test_cross_origin_parity_fallback_case_H():
 # ── 6. persistence ────────────────────────────────────────────────────────────
 
 def _seed_generated(sb, error_types):
+    # Answered (selected_option_id set) wrong questions; error_type comes from the
+    # classification table, not from the response row (the loader's authoritative
+    # source post-DEFECT-003).
     sb.db.update({
         "mock_attempts": [{"id": ATTEMPT, "user_id": USER}],
         "mock_attempt_responses": [
-            {"attempt_id": ATTEMPT, "question_id": f"q{i}", "is_correct": False,
-             "time_spent_sec": 5, "error_type": et,
+            {"attempt_id": ATTEMPT, "question_id": f"q{i}", "selected_option_id": f"opt-{i}",
+             "is_correct": False, "time_spent_sec": 5,
              "question_snapshot": {"topic_id": TOPIC, "difficulty": "medium", "source_type": "authored"}}
+            for i, et in enumerate(error_types)
+        ],
+        "mock_attempt_response_classification": [
+            {"attempt_id": ATTEMPT, "question_id": f"q{i}", "error_type": et}
             for i, et in enumerate(error_types)
         ],
         "mock_tests": [{"id": "mt-1", "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}],
