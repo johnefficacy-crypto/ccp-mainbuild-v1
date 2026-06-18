@@ -1,0 +1,252 @@
+"""Per-exam action console read tests (Wave 4.6I-BE).
+
+Asserts status parity with the 4.6H list, hard/advisory area grounding,
+deterministic action ordering, CTA-route validity, evidence refs without
+confidence, no-percentage guards, and fail-closed reads.
+"""
+from __future__ import annotations
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from app.api import admin_exam_intelligence as admin_api
+from app.core.auth import get_current_user
+from app.core.errors import DatabaseError
+from app.exam_intelligence import console_detail as cd
+from tests.persona_questions._stub import SBStub
+
+VALID_ROUTES = {
+    "/admin/exam-intelligence/workspace/{id}",
+    "/admin/exam-intelligence/console/{id}",
+}
+
+
+def _build_app(sb, role="super_admin"):
+    app = FastAPI()
+    app.include_router(admin_api.router, prefix="/api")
+    admin_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    user = {"id": "admin-1", "role": role,
+            "permissions": ["exam_intelligence.review"] if role == "admin" else []}
+    app.dependency_overrides[get_current_user] = lambda: user
+    return app
+
+
+_RECENT = "2026-06-16T00:00:00+00:00"
+
+
+class _Seed:
+    def __init__(self):
+        self.db = {t: [] for t in (
+            "exams", "exam_phases", "exam_topic_coverage", "syllabus_topic_mentions",
+            "exam_policy_updates", "pyq_papers", "pyq_questions",
+            "pyq_question_topic_tags", "pyq_options", "organizations", "exam_families",
+            "document_assets", "exam_competition_metrics", "mock_question_bank",
+        )}
+
+    def exam(self, eid, *, name, mode="core", phases=1, locked=1, reviewed=0,
+             vpyq=0, pending_syl=0, org=None, family=None):
+        self.db["exams"].append({
+            "id": eid, "slug": eid, "name": name, "exam_type": "recruitment",
+            "is_active": True, "exam_family_id": family, "management_mode": mode,
+            "cadence": "annual", "conducting_organization_id": org,
+        })
+        for i in range(phases):
+            self.db["exam_phases"].append({"id": f"{eid}-ph{i}", "exam_id": eid})
+        for i in range(locked):
+            self.db["exam_topic_coverage"].append(
+                {"id": f"{eid}-cl{i}", "exam_id": eid, "reviewer_status": "locked", "created_at": _RECENT})
+        for i in range(reviewed):
+            self.db["exam_topic_coverage"].append(
+                {"id": f"{eid}-cr{i}", "exam_id": eid, "reviewer_status": "reviewed", "created_at": _RECENT})
+        if vpyq:
+            self.db["pyq_papers"].append({"id": f"{eid}-pp", "exam_id": eid, "trust_status": "verified"})
+            for i in range(vpyq):
+                qid = f"{eid}-vq{i}"
+                self.db["pyq_questions"].append(
+                    {"id": qid, "pyq_paper_id": f"{eid}-pp", "reviewer_status": "verified", "created_at": _RECENT})
+                self.db["pyq_question_topic_tags"].append(
+                    {"id": f"{qid}-t", "question_id": qid, "reviewer_status": "verified", "created_at": _RECENT})
+        for i in range(pending_syl):
+            self.db["syllabus_topic_mentions"].append(
+                {"id": f"{eid}-sp{i}", "exam_id": eid, "reviewer_status": "pending", "created_at": _RECENT})
+        return self
+
+
+def _full_seed():
+    s = _Seed()
+    s.db["organizations"].append({"id": "org1", "name": "Staff Selection Commission"})
+    s.db["exam_families"].append({"id": "fam1", "name": "SSC Family"})
+    s.exam("rdy", name="Ready", locked=1, vpyq=1, org="org1", family="fam1")        # ready
+    s.exam("b1", name="No Phases", phases=0, locked=0)                                # blocked (2 gates)
+    s.exam("b2", name="Reviewed Not Locked", locked=0, reviewed=2)                    # blocked
+    s.exam("npyq", name="Missing Pyq", locked=1, vpyq=0)                              # needs_action
+    s.exam("pend", name="Pending", locked=1, vpyq=1, pending_syl=1)                   # needs_action
+    return s.db
+
+
+def _client(role="super_admin", db=None):
+    sb = SBStub(db if db is not None else _full_seed())
+    return TestClient(_build_app(sb, role=role)), sb
+
+
+def _detail(client, eid):
+    r = client.get(f"/api/admin/exam-intelligence/console/exams/{eid}")
+    return r
+
+
+# ── Permission + 404 ────────────────────────────────────────────────────────
+
+def test_admin_ok_non_admin_forbidden():
+    ok, _ = _client(role="admin")
+    assert _detail(ok, "rdy").status_code == 200
+    denied, _ = _client(role="user")
+    assert _detail(denied, "rdy").status_code == 403
+
+
+def test_unknown_exam_404():
+    client, _ = _client()
+    assert _detail(client, "ghost").status_code == 404
+
+
+# ── Status parity (the headline claim) ──────────────────────────────────────
+
+def test_status_parity_with_list():
+    client, _ = _client()
+    listing = client.get("/api/admin/exam-intelligence/console/exams?active_state=all&limit=100").json()
+    list_status = {row["id"]: row["status"] for row in listing["items"]}
+    for eid, expected in list_status.items():
+        body = _detail(client, eid).json()
+        assert body["activation_verdict"]["status"] == expected, eid
+
+
+def test_blocked_and_needs_action_classification():
+    client, _ = _client()
+    assert _detail(client, "b1").json()["activation_verdict"]["status"] == "blocked"
+    assert _detail(client, "b2").json()["activation_verdict"]["status"] == "blocked"  # reviewed≠locked
+    assert _detail(client, "npyq").json()["activation_verdict"]["status"] == "needs_action"  # missing pyq advisory
+    assert _detail(client, "rdy").json()["activation_verdict"]["status"] == "ready"
+
+
+# ── Mock readiness is separate + advisory ───────────────────────────────────
+
+def test_mock_readiness_does_not_change_activation_status():
+    client, _ = _client()
+    body = _detail(client, "rdy").json()
+    assert body["mock_readiness"]["status"] in {"blocked", "thin_bank", "ready", "unknown"}
+    assert body["activation_verdict"]["status"] == "ready"  # mock is advisory, never gates
+
+
+def test_thin_mock_bank_is_advisory_and_status_unchanged(monkeypatch):
+    monkeypatch.setattr(cd, "_mock_readiness",
+                        lambda sb, exam_id: {"status": "thin_bank", "detail": "thin"})
+    client, _ = _client()
+    body = _detail(client, "rdy").json()
+    assert body["mock_readiness"]["status"] == "thin_bank"
+    assert body["activation_verdict"]["status"] == "ready"  # advisory never blocks
+    mock_chk = next(c for c in body["activation_checks"] if c["area"] == "mock_readiness")
+    assert mock_chk["gate"] == "advisory"
+    mock_item = next((i for i in body["action_queue"] if i["area"] == "mock_readiness"), None)
+    assert mock_item is not None and mock_item["severity"] == "advisory"
+
+
+# ── Action queue ordering + CTA routes ──────────────────────────────────────
+
+def test_action_queue_ordered_blockers_then_actions_and_routes_valid():
+    client, _ = _client()
+    body = _detail(client, "b1").json()
+    sev_rank = {"blocker": 0, "action": 1, "advisory": 2}
+    ranks = [sev_rank[i["severity"]] for i in body["action_queue"]]
+    assert ranks == sorted(ranks)
+    assert any(i["severity"] == "blocker" for i in body["action_queue"])
+    for i in body["action_queue"]:
+        assert i["cta_route"].replace("b1", "{id}") in VALID_ROUTES
+        assert i["status"] == "open" and i["entity_id"] is None
+    # publish is the outcome, not an action item
+    assert all(i["area"] != "publish" for i in body["action_queue"])
+
+
+def test_checks_hard_advisory_and_unknown_grounding():
+    client, _ = _client()
+    checks = {c["area"]: c for c in _detail(client, "rdy").json()["activation_checks"]}
+    assert checks["setup"]["gate"] == "hard"
+    assert checks["topic_coverage"]["gate"] == "hard"
+    assert checks["publish"]["gate"] == "hard"
+    assert checks["pyq"]["gate"] == "advisory"
+    # all 9 areas present, stages reference them
+    assert set(checks) == {"setup", "documents", "syllabus", "topic_coverage", "pyq",
+                           "updates", "competition", "mock_readiness", "publish"}
+    # An area with NO computable source renders unknown, never a fabricated state:
+    # b1 has no phases, so mock readiness is uncomputable → unknown.
+    b1_checks = {c["area"]: c for c in _detail(client, "b1").json()["activation_checks"]}
+    assert b1_checks["mock_readiness"]["state"] == "unknown"
+
+
+# ── Guards ──────────────────────────────────────────────────────────────────
+
+def _walk(obj):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            yield k
+            yield from _walk(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from _walk(v)
+
+
+def test_no_percentage_or_confidence_fields_anywhere():
+    client, _ = _client()
+    forbidden = {"score_percent", "confidence_score", "confidence_percent"}
+    body = _detail(client, "rdy").json()
+    assert not (set(_walk(body)) & forbidden)
+
+
+def test_evidence_refs_are_kind_rowid_only():
+    client, _ = _client()
+    body = _detail(client, "pend").json()
+    for ref in body["evidence_refs"]:
+        assert set(ref.keys()) == {"kind", "row_id"}
+    # exam identity exposes names, never the raw org id
+    assert "conducting_organization_id" not in set(_walk(body))
+    assert body["exam"]["organization_name"] is None or isinstance(body["exam"]["organization_name"], str)
+
+
+def test_org_and_family_names_resolved():
+    client, _ = _client()
+    body = _detail(client, "rdy").json()
+    assert body["exam"]["organization_name"] == "Staff Selection Commission"
+    assert body["exam"]["family_name"] == "SSC Family"
+
+
+# ── Fail-closed ─────────────────────────────────────────────────────────────
+
+class _RaisingQuery:
+    def __getattr__(self, _n):
+        return lambda *a, **k: self
+
+    def execute(self):
+        raise RuntimeError("simulated DB failure")
+
+
+class FailingSBStub(SBStub):
+    def __init__(self, db, fail_table):
+        super().__init__(db)
+        self.fail_table = fail_table
+
+    def table(self, name):
+        if name == self.fail_table:
+            return _RaisingQuery()
+        return super().table(name)
+
+
+def test_required_read_failure_raises():
+    sb = FailingSBStub(_full_seed(), "exam_topic_coverage")
+    with pytest.raises(DatabaseError):
+        cd.build_console_detail(sb, "rdy")
+
+
+def test_endpoint_returns_500_on_read_failure_not_fabricated_verdict():
+    sb = FailingSBStub(_full_seed(), "exam_topic_coverage")
+    client = TestClient(_build_app(sb), raise_server_exceptions=False)
+    r = client.get("/api/admin/exam-intelligence/console/exams/rdy")
+    assert r.status_code == 500
