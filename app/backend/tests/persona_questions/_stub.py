@@ -22,6 +22,7 @@ class _Query:
         self._pending_update: dict[str, Any] | None = None
         self._pending_upsert: Any = None
         self._on_conflict: list[str] | None = None
+        self._ignore_duplicates = False
 
     def select(self, *args, **kwargs):
         return self
@@ -93,6 +94,7 @@ class _Query:
 
     def upsert(self, payload, on_conflict=None, **kwargs):
         self._pending_upsert = payload
+        self._ignore_duplicates = bool(kwargs.get("ignore_duplicates"))
         if on_conflict:
             self._on_conflict = [c.strip() for c in on_conflict.split(",")]
         return self
@@ -200,7 +202,8 @@ class _Query:
                         match = existing
                         break
                 if match is not None:
-                    match.update(p)
+                    if not self._ignore_duplicates:
+                        match.update(p)
                     upserted.append(match)
                 else:
                     row = dict(p)

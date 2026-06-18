@@ -138,6 +138,65 @@ async def answer(
         )
 
 
+def _attempt_status(sb: Any, attempt_id: str) -> str | None:
+    rows = (
+        sb.table("mock_attempts")
+        .select("status")
+        .eq("id", attempt_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return rows[0].get("status") if rows else None
+
+
+def _mastery_write_complete(sb: Any, attempt_id: str, flag_state: str) -> bool:
+    """Return True when an already-submitted attempt has completed mastery writes.
+
+    This is a replay optimization only. Missing rows deliberately return False so
+    a previous partial writer failure can be retried; MasteryWriter itself is
+    idempotent via the DB unique key and the live RPC audit guard.
+    """
+    responses = (
+        sb.table("mock_attempt_responses")
+        .select("question_snapshot,selected_option_id")
+        .eq("attempt_id", attempt_id)
+        .execute()
+        .data
+        or []
+    )
+    expected_topics = {
+        (r.get("question_snapshot") or {}).get("topic_id")
+        for r in responses
+        if r.get("selected_option_id") is not None
+        and (r.get("question_snapshot") or {}).get("topic_id")
+    }
+    if not expected_topics:
+        return True
+    shadow_rows = (
+        sb.table("mock_mastery_shadow")
+        .select("topic_id")
+        .eq("attempt_id", attempt_id)
+        .eq("flag_state", flag_state)
+        .execute()
+        .data
+        or []
+    )
+    if not expected_topics.issubset({r.get("topic_id") for r in shadow_rows}):
+        return False
+    if flag_state != "live":
+        return True
+    audit_rows = (
+        sb.table("user_topic_mastery_audit")
+        .select("topic_id")
+        .eq("attempt_id", attempt_id)
+        .execute()
+        .data
+        or []
+    )
+    return expected_topics.issubset({r.get("topic_id") for r in audit_rows})
+
 @router.post("/attempts/{attempt_id}/submit")
 async def submit(
     attempt_id: str,
@@ -152,12 +211,15 @@ async def submit(
         # writer derives inline from the persisted raw responses (implementation
         # B; see mastery_writer.process_attempt), so it runs independently and a
         # derivation failure cannot silently suppress the write-back.
+        was_submitted = _attempt_status(sb, attempt_id) == "submitted"
         result = submit_attempt(sb, user_id, attempt_id, body.claimed_answered_count)
-        try:
-            writer = MasteryWriter(sb, get_mastery_write_flag())
-            await writer.process_attempt(attempt_id)
-        except Exception:  # noqa: BLE001
-            logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
+        flag_state = get_mastery_write_flag()
+        if flag_state != "off" and not (was_submitted and _mastery_write_complete(sb, attempt_id, flag_state)):
+            try:
+                writer = MasteryWriter(sb, flag_state)
+                await writer.process_attempt(attempt_id)
+            except Exception:  # noqa: BLE001
+                logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
         return result
     except SubmitConsistencyError as exc:
         logger.warning("submit consistency mismatch attempt=%s: %s", attempt_id, exc)

@@ -223,7 +223,15 @@ class MasteryWriter:
                 "trust_level": trust_level,
             })
         if payload:
-            self.supabase.table("mock_mastery_shadow").insert(payload).execute()
+            # Idempotency boundary for submit replays and safe retries: preserve
+            # the first accepted shadow decision for each attempt/topic/mode and
+            # ignore later reruns instead of overwriting them. The backing unique
+            # index is added in migration 180.
+            self.supabase.table("mock_mastery_shadow").upsert(
+                payload,
+                on_conflict="attempt_id,topic_id,flag_state",
+                ignore_duplicates=True,
+            ).execute()
 
     def _apply_mastery(self, attempt_id: str, deltas: list[Any], trust_level: str = "platform_verified") -> None:
         for d in deltas:
