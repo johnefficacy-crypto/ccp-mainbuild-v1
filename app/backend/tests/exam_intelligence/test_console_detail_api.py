@@ -390,3 +390,61 @@ def test_competition_selected_row_on_later_page(monkeypatch):
     assert comp["state"] == "done"
     # locked (cm3, page 2) wins precedence over reviewed
     assert {(r["kind"], r["row_id"]) for r in comp["evidence_refs"]} == {("exam_competition_metrics", "cm3")}
+
+
+# ── Blocked coverage preserves pending/stale reasons + evidence ─────────────
+
+_STALE = "2026-01-01T00:00:00+00:00"
+_CLASSIFIER_AREAS = {"setup", "topic_coverage", "pyq", "syllabus", "updates"}
+
+
+def _blocked_pending_db(stale=False):
+    db = _causal_base()
+    # No locked coverage (force blocked) + one pending coverage row.
+    db["exam_topic_coverage"] = [
+        {"id": "e-cp", "exam_id": "e", "reviewer_status": "pending_review",
+         "created_at": _STALE if stale else _RECENT},
+    ]
+    return db
+
+
+def test_blocked_coverage_with_pending_keeps_reasons_and_evidence():
+    db = _blocked_pending_db()
+    client, _ = _client(db=db)
+    detail = _detail(client, "e").json()
+    assert detail["activation_verdict"]["status"] == _list_status(db, "e") == "blocked"
+    tc = next(c for c in detail["activation_checks"] if c["area"] == "topic_coverage")
+    assert tc["state"] == "blocked" and tc["gate"] == "hard"
+    assert tc["reasons"] == ["no_locked_coverage", "pending_review"]  # deterministic, no dup
+    refs = {(r["kind"], r["row_id"]) for r in tc["evidence_refs"]}
+    assert ("exam_topic_coverage", "e-cp") in refs
+    item = next(i for i in detail["action_queue"] if i["area"] == "topic_coverage")
+    assert {(r["kind"], r["row_id"]) for r in item["evidence_refs"]} == refs
+
+
+def test_blocked_coverage_with_stale_pending_adds_stale_reason():
+    db = _blocked_pending_db(stale=True)
+    client, _ = _client(db=db)
+    detail = _detail(client, "e").json()
+    assert detail["activation_verdict"]["status"] == _list_status(db, "e") == "blocked"
+    tc = next(c for c in detail["activation_checks"] if c["area"] == "topic_coverage")
+    assert tc["reasons"] == ["no_locked_coverage", "pending_review", "stale_review_queue"]
+    assert ("exam_topic_coverage", "e-cp") in {(r["kind"], r["row_id"]) for r in tc["evidence_refs"]}
+
+
+def test_every_verdict_reason_has_a_classifier_owned_check():
+    """Strengthened reason parity: each verdict reason token must be carried by
+    at least one classifier-owned, non-publish check — not merely 'some
+    explanation exists'."""
+    client, _ = _client()
+    for db in (_full_seed(), _blocked_pending_db(), _blocked_pending_db(stale=True)):
+        c2, _ = _client(db=db)
+        listing = c2.get("/api/admin/exam-intelligence/console/exams?active_state=all&limit=100").json()
+        for row in listing["items"]:
+            body = _detail(c2, row["id"]).json()
+            owned = set()
+            for chk in body["activation_checks"]:
+                if chk["area"] in _CLASSIFIER_AREAS:
+                    owned.update(chk["reasons"])
+            for token in body["activation_verdict"]["reasons"]:
+                assert token in owned, (row["id"], token, owned)

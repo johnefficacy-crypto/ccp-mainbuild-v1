@@ -276,9 +276,19 @@ def build_console_detail(sb, exam_id: str) -> dict[str, Any]:
     # topic_coverage (hard)
     tc = by_area["topic_coverage"]
     if agg["locked_coverage_count"] == 0:
-        checks.append(_check("topic_coverage", "hard", "blocked",
-                             "No locked topic coverage — planner cannot use this exam",
-                             ["no_locked_coverage"]))
+        # Blocked, but pending coverage rows still carry pending/stale reasons +
+        # evidence (the classifier reports them too). Deterministic order:
+        # no_locked_coverage, pending_review, stale_review_queue.
+        tc_reasons = ["no_locked_coverage"]
+        if tc["pending_count"] > 0:
+            tc_reasons.append("pending_review")
+            if tc["stale_count"] > 0:
+                tc_reasons.append("stale_review_queue")
+        detail = "No locked topic coverage — planner cannot use this exam"
+        if tc["pending_count"] > 0:
+            detail += f" · {tc['pending_count']} pending review"
+        checks.append(_check("topic_coverage", "hard", "blocked", detail,
+                             tc_reasons, tc["evidence_refs"]))
     elif tc["pending_count"] > 0:
         checks.append(_check("topic_coverage", "hard", "needs_action",
                              f"{agg['locked_coverage_count']} locked · {tc['pending_count']} pending review",
