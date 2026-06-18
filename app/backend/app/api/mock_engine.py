@@ -24,9 +24,9 @@ from app.study_os.mock_engine import (
     ConflictError,
     SubmissionPersistenceError,
     SubmitConsistencyError,
-    enqueue_mastery_retry_required,
-    has_active_mastery_retry,
-    mark_mastery_retry_done_required,
+    claim_mastery_retry_required,
+    complete_mastery_retry_required,
+    mark_mastery_retry_pending_required,
     mastery_retry_done,
     get_attempt,
     get_result,
@@ -173,25 +173,34 @@ async def submit(
         result = submit_attempt(sb, user_id, attempt_id, body.claimed_answered_count)
         flag_state = get_mastery_write_flag()
         if flag_state != "off" and not (was_submitted and mastery_retry_done(sb, attempt_id, flag_state)):
-            if not has_active_mastery_retry(sb, attempt_id):
+            try:
+                claimed_job_id = claim_mastery_retry_required(sb, attempt_id, flag_state)
+            except Exception as claim_exc:  # noqa: BLE001
+                logger.exception("mastery retry claim failed attempt=%s user=%s", attempt_id, user_id)
+                raise HTTPException(
+                    status_code=503,
+                    detail={"error": "mastery_retry_claim_failed", "detail": str(claim_exc)},
+                    headers={"Retry-After": "1"},
+                ) from claim_exc
+            if claimed_job_id:
                 try:
                     writer = MasteryWriter(sb, flag_state)
                     await writer.process_attempt(attempt_id)
-                    mark_mastery_retry_done_required(sb, attempt_id, flag_state)
+                    complete_mastery_retry_required(sb, claimed_job_id)
                 except Exception as exc:  # noqa: BLE001
                     try:
-                        enqueue_mastery_retry_required(sb, attempt_id, flag_state, last_error=str(exc))
-                    except Exception as enqueue_exc:  # noqa: BLE001
+                        mark_mastery_retry_pending_required(sb, claimed_job_id, str(exc))
+                    except Exception as retry_exc:  # noqa: BLE001
                         logger.exception(
-                            "mastery retry enqueue failed attempt=%s user=%s",
+                            "mastery retry reschedule failed attempt=%s user=%s",
                             attempt_id,
                             user_id,
                         )
                         raise HTTPException(
                             status_code=503,
-                            detail={"error": "mastery_retry_enqueue_failed", "detail": str(enqueue_exc)},
+                            detail={"error": "mastery_retry_enqueue_failed", "detail": str(retry_exc)},
                             headers={"Retry-After": "1"},
-                        ) from enqueue_exc
+                        ) from retry_exc
                     logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
         return result
     except SubmitConsistencyError as exc:

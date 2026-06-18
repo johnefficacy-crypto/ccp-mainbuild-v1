@@ -20,7 +20,12 @@ def test_mastery_retry_migration_pins_retry_flag_state():
     sql = migration.read_text()
 
     assert "add column if not exists mastery_flag_state text" in sql
-    assert "job_kind = 'mastery_retry' and mastery_flag_state in ('shadow', 'live')" in sql
+    assert "job_kind = 'mastery_retry'" in sql
+    assert "mastery_flag_state in ('shadow', 'live')" in sql
     assert "job_kind <> 'mastery_retry' and mastery_flag_state is null" in sql
+    assert "legacy_unscoped_mastery_retry_not_replayable" in sql
+    assert "mastery_flag_state is null" in sql
+    assert "status = 'failed'" in sql
     assert "create unique index if not exists mock_attempt_jobs_mastery_active_uidx" in sql
+    assert "create unique index if not exists mock_attempt_jobs_mastery_done_uidx" in sql
     assert "where job_kind = 'mastery_retry' and status in ('pending','running')" in sql
