@@ -12,7 +12,21 @@
       "Bash(git checkout *)",
       "Bash(gh pr *)",
       "Bash(git stash *)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(command -v git)",
+      "Bash(command -v curl)",
+      "Bash(command -v jq)",
+      "Bash(command -v psql)",
+      "Bash(command -v python)",
+      "Bash(jq --version)",
+      "Bash(psql --version)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Read(//c/Users/user/scoop/shims//**)",
+      "Bash(where.exe psql *)",
+      "Bash(where.exe jq *)",
+      "Read(//c/Users/user/scoop/apps/postgresql//**)",
+      "Bash(powershell.exe -NoProfile -Command \"\\(Get-Command psql -ErrorAction SilentlyContinue\\).Source\")"
     ]
   }
 }
