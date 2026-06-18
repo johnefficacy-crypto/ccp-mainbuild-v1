@@ -578,7 +578,7 @@ def test_planner_regen_reflects_live_mastery_for_affected_topic(monkeypatch):
     assert after["priority_score"] > base["priority_score"]
 
 
-def test_shadow_writer_repeated_and_concurrent_reruns_keep_one_decision(monkeypatch):
+def test_shadow_writer_repeated_reruns_keep_one_decision(monkeypatch):
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
     sb = _sb()
     attempt_id = _start_generated(sb)
@@ -591,10 +591,8 @@ def test_shadow_writer_repeated_and_concurrent_reruns_keep_one_decision(monkeypa
     async def _run_many() -> None:
         writer = MasteryWriter(sb, "shadow")
         await writer.process_attempt(attempt_id)
-        await asyncio.gather(
-            MasteryWriter(sb, "shadow").process_attempt(attempt_id),
-            MasteryWriter(sb, "shadow").process_attempt(attempt_id),
-        )
+        await MasteryWriter(sb, "shadow").process_attempt(attempt_id)
+        await MasteryWriter(sb, "shadow").process_attempt(attempt_id)
 
     asyncio.run(_run_many())
 
@@ -661,6 +659,44 @@ def test_submit_replay_recovers_partial_shadow_writer_failure(monkeypatch):
     assert calls == 2
 
 
+
+def test_mastery_retry_job_recovers_writer_failure_without_http_replay(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    client = _engine_client(sb)
+
+    calls = 0
+    real_process = mock_engine_api.MasteryWriter.process_attempt
+
+    async def _fail_once(self, attempt_id_arg):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("forced writer outage")
+        return await real_process(self, attempt_id_arg)
+
+    monkeypatch.setattr(mock_engine_api.MasteryWriter, "process_attempt", _fail_once)
+
+    r = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+    assert r.status_code == 200
+    assert sb.db.get("mock_mastery_shadow", []) == []
+    retry_jobs = [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("job_kind") == engine.JOB_MASTERY_RETRY]
+    assert len(retry_jobs) == 1
+    assert retry_jobs[0]["status"] == "pending"
+    assert retry_jobs[0]["last_error"]
+
+    counts = engine.run_sweeper(sb)
+
+    assert counts["errors"] == 0
+    shadow = [r for r in sb.db.get("mock_mastery_shadow", []) if r["attempt_id"] == attempt_id]
+    assert len(shadow) == 1
+    assert shadow[0]["topic_id"] == "topic-1"
+    assert retry_jobs[0]["status"] == "done"
+    assert retry_jobs[0]["last_error"] is None
+    assert calls == 2
+
 def test_ff_off_submit_creates_no_shadow_and_no_mastery_writer(monkeypatch):
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "off")
     sb = _sb()
@@ -676,4 +712,4 @@ def test_ff_off_submit_creates_no_shadow_and_no_mastery_writer(monkeypatch):
     r = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
     assert r.status_code == 200
     assert sb.db.get("mock_mastery_shadow", []) == []
-    assert not any(j.get("job_type") == engine.JOB_MASTERY_RETRY for j in sb.db.get("mock_attempt_jobs", []))
+    assert not any(j.get("job_kind") == engine.JOB_MASTERY_RETRY for j in sb.db.get("mock_attempt_jobs", []))

@@ -10,6 +10,7 @@ Mocks.jsx analytics list keeps working unchanged.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -1233,6 +1234,10 @@ def _run_job(supabase: Any, job: dict) -> None:
     elif kind == JOB_MOCK_TESTS_RETRY:
         _retry_emit_mock_tests_row(supabase, attempt_id)
         _recover_corrections_after_mock_tests(supabase, attempt_id)
+    elif kind == JOB_MASTERY_RETRY:
+        from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
+
+        asyncio.run(MasteryWriter(supabase, get_mastery_write_flag()).process_attempt(attempt_id))
     else:
         raise RuntimeError(f"unknown job_kind {kind!r}")
 
