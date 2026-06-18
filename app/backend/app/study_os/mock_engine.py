@@ -1148,6 +1148,7 @@ JOB_AUTO_SUBMIT = "auto_submit"
 JOB_ANALYTICS_RETRY = "analytics_retry"
 JOB_MASTERY_RETRY = "mastery_retry"
 JOB_MOCK_TESTS_RETRY = "mock_tests_retry"
+_JOB_LEASE_SECONDS = 60
 
 _ACTIVE_JOB_STATUSES = ["pending", "running"]
 
@@ -1199,6 +1200,112 @@ def schedule_job(
         _safe(lambda: supabase.table("mock_attempt_jobs").insert(payload).execute(), default=None)  # safe-write-ok: fire-and-forget job scheduling; sweeper re-enqueues missed auto-submit jobs
 
 
+
+
+def _validate_mastery_retry_flag(flag_state: str | None) -> None:
+    if flag_state not in {"shadow", "live"}:
+        raise ValueError("mastery retry flag_state must be shadow or live")
+
+
+def _mastery_lease_until() -> str:
+    return (_now() + timedelta(seconds=_JOB_LEASE_SECONDS)).isoformat()
+
+
+def _mastery_retry_done(supabase: Any, attempt_id: str, flag_state: str) -> bool:
+    _validate_mastery_retry_flag(flag_state)
+    rows = (
+        supabase.table("mock_attempt_jobs")
+        .select("id")
+        .eq("job_kind", JOB_MASTERY_RETRY)
+        .eq("attempt_id", attempt_id)
+        .eq("mastery_flag_state", flag_state)
+        .eq("status", "done")
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return bool(rows)
+
+
+def mastery_retry_done(supabase: Any, attempt_id: str, flag_state: str) -> bool:
+    return _mastery_retry_done(supabase, attempt_id, flag_state)
+
+
+def claim_mastery_retry_required(supabase: Any, attempt_id: str, flag_state: str) -> str | None:
+    _validate_mastery_retry_flag(flag_state)
+    rows = (
+        supabase.rpc(
+            "claim_mock_mastery_retry",
+            {
+                "p_attempt_id": attempt_id,
+                "p_flag_state": flag_state,
+                "p_lease_until": _mastery_lease_until(),
+            },
+        )
+        .execute()
+        .data
+        or []
+    )
+    if not rows:
+        return None
+    row = rows[0]
+    return row.get("id") if row.get("claimed") else None
+
+
+def enqueue_mastery_retry_required(
+    supabase: Any,
+    attempt_id: str,
+    flag_state: str,
+    *,
+    last_error: str | None = None,
+    scheduled_for: str | None = None,
+) -> None:
+    _validate_mastery_retry_flag(flag_state)
+    rows = (
+        supabase.table("mock_attempt_jobs")
+        .select("id,attempts,mastery_flag_state")
+        .eq("job_kind", JOB_MASTERY_RETRY)
+        .eq("attempt_id", attempt_id)
+        .eq("mastery_flag_state", flag_state)
+        .in_("status", _ACTIVE_JOB_STATUSES)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    now_iso = scheduled_for or _now_iso()
+    if rows:
+        patch = {"status": "pending", "scheduled_for": now_iso, "updated_at": _now_iso()}
+        if last_error is not None:
+            patch["last_error"] = last_error[:500]
+        supabase.table("mock_attempt_jobs").update(patch).eq("id", rows[0]["id"]).execute()
+        return
+    payload = {
+        "job_kind": JOB_MASTERY_RETRY,
+        "attempt_id": attempt_id,
+        "mastery_flag_state": flag_state,
+        "scheduled_for": now_iso,
+        "attempts": 0,
+        "status": "pending",
+        "last_error": last_error[:500] if last_error else None,
+    }
+    supabase.table("mock_attempt_jobs").insert(payload).execute()
+
+
+def mark_mastery_retry_pending_required(supabase: Any, job_id: str, last_error: str) -> None:
+    supabase.table("mock_attempt_jobs").update({
+        "status": "pending",
+        "scheduled_for": _now_iso(),
+        "last_error": last_error[:500],
+        "updated_at": _now_iso(),
+    }).eq("id", job_id).execute()
+
+
+def complete_mastery_retry_required(supabase: Any, job_id: str) -> None:
+    supabase.rpc("complete_mock_mastery_retry", {"p_job_id": job_id}).execute()
+
+
 def _complete_job(supabase: Any, job_kind: str, attempt_id: str) -> None:
     """Mark any active job for (job_kind, attempt) done — keeps the row for audit."""
     _safe(
@@ -1217,7 +1324,7 @@ def _mark_running(supabase: Any, job: dict, now: datetime) -> int:
     attempts = int(job.get("attempts") or 0) + 1
     _safe(
         lambda: supabase.table("mock_attempt_jobs")
-        .update({"status": "running", "attempts": attempts, "updated_at": now.isoformat()})
+        .update({"status": "running", "attempts": attempts, "scheduled_for": (now + timedelta(seconds=_JOB_LEASE_SECONDS)).isoformat(), "updated_at": now.isoformat()})
         .eq("id", job["id"])
         .execute(),
         default=None,
@@ -1257,6 +1364,12 @@ def _run_job(supabase: Any, job: dict) -> None:
     elif kind == JOB_MOCK_TESTS_RETRY:
         _retry_emit_mock_tests_row(supabase, attempt_id)
         _recover_corrections_after_mock_tests(supabase, attempt_id)
+    elif kind == JOB_MASTERY_RETRY:
+        from app.study_os.mastery_writer import MasteryWriter
+
+        flag_state = job.get("mastery_flag_state")
+        _validate_mastery_retry_flag(flag_state)
+        MasteryWriter(supabase, flag_state).process_attempt_sync(attempt_id)
     else:
         raise RuntimeError(f"unknown job_kind {kind!r}")
 
@@ -1337,7 +1450,10 @@ def run_sweeper(
         kind = job.get("job_kind")
         try:
             _run_job(supabase, job)
-            _complete_job(supabase, kind, job.get("attempt_id"))
+            if kind == JOB_MASTERY_RETRY:
+                complete_mastery_retry_required(supabase, job["id"])
+            else:
+                _complete_job(supabase, kind, job.get("attempt_id"))
             if kind == JOB_AUTO_SUBMIT:
                 counts["auto_submitted"] += 1
             elif kind == JOB_ANALYTICS_RETRY:

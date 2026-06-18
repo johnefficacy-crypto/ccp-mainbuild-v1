@@ -24,6 +24,10 @@ from app.study_os.mock_engine import (
     ConflictError,
     SubmissionPersistenceError,
     SubmitConsistencyError,
+    claim_mastery_retry_required,
+    complete_mastery_retry_required,
+    mark_mastery_retry_pending_required,
+    mastery_retry_done,
     get_attempt,
     get_result,
     get_review,
@@ -138,6 +142,19 @@ async def answer(
         )
 
 
+def _attempt_status(sb: Any, attempt_id: str) -> str | None:
+    rows = (
+        sb.table("mock_attempts")
+        .select("status")
+        .eq("id", attempt_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return rows[0].get("status") if rows else None
+
+
 @router.post("/attempts/{attempt_id}/submit")
 async def submit(
     attempt_id: str,
@@ -152,12 +169,39 @@ async def submit(
         # writer derives inline from the persisted raw responses (implementation
         # B; see mastery_writer.process_attempt), so it runs independently and a
         # derivation failure cannot silently suppress the write-back.
+        was_submitted = _attempt_status(sb, attempt_id) == "submitted"
         result = submit_attempt(sb, user_id, attempt_id, body.claimed_answered_count)
-        try:
-            writer = MasteryWriter(sb, get_mastery_write_flag())
-            await writer.process_attempt(attempt_id)
-        except Exception:  # noqa: BLE001
-            logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
+        flag_state = get_mastery_write_flag()
+        if flag_state != "off" and not (was_submitted and mastery_retry_done(sb, attempt_id, flag_state)):
+            try:
+                claimed_job_id = claim_mastery_retry_required(sb, attempt_id, flag_state)
+            except Exception as claim_exc:  # noqa: BLE001
+                logger.exception("mastery retry claim failed attempt=%s user=%s", attempt_id, user_id)
+                raise HTTPException(
+                    status_code=503,
+                    detail={"error": "mastery_retry_claim_failed", "detail": str(claim_exc)},
+                    headers={"Retry-After": "1"},
+                ) from claim_exc
+            if claimed_job_id:
+                try:
+                    writer = MasteryWriter(sb, flag_state)
+                    await writer.process_attempt(attempt_id)
+                    complete_mastery_retry_required(sb, claimed_job_id)
+                except Exception as exc:  # noqa: BLE001
+                    try:
+                        mark_mastery_retry_pending_required(sb, claimed_job_id, str(exc))
+                    except Exception as retry_exc:  # noqa: BLE001
+                        logger.exception(
+                            "mastery retry reschedule failed attempt=%s user=%s",
+                            attempt_id,
+                            user_id,
+                        )
+                        raise HTTPException(
+                            status_code=503,
+                            detail={"error": "mastery_retry_enqueue_failed", "detail": str(retry_exc)},
+                            headers={"Retry-After": "1"},
+                        ) from retry_exc
+                    logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
         return result
     except SubmitConsistencyError as exc:
         logger.warning("submit consistency mismatch attempt=%s: %s", attempt_id, exc)

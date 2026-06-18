@@ -308,7 +308,7 @@ def test_blocked_gate_returns_409_via_api_with_zero_writes():
 
 def test_inserted_attempt_satisfies_xor_and_owner_consistency():
     sb = _sb()
-    result = svc.persist_and_start(
+    svc.persist_and_start(
         sb, user_id=USER, exam_id=EXAM, exam_phase_id=PHASE
     )
     att = sb.db["mock_attempts"][0]
@@ -472,8 +472,8 @@ def _answer_all(sb: SBStub, attempt_id: str, *, correct: bool) -> None:
 
 
 def test_submit_runs_masterywriter_for_template_id_null_attempt_shadow(monkeypatch):
-    # Reframed from "schedules the mastery job": the engine submit route runs
-    # MasteryWriter INLINE (no JOB_MASTERY_RETRY is scheduled in live code). This
+    # The engine submit route still runs MasteryWriter INLINE on the first pass;
+    # the durable mastery_retry row is only the completion/recovery marker. This
     # proves it fires for a template_id-null (generated) attempt — source-agnostic.
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
     sb = _sb()
@@ -576,3 +576,327 @@ def test_planner_regen_reflects_live_mastery_for_affected_topic(monkeypatch):
     assert after is not None
     # Worse mastery + a logged error raises the topic's priority on regen.
     assert after["priority_score"] > base["priority_score"]
+
+
+def test_atomic_mastery_retry_claim_has_one_winner(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+
+    first = engine.claim_mastery_retry_required(sb, attempt_id, "shadow")
+    second = engine.claim_mastery_retry_required(sb, attempt_id, "shadow")
+
+    assert first
+    assert second is None
+    jobs = [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("job_kind") == engine.JOB_MASTERY_RETRY]
+    assert len(jobs) == 1
+    assert jobs[0]["id"] == first
+    assert jobs[0]["status"] == "running"
+    assert jobs[0]["mastery_flag_state"] == "shadow"
+
+
+def test_only_claim_winner_invokes_mastery_writer(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+
+    calls: list[str] = []
+    first = engine.claim_mastery_retry_required(sb, attempt_id, "shadow")
+    second = engine.claim_mastery_retry_required(sb, attempt_id, "shadow")
+
+    if first:
+        calls.append("winner")
+        from app.study_os.mastery_writer import MasteryWriter
+
+        MasteryWriter(sb, "shadow").process_attempt_sync(attempt_id)
+        engine.complete_mastery_retry_required(sb, first)
+    if second:
+        calls.append("loser")
+        raise AssertionError("losing claim must not run the writer")
+
+    assert calls == ["winner"]
+    assert len(sb.db.get("mock_mastery_shadow", [])) == 1
+    assert sb.db.get("mock_attempt_jobs", [])[0]["status"] == "done"
+
+
+def test_running_mastery_retry_lease_blocks_early_sweeper_reclaim(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    engine.claim_mastery_retry_required(sb, attempt_id, "shadow")
+
+    def _unexpected(self, attempt_id_arg):
+        raise AssertionError("running lease should not be reclaimed before scheduled_for")
+
+    monkeypatch.setattr(mock_engine_api.MasteryWriter, "process_attempt_sync", _unexpected)
+
+    counts = engine.run_sweeper(sb)
+
+    assert counts["errors"] == 0
+    assert sb.db.get("mock_mastery_shadow", []) == []
+    assert sb.db["mock_attempt_jobs"][0]["status"] == "running"
+
+
+def test_expired_running_mastery_retry_is_recovered_by_sweeper(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    engine.claim_mastery_retry_required(sb, attempt_id, "shadow")
+    sb.db["mock_attempt_jobs"][0]["scheduled_for"] = "2000-01-01T00:00:00+00:00"
+
+    counts = engine.run_sweeper(sb)
+
+    assert counts["errors"] == 0
+    assert len(sb.db.get("mock_mastery_shadow", [])) == 1
+    assert sb.db["mock_attempt_jobs"][0]["status"] == "done"
+
+
+def test_duplicate_mastery_completion_keeps_one_done_marker(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    job_id = engine.claim_mastery_retry_required(sb, attempt_id, "shadow")
+    assert job_id
+
+    engine.complete_mastery_retry_required(sb, job_id)
+    engine.complete_mastery_retry_required(sb, job_id)
+
+    done = [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("job_kind") == engine.JOB_MASTERY_RETRY and j.get("status") == "done"]
+    assert len(done) == 1
+    assert done[0]["mastery_flag_state"] == "shadow"
+
+def test_shadow_writer_repeated_reruns_keep_one_decision(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    engine.submit_attempt(sb, USER, attempt_id)
+
+    import asyncio
+    from app.study_os.mastery_writer import MasteryWriter
+
+    async def _run_many() -> None:
+        writer = MasteryWriter(sb, "shadow")
+        await writer.process_attempt(attempt_id)
+        await MasteryWriter(sb, "shadow").process_attempt(attempt_id)
+        await MasteryWriter(sb, "shadow").process_attempt(attempt_id)
+
+    asyncio.run(_run_many())
+
+    shadow = [r for r in sb.db.get("mock_mastery_shadow", []) if r["attempt_id"] == attempt_id]
+    keys = [(r["attempt_id"], r["topic_id"], r["flag_state"]) for r in shadow]
+    assert keys == [(attempt_id, "topic-1", "shadow")]
+
+
+def test_submit_fresh_runs_mastery_once_and_clean_replay_skips_writer(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    client = _engine_client(sb)
+
+    calls: list[str] = []
+    real_process = mock_engine_api.MasteryWriter.process_attempt
+
+    async def _counting_process(self, attempt_id_arg):
+        calls.append(attempt_id_arg)
+        return await real_process(self, attempt_id_arg)
+
+    monkeypatch.setattr(mock_engine_api.MasteryWriter, "process_attempt", _counting_process)
+
+    r1 = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+    before_shadow = list(sb.db.get("mock_mastery_shadow", []))
+    r2 = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.json() == r2.json()
+    assert calls == [attempt_id]
+    assert sb.db.get("mock_mastery_shadow", []) == before_shadow
+    retry_jobs = [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("job_kind") == engine.JOB_MASTERY_RETRY]
+    assert len(retry_jobs) == 1
+    assert retry_jobs[0]["status"] == "done"
+    assert retry_jobs[0]["mastery_flag_state"] == "shadow"
+
+
+def test_replay_while_retry_pending_does_not_execute_writer_inline(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    client = _engine_client(sb)
+
+    calls = 0
+    real_sync = mock_engine_api.MasteryWriter.process_attempt_sync
+
+    def _fail_once(self, attempt_id_arg):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("forced partial writer failure")
+        return real_sync(self, attempt_id_arg)
+
+    monkeypatch.setattr(mock_engine_api.MasteryWriter, "process_attempt_sync", _fail_once)
+
+    r1 = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+    assert r1.status_code == 200
+    assert sb.db.get("mock_mastery_shadow", []) == []
+    retry_jobs = [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("job_kind") == engine.JOB_MASTERY_RETRY]
+    assert len(retry_jobs) == 1
+    assert retry_jobs[0]["mastery_flag_state"] == "shadow"
+    assert retry_jobs[0]["status"] == "pending"
+
+    r2 = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+    assert r2.status_code == 200
+    assert sb.db.get("mock_mastery_shadow", []) == []
+    assert calls == 1
+    assert len([j for j in sb.db.get("mock_attempt_jobs", []) if j.get("job_kind") == engine.JOB_MASTERY_RETRY]) == 1
+
+    engine.run_sweeper(sb)
+    shadow = [r for r in sb.db.get("mock_mastery_shadow", []) if r["attempt_id"] == attempt_id]
+    assert len(shadow) == 1
+    assert calls == 2
+
+def test_mastery_retry_job_recovers_writer_failure_without_http_replay(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    client = _engine_client(sb)
+
+    calls = 0
+    real_sync = mock_engine_api.MasteryWriter.process_attempt_sync
+
+    def _fail_once(self, attempt_id_arg):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("forced writer outage")
+        return real_sync(self, attempt_id_arg)
+
+    monkeypatch.setattr(mock_engine_api.MasteryWriter, "process_attempt_sync", _fail_once)
+
+    r = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+    assert r.status_code == 200
+    assert sb.db.get("mock_mastery_shadow", []) == []
+    retry_jobs = [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("job_kind") == engine.JOB_MASTERY_RETRY]
+    assert len(retry_jobs) == 1
+    assert retry_jobs[0]["status"] == "pending"
+    assert retry_jobs[0]["mastery_flag_state"] == "shadow"
+    assert retry_jobs[0]["last_error"]
+
+    counts = engine.run_sweeper(sb)
+
+    assert counts["errors"] == 0
+    shadow = [r for r in sb.db.get("mock_mastery_shadow", []) if r["attempt_id"] == attempt_id]
+    assert len(shadow) == 1
+    assert shadow[0]["topic_id"] == "topic-1"
+    assert retry_jobs[0]["status"] == "done"
+    assert retry_jobs[0]["last_error"] is None
+    assert calls == 2
+
+    engine.run_sweeper(sb)
+    assert len([r for r in sb.db.get("mock_mastery_shadow", []) if r["attempt_id"] == attempt_id]) == 1
+    assert calls == 2
+
+
+def test_shadow_retry_remains_shadow_after_env_changes_to_live(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    client = _engine_client(sb)
+
+    calls = 0
+    real_sync = mock_engine_api.MasteryWriter.process_attempt_sync
+
+    def _fail_once(self, attempt_id_arg):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("forced writer outage")
+        return real_sync(self, attempt_id_arg)
+
+    monkeypatch.setattr(mock_engine_api.MasteryWriter, "process_attempt_sync", _fail_once)
+
+    assert client.post(f"/api/study/mocks/attempts/{attempt_id}/submit").status_code == 200
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    engine.run_sweeper(sb)
+
+    shadow = [r for r in sb.db.get("mock_mastery_shadow", []) if r["attempt_id"] == attempt_id]
+    assert len(shadow) == 1
+    assert shadow[0]["flag_state"] == "shadow"
+    assert sb.db.get("user_topic_mastery_audit", []) == []
+
+
+def test_shadow_done_does_not_count_as_live_done(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    client = _engine_client(sb)
+
+    assert client.post(f"/api/study/mocks/attempts/{attempt_id}/submit").status_code == 200
+    assert [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("mastery_flag_state") == "shadow" and j.get("status") == "done"]
+
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    assert client.post(f"/api/study/mocks/attempts/{attempt_id}/submit").status_code == 200
+
+    assert [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("mastery_flag_state") == "live" and j.get("status") == "done"]
+    flags = {r["flag_state"] for r in sb.db.get("mock_mastery_shadow", []) if r["attempt_id"] == attempt_id}
+    assert {"shadow", "live"}.issubset(flags)
+    assert sb.db.get("user_topic_mastery_audit", [])
+
+
+def test_mastery_retry_enqueue_failure_is_observable(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    client = _engine_client(sb)
+
+    async def _fail_writer(self, attempt_id_arg):
+        raise RuntimeError("writer failed")
+
+    original_table = sb.table
+
+    def _table_with_retry_update_failure(name):
+        query = original_table(name)
+        if name == "mock_attempt_jobs":
+            def _fail_update(payload):
+                raise RuntimeError("retry update failed")
+
+            query.update = _fail_update  # type: ignore[method-assign]
+        return query
+
+    monkeypatch.setattr(mock_engine_api.MasteryWriter, "process_attempt", _fail_writer)
+    monkeypatch.setattr(sb, "table", _table_with_retry_update_failure)
+
+    r = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+
+    assert r.status_code == 503
+    assert r.json()["detail"]["error"] == "mastery_retry_enqueue_failed"
+    assert sb.db.get("mock_mastery_shadow", []) == []
+    retry_jobs = [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("job_kind") == engine.JOB_MASTERY_RETRY]
+    assert len(retry_jobs) == 1
+    assert retry_jobs[0]["status"] == "running"
+
+def test_ff_off_submit_creates_no_shadow_and_no_mastery_writer(monkeypatch):
+    monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "off")
+    sb = _sb()
+    attempt_id = _start_generated(sb)
+    _answer_all(sb, attempt_id, correct=True)
+    client = _engine_client(sb)
+
+    async def _unexpected_process(self, attempt_id_arg):  # pragma: no cover - should not run
+        raise AssertionError("mastery writer should not run when FF is off")
+
+    monkeypatch.setattr(mock_engine_api.MasteryWriter, "process_attempt", _unexpected_process)
+
+    r = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
+    assert r.status_code == 200
+    assert sb.db.get("mock_mastery_shadow", []) == []
+    assert not any(j.get("job_kind") == engine.JOB_MASTERY_RETRY for j in sb.db.get("mock_attempt_jobs", []))

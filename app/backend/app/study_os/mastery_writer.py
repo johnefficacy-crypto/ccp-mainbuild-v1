@@ -52,6 +52,9 @@ class MasteryWriter:
         self.flag_state = flag_state
 
     async def process_attempt(self, attempt_id: str) -> None:
+        self.process_attempt_sync(attempt_id)
+
+    def process_attempt_sync(self, attempt_id: str) -> None:
         # Ordering decision (PR-fix-3): implementation B — the writer derives
         # mastery inline from the persisted raw attempt data (mock_attempts +
         # mock_attempt_responses, whose is_correct is set at submit time), NOT
@@ -223,7 +226,15 @@ class MasteryWriter:
                 "trust_level": trust_level,
             })
         if payload:
-            self.supabase.table("mock_mastery_shadow").insert(payload).execute()
+            # Idempotency boundary for submit replays and safe retries: preserve
+            # the first accepted shadow decision for each attempt/topic/mode and
+            # ignore later reruns instead of overwriting them. The backing unique
+            # index is added in migration 180.
+            self.supabase.table("mock_mastery_shadow").upsert(
+                payload,
+                on_conflict="attempt_id,topic_id,flag_state",
+                ignore_duplicates=True,
+            ).execute()
 
     def _apply_mastery(self, attempt_id: str, deltas: list[Any], trust_level: str = "platform_verified") -> None:
         for d in deltas:

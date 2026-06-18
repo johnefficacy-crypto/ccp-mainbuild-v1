@@ -22,6 +22,7 @@ class _Query:
         self._pending_update: dict[str, Any] | None = None
         self._pending_upsert: Any = None
         self._on_conflict: list[str] | None = None
+        self._ignore_duplicates = False
 
     def select(self, *args, **kwargs):
         return self
@@ -93,6 +94,7 @@ class _Query:
 
     def upsert(self, payload, on_conflict=None, **kwargs):
         self._pending_upsert = payload
+        self._ignore_duplicates = bool(kwargs.get("ignore_duplicates"))
         if on_conflict:
             self._on_conflict = [c.strip() for c in on_conflict.split(",")]
         return self
@@ -200,7 +202,8 @@ class _Query:
                         match = existing
                         break
                 if match is not None:
-                    match.update(p)
+                    if not self._ignore_duplicates:
+                        match.update(p)
                     upserted.append(match)
                 else:
                     row = dict(p)
@@ -264,11 +267,53 @@ class SBStub:
             return _RpcCall(self._inc("community_resources", params.get("p_resource_id"), "report_count", params.get("p_delta", 0), floor_at_zero=True))
         if name == "apply_mock_mastery_delta":
             return _RpcCall(self._apply_mock_mastery_delta(params))
+        if name == "claim_mock_mastery_retry":
+            return _RpcCall(self._claim_mock_mastery_retry(params))
+        if name == "complete_mock_mastery_retry":
+            return _RpcCall(self._complete_mock_mastery_retry(params))
         if name == "update_pyq_question_review_atomic":
             return _RpcCall(self._update_pyq_question_review_atomic(params))
         if name == "start_attempt_from_blueprint":
             return _RpcCall(self._start_attempt_from_blueprint(params))
         return _RpcCall(None)
+
+
+    def _claim_mock_mastery_retry(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        import uuid as _uuid
+
+        attempt_id = params.get("p_attempt_id")
+        flag_state = params.get("p_flag_state")
+        lease_until = params.get("p_lease_until")
+        if flag_state not in {"shadow", "live"}:
+            raise RuntimeError("mastery retry flag_state must be shadow or live")
+        jobs = self.db.setdefault("mock_attempt_jobs", [])
+        for job in jobs:
+            if (
+                job.get("job_kind") == "mastery_retry"
+                and job.get("attempt_id") == attempt_id
+                and job.get("status") in {"pending", "running"}
+            ):
+                return [{"id": job.get("id"), "claimed": False}]
+        job = {
+            "id": str(_uuid.uuid4()),
+            "job_kind": "mastery_retry",
+            "attempt_id": attempt_id,
+            "mastery_flag_state": flag_state,
+            "scheduled_for": lease_until,
+            "attempts": 0,
+            "status": "running",
+            "last_error": None,
+        }
+        jobs.append(job)
+        return [{"id": job["id"], "claimed": True}]
+
+    def _complete_mock_mastery_retry(self, params: dict[str, Any]) -> None:
+        job_id = params.get("p_job_id")
+        for job in self.db.setdefault("mock_attempt_jobs", []):
+            if job.get("id") == job_id and job.get("job_kind") == "mastery_retry":
+                job.update({"status": "done", "last_error": None})
+                return None
+        return None
 
     def _start_attempt_from_blueprint(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         """Emulate the atomic generated-attempt write RPC (migration 178).
