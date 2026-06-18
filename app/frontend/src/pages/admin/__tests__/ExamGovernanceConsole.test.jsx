@@ -1,11 +1,11 @@
 /**
  * Tests for the Exam Governance Console.
  *
- * Wave 4.6H-FE: the no-exam view now renders the ConsoleWorkQueue against the
- * truthful work-queue endpoints (/console/exams + /console/summary), NOT
- * ExamListShell against /exams. The selected-exam view still mounts the
- * embedded <ExamWorkspace variant="console" />. Role gate + route wrapping +
- * Registry regression are unchanged.
+ * Wave 4.6H-FE: the no-exam view renders ConsoleWorkQueue against the work-queue
+ * endpoints (/console/exams + /console/summary).
+ * Wave 4.6I-FE: the selected-exam view now renders ExamActionConsole against
+ * /console/exams/:exam_id (NOT the embedded <ExamWorkspace variant="console" />).
+ * Role gate + route wrapping + Registry regression are unchanged.
  */
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -73,36 +73,81 @@ const SUMMARY = {
   total_count: 2, generated_at: "2026-06-17T00:00:00Z",
 };
 
-function ctxFor(examId) {
-  const name = examId === "exam-2" ? "UPSC CSE" : "SSC CGL";
-  return { exam: { id: examId, name, exam_type: "recruitment" },
-           cycle: null, cycles: [], phases: [], organization: null, family: null };
+// Per-exam action-console detail (/console/exams/:id) — 4.6I-BE shape.
+function detailFor(id) {
+  const ready = id === "exam-2";
+  return {
+    exam: {
+      id, slug: ready ? "upsc-cse" : "ssc-cgl", name: ready ? "UPSC CSE" : "SSC CGL",
+      organization_name: ready ? null : "Staff Selection Commission",
+      family_name: ready ? null : "SSC Family",
+    },
+    activation_verdict: {
+      status: ready ? "ready" : "blocked",
+      headline: ready ? "Ready for aspirants" : "Not ready for aspirants",
+      reasons: ready ? [] : ["no_locked_coverage", "pending_review"],
+    },
+    mock_readiness: { status: ready ? "ready" : "blocked", detail: "2 thin section(s)" },
+    action_queue: ready ? [] : [
+      { id: "topic_coverage", severity: "blocker", area: "topic_coverage", title: "Lock topic coverage",
+        why: "The planner consumes only locked coverage rows.", cta_label: "Open workspace",
+        cta_route: `/admin/exam-intelligence/workspace/${id}`, entity_kind: "exam_topic_coverage",
+        entity_id: null, evidence_refs: [{ kind: "exam_topic_coverage", row_id: "c1" }], status: "open" },
+      { id: "pyq", severity: "action", area: "pyq", title: "Verify PYQ",
+        why: "Questions need verified paper + question + topic tag.", cta_label: "Open workspace",
+        cta_route: `/admin/exam-intelligence/workspace/${id}`, entity_kind: null, entity_id: null,
+        evidence_refs: [], status: "open" },
+      { id: "mock_readiness", severity: "advisory", area: "mock_readiness", title: "Strengthen the mock bank",
+        why: "Mock bank is thin or blocked (advisory only).", cta_label: "Open workspace",
+        cta_route: `/admin/exam-intelligence/workspace/${id}`, entity_kind: null, entity_id: null,
+        evidence_refs: [], status: "open" },
+    ],
+    activation_checks: [
+      { area: "setup", gate: "hard", state: "done", detail: "1 phase(s) defined", reasons: [], evidence_refs: [] },
+      { area: "documents", gate: "advisory", state: "needs_action", detail: "No documents uploaded", reasons: [], evidence_refs: [] },
+      { area: "syllabus", gate: "advisory", state: "done", detail: "ok", reasons: [], evidence_refs: [] },
+      { area: "topic_coverage", gate: "hard", state: ready ? "done" : "blocked",
+        detail: ready ? "5 locked" : "No locked topic coverage", reasons: ready ? [] : ["no_locked_coverage", "pending_review"],
+        evidence_refs: ready ? [] : [{ kind: "exam_topic_coverage", row_id: "c1" }] },
+      { area: "pyq", gate: "advisory", state: ready ? "done" : "needs_action", detail: "0 of 42 verified",
+        reasons: ready ? [] : ["missing_pyq"], evidence_refs: [] },
+      { area: "updates", gate: "advisory", state: "done", detail: "none pending", reasons: [], evidence_refs: [] },
+      { area: "competition", gate: "advisory", state: "done", detail: "reviewed", reasons: [],
+        evidence_refs: [{ kind: "exam_competition_metrics", row_id: "cm1" }] },
+      { area: "mock_readiness", gate: "advisory", state: ready ? "done" : "needs_action", detail: "thin", reasons: [], evidence_refs: [] },
+      { area: "publish", gate: "hard", state: ready ? "done" : "blocked", detail: "gate", reasons: [], evidence_refs: [] },
+    ],
+    stages: [
+      { id: "setup", label: "Setup", areas: ["setup", "documents"] },
+      { id: "evidence", label: "Evidence", areas: ["syllabus", "topic_coverage", "pyq"] },
+      { id: "review", label: "Review", areas: ["updates", "competition", "mock_readiness"] },
+      { id: "activation", label: "Activation", areas: ["publish"] },
+    ],
+    evidence_refs: ready ? [] : [{ kind: "exam_topic_coverage", row_id: "c1" }],
+    generated_at: "2026-06-18T00:00:00Z",
+  };
 }
-
-const READINESS = {
-  exam_id: "exam-1", cycle_id: null,
-  overall: { status: "empty", score_percent: 0, ready_to_activate: false, blockers: [] },
-  sections: [],
-};
 
 function mockApi(overrides = {}) {
   api.get.mockImplementation((url) => {
     if (url.includes("/console/summary")) {
       return overrides.summary ? overrides.summary(url) : Promise.resolve(SUMMARY);
     }
+    const detailMatch = url.match(/\/console\/exams\/([^/?]+)/);
+    if (detailMatch) {
+      const id = decodeURIComponent(detailMatch[1]);
+      return overrides.detail ? overrides.detail(url, id) : Promise.resolve(detailFor(id));
+    }
     if (url.includes("/console/exams")) {
       return overrides.list ? overrides.list(url)
         : Promise.resolve({ items: ROWS, count: 2, total_count: 2, has_next: true, limit: 25, offset: 0 });
     }
     if (url.includes("exam-families")) return Promise.resolve({ items: [] });
-    if (url.includes("/readiness")) return Promise.resolve(READINESS);
-    if (url.includes("/workspace/") && url.includes("/context")) {
-      const m = url.match(/\/workspace\/([^/?]+)\/context/);
-      return Promise.resolve(ctxFor(m ? decodeURIComponent(m[1]) : "exam-1"));
-    }
     return Promise.resolve({});
   });
 }
+
+const detailCalls = () => api.get.mock.calls.map((c) => c[0]).filter((u) => /\/console\/exams\/[^/?]+/.test(u));
 
 function renderConsole(path) {
   return render(
@@ -290,38 +335,139 @@ describe("ExamGovernanceConsole — work queue (no exam selected)", () => {
   });
 });
 
-// ── Selected-exam view still mounts the embedded workspace ──────────────────
+// ── Selected-exam view renders the action console (4.6I-FE) ─────────────────
 
-describe("ExamGovernanceConsole — exam selected", () => {
-  test("renders top bar + embedded workspace scoped to the URL exam", async () => {
+describe("ExamGovernanceConsole — exam selected (action console)", () => {
+  test("renders ExamActionConsole, NOT the embedded workspace", async () => {
     mockApi();
     renderConsole("/admin/exam-intelligence/console/exam-1");
-    await waitFor(() => screen.getByTestId("exam-name"));
-    expect(screen.getByTestId("console-selected-exam").textContent).toBe("exam-1");
-    expect(screen.getByTestId("exam-name").textContent).toBe("SSC CGL");
-    expect(api.get.mock.calls.map((c) => c[0]).some((u) => u.includes("/workspace/exam-1/context"))).toBe(true);
-    // It did not call the work-queue endpoints in selected-exam mode.
-    expect(listCalls().length).toBe(0);
+    await waitFor(() => expect(screen.getByTestId("exam-action-console")).toBeTruthy());
+    expect(screen.queryByTestId("exam-name")).toBeNull();       // no ExamWorkspace
+    expect(screen.queryByTestId("console-top-bar")).toBeNull(); // old shell top bar gone
   });
 
-  test("no readiness percentage anywhere on the selected-exam console (D-E)", async () => {
+  test("calls ONLY /console/exams/:id — no readiness or workspace-context reads", async () => {
     mockApi();
     renderConsole("/admin/exam-intelligence/console/exam-1");
-    await waitFor(() => screen.getByTestId("exam-name"));
-    expect(screen.getByTestId("console-top-bar").textContent).not.toMatch(/%/);
-    expect(document.body.textContent).not.toContain("%");
+    await waitFor(() => expect(screen.getByTestId("exam-action-console")).toBeTruthy());
+    const urls = api.get.mock.calls.map((c) => c[0]);
+    expect(detailCalls().some((u) => u.includes("/console/exams/exam-1"))).toBe(true);
+    expect(urls.every((u) => !u.includes("/workspace/") && !u.includes("/readiness"))).toBe(true);
+    // no plain work-queue list call in detail mode
+    expect(urls.some((u) => /\/console\/exams\?/.test(u))).toBe(false);
+  });
+
+  test("header: identity from the detail response + both nav links", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console/exam-1");
+    await waitFor(() => expect(screen.getByTestId("action-console-name")).toBeTruthy());
+    expect(screen.getByTestId("action-console-name").textContent).toBe("SSC CGL");
+    expect(screen.getByTestId("action-console-meta").textContent).toContain("Staff Selection Commission");
+    expect(screen.getByTestId("action-console-meta").textContent).toContain("SSC Family");
+    expect(screen.getByTestId("action-console-back").getAttribute("href")).toBe("/admin/exam-intelligence/console");
+    expect(screen.getByTestId("action-console-workspace").getAttribute("href")).toBe("/admin/exam-intelligence/workspace/exam-1");
+  });
+
+  test("blocked verdict: backend status + headline + mapped reasons (no raw tokens)", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console/exam-1");
+    await waitFor(() => expect(screen.getByTestId("activation-verdict")).toBeTruthy());
+    expect(screen.getByTestId("activation-verdict").textContent).toContain("Blocked");
+    expect(screen.getByTestId("verdict-headline").textContent).toBe("Not ready for aspirants");
+    expect(screen.getByTestId("verdict-reasons-no_locked_coverage").textContent).toBe("No locked coverage");
+    expect(screen.getByTestId("verdict-reasons-pending_review").textContent).toBe("Pending review");
+    expect(document.body.textContent).not.toMatch(/no_locked_coverage|pending_review[^ ]/); // not raw snake_case
+  });
+
+  test("ready verdict + empty action queue state", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console/exam-2");
+    await waitFor(() => expect(screen.getByTestId("activation-verdict")).toBeTruthy());
+    expect(screen.getByTestId("activation-verdict").textContent).toContain("Ready");
+    expect(screen.getByTestId("action-queue-empty")).toBeTruthy();
+    expect(screen.queryByTestId("action-queue")).toBeNull();
+  });
+
+  test("action queue preserves backend order and uses item.cta_route", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console/exam-1");
+    await waitFor(() => expect(screen.getByTestId("action-queue")).toBeTruthy());
+    const items = screen.getAllByTestId(/^action-(topic_coverage|pyq|mock_readiness)$/);
+    expect(items.map((el) => el.getAttribute("data-severity"))).toEqual(["blocker", "action", "advisory"]);
+    expect(screen.getByTestId("action-cta-topic_coverage").getAttribute("href")).toBe("/admin/exam-intelligence/workspace/exam-1");
+  });
+
+  test("checks grouped by backend stages with gate + state labels + mapped reasons", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console/exam-1");
+    await waitFor(() => expect(screen.getByTestId("activation-checks")).toBeTruthy());
+    expect(screen.getByTestId("stage-setup")).toBeTruthy();
+    expect(screen.getByTestId("stage-evidence")).toBeTruthy();
+    const tc = screen.getByTestId("check-topic_coverage");
+    expect(screen.getByTestId("check-gate-topic_coverage").textContent).toBe("Hard gate");
+    expect(screen.getByTestId("check-state-topic_coverage").textContent).toBe("Blocked");
+    expect(tc.textContent).toContain("No locked coverage"); // mapped reason
+  });
+
+  test("mock readiness is a separate Advisory card that never overrides the verdict", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console/exam-1");
+    await waitFor(() => expect(screen.getByTestId("mock-readiness")).toBeTruthy());
+    expect(screen.getByTestId("mock-advisory-tag").textContent).toBe("Advisory");
+    expect(screen.getByTestId("mock-status").textContent).toBe("Blocked"); // mock blocked…
+    expect(screen.getByTestId("activation-verdict").textContent).toContain("Blocked"); // …verdict still its own
+  });
+
+  test("evidence count renders without calling /evidence", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console/exam-1");
+    await waitFor(() => expect(screen.getByTestId("check-topic_coverage")).toBeTruthy());
+    expect(screen.getAllByTestId("evidence-count").length).toBeGreaterThan(0);
+    expect(api.get.mock.calls.every((c) => !c[0].includes("/evidence"))).toBe(true);
+  });
+
+  test("no percentage/confidence fields rendered (recursive guard)", async () => {
+    mockApi();
+    renderConsole("/admin/exam-intelligence/console/exam-1");
+    await waitFor(() => expect(screen.getByTestId("exam-action-console")).toBeTruthy());
+    expect(document.body.textContent).not.toMatch(/%/);
+    expect(document.body.textContent).not.toMatch(/score_percent|confidence_score|confidence_percent|confidence/i);
+  });
+
+  test("404 → exam-not-found state; generic error → retry refetches", async () => {
+    mockApi({ detail: () => Promise.reject(Object.assign(new Error("nope"), { status: 404 })) });
+    const { unmount } = renderConsole("/admin/exam-intelligence/console/ghost");
+    await waitFor(() => expect(screen.getByTestId("action-console-not-found")).toBeTruthy());
+    unmount();
+
+    mockApi({ detail: () => Promise.reject(Object.assign(new Error("boom"), { status: 500 })) });
+    renderConsole("/admin/exam-intelligence/console/exam-1");
+    await waitFor(() => expect(screen.getByTestId("action-console-error")).toBeTruthy());
+    expect(screen.getByTestId("action-console-retry")).toBeTruthy();
   });
 });
 
 // ── URL is the single source of truth ───────────────────────────────────────
 
 describe("URL selected-exam is the single source of truth", () => {
-  test("a different :exam_id renders the other exam", async () => {
+  test("a different :exam_id renders the other exam; stale data cleared on change", async () => {
     mockApi();
-    renderConsole("/admin/exam-intelligence/console/exam-2");
-    await waitFor(() => screen.getByTestId("exam-name"));
-    expect(screen.getByTestId("console-selected-exam").textContent).toBe("exam-2");
-    expect(screen.getByTestId("exam-name").textContent).toBe("UPSC CSE");
+    function Go() {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate("/admin/exam-intelligence/console/exam-2")}>go</button>;
+    }
+    render(
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/console/exam-1"]}>
+        <Go />
+        <Routes>
+          <Route path="/admin/exam-intelligence/console/:exam_id" element={<ExamGovernanceConsole />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("action-console-name").textContent).toBe("SSC CGL"));
+    fireEvent.click(screen.getByText("go"));
+    await waitFor(() => expect(screen.getByTestId("action-console-name").textContent).toBe("UPSC CSE"));
+    expect(screen.queryByText("SSC CGL")).toBeNull(); // prior exam's data not lingering
   });
 
   test("changing the param swaps the exam with no stale value retained", async () => {

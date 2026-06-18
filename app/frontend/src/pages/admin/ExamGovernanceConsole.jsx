@@ -21,34 +21,8 @@
  */
 import React from "react";
 import useSelectedExamId from "../../lib/hooks/useSelectedExamId";
-import ExamWorkspace from "./exam-workspace/ExamWorkspace";
 import ConsoleWorkQueue from "../../features/admin/exam-intelligence/ConsoleWorkQueue";
-
-// ─── Thin top bar — identity from the URL only (D-E: no readiness %) ─────────
-
-function ConsoleTopBar({ examId }) {
-  return (
-    <div
-      className="row"
-      style={{
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 12,
-        padding: "10px 22px",
-        borderBottom: "1px solid var(--rule)",
-        background: "var(--paper-sunk)",
-      }}
-      data-testid="console-top-bar"
-    >
-      <div className="row" style={{ gap: 8, alignItems: "baseline" }}>
-        <span className="lbl">Exam Governance Console</span>
-        <span className="mono" style={{ fontSize: 11 }} data-testid="console-selected-exam">
-          {examId}
-        </span>
-      </div>
-    </div>
-  );
-}
+import ExamActionConsole from "../../features/admin/exam-intelligence/ExamActionConsole";
 
 // ─── No-exam picker — the truthful work-queue list on the /console reads ─────
 // (ExamListShell stays the generic /exams list for a future Registry adoption.)
@@ -70,14 +44,14 @@ export default function ExamGovernanceConsole() {
     return <ExamPicker />;
   }
 
+  // Per-exam: the focused, read-only action console (4.6I-FE) on the
+  // /console/exams/:exam_id read. Triage only — editing follows each action's
+  // CTA into /workspace/:exam_id. The legacy ExamWorkspace variant="console"
+  // mount is retired here; removing that now-orphaned code is a cleanup
+  // follow-up (it is not edited/deleted in this PR).
   return (
     <div className="oc" data-testid="exam-governance-console">
-      <ConsoleTopBar examId={examId} />
-      {/* Mount the existing workspace, scoped to :exam_id via useParams. The
-          "console" variant suppresses readiness percentages (D-E) and the
-          in-workspace cycle picker (which would navigate out of the console
-          frame) — no panel decomposition. */}
-      <ExamWorkspace variant="console" />
+      <ExamActionConsole examId={examId} />
     </div>
   );
 }
