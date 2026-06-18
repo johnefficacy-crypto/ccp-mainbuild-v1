@@ -59,6 +59,17 @@ _PENDING_STATES: dict[str, frozenset[str]] = {
     "exam_policy_updates": frozenset({"pending", "needs_correction"}),
 }
 
+# Reviewable table → (console area, exact evidence kind). Used only by the
+# include_details path so each pending row carries a typed evidence ref.
+_TABLE_AREA_KIND = {
+    "exam_topic_coverage": ("topic_coverage", "exam_topic_coverage"),
+    "syllabus_topic_mentions": ("syllabus", "syllabus_topic_mention"),
+    "exam_policy_updates": ("updates", "exam_policy_updates"),
+    "pyq_questions": ("pyq", "pyq_question"),
+    "pyq_question_topic_tags": ("pyq", "pyq_question_topic_tag"),
+    "pyq_options": ("pyq", "pyq_option"),
+}
+
 # Ranks for deterministic sorting.
 STATUS_RANK = {"blocked": 0, "needs_action": 1, "ready": 2}
 _LANE_RANK = {"core": 0, "light": 1, "index_only": 2, None: 3, "archive": 4}
@@ -145,14 +156,20 @@ def _batch_paged(sb, table: str, key: str, ids: list[str], columns: str) -> list
 
 # ── Aggregation (reads scale with tables × id-chunks × pages, never per-exam) ─
 
-def aggregate(sb, exams: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def aggregate(sb, exams: list[dict[str, Any]], *, include_details: bool = False) -> dict[str, dict[str, Any]]:
     """Aggregate per-exam signals for the candidate ``exams``. Returns
-    ``{exam_id: aggregate_dict}``."""
+    ``{exam_id: aggregate_dict}``.
+
+    ``include_details=False`` (default) is the list/summary path — output
+    unchanged. ``include_details=True`` additionally records, per exam, a
+    ``pending_by_area`` map with each pending area's ``pending_count``,
+    ``stale_count``, and TYPED ``evidence_refs`` ({kind,row_id}) — so a
+    ``needs_action`` verdict can always be explained by a matching area."""
     exam_ids = [e["id"] for e in exams if e.get("id")]
     stale_cutoff = (_now() - timedelta(days=STALE_REVIEW_DAYS)).isoformat()
 
-    agg: dict[str, dict[str, Any]] = {
-        eid: {
+    def _new_slot() -> dict[str, Any]:
+        slot = {
             "phase_count": 0,
             "locked_coverage_count": 0,
             "total_pyq_count": 0,
@@ -160,19 +177,34 @@ def aggregate(sb, exams: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             "pending_review_count": 0,
             "stale_review_count": 0,
         }
-        for eid in exam_ids
-    }
+        if include_details:
+            slot["pending_by_area"] = {
+                area: {"pending_count": 0, "stale_count": 0, "evidence_refs": []}
+                for area in ("topic_coverage", "syllabus", "updates", "pyq")
+            }
+        return slot
+
+    agg: dict[str, dict[str, Any]] = {eid: _new_slot() for eid in exam_ids}
     if not exam_ids:
         return agg
 
-    def _bump_pending(exam_id: str, status: str, created_at: str | None, table: str) -> None:
+    def _bump_pending(exam_id: str, status: str, created_at: str | None, table: str,
+                      row_id: str | None = None) -> None:
         slot = agg.get(exam_id)
         if slot is None:
             return
         if status in _PENDING_STATES[table]:
+            stale = (created_at or "") < stale_cutoff
             slot["pending_review_count"] += 1
-            if (created_at or "") < stale_cutoff:
+            if stale:
                 slot["stale_review_count"] += 1
+            if include_details and row_id:
+                area, kind = _TABLE_AREA_KIND[table]
+                d = slot["pending_by_area"][area]
+                d["pending_count"] += 1
+                if stale:
+                    d["stale_count"] += 1
+                d["evidence_refs"].append({"kind": kind, "row_id": row_id})
 
     # Setup: phase count.
     for r in _batch_paged(sb, "exam_phases", "exam_id", exam_ids, "id, exam_id"):
@@ -189,19 +221,19 @@ def aggregate(sb, exams: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         if r.get("reviewer_status") == "locked":
             slot["locked_coverage_count"] += 1
         _bump_pending(r.get("exam_id"), r.get("reviewer_status"), r.get("created_at"),
-                      "exam_topic_coverage")
+                      "exam_topic_coverage", r.get("id"))
 
     # Syllabus: pending review.
     for r in _batch_paged(sb, "syllabus_topic_mentions", "exam_id", exam_ids,
                           "id, exam_id, reviewer_status, created_at"):
         _bump_pending(r.get("exam_id"), r.get("reviewer_status"), r.get("created_at"),
-                      "syllabus_topic_mentions")
+                      "syllabus_topic_mentions", r.get("id"))
 
     # Policy updates: pending review.
     for r in _batch_paged(sb, "exam_policy_updates", "exam_id", exam_ids,
                           "id, exam_id, reviewer_status, created_at"):
         _bump_pending(r.get("exam_id"), r.get("reviewer_status"), r.get("created_at"),
-                      "exam_policy_updates")
+                      "exam_policy_updates", r.get("id"))
 
     # ── PYQ: papers → questions → tags/options. Three-gate verified count. ──
     papers = _batch_paged(sb, "pyq_papers", "exam_id", exam_ids, "id, exam_id, trust_status")
@@ -225,7 +257,7 @@ def aggregate(sb, exams: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             slot["total_pyq_count"] += 1
             if r.get("reviewer_status") == "verified" and r.get("pyq_paper_id") in verified_paper_ids:
                 verified_eligible[qid] = exam_id
-            _bump_pending(exam_id, r.get("reviewer_status"), r.get("created_at"), "pyq_questions")
+            _bump_pending(exam_id, r.get("reviewer_status"), r.get("created_at"), "pyq_questions", qid)
 
     question_ids = list(question_exam.keys())
     verified_tag_qids: set[str] = set()
@@ -235,11 +267,11 @@ def aggregate(sb, exams: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             if r.get("reviewer_status") == "verified" and r.get("question_id") in verified_eligible:
                 verified_tag_qids.add(r.get("question_id"))
             _bump_pending(question_exam.get(r.get("question_id")), r.get("reviewer_status"),
-                          r.get("created_at"), "pyq_question_topic_tags")
+                          r.get("created_at"), "pyq_question_topic_tags", r.get("id"))
         for r in _batch_paged(sb, "pyq_options", "question_id", question_ids,
                               "id, question_id, reviewer_status, created_at"):
             _bump_pending(question_exam.get(r.get("question_id")), r.get("reviewer_status"),
-                          r.get("created_at"), "pyq_options")
+                          r.get("created_at"), "pyq_options", r.get("id"))
 
     # Gate 3: only questions with ≥1 verified tag count — distinct per question.
     for qid, exam_id in verified_eligible.items():

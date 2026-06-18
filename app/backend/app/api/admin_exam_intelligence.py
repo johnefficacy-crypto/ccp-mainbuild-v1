@@ -488,6 +488,19 @@ def console_summary(
     }
 
 
+@router.get("/console/exams/{exam_id}")
+def console_exam_detail(
+    exam_id: str,
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Per-exam action console read (4.6I-BE). activation_verdict.status is
+    identical to the /console/exams list status (same aggregate + classifier);
+    mock readiness is separate/advisory. Unknown exam → 404."""
+    from app.exam_intelligence import console_detail as _cd
+
+    return _cd.build_console_detail(get_supabase_admin(), exam_id)
+
+
 # ─── 3. Items for a specific exam (filtered by reviewer_status) ───────────
 @router.get("/exams/{exam_id}/items")
 def list_items(
