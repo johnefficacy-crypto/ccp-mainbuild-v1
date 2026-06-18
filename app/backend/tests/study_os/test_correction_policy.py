@@ -160,11 +160,19 @@ def test_manual_unknown_only_no_corrections():
     assert cats == []
 
 
-def test_manual_weak_topic_fallback_limit_3():
+def test_manual_unknown_evidence_with_weak_topic_emits_single_policy_fallback():
+    cats, out = _man({"guess": 3, "mystery": 2}, weak=["first", "second"])
+
+    assert cats == ["concept_gap"]
+    assert [d["topic"] for d in out] == ["first"]
+    assert out[0]["title"] == _BASE["concept_gap"]
+
+
+def test_manual_weak_topic_fallback_policy_owned_single_topic():
     cats, out = _man({}, weak=["a", "b", "c", "d"])
-    assert cats == ["concept_gap", "concept_gap", "concept_gap"]
-    assert [d["topic"] for d in out] == ["a", "b", "c"]
-    assert all(d["title"] == _BASE["concept_gap"] for d in out)
+    assert cats == ["concept_gap"]
+    assert [d["topic"] for d in out] == ["a"]
+    assert out[0]["title"] == _BASE["concept_gap"]
 
 
 # ── 4. real generated pipeline ────────────────────────────────────────────────
@@ -240,6 +248,29 @@ def test_cross_origin_parity_fallback_case_H():
     gen_cats, gen_drafts = _gen([None, None, None])
     assert man_cats == gen_cats == ["concept_gap"]
     assert man_out[0]["title"] == cp.correction_title("concept_gap") == _BASE["concept_gap"]
+
+
+def test_evidence_mode_does_not_change_normalized_category_or_title_parity():
+    manual_input = cp.CorrectionPolicyInput(
+        topic=TOPIC,
+        error_counts={},
+        weak_topic=True,
+        evidence_mode="summary",
+    )
+    generated_input = cp.CorrectionPolicyInput(
+        topic=TOPIC,
+        error_counts={},
+        weak_topic=True,
+        evidence_mode="question_level",
+    )
+
+    manual_categories = cp.select_categories(manual_input)
+    generated_categories = cp.select_categories(generated_input)
+
+    assert manual_categories == generated_categories == ["concept_gap"]
+    assert [cp.correction_title(c) for c in manual_categories] == [
+        cp.correction_title(c) for c in generated_categories
+    ] == [_BASE["concept_gap"]]
 
 
 # ── 6. persistence ────────────────────────────────────────────────────────────

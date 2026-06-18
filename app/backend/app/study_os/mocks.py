@@ -333,9 +333,11 @@ def _draft_corrections_from_mock(mock: dict[str, Any]) -> list[dict[str, Any]]:
     (alias collisions collapse to one canonical count), then emits one correction
     per canonical category the policy returns, in the policy's deterministic
     order, with category-only titles. The persisted ``topic`` for error-backed
-    corrections is ``weak_topics[0]`` (a display label). Falls back to one
-    concept_gap correction per weak topic (max 3) ONLY when no recognized error
-    evidence is present. No independent per-key categorization here.
+    corrections is ``weak_topics[0]`` (a display label). The shared policy owns
+    the weak-topic concept_gap fallback; because the policy returns one category
+    set per normalized evidence input, manual mocks emit one weak-topic fallback
+    correction for ``weak_topics[0]`` when no recognized error evidence is
+    present. No independent per-key categorization here.
     """
     errors = mock.get("error_patterns") or {}
     weak = list(mock.get("weak_topics") or [])
@@ -345,6 +347,7 @@ def _draft_corrections_from_mock(mock: dict[str, Any]) -> list[dict[str, Any]]:
         CorrectionPolicyInput(
             topic=topic,
             error_counts=dict(errors),
+            weak_topic=bool(weak),
             evidence_mode="summary",
         )
     )
@@ -358,16 +361,6 @@ def _draft_corrections_from_mock(mock: dict[str, Any]) -> list[dict[str, Any]]:
         for cat in categories
     ]
 
-    # No recognized error evidence but weak topics exist → one concept_gap drill
-    # per weak topic (capped at 3). Preserved manual-granularity fallback.
-    if not out and weak:
-        for t in weak[:3]:
-            out.append({
-                "category": "concept_gap",
-                "title": correction_title("concept_gap"),
-                "topic": t,
-                "source_questions": [],
-            })
     return out
 
 

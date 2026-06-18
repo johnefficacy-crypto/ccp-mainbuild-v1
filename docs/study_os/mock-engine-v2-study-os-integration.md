@@ -1,8 +1,8 @@
 ---
 owner: study-os
 status: design + plan
-last_verified_against_code: 2026-06-17
-verified_against: fix/unify-mock-correction-policy (§7 #2 closed)
+last_verified_against_code: 2026-06-18
+verified_against: PR #714 final docs; PR #711/#712/#713 code remediations recorded
 source_of_truth: code
 shadow_validation_date: 2026-06-18
 shadow_validation_status: failed (FF=live blocked)
@@ -123,7 +123,7 @@ so no mastery signal flows back from a generated attempt.
 | PYQ → planner | LIVE | `verified_pyq_topic_counts` — `planner.py:30, 839` |
 | persona → planner | LIVE (limited) | `aspirant_persona_snapshots.study_policy` drives task **count + sizing** only (`max_tasks_per_day`, `preferred_task_size`), user pref overrides — `planner.py:854-878`. Persona does **not** select topics. |
 | mastery / error → planner | LIVE | `user_topic_mastery` + `user_topic_error_patterns` reads — `planner.py:325-326, 352` |
-| mock submit → mastery write-back | IMPLEMENTED, FLAG-GATED | `MasteryWriter.process_attempt` reads frozen `question_snapshot` `topic_id`/`microtopic_id` — `mastery_writer.py:77-85`. `FF_MOCK_MASTERY_WRITES ∈ {off, shadow, live}` — `mastery_writer.py:18, 221`. shadow → `mock_mastery_shadow` (`:166`); live → `user_topic_mastery` (RPC `apply_mock_mastery_delta`, `:184-193`) + `user_topic_error_patterns` (`:197-200`) + `mock_correction_tasks` (`:202-217`). **Trigger is INLINE in the submit route, not job-driven** — `app/backend/app/api/mock_engine.py:155-160` (see [§8](#8-unverified--corrected)). |
+| mock submit → mastery write-back | IMPLEMENTED, FLAG-GATED | `MasteryWriter.process_attempt` reads frozen `question_snapshot` `topic_id`/`microtopic_id` — `mastery_writer.py:77-85`. `FF_MOCK_MASTERY_WRITES ∈ {off, shadow, live}` — `mastery_writer.py:18, 221`. shadow → `mock_mastery_shadow` (`:166`); live → `user_topic_mastery` (RPC `apply_mock_mastery_delta`, `:184-193`) + `user_topic_error_patterns` (`:197-200`) + `mock_correction_tasks` (`:202-217`). The user-submit path performs a claimed inline mastery execution (`app/backend/app/api/mock_engine.py:155-160`) with durable retry/recovery for compatible mock rows and correction redrafting added by PR #712 (see [§8](#8-unverified--corrected)). |
 | generated mock → submit → mastery | OPEN (A-PR3) | no generated attempt write path yet — migration 175 header; `mock_blueprint_selection.py:1-7` |
 | weak-topic / persona → generated selection | OPEN (A-PR4/A-PR5) | `exposure_cooldown` + `personalization` ladder rungs are explicit **inert** no-ops — `mock_blueprint_selection.py:168-169` |
 | PYQ-weighting → generated mock mix | PARTIAL | `source_mix`/`difficulty_mix` apply only when the envelope section carries targets — `mock_blueprint_selection.py:180-195`. Full PYQ weighting = Wave 5 compiler, pending. |
@@ -247,10 +247,13 @@ in A-PR3's own PR):
 6. Reuse `template_snapshot` so loader/scoring/UI are unchanged
    (`mock_engine.py:308-327`).
 7. Submit goes through the **shared** submit path and triggers the mastery
-   write-back. **Note:** the shared path currently runs the writer *inline*
-   (`api/mock_engine.py:155-160`); "schedules the mastery job" describes a future
-   trigger that does not exist on `main` — see [§7](#7-open-items-to-resolve-before-fflive)
-   and [§8](#8-unverified--corrected).
+   write-back. **Note:** the user-submit path performs a claimed inline mastery
+   execution (`api/mock_engine.py:155-160`) and PR #712 added durable,
+   flag-pinned retry/recovery for compatible mock rows and correction redrafting;
+   auto-submit mastery triggering remains a separate open decision unless it is
+   explicitly wired in a later change — see
+   [§7](#7-open-items-to-resolve-before-fflive) and
+   [§8](#8-unverified--corrected).
 8. **Single consistent path** — same categorizer/tables as the manual loop, no
    double-write of `mock_correction_tasks`/`user_topic_mastery` (depends on
    resolving [§4b](#4b-dual-writers--divergence--duplicate-logic-risk)).
@@ -299,9 +302,9 @@ Close Loop C on the SSC CGL **text-MCQ** canary and validate it in **shadow**
 | 0 | **Safety PR — `mcq`-only pool** | D1. Shared constant; selection ≡ readiness. |
 | 1 | **A-PR3 — generated blueprint persist + atomic attempt start** | D2; signal producer, not "start a mock". |
 | 2 | **Play SSC CGL generated attempt end-to-end** | submit + result through the shared path. **Operator validation completed 2026-06-18 — PASS:** generated start, frozen-snapshot scoring, and result integrity all held ([report](../audits/ssc-cgl-generated-mock-shadow-validation-2026-06-18.md)). |
-| 3 | **`FF_MOCK_MASTERY_WRITES=shadow`; submit generated; inspect `mock_mastery_shadow`** | shadow write at `mastery_writer.py:166`. **Operator shadow validation executed 2026-06-18 — FAILED** (correctness gate): off/shadow live-table isolation passed, but attempted-semantics, classification propagation, and shadow idempotency failed ([report](../audits/ssc-cgl-generated-mock-shadow-validation-2026-06-18.md)). **`FF=live` remains blocked.** |
-| 4 | **Resolve dual-writer consistency (Loop B vs Loop C)** | same categorizer, no double-write; reconcile shadow vs manual. Blocks step 5. ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk)) Shared categorizer unification (#704) **remains merged**; the **runtime classification propagation into `MasteryWriter` FAILED** the 2026-06-18 operator validation (persisted `mock_attempt_response_classification` rows never reached the writer). The shared policy design is **not** reopened. |
-| 5 | **`FF=live` after validation** | verify `user_topic_mastery`/`error_patterns` changed; regenerate plan; verify task priorities changed. **BLOCKED — not ready.** Pending remediation + a clean repeat of the off/shadow operator validation. |
+| 3 | **`FF_MOCK_MASTERY_WRITES=shadow`; submit generated; inspect `mock_mastery_shadow`** | shadow write at `mastery_writer.py:166`. **Operator shadow validation executed 2026-06-18 — FAILED** (correctness gate): off/shadow live-table isolation passed, while attempted-semantics, classification propagation, and shadow idempotency exposed DEFECT-001 and DEFECT-003 ([report](../audits/ssc-cgl-generated-mock-shadow-validation-2026-06-18.md)). PR #711 subsequently code-fixed DEFECT-001 and DEFECT-003; PR #712 code-fixed database-backed shadow idempotency and durable, flag-pinned mastery replay/recovery; PR #713 code-fixed DEFECT-005A compatibility total coercion. These code remediations still need a clean repeated off/shadow operator validation. **`FF=live` remains blocked.** |
+| 4 | **Resolve dual-writer consistency (Loop B vs Loop C)** | same categorizer, no double-write; reconcile shadow vs manual. Blocks step 5. ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk)) Shared categorizer unification (#704) **remains merged**. The 2026-06-18 operator validation historically showed that persisted `mock_attempt_response_classification` rows did not reach the writer; PR #711 subsequently fixed the code path so `MasteryWriter` loads persisted classifications from `mock_attempt_response_classification`. PR #712 added durable, flag-pinned mastery replay/recovery for the claimed inline user-submit path. The shared policy design is **not** reopened, and revalidation remains pending. |
+| 5 | **`FF=live` after validation** | verify `user_topic_mastery`/`error_patterns` changed; regenerate plan; verify task priorities changed. **BLOCKED — not ready.** `FF_MOCK_MASTERY_WRITES=live` remains blocked until remaining scheduler verification passes where applicable and a clean repeat of the off/shadow operator validation passes. DB-enforced `mock_correction_tasks` concurrency uniqueness remains separately open. |
 | 6 | **A-PR4 (exposure cooldown) + A-PR5 (personalize the mock from mastery)** | closes the loop edge still open after A-PR3 — mock → mastery → smarter **mock**, not just smarter plan. Inert rungs already slotted: `mock_blueprint_selection.py:168-169`. |
 | 7 | **Track C (stimulus → media → non-MCQ scoring)** | D3 locks; validate on a set-heavy canary. Wave 5 PYQ-weighting feeds mock realism here / in parallel. |
 
@@ -332,30 +335,44 @@ answered.
    adapter (its `task_type→category` mapping is removed). The generated pipeline
    feeds the policy from **question-level** `error_type` (not the narrower
    `error_patterns.TRACKED` write-vocab), so memory/speed/misread evidence
-   survives. Titles are **category-only** (e.g. `Concept drill`) — identical
-   across origins; `topic` stays a separate, source-specific column (manual = display
-   label, generated = canonical id) and is **not** claimed equal. Adapter-level
-   cross-origin parity is test-pinned (`tests/study_os/test_correction_policy.py`,
-   driving both real adapters). The earlier schema-incompatibility was closed in
-   #702 ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk)).
+   survives. The manual adapter now passes
+   `weak_topic=bool(weak_topics)` and `topic=weak_topics[0]` into
+   `CorrectionPolicyInput`; its former independent `weak_topics[:3]`
+   `concept_gap` fallback has been removed. Therefore
+   `correction_policy.py` is the sole owner of weak-topic fallback
+   categorization: manual weak-topic fallback emits one policy-owned
+   `concept_gap` for `weak_topics[0]`, and recognized error evidence does not
+   receive an additional weak-topic fallback. Titles are **category-only** (e.g.
+   `Concept drill`) — identical across origins; `topic` stays a separate,
+   source-specific column (manual = display label, generated = canonical id) and
+   is **not** claimed equal. Adapter-level cross-origin parity is test-pinned
+   (`tests/study_os/test_correction_policy.py`, driving both real adapters). The
+   earlier schema-incompatibility was closed in #702
+   ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk)). PR #711
+   code-fixed DEFECT-001 and DEFECT-003, PR #712 code-fixed database-backed
+   shadow idempotency plus durable, flag-pinned mastery replay/recovery, and PR
+   #713 code-fixed DEFECT-005A compatibility total coercion. The shared policy
+   design remains closed and is not reopened by this document update.
    **Code-level categorizer consistency is resolved** (adapter parity
-   test-pinned), **but production writer input propagation FAILED operator
-   validation on 2026-06-18** — `MasteryWriter._load_analytics()` does not load
-   persisted `mock_attempt_response_classification` rows, so the merged policy ran
-   on degraded evidence (30 enriched drafts vs 1 writer-equivalent draft). See the
-   [shadow validation report](../audits/ssc-cgl-generated-mock-shadow-validation-2026-06-18.md).
-   This does **not** reopen the shared policy design.
-   *Still open, separately:* DB-enforced correction uniqueness (dedup is
-   **best-effort serial-retry**, not concurrency-safe), `FF_MOCK_MASTERY_WRITES`
-   stays **off**, and a clean repeat of the operator shadow validation is the next
-   gate before any `live` flip.
-3. **Is the mastery trigger source-agnostic?** Today the trigger is **inline in
-   the user-submit route** (`api/mock_engine.py:155-160`), so a generated submit
-   with `template_id=null` going through that route *would* run the writer. But
-   **auto-submitted** attempts (sweeper) do **not** run mastery — it is deferred
-   to a future `mastery_retry` job that is defined but unwired
-   (`mock_engine.py:1125`; `docs/study_os/mock_submit_flow.md:70-72`). Decide
-   whether generated attempts must also produce signals on auto-submit.
+   test-pinned). The 2026-06-18 operator validation historically exposed
+   DEFECT-001 and DEFECT-003: persisted
+   `mock_attempt_response_classification` rows did not reach the writer, so the
+   merged policy ran on degraded evidence (30 enriched drafts vs 1
+   writer-equivalent draft). PR #711 subsequently fixed both defects in code,
+   and `MasteryWriter` now loads persisted classifications from
+   `mock_attempt_response_classification`. See the preserved
+   [shadow validation report](../audits/ssc-cgl-generated-mock-shadow-validation-2026-06-18.md)
+   for the historical failed run. This does **not** reopen the shared policy
+   design.
+   *Still open, separately:* DB-enforced `mock_correction_tasks` concurrency
+   uniqueness (dedup is **best-effort serial-retry**, not concurrency-safe),
+   scheduler verification where applicable, and a clean repeat of the off/shadow
+   operator validation before any `FF_MOCK_MASTERY_WRITES=live` flip.
+3. **Is the mastery trigger source-agnostic?** The user-submit route performs a
+   claimed inline mastery execution (`api/mock_engine.py:155-160`) with durable
+   retry recovery from PR #712. **Auto-submitted** attempts remain a separate
+   open decision unless explicitly wired: decide whether generated attempts must
+   also produce mastery signals when the sweeper submits them.
 4. **Wave 5 PYQ-weighting into the generated mock mix** — still pending; A-PR2
    enforces `source_mix`/`difficulty_mix` only when the envelope carries targets
    (`mock_blueprint_selection.py:180-195`).
@@ -370,9 +387,9 @@ than asserted as fact.
 | # | Original claim | What `main @ 406648c` actually shows | Disposition |
 |---|---|---|---|
 | C1 | Loop B correction categories are four: `concept_gap, memory_gap, speed_issue, option_trap` | `VALID_CORRECTION_CATEGORIES` has **five** — adds `careless` — `mocks.py:62-68` | Corrected. The four named all exist; there is a fifth. |
-| C2 | mock submit → mastery trigger is **job-driven** (`JOB_MASTERY_RETRY` / `schedule_job` from the submit path) | The submit route runs `MasteryWriter.process_attempt` **inline** — `api/mock_engine.py:155-160`. `JOB_MASTERY_RETRY = "mastery_retry"` is **defined but reserved/unwired** (`mock_engine.py:1125`; comment `:1121`). The submit path schedules only `JOB_ANALYTICS_RETRY` (`:731`) and `JOB_MOCK_TESTS_RETRY` (`:720`). | **Does not hold.** Trigger is inline, not job-driven. Carried into [§7 #3](#7-open-items-to-resolve-before-fflive). |
-| C3 | `live → mock_correction_tasks` write (via `MasteryWriter`) is functional | The insert is **schema-incompatible**: it sends `mock_test_id: None` (the column is `NOT NULL` FK) plus columns that do not exist (`task_type`, `priority`, `evidence_json`, `duration_minutes`, `source_attempt_id`) and omits `NOT NULL` `category`/`title` — `mastery_writer.py:205-215` vs `063_study_os_mocks_analysis.sql:29-54`. Only reachable at `FF=live` (never flipped). | **Latent defect**, not active. Must be fixed before `FF=live` ([§4b](#4b-dual-writers--divergence--duplicate-logic-risk), [§7 #2](#7-open-items-to-resolve-before-fflive)). |
-| C4 | the merged shared correction policy means generated correction evidence reaches the writer in production | The shared generated correction policy consumes question-level `error_type` when it is provided, but the production `MasteryWriter` loader did not load persisted `mock_attempt_response_classification` rows during the 2026-06-18 canary. Therefore adapter parity was code-level verified, while submit-path evidence propagation remained incomplete (`mastery_writer.py:107-152`). | **Split.** Adapter parity holds; runtime propagation FAILED operator validation. See the [shadow validation report](../audits/ssc-cgl-generated-mock-shadow-validation-2026-06-18.md) (DEFECT-003). |
+| C2 | mock submit → mastery trigger is **job-driven** (`JOB_MASTERY_RETRY` / `schedule_job` from the submit path) | The user-submit route performs a claimed inline `MasteryWriter.process_attempt` execution — `api/mock_engine.py:155-160`. PR #712 added durable, flag-pinned mastery replay/recovery around compatible mock rows and correction redrafting, so this document treats user-submit mastery as inline with durable retry/recovery. Auto-submit mastery triggering remains separately open unless explicitly wired. | **Corrected and code-remediated, pending validation.** User-submit is inline with durable retry/recovery; scheduler behavior still needs verification before any `FF_MOCK_MASTERY_WRITES=live` flip. Carried into [§7 #3](#7-open-items-to-resolve-before-fflive). |
+| C3 | `live → mock_correction_tasks` write (via `MasteryWriter`) is functional | The original audit found a schema-incompatible generated correction insert shape (`mock_test_id: None`, non-existent action-style columns, and missing `category`/`title`) relative to `063_study_os_mocks_analysis.sql:29-54`. The earlier schema incompatibility was subsequently closed in #702, and PR #712 added durable replay/recovery around the compatible rows/correction redrafting path. | **Historical latent defect, code-remediated pending validation.** The remaining separately-open concern is DB-enforced `mock_correction_tasks` concurrency uniqueness, plus clean off/shadow validation and scheduler verification before any `FF_MOCK_MASTERY_WRITES=live` flip. |
+| C4 | the merged shared correction policy means generated correction evidence reaches the writer in production | The shared generated correction policy consumes question-level `error_type` when it is provided. During the 2026-06-18 canary, persisted `mock_attempt_response_classification` rows historically did not reach the writer, so adapter parity was code-level verified while submit-path evidence propagation remained incomplete (`mastery_writer.py:107-152`). PR #711 subsequently fixed DEFECT-003 in code, and `MasteryWriter` now loads persisted classifications from `mock_attempt_response_classification`. | **Split, now code-fixed pending repeat validation.** Adapter parity holds; the runtime propagation failure is preserved as historical evidence in the [shadow validation report](../audits/ssc-cgl-generated-mock-shadow-validation-2026-06-18.md) (DEFECT-003). PR #712 and PR #713 also code-fixed the shadow-idempotency/replay and compatibility-total issues, but a clean repeated off/shadow operator validation plus scheduler verification is still required before any `FF_MOCK_MASTERY_WRITES=live` flip. |
 
 ---
 
