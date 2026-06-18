@@ -10,7 +10,6 @@ Mocks.jsx analytics list keeps working unchanged.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -1176,6 +1175,104 @@ def schedule_job(
         _safe(lambda: supabase.table("mock_attempt_jobs").insert(payload).execute(), default=None)  # safe-write-ok: fire-and-forget job scheduling; sweeper re-enqueues missed auto-submit jobs
 
 
+
+
+def _validate_mastery_retry_flag(flag_state: str | None) -> None:
+    if flag_state not in {"shadow", "live"}:
+        raise ValueError("mastery retry flag_state must be shadow or live")
+
+
+def _active_mastery_retry(supabase: Any, attempt_id: str, flag_state: str | None = None) -> dict | None:
+    query = (
+        supabase.table("mock_attempt_jobs")
+        .select("id,attempts,mastery_flag_state")
+        .eq("job_kind", JOB_MASTERY_RETRY)
+        .eq("attempt_id", attempt_id)
+        .in_("status", _ACTIVE_JOB_STATUSES)
+    )
+    if flag_state is not None:
+        query = query.eq("mastery_flag_state", flag_state)
+    rows = query.limit(1).execute().data or []
+    return rows[0] if rows else None
+
+
+def _mastery_retry_done(supabase: Any, attempt_id: str, flag_state: str) -> bool:
+    _validate_mastery_retry_flag(flag_state)
+    rows = (
+        supabase.table("mock_attempt_jobs")
+        .select("id")
+        .eq("job_kind", JOB_MASTERY_RETRY)
+        .eq("attempt_id", attempt_id)
+        .eq("mastery_flag_state", flag_state)
+        .eq("status", "done")
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return bool(rows)
+
+
+def has_active_mastery_retry(supabase: Any, attempt_id: str) -> bool:
+    return _active_mastery_retry(supabase, attempt_id) is not None
+
+
+def mastery_retry_done(supabase: Any, attempt_id: str, flag_state: str) -> bool:
+    return _mastery_retry_done(supabase, attempt_id, flag_state)
+
+
+def enqueue_mastery_retry_required(
+    supabase: Any,
+    attempt_id: str,
+    flag_state: str,
+    *,
+    last_error: str | None = None,
+    scheduled_for: str | None = None,
+) -> None:
+    _validate_mastery_retry_flag(flag_state)
+    item = _active_mastery_retry(supabase, attempt_id, flag_state)
+    now_iso = scheduled_for or _now_iso()
+    if item:
+        patch = {"status": "pending", "scheduled_for": now_iso, "updated_at": _now_iso()}
+        if last_error is not None:
+            patch["last_error"] = last_error[:500]
+        supabase.table("mock_attempt_jobs").update(patch).eq("id", item["id"]).execute()
+        return
+    payload = {
+        "job_kind": JOB_MASTERY_RETRY,
+        "attempt_id": attempt_id,
+        "mastery_flag_state": flag_state,
+        "scheduled_for": now_iso,
+        "attempts": 0,
+        "status": "pending",
+        "last_error": last_error[:500] if last_error else None,
+    }
+    supabase.table("mock_attempt_jobs").insert(payload).execute()
+
+
+def mark_mastery_retry_done_required(supabase: Any, attempt_id: str, flag_state: str) -> None:
+    _validate_mastery_retry_flag(flag_state)
+    item = _active_mastery_retry(supabase, attempt_id, flag_state)
+    if item:
+        supabase.table("mock_attempt_jobs").update({
+            "status": "done",
+            "last_error": None,
+            "updated_at": _now_iso(),
+        }).eq("id", item["id"]).execute()
+        return
+    if _mastery_retry_done(supabase, attempt_id, flag_state):
+        return
+    supabase.table("mock_attempt_jobs").insert({
+        "job_kind": JOB_MASTERY_RETRY,
+        "attempt_id": attempt_id,
+        "mastery_flag_state": flag_state,
+        "scheduled_for": _now_iso(),
+        "attempts": 0,
+        "status": "done",
+        "last_error": None,
+    }).execute()
+
+
 def _complete_job(supabase: Any, job_kind: str, attempt_id: str) -> None:
     """Mark any active job for (job_kind, attempt) done — keeps the row for audit."""
     _safe(
@@ -1235,9 +1332,11 @@ def _run_job(supabase: Any, job: dict) -> None:
         _retry_emit_mock_tests_row(supabase, attempt_id)
         _recover_corrections_after_mock_tests(supabase, attempt_id)
     elif kind == JOB_MASTERY_RETRY:
-        from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
+        from app.study_os.mastery_writer import MasteryWriter
 
-        asyncio.run(MasteryWriter(supabase, get_mastery_write_flag()).process_attempt(attempt_id))
+        flag_state = job.get("mastery_flag_state")
+        _validate_mastery_retry_flag(flag_state)
+        MasteryWriter(supabase, flag_state).process_attempt_sync(attempt_id)
     else:
         raise RuntimeError(f"unknown job_kind {kind!r}")
 

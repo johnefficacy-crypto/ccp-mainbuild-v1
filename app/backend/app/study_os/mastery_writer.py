@@ -52,6 +52,9 @@ class MasteryWriter:
         self.flag_state = flag_state
 
     async def process_attempt(self, attempt_id: str) -> None:
+        self.process_attempt_sync(attempt_id)
+
+    def process_attempt_sync(self, attempt_id: str) -> None:
         # Ordering decision (PR-fix-3): implementation B — the writer derives
         # mastery inline from the persisted raw attempt data (mock_attempts +
         # mock_attempt_responses, whose is_correct is set at submit time), NOT

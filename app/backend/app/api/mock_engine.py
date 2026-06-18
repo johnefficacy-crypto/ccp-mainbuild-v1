@@ -24,9 +24,10 @@ from app.study_os.mock_engine import (
     ConflictError,
     SubmissionPersistenceError,
     SubmitConsistencyError,
-    JOB_MASTERY_RETRY,
-    _complete_job,
-    schedule_job,
+    enqueue_mastery_retry_required,
+    has_active_mastery_retry,
+    mark_mastery_retry_done_required,
+    mastery_retry_done,
     get_attempt,
     get_result,
     get_review,
@@ -154,21 +155,6 @@ def _attempt_status(sb: Any, attempt_id: str) -> str | None:
     return rows[0].get("status") if rows else None
 
 
-def _mastery_retry_done(sb: Any, attempt_id: str) -> bool:
-    rows = (
-        sb.table("mock_attempt_jobs")
-        .select("id")
-        .eq("job_kind", JOB_MASTERY_RETRY)
-        .eq("attempt_id", attempt_id)
-        .eq("status", "done")
-        .limit(1)
-        .execute()
-        .data
-        or []
-    )
-    return bool(rows)
-
-
 @router.post("/attempts/{attempt_id}/submit")
 async def submit(
     attempt_id: str,
@@ -186,15 +172,27 @@ async def submit(
         was_submitted = _attempt_status(sb, attempt_id) == "submitted"
         result = submit_attempt(sb, user_id, attempt_id, body.claimed_answered_count)
         flag_state = get_mastery_write_flag()
-        if flag_state != "off" and not (was_submitted and _mastery_retry_done(sb, attempt_id)):
-            schedule_job(sb, JOB_MASTERY_RETRY, attempt_id)
-            try:
-                writer = MasteryWriter(sb, flag_state)
-                await writer.process_attempt(attempt_id)
-                _complete_job(sb, JOB_MASTERY_RETRY, attempt_id)
-            except Exception as exc:  # noqa: BLE001
-                schedule_job(sb, JOB_MASTERY_RETRY, attempt_id, last_error=str(exc))
-                logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
+        if flag_state != "off" and not (was_submitted and mastery_retry_done(sb, attempt_id, flag_state)):
+            if not has_active_mastery_retry(sb, attempt_id):
+                try:
+                    writer = MasteryWriter(sb, flag_state)
+                    await writer.process_attempt(attempt_id)
+                    mark_mastery_retry_done_required(sb, attempt_id, flag_state)
+                except Exception as exc:  # noqa: BLE001
+                    try:
+                        enqueue_mastery_retry_required(sb, attempt_id, flag_state, last_error=str(exc))
+                    except Exception as enqueue_exc:  # noqa: BLE001
+                        logger.exception(
+                            "mastery retry enqueue failed attempt=%s user=%s",
+                            attempt_id,
+                            user_id,
+                        )
+                        raise HTTPException(
+                            status_code=503,
+                            detail={"error": "mastery_retry_enqueue_failed", "detail": str(enqueue_exc)},
+                            headers={"Retry-After": "1"},
+                        ) from enqueue_exc
+                    logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
         return result
     except SubmitConsistencyError as exc:
         logger.warning("submit consistency mismatch attempt=%s: %s", attempt_id, exc)
