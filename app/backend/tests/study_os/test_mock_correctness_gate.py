@@ -523,6 +523,45 @@ def test_retry_emit_mock_tests_row_recreates_after_22p02_with_integer_total_mark
 
 
 
+
+def test_submit_attempt_inline_sums_exact_decimal_marks_to_integral_total():
+    """Inline submit emits integer total_marks for ten Decimal('0.10') snapshots."""
+    sb, _, questions = _seeded_db()
+    for i in range(5, 10):
+        question = _make_question(f"q{i}")
+        questions.append(question)
+        sb.db["mock_question_bank"].append(question)
+        sb.db["mock_question_options"].extend(question["options"])
+    template = sb.db["mock_templates"][0]
+    template["total_questions"] = 10
+    template["config"]["question_ids"] = [q["id"] for q in questions]
+
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    attempt_responses = [
+        r for r in sb.db["mock_attempt_responses"] if r.get("attempt_id") == attempt_id
+    ][:10]
+    sb.db["mock_attempt_responses"] = [
+        r for r in sb.db["mock_attempt_responses"] if r.get("attempt_id") != attempt_id
+    ] + attempt_responses
+    assert len(attempt_responses) == 10
+    for response in attempt_responses:
+        response["question_snapshot"]["marks"] = Decimal("0.10")
+
+    result = svc.submit_attempt(sb, "user-1", attempt_id)
+
+    assert result["status"] == "submitted"
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["total_marks"] == 1
+    assert type(rows[0]["total_marks"]) is int
+    assert rows[0]["scored_marks"] == 0.0
+    assert not [
+        j for j in sb.db["mock_attempt_jobs"]
+        if j.get("job_kind") == svc.JOB_MOCK_TESTS_RETRY
+        and j.get("attempt_id") == attempt_id
+    ]
+
 def test_retry_emit_mock_tests_row_sums_exact_decimal_marks_to_integral_total():
     """Ten Decimal('0.10') marks sum exactly to integer total_marks 1."""
     attempt_id = "attempt-decimal-tenths"
