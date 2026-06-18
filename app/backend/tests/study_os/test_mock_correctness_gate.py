@@ -522,6 +522,34 @@ def test_retry_emit_mock_tests_row_recreates_after_22p02_with_integer_total_mark
     assert type(rows[0]["total_marks"]) is int
 
 
+
+def test_retry_emit_mock_tests_row_sums_exact_decimal_marks_to_integral_total():
+    """Ten Decimal('0.10') marks sum exactly to integer total_marks 1."""
+    attempt_id = "attempt-decimal-tenths"
+    sb = SBStub({
+        "mock_attempts": [{
+            "id": attempt_id,
+            "user_id": "user-1",
+            "template_snapshot": {"name": "Tenths", "exam_family": "TEST"},
+            "score_raw": 0,
+            "total_correct": 0,
+            "total_wrong": 0,
+            "submitted_at": _now_iso(),
+        }],
+        "mock_attempt_responses": [
+            {"attempt_id": attempt_id, "question_snapshot": {"marks": Decimal("0.10")}}
+            for _ in range(10)
+        ],
+        "mock_tests": [],
+    })
+
+    svc._retry_emit_mock_tests_row(sb, attempt_id)
+
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["total_marks"] == 1
+    assert type(rows[0]["total_marks"]) is int
+
 def test_retry_emit_mock_tests_row_coerces_decimal_integral_total_marks():
     """Retry path accepts Decimal integral marks and persists an int total."""
     sb, template, _ = _seeded_db()
@@ -545,19 +573,37 @@ def test_retry_emit_mock_tests_row_coerces_decimal_integral_total_marks():
     assert type(rows[0]["total_marks"]) is int
 
 
-def test_retry_emit_mock_tests_row_non_integral_total_raises_and_remains_retryable():
-    """Non-integral totals are not rounded/truncated and the job is rescheduled."""
+def test_inline_non_integral_total_succeeds_and_schedules_retry():
+    """Post-finalization compatibility failure must not fail submit."""
     sb, template, _ = _seeded_db()
     template["marks_per_correct"] = 40.1
     template["marks_per_wrong"] = 0.0
     start = svc.start_attempt(sb, "user-1", "gate-mock")
     attempt_id = start["attempt_id"]
 
-    with pytest.raises(ValueError, match="total_marks must be integral"):
-        svc.submit_attempt(sb, "user-1", attempt_id)
+    result = svc.submit_attempt(sb, "user-1", attempt_id)
 
+    assert result["status"] == "submitted"
+    assert result["score_raw"] == 0.0
     assert not [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
-    svc.schedule_job(sb, svc.JOB_MOCK_TESTS_RETRY, attempt_id, scheduled_for=_past_iso(5))
+    retry_jobs = [
+        j for j in sb.db["mock_attempt_jobs"]
+        if j.get("job_kind") == svc.JOB_MOCK_TESTS_RETRY
+        and j.get("attempt_id") == attempt_id
+        and j.get("status") == "pending"
+    ]
+    assert len(retry_jobs) == 1
+    assert "total_marks must be integral" in retry_jobs[0].get("last_error", "")
+
+
+def test_sweeper_reschedules_non_integral_retry_observably():
+    """Retry conversion failures propagate to sweeper backoff/rescheduling."""
+    sb, template, _ = _seeded_db()
+    template["marks_per_correct"] = 40.1
+    template["marks_per_wrong"] = 0.0
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
 
     counts = svc.run_sweeper(sb)
 
@@ -570,6 +616,7 @@ def test_retry_emit_mock_tests_row_non_integral_total_raises_and_remains_retryab
         and j.get("status") == "pending"
     ]
     assert len(retry_jobs) == 1
+    assert retry_jobs[0].get("attempts") == 1
     assert "total_marks must be integral" in retry_jobs[0].get("last_error", "")
 
 

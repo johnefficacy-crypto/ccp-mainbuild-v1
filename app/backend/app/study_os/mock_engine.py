@@ -56,9 +56,17 @@ def _safe(call, default=None):
         return default
 
 
+def _to_decimal_marks(value: int | float | Decimal) -> Decimal:
+    """Normalize mark values without inheriting binary-float artifacts."""
+    decimal_value = Decimal(str(value))
+    if not decimal_value.is_finite():
+        raise ValueError(f"total_marks must be finite, got {value!r}")
+    return decimal_value
+
+
 def _to_integral_marks(value: int | float | Decimal) -> int:
     """Return ``value`` as an int only when it is mathematically integral."""
-    decimal_value = Decimal(str(value))
+    decimal_value = _to_decimal_marks(value)
     if decimal_value != decimal_value.to_integral_value():
         raise ValueError(f"total_marks must be integral, got {value!r}")
     return int(decimal_value)
@@ -643,10 +651,12 @@ def _finalize_submission(
 
     total_q = len(responses)
     max_score = sum(
-        float((r.get("question_snapshot") or {}).get("marks") or 1)
-        for r in responses
+        (_to_decimal_marks((r.get("question_snapshot") or {}).get("marks") or 1)
+         for r in responses),
+        Decimal("0"),
     )
-    pct = round(score_raw / max_score * 100, 2) if max_score > 0 else 0.0
+    max_score_float = float(max_score)
+    pct = round(score_raw / max_score_float * 100, 2) if max_score_float > 0 else 0.0
 
     # Attempt finalization is correctness-critical: this flip + aggregate scores
     # is the headline result the client reads back. A silent failure must not be
@@ -1009,9 +1019,8 @@ def _emit_mock_tests_row(
     duration_sec = int(snap.get("duration_sec") or 0)
     duration_mins = round(duration_sec / 60) if duration_sec else None
 
-    total_marks = _to_integral_marks(max_score)
-
     try:
+        total_marks = _to_integral_marks(max_score)
         supabase.table("mock_tests").insert({
             "user_id": user_id,
             "test_name": snap.get("name") or "Mock",
@@ -1064,7 +1073,9 @@ def _retry_emit_mock_tests_row(supabase: Any, attempt_id: str) -> None:
     )
     responses = getattr(resp_rows, "data", None) or []
     max_score = sum(
-        float((r.get("question_snapshot") or {}).get("marks") or 1) for r in responses
+        (_to_decimal_marks((r.get("question_snapshot") or {}).get("marks") or 1)
+         for r in responses),
+        Decimal("0"),
     )
 
     snap = attempt.get("template_snapshot") or {}
