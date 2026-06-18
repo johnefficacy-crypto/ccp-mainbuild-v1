@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
 
 from app.study_os.attempt_events import record_server_event
@@ -53,6 +54,22 @@ def _safe(call, default=None):
     except Exception as exc:  # noqa: BLE001
         logger.warning("mock_engine supabase call failed: %s", exc)
         return default
+
+
+def _to_decimal_marks(value: int | float | Decimal) -> Decimal:
+    """Normalize mark values without inheriting binary-float artifacts."""
+    decimal_value = Decimal(str(value))
+    if not decimal_value.is_finite():
+        raise ValueError(f"total_marks must be finite, got {value!r}")
+    return decimal_value
+
+
+def _to_integral_marks(value: int | float | Decimal) -> int:
+    """Return ``value`` as an int only when it is mathematically integral."""
+    decimal_value = _to_decimal_marks(value)
+    if decimal_value != decimal_value.to_integral_value():
+        raise ValueError(f"total_marks must be integral, got {value!r}")
+    return int(decimal_value)
 
 
 def _require(call, op: str):
@@ -634,10 +651,12 @@ def _finalize_submission(
 
     total_q = len(responses)
     max_score = sum(
-        float((r.get("question_snapshot") or {}).get("marks") or 1)
-        for r in responses
+        (_to_decimal_marks((r.get("question_snapshot") or {}).get("marks") or 1)
+         for r in responses),
+        Decimal("0"),
     )
-    pct = round(score_raw / max_score * 100, 2) if max_score > 0 else 0.0
+    max_score_float = float(max_score)
+    pct = round(score_raw / max_score_float * 100, 2) if max_score_float > 0 else 0.0
 
     # Attempt finalization is correctness-critical: this flip + aggregate scores
     # is the headline result the client reads back. A silent failure must not be
@@ -1001,13 +1020,14 @@ def _emit_mock_tests_row(
     duration_mins = round(duration_sec / 60) if duration_sec else None
 
     try:
+        total_marks = _to_integral_marks(max_score)
         supabase.table("mock_tests").insert({
             "user_id": user_id,
             "test_name": snap.get("name") or "Mock",
             "title": snap.get("name") or "Mock",
             "exam_name": snap.get("exam_family") or snap.get("slug") or "",
             "scored_marks": round(score_raw, 2),
-            "total_marks": max_score,
+            "total_marks": total_marks,
             "duration_mins": duration_mins,
             "correct_answers": total_correct,
             "wrong_answers": total_wrong,
@@ -1053,7 +1073,9 @@ def _retry_emit_mock_tests_row(supabase: Any, attempt_id: str) -> None:
     )
     responses = getattr(resp_rows, "data", None) or []
     max_score = sum(
-        float((r.get("question_snapshot") or {}).get("marks") or 1) for r in responses
+        (_to_decimal_marks((r.get("question_snapshot") or {}).get("marks") or 1)
+         for r in responses),
+        Decimal("0"),
     )
 
     snap = attempt.get("template_snapshot") or {}
@@ -1064,6 +1086,8 @@ def _retry_emit_mock_tests_row(supabase: Any, attempt_id: str) -> None:
     total_wrong = int(attempt.get("total_wrong") or 0)
     submitted_at = attempt.get("submitted_at") or _now_iso()
 
+    total_marks = _to_integral_marks(max_score)
+
     # Propagate exceptions so the sweeper's retry/backoff loop handles them.
     supabase.table("mock_tests").insert({
         "user_id": attempt["user_id"],
@@ -1071,7 +1095,7 @@ def _retry_emit_mock_tests_row(supabase: Any, attempt_id: str) -> None:
         "title": snap.get("name") or "Mock",
         "exam_name": snap.get("exam_family") or snap.get("slug") or "",
         "scored_marks": round(score_raw, 2),
-        "total_marks": max_score,
+        "total_marks": total_marks,
         "duration_mins": duration_mins,
         "correct_answers": total_correct,
         "wrong_answers": total_wrong,
