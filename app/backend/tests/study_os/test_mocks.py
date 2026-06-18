@@ -97,7 +97,7 @@ def test_draft_correction_tasks_uses_error_patterns():
     assert refreshed["review_state"] == "correction_drafted"
 
 
-def test_draft_correction_falls_back_to_weak_topics_when_no_errors():
+def test_draft_correction_falls_back_to_first_weak_topic_when_no_errors():
     sb = SBStub({})
     m = mocks_service.create_mock(
         sb,
@@ -111,10 +111,11 @@ def test_draft_correction_falls_back_to_weak_topics_when_no_errors():
         },
     )
     drafts = mocks_service.draft_correction_tasks(sb, "user-1", m["id"])
-    # Capped at 3 weak-topic drills when no error_patterns provided.
-    assert len(drafts) == 3
-    assert all(d["category"] == "concept_gap" for d in drafts)
-    assert [d["topic"] for d in drafts] == ["Polity", "Economy", "History"]
+    # The shared policy owns weak-topic fallback categorization and emits one
+    # category set per normalized evidence input.
+    assert len(drafts) == 1
+    assert drafts[0]["category"] == "concept_gap"
+    assert drafts[0]["topic"] == "Polity"
 
 
 def test_draft_correction_replaces_prior_drafts():
