@@ -10,7 +10,7 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-import { humanizeToken, relativeDate } from "./operatorChrome";
+import { humanizeToken, relativeDate, formatOperatorActor, formatAuditNote } from "./operatorChrome";
 
 jest.mock("../../../lib/api", () => ({ __esModule: true, api: { get: jest.fn() } }));
 const { api } = require("../../../lib/api");
@@ -46,6 +46,21 @@ describe("operatorChrome helpers", () => {
     expect(relativeDate(new Date(Date.now() - 3600_000).toISOString())).toMatch(/ago|just now/);
     expect(relativeDate(null)).toBe("—");
     expect(relativeDate("garbage")).toBe("—");
+  });
+
+  test("formatOperatorActor hides UUID actor ids; preserves emails/names", () => {
+    expect(formatOperatorActor(UUID)).toBe("Administrator");
+    expect(formatOperatorActor("ops@example.com")).toBe("ops@example.com");
+    expect(formatOperatorActor("Jane Doe")).toBe("Jane Doe");
+    expect(formatOperatorActor("system")).toBe("System");
+    expect(formatOperatorActor(null)).toBe("System");
+    expect(formatOperatorActor(UUID)).not.toMatch(UUID_RE);
+  });
+
+  test("formatAuditNote suppresses internal markers; preserves human notes", () => {
+    expect(formatAuditNote("admin_exam_intel_cms")).toBe("");
+    expect(formatAuditNote(null)).toBe("");
+    expect(formatAuditNote("Reviewed by hand after source check")).toBe("Reviewed by hand after source check");
   });
 });
 
@@ -115,4 +130,23 @@ test("KnowledgeGovernance: audit event keys humanized + relative date; no raw to
   expect(text).not.toContain("exam_intel.cms.cycle.create");
   expect(text).not.toContain("exam_cycle");
   assertNoLeaks(text);
+});
+
+test("KnowledgeGovernance: UUID actor → Administrator; internal note suppressed; human note preserved", async () => {
+  api.get.mockResolvedValue({
+    recent_audit: [
+      { action: "exam_intel.cms.cycle.create", target: "exam_cycle", actor: UUID, notes: "admin_exam_intel_cms", at: ISO },
+      { action: "exam.review", target: "exam", actor: "ops@example.com", notes: "Checked against official notification", at: ISO },
+    ],
+    kg: null,
+  });
+  render(<MemoryRouter><AdminKnowledgeGovernance /></MemoryRouter>);
+  await waitFor(() => expect(screen.getByTestId("admin-kg-landing")).toBeTruthy());
+  await waitFor(() => expect(document.body.textContent).toContain("Administrator"));
+  const text = document.body.textContent;
+  expect(text).not.toContain("admin_exam_intel_cms"); // internal note marker suppressed
+  expect(text).toContain("Checked against official notification"); // human-authored note preserved
+  expect(text).toContain("Exam intel cms cycle create"); // action still humanized
+  expect(text).toContain("Exam cycle"); // target still humanized
+  assertNoLeaks(text); // no UUID / ISO / /api/ / §
 });

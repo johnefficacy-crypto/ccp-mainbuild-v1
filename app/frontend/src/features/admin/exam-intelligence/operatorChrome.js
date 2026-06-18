@@ -33,3 +33,32 @@ export function relativeDate(iso) {
   if (day < 7) return `${day}d ago`;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Operator-safe actor label. Emails and human names pass through; a UUID-shaped
+ *  actor id becomes "Administrator"; empty/"system" becomes "System". Never
+ *  renders a raw UUID. */
+export function formatOperatorActor(value) {
+  const v = value == null ? "" : String(value).trim();
+  if (!v || v.toLowerCase() === "system") return "System";
+  if (UUID_RE.test(v)) return "Administrator";
+  return v;
+}
+
+// Internal audit note markers that must never reach operators verbatim.
+const INTERNAL_NOTE_LABELS = {
+  admin_exam_intel_cms: "",
+};
+
+/** Audit-note label. Known internal markers are suppressed (or mapped to a
+ *  friendly label); empty → "". Arbitrary human-authored notes pass through
+ *  unchanged — notes are NOT blindly humanized. */
+export function formatAuditNote(value) {
+  if (value == null) return "";
+  const v = String(value);
+  if (Object.prototype.hasOwnProperty.call(INTERNAL_NOTE_LABELS, v.trim())) {
+    return INTERNAL_NOTE_LABELS[v.trim()];
+  }
+  return v;
+}
