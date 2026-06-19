@@ -12,8 +12,9 @@ from tests.persona_questions._stub import SBStub, _Exec
 def _seed() -> dict:
     return {
         "mock_tests": [
-            {"id": "m1", "user_id": "u-1", "exam_id": "exam-1", "test_name": "M1"},
-            {"id": "m2", "user_id": "other-user", "exam_id": "exam-1"},
+            {"id": "m1", "user_id": "u-1", "exam_id": "exam-1", "test_name": "M1", "source_type": "manual_log"},
+            {"id": "m2", "user_id": "other-user", "exam_id": "exam-1", "source_type": "manual_log"},
+            {"id": "m3", "user_id": "u-1", "exam_id": "exam-1", "test_name": "M3-platform", "source_type": "platform_attempt"},
         ],
         "study_plans": [{"id": "p1", "user_id": "u-1", "status": "active"}],
         "topics": [
@@ -159,6 +160,72 @@ def test_review_replaces_prior_breakdowns_idempotently():
     )
     assert len(sb.db["mock_topic_breakdowns"]) == 1
     assert sb.db["mock_topic_breakdowns"][0]["topic_id"] == "t2"
+
+
+# ─── Source-based mastery writer authority (PR2) ─────────────────────────────
+
+def test_platform_attempt_rejects_topic_breakdowns_with_409():
+    """A platform_attempt mock must not accept topic_breakdowns (409)."""
+    sb = SBStub(_seed())
+    _, client = _client(sb)
+    r = client.post(
+        "/api/study/mocks/m3/review",
+        json={
+            "review_status": "reviewed",
+            "topic_breakdowns": [{"topic_id": "t1", "wrong_answers": 2}],
+        },
+    )
+    assert r.status_code == 409
+    assert r.json()["detail"]["error"] == "platform_attempt_breakdowns_rejected"
+
+
+def test_platform_attempt_breakdown_rejection_writes_nothing():
+    """On 409 no mock_tests update, no breakdowns, no mastery writes occur."""
+    sb = SBStub(_seed())
+    _, client = _client(sb)
+    client.post(
+        "/api/study/mocks/m3/review",
+        json={
+            "review_status": "reviewed",
+            "topic_breakdowns": [{"topic_id": "t1", "wrong_answers": 2}],
+        },
+    )
+    # mock_tests row must not have been mutated
+    platform_mock = next(m for m in sb.db["mock_tests"] if m["id"] == "m3")
+    assert platform_mock.get("review_status") is None
+    # no breakdown rows
+    assert sb.db.get("mock_topic_breakdowns", []) == []
+
+
+def test_metadata_only_platform_review_allowed():
+    """A platform_attempt mock accepts metadata (review_status, notes) without 409."""
+    sb = SBStub(_seed())
+    _, client = _client(sb)
+    r = client.post(
+        "/api/study/mocks/m3/review",
+        json={"review_status": "reviewed", "notes": "Good attempt."},
+    )
+    assert r.status_code == 200
+    platform_mock = next(m for m in sb.db["mock_tests"] if m["id"] == "m3")
+    assert platform_mock["review_status"] == "reviewed"
+    assert platform_mock["notes"] == "Good attempt."
+    # no breakdowns written
+    assert sb.db.get("mock_topic_breakdowns", []) == []
+
+
+def test_manual_mock_review_with_breakdowns_persists_and_no_409():
+    """A manual_log mock with topic_breakdowns still returns 200 and writes breakdowns."""
+    sb = SBStub(_seed())
+    _, client = _client(sb)
+    r = client.post(
+        "/api/study/mocks/m1/review",
+        json={
+            "review_status": "reviewed",
+            "topic_breakdowns": [{"topic_id": "t1", "wrong_answers": 3}],
+        },
+    )
+    assert r.status_code == 200
+    assert len(sb.db["mock_topic_breakdowns"]) == 1
 
 
 # Phase 5: POST /api/study/mocks/{mock_id}/correction-tasks tests that
