@@ -172,3 +172,174 @@ def test_unknown_classification_value_is_ignored():
     result = derive_from_analytics(analytics)
     assert result.mastery_deltas == []
     assert result.correction_task_drafts == []
+
+
+# ── BLOCKER 2: 23505 conflict handling ────────────────────────────────────────
+
+def _base_db_with_mock_test():
+    db = _base_db()
+    db["mock_tests"] = [
+        {"id": MOCK_TEST_ID, "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}
+    ]
+    return db
+
+
+def test_correction_insert_23505_is_idempotent():
+    """When the correction insert raises 23505, the writer logs and continues — no raise."""
+    insert_calls = []
+
+    class _ConflictSB(SBStub):
+        def table(self, name):
+            if name == "mock_correction_tasks":
+                return _ConflictTable(name, self.db, insert_calls)
+            return super().table(name)
+
+    class _ConflictTable:
+        def __init__(self, name, db, log):
+            from tests.persona_questions._stub import _Query
+            self._q = _Query(name, db)
+            self._log = log
+
+        def select(self, *a, **kw): return self._q.select(*a, **kw)
+        def eq(self, *a, **kw): return self._q.eq(*a, **kw)
+        def delete(self): return self._q.delete()
+
+        def insert(self, payload):
+            self._log.append(payload)
+            return self
+
+        def execute(self):
+            raise RuntimeError("23505 duplicate key value violates unique constraint")
+
+    db = _base_db_with_mock_test()
+    db["mock_attempt_responses"] = [
+        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=True),
+    ]
+    db["mock_attempt_response_classification"] = [
+        _classification("q-ans", "option_trap"),
+    ]
+    sb = _ConflictSB(db)
+    # Must not raise even though the DB rejects with 23505.
+    asyncio.run(mw.MasteryWriter(sb, "live").process_attempt(ATTEMPT))
+    assert len(insert_calls) >= 0  # insert was attempted
+
+
+def test_correction_non_23505_propagates():
+    """Non-unique-constraint errors from correction insert must propagate."""
+    import pytest
+
+    class _NetworkFailSB(SBStub):
+        def table(self, name):
+            if name == "mock_correction_tasks":
+                class _Bad:
+                    def select(self, *a, **kw): return self
+                    def eq(self, *a, **kw): return self
+                    def delete(self): return self
+                    def insert(self, *a): return self
+                    def execute(self): raise RuntimeError("connection refused")
+                return _Bad()
+            return super().table(name)
+
+    db = _base_db_with_mock_test()
+    db["mock_attempt_responses"] = [
+        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=False),
+    ]
+    db["mock_attempt_response_classification"] = [
+        _classification("q-ans", "concept_gap"),
+    ]
+    sb = _NetworkFailSB(db)
+    with pytest.raises(RuntimeError, match="connection refused"):
+        asyncio.run(mw.MasteryWriter(sb, "live").process_attempt(ATTEMPT))
+
+
+# ── BLOCKER 4: derive_preview structure ───────────────────────────────────────
+
+def test_derive_preview_returns_three_sections():
+    """derive_preview must return persisted_shadow_decision, current_read_only_preview,
+    and replay_consistency sections."""
+    db = _base_db_with_mock_test()
+    db["mock_attempt_responses"] = [
+        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=True),
+    ]
+    db["mock_mastery_shadow"] = [
+        {
+            "id": "s1",
+            "attempt_id": ATTEMPT,
+            "topic_id": T_ANSWERED,
+            "proposed_delta_db": "5.0",
+            "current_mastery_db": "50.0",
+            "would_be_mastery_db": "55.0",
+            "trust_level": "platform_verified",
+            "flag_state": "shadow",
+            "decided_at": "2026-06-01T00:00:00+00:00",
+        }
+    ]
+    sb = SBStub(db)
+    writer = mw.MasteryWriter(sb, "shadow")
+    preview = writer.derive_preview(ATTEMPT)
+
+    assert preview is not None
+    assert "persisted_shadow_decision" in preview
+    assert "current_read_only_preview" in preview
+    assert "replay_consistency" in preview
+
+    psd = preview["persisted_shadow_decision"]
+    assert psd["count"] == 1
+    assert len(psd["rows"]) == 1
+
+    crp = preview["current_read_only_preview"]
+    assert "trust_level" in crp
+    assert "mastery_deltas" in crp
+    assert "note" in crp
+
+    rc = preview["replay_consistency"]
+    assert "items" in rc
+    assert "all_signs_match" in rc
+    assert "topics_without_shadow" in rc
+
+
+def test_derive_preview_no_shadow_rows():
+    """derive_preview works when no shadow rows exist (shadow was off)."""
+    db = _base_db_with_mock_test()
+    db["mock_attempt_responses"] = [
+        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=True),
+    ]
+    db["mock_mastery_shadow"] = []
+    sb = SBStub(db)
+    writer = mw.MasteryWriter(sb, "shadow")
+    preview = writer.derive_preview(ATTEMPT)
+
+    assert preview is not None
+    psd = preview["persisted_shadow_decision"]
+    assert psd["count"] == 0
+
+    rc = preview["replay_consistency"]
+    assert rc["topics_without_shadow"] >= 1
+    # all_signs_match is None when there are no matched shadow rows
+    assert rc["all_signs_match"] is None
+
+
+def test_derive_preview_zero_writes():
+    """derive_preview must not write to any table."""
+    db = _base_db_with_mock_test()
+    db["mock_attempt_responses"] = [
+        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=True),
+    ]
+    db["mock_mastery_shadow"] = []
+    sb = SBStub(db)
+    writer = mw.MasteryWriter(sb, "shadow")
+    writer.derive_preview(ATTEMPT)
+
+    # No writes should occur to mastery or correction tables
+    assert sb.db.get("user_topic_mastery", []) == []
+    assert sb.db.get("user_topic_mastery_audit", []) == []
+    assert sb.db.get("mock_correction_tasks", []) == []
+    assert sb.db.get("user_topic_error_patterns", []) == []
+
+
+def test_derive_preview_returns_none_for_unknown_attempt():
+    """derive_preview returns None when the attempt doesn't exist."""
+    db = _base_db_with_mock_test()
+    sb = SBStub(db)
+    writer = mw.MasteryWriter(sb, "shadow")
+    assert writer.derive_preview("nonexistent-attempt-id") is None

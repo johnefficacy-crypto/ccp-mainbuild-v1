@@ -19,13 +19,16 @@
 -- Deduplicate existing rows before adding the constraint.  Keep the oldest
 -- row (smallest created_at, then smallest id as tie-breaker) per effective key.
 
--- Non-null topic: deduplicate
+-- Non-null topic: deduplicate.
+-- COALESCE handles rows where created_at is NULL (rows inserted before
+-- the column had a default); these sort before any real timestamp so the
+-- oldest-row-wins invariant is preserved deterministically.
 with ranked_nn as (
   select
     id,
     row_number() over (
       partition by mock_test_id, user_id, category, topic
-      order by created_at asc, id asc
+      order by coalesce(created_at, '1970-01-01'::timestamptz) asc, id asc
     ) as rn
   from public.mock_correction_tasks
   where state = 'drafted' and topic is not null
@@ -33,13 +36,13 @@ with ranked_nn as (
 delete from public.mock_correction_tasks
 where id in (select id from ranked_nn where rn > 1);
 
--- Null topic: deduplicate
+-- Null topic: deduplicate.
 with ranked_null as (
   select
     id,
     row_number() over (
       partition by mock_test_id, user_id, category
-      order by created_at asc, id asc
+      order by coalesce(created_at, '1970-01-01'::timestamptz) asc, id asc
     ) as rn
   from public.mock_correction_tasks
   where state = 'drafted' and topic is null

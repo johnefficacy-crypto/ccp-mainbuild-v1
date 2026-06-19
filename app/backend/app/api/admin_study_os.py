@@ -1354,6 +1354,16 @@ def mocks_mastery_preview(
         raise HTTPException(status_code=404, detail="Mock not found")
 
     mock = mock_rows[0]
+    source_type = mock.get("source_type") or "manual_log"
+    if source_type != "platform_attempt":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Mastery preview is only available for platform_attempt mocks "
+                f"(source_type={source_type!r})."
+            ),
+        )
+
     attempt_id = mock.get("mock_attempt_id")
     if not attempt_id:
         raise HTTPException(
@@ -1363,6 +1373,9 @@ def mocks_mastery_preview(
 
     from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
 
+    # derive_preview is flag-independent: it always runs the full derivation
+    # pipeline and returns both persisted shadow decisions and the current-state
+    # re-derivation without any writes.
     writer = MasteryWriter(supabase, get_mastery_write_flag())
     preview = writer.derive_preview(str(attempt_id))
     if preview is None:

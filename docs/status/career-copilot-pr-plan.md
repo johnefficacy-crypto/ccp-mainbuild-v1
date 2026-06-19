@@ -1,6 +1,6 @@
 # Career Copilot remaining-work PR plan
 
-Last planned from repo state: 2026-06-19 at `43d64a1`.
+Last planned from repo state: 2026-06-19 at `9dde8efc` (PR #716 blocker-fix branch `claude/intelligent-cerf-8wmuti`).
 
 This plan decomposes the remaining Career Copilot work into small PRs that can
 be assigned to simultaneous agents without overlapping write scopes. Status
@@ -36,6 +36,24 @@ terms come from `docs/status/career-copilot-checklist.md`.
 Goal: prove the already-landed code remediations against live/operator evidence
 without flipping `FF_MOCK_MASTERY_WRITES=live`.
 
+### PR #716 — Shadow gate prerequisite hardening (code-only, must merge before A1/A2/A3)
+
+Fixes 6 blocking review findings against the mastery shadow gate:
+
+1. **Correction idempotency (23505):** `_draft_correction_tasks` in `mastery_writer.py`
+   and `draft_correction_tasks` in `mocks.py` now handle PostgreSQL 23505 uniqueness
+   conflicts idempotently. Migration 181 dedup CTE fixed for `NULL created_at`.
+2. **Platform-attempt correction guard:** `POST /api/study/mocks/{id}/correction-tasks`
+   returns HTTP 409 (`PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN`) for
+   `source_type=platform_attempt` mocks.
+3. **`derive_preview` three sections:** redesigned to return `persisted_shadow_decision`,
+   `current_read_only_preview`, and `replay_consistency` with zero writes.
+4. **Shadow analysis tool redesign:** `shadow-replay` (self-consistency), `live-audit-compare`
+   (canary-only), `tasks-overlap` (with semantic note); correct env vars; real pagination.
+5. **Canary plan hardened:** user allowlist made a hard prerequisite; rollback scoped to
+   exact canary attempt_ids covering all 5 affected tables.
+6. **Status docs:** this file and `docs/status/career-copilot-checklist.md` updated.
+
 ### A1 — Scheduler/job visibility evidence
 
 - **Type:** operator evidence doc only.
@@ -61,13 +79,20 @@ without flipping `FF_MOCK_MASTERY_WRITES=live`.
 
 ### A3 — Live canary plan, not implementation
 
-- **Type:** plan/evidence doc only.
+- **Type:** plan/evidence doc only (canary plan exists at `docs/ops/pr8_live_canary_plan.md`).
 - **Write scope:** `docs/runbooks/` or `docs/audits/`, checklist row updates.
-- **Depends on:** A1 and A2 clean.
-- **Work:** define the exact live-flag canary, rollback condition, readback
-  queries, and plan-regeneration proof.
-- **Exit:** only after approval should a separate implementation/ops PR flip or
-  configure anything live.
+- **Depends on:** A1 and A2 clean, **AND** the user-allowlist implementation PR merged.
+- **Hard prerequisite — not optional:** `FF_MOCK_MASTERY_WRITES` is currently global.
+  A live canary MUST be bounded to a named user allowlist before this plan can be
+  approved. The allowlist implementation PR (check `user_id` against an explicit
+  allow-list before calling `MasteryWriter.process_attempt_sync`) must be merged and
+  the allowlist must be non-empty with named consenting users. Rollback is scoped to
+  exact canary attempt_ids recorded in pre-canary queries — not a time window.
+- **Work:** confirm allowlist implementation merged, populate allowlist, run
+  pre-canary queries, flip flag for bounded users, verify post-canary queries against
+  success thresholds, attach evidence to PR9.
+- **Exit:** only after all success thresholds pass should any expansion of the
+  allowlist or full promotion occur. Never flip without allowlist in place.
 
 ## Lane B — Exam Governance cleanup
 

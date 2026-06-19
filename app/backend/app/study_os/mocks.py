@@ -70,6 +70,14 @@ VALID_REVIEW_STATES = {"scheduled", "unreviewed", "reviewed", "correction_drafte
 VALID_CORRECTION_CATEGORIES = set(CANONICAL_CATEGORIES)
 
 
+class PlatformAttemptCorrectionForbiddenError(ValueError):
+    """Raised when a caller attempts to manually draft corrections for a platform_attempt mock.
+
+    MasteryWriter owns the correction pipeline for platform_attempt mocks.
+    The manual route (this module) is only valid for manual_log and imported_result.
+    """
+
+
 # ──────────────────────────── serialisers ───────────────────────────────────
 def _serialise_mock(row: dict[str, Any], breakdowns: Iterable[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Public Mock shape returned to the frontend."""
@@ -369,14 +377,25 @@ def draft_correction_tasks(
     user_id: str,
     mock_id: str,
 ) -> list[dict[str, Any]]:
-    """Generate + persist correction-task suggestions for a mock.
+    """Generate + persist correction-task suggestions for a manual mock.
 
     Replaces any prior drafted (not-yet-applied) corrections for the mock.
-    Flips the mock's review_state to ``correction_drafted``.
+    Flips the mock's review_state to ``correction_drafted`` only when corrections
+    are successfully written.
+
+    Raises:
+        LookupError: mock_id not found or not owned by user_id.
+        PlatformAttemptCorrectionForbiddenError: mock has source_type=platform_attempt;
+            MasteryWriter owns that pipeline — manual drafting is forbidden.
     """
     mock = get_mock(supabase, user_id, mock_id)
     if not mock:
         raise LookupError("mock not found")
+
+    if (mock.get("source_type") or "manual_log") == "platform_attempt":
+        raise PlatformAttemptCorrectionForbiddenError(
+            f"PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN mock_id={mock_id}"
+        )
 
     drafts = _draft_corrections_from_mock(mock)
 
@@ -406,22 +425,40 @@ def draft_correction_tasks(
             }
             for d in drafts
         ]
-        inserted = _safe(
-            lambda: supabase.table("mock_correction_tasks").insert(payload).execute(),
-            default=None,
-        )
-        rows = getattr(inserted, "data", None) or []
+        try:
+            inserted = supabase.table("mock_correction_tasks").insert(payload).execute()
+            rows = getattr(inserted, "data", None) or []
+        except Exception as exc:  # noqa: BLE001
+            if "23505" not in str(exc):
+                raise
+            # Unique constraint from migration 181 fired on a concurrent insert.
+            # Fetch the existing rows rather than failing.
+            logger.warning(
+                "correction insert hit unique constraint for mock=%s; fetching existing",
+                mock_id,
+            )
+            existing = _safe(
+                lambda: supabase.table("mock_correction_tasks")
+                .select("*")
+                .eq("mock_test_id", mock_id)
+                .eq("user_id", user_id)
+                .eq("state", "drafted")
+                .execute(),
+                default=None,
+            )
+            rows = getattr(existing, "data", None) or []
 
-    # Mark the mock as having draft corrections.
-    _safe(
-        lambda: (
-            supabase.table("mock_tests")
-            .update({"review_state": "correction_drafted", "updated_at": _now_iso()})
-            .eq("id", mock_id)
-            .eq("user_id", user_id)
-            .execute()
-        ),
-    )
+    # Only advance review_state when corrections were actually written.
+    if rows:
+        _safe(
+            lambda: (
+                supabase.table("mock_tests")
+                .update({"review_state": "correction_drafted", "updated_at": _now_iso()})
+                .eq("id", mock_id)
+                .eq("user_id", user_id)
+                .execute()
+            ),
+        )
 
     return [_serialise_correction(r) for r in rows]
 
