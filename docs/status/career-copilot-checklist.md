@@ -61,7 +61,7 @@ Current verdict: **core arc complete; cleanup tier remains**.
 | #707 per-exam backend read | MERGED / CODE PRESENT | `/console/exams/{exam_id}` delegates to `console_detail.build_console_detail`. |
 | #709 per-exam action console | MERGED / CODE PRESENT | Selected-exam console renders `ExamActionConsole`, not embedded `ExamWorkspace variant="console"`. |
 | CL-1 identifier hygiene | CODE PRESENT IN THIS CHECKOUT | `operatorChrome` helpers and tests are present. Confirm remote PR state separately if needed. |
-| CL-1b de-leak `ExamActionConsole` | CLEANUP PENDING | `ExamActionConsole` still uses local token humanization/reason labels rather than shared `operatorChrome` helpers. |
+| CL-1b de-leak `ExamActionConsole` | CODE PRESENT IN THIS CHECKOUT | Shared `operatorChrome.humanizeToken` now backs reason/area/gate fallbacks (with explicit neutral words); UUID title fallback removed (now "Unnamed exam"); verdict-status raw-token label fallback removed; targeted `ExamActionConsole` identifier-hygiene regression added. |
 | CL-2 registry row expansion / column cleanup | PLANNED | Not verified as implemented in this checkout. |
 | CL-3 remove CMS `+ New guided exam` CTA | PLANNED | Not verified as implemented in this checkout. |
 | CL-4 collapsible lifecycle banner | PLANNED | Not verified as implemented in this checkout. |
