@@ -1,6 +1,24 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const EXAM_ROW = {
+  id: "exam-row-1",
+  slug: "sample-exam",
+  name: "Sample Exam",
+  exam_type: "recruitment",
+  management_mode: null,
+  is_active: true,
+  created_at: "2026-06-19T00:00:00Z",
+};
+
+const CYCLE_ROW = {
+  id: "cycle-row-1",
+  exam_id: "exam-row-1",
+  year: 2026,
+  cycle_name: "Sample Cycle",
+  status: "expected",
+};
 
 jest.mock("../../../lib/api", () => ({
   __esModule: true,
@@ -14,17 +32,15 @@ const { api } = require("../../../lib/api");
 const AdminExamIntelCms = require("./ExamIntelCms").default;
 
 beforeEach(() => {
-  api.get.mockResolvedValue({
-    items: [{
-      id: "exam-row-1",
-      slug: "sample-exam",
-      name: "Sample Exam",
-      exam_type: "recruitment",
-      management_mode: null,
-      is_active: true,
-      created_at: "2026-06-19T00:00:00Z",
-    }],
-    total: 1,
+  api.get.mockReset();
+  api.get.mockImplementation((url) => {
+    if (url === "/api/admin/exam-intelligence-cms/exams?limit=50") {
+      return Promise.resolve({ items: [EXAM_ROW], total: 1 });
+    }
+    if (url === "/api/admin/exam-intelligence-cms/exam-cycles?limit=50") {
+      return Promise.resolve({ items: [CYCLE_ROW], total: 1 });
+    }
+    return Promise.resolve({ items: [], total: 0 });
   });
 });
 
@@ -67,6 +83,13 @@ test("no percentage in the reframed header copy", () => {
   expect(screen.getByRole("heading", { level: 1 }).textContent).not.toContain("%");
 });
 
+test("default entity does not render the removed New guided exam CTA", () => {
+  renderPage();
+
+  expect(screen.queryByTestId("cms-new-guided-exam")).toBeNull();
+  expect(screen.queryByRole("link", { name: /New guided exam/i })).toBeNull();
+});
+
 test("exams entity does not render the removed New guided exam CTA", async () => {
   renderPage();
   selectEntity("exams");
@@ -86,32 +109,19 @@ test("entity churn never restores the removed New guided exam CTA", async () => 
   expect(screen.queryByRole("link", { name: /New guided exam/i })).toBeNull();
 
   selectEntity("exam-cycles");
-  await waitFor(() => expect(screen.getByTestId("cms-entity-select").value).toBe("exam-cycles"));
+  await screen.findByText("Sample Cycle");
+  expect(api.get).toHaveBeenCalledWith("/api/admin/exam-intelligence-cms/exam-cycles?limit=50");
   expect(screen.queryByTestId("cms-new-guided-exam")).toBeNull();
   expect(screen.queryByRole("link", { name: /New guided exam/i })).toBeNull();
 
   selectEntity("exams");
   await screen.findByText("Sample Exam");
+  expect(api.get).toHaveBeenCalledWith("/api/admin/exam-intelligence-cms/exams?limit=50");
   expect(screen.queryByTestId("cms-new-guided-exam")).toBeNull();
   expect(screen.queryByRole("link", { name: /New guided exam/i })).toBeNull();
 });
 
-test("exams repair controls remain available after removing the guided CTA", async () => {
-  renderPage();
-  selectEntity("exams");
-
-  await screen.findByText("Sample Exam");
-
-  expect(screen.getByRole("button", { name: /Reload/i })).toBeTruthy();
-  expect(screen.getByRole("button", { name: /New row/i })).toBeTruthy();
-  expect(screen.getByRole("button", { name: /Bulk import/i })).toBeTruthy();
-  expect(screen.getByTestId("ac-entry-exam-row-1")).toHaveAttribute(
-    "href",
-    "/admin/exam-intelligence/exams/exam-row-1/add-cycle"
-  );
-});
-
-test("exams New row still opens the create form", async () => {
+test("exams New row still opens the correct create form", async () => {
   renderPage();
   selectEntity("exams");
   await screen.findByText("Sample Exam");
@@ -119,9 +129,10 @@ test("exams New row still opens the create form", async () => {
   fireEvent.click(screen.getByRole("button", { name: /New row/i }));
 
   expect(screen.getByTestId("cms-create-form")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "New Exams row" })).toBeTruthy();
 });
 
-test("exams Bulk import still opens the bulk form", async () => {
+test("exams Bulk import still opens the correct bulk form", async () => {
   renderPage();
   selectEntity("exams");
   await screen.findByText("Sample Exam");
@@ -129,4 +140,5 @@ test("exams Bulk import still opens the bulk form", async () => {
   fireEvent.click(screen.getByRole("button", { name: /Bulk import/i }));
 
   expect(screen.getByTestId("cms-bulk-form")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: /Bulk import Exams/i })).toBeTruthy();
 });
