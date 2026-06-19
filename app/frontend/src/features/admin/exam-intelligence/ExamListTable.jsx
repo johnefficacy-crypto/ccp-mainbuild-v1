@@ -10,8 +10,10 @@ import {
   REVIEWER_STATUS_PLANNER_NOTE,
 } from "./ExamIntelGlossary";
 
-function examKey(exam) {
-  return exam?.id ?? exam?.slug ?? exam?.name ?? "unnamed-exam";
+function examKey(exam, index) {
+  const id = typeof exam?.id === "string" ? exam.id.trim() : exam?.id;
+  if (id) return id;
+  return `fallback:${exam?.slug || exam?.name || "unnamed-exam"}:${index}`;
 }
 
 function examDisplayName(exam) {
@@ -26,7 +28,7 @@ function safeDomId(value) {
 
 function examDomHandle(exam, index) {
   if (exam?.slug) return safeDomId(exam.slug);
-  if (exam?.name) return safeDomId(exam.name);
+  if (exam?.name) return `${safeDomId(exam.name)}-${index}`;
   return `row-${index}`;
 }
 
@@ -56,7 +58,12 @@ function readinessLabel(level) {
   if (level === "partial") return "partial";
   if (level === "not_ready") return "not ready";
   if (!level) return "not ready";
-  return humanizeToken(level) || "not ready";
+  const raw = String(level);
+  const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+  if (uuidLike || raw.includes("/api/") || raw.startsWith("http://") || raw.startsWith("https://")) {
+    return "Needs review";
+  }
+  return humanizeToken(raw) || "not ready";
 }
 
 const READINESS_STATUS = {
@@ -127,7 +134,7 @@ export default function ExamListTable({
         </thead>
         <tbody>
           {rows.map((e, index) => {
-            const key = examKey(e);
+            const key = examKey(e, index);
             const displayName = examDisplayName(e);
             const domHandle = examDomHandle(e, index);
             const detailId = `exam-intel-details-${domHandle}`;
@@ -136,6 +143,7 @@ export default function ExamListTable({
               ? BUSINESS_PRIORITY_LABELS.null
               : (BUSINESS_PRIORITY_LABELS[e.management_mode] ?? BUSINESS_PRIORITY_LABELS.null);
             const cadence = CADENCE_LABELS[e.cadence] ?? "Unknown";
+            const actionHandle = e.slug || domHandle;
             const Icon = isExpanded ? ChevronDown : ChevronRight;
             return (
               <React.Fragment key={key}>
@@ -179,14 +187,14 @@ export default function ExamListTable({
                       <Link
                         to={`/admin/exam-intelligence/console/${e.id}`}
                         className="text-[11px] px-3 py-1 rounded-full border border-indigo-300 text-indigo-700 font-semibold hover:bg-indigo-50"
-                        data-testid={`exam-intel-console-${e.slug}`}
+                        data-testid={`exam-intel-console-${actionHandle}`}
                       >
                         Open console
                       </Link>
                       <Link
                         to={`/admin/exam-intelligence/workspace/${e.id}`}
                         className="text-[11px] px-2 py-1 rounded-full text-clay-600 hover:text-clay-900 hover:underline underline-offset-2"
-                        data-testid={`exam-intel-workspace-${e.slug}`}
+                        data-testid={`exam-intel-workspace-${actionHandle}`}
                       >
                         Advanced workspace
                       </Link>

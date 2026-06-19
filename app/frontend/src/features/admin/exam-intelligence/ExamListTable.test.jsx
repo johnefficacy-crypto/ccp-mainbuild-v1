@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import ExamListTable from "./ExamListTable";
 
 const UUID = "3f9a1c2e-7b44-4d11-9aaa-0c2b9f8e1234";
+const UUID_2 = "4f9a1c2e-7b44-4d11-9aaa-0c2b9f8e5678";
 
 const ITEMS = [
   {
@@ -51,6 +52,42 @@ const SLUGLESS_UUID_ITEM = {
   management_mode: "core",
   cadence: "annual",
 };
+
+const FALLBACK_SHARED_NAME_ITEMS = [
+  {
+    ...ITEMS[0],
+    id: "",
+    slug: null,
+    name: "Shared Name",
+    readiness_level: "ready",
+  },
+  {
+    ...ITEMS[1],
+    id: null,
+    slug: null,
+    name: "Shared Name",
+    readiness_level: "partial",
+  },
+];
+
+const ANONYMOUS_ITEMS = [
+  { ...SLUGLESS_UUID_ITEM, id: undefined, readiness_level: "ready" },
+  { ...SLUGLESS_UUID_ITEM, id: null, readiness_level: "partial" },
+];
+
+const SLUGLESS_SAME_NAME_UUID_ITEMS = [
+  { ...SLUGLESS_UUID_ITEM, id: UUID, name: "Shared UUID Name", readiness_level: "ready" },
+  { ...SLUGLESS_UUID_ITEM, id: UUID_2, name: "Shared UUID Name", readiness_level: "partial" },
+];
+
+function readinessFixture(readiness_level) {
+  return {
+    ...SLUGLESS_UUID_ITEM,
+    id: `readiness-${String(readiness_level).replace(/[^a-z0-9]/gi, "-")}`,
+    name: "Readiness Guard",
+    readiness_level,
+  };
+}
 
 function wrap(ui) {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
@@ -179,6 +216,72 @@ test("slugless UUID row keeps UUID out of visible text and controlled DOM handle
   expect(document.body.textContent).not.toContain(UUID);
 });
 
+test("anonymous fallback rows do not emit duplicate-key warnings", () => {
+  const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    wrap(<ExamListTable items={ANONYMOUS_ITEMS} total_count={2} />);
+    const keyWarnings = errorSpy.mock.calls.filter((call) =>
+      String(call[0]).includes("Encountered two children with the same key")
+    );
+    expect(keyWarnings).toHaveLength(0);
+  } finally {
+    errorSpy.mockRestore();
+  }
+});
+
+test("fallback rows sharing a name expand independently", () => {
+  wrap(<ExamListTable items={FALLBACK_SHARED_NAME_ITEMS} total_count={2} />);
+  fireEvent.click(screen.getByTestId("exam-intel-disclosure-Shared-Name-0"));
+  expect(screen.getByTestId("exam-intel-details-Shared-Name-0")).toBeInTheDocument();
+  expect(screen.queryByTestId("exam-intel-details-Shared-Name-1")).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByTestId("exam-intel-disclosure-Shared-Name-1"));
+  expect(screen.getByTestId("exam-intel-details-Shared-Name-0")).toBeInTheDocument();
+  expect(screen.getByTestId("exam-intel-details-Shared-Name-1")).toBeInTheDocument();
+});
+
+test("expanded fallback row stays expanded across rerender with same rows", () => {
+  const { rerender } = wrap(<ExamListTable items={ANONYMOUS_ITEMS} total_count={2} />);
+  fireEvent.click(screen.getByTestId("exam-intel-disclosure-row-1"));
+  expect(screen.getByTestId("exam-intel-details-row-1")).toBeInTheDocument();
+
+  rerender(
+    <MemoryRouter>
+      <ExamListTable items={ANONYMOUS_ITEMS} total_count={2} />
+    </MemoryRouter>
+  );
+
+  expect(screen.getByTestId("exam-intel-details-row-1")).toBeInTheDocument();
+  expect(screen.queryByTestId("exam-intel-details-row-0")).not.toBeInTheDocument();
+});
+
+test("slugless same-name UUID rows get unique DOM handles and action testids", () => {
+  wrap(<ExamListTable items={SLUGLESS_SAME_NAME_UUID_ITEMS} total_count={2} />);
+  const first = screen.getByTestId("exam-intel-disclosure-Shared-UUID-Name-0");
+  const second = screen.getByTestId("exam-intel-disclosure-Shared-UUID-Name-1");
+  expect(first).toBeInTheDocument();
+  expect(second).toBeInTheDocument();
+  expect(first.getAttribute("aria-controls")).not.toBe(second.getAttribute("aria-controls"));
+  expect(first.getAttribute("aria-controls")).not.toContain(UUID);
+  expect(second.getAttribute("aria-controls")).not.toContain(UUID_2);
+  expect(screen.getByTestId("exam-intel-console-Shared-UUID-Name-0")).toBeInTheDocument();
+  expect(screen.getByTestId("exam-intel-workspace-Shared-UUID-Name-0")).toBeInTheDocument();
+  expect(screen.getByTestId("exam-intel-console-Shared-UUID-Name-1")).toBeInTheDocument();
+  expect(screen.getByTestId("exam-intel-workspace-Shared-UUID-Name-1")).toBeInTheDocument();
+
+  fireEvent.click(first);
+  fireEvent.click(second);
+  const firstDetail = screen.getByTestId("exam-intel-details-Shared-UUID-Name-0");
+  const secondDetail = screen.getByTestId("exam-intel-details-Shared-UUID-Name-1");
+  expect(firstDetail).toBeInTheDocument();
+  expect(secondDetail).toBeInTheDocument();
+  expect(firstDetail.getAttribute("id")).not.toBe(secondDetail.getAttribute("id"));
+  expect(firstDetail.getAttribute("id")).not.toContain(UUID);
+  expect(secondDetail.getAttribute("id")).not.toContain(UUID_2);
+  expect(document.body.textContent).not.toContain(UUID);
+  expect(document.body.textContent).not.toContain(UUID_2);
+});
+
 // ── collapsed metrics and readiness ───────────────────────────────────────
 
 test("collapsed syllabus combines verified and pending without bare zeroes", () => {
@@ -201,10 +304,17 @@ test("readiness badge renders for each row", () => {
   expect(screen.getByText("not ready")).toBeInTheDocument();
 });
 
-test("unknown readiness token is humanized without rendering raw snake case", () => {
-  wrap(<ExamListTable items={[SLUGLESS_UUID_ITEM]} total_count={1} />);
-  expect(screen.getByText("Needs manual review")).toBeInTheDocument();
-  expect(document.body.textContent).not.toContain("needs_manual_review");
+// Defensive guards: backend readiness_level is a closed enum, but unknown values
+// should still render neutral/human labels rather than raw identifiers.
+test.each([
+  ["needs_manual_review", "Needs manual review"],
+  [UUID, "Needs review"],
+  ["/api/study/internal", "Needs review"],
+  ["https://internal.example/path", "Needs review"],
+])("unknown readiness value %p renders a safe label", (raw, label) => {
+  wrap(<ExamListTable items={[readinessFixture(raw)]} total_count={1} />);
+  expect(screen.getByText(label)).toBeInTheDocument();
+  expect(document.body.textContent).not.toContain(raw);
 });
 
 // ── detail glossary and safe labels ────────────────────────────────────────
