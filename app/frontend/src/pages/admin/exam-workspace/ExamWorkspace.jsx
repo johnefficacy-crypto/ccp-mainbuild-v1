@@ -17,8 +17,6 @@ import UpdatesPanel from "./panels/UpdatesPanel";
 import CompetitionPanel from "./panels/CompetitionPanel";
 import ReviewActivatePanel from "./panels/ReviewActivatePanel";
 import OverviewPanel from "./panels/OverviewPanel";
-import ExamTaskRail from "./ExamTaskRail";
-import ExamPublishImpact from "./ExamPublishImpact";
 import { LifecycleLegend } from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
 
 const SyllabusMapperPanel = lazy(() => import("./syllabus-mapper/SyllabusMapperPanel"));
@@ -49,8 +47,8 @@ function totalBlockers(readiness) {
 
 // Current stage = first non-ready/locked section (excluding the terminal
 // review_activate). Single source of truth for the "what's blocking now"
-// highlight, reused by both the SmartHeader and the console task rail.
-export function currentStageSection(readiness) {
+// highlight, reused by the SmartHeader.
+function currentStageSection(readiness) {
   return (readiness?.sections || []).find(
     (s) => s.section !== "review_activate" && !(s.status === "ready" || s.status === "locked"),
   ) || null;
@@ -59,7 +57,7 @@ export function currentStageSection(readiness) {
 // ─── Smart readiness header ──────────────────────────────────────────────────
 
 function SmartHeader({ onGotoTab }) {
-  const { exam, cycles, cycle, readiness, variant } = useExamWorkspace();
+  const { exam, cycles, cycle, readiness } = useExamWorkspace();
   const { exam_id } = useParams();
   const navigate = useNavigate();
 
@@ -130,29 +128,24 @@ function SmartHeader({ onGotoTab }) {
           )}
         </div>
 
-        {/* Console frame owns exam selection via the URL; the in-workspace
-            cycle picker navigates to the standalone /workspace route, which
-            would escape the console — so it is hidden in console variant. */}
-        {variant !== "console" && (
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div className="lbl" style={{ marginBottom: 4 }}>Cycle</div>
-            <select
-              className="input"
-              style={{ minWidth: 180 }}
-              value={cycle?.id ?? ""}
-              onChange={handleCycleChange}
-              data-testid="cycle-picker"
-            >
-              <option value="">All cycles</option>
-              {cycles.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.cycle_name ?? c.name ?? c.id}
-                  {c.status === "active" ? " · active" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div className="lbl" style={{ marginBottom: 4 }}>Cycle</div>
+          <select
+            className="input"
+            style={{ minWidth: 180 }}
+            value={cycle?.id ?? ""}
+            onChange={handleCycleChange}
+            data-testid="cycle-picker"
+          >
+            <option value="">All cycles</option>
+            {cycles.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.cycle_name ?? c.name ?? c.id}
+                {c.status === "active" ? " · active" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Readiness strip */}
@@ -173,8 +166,7 @@ function SmartHeader({ onGotoTab }) {
               className="mono"
               style={{ fontSize: 10.5, color: "rgba(250,247,242,0.7)", marginTop: 2 }}
             >
-              {/* D-E: no readiness percentage in console variant; keep status. */}
-              {variant === "console" ? overallStatus : `${scorePercent}% ready · ${overallStatus}`}
+              {`${scorePercent}% ready · ${overallStatus}`}
             </div>
           </div>
           <div
@@ -217,10 +209,9 @@ function SmartHeader({ onGotoTab }) {
   );
 }
 
-// ─── 7-tab strip ─────────────────────────────────────────────────────────────
+// ─── 8-tab strip ─────────────────────────────────────────────────────────────
 
 function TabStrip({ active, onChange, readiness }) {
-  const { variant } = useExamWorkspace();
   return (
     <div className="modebar" role="tablist" style={{ paddingTop: 2 }} data-testid="tab-strip">
       {TAB_ORDER.map((t) => {
@@ -294,7 +285,7 @@ function TabStrip({ active, onChange, readiness }) {
               >
                 {readiness.overall?.ready_to_activate
                   ? "ready to activate"
-                  : (variant === "console" ? (readiness.overall?.status ?? null) : `${readiness.overall?.score_percent ?? 0}%`)}
+                  : `${readiness.overall?.score_percent ?? 0}%`}
               </span>
             )}
           </button>
@@ -307,7 +298,7 @@ function TabStrip({ active, onChange, readiness }) {
 // ─── Main shell ───────────────────────────────────────────────────────────────
 
 function WorkspaceShell() {
-  const { loading, error, refetch, readiness, variant } = useExamWorkspace();
+  const { loading, error, refetch, readiness } = useExamWorkspace();
   const [searchParams] = useSearchParams();
   const initialTab = TAB_ORDER.some(t => t.id === searchParams.get("tab"))
     ? searchParams.get("tab")
@@ -358,35 +349,9 @@ function WorkspaceShell() {
       )}
       {activeTab === "updates" && <UpdatesPanel />}
       {activeTab === "competition" && <CompetitionPanel />}
-      {/* Console Publish surface frames the read-only impact view (which mounts
-          ReviewActivatePanel as-is); standalone keeps the bare panel (4.6D). */}
-      {activeTab === "review" && (variant === "console"
-        ? <ExamPublishImpact onGotoTab={gotoTab} />
-        : <ReviewActivatePanel onGotoTab={gotoTab} />)}
+      {activeTab === "review" && <ReviewActivatePanel onGotoTab={gotoTab} />}
     </>
   );
-
-  // Console variant: blocker-first task rail drives the same panel state
-  // (Wave 4.6C). Standalone variant keeps the tab strip exactly as before.
-  if (variant === "console") {
-    return (
-      <div className="oc">
-        <SmartHeader onGotoTab={gotoTab} />
-        <div style={{ display: "flex", alignItems: "stretch" }} data-testid="console-rail-layout">
-          <ExamTaskRail
-            sections={readiness?.sections}
-            topicCoverage={readiness?.topic_coverage}
-            activeTab={activeTab}
-            currentSectionKey={currentStageSection(readiness)?.section ?? null}
-            onSelect={setActiveTab}
-          />
-          <main className="oc-main" style={{ flex: 1, minWidth: 0, paddingTop: 18 }}>
-            {panelBody}
-          </main>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="oc">
@@ -400,9 +365,9 @@ function WorkspaceShell() {
   );
 }
 
-export default function ExamWorkspace({ variant = "workspace" }) {
+export default function ExamWorkspace() {
   return (
-    <ExamWorkspaceProvider variant={variant}>
+    <ExamWorkspaceProvider>
       <WorkspaceShell />
     </ExamWorkspaceProvider>
   );

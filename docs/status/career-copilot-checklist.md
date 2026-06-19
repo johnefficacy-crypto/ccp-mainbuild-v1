@@ -66,7 +66,7 @@ Current verdict: **core arc complete; cleanup tier remains**.
 | CL-3 remove CMS `+ New guided exam` CTA | PLANNED | Not verified as implemented in this checkout. |
 | CL-4 collapsible lifecycle banner | PLANNED | Not verified as implemented in this checkout. |
 | CL-5 one-primary-per-screen buttons | PLANNED | Not verified as implemented in this checkout. |
-| CL-6 remove orphaned console variant + `ExamTaskRail` | CLEANUP PENDING | `ExamWorkspace` still contains `variant === "console"` branches and still renders `ExamTaskRail`; the runtime console route no longer mounts it. |
+| CL-6 remove orphaned console variant + `ExamTaskRail` | CODE PRESENT IN THIS CHECKOUT | `ExamWorkspace` has been collapsed to the standalone 8-tab workspace: no runtime console variant branches remain, `ExamTaskRail` source/import/test coverage is removed, standalone regressions and governance regressions pass, and the runtime console route already uses `ExamActionConsole`. `ExamPublishImpact` is retained (not deleted) outside B2 scope. |
 
 ## Exam intelligence / workspace UX cleanup findings
 
