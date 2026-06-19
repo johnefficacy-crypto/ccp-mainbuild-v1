@@ -2,35 +2,76 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
+
+# All logs go to stderr; JSON results go to stdout only.
+logging.basicConfig(
+    stream=sys.stderr,
+    level=logging.WARNING,
+    format="%(levelname)s %(name)s: %(message)s",
+)
+_log = logging.getLogger("shadow_analysis")
 
 try:
     from supabase import create_client
 except ImportError:  # pragma: no cover
     create_client = None  # type: ignore[assignment]
 
+# Trust weights verified from mastery_writer.TRUST_WEIGHT.
+_TRUST_WEIGHTS: dict[str, Decimal] = {
+    "platform_verified": Decimal("1.0"),
+    "admin_verified": Decimal("1.0"),
+    "self_reported": Decimal("0.3"),
+}
+_RECOGNIZED_TRUST_LEVELS: frozenset[str] = frozenset(_TRUST_WEIGHTS)
+_CAP_DB = Decimal("15")  # ±0.15 unit × 100 = ±15 db
 
-# ─── Helpers ─────────────────────────────────────────────────────────────────
+# Formalized exit codes.
+_EXIT_OK = 0           # PASS or FAIL — run completed, data was sufficient
+_EXIT_ERROR = 2        # config / credential / query error  (ERROR status)
+_EXIT_INSUFFICIENT = 3 # insufficient data                  (INSUFFICIENT_DATA status)
+_EXIT_CORRUPT = 4      # corrupt / invariant-invalid data
 
 
-def _get_supabase():
-    """Create Supabase admin client from env or exit with a clear error.
+# ─── helpers ─────────────────────────────────────────────────────────────────
 
-    Uses the repo-standard env var names. Deliberately fails rather than
-    printing apparently valid zero metrics when credentials are absent.
-    """
+
+def _get_supabase() -> Any:
+    """Create Supabase admin client from env or exit 2 with a clear error."""
     url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "").strip()
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
     if not url or not key:
-        sys.exit(
-            "ERROR: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.\n"
-            "Refusing to print zero metrics on missing credentials."
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": "",
+                "status": "ERROR",
+                "error": "MISSING_CREDENTIALS",
+                "detail": (
+                    "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set. "
+                    "Refusing to print zero metrics on missing credentials."
+                ),
+            },
+            output_json=True,
         )
+        sys.exit(_EXIT_ERROR)
     if create_client is None:  # pragma: no cover
-        sys.exit("ERROR: supabase-py not installed. Run: pip install supabase")
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": "",
+                "status": "ERROR",
+                "error": "MISSING_DEPENDENCY",
+                "detail": "supabase-py not installed. Run: pip install supabase",
+            },
+            output_json=True,
+        )
+        sys.exit(_EXIT_ERROR)
     return create_client(url, key)
 
 
@@ -47,7 +88,6 @@ def _sign(x: float) -> int:
 
 
 def _pearson(xs: list[float], ys: list[float]) -> float | None:
-    """Pearson r for two equal-length lists of ≥2 values, or None."""
     n = len(xs)
     if n < 2 or len(ys) != n:
         return None
@@ -65,15 +105,12 @@ def _fetch_paginated(
     sb: Any,
     table: str,
     query_fn: Any,
-    batch_size: int = 5_000,
+    batch_size: int = 1000,
     order_by: str = "id",
 ) -> list[dict]:
-    """Stable offset-based pagination with deterministic ordering.
-
-    Uses range() + order() to paginate in consistent batches. The order_by
-    column must be unique (e.g. 'id') to avoid row skips at page boundaries.
-    """
+    """Stable offset-based pagination; page size ≤ 1000, duplicate detection."""
     all_rows: list[dict] = []
+    seen_ids: set[Any] = set()
     offset = 0
     while True:
         result = (
@@ -84,218 +121,725 @@ def _fetch_paginated(
             .data
             or []
         )
-        all_rows.extend(result)
+        for r in result:
+            row_id = r.get("id") or r.get(order_by)
+            if row_id not in seen_ids:
+                seen_ids.add(row_id)
+                all_rows.append(r)
         if len(result) < batch_size:
             break
         offset += batch_size
     return all_rows
 
 
+def _emit_result(result: dict[str, Any], output_json: bool) -> None:
+    """Write result to stdout. JSON mode: pretty JSON. Human mode: key=value."""
+    if output_json:
+        print(json.dumps(result, indent=2))
+        return
+    cmd = result.get("command", "")
+    status = result.get("status", "")
+    print(f"{cmd} status={status}")
+    skip = {"schema_version", "command", "status", "thresholds"}
+    for k, v in result.items():
+        if k in skip:
+            continue
+        if isinstance(v, list) and len(v) == 0:
+            continue
+        if isinstance(v, (dict, list)):
+            print(f"  {k}={json.dumps(v)}")
+        else:
+            print(f"  {k}={v}")
+    if "thresholds" in result:
+        print(f"  thresholds={json.dumps(result['thresholds'])}")
+
+
+def _check_attempt_derivation(command: str) -> Any:
+    """Import attempt_derivation or exit 2 with PREREQUISITE_MISSING."""
+    # Try project-root import path.
+    try:
+        from app.study_os import attempt_derivation as ad  # type: ignore[import-not-found]
+        return ad
+    except ImportError:
+        pass
+    # Try inserting the backend root into sys.path.
+    backend_root = os.path.join(os.path.dirname(__file__), "..", "..", "app", "backend")
+    sys.path.insert(0, os.path.abspath(backend_root))
+    try:
+        from app.study_os import attempt_derivation as ad  # type: ignore[import-not-found]
+        return ad
+    except ImportError:
+        pass
+    _emit_result(
+        {
+            "schema_version": 1,
+            "command": command,
+            "status": "ERROR",
+            "error": "PREREQUISITE_MISSING",
+            "detail": (
+                "attempt_derivation module not found. "
+                "This command requires PR-4 "
+                "(app/backend/app/study_os/attempt_derivation.py) to be present."
+            ),
+        },
+        output_json=True,
+    )
+    sys.exit(_EXIT_ERROR)
+
+
+# ─── per-row invariant checker ────────────────────────────────────────────────
+
+
+def _check_invariants(row: dict) -> list[str]:
+    """Return list of invariant violation descriptions for one shadow row."""
+    violations: list[str] = []
+    attempt_id = row.get("attempt_id", "?")
+    topic_id = row.get("topic_id", "?")
+    key = f"attempt={attempt_id} topic={topic_id}"
+
+    trust = row.get("trust_level")
+    if trust not in _RECOGNIZED_TRUST_LEVELS:
+        violations.append(f"{key}: unknown trust_level={trust!r}")
+        return violations  # cannot compute trust-adjusted cap without known trust
+
+    if row.get("flag_state") != "shadow":
+        violations.append(f"{key}: flag_state={row.get('flag_state')!r} (expected 'shadow')")
+
+    try:
+        unweighted_db = Decimal(str(row.get("proposed_delta_db_unweighted") or "0"))
+        weighted_db = Decimal(str(row.get("proposed_delta_db") or "0"))
+        current_db = Decimal(str(row.get("current_mastery_db") or "0"))
+        would_be_db = Decimal(str(row.get("would_be_mastery_db") or "0"))
+    except Exception:
+        violations.append(f"{key}: non-numeric value in delta/mastery fields")
+        return violations
+
+    if abs(unweighted_db) > _CAP_DB:
+        violations.append(
+            f"{key}: proposed_delta_db_unweighted={unweighted_db} exceeds cap ±{_CAP_DB}"
+        )
+
+    trust_cap = _CAP_DB * _TRUST_WEIGHTS[trust]
+    if abs(weighted_db) > trust_cap + Decimal("0.01"):
+        violations.append(
+            f"{key}: proposed_delta_db={weighted_db} exceeds trust-adjusted cap ±{trust_cap}"
+        )
+
+    if not (Decimal("0") <= current_db <= Decimal("100")):
+        violations.append(f"{key}: current_mastery_db={current_db} out of [0,100]")
+    if not (Decimal("0") <= would_be_db <= Decimal("100")):
+        violations.append(f"{key}: would_be_mastery_db={would_be_db} out of [0,100]")
+
+    expected = min(Decimal("100"), max(Decimal("0"), current_db + weighted_db))
+    if abs(expected - would_be_db) > Decimal("0.01"):
+        violations.append(
+            f"{key}: would_be_mastery_db={would_be_db} "
+            f"!= clamp(current+weighted_delta)={expected}"
+        )
+
+    return violations
+
+
 # ─── shadow_replay ────────────────────────────────────────────────────────────
 
-# Shadow self-consistency check
-# ──────────────────────────────
-# Population: mock_mastery_shadow WHERE flag_state='shadow' AND decided_at >= since.
+_SR_THRESHOLDS: dict[str, Any] = {
+    "min_distinct_attempts": 20,
+    "min_topic_decisions": 50,
+    "required_exact_match_pct": 100.0,
+    "required_coverage_pct": 100.0,
+}
+
+# Shadow self-consistency gate (shadow mode only).
 #
-# Checks:
-#   arithmetic_violations  — rows where would_be ≠ clamp(current + delta, 0, 100),
-#                            tolerance 0.01 db. Indicates a computation bug.
-#   outliers               — rows where |proposed_delta_db| > 15 (the ±0.15-unit
-#                            per-attempt cap; values outside this range should
-#                            never reach the shadow table).
-#   duplicate_keys         — rows sharing (attempt_id, topic_id, flag_state);
-#                            migration 180 adds a unique index for this. Any
-#                            duplicates here mean the migration hasn't applied
-#                            or was bypassed.
+# Population: mock_mastery_shadow WHERE flag_state='shadow'.
+# For each attempt, calls attempt_derivation.replay_from_persisted_baseline —
+# which re-derives mastery decisions using the persisted baseline state, not the
+# current mutable state — and compares the re-derived set exactly (Decimal) to
+# the persisted shadow decisions.
 #
-# reference_sign_agreement is always DECISION_REQUIRED: no approved reference
-# model exists in this codebase. Do not compare shadow rows to live audit rows
-# here — audit rows only exist when FF_MOCK_MASTERY_WRITES=live (use
-# live-audit-compare for canary validation instead).
+# Gate: distinct_attempt_count ≥ 20, topic_decision_count ≥ 50,
+#       exact_match_pct = 100.0, coverage_pct = 100.0,
+#       zero missing/extra/mismatch/duplicate/invariant violations,
+#       zero classification_not_ready attempts.
+#
+# REQUIRES PR-4 (attempt_derivation.py). Exits 2 if the module is absent.
+# Does NOT compare against live audit rows — audit rows only exist when
+# FF_MOCK_MASTERY_WRITES=live. Use live-audit-compare for canary validation.
 
 
-def shadow_replay(days: int, output_json: bool = False) -> None:
-    """Shadow write self-consistency check (main shadow gate command).
-
-    Does NOT compare against live audit rows — audit rows only exist in live
-    mode. Use `live-audit-compare` during a canary for live vs shadow
-    sign-agreement metrics.
-    """
+def shadow_replay(
+    days: int = 14,
+    attempt_id: str | None = None,
+    from_utc: str | None = None,
+    to_utc: str | None = None,
+    output_json: bool = False,
+) -> None:
+    ad = _check_attempt_derivation("shadow_replay")
     sb = _get_supabase()
-    since = _since_iso(days)
 
-    shadow_rows = _fetch_paginated(
-        sb,
-        "mock_mastery_shadow",
-        lambda q: (
-            q.select(
-                "id,attempt_id,user_id,topic_id,proposed_delta_db,"
-                "current_mastery_db,would_be_mastery_db,trust_level,flag_state,decided_at"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    window_start: str | None
+    window_end: str | None
+
+    # Population filter: --attempt-id takes precedence;
+    # --from-utc/--to-utc overrides --days.
+    if attempt_id:
+        window_start = None
+        window_end = None
+
+        def query_fn(q: Any) -> Any:
+            return (
+                q.select(
+                    "id,attempt_id,user_id,topic_id,proposed_delta_db,"
+                    "proposed_delta_db_unweighted,current_mastery_db,"
+                    "would_be_mastery_db,trust_level,flag_state,decided_at"
+                )
+                .eq("flag_state", "shadow")
+                .eq("attempt_id", attempt_id)
             )
-            .eq("flag_state", "shadow")
-            .gte("decided_at", since)
-        ),
-        order_by="id",
-    )
 
-    if not shadow_rows:
-        _emit(
+    elif from_utc or to_utc:
+        window_start = from_utc
+        window_end = to_utc
+
+        def query_fn(q: Any) -> Any:  # type: ignore[misc]
+            q = q.select(
+                "id,attempt_id,user_id,topic_id,proposed_delta_db,"
+                "proposed_delta_db_unweighted,current_mastery_db,"
+                "would_be_mastery_db,trust_level,flag_state,decided_at"
+            ).eq("flag_state", "shadow")
+            if from_utc:
+                q = q.gte("decided_at", from_utc)
+            if to_utc:
+                q = q.lte("decided_at", to_utc)
+            return q
+
+    else:
+        since = _since_iso(days)
+        window_start = since
+        window_end = now_iso
+
+        def query_fn(q: Any) -> Any:  # type: ignore[misc]
+            return (
+                q.select(
+                    "id,attempt_id,user_id,topic_id,proposed_delta_db,"
+                    "proposed_delta_db_unweighted,current_mastery_db,"
+                    "would_be_mastery_db,trust_level,flag_state,decided_at"
+                )
+                .eq("flag_state", "shadow")
+                .gte("decided_at", since)
+            )
+
+    try:
+        shadow_rows = _fetch_paginated(
+            sb, "mock_mastery_shadow", query_fn, batch_size=1000, order_by="id"
+        )
+    except Exception as exc:
+        _log.error("Query failed: %s", exc)
+        _emit_result(
             {
+                "schema_version": 1,
                 "command": "shadow_replay",
-                "window_days": days,
-                "shadow_rows": 0,
-                "arithmetic_violations": 0,
-                "outliers": 0,
-                "duplicate_keys": 0,
-                "trust_breakdown": {},
-                "reference_sign_agreement": "DECISION_REQUIRED",
-                "insufficient_sample": True,
-                "reason": "no shadow rows in window",
+                "status": "ERROR",
+                "error": "QUERY_FAILED",
+                "detail": str(exc),
             },
             output_json,
-            label=f"shadow_replay window_days={days}",
         )
-        return
+        sys.exit(_EXIT_ERROR)
 
-    arithmetic_violations = 0
-    outliers = 0
-    seen_keys: dict[tuple, str] = {}
-    duplicate_keys = 0
+    if not shadow_rows:
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": "shadow_replay",
+                "window_start": window_start,
+                "window_end": window_end,
+                "status": "INSUFFICIENT_DATA",
+                "thresholds": _SR_THRESHOLDS,
+                "distinct_attempt_count": 0,
+                "topic_decision_count": 0,
+                "exact_match_count": 0,
+                "exact_match_pct": None,
+                "coverage_pct": None,
+                "answered_topic_count": 0,
+                "shadow_topic_count": 0,
+                "missing_count": 0,
+                "missing": [],
+                "extra_count": 0,
+                "extra": [],
+                "mismatch_count": 0,
+                "mismatches": [],
+                "duplicate_key_count": 0,
+                "duplicate_keys": [],
+                "classification_not_ready_count": 0,
+                "classification_not_ready": [],
+                "invariant_violations": [],
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_INSUFFICIENT)
 
+    # Group by attempt_id.
+    by_attempt: dict[str, list[dict]] = {}
     for r in shadow_rows:
-        # Arithmetic consistency: would_be = clamp(current + delta, 0, 100)
-        try:
-            delta = float(r.get("proposed_delta_db") or 0)
-            current = float(r.get("current_mastery_db") or 0)
-            would_be = float(r.get("would_be_mastery_db") or 0)
-            expected = min(100.0, max(0.0, current + delta))
-            if abs(expected - would_be) > 0.01:
-                arithmetic_violations += 1
-        except (TypeError, ValueError):
-            arithmetic_violations += 1
+        aid = r.get("attempt_id") or ""
+        by_attempt.setdefault(aid, []).append(r)
 
-        # Outlier: |delta| > 15 db violates the ±0.15-unit cap
-        try:
-            if abs(float(r.get("proposed_delta_db") or 0)) > 15:
-                outliers += 1
-        except (TypeError, ValueError):
-            pass
+    distinct_attempt_count = len(by_attempt)
+    topic_decision_count = len(shadow_rows)
 
-        # Duplicate shadow key
+    # Duplicate key detection across all rows.
+    seen_keys: dict[tuple, str] = {}
+    duplicate_key_set: list[str] = []
+    for r in shadow_rows:
         key = (r.get("attempt_id"), r.get("topic_id"), r.get("flag_state"))
+        key_str = f"attempt={r.get('attempt_id')} topic={r.get('topic_id')}"
         if key in seen_keys:
-            duplicate_keys += 1
+            if key_str not in duplicate_key_set:
+                duplicate_key_set.append(key_str)
         else:
             seen_keys[key] = r.get("id") or ""
 
-    # Per-trust-level breakdown
-    trust_breakdown: dict[str, Any] = {}
-    for trust in ("platform_verified", "self_reported", "admin_verified"):
-        trust_rows = [r for r in shadow_rows if r.get("trust_level") == trust]
-        if not trust_rows:
+    # Per-row invariant checks.
+    invariant_violations: list[str] = []
+    for r in shadow_rows:
+        invariant_violations.extend(_check_invariants(r))
+
+    # Per-attempt replay.
+    mismatches: list[dict] = []
+    missing_list: list[dict] = []
+    extra_list: list[dict] = []
+    classification_not_ready: list[str] = []
+    exact_match_count = 0
+    answered_topic_count = 0
+
+    for aid, attempt_rows in by_attempt.items():
+        shadow_map: dict[str, Decimal] = {}
+        for r in attempt_rows:
+            tid = r.get("topic_id")
+            if tid:
+                shadow_map[tid] = Decimal(str(r.get("proposed_delta_db") or "0"))
+
+        try:
+            replay_result = ad.replay_from_persisted_baseline(aid)
+        except Exception as exc:
+            _log.warning("replay_from_persisted_baseline(%s) raised: %s", aid, exc)
+            classification_not_ready.append(aid)
             continue
-        t_violations = 0
-        t_outliers = 0
-        for r in trust_rows:
-            try:
-                delta = float(r.get("proposed_delta_db") or 0)
-                current = float(r.get("current_mastery_db") or 0)
-                would_be = float(r.get("would_be_mastery_db") or 0)
-                expected = min(100.0, max(0.0, current + delta))
-                if abs(expected - would_be) > 0.01:
-                    t_violations += 1
-            except (TypeError, ValueError):
-                t_violations += 1
-            try:
-                if abs(float(r.get("proposed_delta_db") or 0)) > 15:
-                    t_outliers += 1
-            except (TypeError, ValueError):
-                pass
-        trust_breakdown[trust] = {
-            "count": len(trust_rows),
-            "arithmetic_violations": t_violations,
-            "outliers": t_outliers,
-        }
+
+        if replay_result is None:
+            classification_not_ready.append(aid)
+            continue
+
+        answered_map: dict[str, Decimal] = {}
+        if isinstance(replay_result, dict):
+            for tid, delta in replay_result.items():
+                answered_map[tid] = Decimal(str(delta))
+
+        answered_topic_count += len(answered_map)
+        all_topics = set(shadow_map) | set(answered_map)
+
+        for tid in all_topics:
+            in_shadow = tid in shadow_map
+            in_answered = tid in answered_map
+            if in_shadow and in_answered:
+                s_delta = shadow_map[tid]
+                a_delta = answered_map[tid]
+                if s_delta == a_delta:
+                    exact_match_count += 1
+                else:
+                    mismatches.append(
+                        {
+                            "attempt_id": aid,
+                            "topic_id": tid,
+                            "shadow_delta_db": str(s_delta),
+                            "replayed_delta_db": str(a_delta),
+                        }
+                    )
+            elif in_shadow and not in_answered:
+                missing_list.append({"attempt_id": aid, "topic_id": tid})
+            else:
+                extra_list.append({"attempt_id": aid, "topic_id": tid})
+
+    shadow_topic_count = len(shadow_rows)
+    total_comparable = exact_match_count + len(mismatches)
+    exact_match_pct: float | None = (
+        round(exact_match_count / total_comparable * 100, 4) if total_comparable else None
+    )
+    coverage_pct: float | None = (
+        round(total_comparable / shadow_topic_count * 100, 4) if shadow_topic_count else None
+    )
+
+    t = _SR_THRESHOLDS
+    if (
+        distinct_attempt_count < t["min_distinct_attempts"]
+        or topic_decision_count < t["min_topic_decisions"]
+    ):
+        status = "INSUFFICIENT_DATA"
+    elif (
+        exact_match_pct == 100.0
+        and coverage_pct == 100.0
+        and not missing_list
+        and not extra_list
+        and not mismatches
+        and not duplicate_key_set
+        and not invariant_violations
+        and not classification_not_ready
+    ):
+        status = "PASS"
+    else:
+        status = "FAIL"
 
     result: dict[str, Any] = {
+        "schema_version": 1,
         "command": "shadow_replay",
-        "window_days": days,
-        "shadow_rows": len(shadow_rows),
-        "arithmetic_violations": arithmetic_violations,
-        "outliers": outliers,
-        "duplicate_keys": duplicate_keys,
-        "trust_breakdown": trust_breakdown,
-        "reference_sign_agreement": "DECISION_REQUIRED",
-        "insufficient_sample": False,
+        "window_start": window_start,
+        "window_end": window_end,
+        "status": status,
+        "thresholds": t,
+        "distinct_attempt_count": distinct_attempt_count,
+        "topic_decision_count": topic_decision_count,
+        "exact_match_count": exact_match_count,
+        "exact_match_pct": exact_match_pct,
+        "coverage_pct": coverage_pct,
+        "answered_topic_count": answered_topic_count,
+        "shadow_topic_count": shadow_topic_count,
+        "missing_count": len(missing_list),
+        "missing": missing_list,
+        "extra_count": len(extra_list),
+        "extra": extra_list,
+        "mismatch_count": len(mismatches),
+        "mismatches": mismatches,
+        "duplicate_key_count": len(duplicate_key_set),
+        "duplicate_keys": duplicate_key_set,
+        "classification_not_ready_count": len(classification_not_ready),
+        "classification_not_ready": classification_not_ready,
+        "invariant_violations": invariant_violations,
     }
-    _emit(result, output_json, label=f"shadow_replay window_days={days}")
+    _emit_result(result, output_json)
+
+    if status == "INSUFFICIENT_DATA":
+        sys.exit(_EXIT_INSUFFICIENT)
+    if invariant_violations:
+        sys.exit(_EXIT_CORRUPT)
+    sys.exit(_EXIT_OK)
+
+
+# ─── correction_parity ────────────────────────────────────────────────────────
+
+_CP_THRESHOLDS: dict[str, Any] = {
+    "min_correction_decisions": 10,
+    "required_parity_pct": 100.0,
+}
+
+# Proves attempt_derivation.derive_attempt_evidence_corrections is equivalent to
+# calling correction_policy.select_categories directly over the same normalized
+# per-topic evidence.  Key: (attempt_id, canonical_topic_id, category) — UUID
+# only, no display labels, no human string comparison.
+#
+# Gate: correction_decisions ≥ 10 AND exact_parity_pct = 100.0
+# REQUIRES PR-4 (attempt_derivation.py). Exits 2 if absent.
+
+
+def correction_parity(
+    days: int = 14,
+    attempt_id: str | None = None,
+    from_utc: str | None = None,
+    to_utc: str | None = None,
+    output_json: bool = False,
+) -> None:
+    ad = _check_attempt_derivation("correction_parity")
+    sb = _get_supabase()
+
+    # Same population filter as shadow_replay (shadow attempts in window).
+    if attempt_id:
+        def query_fn(q: Any) -> Any:
+            return (
+                q.select("id,attempt_id,user_id,decided_at")
+                .eq("flag_state", "shadow")
+                .eq("attempt_id", attempt_id)
+            )
+    elif from_utc or to_utc:
+        def query_fn(q: Any) -> Any:  # type: ignore[misc]
+            q = q.select("id,attempt_id,user_id,decided_at").eq("flag_state", "shadow")
+            if from_utc:
+                q = q.gte("decided_at", from_utc)
+            if to_utc:
+                q = q.lte("decided_at", to_utc)
+            return q
+    else:
+        since = _since_iso(days)
+
+        def query_fn(q: Any) -> Any:  # type: ignore[misc]
+            return (
+                q.select("id,attempt_id,user_id,decided_at")
+                .eq("flag_state", "shadow")
+                .gte("decided_at", since)
+            )
+
+    try:
+        shadow_rows = _fetch_paginated(
+            sb, "mock_mastery_shadow", query_fn, batch_size=1000, order_by="id"
+        )
+    except Exception as exc:
+        _log.error("Query failed: %s", exc)
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": "correction_parity",
+                "status": "ERROR",
+                "error": "QUERY_FAILED",
+                "detail": str(exc),
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_ERROR)
+
+    attempt_ids = list({r.get("attempt_id") for r in shadow_rows if r.get("attempt_id")})
+
+    if not attempt_ids:
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": "correction_parity",
+                "status": "INSUFFICIENT_DATA",
+                "thresholds": _CP_THRESHOLDS,
+                "decision_count": 0,
+                "generated_count": 0,
+                "reference_count": 0,
+                "intersection_count": 0,
+                "generated_only": [],
+                "reference_only": [],
+                "exact_parity_pct": None,
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_INSUFFICIENT)
+
+    generated_set: set[tuple[str, str, str]] = set()
+    reference_set: set[tuple[str, str, str]] = set()
+
+    for aid in attempt_ids:
+        # Generated set: attempt_derivation.derive_attempt_evidence_corrections.
+        try:
+            gen_corrections = ad.derive_attempt_evidence_corrections(aid)
+        except Exception as exc:
+            _log.warning("derive_attempt_evidence_corrections(%s) failed: %s", aid, exc)
+            gen_corrections = []
+
+        for item in gen_corrections or []:
+            if isinstance(item, dict):
+                tid = item.get("topic_id") or item.get("canonical_topic_id")
+                cat = item.get("category")
+            else:
+                try:
+                    tid, cat = item
+                except (TypeError, ValueError):
+                    continue
+            if tid and cat:
+                generated_set.add((aid, str(tid), str(cat)))
+
+        # Reference set: correction_policy.select_categories called directly.
+        try:
+            ref_items = _build_reference_corrections(ad, aid)
+        except Exception as exc:
+            _log.warning("reference corrections(%s) failed: %s", aid, exc)
+            ref_items = []
+
+        for tid, cat in ref_items:
+            reference_set.add((aid, str(tid), str(cat)))
+
+    decision_count = len(generated_set | reference_set)
+    intersection = generated_set & reference_set
+    generated_only = sorted(f"{a}/{t}/{c}" for a, t, c in (generated_set - reference_set))
+    reference_only = sorted(f"{a}/{t}/{c}" for a, t, c in (reference_set - generated_set))
+
+    exact_parity_pct: float | None = (
+        round(len(intersection) / decision_count * 100, 4) if decision_count else None
+    )
+
+    t = _CP_THRESHOLDS
+    if decision_count < t["min_correction_decisions"]:
+        status = "INSUFFICIENT_DATA"
+    elif exact_parity_pct == 100.0:
+        status = "PASS"
+    else:
+        status = "FAIL"
+
+    _emit_result(
+        {
+            "schema_version": 1,
+            "command": "correction_parity",
+            "status": status,
+            "thresholds": t,
+            "decision_count": decision_count,
+            "generated_count": len(generated_set),
+            "reference_count": len(reference_set),
+            "intersection_count": len(intersection),
+            "generated_only": generated_only,
+            "reference_only": reference_only,
+            "exact_parity_pct": exact_parity_pct,
+        },
+        output_json,
+    )
+
+    exit_code = _EXIT_INSUFFICIENT if status == "INSUFFICIENT_DATA" else _EXIT_OK
+    sys.exit(exit_code)
+
+
+def _build_reference_corrections(ad: Any, attempt_id: str) -> list[tuple[str, str]]:
+    """Call correction_policy.select_categories over the same per-topic evidence
+    that attempt_derivation uses, to prove the two paths are equivalent."""
+    try:
+        from app.study_os.correction_policy import CorrectionPolicyInput, select_categories
+    except ImportError:
+        backend_root = os.path.join(
+            os.path.dirname(__file__), "..", "..", "app", "backend"
+        )
+        sys.path.insert(0, os.path.abspath(backend_root))
+        from app.study_os.correction_policy import CorrectionPolicyInput, select_categories  # type: ignore[import-not-found]
+
+    # attempt_derivation exposes the normalized per-topic evidence it uses.
+    per_topic = ad.load_attempt_topic_evidence(attempt_id)
+    if not per_topic:
+        return []
+
+    results: list[tuple[str, str]] = []
+    for evidence in per_topic or []:
+        tid = evidence.get("topic_id")
+        if not tid:
+            continue
+        try:
+            acc = Decimal(str(evidence.get("accuracy_pct", "100")))
+        except Exception:
+            acc = Decimal("100")
+        inp = CorrectionPolicyInput(
+            topic=tid,
+            error_counts=evidence.get("error_counts") or {},
+            attempted=int(evidence.get("attempted") or 0),
+            accuracy_pct=acc,
+            weak_topic=bool(evidence.get("weak_topic")),
+            prior_error=bool(evidence.get("prior_error")),
+            source_question_ids=tuple(evidence.get("source_question_ids") or []),
+        )
+        for cat in select_categories(inp):
+            results.append((str(tid), str(cat)))
+    return results
+
+
+# ─── tasks_overlap ────────────────────────────────────────────────────────────
+
+# Cross-origin topic identity is unavailable: generated corrections use canonical
+# topic UUIDs; manual study tasks use display-name topic references.  This
+# subcommand is EXPLICITLY INVALID and always exits 2.  Use correction-parity
+# instead to verify correctness of the generated correction pipeline.
+
+
+def tasks_overlap(output_json: bool = False) -> None:  # noqa: ARG001
+    _emit_result(
+        {
+            "schema_version": 1,
+            "command": "tasks_overlap",
+            "status": "ERROR",
+            "error": "CROSS_ORIGIN_TOPIC_IDENTITY_UNAVAILABLE",
+            "detail": (
+                "Generated corrections use canonical topic UUIDs. "
+                "Manual study tasks use display-name topic references. "
+                "Cross-origin overlap is not computable without a topic identity resolver. "
+                "Use correction-parity instead."
+            ),
+        },
+        output_json=True,  # always emit JSON for this error
+    )
+    sys.exit(_EXIT_ERROR)
 
 
 # ─── live_audit_compare ───────────────────────────────────────────────────────
 
-# Live audit comparison (canary-only)
-# ────────────────────────────────────
-# Shadow rows: mock_mastery_shadow WHERE flag_state='shadow' AND decided_at >= since.
-# Live audit rows: user_topic_mastery_audit WHERE reason='mock_submit'
-#   AND attempt_id in (shadow attempt_ids).
+_LAC_THRESHOLDS: dict[str, Any] = {
+    "min_matched_pairs": 10,
+    "required_delta_tolerance_db": 0.01,
+}
+
+# Live audit comparison — CANARY-ONLY.
+# Population: mock_mastery_shadow WHERE flag_state='live' (NOT shadow).
+# Audit rows: user_topic_mastery_audit WHERE reason='mock_submit'.
 # Join key: (attempt_id, topic_id).
+# Requires delta_applied_db within 0.01 db.
 #
-# CANARY-ONLY: audit rows only exist when FF_MOCK_MASTERY_WRITES=live has been
-# active. Running against a shadow-only deployment will produce matched=0 and
-# insufficient_sample=True, which is the correct result.
+# Running against a shadow-only deployment correctly returns
+# INSUFFICIENT_DATA (no live rows exist until FF=live is active).
 
 
-def live_audit_compare(days: int, output_json: bool = False) -> None:
-    """Compare shadow writes against live audit trail.
-
-    CANARY-ONLY — requires FF_MOCK_MASTERY_WRITES=live to have been active.
-    Running against a shadow-only deployment correctly returns
-    insufficient_sample=True (matched=0 is not an error; it means no live
-    writes have happened).
-    """
+def live_audit_compare(
+    days: int = 14,
+    output_json: bool = False,
+) -> None:
     sb = _get_supabase()
     since = _since_iso(days)
 
-    shadow_rows = _fetch_paginated(
-        sb,
-        "mock_mastery_shadow",
-        lambda q: (
-            q.select(
-                "attempt_id,user_id,topic_id,proposed_delta_db,"
-                "proposed_delta_db_unweighted,current_mastery_db,"
-                "would_be_mastery_db,trust_level,flag_state"
-            )
-            .eq("flag_state", "shadow")
-            .gte("decided_at", since)
-        ),
-        order_by="id",
-    )
+    try:
+        shadow_rows = _fetch_paginated(
+            sb,
+            "mock_mastery_shadow",
+            lambda q: (
+                q.select(
+                    "attempt_id,user_id,topic_id,proposed_delta_db,"
+                    "proposed_delta_db_unweighted,current_mastery_db,"
+                    "would_be_mastery_db,trust_level,flag_state"
+                )
+                .eq("flag_state", "live")
+                .gte("decided_at", since)
+            ),
+            batch_size=1000,
+            order_by="id",
+        )
+    except Exception as exc:
+        _log.error("Query failed: %s", exc)
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": "live_audit_compare",
+                "status": "ERROR",
+                "error": "QUERY_FAILED",
+                "detail": str(exc),
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_ERROR)
 
     if not shadow_rows:
-        _emit(
+        _emit_result(
             {
+                "schema_version": 1,
                 "command": "live_audit_compare",
                 "window_days": days,
+                "status": "INSUFFICIENT_DATA",
+                "thresholds": _LAC_THRESHOLDS,
                 "shadow_rows": 0,
                 "matched_with_audit": 0,
                 "sign_agreement_pct": None,
                 "magnitude_corr": None,
                 "outliers": 0,
+                "duplicate_audit_count": 0,
+                "missing_audit_count": 0,
                 "trust_breakdown": {},
-                "insufficient_sample": True,
-                "reason": "no shadow rows in window",
             },
             output_json,
-            label=f"live_audit_compare window_days={days}",
         )
-        return
+        sys.exit(_EXIT_INSUFFICIENT)
 
-    # Fetch live audit rows for the shadow attempts; filter by reason='mock_submit'
-    # to exclude rollback rows that would corrupt the sign-agreement metric.
-    attempt_ids = list({r["attempt_id"] for r in shadow_rows if r.get("attempt_id")})
+    attempt_ids = list(
+        {r["attempt_id"] for r in shadow_rows if r.get("attempt_id")}
+    )
+
+    # Fetch live audit rows; filter reason='mock_submit' to exclude rollback rows.
     audit_rows: list[dict] = []
+    duplicate_audit_count = 0
+    seen_audit_keys: set[tuple] = set()
     for i in range(0, len(attempt_ids), 500):
-        batch = attempt_ids[i: i + 500]
+        batch = attempt_ids[i : i + 500]
         rows = (
             sb.table("user_topic_mastery_audit")
             .select("user_id,topic_id,attempt_id,delta_applied_db")
@@ -305,14 +849,27 @@ def live_audit_compare(days: int, output_json: bool = False) -> None:
             .data
             or []
         )
-        audit_rows.extend(rows)
+        for r in rows:
+            akey = (r.get("attempt_id"), r.get("topic_id"))
+            if akey in seen_audit_keys:
+                duplicate_audit_count += 1
+            else:
+                seen_audit_keys.add(akey)
+                audit_rows.append(r)
 
     audit_map: dict[tuple, float] = {}
     for r in audit_rows:
-        if r.get("attempt_id") and r.get("topic_id") and r.get("delta_applied_db") is not None:
+        if (
+            r.get("attempt_id")
+            and r.get("topic_id")
+            and r.get("delta_applied_db") is not None
+        ):
             audit_map[(r["attempt_id"], r["topic_id"])] = float(r["delta_applied_db"])
 
-    # Build matched vectors.
+    # Count shadow keys not found in audit.
+    shadow_keys = {(r["attempt_id"], r["topic_id"]) for r in shadow_rows if r.get("attempt_id") and r.get("topic_id")}
+    missing_audit_count = len(shadow_keys - set(audit_map))
+
     matched_shadow: list[float] = []
     matched_audit: list[float] = []
     for r in shadow_rows:
@@ -321,14 +878,16 @@ def live_audit_compare(days: int, output_json: bool = False) -> None:
             matched_shadow.append(float(r["proposed_delta_db"]))
             matched_audit.append(audit_map[key])
 
-    MIN_SAMPLE = 10
+    MIN_SAMPLE = _LAC_THRESHOLDS["min_matched_pairs"]
     sufficient = len(matched_shadow) >= MIN_SAMPLE
 
     sign_agreement_pct: float | None = None
     magnitude_corr: float | None = None
     if sufficient:
         agreements = sum(
-            1 for s, a in zip(matched_shadow, matched_audit) if _sign(s) == _sign(a)
+            1
+            for s, a in zip(matched_shadow, matched_audit)
+            if _sign(s) == _sign(a)
         )
         sign_agreement_pct = round(agreements / len(matched_shadow) * 100, 2)
         magnitude_corr = _pearson(matched_shadow, matched_audit)
@@ -339,9 +898,8 @@ def live_audit_compare(days: int, output_json: bool = False) -> None:
         if abs(float(r.get("proposed_delta_db") or 0)) > 15
     )
 
-    # Per-trust-level breakdown.
     trust_breakdown: dict[str, Any] = {}
-    for trust in ("platform_verified", "self_reported", "admin_verified"):
+    for trust in _RECOGNIZED_TRUST_LEVELS:
         trust_rows = [r for r in shadow_rows if r.get("trust_level") == trust]
         if not trust_rows:
             continue
@@ -352,15 +910,15 @@ def live_audit_compare(days: int, output_json: bool = False) -> None:
             if key in audit_map and r.get("proposed_delta_db") is not None:
                 t_shadow.append(float(r["proposed_delta_db"]))
                 t_audit.append(audit_map[key])
-
         t_sufficient = len(t_shadow) >= MIN_SAMPLE
         t_sign: float | None = None
         t_corr: float | None = None
         if t_sufficient:
-            t_agr = sum(1 for s, a in zip(t_shadow, t_audit) if _sign(s) == _sign(a))
+            t_agr = sum(
+                1 for s, a in zip(t_shadow, t_audit) if _sign(s) == _sign(a)
+            )
             t_sign = round(t_agr / len(t_shadow) * 100, 2)
             t_corr = _pearson(t_shadow, t_audit)
-
         trust_breakdown[trust] = {
             "count": len(trust_rows),
             "matched": len(t_shadow),
@@ -369,200 +927,27 @@ def live_audit_compare(days: int, output_json: bool = False) -> None:
             "insufficient_sample": not t_sufficient,
         }
 
-    result: dict[str, Any] = {
-        "command": "live_audit_compare",
-        "window_days": days,
-        "shadow_rows": len(shadow_rows),
-        "matched_with_audit": len(matched_shadow),
-        "sign_agreement_pct": sign_agreement_pct,
-        "magnitude_corr": magnitude_corr,
-        "outliers": outliers,
-        "trust_breakdown": trust_breakdown,
-        "insufficient_sample": not sufficient,
-    }
-    _emit(result, output_json, label=f"live_audit_compare window_days={days}")
+    status = "INSUFFICIENT_DATA" if not sufficient else "PASS"
 
-
-# ─── tasks_overlap ────────────────────────────────────────────────────────────
-
-# Correction task overlap
-# ───────────────────────
-# PR5 tasks: mock_correction_tasks WHERE state='drafted' AND created_at >= since
-#   AND mock_tests.source_type = 'platform_attempt'.
-#   The `topic` column for these rows contains a canonical topic_id (UUID),
-#   set by MasteryWriter.
-#
-# Rule-based tasks: same table, same window, source_type != 'platform_attempt'.
-#   The `topic` column for these rows contains a display label (e.g. "Polity"),
-#   NOT a canonical topic_id.
-#
-# LIMITATION: The `topic` column has different semantics in the two populations.
-# Cross-population overlap via (user_id, topic, category) is NOT MEANINGFUL
-# because the same string value refers to a canonical UUID in PR5 rows and a
-# display label in rule-based rows. This metric reports each population's size
-# separately and notes the semantic mismatch. A canonical `topic_id` column
-# is required for a valid overlap comparison.
-
-
-def tasks_overlap(days: int, output_json: bool = False) -> None:
-    """Compute PR5 vs rule-based correction task overlap.
-
-    NOTE: Cross-population overlap is NOT MEANINGFUL because the `topic`
-    column uses canonical topic_ids for PR5 corrections and display labels
-    for rule-based corrections. Counts are reported per-population.
-    """
-    sb = _get_supabase()
-    since = _since_iso(days)
-
-    tasks_rows = _fetch_paginated(
-        sb,
-        "mock_correction_tasks",
-        lambda q: (
-            q.select("id,mock_test_id,user_id,category,topic,state,created_at")
-            .eq("state", "drafted")
-            .gte("created_at", since)
-        ),
-        order_by="id",
+    _emit_result(
+        {
+            "schema_version": 1,
+            "command": "live_audit_compare",
+            "window_days": days,
+            "status": status,
+            "thresholds": _LAC_THRESHOLDS,
+            "shadow_rows": len(shadow_rows),
+            "matched_with_audit": len(matched_shadow),
+            "sign_agreement_pct": sign_agreement_pct,
+            "magnitude_corr": magnitude_corr,
+            "outliers": outliers,
+            "duplicate_audit_count": duplicate_audit_count,
+            "missing_audit_count": missing_audit_count,
+            "trust_breakdown": trust_breakdown,
+        },
+        output_json,
     )
-
-    if not tasks_rows:
-        _emit(
-            {
-                "command": "tasks_overlap",
-                "window_days": days,
-                "total_tasks": 0,
-                "pr5_tasks": 0,
-                "rule_tasks": 0,
-                "overlap": 0,
-                "overlap_pct": None,
-                "pr5_only_pct": None,
-                "rule_only_pct": None,
-                "unknown_source": 0,
-                "insufficient_sample": True,
-                "reason": "no drafted correction tasks in window",
-                "topic_semantics_note": (
-                    "topic column: canonical topic_id for PR5 rows, "
-                    "display label for rule-based rows — cross-population "
-                    "overlap is NOT MEANINGFUL"
-                ),
-            },
-            output_json,
-            label=f"tasks-overlap window_days={days}",
-        )
-        return
-
-    mock_test_ids = list({r["mock_test_id"] for r in tasks_rows if r.get("mock_test_id")})
-    mock_source_map: dict[str, str] = {}
-    for i in range(0, len(mock_test_ids), 500):
-        batch = mock_test_ids[i: i + 500]
-        rows = (
-            sb.table("mock_tests")
-            .select("id,source_type")
-            .in_("id", batch)
-            .execute()
-            .data
-            or []
-        )
-        for r in rows:
-            mock_source_map[r["id"]] = r.get("source_type") or "manual_log"
-
-    pr5_keys: set[tuple] = set()
-    rule_keys: set[tuple] = set()
-    unknown_source: int = 0
-
-    for r in tasks_rows:
-        mock_id = r.get("mock_test_id") or ""
-        source = mock_source_map.get(mock_id)
-        if source is None:
-            unknown_source += 1
-            continue
-        # For PR5 (platform_attempt): topic is canonical topic_id.
-        # For rule-based: topic is a display label. Keys are reported
-        # separately; overlap across populations is noted as NOT MEANINGFUL.
-        key = (r.get("user_id"), r.get("topic"), r.get("category"))
-        if source == "platform_attempt":
-            pr5_keys.add(key)
-        else:
-            rule_keys.add(key)
-
-    overlap = pr5_keys & rule_keys
-    union = pr5_keys | rule_keys
-    total_union = len(union)
-
-    MIN_SAMPLE = 10
-    sufficient = total_union >= MIN_SAMPLE
-
-    overlap_pct = round(len(overlap) / total_union * 100, 2) if total_union else None
-    pr5_only = pr5_keys - rule_keys
-    rule_only = rule_keys - pr5_keys
-    pr5_only_pct = round(len(pr5_only) / total_union * 100, 2) if total_union else None
-    rule_only_pct = round(len(rule_only) / total_union * 100, 2) if total_union else None
-
-    result: dict[str, Any] = {
-        "command": "tasks_overlap",
-        "window_days": days,
-        "total_tasks": len(tasks_rows),
-        "pr5_tasks": len(pr5_keys),
-        "rule_tasks": len(rule_keys),
-        "overlap": len(overlap),
-        "overlap_pct": overlap_pct,
-        "pr5_only_pct": pr5_only_pct,
-        "rule_only_pct": rule_only_pct,
-        "unknown_source": unknown_source,
-        "insufficient_sample": not sufficient,
-        "topic_semantics_note": (
-            "topic column: canonical topic_id for PR5 rows, "
-            "display label for rule-based rows — cross-population "
-            "overlap is NOT MEANINGFUL"
-        ),
-    }
-    _emit(result, output_json, label=f"tasks-overlap window_days={days}")
-
-
-# ─── output ───────────────────────────────────────────────────────────────────
-
-
-def _emit(result: dict[str, Any], output_json: bool, label: str) -> None:
-    if output_json:
-        print(json.dumps(result, indent=2))
-        return
-
-    cmd = result.get("command", label)
-    print(f"{cmd} window_days={result.get('window_days')}")
-    if result.get("insufficient_sample"):
-        reason = result.get("reason", f"matched={result.get('matched_with_audit', result.get('overlap', 0))}")
-        print(f"  INSUFFICIENT_SAMPLE: {reason}")
-    else:
-        for key in (
-            "arithmetic_violations", "outliers", "duplicate_keys",
-            "reference_sign_agreement",
-            "sign_agreement_pct", "magnitude_corr",
-            "overlap_pct", "pr5_only_pct", "rule_only_pct",
-        ):
-            if key in result:
-                print(f"  {key}={result[key]}")
-    for key in ("shadow_rows", "matched_with_audit", "total_tasks", "pr5_tasks", "rule_tasks", "unknown_source"):
-        if key in result:
-            print(f"  {key}={result[key]}")
-    if result.get("topic_semantics_note"):
-        print(f"  note: {result['topic_semantics_note']}")
-    if result.get("trust_breakdown"):
-        print("  trust_breakdown:")
-        for trust, bd in result["trust_breakdown"].items():
-            if bd.get("insufficient_sample"):
-                print(f"    {trust}: INSUFFICIENT_SAMPLE count={bd['count']}")
-            elif "arithmetic_violations" in bd:
-                print(
-                    f"    {trust}: arithmetic_violations={bd['arithmetic_violations']}"
-                    f" outliers={bd['outliers']}"
-                    f" count={bd['count']}"
-                )
-            else:
-                print(
-                    f"    {trust}: sign_agreement_pct={bd['sign_agreement_pct']}"
-                    f" magnitude_corr={bd['magnitude_corr']}"
-                    f" count={bd['count']}"
-                )
+    sys.exit(_EXIT_INSUFFICIENT if not sufficient else _EXIT_OK)
 
 
 # ─── CLI ──────────────────────────────────────────────────────────────────────
@@ -570,25 +955,85 @@ def _emit(result: dict[str, Any], output_json: bool, label: str) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(prog="shadow-analysis")
-    p.add_argument("--json", dest="output_json", action="store_true", help="Machine-readable JSON output")
+    p.add_argument(
+        "--json",
+        dest="output_json",
+        action="store_true",
+        help="Machine-readable JSON output (also accepted after subcommand)",
+    )
     sp = p.add_subparsers(dest="cmd", required=True)
 
-    sr = sp.add_parser("shadow-replay", help="Shadow self-consistency check (main shadow gate command)")
-    sr.add_argument("--days", type=int, default=14)
+    def _add_json(sub: argparse.ArgumentParser) -> None:
+        """Add --json to a subparser so it works both before and after subcommand."""
+        sub.add_argument(
+            "--json",
+            dest="sub_output_json",
+            action="store_true",
+            default=False,
+            help="Machine-readable JSON output",
+        )
 
-    lac = sp.add_parser("live-audit-compare", help="Compare shadow vs live audit (CANARY-ONLY)")
+    def _add_window_flags(sub: argparse.ArgumentParser) -> None:
+        grp = sub.add_mutually_exclusive_group()
+        grp.add_argument("--attempt-id", metavar="UUID", help="Exact single attempt")
+        grp.add_argument("--from-utc", metavar="ISO8601", help="Window start (UTC)")
+        sub.add_argument(
+            "--to-utc",
+            metavar="ISO8601",
+            help="Window end (UTC); used with --from-utc",
+        )
+        sub.add_argument("--days", type=int, default=14, help="Rolling window in days (default 14)")
+
+    sr = sp.add_parser(
+        "shadow-replay",
+        help="Shadow self-consistency gate (main shadow gate command; requires PR-4)",
+    )
+    _add_json(sr)
+    _add_window_flags(sr)
+
+    cp = sp.add_parser(
+        "correction-parity",
+        help="Prove generated corrections == correction_policy.select_categories (requires PR-4)",
+    )
+    _add_json(cp)
+    _add_window_flags(cp)
+
+    to = sp.add_parser(
+        "tasks-overlap",
+        help="(INVALID) Cross-origin topic overlap — exits 2; use correction-parity instead",
+    )
+    _add_json(to)
+
+    lac = sp.add_parser(
+        "live-audit-compare",
+        help="Compare live shadow writes against audit trail (CANARY-ONLY)",
+    )
+    _add_json(lac)
     lac.add_argument("--days", type=int, default=14)
 
-    to = sp.add_parser("tasks-overlap", help="PR5 vs rule-based correction task overlap")
-    to.add_argument("--days", type=int, default=14)
-
     a = p.parse_args()
+    output_json = a.output_json or getattr(a, "sub_output_json", False)
+
     if a.cmd == "shadow-replay":
-        shadow_replay(a.days, output_json=a.output_json)
+        shadow_replay(
+            days=a.days,
+            attempt_id=getattr(a, "attempt_id", None),
+            from_utc=getattr(a, "from_utc", None),
+            to_utc=getattr(a, "to_utc", None),
+            output_json=output_json,
+        )
+    elif a.cmd == "correction-parity":
+        correction_parity(
+            days=a.days,
+            attempt_id=getattr(a, "attempt_id", None),
+            from_utc=getattr(a, "from_utc", None),
+            to_utc=getattr(a, "to_utc", None),
+            output_json=output_json,
+        )
+    elif a.cmd == "tasks-overlap":
+        tasks_overlap(output_json=output_json)
     elif a.cmd == "live-audit-compare":
-        live_audit_compare(a.days, output_json=a.output_json)
-    else:
-        tasks_overlap(a.days, output_json=a.output_json)
+        live_audit_compare(days=a.days, output_json=output_json)
 
 
 if __name__ == "__main__":
