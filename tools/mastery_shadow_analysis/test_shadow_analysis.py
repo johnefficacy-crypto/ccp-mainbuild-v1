@@ -4,6 +4,7 @@ All tests use an in-memory stub; no live Supabase credentials are required.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -13,6 +14,9 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+
+import tools.mastery_shadow_analysis.shadow_analysis as sa
+
 
 # ---------------------------------------------------------------------------
 # Minimal Supabase stub
@@ -106,13 +110,12 @@ class SBFailStub(SBStub):
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Row helpers
 # ---------------------------------------------------------------------------
 
 
 def _recent_iso() -> str:
     from datetime import datetime, timedelta, timezone
-
     return (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
 
 
@@ -149,41 +152,83 @@ def _live_row(attempt_id: str, topic_id: str, delta: float, current: float, woul
 
 
 # ---------------------------------------------------------------------------
-# Mock attempt_derivation module factory
+# Mock attempt_derivation module — correct function signatures (B5 fix)
 # ---------------------------------------------------------------------------
 
 
+def _make_mock_inputs(attempt_id: str, *, ready: bool = True) -> Any:
+    """SimpleNamespace mimicking AttemptInputs."""
+    coverage = types.SimpleNamespace(ready=ready, missing_question_ids=[])
+    analytics = types.SimpleNamespace(attempt_id=attempt_id)
+    return types.SimpleNamespace(
+        analytics=analytics,
+        trust_level="platform_verified",
+        classification_coverage=coverage,
+    )
+
+
+def _make_replay_result(
+    exact_match_count: int,
+    *,
+    mismatches: list | None = None,
+    missing: list | None = None,
+    extra: list | None = None,
+) -> Any:
+    """SimpleNamespace mimicking ReplayResult."""
+    return types.SimpleNamespace(
+        sample_count=exact_match_count + len(mismatches or []) + len(missing or []),
+        exact_match_count=exact_match_count,
+        mismatches=mismatches or [],
+        missing=missing or [],
+        extra=extra or [],
+    )
+
+
 def _make_mock_ad(
-    replay_map: dict[str, dict[str, str]] | None = None,
-    gen_corrections: dict[str, list[dict]] | None = None,
-    topic_evidence: dict[str, list[dict]] | None = None,
+    inputs_map: dict[str, Any] | None = None,
+    decisions_map: dict[str, Any] | None = None,
+    replay_results_map: dict[str, Any] | None = None,
+    gen_corrections_map: dict[str, list[dict]] | None = None,
 ) -> types.ModuleType:
-    """Return a fake attempt_derivation module."""
+    """Fake attempt_derivation with the REAL function signatures.
+
+    B5 fix: correct arities —
+      load_attempt_inputs(sb, attempt_id)
+      load_persisted_shadow_decisions(sb, attempt_id)
+      replay_from_persisted_baseline(persisted, analytics, trust_level)
+      derive_attempt_evidence_corrections(analytics, trust_level)
+    """
     ad = types.ModuleType("attempt_derivation")
-    rm = replay_map or {}
-    gc = gen_corrections or {}
-    te = topic_evidence or {}
+    _inputs = inputs_map or {}
+    _decisions = decisions_map or {}
+    _replays = replay_results_map or {}
+    _corrections = gen_corrections_map or {}
 
-    def replay_from_persisted_baseline(attempt_id: str) -> dict | None:
-        return rm.get(attempt_id, {})
+    def load_attempt_inputs(sb: Any, attempt_id: str) -> Any:
+        return _inputs.get(attempt_id)
 
-    def derive_attempt_evidence_corrections(attempt_id: str) -> list[dict]:
-        return gc.get(attempt_id, [])
+    def load_persisted_shadow_decisions(sb: Any, attempt_id: str) -> Any:
+        return _decisions.get(
+            attempt_id,
+            types.SimpleNamespace(attempt_id=attempt_id, decisions={}, duplicate_keys=[]),
+        )
 
-    def load_attempt_topic_evidence(attempt_id: str) -> list[dict]:
-        return te.get(attempt_id, [])
+    def replay_from_persisted_baseline(persisted: Any, analytics: Any, trust_level: str) -> Any:
+        return _replays.get(analytics.attempt_id)
 
+    def derive_attempt_evidence_corrections(analytics: Any, trust_level: str) -> list[dict]:
+        return _corrections.get(analytics.attempt_id, [])
+
+    ad.load_attempt_inputs = load_attempt_inputs
+    ad.load_persisted_shadow_decisions = load_persisted_shadow_decisions
     ad.replay_from_persisted_baseline = replay_from_persisted_baseline
     ad.derive_attempt_evidence_corrections = derive_attempt_evidence_corrections
-    ad.load_attempt_topic_evidence = load_attempt_topic_evidence
     return ad
 
 
 # ---------------------------------------------------------------------------
-# Patch helpers
+# Patch helper
 # ---------------------------------------------------------------------------
-
-import tools.mastery_shadow_analysis.shadow_analysis as sa
 
 
 def _run(fn: Any, *args: Any, mock_ad: Any = None, sb: Any = None, **kwargs: Any) -> None:
@@ -204,6 +249,38 @@ def _run(fn: Any, *args: Any, mock_ad: Any = None, sb: Any = None, **kwargs: Any
 
 
 # ---------------------------------------------------------------------------
+# shadow_replay data builder
+# ---------------------------------------------------------------------------
+
+
+def _make_sr_pass_data(
+    n_attempts: int = 25, topics_per: int = 3
+) -> tuple[dict, dict, dict, SBStub]:
+    """Build shadow rows + per-attempt maps that satisfy gate thresholds and PASS."""
+    rows: list[dict] = []
+    inputs_map: dict[str, Any] = {}
+    decisions_map: dict[str, Any] = {}
+    replay_results_map: dict[str, Any] = {}
+
+    for i in range(n_attempts):
+        aid = f"attempt-{i}"
+        for j in range(topics_per):
+            tid = f"topic-{i}-{j}"
+            delta = 3.0 if j % 2 == 0 else -2.0
+            current = 50.0
+            would_be = min(100.0, max(0.0, current + delta))
+            rows.append(_shadow_row(aid, tid, delta, current, would_be))
+        inputs_map[aid] = _make_mock_inputs(aid, ready=True)
+        decisions_map[aid] = types.SimpleNamespace(
+            attempt_id=aid, decisions={}, duplicate_keys=[]
+        )
+        replay_results_map[aid] = _make_replay_result(exact_match_count=topics_per)
+
+    sb = SBStub({"mock_mastery_shadow": rows})
+    return inputs_map, decisions_map, replay_results_map, sb
+
+
+# ---------------------------------------------------------------------------
 # shadow_replay tests
 # ---------------------------------------------------------------------------
 
@@ -214,16 +291,17 @@ def test_sr_empty_window(capsys: Any) -> None:
     sb = SBStub({"mock_mastery_shadow": []})
     with pytest.raises(SystemExit) as exc:
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
-    out = capsys.readouterr().out
-    data = json.loads(out)
+    data = json.loads(capsys.readouterr().out)
     assert data["status"] == "INSUFFICIENT_DATA"
     assert exc.value.code == 3
 
 
 def test_sr_insufficient_thresholds(capsys: Any) -> None:
     """< 20 attempts or < 50 decisions → INSUFFICIENT_DATA, exit 3."""
-    mock_ad = _make_mock_ad(replay_map={"a1": {"t1": "5.0"}})
-    rows = [_shadow_row("a1", "t1", 5.0, 50.0, 55.0)]  # only 1 attempt, 1 decision
+    rows = [_shadow_row("a1", "t1", 5.0, 50.0, 55.0)]  # 1 attempt, 1 decision
+    inputs_map = {"a1": _make_mock_inputs("a1")}
+    replay_results_map = {"a1": _make_replay_result(exact_match_count=1)}
+    mock_ad = _make_mock_ad(inputs_map=inputs_map, replay_results_map=replay_results_map)
     sb = SBStub({"mock_mastery_shadow": rows})
     with pytest.raises(SystemExit) as exc:
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
@@ -232,28 +310,14 @@ def test_sr_insufficient_thresholds(capsys: Any) -> None:
     assert exc.value.code == 3
 
 
-def _make_sr_pass_data(n_attempts: int = 25, topics_per: int = 3) -> tuple[dict, SBStub]:
-    """Build enough shadow rows + replay_map to reach gate thresholds and PASS."""
-    rows = []
-    replay_map: dict[str, dict[str, str]] = {}
-    for i in range(n_attempts):
-        aid = f"attempt-{i}"
-        replay_map[aid] = {}
-        for j in range(topics_per):
-            tid = f"topic-{i}-{j}"
-            delta = 3.0 if j % 2 == 0 else -2.0
-            current = 50.0
-            would_be = min(100.0, max(0.0, current + delta))
-            rows.append(_shadow_row(aid, tid, delta, current, would_be))
-            replay_map[aid][tid] = str(delta)
-    sb = SBStub({"mock_mastery_shadow": rows})
-    return replay_map, sb
-
-
 def test_sr_pass(capsys: Any) -> None:
-    """≥ 20 attempts, ≥ 50 decisions, all match → PASS, exit 0."""
-    replay_map, sb = _make_sr_pass_data(25, 3)  # 25 attempts × 3 = 75 decisions
-    mock_ad = _make_mock_ad(replay_map=replay_map)
+    """≥ 20 attempts, ≥ 50 decisions, all exact matches → PASS, exit 0."""
+    inputs_map, decisions_map, replay_results_map, sb = _make_sr_pass_data(25, 3)
+    mock_ad = _make_mock_ad(
+        inputs_map=inputs_map,
+        decisions_map=decisions_map,
+        replay_results_map=replay_results_map,
+    )
     with pytest.raises(SystemExit) as exc:
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
     data = json.loads(capsys.readouterr().out)
@@ -265,13 +329,22 @@ def test_sr_pass(capsys: Any) -> None:
 
 
 def test_sr_mismatch_causes_fail(capsys: Any) -> None:
-    """Any mismatch → FAIL, exit 0 (valid result)."""
-    replay_map, sb = _make_sr_pass_data(25, 3)
-    # Corrupt one replay value
-    first_aid = "attempt-0"
-    first_tid = "topic-0-0"
-    replay_map[first_aid][first_tid] = "99.0"  # different from shadow's 3.0
-    mock_ad = _make_mock_ad(replay_map=replay_map)
+    """Any mismatch → FAIL, exit 0."""
+    inputs_map, decisions_map, replay_results_map, sb = _make_sr_pass_data(25, 3)
+    replay_results_map["attempt-0"] = _make_replay_result(
+        exact_match_count=2,
+        mismatches=[{
+            "attempt_id": "attempt-0",
+            "topic_id": "topic-0-0",
+            "shadow_delta_db": Decimal("3.00"),
+            "replayed_delta_db": Decimal("99.00"),
+        }],
+    )
+    mock_ad = _make_mock_ad(
+        inputs_map=inputs_map,
+        decisions_map=decisions_map,
+        replay_results_map=replay_results_map,
+    )
     with pytest.raises(SystemExit) as exc:
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
     data = json.loads(capsys.readouterr().out)
@@ -282,10 +355,16 @@ def test_sr_mismatch_causes_fail(capsys: Any) -> None:
 
 def test_sr_missing_topic(capsys: Any) -> None:
     """Shadow has topic not in replay → missing_count > 0 → FAIL."""
-    replay_map, sb = _make_sr_pass_data(25, 3)
-    # Remove a topic from replay for attempt-0
-    del replay_map["attempt-0"]["topic-0-0"]
-    mock_ad = _make_mock_ad(replay_map=replay_map)
+    inputs_map, decisions_map, replay_results_map, sb = _make_sr_pass_data(25, 3)
+    replay_results_map["attempt-0"] = _make_replay_result(
+        exact_match_count=2,
+        missing=[{"attempt_id": "attempt-0", "topic_id": "topic-0-0"}],
+    )
+    mock_ad = _make_mock_ad(
+        inputs_map=inputs_map,
+        decisions_map=decisions_map,
+        replay_results_map=replay_results_map,
+    )
     with pytest.raises(SystemExit) as exc:
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
     data = json.loads(capsys.readouterr().out)
@@ -296,10 +375,16 @@ def test_sr_missing_topic(capsys: Any) -> None:
 
 def test_sr_extra_topic(capsys: Any) -> None:
     """Replay has topic not in shadow → extra_count > 0 → FAIL."""
-    replay_map, sb = _make_sr_pass_data(25, 3)
-    # Add an extra topic in replay that isn't in shadow
-    replay_map["attempt-0"]["extra-topic-not-in-shadow"] = "1.0"
-    mock_ad = _make_mock_ad(replay_map=replay_map)
+    inputs_map, decisions_map, replay_results_map, sb = _make_sr_pass_data(25, 3)
+    replay_results_map["attempt-0"] = _make_replay_result(
+        exact_match_count=3,
+        extra=[{"attempt_id": "attempt-0", "topic_id": "extra-topic-not-in-shadow"}],
+    )
+    mock_ad = _make_mock_ad(
+        inputs_map=inputs_map,
+        decisions_map=decisions_map,
+        replay_results_map=replay_results_map,
+    )
     with pytest.raises(SystemExit) as exc:
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
     data = json.loads(capsys.readouterr().out)
@@ -309,13 +394,16 @@ def test_sr_extra_topic(capsys: Any) -> None:
 
 
 def test_sr_duplicate_shadow_key(capsys: Any) -> None:
-    """Duplicate (attempt_id, topic_id, flag_state) → FAIL."""
-    replay_map, sb = _make_sr_pass_data(25, 3)
-    # Add a duplicate row (different id, same attempt+topic+flag_state)
+    """Duplicate (attempt_id, topic_id, flag_state) → duplicate_key_count > 0 → FAIL."""
+    inputs_map, decisions_map, replay_results_map, sb = _make_sr_pass_data(25, 3)
     dup = dict(_shadow_row("attempt-0", "topic-0-0", 3.0, 50.0, 53.0))
     dup["id"] = "dup-row-id"
     sb.db["mock_mastery_shadow"].append(dup)
-    mock_ad = _make_mock_ad(replay_map=replay_map)
+    mock_ad = _make_mock_ad(
+        inputs_map=inputs_map,
+        decisions_map=decisions_map,
+        replay_results_map=replay_results_map,
+    )
     with pytest.raises(SystemExit) as exc:
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
     data = json.loads(capsys.readouterr().out)
@@ -325,18 +413,16 @@ def test_sr_duplicate_shadow_key(capsys: Any) -> None:
 
 
 def test_sr_classification_not_ready(capsys: Any) -> None:
-    """Attempt where replay raises → classification_not_ready_count > 0 → FAIL."""
-    replay_map, sb = _make_sr_pass_data(25, 3)
-
-    def bad_replay(attempt_id: str) -> dict:
-        if attempt_id == "attempt-0":
-            raise RuntimeError("classification_not_ready")
-        return replay_map.get(attempt_id, {})
-
-    ad = _make_mock_ad(replay_map=replay_map)
-    ad.replay_from_persisted_baseline = bad_replay
+    """load_attempt_inputs returning None → classification_not_ready_count > 0 → FAIL."""
+    inputs_map, decisions_map, replay_results_map, sb = _make_sr_pass_data(25, 3)
+    del inputs_map["attempt-0"]  # mock returns None → classification_not_ready
+    mock_ad = _make_mock_ad(
+        inputs_map=inputs_map,
+        decisions_map=decisions_map,
+        replay_results_map=replay_results_map,
+    )
     with pytest.raises(SystemExit) as exc:
-        _run(sa.shadow_replay, 14, output_json=True, mock_ad=ad, sb=sb)
+        _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
     data = json.loads(capsys.readouterr().out)
     assert data["classification_not_ready_count"] >= 1
     assert data["status"] == "FAIL"
@@ -345,12 +431,15 @@ def test_sr_classification_not_ready(capsys: Any) -> None:
 
 def test_sr_invariant_unweighted_cap_violation(capsys: Any) -> None:
     """Row with |unweighted_delta| > 15 → invariant_violations non-empty → exit 4."""
-    replay_map, sb = _make_sr_pass_data(25, 3)
-    # Add row with unweighted cap violation
+    inputs_map, decisions_map, replay_results_map, sb = _make_sr_pass_data(25, 3)
     row = _shadow_row("attempt-0", "topic-0-0", 15.0, 50.0, 65.0, unweighted=20.0)
     row["id"] = "cap-violation"
     sb.db["mock_mastery_shadow"].append(row)
-    mock_ad = _make_mock_ad(replay_map=replay_map)
+    mock_ad = _make_mock_ad(
+        inputs_map=inputs_map,
+        decisions_map=decisions_map,
+        replay_results_map=replay_results_map,
+    )
     with pytest.raises(SystemExit) as exc:
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
     data = json.loads(capsys.readouterr().out)
@@ -360,12 +449,16 @@ def test_sr_invariant_unweighted_cap_violation(capsys: Any) -> None:
 
 
 def test_sr_invariant_clamp_violation(capsys: Any) -> None:
-    """Row where would_be ≠ clamp(current + weighted_delta) → invariant violation."""
-    replay_map, sb = _make_sr_pass_data(25, 3)
+    """Row where would_be ≠ clamp(current + weighted_delta) → invariant violation → exit 4."""
+    inputs_map, decisions_map, replay_results_map, sb = _make_sr_pass_data(25, 3)
     bad_row = _shadow_row("attempt-0", "topic-0-0", 5.0, 50.0, 99.0)  # 99 != 55
     bad_row["id"] = "clamp-violation"
     sb.db["mock_mastery_shadow"].append(bad_row)
-    mock_ad = _make_mock_ad(replay_map=replay_map)
+    mock_ad = _make_mock_ad(
+        inputs_map=inputs_map,
+        decisions_map=decisions_map,
+        replay_results_map=replay_results_map,
+    )
     with pytest.raises(SystemExit) as exc:
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
     data = json.loads(capsys.readouterr().out)
@@ -379,35 +472,31 @@ def test_sr_attempt_id_filter(capsys: Any) -> None:
         _shadow_row("a1", "t1", 5.0, 50.0, 55.0),
         _shadow_row("a2", "t2", 3.0, 40.0, 43.0),
     ]
-    replay_map = {"a1": {"t1": "5.0"}}
+    inputs_map = {"a1": _make_mock_inputs("a1")}
+    replay_results_map = {"a1": _make_replay_result(exact_match_count=1)}
     sb = SBStub({"mock_mastery_shadow": rows})
-    mock_ad = _make_mock_ad(replay_map=replay_map)
+    mock_ad = _make_mock_ad(inputs_map=inputs_map, replay_results_map=replay_results_map)
     with pytest.raises(SystemExit):
         _run(sa.shadow_replay, 14, attempt_id="a1", output_json=True, mock_ad=mock_ad, sb=sb)
     data = json.loads(capsys.readouterr().out)
-    # Only a1 rows loaded — a2 filtered out; a2 has no matching attempt_id eq filter
     assert data["distinct_attempt_count"] == 1
 
 
 def test_sr_from_to_utc_filter(capsys: Any) -> None:
-    """--from-utc / --to-utc filters to window."""
-    from datetime import datetime, timezone
-
+    """--from-utc / --to-utc restricts to window; out-of-window rows excluded."""
     past_iso = "2026-01-01T00:00:00+00:00"
     middle_iso = "2026-03-01T00:00:00+00:00"
-    future_iso = "2026-12-31T00:00:00+00:00"
     rows = [
         {**_shadow_row("a1", "t1", 5.0, 50.0, 55.0), "decided_at": past_iso, "id": "id1"},
         {**_shadow_row("a2", "t2", 3.0, 40.0, 43.0), "decided_at": middle_iso, "id": "id2"},
     ]
-    replay_map = {"a2": {"t2": "3.0"}}
+    inputs_map = {"a2": _make_mock_inputs("a2")}
+    replay_results_map = {"a2": _make_replay_result(exact_match_count=1)}
     sb = SBStub({"mock_mastery_shadow": rows})
-    mock_ad = _make_mock_ad(replay_map=replay_map)
-    # Window: Feb 2026 to Apr 2026 — only a2 qualifies
+    mock_ad = _make_mock_ad(inputs_map=inputs_map, replay_results_map=replay_results_map)
     with pytest.raises(SystemExit):
         _run(
-            sa.shadow_replay,
-            14,
+            sa.shadow_replay, 14,
             from_utc="2026-02-01T00:00:00+00:00",
             to_utc="2026-04-01T00:00:00+00:00",
             output_json=True,
@@ -445,8 +534,7 @@ def test_sr_stdout_valid_json_only(capsys: Any) -> None:
     sb = SBStub({"mock_mastery_shadow": []})
     with pytest.raises(SystemExit):
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
-    captured = capsys.readouterr()
-    json.loads(captured.out)  # must not raise
+    json.loads(capsys.readouterr().out)  # must not raise
 
 
 def test_sr_missing_prerequisite(capsys: Any) -> None:
@@ -489,14 +577,19 @@ def test_sr_zero_write_calls() -> None:
 
 
 def test_sr_trust_adjusted_cap_self_reported(capsys: Any) -> None:
-    """self_reported row with |weighted_delta| > 4.5 db triggers invariant violation."""
-    # self_reported weight = 0.3; cap = 15 * 0.3 = 4.5 db
-    # set weighted = 5.0 (> 4.5), unweighted = 5.0 (≤ 15)
-    replay_map, sb = _make_sr_pass_data(25, 3)
-    bad_row = _shadow_row("attempt-0", "topic-0-0", 5.0, 50.0, 55.0, trust="self_reported", unweighted=5.0)
+    """self_reported row with |weighted_delta| > 4.5 db triggers trust-adjusted cap violation."""
+    inputs_map, decisions_map, replay_results_map, sb = _make_sr_pass_data(25, 3)
+    # self_reported weight=0.3; trust-adjusted cap = 15*0.3 = 4.5 db; 5.0 > 4.5
+    bad_row = _shadow_row(
+        "attempt-0", "topic-0-0", 5.0, 50.0, 55.0, trust="self_reported", unweighted=5.0
+    )
     bad_row["id"] = "trust-cap-violation"
     sb.db["mock_mastery_shadow"].append(bad_row)
-    mock_ad = _make_mock_ad(replay_map=replay_map)
+    mock_ad = _make_mock_ad(
+        inputs_map=inputs_map,
+        decisions_map=decisions_map,
+        replay_results_map=replay_results_map,
+    )
     with pytest.raises(SystemExit) as exc:
         _run(sa.shadow_replay, 14, output_json=True, mock_ad=mock_ad, sb=sb)
     data = json.loads(capsys.readouterr().out)
@@ -525,15 +618,15 @@ def test_cp_pass(capsys: Any) -> None:
     rows = [_shadow_row(f"a{i}", f"t{i}", 3.0, 50.0, 53.0) for i in range(15)]
     sb = SBStub({"mock_mastery_shadow": rows})
 
-    # Generated: each attempt → (topic_id, "concept_gap")
-    gen_corrections = {
+    inputs_map = {f"a{i}": _make_mock_inputs(f"a{i}") for i in range(15)}
+    gen_corrections_map = {
         f"a{i}": [{"topic_id": f"t{i}", "category": "concept_gap"}] for i in range(15)
     }
-    mock_ad = _make_mock_ad(gen_corrections=gen_corrections)
+    mock_ad = _make_mock_ad(inputs_map=inputs_map, gen_corrections_map=gen_corrections_map)
 
-    # Reference: same → (topic_id, "concept_gap") — mock _build_reference_corrections
-    def fake_ref(ad: Any, attempt_id: str) -> list[tuple[str, str]]:
-        idx = attempt_id[1:]  # strip "a"
+    # _build_reference_corrections now takes (analytics) — correct signature
+    def fake_ref(analytics: Any) -> list[tuple[str, str]]:
+        idx = analytics.attempt_id[1:]  # strip "a"
         return [(f"t{idx}", "concept_gap")]
 
     with patch.object(sa, "_build_reference_corrections", side_effect=fake_ref):
@@ -550,16 +643,15 @@ def test_cp_fail_divergence(capsys: Any) -> None:
     rows = [_shadow_row(f"a{i}", f"t{i}", 3.0, 50.0, 53.0) for i in range(15)]
     sb = SBStub({"mock_mastery_shadow": rows})
 
-    # Generated: all → concept_gap
-    gen_corrections = {
+    inputs_map = {f"a{i}": _make_mock_inputs(f"a{i}") for i in range(15)}
+    gen_corrections_map = {
         f"a{i}": [{"topic_id": f"t{i}", "category": "concept_gap"}] for i in range(15)
     }
-    mock_ad = _make_mock_ad(gen_corrections=gen_corrections)
+    mock_ad = _make_mock_ad(inputs_map=inputs_map, gen_corrections_map=gen_corrections_map)
 
-    # Reference: all → memory_gap — divergence from generated
-    def fake_ref(ad: Any, attempt_id: str) -> list[tuple[str, str]]:
-        idx = attempt_id[1:]
-        return [(f"t{idx}", "memory_gap")]
+    def fake_ref(analytics: Any) -> list[tuple[str, str]]:
+        idx = analytics.attempt_id[1:]
+        return [(f"t{idx}", "memory_gap")]  # diverges from generated concept_gap
 
     with patch.object(sa, "_build_reference_corrections", side_effect=fake_ref):
         with pytest.raises(SystemExit) as exc:
@@ -639,13 +731,12 @@ def test_lac_no_live_rows(capsys: Any) -> None:
 
 def test_lac_uses_flag_state_live(capsys: Any) -> None:
     """live_audit_compare queries flag_state='live', not 'shadow'."""
-    # Only live rows; shadow rows should be ignored
     live_rows = [
         _live_row("a1", "t1", 5.0, 50.0, 55.0),
         _live_row("a1", "t2", -3.0, 40.0, 37.0),
     ]
     shadow_rows = [
-        _shadow_row("a9", "t9", 5.0, 50.0, 55.0),  # flag_state=shadow — should NOT match
+        _shadow_row("a9", "t9", 5.0, 50.0, 55.0),  # flag_state=shadow — must NOT match
     ]
     sb = SBStub(
         {
@@ -659,21 +750,20 @@ def test_lac_uses_flag_state_live(capsys: Any) -> None:
             with pytest.raises(SystemExit):
                 sa.live_audit_compare(14, output_json=True)
     assert results[0]["shadow_rows"] == 2  # only the 2 live rows
-    assert results[0]["shadow_rows"] != 3  # the shadow row was not counted
+    assert results[0]["shadow_rows"] != 3  # shadow row not counted
 
 
 def test_lac_filters_reason_mock_submit() -> None:
     """Only audit rows with reason='mock_submit' are used."""
     live_rows = [_live_row("a1", "t1", 5.0, 50.0, 55.0)]
-    audit_rows_all = [
-        {"attempt_id": "a1", "topic_id": "t1", "delta_applied_db": 5.0, "reason": "mock_submit"},
-        {"attempt_id": "a1", "topic_id": "t2", "delta_applied_db": -3.0, "reason": "rollback"},
+    # id fields required for _fetch_paginated deduplication
+    audit_rows = [
+        {"id": "audit-1", "attempt_id": "a1", "topic_id": "t1", "delta_applied_db": 5.0, "reason": "mock_submit"},
     ]
-    # Stub only serves reason='mock_submit' rows (query filters by eq)
     sb = SBStub(
         {
             "mock_mastery_shadow": live_rows,
-            "user_topic_mastery_audit": [r for r in audit_rows_all if r["reason"] == "mock_submit"],
+            "user_topic_mastery_audit": audit_rows,
         }
     )
     results: list[dict] = []
@@ -687,9 +777,10 @@ def test_lac_filters_reason_mock_submit() -> None:
 def test_lac_duplicate_audit_detected() -> None:
     """Duplicate audit rows for same (attempt_id, topic_id) are counted."""
     live_rows = [_live_row("a1", "t1", 5.0, 50.0, 55.0)]
+    # Both rows need distinct id fields so _fetch_paginated passes both through
     dup_audit = [
-        {"attempt_id": "a1", "topic_id": "t1", "delta_applied_db": 5.0, "reason": "mock_submit"},
-        {"attempt_id": "a1", "topic_id": "t1", "delta_applied_db": 5.0, "reason": "mock_submit"},
+        {"id": "audit-1", "attempt_id": "a1", "topic_id": "t1", "delta_applied_db": 5.0, "reason": "mock_submit"},
+        {"id": "audit-2", "attempt_id": "a1", "topic_id": "t1", "delta_applied_db": 5.0, "reason": "mock_submit"},
     ]
     sb = SBStub(
         {"mock_mastery_shadow": live_rows, "user_topic_mastery_audit": dup_audit}
@@ -710,7 +801,7 @@ def test_lac_missing_audit_detected() -> None:
     ]
     # Audit only has t1, not t2
     audit_rows = [
-        {"attempt_id": "a1", "topic_id": "t1", "delta_applied_db": 5.0, "reason": "mock_submit"},
+        {"id": "audit-1", "attempt_id": "a1", "topic_id": "t1", "delta_applied_db": 5.0, "reason": "mock_submit"},
     ]
     sb = SBStub({"mock_mastery_shadow": live_rows, "user_topic_mastery_audit": audit_rows})
     results: list[dict] = []
@@ -722,7 +813,7 @@ def test_lac_missing_audit_detected() -> None:
 
 
 def test_lac_json_schema(capsys: Any) -> None:
-    """live_audit_compare JSON has schema_version and status fields."""
+    """live_audit_compare JSON has schema_version, status, thresholds, command."""
     sb = SBStub({"mock_mastery_shadow": [], "user_topic_mastery_audit": []})
     with pytest.raises(SystemExit):
         with patch.object(sa, "_get_supabase", return_value=sb):
@@ -752,7 +843,7 @@ def test_pagination_3_pages_no_duplicates() -> None:
     )
     assert len(result) == 25
     ids = [r["id"] for r in result]
-    assert len(ids) == len(set(ids))  # no duplicates
+    assert len(ids) == len(set(ids))
 
 
 def test_pagination_exact_batch_boundary() -> None:
@@ -817,8 +908,6 @@ def test_correct_env_vars_accepted(monkeypatch: Any) -> None:
 
 def test_json_flag_before_subcommand(monkeypatch: Any) -> None:
     """--json shadow-replay is parsed correctly."""
-    import tools.mastery_shadow_analysis.shadow_analysis as _sa
-
     p = argparse.ArgumentParser(prog="shadow-analysis")
     p.add_argument("--json", dest="output_json", action="store_true")
     sp = p.add_subparsers(dest="cmd")
@@ -832,8 +921,6 @@ def test_json_flag_before_subcommand(monkeypatch: Any) -> None:
 
 def test_json_flag_after_subcommand(monkeypatch: Any) -> None:
     """shadow-replay --json is also accepted."""
-    import argparse
-
     p = argparse.ArgumentParser(prog="shadow-analysis")
     p.add_argument("--json", dest="output_json", action="store_true")
     sp = p.add_subparsers(dest="cmd")
@@ -843,10 +930,3 @@ def test_json_flag_after_subcommand(monkeypatch: Any) -> None:
     a = p.parse_args(["shadow-replay", "--json"])
     output_json = a.output_json or getattr(a, "sub_output_json", False)
     assert output_json is True
-
-
-# ---------------------------------------------------------------------------
-# import argparse needed for the flag tests above
-# ---------------------------------------------------------------------------
-
-import argparse

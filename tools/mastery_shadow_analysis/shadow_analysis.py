@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import sys
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
@@ -205,11 +206,25 @@ def _check_invariants(row: dict) -> list[str]:
     if row.get("flag_state") != "shadow":
         violations.append(f"{key}: flag_state={row.get('flag_state')!r} (expected 'shadow')")
 
+    # B7: explicit NULL checks — or "0" silently passes null as zero, masking missing data
+    null_fields = [
+        f for f in (
+            "proposed_delta_db_unweighted",
+            "proposed_delta_db",
+            "current_mastery_db",
+            "would_be_mastery_db",
+        )
+        if row.get(f) is None
+    ]
+    if null_fields:
+        violations.append(f"{key}: NULL value in fields: {', '.join(null_fields)}")
+        return violations
+
     try:
-        unweighted_db = Decimal(str(row.get("proposed_delta_db_unweighted") or "0"))
-        weighted_db = Decimal(str(row.get("proposed_delta_db") or "0"))
-        current_db = Decimal(str(row.get("current_mastery_db") or "0"))
-        would_be_db = Decimal(str(row.get("would_be_mastery_db") or "0"))
+        unweighted_db = Decimal(str(row["proposed_delta_db_unweighted"]))
+        weighted_db = Decimal(str(row["proposed_delta_db"]))
+        current_db = Decimal(str(row["current_mastery_db"]))
+        would_be_db = Decimal(str(row["would_be_mastery_db"]))
     except Exception:
         violations.append(f"{key}: non-numeric value in delta/mastery fields")
         return violations
@@ -252,10 +267,11 @@ _SR_THRESHOLDS: dict[str, Any] = {
 # Shadow self-consistency gate (shadow mode only).
 #
 # Population: mock_mastery_shadow WHERE flag_state='shadow'.
-# For each attempt, calls attempt_derivation.replay_from_persisted_baseline —
-# which re-derives mastery decisions using the persisted baseline state, not the
-# current mutable state — and compares the re-derived set exactly (Decimal) to
-# the persisted shadow decisions.
+# For each attempt, calls attempt_derivation.load_attempt_inputs to get
+# analytics + trust_level + classification_coverage, then
+# load_persisted_shadow_decisions for the stored baseline state, then
+# replay_from_persisted_baseline(persisted, analytics, trust_level) to
+# re-derive decisions and compare exactly (Decimal) to persisted shadow.
 #
 # Gate: distinct_attempt_count ≥ 20, topic_decision_count ≥ 50,
 #       exact_match_pct = 100.0, coverage_pct = 100.0,
@@ -263,8 +279,6 @@ _SR_THRESHOLDS: dict[str, Any] = {
 #       zero classification_not_ready attempts.
 #
 # REQUIRES PR-4 (attempt_derivation.py). Exits 2 if the module is absent.
-# Does NOT compare against live audit rows — audit rows only exist when
-# FF_MOCK_MASTERY_WRITES=live. Use live-audit-compare for canary validation.
 
 
 def shadow_replay(
@@ -274,6 +288,20 @@ def shadow_replay(
     to_utc: str | None = None,
     output_json: bool = False,
 ) -> None:
+    # B10: validate flag combinations
+    if to_utc and not from_utc:
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": "shadow_replay",
+                "status": "ERROR",
+                "error": "INVALID_FLAGS",
+                "detail": "--to-utc requires --from-utc",
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_ERROR)
+
     ad = _check_attempt_derivation("shadow_replay")
     sb = _get_supabase()
 
@@ -406,7 +434,8 @@ def shadow_replay(
     for r in shadow_rows:
         invariant_violations.extend(_check_invariants(r))
 
-    # Per-attempt replay.
+    # Per-attempt replay — B1/B4: call load_attempt_inputs, load_persisted_shadow_decisions,
+    # replay_from_persisted_baseline(persisted, analytics, trust_level) with correct signatures.
     mismatches: list[dict] = []
     missing_list: list[dict] = []
     extra_list: list[dict] = []
@@ -414,15 +443,36 @@ def shadow_replay(
     exact_match_count = 0
     answered_topic_count = 0
 
-    for aid, attempt_rows in by_attempt.items():
-        shadow_map: dict[str, Decimal] = {}
-        for r in attempt_rows:
-            tid = r.get("topic_id")
-            if tid:
-                shadow_map[tid] = Decimal(str(r.get("proposed_delta_db") or "0"))
-
+    for aid in by_attempt:
+        # Load attempt inputs (analytics + trust_level + classification readiness).
         try:
-            replay_result = ad.replay_from_persisted_baseline(aid)
+            inputs = ad.load_attempt_inputs(sb, aid)
+        except Exception as exc:
+            _log.warning("load_attempt_inputs(%s) raised: %s", aid, exc)
+            classification_not_ready.append(aid)
+            continue
+
+        if inputs is None:
+            classification_not_ready.append(aid)
+            continue
+
+        if not inputs.classification_coverage.ready:
+            classification_not_ready.append(aid)
+            continue
+
+        # Load persisted shadow decisions (baseline state at write time).
+        try:
+            persisted = ad.load_persisted_shadow_decisions(sb, aid)
+        except Exception as exc:
+            _log.warning("load_persisted_shadow_decisions(%s) raised: %s", aid, exc)
+            classification_not_ready.append(aid)
+            continue
+
+        # Replay: re-derive mastery decisions using persisted baseline state.
+        try:
+            replay_result = ad.replay_from_persisted_baseline(
+                persisted, inputs.analytics, inputs.trust_level
+            )
         except Exception as exc:
             _log.warning("replay_from_persisted_baseline(%s) raised: %s", aid, exc)
             classification_not_ready.append(aid)
@@ -432,35 +482,22 @@ def shadow_replay(
             classification_not_ready.append(aid)
             continue
 
-        answered_map: dict[str, Decimal] = {}
-        if isinstance(replay_result, dict):
-            for tid, delta in replay_result.items():
-                answered_map[tid] = Decimal(str(delta))
-
-        answered_topic_count += len(answered_map)
-        all_topics = set(shadow_map) | set(answered_map)
-
-        for tid in all_topics:
-            in_shadow = tid in shadow_map
-            in_answered = tid in answered_map
-            if in_shadow and in_answered:
-                s_delta = shadow_map[tid]
-                a_delta = answered_map[tid]
-                if s_delta == a_delta:
-                    exact_match_count += 1
-                else:
-                    mismatches.append(
-                        {
-                            "attempt_id": aid,
-                            "topic_id": tid,
-                            "shadow_delta_db": str(s_delta),
-                            "replayed_delta_db": str(a_delta),
-                        }
-                    )
-            elif in_shadow and not in_answered:
-                missing_list.append({"attempt_id": aid, "topic_id": tid})
-            else:
-                extra_list.append({"attempt_id": aid, "topic_id": tid})
+        exact_match_count += replay_result.exact_match_count
+        answered_topic_count += (
+            replay_result.exact_match_count
+            + len(replay_result.mismatches)
+            + len(replay_result.extra)
+        )
+        missing_list.extend(replay_result.missing)
+        extra_list.extend(replay_result.extra)
+        # Convert Decimal delta values to str for JSON serialization.
+        for m in replay_result.mismatches:
+            mismatches.append({
+                "attempt_id": m.get("attempt_id", ""),
+                "topic_id": m.get("topic_id", ""),
+                "shadow_delta_db": str(m.get("shadow_delta_db", "")),
+                "replayed_delta_db": str(m.get("replayed_delta_db", "")),
+            })
 
     shadow_topic_count = len(shadow_rows)
     total_comparable = exact_match_count + len(mismatches)
@@ -549,6 +586,20 @@ def correction_parity(
     to_utc: str | None = None,
     output_json: bool = False,
 ) -> None:
+    # B10: validate flag combinations
+    if to_utc and not from_utc:
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": "correction_parity",
+                "status": "ERROR",
+                "error": "INVALID_FLAGS",
+                "detail": "--to-utc requires --from-utc",
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_ERROR)
+
     ad = _check_attempt_derivation("correction_parity")
     sb = _get_supabase()
 
@@ -621,9 +672,21 @@ def correction_parity(
     reference_set: set[tuple[str, str, str]] = set()
 
     for aid in attempt_ids:
-        # Generated set: attempt_derivation.derive_attempt_evidence_corrections.
+        # B3: load_attempt_inputs first, then call with (analytics, trust_level)
         try:
-            gen_corrections = ad.derive_attempt_evidence_corrections(aid)
+            inputs = ad.load_attempt_inputs(sb, aid)
+        except Exception as exc:
+            _log.warning("load_attempt_inputs(%s) raised: %s", aid, exc)
+            continue
+
+        if inputs is None:
+            continue
+
+        # Generated set: derive_attempt_evidence_corrections(analytics, trust_level).
+        try:
+            gen_corrections = ad.derive_attempt_evidence_corrections(
+                inputs.analytics, inputs.trust_level
+            )
         except Exception as exc:
             _log.warning("derive_attempt_evidence_corrections(%s) failed: %s", aid, exc)
             gen_corrections = []
@@ -640,9 +703,9 @@ def correction_parity(
             if tid and cat:
                 generated_set.add((aid, str(tid), str(cat)))
 
-        # Reference set: correction_policy.select_categories called directly.
+        # Reference set: call correction_policy.select_categories directly over analytics.
         try:
-            ref_items = _build_reference_corrections(ad, aid)
+            ref_items = _build_reference_corrections(inputs.analytics)
         except Exception as exc:
             _log.warning("reference corrections(%s) failed: %s", aid, exc)
             ref_items = []
@@ -688,43 +751,60 @@ def correction_parity(
     sys.exit(exit_code)
 
 
-def _build_reference_corrections(ad: Any, attempt_id: str) -> list[tuple[str, str]]:
-    """Call correction_policy.select_categories over the same per-topic evidence
-    that attempt_derivation uses, to prove the two paths are equivalent."""
+def _build_reference_corrections(analytics: Any) -> list[tuple[str, str]]:
+    """Call correction_policy.select_categories directly over analytics, mirroring
+    what derive_correction_tasks does — used to prove correction_parity."""
     try:
-        from app.study_os.correction_policy import CorrectionPolicyInput, select_categories
+        from app.study_os.correction_policy import (
+            CorrectionPolicyInput,
+            normalize_error_type,
+            select_categories,
+        )
     except ImportError:
         backend_root = os.path.join(
             os.path.dirname(__file__), "..", "..", "app", "backend"
         )
         sys.path.insert(0, os.path.abspath(backend_root))
-        from app.study_os.correction_policy import CorrectionPolicyInput, select_categories  # type: ignore[import-not-found]
+        from app.study_os.correction_policy import (  # type: ignore[import-not-found]
+            CorrectionPolicyInput,
+            normalize_error_type,
+            select_categories,
+        )
 
-    # attempt_derivation exposes the normalized per-topic evidence it uses.
-    per_topic = ad.load_attempt_topic_evidence(attempt_id)
-    if not per_topic:
-        return []
+    # B2: build per-topic evidence directly from analytics, not from ad.load_attempt_topic_evidence
+    by_topic = {t.topic_id: t for t in (analytics.topics or [])}
+    q_by_topic: dict[str, list] = defaultdict(list)
+    for q in analytics.questions or []:
+        q_by_topic[q.topic_id].append(q)
 
     results: list[tuple[str, str]] = []
-    for evidence in per_topic or []:
-        tid = evidence.get("topic_id")
-        if not tid:
-            continue
-        try:
-            acc = Decimal(str(evidence.get("accuracy_pct", "100")))
-        except Exception:
-            acc = Decimal("100")
+    for topic_id in sorted(set(by_topic.keys())):
+        topic = by_topic.get(topic_id)
+        attempted = topic.attempted if topic else 0
+        accuracy = topic.accuracy_pct if topic else Decimal("100")
+        questions = q_by_topic.get(topic_id, [])
+
+        raw_counts: Counter = Counter()
+        for q in questions:
+            if q.error_type and normalize_error_type(q.error_type) is not None:
+                raw_counts[q.error_type] += 1
+
+        wrong_pyq = any((not q.is_correct and q.source_type == "pyq") for q in questions)
+        related_ids = sorted({q.question_id for q in questions if (not q.is_correct) or q.error_type})
+
         inp = CorrectionPolicyInput(
-            topic=tid,
-            error_counts=evidence.get("error_counts") or {},
-            attempted=int(evidence.get("attempted") or 0),
-            accuracy_pct=acc,
-            weak_topic=bool(evidence.get("weak_topic")),
-            prior_error=bool(evidence.get("prior_error")),
-            source_question_ids=tuple(evidence.get("source_question_ids") or []),
+            topic=topic_id,
+            error_counts=dict(raw_counts),
+            attempted=attempted,
+            accuracy_pct=accuracy,
+            prior_error=False,  # no existing_error_topics in replay context
+            wrong_pyq=wrong_pyq,
+            source_question_ids=tuple(related_ids),
+            evidence_mode="question_level",
         )
         for cat in select_categories(inp):
-            results.append((str(tid), str(cat)))
+            results.append((str(topic_id), str(cat)))
+
     return results
 
 
@@ -834,22 +914,25 @@ def live_audit_compare(
         {r["attempt_id"] for r in shadow_rows if r.get("attempt_id")}
     )
 
-    # Fetch live audit rows; filter reason='mock_submit' to exclude rollback rows.
+    # B8: use _fetch_paginated for audit rows (batched by 500 attempt_ids, each batch
+    # paginated so rows beyond Supabase's 1000-row default limit are not silently dropped).
     audit_rows: list[dict] = []
     duplicate_audit_count = 0
     seen_audit_keys: set[tuple] = set()
     for i in range(0, len(attempt_ids), 500):
         batch = attempt_ids[i : i + 500]
-        rows = (
-            sb.table("user_topic_mastery_audit")
-            .select("user_id,topic_id,attempt_id,delta_applied_db")
-            .in_("attempt_id", batch)
-            .eq("reason", "mock_submit")
-            .execute()
-            .data
-            or []
+        batch_rows = _fetch_paginated(
+            sb,
+            "user_topic_mastery_audit",
+            lambda q, b=batch: (
+                q.select("id,user_id,topic_id,attempt_id,delta_applied_db")
+                .in_("attempt_id", b)
+                .eq("reason", "mock_submit")
+            ),
+            batch_size=1000,
+            order_by="id",
         )
-        for r in rows:
+        for r in batch_rows:
             akey = (r.get("attempt_id"), r.get("topic_id"))
             if akey in seen_audit_keys:
                 duplicate_audit_count += 1
@@ -857,25 +940,30 @@ def live_audit_compare(
                 seen_audit_keys.add(akey)
                 audit_rows.append(r)
 
-    audit_map: dict[tuple, float] = {}
+    # B9: use Decimal for all delta comparisons (not float)
+    audit_map: dict[tuple, Decimal] = {}
     for r in audit_rows:
         if (
             r.get("attempt_id")
             and r.get("topic_id")
             and r.get("delta_applied_db") is not None
         ):
-            audit_map[(r["attempt_id"], r["topic_id"])] = float(r["delta_applied_db"])
+            audit_map[(r["attempt_id"], r["topic_id"])] = Decimal(str(r["delta_applied_db"]))
 
     # Count shadow keys not found in audit.
-    shadow_keys = {(r["attempt_id"], r["topic_id"]) for r in shadow_rows if r.get("attempt_id") and r.get("topic_id")}
+    shadow_keys = {
+        (r["attempt_id"], r["topic_id"])
+        for r in shadow_rows
+        if r.get("attempt_id") and r.get("topic_id")
+    }
     missing_audit_count = len(shadow_keys - set(audit_map))
 
-    matched_shadow: list[float] = []
-    matched_audit: list[float] = []
+    matched_shadow: list[Decimal] = []
+    matched_audit: list[Decimal] = []
     for r in shadow_rows:
         key = (r.get("attempt_id"), r.get("topic_id"))
         if key in audit_map and r.get("proposed_delta_db") is not None:
-            matched_shadow.append(float(r["proposed_delta_db"]))
+            matched_shadow.append(Decimal(str(r["proposed_delta_db"])))
             matched_audit.append(audit_map[key])
 
     MIN_SAMPLE = _LAC_THRESHOLDS["min_matched_pairs"]
@@ -887,15 +975,20 @@ def live_audit_compare(
         agreements = sum(
             1
             for s, a in zip(matched_shadow, matched_audit)
-            if _sign(s) == _sign(a)
+            if _sign(float(s)) == _sign(float(a))
         )
         sign_agreement_pct = round(agreements / len(matched_shadow) * 100, 2)
-        magnitude_corr = _pearson(matched_shadow, matched_audit)
+        magnitude_corr = _pearson(
+            [float(x) for x in matched_shadow],
+            [float(x) for x in matched_audit],
+        )
 
+    # Outliers: |proposed_delta_db| > 15 db
     outliers = sum(
         1
         for r in shadow_rows
-        if abs(float(r.get("proposed_delta_db") or 0)) > 15
+        if r.get("proposed_delta_db") is not None
+        and abs(Decimal(str(r["proposed_delta_db"]))) > _CAP_DB
     )
 
     trust_breakdown: dict[str, Any] = {}
@@ -903,22 +996,26 @@ def live_audit_compare(
         trust_rows = [r for r in shadow_rows if r.get("trust_level") == trust]
         if not trust_rows:
             continue
-        t_shadow: list[float] = []
-        t_audit: list[float] = []
+        t_shadow: list[Decimal] = []
+        t_audit: list[Decimal] = []
         for r in trust_rows:
             key = (r.get("attempt_id"), r.get("topic_id"))
             if key in audit_map and r.get("proposed_delta_db") is not None:
-                t_shadow.append(float(r["proposed_delta_db"]))
+                t_shadow.append(Decimal(str(r["proposed_delta_db"])))
                 t_audit.append(audit_map[key])
         t_sufficient = len(t_shadow) >= MIN_SAMPLE
         t_sign: float | None = None
         t_corr: float | None = None
         if t_sufficient:
             t_agr = sum(
-                1 for s, a in zip(t_shadow, t_audit) if _sign(s) == _sign(a)
+                1 for s, a in zip(t_shadow, t_audit)
+                if _sign(float(s)) == _sign(float(a))
             )
             t_sign = round(t_agr / len(t_shadow) * 100, 2)
-            t_corr = _pearson(t_shadow, t_audit)
+            t_corr = _pearson(
+                [float(x) for x in t_shadow],
+                [float(x) for x in t_audit],
+            )
         trust_breakdown[trust] = {
             "count": len(trust_rows),
             "matched": len(t_shadow),
@@ -982,7 +1079,8 @@ def main() -> None:
             metavar="ISO8601",
             help="Window end (UTC); used with --from-utc",
         )
-        sub.add_argument("--days", type=int, default=14, help="Rolling window in days (default 14)")
+        # B10: default=None so we can detect if --days was explicitly provided alongside --attempt-id
+        sub.add_argument("--days", type=int, default=None, help="Rolling window in days (default 14)")
 
     sr = sp.add_parser(
         "shadow-replay",
@@ -1014,22 +1112,45 @@ def main() -> None:
     a = p.parse_args()
     output_json = a.output_json or getattr(a, "sub_output_json", False)
 
-    if a.cmd == "shadow-replay":
-        shadow_replay(
-            days=a.days,
-            attempt_id=getattr(a, "attempt_id", None),
-            from_utc=getattr(a, "from_utc", None),
-            to_utc=getattr(a, "to_utc", None),
-            output_json=output_json,
-        )
-    elif a.cmd == "correction-parity":
-        correction_parity(
-            days=a.days,
-            attempt_id=getattr(a, "attempt_id", None),
-            from_utc=getattr(a, "from_utc", None),
-            to_utc=getattr(a, "to_utc", None),
-            output_json=output_json,
-        )
+    if a.cmd in ("shadow-replay", "correction-parity"):
+        attempt_id_val = getattr(a, "attempt_id", None)
+        from_utc_val = getattr(a, "from_utc", None)
+        to_utc_val = getattr(a, "to_utc", None)
+        days_raw = getattr(a, "days", None)
+
+        # B10: --attempt-id and --days are mutually exclusive
+        if attempt_id_val and days_raw is not None:
+            cmd_name = a.cmd.replace("-", "_")
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd_name,
+                    "status": "ERROR",
+                    "error": "INVALID_FLAGS",
+                    "detail": "--attempt-id cannot be combined with --days",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
+
+        days_val = days_raw if days_raw is not None else 14
+
+        if a.cmd == "shadow-replay":
+            shadow_replay(
+                days=days_val,
+                attempt_id=attempt_id_val,
+                from_utc=from_utc_val,
+                to_utc=to_utc_val,
+                output_json=output_json,
+            )
+        else:
+            correction_parity(
+                days=days_val,
+                attempt_id=attempt_id_val,
+                from_utc=from_utc_val,
+                to_utc=to_utc_val,
+                output_json=output_json,
+            )
     elif a.cmd == "tasks-overlap":
         tasks_overlap(output_json=output_json)
     elif a.cmd == "live-audit-compare":
