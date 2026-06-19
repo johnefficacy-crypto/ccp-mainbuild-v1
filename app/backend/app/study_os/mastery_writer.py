@@ -423,151 +423,68 @@ class MasteryWriter:
     def derive_preview(self, attempt_id: str) -> dict | None:
         """Read-only preview — zero writes, no feature-flag dependency.
 
-        Returns three sections:
-          persisted_shadow_decision  — frozen shadow write decisions from
-                                       mock_mastery_shadow (what was decided at
-                                       submit time; None rows mean shadow was off)
-          current_read_only_preview  — what the engine would decide NOW, using the
-                                       current (mutable) mastery state as baseline;
-                                       labeled explicitly as current-state because
-                                       it may differ from the shadow if mastery has
-                                       changed since the attempt was submitted
-          replay_consistency         — per-topic comparison of persisted shadow delta
-                                       vs the current-state re-derivation; includes
-                                       sign_match and magnitude_drift_db for each topic
-
-        Returns None when analytics cannot be loaded (attempt not found).
+        Delegates to attempt_derivation module.  Returns None when the attempt
+        is not found.  Output shape:
+          response_counts            — 4-bucket response state (selected /
+                                       marked_unanswered / visited_unanswered /
+                                       untouched)
+          classification_coverage    — readiness snapshot from classification table
+          classification_counts      — error_type → count
+          persisted_shadow_decision  — frozen shadow rows + duplicate detection
+          replay_consistency         — EXACT Decimal replay vs persisted baseline;
+                                       no mutable current mastery in this section
+          attempt_evidence_corrections — deterministic corrections (no user state)
+          current_state_preview      — mutable-baseline re-derivation, explicitly
+                                       labeled; never used to determine PASS/FAIL
         """
-        analytics = self._load_analytics(attempt_id)
-        if analytics is None:
-            return None
-
-        # Load persisted shadow decisions (frozen at submit time).
-        shadow_rows = self._load_persisted_shadow_decisions(attempt_id)
-
-        # Current-state re-derivation uses the current (MUTABLE) mastery snapshot.
-        # This is intentionally labeled as current-state — it is NOT the same
-        # baseline the shadow write used at submit time.
-        trust_level = self._load_trust_level(attempt_id)
-        current_mastery = self._load_current_mastery(analytics.user_id)
-        existing_error_topics = self._load_existing_error_topics(analytics.user_id)
-        result = derive_from_analytics(
-            analytics, current_mastery, existing_error_topics, source_trust=trust_level
+        from app.study_os.attempt_derivation import (  # noqa: PLC0415
+            derive_attempt_evidence_corrections,
+            derive_current_state_preview,
+            load_attempt_inputs,
+            load_persisted_shadow_decisions,
+            replay_from_persisted_baseline,
         )
 
-        from app.study_os.correction_policy import CANONICAL_CATEGORIES, correction_title
+        inputs = load_attempt_inputs(self.supabase, attempt_id)
+        if inputs is None:
+            return None
 
-        response_counts = {"selected": 0, "null": 0}
-        for q in analytics.questions:
-            if q.attempted:
-                response_counts["selected"] += 1
-            else:
-                response_counts["null"] += 1
-
-        classification_counts: dict[str, int] = {}
-        for q in analytics.questions:
-            if q.error_type:
-                classification_counts[q.error_type] = classification_counts.get(q.error_type, 0) + 1
-
-        topic_analytics = [
-            {
-                "topic_id": t.topic_id,
-                "microtopic_id": t.microtopic_id,
-                "attempted": t.attempted,
-                "correct": t.correct,
-                "accuracy_pct": float(t.accuracy_pct),
-            }
-            for t in analytics.topics
-        ]
-
-        delta_unit = Decimal("100")
-        mastery_deltas = [
-            {
-                "topic_id": d.topic_id,
-                "current_mastery_db": float(d.current_mastery * delta_unit),
-                "proposed_delta_db": float(_weighted_delta(d.capped_delta, trust_level) * delta_unit),
-                "would_be_mastery_db": float(
-                    min(
-                        Decimal("100"),
-                        max(
-                            Decimal("0"),
-                            d.current_mastery * delta_unit
-                            + _weighted_delta(d.capped_delta, trust_level) * delta_unit,
-                        ),
-                    )
-                ),
-            }
-            for d in result.mastery_deltas
-        ]
-
-        correction_drafts = []
-        for d in result.correction_task_drafts:
-            category = d.category
-            if category not in CANONICAL_CATEGORIES:
-                continue
-            correction_drafts.append(
-                {
-                    "category": category,
-                    "title": correction_title(category),
-                    "topic_id": d.topic_id,
-                    "source_question_ids": [str(q) for q in (d.evidence.related_question_ids or [])],
-                    "trust_level": trust_level,
-                }
-            )
-
-        # Replay consistency: compare persisted shadow decisions to current re-derivation.
-        shadow_by_topic = {r["topic_id"]: r for r in shadow_rows if r.get("topic_id")}
-        replay_items: list[dict] = []
-        for d in result.mastery_deltas:
-            shadow = shadow_by_topic.get(d.topic_id)
-            current_delta = float(
-                _weighted_delta(d.capped_delta, trust_level) * delta_unit
-            )
-            if shadow is None:
-                replay_items.append({
-                    "topic_id": d.topic_id,
-                    "has_shadow": False,
-                    "current_delta_db": round(current_delta, 2),
-                    "note": "no shadow row — shadow may have been off at submit time",
-                })
-            else:
-                s_delta = float(shadow.get("proposed_delta_db") or 0)
-                sign_match = (s_delta >= 0) == (current_delta >= 0)
-                replay_items.append({
-                    "topic_id": d.topic_id,
-                    "has_shadow": True,
-                    "shadow_delta_db": s_delta,
-                    "current_delta_db": round(current_delta, 2),
-                    "shadow_current_mastery_db": float(shadow.get("current_mastery_db") or 0),
-                    "sign_match": sign_match,
-                    "magnitude_drift_db": round(abs(current_delta - s_delta), 2),
-                })
-
-        matched_items = [i for i in replay_items if i.get("has_shadow")]
-        all_signs_match = all(i["sign_match"] for i in matched_items) if matched_items else None
+        persisted = load_persisted_shadow_decisions(self.supabase, attempt_id)
+        replay = replay_from_persisted_baseline(persisted, inputs.analytics, inputs.trust_level)
+        corrections = derive_attempt_evidence_corrections(inputs.analytics, inputs.trust_level)
+        current_state = derive_current_state_preview(
+            self.supabase, inputs.analytics, inputs.trust_level
+        )
 
         return {
-            "persisted_shadow_decision": {
-                "rows": shadow_rows,
-                "count": len(shadow_rows),
+            "response_counts": {
+                "selected": inputs.response_counts.selected,
+                "marked_unanswered": inputs.response_counts.marked_unanswered,
+                "visited_unanswered": inputs.response_counts.visited_unanswered,
+                "untouched": inputs.response_counts.untouched,
             },
-            "current_read_only_preview": {
-                "note": (
-                    "Computed from current mastery state. May differ from the "
-                    "persisted_shadow_decision if mastery has changed since the attempt."
-                ),
-                "trust_level": trust_level,
-                "response_counts": response_counts,
-                "classification_counts": classification_counts,
-                "topic_analytics": topic_analytics,
-                "mastery_deltas": mastery_deltas,
-                "correction_drafts": correction_drafts,
+            "classification_coverage": {
+                "response_count": inputs.classification_coverage.response_count,
+                "classification_count": inputs.classification_coverage.classification_count,
+                "missing_question_ids": inputs.classification_coverage.missing_question_ids,
+                "duplicate_question_ids": inputs.classification_coverage.duplicate_question_ids,
+                "ready": inputs.classification_coverage.ready,
+            },
+            "classification_counts": inputs.classification_counts,
+            "persisted_shadow_decision": {
+                "rows": persisted.rows,
+                "duplicate_keys": persisted.duplicate_keys,
             },
             "replay_consistency": {
-                "items": replay_items,
-                "all_signs_match": all_signs_match,
-                "topics_without_shadow": sum(1 for i in replay_items if not i.get("has_shadow")),
+                "status": replay.status,
+                "sample_count": replay.sample_count,
+                "exact_match_count": replay.exact_match_count,
+                "missing": replay.missing,
+                "extra": replay.extra,
+                "mismatches": replay.mismatches,
             },
+            "attempt_evidence_corrections": corrections,
+            "current_state_preview": current_state,
         }
 
 
