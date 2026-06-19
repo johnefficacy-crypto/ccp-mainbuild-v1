@@ -1,88 +1,133 @@
+---
+owner: ops
+status: gate_failed
+validation_date: 2026-06-19
+related_audit: docs/audits/2026-06-19-final-candidate-revalidation.md
+---
+
 # PR6: Final Study OS Shadow Candidate Revalidation
 
-**Type:** Operator validation  
-**Prerequisite:** PRs 2–5 merged and deployed together on one fixed SHA  
-**Status:** Pending
+**Type:** Operator validation (docs + evidence only)
+**Branch:** `docs/final-shadow-candidate-revalidation`
+**Prerequisite:** PRs 2–5 merged and deployed on one fixed SHA
+**Current status:** START GATE FAILED — live canary user allowlist not deployed
+**Verdict:** DO NOT PROCEED TO LIVE
+
+---
 
 ## Purpose
 
 Validate on one pinned deployment SHA that all system invariants hold before
 starting the 14-day shadow observation window. This becomes the **baseline SHA**
-for the shadow gate.
+for the shadow gate — but only once the allowlist gate (Gate 9) is cleared.
 
-## Pre-conditions
+---
 
-- PRs 2 (source-based writer authority), 3 (real shadow analysis), 4 (correction
-  preview), and 5 (correction uniqueness) are all deployed on the same SHA.
-- `FF_MOCK_MASTERY_WRITES=shadow` is active.
-- At least one platform attempt has completed since the SHA deployed.
+## Start Gate Results — 2026-06-19
 
-## Validation Checklist
+Code-level gates were verified against `origin/main` SHA
+`ba3ea3516f10d07d4708a12942e03162d2f2da50`. Live gates are marked OPERATOR
+PENDING and cannot be verified from the documentation agent environment.
+
+| Gate | Check | Result | Notes |
+|------|-------|--------|-------|
+| 1 | main SHA (A) recorded | PASS | `ba3ea3516f10d07d4708a12942e03162d2f2da50` |
+| 2 | Render deployed SHA (B) | OPERATOR PENDING | Render API not accessible from agent; must be captured by operator |
+| 3 | A == B | OPERATOR PENDING | Requires Gate 2 |
+| 4 | Validation fingerprint computed | PASS | Combined SHA256: `6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a` |
+| 5 | Render instance count = 1 | OPERATOR PENDING | Topology proof requires Render dashboard access |
+| 6 | DISABLE_SCHEDULER unset or false | CODE PRESENT | `scheduler.py:140` guard confirmed; live env state requires operator |
+| 7 | `GET /api/admin/jobs` preflight | PASS | Endpoint at `notifications.py:241`; `mock:sweeper` registered (30 s interval, `max_instances=1`) |
+| 8 | Preview route exists (404 not 405) | PASS | `admin_study_os.py:1318` — `GET /api/admin/study-os/mocks/{mock_id}/mastery-preview` defined |
+| **9** | **Allowlist code deployed** | **STOP — NOT FOUND** | No `FF_MOCK_MASTERY_LIVE_USER_IDS` or per-user allowlist found; `FF_MOCK_MASTERY_WRITES` is global; canary plan requires bounded allowlist before any live traffic |
+| 10 | Migration 181 deployed | PASS | `181_mock_correction_tasks_uniqueness.sql` present; unique partial indexes on `mock_correction_tasks` confirmed |
+| 11 | Writer-authority guard deployed | PASS | `canonical.py:2252` — `platform_attempt_authoritative_fields_rejected` (allowlist `_PLATFORM_REVIEW_ALLOWED = {"review_status", "notes"}`) |
+| 12 | FF = shadow for run | NOT RUN | Gate 9 stops the run |
+
+**Gate 9 is a hard prerequisite.** Per the canary plan, `FF_MOCK_MASTERY_WRITES`
+is currently a global flag. A live flip without a user-scoped allowlist would
+expose every user to live mastery writes. The allowlist implementation PR has not
+yet merged (see checklist: `Live canary user allowlist | BLOCKED`).
+
+---
+
+## Code Remediation Status
+
+All four blocking defects from the 2026-06-18 failed validation are
+code-fixed on `main`. Live proof pending Gate 9 clearance.
+
+| Defect | Description | Code fix | Migration |
+|--------|-------------|----------|-----------|
+| DEFECT-001 | Untouched topics received negative deltas | `mastery_writer.py` — `selected_option_id is not None` as attempted source | — |
+| DEFECT-002 | Shadow rows duplicated on resubmit | `mastery_writer.py` — conflict-ignore upsert | `180_mock_mastery_shadow_idempotency.sql` |
+| DEFECT-003 | Classifications not propagated to writer | `mastery_writer.py` — loads `mock_attempt_response_classification` | — |
+| DEFECT-005A | `total_marks` numeric coercion failure | `mastery_writer.py` — `_to_integral_marks` | — |
+
+---
+
+## Pre-conditions (all required before the gate can open)
+
+1. PRs 2–5 merged and deployed on one fixed SHA ← code-verified on `main`
+2. `FF_MOCK_MASTERY_WRITES=shadow` active (not live)
+3. At least one platform attempt completed since the SHA deployed
+4. **Live canary user allowlist PR merged and deployed** ← **MISSING — BLOCKS**
+
+---
+
+## Validation Checklist (abbreviated — see full audit for detail)
 
 ### A. Source-based writer guard (PR2)
 
-- [ ] `POST /api/study/mocks/<platform_mock_id>/review` with `topic_breakdowns`
-      returns HTTP 409 with `error: platform_attempt_breakdowns_rejected`.
-- [ ] Verify no `mock_topic_breakdowns` rows were written for that mock_id.
-- [ ] `POST /api/study/mocks/<platform_mock_id>/review` without `topic_breakdowns`
-      returns HTTP 200; `review_status` is updated.
+- [ ] `POST /review` with `topic_breakdowns` → HTTP 409 `platform_attempt_authoritative_fields_rejected`
+- [ ] No `mock_topic_breakdowns` rows written for that mock_id
+- [ ] `POST /review` with notes only → HTTP 200; `review_status` updated
 
 ### B. Correction-preview classification parity (PR4)
 
-- [ ] `GET /api/admin/study-os/mocks/<platform_mock_id>/mastery-preview` returns
-      200 with non-empty `correction_drafts`.
-- [ ] Each `correction_drafts` entry has a `category` that is one of the five
-      canonical categories: `concept_gap`, `memory_gap`, `careless`, `speed_issue`,
-      `option_trap`.
-- [ ] `classification_counts` keys match the `error_type` values in
-      `mock_attempt_response_classification` for that attempt.
+- [ ] `GET /mocks/{id}/mastery-preview` returns 200 with `correction_drafts`
+- [ ] Each entry has a canonical `category` (one of five)
+- [ ] `classification_counts` keys match `error_type` in `mock_attempt_response_classification`
 
 ### C. Deterministic correction categories
 
-- [ ] Call the preview endpoint twice for the same mock_id; verify the
-      `correction_drafts` list is identical (same categories, titles, topic_ids).
+- [ ] Preview endpoint called twice → identical `correction_drafts`
 
 ### D. Null-selection behavior
 
-- [ ] For an attempt with at least one unanswered question (no `selected_option_id`),
-      the preview endpoint's `response_counts.null` is > 0.
-- [ ] Unanswered questions do not appear in `mastery_deltas` (they are correction-only).
+- [ ] Preview `response_counts.marked_unanswered` > 0 for null-selection attempt
+- [ ] Unanswered questions absent from `mastery_deltas`
 
 ### E. Shadow idempotency
 
-- [ ] Re-trigger shadow analysis for the same attempt (e.g., manual sweeper kick).
-- [ ] `mock_mastery_shadow` row count for that `attempt_id` does not increase
-      (unique index on `attempt_id, topic_id, flag_state` prevents duplicates).
+- [ ] Resubmit does not increase `mock_mastery_shadow` row count (unique index enforced)
 
-### F. Automatic scheduler drain (see PR1 checklist)
+### F. Automatic scheduler drain
 
-- [ ] Scheduler drain evidence captured per `docs/ops/pr1_scheduler_drain_verification.md`.
+- [ ] Scheduler evidence per `docs/ops/pr1_scheduler_drain_verification.md`
 
 ### G. No live-table mutation
 
-- [ ] `user_topic_mastery` rows for the test users were **not** updated since the
-      SHA deployed (shadow mode must not write live mastery).
-- [ ] `user_topic_mastery_audit` has no rows with `reason='mock_submit'` since the
-      SHA deployed.
-- [ ] `study_tasks` has no new correction-task rows from the platform submit flow
-      (corrections are live-only; shadow mode must not draft them into study_tasks).
+- [ ] `user_topic_mastery` unchanged for test user
+- [ ] `user_topic_mastery_audit` unchanged
+- [ ] `study_tasks` unchanged
 
 ### H. Compatibility-row parity
 
-- [ ] `mock_tests` row exists for each validated platform attempt
-      (`source_type='platform_attempt'`, `trust_level='platform_verified'`).
-- [ ] `mock_mastery_shadow` row exists for each attempt with `flag_state='shadow'`.
+- [ ] `mock_tests` row present with `source_type=platform_attempt`, `trust_level=platform_verified`, `total_marks` integer
+
+---
 
 ## Evidence Location
 
-| Artifact | Where to store |
-|---|---|
-| HTTP response screenshots / curl output | Attach to this PR |
-| SQL query results | Attach to this PR |
-| Shadow analysis JSON output | Attach to this PR |
-| Baseline SHA | Record below |
+| Artifact | Location |
+|----------|----------|
+| HTTP curl output | Operator-held (outside repo) |
+| SQL query results | Operator-held (outside repo) |
+| Shadow analysis JSON | Operator-held (outside repo) |
+| Code fingerprint | Recorded in this file and in `docs/audits/2026-06-19-final-candidate-revalidation.md` |
 
-**Baseline SHA:** `______________________________`  
-**Deployed at:** `______________________________`  
-**Validated by:** `______________________________`  
-**Date:** `______________________________`
+**Baseline SHA:** `ba3ea3516f10d07d4708a12942e03162d2f2da50` (current main; deployed Render SHA must be confirmed A == B by operator)
+**Validation fingerprint:** `6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`
+**Gate 9 failure date:** 2026-06-19
+**Validated by:** Remote docs agent (code-level only); full operator run blocked by Gate 9
+**Next action:** Merge and deploy live canary user allowlist, then repeat full operator run
