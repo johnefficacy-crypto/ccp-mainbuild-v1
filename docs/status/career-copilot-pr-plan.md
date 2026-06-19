@@ -1,6 +1,6 @@
 # Career Copilot remaining-work PR plan
 
-Last planned from repo state: 2026-06-19 at `9dde8efc` (PR #716 blocker-fix branch `claude/intelligent-cerf-8wmuti`).
+Last planned from repo state: 2026-06-19 at `HEAD` (PR #718 platform-review-authority-hardening branch `fix/platform-review-authority-hardening`).
 
 This plan decomposes the remaining Career Copilot work into small PRs that can
 be assigned to simultaneous agents without overlapping write scopes. Status
@@ -36,7 +36,28 @@ terms come from `docs/status/career-copilot-checklist.md`.
 Goal: prove the already-landed code remediations against live/operator evidence
 without flipping `FF_MOCK_MASTERY_WRITES=live`.
 
-### PR #716 — Shadow gate prerequisite hardening (code-only, must merge before A1/A2/A3)
+### PR #716 — Shadow gate prerequisite hardening — **MERGED**
+
+### PR #718 — Platform-review authority hardening (code-only, prerequisite for A1/A2/A3 clean-state signoff)
+
+Fixes 5 confirmed bugs in `canonical.py::review_mock`:
+
+1. **BUG-A — `review_status` silent mutation:** removed Pydantic default from `review_status`; patch built from `model_fields_set` only so omitted fields are never overwritten.
+2. **BUG-B — TOCTOU race:** scoped UPDATE (`id + user_id + source_type`) replaces the single-predicate update; zero-row result triggers 4-case diagnostic.
+3. **BUG-C — platform path pollution:** `aggregated_error_types` derivation and breakdown/mastery/regen writes are fully isolated to the manual/imported path.
+4. **Denylist → allowlist:** `_PLATFORM_REVIEW_ALLOWED` replaces `_PLATFORM_FORBIDDEN`; future body fields are rejected by default for platform mocks.
+5. **FK ordering (seedAttempt.ts):** `resetAttempts` now deletes `mock_tests` compat rows (`mock_attempt_id IN attemptIds`) before deleting `mock_attempts` to avoid FK violations.
+
+PR #718 adds regression coverage for the existing PR #716 correction-task authority guard; it does not modify that guard (`study_os.py`, `mocks.py`, and `mastery_writer.py` are empty diff vs main).
+
+**Write scope (changed files only):**
+- `app/backend/app/api/canonical.py`
+- `app/backend/tests/study_os/test_mock_review.py`
+- `app/frontend/e2e/fixtures/seedAttempt.ts`
+- `docs/status/career-copilot-checklist.md`
+- `docs/status/career-copilot-pr-plan.md`
+
+### PR #716 — Shadow gate prerequisite hardening (original)
 
 Fixes 6 blocking review findings against the mastery shadow gate:
 
@@ -59,7 +80,8 @@ Fixes 6 blocking review findings against the mastery shadow gate:
 - **Type:** operator evidence doc only.
 - **Write scope:** `docs/audits/*scheduler*2026-*.md`, checklist row updates.
 - **Do not touch:** `app/backend/app/study_os/*`, migrations, frontend.
-- **Work:** capture `ENABLE_SCHEDULER=true`, scheduler startup/registration,
+- **Work:** capture both scheduler env vars (`ENABLE_SCHEDULER=true` primary gate,
+  `DISABLE_SCHEDULER=true` override kill switch), scheduler startup/registration,
   `/api/admin/jobs` payload, manual sweeper run, and pending-job drain.
 - **Exit:** checklist scheduler row moves from `OPERATOR PENDING` to either
   verified or code-defect-found. If code defect is found, open a separate A1-fix
