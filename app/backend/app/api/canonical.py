@@ -2152,27 +2152,51 @@ async def review_mock(
     same final state.
     """
     supabase = get_supabase_admin()
-    # ownership check — mock ids must not be probable across users
-    existing = _safe(
-        lambda: supabase.table("mock_tests").select("id, user_id, source_type").eq("id", mock_id).limit(1).execute().data,
-        default=[],
-    ) or []
+    # ownership check — DB failure → 503; wrong owner or missing row → 404
+    try:
+        _ownership_resp = (
+            supabase.table("mock_tests")
+            .select("id,user_id,source_type")
+            .eq("id", mock_id)
+            .limit(1)
+            .execute()
+        )
+        existing = _ownership_resp.data or []
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "mock_review_lookup_failed",
+                "detail": "Could not verify mock ownership.",
+            },
+        )
     if not existing or existing[0].get("user_id") != user["id"]:
         raise HTTPException(status_code=404, detail="Mock not found")
 
-    mock_source_type = existing[0].get("source_type") or "manual_log"
-    if mock_source_type == "platform_attempt" and body.topic_breakdowns:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "error": "platform_attempt_breakdowns_rejected",
-                "detail": (
-                    "topic_breakdowns cannot be submitted for platform attempts. "
-                    "Mastery is computed by MasteryWriter from raw response data. "
-                    "Metadata-only fields (review_status, notes, error_types) are allowed."
-                ),
-            },
-        )
+    source_type = existing[0].get("source_type") or "manual_log"
+
+    # platform_attempt rows are server-owned: only review_status and notes are permitted.
+    # MasteryWriter owns scores, timing, classification, and breakdown writes for these rows.
+    _PLATFORM_FORBIDDEN: frozenset[str] = frozenset({
+        "topic_breakdowns",
+        "total_questions",
+        "correct_answers",
+        "wrong_answers",
+        "skipped_questions",
+        "avg_time_sec",
+        "error_types",
+    })
+    if source_type == "platform_attempt":
+        supplied_forbidden = sorted(_PLATFORM_FORBIDDEN & body.model_fields_set)
+        if supplied_forbidden:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "platform_attempt_authoritative_fields_rejected",
+                    "fields": supplied_forbidden,
+                    "detail": "Platform-generated scores, classifications and topic breakdowns are server-owned.",
+                },
+            )
 
     aggregated_error_types = (
         body.error_types or _aggregate_error_types(body.topic_breakdowns) or None
@@ -2226,11 +2250,7 @@ async def review_mock(
             )
         )
 
-    refreshed = _safe(
-        lambda: supabase.table("mock_tests").select("*").eq("id", mock_id).limit(1).execute().data,
-        default=[mock_id and {"id": mock_id}],
-    ) or [{"id": mock_id}]
-    return refreshed[0]
+    return updated[0]
 
 
 # NOTE: MockCorrectionTasksBody + POST /mocks/{mock_id}/correction-tasks
