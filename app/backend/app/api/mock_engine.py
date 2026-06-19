@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
-from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
+from app.study_os.mastery_writer import MasteryClassificationNotReady, MasteryWriter, get_mastery_write_flag
 from app.study_os.mock_engine import (
     AnswerPersistenceError,
     AttemptFinalizationError,
@@ -201,7 +201,13 @@ async def submit(
                             detail={"error": "mastery_retry_enqueue_failed", "detail": str(retry_exc)},
                             headers={"Retry-After": "1"},
                         ) from retry_exc
-                    logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
+                    if isinstance(exc, MasteryClassificationNotReady):
+                        logger.warning(
+                            "mastery write-back deferred (classifications pending) attempt=%s user=%s: %s",
+                            attempt_id, user_id, exc,
+                        )
+                    else:
+                        logger.exception("mastery write-back failed attempt=%s user=%s", attempt_id, user_id)
         return result
     except SubmitConsistencyError as exc:
         logger.warning("submit consistency mismatch attempt=%s: %s", attempt_id, exc)

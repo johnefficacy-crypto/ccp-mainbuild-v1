@@ -1,6 +1,6 @@
 # Career Copilot checklist — repo source of record
 
-Last repo verification: 2026-06-19 at `455c1bec` (PR #718 platform-review-authority-hardening branch `fix/platform-review-authority-hardening`).
+Last repo verification: 2026-06-19 at `fix/mastery-classification-readiness` (PR #719 mastery-classification-readiness).
 
 This checklist replaces chat-only / UI-only status snippets. Keep it current in the same PR as any code change or decision that changes one of these statuses.
 
@@ -32,6 +32,7 @@ Current verdict: **DO NOT PROCEED TO LIVE**. `FF_MOCK_MASTERY_WRITES=live` remai
 | DEFECT-002 shadow idempotency | CODE-FIXED, VALIDATION PENDING | Migration `180_mock_mastery_shadow_idempotency.sql` dedupes/adds unique shadow keys; `_write_shadow` uses conflict-ignore upsert. |
 | DEFECT-005A `total_marks` coercion | CODE-FIXED, VALIDATION PENDING | `_to_integral_marks` is used in both initial mock compat-row insert and retry emission. |
 | DEFECT-006 manual weak-topic fallback | CODE-FIXED, VALIDATION PENDING | Manual mock correction drafting delegates weak-topic fallback to `correction_policy`. |
+| Classification readiness / mastery recovery (D1-D4) | CODE-FIXED, VALIDATION PENDING | PR #719: (D1) `submit_attempt` analytics failure no longer silently skips mastery — `MasteryClassificationNotReady` is raised and the mastery_retry job is rescheduled. (D2) `auto_submit_attempt` now enqueues `mastery_retry` when FF≠off (parity with manual submit). (D3) `process_attempt_sync` gates on `check_classification_readiness` before any writes — missing classifications raise `MasteryClassificationNotReady` and re-enqueue `analytics_retry`; mastery never runs with None error_types from absent classification rows. (D4) `_run_job JOB_ANALYTICS_RETRY` enqueues `mastery_retry` after `compute_and_persist` succeeds when FF≠off, closing the analytics-success→mastery handoff gap. New module: `study_os/attempt_classification_readiness.py`. 20 new tests. |
 | Correction idempotency guard (23505) | CODE-FIXED, VALIDATION PENDING | PR #716: `_draft_correction_tasks()` in `mastery_writer.py` and `draft_correction_tasks()` in `mocks.py` now catch 23505 unique-constraint violations as idempotent duplicates; non-23505 errors propagate. Migration 181 dedup CTE fixed for `NULL created_at`. Stale "NOT concurrency-safe" and "OUT OF SCOPE" comments removed. |
 | Platform-attempt correction gate | CODE-FIXED, VALIDATION PENDING | PR #716: `POST /api/study/mocks/{mock_id}/correction-tasks` now raises HTTP 409 with `PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN` for `source_type=platform_attempt` mocks. MasteryWriter pipeline owns that path; manual drafting is forbidden. |
 | Mastery preview (`derive_preview` three sections) | CODE PRESENT, OPERATOR VALIDATION PENDING | PR #716: `derive_preview()` redesigned to return three sections: `persisted_shadow_decision` (from `mock_mastery_shadow`), `current_read_only_preview` (labeled as mutable current state), and `replay_consistency` (per-topic sign+magnitude comparison). Admin endpoint now rejects non-platform_attempt mocks with 422. Zero writes guaranteed. |

@@ -471,6 +471,18 @@ def _answer_all(sb: SBStub, attempt_id: str, *, correct: bool) -> None:
         )
 
 
+def _classify_all(sb: SBStub, attempt_id: str) -> None:
+    """Seed one classification row per response (simulates analytics having run)."""
+    cls_rows = sb.db.setdefault("mock_attempt_response_classification", [])
+    for r in sb.db.get("mock_attempt_responses", []):
+        if r.get("attempt_id") == attempt_id:
+            cls_rows.append({
+                "attempt_id": attempt_id,
+                "question_id": r["question_id"],
+                "error_type": None,
+            })
+
+
 def test_submit_runs_masterywriter_for_template_id_null_attempt_shadow(monkeypatch):
     # The engine submit route still runs MasteryWriter INLINE on the first pass;
     # the durable mastery_retry row is only the completion/recovery marker. This
@@ -600,6 +612,7 @@ def test_only_claim_winner_invokes_mastery_writer(monkeypatch):
     sb = _sb()
     attempt_id = _start_generated(sb)
     _answer_all(sb, attempt_id, correct=True)
+    _classify_all(sb, attempt_id)  # simulate analytics having run
 
     calls: list[str] = []
     first = engine.claim_mastery_retry_required(sb, attempt_id, "shadow")
@@ -644,6 +657,7 @@ def test_expired_running_mastery_retry_is_recovered_by_sweeper(monkeypatch):
     sb = _sb()
     attempt_id = _start_generated(sb)
     _answer_all(sb, attempt_id, correct=True)
+    _classify_all(sb, attempt_id)  # simulate analytics having run
     engine.claim_mastery_retry_required(sb, attempt_id, "shadow")
     sb.db["mock_attempt_jobs"][0]["scheduled_for"] = "2000-01-01T00:00:00+00:00"
 

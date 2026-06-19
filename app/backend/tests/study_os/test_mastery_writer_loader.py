@@ -91,6 +91,12 @@ def test_only_answered_topic_gets_mastery_and_shadow():
         _response("q-f1", T_FROZEN, selected=None, is_correct=False),
         _response("q-f2", T_FROZEN, selected=None, is_correct=False),
     ]
+    # Seed one classification row per response (simulates analytics having run).
+    sb.db["mock_attempt_response_classification"] = [
+        _classification("q-ans", "correct"),
+        _classification("q-f1", "concept_gap"),
+        _classification("q-f2", "concept_gap"),
+    ]
     asyncio.run(mw.MasteryWriter(sb, "live").process_attempt(ATTEMPT))
 
     shadow_topics = {r["topic_id"] for r in sb.db["mock_mastery_shadow"]}
@@ -148,11 +154,14 @@ def test_missing_classification_invents_no_category():
     sb = SBStub(_base_db())
     # Three untouched frozen rows in one topic, NO classification at all. With the
     # old all-rows-attempted behaviour this would read as attempted>=3, accuracy
-    # 0% → a blind concept_gap fallback. The fix must not invent one.
+    # 0% → a blind concept_gap fallback.
+    # With the readiness gate: missing classifications → MasteryClassificationNotReady;
+    # mastery is deferred so nothing is written — no blind concept_gap.
     sb.db["mock_attempt_responses"] = [
         _response(f"q-f{i}", T_FROZEN, selected=None, is_correct=False) for i in range(3)
     ]
-    asyncio.run(mw.MasteryWriter(sb, "live").process_attempt(ATTEMPT))
+    with pytest.raises(mw.MasteryClassificationNotReady):
+        asyncio.run(mw.MasteryWriter(sb, "live").process_attempt(ATTEMPT))
 
     assert sb.db["mock_correction_tasks"] == []
     assert sb.db["mock_mastery_shadow"] == []

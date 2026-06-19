@@ -7,6 +7,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Literal
 from uuid import uuid4
 
+from app.study_os.attempt_classification_readiness import check_classification_readiness
 from app.study_os.mastery_engine import derive_from_analytics
 from app.study_os.mastery_engine.schemas import (
     AttemptQuestionAnalytics,
@@ -17,6 +18,15 @@ from app.study_os.mastery_engine.schemas import (
 logger = logging.getLogger("career_copilot.study_os.mastery_writer")
 
 FlagState = Literal["off", "shadow", "live"]
+
+
+class MasteryClassificationNotReady(Exception):
+    """Classifications are not yet fully populated for this attempt.
+
+    Raised by process_attempt_sync when mock_attempt_response_classification
+    is missing rows relative to mock_attempt_responses.  The caller is
+    responsible for rescheduling the mastery retry job.
+    """
 
 # Per-attempt mastery delta cap, in mastery units (0..1). 0.15 unit == 15 db.
 _CAP_UNIT = Decimal("0.15")
@@ -63,6 +73,19 @@ class MasteryWriter:
         # suppress mastery writes. See docs/study_os/mock_submit_flow.md.
         if self.flag_state == "off":
             return
+
+        readiness = check_classification_readiness(self.supabase, attempt_id)
+        if not readiness.ready:
+            # Classifications not yet populated — analytics_retry hasn't run yet
+            # (or ran and failed partially).  Re-enqueue analytics so it can
+            # classify all responses; then the D4 handoff will re-enqueue this
+            # mastery job once analytics succeeds.
+            from app.study_os.mock_engine import JOB_ANALYTICS_RETRY, schedule_job  # noqa: PLC0415
+            schedule_job(self.supabase, JOB_ANALYTICS_RETRY, attempt_id)
+            raise MasteryClassificationNotReady(
+                f"classification_not_ready: missing={len(readiness.missing_question_ids)} "
+                f"duplicate={len(readiness.duplicate_question_ids)}"
+            )
 
         analytics = self._load_analytics(attempt_id)
         if analytics is None:
