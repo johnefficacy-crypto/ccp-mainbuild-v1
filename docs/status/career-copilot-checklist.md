@@ -4,6 +4,8 @@ Last repo verification: 2026-06-19 at `377d44f3a602d1034769a2e858501416d7e3f313`
 
 This checklist replaces chat-only / UI-only status snippets. Keep it current in the same PR as any code change or decision that changes one of these statuses.
 
+Execution plan for parallel PRs: `docs/status/career-copilot-pr-plan.md`.
+
 ## Status vocabulary
 
 - **MERGED / CODE PRESENT** — verified from files in this repository checkout.
