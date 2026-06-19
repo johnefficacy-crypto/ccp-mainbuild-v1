@@ -391,9 +391,6 @@ def draft_correction_tasks(
     mock = get_mock(supabase, user_id, mock_id)
     if not mock:
         raise LookupError("mock not found")
-    if mock.get("source_type") == "platform_attempt":
-        raise ValueError("platform_attempt_correction_rejected")
-
     if (mock.get("source_type") or "manual_log") == "platform_attempt":
         raise PlatformAttemptCorrectionForbiddenError(
             f"PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN mock_id={mock_id}"
