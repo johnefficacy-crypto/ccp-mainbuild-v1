@@ -371,6 +371,103 @@ class MasteryWriter:
             self.supabase.table("mock_correction_tasks").insert(payload).execute()
 
 
+    def derive_preview(self, attempt_id: str) -> dict | None:
+        """Read-only derivation — returns preview data without any writes.
+
+        Loads analytics, derives mastery deltas and correction drafts using
+        the same pipeline as process_attempt_sync, but skips all persistence.
+        Returns None when analytics cannot be loaded (attempt not found).
+
+        Returned keys:
+          trust_level          — source trust classification
+          response_counts      — {"selected": int, "null": int}
+          classification_counts — error_type → count
+          topic_analytics      — list of topic-level stats (topic_id, attempted,
+                                 correct, accuracy_pct as float)
+          mastery_deltas       — list of proposed delta dicts
+          correction_drafts    — list of correction preview dicts
+        """
+        analytics = self._load_analytics(attempt_id)
+        if analytics is None:
+            return None
+
+        trust_level = self._load_trust_level(attempt_id)
+        current_mastery = self._load_current_mastery(analytics.user_id)
+        existing_error_topics = self._load_existing_error_topics(analytics.user_id)
+        result = derive_from_analytics(
+            analytics, current_mastery, existing_error_topics, source_trust=trust_level
+        )
+
+        from app.study_os.correction_policy import CANONICAL_CATEGORIES, correction_title
+
+        response_counts = {"selected": 0, "null": 0}
+        for q in analytics.questions:
+            if q.attempted:
+                response_counts["selected"] += 1
+            else:
+                response_counts["null"] += 1
+
+        classification_counts: dict[str, int] = {}
+        for q in analytics.questions:
+            if q.error_type:
+                classification_counts[q.error_type] = classification_counts.get(q.error_type, 0) + 1
+
+        topic_analytics = [
+            {
+                "topic_id": t.topic_id,
+                "microtopic_id": t.microtopic_id,
+                "attempted": t.attempted,
+                "correct": t.correct,
+                "accuracy_pct": float(t.accuracy_pct),
+            }
+            for t in analytics.topics
+        ]
+
+        delta_unit = Decimal("100")
+        mastery_deltas = [
+            {
+                "topic_id": d.topic_id,
+                "current_mastery_db": float(d.current_mastery * delta_unit),
+                "proposed_delta_db": float(_weighted_delta(d.capped_delta, trust_level) * delta_unit),
+                "would_be_mastery_db": float(
+                    min(
+                        Decimal("100"),
+                        max(
+                            Decimal("0"),
+                            d.current_mastery * delta_unit
+                            + _weighted_delta(d.capped_delta, trust_level) * delta_unit,
+                        ),
+                    )
+                ),
+            }
+            for d in result.mastery_deltas
+        ]
+
+        correction_drafts = []
+        for d in result.correction_task_drafts:
+            category = d.category
+            if category not in CANONICAL_CATEGORIES:
+                continue
+            correction_drafts.append(
+                {
+                    "category": category,
+                    "title": correction_title(category),
+                    "topic_id": d.topic_id,
+                    "source_question_ids": [str(q) for q in (d.evidence.related_question_ids or [])],
+                    "trust_level": trust_level,
+                }
+            )
+
+        return {
+            "trust_level": trust_level,
+            "response_counts": response_counts,
+            "classification_counts": classification_counts,
+            "topic_analytics": topic_analytics,
+            "mastery_deltas": mastery_deltas,
+            "correction_drafts": correction_drafts,
+        }
+
+
 def get_mastery_write_flag() -> FlagState:
     raw = (os.getenv("FF_MOCK_MASTERY_WRITES") or "off").strip().lower()
     return raw if raw in {"off", "shadow", "live"} else "off"
