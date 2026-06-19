@@ -11,7 +11,7 @@ import {
 } from "./ExamIntelGlossary";
 
 function examKey(exam) {
-  return exam?.slug || exam?.id || exam?.name || "unnamed-exam";
+  return exam?.id ?? exam?.slug ?? exam?.name ?? "unnamed-exam";
 }
 
 function examDisplayName(exam) {
@@ -22,6 +22,12 @@ function safeDomId(value) {
   return String(value || "exam")
     .replace(/[^A-Za-z0-9_-]/g, "-")
     .replace(/^-+/, "exam-");
+}
+
+function examDomHandle(exam, index) {
+  if (exam?.slug) return safeDomId(exam.slug);
+  if (exam?.name) return safeDomId(exam.name);
+  return `row-${index}`;
 }
 
 function formatCount(value) {
@@ -39,10 +45,18 @@ function formatSyllabusSummary(exam) {
 }
 
 function formatTopicCoverage(exam) {
-  const verified = formatCount(exam?.verified_topic_count);
+  const reviewedOrLocked = formatCount(exam?.verified_topic_count);
   const total = formatCount(exam?.coverage_total);
   if (!total) return "No topic coverage";
-  return `${verified} of ${total} verified`;
+  return `${reviewedOrLocked} of ${total} reviewed or locked`;
+}
+
+function readinessLabel(level) {
+  if (level === "ready") return "ready";
+  if (level === "partial") return "partial";
+  if (level === "not_ready") return "not ready";
+  if (!level) return "not ready";
+  return humanizeToken(level) || "not ready";
 }
 
 const READINESS_STATUS = {
@@ -112,10 +126,11 @@ export default function ExamListTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((e) => {
+          {rows.map((e, index) => {
             const key = examKey(e);
             const displayName = examDisplayName(e);
-            const detailId = `exam-intel-details-${safeDomId(key)}`;
+            const domHandle = examDomHandle(e, index);
+            const detailId = `exam-intel-details-${domHandle}`;
             const isExpanded = expandedKeys.has(key);
             const lane = e.management_mode == null
               ? BUSINESS_PRIORITY_LABELS.null
@@ -134,7 +149,7 @@ export default function ExamListTable({
                         aria-expanded={isExpanded}
                         aria-controls={detailId}
                         onClick={() => toggleExpanded(key)}
-                        data-testid={`exam-intel-disclosure-${e.slug}`}
+                        data-testid={`exam-intel-disclosure-${domHandle}`}
                       >
                         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
@@ -156,7 +171,7 @@ export default function ExamListTable({
                   <td>
                     <StatusBadge
                       status={READINESS_STATUS[e.readiness_level] || "missing"}
-                      label={(e.readiness_level || "not_ready").replaceAll("_", " ")}
+                      label={readinessLabel(e.readiness_level)}
                     />
                   </td>
                   <td className="right">
@@ -179,17 +194,17 @@ export default function ExamListTable({
                   </td>
                 </tr>
                 {isExpanded ? (
-                  <tr id={detailId} data-testid={`exam-intel-details-${e.slug}`}>
+                  <tr id={detailId} data-testid={`exam-intel-details-${domHandle}`}>
                     <td colSpan={6} className="bg-[#FFFDF9] px-5 py-4 text-sm text-clay-700">
                       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        <div><dt className="font-semibold text-clay-900">Registry key</dt><dd className="num-mono text-xs">{e.slug || "—"}</dd></div>
+                        <div><dt className="font-semibold text-clay-900">Exam key</dt><dd className="num-mono text-xs">{e.slug || "—"}</dd></div>
                         <div><dt className="font-semibold text-clay-900">Management lane</dt><dd>{lane.label}</dd></div>
-                        {lane.helper ? <div><dt className="font-semibold text-clay-900">Management-lane helper</dt><dd>{lane.helper}</dd></div> : null}
+                        {lane.helper ? <div><dt className="font-semibold text-clay-900">Lane guidance</dt><dd>{lane.helper}</dd></div> : null}
                         <div><dt className="font-semibold text-clay-900">Cadence</dt><dd>{cadence}</dd></div>
                         <div><dt className="font-semibold text-clay-900">Visibility</dt><dd>{e.is_active ? "Active" : "Inactive"}</dd></div>
                         <div><dt className="font-semibold text-clay-900">Syllabus verified count</dt><dd>{formatCount(e.syllabus_verified)}</dd></div>
                         <div><dt className="font-semibold text-clay-900">Syllabus pending count</dt><dd>{formatCount(e.syllabus_pending)}</dd></div>
-                        <div><dt className="font-semibold text-clay-900">Verified topic count</dt><dd>{formatCount(e.verified_topic_count)}</dd></div>
+                        <div><dt className="font-semibold text-clay-900">Reviewed or locked topic count</dt><dd>{formatCount(e.verified_topic_count)}</dd></div>
                         <div><dt className="font-semibold text-clay-900">Total topic coverage count</dt><dd>{formatCount(e.coverage_total)}</dd></div>
                         <div><dt className="font-semibold text-clay-900">High-yield topics</dt><dd>{formatCount(e.high_yield_topic_count)}</dd></div>
                         <div className="sm:col-span-2 lg:col-span-3"><dt className="font-semibold text-clay-900">Planner note</dt><dd>{REVIEWER_STATUS_PLANNER_NOTE}</dd></div>

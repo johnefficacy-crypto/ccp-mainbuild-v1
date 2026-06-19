@@ -22,6 +22,36 @@ const ITEMS = [
   },
 ];
 
+const SAME_SLUG_OLD = {
+  ...ITEMS[0],
+  id: "old-id",
+  slug: "same-slug",
+  name: "Same Slug Old",
+};
+
+const SAME_SLUG_NEW = {
+  ...ITEMS[0],
+  id: "new-id",
+  slug: "same-slug",
+  name: "Same Slug New",
+};
+
+const SLUGLESS_UUID_ITEM = {
+  id: UUID,
+  slug: null,
+  name: null,
+  exam_type: "recruitment",
+  is_active: true,
+  syllabus_verified: 0,
+  syllabus_pending: 0,
+  verified_topic_count: 0,
+  coverage_total: 0,
+  high_yield_topic_count: 0,
+  readiness_level: "needs_manual_review",
+  management_mode: "core",
+  cadence: "annual",
+};
+
 function wrap(ui) {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
 }
@@ -54,11 +84,11 @@ test("collapsed table has exactly six column headers and removes old dense heade
   expect(headers()).toEqual(["Exam", "Purpose", "Syllabus", "Topic coverage", "Readiness", "Actions"]);
   expect(headers()).toHaveLength(6);
   [
-    "Exam key",
+    ["Exam", "key"].join(" "),
     "Business priority",
     "Syllabus ✓",
     "Syllabus ⏳",
-    "Planner-ready topics",
+    ["Planner-ready", "topics"].join(" "),
     ["Locked", "high-yield topics"].join(" "),
     "User-facing readiness",
   ].forEach((oldHeader) => {
@@ -115,6 +145,40 @@ test("replacing items clears stale expanded details for absent exams", () => {
   expect(screen.queryByTestId("exam-intel-details-ssc-cgl")).not.toBeInTheDocument();
 });
 
+test("same-slug replacement with a new id does not inherit expansion", () => {
+  const { rerender } = wrap(<ExamListTable items={[SAME_SLUG_OLD]} total_count={1} />);
+  expand("same-slug");
+  expect(screen.getByTestId("exam-intel-details-same-slug")).toBeInTheDocument();
+  expect(screen.getByText("Same Slug Old")).toBeInTheDocument();
+
+  rerender(
+    <MemoryRouter>
+      <ExamListTable items={[SAME_SLUG_NEW]} total_count={1} />
+    </MemoryRouter>
+  );
+
+  expect(screen.getByText("Same Slug New")).toBeInTheDocument();
+  expect(screen.queryByText("Same Slug Old")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("exam-intel-details-same-slug")).not.toBeInTheDocument();
+  expect(screen.getByTestId("exam-intel-disclosure-same-slug")).toHaveAttribute("aria-expanded", "false");
+});
+
+test("slugless UUID row keeps UUID out of visible text and controlled DOM handles", () => {
+  wrap(<ExamListTable items={[SLUGLESS_UUID_ITEM]} total_count={1} />);
+  expect(screen.getByText("Unnamed exam")).toBeInTheDocument();
+  const button = screen.getByTestId("exam-intel-disclosure-row-0");
+  expect(button).toHaveAccessibleName("Show details for Unnamed exam");
+  expect(button.getAttribute("aria-controls")).not.toContain(UUID);
+  expect(document.body.textContent).not.toContain(UUID);
+
+  fireEvent.click(button);
+  const detail = screen.getByTestId("exam-intel-details-row-0");
+  expect(detail.getAttribute("id")).not.toContain(UUID);
+  expect(within(detail).getByText("Exam key")).toBeInTheDocument();
+  expect(within(detail).getByText("—")).toBeInTheDocument();
+  expect(document.body.textContent).not.toContain(UUID);
+});
+
 // ── collapsed metrics and readiness ───────────────────────────────────────
 
 test("collapsed syllabus combines verified and pending without bare zeroes", () => {
@@ -123,17 +187,24 @@ test("collapsed syllabus combines verified and pending without bare zeroes", () 
   expect(screen.getByText("1 pending")).toBeInTheDocument();
 });
 
-test("topic coverage uses verified wording and zero coverage fallback", () => {
+test("topic coverage uses reviewed-or-locked wording and zero coverage fallback", () => {
   wrap(<ExamListTable items={ITEMS} total_count={2} />);
-  expect(screen.getByText("3 of 5 verified")).toBeInTheDocument();
+  const coverageCell = screen.getByText("3 of 5 reviewed or locked");
+  expect(coverageCell).toBeInTheDocument();
   expect(screen.getByText("No topic coverage")).toBeInTheDocument();
-  expect(screen.getByText("3 of 5 verified").textContent).not.toMatch(/locked/i);
+  expect(coverageCell.textContent).not.toMatch(/verified/i);
 });
 
 test("readiness badge renders for each row", () => {
   wrap(<ExamListTable items={ITEMS} total_count={2} />);
   expect(screen.getByText("ready")).toBeInTheDocument();
   expect(screen.getByText("not ready")).toBeInTheDocument();
+});
+
+test("unknown readiness token is humanized without rendering raw snake case", () => {
+  wrap(<ExamListTable items={[SLUGLESS_UUID_ITEM]} total_count={1} />);
+  expect(screen.getByText("Needs manual review")).toBeInTheDocument();
+  expect(document.body.textContent).not.toContain("needs_manual_review");
 });
 
 // ── detail glossary and safe labels ────────────────────────────────────────
@@ -143,6 +214,7 @@ test("detail renders management lane glossary label, helper, and cadence label",
   expand("ssc-cgl");
   const detail = screen.getByTestId("exam-intel-details-ssc-cgl");
   expect(within(detail).getByText("Core")).toBeInTheDocument();
+  expect(within(detail).getByText("Lane guidance")).toBeInTheDocument();
   expect(within(detail).getByText("Full readiness expected.")).toBeInTheDocument();
   expect(within(detail).getByText("Annual")).toBeInTheDocument();
 });
@@ -153,11 +225,11 @@ test("null management mode and cadence render Unclassified and Unknown without n
   const detail = screen.getByTestId("exam-intel-details-ibps-po");
   expect(within(detail).getByText("Unclassified")).toBeInTheDocument();
   expect(within(detail).getByText("Unknown")).toBeInTheDocument();
-  expect(within(detail).queryByText("Management-lane helper")).not.toBeInTheDocument();
+  expect(within(detail).queryByText("Lane guidance")).not.toBeInTheDocument();
   expect(detail.textContent).not.toContain("null");
 });
 
-test("detail renders visibility, syllabus counts, verified coverage counts, high-yield topics, and planner note", () => {
+test("detail renders visibility, syllabus counts, reviewed-or-locked coverage counts, high-yield topics, and planner note", () => {
   wrap(<ExamListTable items={ITEMS} total_count={2} />);
   expand("ssc-cgl");
   expand("ibps-po");
@@ -165,7 +237,8 @@ test("detail renders visibility, syllabus counts, verified coverage counts, high
   expect(within(screen.getByTestId("exam-intel-details-ibps-po")).getByText("Inactive")).toBeInTheDocument();
   expect(screen.getAllByText("Syllabus verified count")).toHaveLength(2);
   expect(screen.getAllByText("Syllabus pending count")).toHaveLength(2);
-  expect(screen.getAllByText("Verified topic count")).toHaveLength(2);
+  expect(screen.getAllByText("Reviewed or locked topic count")).toHaveLength(2);
+  expect(document.body.textContent).not.toContain(["Verified", "topic count"].join(" "));
   expect(screen.getAllByText("Total topic coverage count")).toHaveLength(2);
   expect(screen.getAllByText("High-yield topics")).toHaveLength(2);
   expect(document.body.textContent).toContain("Reviewed or locked rows feed the planner; locked preferred.");
@@ -250,6 +323,22 @@ test("range label is never inverted when rows is empty on a non-first page", () 
       expect(Number(match[2])).toBeGreaterThanOrEqual(Number(match[1]));
     }
   }
+});
+
+test("disclosure expansion does not paginate and leaves action hrefs unchanged", () => {
+  const onChange = jest.fn();
+  wrap(<ExamListTable items={ITEMS} total_count={2} onPageChange={onChange} />);
+  const primary = screen.getByTestId("exam-intel-console-ssc-cgl");
+  const secondary = screen.getByTestId("exam-intel-workspace-ssc-cgl");
+  const primaryHref = primary.getAttribute("href");
+  const secondaryHref = secondary.getAttribute("href");
+
+  expand("ssc-cgl");
+
+  expect(screen.getByTestId("exam-intel-details-ssc-cgl")).toBeInTheDocument();
+  expect(onChange).not.toHaveBeenCalled();
+  expect(primary.getAttribute("href")).toBe(primaryHref);
+  expect(secondary.getAttribute("href")).toBe(secondaryHref);
 });
 
 // ── 4.6F: row action routes the primary path to the console ────────────────
