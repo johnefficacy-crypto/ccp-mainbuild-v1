@@ -1,6 +1,6 @@
 # Career Copilot remaining-work PR plan
 
-Last planned from repo state: 2026-06-19 at `HEAD` (PR #718 platform-review-authority-hardening branch `fix/platform-review-authority-hardening`).
+Last planned from repo state: 2026-06-19 at `455c1bec` (PR #718 platform-review-authority-hardening branch `fix/platform-review-authority-hardening`).
 
 This plan decomposes the remaining Career Copilot work into small PRs that can
 be assigned to simultaneous agents without overlapping write scopes. Status

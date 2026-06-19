@@ -1,6 +1,6 @@
 # Career Copilot checklist — repo source of record
 
-Last repo verification: 2026-06-19 at `HEAD` (PR #718 platform-review-authority-hardening branch `fix/platform-review-authority-hardening`).
+Last repo verification: 2026-06-19 at `455c1bec` (PR #718 platform-review-authority-hardening branch `fix/platform-review-authority-hardening`).
 
 This checklist replaces chat-only / UI-only status snippets. Keep it current in the same PR as any code change or decision that changes one of these statuses.
 
