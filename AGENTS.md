@@ -1,5 +1,6 @@
 <!-- Table of contents -->
 - [graphify](#graphify)
+- [Shared checklist status](#shared-checklist-status)
 - [Known-flaky CI checks](#known-flaky-ci-checks)
 - [Study OS frontend contract](#study-os-frontend-contract)
 - [Frontend governance](#frontend-governance)
@@ -16,6 +17,25 @@ Rules:
 - IF graphify-out/wiki/index.md EXISTS, navigate it instead of reading raw files
 - For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+## Shared checklist status
+
+The repo-level checklist lives at `docs/status/career-copilot-checklist.md`.
+It is the shared source of record for agent-visible status on the Mock Engine
+v2 ↔ Study OS arc, Exam Governance Console cleanup tier, exam-intelligence UX
+cleanup, CI gate status, and live-DB-only tails.
+
+Rules:
+- Before changing code or docs in those areas, read the checklist after the
+  Graphify map.
+- Every PR that changes implementation status, validation status, operator
+  gates, or product decisions in those areas must update the checklist in the
+  same branch.
+- Do not mark live-deployment, token, Render, Supabase, or other operator-only
+  evidence as complete from code inspection alone; use `OPERATOR PENDING` or
+  `VERIFY DB` until the live proof is captured.
+- If a code remediation lands but shadow/live/operator validation remains, use
+  `CODE-FIXED, VALIDATION PENDING` rather than `complete`.
 
 ## Known-flaky CI checks
 
