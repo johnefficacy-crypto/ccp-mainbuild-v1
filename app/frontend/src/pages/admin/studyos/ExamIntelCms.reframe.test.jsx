@@ -20,6 +20,8 @@ const CYCLE_ROW = {
   status: "expected",
 };
 
+const examsUrl = "/api/admin/exam-intelligence-cms/exams?limit=50";
+
 jest.mock("../../../lib/api", () => ({
   __esModule: true,
   api: { get: jest.fn(), post: jest.fn() },
@@ -34,7 +36,7 @@ const AdminExamIntelCms = require("./ExamIntelCms").default;
 beforeEach(() => {
   api.get.mockReset();
   api.get.mockImplementation((url) => {
-    if (url === "/api/admin/exam-intelligence-cms/exams?limit=50") {
+    if (url === examsUrl) {
       return Promise.resolve({ items: [EXAM_ROW], total: 1 });
     }
     if (url === "/api/admin/exam-intelligence-cms/exam-cycles?limit=50") {
@@ -114,11 +116,21 @@ test("entity churn never restores the removed New guided exam CTA", async () => 
   expect(screen.queryByTestId("cms-new-guided-exam")).toBeNull();
   expect(screen.queryByRole("link", { name: /New guided exam/i })).toBeNull();
 
+  const examsCallsBeforeReturn = api.get.mock.calls.filter(([url]) => url === examsUrl).length;
+
   selectEntity("exams");
   await screen.findByText("Sample Exam");
-  expect(api.get).toHaveBeenCalledWith("/api/admin/exam-intelligence-cms/exams?limit=50");
+  expect(api.get.mock.calls.filter(([url]) => url === examsUrl)).toHaveLength(examsCallsBeforeReturn + 1);
   expect(screen.queryByTestId("cms-new-guided-exam")).toBeNull();
   expect(screen.queryByRole("link", { name: /New guided exam/i })).toBeNull();
+});
+
+test("exams entity keeps the Reload control", async () => {
+  renderPage();
+  selectEntity("exams");
+  await screen.findByText("Sample Exam");
+
+  expect(screen.getByRole("button", { name: /reload/i })).toBeTruthy();
 });
 
 test("exams New row still opens the correct create form", async () => {
