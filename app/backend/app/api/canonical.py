@@ -22,7 +22,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from supabase import Client
 
 from app.api.community_seed import (
@@ -2105,6 +2105,13 @@ def _mock_breakdown_row(mock_test_id: str, b: "MockTopicBreakdown") -> dict[str,
 # is the single owner.
 
 
+# Fields that the reviewer is allowed to supply for a platform_attempt mock.
+# Everything else is server-owned (MasteryWriter / platform pipeline).
+# Allowlist beats denylist: new fields added to MockReviewBody are rejected by
+# default for platform mocks, not silently accepted.
+_PLATFORM_REVIEW_ALLOWED: frozenset[str] = frozenset({"review_status", "notes"})
+
+
 class MockReviewBody(BaseModel):
     """Server-backed mock-review state with optional per-topic results.
 
@@ -2114,7 +2121,10 @@ class MockReviewBody(BaseModel):
     ``unreviewed → reviewed → correction``.
     """
 
-    review_status: str = Field(default="reviewed", pattern="^(unreviewed|reviewed|correction)$")
+    model_config = ConfigDict(extra="forbid")
+
+    # No default: omitting review_status must NOT silently overwrite the DB value.
+    review_status: str | None = Field(default=None, pattern="^(unreviewed|reviewed|correction)$")
     total_questions: int | None = None
     correct_answers: int | None = None
     wrong_answers: int | None = None
@@ -2136,6 +2146,48 @@ def _aggregate_error_types(breakdowns: list[MockTopicBreakdown] | None) -> dict[
     return out
 
 
+def _scoped_update_diagnostic(
+    supabase: Any, mock_id: str, user_id: str, source_type: str
+) -> None:
+    """Raise a specific HTTPException after a zero-row scoped UPDATE.
+
+    Queries the row again to distinguish: deleted (404), owner race (404),
+    source_type changed (409), or unexplained persistence failure (503).
+    Always raises; never returns.
+    """
+    try:
+        diag_res = (
+            supabase.table("mock_tests")
+            .select("id,user_id,source_type")
+            .eq("id", mock_id)
+            .limit(1)
+            .execute()
+        )
+        diag = diag_res.data or []
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "mock_review_persist_failed",
+                    "detail": "Could not persist mock review."},
+        )
+    if not diag:
+        raise HTTPException(status_code=404, detail="Mock not found")
+    row = diag[0]
+    if row.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Mock not found")
+    if row.get("source_type") != source_type:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "mock_source_type_changed",
+                    "detail": "Mock source_type changed since ownership check."},
+        )
+    raise HTTPException(
+        status_code=503,
+        detail={"error": "mock_review_persist_failed",
+                "detail": "Could not persist mock review."},
+    )
+
+
 @router_study.post("/mocks/{mock_id}/review")
 async def review_mock(
     mock_id: str,
@@ -2152,85 +2204,167 @@ async def review_mock(
     same final state.
     """
     supabase = get_supabase_admin()
-    # ownership check — mock ids must not be probable across users
-    existing = _safe(
-        lambda: supabase.table("mock_tests").select("id, user_id, source_type").eq("id", mock_id).limit(1).execute().data,
-        default=[],
-    ) or []
+
+    if not body.model_fields_set:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "mock_review_empty_payload",
+                    "detail": "At least one field must be supplied."},
+        )
+
+    # Ownership check — DB failure → 503; wrong owner or missing row → 404.
+    try:
+        _ownership_resp = (
+            supabase.table("mock_tests")
+            .select("id,user_id,source_type")
+            .eq("id", mock_id)
+            .limit(1)
+            .execute()
+        )
+        existing = _ownership_resp.data or []
+    except Exception as exc:
+        logger.exception(
+            "mock review ownership lookup failed mock_id=%s user_id=%s",
+            mock_id, user["id"],
+        )
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "mock_review_lookup_failed",
+                    "detail": "Could not verify mock ownership."},
+        )
     if not existing or existing[0].get("user_id") != user["id"]:
         raise HTTPException(status_code=404, detail="Mock not found")
 
-    mock_source_type = existing[0].get("source_type") or "manual_log"
-    if mock_source_type == "platform_attempt" and body.topic_breakdowns:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "error": "platform_attempt_breakdowns_rejected",
-                "detail": (
-                    "topic_breakdowns cannot be submitted for platform attempts. "
-                    "Mastery is computed by MasteryWriter from raw response data. "
-                    "Metadata-only fields (review_status, notes, error_types) are allowed."
-                ),
-            },
+    source_type = existing[0].get("source_type") or "manual_log"
+    supplied = body.model_fields_set
+
+    # ── Platform-attempt path (authority guard) ────────────────────────────
+    # MasteryWriter owns scores, timing, classification, and breakdown writes
+    # for platform_attempt rows. Only the allowlisted metadata fields may be
+    # supplied by the reviewer. This path is fully isolated: aggregated error
+    # type derivation and breakdown/mastery/regen writes never execute here.
+    if source_type == "platform_attempt":
+        forbidden = supplied - _PLATFORM_REVIEW_ALLOWED
+        if forbidden:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "platform_attempt_authoritative_fields_rejected",
+                    "fields": sorted(forbidden),
+                    "detail": (
+                        "Platform-generated scores, classifications and topic "
+                        "breakdowns are server-owned."
+                    ),
+                },
+            )
+        platform_patch: dict[str, Any] = {"updated_at": _now_iso()}
+        for field in supplied & _PLATFORM_REVIEW_ALLOWED:
+            platform_patch[field] = getattr(body, field)
+        if "review_status" in supplied and body.review_status is not None:
+            platform_patch["reviewed_at"] = (
+                _now_iso() if body.review_status != "unreviewed" else None
+            )
+        try:
+            up = (
+                supabase.table("mock_tests")
+                .update(platform_patch)
+                .eq("id", mock_id)
+                .eq("user_id", user["id"])
+                .eq("source_type", source_type)
+                .execute()
+            )
+            platform_updated = up.data
+        except Exception as exc:
+            logger.exception(
+                "mock review update failed mock_id=%s user_id=%s", mock_id, user["id"]
+            )
+            raise HTTPException(
+                status_code=503,
+                detail={"error": "mock_review_update_failed",
+                        "detail": "Could not persist mock review."},
+            )
+        if not platform_updated:
+            _scoped_update_diagnostic(supabase, mock_id, user["id"], source_type)
+        return platform_updated[0]
+
+    # ── Manual / imported path ─────────────────────────────────────────────
+    # Aggregate error types from explicit field or from breakdown error tags.
+    # This block intentionally runs only on this path (FIX-5: BUG-C isolation).
+    aggregated_error_types: dict[str, int] | None = None
+    if "error_types" in supplied:
+        aggregated_error_types = body.error_types
+    elif "topic_breakdowns" in supplied:
+        aggregated_error_types = _aggregate_error_types(body.topic_breakdowns) or None
+
+    # Build patch from model_fields_set only so omitted fields are never
+    # overwritten (FIX-2: BUG-A). Explicit null values are preserved (notes,
+    # error_types) so callers can clear those fields.
+    patch: dict[str, Any] = {"updated_at": _now_iso()}
+    if "review_status" in supplied and body.review_status is not None:
+        patch["review_status"] = body.review_status
+        patch["reviewed_at"] = (
+            _now_iso() if body.review_status != "unreviewed" else None
         )
+    for field in ("total_questions", "correct_answers", "wrong_answers",
+                  "skipped_questions", "avg_time_sec"):
+        if field in supplied:
+            patch[field] = getattr(body, field)
+    if "notes" in supplied:
+        patch["notes"] = body.notes  # null persists (clears existing note)
+    if aggregated_error_types is not None:
+        patch["error_types"] = aggregated_error_types
+    elif "error_types" in supplied:
+        patch["error_types"] = None  # explicit null clears existing error_types
 
-    aggregated_error_types = (
-        body.error_types or _aggregate_error_types(body.topic_breakdowns) or None
-    )
-    patch: dict[str, Any] = {
-        "review_status": body.review_status,
-        "reviewed_at": _now_iso() if body.review_status != "unreviewed" else None,
-        "total_questions": body.total_questions,
-        "correct_answers": body.correct_answers,
-        "wrong_answers": body.wrong_answers,
-        "skipped_questions": body.skipped_questions,
-        "avg_time_sec": body.avg_time_sec,
-        "error_types": aggregated_error_types,
-        "notes": body.notes,
-        "updated_at": _now_iso(),
-    }
-    patch = {k: v for k, v in patch.items() if v is not None}
-
-    # Correctness-critical: this persists the reviewed status + corrected marks.
-    # A silent failure must not let the request fall through into breakdown /
-    # mastery / regeneration with a stale review state, and must not return 200.
-    updated = safe_required(
-        lambda: supabase.table("mock_tests").update(patch).eq("id", mock_id).execute(),
-        op="review_mock.update_mock_tests",
-        log=logger,
-    )
-    if updated is None:
+    # Correctness-critical: a silent update failure must not fall through into
+    # breakdown / mastery / regeneration writes and must not return 200.
+    # Scoped predicate (id + user_id + source_type) closes the TOCTOU race
+    # (FIX-4: BUG-B) and enables zero-row diagnostic branching.
+    try:
+        up = (
+            supabase.table("mock_tests")
+            .update(patch)
+            .eq("id", mock_id)
+            .eq("user_id", user["id"])
+            .eq("source_type", source_type)
+            .execute()
+        )
+        updated = up.data
+    except Exception as exc:
+        logger.exception(
+            "mock review update failed mock_id=%s user_id=%s", mock_id, user["id"]
+        )
         raise HTTPException(
-            status_code=500,
-            detail={"error": "mock_review_persist_failed",
+            status_code=503,
+            detail={"error": "mock_review_update_failed",
                     "detail": "Could not persist mock review."},
         )
+    if not updated:
+        _scoped_update_diagnostic(supabase, mock_id, user["id"], source_type)
 
     if body.topic_breakdowns:
-        # idempotency: clear any previous breakdowns for this mock first
+        # Idempotency: clear any previous breakdowns for this mock first.
         _safe(
-            lambda: supabase.table("mock_topic_breakdowns").delete().eq("mock_test_id", mock_id).execute()
+            lambda: supabase.table("mock_topic_breakdowns")
+            .delete()
+            .eq("mock_test_id", mock_id)
+            .execute()
         )
         rows = [_mock_breakdown_row(mock_id, b) for b in body.topic_breakdowns]
         if rows:
-            _safe(lambda: supabase.table("mock_topic_breakdowns").insert(rows).execute())  # safe-write-ok: analytics cache; recomputed on next breakdown request
+            _safe(
+                lambda: supabase.table("mock_topic_breakdowns").insert(rows).execute()
+            )  # safe-write-ok: analytics cache; recomputed on next breakdown request
         from app.study_os.mastery import recompute_topic_mastery
-
         _safe(lambda: recompute_topic_mastery(supabase, user["id"]))
-
         from app.study_os.regen import regenerate_on_signal
-
         _safe(
             lambda: regenerate_on_signal(
                 supabase, user["id"], event_type="mock_reviewed", reason="mock_reviewed"
             )
         )
 
-    refreshed = _safe(
-        lambda: supabase.table("mock_tests").select("*").eq("id", mock_id).limit(1).execute().data,
-        default=[mock_id and {"id": mock_id}],
-    ) or [{"id": mock_id}]
-    return refreshed[0]
+    return updated[0]
 
 
 # NOTE: MockCorrectionTasksBody + POST /mocks/{mock_id}/correction-tasks

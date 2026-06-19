@@ -51,9 +51,9 @@ async function apiCall(method: string, path: string, token: string, body?: unkno
 /** Delete the seeded user's attempts on the E2E template (cascades responses). */
 export async function resetAttempts(userId: string): Promise<void> {
   const admin = createNodeSupabaseClient(
-  env().supabaseURL,
-  env().supabaseServiceRoleKey,
-);
+    env().supabaseURL,
+    env().supabaseServiceRoleKey,
+  );
   const { data: tmpl } = await admin
     .from("mock_templates")
     .select("id")
@@ -64,7 +64,33 @@ export async function resetAttempts(userId: string): Promise<void> {
       `Template "${env().templateSlug}" not found. Apply app/supabase/seeds/e2e_fixtures.sql first.`,
     );
   }
-  await admin.from("mock_attempts").delete().eq("user_id", userId).eq("template_id", tmpl.id);
+
+  // Collect attempt IDs first so we can remove mock_tests compat rows that
+  // hold a FK reference to mock_attempts before deleting mock_attempts itself.
+  const { data: attempts, error: fetchErr } = await admin
+    .from("mock_attempts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("template_id", tmpl.id);
+  if (fetchErr) throw new Error(`resetAttempts: fetch failed: ${fetchErr.message}`);
+
+  const attemptIds = (attempts ?? []).map((a) => a.id);
+  if (attemptIds.length === 0) return;
+
+  // Delete mock_tests compat rows keyed by mock_attempt_id first (FK child).
+  const { error: mtErr } = await admin
+    .from("mock_tests")
+    .delete()
+    .in("mock_attempt_id", attemptIds);
+  if (mtErr) throw new Error(`resetAttempts: mock_tests delete failed: ${mtErr.message}`);
+
+  // Now safe to delete the parent mock_attempts rows.
+  const { error: maErr } = await admin
+    .from("mock_attempts")
+    .delete()
+    .eq("user_id", userId)
+    .eq("template_id", tmpl.id);
+  if (maErr) throw new Error(`resetAttempts: mock_attempts delete failed: ${maErr.message}`);
 }
 
 export async function startAttempt(token: string): Promise<string> {
