@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../../lib/api";
 import { StatusBadge } from "../../../shared/ui/core";
+import { humanizeToken } from "./operatorChrome";
 
 /**
  * ExamActionConsole — Wave 4.6I-FE.
@@ -59,18 +60,12 @@ const REASON_LABELS = {
   stale_review_queue: "Stale review",
 };
 
-function humanize(token) {
-  if (!token) return "Other";
-  const s = String(token).replace(/_/g, " ");
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 function reasonLabel(token) {
-  return REASON_LABELS[token] || humanize(token);
+  return REASON_LABELS[token] || humanizeToken(token) || "Other";
 }
 
 function areaLabel(area) {
-  return AREA_LABELS[area] || humanize(area);
+  return AREA_LABELS[area] || humanizeToken(area) || "Other";
 }
 
 function evidenceCount(refs) {
@@ -162,7 +157,7 @@ export default function ExamActionConsole({ examId }) {
   const stages = Array.isArray(data.stages) ? data.stages : [];
   const checkByArea = Object.fromEntries(checks.map((c) => [c.area, c]));
 
-  const vMeta = VERDICT_META[verdict.status] || { tone: "pill-dusk", label: verdict.status || "Unknown" };
+  const vMeta = VERDICT_META[verdict.status] || { tone: "pill-dusk", label: humanizeToken(verdict.status) || "Unknown" };
   const mMeta = MOCK_META[mock.status] || MOCK_META.unknown;
   const workspaceRoute = `/admin/exam-intelligence/workspace/${encodeURIComponent(exam.id)}`;
 
@@ -173,7 +168,7 @@ export default function ExamActionConsole({ examId }) {
         <div style={{ minWidth: 0 }}>
           <div className="lbl">Exam Governance Console</div>
           <h1 className="oc-title disp" style={{ fontSize: 24, margin: "2px 0" }} data-testid="action-console-name">
-            {exam.name || exam.slug || exam.id}
+            {exam.name || exam.slug || "Unnamed exam"}
           </h1>
           <div className="anno" data-testid="action-console-meta">
             {[exam.organization_name, exam.family_name].filter(Boolean).join(" · ") || "—"}
@@ -247,7 +242,7 @@ export default function ExamActionConsole({ examId }) {
                     <div style={{ minWidth: 0 }}>
                       <div className="row" style={{ gap: 8, alignItems: "center" }}>
                         <strong style={{ fontSize: 13 }}>{areaLabel(area)}</strong>
-                        <span className="anno" data-testid={`check-gate-${area}`}>{GATE_LABELS[c.gate] || c.gate}</span>
+                        <span className="anno" data-testid={`check-gate-${area}`}>{GATE_LABELS[c.gate] || humanizeToken(c.gate) || "Advisory"}</span>
                       </div>
                       <div className="anno" style={{ marginTop: 2 }}>{c.detail}</div>
                       <ReasonTags reasons={c.reasons} testid={`check-reasons-${area}`} />
