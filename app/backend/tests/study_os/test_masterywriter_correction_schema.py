@@ -246,27 +246,23 @@ def test_new_payload_passes_063_enforcing_stub():
 # ── true sweeper-level recovery lifecycle (not a direct redraft call) ──────────
 
 class _FlakyCorrectionSB(SBStub):
-    """SBStub whose FIRST mock_correction_tasks insert raises a transient error,
-    then succeeds — to drive the sweeper's failed-recovery → reschedule → retry
-    → success lifecycle."""
+    """SBStub whose FIRST ensure_mock_correction_draft RPC call raises a
+    transient error, then succeeds — to drive the sweeper's failed-recovery
+    → reschedule → retry → success lifecycle.
+
+    The failure is injected at the RPC level because _draft_correction_tasks
+    now uses ensure_mock_correction_draft instead of a direct table insert.
+    """
 
     def __init__(self, db=None):
         super().__init__(db)
         self.fail_next_correction_insert = True
 
-    def table(self, name):  # type: ignore[override]
-        q = super().table(name)
-        if name == "mock_correction_tasks":
-            real_insert = q.insert
-
-            def _insert(payload):
-                if getattr(self, "fail_next_correction_insert", False):
-                    self.fail_next_correction_insert = False
-                    raise RuntimeError("transient correction insert failure")
-                return real_insert(payload)
-
-            q.insert = _insert  # type: ignore[assignment]
-        return q
+    def rpc(self, name, params=None):  # type: ignore[override]
+        if name == "ensure_mock_correction_draft" and getattr(self, "fail_next_correction_insert", False):
+            self.fail_next_correction_insert = False
+            raise RuntimeError("transient correction rpc failure")
+        return super().rpc(name, params)
 
 
 def test_sweeper_recovers_correction_after_transient_failure(monkeypatch):

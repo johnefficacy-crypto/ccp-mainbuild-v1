@@ -348,8 +348,8 @@ def test_api_draft_correction_another_user_mock_returns_404():
 # ─────────────── BLOCKER 2: 23505 conflict handling tests ───────────────────
 
 
-def test_draft_correction_23505_fetches_existing_rows():
-    """When the insert raises a 23505 unique violation, existing rows are returned."""
+def test_draft_correction_idempotent_when_row_exists():
+    """When a drafted row already exists, the RPC upserts it and returns it."""
     from tests.persona_questions._stub import SBStub as _SB
 
     class _ConflictingInsertQuery:
@@ -430,22 +430,16 @@ def test_draft_correction_23505_fetches_existing_rows():
     assert result[0]["category"] == "concept_gap"
 
 
-def test_draft_correction_non_23505_propagates():
-    """Non-unique-constraint errors must propagate, not be swallowed."""
+def test_draft_correction_rpc_error_propagates():
+    """RPC errors must propagate to the caller — no _safe swallowing (D4 fix)."""
     import pytest
     from tests.persona_questions._stub import SBStub as _SB
 
     class _ErrorSB(_SB):
-        def table(self, name):
-            if name == "mock_correction_tasks":
-                class _Bad:
-                    def select(self, *a, **kw): return self
-                    def eq(self, *a, **kw): return self
-                    def delete(self): return self
-                    def insert(self, *a): return self
-                    def execute(self): raise RuntimeError("network timeout")
-                return _Bad()
-            return super().table(name)
+        def rpc(self, name, params=None):
+            if name == "replace_manual_mock_correction_drafts":
+                raise RuntimeError("network timeout")
+            return super().rpc(name, params)
 
     sb = _ErrorSB({
         "mock_tests": [{
@@ -460,8 +454,10 @@ def test_draft_correction_non_23505_propagates():
         mocks_service.draft_correction_tasks(sb, "user-1", "mt-1")
 
 
-def test_review_state_not_advanced_when_no_rows():
-    """review_state stays unchanged when no corrections are drafted (empty policy result)."""
+def test_empty_drafts_sets_reviewed_state():
+    """Empty draft set (no error patterns, no weak topics): review_state is set to
+    'reviewed' and the function returns [].  This is the explicitly documented
+    empty-draft contract — the mock has been reviewed but no corrections apply."""
     from tests.persona_questions._stub import SBStub as _SB
     sb = _SB({
         "mock_tests": [{
@@ -476,4 +472,4 @@ def test_review_state_not_advanced_when_no_rows():
     result = mocks_service.draft_correction_tasks(sb, "user-1", "mt-1")
     assert result == []
     mt = sb.db["mock_tests"][0]
-    assert mt.get("review_state") == "unreviewed"  # unchanged
+    assert mt.get("review_state") == "reviewed"  # advanced to 'reviewed', not 'correction_drafted'

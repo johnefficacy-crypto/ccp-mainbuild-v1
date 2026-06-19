@@ -234,20 +234,14 @@ def test_correction_insert_23505_is_idempotent():
 
 
 def test_correction_non_23505_propagates():
-    """Non-unique-constraint errors from correction insert must propagate."""
+    """Non-unique-constraint errors from the ensure_mock_correction_draft RPC must propagate."""
     import pytest
 
     class _NetworkFailSB(SBStub):
-        def table(self, name):
-            if name == "mock_correction_tasks":
-                class _Bad:
-                    def select(self, *a, **kw): return self
-                    def eq(self, *a, **kw): return self
-                    def delete(self): return self
-                    def insert(self, *a): return self
-                    def execute(self): raise RuntimeError("connection refused")
-                return _Bad()
-            return super().table(name)
+        def rpc(self, name, params=None):
+            if name == "ensure_mock_correction_draft":
+                raise RuntimeError("connection refused")
+            return super().rpc(name, params)
 
     db = _base_db_with_mock_test()
     db["mock_attempt_responses"] = [

@@ -275,6 +275,10 @@ class SBStub:
             return _RpcCall(self._update_pyq_question_review_atomic(params))
         if name == "start_attempt_from_blueprint":
             return _RpcCall(self._start_attempt_from_blueprint(params))
+        if name == "ensure_mock_correction_draft":
+            return _RpcCall(self._ensure_mock_correction_draft(params))
+        if name == "replace_manual_mock_correction_drafts":
+            return _RpcCall(self._replace_manual_mock_correction_drafts(params))
         return _RpcCall(None)
 
 
@@ -430,6 +434,147 @@ class SBStub:
         target_bp["started_at"] = now_iso
 
         return [{"blueprint_id": bp_id, "attempt_id": attempt_id}]
+
+    def _ensure_mock_correction_draft(self, params: dict[str, Any]) -> dict[str, Any] | None:
+        """Emulate ensure_mock_correction_draft RPC (migration 182).
+
+        Idempotent: inserts only when no drafted row with the same
+        (mock_test_id, user_id, category, topic) exists; otherwise returns
+        the existing row.  Mirrors ON CONFLICT DO NOTHING + SELECT.
+        """
+        mock_test_id = params.get("p_mock_test_id")
+        user_id = params.get("p_user_id")
+        category = params.get("p_category")
+        topic = params.get("p_topic") or None
+        title = params.get("p_title") or ""
+        source_questions = params.get("p_source_questions") or []
+
+        store = self.db.setdefault("mock_correction_tasks", [])
+
+        for row in store:
+            if (
+                row.get("mock_test_id") == mock_test_id
+                and row.get("user_id") == user_id
+                and row.get("category") == category
+                and row.get("state") == "drafted"
+                and (row.get("topic") or None) == topic
+            ):
+                return row
+
+        new_row: dict[str, Any] = {
+            "id": str(uuid.uuid4()),
+            "mock_test_id": mock_test_id,
+            "user_id": user_id,
+            "category": category,
+            "topic": topic,
+            "title": title,
+            "source_questions": source_questions,
+            "state": "drafted",
+            "study_task_id": None,
+            "created_at": None,
+            "applied_at": None,
+        }
+        store.append(new_row)
+        return new_row
+
+    def _replace_manual_mock_correction_drafts(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        """Emulate replace_manual_mock_correction_drafts RPC (migration 182).
+
+        Single atomic replacement: upsert desired drafted rows, delete obsolete
+        drafted rows (preserving applied/dismissed), update review_state.
+        Mirrors the PL/pgSQL transaction: raises on mock-not-found or
+        platform_attempt; empty p_drafts deletes all and sets 'reviewed'.
+        """
+        mock_test_id = params.get("p_mock_test_id")
+        user_id = params.get("p_user_id")
+        drafts: list[dict[str, Any]] = params.get("p_drafts") or []
+
+        mock_rows = [
+            r for r in self.db.get("mock_tests", [])
+            if r.get("id") == mock_test_id and r.get("user_id") == user_id
+        ]
+        if not mock_rows:
+            raise RuntimeError("mock not found")
+
+        mock = mock_rows[0]
+        if mock.get("source_type") == "platform_attempt":
+            raise RuntimeError("PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN")
+
+        store = self.db.setdefault("mock_correction_tasks", [])
+
+        if not drafts:
+            self.db["mock_correction_tasks"] = [
+                r for r in store
+                if not (
+                    r.get("mock_test_id") == mock_test_id
+                    and r.get("user_id") == user_id
+                    and r.get("state") == "drafted"
+                )
+            ]
+            mock["review_state"] = "reviewed"
+            return []
+
+        # UPSERT: update existing drafted rows or insert new ones.
+        for d in drafts:
+            cat = d.get("category")
+            topic = d.get("topic") or None
+            title = d.get("title") or ""
+            src_qs = d.get("source_questions") or []
+
+            existing = None
+            for row in self.db.get("mock_correction_tasks", []):
+                if (
+                    row.get("mock_test_id") == mock_test_id
+                    and row.get("user_id") == user_id
+                    and row.get("state") == "drafted"
+                    and row.get("category") == cat
+                    and (row.get("topic") or None) == topic
+                ):
+                    existing = row
+                    break
+
+            if existing is not None:
+                existing["state"] = "drafted"
+                existing["title"] = title
+                existing["source_questions"] = src_qs
+            else:
+                self.db["mock_correction_tasks"].append({
+                    "id": str(uuid.uuid4()),
+                    "mock_test_id": mock_test_id,
+                    "user_id": user_id,
+                    "category": cat,
+                    "topic": topic,
+                    "title": title,
+                    "source_questions": src_qs,
+                    "state": "drafted",
+                    "study_task_id": None,
+                    "created_at": None,
+                    "applied_at": None,
+                })
+
+        # DELETE obsolete drafted rows not in the desired set.
+        desired_keys = {
+            (d.get("category"), d.get("topic") or None)
+            for d in drafts
+        }
+        self.db["mock_correction_tasks"] = [
+            r for r in self.db["mock_correction_tasks"]
+            if not (
+                r.get("mock_test_id") == mock_test_id
+                and r.get("user_id") == user_id
+                and r.get("state") == "drafted"
+                and (r.get("category"), r.get("topic") or None) not in desired_keys
+            )
+        ]
+
+        mock["review_state"] = "correction_drafted"
+
+        return [
+            r for r in self.db.get("mock_correction_tasks", [])
+            if r.get("mock_test_id") == mock_test_id
+            and r.get("user_id") == user_id
+            and r.get("state") == "drafted"
+        ]
 
     def _update_pyq_question_review_atomic(self, params: dict[str, Any]) -> dict[str, Any] | None:
         """Emulate the atomic question-review cascade RPC (migration 151)."""

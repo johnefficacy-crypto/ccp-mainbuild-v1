@@ -379,9 +379,17 @@ def draft_correction_tasks(
 ) -> list[dict[str, Any]]:
     """Generate + persist correction-task suggestions for a manual mock.
 
-    Replaces any prior drafted (not-yet-applied) corrections for the mock.
-    Flips the mock's review_state to ``correction_drafted`` only when corrections
-    are successfully written.
+    Atomically replaces any prior drafted (not-yet-applied) corrections for the
+    mock and flips review_state to ``correction_drafted``.  A single call to the
+    replace_manual_mock_correction_drafts RPC performs the full
+    upsert → delete-obsolete → review_state update in one DB transaction, so
+    there is no window where prior drafts are lost on insert failure.
+
+    Passing an empty draft set (no error patterns, no weak topics) is an
+    explicitly supported case: the RPC deletes all existing drafted rows and sets
+    review_state to 'reviewed' (not 'correction_drafted').
+
+    DB failure propagates to the caller — the FastAPI route returns 500.
 
     Raises:
         LookupError: mock_id not found or not owned by user_id.
@@ -399,67 +407,18 @@ def draft_correction_tasks(
 
     drafts = _draft_corrections_from_mock(mock)
 
-    # Wipe stale drafts (state='drafted') so we don't accumulate duplicates.
-    _safe(
-        lambda: (
-            supabase.table("mock_correction_tasks")
-            .delete()
-            .eq("user_id", user_id)
-            .eq("mock_test_id", mock_id)
-            .eq("state", "drafted")
-            .execute()
-        ),
-    )
-
-    rows = []
-    if drafts:
-        payload = [
-            {
-                "mock_test_id": mock_id,
-                "user_id": user_id,
-                "category": d["category"],
-                "title": d["title"],
-                "topic": d.get("topic"),
-                "source_questions": d.get("source_questions") or [],
-                "state": "drafted",
-            }
-            for d in drafts
-        ]
-        try:
-            inserted = supabase.table("mock_correction_tasks").insert(payload).execute()
-            rows = getattr(inserted, "data", None) or []
-        except Exception as exc:  # noqa: BLE001
-            if "23505" not in str(exc):
-                raise
-            # Unique constraint from migration 181 fired on a concurrent insert.
-            # Fetch the existing rows rather than failing.
-            logger.warning(
-                "correction insert hit unique constraint for mock=%s; fetching existing",
-                mock_id,
-            )
-            existing = _safe(
-                lambda: supabase.table("mock_correction_tasks")
-                .select("*")
-                .eq("mock_test_id", mock_id)
-                .eq("user_id", user_id)
-                .eq("state", "drafted")
-                .execute(),
-                default=None,
-            )
-            rows = getattr(existing, "data", None) or []
-
-    # Only advance review_state when corrections were actually written.
-    if rows:
-        _safe(
-            lambda: (
-                supabase.table("mock_tests")
-                .update({"review_state": "correction_drafted", "updated_at": _now_iso()})
-                .eq("id", mock_id)
-                .eq("user_id", user_id)
-                .execute()
-            ),
-        )
-
+    # Single atomic RPC: upsert desired rows, delete obsolete drafted rows,
+    # update review_state — all in one transaction.  No _safe wrapper: DB
+    # failure propagates so the caller (study_os.py route) returns 500.
+    result = supabase.rpc(
+        "replace_manual_mock_correction_drafts",
+        {
+            "p_mock_test_id": mock_id,
+            "p_user_id": user_id,
+            "p_drafts": drafts,
+        },
+    ).execute()
+    rows = getattr(result, "data", None) or []
     return [_serialise_correction(r) for r in rows]
 
 

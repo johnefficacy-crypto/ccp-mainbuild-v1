@@ -112,9 +112,10 @@ class MasteryWriter:
         Called by the mock_tests-retry sweeper hook so a transient missing-row
         miss in :meth:`_draft_correction_tasks` is recovered, not lost. Only
         meaningful at FF=live (corrections are a live-only write); shadow/off
-        return without touching anything. Idempotent: the read-before-insert
-        guard and the partial unique indexes from migration 181 together ensure
-        re-running inserts each correction at most once.
+        return without touching anything. Idempotent: the partial unique indexes
+        from migration 181 and ON CONFLICT DO NOTHING inside the
+        ensure_mock_correction_draft RPC ensure re-running inserts each
+        correction at most once.
         """
         if self.flag_state != "live":
             return
@@ -313,30 +314,6 @@ class MasteryWriter:
         ``source_questions`` jsonb column)."""
         return [str(q) for q in (draft.evidence.related_question_ids or [])]
 
-    def _correction_exists(
-        self, mock_test_id: str, user_id: str, category: str, topic: str | None
-    ) -> bool:
-        """Pre-flight deduplication check: returns True if a drafted correction
-        with the same (mock_test_id, user_id, category, topic) already exists.
-
-        Avoids the round-trip exception path for the common serial-retry case.
-        Concurrent inserts are handled by the partial unique indexes from
-        migration 181 — 23505 is caught and treated as idempotent in
-        _draft_correction_tasks.
-        """
-        rows = (
-            self.supabase.table("mock_correction_tasks")
-            .select("id, topic")
-            .eq("mock_test_id", mock_test_id)
-            .eq("user_id", user_id)
-            .eq("category", category)
-            .eq("state", "drafted")
-            .execute()
-            .data
-            or []
-        )
-        return any((r.get("topic") or None) == (topic or None) for r in rows)
-
     def _draft_correction_tasks(self, attempt_id: str, drafts: list[Any]) -> None:
         """Persist corrections into the EXISTING mock_correction_tasks schema (063).
 
@@ -346,8 +323,9 @@ class MasteryWriter:
         exist (mock_test_id, user_id, category, title, topic, source_questions,
         state); never the mastery-engine-shaped task_type/priority/evidence_json/
         duration_minutes/source_attempt_id, and never mock_test_id=None.
-        Idempotent via read-before-insert dedup; concurrent races are caught
-        via 23505 from the partial unique indexes in migration 181.
+        Each unique (category, topic) key is persisted via one call to the
+        ensure_mock_correction_draft RPC (ON CONFLICT DO NOTHING inside the RPC
+        handles concurrent races atomically; no batch-insert 23505 catch needed).
         When the mock_tests compat row is not present yet, corrections are
         deferred with an observable signal and recovered by the mock_tests-retry
         sweeper hook.
@@ -368,7 +346,6 @@ class MasteryWriter:
 
         from app.study_os.correction_policy import CANONICAL_CATEGORIES, correction_title
 
-        payload: list[dict] = []
         seen: set[tuple[str, str | None]] = set()
         for d in drafts:
             category = d.category
@@ -380,30 +357,20 @@ class MasteryWriter:
             key = (category, topic)
             if key in seen:
                 continue  # de-dup within this batch
-            if self._correction_exists(mock_test_id, d.user_id, category, topic):
-                continue  # de-dup against already-drafted corrections (idempotent)
             seen.add(key)
-            payload.append({
-                "mock_test_id": mock_test_id,
-                "user_id": d.user_id,
-                "category": category,
-                "title": correction_title(category),
-                "topic": topic,
-                "source_questions": self._source_questions_from_evidence(d),
-                "state": "drafted",
-            })
-        if payload:
-            try:
-                self.supabase.table("mock_correction_tasks").insert(payload).execute()
-            except Exception as exc:  # noqa: BLE001
-                if "23505" not in str(exc):
-                    raise
-                # Unique constraint from migration 181 fired on a concurrent insert.
-                # The row already exists — idempotent outcome, not a failure.
-                logger.warning(
-                    "correction insert lost unique-key race for attempt=%s; existing rows preserved",
-                    attempt_id,
-                )
+            # Any RPC error propagates — no swallowing. The RPC handles
+            # ON CONFLICT DO NOTHING atomically so 23505 never surfaces here.
+            self.supabase.rpc(
+                "ensure_mock_correction_draft",
+                {
+                    "p_mock_test_id": mock_test_id,
+                    "p_user_id": d.user_id,
+                    "p_category": category,
+                    "p_topic": topic,
+                    "p_title": correction_title(category),
+                    "p_source_questions": self._source_questions_from_evidence(d),
+                },
+            ).execute()
 
 
     def _load_persisted_shadow_decisions(self, attempt_id: str) -> list[dict]:
