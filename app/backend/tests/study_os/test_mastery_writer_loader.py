@@ -263,12 +263,14 @@ def test_correction_non_23505_propagates():
 
 # ── BLOCKER 4: derive_preview structure ───────────────────────────────────────
 
-def test_derive_preview_returns_three_sections():
-    """derive_preview must return persisted_shadow_decision, current_read_only_preview,
-    and replay_consistency sections."""
+def test_derive_preview_returns_new_shape():
+    """derive_preview returns the new wider shape with all expected keys."""
     db = _base_db_with_mock_test()
     db["mock_attempt_responses"] = [
         _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=True),
+    ]
+    db["mock_attempt_response_classification"] = [
+        _classification("q-ans", "correct"),
     ]
     db["mock_mastery_shadow"] = [
         {
@@ -276,6 +278,7 @@ def test_derive_preview_returns_three_sections():
             "attempt_id": ATTEMPT,
             "topic_id": T_ANSWERED,
             "proposed_delta_db": "5.0",
+            "proposed_delta_db_unweighted": "5.0",
             "current_mastery_db": "50.0",
             "would_be_mastery_db": "55.0",
             "trust_level": "platform_verified",
@@ -288,23 +291,41 @@ def test_derive_preview_returns_three_sections():
     preview = writer.derive_preview(ATTEMPT)
 
     assert preview is not None
+    # New top-level keys
+    assert "response_counts" in preview
+    assert "classification_coverage" in preview
+    assert "classification_counts" in preview
     assert "persisted_shadow_decision" in preview
-    assert "current_read_only_preview" in preview
     assert "replay_consistency" in preview
+    assert "attempt_evidence_corrections" in preview
+    assert "current_state_preview" in preview
 
+    # response_counts — 4-bucket
+    rc4 = preview["response_counts"]
+    assert "selected" in rc4
+    assert "marked_unanswered" in rc4
+    assert "visited_unanswered" in rc4
+    assert "untouched" in rc4
+
+    # persisted_shadow_decision — new shape
     psd = preview["persisted_shadow_decision"]
-    assert psd["count"] == 1
     assert len(psd["rows"]) == 1
+    assert "duplicate_keys" in psd
 
-    crp = preview["current_read_only_preview"]
-    assert "trust_level" in crp
-    assert "mastery_deltas" in crp
-    assert "note" in crp
-
+    # replay_consistency — new shape
     rc = preview["replay_consistency"]
-    assert "items" in rc
-    assert "all_signs_match" in rc
-    assert "topics_without_shadow" in rc
+    assert "status" in rc
+    assert "sample_count" in rc
+    assert "exact_match_count" in rc
+    assert "missing" in rc
+    assert "extra" in rc
+    assert "mismatches" in rc
+
+    # current_state_preview — labeled mutable path
+    csp = preview["current_state_preview"]
+    assert "note" in csp
+    assert "trust_level" in csp
+    assert "mastery_deltas" in csp
 
 
 def test_derive_preview_no_shadow_rows():
@@ -313,6 +334,9 @@ def test_derive_preview_no_shadow_rows():
     db["mock_attempt_responses"] = [
         _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=True),
     ]
+    db["mock_attempt_response_classification"] = [
+        _classification("q-ans", "correct"),
+    ]
     db["mock_mastery_shadow"] = []
     sb = SBStub(db)
     writer = mw.MasteryWriter(sb, "shadow")
@@ -320,12 +344,12 @@ def test_derive_preview_no_shadow_rows():
 
     assert preview is not None
     psd = preview["persisted_shadow_decision"]
-    assert psd["count"] == 0
+    assert len(psd["rows"]) == 0
 
     rc = preview["replay_consistency"]
-    assert rc["topics_without_shadow"] >= 1
-    # all_signs_match is None when there are no matched shadow rows
-    assert rc["all_signs_match"] is None
+    # NO_BASELINE when shadow rows=0
+    assert rc["status"] == "NO_BASELINE"
+    assert rc["sample_count"] == 0
 
 
 def test_derive_preview_zero_writes():
@@ -333,6 +357,9 @@ def test_derive_preview_zero_writes():
     db = _base_db_with_mock_test()
     db["mock_attempt_responses"] = [
         _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=True),
+    ]
+    db["mock_attempt_response_classification"] = [
+        _classification("q-ans", "correct"),
     ]
     db["mock_mastery_shadow"] = []
     sb = SBStub(db)
@@ -343,6 +370,7 @@ def test_derive_preview_zero_writes():
     assert sb.db.get("user_topic_mastery", []) == []
     assert sb.db.get("user_topic_mastery_audit", []) == []
     assert sb.db.get("mock_correction_tasks", []) == []
+    assert sb.db.get("user_topic_error_patterns", []) == []
     assert sb.db.get("user_topic_error_patterns", []) == []
 
 
