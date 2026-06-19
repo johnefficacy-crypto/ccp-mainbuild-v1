@@ -367,9 +367,9 @@ describe("ExamWorkspace readiness provider (PR2)", () => {
   });
 });
 
-// ── Wave 4.6C: console task rail ─────────────────────────────────────────────
+// ── B2: standalone workspace regression ─────────────────────────────────────
 
-const RAIL_READINESS = {
+const STANDALONE_READINESS = {
   exam_id: "exam-1",
   cycle_id: null,
   overall: { status: "partial", score_percent: 40, ready_to_activate: false, blockers: [] },
@@ -389,7 +389,7 @@ describe("ExamWorkspace standalone layout regression (B2)", () => {
   beforeEach(() => jest.clearAllMocks());
 
   test("standalone workspace keeps the tab strip and renders no rail (regression)", async () => {
-    mockBothEndpoints({ readinessResponse: RAIL_READINESS });
+    mockBothEndpoints({ readinessResponse: STANDALONE_READINESS });
     render(
       <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1"]}>
         <Routes>
@@ -400,21 +400,44 @@ describe("ExamWorkspace standalone layout regression (B2)", () => {
     await waitFor(() => screen.getByTestId("tab-strip"));
     expect(screen.getAllByRole("tab")).toHaveLength(8);
     expect(screen.getByTestId("cycle-picker")).toBeTruthy();
-    expect(document.body.textContent).toContain("40% ready");
+    expect(screen.getByText("40% ready · partial")).toBeTruthy();
     expect(screen.getByTestId("tab-review").textContent).toContain("40%");
+    expect(screen.getByTestId("overview-section-readiness").textContent).toContain("40%");
     expect(screen.queryByTestId("exam-task-rail")).toBeNull();
+    expect(screen.queryByTestId("console-rail-layout")).toBeNull();
+    expect(screen.queryByTestId("exam-publish-impact")).toBeNull();
   });
 });
 
+// ── B2: standalone fetch regression ─────────────────────────────────────────
 
-
-// ── Wave 4.6D: console Publish surface ──────────────────────────────────────
-
-describe("Publish surface (Wave 4.6D)", () => {
+describe("ExamWorkspace standalone fetch regression (B2)", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test("review tab renders the bare ReviewActivatePanel, not ExamPublishImpact", async () => {
-    mockBothEndpoints({ readinessResponse: RAIL_READINESS });
+  test("fetches context and readiness exactly once on initial mount", async () => {
+    mockBothEndpoints({ readinessResponse: STANDALONE_READINESS });
+    render(
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1"]}>
+        <Routes>
+          <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<ExamWorkspace />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getByTestId("exam-name"));
+    const contextCalls = api.get.mock.calls.filter(([url]) => url.includes("/context"));
+    const readinessCalls = api.get.mock.calls.filter(([url]) => url.includes("/readiness"));
+    expect(contextCalls).toHaveLength(1);
+    expect(readinessCalls).toHaveLength(1);
+  });
+});
+
+// ── B2: standalone review surface ───────────────────────────────────────────
+
+describe("ExamWorkspace standalone review surface (B2)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("review tab renders ReviewActivatePanel without ExamPublishImpact or extra readiness fetch", async () => {
+    mockBothEndpoints({ readinessResponse: STANDALONE_READINESS });
     render(
       <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1?tab=review"]}>
         <Routes>
@@ -423,6 +446,8 @@ describe("Publish surface (Wave 4.6D)", () => {
       </MemoryRouter>,
     );
     await waitFor(() => screen.getByRole("heading", { name: /Readiness & Activation/i }));
+    const readinessCalls = api.get.mock.calls.filter(([url]) => url.includes("/readiness"));
+    expect(readinessCalls).toHaveLength(1);
     expect(screen.queryByTestId("exam-publish-impact")).toBeNull();
   });
 });
