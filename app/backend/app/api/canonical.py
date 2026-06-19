@@ -2154,11 +2154,25 @@ async def review_mock(
     supabase = get_supabase_admin()
     # ownership check — mock ids must not be probable across users
     existing = _safe(
-        lambda: supabase.table("mock_tests").select("id, user_id").eq("id", mock_id).limit(1).execute().data,
+        lambda: supabase.table("mock_tests").select("id, user_id, source_type").eq("id", mock_id).limit(1).execute().data,
         default=[],
     ) or []
     if not existing or existing[0].get("user_id") != user["id"]:
         raise HTTPException(status_code=404, detail="Mock not found")
+
+    mock_source_type = existing[0].get("source_type") or "manual_log"
+    if mock_source_type == "platform_attempt" and body.topic_breakdowns:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "platform_attempt_breakdowns_rejected",
+                "detail": (
+                    "topic_breakdowns cannot be submitted for platform attempts. "
+                    "Mastery is computed by MasteryWriter from raw response data. "
+                    "Metadata-only fields (review_status, notes, error_types) are allowed."
+                ),
+            },
+        )
 
     aggregated_error_types = (
         body.error_types or _aggregate_error_types(body.topic_breakdowns) or None

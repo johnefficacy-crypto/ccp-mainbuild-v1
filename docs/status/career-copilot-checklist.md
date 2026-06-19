@@ -1,6 +1,6 @@
 # Career Copilot checklist — repo source of record
 
-Last repo verification: 2026-06-19 at `377d44f3a602d1034769a2e858501416d7e3f313`.
+Last repo verification: 2026-06-19 at `9dde8efc` (PR #716 blocker-fix branch `claude/intelligent-cerf-8wmuti`).
 
 This checklist replaces chat-only / UI-only status snippets. Keep it current in the same PR as any code change or decision that changes one of these statuses.
 
@@ -17,7 +17,7 @@ Execution plan for parallel PRs: `docs/status/career-copilot-pr-plan.md`.
 
 ## Mock Engine v2 ↔ Study OS — active gate
 
-Current verdict: **DO NOT PROCEED TO LIVE**. `FF_MOCK_MASTERY_WRITES=live` remains blocked until the operator scheduler/job-drain gate and a clean repeat off/shadow validation pass.
+Current verdict: **DO NOT PROCEED TO LIVE**. `FF_MOCK_MASTERY_WRITES=live` remains blocked until (a) the operator scheduler/job-drain gate, (b) a clean repeat off/shadow validation pass, and (c) the user allowlist implementation PR merges and a bounded live canary is approved.
 
 | Item | Current status | Repo evidence / notes |
 |---|---|---|
@@ -31,9 +31,14 @@ Current verdict: **DO NOT PROCEED TO LIVE**. `FF_MOCK_MASTERY_WRITES=live` remai
 | DEFECT-002 shadow idempotency | CODE-FIXED, VALIDATION PENDING | Migration `180_mock_mastery_shadow_idempotency.sql` dedupes/adds unique shadow keys; `_write_shadow` uses conflict-ignore upsert. |
 | DEFECT-005A `total_marks` coercion | CODE-FIXED, VALIDATION PENDING | `_to_integral_marks` is used in both initial mock compat-row insert and retry emission. |
 | DEFECT-006 manual weak-topic fallback | CODE-FIXED, VALIDATION PENDING | Manual mock correction drafting delegates weak-topic fallback to `correction_policy`. |
+| Correction idempotency guard (23505) | CODE-FIXED, VALIDATION PENDING | PR #716: `_draft_correction_tasks()` in `mastery_writer.py` and `draft_correction_tasks()` in `mocks.py` now catch 23505 unique-constraint violations as idempotent duplicates; non-23505 errors propagate. Migration 181 dedup CTE fixed for `NULL created_at`. Stale "NOT concurrency-safe" and "OUT OF SCOPE" comments removed. |
+| Platform-attempt correction gate | CODE-FIXED, VALIDATION PENDING | PR #716: `POST /api/study/mocks/{mock_id}/correction-tasks` now raises HTTP 409 with `PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN` for `source_type=platform_attempt` mocks. MasteryWriter pipeline owns that path; manual drafting is forbidden. |
+| Mastery preview (`derive_preview` three sections) | CODE PRESENT, OPERATOR VALIDATION PENDING | PR #716: `derive_preview()` redesigned to return three sections: `persisted_shadow_decision` (from `mock_mastery_shadow`), `current_read_only_preview` (labeled as mutable current state), and `replay_consistency` (per-topic sign+magnitude comparison). Admin endpoint now rejects non-platform_attempt mocks with 422. Zero writes guaranteed. |
+| Shadow analysis tool redesign | CODE PRESENT, VALIDATION PENDING | PR #716: `tools/mastery_shadow_analysis/shadow_analysis.py` rewritten with three commands: `shadow-replay` (self-consistency, works in shadow mode), `live-audit-compare` (canary-only, filters `reason=mock_submit`), `tasks-overlap` (with `topic_semantics_note` about cross-population non-comparability). Fixed env vars to `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`. Real offset pagination. |
+| Live canary user allowlist | BLOCKED | Hard prerequisite — the user allowlist implementation PR has NOT yet merged. `FF_MOCK_MASTERY_WRITES` is currently global. The canary plan (`docs/ops/pr8_live_canary_plan.md`) requires a non-empty named-user allowlist before any live traffic is bounded. Do not flip the flag until this is satisfied. |
 | Scheduler verification | OPERATOR PENDING | Code gates APScheduler behind `ENABLE_SCHEDULER=true`; live proof must capture scheduler/job payload and drain behavior. |
 | Repeat off/shadow validation | OPERATOR PENDING | Required after code remediations before any live flip. Create a new dated report; do not edit the 2026-06-18 failed report. |
-| `FF_MOCK_MASTERY_WRITES=live` | BLOCKED | Blocked on scheduler verification where applicable and clean repeat validation. |
+| `FF_MOCK_MASTERY_WRITES=live` | BLOCKED | Blocked on scheduler verification, clean repeat validation, AND user allowlist implementation + bounded live canary approval. |
 | A-PR4 exposure cooldown + A-PR5 mastery-informed mock selection | BLOCKED / PLANNED | Start only after clean shadow/live-readiness gate. |
 | Track C question-model v2 / PYQ weighting | BLOCKED / PLANNED | Track C remains downstream of the clean text-MCQ feedback-loop gate. |
 

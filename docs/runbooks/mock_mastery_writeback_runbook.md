@@ -1,10 +1,17 @@
 # Runbook: Mock Mastery Write-back
 
 - Set env `FF_MOCK_MASTERY_WRITES` to `off|shadow|live` and redeploy backend.
-- In shadow: run
-  - `python tools/mastery_shadow_analysis/shadow_analysis.py compare --days 14`
-  - `python tools/mastery_shadow_analysis/shadow_analysis.py tasks-overlap --days 14`
+- In shadow: run (requires `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` in env):
+  - `python tools/mastery_shadow_analysis/shadow_analysis.py --json compare --days 14`
+  - `python tools/mastery_shadow_analysis/shadow_analysis.py --json tasks-overlap --days 14`
+  - Add `--json` for machine-readable output; omit for human-readable text.
+  - The tool exits with an error message if credentials are missing — it never
+    prints apparently valid zero metrics on absent credentials.
+- Shadow gate thresholds: sign agreement ≥ 80%, task overlap ≥ 60%, outliers = 0.
+- Correction preview (read-only, no writes):
+  - `GET /api/admin/study-os/mocks/<mock_id>/mastery-preview` (admin, PERM_OPS)
 - Rollback: execute rollback SQL from docs/study_os/mock_mastery_writeback.md.
+- Full canary plan: docs/ops/pr8_live_canary_plan.md
 
 ## Submit flow & ordering
 

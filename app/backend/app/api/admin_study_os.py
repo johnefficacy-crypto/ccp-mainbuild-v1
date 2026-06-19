@@ -1315,6 +1315,78 @@ def mocks_detail(
     }
 
 
+@router.get("/mocks/{mock_id}/mastery-preview")
+def mocks_mastery_preview(
+    mock_id: str,
+    _admin: dict = Depends(require_permission(PERM_OPS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Read-only correction and mastery delta preview for a platform mock.
+
+    Runs the full MasteryWriter derivation pipeline (analytics load →
+    mastery delta derivation → correction draft generation) and returns
+    the computed preview without writing to mastery, error-pattern,
+    correction, or planner tables. Intended for shadow-mode validation
+    of DEFECT-003 and correction output.
+
+    Returns:
+      trust_level          — source trust classification
+      response_counts      — {"selected": int, "null": int}
+      classification_counts — error_type → count
+      topic_analytics      — topic-level accuracy stats
+      mastery_deltas       — proposed mastery deltas (no writes)
+      correction_drafts    — proposed correction categories + titles
+    """
+    supabase = get_supabase_admin()
+    mock_rows = (
+        _safe(
+            lambda: supabase.table("mock_tests")
+            .select("id, mock_attempt_id, source_type")
+            .eq("id", mock_id)
+            .limit(1)
+            .execute()
+            .data,
+            default=[],
+        )
+        or []
+    )
+    if not mock_rows:
+        raise HTTPException(status_code=404, detail="Mock not found")
+
+    mock = mock_rows[0]
+    source_type = mock.get("source_type") or "manual_log"
+    if source_type != "platform_attempt":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Mastery preview is only available for platform_attempt mocks "
+                f"(source_type={source_type!r})."
+            ),
+        )
+
+    attempt_id = mock.get("mock_attempt_id")
+    if not attempt_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Mock has no linked platform attempt (mock_attempt_id is null); preview unavailable.",
+        )
+
+    from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
+
+    # derive_preview is flag-independent: it always runs the full derivation
+    # pipeline and returns both persisted shadow decisions and the current-state
+    # re-derivation without any writes.
+    writer = MasteryWriter(supabase, get_mastery_write_flag())
+    preview = writer.derive_preview(str(attempt_id))
+    if preview is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Analytics not found for attempt {attempt_id}.",
+        )
+
+    return {"mock_id": mock_id, "attempt_id": str(attempt_id), **preview}
+
+
 class SetVerificationTierPayload(BaseModel):
     tier: str = Field(..., min_length=4, max_length=20)
     evidence_url: str | None = None

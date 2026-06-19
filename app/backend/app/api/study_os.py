@@ -1237,6 +1237,17 @@ async def draft_correction_tasks(
         )
     except LookupError:
         raise HTTPException(status_code=404, detail="Mock not found.")
+    except mocks_service.PlatformAttemptCorrectionForbiddenError:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN",
+                "detail": (
+                    "Manual correction tasks cannot be drafted for platform attempts. "
+                    "MasteryWriter owns that pipeline."
+                ),
+            },
+        )
     return {"items": items}
 
 

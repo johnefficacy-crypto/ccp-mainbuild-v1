@@ -89,10 +89,9 @@ class MasteryWriter:
         Called by the mock_tests-retry sweeper hook so a transient missing-row
         miss in :meth:`_draft_correction_tasks` is recovered, not lost. Only
         meaningful at FF=live (corrections are a live-only write); shadow/off
-        return without touching anything. The best-effort read-before-insert
-        guard makes this SERIAL-retry safe (re-running after the inline
-        submit-time pass inserts each correction once) — it is NOT concurrency-
-        safe without a DB unique constraint (separate follow-up).
+        return without touching anything. Idempotent: the read-before-insert
+        guard and the partial unique indexes from migration 181 together ensure
+        re-running inserts each correction at most once.
         """
         if self.flag_state != "live":
             return
@@ -294,11 +293,14 @@ class MasteryWriter:
     def _correction_exists(
         self, mock_test_id: str, user_id: str, category: str, topic: str | None
     ) -> bool:
-        """Best-effort deduplication: a drafted correction with the same
-        (mock_test_id, user_id, category, topic) already exists. mock_correction_
-        tasks has no unique constraint for this use case, so this is a read-before-
-        insert guard — SERIAL-retry safe but NOT concurrency-safe. Robust de-dup
-        via a partial unique index is OUT OF SCOPE (separate follow-up)."""
+        """Pre-flight deduplication check: returns True if a drafted correction
+        with the same (mock_test_id, user_id, category, topic) already exists.
+
+        Avoids the round-trip exception path for the common serial-retry case.
+        Concurrent inserts are handled by the partial unique indexes from
+        migration 181 — 23505 is caught and treated as idempotent in
+        _draft_correction_tasks.
+        """
         rows = (
             self.supabase.table("mock_correction_tasks")
             .select("id, topic")
@@ -321,8 +323,8 @@ class MasteryWriter:
         exist (mock_test_id, user_id, category, title, topic, source_questions,
         state); never the mastery-engine-shaped task_type/priority/evidence_json/
         duration_minutes/source_attempt_id, and never mock_test_id=None.
-        Serial-retry idempotent via best-effort read-before-insert dedup (NOT
-        concurrency-safe without a DB unique constraint — separate follow-up).
+        Idempotent via read-before-insert dedup; concurrent races are caught
+        via 23505 from the partial unique indexes in migration 181.
         When the mock_tests compat row is not present yet, corrections are
         deferred with an observable signal and recovered by the mock_tests-retry
         sweeper hook.
@@ -368,7 +370,182 @@ class MasteryWriter:
                 "state": "drafted",
             })
         if payload:
-            self.supabase.table("mock_correction_tasks").insert(payload).execute()
+            try:
+                self.supabase.table("mock_correction_tasks").insert(payload).execute()
+            except Exception as exc:  # noqa: BLE001
+                if "23505" not in str(exc):
+                    raise
+                # Unique constraint from migration 181 fired on a concurrent insert.
+                # The row already exists — idempotent outcome, not a failure.
+                logger.warning(
+                    "correction insert lost unique-key race for attempt=%s; existing rows preserved",
+                    attempt_id,
+                )
+
+
+    def _load_persisted_shadow_decisions(self, attempt_id: str) -> list[dict]:
+        """Read the frozen shadow write decisions for this attempt from mock_mastery_shadow."""
+        return (
+            self.supabase.table("mock_mastery_shadow")
+            .select(
+                "topic_id,proposed_delta_db,proposed_delta_db_unweighted,"
+                "current_mastery_db,would_be_mastery_db,trust_level,flag_state,decided_at"
+            )
+            .eq("attempt_id", attempt_id)
+            .execute()
+            .data
+            or []
+        )
+
+    def derive_preview(self, attempt_id: str) -> dict | None:
+        """Read-only preview — zero writes, no feature-flag dependency.
+
+        Returns three sections:
+          persisted_shadow_decision  — frozen shadow write decisions from
+                                       mock_mastery_shadow (what was decided at
+                                       submit time; None rows mean shadow was off)
+          current_read_only_preview  — what the engine would decide NOW, using the
+                                       current (mutable) mastery state as baseline;
+                                       labeled explicitly as current-state because
+                                       it may differ from the shadow if mastery has
+                                       changed since the attempt was submitted
+          replay_consistency         — per-topic comparison of persisted shadow delta
+                                       vs the current-state re-derivation; includes
+                                       sign_match and magnitude_drift_db for each topic
+
+        Returns None when analytics cannot be loaded (attempt not found).
+        """
+        analytics = self._load_analytics(attempt_id)
+        if analytics is None:
+            return None
+
+        # Load persisted shadow decisions (frozen at submit time).
+        shadow_rows = self._load_persisted_shadow_decisions(attempt_id)
+
+        # Current-state re-derivation uses the current (MUTABLE) mastery snapshot.
+        # This is intentionally labeled as current-state — it is NOT the same
+        # baseline the shadow write used at submit time.
+        trust_level = self._load_trust_level(attempt_id)
+        current_mastery = self._load_current_mastery(analytics.user_id)
+        existing_error_topics = self._load_existing_error_topics(analytics.user_id)
+        result = derive_from_analytics(
+            analytics, current_mastery, existing_error_topics, source_trust=trust_level
+        )
+
+        from app.study_os.correction_policy import CANONICAL_CATEGORIES, correction_title
+
+        response_counts = {"selected": 0, "null": 0}
+        for q in analytics.questions:
+            if q.attempted:
+                response_counts["selected"] += 1
+            else:
+                response_counts["null"] += 1
+
+        classification_counts: dict[str, int] = {}
+        for q in analytics.questions:
+            if q.error_type:
+                classification_counts[q.error_type] = classification_counts.get(q.error_type, 0) + 1
+
+        topic_analytics = [
+            {
+                "topic_id": t.topic_id,
+                "microtopic_id": t.microtopic_id,
+                "attempted": t.attempted,
+                "correct": t.correct,
+                "accuracy_pct": float(t.accuracy_pct),
+            }
+            for t in analytics.topics
+        ]
+
+        delta_unit = Decimal("100")
+        mastery_deltas = [
+            {
+                "topic_id": d.topic_id,
+                "current_mastery_db": float(d.current_mastery * delta_unit),
+                "proposed_delta_db": float(_weighted_delta(d.capped_delta, trust_level) * delta_unit),
+                "would_be_mastery_db": float(
+                    min(
+                        Decimal("100"),
+                        max(
+                            Decimal("0"),
+                            d.current_mastery * delta_unit
+                            + _weighted_delta(d.capped_delta, trust_level) * delta_unit,
+                        ),
+                    )
+                ),
+            }
+            for d in result.mastery_deltas
+        ]
+
+        correction_drafts = []
+        for d in result.correction_task_drafts:
+            category = d.category
+            if category not in CANONICAL_CATEGORIES:
+                continue
+            correction_drafts.append(
+                {
+                    "category": category,
+                    "title": correction_title(category),
+                    "topic_id": d.topic_id,
+                    "source_question_ids": [str(q) for q in (d.evidence.related_question_ids or [])],
+                    "trust_level": trust_level,
+                }
+            )
+
+        # Replay consistency: compare persisted shadow decisions to current re-derivation.
+        shadow_by_topic = {r["topic_id"]: r for r in shadow_rows if r.get("topic_id")}
+        replay_items: list[dict] = []
+        for d in result.mastery_deltas:
+            shadow = shadow_by_topic.get(d.topic_id)
+            current_delta = float(
+                _weighted_delta(d.capped_delta, trust_level) * delta_unit
+            )
+            if shadow is None:
+                replay_items.append({
+                    "topic_id": d.topic_id,
+                    "has_shadow": False,
+                    "current_delta_db": round(current_delta, 2),
+                    "note": "no shadow row — shadow may have been off at submit time",
+                })
+            else:
+                s_delta = float(shadow.get("proposed_delta_db") or 0)
+                sign_match = (s_delta >= 0) == (current_delta >= 0)
+                replay_items.append({
+                    "topic_id": d.topic_id,
+                    "has_shadow": True,
+                    "shadow_delta_db": s_delta,
+                    "current_delta_db": round(current_delta, 2),
+                    "shadow_current_mastery_db": float(shadow.get("current_mastery_db") or 0),
+                    "sign_match": sign_match,
+                    "magnitude_drift_db": round(abs(current_delta - s_delta), 2),
+                })
+
+        matched_items = [i for i in replay_items if i.get("has_shadow")]
+        all_signs_match = all(i["sign_match"] for i in matched_items) if matched_items else None
+
+        return {
+            "persisted_shadow_decision": {
+                "rows": shadow_rows,
+                "count": len(shadow_rows),
+            },
+            "current_read_only_preview": {
+                "note": (
+                    "Computed from current mastery state. May differ from the "
+                    "persisted_shadow_decision if mastery has changed since the attempt."
+                ),
+                "trust_level": trust_level,
+                "response_counts": response_counts,
+                "classification_counts": classification_counts,
+                "topic_analytics": topic_analytics,
+                "mastery_deltas": mastery_deltas,
+                "correction_drafts": correction_drafts,
+            },
+            "replay_consistency": {
+                "items": replay_items,
+                "all_signs_match": all_signs_match,
+                "topics_without_shadow": sum(1 for i in replay_items if not i.get("has_shadow")),
+            },
+        }
 
 
 def get_mastery_write_flag() -> FlagState:
