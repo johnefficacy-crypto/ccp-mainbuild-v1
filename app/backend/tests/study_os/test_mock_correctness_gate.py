@@ -335,9 +335,15 @@ def test_double_submit_under_live_flag_no_second_audit(monkeypatch):
 
 # ─── Fix 4: derivation ordering (implementation B) ────────────────────────────
 
-def test_mastery_writes_from_raw_data_when_derivation_fails(monkeypatch):
-    """AC5: with derivation mocked to fail, the writer still produces correct
-    deltas from the persisted raw responses (implementation B)."""
+def test_mastery_deferred_when_derivation_fails(monkeypatch):
+    """AC5 (updated): when analytics derivation fails, mastery is deferred, not
+    silently skipped.
+
+    With the classification readiness gate: analytics failure → no classification
+    rows → MasteryClassificationNotReady → mastery retry job rescheduled pending.
+    Both analytics_retry and mastery_retry are queued so recovery is fully
+    automatic once analytics succeeds.
+    """
     sb, _, _ = _seeded_db(topic_id="topic-B")
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
     client = _client(sb)
@@ -350,7 +356,7 @@ def test_mastery_writes_from_raw_data_when_derivation_fails(monkeypatch):
             json={"question_id": q["id"], "selected_option_id": q["correct_option_id"], "client_seq": 1},
         )
 
-    # Derivation (PR4) blows up — must not suppress the mastery write-back.
+    # Derivation (PR4) blows up → no classification rows will be written.
     monkeypatch.setattr(
         svc.attempt_analytics,
         "compute_and_persist",
@@ -360,18 +366,19 @@ def test_mastery_writes_from_raw_data_when_derivation_fails(monkeypatch):
     r = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
     assert r.status_code == 200
 
-    # No summary was persisted (derivation failed)...
+    # No summary written (derivation failed).
     assert not sb.db.get("mock_attempt_summary")
-    # ...yet mastery was still applied from raw data: all-correct on an easy
-    # topic → capped +15 db, 50 → 65.
-    audit = [a for a in sb.db.get("user_topic_mastery_audit", []) if a["topic_id"] == "topic-B"]
-    assert len(audit) == 1
-    assert audit[0]["after_mastery_db"] == 65.0
-    # And the failed derivation was queued for retry, not dropped.
-    assert any(
-        j["job_kind"] == "analytics_retry" and j["attempt_id"] == attempt_id
-        for j in sb.db["mock_attempt_jobs"]
-    )
+    # Mastery was deferred — no live writes.
+    assert not sb.db.get("user_topic_mastery_audit")
+    # Both analytics_retry and mastery_retry are queued for automatic recovery.
+    jobs_by_kind = {j["job_kind"] for j in sb.db.get("mock_attempt_jobs", [])}
+    assert "analytics_retry" in jobs_by_kind
+    assert "mastery_retry" in jobs_by_kind
+    mastery_jobs = [
+        j for j in sb.db.get("mock_attempt_jobs", [])
+        if j["job_kind"] == "mastery_retry" and j["attempt_id"] == attempt_id
+    ]
+    assert mastery_jobs[0]["status"] == "pending"
 
 
 # ─── mock_tests_retry job (PR-fix-12) ────────────────────────────────────────

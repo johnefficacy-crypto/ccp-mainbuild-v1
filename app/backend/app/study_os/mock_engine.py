@@ -823,6 +823,14 @@ def auto_submit_attempt(supabase: Any, attempt_id: str) -> dict:
         submitted_at=submitted_at, event_type=ATTEMPT_AUTO_SUBMITTED,
     )
     schedule_job(supabase, JOB_ANALYTICS_RETRY, attempt_id)
+    # D2: parity with the manual submit path — enqueue mastery_retry so the
+    # sweeper processes mastery after analytics succeeds (D4 also covers this,
+    # but an eager enqueue here means mastery is queued even if analytics
+    # finishes before the next sweep cycle reads the analytics_retry job).
+    from app.study_os.mastery_writer import get_mastery_write_flag  # noqa: PLC0415
+    _auto_submit_flag = get_mastery_write_flag()
+    if _auto_submit_flag != "off":
+        enqueue_mastery_retry_required(supabase, attempt_id, _auto_submit_flag)
     return {"ok": True, "skipped": False, "submitted_at": submitted_at}
 
 
@@ -1361,6 +1369,13 @@ def _run_job(supabase: Any, job: dict) -> None:
         auto_submit_attempt(supabase, attempt_id)
     elif kind == JOB_ANALYTICS_RETRY:
         attempt_analytics.compute_and_persist(supabase, attempt_id)
+        # D4: after analytics succeeds, hand off to mastery if FF is not off.
+        # enqueue_mastery_retry_required is idempotent against active jobs, so a
+        # concurrent or already-pending mastery_retry is safely reset to pending.
+        from app.study_os.mastery_writer import get_mastery_write_flag  # noqa: PLC0415
+        _analytics_retry_flag = get_mastery_write_flag()
+        if _analytics_retry_flag != "off":
+            enqueue_mastery_retry_required(supabase, attempt_id, _analytics_retry_flag)
     elif kind == JOB_MOCK_TESTS_RETRY:
         _retry_emit_mock_tests_row(supabase, attempt_id)
         _recover_corrections_after_mock_tests(supabase, attempt_id)
