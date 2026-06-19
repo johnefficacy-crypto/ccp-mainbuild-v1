@@ -26,7 +26,15 @@
       "Bash(where.exe psql *)",
       "Bash(where.exe jq *)",
       "Read(//c/Users/user/scoop/apps/postgresql//**)",
-      "Bash(powershell.exe -NoProfile -Command \"\\(Get-Command psql -ErrorAction SilentlyContinue\\).Source\")"
+      "Bash(powershell.exe -NoProfile -Command \"\\(Get-Command psql -ErrorAction SilentlyContinue\\).Source\")",
+      "PowerShell(git *)",
+      "PowerShell(\"=== 1. mastery_writer.py selected_option_id ===\")",
+      "PowerShell(\"=== 2. schemas.py attempted ===\")",
+      "PowerShell(\"=== 3. migrations \\(attempt_id, topic_id, flag_state\\) ===\")",
+      "PowerShell(\"=== 4a. mock_engine.py _to_integral_marks ===\")",
+      "PowerShell(\"=== 4b. mock_engine.py integral_marks ===\")",
+      "PowerShell(\"=== 5. mocks.py weak_topic= ===\")",
+      "Bash(break)"
     ]
   }
 }
