@@ -47,9 +47,9 @@ The IA exists. The surfaces under it are uneven.
 - `app/frontend/src/pages/admin/ModerationQueue.jsx:27–43,142–151` — comprehensive: `claim`, `resolve` (with resolution + notes), `dismiss`, `escalate`, plus an events panel rendering full audit trail. This is the strongest existing governance surface and the right base for the trust desk.
 
 ### 3.3 Backend capability (stronger than frontend)
-- `app/backend/server.py:206–208` — mounts `community_runtime_router` **before** `canonical_router` and `community_people_router`, so durable routes shadow the deprecated seed module on overlap.
-- `app/backend/app/api/community_runtime.py` — durable routes for forums (`:251,278,303,337,371`), study groups (`:514,551,574`), study rooms (`:585,615`), accountability partners (`:632,683,696`), mentors and mentor bookings (`:730,761,806`), resources and reports (`:908,948,998`), and admin flag resolution (`:1023,1044`). Audit write helper at `:106–121` writes to `admin_audit_logs` (only currently called from flag resolution).
-- `app/backend/app/api/community_people.py:99–100,24–37,39–55` — explicitly `deprecated=True`, logs a deprecation warning per hit, serves seed/in-memory data. Legacy fallback only.
+- `app/backend/server.py` — mounts `community_runtime_router` before `canonical_router`. **`community_people_router` has been removed** (see §8 cleanup item, now completed); `community_people.py` was deleted. All community routes are now served exclusively by `community_runtime_router`.
+- `app/backend/app/api/community_runtime.py` — durable routes for forums (`:251,278,303,337,371`), study groups (`:514,551,574`), study rooms (`:585,615`), accountability partners (`:632,683,696`), mentors and mentor bookings (`:730,761,806`), resources and reports (`:908,948,998`), reply votes (`:441`), and admin flag resolution (`:1023,1044`). Atomic counter RPCs via `089_community_counter_rpcs.sql`. Audit write helper at `:106–121` writes to `admin_audit_logs` (only currently called from flag resolution).
+- ~~`app/backend/app/api/community_people.py`~~ — **deleted**. Was deprecated=True at spec-authoring time. Now removed entirely from the codebase.
 - `app/backend/app/api/admin_moderation.py:24–25,84–94,121–149,192–231` — file-report + queue + stats + claim/resolve, with `_record_event()` writing to `moderation_events`.
 - `app/backend/app/api/admin_ops.py:19,52–60` — `/admin/marketplace` counts only (no mutation endpoints).
 - `app/backend/app/api/admin_kpis.py:20` — KPI families for outcome, trust, commercial, quality.
@@ -279,7 +279,7 @@ app/frontend/src/pages/admin/
 
 ## 8. Cleanups
 
-- `app/backend/app/api/community_people.py` is `deprecated=True` and seed-backed (`:99–100,39–55`). Mount order (`server.py:206–208`) shadows it for overlapping paths, but any non-overlapping route is legacy risk. Action: enumerate non-shadowed routes, port any still-needed responses into `community_runtime.py`, then remove the include.
+- ~~`app/backend/app/api/community_people.py`~~ — **completed/deleted** (2026-06-20). The file was removed entirely. `community_runtime_router` now handles all community routes; no non-shadowed legacy routes remain.
 - Reuse `app/backend/app/api/accountability.py` Supabase wiring for any mentor-booking admin reads instead of seeding from `community_seed`.
 
 ## 9. Rollout plan
@@ -296,7 +296,7 @@ Phase 2 — additive schema + write actions
 
 Phase 3 — consolidation
 - Migrate `Community.jsx` into AdminCommunityConsole; route old flag triage into the central trust desk.
-- Sunset `community_people.py` once routes are confirmed unreferenced.
+- ~~Sunset `community_people.py` once routes are confirmed unreferenced.~~ — **completed** (2026-06-20). `community_people.py` has been deleted.
 - Add audit viewer (tracked separately in `admin-governance.md` §5.2) and verify all `admin.community.*`, `admin.mentor.*`, `admin.resource.*` actions appear.
 
 ## 10. Acceptance criteria
