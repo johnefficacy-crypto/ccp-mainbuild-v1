@@ -277,6 +277,8 @@ class SBStub:
             return _RpcCall(self._start_attempt_from_blueprint(params))
         if name == "ensure_mock_correction_draft":
             return _RpcCall(self._ensure_mock_correction_draft(params))
+        if name == "ensure_mock_correction_drafts":
+            return _RpcCall(self._ensure_mock_correction_drafts(params))
         if name == "replace_manual_mock_correction_drafts":
             return _RpcCall(self._replace_manual_mock_correction_drafts(params))
         return _RpcCall(None)
@@ -438,9 +440,10 @@ class SBStub:
     def _ensure_mock_correction_draft(self, params: dict[str, Any]) -> dict[str, Any] | None:
         """Emulate ensure_mock_correction_draft RPC (migration 182).
 
-        Idempotent: inserts only when no drafted row with the same
-        (mock_test_id, user_id, category, topic) exists; otherwise returns
-        the existing row.  Mirrors ON CONFLICT DO NOTHING + SELECT.
+        Ownership + source_type guard (D2): raises if the mock is not owned by
+        p_user_id or is not a platform_attempt.  Idempotent: inserts only when
+        no drafted row with the same (mock_test_id, user_id, category, topic)
+        exists; otherwise returns the existing row.
         """
         mock_test_id = params.get("p_mock_test_id")
         user_id = params.get("p_user_id")
@@ -448,6 +451,15 @@ class SBStub:
         topic = params.get("p_topic") or None
         title = params.get("p_title") or ""
         source_questions = params.get("p_source_questions") or []
+
+        mock_rows = [
+            r for r in self.db.get("mock_tests", [])
+            if r.get("id") == mock_test_id
+            and r.get("user_id") == user_id
+            and r.get("source_type") == "platform_attempt"
+        ]
+        if not mock_rows:
+            raise RuntimeError("platform_attempt mock not found for user")
 
         store = self.db.setdefault("mock_correction_tasks", [])
 
@@ -476,6 +488,64 @@ class SBStub:
         }
         store.append(new_row)
         return new_row
+
+    def _ensure_mock_correction_drafts(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        """Emulate ensure_mock_correction_drafts RPC (migration 182).
+
+        Atomic bulk upsert (D1 fix): all drafts are processed in one call.
+        Ownership + source_type guard (D2): raises if mock is not owned by
+        p_user_id or is not a platform_attempt.  ON CONFLICT DO NOTHING per key.
+        """
+        mock_test_id = params.get("p_mock_test_id")
+        user_id = params.get("p_user_id")
+        drafts: list[dict[str, Any]] = params.get("p_drafts") or []
+
+        mock_rows = [
+            r for r in self.db.get("mock_tests", [])
+            if r.get("id") == mock_test_id
+            and r.get("user_id") == user_id
+            and r.get("source_type") == "platform_attempt"
+        ]
+        if not mock_rows:
+            raise RuntimeError("platform_attempt mock not found for user")
+
+        store = self.db.setdefault("mock_correction_tasks", [])
+
+        for d in drafts:
+            cat = d.get("category")
+            topic = d.get("topic") or None
+            title = d.get("title") or ""
+            src_qs = d.get("source_questions") or []
+
+            existing = any(
+                row.get("mock_test_id") == mock_test_id
+                and row.get("user_id") == user_id
+                and row.get("category") == cat
+                and row.get("state") == "drafted"
+                and (row.get("topic") or None) == topic
+                for row in store
+            )
+            if not existing:
+                store.append({
+                    "id": str(uuid.uuid4()),
+                    "mock_test_id": mock_test_id,
+                    "user_id": user_id,
+                    "category": cat,
+                    "topic": topic,
+                    "title": title,
+                    "source_questions": src_qs,
+                    "state": "drafted",
+                    "study_task_id": None,
+                    "created_at": None,
+                    "applied_at": None,
+                })
+
+        return [
+            r for r in store
+            if r.get("mock_test_id") == mock_test_id
+            and r.get("user_id") == user_id
+            and r.get("state") == "drafted"
+        ]
 
     def _replace_manual_mock_correction_drafts(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         """Emulate replace_manual_mock_correction_drafts RPC (migration 182).

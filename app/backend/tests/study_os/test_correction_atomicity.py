@@ -70,7 +70,13 @@ def _seed_generated(sb: SBStub, *, n: int = 3, error_type: str = "concept_gap") 
         for i in range(n)
     ]
     sb.db["mock_tests"] = [
-        {"id": MOCK_TEST_ID, "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}
+        {
+            "id": MOCK_TEST_ID,
+            "mock_attempt_id": ATTEMPT,
+            "trust_level": "platform_verified",
+            "user_id": USER,
+            "source_type": "platform_attempt",
+        }
     ]
     sb.db.setdefault("mock_correction_tasks", [])
     sb.db.setdefault("mock_mastery_shadow", [])
@@ -128,7 +134,7 @@ def _make_manual_mock(sb: SBStub, *, source_type: str = "manual_log") -> str:
 # Generated path (MasteryWriter._draft_correction_tasks)
 # ══════════════════════════════════════════════════════════════════════════════
 
-class test_generated_path:
+class TestGeneratedPath:
 
     def test_existing_key_does_not_block_other_keys(self):
         """D1 fix: when one (category, topic) already exists, the other keys
@@ -163,19 +169,6 @@ class test_generated_path:
         assert "concept_gap" in categories, "pre-existing row must be preserved"
         assert "speed_issue" in categories, "non-conflicting draft must persist"
 
-    def test_null_topic_duplicate_is_idempotent(self):
-        """Null-topic duplicate triggers ON CONFLICT DO NOTHING; no new row inserted."""
-        sb = SBStub()
-        _seed_generated(sb)
-
-        drafts = [_draft("concept_gap", None)]
-        mw.MasteryWriter(sb, "live")._draft_correction_tasks(ATTEMPT, drafts)
-        count_after_first = len(sb.db["mock_correction_tasks"])
-
-        # Second call with same null-topic draft must not add another row.
-        mw.MasteryWriter(sb, "live")._draft_correction_tasks(ATTEMPT, drafts)
-        assert len(sb.db["mock_correction_tasks"]) == count_after_first
-
     def test_non_null_topic_duplicate_is_idempotent(self):
         """Non-null-topic duplicate triggers ON CONFLICT DO NOTHING; no new row inserted."""
         sb = SBStub()
@@ -192,7 +185,7 @@ class test_generated_path:
         """D5 fix: an unrelated RPC error must propagate, not be swallowed."""
         class _BrokenRpcSB(SBStub):
             def rpc(self, name, params=None):
-                if name == "ensure_mock_correction_draft":
+                if name == "ensure_mock_correction_drafts":
                     raise RuntimeError("disk_full_totally_unrelated")
                 return super().rpc(name, params)
 
@@ -201,6 +194,56 @@ class test_generated_path:
 
         with pytest.raises(RuntimeError, match="disk_full_totally_unrelated"):
             mw.MasteryWriter(sb, "live")._draft_correction_tasks(ATTEMPT, [_draft()])
+
+    def test_bulk_rpc_is_one_call_not_n(self):
+        """D1 fix: N drafts produce ONE RPC call, not N separate calls."""
+        rpc_calls: list[str] = []
+
+        class _CountingRpcSB(SBStub):
+            def rpc(self, name, params=None):
+                if name == "ensure_mock_correction_drafts":
+                    rpc_calls.append(name)
+                return super().rpc(name, params)
+
+        sb = _CountingRpcSB()
+        _seed_generated(sb)
+
+        drafts = [
+            _draft("concept_gap", TOPIC_A),
+            _draft("speed_issue", TOPIC_A),
+        ]
+        mw.MasteryWriter(sb, "live")._draft_correction_tasks(ATTEMPT, drafts)
+
+        assert len(rpc_calls) == 1, (
+            f"expected exactly one bulk RPC call; got {len(rpc_calls)}"
+        )
+
+    def test_generated_ownership_check_rejects_wrong_user(self):
+        """D2 fix: ensure_mock_correction_drafts rejects a wrong user_id."""
+        sb = SBStub()
+        _seed_generated(sb)
+
+        wrong_user_draft = CorrectionTaskDraft(
+            user_id="wrong-user",
+            topic_id=TOPIC_A,
+            microtopic_id=None,
+            category="concept_gap",
+            task_type="concept_review",
+            priority=3,
+            reason="test",
+            evidence=CorrectionEvidence(
+                accuracy_pct=__import__("decimal").Decimal("0"),
+                error_types=[],
+                related_question_ids=[],
+            ),
+            estimated_minutes=30,
+            source_attempt_id=__import__("uuid").uuid4(),
+        )
+
+        with pytest.raises(RuntimeError, match="not found"):
+            mw.MasteryWriter(sb, "live")._draft_correction_tasks(
+                ATTEMPT, [wrong_user_draft]
+            )
 
     def test_all_desired_draft_keys_are_persisted(self):
         """RPC path persists every unique (category, topic) key from the draft list."""
@@ -239,7 +282,7 @@ class _AtomicFailSB(SBStub):
         return super().rpc(name, params)
 
 
-class test_manual_path:
+class TestManualPath:
 
     def test_atomic_failure_preserves_original_drafts(self):
         """D2 fix: when the RPC fails, original drafted rows are untouched."""

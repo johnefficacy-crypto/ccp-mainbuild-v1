@@ -323,9 +323,10 @@ class MasteryWriter:
         exist (mock_test_id, user_id, category, title, topic, source_questions,
         state); never the mastery-engine-shaped task_type/priority/evidence_json/
         duration_minutes/source_attempt_id, and never mock_test_id=None.
-        Each unique (category, topic) key is persisted via one call to the
-        ensure_mock_correction_draft RPC (ON CONFLICT DO NOTHING inside the RPC
-        handles concurrent races atomically; no batch-insert 23505 catch needed).
+        All unique (category, topic) keys are persisted in ONE call to the
+        ensure_mock_correction_drafts RPC — the full correction set is atomic:
+        either all new rows land or none do. ON CONFLICT DO NOTHING handles
+        concurrent races per key inside the same transaction.
         When the mock_tests compat row is not present yet, corrections are
         deferred with an observable signal and recovered by the mock_tests-retry
         sweeper hook.
@@ -347,6 +348,8 @@ class MasteryWriter:
         from app.study_os.correction_policy import CANONICAL_CATEGORIES, correction_title
 
         seen: set[tuple[str, str | None]] = set()
+        payload: list[dict] = []
+        user_id: str | None = None
         for d in drafts:
             category = d.category
             if category not in CANONICAL_CATEGORIES:
@@ -358,19 +361,27 @@ class MasteryWriter:
             if key in seen:
                 continue  # de-dup within this batch
             seen.add(key)
-            # Any RPC error propagates — no swallowing. The RPC handles
-            # ON CONFLICT DO NOTHING atomically so 23505 never surfaces here.
-            self.supabase.rpc(
-                "ensure_mock_correction_draft",
-                {
-                    "p_mock_test_id": mock_test_id,
-                    "p_user_id": d.user_id,
-                    "p_category": category,
-                    "p_topic": topic,
-                    "p_title": correction_title(category),
-                    "p_source_questions": self._source_questions_from_evidence(d),
-                },
-            ).execute()
+            user_id = d.user_id
+            payload.append({
+                "category": category,
+                "topic": topic,
+                "title": correction_title(category),
+                "source_questions": self._source_questions_from_evidence(d),
+            })
+
+        if not payload:
+            return
+
+        # Single RPC call — all desired keys in one DB transaction.
+        # Any error propagates; ON CONFLICT DO NOTHING handles existing rows per key.
+        self.supabase.rpc(
+            "ensure_mock_correction_drafts",
+            {
+                "p_mock_test_id": mock_test_id,
+                "p_user_id": user_id,
+                "p_drafts": payload,
+            },
+        ).execute()
 
 
     def _load_persisted_shadow_decisions(self, attempt_id: str) -> list[dict]:

@@ -66,7 +66,13 @@ def _seed(sb: SBStub, *, with_mock_tests: bool = True, error_type: str | None = 
         else []
     )
     sb.db["mock_tests"] = (
-        [{"id": MOCK_TEST_ID, "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}]
+        [{
+            "id": MOCK_TEST_ID,
+            "mock_attempt_id": ATTEMPT,
+            "trust_level": "platform_verified",
+            "user_id": USER,
+            "source_type": "platform_attempt",
+        }]
         if with_mock_tests
         else []
     )
@@ -135,9 +141,13 @@ def test_missing_mock_tests_defers_then_recovers_once():
     assert any(a["topic_id"] == TOPIC for a in sb.db["user_topic_mastery_audit"])
 
     # Compat row lands (sweeper re-emit) → recovery drafts the corrections.
-    sb.db["mock_tests"] = [
-        {"id": MOCK_TEST_ID, "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}
-    ]
+    sb.db["mock_tests"] = [{
+        "id": MOCK_TEST_ID,
+        "mock_attempt_id": ATTEMPT,
+        "trust_level": "platform_verified",
+        "user_id": USER,
+        "source_type": "platform_attempt",
+    }]
     writer.redraft_corrections(ATTEMPT)
     n_after_first = len(sb.db["mock_correction_tasks"])
     assert n_after_first >= 1
@@ -259,7 +269,7 @@ class _FlakyCorrectionSB(SBStub):
         self.fail_next_correction_insert = True
 
     def rpc(self, name, params=None):  # type: ignore[override]
-        if name == "ensure_mock_correction_draft" and getattr(self, "fail_next_correction_insert", False):
+        if name == "ensure_mock_correction_drafts" and getattr(self, "fail_next_correction_insert", False):
             self.fail_next_correction_insert = False
             raise RuntimeError("transient correction rpc failure")
         return super().rpc(name, params)

@@ -2,15 +2,31 @@
 --
 -- Replaces the application-layer delete-before-insert and batch-insert patterns
 -- in mastery_writer.py (_draft_correction_tasks) and mocks.py
--- (draft_correction_tasks) with two SECURITY DEFINER RPCs, eliminating four
--- confirmed data-loss defects:
+-- (draft_correction_tasks) with SECURITY DEFINER RPCs, eliminating five
+-- confirmed data-loss / correctness defects:
 --
---  D1 (generated path): batch insert skips non-conflicting rows on first 23505
---  D2 (manual path):    delete-before-insert loses prior drafts on insert failure
---  D3 (manual path):    23505 catch fetches existing rows, non-conflicting rows lost
---  D4 (manual path):    review_state update wrapped in _safe — failure swallowed
+--  D1 (generated path): per-draft loop is not atomic — if call N fails, calls
+--                       1..N-1 are committed (partial correction set).
+--                       Fix: ensure_mock_correction_drafts (plural) handles the
+--                       full set in one transaction.
+--  D2 (generated path): ensure_mock_correction_draft has no ownership /
+--                       source_type check.
+--                       Fix: ownership + source_type = 'platform_attempt' guard
+--                       added to both singular and plural RPC forms.
+--  D3 (manual path):    delete-before-insert loses prior drafts on insert failure
+--  D4 (manual path):    23505 catch fetches existing rows, non-conflicting rows lost
+--  D5 (manual path):    review_state update wrapped in _safe — failure swallowed
 --
--- Both RPCs target the partial unique indexes added by migration 181:
+-- Three RPCs in this migration:
+--
+--   ensure_mock_correction_draft   (singular)  — kept for backward compat;
+--                                                now has ownership guard.
+--   ensure_mock_correction_drafts  (plural)    — replaces the per-draft loop in
+--                                                _draft_correction_tasks; full set
+--                                                is atomic in one transaction.
+--   replace_manual_mock_correction_drafts       — manual path (mocks.py).
+--
+-- All three target the partial unique indexes added by migration 181:
 --
 --   non-null topic: mock_correction_tasks_drafted_unique
 --                   (mock_test_id, user_id, category, topic)
@@ -25,6 +41,7 @@
 --
 -- Rollback SQL (manual, non-production only):
 --   DROP FUNCTION IF EXISTS public.ensure_mock_correction_draft(uuid,uuid,text,text,text,jsonb);
+--   DROP FUNCTION IF EXISTS public.ensure_mock_correction_drafts(uuid,uuid,jsonb);
 --   DROP FUNCTION IF EXISTS public.replace_manual_mock_correction_drafts(uuid,uuid,jsonb);
 --   -- Migration 181 partial indexes remain — they are independently safe.
 
@@ -33,10 +50,10 @@ begin
 
   -- ── RPC 1: ensure_mock_correction_draft ──────────────────────────────────────
   --
-  -- Idempotent single-draft upsert for the generated path (MasteryWriter).
-  -- ON CONFLICT DO NOTHING against the appropriate partial index; then SELECT
-  -- to return the row regardless of whether it was just inserted or already
-  -- existed. Any exception propagates — no swallowing of 23505 or other errors.
+  -- Idempotent single-draft upsert (kept for backward compat).
+  -- Ownership guard added (D2): verifies mock belongs to user and is a
+  -- platform_attempt before inserting. ON CONFLICT DO NOTHING against the
+  -- appropriate partial index; SELECT returns the row regardless.
   execute $ddl$
     create or replace function public.ensure_mock_correction_draft(
         p_mock_test_id     uuid,
@@ -51,8 +68,21 @@ begin
     set search_path = public, pg_temp
     as $fn$
     declare
-        v_row public.mock_correction_tasks%rowtype;
+        v_mock public.mock_tests%rowtype;
+        v_row  public.mock_correction_tasks%rowtype;
     begin
+        -- D2: ownership + source_type guard.
+        select * into v_mock
+        from public.mock_tests
+        where id          = p_mock_test_id
+          and user_id     = p_user_id
+          and source_type = 'platform_attempt'
+        for update;
+        if not found then
+            raise exception 'platform_attempt mock not found for user'
+                using errcode = 'no_data_found';
+        end if;
+
         if p_topic is not null then
             -- Targets: mock_correction_tasks_drafted_unique partial index.
             insert into public.mock_correction_tasks
@@ -92,6 +122,89 @@ begin
   execute 'revoke execute on function public.ensure_mock_correction_draft(uuid,uuid,text,text,text,jsonb) from anon';
   execute 'revoke execute on function public.ensure_mock_correction_draft(uuid,uuid,text,text,text,jsonb) from authenticated';
   execute 'grant execute on function public.ensure_mock_correction_draft(uuid,uuid,text,text,text,jsonb) to service_role';
+
+  -- ── RPC 1b: ensure_mock_correction_drafts (plural / bulk) ────────────────────
+  --
+  -- Atomic bulk upsert for the generated path (MasteryWriter._draft_correction_tasks).
+  -- All desired (category, topic) keys are persisted in one transaction — either
+  -- all new rows land or none do. D1 fix: replaces the per-draft Python loop.
+  -- D2 fix: ownership + source_type = 'platform_attempt' guard before any write.
+  execute $ddl$
+    create or replace function public.ensure_mock_correction_drafts(
+        p_mock_test_id uuid,
+        p_user_id      uuid,
+        p_drafts       jsonb   -- array of {category, topic?, title, source_questions}
+    ) returns setof public.mock_correction_tasks
+    language plpgsql
+    security definer
+    set search_path = public, pg_temp
+    as $fn$
+    declare
+        v_mock   public.mock_tests%rowtype;
+        v_draft  jsonb;
+        v_cat    text;
+        v_topic  text;
+        v_title  text;
+        v_src_qs jsonb;
+    begin
+        -- 1. Ownership + source_type guard (D2).
+        select * into v_mock
+        from public.mock_tests
+        where id          = p_mock_test_id
+          and user_id     = p_user_id
+          and source_type = 'platform_attempt'
+        for update;
+        if not found then
+            raise exception 'platform_attempt mock not found for user'
+                using errcode = 'no_data_found';
+        end if;
+
+        -- 2. Upsert all drafts in one transaction (ON CONFLICT DO NOTHING per row).
+        --    The category CHECK fires here for any invalid value — rolls back all
+        --    inserts in this call before any rows land.
+        for v_draft in
+            select value from jsonb_array_elements(p_drafts)
+        loop
+            v_cat    := v_draft ->> 'category';
+            v_topic  := v_draft ->> 'topic';    -- null when key absent or JSON null
+            v_title  := v_draft ->> 'title';
+            v_src_qs := coalesce(v_draft -> 'source_questions', '[]'::jsonb);
+
+            if v_topic is not null then
+                insert into public.mock_correction_tasks
+                    (mock_test_id, user_id, category, topic, title, source_questions, state)
+                values
+                    (p_mock_test_id, p_user_id, v_cat, v_topic, v_title, v_src_qs, 'drafted')
+                on conflict (mock_test_id, user_id, category, topic)
+                    where state = 'drafted' and topic is not null
+                do nothing;
+            else
+                insert into public.mock_correction_tasks
+                    (mock_test_id, user_id, category, topic, title, source_questions, state)
+                values
+                    (p_mock_test_id, p_user_id, v_cat, null, v_title, v_src_qs, 'drafted')
+                on conflict (mock_test_id, user_id, category)
+                    where state = 'drafted' and topic is null
+                do nothing;
+            end if;
+        end loop;
+
+        -- 3. Return all drafted rows for this mock+user after the upserts.
+        return query
+            select *
+            from public.mock_correction_tasks
+            where mock_test_id = p_mock_test_id
+              and user_id      = p_user_id
+              and state        = 'drafted'
+            order by created_at;
+    end;
+    $fn$
+  $ddl$;
+
+  execute 'revoke all on function public.ensure_mock_correction_drafts(uuid,uuid,jsonb) from public';
+  execute 'revoke execute on function public.ensure_mock_correction_drafts(uuid,uuid,jsonb) from anon';
+  execute 'revoke execute on function public.ensure_mock_correction_drafts(uuid,uuid,jsonb) from authenticated';
+  execute 'grant execute on function public.ensure_mock_correction_drafts(uuid,uuid,jsonb) to service_role';
 
   -- ── RPC 2: replace_manual_mock_correction_drafts ──────────────────────────────
   --

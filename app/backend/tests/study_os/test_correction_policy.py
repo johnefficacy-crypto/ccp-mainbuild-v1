@@ -291,7 +291,7 @@ def _seed_generated(sb, error_types):
             {"attempt_id": ATTEMPT, "question_id": f"q{i}", "error_type": et}
             for i, et in enumerate(error_types)
         ],
-        "mock_tests": [{"id": "mt-1", "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}],
+        "mock_tests": [{"id": "mt-1", "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified", "user_id": USER, "source_type": "platform_attempt"}],
         "mock_correction_tasks": [], "user_topic_mastery": [], "user_topic_mastery_audit": [],
         "user_topic_error_patterns": [], "mock_mastery_shadow": [], "study_plans": [], "study_tasks": [],
     })
