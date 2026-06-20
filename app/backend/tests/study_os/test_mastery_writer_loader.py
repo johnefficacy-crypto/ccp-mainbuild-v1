@@ -35,7 +35,13 @@ def _base_db() -> dict:
     return {
         "mock_attempts": [{"id": ATTEMPT, "user_id": USER}],
         "mock_tests": [
-            {"id": MOCK_TEST_ID, "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}
+            {
+                "id": MOCK_TEST_ID,
+                "mock_attempt_id": ATTEMPT,
+                "trust_level": "platform_verified",
+                "user_id": USER,
+                "source_type": "platform_attempt",
+            }
         ],
         "mock_attempt_responses": [],
         "mock_attempt_response_classification": [],
@@ -188,66 +194,45 @@ def test_unknown_classification_value_is_ignored():
 def _base_db_with_mock_test():
     db = _base_db()
     db["mock_tests"] = [
-        {"id": MOCK_TEST_ID, "mock_attempt_id": ATTEMPT, "trust_level": "platform_verified"}
+        {
+            "id": MOCK_TEST_ID,
+            "mock_attempt_id": ATTEMPT,
+            "trust_level": "platform_verified",
+            "user_id": USER,
+            "source_type": "platform_attempt",
+        }
     ]
     return db
 
 
-def test_correction_insert_23505_is_idempotent():
-    """When the correction insert raises 23505, the writer logs and continues — no raise."""
-    insert_calls = []
-
-    class _ConflictSB(SBStub):
-        def table(self, name):
-            if name == "mock_correction_tasks":
-                return _ConflictTable(name, self.db, insert_calls)
-            return super().table(name)
-
-    class _ConflictTable:
-        def __init__(self, name, db, log):
-            from tests.persona_questions._stub import _Query
-            self._q = _Query(name, db)
-            self._log = log
-
-        def select(self, *a, **kw): return self._q.select(*a, **kw)
-        def eq(self, *a, **kw): return self._q.eq(*a, **kw)
-        def delete(self): return self._q.delete()
-
-        def insert(self, payload):
-            self._log.append(payload)
-            return self
-
-        def execute(self):
-            raise RuntimeError("23505 duplicate key value violates unique constraint")
-
+def test_correction_insert_is_idempotent_via_rpc():
+    """Conflicts are handled inside ensure_mock_correction_drafts (ON CONFLICT DO
+    NOTHING); calling process_attempt twice must not raise and must not duplicate rows."""
     db = _base_db_with_mock_test()
     db["mock_attempt_responses"] = [
-        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=True),
+        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=False),
     ]
     db["mock_attempt_response_classification"] = [
-        _classification("q-ans", "option_trap"),
+        _classification("q-ans", "concept_gap"),
     ]
-    sb = _ConflictSB(db)
-    # Must not raise even though the DB rejects with 23505.
+    sb = SBStub(db)
     asyncio.run(mw.MasteryWriter(sb, "live").process_attempt(ATTEMPT))
-    assert len(insert_calls) >= 0  # insert was attempted
+    n_after_first = len(sb.db["mock_correction_tasks"])
+    assert n_after_first >= 1
+    # Second run must be idempotent — no new rows, no raise.
+    asyncio.run(mw.MasteryWriter(sb, "live").process_attempt(ATTEMPT))
+    assert len(sb.db["mock_correction_tasks"]) == n_after_first
 
 
 def test_correction_non_23505_propagates():
-    """Non-unique-constraint errors from correction insert must propagate."""
+    """Errors from the ensure_mock_correction_drafts RPC must propagate."""
     import pytest
 
     class _NetworkFailSB(SBStub):
-        def table(self, name):
-            if name == "mock_correction_tasks":
-                class _Bad:
-                    def select(self, *a, **kw): return self
-                    def eq(self, *a, **kw): return self
-                    def delete(self): return self
-                    def insert(self, *a): return self
-                    def execute(self): raise RuntimeError("connection refused")
-                return _Bad()
-            return super().table(name)
+        def rpc(self, name, params=None):
+            if name == "ensure_mock_correction_drafts":
+                raise RuntimeError("connection refused")
+            return super().rpc(name, params)
 
     db = _base_db_with_mock_test()
     db["mock_attempt_responses"] = [
