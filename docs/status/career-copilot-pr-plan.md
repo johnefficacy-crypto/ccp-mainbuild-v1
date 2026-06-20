@@ -267,6 +267,66 @@ code defect is found:
 2. Verify state PSC official/calendar URL backfill.
 3. Reconfirm SEBI Grade A only if a future workflow depends on it.
 
+## Lane H — Exam Intelligence P0 bug fixes
+
+Goal: fix the two confirmed runtime failures surfaced in the 2026-06-20 operator screenshot audit.
+Evidence doc: `docs/audits/exam-intelligence-gaps-2026-06-20.md`.
+
+These are independent of Lanes A–G and can run now.
+
+### H1 — Fix `syllabus/propose` 404 (BUG-EI-1)
+
+- **Type:** backend bug fix.
+- **Write scope:**
+  - `app/backend/app/exam_intelligence/syllabus_mapper.py`
+  - `app/backend/tests/` — regression test for the propose path
+  - checklist row for BUG-EI-1
+- **Do not touch:** frontend, migrations, other study-os files.
+- **Work:**
+  1. Replace `sb.table("document_assets")` with `sb.table("syllabus_documents")` on both occurrences (~line 99 and ~line 503).
+  2. Verify the SELECT columns (`id, exam_id, exam_cycle_id`) exist on `syllabus_documents` (migration 031 confirms they do).
+  3. Investigate and resolve the duplicate `ProposerError` / `propose_syllabus_mentions` definitions in the file — either deduplicate or verify which copy is the live one.
+  4. Add a regression test: mock a `syllabus_documents` row and assert that propose no longer raises 404.
+- **Exit:** propose endpoint returns 200 with mention proposals for a known document.
+
+### H2 — Fix `console/exams/{id}` 500 (BUG-EI-2)
+
+- **Type:** backend bug fix — requires design decision first.
+- **Write scope:**
+  - `app/backend/app/exam_intelligence/console_detail.py`
+  - `app/backend/tests/` — regression test for the console detail path
+  - checklist rows for BUG-EI-2 and "Document readiness extraction status"
+- **Do not touch:** frontend, migrations, other study-os files.
+- **Pre-work design decision (gate before implementation):**
+  The `_documents()` helper must be redesigned. Options:
+  - **Option A:** Query `syllabus_documents` by `exam_id`; use `trust_status == "verified"` as the readiness proxy. Count `verified` docs as "extracted".
+  - **Option B:** Query a `document_processing_jobs` or similar table if text-extraction tracking lives separately.
+  Operator must pick one before code is written. Record decision as a note in this PR.
+- **Work:**
+  1. Implement chosen option in `_documents()`.
+  2. Update `extracted` count logic at `console_detail.py:257` to match new readiness field.
+  3. Fix line 180 label (`"documents": "document_assets"`) to reflect the new source table.
+  4. Add a regression test: mock the chosen table and assert console detail returns 200.
+- **Exit:** console exam detail returns 200 with a non-zero document check when syllabus documents exist.
+
+### H3 — EI UX cleanup batch (UX-EI-1 through UX-EI-5)
+
+Run these as a single frontend cleanup PR since they share no state and all live in the exam-intelligence admin surface.
+
+- **Type:** frontend cleanup.
+- **Write scope:**
+  - `app/frontend/src/features/admin/exam-intelligence/ReviewQueueTable.jsx` — UX-EI-1 raw ID
+  - `app/frontend/src/pages/admin/exam-workspace/panels/SetupPanel.jsx` — UX-EI-1 phaseId, UX-EI-5 cycle context label
+  - `app/frontend/src/pages/admin/exam-workspace/panels/OverviewPanel.jsx` — UX-EI-3 deduplication
+  - targeted tests for affected components
+  - checklist rows for UX-EI-1, UX-EI-3, UX-EI-5
+- **Do not touch:** backend, migrations, `ExamWorkspace.jsx` workspace shell, `ExamActionConsole.jsx`.
+- **Work:**
+  - UX-EI-1: Replace `{r.id}` in ReviewQueueTable with a truncated or humanized display; replace `ptError.phaseId` raw render in SetupPanel error with a friendlier label.
+  - UX-EI-3: Remove or collapse fields from `OverviewPanel` that are already surfaced in the workspace SmartHeader (exam name, family, slug, type, active).
+  - UX-EI-5: Add cycle name/year to the "Phases needing dates" section header so the operator knows which cycle each phase stub belongs to.
+- **Depends on:** none; can run parallel with H1 and H2.
+
 ## Lane G — Later expansion after clean gate
 
 Do not dispatch until Lane A exits clean:
@@ -281,7 +341,7 @@ contract before implementation.
 
 ## Suggested simultaneous dispatch batch
 
-Safe first batch:
+Safe first batch (original):
 
 1. **Agent A:** A1 scheduler evidence (operator/live, docs only).
 2. **Agent B:** B1 `ExamActionConsole` de-leak (frontend scoped).
@@ -289,6 +349,13 @@ Safe first batch:
 4. **Agent D:** D1 document readiness identity/status audit (docs only).
 5. **Agent E:** E1 CI sequencing (workflow scoped).
 
+New batch (Lane H — can run now in parallel with any of the above):
+
+6. **Agent H1:** H1 syllabus-propose fix (backend, narrow scope — `syllabus_mapper.py` + test).
+7. **Agent H2:** H2 console-detail fix (backend — requires design decision first; see H2 pre-work gate).
+8. **Agent H3:** H3 EI UX cleanup (frontend — ReviewQueueTable, SetupPanel, OverviewPanel).
+
 Do **not** dispatch B2 and C1 to the same agent unless B1 is complete and the
 agent explicitly owns the relevant tests. Do **not** dispatch G-lane work until
-A1/A2 are clean.
+A1/A2 are clean. Do **not** dispatch H2 until the Option A/B design decision is
+recorded (see H2 pre-work gate above).

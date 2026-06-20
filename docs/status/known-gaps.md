@@ -3,6 +3,8 @@ owner: ops
 status: live
 last_verified_against_code: 2026-06-20
 last_modified: 2026-06-20
+related_audits:
+  - docs/audits/exam-intelligence-gaps-2026-06-20.md
 source_of_truth: code
 related_code:
   - app/backend
@@ -35,6 +37,8 @@ treating them as open work.
 
 ## Open contract/runtime gaps
 
+- **BUG-EI-1: Syllabus propose 404** — `POST /api/admin/exam-intelligence/workspace/{exam_id}/syllabus/propose` always returns 404 even when the document exists in storage. Root cause: `syllabus_mapper.py` queries `document_assets` (wrong table, no `exam_id` column) instead of `syllabus_documents`. Fix: two-line table-name change; file also contains duplicate function definitions that must be deduplicated. See `docs/audits/exam-intelligence-gaps-2026-06-20.md`.
+- **BUG-EI-2: Console exam detail 500** — `GET /api/admin/exam-intelligence/console/exams/{exam_id}` returns 500. Root cause: `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. The `_documents()` function must be redesigned to query `syllabus_documents` or a processing-job status table. This is the confirmed version of the earlier "Document readiness extraction status NEEDS TARGETED RECHECK" finding. See `docs/audits/exam-intelligence-gaps-2026-06-20.md`.
 - **AI chat response contract** — `/api/ai/chat` persists messages, but returns `reply` as a shaped message object. Any frontend surface that expects a plain text `reply` must be aligned before production.
 - **Real LLM provider behind `/api/ai/chat`** — responses are scripted (`scripted-v1`). Provider integration, prompt governance, and response-quality evaluation remain pending.
 - **Residual placeholder/static routes** — `placeholders.py` is still mounted for a small set of static/demo surfaces and an admin notification toggle compatibility path. Do not use it for new canonical behavior.

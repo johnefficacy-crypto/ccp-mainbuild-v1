@@ -75,6 +75,16 @@ Current verdict: **core arc complete; cleanup tier remains**.
 ## Exam intelligence / workspace UX cleanup findings
 
 These findings are confirmed against the current checkout and should remain visible until remediated.
+Full audit evidence: `docs/audits/exam-intelligence-gaps-2026-06-20.md`.
+
+### P0 runtime bugs
+
+| Area | Status | Notes |
+|---|---|---|
+| BUG-EI-1 `POST .../syllabus/propose` → 404 | PLANNED | `syllabus_mapper.py` queries `document_assets` (wrong table) instead of `syllabus_documents`. `document_assets` has no `exam_id` column; PostgREST returns empty list → 404 raised. Fix: change table name to `syllabus_documents` on both occurrences (~line 99 and ~line 503). Note: `ProposerError` and `propose_syllabus_mentions` are defined twice in the file; fix both copies or deduplicate first. |
+| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Fix requires design decision: query `syllabus_documents` by `exam_id` and use `trust_status`, or source extraction status from `document_processing_jobs`. This is the concrete manifestation of the "Document readiness extraction status NEEDS TARGETED RECHECK" item below — that item is now confirmed as a code bug, not just a suspicion. |
+
+### UX / surface cleanup
 
 | Area | Status | Notes |
 |---|---|---|
@@ -84,7 +94,13 @@ These findings are confirmed against the current checkout and should remain visi
 | Setup mutations governance | CLEANUP PENDING | Cycle create/edit use `useApiAction`; add phase, phase-date patch, and template promotion still call `api.post`/`api.patch` directly. |
 | Cycle Trust column | CLEANUP PENDING | Cycle Trust is still derived from cycle status (`active` → `locked`, otherwise `verified`) rather than a real trust lifecycle. |
 | Add-cycle product path | CLEANUP PENDING | Route redirects into workspace setup, but `AddCycleWizard.jsx` and direct tests remain. Decide whether to retire or re-promote it. |
-| Document readiness extraction status | NEEDS TARGETED RECHECK | `console_detail` still counts extracted docs by `extraction_status == "succeeded"`; earlier audit found upload/list flows may use different status fields. |
+| Document readiness extraction status | CONFIRMED BUG — see BUG-EI-2 | `console_detail::_documents()` queries wrong table and non-existent columns. No longer speculative. |
+| Raw IDs in ReviewQueueTable (UX-EI-1) | CLEANUP PENDING | `ReviewQueueTable.jsx:92` renders `{r.id}` without `operatorChrome.humanizeToken`. `SetupPanel.jsx:803` renders `ptError.phaseId` raw. `operatorChrome.js` pattern exists but these two sites violate it. |
+| Topics CMS loads all topics globally (UX-EI-2) | CLEANUP PENDING | `ExamIntelCms.jsx` `refTopic` descriptor has no `exam_id` filter; backend has no exam-scoped topics endpoint. All topics across all exams shown simultaneously — not maintainable at scale. |
+| OverviewPanel duplicates workspace header (UX-EI-3) | CLEANUP PENDING | `OverviewPanel.jsx:121–146` renders exam name, slug, type, lane, cadence, active, org, and family. `ExamWorkspace.jsx` SmartHeader already renders exam name, family, slug, type, and active status. Confirmed duplication. |
+| Bulk import JSON schema undocumented (UX-EI-4) | PLANNED | `ExamIntelCms.jsx:696` references a bulk-import endpoint; `BulkImportModal.jsx` exists. No in-repo docs describe the JSON/CSV schema, required field values, or whether cycle/phase must be pre-created. |
+| "Phases needing dates" missing cycle context (UX-EI-5) | CLEANUP PENDING | `SetupPanel.jsx:816–901` renders the section without showing which cycle the phase stubs belong to. Multi-cycle exams make this ambiguous. |
+| Competition metrics phase/category cutoffs unstructured (UX-EI-6) | DESIGN QUESTION | Migration 055 stores `cutoff_trend` and `vacancy_by_category` as opaque JSONB. No schema for the JSONB structure documented. Phase/category breakdown not structured in API or UI. |
 
 ## Backend CI / dependency gate
 
