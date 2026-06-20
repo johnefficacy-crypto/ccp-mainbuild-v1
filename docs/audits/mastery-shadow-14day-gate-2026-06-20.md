@@ -10,7 +10,6 @@ related_ops_doc: docs/ops/pr7_shadow_gate_results.md
 
 **Type:** Operator evidence + docs (immutable dated record)
 **Checked:** 2026-06-20
-**Branch:** `docs/mastery-shadow-14-day-gate`
 **Verdict:** START_CONDITION_NOT_MET
 
 This document records a **start-condition check**, not a completed gate
@@ -89,10 +88,17 @@ observation window opens.
 
 ## Validation Fingerprint
 
-The fingerprint covers 18 files (see `docs/ops/pr7_shadow_gate_results.md`
-for the full list).
+The fingerprint below belongs to the superseded PR-6 inspection baseline.
+The old 18-file set used in that inspection is no longer the canonical
+list: remaining Lane A code changes (allowlist / effective-mode
+implementation, error-pattern writer / schema remediation, and migration
+182) will modify safety-critical files not included in the old set. The
+canonical file list for any future observation window will be defined by
+`docs/ops/mastery_validation_fingerprint_manifest_v2.txt`, which has not
+been created yet and must not be frozen until all blocking PRs merge. No
+current fingerprint is approved as a PR-7 baseline.
 
-Computed with `sha256sum <18 files> | sha256sum`:
+Old PR-6 fingerprints computed with `sha256sum <file-list> | sha256sum`:
 
 | Point | SHA | Combined fingerprint |
 |-------|-----|---------------------|
@@ -113,11 +119,16 @@ fingerprinted set:
 | `tools/mastery_shadow_analysis/shadow_analysis.py` | PR #723 |
 
 This means the PR-6 inspection fingerprint is superseded. It does **not**
-mean an observation window failed — no window was ever opened. Once PR-6
-PASS is obtained, the operator must compute a new baseline fingerprint at
-the candidate deploy SHA before starting the clock.
+mean an observation window failed — no window was ever opened. No new
+baseline fingerprint can be established until
+`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` is created and
+all blocking Lane A PRs (allowlist, error-pattern, migration 182) have
+merged. Once all prerequisites in `docs/ops/pr7_shadow_gate_results.md`
+are satisfied, the operator must compute a new baseline fingerprint using
+that manifest at the confirmed candidate SHA before starting the clock.
 
-**Required action:** establish new baseline fingerprint after PR-6 PASS.
+**Required action:** complete all Lane A prerequisites; freeze the v2
+manifest; then establish new baseline fingerprint after PR-6 PASS.
 
 ---
 
@@ -212,8 +223,10 @@ live DB credentials. `attempt_derivation.py` is present in the repo.
    verdict with Gate 9 confirmed and `FF_MOCK_MASTERY_WRITES=shadow`.
 3. Operator confirms Render deployed SHA (B) == main SHA (A); records
    exact UTC deploy timestamp as `window_start`.
-4. Compute new baseline fingerprint at `window_start` SHA over the 18
-   fingerprinted files; record in `docs/ops/pr7_shadow_gate_results.md`.
+4. Compute new baseline fingerprint at `window_start` SHA using the
+   files listed in `docs/ops/mastery_validation_fingerprint_manifest_v2.txt`
+   (must be created and frozen before this step); record in
+   `docs/ops/pr7_shadow_gate_results.md`.
 5. Run CLI weekly (and at day 14) from the operator environment with DB
    credentials using `--from-utc {window_start} --to-utc {now}`.
 6. At `window_start + 14 full days`, run final gate; capture JSON; attach

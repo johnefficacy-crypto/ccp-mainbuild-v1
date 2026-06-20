@@ -42,26 +42,51 @@ validation fingerprint set:
 
 This means the PR-6 inspection fingerprint
 (`6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`) is
-superseded. Once PR-6 PASS is obtained, the operator must compute a new
-baseline fingerprint over the 18 fingerprinted files at the candidate SHA
-and record it here before starting the clock.
+superseded. No new baseline fingerprint will be established until
+`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` is created and
+frozen (see Prerequisites below). Once all prerequisites are met, the
+operator must compute a new baseline fingerprint using the files listed in
+that manifest at the approved candidate SHA and record it here before
+starting the clock.
 
 ---
 
 ## Prerequisites (all required before window opens)
 
-1. Deploy the live canary user allowlist (Gate 9 — currently BLOCKED).
-2. Run the full 12-gate PR-6 operator session; confirm Gate 9 passes and
-   `FF_MOCK_MASTERY_WRITES=shadow` for the run.
-3. Operator confirms Render deployed SHA (B) matches main SHA (A).
-4. Record exact UTC deploy timestamp as `window_start`.
-5. Compute and record new validation fingerprint at `window_start` SHA.
+Complete in order — each step depends on those above it.
+
+1. **Lane A code merges (blocking):** The user allowlist /
+   effective-mode implementation PR and the error-pattern writer /
+   schema remediation PR must both merge to `main` before any
+   fingerprint manifest is frozen.
+2. **Migration 182 deployment:** Dry-run migration 182 with
+   `BEGIN` / `ROLLBACK`; confirm anon / authenticated roles cannot
+   `EXECUTE` the three RPCs; apply to the target environment.
+3. **Freeze the v2 fingerprint manifest:** Create
+   `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` listing
+   all safety-critical runtime and migration files, including the
+   allowlist, error-pattern, and migration 182 files added in steps 1–2.
+   This manifest must be approved before any baseline fingerprint is
+   computed.
+4. **PR-6 clean operator run:** Run the full 12-gate PR-6 operator
+   session on one pinned SHA; confirm Gate 9 passes (allowlist deployed
+   and verified) and `FF_MOCK_MASTERY_WRITES=shadow` for the run.
+5. **Render SHA confirmation:** Operator confirms Render deployed SHA
+   (B) matches the approved candidate main SHA (A).
+6. **FF confirmation:** Confirm `FF_MOCK_MASTERY_WRITES=shadow`
+   continuously from deploy time.
+7. **Establish window_start:** Record exact UTC deploy timestamp as
+   `window_start`. Only after the above is complete.
+8. **Compute baseline fingerprint:** Using the files listed in
+   `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` at the
+   confirmed `window_start` SHA; record hash here and in the window
+   record below.
 
 ---
 
 ## Gate Thresholds
 
-All thresholds must pass before proceeding to PR8 (live canary plan).
+All thresholds must pass before the PR-8 bounded live-canary plan becomes executable.
 Do not use removed metrics (sign agreement, task overlap) — they are
 invalid and were removed by PR-5A.
 
@@ -136,9 +161,8 @@ evidence only — final verdict uses the full 14-day window run.
 
 | Date | Days | Attempts | Topic decisions | exact_match_pct | coverage_pct | Status |
 |------|------|----------|-----------------|-----------------|--------------|--------|
-| | 7 | | | | | |
-| | 7 | | | | | |
-| | 14 (final) | | | | | |
+| | 7 (early warning) | | | | | |
+| | 14 or later (final) | | | | | |
 
 ### correction-parity weekly log
 
@@ -203,7 +227,7 @@ violation blocks PASS verdict.
 - [ ] correction-parity: exact_parity_pct = 100.0 (exit 0): **PASS / FAIL**
 - [ ] All additional PASS criteria met: **PASS / FAIL**
 - [ ] No unresolved outliers: **PASS / FAIL**
-- [ ] Approved to proceed to PR8 (live canary): **YES / NO**
+- [ ] PR-8 bounded live-canary plan is executable: **YES / NO**
 
 Do NOT claim 14-day PASS without attaching the JSON output from a
 completed operator run with DB credentials.
