@@ -1,6 +1,6 @@
 # Career Copilot remaining-work PR plan
 
-Last planned from repo state: 2026-06-20 at `11d188ef` (current main / dispatch branch `work`).
+Last planned from repo state: 2026-06-20 at `main @ 11d188ef`.
 
 This plan decomposes the remaining Career Copilot work into small PRs that can
 be assigned to simultaneous agents without overlapping write scopes. Status
@@ -158,10 +158,10 @@ Run these as separate PRs because they touch different user-facing surfaces:
 | B3a registry row expansion / dead columns | registry/list components and tests only | CL-2. |
 | B3b remove CMS `+ New guided exam` CTA | `ExamIntelCms.jsx` and its tests only | CL-3. |
 | B3c collapsible lifecycle banner | banner component/tests only | CL-4. |
-| B3d-2 Console Work Queue action hierarchy | `ConsoleWorkQueue` surface and targeted tests only | CL-5; ensure the queue has at most one screen-level primary CTA and demote selected filter pills away from primary-action styling. |
-| B3d-3 Guided Exam Wizard primary-action hierarchy | guided exam wizard surfaces and targeted tests only | CL-5; ensure wizard-level primary actions do not compete with local card/form submission controls. |
-| B3d-close cross-surface CL-5 closure audit | audit/status docs and any remaining tiny targeted test updates only | CL-5 closure gate; verify all Exam Governance screens after B3d-2 and B3d-3 land before changing checklist status. |
-| B4 / CL-6b remove dormant console presentation plumbing | `ExamWorkspaceContext`, `OverviewPanel`, `ReviewActivatePanel`, `ExamPublishImpact` usage/tests, and checklist row only | CL-6b; delete, reuse, or redesign the old console-variant presentation contract without changing active console routes. |
+| B3d-2 Console Work Queue action hierarchy | `ConsoleWorkQueue.jsx`, targeted console tests, and existing admin-console button styling only | CL-5; the queue has no screen-level primary CTA. Pressed workflow filters use selected-state styling rather than primary-action styling. Repeated `Open console` and `Advanced workspace` links are contextual row actions, not screen primaries. |
+| B3d-3 Guided Exam Wizard primary-action hierarchy | `GuidedExamWizard.jsx` and its targeted tests only | CL-5; Organization mode selectors must use pressed-state styling rather than primary-action styling. The forward or create action remains the sole primary action on each wizard step. |
+| B3d-close cross-surface CL-5 closure audit | audit and status documentation only | CL-5 closure gate; inspect current `main` after B3d-2 and B3d-3 merge. No runtime or test changes are allowed. If any violation remains, keep CL-5 `CLEANUP PENDING` and open a separate implementation PR for the affected screen. Mark CL-5 complete only when the audited repository state already satisfies the rule. |
+| B4 / CL-6b remove dormant console presentation plumbing | `ExamWorkspaceContext.jsx`, `OverviewPanel.jsx`, `ReviewActivatePanel.jsx`, orphaned `ExamPublishImpact.jsx`, its isolated test, targeted workspace/console regression tests, and the checklist row only | CL-6b; remove the unused provider `variant`, remove dormant console-only presentation branches, delete orphaned `ExamPublishImpact` and its isolated test, and preserve the active standalone workspace and `ExamActionConsole` routes. |
 
 #### CL-5 one-primary-per-screen rule
 
@@ -170,7 +170,11 @@ Run these as separate PRs because they touch different user-facing surfaces:
 - Repeated table-row actions are contextual, not screen primaries.
 - Local form submission buttons are scoped to their form/card and are not automatically competing screen-level CTAs.
 - `SetupPanel` redesign remains owned by Lane C and must not be absorbed into B3d.
-- Do not mark CL-5 complete until B3d-close verifies the cross-surface audit after B3d-2 and B3d-3 land.
+- B3d-close must not modify runtime code.
+- B3d-close must not modify tests.
+- B3d-close must not fix violations discovered during the audit.
+- Discovered violations require a separate implementation PR.
+- CL-5 remains pending until the audit passes against current `main` after B3d-2 and B3d-3 land.
 
 ## Lane C — Exam workspace setup/timeline UX
 
