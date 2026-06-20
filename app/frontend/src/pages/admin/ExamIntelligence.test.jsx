@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 // Mock api module before importing the component.
@@ -514,4 +514,70 @@ test("active_state change fires exactly one load (single dispatch)", async () =>
 
   const after = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
   expect(after - before).toBe(1);
+});
+
+
+// ── B3c: lifecycle banner disclosure ──────────────────────────────────────
+
+test("lifecycle banner starts collapsed and expands to show scoped contract copy", async () => {
+  wrap(<AdminExamIntelligence />);
+
+  expect(screen.getByTestId("admin-exam-intel-safety")).toBeInTheDocument();
+  expect(screen.getByTestId("admin-exam-intel-safety-content")).not.toBeVisible();
+
+  const toggle = screen.getByTestId("admin-exam-intel-safety-toggle");
+  expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+  const content = screen.getByTestId("admin-exam-intel-safety-content");
+
+  fireEvent.click(toggle);
+  const contentScope = within(content);
+  expect(content).toBeVisible();
+  expect(contentScope.getByText(/reviewed/)).toBeInTheDocument();
+  expect(contentScope.getByText(/locked/)).toBeInTheDocument();
+  expect(contentScope.getByText(/verified/)).toBeInTheDocument();
+  expect(content.textContent).toMatch(/Pending and rejected/);
+  expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+  fireEvent.click(toggle);
+
+  expect(content).not.toBeVisible();
+  expect(toggle).toHaveAttribute("aria-expanded", "false");
+});
+
+test("lifecycle banner toggle does not refetch data", async () => {
+  wrap(<AdminExamIntelligence />);
+  await waitFor(() => {
+    expect(api.get.mock.calls.some(([url]) => url.includes("/overview"))).toBe(true);
+  });
+
+  const callsBefore = api.get.mock.calls.length;
+  fireEvent.click(screen.getByTestId("admin-exam-intel-safety-toggle"));
+
+  expect(api.get.mock.calls.length).toBe(callsBefore);
+});
+
+test("tab switches keep a single lifecycle banner with a working toggle", async () => {
+  api.get.mockImplementation((url) =>
+    url.includes("/exams")
+      ? Promise.resolve(makeExamsResponse())
+      : Promise.resolve(makeOverviewResponse())
+  );
+
+  wrap(<AdminExamIntelligence />);
+  expect(screen.getAllByTestId("admin-exam-intel-safety")).toHaveLength(1);
+
+  await act(async () => { await switchToExamsTab(); });
+  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+  expect(screen.getAllByTestId("admin-exam-intel-safety")).toHaveLength(1);
+
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("exam-intel-tab-overview"));
+  });
+  expect(screen.getAllByTestId("admin-exam-intel-safety")).toHaveLength(1);
+
+  fireEvent.click(screen.getByTestId("admin-exam-intel-safety-toggle"));
+  const content = screen.getByTestId("admin-exam-intel-safety-content");
+  expect(within(content).getByText(/reviewed/)).toBeInTheDocument();
+  expect(screen.getByTestId("admin-exam-intel-safety-toggle")).toHaveAttribute("aria-expanded", "true");
 });
