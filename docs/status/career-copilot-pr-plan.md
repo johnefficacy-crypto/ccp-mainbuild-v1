@@ -160,7 +160,7 @@ Run these as separate PRs because they touch different user-facing surfaces:
 | B3c collapsible lifecycle banner | banner component/tests only | CL-4. |
 | B3d-2 Console Work Queue action hierarchy | `ConsoleWorkQueue.jsx`, targeted console tests, and existing admin-console button styling only | CL-5; the queue has no screen-level primary CTA. Pressed workflow filters use selected-state styling rather than primary-action styling. Repeated `Open console` and `Advanced workspace` links are contextual row actions, not screen primaries. |
 | B3d-3 Guided Exam Wizard primary-action hierarchy | `GuidedExamWizard.jsx` and its targeted tests only | CL-5; Organization mode selectors must use pressed-state styling rather than primary-action styling. The forward or create action remains the sole primary action on each wizard step. |
-| B3d-close cross-surface CL-5 closure audit | audit and status documentation only | CL-5 closure gate; inspect current `main` after B3d-2 and B3d-3 merge. No runtime or test changes are allowed. If any violation remains, keep CL-5 `CLEANUP PENDING` and open a separate implementation PR for the affected screen. Mark CL-5 complete only when the audited repository state already satisfies the rule. |
+| B3d-close cross-surface CL-5 closure audit | audit and status documentation only | **COMPLETE in this checkout.** Audit passed across Registry, Work Queue, Action Console, Guided Wizard, Workspace Smart Header, and Advanced Import / Repair; CL-5 is marked `CODE PRESENT IN THIS CHECKOUT`. |
 | B4 / CL-6b remove dormant console presentation plumbing | `ExamWorkspaceContext.jsx`, `OverviewPanel.jsx`, `ReviewActivatePanel.jsx`, orphaned `ExamPublishImpact.jsx`, its isolated test, targeted workspace/console regression tests, and the checklist row only | CL-6b; remove the unused provider `variant`, remove dormant console-only presentation branches, delete orphaned `ExamPublishImpact` and its isolated test, and preserve the active standalone workspace and `ExamActionConsole` routes. |
 
 #### CL-5 one-primary-per-screen rule
@@ -174,7 +174,7 @@ Run these as separate PRs because they touch different user-facing surfaces:
 - B3d-close must not modify tests.
 - B3d-close must not fix violations discovered during the audit.
 - Discovered violations require a separate implementation PR.
-- CL-5 remains pending until the audit passes against current `main` after B3d-2 and B3d-3 land.
+- CL-5 is complete in this checkout after the B3d-close audit passed against current `main` after B3d-2 and B3d-3 landed.
 
 ## Lane C — Exam workspace setup/timeline UX
 
