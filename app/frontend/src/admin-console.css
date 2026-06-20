@@ -785,6 +785,11 @@
 .oc .btn-primary:hover { background: #2C2823; transform: none; }
 .oc .btn-ghost { background: transparent; border-color: var(--rule); color: var(--ink-soft); }
 .oc .btn-ghost:hover { background: var(--paper-sunk); color: var(--ink); }
+.oc .btn.filter-chip[aria-pressed="true"] {
+  background: var(--paper-sunk);
+  border-color: var(--ink-soft);
+  color: var(--ink);
+}
 
 .oc .pill {
   font-family: var(--fmono);

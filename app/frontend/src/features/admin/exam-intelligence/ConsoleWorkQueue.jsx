@@ -227,7 +227,7 @@ export default function ConsoleWorkQueue() {
             <button
               key={chip.value || "all"}
               type="button"
-              className={`btn ${active ? "btn-primary" : "btn-ghost"}`}
+              className="btn ghost filter-chip"
               aria-pressed={active}
               onClick={() => setFilter("workflow", chip.value)}
               data-testid={`console-chip-${chip.value || "all"}`}
@@ -300,7 +300,7 @@ export default function ConsoleWorkQueue() {
           const active = workflow === w.value;
           return (
             <button key={w.value} type="button"
-                    className={`btn ${active ? "btn-primary" : "btn-ghost"}`}
+                    className="btn ghost filter-chip"
                     aria-pressed={active}
                     onClick={() => setFilter("workflow", w.value)}
                     data-testid={`console-chip-${w.value}`}>
@@ -411,9 +411,9 @@ export default function ConsoleWorkQueue() {
                     <td style={{ textAlign: "right" }}>
                       <span className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
                         <Link to={`/admin/exam-intelligence/console/${encodeURIComponent(e.id)}`}
-                              className="btn btn-primary" data-testid={`console-open-${e.id}`}>Open console</Link>
+                              className="btn" data-testid={`console-open-${e.id}`}>Open console</Link>
                         <Link to={`/admin/exam-intelligence/workspace/${encodeURIComponent(e.id)}`}
-                              className="btn btn-ghost" style={{ color: "var(--ink-mute)" }}
+                              className="btn ghost" style={{ color: "var(--ink-mute)" }}
                               data-testid={`console-workspace-${e.id}`}>Advanced workspace</Link>
                       </span>
                     </td>
