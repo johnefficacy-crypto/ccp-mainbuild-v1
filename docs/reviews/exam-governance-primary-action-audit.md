@@ -2,6 +2,10 @@
 
 Date: 2026-06-20
 
+Audited checkout: `work @ aaa9c859` (local dispatch SHA; no fetch/rebase/gh per offline freshness instructions).
+
+Freshness proof: `5e40b40eee011ff9d8abbb1b8b06efa7e6db71b5` is an ancestor of this checkout; B3d-1/B3d-2/B3d-3 evidence is present locally (`registry-open-console`, Guided Wizard `aria-pressed` organization selectors, and checklist notes for Registry / Work Queue / Guided Wizard).
+
 Scope: B3d-close / CL-5 cross-surface audit. Runtime code was inspected read-only; this document records evidence only.
 
 ## Decision
@@ -56,9 +60,9 @@ Rule applied: a screen may expose at most one screen-level primary CTA; pressed 
 
 - **Classification:** The header has no competing guided-create CTA; the visible controls are **tertiary/advanced navigation**/repair-surface utilities and local create/import controls.
 - **Evidence:** The Advanced Import / Repair header text recommends the normal `Exam Governance Console` and `Create-exam wizard` outside this power-user page, but renders no guided-create CTA in the header. Evidence: `app/frontend/src/pages/admin/studyos/ExamIntelCms.jsx:994-1018`.
-- **Evidence:** The first controls after the header are the entity selector plus local `Reload` and `New row` buttons for this repair surface; no `+ New guided exam` or other guided-create CTA appears there. Evidence: `app/frontend/src/pages/admin/studyos/ExamIntelCms.jsx:1020-1045`.
+- **Evidence:** The first controls after the header are the entity selector plus local neutral repair controls: `Reload`, `New row`, and `Bulk import`, all rendered as `className="btn small"`; no `+ New guided exam` or other guided-create CTA appears there. Evidence: `app/frontend/src/pages/admin/studyos/ExamIntelCms.jsx:1020-1057`.
 - **Required result:** Advanced Import / Repair has no competing guided-create CTA. **Satisfied.**
 
 ## CL-6b note
 
-CL-6b was intentionally not audited for closure here and remains `CLEANUP PENDING` byte-for-byte in the checklist.
+CL-6b is outside this audit’s decision scope and remains `CLEANUP PENDING` in this local checkout. This PR does not alter the CL-6b implementation or checklist evidence.
