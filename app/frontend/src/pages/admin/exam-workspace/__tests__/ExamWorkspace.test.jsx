@@ -445,6 +445,7 @@ describe("ExamWorkspace standalone review surface (B2)", () => {
       </MemoryRouter>,
     );
     await waitFor(() => screen.getByRole("heading", { name: /Readiness & Activation/i }));
+    expect(screen.getByText("40% ready")).toBeTruthy();
     const readinessCalls = api.get.mock.calls.filter(([url]) => url.includes("/readiness"));
     expect(readinessCalls).toHaveLength(1);
   });
