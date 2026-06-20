@@ -2,9 +2,12 @@
 owner: ops
 status: gate_failed
 validation_date: 2026-06-19
-environment: production (code-only; live gates not executed)
+environment: repository-inspection
+target_environment: production (operator validation pending)
 source_of_truth: code_inspection + operator_pending
-verified_main_sha: ba3ea3516f10d07d4708a12942e03162d2f2da50
+candidate_sha: ba3ea3516f10d07d4708a12942e03162d2f2da50
+note: SHA verified at inspection time; branch is 4 commits behind
+      current main; recompute fingerprint after rebasing onto candidate
 validation_fingerprint: 6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a
 related_ops_doc: docs/ops/pr6_final_candidate_revalidation.md
 prior_failed_report: docs/audits/ssc-cgl-generated-mock-shadow-validation-2026-06-18.md
@@ -19,7 +22,7 @@ prior_failed_report: docs/audits/ssc-cgl-generated-mock-shadow-validation-2026-0
 > and no FF changes were made.
 >
 > **Provenance.** All findings derive from static code inspection of
-> `origin/main` SHA `ba3ea3516f10d07d4708a12942e03162d2f2da50`. This document
+> `main as of 2026-06-19 inspection` SHA `ba3ea3516f10d07d4708a12942e03162d2f2da50`. This document
 > PR made no database queries, called no live APIs, and altered no feature
 > flags.
 >
@@ -180,9 +183,9 @@ CODE-FIXED, VALIDATION PENDING`)
 **Was:** `"200.0"` rejected by the integer `total_marks` column (Postgres 22P02);
 compatibility row absent.
 
-**Fix verified:** `mastery_writer.py` uses `_to_integral_marks` in both initial
-compat-row insert and retry emission. (Checklist: `DEFECT-005A total_marks
-coercion | CODE-FIXED, VALIDATION PENDING`)
+**Fix verified:** `mock_engine.py:67` — `_to_integral_marks` is used in both
+initial compat-row insert and retry emission. (Checklist: `DEFECT-005A
+total_marks coercion | CODE-FIXED, VALIDATION PENDING`)
 
 ---
 

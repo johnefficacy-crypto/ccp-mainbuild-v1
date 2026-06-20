@@ -61,7 +61,7 @@ code-fixed on `main`. Live proof pending Gate 9 clearance.
 | DEFECT-001 | Untouched topics received negative deltas | `mastery_writer.py` — `selected_option_id is not None` as attempted source | — |
 | DEFECT-002 | Shadow rows duplicated on resubmit | `mastery_writer.py` — conflict-ignore upsert | `180_mock_mastery_shadow_idempotency.sql` |
 | DEFECT-003 | Classifications not propagated to writer | `mastery_writer.py` — loads `mock_attempt_response_classification` | — |
-| DEFECT-005A | `total_marks` numeric coercion failure | `mastery_writer.py` — `_to_integral_marks` | — |
+| DEFECT-005A | `total_marks` numeric coercion failure | `mock_engine.py:67` — `_to_integral_marks` | — |
 
 ---
 
@@ -84,13 +84,18 @@ code-fixed on `main`. Live proof pending Gate 9 clearance.
 
 ### B. Correction-preview classification parity (PR4)
 
-- [ ] `GET /mocks/{id}/mastery-preview` returns 200 with `correction_drafts`
-- [ ] Each entry has a canonical `category` (one of five)
-- [ ] `classification_counts` keys match `error_type` in `mock_attempt_response_classification`
+- [ ] `GET /mocks/{id}/mastery-preview` returns 200; validate all six sections:
+  - `response_counts` — four buckets sum to total frozen question count: `selected`, `marked_unanswered`, `visited_unanswered`, `untouched`
+  - `classification_coverage` — `ready = true`
+  - `persisted_shadow_decision` — `rows` present, `duplicate_keys = []`
+  - `replay_consistency` — `status = MATCH`, zero mismatches/missing/extra
+  - `attempt_evidence_corrections` — deterministic corrections (no user state); each entry has a canonical `category` (one of five)
+  - `current_state_preview` — labeled mutable; not used for PASS/FAIL
+- [ ] `classification_counts` keys match `error_type` values in `mock_attempt_response_classification` for that attempt
 
 ### C. Deterministic correction categories
 
-- [ ] Preview endpoint called twice → identical `correction_drafts`
+- [ ] Preview endpoint called twice → identical `attempt_evidence_corrections`
 
 ### D. Null-selection behavior
 
@@ -126,7 +131,7 @@ code-fixed on `main`. Live proof pending Gate 9 clearance.
 | Shadow analysis JSON | Operator-held (outside repo) |
 | Code fingerprint | Recorded in this file and in `docs/audits/2026-06-19-final-candidate-revalidation.md` |
 
-**Baseline SHA:** `ba3ea3516f10d07d4708a12942e03162d2f2da50` (current main; deployed Render SHA must be confirmed A == B by operator)
+**Baseline SHA:** `ba3ea3516f10d07d4708a12942e03162d2f2da50` (main as of 2026-06-19 inspection; deployed Render SHA must be confirmed A == B by operator)
 **Validation fingerprint:** `6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`
 **Gate 9 failure date:** 2026-06-19
 **Validated by:** Remote docs agent (code-level only); full operator run blocked by Gate 9
