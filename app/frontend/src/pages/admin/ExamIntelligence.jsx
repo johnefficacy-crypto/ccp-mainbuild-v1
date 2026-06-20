@@ -173,6 +173,8 @@ export default function AdminExamIntelligence() {
         title="Lifecycle-gated contract"
         testId="admin-exam-intel-safety"
         tone="clay"
+        collapsible
+        defaultOpen={false}
       >
         User-facing exam intelligence (Study OS today view) reads only rows at
         the right lifecycle stage:{" "}
