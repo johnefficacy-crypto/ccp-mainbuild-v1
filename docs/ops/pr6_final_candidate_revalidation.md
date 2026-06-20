@@ -1,7 +1,8 @@
 # PR6: Final Study OS Shadow Candidate Revalidation
 
 **Type:** Operator validation  
-**Prerequisite:** PRs 2–5 merged and deployed together on one fixed SHA  
+**Prerequisite:** PRs 2–5 merged and deployed together on one fixed SHA;
+  PR-4 (`attempt_derivation.py`) present for shadow-replay and correction-parity gates  
 **Status:** Pending
 
 ## Purpose
@@ -10,10 +11,24 @@ Validate on one pinned deployment SHA that all system invariants hold before
 starting the 14-day shadow observation window. This becomes the **baseline SHA**
 for the shadow gate.
 
+## Shadow Gate Tool
+
+The shadow analysis tool (`tools/mastery_shadow_analysis/shadow_analysis.py`)
+now implements truthful gate logic. Old thresholds (sign agreement ≥ 80%,
+task overlap ≥ 60%) are **removed** — they relied on invalid comparators or
+cross-population topic identity that is not available. The valid gates are:
+
+- `shadow-replay`: exact_match_pct = 100.0, coverage_pct = 100.0, zero violations
+- `correction-parity`: exact_parity_pct = 100.0 (min 10 decisions)
+
+See docs/ops/pr7_shadow_gate_results.md for the full threshold table.
+
 ## Pre-conditions
 
 - PRs 2 (source-based writer authority), 3 (real shadow analysis), 4 (correction
   preview), and 5 (correction uniqueness) are all deployed on the same SHA.
+- PR-4 (`app/backend/app/study_os/attempt_derivation.py`) is present on the
+  deployed SHA (required for shadow-replay and correction-parity subcommands).
 - `FF_MOCK_MASTERY_WRITES=shadow` is active.
 - At least one platform attempt has completed since the SHA deployed.
 
@@ -54,11 +69,23 @@ for the shadow gate.
 - [ ] `mock_mastery_shadow` row count for that `attempt_id` does not increase
       (unique index on `attempt_id, topic_id, flag_state` prevents duplicates).
 
-### F. Automatic scheduler drain (see PR1 checklist)
+### F. Shadow-replay gate (PR-5A tool)
+
+- [ ] Run: `python tools/mastery_shadow_analysis/shadow_analysis.py --json shadow-replay --days 1`
+- [ ] Exit code 0 (PASS or FAIL) or 3 (INSUFFICIENT_DATA if <20 attempts yet).
+      Exit code 2 (PREREQUISITE_MISSING) means attempt_derivation.py is absent — fix first.
+- [ ] Attach JSON output to this PR.
+
+### G. Correction-parity gate (PR-5A tool)
+
+- [ ] Run: `python tools/mastery_shadow_analysis/shadow_analysis.py --json correction-parity --days 1`
+- [ ] Attach JSON output to this PR.
+
+### H. Automatic scheduler drain (see PR1 checklist)
 
 - [ ] Scheduler drain evidence captured per `docs/ops/pr1_scheduler_drain_verification.md`.
 
-### G. No live-table mutation
+### I. No live-table mutation
 
 - [ ] `user_topic_mastery` rows for the test users were **not** updated since the
       SHA deployed (shadow mode must not write live mastery).
@@ -67,7 +94,7 @@ for the shadow gate.
 - [ ] `study_tasks` has no new correction-task rows from the platform submit flow
       (corrections are live-only; shadow mode must not draft them into study_tasks).
 
-### H. Compatibility-row parity
+### J. Compatibility-row parity
 
 - [ ] `mock_tests` row exists for each validated platform attempt
       (`source_type='platform_attempt'`, `trust_level='platform_verified'`).
@@ -79,7 +106,8 @@ for the shadow gate.
 |---|---|
 | HTTP response screenshots / curl output | Attach to this PR |
 | SQL query results | Attach to this PR |
-| Shadow analysis JSON output | Attach to this PR |
+| shadow-replay JSON output | Attach to this PR |
+| correction-parity JSON output | Attach to this PR |
 | Baseline SHA | Record below |
 
 **Baseline SHA:** `______________________________`  
