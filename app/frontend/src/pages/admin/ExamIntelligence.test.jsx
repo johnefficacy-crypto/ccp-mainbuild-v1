@@ -523,14 +523,14 @@ test("lifecycle banner starts collapsed and expands to show scoped contract copy
   wrap(<AdminExamIntelligence />);
 
   expect(screen.getByTestId("admin-exam-intel-safety")).toBeInTheDocument();
-  expect(screen.queryByTestId("admin-exam-intel-safety-content")).toBeNull();
+  expect(screen.getByTestId("admin-exam-intel-safety-content")).not.toBeVisible();
 
   const toggle = screen.getByTestId("admin-exam-intel-safety-toggle");
   expect(toggle).toHaveAttribute("aria-expanded", "false");
 
-  fireEvent.click(toggle);
-
   const content = screen.getByTestId("admin-exam-intel-safety-content");
+
+  fireEvent.click(toggle);
   const contentScope = within(content);
   expect(content).toBeVisible();
   expect(contentScope.getByText(/reviewed/)).toBeInTheDocument();
@@ -541,7 +541,7 @@ test("lifecycle banner starts collapsed and expands to show scoped contract copy
 
   fireEvent.click(toggle);
 
-  expect(screen.queryByTestId("admin-exam-intel-safety-content")).toBeNull();
+  expect(content).not.toBeVisible();
   expect(toggle).toHaveAttribute("aria-expanded", "false");
 });
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { ChevronDown, ShieldAlert } from "lucide-react";
 
 // Shared admin safety banner — styled after the prototype's persona warning
@@ -15,6 +15,10 @@ export default function AdminSafetyBanner({
   defaultOpen = false,
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const generatedId = useId().replace(/:/g, "");
+  const contentId = `admin-safety-banner-${generatedId}-content`;
+  const toggleTestId = testId ? `${testId}-toggle` : undefined;
+  const contentTestId = testId ? `${testId}-content` : undefined;
   const toneClass =
     tone === "rose"
       ? "border-dashed border-[#D9B4A6] bg-[#F2DDD6]"
@@ -39,8 +43,6 @@ export default function AdminSafetyBanner({
     );
   }
 
-  const contentId = `${testId}-content`;
-
   return (
     <div
       role="note"
@@ -54,7 +56,7 @@ export default function AdminSafetyBanner({
           className="group flex w-full items-center justify-between gap-3 text-left"
           aria-expanded={open}
           aria-controls={contentId}
-          data-testid={`${testId}-toggle`}
+          data-testid={toggleTestId}
           onClick={() => setOpen((current) => !current)}
         >
           <span className={`eyebrow ${titleColor === "text-[#7A3925]" ? "!text-[#7A3925]" : ""}`}>{title}</span>
@@ -63,11 +65,9 @@ export default function AdminSafetyBanner({
             aria-hidden="true"
           />
         </button>
-        {open ? (
-          <div id={contentId} data-testid={contentId} className={`mt-1.5 ${bodyColor}`}>
-            {children}
-          </div>
-        ) : null}
+        <div id={contentId} data-testid={contentTestId} hidden={!open} className={`mt-1.5 ${bodyColor}`}>
+          {children}
+        </div>
       </div>
     </div>
   );
