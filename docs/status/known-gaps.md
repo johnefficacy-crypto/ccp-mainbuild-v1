@@ -1,8 +1,8 @@
 ---
 owner: ops
 status: live
-last_verified_against_code: 2026-06-17
-last_modified: 2026-06-17
+last_verified_against_code: 2026-06-20
+last_modified: 2026-06-20
 source_of_truth: code
 related_code:
   - app/backend
@@ -27,6 +27,11 @@ treating them as open work.
 - **Blog CMS admin API backend auth** — `/api/admin/blogs*` requires backend auth and permissioned mutations.
 - **OCR/Tesseract startup guard** — importing `server.py` is no longer blocked by a missing Tesseract binary.
 - **Subscription active-row invariant** — duplicate active/past_due subscription rows are retired by the unique active-row migration.
+- **Community reply vote** — `POST …/replies/{id}/vote` is now DB-backed in `community_runtime.py`; the old seed-memory handler in `community_people.py` no longer applies.
+- **Community admin "Hide" action** — `admin_resolve_community_flag` with `action="hide"` now flips the target entity's `status="hidden"` before updating the report row.
+- **Mentor badge crash** — `MentorsScreen.jsx` now applies an `adaptMentor()` adapter that fills `badge`, `color`, `blurb`, and `served` before rendering, preventing `TypeError` on missing fields.
+- **Community counter races** — five atomic RPC functions in migration `089_community_counter_rpcs.sql` replace client-side read-modify-write; all counter update sites route through `_rpc_inc`.
+- **`community_people` router** — `community_people.py` was deleted; `server.py` now serves all community routes exclusively from `community_runtime_router`.
 
 ## Open contract/runtime gaps
 

@@ -1,6 +1,6 @@
 # Career Copilot remaining-work PR plan
 
-Last planned from repo state: 2026-06-20 at `main @ 11d188ef`.
+Last planned from repo state: 2026-06-20 at `main @ a2ded8c`.
 
 This plan decomposes the remaining Career Copilot work into small PRs that can
 be assigned to simultaneous agents without overlapping write scopes. Status

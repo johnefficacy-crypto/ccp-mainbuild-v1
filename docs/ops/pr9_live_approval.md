@@ -12,11 +12,31 @@ is approved and merged.
 
 ### Shadow Gate (PR7)
 
+**Note:** The previously listed metrics (sign agreement ≥ 80%, task overlap ≥ 60%) were
+invalidated and removed from PR-7. See `docs/ops/pr7_shadow_gate_results.md § REMOVED gates`.
+Use only the metrics below.
+
+#### shadow-replay gate
+
 | Metric | Required | Actual | Pass? |
 |--------|----------|--------|-------|
-| Sign agreement (14d) | ≥ 80% | | |
-| Task overlap (14d) | ≥ 60% | | |
-| Material outliers | 0 | | |
+| distinct_attempt_count | ≥ 20 | | |
+| topic_decision_count | ≥ 50 | | |
+| exact_match_pct | 100.0 | | |
+| coverage_pct | 100.0 | | |
+| missing_count | 0 | | |
+| extra_count | 0 | | |
+| mismatch_count | 0 | | |
+| duplicate_key_count | 0 | | |
+| invariant_violations | 0 | | |
+| classification_not_ready_count | 0 | | |
+
+#### correction-parity gate
+
+| Metric | Required | Actual | Pass? |
+|--------|----------|--------|-------|
+| decision_count | ≥ 10 | | |
+| exact_parity_pct | 100.0 | | |
 
 Attach: `pr7_shadow_gate_results.md` and raw `--json` outputs.
 

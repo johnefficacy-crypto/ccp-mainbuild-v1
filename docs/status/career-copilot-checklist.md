@@ -1,6 +1,6 @@
 # Career Copilot checklist — repo source of record
 
-Last repo verification: 2026-06-20 at `main @ 11d188ef`.
+Last repo verification: 2026-06-20 at `main @ a2ded8c`.
 
 This checklist replaces chat-only / UI-only status snippets. Keep it current in the same PR as any code change or decision that changes one of these statuses.
 
