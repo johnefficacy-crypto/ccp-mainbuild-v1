@@ -1,10 +1,8 @@
 /**
  * ExamGovernanceConsole — Wave 4.6A shell.
  *
- * Additive, FE-only governance console that frames the EXISTING exam
- * workspace inside a thin shell. It does not decompose, fork, or modify any
- * workspace panel — it mounts the workspace as-is, scoped to the exam in the
- * URL.
+ * Governance console that shows the work queue or focused per-exam action
+ * console for the exam in the URL.
  *
  * Locks honored:
  *   D-B  selected-exam = URL single source of truth (useSelectedExamId reads
@@ -12,12 +10,11 @@
  *   D-C  route = /admin/exam-intelligence/console[/:exam_id]; the Registry at
  *        /admin/exam-intelligence is untouched.
  *   D-D  no create path here.
- *   D-E  no readiness percentage anywhere in this shell. The top bar shows
- *        identity facts only and fetches nothing of its own.
+ *   D-E  no workspace/readiness requests from the selected-exam console route.
  *
  * Routes:
  *   /admin/exam-intelligence/console            → exam picker
- *   /admin/exam-intelligence/console/:exam_id   → top bar + embedded workspace
+ *   /admin/exam-intelligence/console/:exam_id   → action console
  */
 import React from "react";
 import useSelectedExamId from "../../lib/hooks/useSelectedExamId";
@@ -46,9 +43,7 @@ export default function ExamGovernanceConsole() {
 
   // Per-exam: the focused, read-only action console (4.6I-FE) on the
   // /console/exams/:exam_id read. Triage only — editing follows each action's
-  // CTA into /workspace/:exam_id. The legacy ExamWorkspace variant="console"
-  // mount is retired here; removing that now-orphaned code is a cleanup
-  // follow-up (it is not edited/deleted in this PR).
+  // CTA into /workspace/:exam_id.
   return (
     <div className="oc" data-testid="exam-governance-console">
       <ExamActionConsole examId={examId} />
