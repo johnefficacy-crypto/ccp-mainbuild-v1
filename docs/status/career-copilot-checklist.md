@@ -72,34 +72,89 @@ Current verdict: **core arc complete; cleanup tier remains**.
 | CL-6 remove orphaned root console layout + `ExamTaskRail` | CODE PRESENT IN THIS CHECKOUT | `ExamWorkspace` no longer accepts or branches on `variant="console"` and `ExamTaskRail` is deleted. The standalone eight-tab workspace is unchanged. |
 | CL-6b retire dormant console presentation plumbing | CODE PRESENT IN THIS CHECKOUT | Provider variant was removed from `ExamWorkspaceContext`; `OverviewPanel` and `ReviewActivatePanel` now contain workspace-only behavior with readiness percentages preserved for the standalone workspace; orphaned `ExamPublishImpact` and its isolated test were deleted; active standalone workspace and `ExamActionConsole` routes remain unchanged; `SetupPanel` remains unchanged. |
 
-## Exam intelligence / workspace UX cleanup findings
+## Exam intelligence / workspace — design defects & UX cleanup
 
-These findings are confirmed against the current checkout and should remain visible until remediated.
-Full audit evidence: `docs/audits/exam-intelligence-gaps-2026-06-20.md`.
+Findings confirmed against this checkout. Full audit evidence:
+- `docs/audits/exam-intelligence-gaps-2026-06-20.md` — P0 runtime bugs and UX gaps
+- `docs/reviews/exam-intelligence-design-review-2026-06-20.md` — 23 structural design defects (D/E/F/M/I series)
 
 ### P0 runtime bugs
 
 | Area | Status | Notes |
 |---|---|---|
-| BUG-EI-1 `POST .../syllabus/propose` → 404 | PLANNED | `syllabus_mapper.py` queries `document_assets` (wrong table) instead of `syllabus_documents`. `document_assets` has no `exam_id` column; PostgREST returns empty list → 404 raised. Fix: change table name to `syllabus_documents` on both occurrences (~line 99 and ~line 503). Note: `ProposerError` and `propose_syllabus_mentions` are defined twice in the file; fix both copies or deduplicate first. |
-| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Fix requires design decision: query `syllabus_documents` by `exam_id` and use `trust_status`, or source extraction status from `document_processing_jobs`. This is the concrete manifestation of the "Document readiness extraction status NEEDS TARGETED RECHECK" item below — that item is now confirmed as a code bug, not just a suspicion. |
+| BUG-EI-1 `POST .../syllabus/propose` → 404 | PLANNED | `syllabus_mapper.py` queries `document_assets` (wrong table) instead of `syllabus_documents`. `document_assets` has no `exam_id` column; PostgREST returns empty list → 404 raised. Fix: change table name on both occurrences (~line 99 and ~line 503). `ProposerError` and `propose_syllabus_mentions` are defined twice; deduplicate first. |
+| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Fix requires design decision: Option A (query `syllabus_documents` by `exam_id`, use `trust_status`) or Option B (query processing-job status table). |
 
-### UX / surface cleanup
+### D-series — Redundant data display (4 defects)
+
+Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Category 1.
+
+| ID | Area | Status | Notes |
+|---|---|---|---|
+| D1 | Exam identity in 3 locations simultaneously | CLEANUP PENDING | SmartHeader (`ExamWorkspace.jsx:110–128`) is canonical. `OverviewPanel.jsx:121–128` and `SetupPanel.jsx:909–924` re-render the same 4 fields (name, slug, type, family) with no added information. |
+| D2 | Readiness scorecard duplicated in header and OverviewPanel | CLEANUP PENDING | `ExamWorkspace.jsx:152–204` (actionable, has CTA). `OverviewPanel.jsx:149–164` (static, same score/status data). Operator sees readiness count twice with no added insight in the panel version. |
+| D3 | "Phases needing dates" is filtered duplicate of main phases list | CLEANUP PENDING | `SetupPanel.jsx:201` filters the phases array; `SetupPanel.jsx:816–901` re-renders them as a separate section with date inputs. No cycle label shown — multi-cycle exams are ambiguous. |
+| D4 | Competition "Exam" column always identical in workspace context | CLEANUP PENDING | `CompetitionPanel.jsx:43` pre-filters by `exam.id`. `CompetitionMetricsTable.jsx:78` still renders `c.exam` column — value is always the same exam within the workspace. |
+
+### E-series — Multiple overlapping entry points (5 defects)
+
+Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Category 2.
+
+| ID | Area | Status | Notes |
+|---|---|---|---|
+| E1 | KnowledgeGovernance adds 5th path to exam setup, zero metrics | DESIGN QUESTION | `KnowledgeGovernance.jsx` "Exam truth & planner readiness" lane has `metricKey: null` — just 3 links (Console, Registry, Create). Same links exist in AdminShell primary nav. TODO comment: "no kg metrics available from overview endpoint for those two lanes yet." |
+| E2 | ExamIntelligence.jsx exposes 5 navigation paths simultaneously | DESIGN QUESTION | Lines 145–166: Open console + Create exam + Advanced import/repair header buttons + Overview tab + Exams tab → workspace. No screen communicates the operator's goal before selection. |
+| E3 | Exam/cycle/phase entities editable from 3 surfaces, no governance model | DESIGN QUESTION | CMS (`ExamIntelCms.jsx:159–200`): full CRUD. Workspace (`SetupPanel.jsx`): operational edits. Header cycle picker (`ExamWorkspace.jsx:136`). UI does not communicate the tier hierarchy (CMS=repair, workspace=operation, CMS=power-users-only). |
+| E4 | PyqPaperWorkspace reachable as standalone route and embedded tab | CLEANUP PENDING | Route: `/admin/exam-intelligence/pyq-papers/:id/workspace`. `PyqWorkbenchPanel.jsx:87` also renders `<PyqPaperWorkspace embedded />`. Standalone route has no exam context in URL; embedded version has it from `ExamWorkspaceContext`. No link explains which path to use. |
+| E5 | Three surfaces to create a new exam | CLEANUP PENDING | `ExamIntelligence.jsx:153` → GuidedExamWizard. `KnowledgeGovernance.jsx` → same wizard. `ExamIntelCms.jsx:159` → direct CMS entity form (bypasses wizard multi-step validation). UI does not differentiate them. |
+
+### F-series — Workflow gaps and flow inconsistency (5 defects)
+
+Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Category 3.
+
+| ID | Area | Status | Notes |
+|---|---|---|---|
+| F1 | No guided workflow for the most common operator task (cycle setup end-to-end) | DESIGN QUESTION | 9-step task requires navigating 7 separate tabs with no guided flow connecting them. Console shows blockers but links to the full tab, not to the specific action within the tab. SmartHeader shows next blocker at section level only. |
+| F2 | Bulk import modal detached from paper management workflow | CLEANUP PENDING | `PyqWorkbenchPanel.jsx:95–101`: `BulkImportModal` closes after import with no auto-navigate to the imported paper and no confirmation of what was imported. Operator must then separately pick the paper from the dropdown. |
+| F3 | PYQ tab shows one paper at a time with no overview | CLEANUP PENDING | `PyqWorkbenchPanel.jsx:87`: `selectedPaperId ? <PyqPaperWorkspace/> : <p>Select a paper</p>`. No table of papers, no bulk status, no paper-level readiness indicators. Flat dropdown with no context for 10+ papers. |
+| F4 | Topics management not accessible from workspace context | DESIGN QUESTION | `TopicAliasesEditor.jsx` nested inside `TopicEditDrawer` inside `SyllabusMapperPanel` only. Topics cannot be browsed or filtered by exam from the Setup tab. Topic prerequisites have no dedicated management surface anywhere. |
+| F5 | Policy `affects_*` flags displayed prominently but immutable | CLEANUP PENDING | `PolicyUpdatesTable.jsx:5–11` comment: "flags set at row creation, gated by DB check constraint — this surface only moves reviewer_status." Six colored-pill booleans per row with no edit action. No UI correction path if a flag is wrong. |
+
+### M-series — Missing CRUD / management capabilities (4 defects)
+
+Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Category 4.
+
+| ID | Area | Status | Notes |
+|---|---|---|---|
+| M1 | Topic prerequisites: no editable surface | PLANNED | `TopicEditDrawer.jsx` allows editing topic fields, but strength values between topics have no UI. Confirmed: no prerequisite CRUD exists anywhere in the codebase. Requires schema design decision before implementation. |
+| M2 | Topic aliases: exists only in mapper context | CLEANUP PENDING | `TopicAliasesEditor.jsx` nested inside `TopicEditDrawer` inside `SyllabusMapperPanel`. No standalone alias management. Operator cannot add aliases before running a proposal. |
+| M3 | PYQ questions: all 200 loaded simultaneously, no pagination | CLEANUP PENDING | `PyqPaperWorkspace.jsx:1131` uses `limit=200`. All questions render at once — no page or section navigation for 100+ question papers (common for UPSC pre). |
+| M4 | Subjects surface: IDs visible, no exam-scoped management | CLEANUP PENDING | `ExamIntelCms.jsx:115` loads all subjects globally. No exam-family filter on subjects endpoint confirmed in earlier audit. `subject_id` visible in rendered table. |
+
+### I-series — Identifier leakage (5 sites)
+
+Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Category 5.
+`operatorChrome.humanizeToken` and `formatOperatorActor` enforce no-UUID-in-UI. All five sites violate that contract.
+
+| ID | Location | File:Line | Status | Notes |
+|---|---|---|---|---|
+| I1 | ReviewQueueTable "Row id" button | `ReviewQueueTable.jsx:92` | CLEANUP PENDING | `{r.id}` raw UUID rendered. `operatorChrome.humanizeToken` pattern exists but not applied here. Covered by H3. |
+| I2 | SetupPanel phase error message | `SetupPanel.jsx:803` | CLEANUP PENDING | `{ptError.phaseId}` raw UUID in error message text. Covered by H3. |
+| I3 | ExamIntelCms entity table rows | `ExamIntelCms.jsx` (multiple) | CLEANUP PENDING | Entity `id` fields shown in table cells across CMS entity tables. Not covered by H3 — needs separate pass. |
+| I4 | Competition table "exam" column in workspace | `CompetitionMetricsTable.jsx:78` | CLEANUP PENDING | `c.exam_slug` rendered alongside workspace header already displaying slug. Overlaps with D4 fix. |
+| I5 | Subjects CMS surface | `ExamIntelCms.jsx` subjects entity | CLEANUP PENDING | `subject_id` column visible in subjects table. Overlaps with M4 fix. |
+
+### Prior setup/workspace UX items
 
 | Area | Status | Notes |
 |---|---|---|
-| Setup phase UX | CLEANUP PENDING | `SetupPanel` still renders separate cards for phases, template phases, and phases needing dates. A single timeline manager has not landed. |
-| Template phases duplication | CLEANUP PENDING | `phases.map(...)` still renders all phases while `templatePhases` are rendered again in a separate section. |
-| Slow/heavy date inputs | CLEANUP PENDING | Dense phase date worklist still mounts two `DateField` components per row; `DateField` uses `react-day-picker`. |
-| Setup mutations governance | CLEANUP PENDING | Cycle create/edit use `useApiAction`; add phase, phase-date patch, and template promotion still call `api.post`/`api.patch` directly. |
+| Setup phase UX | CLEANUP PENDING | `SetupPanel` still renders separate cards for phases, template phases, and phases needing dates. A single timeline manager has not landed. (Lane C) |
+| Template phases duplication | CLEANUP PENDING | `phases.map(...)` still renders all phases while `templatePhases` are rendered again in a separate section. (Lane C) |
+| Slow/heavy date inputs | CLEANUP PENDING | Dense phase date worklist still mounts two `DateField` components per row; `DateField` uses `react-day-picker`. (Lane C) |
+| Setup mutations governance | CLEANUP PENDING | Cycle create/edit use `useApiAction`; add phase, phase-date patch, and template promotion still call `api.post`/`api.patch` directly. (Lane C) |
 | Cycle Trust column | CLEANUP PENDING | Cycle Trust is still derived from cycle status (`active` → `locked`, otherwise `verified`) rather than a real trust lifecycle. |
 | Add-cycle product path | CLEANUP PENDING | Route redirects into workspace setup, but `AddCycleWizard.jsx` and direct tests remain. Decide whether to retire or re-promote it. |
-| Document readiness extraction status | CONFIRMED BUG — see BUG-EI-2 | `console_detail::_documents()` queries wrong table and non-existent columns. No longer speculative. |
-| Raw IDs in ReviewQueueTable (UX-EI-1) | CLEANUP PENDING | `ReviewQueueTable.jsx:92` renders `{r.id}` without `operatorChrome.humanizeToken`. `SetupPanel.jsx:803` renders `ptError.phaseId` raw. `operatorChrome.js` pattern exists but these two sites violate it. |
-| Topics CMS loads all topics globally (UX-EI-2) | CLEANUP PENDING | `ExamIntelCms.jsx` `refTopic` descriptor has no `exam_id` filter; backend has no exam-scoped topics endpoint. All topics across all exams shown simultaneously — not maintainable at scale. |
-| OverviewPanel duplicates workspace header (UX-EI-3) | CLEANUP PENDING | `OverviewPanel.jsx:121–146` renders exam name, slug, type, lane, cadence, active, org, and family. `ExamWorkspace.jsx` SmartHeader already renders exam name, family, slug, type, and active status. Confirmed duplication. |
 | Bulk import JSON schema undocumented (UX-EI-4) | PLANNED | `ExamIntelCms.jsx:696` references a bulk-import endpoint; `BulkImportModal.jsx` exists. No in-repo docs describe the JSON/CSV schema, required field values, or whether cycle/phase must be pre-created. |
-| "Phases needing dates" missing cycle context (UX-EI-5) | CLEANUP PENDING | `SetupPanel.jsx:816–901` renders the section without showing which cycle the phase stubs belong to. Multi-cycle exams make this ambiguous. |
 | Competition metrics phase/category cutoffs unstructured (UX-EI-6) | DESIGN QUESTION | Migration 055 stores `cutoff_trend` and `vacancy_by_category` as opaque JSONB. No schema for the JSONB structure documented. Phase/category breakdown not structured in API or UI. |
 
 ## Backend CI / dependency gate

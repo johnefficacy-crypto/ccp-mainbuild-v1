@@ -130,18 +130,46 @@ Record the decision in the H2 PR description before any code is written.
 
 ---
 
+## Lane I — Exam Intelligence structural redesign (NEW — 2026-06-20)
+
+Source: design review `docs/reviews/exam-intelligence-design-review-2026-06-20.md`.
+23 verified defects across 5 categories. Items below are P2–P3 (require design decisions
+or product input before implementation). P0/P1 items are already captured in Lane H.
+
+| Work item | Agent type | Status | Depends on |
+|---|---|---|---|
+| I1 D-series: collapse redundant data in OverviewPanel and SetupPanel | Frontend agent | PLANNED | Operator must define which fields OverviewPanel should show if not duplicating header |
+| I2 D3: merge "Phases needing dates" into main phases list with cycle label | Frontend agent | PLANNED | Absorbed into H3 (UX-EI-5); Lane C owns broader timeline redesign |
+| I3 E1: KnowledgeGovernance — add real metrics or remove placeholder lanes | Design + Backend agent | DESIGN QUESTION | DQ-1: KG value proposition and metric availability |
+| I4 E2: reduce ExamIntelligence.jsx to ≤2 primary paths | Design + Frontend agent | DESIGN QUESTION | DQ-2: operator workflow definition |
+| I5 E3: communicate CMS vs workspace governance tier in UI | Design agent | DESIGN QUESTION | DQ-3: business definition of surface tiers |
+| I6 F1: guided cycle-setup workflow | Design + Frontend agent | DESIGN QUESTION | Product design required before implementation; F1 root cause is missing operator journey design |
+| I7 F2: bulk import → auto-navigate to imported paper | Frontend agent | PLANNED | No dependencies; narrow scope |
+| I8 F3: PYQ paper overview (table with status, not just dropdown) | Frontend agent | PLANNED | No backend changes needed; scope: `PyqWorkbenchPanel.jsx` |
+| I9 F4: standalone topic management in workspace context | Design + Backend + Frontend agent | DESIGN QUESTION | DQ-4: cross-exam subject/topic strategy |
+| I10 M1: topic prerequisites CRUD | Backend + Frontend agent | PLANNED — DESIGN GATE | Requires schema decision on strength value structure before implementation |
+| I11 M3: PYQ question pagination | Frontend + Backend agent | PLANNED | Change `limit=200` to paginated endpoint; UI needs page/section nav |
+| I12 M4: exam-scoped subjects management | Backend + Frontend agent | DESIGN QUESTION | DQ-4 and backend exam-family filter design |
+| I13 I3–I5: remaining identifier leakage (CMS tables, CompetitionMetrics, Subjects) | Frontend agent | PLANNED | No dependencies; apply `operatorChrome.humanizeToken` |
+
+Do not dispatch I3, I4, I5, I6, I9, I12 until the corresponding design questions are resolved.
+
+---
+
 ## Open design questions (no agent can be dispatched without a decision)
 
 | ID | Question | Needed for |
 |---|---|---|
-| DQ-1 | Exam-family hierarchy UI intent (KG value proposition) | Lane C or new UI lane |
+| DQ-1 | Exam-family hierarchy UI intent (KG value proposition) | I3, Lane C or new UI lane |
 | DQ-2 | Exam active/inactive toggle — operator workflow | H3 or new UX PR |
-| DQ-3 | Business definition of core/managed-light/indexed in UI | CMS docs |
-| DQ-4 | Cross-exam common-subject management strategy | Backend schema decision |
+| DQ-3 | Business definition of core/managed-light/indexed in UI | I5, CMS docs |
+| DQ-4 | Cross-exam common-subject management strategy | I9, I12, backend schema decision |
 | DQ-5 | Error pattern taxonomy — time pressure vs. skipped distinction | Lane A / mastery writer |
 | DQ-6 | PYQ bilingual/two-column PDF handling | PYQ import pipeline |
 | DQ-7 | Historical cycle paper addition workflow | Operator runbook |
 | H2-gate | console_detail._documents() redesign: Option A or B | H2 |
+| I6-gate | Guided cycle-setup workflow: product design (what steps, what order, what surface) | I6 |
+| I10-gate | Topic prerequisite strength schema: what fields, what scale, how edited | I10 |
 
 ---
 
@@ -150,9 +178,14 @@ Record the decision in the H2 PR description before any code is written.
 | Priority | Agent | Work | Notes |
 |---|---|---|---|
 | P0 | Backend agent → H1 | Fix `syllabus/propose` 404 | Dispatch immediately; narrow scope |
-| P0 | Backend agent → H2 | Fix console 500 | Requires design decision first |
+| P0 | Backend agent → H2 | Fix console 500 | Requires design decision first (H2-gate) |
 | P1 | Frontend agent → H3 | EI UX cleanup (IDs, OverviewPanel, phases cycle label) | Can run parallel with H1 |
 | P1 | Frontend agent → B1 | ExamActionConsole de-leak | Independent of H-lane |
 | P1 | CI/infra agent → E1 | pip-audit / pytest sequencing | Independent of all other lanes |
+| P2 | Frontend agent → I7 | Bulk import auto-navigate after success | Narrow scope; no backend changes |
+| P2 | Frontend agent → I8 | PYQ paper overview table | Narrow scope; `PyqWorkbenchPanel.jsx` only |
+| P2 | Frontend agent → I11 | PYQ question pagination | `PyqPaperWorkspace.jsx` + backend limit param |
+| P2 | Frontend agent → I13 | Remaining identifier leakage (I3–I5) | Apply `operatorChrome.humanizeToken` to CMS tables |
 | P2 | Docs agent → UX-EI-4 | Bulk import schema documentation | Docs-only, no code |
 | P2 | Operator → A1 | Scheduler evidence | Operator-only, live env |
+| P3 | Design → I6-gate | Define guided cycle-setup workflow | Product design deliverable before I6 implementation |
