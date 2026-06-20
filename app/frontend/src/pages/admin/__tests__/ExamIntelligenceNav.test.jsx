@@ -168,9 +168,9 @@ test("cms route renders ExamIntelCms", async () => {
   );
 });
 
-// ── 5b. Registry CTAs (Wave 4.6E): Create exam / Open console / Advanced import-repair ──
+// ── 5b. Registry CTAs (B3d-1): Open console is the sole primary header action ──
 
-test("ExamIntelligence page replaces the Create/Import CMS CTA with Create exam, Open console, and a de-emphasized Advanced import/repair", async () => {
+test("ExamIntelligence page makes Open console the sole Registry header primary action", async () => {
   api.get.mockResolvedValue({ items: [], count: 0 });
   render(
     <MemoryRouter initialEntries={["/admin/exam-intelligence"]}>
@@ -183,13 +183,29 @@ test("ExamIntelligence page replaces the Create/Import CMS CTA with Create exam,
   expect(screen.queryByTestId("exam-intel-cms-link")).toBeNull();
   expect(screen.queryByText("Create / Import CMS")).toBeNull();
 
-  expect(screen.getByTestId("registry-create-exam").getAttribute("href")).toBe("/admin/exam-intelligence/new");
-  expect(screen.getByTestId("registry-open-console").getAttribute("href")).toBe("/admin/exam-intelligence/console");
-
+  const console_ = screen.getByTestId("registry-open-console");
+  const create = screen.getByTestId("registry-create-exam");
   const advanced = screen.getByTestId("registry-advanced-cms");
+
+  expect(console_.getAttribute("href")).toBe("/admin/exam-intelligence/console");
+  expect(create.getAttribute("href")).toBe("/admin/exam-intelligence/new");
   expect(advanced.getAttribute("href")).toBe("/admin/exam-intelligence/cms");
-  // De-emphasized (ghost) styling, not a primary CTA.
-  expect(advanced.className).toContain("btn-ghost");
+
+  expect(console_.classList.contains("btn-primary")).toBe(true);
+  expect(console_.classList.contains("btn-ghost")).toBe(false);
+  expect(create.classList.contains("btn-ghost")).toBe(true);
+  expect(create.classList.contains("btn-primary")).toBe(false);
+  expect(advanced.classList.contains("btn-ghost")).toBe(true);
+  expect(advanced.classList.contains("btn-primary")).toBe(false);
+
+  const primaryActions = [console_, create, advanced].filter((el) =>
+    el.classList.contains("btn-primary"),
+  );
+  expect(primaryActions.length).toBe(1);
+  expect(primaryActions[0]).toBe(console_);
+
+  expect(console_.compareDocumentPosition(create) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(create.compareDocumentPosition(advanced) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
 // ── 5. Exam Intel CMS entry is absent from the Study OS sidebar group ──
