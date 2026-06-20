@@ -1,10 +1,14 @@
 # PR8: Bounded Mock Mastery Live Canary Plan
 
-**Type:** Operational plan — docs/runbook only  
-**Status:** EXECUTION BLOCKED — `FF_MOCK_MASTERY_LIVE_USER_IDS` (or equivalent per-user
-allowlist) is **not implemented** in the deployed codebase. This plan cannot be executed
-until the allowlist implementation PR merges, deploys, and is validated. See
-Dependency §3 and Allowlist Behavior §below.
+**Type:** Operational plan — design document only  
+**Status:** DESIGN PRESENT — EXECUTION BLOCKED
+
+Blocking prerequisites (none may be skipped):
+1. Allowlist implementation PR — not merged (see Allowlist Architecture § below)
+2. PR-6 final candidate revalidation — GATE FAILED (re-run required after allowlist deploys)
+3. PR-7 14-day shadow gate — NOT STARTED (blocked on PR-6)
+4. Migration 182 — CODE PRESENT, dry-run/apply/permission validation pending
+5. `_apply_error_patterns` schema mismatch — not resolved (see Preflight P9 and Rollback Step 6)
 
 > **Required statement — merging this PR:**
 > "Merging this PR changes no feature flag (`FF_MOCK_MASTERY_WRITES`) and no
@@ -18,19 +22,32 @@ Dependency §3 and Allowlist Behavior §below.
 
 | # | Dependency | Status |
 |---|------------|--------|
-| 1 | PR-6 final candidate revalidation | **PASS** |
-| 2 | PR-7 14-day shadow gate | **PASS** |
-| 3 | Live-user allowlist merged, deployed, and validated | **BLOCKED — not implemented** |
-| 4 | Correction atomicity (PR-5B) deployed — migration 182 applied | **PASS** |
+| 1 | PR-6 final candidate revalidation | **GATE FAILED — RE-RUN REQUIRED** |
+| 2 | PR-7 14-day shadow gate | **NOT STARTED — BLOCKED ON PR-6** |
+| 3 | Live-user allowlist implementation merged, deployed, and validated | **BLOCKED — not implemented** |
+| 4 | Correction atomicity (PR-5B) deployed — migration 182 applied | **CODE PRESENT — DRY-RUN/APPLY/PERMISSION VALIDATION PENDING** |
 | 5 | Scheduler automatic-drain evidence | OPERATOR PENDING |
-| 6 | Validation fingerprint unchanged since PR-6 | verify at preflight |
+| 6 | Deployed SHA matches PR-6 candidate SHA | OPERATOR PENDING |
 
-**Dependency §3 detail:** As of this document's authoring, `MasteryWriter.process_attempt_sync`
-(`app/backend/app/study_os/mastery_writer.py`, lines 74–106) contains no per-user gate.
+**Dep #1 detail:** `docs/ops/pr6_final_candidate_revalidation.md` status is `gate_failed`.
+Gate 9 stopped the 2026-06-19 run: no per-user allowlist deployed. The gate cannot clear
+until dependency #3 resolves and a clean re-run is completed.
+
+**Dep #2 detail:** `docs/ops/pr7_shadow_gate_results.md` status is pending. Clock has not
+started ("Clock start: After PR6 baseline SHA is deployed and verified"). All metric
+fields are blank. Blocked on #1.
+
+**Dep #3 detail:** As of this document's authoring, `MasteryWriter.process_attempt_sync`
+(`app/backend/app/study_os/mastery_writer.py`, lines 67–106) contains no per-user gate.
 When `FF_MOCK_MASTERY_WRITES=live`, live writes execute for **every** user. There is no
 `FF_MOCK_MASTERY_LIVE_USER_IDS` environment variable, no allowlist table check, and no
 equivalent mechanism. A global unrestricted live flip is **forbidden** — do not proceed
-without the allowlist PR.
+without the allowlist PR. See Allowlist Architecture § below.
+
+**Dep #4 detail:** Migration 182 adds three SECURITY DEFINER RPCs. Code is present in the
+repository. Required before canary: (a) dry-run on staging clone, (b) permission
+verification (anon/authenticated cannot EXECUTE), (c) production apply and schema
+confirmation. See Migration 182 Prerequisites § below.
 
 ---
 
@@ -54,56 +71,130 @@ Populate before execution:
 | Control attempt | `<CONTROL_ATTEMPT_ID>` (recorded after run) |
 | Canary `mock_test_id` | `<CANARY_MOCK_TEST_ID>` (recorded after run) |
 | Canary run ID | `<CANARY_RUN_ID>` (e.g. `canary-2026-MM-DD-<first-8-of-CANARY_USER_UUID>`) |
+| Live deploy timestamp | `<LIVE_DEPLOY_TIMESTAMP>` (recorded at Step 3 completion) |
 
 ---
 
-## Allowlist Behavior (confirm implementation before execution)
+## Pre-Execution Attempt Specification
 
-**Required implementation location:** `MasteryWriter.process_attempt_sync` in
-`app/backend/app/study_os/mastery_writer.py`, after `_load_current_mastery` (line 95)
-and before the `if self.flag_state == "live":` branch (line 103). The check must read
-`analytics.user_id` and compare it against the allowlist.
+Before beginning any preflight step, complete this table and record it in the dated
+evidence file under `docs/audits/`. The canary cannot proceed without a complete
+specification — success criteria must be validated against these values, not inferred
+post-hoc.
 
-**Allowlist scope:** per-user UUID, not per-attempt or per-session. Once a user UUID is
-in the allowlist and `FF_MOCK_MASTERY_WRITES=live`, all their attempts receive live writes
-until removed from the allowlist.
+| Field | Value (operator fills before preflight) |
+|-------|----------------------------------------|
+| Exam template ID | `<TEMPLATE_ID>` |
+| Question IDs to answer (≥2) | `[<Q1_UUID>, <Q2_UUID>, ...]` |
+| Correct answer selection(s) — question IDs | `[<Q1_UUID>]` (≥1) |
+| Incorrect answer selection(s) — question IDs | `[<Q2_UUID>]` (≥1) |
+| Known `error_type` for each incorrect answer | one of: `concept_gap`, `memory_gap`, `careless`, `speed_issue`, `option_trap` |
+| Expected `mock_attempt_response_classification` row count | `<N>` |
+| Mastery-eligible topic IDs (from answered questions) | `[<TOPIC_UUID>, ...]` |
+| Expected correction categories | `[<category>, ...]` |
+| Maximum expected `user_topic_mastery_audit` rows | `<N>` |
+| Maximum expected `mock_correction_tasks` rows | `<N>` |
 
-**Required behavior matrix — confirm from deployed code before marking this plan READY:**
+---
 
-| Combination | Expected behavior |
-|-------------|-------------------|
-| Allowlisted user + `FF=live` | Live writes: `_apply_mastery`, `_apply_error_patterns`, `_draft_correction_tasks` execute; `mastery_flag_state=live` audit row written |
-| Non-allowlisted user + `FF=live` | Shadow only: `_write_shadow` with `flag_state='shadow'`; no live writes; no `user_topic_mastery_audit` row |
-| Any user + `FF=shadow` | Shadow only: `_write_shadow` with `flag_state='shadow'`; no live writes regardless of allowlist |
+## Migration 182 Prerequisites
 
-If the non-allowlisted + `FF=live` behavior is `off` (skip entirely) rather than `shadow`,
-document it here and update Stop Condition §1 accordingly. If behavior is ambiguous in
-the deployed code, **STOP** and resolve before executing the canary.
+Migration 182 (`app/supabase/migrations/182_*.sql`) adds three SECURITY DEFINER RPCs
+required in the correction path. All of the following must pass before canary execution:
+
+- [ ] Dry-run on staging/clone DB: `BEGIN; -- apply migration; -- SELECT 3 RPCs from pg_proc; ROLLBACK;`
+- [ ] `ensure_mock_correction_draft`: wrong `user_id` raises `no_data_found` — confirmed in staging
+- [ ] `ensure_mock_correction_drafts`: wrong `user_id` raises `no_data_found` — confirmed in staging
+- [ ] `replace_manual_mock_correction_drafts`: atomically replaces drafts — confirmed in staging
+- [ ] `SELECT has_function_privilege('anon', 'ensure_mock_correction_draft(uuid,uuid)', 'EXECUTE')` returns `false`
+- [ ] Same check for `authenticated` role on all three RPCs
+- [ ] Migration applied to the target (production) environment
+- [ ] Deployed schema confirms all three RPCs present: `SELECT proname FROM pg_proc WHERE proname LIKE 'ensure_mock_correction%' OR proname = 'replace_manual_mock_correction_drafts'`
+
+---
+
+## Allowlist Architecture (confirm implementation before execution)
+
+**Current state:** No per-user allowlist exists. `get_mastery_write_flag()` reads a
+global env var and returns the same flag for every user. `MasteryWriter.process_attempt_sync`
+(`mastery_writer.py` lines 67–106) does not branch on user identity.
+
+**Required implementation — resolver at enqueue, not inside the writer:**
+
+`_run_job JOB_MASTERY_RETRY` (`mock_engine.py` line 1387) already reads the pinned
+`mastery_flag_state` from the job row — this is correct and must not change. The
+allowlist check must be implemented as a resolver called at the four points where
+`mastery_flag_state` is first written to `mock_attempt_jobs`. The writer then receives
+the already-resolved per-user flag.
+
+Required resolver signature (implement in a separate code PR):
+
+```python
+resolve_effective_mastery_flag(
+    requested_flag: FlagState,  # from get_mastery_write_flag()
+    user_id: str,
+) -> FlagState
+```
+
+Required resolver behavior (fail closed — empty or malformed allowlist → shadow):
+
+| Global flag | User in allowlist | Resolved flag |
+|-------------|-------------------|---------------|
+| `off` | any | `off` |
+| `shadow` | any | `shadow` |
+| `live` | yes | `live` |
+| `live` | no | `shadow` |
+| `live` | allowlist empty or malformed | `shadow` |
+
+Required call sites — replace `get_mastery_write_flag()` with
+`resolve_effective_mastery_flag(get_mastery_write_flag(), user_id)` at all four:
+1. `auto_submit_attempt` (`mock_engine.py` line 831) → `enqueue_mastery_retry_required`
+2. `_run_job JOB_ANALYTICS_RETRY` (`mock_engine.py` line 1376) → `enqueue_mastery_retry_required`
+3. `_recover_corrections_after_mock_tests` (`mock_engine.py` line 1412) → `MasteryWriter(...)`
+4. Synchronous submit path (`mock_engine.py` api layer, line 187)
+
+Do NOT add the resolver inside `_run_job JOB_MASTERY_RETRY` (line 1387) — it reads
+the pinned per-user value from the job row, which is already correct.
+
+**Required behavior matrix — confirm from deployed code before marking plan READY:**
+
+| Combination | Expected observable behavior |
+|-------------|------------------------------|
+| Allowlisted user + `FF=live` | `resolve_effective_mastery_flag` returns `live`; job row `mastery_flag_state='live'`; writer executes `_apply_mastery`, `_apply_error_patterns`, `_draft_correction_tasks`; `user_topic_mastery_audit` row written |
+| Non-allowlisted user + `FF=live` | Resolver returns `shadow`; job row `mastery_flag_state='shadow'`; writer writes shadow row only; no `user_topic_mastery_audit` row |
+| Any user + `FF=shadow` | Resolver returns `shadow` regardless of allowlist; shadow row only |
+| Any user + `FF=off` | Resolver returns `off`; no writes |
+
+If any combination produces different behavior, document it and update Stop Conditions
+before proceeding.
 
 ---
 
 ## Preflight (operator executes immediately before Render action)
 
-All queries are scoped to exact user IDs — no time-window clauses. Save all outputs
-before proceeding; they form the rollback baseline.
+All queries are scoped to exact user IDs. Save all outputs before proceeding; they form
+the rollback baseline.
 
 ```sql
 -- P1: Record current deployed SHA
--- Obtain from Render dashboard → Service → Deploys, or from healthcheck metadata.
+-- Obtain from Render dashboard → Service → Deploys → current deploy SHA.
 -- SHA: _______________________________________________
 
--- P2: Validation fingerprint must match PR-6 candidate
-SELECT md5(
-  string_agg(
-    attempt_id::text || '|' || topic_id::text || '|' || proposed_delta_db::text,
-    ','
-    ORDER BY attempt_id, topic_id
-  )
-) AS fingerprint
-FROM public.mock_mastery_shadow
-WHERE flag_state = 'shadow';
--- Expected: <PR6_FINGERPRINT> (from PR-6 revalidation evidence doc)
--- STOP if mismatch.
+-- P2: Confirm deployed SHA matches PR-6 baseline; verify code fingerprint
+--
+-- Step 1: The SHA recorded in P1 must match the PR-6 candidate baseline SHA
+--   (recorded in docs/audits/2026-06-19-final-candidate-revalidation.md as
+--    "Baseline SHA: ba3ea3516f10d07d4708a12942e03162d2f2da50").
+--   STOP if SHA differs — the code state may have changed since the validated baseline.
+--
+-- Step 2: Compute the validation fingerprint on the deployed repo checkout using
+--   the same method as PR-6 (SHA256 over the 18 repository files listed in
+--   docs/audits/2026-06-19-final-candidate-revalidation.md):
+--     sha256sum <file1> <file2> ... <file18> | sha256sum
+--   Expected: 6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a
+--   STOP if fingerprint differs — code state has diverged from the validated baseline.
+--
+-- Result: _______________________________________________
 
 -- P3: Confirm FF currently shadow — behavioral confirmation
 -- Submit a throwaway attempt and check the resulting mastery_retry job:
@@ -112,12 +203,13 @@ FROM public.mock_attempt_jobs
 WHERE job_kind = 'mastery_retry'
   AND created_at > now() - interval '5 minutes'
 ORDER BY created_at DESC LIMIT 5;
--- Expected: mastery_flag_state = 'shadow' for any newly created job
+-- Expected: mastery_flag_state = 'shadow' for newly created jobs.
+-- STOP if any row has mastery_flag_state = 'live' — FF is not shadow.
 
 -- P4: Allowlist contains ONLY the named canary user UUID
--- Read deployed config: env var FF_MOCK_MASTERY_LIVE_USER_IDS or allowlist table.
+-- Read deployed config: env var FF_MOCK_MASTERY_LIVE_USER_IDS or allowlist mechanism.
 -- Value observed: _______________________________________________
--- Expected: exactly '<CANARY_USER_UUID>' — no other UUIDs
+-- Expected: exactly '<CANARY_USER_UUID>' — no other UUIDs.
 -- STOP if any other UUID is present.
 
 -- P5: No pending or running mastery_retry with mastery_flag_state=live
@@ -132,26 +224,47 @@ WHERE job_kind          = 'mastery_retry'
 -- GET /api/admin/jobs — verify last_run_at recent, no stuck/failed jobs.
 -- Result: _______________________________________________
 
--- P7: Baseline mastery for canary user (save full result)
-SELECT topic_id, mastery_score, updated_at
+-- P7: Baseline mastery for canary user — mock scope only (save full result)
+--   apply_mock_mastery_delta scopes to exam_id IS NULL AND exam_phase_id IS NULL;
+--   baseline and rollback must use the same scope.
+--   Note: updated_at is recorded here for documentation only — do NOT attempt
+--   to restore it on rollback; the BEFORE UPDATE trigger (migration 116) sets
+--   it automatically and will overwrite any explicit value.
+SELECT id, topic_id, mastery_score, updated_at
 FROM public.user_topic_mastery
-WHERE user_id = '<CANARY_USER_UUID>'
+WHERE user_id       = '<CANARY_USER_UUID>'
+  AND exam_id       IS NULL
+  AND exam_phase_id IS NULL
 ORDER BY topic_id;
 -- Save as: canary_mastery_baseline
 
--- P8: Baseline mastery for control user (save full result)
-SELECT topic_id, mastery_score, updated_at
+-- P8: Baseline mastery for control user — mock scope only (save full result)
+SELECT id, topic_id, mastery_score, updated_at
 FROM public.user_topic_mastery
-WHERE user_id = '<CONTROL_USER_UUID>'
+WHERE user_id       = '<CONTROL_USER_UUID>'
+  AND exam_id       IS NULL
+  AND exam_phase_id IS NULL
 ORDER BY topic_id;
 -- Save as: control_mastery_baseline
 
--- P9: Error patterns baseline for canary user (save full result)
-SELECT topic_id, microtopic_id, error_type, error_count
+-- P9: Error patterns baseline for canary user
+-- ⛔ HARD BLOCKER: _apply_error_patterns (mastery_writer.py lines 289–294) upserts
+-- columns 'microtopic_id' and 'error_count' which DO NOT EXIST in
+-- user_topic_error_patterns (migration 033). Actual schema columns are:
+--   id, user_id, exam_id, exam_phase_id, topic_id, question_id, error_type,
+--   frequency_count, last_seen_at, evidence, created_at, updated_at
+-- No later migration adds microtopic_id or error_count. The writer will raise a
+-- DB-level error on any live attempt. This step is BLOCKED until the schema
+-- mismatch is resolved in a separate code PR and the correct columns confirmed.
+-- Do not execute the canary until this blocker is cleared.
+--
+-- Documentation only (do not use for restore — restore is blocked):
+SELECT id, user_id, exam_id, exam_phase_id, topic_id, question_id,
+       error_type, frequency_count, last_seen_at, created_at
 FROM public.user_topic_error_patterns
 WHERE user_id = '<CANARY_USER_UUID>'
-ORDER BY topic_id, microtopic_id, error_type;
--- Save as: canary_error_baseline
+ORDER BY topic_id, error_type;
+-- Save as: canary_error_baseline (observation only)
 
 -- P10: Correction tasks baseline for canary user (save full result)
 SELECT ct.id, ct.category, ct.topic, ct.state
@@ -165,7 +278,7 @@ ORDER BY ct.created_at;
 SELECT count(*) AS existing_audit_rows
 FROM public.user_topic_mastery_audit
 WHERE user_id IN ('<CANARY_USER_UUID>', '<CONTROL_USER_UUID>');
--- Expected: 0. If nonzero, document exactly and reconcile against prior run state.
+-- Expected: 0. If nonzero, document exactly and reconcile before proceeding.
 
 -- P12: No concurrent activity on either user
 SELECT count(*) AS active_jobs
@@ -186,18 +299,22 @@ WHERE status      IN ('pending', 'running')
 
 ### Step 1 — Verify allowlist is set
 
-Read deployed config and confirm `FF_MOCK_MASTERY_LIVE_USER_IDS` (or equivalent) contains
-exactly `<CANARY_USER_UUID>` and no other UUIDs. Do not continue if any other UUID is present.
+Read deployed config and confirm the allowlist mechanism contains exactly
+`<CANARY_USER_UUID>` and no other UUIDs. Do not continue if any other UUID is present.
 
 ### Step 2 — Deploy while FF remains shadow
 
-Deploy the PR-6 candidate SHA with `FF_MOCK_MASTERY_WRITES=shadow`. Confirm via
-healthcheck that `{"flag": "shadow"}` is returned before proceeding.
+Set `FF_MOCK_MASTERY_WRITES=shadow` on Render. Deploy. Confirm via Render env var panel
+that `FF_MOCK_MASTERY_WRITES=shadow` is active. Verify service is running:
+`GET /api/health` → `{"status": "ok", "service": "career-copilot", "ts": "..."}`.
+Then run P3 to confirm `mastery_flag_state='shadow'` for any new jobs before proceeding.
 
 ### Step 3 — Set FF=live and deploy
 
-Set `FF_MOCK_MASTERY_WRITES=live` on Render. Deploy. Confirm `{"flag": "live"}` from
-healthcheck. **Start 15-minute timer.**
+Set `FF_MOCK_MASTERY_WRITES=live` on Render. Deploy. Confirm via Render env var panel
+that `FF_MOCK_MASTERY_WRITES=live` is active. Verify service is running:
+`GET /api/health` → `{"status": "ok", "service": "career-copilot", "ts": "..."}`.
+Record `<LIVE_DEPLOY_TIMESTAMP>`. **Start 15-minute timer.**
 
 ### Step 4 — Run ONE control attempt (non-allowlisted user)
 
@@ -238,14 +355,14 @@ SELECT topic_id, proposed_delta_db, flag_state
 FROM public.mock_mastery_shadow
 WHERE attempt_id = '<CANARY_ATTEMPT_ID>'
   AND flag_state = 'live';
--- Expected: ≥1 row (one per mastery-eligible topic)
+-- Expected: ≥1 row; topic_ids must match pre-execution spec mastery-eligible topics
 
 -- S2: user_topic_mastery_audit row exists for (canary_user, topic, attempt_id)
 SELECT user_id, topic_id, attempt_id, before_mastery_db, after_mastery_db, delta_applied_db
 FROM public.user_topic_mastery_audit
 WHERE attempt_id = '<CANARY_ATTEMPT_ID>'
   AND user_id    = '<CANARY_USER_UUID>';
--- Expected: ≥1 row
+-- Expected: ≥1 row; count must not exceed max from pre-execution spec
 
 -- S3: audit delta_applied_db equals persisted live shadow decision within 0.01 db
 SELECT
@@ -274,6 +391,7 @@ HAVING count(*) > 1;
 -- Expected: zero rows
 
 -- S5: mastery_score after = clamp(before + delta) ± 0.01, and mastery_score ∈ [0, 100]
+--     apply_mock_mastery_delta scopes to exam_id IS NULL AND exam_phase_id IS NULL
 SELECT
   a.topic_id,
   a.before_mastery_db,
@@ -281,7 +399,7 @@ SELECT
   a.after_mastery_db,
   GREATEST(0, LEAST(100, a.before_mastery_db + a.delta_applied_db)) AS expected_after,
   abs(a.after_mastery_db
-      - GREATEST(0, LEAST(100, a.before_mastery_db + a.delta_applied_db)))  AS clamp_diff,
+      - GREATEST(0, LEAST(100, a.before_mastery_db + a.delta_applied_db))) AS clamp_diff,
   CASE WHEN a.after_mastery_db BETWEEN 0 AND 100
             AND abs(a.after_mastery_db
                     - GREATEST(0, LEAST(100, a.before_mastery_db + a.delta_applied_db))) <= 0.01
@@ -291,12 +409,12 @@ WHERE a.attempt_id = '<CANARY_ATTEMPT_ID>'
   AND a.user_id    = '<CANARY_USER_UUID>';
 -- Expected: all check_result = 'PASS'
 
--- S6: user_topic_error_patterns updated for canary user
-SELECT topic_id, microtopic_id, error_type, error_count
-FROM public.user_topic_error_patterns
-WHERE user_id = '<CANARY_USER_UUID>'
-ORDER BY topic_id, microtopic_id, error_type;
--- Compare to P9 baseline — expect new or updated rows for canary topics
+-- S6: [BLOCKED — schema mismatch] user_topic_error_patterns verification
+-- _apply_error_patterns (mastery_writer.py lines 289–294) references
+-- 'microtopic_id' and 'error_count' which do not exist in migration 033.
+-- This criterion is BLOCKED pending schema reconciliation in a separate code PR.
+-- Canary MUST NOT PROCEED past S6 until the mismatch is resolved and the
+-- correct column names are confirmed here.
 
 -- S7: mock_correction_tasks drafted for canary user (if classifications complete)
 SELECT ct.id, ct.category, ct.topic, ct.state
@@ -304,9 +422,10 @@ FROM public.mock_correction_tasks ct
 JOIN public.mock_tests mt ON mt.id = ct.mock_test_id
 WHERE mt.mock_attempt_id = '<CANARY_ATTEMPT_ID>'
   AND ct.user_id          = '<CANARY_USER_UUID>';
--- Expected: state='drafted' rows; may be empty only if all questions correct
+-- Expected: state='drafted' rows matching pre-execution spec correction categories;
+-- empty only if all questions correct and no correction eligible
 
--- S8: All correction categories valid (063 check constraint)
+-- S8: All correction categories valid (check constraint from migration 063)
 SELECT ct.category,
   CASE WHEN ct.category IN
     ('concept_gap', 'memory_gap', 'careless', 'speed_issue', 'option_trap')
@@ -330,11 +449,12 @@ HAVING count(*) > 1;
 -- Expected: zero rows
 
 -- S10: Resubmit is no-op — retrigger mastery_retry for <CANARY_ATTEMPT_ID> then verify
-SELECT count(*) AS row_count, max(at) AS last_at
+SELECT count(*) AS row_count
 FROM public.user_topic_mastery_audit
 WHERE attempt_id = '<CANARY_ATTEMPT_ID>'
   AND user_id    = '<CANARY_USER_UUID>';
--- Expected: same count as S2, last_at unchanged
+-- Expected: same count as S2 (unique constraint on (user_id, topic_id, attempt_id)
+-- prevents a second row; conflict-ignore upsert must leave existing rows untouched)
 
 -- S11: Control user — zero live audit rows, zero live mastery changes, zero live corrections
 SELECT count(*) AS control_live_audit
@@ -352,11 +472,12 @@ WHERE user_id    = '<CONTROL_USER_UUID>'
 -- Expected: 0
 
 -- S12: Zero writer exceptions in backend logs during canary window
--- Check Render log stream for `career_copilot.study_os.mastery_writer` ERROR entries.
+-- Check Render log stream for 'career_copilot.study_os.mastery_writer' ERROR entries.
 -- Expected: zero
 ```
 
-**All of S1–S12 must pass. Any FAIL or timeout triggers immediate rollback.**
+**All of S1–S12 must pass (S6 is blocked until schema mismatch resolved). Any FAIL or
+timeout triggers immediate rollback.**
 
 ---
 
@@ -364,34 +485,52 @@ WHERE user_id    = '<CONTROL_USER_UUID>'
 
 | # | Condition |
 |---|-----------|
-| 1 | Non-allowlisted live write: any `user_topic_mastery_audit` row for `user_id ≠ <CANARY_USER_UUID>` |
+| 1 | Non-allowlisted live write: any `user_topic_mastery_audit` row where `user_id = '<CONTROL_USER_UUID>' AND attempt_id = '<CONTROL_ATTEMPT_ID>'`; or any row with `created_at >= '<LIVE_DEPLOY_TIMESTAMP>'` for any `user_id NOT IN ('<CANARY_USER_UUID>', '<CONTROL_USER_UUID>')` |
 | 2 | Missing audit row: canary attempt submitted and `mastery_retry` completed but no `user_topic_mastery_audit` row exists |
 | 3 | Delta mismatch: `abs(proposed_delta_db − delta_applied_db) > 0.01` for any topic |
 | 4 | Duplicate audit row: count > 1 for any `(canary_user, topic_id, attempt_id)` |
 | 5 | `mastery_score` (i.e. `after_mastery_db`) outside `[0, 100]` |
 | 6 | Invalid correction category: any value not in `('concept_gap','memory_gap','careless','speed_issue','option_trap')` |
 | 7 | Duplicate drafted correction: count > 1 for any `(mock_test_id, user_id, category, topic)` with `state='drafted'` |
-| 8 | Incomplete classification coverage at mastery processing time (`MasteryClassificationNotReady` raised, check `mock_attempt_jobs.last_error`) |
+| 8 | Incomplete classification coverage at mastery processing time (`MasteryClassificationNotReady` raised; check `mock_attempt_jobs.last_error`) |
 | 9 | Pending or failed live `mastery_retry` job that cannot drain (`mastery_flag_state='live'`, `status='failed'`, non-retryable) |
 | 10 | SHA or fingerprint mismatch detected at any point |
 | 11 | 15-minute canary window expires before all of S1–S12 confirmed |
+
+Stop condition 1 diagnostic query:
+```sql
+SELECT user_id, attempt_id, topic_id, created_at
+FROM public.user_topic_mastery_audit
+WHERE
+  (user_id = '<CONTROL_USER_UUID>' AND attempt_id = '<CONTROL_ATTEMPT_ID>')
+  OR (user_id NOT IN ('<CANARY_USER_UUID>', '<CONTROL_USER_UUID>')
+      AND created_at >= '<LIVE_DEPLOY_TIMESTAMP>'::timestamptz);
+-- Expected: zero rows. Any row = Stop Condition 1 — rollback immediately.
+```
 
 ---
 
 ## Rollback Procedure
 
-**Trigger:** any stop condition fires, or 15-minute window expires without full confirmation.
+**Trigger:** any stop condition fires, or 15-minute window expires without full
+confirmation.
 
 **Immutability rule:** `user_topic_mastery_audit` rows are **immutable**. The table has a
 unique constraint on `(user_id, topic_id, attempt_id)` (migration 144). NEVER insert a
-second row for the same triple — the DB will reject it with 23505 and any attempt to
-do so signals a logic error. All rollback audit trail goes into `admin_audit_logs` only.
+second row for the same triple — the DB will reject it with 23505. All rollback audit
+trail goes into `admin_audit_logs` only.
+
+**`updated_at` restoration:** `user_topic_mastery` has a BEFORE UPDATE trigger (migration
+116) that sets `updated_at = NOW()` on every UPDATE. Do not attempt to restore the
+original `updated_at` value — the trigger will overwrite it. Restore only `mastery_score`,
+identified by row `id`.
 
 ### Step 1 — Set FF=shadow and redeploy
 
 Set `FF_MOCK_MASTERY_WRITES=shadow` on Render. Deploy. Confirm:
-- Healthcheck returns `{"flag": "shadow"}`
-- Submit a test attempt and confirm the resulting `mastery_retry` job has
+- Render env var panel shows `FF_MOCK_MASTERY_WRITES=shadow`
+- `GET /api/health` returns `{"status": "ok", "service": "career-copilot", "ts": "..."}`
+- Run P3: submit a test attempt and confirm the resulting `mastery_retry` job has
   `mastery_flag_state='shadow'`
 
 ### Step 2 — Verify effective mode shadow
@@ -413,42 +552,48 @@ FROM public.mock_attempt_jobs
 WHERE job_kind          = 'mastery_retry'
   AND mastery_flag_state = 'live'
   AND attempt_id         IN ('<CANARY_ATTEMPT_ID>', '<CONTROL_ATTEMPT_ID>');
--- Wait until every row has status ∈ {'done', 'failed'}.
+-- Wait until every row has status IN ('done', 'failed').
 -- A 'failed' job will not re-execute after FF=shadow — safe to proceed.
--- A 'running' job: wait for completion; do not proceed until none remain running.
+-- A 'running' job: wait for completion before proceeding.
 -- Any live-pinned job that cannot drain blocks completion — escalate if stuck.
 ```
 
-### Step 4 — Restore canary user mastery (one transaction)
+### Step 4a — Restore canary user mastery (one transaction)
 
-**Dry-run on staging/clone first:** execute `BEGIN`, verify all SELECT outputs match
+**Dry-run on staging/clone first:** execute `BEGIN`, verify SELECT in 4a-3 matches
 `canary_mastery_baseline` (P7), then run `ROLLBACK`. Only after staging verification,
 replace `ROLLBACK` with `COMMIT` for production.
 
 ```sql
 BEGIN;
 
--- 4a: Restore existing topics from canary_mastery_baseline (P7)
---     Replace the VALUES list with actual rows from the P7 query output.
+-- 4a-1: Restore existing topics from canary_mastery_baseline (P7)
+--   Scope: exam_id IS NULL AND exam_phase_id IS NULL (mock mastery only).
+--   Use row id from P7 to identify exact rows — do not match by topic_id alone.
+--   Do NOT set updated_at — BEFORE UPDATE trigger (migration 116) sets it automatically.
 UPDATE public.user_topic_mastery
 SET
-  mastery_score = baseline.mastery_score,
-  updated_at    = baseline.updated_at
+  mastery_score = baseline.mastery_score
 FROM (VALUES
-  -- ('<topic_uuid>'::uuid, <mastery_score>::numeric, '<updated_at>'::timestamptz),
-  -- One row per topic in P7. If P7 was empty, this UPDATE touches zero rows — correct.
-  (NULL::uuid, NULL::numeric, NULL::timestamptz)
-) AS baseline(topic_id, mastery_score, updated_at)
-WHERE public.user_topic_mastery.user_id  = '<CANARY_USER_UUID>'::uuid
-  AND public.user_topic_mastery.topic_id  = baseline.topic_id
-  AND baseline.topic_id IS NOT NULL;
+  -- ('<row_id>'::uuid, <mastery_score>::numeric),
+  -- One row per id in P7. If P7 was empty, this UPDATE touches zero rows — correct.
+  (NULL::uuid, NULL::numeric)
+) AS baseline(id, mastery_score)
+WHERE public.user_topic_mastery.id            = baseline.id
+  AND public.user_topic_mastery.user_id       = '<CANARY_USER_UUID>'::uuid
+  AND public.user_topic_mastery.exam_id       IS NULL
+  AND public.user_topic_mastery.exam_phase_id IS NULL
+  AND baseline.id IS NOT NULL;
 
--- 4b: Delete topics created by canary that were absent from canary_mastery_baseline (P7)
+-- 4a-2: Delete topics created by canary that were absent from P7 baseline
 DELETE FROM public.user_topic_mastery
-WHERE user_id  = '<CANARY_USER_UUID>'::uuid
-  AND topic_id NOT IN (
-    -- List all topic_ids from P7. If P7 was empty, use a values list that matches nothing:
-    NULL::uuid
+WHERE user_id       = '<CANARY_USER_UUID>'::uuid
+  AND exam_id       IS NULL
+  AND exam_phase_id IS NULL
+  AND id NOT IN (
+    -- List all id values from P7 baseline.
+    -- If P7 was empty, use a placeholder that matches nothing:
+    '00000000-0000-0000-0000-000000000000'::uuid
   )
   AND topic_id IN (
     SELECT topic_id
@@ -457,11 +602,31 @@ WHERE user_id  = '<CANARY_USER_UUID>'::uuid
       AND user_id    = '<CANARY_USER_UUID>'::uuid
   );
 
--- 4c: Verify — must match P7 row-for-row before committing
-SELECT topic_id, mastery_score, updated_at
+-- 4a-3: Verify — must match P7 topic_id/mastery_score row-for-row before committing
+SELECT id, topic_id, mastery_score
 FROM public.user_topic_mastery
-WHERE user_id = '<CANARY_USER_UUID>'::uuid
+WHERE user_id       = '<CANARY_USER_UUID>'::uuid
+  AND exam_id       IS NULL
+  AND exam_phase_id IS NULL
 ORDER BY topic_id;
+
+ROLLBACK; -- Replace with COMMIT after staging dry-run verified
+```
+
+### Step 4b — Restore control user mastery (only if Stop Condition 1 fired)
+
+If C1 confirmed `control_live_rows = 0`, skip this step. If Stop Condition 1 fired
+(unexpected live writes to control user), apply the same restore pattern as Step 4a,
+substituting `<CONTROL_USER_UUID>`, `control_mastery_baseline` (P8), and
+`<CONTROL_ATTEMPT_ID>`.
+
+```sql
+BEGIN;
+
+-- Same structure as 4a-1 and 4a-2, with:
+--   id and mastery_score from P8 (control_mastery_baseline)
+--   user_id = '<CONTROL_USER_UUID>'::uuid
+--   attempt filter: WHERE attempt_id = '<CONTROL_ATTEMPT_ID>'::uuid
 
 ROLLBACK; -- Replace with COMMIT after staging dry-run verified
 ```
@@ -470,7 +635,8 @@ ROLLBACK; -- Replace with COMMIT after staging dry-run verified
 
 **Do NOT insert into `user_topic_mastery_audit`** (immutable; unique constraint would
 reject a second row for the same `(user_id, topic_id, attempt_id)`). Write exactly one
-`admin_audit_logs` row with the following shape:
+`admin_audit_logs` row. The `WHERE NOT EXISTS` guard makes this insert idempotent on
+`(action, entity_type, entity_id)` if the rollback procedure is run more than once.
 
 ```sql
 BEGIN;
@@ -513,54 +679,35 @@ SELECT
     'restored_baseline_mastery', coalesce(
       (SELECT jsonb_object_agg(topic_id::text, mastery_score)
        FROM public.user_topic_mastery
-       WHERE user_id = '<CANARY_USER_UUID>'::uuid),
+       WHERE user_id       = '<CANARY_USER_UUID>'::uuid
+         AND exam_id       IS NULL
+         AND exam_phase_id IS NULL),
       '{}'::jsonb
     ),
     'rollback_at', now()
   ),
   'Bounded live canary rollback. Mastery reverted to pre-canary P7 baseline. '
   'user_topic_mastery_audit rows are immutable — see old_value.affected_audit_ids. '
-  'Dry-run verified on staging before production apply.';
+  'Dry-run verified on staging before production apply.'
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.admin_audit_logs
+  WHERE action      = 'study_os.mock_mastery_canary.rollback'
+    AND entity_type = 'mock_mastery_canary'
+    AND entity_id   = '<CANARY_RUN_ID>'
+);
 
 COMMIT;
 ```
 
 ### Step 6 — Restore user_topic_error_patterns
 
-Dry-run on staging first (BEGIN + verify + ROLLBACK).
-
-```sql
-BEGIN;
-
--- 6a: Delete canary-written error patterns for topics touched in the canary attempt
-DELETE FROM public.user_topic_error_patterns
-WHERE user_id  = '<CANARY_USER_UUID>'::uuid
-  AND topic_id IN (
-    SELECT topic_id
-    FROM public.user_topic_mastery_audit
-    WHERE attempt_id = '<CANARY_ATTEMPT_ID>'::uuid
-      AND user_id    = '<CANARY_USER_UUID>'::uuid
-  );
-
--- 6b: Re-insert baseline rows from canary_error_baseline (P9)
---     Replace VALUES with actual rows from P9 output. If P9 was empty, skip 6b.
-INSERT INTO public.user_topic_error_patterns
-  (id, user_id, topic_id, microtopic_id, error_type, error_count)
-VALUES
-  -- ('<uuid>'::uuid, '<CANARY_USER_UUID>'::uuid, '<topic_id>'::uuid,
-  --  '<microtopic_id>'::uuid, '<error_type>', <count>)
-  -- One row per row in P9.
-ON CONFLICT (user_id, topic_id, microtopic_id, error_type)
-  DO UPDATE SET error_count = EXCLUDED.error_count;
-
--- 6c: Verify — must match P9 row-for-row
-SELECT topic_id, microtopic_id, error_type, error_count
-FROM public.user_topic_error_patterns
-WHERE user_id = '<CANARY_USER_UUID>'::uuid
-ORDER BY topic_id, microtopic_id, error_type;
-
-ROLLBACK; -- Replace with COMMIT after staging dry-run verified
-```
+⛔ **BLOCKED — schema mismatch.** `_apply_error_patterns` (`mastery_writer.py` lines
+289–294) upserts `microtopic_id` and `error_count` into `user_topic_error_patterns`,
+but those columns do not exist (migration 033). Because the writer will fail at the DB
+layer before writing any error-pattern rows, no actual canary-written rows are expected
+in this table. Until the schema mismatch is resolved in a separate code PR and the
+actual written columns confirmed, rollback Step 6 cannot be specified. If the mismatch
+is fixed before canary execution, update this step with SQL matching the deployed schema.
 
 ### Step 7 — Delete drafted mock_correction_tasks
 
@@ -595,7 +742,7 @@ WHERE user_id     = '<CANARY_USER_UUID>'::uuid
     -- List correction task IDs from canary_correction_baseline (P10) that preexisted.
     -- If P10 was empty (fresh disposable user), this list is empty and all canary
     -- drafted rows are deleted.
-    '<BASELINE_CORRECTION_ID_IF_ANY>'::uuid
+    '00000000-0000-0000-0000-000000000000'::uuid
   );
 
 -- 7c: Verify
@@ -612,10 +759,9 @@ WHERE user_id     = '<CANARY_USER_UUID>'::uuid
 ROLLBACK; -- Replace with COMMIT after staging dry-run verified
 ```
 
-### Step 8 — Verify study_tasks and study_adaptation_events unchanged
+### Step 8 — Verify study_tasks unchanged
 
 ```sql
--- No study_tasks should exist for canary mock_test_id (corrections not applied during window)
 SELECT count(*) AS unexpected_study_tasks
 FROM public.study_tasks
 WHERE metadata->>'mock_test_id' IN (
@@ -647,12 +793,16 @@ WHERE job_kind           = 'mastery_retry'
 
 -- V3: Canary user mastery row count matches P7 baseline
 SELECT count(*) FROM public.user_topic_mastery
-WHERE user_id = '<CANARY_USER_UUID>';
+WHERE user_id       = '<CANARY_USER_UUID>'
+  AND exam_id       IS NULL
+  AND exam_phase_id IS NULL;
 -- Must match P7 row count
 
 -- V4: Control user mastery unchanged
 SELECT count(*) FROM public.user_topic_mastery
-WHERE user_id = '<CONTROL_USER_UUID>';
+WHERE user_id       = '<CONTROL_USER_UUID>'
+  AND exam_id       IS NULL
+  AND exam_phase_id IS NULL;
 -- Must match P8 row count
 
 -- V5: Scheduler normal — GET /api/admin/jobs: no stuck jobs, last_run_at recent
@@ -662,17 +812,18 @@ WHERE user_id = '<CONTROL_USER_UUID>';
 
 ## Rollback SQL — Staging Dry-Run Checklist
 
-Before production apply, run all four transaction blocks (Steps 4, 5, 6, 7) against a
-staging/clone DB seeded with a snapshot taken at or before the P1 SHA recording time:
+Before production apply, run all transaction blocks against a staging/clone DB seeded
+with a snapshot taken at or before the P1 SHA recording time:
 
-- [ ] Step 4 dry-run: SELECT in 4c matches P7 exactly → ROLLBACK
-- [ ] Step 5: runs cleanly (no staging required — admin_audit_logs write is idempotent on entity_id)
-- [ ] Step 6 dry-run: SELECT in 6c matches P9 exactly → ROLLBACK
+- [ ] Step 4a dry-run: SELECT in 4a-3 matches P7 exactly (id, topic_id, mastery_score) → ROLLBACK
+- [ ] Step 4b dry-run (only if Stop Condition 1 fired): SELECT matches P8 → ROLLBACK
+- [ ] Step 5: WHERE NOT EXISTS guard makes insert idempotent on (action, entity_type, entity_id); verify it inserts exactly one row, then re-running inserts zero
+- [ ] Step 6: BLOCKED — cannot dry-run until schema mismatch is resolved
 - [ ] Step 7 dry-run: remaining_drafted in 7c = 0 → ROLLBACK
-- [ ] All four staging verifications complete before any production COMMIT
+- [ ] All applicable staging verifications complete before any production COMMIT
 
-Steps 4, 6, and 7 are independent and may run in parallel on staging. Step 5 runs in
-production only after Step 4 commits.
+Steps 4a, 4b, and 7 are independent and may run in parallel on staging. Step 5 runs in
+production only after Step 4a commits.
 
 ---
 
