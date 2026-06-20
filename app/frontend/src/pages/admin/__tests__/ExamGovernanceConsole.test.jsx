@@ -4,7 +4,7 @@
  * Wave 4.6H-FE: the no-exam view renders ConsoleWorkQueue against the work-queue
  * endpoints (/console/exams + /console/summary).
  * Wave 4.6I-FE: the selected-exam view now renders ExamActionConsole against
- * /console/exams/:exam_id (NOT the embedded <ExamWorkspace variant="console" />).
+ * /console/exams/:exam_id (NOT the legacy embedded workspace).
  * Role gate + route wrapping + Registry regression are unchanged.
  */
 import React from "react";

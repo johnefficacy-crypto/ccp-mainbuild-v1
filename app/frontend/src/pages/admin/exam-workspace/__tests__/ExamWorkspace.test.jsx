@@ -405,7 +405,6 @@ describe("ExamWorkspace standalone layout regression (B2)", () => {
     expect(screen.getByTestId("overview-section-readiness").textContent).toContain("40%");
     expect(screen.queryByTestId("exam-task-rail")).toBeNull();
     expect(screen.queryByTestId("console-rail-layout")).toBeNull();
-    expect(screen.queryByTestId("exam-publish-impact")).toBeNull();
   });
 });
 
@@ -436,7 +435,7 @@ describe("ExamWorkspace standalone fetch regression (B2)", () => {
 describe("ExamWorkspace standalone review surface (B2)", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test("review tab renders ReviewActivatePanel without ExamPublishImpact or extra readiness fetch", async () => {
+  test("review tab renders ReviewActivatePanel without extra readiness fetch", async () => {
     mockBothEndpoints({ readinessResponse: STANDALONE_READINESS });
     render(
       <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1?tab=review"]}>
@@ -448,7 +447,6 @@ describe("ExamWorkspace standalone review surface (B2)", () => {
     await waitFor(() => screen.getByRole("heading", { name: /Readiness & Activation/i }));
     const readinessCalls = api.get.mock.calls.filter(([url]) => url.includes("/readiness"));
     expect(readinessCalls).toHaveLength(1);
-    expect(screen.queryByTestId("exam-publish-impact")).toBeNull();
   });
 });
 
