@@ -1,6 +1,6 @@
 # Career Copilot remaining-work PR plan
 
-Last planned from repo state: 2026-06-19 at `455c1bec` (PR #718 platform-review-authority-hardening branch `fix/platform-review-authority-hardening`).
+Last planned from repo state: 2026-06-20 at `11d188ef` (current main / dispatch branch `work`).
 
 This plan decomposes the remaining Career Copilot work into small PRs that can
 be assigned to simultaneous agents without overlapping write scopes. Status
@@ -158,7 +158,19 @@ Run these as separate PRs because they touch different user-facing surfaces:
 | B3a registry row expansion / dead columns | registry/list components and tests only | CL-2. |
 | B3b remove CMS `+ New guided exam` CTA | `ExamIntelCms.jsx` and its tests only | CL-3. |
 | B3c collapsible lifecycle banner | banner component/tests only | CL-4. |
-| B3d one-primary-per-screen buttons | one screen at a time | CL-5; avoid sweeping visual churn. |
+| B3d-2 Console Work Queue action hierarchy | `ConsoleWorkQueue` surface and targeted tests only | CL-5; ensure the queue has at most one screen-level primary CTA and demote selected filter pills away from primary-action styling. |
+| B3d-3 Guided Exam Wizard primary-action hierarchy | guided exam wizard surfaces and targeted tests only | CL-5; ensure wizard-level primary actions do not compete with local card/form submission controls. |
+| B3d-close cross-surface CL-5 closure audit | audit/status docs and any remaining tiny targeted test updates only | CL-5 closure gate; verify all Exam Governance screens after B3d-2 and B3d-3 land before changing checklist status. |
+| B4 / CL-6b remove dormant console presentation plumbing | `ExamWorkspaceContext`, `OverviewPanel`, `ReviewActivatePanel`, `ExamPublishImpact` usage/tests, and checklist row only | CL-6b; delete, reuse, or redesign the old console-variant presentation contract without changing active console routes. |
+
+#### CL-5 one-primary-per-screen rule
+
+- A screen may expose at most one screen-level primary CTA.
+- Pressed filter states must not use primary-action styling.
+- Repeated table-row actions are contextual, not screen primaries.
+- Local form submission buttons are scoped to their form/card and are not automatically competing screen-level CTAs.
+- `SetupPanel` redesign remains owned by Lane C and must not be absorbed into B3d.
+- Do not mark CL-5 complete until B3d-close verifies the cross-surface audit after B3d-2 and B3d-3 land.
 
 ## Lane C — Exam workspace setup/timeline UX
 
