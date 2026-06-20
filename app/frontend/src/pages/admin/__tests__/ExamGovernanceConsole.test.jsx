@@ -218,7 +218,10 @@ describe("ExamGovernanceConsole — work queue (no exam selected)", () => {
     fireEvent.click(screen.getByTestId("console-chip-blocked"));
     await waitFor(() => expect(listCalls().some((u) => u.includes("workflow=blocked"))).toBe(true));
 
-    expect(screen.getByTestId("console-chip-blocked").getAttribute("aria-pressed")).toBe("true");
+    const activeFilter = screen.getByTestId("console-chip-blocked");
+    expect(activeFilter.getAttribute("aria-pressed")).toBe("true");
+    expect(activeFilter.classList.contains("btn-primary")).toBe(false);
+    expect(activeFilter.classList.contains("primary")).toBe(false);
     expect(summaryCalls().length).toBe(0); // base filters unchanged → no summary refetch
     expect(summaryCalls().every((u) => !u.includes("workflow="))).toBe(true);
   });
@@ -292,12 +295,21 @@ describe("ExamGovernanceConsole — work queue (no exam selected)", () => {
     expect(screen.getByTestId("console-flag-exam-1-pending_review").textContent).toBe("Pending review");
   });
 
-  test("row actions: primary → /console/:id, secondary → /workspace/:id", async () => {
+  test("row actions: neutral → /console/:id, ghost → /workspace/:id, no work-queue primary styling", async () => {
     mockApi();
     renderConsole("/admin/exam-intelligence/console");
     await waitFor(() => expect(screen.getByTestId("console-open-exam-1")).toBeTruthy());
-    expect(screen.getByTestId("console-open-exam-1").getAttribute("href")).toBe("/admin/exam-intelligence/console/exam-1");
-    expect(screen.getByTestId("console-workspace-exam-1").getAttribute("href")).toBe("/admin/exam-intelligence/workspace/exam-1");
+    const openConsole = screen.getByTestId("console-open-exam-1");
+    const advancedWorkspace = screen.getByTestId("console-workspace-exam-1");
+    expect(openConsole.getAttribute("href")).toBe("/admin/exam-intelligence/console/exam-1");
+    expect(advancedWorkspace.getAttribute("href")).toBe("/admin/exam-intelligence/workspace/exam-1");
+    expect(openConsole.classList.contains("btn-primary")).toBe(false);
+    expect(openConsole.classList.contains("primary")).toBe(false);
+    expect(advancedWorkspace.classList.contains("btn-primary")).toBe(false);
+    expect(advancedWorkspace.classList.contains("primary")).toBe(false);
+
+    const workQueue = screen.getByTestId("console-work-queue");
+    expect(workQueue.querySelector(".btn-primary, .primary")).toBeNull();
   });
 
   test("no readiness/confidence percentage and no raw readiness_level/pyq_coverage_status", async () => {
