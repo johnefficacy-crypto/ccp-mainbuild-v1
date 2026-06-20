@@ -212,7 +212,12 @@ function StepOrg({ state, dispatch }) {
       <div className="flex gap-2 mb-4">
         <button
           type="button"
-          className={`btn small ${orgMode === "select" ? "btn-primary" : ""}`}
+          className={`btn small ${
+            orgMode === "select"
+              ? "border border-primary/40 bg-accent text-foreground"
+              : "btn-ghost"
+          }`}
+          aria-pressed={orgMode === "select"}
           onClick={() => dispatch({ type: "SET_ORG_MODE", mode: "select" })}
           data-testid="org-mode-select"
         >
@@ -220,7 +225,12 @@ function StepOrg({ state, dispatch }) {
         </button>
         <button
           type="button"
-          className={`btn small ${orgMode === "create" ? "btn-primary" : ""}`}
+          className={`btn small ${
+            orgMode === "create"
+              ? "border border-primary/40 bg-accent text-foreground"
+              : "btn-ghost"
+          }`}
+          aria-pressed={orgMode === "create"}
           onClick={() => dispatch({ type: "SET_ORG_MODE", mode: "create" })}
           data-testid="org-mode-create"
         >

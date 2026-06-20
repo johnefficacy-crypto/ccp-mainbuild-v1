@@ -200,6 +200,38 @@ describe("no network calls before step 5", () => {
 // ── Step 1 org select mode ────────────────────────────────────────────────────
 
 describe("Step 1: org select-existing path", () => {
+  test("mode buttons expose pressed state without competing primary styling", () => {
+    setup();
+
+    const selectMode = screen.getByTestId("org-mode-select");
+    const createMode = screen.getByTestId("org-mode-create");
+
+    expect(selectMode).toHaveAttribute("aria-pressed", "true");
+    expect(createMode).toHaveAttribute("aria-pressed", "false");
+    expect(selectMode).not.toHaveClass("btn-primary");
+    expect(createMode).not.toHaveClass("btn-primary");
+
+    const primaryButtons = screen
+      .getAllByRole("button")
+      .filter((button) => button.classList.contains("btn-primary"));
+    expect(primaryButtons).toHaveLength(1);
+    expect(primaryButtons[0]).toBe(screen.getByTestId("wizard-next-1"));
+
+    fireEvent.click(createMode);
+
+    expect(selectMode).toHaveAttribute("aria-pressed", "false");
+    expect(createMode).toHaveAttribute("aria-pressed", "true");
+    expect(selectMode).not.toHaveClass("btn-primary");
+    expect(createMode).not.toHaveClass("btn-primary");
+    expect(api.post).not.toHaveBeenCalled();
+
+    const primaryButtonsAfterSwitch = screen
+      .getAllByRole("button")
+      .filter((button) => button.classList.contains("btn-primary"));
+    expect(primaryButtonsAfterSwitch).toHaveLength(1);
+    expect(primaryButtonsAfterSwitch[0]).toBe(screen.getByTestId("wizard-next-1"));
+  });
+
   test("shows org list, clicking org sets selected id", async () => {
     setup();
     await waitFor(() => screen.getByTestId("org-list"));
