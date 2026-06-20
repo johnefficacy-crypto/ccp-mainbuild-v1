@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import sys
+import uuid as _uuid_mod
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -439,7 +440,7 @@ def shadow_replay(
     mismatches: list[dict] = []
     missing_list: list[dict] = []
     extra_list: list[dict] = []
-    classification_not_ready: list[str] = []
+    classification_not_ready: list[dict] = []
     exact_match_count = 0
     answered_topic_count = 0
 
@@ -449,15 +450,19 @@ def shadow_replay(
             inputs = ad.load_attempt_inputs(sb, aid)
         except Exception as exc:
             _log.warning("load_attempt_inputs(%s) raised: %s", aid, exc)
-            classification_not_ready.append(aid)
+            classification_not_ready.append({"attempt_id": aid})
             continue
 
         if inputs is None:
-            classification_not_ready.append(aid)
+            classification_not_ready.append({"attempt_id": aid})
             continue
 
         if not inputs.classification_coverage.ready:
-            classification_not_ready.append(aid)
+            classification_not_ready.append({
+                "attempt_id": aid,
+                "missing": inputs.classification_coverage.missing_question_ids,
+                "duplicate": inputs.classification_coverage.duplicate_question_ids,
+            })
             continue
 
         # Load persisted shadow decisions (baseline state at write time).
@@ -465,7 +470,7 @@ def shadow_replay(
             persisted = ad.load_persisted_shadow_decisions(sb, aid)
         except Exception as exc:
             _log.warning("load_persisted_shadow_decisions(%s) raised: %s", aid, exc)
-            classification_not_ready.append(aid)
+            classification_not_ready.append({"attempt_id": aid})
             continue
 
         # Replay: re-derive mastery decisions using persisted baseline state.
@@ -475,11 +480,11 @@ def shadow_replay(
             )
         except Exception as exc:
             _log.warning("replay_from_persisted_baseline(%s) raised: %s", aid, exc)
-            classification_not_ready.append(aid)
+            classification_not_ready.append({"attempt_id": aid})
             continue
 
         if replay_result is None:
-            classification_not_ready.append(aid)
+            classification_not_ready.append({"attempt_id": aid})
             continue
 
         exact_match_count += replay_result.exact_match_count
@@ -495,8 +500,10 @@ def shadow_replay(
             mismatches.append({
                 "attempt_id": m.get("attempt_id", ""),
                 "topic_id": m.get("topic_id", ""),
-                "shadow_delta_db": str(m.get("shadow_delta_db", "")),
-                "replayed_delta_db": str(m.get("replayed_delta_db", "")),
+                "persisted_delta_db": str(m.get("persisted_delta_db", "")),
+                "replay_delta_db": str(m.get("replay_delta_db", "")),
+                "diff_db": str(m.get("diff_db", "")),
+                "reason": m.get("reason", ""),
             })
 
     shadow_topic_count = len(shadow_rows)
@@ -603,35 +610,32 @@ def correction_parity(
     ad = _check_attempt_derivation("correction_parity")
     sb = _get_supabase()
 
-    # Same population filter as shadow_replay (shadow attempts in window).
+    # Query submitted mock_attempts in window — includes unanswered-only attempts
+    # that may have correction evidence but no shadow rows.
     if attempt_id:
         def query_fn(q: Any) -> Any:
-            return (
-                q.select("id,attempt_id,user_id,decided_at")
-                .eq("flag_state", "shadow")
-                .eq("attempt_id", attempt_id)
-            )
+            return q.select("id,submitted_at").eq("id", attempt_id).not_.is_("submitted_at", "null")
     elif from_utc or to_utc:
         def query_fn(q: Any) -> Any:  # type: ignore[misc]
-            q = q.select("id,attempt_id,user_id,decided_at").eq("flag_state", "shadow")
+            q = q.select("id,submitted_at").not_.is_("submitted_at", "null")
             if from_utc:
-                q = q.gte("decided_at", from_utc)
+                q = q.gte("submitted_at", from_utc)
             if to_utc:
-                q = q.lte("decided_at", to_utc)
+                q = q.lte("submitted_at", to_utc)
             return q
     else:
         since = _since_iso(days)
 
         def query_fn(q: Any) -> Any:  # type: ignore[misc]
             return (
-                q.select("id,attempt_id,user_id,decided_at")
-                .eq("flag_state", "shadow")
-                .gte("decided_at", since)
+                q.select("id,submitted_at")
+                .not_.is_("submitted_at", "null")
+                .gte("submitted_at", since)
             )
 
     try:
-        shadow_rows = _fetch_paginated(
-            sb, "mock_mastery_shadow", query_fn, batch_size=1000, order_by="id"
+        attempt_rows = _fetch_paginated(
+            sb, "mock_attempts", query_fn, batch_size=1000, order_by="id"
         )
     except Exception as exc:
         _log.error("Query failed: %s", exc)
@@ -647,7 +651,7 @@ def correction_parity(
         )
         sys.exit(_EXIT_ERROR)
 
-    attempt_ids = list({r.get("attempt_id") for r in shadow_rows if r.get("attempt_id")})
+    attempt_ids = list({r.get("id") for r in attempt_rows if r.get("id")})
 
     if not attempt_ids:
         _emit_result(
@@ -656,6 +660,7 @@ def correction_parity(
                 "command": "correction_parity",
                 "status": "INSUFFICIENT_DATA",
                 "thresholds": _CP_THRESHOLDS,
+                "attempt_count": 0,
                 "decision_count": 0,
                 "generated_count": 0,
                 "reference_count": 0,
@@ -736,6 +741,7 @@ def correction_parity(
             "command": "correction_parity",
             "status": status,
             "thresholds": t,
+            "attempt_count": len(attempt_ids),
             "decision_count": decision_count,
             "generated_count": len(generated_set),
             "reference_count": len(reference_set),
@@ -904,6 +910,8 @@ def live_audit_compare(
                 "outliers": 0,
                 "duplicate_audit_count": 0,
                 "missing_audit_count": 0,
+                "delta_mismatch_count": 0,
+                "delta_mismatches": [],
                 "trust_breakdown": {},
             },
             output_json,
@@ -1024,7 +1032,38 @@ def live_audit_compare(
             "insufficient_sample": not t_sufficient,
         }
 
-    status = "INSUFFICIENT_DATA" if not sufficient else "PASS"
+    # Delta mismatches: |shadow_delta - audit_delta| > tolerance
+    tolerance = Decimal(str(_LAC_THRESHOLDS["required_delta_tolerance_db"]))
+    delta_mismatches: list[dict] = []
+    for r in shadow_rows:
+        key = (r.get("attempt_id"), r.get("topic_id"))
+        if key in audit_map and r.get("proposed_delta_db") is not None:
+            shadow_d = Decimal(str(r["proposed_delta_db"]))
+            audit_d = audit_map[key]
+            diff = abs(shadow_d - audit_d)
+            if diff > tolerance:
+                delta_mismatches.append({
+                    "attempt_id": r.get("attempt_id"),
+                    "topic_id": r.get("topic_id"),
+                    "shadow_delta_db": str(shadow_d),
+                    "audit_delta_db": str(audit_d),
+                    "diff_db": str(diff),
+                })
+    delta_mismatch_count = len(delta_mismatches)
+
+    if not sufficient:
+        status = "INSUFFICIENT_DATA"
+    elif (
+        sign_agreement_pct is not None
+        and sign_agreement_pct >= 95
+        and missing_audit_count == 0
+        and duplicate_audit_count == 0
+        and outliers == 0
+        and delta_mismatch_count == 0
+    ):
+        status = "PASS"
+    else:
+        status = "FAIL"
 
     _emit_result(
         {
@@ -1040,11 +1079,13 @@ def live_audit_compare(
             "outliers": outliers,
             "duplicate_audit_count": duplicate_audit_count,
             "missing_audit_count": missing_audit_count,
+            "delta_mismatch_count": delta_mismatch_count,
+            "delta_mismatches": delta_mismatches,
             "trust_breakdown": trust_breakdown,
         },
         output_json,
     )
-    sys.exit(_EXIT_INSUFFICIENT if not sufficient else _EXIT_OK)
+    sys.exit(_EXIT_INSUFFICIENT if status == "INSUFFICIENT_DATA" else _EXIT_OK)
 
 
 # ─── CLI ──────────────────────────────────────────────────────────────────────
@@ -1118,9 +1159,10 @@ def main() -> None:
         to_utc_val = getattr(a, "to_utc", None)
         days_raw = getattr(a, "days", None)
 
-        # B10: --attempt-id and --days are mutually exclusive
+        cmd_name = a.cmd.replace("-", "_")
+
+        # --attempt-id and --days are mutually exclusive
         if attempt_id_val and days_raw is not None:
-            cmd_name = a.cmd.replace("-", "_")
             _emit_result(
                 {
                     "schema_version": 1,
@@ -1133,7 +1175,88 @@ def main() -> None:
             )
             sys.exit(_EXIT_ERROR)
 
+        # --to-utc requires --from-utc (also checked inside each function, but
+        # validate here so errors are reported before any DB access)
+        if to_utc_val and not from_utc_val:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd_name,
+                    "status": "ERROR",
+                    "error": "INVALID_FLAGS",
+                    "detail": "--to-utc requires --from-utc",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
+
+        # Validate --attempt-id is a valid UUID
+        if attempt_id_val:
+            try:
+                _uuid_mod.UUID(attempt_id_val)
+            except ValueError:
+                _emit_result(
+                    {
+                        "schema_version": 1,
+                        "command": cmd_name,
+                        "status": "ERROR",
+                        "error": "INVALID_FLAGS",
+                        "detail": f"--attempt-id is not a valid UUID: {attempt_id_val!r}",
+                    },
+                    output_json,
+                )
+                sys.exit(_EXIT_ERROR)
+
+        # Validate ISO-8601 timestamps and from-utc < to-utc ordering
+        def _parse_iso(val: str, flag: str) -> datetime:
+            try:
+                return datetime.fromisoformat(val)
+            except ValueError:
+                _emit_result(
+                    {
+                        "schema_version": 1,
+                        "command": cmd_name,
+                        "status": "ERROR",
+                        "error": "INVALID_FLAGS",
+                        "detail": f"{flag} is not a valid ISO-8601 timestamp: {val!r}",
+                    },
+                    output_json,
+                )
+                sys.exit(_EXIT_ERROR)
+
+        if from_utc_val:
+            dt_from = _parse_iso(from_utc_val, "--from-utc")
+            if to_utc_val:
+                dt_to = _parse_iso(to_utc_val, "--to-utc")
+                if dt_from >= dt_to:
+                    _emit_result(
+                        {
+                            "schema_version": 1,
+                            "command": cmd_name,
+                            "status": "ERROR",
+                            "error": "INVALID_FLAGS",
+                            "detail": "--from-utc must be before --to-utc",
+                        },
+                        output_json,
+                    )
+                    sys.exit(_EXIT_ERROR)
+        elif to_utc_val:
+            _parse_iso(to_utc_val, "--to-utc")
+
+        # Validate --days > 0
         days_val = days_raw if days_raw is not None else 14
+        if days_raw is not None and days_raw <= 0:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd_name,
+                    "status": "ERROR",
+                    "error": "INVALID_FLAGS",
+                    "detail": "--days must be a positive integer",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
 
         if a.cmd == "shadow-replay":
             shadow_replay(
@@ -1154,6 +1277,18 @@ def main() -> None:
     elif a.cmd == "tasks-overlap":
         tasks_overlap(output_json=output_json)
     elif a.cmd == "live-audit-compare":
+        if a.days <= 0:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": "live_audit_compare",
+                    "status": "ERROR",
+                    "error": "INVALID_FLAGS",
+                    "detail": "--days must be a positive integer",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
         live_audit_compare(days=a.days, output_json=output_json)
 
 
