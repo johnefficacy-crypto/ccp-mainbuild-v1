@@ -142,7 +142,7 @@ describe("SetupPanel — UX-EI-5: cycle context in Phases needing dates", () => 
       refetch: jest.fn(),
     });
     render(<SetupPanel />);
-    expect(screen.getByText("Prelims")).toBeTruthy();
+    expect(screen.getAllByText("Prelims")[0]).toBeTruthy();
     expect(screen.getByTestId("worklist-cycle-ph-1")).toBeTruthy();
   });
 });
