@@ -25,7 +25,9 @@ It is the shared source of record for agent-visible status on the Mock Engine
 v2 ↔ Study OS arc, Exam Governance Console cleanup tier, exam-intelligence UX
 cleanup, Exam Management IA locked decisions, CI gate status, and live-DB-only tails.
 
-The Exam Management IA decision record is at `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`. Read it before touching any of: `KnowledgeGovernance.jsx`, `ExamIntelligence.jsx`, `ExamGovernanceConsole.jsx`, `AdminShell.jsx`, `adminRoutes.jsx`, `ExamWorkspace.jsx`, `ExamActionConsole.jsx`, `ConsoleWorkQueue.jsx`, `console_detail.py`, or `readiness.py`.
+The Exam Management IA findings record is at `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`.
+
+The Exam Management IA **implementation gate** (design-lock) is at `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md`. This is the authoritative gate for I8-A, I8-B, and I8-C. Read this document before touching any of: `KnowledgeGovernance.jsx`, `ExamIntelligence.jsx`, `ExamGovernanceConsole.jsx`, `AdminShell.jsx`, `adminRoutes.jsx`, `ExamWorkspace.jsx`, `ExamActionConsole.jsx`, `ConsoleWorkQueue.jsx`, `console_detail.py`, or `readiness.py`.
 
 No-new-surface rule (locked): **No new top-level destination unless it removes at least two existing top-level destinations.** A new sidebar item or promoted top-level route IS a surface. A backend endpoint, embedded component, or drill-in page is NOT. Violating this rule restarts the IA problem the work is trying to solve.
 

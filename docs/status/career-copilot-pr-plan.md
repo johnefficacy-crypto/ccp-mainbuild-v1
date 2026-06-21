@@ -260,21 +260,9 @@ These are independent of Lanes A–G and can run now.
 
 ### H2 — Fix `console/exams/{id}` → 500 and readiness.py wrong column (BUG-EI-2)
 
-- **Type:** backend bug fix — **design decision LOCKED; no pre-work gate required**.
-- **Status: P0 / READY TO DISPATCH.**
-- **Write scope:**
-  - `app/backend/app/exam_intelligence/console_detail.py`
-  - `app/backend/app/exam_intelligence/readiness.py`
-  - `app/backend/tests/exam_intelligence/` — regression tests for both paths
-  - checklist rows for BUG-EI-2 and "Document readiness extraction status"
-- **Do not touch:** frontend, migrations, other study-os files.
-- **Locked design decision (2026-06-21):** Option B. Canonical extraction signal is `document_processing_jobs` where `job_type='text_extract'`; latest `status` determines succeeded/pending/failed/needs_review/not_started. `syllabus_documents.trust_status='verified'` is a human-review gate orthogonal to extraction — NOT a valid proxy. Option A (trust_status) undercounts and is rejected.
-- **Work:**
-  1. Redesign `_documents()` in `console_detail.py`: load `document_assets` ownership from metadata; apply exam/cycle filter from metadata; batch-load latest `document_processing_jobs` per asset (`job_type='text_extract'`); return explicit status per document.
-  2. Fix `readiness.py:77` with the same approach (same bug — queries non-existent `document_assets.exam_id` and `.extraction_status`).
-  3. Implement shared logic between `console_detail.py` and `readiness.py` to avoid duplication.
-  4. Add regression tests: mock `document_processing_jobs` rows; assert 200 with correct extraction status.
-- **Exit:** console exam detail and readiness endpoint both return 200; extraction status uses `document_processing_jobs`, not `trust_status`.
+- **Type:** backend bug fix — **MERGED / CODE PRESENT — PR #750 merged on main. Do not dispatch.**
+- **Status: ALREADY DONE on main (PR #750 merged).**
+- **What landed:** `load_doc_extraction_counts(strict=True/False)` in `readiness.py` — sources extraction from `document_processing_jobs` (job_type='text_extract', latest job per asset, deterministic by (created_at, id)). `console_detail.py` uses it with `strict=True` (fail-closed). Workspace readiness path uses `strict=False` (fail-soft). Full vocabulary: total/extracted/pending/failed/needs_review/not_started. No `.limit(2000)` or `.limit(5000)`. 58 tests passing. Option B was used (NOT trust_status proxy). See `docs/audits/document-readiness-2026-06-21.md`.
 
 ### H3 — EI UX cleanup batch (UX-EI-1 through UX-EI-5)
 
@@ -431,24 +419,33 @@ Phase/category competition cutoffs, applied vs appeared candidate counts, mixed-
 
 These are planning/decision documents, not code PRs. They gate downstream implementation.
 
-### IA design-lock document (KEYSTONE — write next)
+### IA design-lock document — CODE PRESENT / pending merge
 
-Gates all of I8-A/B/C. Must define:
+**Document:** `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md`  
+**Branch/PR:** `docs/exam-management-ia-design-lock` (PR #752)  
+**Status:** CODE PRESENT IN THIS PR / pending merge. I8 design gate is satisfied once this PR merges.
 
-- no-new-surface rule and surface-count exit test
-- canonical visible route map
-- canonical page names and route ownership
-- page/component ownership (Exam Management, Manage Exam, Advanced Repair)
-- front-door content spec
-- selected-exam content spec
-- canonical readiness source of truth (Console detail vs workspace vs unified read model)
-- blocker/deep-link CTA contract
-- portfolio/readiness read-model data contract and status vocabulary
-- Advanced Repair access model
-- old-route compatibility strategy
-- redirect sequence
-- component retirement plan
-- test migration plan
+Gates all of I8-A/B/C. All 13 sections locked, Appendix B COMPLETE (all 5 previously-deferred decisions resolved):
+
+- Section 1: Product hierarchy (1 visible peer post-I8; no-new-surface rule; surface-count exit test)
+- Section 2: Canonical route map (`/exams/:exam_id`; 5-step redirect sequence; `action=add-cycle` redirect locked; transitional compatibility routes)
+- Section 3: Page and component ownership (ExamIntelligence → single-view front door; ExamWorkspace evolved; ExamIntelCms overflow only; ExamGovernanceConsole retired)
+- Section 4: Canonical readiness authority (`classify_exam` owns verdict; per-section facts from `readiness.py`; H2 DONE on main PR #750; locked section-state vocabulary)
+- Section 5: Exam Management front-door content (family→exam→cycle hierarchy; single "Manage exam" row action)
+- Section 6: Manage Exam content (action queue sections; cycle in URL query param; Overview tab eliminated)
+- Section 7: Blocker-to-editor deep-link contract (tab+entity params required; 8 locked examples)
+- Section 8: Management/readiness backend read-model contract (`/management/exams`; 2 endpoints; deterministic current-cycle selection rule; exact response fields; no second classifier)
+- Section 9: Advanced Repair access model (Manage Exam → More → overflow; permission locked to `exam_intelligence.cms`; explicit warning; not a peer)
+- Section 10: I8 delivery sequence and write scopes (serial; backend prerequisite first; I8-A removes ALL sidebar items atomically; I8-C scope limited to access model only)
+- Section 11: Test migration plan (named tests to migrate; acceptance tests per I8-A/B/C)
+- Section 12: Component retirement plan (retirement blocked on redirect tests)
+- Section 13: Non-goals (I9, J1/J2/J3, KG rename, competition schema, mixed-PDF, coverage governance, new portfolio/matrix pages)
+
+**I8 prerequisites after this PR merges:**
+
+1. Backend read-model endpoints (`/api/admin/exam-intelligence/management/exams`) — parallel-safe; must land before I8-A displays real data
+2. H2 fix (BUG-EI-2) — **ALREADY DONE on main (PR #750 merged)**. No further action.
+3. I8-A → I8-B → I8-C: strictly serial, one owner, per write scopes in Section 10
 
 ### I6 cycle-setup gate document (write after IA lock)
 
@@ -481,28 +478,34 @@ Independent of all IA work. Can run in parallel with H2, I7, I5.
 
 Lane B is **closed** — all B items CODE PRESENT; do not dispatch.
 
+PRs #747 (I5 PYQ pagination), #749 (I7 KG exam lane + mock semantics), #750 (H2 BUG-EI-2), #751 (mock semantics) merged on main.
+
+### Already done — do not dispatch
+
+- **H2 / BUG-EI-2** — MERGED (PR #750). `load_doc_extraction_counts` on main.
+- **I7** — MERGED (PR #749). KG exam lane removed.
+- **Mock semantics trust fix** — MERGED (PR #751). `Mocks.jsx` relabeled.
+- **I5 PYQ pagination** — MERGED (PR #747). `PyqPaperWorkspace.jsx` paginated.
+
 ### Immediate dispatch (no gates)
 
 These can run in parallel now:
 
-1. **Agent H2:** H2 BUG-EI-2 extraction readiness fix — **P0**. `console_detail.py` + `readiness.py` + tests. Design decision locked; no pre-work gate.
-2. **Agent I7:** I7 KG exam lane removal. `KnowledgeGovernance.jsx` + tests only. DQ-1 resolved.
-3. **Agent K:** Mock semantics trust fix. `Mocks.jsx` + tests. Isolated; no dependencies.
-4. **Agent I5:** I5 PYQ pagination. `PyqPaperWorkspace.jsx` + tests. Backend pagination confirmed; do not hardcode old routes.
+1. **Agent H3:** EI UX cleanup batch (IDs, OverviewPanel dedup, phases cycle label). Does not touch routing.
+2. **Agent A:** A1 scheduler evidence (operator/live, docs only).
+3. **Agent E:** E1 CI sequencing (`.github/workflows/ci.yml` only). Independent.
 
-### Parallel with immediate batch
+### After IA design-lock PR (#752) merges
 
-5. **Agent A:** A1 scheduler evidence (operator/live, docs only).
-6. **Agent E:** E1 CI sequencing (`.github/workflows/ci.yml` only).
-
-### Write-next (documentation)
-
-7. **One owner:** IA design-lock document (see §Documentation gates). Keystone gate for all I8 work. Do not parallelize; single design owner.
+4. **Backend read-model agent (parallel-safe):** implement `GET /api/admin/exam-intelligence/management/exams` and `GET /api/admin/exam-intelligence/management/exams/{exam_id}` per design-lock Section 8. Must land before I8-A.
+5. **I8-A agent (after backend merges):** Exam Management front door. Write scope per design-lock Section 10.3.
+6. **I8-B agent (after I8-A merges):** Manage Exam consolidation. Write scope per design-lock Section 10.4.
+7. **I8-C agent (after I8-B merges):** Advanced Repair isolation. Write scope per design-lock Section 10.5.
 
 ### Blocked until IA design lock
 
-- I8-A, I8-B, I8-C — serial, one owner, cannot start until IA lock is approved.
-- Portfolio read-model backend — after IA contract is locked.
+- I8-A, I8-B, I8-C — serial, one owner, cannot start until IA lock PR merges.
+- Management read-model backend — after IA contract is locked (this PR).
 - J1, J2, J3 — after I8-A/B/C.
 
 ### Blocked until Lane A clean gate

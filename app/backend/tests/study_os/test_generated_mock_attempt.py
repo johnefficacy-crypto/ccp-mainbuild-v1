@@ -510,6 +510,7 @@ def test_submit_runs_masterywriter_for_template_id_null_attempt_shadow(monkeypat
 
 def test_ff_live_applies_mastery_exactly_once_no_dual_writer(monkeypatch):
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    monkeypatch.setenv("FF_MOCK_MASTERY_LIVE_USER_IDS", USER)
     sb = _sb()
     attempt_id = _start_generated(sb)
     _answer_all(sb, attempt_id, correct=True)
@@ -542,6 +543,7 @@ def test_ff_live_correction_drafts_are_063_schema_compatible(monkeypatch):
     # emitted on submit), a non-empty `title` — and NONE of the old mastery-engine
     # columns. The submit emits the mock_tests row, so corrections land inline.
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    monkeypatch.setenv("FF_MOCK_MASTERY_LIVE_USER_IDS", USER)
     sb = _sb()
     attempt_id = _start_generated(sb)
     _answer_all(sb, attempt_id, correct=False)  # 0% accuracy → error/correction signals
@@ -856,7 +858,9 @@ def test_shadow_done_does_not_count_as_live_done(monkeypatch):
     assert client.post(f"/api/study/mocks/attempts/{attempt_id}/submit").status_code == 200
     assert [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("mastery_flag_state") == "shadow" and j.get("status") == "done"]
 
+    # Upgrade to live for the re-submit; add user to allowlist so the effective flag is live
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    monkeypatch.setenv("FF_MOCK_MASTERY_LIVE_USER_IDS", USER)
     assert client.post(f"/api/study/mocks/attempts/{attempt_id}/submit").status_code == 200
 
     assert [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("mastery_flag_state") == "live" and j.get("status") == "done"]

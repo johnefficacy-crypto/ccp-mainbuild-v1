@@ -17,7 +17,12 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
-from app.study_os.mastery_writer import MasteryClassificationNotReady, MasteryWriter, get_mastery_write_flag
+from app.study_os.mastery_writer import (
+    MasteryClassificationNotReady,
+    MasteryWriter,
+    get_mastery_write_flag,
+    resolve_effective_mastery_flag,
+)
 from app.study_os.mock_engine import (
     AnswerPersistenceError,
     AttemptFinalizationError,
@@ -171,7 +176,12 @@ async def submit(
         # derivation failure cannot silently suppress the write-back.
         was_submitted = _attempt_status(sb, attempt_id) == "submitted"
         result = submit_attempt(sb, user_id, attempt_id, body.claimed_answered_count)
-        flag_state = get_mastery_write_flag()
+        # Resolve the per-user effective flag: a global FF=live value must be
+        # downgraded to shadow for any user not in the live canary allowlist
+        # (FF_MOCK_MASTERY_LIVE_USER_IDS).  Using the raw global flag here would
+        # allow a live canary bypass for non-allowlisted users.
+        requested_flag = get_mastery_write_flag()
+        flag_state = resolve_effective_mastery_flag(requested_flag, user_id)
         if flag_state != "off" and not (was_submitted and mastery_retry_done(sb, attempt_id, flag_state)):
             try:
                 claimed_job_id = claim_mastery_retry_required(sb, attempt_id, flag_state)

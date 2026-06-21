@@ -1,8 +1,8 @@
 ---
 owner: ops
-last_modified: 2026-06-20
+last_modified: 2026-06-21
 use timestamp including both date and time.
-verified_against: main @ a2ded8c
+verified_against: main @ efc520e
 ---
 
 # Agent dispatch table
@@ -117,19 +117,19 @@ Can run in parallel with Lanes B, C, D, E.
 | Work item | Agent type | Status | Depends on |
 |---|---|---|---|
 | H1 Fix `syllabus/propose` 404 (BUG-EI-1) | Backend agent | PLANNED | Nothing — dispatch now |
-| H2 Fix `console/exams/{id}` 500 (BUG-EI-2) | Backend agent | PLANNED — DESIGN GATE | Operator must choose Option A or B (see PR plan H2) |
+| H2 Fix `console/exams/{id}` 500 (BUG-EI-2) | Backend agent | COMPLETE — MERGED PR #750 | `load_doc_extraction_counts` in readiness.py; console_detail uses it with strict=True; H2 fix on main. Do not dispatch. |
 | H3 EI UX cleanup batch (UX-EI-1/3/5) | Frontend agent | PLANNED | Nothing — dispatch now |
 | UX-EI-2 Topics exam-scope filter | Backend + frontend agent | PLANNED | Design decision on filter contract |
 | UX-EI-4 Bulk import JSON schema docs | Docs agent | PLANNED | Nothing — dispatch now |
 | UX-EI-6 Competition metrics JSONB schema | Operator + backend agent | DESIGN QUESTION | Operator must define cutoff structure |
 
-### H2 design gate — operator must decide before dispatch
+### H2 design gate — RESOLVED (PR #750 merged)
 
-Options:
-- **Option A (recommended):** `_documents()` queries `syllabus_documents` by `exam_id`; uses `trust_status == "verified"` as readiness proxy. Simple, uses existing schema.
-- **Option B:** `_documents()` queries a processing-job status table (e.g. `document_processing_jobs`) to get extraction status per document. More accurate but requires confirming that table structure.
-
-Record the decision in the H2 PR description before any code is written.
+Option B was implemented: `load_doc_extraction_counts` in `readiness.py` queries
+`document_processing_jobs` (job_type='text_extract', latest job per asset).
+`console_detail.py` calls it with `strict=True` (fail-closed).
+`readiness.py` workspace path calls it with `strict=False` (fail-soft).
+No further dispatch needed for H2.
 
 ---
 
@@ -170,9 +170,26 @@ Do not dispatch I3, I4, I5, I6, I9, I12 until the corresponding design questions
 | DQ-5 | Error pattern taxonomy — time pressure vs. skipped distinction | Lane A / mastery writer |
 | DQ-6 | PYQ bilingual/two-column PDF handling | PYQ import pipeline |
 | DQ-7 | Historical cycle paper addition workflow | Operator runbook |
-| H2-gate | console_detail._documents() redesign: Option A or B | H2 |
+| H2-gate | ~~console_detail._documents() redesign: Option A or B~~ — **RESOLVED**: Option B implemented (PR #750). `document_processing_jobs` used. | CLOSED |
 | I6-gate | Guided cycle-setup workflow: product design (what steps, what order, what surface) | I6 |
 | I10-gate | Topic prerequisite strength schema: what fields, what scale, how edited | I10 |
+
+---
+
+## IA Design Lock — authoritative gate for I8 (2026-06-21)
+
+**Gate document:** `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md`
+
+This is the current authoritative gate for all I8-A/B/C implementation. No I8 sub-PR may be dispatched until the design-lock PR (`docs/exam-management-ia-design-lock`) is merged.
+
+After the design-lock PR merges, the next implementation prerequisites are:
+
+1. **Backend read-model agent (parallel-safe):** implement `GET /api/admin/exam-intelligence/management/exams` and `GET /api/admin/exam-intelligence/management/exams/{exam_id}` per Section 8 of the design-lock doc. Write scope: `admin_exam_intelligence.py`, `readiness.py` (H2 fix already on main), tests. H2 is DONE — do not re-fix BUG-EI-2.
+2. **I8-A agent (after backend PR merges):** Exam Management front door. Write scope per design-lock Section 10.3.
+3. **I8-B agent (after I8-A merges):** Manage Exam consolidation. Write scope per design-lock Section 10.4.
+4. **I8-C agent (after I8-B merges):** Advanced Repair isolation. Write scope per design-lock Section 10.5.
+
+I8-A, I8-B, I8-C MUST be serial, one owner. Do NOT fan out to parallel agents.
 
 ---
 
@@ -182,14 +199,15 @@ Lane B items removed from this table; all complete.
 
 | Priority | Agent | Work | Notes |
 |---|---|---|---|
-| P0 | Backend agent → H1 | Fix `syllabus/propose` 404 | Dispatch immediately; narrow scope |
-| P0 | Backend agent → H2 | Fix console 500 | Requires design decision first (H2-gate) |
-| P1 | Frontend agent → H3 | EI UX cleanup (IDs, OverviewPanel, phases cycle label) | Can run parallel with H1 |
+| DONE | Backend agent → H2 | Fix console 500 (BUG-EI-2) — **MERGED PR #750** | Do not dispatch. Fix is on main. |
+| P1 | Frontend agent → H3 | EI UX cleanup (IDs, OverviewPanel, phases cycle label) | Can run parallel; does not touch routing |
 | P1 | CI/infra agent → E1 | pip-audit / pytest sequencing | Independent of all other lanes |
-| P2 | Frontend agent → I7 | Bulk import auto-navigate after success | Narrow scope; no backend changes |
-| P2 | Frontend agent → I8 | PYQ paper overview table | Narrow scope; `PyqWorkbenchPanel.jsx` only |
-| P2 | Frontend agent → I11 | PYQ question pagination | `PyqPaperWorkspace.jsx` + backend limit param |
+| P1 | Backend agent | Backend read-model endpoints `/management/exams` (Section 8 of design-lock doc) | Parallel-safe after design-lock PR merges; prerequisite before I8-A |
+| P2 | Frontend agent → I11 | PYQ question pagination | `PyqPaperWorkspace.jsx`; do not hardcode old routes |
 | P2 | Frontend agent → I13 | Remaining identifier leakage (I3–I5) | Apply `operatorChrome.humanizeToken` to CMS tables |
 | P2 | Docs agent → UX-EI-4 | Bulk import schema documentation | Docs-only, no code |
 | P2 | Operator → A1 | Scheduler evidence | Operator-only, live env |
-| P3 | Design → I6-gate | Define guided cycle-setup workflow | Product design deliverable before I6 implementation |
+| P3 | Design → I6-gate | Define guided cycle-setup workflow | Product design deliverable before I9 implementation |
+| BLOCKED | Frontend agent → I8-A | Exam Management front door | Blocked on design-lock PR merge AND backend read-model PR |
+| BLOCKED | Frontend agent → I8-B | Manage Exam consolidation | Blocked on I8-A |
+| BLOCKED | Frontend agent → I8-C | Advanced Repair isolation | Blocked on I8-B |
