@@ -17,7 +17,7 @@
  *   ?action=<a>    inline action for setup (e.g. add-cycle)
  */
 import React, { lazy, Suspense, useEffect } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ExamWorkspaceProvider, useExamWorkspace } from "./ExamWorkspaceContext";
 import SetupPanel from "./panels/SetupPanel";
 import DocumentsPanel from "./panels/DocumentsPanel";

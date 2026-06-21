@@ -104,6 +104,7 @@ function useExamDetail(examId) {
   useEffect(() => {
     if (!examId) return;
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
   return { ...state, reload: load };
 }
