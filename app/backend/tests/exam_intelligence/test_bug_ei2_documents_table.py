@@ -1,20 +1,27 @@
-"""Regression test for BUG-EI-2.
+"""Regression tests for BUG-EI-2 final fix.
 
-GET /api/admin/exam-intelligence/console/exams/{exam_id} was returning 500
-because ``_documents()`` queried ``document_assets`` with
-``.eq("exam_id", ...)`` and ``.select("id, extraction_status")`` — neither
-column exists on that table, so PostgREST raised a 42703 error.
+Previous broken state: ``_documents()`` in both console_detail.py and
+readiness.py queried ``document_assets`` with non-existent columns
+(exam_id, extraction_status, exam_cycle_id) causing PostgREST 42703 → HTTP 500.
 
-Fix (Option A): query ``syllabus_documents`` (which has ``exam_id`` and
-``trust_status``), and count rows where ``trust_status == "verified"`` as the
-document readiness proxy.
+Interim Option A (now superseded): query ``syllabus_documents`` and use
+``trust_status == "verified"`` as an extraction proxy.  This undercounted
+because trust_status is a human-review gate, orthogonal to extraction.
 
-This file asserts:
-1. The endpoint returns 200 (not 500) when ``syllabus_documents`` rows exist.
-2. A ``trust_status="verified"`` row is counted as an extracted/verified doc.
-3. The endpoint returns 200 with zero doc count when no syllabus_documents rows
-   exist (the no-documents path).
-4. The ``_documents()`` helper never queries ``document_assets``.
+Final fix (this file covers): document readiness is sourced from
+``document_processing_jobs`` (job_type='text_extract', latest job per asset).
+Exam ownership is stored in ``document_assets.metadata.exam_id``.
+
+Assertions:
+1. Endpoint returns 200 when document_assets + succeeded text_extract job present.
+2. A succeeded text_extract job counts as extracted (state="done").
+3. A syllabus_documents row with trust_status='verified' ALONE (no text_extract
+   job) does NOT register as an extracted document.
+4. An asset with no job at all (not_started) is NOT counted as extracted.
+5. Endpoint returns 200 with zero admin-EI documents.
+6. document_assets IS queried as the asset roster; syllabus_documents is not the
+   extraction source.
+7. _AREA_ENTITY_KIND["documents"] == "document_assets".
 """
 from __future__ import annotations
 
@@ -26,7 +33,7 @@ from app.core.auth import get_current_user
 from tests.persona_questions._stub import SBStub
 
 
-_RECENT = "2026-06-16T00:00:00+00:00"
+_RECENT = "2026-06-21T00:00:00+00:00"
 
 
 def _build_app(sb):
@@ -38,10 +45,12 @@ def _build_app(sb):
     return app
 
 
-def _minimal_ready_db(*, syllabus_documents=None):
+def _minimal_ready_db(*, doc_assets=None, doc_jobs=None):
     """Minimal DB with one fully-ready exam (phases + locked coverage + verified PYQ).
 
-    The ``syllabus_documents`` kwarg lets each test inject its own document rows.
+    doc_assets: list of document_assets rows (scope='admin_exam_intelligence',
+                metadata contains exam_id).
+    doc_jobs:   list of document_processing_jobs rows.
     """
     db = {
         "exams": [
@@ -62,83 +71,123 @@ def _minimal_ready_db(*, syllabus_documents=None):
             {"id": "e1-t0", "question_id": "e1-q0", "reviewer_status": "verified",
              "created_at": _RECENT},
         ],
-        # These tables must be present so the stub does not raise KeyError.
         "syllabus_topic_mentions": [],
         "exam_policy_updates": [],
         "exam_competition_metrics": [],
         "mock_question_bank": [],
         "organizations": [],
         "exam_families": [],
-        "syllabus_documents": syllabus_documents if syllabus_documents is not None else [],
-        # document_assets intentionally absent — querying it should never happen.
+        # syllabus_documents present but NOT used as extraction source.
+        "syllabus_documents": [
+            {"id": "sd1", "exam_id": "e1", "trust_status": "verified",
+             "document_type": "syllabus"},
+        ],
+        # Real extraction sources:
+        "document_assets": doc_assets if doc_assets is not None else [],
+        "document_processing_jobs": doc_jobs if doc_jobs is not None else [],
     }
     return db
 
 
-# ── 1. Endpoint returns 200 with a verified syllabus_documents row ───────────
+def _admin_ei_asset(asset_id: str) -> dict:
+    return {
+        "id": asset_id,
+        "scope": "admin_exam_intelligence",
+        "metadata": {"exam_id": "e1"},
+    }
 
-def test_endpoint_returns_200_with_syllabus_documents_row():
-    """BUG-EI-2: was returning 500 because _documents() queried wrong table."""
-    db = _minimal_ready_db(syllabus_documents=[
-        {"id": "sd1", "exam_id": "e1", "trust_status": "verified",
-         "document_type": "syllabus"},
-    ])
+
+def _text_extract_job(asset_id: str, status: str) -> dict:
+    return {
+        "document_id": asset_id,
+        "job_type": "text_extract",
+        "status": status,
+        "created_at": _RECENT,
+    }
+
+
+# ── 1. 200 with document_assets + succeeded text_extract job ─────────────────
+
+def test_endpoint_returns_200_with_succeeded_text_extract_job():
+    """Endpoint must not 500 when a document_assets row has a succeeded text_extract job."""
+    db = _minimal_ready_db(
+        doc_assets=[_admin_ei_asset("da1")],
+        doc_jobs=[_text_extract_job("da1", "succeeded")],
+    )
     client = TestClient(_build_app(SBStub(db)))
     r = client.get("/api/admin/exam-intelligence/console/exams/e1")
     assert r.status_code == 200, r.text
 
 
-# ── 2. Verified syllabus_documents row counts as an extracted document ────────
+# ── 2. Succeeded text_extract job → state="done" ─────────────────────────────
 
-def test_verified_syllabus_document_counted_in_documents_check():
-    """trust_status='verified' must register as a ready document (extracted >= 1)."""
-    db = _minimal_ready_db(syllabus_documents=[
-        {"id": "sd1", "exam_id": "e1", "trust_status": "verified",
-         "document_type": "syllabus"},
-    ])
+def test_succeeded_job_counts_as_extracted():
+    """A succeeded text_extract job must register as extracted (state='done')."""
+    db = _minimal_ready_db(
+        doc_assets=[_admin_ei_asset("da1")],
+        doc_jobs=[_text_extract_job("da1", "succeeded")],
+    )
     client = TestClient(_build_app(SBStub(db)))
     body = client.get("/api/admin/exam-intelligence/console/exams/e1").json()
     checks = {c["area"]: c for c in body["activation_checks"]}
     doc_check = checks["documents"]
-    # State must be "done" because extracted >= 1.
     assert doc_check["state"] == "done", doc_check
     assert "1" in doc_check["detail"]
 
 
-# ── 3. Pending syllabus_documents row does not count as verified ──────────────
+# ── 3. syllabus_documents trust_status='verified' alone → NOT extracted ───────
 
-def test_pending_syllabus_document_does_not_count_as_extracted():
-    """trust_status='pending' must not be counted as a ready document."""
-    db = _minimal_ready_db(syllabus_documents=[
-        {"id": "sd2", "exam_id": "e1", "trust_status": "pending",
-         "document_type": "syllabus"},
-    ])
+def test_verified_syllabus_document_alone_not_counted_as_extracted():
+    """trust_status='verified' on syllabus_documents is a human-review gate.
+    Without a succeeded text_extract job, the document is not extracted.
+    The DB has a verified syllabus_documents row (set up in _minimal_ready_db),
+    but no document_assets / text_extract jobs → state must be needs_action.
+    """
+    db = _minimal_ready_db(doc_assets=[], doc_jobs=[])
     client = TestClient(_build_app(SBStub(db)))
     body = client.get("/api/admin/exam-intelligence/console/exams/e1").json()
     checks = {c["area"]: c for c in body["activation_checks"]}
     doc_check = checks["documents"]
-    # 1 uploaded but none verified — state must be needs_action.
     assert doc_check["state"] == "needs_action", doc_check
-    assert "none verified" in doc_check["detail"]
+    assert "No documents" in doc_check["detail"]
 
 
-# ── 4. Endpoint returns 200 with zero documents ───────────────────────────────
+# ── 4. Asset with no job → not_started → NOT extracted ───────────────────────
 
-def test_endpoint_returns_200_with_no_documents():
-    """No syllabus_documents rows: documents check is needs_action but no 500."""
-    db = _minimal_ready_db(syllabus_documents=[])
+def test_asset_with_no_job_not_counted_as_extracted():
+    """An admin_exam_intelligence asset with no text_extract job at all must not
+    count as extracted — it is not_started, so state is needs_action."""
+    db = _minimal_ready_db(
+        doc_assets=[_admin_ei_asset("da1")],
+        doc_jobs=[],  # no processing job
+    )
+    client = TestClient(_build_app(SBStub(db)))
+    body = client.get("/api/admin/exam-intelligence/console/exams/e1").json()
+    checks = {c["area"]: c for c in body["activation_checks"]}
+    doc_check = checks["documents"]
+    assert doc_check["state"] == "needs_action", doc_check
+    assert "none extracted" in doc_check["detail"]
+
+
+# ── 5. 200 with zero admin-EI documents ──────────────────────────────────────
+
+def test_endpoint_returns_200_with_no_admin_ei_documents():
+    """No document_assets rows: documents check is needs_action but endpoint returns 200."""
+    db = _minimal_ready_db(doc_assets=[], doc_jobs=[])
     client = TestClient(_build_app(SBStub(db)))
     r = client.get("/api/admin/exam-intelligence/console/exams/e1")
     assert r.status_code == 200, r.text
     checks = {c["area"]: c for c in r.json()["activation_checks"]}
     assert checks["documents"]["state"] == "needs_action"
-    assert checks["documents"]["detail"] == "No documents uploaded"
+    assert "No documents" in checks["documents"]["detail"]
 
 
-# ── 5. _documents() never queries document_assets ────────────────────────────
+# ── 6. document_assets queried; syllabus_documents not extraction source ──────
 
-def test_documents_helper_does_not_query_document_assets():
-    """Regression guard: the fix must not fall back to querying document_assets."""
+def test_documents_helper_queries_document_assets():
+    """Regression guard: extraction must come from document_assets +
+    document_processing_jobs, never from syllabus_documents.trust_status.
+    """
     queried_tables: list[str] = []
 
     class TrackingSBStub(SBStub):
@@ -146,29 +195,30 @@ def test_documents_helper_does_not_query_document_assets():
             queried_tables.append(name)
             return super().table(name)
 
-    db = _minimal_ready_db(syllabus_documents=[
-        {"id": "sd1", "exam_id": "e1", "trust_status": "verified",
-         "document_type": "syllabus"},
-    ])
+    db = _minimal_ready_db(
+        doc_assets=[_admin_ei_asset("da1")],
+        doc_jobs=[_text_extract_job("da1", "succeeded")],
+    )
     client = TestClient(_build_app(TrackingSBStub(db)))
     r = client.get("/api/admin/exam-intelligence/console/exams/e1")
     assert r.status_code == 200
-    assert "document_assets" not in queried_tables, (
-        f"_documents() must not query document_assets; tables queried: {queried_tables}"
+    assert "document_assets" in queried_tables, (
+        f"document_assets must be queried for extraction roster; tables queried: {queried_tables}"
     )
-    assert "syllabus_documents" in queried_tables, (
-        f"_documents() must query syllabus_documents; tables queried: {queried_tables}"
+    assert "document_processing_jobs" in queried_tables, (
+        f"document_processing_jobs must be queried for extraction status; tables queried: {queried_tables}"
     )
 
 
-# ── 6. entity_kind for documents area is syllabus_documents ──────────────────
+# ── 7. _AREA_ENTITY_KIND["documents"] == "document_assets" ───────────────────
 
-def test_documents_action_item_entity_kind_is_syllabus_documents():
-    """_AREA_ENTITY_KIND['documents'] must be 'syllabus_documents' (not 'document_assets')."""
-    db = _minimal_ready_db(syllabus_documents=[])
+def test_documents_action_item_entity_kind_is_document_assets():
+    """_AREA_ENTITY_KIND['documents'] must be 'document_assets' (not 'syllabus_documents')."""
+    from app.exam_intelligence.console_detail import _AREA_ENTITY_KIND
+    assert _AREA_ENTITY_KIND["documents"] == "document_assets", _AREA_ENTITY_KIND
+    db = _minimal_ready_db(doc_assets=[], doc_jobs=[])
     client = TestClient(_build_app(SBStub(db)))
     body = client.get("/api/admin/exam-intelligence/console/exams/e1").json()
-    # When documents is needs_action it appears in the action queue.
     doc_items = [i for i in body["action_queue"] if i["area"] == "documents"]
     assert doc_items, "documents area should be in action_queue when no docs present"
-    assert doc_items[0]["entity_kind"] == "syllabus_documents", doc_items[0]
+    assert doc_items[0]["entity_kind"] == "document_assets", doc_items[0]

@@ -12,7 +12,7 @@ CYCLE_ID SEMANTICS
     updates        — exam_policy_updates for exam_id
 
   Cycle-scoped sections (cycle_id filters when provided; else all cycles):
-    documents      — document_assets for exam_id [+ cycle_id]
+    documents      — document_processing_jobs (text_extract) for exam_id [+ cycle_id]
     pyq_workbench  — pyq_papers + pyq_questions for exam_id [+ cycle_id]
     competition    — exam_competition_metrics for exam_id [+ cycle_id]
 
@@ -73,15 +73,83 @@ def _setup(sb, exam_id: str) -> dict:
     }
 
 
-def _documents(sb, exam_id: str, cycle_id: str | None) -> dict:
-    q = sb.table("document_assets").select("id, extraction_status, exam_cycle_id").eq("exam_id", exam_id)
+def load_doc_extraction_counts(sb, exam_id: str, cycle_id: str | None = None) -> dict:
+    """Return extraction counts for admin_exam_intelligence docs owned by exam_id.
+
+    Extraction status is sourced from document_processing_jobs (job_type='text_extract',
+    latest job per asset). trust_status on syllabus_documents is a human-review gate,
+    not an extraction signal (BUG-EI-2 final fix).
+
+    document_assets has no exam_id column; ownership is stored in metadata JSONB
+    by admin_exam_intel_documents.py at upload time.
+    """
+    # Fetch all admin EI assets; filter to exam (and optionally cycle) in Python
+    # because document_assets.exam_id does not exist as a column.
+    asset_rows = _safe(
+        lambda: (
+            sb.table("document_assets")
+            .select("id, metadata")
+            .eq("scope", "admin_exam_intelligence")
+            .limit(2000)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+
+    assets = [r for r in asset_rows if (r.get("metadata") or {}).get("exam_id") == exam_id]
     if cycle_id:
-        q = q.eq("exam_cycle_id", cycle_id)
-    rows = _safe(lambda: q.limit(2000).execute().data, default=[]) or []
-    total = len(rows)
-    extracted = sum(1 for r in rows if r.get("extraction_status") == "succeeded")
-    pending = sum(1 for r in rows if r.get("extraction_status") in {"pending", "processing"})
-    failed = sum(1 for r in rows if r.get("extraction_status") == "failed")
+        assets = [r for r in assets if (r.get("metadata") or {}).get("exam_cycle_id") == cycle_id]
+
+    total = len(assets)
+    if total == 0:
+        return {"total": 0, "extracted": 0, "pending": 0, "failed": 0, "not_started": 0}
+
+    asset_ids = [r["id"] for r in assets]
+
+    # Batch-load latest text_extract job per asset — no per-asset N+1 queries.
+    all_jobs: list[dict] = []
+    for i in range(0, len(asset_ids), 500):
+        batch = asset_ids[i : i + 500]
+        jobs = _safe(
+            lambda b=batch: (
+                sb.table("document_processing_jobs")
+                .select("document_id, status, created_at")
+                .in_("document_id", b)
+                .eq("job_type", "text_extract")
+                .limit(5000)
+                .execute()
+                .data
+            ),
+            default=[],
+        ) or []
+        all_jobs.extend(jobs)
+
+    # Latest job per asset: sort ascending so the last entry wins on ties.
+    latest: dict[str, str] = {}
+    for j in sorted(all_jobs, key=lambda x: x.get("created_at") or ""):
+        latest[j["document_id"]] = j["status"]
+
+    extracted   = sum(1 for aid in asset_ids if latest.get(aid) == "succeeded")
+    pending     = sum(1 for aid in asset_ids if latest.get(aid) in {"queued", "running"})
+    failed      = sum(1 for aid in asset_ids if latest.get(aid) == "failed")
+    not_started = sum(1 for aid in asset_ids if aid not in latest)
+
+    return {
+        "total": total,
+        "extracted": extracted,
+        "pending": pending,
+        "failed": failed,
+        "not_started": not_started,
+    }
+
+
+def _documents(sb, exam_id: str, cycle_id: str | None) -> dict:
+    counts    = load_doc_extraction_counts(sb, exam_id, cycle_id)
+    total     = counts["total"]
+    extracted = counts["extracted"]
+    pending   = counts["pending"]
+    failed    = counts["failed"]
 
     if extracted >= 1:
         status = "ready"

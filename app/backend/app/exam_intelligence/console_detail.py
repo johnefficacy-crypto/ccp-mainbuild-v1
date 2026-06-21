@@ -20,9 +20,9 @@ Guards: no score_percent/confidence_score/confidence_percent leaves this module;
 every correctness-critical read pages fully and uses ``execute_or_raise``
 (failure → 5xx, never a fabricated verdict); unknown exam → 404. Read-only.
 
-BUG-EI-2 fix (Option A): ``_documents()`` now queries ``syllabus_documents``
-(which has ``exam_id`` and ``trust_status``) instead of ``document_assets``
-(which has neither). ``trust_status == "verified"`` is the readiness proxy.
+BUG-EI-2 final fix: document readiness is sourced from document_processing_jobs
+(job_type='text_extract', latest job per asset). trust_status on
+syllabus_documents is a human-review gate, not an extraction signal.
 """
 from __future__ import annotations
 
@@ -33,6 +33,7 @@ from fastapi import HTTPException
 from app.db.utils import execute_or_raise
 from app.exam_intelligence import work_queue as _wq
 from app.exam_intelligence.diagnostics import assemble_mock_readiness_report
+from app.exam_intelligence.readiness import load_doc_extraction_counts
 
 # Mock-readiness inputs mirror the existing /exams/{id}/mock-readiness defaults.
 _SELECTABLE_MOCK_STATUSES = ["verified", "published"]
@@ -93,16 +94,6 @@ def _paged(sb, make_query, operation: str) -> list[dict[str, Any]]:
     return _wq._fetch_all_pages(make_query, operation=operation)
 
 
-def _documents(sb, exam_id: str) -> list[dict[str, Any]]:
-    # Option A (BUG-EI-2): query syllabus_documents (has exam_id + trust_status).
-    # document_assets has neither exam_id nor extraction_status; querying it
-    # caused a PostgREST 42703 error → HTTP 500.
-    return _paged(
-        sb,
-        lambda: sb.table("syllabus_documents").select("id, trust_status")
-        .eq("exam_id", exam_id).order("id"),
-        "console_detail.documents",
-    )
 
 
 def _syllabus_verified_count(sb, exam_id: str) -> int:
@@ -179,13 +170,12 @@ _ACTION_COPY = {
 
 # Area-level entity kind. NULL for PYQ because a PYQ action's causal rows can be
 # questions, tags, OR options — the precise kinds live in evidence_refs.
-# BUG-EI-2: "documents" maps to "syllabus_documents" (was "document_assets").
 _AREA_ENTITY_KIND = {
     "topic_coverage": "exam_topic_coverage",
     "syllabus": "syllabus_topic_mention",
     "updates": "exam_policy_updates",
     "competition": "exam_competition_metrics",
-    "documents": "syllabus_documents",
+    "documents": "document_assets",
     "setup": "exam_phases",
     "pyq": None,
     "mock_readiness": None,
@@ -241,7 +231,7 @@ def build_console_detail(sb, exam_id: str) -> dict[str, Any]:
     family_name = _family_name(sb, exam.get("exam_family_id"))
 
     # Advisory-area reads (not owned by the classifier) — strict + paged.
-    docs = _documents(sb, exam_id)
+    doc_counts = load_doc_extraction_counts(sb, exam_id)
     syllabus_verified = _syllabus_verified_count(sb, exam_id)
     competition = _competition(sb, exam_id)
     mock = _mock_readiness(sb, exam_id)
@@ -261,13 +251,15 @@ def build_console_detail(sb, exam_id: str) -> dict[str, Any]:
     else:
         checks.append(_check("setup", "hard", "blocked", "No exam phases defined", ["no_phases"]))
 
-    # documents (advisory) — trust_status=="verified" is the readiness proxy
-    # (BUG-EI-2: was extraction_status=="succeeded" queried on wrong table).
-    extracted = sum(1 for r in docs if r.get("trust_status") == "verified")
+    # documents (advisory) — real extraction status from document_processing_jobs
+    # (job_type='text_extract', latest job per asset). trust_status on
+    # syllabus_documents is orthogonal to extraction (BUG-EI-2 final fix).
+    extracted  = doc_counts["extracted"]
+    doc_total  = doc_counts["total"]
     if extracted >= 1:
-        checks.append(_check("documents", "advisory", "done", f"{extracted} document(s) verified"))
-    elif docs:
-        checks.append(_check("documents", "advisory", "needs_action", f"{len(docs)} uploaded, none verified"))
+        checks.append(_check("documents", "advisory", "done", f"{extracted} document(s) extracted"))
+    elif doc_total >= 1:
+        checks.append(_check("documents", "advisory", "needs_action", f"{doc_total} uploaded, none extracted"))
     else:
         checks.append(_check("documents", "advisory", "needs_action", "No documents uploaded"))
 

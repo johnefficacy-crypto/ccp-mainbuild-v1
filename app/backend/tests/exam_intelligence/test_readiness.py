@@ -24,7 +24,7 @@ from fastapi.testclient import TestClient
 
 from app.api import admin_exam_intelligence as review_api
 from app.core.auth import get_current_user
-from app.exam_intelligence.readiness import compute_exam_workspace_readiness
+from app.exam_intelligence.readiness import compute_exam_workspace_readiness, load_doc_extraction_counts
 
 _BASE = "/api/admin/exam-intelligence"
 
@@ -114,6 +114,7 @@ def _make_sb(
     exam=None,
     phases=None,
     documents=None,
+    doc_jobs=None,
     syllabus=None,
     pyq_papers=None,
     pyq_questions=None,
@@ -124,9 +125,20 @@ def _make_sb(
     pyq_options=None,
     pyq_question_topic_tags=None,
 ):
+    """Build a test stub.
+
+    documents: list of document_assets rows.  Each row must carry
+      ``scope='admin_exam_intelligence'`` and ``metadata={"exam_id": ...,
+      "exam_cycle_id": ...}``.  The stub filters by scope; exam/cycle
+      filtering is done Python-side in load_doc_extraction_counts.
+
+    doc_jobs: list of document_processing_jobs rows with
+      ``document_id``, ``job_type``, ``status``, ``created_at``.
+    """
     exam_rows = [exam] if exam else []
     phases_rows = phases or []
     doc_rows = documents or []
+    dpj_rows = doc_jobs or []
     syllabus_rows = syllabus or []
     papers_rows = pyq_papers or []
     question_rows = pyq_questions or []
@@ -172,10 +184,18 @@ def _make_sb(
 
     def _doc_fn(filters, in_filters):
         rows = doc_rows
-        if "exam_id" in filters:
-            rows = [d for d in rows if d.get("exam_id") == filters["exam_id"]]
-        if "exam_cycle_id" in filters:
-            rows = [d for d in rows if d.get("exam_cycle_id") == filters["exam_cycle_id"]]
+        # Real code filters by scope; exam/cycle are in metadata (Python-side).
+        if "scope" in filters:
+            rows = [d for d in rows if d.get("scope") == filters["scope"]]
+        return rows
+
+    def _dpj_fn(filters, in_filters):
+        rows = dpj_rows
+        if "document_id" in in_filters:
+            ids = in_filters["document_id"]
+            rows = [r for r in rows if r.get("document_id") in ids]
+        if "job_type" in filters:
+            rows = [r for r in rows if r.get("job_type") == filters["job_type"]]
         return rows
 
     def _options_fn(filters, in_filters):
@@ -205,6 +225,7 @@ def _make_sb(
         "exam_cycles": _exam_cycles_fn,
         "exam_phases": phases_rows,
         "document_assets": _doc_fn,
+        "document_processing_jobs": _dpj_fn,
         "syllabus_topic_mentions": syllabus_rows,
         "pyq_papers": _papers_fn,
         "pyq_questions": _pyq_q_fn,
@@ -283,7 +304,10 @@ class TestReadyToActivate:
             {"id": f"q{i}", "pyq_paper_id": "p1", "reviewer_status": "verified"} for i in range(5)
         ]
         comp = [{"id": "c1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "reviewed"}]
-        docs = [{"id": "d1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "extraction_status": "succeeded"}]
+        docs = [{"id": "d1", "scope": "admin_exam_intelligence",
+                  "metadata": {"exam_id": "exam-1", "exam_cycle_id": "cycle-2026"}}]
+        doc_jobs = [{"document_id": "d1", "job_type": "text_extract",
+                     "status": "succeeded", "created_at": "2026-01-01T00:00:00"}]
         updates = [{"id": "u1", "exam_id": "exam-1", "reviewer_status": "verified", "created_at": "2099-01-01"}]
 
         sb = _make_sb(
@@ -294,6 +318,7 @@ class TestReadyToActivate:
             pyq_questions=questions,
             competition=comp,
             documents=docs,
+            doc_jobs=doc_jobs,
             updates=updates,
         )
         result = compute_exam_workspace_readiness(sb, "exam-1")
@@ -306,8 +331,16 @@ class TestCycleIdScoping:
     def _make_cycle_sb(self):
         phases = [{"id": "ph-1", "exam_id": "exam-1"}]
         docs = [
-            {"id": "d1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "extraction_status": "succeeded"},
-            {"id": "d2", "exam_id": "exam-1", "exam_cycle_id": "cycle-2025", "extraction_status": "succeeded"},
+            {"id": "d1", "scope": "admin_exam_intelligence",
+             "metadata": {"exam_id": "exam-1", "exam_cycle_id": "cycle-2026"}},
+            {"id": "d2", "scope": "admin_exam_intelligence",
+             "metadata": {"exam_id": "exam-1", "exam_cycle_id": "cycle-2025"}},
+        ]
+        doc_jobs = [
+            {"document_id": "d1", "job_type": "text_extract",
+             "status": "succeeded", "created_at": "2026-01-01T00:00:00"},
+            {"document_id": "d2", "job_type": "text_extract",
+             "status": "succeeded", "created_at": "2026-01-01T00:00:00"},
         ]
         papers = [
             {"id": "p1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026"},
@@ -325,6 +358,7 @@ class TestCycleIdScoping:
             exam=EXAM,
             phases=phases,
             documents=docs,
+            doc_jobs=doc_jobs,
             pyq_papers=papers,
             pyq_questions=questions,
             competition=comp,
@@ -700,3 +734,147 @@ class TestOverviewSnapshotPin:
         r = c.get(f"{_BASE}/overview")
         assert r.status_code == 200
         assert r.json()["user_facing_readiness"]["level"] == "not_ready"
+
+
+# ── BUG-EI-2 regression: document_processing_jobs as extraction source ────────
+
+
+def _doc_asset(asset_id: str, exam_id: str, cycle_id: str | None = None) -> dict:
+    """Build a document_assets row with exam ownership in metadata."""
+    meta: dict = {"exam_id": exam_id}
+    if cycle_id:
+        meta["exam_cycle_id"] = cycle_id
+    return {"id": asset_id, "scope": "admin_exam_intelligence", "metadata": meta}
+
+
+def _text_job(asset_id: str, status: str, ts: str = "2026-01-01T00:00:00") -> dict:
+    """Build a document_processing_jobs row for a text_extract job."""
+    return {"document_id": asset_id, "job_type": "text_extract", "status": status, "created_at": ts}
+
+
+class TestDocumentExtractionCounts:
+    """load_doc_extraction_counts uses document_processing_jobs, not trust_status."""
+
+    def test_succeeded_job_counts_as_extracted(self):
+        docs = [_doc_asset("da1", "exam-1")]
+        jobs = [_text_job("da1", "succeeded")]
+        sb = _make_sb(exam=EXAM, documents=docs, doc_jobs=jobs)
+        counts = load_doc_extraction_counts(sb, "exam-1")
+        assert counts["extracted"] == 1
+        assert counts["total"] == 1
+
+    def test_verified_syllabus_doc_alone_not_extracted(self):
+        """trust_status='verified' on syllabus_documents is orthogonal to extraction.
+        A document_assets row with no text_extract job is not_started, not extracted.
+        """
+        docs = [_doc_asset("da1", "exam-1")]
+        # No document_processing_jobs rows — asset not_started
+        sb = _make_sb(exam=EXAM, documents=docs, doc_jobs=[])
+        counts = load_doc_extraction_counts(sb, "exam-1")
+        assert counts["extracted"] == 0
+        assert counts["not_started"] == 1
+
+    def test_failed_job_not_extracted(self):
+        docs = [_doc_asset("da1", "exam-1")]
+        jobs = [_text_job("da1", "failed")]
+        sb = _make_sb(exam=EXAM, documents=docs, doc_jobs=jobs)
+        counts = load_doc_extraction_counts(sb, "exam-1")
+        assert counts["extracted"] == 0
+        assert counts["failed"] == 1
+
+    def test_queued_job_counted_as_pending(self):
+        docs = [_doc_asset("da1", "exam-1")]
+        jobs = [_text_job("da1", "queued")]
+        sb = _make_sb(exam=EXAM, documents=docs, doc_jobs=jobs)
+        counts = load_doc_extraction_counts(sb, "exam-1")
+        assert counts["pending"] == 1
+        assert counts["extracted"] == 0
+
+    def test_no_assets_returns_zeros(self):
+        sb = _make_sb(exam=EXAM)
+        counts = load_doc_extraction_counts(sb, "exam-1")
+        assert counts == {"total": 0, "extracted": 0, "pending": 0, "failed": 0, "not_started": 0}
+
+    def test_latest_job_wins_on_multiple_runs(self):
+        """When the same asset has multiple jobs (retries), the latest created_at wins."""
+        docs = [_doc_asset("da1", "exam-1")]
+        jobs = [
+            _text_job("da1", "failed", "2026-01-01T00:00:00"),
+            _text_job("da1", "succeeded", "2026-01-02T00:00:00"),
+        ]
+        sb = _make_sb(exam=EXAM, documents=docs, doc_jobs=jobs)
+        counts = load_doc_extraction_counts(sb, "exam-1")
+        assert counts["extracted"] == 1
+
+    def test_cycle_filter_scopes_assets(self):
+        docs = [
+            _doc_asset("da1", "exam-1", "cycle-2026"),
+            _doc_asset("da2", "exam-1", "cycle-2025"),
+        ]
+        jobs = [
+            _text_job("da1", "succeeded"),
+            _text_job("da2", "succeeded"),
+        ]
+        sb = _make_sb(exam=EXAM, documents=docs, doc_jobs=jobs)
+        counts_all = load_doc_extraction_counts(sb, "exam-1")
+        counts_scoped = load_doc_extraction_counts(sb, "exam-1", "cycle-2026")
+        assert counts_all["total"] == 2
+        assert counts_scoped["total"] == 1
+        assert counts_scoped["extracted"] == 1
+
+    def test_other_exam_assets_not_counted(self):
+        docs = [
+            _doc_asset("da1", "exam-1"),
+            _doc_asset("da2", "exam-other"),
+        ]
+        jobs = [_text_job("da1", "succeeded"), _text_job("da2", "succeeded")]
+        sb = _make_sb(exam=EXAM, documents=docs, doc_jobs=jobs)
+        counts = load_doc_extraction_counts(sb, "exam-1")
+        assert counts["total"] == 1
+        assert counts["extracted"] == 1
+
+
+class TestDocumentsSectionExtraction:
+    """_documents() section reflects extraction counts, not trust_status."""
+
+    def test_succeeded_job_makes_section_ready(self):
+        docs = [_doc_asset("da1", "exam-1")]
+        jobs = [_text_job("da1", "succeeded")]
+        sb = _make_sb(exam=EXAM, documents=docs, doc_jobs=jobs)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "documents")
+        assert sec["status"] == "ready"
+        assert sec["metrics"]["extracted"] == 1
+
+    def test_no_assets_gives_empty_section(self):
+        sb = _make_sb(exam=EXAM)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "documents")
+        assert sec["status"] == "empty"
+        assert "no documents uploaded" in sec["blockers"]
+
+    def test_asset_with_no_job_is_partial_not_ready(self):
+        docs = [_doc_asset("da1", "exam-1")]
+        sb = _make_sb(exam=EXAM, documents=docs, doc_jobs=[])
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "documents")
+        assert sec["status"] == "partial"
+        assert sec["metrics"]["extracted"] == 0
+
+    def test_non_zero_score_only_with_real_extraction(self):
+        """score_percent for documents must be 0 if no succeeded text_extract job,
+        even when a syllabus_documents row with trust_status='verified' exists.
+        """
+        # asset present but no job → partial, not ready → score 50
+        docs = [_doc_asset("da1", "exam-1")]
+        sb = _make_sb(exam=EXAM, documents=docs, doc_jobs=[])
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "documents")
+        assert sec["score_percent"] == 50  # partial
+
+        # asset present with succeeded job → ready → score 80
+        jobs = [_text_job("da1", "succeeded")]
+        sb2 = _make_sb(exam=EXAM, documents=docs, doc_jobs=jobs)
+        result2 = compute_exam_workspace_readiness(sb2, "exam-1")
+        sec2 = next(s for s in result2["sections"] if s["section"] == "documents")
+        assert sec2["score_percent"] == 80  # ready
