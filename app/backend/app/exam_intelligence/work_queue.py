@@ -405,3 +405,28 @@ def summary_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
             if flag in r["flags"]:
                 counts[flag] += 1
     return counts
+
+
+# ── Deterministic current-cycle selection (design-lock Section 8.3) ─────────
+
+_CYCLE_STATUS_PRIORITY = {"active": 0, "open": 1, "expected": 2}
+
+
+def select_current_cycle(cycles: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Pick the 'current' cycle deterministically per design-lock Section 8.3.
+
+    Priority: active > open > expected > highest year > lowest UUID.
+    The backend applies this rule; the frontend receives ``current_cycle``
+    pre-selected and must NOT recompute or override it on initial load.
+    """
+    if not cycles:
+        return None
+
+    def _key(c: dict[str, Any]) -> tuple:
+        return (
+            _CYCLE_STATUS_PRIORITY.get(c.get("status") or "", 3),
+            -(c.get("year") or 0),
+            c.get("id") or "",
+        )
+
+    return min(cycles, key=_key)

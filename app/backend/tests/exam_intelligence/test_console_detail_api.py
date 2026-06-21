@@ -16,10 +16,9 @@ from app.core.errors import DatabaseError
 from app.exam_intelligence import console_detail as cd
 from tests.persona_questions._stub import SBStub
 
-VALID_ROUTES = {
-    "/admin/exam-intelligence/workspace/{id}",
-    "/admin/exam-intelligence/console/{id}",
-}
+# After the deep-link fix (design-lock Section 7.2), all action CTAs must use the
+# canonical /exams/:exam_id route with a per-area ?tab= parameter.
+_CANONICAL_EXAMS_PREFIX = "/admin/exam-intelligence/exams/"
 
 
 def _build_app(sb, role="super_admin"):
@@ -160,10 +159,50 @@ def test_action_queue_ordered_blockers_then_actions_and_routes_valid():
     assert ranks == sorted(ranks)
     assert any(i["severity"] == "blocker" for i in body["action_queue"])
     for i in body["action_queue"]:
-        assert i["cta_route"].replace("b1", "{id}") in VALID_ROUTES
+        # design-lock Section 7.2: all CTAs use canonical /exams/:id route with tab param
+        assert i["cta_route"].startswith(_CANONICAL_EXAMS_PREFIX), i["cta_route"]
+        assert "tab=" in i["cta_route"], i["cta_route"]
         assert i["status"] == "open" and i["entity_id"] is None
     # publish is the outcome, not an action item
     assert all(i["area"] != "publish" for i in body["action_queue"])
+
+
+def test_cta_routes_are_per_area_deep_links():
+    """After the deep-link fix every CTA must have a per-area route with ?tab=
+    (design-lock Section 7.2). Generic 'Open workspace' labels must not appear."""
+    client, _ = _client()
+    for eid in ["b1", "b2", "npyq", "pend"]:
+        body = _detail(client, eid).json()
+        for item in body["action_queue"]:
+            assert item["cta_route"].startswith(_CANONICAL_EXAMS_PREFIX), (eid, item)
+            assert "tab=" in item["cta_route"], (eid, item)
+            assert item["cta_label"] != "Open workspace", (eid, item["area"])
+
+
+def test_cta_setup_goes_to_setup_tab():
+    client, _ = _client()
+    body = _detail(client, "b1").json()
+    setup_item = next(i for i in body["action_queue"] if i["area"] == "setup")
+    assert "tab=setup" in setup_item["cta_route"]
+    assert setup_item["cta_label"] == "Go to Setup"
+
+
+def test_cta_syllabus_has_status_pending():
+    client, _ = _client()
+    body = _detail(client, "b1").json()
+    syl = next(i for i in body["action_queue"] if i["area"] == "syllabus")
+    assert "tab=syllabus" in syl["cta_route"]
+    assert "status=pending" in syl["cta_route"]
+
+
+def test_cta_topic_coverage_uses_syllabus_tab_pending_review():
+    """topic_coverage CTA links to syllabus tab with status=pending_review (design-lock 7.2)."""
+    client, _ = _client()
+    body = _detail(client, "b1").json()
+    tc = next(i for i in body["action_queue"] if i["area"] == "topic_coverage")
+    assert "tab=syllabus" in tc["cta_route"]
+    assert "status=pending_review" in tc["cta_route"]
+    assert tc["cta_label"] == "Review unlocked rows"
 
 
 def test_checks_hard_advisory_and_unknown_grounding():

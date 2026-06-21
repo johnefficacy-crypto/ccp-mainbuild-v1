@@ -1,0 +1,415 @@
+"""Tests for management read-model endpoints (Phase 0 — backend prerequisite).
+
+Covers: list pagination and filters, current-cycle selection, per-area deep-link
+CTAs, 404 semantics, fail-closed reads, select_current_cycle pure function.
+"""
+from __future__ import annotations
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from app.api import admin_exam_intelligence as admin_api
+from app.core.auth import get_current_user
+from app.core.errors import DatabaseError
+from app.exam_intelligence import work_queue as _wq
+from tests.persona_questions._stub import SBStub
+
+_RECENT = "2026-06-16T00:00:00+00:00"
+
+
+def _build_app(sb, role="super_admin"):
+    app = FastAPI()
+    app.include_router(admin_api.router, prefix="/api")
+    admin_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    user = {
+        "id": "admin-1",
+        "role": role,
+        "permissions": ["exam_intelligence.review"] if role == "admin" else [],
+    }
+    app.dependency_overrides[get_current_user] = lambda: user
+    return app
+
+
+class _Seed:
+    def __init__(self):
+        self.db: dict = {t: [] for t in (
+            "exams", "exam_phases", "exam_topic_coverage", "syllabus_topic_mentions",
+            "exam_policy_updates", "pyq_papers", "pyq_questions",
+            "pyq_question_topic_tags", "pyq_options", "organizations", "exam_families",
+            "exam_cycles",
+        )}
+
+    def exam(self, eid, *, name, mode="core", phases=1, locked=1, vpyq=0,
+             org=None, family=None, active=True):
+        self.db["exams"].append({
+            "id": eid, "slug": eid, "name": name, "exam_type": "recruitment",
+            "is_active": active, "exam_family_id": family,
+            "management_mode": mode, "cadence": "annual",
+            "conducting_organization_id": org,
+        })
+        for i in range(phases):
+            self.db["exam_phases"].append({"id": f"{eid}-ph{i}", "exam_id": eid})
+        for i in range(locked):
+            self.db["exam_topic_coverage"].append({
+                "id": f"{eid}-cl{i}", "exam_id": eid,
+                "reviewer_status": "locked", "created_at": _RECENT,
+            })
+        if vpyq:
+            self.db["pyq_papers"].append(
+                {"id": f"{eid}-pp", "exam_id": eid, "trust_status": "verified"})
+            for i in range(vpyq):
+                qid = f"{eid}-vq{i}"
+                self.db["pyq_questions"].append({
+                    "id": qid, "pyq_paper_id": f"{eid}-pp",
+                    "reviewer_status": "verified", "created_at": _RECENT,
+                })
+                self.db["pyq_question_topic_tags"].append({
+                    "id": f"{qid}-t", "question_id": qid,
+                    "reviewer_status": "verified", "created_at": _RECENT,
+                })
+        return self
+
+    def cycle(self, cid, exam_id, *, name="Cycle", year=2026, status="active"):
+        self.db["exam_cycles"].append({
+            "id": cid, "exam_id": exam_id, "name": name,
+            "year": year, "status": status, "created_at": _RECENT,
+        })
+        return self
+
+    def phase(self, pid, exam_id, cycle_id, *, name="Phase", slug="phase", order=1):
+        self.db["exam_phases"].append({
+            "id": pid, "exam_id": exam_id, "exam_cycle_id": cycle_id,
+            "name": name, "phase_slug": slug, "phase_order": order,
+            "start_date": None, "end_date": None,
+        })
+        return self
+
+    def org(self, oid, name):
+        self.db["organizations"].append({"id": oid, "name": name})
+        return self
+
+    def family(self, fid, name):
+        self.db["exam_families"].append({"id": fid, "name": name})
+        return self
+
+
+def _basic_seed():
+    s = _Seed()
+    s.org("org1", "UPSC")
+    s.family("fam1", "Civil Services")
+    s.exam("rdy", name="Ready Exam", locked=1, vpyq=1, org="org1", family="fam1")
+    s.exam("blk", name="Blocked Exam", phases=0, locked=0)
+    s.exam("na", name="Needs Action", locked=1, vpyq=0)
+    s.cycle("cy1", "rdy", name="2026 Cycle", year=2026, status="active")
+    s.phase("ph1", "rdy", "cy1", name="Prelims", slug="prelims", order=1)
+    return s.db
+
+
+def _client(role="super_admin", db=None):
+    sb = SBStub(db if db is not None else _basic_seed())
+    return TestClient(_build_app(sb, role=role)), sb
+
+
+# ── select_current_cycle — pure function tests ───────────────────────────────
+
+def test_select_current_cycle_active_wins():
+    cycles = [
+        {"id": "b", "status": "open", "year": 2026},
+        {"id": "a", "status": "active", "year": 2025},
+        {"id": "c", "status": "expected", "year": 2027},
+    ]
+    assert _wq.select_current_cycle(cycles)["id"] == "a"
+
+
+def test_select_current_cycle_open_beats_expected():
+    cycles = [
+        {"id": "b", "status": "expected", "year": 2027},
+        {"id": "a", "status": "open", "year": 2026},
+    ]
+    assert _wq.select_current_cycle(cycles)["id"] == "a"
+
+
+def test_select_current_cycle_highest_year_fallback():
+    cycles = [
+        {"id": "a", "status": "closed", "year": 2024},
+        {"id": "b", "status": "closed", "year": 2026},
+        {"id": "c", "status": "closed", "year": 2025},
+    ]
+    assert _wq.select_current_cycle(cycles)["id"] == "b"
+
+
+def test_select_current_cycle_uuid_tiebreaker():
+    """When year is equal and no active/open/expected, lowest UUID wins."""
+    cycles = [
+        {"id": "z-uuid", "status": "closed", "year": 2026},
+        {"id": "a-uuid", "status": "closed", "year": 2026},
+    ]
+    assert _wq.select_current_cycle(cycles)["id"] == "a-uuid"
+
+
+def test_select_current_cycle_empty_returns_none():
+    assert _wq.select_current_cycle([]) is None
+
+
+def test_select_current_cycle_none_status_is_low_priority():
+    cycles = [
+        {"id": "b", "status": None, "year": 2027},
+        {"id": "a", "status": "expected", "year": 2026},
+    ]
+    assert _wq.select_current_cycle(cycles)["id"] == "a"
+
+
+# ── Management list endpoint ─────────────────────────────────────────────────
+
+def test_management_list_requires_permission():
+    client, _ = _client(role="user")
+    r = client.get("/api/admin/exam-intelligence/management/exams")
+    assert r.status_code == 403
+
+
+def test_management_list_paginated_shape():
+    client, _ = _client()
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all")
+    assert r.status_code == 200
+    body = r.json()
+    assert "items" in body
+    assert "total_count" in body
+    assert "limit" in body
+    assert "offset" in body
+    assert "has_next" in body
+
+
+def test_management_list_returns_exam_fields():
+    client, _ = _client()
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all")
+    body = r.json()
+    assert body["total_count"] >= 1
+    item = next(i for i in body["items"] if i["id"] == "rdy")
+    assert item["name"] == "Ready Exam"
+    assert item["organization_name"] == "UPSC"
+    assert item["family_name"] == "Civil Services"
+    assert item["status"] in {"blocked", "needs_action", "ready"}
+    assert "blocker_count" in item
+    assert "flags" in item
+    assert "readiness_summary" in item
+
+
+def test_management_list_workflow_filter_blocked():
+    client, _ = _client()
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all&workflow=blocked")
+    body = r.json()
+    assert all(i["status"] == "blocked" for i in body["items"])
+    assert any(i["id"] == "blk" for i in body["items"])
+    assert all(i["id"] != "rdy" for i in body["items"])
+
+
+def test_management_list_workflow_filter_ready():
+    client, _ = _client()
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all&workflow=ready")
+    body = r.json()
+    assert all(i["status"] == "ready" for i in body["items"])
+    assert any(i["id"] == "rdy" for i in body["items"])
+
+
+def test_management_list_includes_current_cycle():
+    client, _ = _client()
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all")
+    body = r.json()
+    rdy = next(i for i in body["items"] if i["id"] == "rdy")
+    # rdy has an active cycle
+    assert rdy["current_cycle"] is not None
+    assert rdy["current_cycle"]["id"] == "cy1"
+    assert rdy["current_cycle"]["year"] == 2026
+
+
+def test_management_list_current_cycle_has_phases():
+    client, _ = _client()
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all")
+    body = r.json()
+    rdy = next(i for i in body["items"] if i["id"] == "rdy")
+    phases = rdy["current_cycle"]["phases"]
+    assert len(phases) >= 1
+    ph = phases[0]
+    assert ph["label"] == "Prelims"
+    assert ph["slug"] == "prelims"
+
+
+def test_management_list_no_cycle_exam_has_null_current_cycle():
+    client, _ = _client()
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all")
+    body = r.json()
+    blk = next(i for i in body["items"] if i["id"] == "blk")
+    assert blk["current_cycle"] is None
+
+
+def test_management_list_active_cycle_beats_open():
+    s = _Seed()
+    s.exam("ex1", name="Exam1", locked=1, vpyq=1)
+    s.db["exam_cycles"].extend([
+        {"id": "c-open", "exam_id": "ex1", "name": "Open", "year": 2026,
+         "status": "open", "created_at": _RECENT},
+        {"id": "c-active", "exam_id": "ex1", "name": "Active", "year": 2025,
+         "status": "active", "created_at": _RECENT},
+    ])
+    sb = SBStub(s.db)
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all")
+    body = r.json()
+    ex1 = next(i for i in body["items"] if i["id"] == "ex1")
+    assert ex1["current_cycle"]["id"] == "c-active"  # active wins over open
+
+
+def test_management_list_pagination():
+    s = _Seed()
+    for i in range(5):
+        s.exam(f"e{i}", name=f"Exam {i}", locked=1)
+    sb = SBStub(s.db)
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all&limit=2&offset=0")
+    body = r.json()
+    assert len(body["items"]) == 2
+    assert body["total_count"] == 5
+    assert body["has_next"] is True
+
+
+# ── Management detail endpoint ───────────────────────────────────────────────
+
+def _detail(client, eid, **params):
+    qs = "&".join(f"{k}={v}" for k, v in params.items())
+    url = f"/api/admin/exam-intelligence/management/exams/{eid}"
+    if qs:
+        url += f"?{qs}"
+    return client.get(url)
+
+
+def test_management_detail_404_unknown_exam():
+    client, _ = _client()
+    assert _detail(client, "ghost").status_code == 404
+
+
+def test_management_detail_returns_fields():
+    client, _ = _client()
+    r = _detail(client, "rdy")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["id"] == "rdy"
+    assert body["name"] == "Ready Exam"
+    assert body["organization_name"] == "UPSC"
+    assert body["family_name"] == "Civil Services"
+    assert body["status"] in {"blocked", "needs_action", "ready"}
+    assert "flags" in body
+    assert "blocker_count" in body
+    assert "action_queue" in body
+    assert "activation_verdict" in body
+    assert "activation_checks" in body
+    assert "stages" in body
+
+
+def test_management_detail_includes_all_cycles():
+    s = _Seed()
+    s.exam("ex", name="Exam", locked=1, vpyq=1)
+    s.db["exam_cycles"].extend([
+        {"id": "c1", "exam_id": "ex", "name": "2024", "year": 2024,
+         "status": "closed", "created_at": _RECENT},
+        {"id": "c2", "exam_id": "ex", "name": "2026", "year": 2026,
+         "status": "active", "created_at": _RECENT},
+    ])
+    sb = SBStub(s.db)
+    client = TestClient(_build_app(sb))
+    r = _detail(client, "ex")
+    body = r.json()
+    assert len(body["cycles"]) == 2
+    cycle_ids = {c["id"] for c in body["cycles"]}
+    assert cycle_ids == {"c1", "c2"}
+
+
+def test_management_detail_current_cycle_is_active():
+    client, _ = _client()
+    body = _detail(client, "rdy").json()
+    assert body["current_cycle"]["id"] == "cy1"
+
+
+def test_management_detail_explicit_cycle_id():
+    s = _Seed()
+    s.exam("ex", name="Exam", locked=1, vpyq=1)
+    s.db["exam_cycles"].extend([
+        {"id": "c1", "exam_id": "ex", "name": "2024", "year": 2024,
+         "status": "closed", "created_at": _RECENT},
+        {"id": "c2", "exam_id": "ex", "name": "2026", "year": 2026,
+         "status": "active", "created_at": _RECENT},
+    ])
+    sb = SBStub(s.db)
+    client = TestClient(_build_app(sb))
+    # Requesting c1 explicitly overrides the active-cycle selection
+    body = client.get(
+        "/api/admin/exam-intelligence/management/exams/ex?cycle_id=c1"
+    ).json()
+    assert body["current_cycle"]["id"] == "c1"
+
+
+def test_management_detail_404_for_unknown_cycle():
+    client, _ = _client()
+    r = _detail(client, "rdy", cycle_id="ghost-cycle")
+    assert r.status_code == 404
+
+
+def test_management_detail_action_queue_has_tab_deep_links():
+    """All action queue CTAs must deep-link to /exams/:id?tab=<area>."""
+    client, _ = _client()
+    body = _detail(client, "blk").json()  # blk is blocked: many actions
+    assert len(body["action_queue"]) > 0
+    for item in body["action_queue"]:
+        assert item["cta_route"].startswith("/admin/exam-intelligence/exams/blk"), item
+        assert "tab=" in item["cta_route"], item
+
+
+def test_management_detail_action_queue_no_generic_label():
+    client, _ = _client()
+    body = _detail(client, "blk").json()
+    for item in body["action_queue"]:
+        assert item["cta_label"] != "Open workspace", item["area"]
+
+
+def test_management_detail_section_readiness_advisory_null_on_failure():
+    """section_readiness is advisory: a read failure yields null, not 5xx."""
+    from app.exam_intelligence import management_read_model as _mrm
+
+    # Patch compute_exam_workspace_readiness to raise
+    import app.exam_intelligence.management_read_model as _mrm_module
+
+    def _fail(*args, **kwargs):
+        raise RuntimeError("simulated advisory failure")
+
+    original = _mrm_module.compute_exam_workspace_readiness
+    _mrm_module.compute_exam_workspace_readiness = _fail
+    try:
+        client, _ = _client()
+        r = _detail(client, "rdy")
+        assert r.status_code == 200
+        assert r.json()["section_readiness"] is None
+    finally:
+        _mrm_module.compute_exam_workspace_readiness = original
+
+
+def test_management_detail_fail_closed_on_exam_read_failure():
+    """A failed exam read must return 5xx (never a fabricated 404 or 200)."""
+    from tests.exam_intelligence.test_console_detail_api import FailingSBStub
+
+    sb = FailingSBStub(_basic_seed(), "exams")
+    client = TestClient(_build_app(sb), raise_server_exceptions=False)
+    r = client.get("/api/admin/exam-intelligence/management/exams/rdy")
+    assert r.status_code == 500
+
+
+def test_management_detail_status_parity_with_list():
+    """management detail status must match management list status for same exam."""
+    client, _ = _client()
+    list_r = client.get(
+        "/api/admin/exam-intelligence/management/exams?active_state=all"
+    ).json()
+    list_status = {row["id"]: row["status"] for row in list_r["items"]}
+    for eid in ["rdy", "blk", "na"]:
+        detail_r = _detail(client, eid).json()
+        assert detail_r["status"] == list_status[eid], eid
+        assert detail_r["activation_verdict"]["status"] == list_status[eid], eid
