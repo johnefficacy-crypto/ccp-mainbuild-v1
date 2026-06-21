@@ -292,10 +292,13 @@ def test_analytics_retry_job_does_not_enqueue_mastery_when_flag_off(monkeypatch)
 
 
 def test_analytics_retry_job_enqueues_mastery_retry_live(monkeypatch):
-    """_run_job(JOB_ANALYTICS_RETRY) enqueues mastery_retry with flag_state=live when FF=live."""
-    sb = SBStub({})
+    """_run_job(JOB_ANALYTICS_RETRY) enqueues mastery_retry with flag_state=live when FF=live
+    and the attempt owner is in the per-user live allowlist."""
+    canary_user = "user-live-canary-0000-000000000001"
     attempt_id = str(uuid.uuid4())
+    sb = SBStub({"mock_attempts": [{"id": attempt_id, "user_id": canary_user}]})
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    monkeypatch.setenv("FF_MOCK_MASTERY_LIVE_USER_IDS", canary_user)
 
     monkeypatch.setattr(svc.attempt_analytics, "compute_and_persist", lambda *_: None)
 
