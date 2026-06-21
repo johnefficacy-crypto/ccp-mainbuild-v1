@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { StatusBadge, ConfidencePill } from "../../../shared/ui/core";
 import ExamEvidenceDrawer from "./ExamEvidenceDrawer";
+import { humanizeToken } from "./operatorChrome";
 
 const ACTIONS = [
   { value: "verified", label: "Verify" },
@@ -82,6 +83,7 @@ export default function ReviewQueueTable({ items, kind, onReview, busyRowId }) {
                       onClick={() => toggle(r.id)}
                       className="inline-flex items-center gap-1 text-clay-700 hover:text-clay-900"
                       aria-expanded={isOpen}
+                      aria-label={`Expand row ${humanizeToken(r.id)}`}
                       data-testid={`exam-intel-review-${r.id}-expand`}
                     >
                       {isOpen ? (
@@ -89,7 +91,7 @@ export default function ReviewQueueTable({ items, kind, onReview, busyRowId }) {
                       ) : (
                         <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                       )}
-                      {r.id}
+                      {humanizeToken(r.id)}
                     </button>
                   </td>
                   {isMention ? (

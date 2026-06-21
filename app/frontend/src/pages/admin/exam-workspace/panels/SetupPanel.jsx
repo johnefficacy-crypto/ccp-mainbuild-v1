@@ -589,6 +589,13 @@ export default function SetupPanel() {
             <div className="card-body">
               {needsDates.map(phase => {
                 const edit = editFor(phase.id);
+                // Resolve the cycle this phase belongs to for context display.
+                const phaseCycle = cycles.find(
+                  c => c.id === (phase.exam_cycle_id ?? phase.cycle_id)
+                ) || null;
+                const cycleLabel = phaseCycle
+                  ? `${phaseCycle.cycle_name ?? phaseCycle.name ?? "Cycle"}${phaseCycle.year ? ` (${phaseCycle.year})` : ""}`
+                  : null;
                 return (
                   <div
                     key={phase.id}
@@ -604,6 +611,15 @@ export default function SetupPanel() {
                   >
                     <div style={{ minWidth: 160, flex: "0 0 auto" }}>
                       <div className="field-lbl">{phase.phase_name ?? phase.name}</div>
+                      {cycleLabel && (
+                        <div
+                          className="row-sub"
+                          data-testid={`worklist-cycle-${phase.id}`}
+                          style={{ fontSize: 11, color: "var(--info)", marginTop: 1, fontWeight: 500 }}
+                        >
+                          {cycleLabel}
+                        </div>
+                      )}
                       <div
                         className="row-sub"
                         data-testid={`worklist-legacy-${phase.id}`}
