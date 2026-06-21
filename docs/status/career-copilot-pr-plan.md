@@ -116,65 +116,34 @@ Fixes 6 blocking review findings against the mastery shadow gate:
 - **Exit:** only after all success thresholds pass should any expansion of the
   allowlist or full promotion occur. Never flip without allowlist in place.
 
-## Lane B — Exam Governance cleanup
+## Lane B — Exam Governance cleanup — **COMPLETE**
 
-Goal: remove console-era leftovers now that `/console/:exam_id` renders
-`ExamActionConsole`.
+Goal achieved: all console-era leftovers removed; `/console/:exam_id` renders
+`ExamActionConsole`; all CL-1b through CL-6b items are CODE PRESENT.
 
-### B1 — De-leak `ExamActionConsole` labels
+### B1 — De-leak `ExamActionConsole` labels — **MERGED / COMPLETE**
 
-- **Type:** frontend cleanup.
-- **Write scope:**
-  - `app/frontend/src/features/admin/exam-intelligence/ExamActionConsole.jsx`
-  - `app/frontend/src/features/admin/exam-intelligence/operatorChrome.js`
-  - targeted tests under `app/frontend/src/features/admin/exam-intelligence/`
-  - checklist row for CL-1b
-- **Do not touch:** `ExamWorkspace.jsx`, `ExamTaskRail.jsx`, backend routes.
-- **Work:** replace local token humanization with shared operator chrome helpers
-  where compatible; add regression coverage for UUID/API-token leakage.
-- **Tests:** targeted frontend tests for `ExamActionConsole` / identifier hygiene.
+`ExamActionConsole.jsx` imports `humanizeToken` from `operatorChrome.js` and
+applies it to all reason/area/gate/verdict-status fallbacks. Regression test:
+`ExamActionConsole.identityHygiene.test.jsx`. CL-1b is closed.
 
-### B2 — Remove orphaned console variant and task rail
+### B2 — Remove orphaned console variant and task rail — **MERGED / COMPLETE**
 
-- **Type:** frontend cleanup.
-- **Write scope:**
-  - `app/frontend/src/pages/admin/exam-workspace/ExamWorkspace.jsx`
-  - `app/frontend/src/pages/admin/exam-workspace/ExamTaskRail.jsx`
-  - `app/frontend/src/pages/admin/exam-workspace/__tests__/ExamWorkspace.test.jsx`
-  - `app/frontend/src/pages/admin/__tests__/ExamGovernanceConsole.test.jsx`
-  - checklist row for CL-6
-- **Depends on:** B1 only if tests share helper expectations; otherwise can run
-  in parallel if the agents coordinate test ownership.
-- **Work:** remove `variant="console"` branches and `ExamTaskRail` if no longer
-  imported; keep standalone workspace behavior unchanged.
-- **Tests:** workspace and governance-console frontend tests.
+`ExamTaskRail.jsx` deleted. `ExamWorkspace.jsx` carries no `variant="console"`
+branch. CL-6 is closed.
 
-### B3 — Remaining console polish PRs
+### B3 — Remaining console polish PRs — **ALL COMPLETE**
 
-Run these as separate PRs because they touch different user-facing surfaces:
-
-| PR | Write scope | Notes |
+| PR | Status | Evidence |
 |---|---|---|
-| B3a registry row expansion / dead columns | registry/list components and tests only | CL-2. |
-| B3b remove CMS `+ New guided exam` CTA | `ExamIntelCms.jsx` and its tests only | CL-3. |
-| B3c collapsible lifecycle banner | banner component/tests only | CL-4. |
-| B3d-2 Console Work Queue action hierarchy | `ConsoleWorkQueue.jsx`, targeted console tests, and existing admin-console button styling only | CL-5; the queue has no screen-level primary CTA. Pressed workflow filters use selected-state styling rather than primary-action styling. Repeated `Open console` and `Advanced workspace` links are contextual row actions, not screen primaries. |
-| B3d-3 Guided Exam Wizard primary-action hierarchy | `GuidedExamWizard.jsx` and its targeted tests only | CL-5; Organization mode selectors must use pressed-state styling rather than primary-action styling. The forward or create action remains the sole primary action on each wizard step. |
-| B3d-close cross-surface CL-5 closure audit | audit and status documentation only | **COMPLETE in this checkout.** Offline local-proof audit passed across Registry, Work Queue, Action Console, Guided Wizard, Workspace Smart Header, and Advanced Import / Repair; CL-5 is marked `CODE PRESENT IN THIS CHECKOUT`. |
-| B4 / CL-6b remove dormant console presentation plumbing | `ExamWorkspaceContext.jsx`, `OverviewPanel.jsx`, `ReviewActivatePanel.jsx`, orphaned `ExamPublishImpact.jsx`, its isolated test, targeted workspace/console regression tests, and the checklist row only | CL-6b; remove the unused provider `variant`, remove dormant console-only presentation branches, delete orphaned `ExamPublishImpact` and its isolated test, and preserve the active standalone workspace and `ExamActionConsole` routes. |
+| B3a registry row expansion / dead columns | **COMPLETE** | `ExamListTable.jsx`; CL-2 CODE PRESENT. |
+| B3b remove CMS `+ New guided exam` CTA | **COMPLETE** | No guided-exam CTA in `ExamIntelCms.jsx`; CL-3 CODE PRESENT. |
+| B3c collapsible lifecycle banner | **COMPLETE** | `AdminSafetyBanner` in `ExamIntelligence.jsx` uses `collapsible defaultOpen={false}`; CL-4 CODE PRESENT. |
+| B3d-2 Console Work Queue action hierarchy | **COMPLETE** | `ConsoleWorkQueue.jsx` uses `aria-pressed` for workflow filters; CL-5 CODE PRESENT. |
+| B3d-3 Guided Exam Wizard primary-action hierarchy | **COMPLETE** | `GuidedExamWizard.jsx` uses `aria-pressed` for organization-mode selectors; CL-5 CODE PRESENT. |
+| B3d-close cross-surface CL-5 closure audit | **COMPLETE** | `docs/reviews/exam-governance-primary-action-audit.md` exists; CL-5 CODE PRESENT. |
+| B4 / CL-6b remove dormant console presentation plumbing | **COMPLETE** | `ExamWorkspaceContext.jsx` has no `variant`; `ExamPublishImpact.jsx` deleted; CL-6b CODE PRESENT. |
 
-#### CL-5 one-primary-per-screen rule
-
-- A screen may expose at most one screen-level primary CTA.
-- Pressed filter states must not use primary-action styling.
-- Repeated table-row actions are contextual, not screen primaries.
-- Local form submission buttons are scoped to their form/card and are not automatically competing screen-level CTAs.
-- `SetupPanel` redesign remains owned by Lane C and must not be absorbed into B3d.
-- B3d-close must not modify runtime code.
-- B3d-close must not modify tests.
-- B3d-close must not fix violations discovered during the audit.
-- Discovered violations require a separate implementation PR.
-- CL-5 is complete in this checkout after the B3d-close audit passed against the locally seeded dispatch SHA with B3d-1/B3d-2/B3d-3 evidence present.
 
 ## Lane C — Exam workspace setup/timeline UX
 
@@ -415,13 +384,14 @@ contract before implementation.
 
 ## Suggested simultaneous dispatch batch
 
-Safe first batch (original):
+Lane B is **closed** — all B items confirmed CODE PRESENT; do not dispatch.
+
+Safe first batch (original — Lane B entries removed):
 
 1. **Agent A:** A1 scheduler evidence (operator/live, docs only).
-2. **Agent B:** B1 `ExamActionConsole` de-leak (frontend scoped).
-3. **Agent C:** C0 setup timeline design lock (docs only).
-4. **Agent D:** D1 document readiness identity/status audit (docs only).
-5. **Agent E:** E1 CI sequencing (workflow scoped).
+2. **Agent C:** C0 setup timeline design lock (docs only).
+3. **Agent D:** D1 document readiness identity/status audit (docs only).
+4. **Agent E:** E1 CI sequencing (workflow scoped).
 
 New batch (Lane H — can run now in parallel with any of the above):
 
