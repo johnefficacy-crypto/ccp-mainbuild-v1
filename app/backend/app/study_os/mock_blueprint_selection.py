@@ -85,6 +85,85 @@ _POOL_PREDICATE_NOTE = (
     "Equals the pool the readiness verdict was computed over."
 )
 
+# Scope hierarchy for policy resolution: topic > subject > phase > exam.
+# The most specific active policy that matches wins; ties broken by creation order.
+_POLICY_SCOPE_PRIORITY = ("topic_id", "subject_id", "exam_phase_id", "exam_id")
+
+
+def _resolve_source_mix_policy(
+    sb,
+    *,
+    exam_id: str,
+    exam_phase_id: str | None = None,
+    subject_id: str | None = None,
+    topic_id: str | None = None,
+) -> dict | None:
+    """Return the most-specific active source-mix policy or None.
+
+    Queries ``mock_source_mix_policies`` with the scope hierarchy:
+    topic > subject > phase > exam.  Returns the highest-priority active policy
+    as a ``{source_kind: ratio}`` dict suitable for ``_select_section``, or None
+    when no policy is configured for this scope.
+
+    The returned dict collapses multiple rows for different source_kind values
+    under the winning policy scope into a single target_ratio mapping so the
+    existing ``_apportion_order`` call signature is unchanged.
+    """
+    try:
+        rows = (
+            sb.table("mock_source_mix_policies")
+            .select(
+                "id, exam_id, exam_phase_id, subject_id, topic_id, "
+                "source_kind, target_ratio, minimum_ratio, maximum_ratio, "
+                "fallback_policy, is_active"
+            )
+            .eq("exam_id", exam_id)
+            .eq("is_active", True)
+            .execute()
+            .data
+        ) or []
+    except Exception:
+        # Table may not exist in older environments — fail open (no policy).
+        logger.warning("mock_source_mix_policies query failed; skipping policy resolution")
+        return None
+
+    if not rows:
+        return None
+
+    # Filter to rows that match the current scope at each level.
+    def _scope_matches(row: dict) -> bool:
+        if row.get("topic_id") and row["topic_id"] != topic_id:
+            return False
+        if row.get("subject_id") and row["subject_id"] != subject_id:
+            return False
+        if row.get("exam_phase_id") and row["exam_phase_id"] != exam_phase_id:
+            return False
+        return True
+
+    candidates = [r for r in rows if _scope_matches(r)]
+    if not candidates:
+        return None
+
+    # Pick the most-specific scope by priority: topic → subject → phase → exam.
+    def _specificity(row: dict) -> int:
+        for priority, col in enumerate(_POLICY_SCOPE_PRIORITY):
+            if row.get(col):
+                return -priority  # negative so most-specific (index 0) sorts first
+        return -len(_POLICY_SCOPE_PRIORITY)
+
+    candidates.sort(key=_specificity)
+    best_specificity = _specificity(candidates[0])
+    winning_rows = [r for r in candidates if _specificity(r) == best_specificity]
+
+    # Collapse winning rows into a source_kind → target_ratio dict.
+    mix: dict[str, float] = {}
+    for r in winning_rows:
+        sk = r.get("source_kind")
+        if sk and sk not in mix:
+            mix[sk] = float(r.get("target_ratio") or 0)
+
+    return mix if mix else None
+
 
 def _exam_base_pool(sb, *, exam_id: str, selectable_statuses, now_iso: str) -> list[dict]:
     """Eligible BASE pool for the exam, matching selectable_mcq_depth EXACTLY.
@@ -260,10 +339,26 @@ def build_blueprint_with_selection(
         target = int(target_raw) if target_raw not in (None, "") else 0
 
         eligible = [r for r in base_pool if r.get("subject_id") == subject_id]
+
+        # Resolve source-mix: envelope wins if explicitly set, else DB policy.
+        envelope_mix = sec.get("source_mix")
+        if envelope_mix:
+            resolved_mix = envelope_mix
+            mix_source = "envelope"
+        else:
+            resolved_mix = _resolve_source_mix_policy(
+                sb,
+                exam_id=exam_id,
+                exam_phase_id=exam_phase_id,
+                subject_id=subject_id,
+                topic_id=None,  # section-level resolution only
+            )
+            mix_source = "db_policy" if resolved_mix else "none"
+
         chosen_ids, rungs = _select_section(
             eligible,
             target,
-            source_mix=sec.get("source_mix"),
+            source_mix=resolved_mix,
             difficulty_mix=sec.get("difficulty_mix"),
         )
         selected_count = len(chosen_ids)
@@ -284,6 +379,9 @@ def build_blueprint_with_selection(
                 "relaxed_rungs": relaxed_rungs,
                 "rungs": rungs,
                 "source_basis": "readiness_base_pool",
+                # Source-mix provenance for audit trail.
+                "source_mix_resolved": resolved_mix,
+                "source_mix_source": mix_source,
             }
         )
         all_question_ids.extend(chosen_ids)

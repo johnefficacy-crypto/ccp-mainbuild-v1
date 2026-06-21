@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { usePyqWorkbench } from "./usePyqWorkbench";
 import BulkImportModal from "./bulk-import/BulkImportModal";
+import PyqMockProjectionPanel from "./PyqMockProjectionPanel";
 
 const PyqPaperWorkspace = lazy(() => import("../../studyos/PyqPaperWorkspace"));
 
@@ -107,15 +108,21 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
       </div>
 
       {/* Workspace area */}
-      <div className="flex-1 min-h-0">
-        {selectedPaperId ? (
-          <Suspense fallback={<div className="p-8 text-gray-400">Loading…</div>}>
-            <PyqPaperWorkspace paperId={selectedPaperId} embedded rowId={rowId} status={status} />
-          </Suspense>
-        ) : (
-          <div className="h-full flex items-center justify-center text-gray-400 text-sm" data-testid="pyq-no-paper-selected">
-            Select a paper to begin reviewing.
-          </div>
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0">
+          {selectedPaperId ? (
+            <Suspense fallback={<div className="p-8 text-gray-400">Loading…</div>}>
+              <PyqPaperWorkspace paperId={selectedPaperId} embedded rowId={rowId} status={status} />
+            </Suspense>
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-400 text-sm" data-testid="pyq-no-paper-selected">
+              Select a paper to begin reviewing.
+            </div>
+          )}
+        </div>
+        {/* Embedded mock projection section — not a new route */}
+        {selectedPaperId && (
+          <PyqMockProjectionPanel paperId={selectedPaperId} />
         )}
       </div>
       {showBulkImport && (

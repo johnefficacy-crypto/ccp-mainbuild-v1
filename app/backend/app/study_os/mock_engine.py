@@ -134,6 +134,11 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
     PR2: marks are template-bound (not question-bound), so they are passed in
     from the template config rather than read from the question row.
     Existing snapshots already have marks frozen; this only affects new attempts.
+
+    Migration 183 provenance fields (pyq_year, pyq_question_id, pyq_paper_id,
+    exam_id, subject_id, source_kind) are frozen here so mastery write-back and
+    diagnostic tooling can re-derive PYQ lineage from the frozen attempt record
+    without reading the live bank.
     """
     return {
         "id": q["id"],
@@ -151,6 +156,13 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
         "difficulty": q.get("difficulty") or "medium",
         "source_type": q.get("source_type") or "authored",
         "expected_time_sec": q.get("expected_time_sec"),
+        # PYQ provenance — set for projected questions, null for authored.
+        "exam_id": q.get("exam_id"),
+        "subject_id": q.get("subject_id"),
+        "source_kind": q.get("source_kind"),
+        "pyq_year": q.get("pyq_year"),
+        "pyq_question_id": q.get("pyq_question_id"),
+        "pyq_paper_id": q.get("pyq_paper_id"),
         "options": [
             {
                 "id": o["id"],

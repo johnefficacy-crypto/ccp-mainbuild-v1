@@ -1,0 +1,146 @@
+# PYQ Workbench → Mock Engine Projection Bridge
+
+**Status:** Implemented (migration 183, backend service, frontend panel)  
+**Migration:** `183_pyq_mock_projection_bridge.sql`  
+**PR slice:** A0 (projection bridge) — Track C, prerequisite to PR-7
+
+---
+
+## Overview
+
+The projection bridge allows verified PYQ (Past Year Question) content to flow
+into the live mock question bank without manual re-entry.  A publisher action
+in the PYQ Workbench triggers an atomic, idempotent DB function that copies
+content to `mock_question_bank` and records a stable lineage link.
+
+## Canonical authority
+
+- **Source of truth:** `pyq_papers`, `pyq_questions`, `pyq_options`, `pyq_question_topic_tags`
+- **Projection:** `mock_question_bank` rows derived from PYQ content
+- **Lineage table:** `pyq_mock_question_projections` (one row per pyq_question)
+
+## Eligibility rules
+
+A PYQ question is eligible for projection when ALL of the following hold:
+
+| Condition | Why |
+|-----------|-----|
+| `pyq_papers.trust_status = 'verified'` | Paper provenance must be verified |
+| `pyq_questions.reviewer_status = 'verified'` | Question reviewed and approved |
+| `pyq_questions.question_type = 'mcq'` | Only MCQ supported in mock engine |
+| `question_text` not empty | No blank questions |
+| ≥ 2 verified `pyq_options` | Minimum selector options |
+| Exactly 1 `pyq_options.is_correct = true` among verified options | MCQ invariant |
+| Exactly 1 verified `pyq_question_topic_tags` with `tag_role = 'primary'` | Topic routing |
+| `topics.subject_id` not null | Subject must be resolvable |
+| `pyq_papers.exam_id` = `pyq_questions.pyq_paper_id`'s exam | Exam consistency |
+
+## Idempotency
+
+One `pyq_question_id` maps to at most one `mock_question_id` (unique constraint
+on `pyq_mock_question_projections.pyq_question_id`).  Re-syncing the same
+question with unchanged content is a no-op (hash match → `outcome: unchanged`).
+Content changes produce `outcome: updated`.
+
+## Content hash
+
+```
+SHA256(
+  lower(strip(question_text)) + chr(0) +
+  sorted_option_texts joined by chr(0) +
+  chr(1) +
+  sorted_correct_option_texts joined by chr(0)
+)
+```
+
+chr(0) separators prevent concatenation ambiguity.  The Python
+`compute_content_hash()` in `pyq_mock_projection.py` mirrors this exactly.
+
+## Invalidation triggers
+
+When canonical content changes, the projection is automatically downgraded:
+
+| Trigger event | Effect |
+|---------------|--------|
+| `pyq_questions` reviewer_status leaves 'verified' | projection → stale, mock bank → draft |
+| `pyq_papers` trust_status leaves 'verified' | all paper projections → stale |
+| `pyq_options` is_correct/option_text/reviewer_status changes | projection → stale |
+| `pyq_question_topic_tags` primary tag changes or removed | projection → stale |
+
+After a projection goes stale, the mock bank row's `reviewer_status` is
+downgraded to `draft` so it falls out of the selectable pool until the
+operator re-syncs.
+
+## Security
+
+The SECURITY DEFINER RPC `project_pyq_question_to_mock_bank` is:
+- Callable only by `service_role` (REVOKE from public/anon/authenticated)
+- All writes go through this single function
+- All projections are logged in `admin_audit_logs` and `mock_question_review_log`
+
+## Source-type fields
+
+Projected questions always have:
+- `source_type = 'pyq'` — mastery weighting signal
+- `source_kind = 'pyq'` — selector/diagnostic compatibility
+
+Both fields are required; using only one would break either mastery write-back
+or question selection.
+
+## API endpoints
+
+Mount: `/api/admin/mocks/pyq-papers/{paper_id}/projection/`
+
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| GET | `/preview` | author | Dry-run — which questions would sync |
+| POST | `/sync` | publisher | Execute projection |
+| GET | `/status` | author | Aggregated projection state |
+
+## Frontend surface
+
+The projection panel is embedded inside the existing **PYQ Workbench** panel
+(`PyqWorkbenchPanel.jsx`) as a collapsible section below the paper workspace.
+No new route or sidebar entry is created (no-new-surface rule).
+
+## Frozen attempt provenance
+
+When a projected question is included in a mock attempt, the
+`_question_snapshot` in `mock_engine.py` now freezes:
+
+```json
+{
+  "exam_id": "...",
+  "subject_id": "...",
+  "source_kind": "pyq",
+  "pyq_year": 2023,
+  "pyq_question_id": "...",
+  "pyq_paper_id": "..."
+}
+```
+
+This ensures mastery write-back and the `multi-exam-coverage` shadow validator
+can identify PYQ provenance from the frozen attempt record without re-reading
+the live bank.
+
+## Source-mix policy
+
+The `mock_source_mix_policies` table (added in migration 183) allows operators
+to configure target ratios of `pyq` vs `authored` questions per exam/phase/
+subject/topic scope.  The policy resolver uses a scope hierarchy
+(topic > subject > phase > exam) and feeds into the relaxation ladder in
+`mock_blueprint_selection.py`.
+
+## UPSC CSAT readiness
+
+The projection bridge is the prerequisite for onboarding UPSC CSAT questions.
+No CSAT data should be ingested until the bridge is live on production and
+migration 183 is confirmed.  See
+`docs/engineering/exam-intelligence-data-fill-runbook.md` for the CSAT
+operator runbook.
+
+## Open constraints
+
+- Do NOT flip `FF_MOCK_MASTERY_WRITES` before PR-7 shadow gate passes
+- Do NOT start PR-7 until Track A gate is clean
+- Do NOT mutate the live Supabase database outside the RPC
