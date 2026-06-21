@@ -1,583 +1,228 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-// Mock api module before importing the component.
+// Prevent env.js from throwing when REACT_APP_BACKEND_URL is unset in CI.
+// useApiCollection (now imported by ExamIntelligence.jsx) pulls this in.
+jest.mock("../../shared/config/env", () => ({ ENABLE_DEMO_DATA: false }));
+
 jest.mock("../../lib/api", () => ({
-  api: {
-    get: jest.fn(),
-  },
+  api: { get: jest.fn() },
 }));
 
 import { api } from "../../lib/api";
 import AdminExamIntelligence from "./ExamIntelligence";
 
-function wrap(ui) {
-  return render(<MemoryRouter>{ui}</MemoryRouter>);
-}
+const EMPTY_RESPONSE = { items: [], total_count: 0, has_next: false };
 
 function makeExamsResponse(overrides = {}) {
   return {
     items: [
-      { id: "e1", slug: "ssc-cgl", name: "SSC CGL", exam_type: "recruitment",
-        is_active: true, syllabus_verified: 1, syllabus_pending: 0,
-        verified_topic_count: 1, coverage_total: 1, high_yield_topic_count: 1,
-        readiness_level: "ready", pyq_coverage_status: "covered" },
+      {
+        id: "e1",
+        slug: "ssc-cgl",
+        name: "SSC CGL",
+        status: "ready",
+        blocker_count: 0,
+        first_blocker_text: null,
+        current_cycle: { name: "2024", year: 2024, phases: [] },
+        family_name: null,
+      },
     ],
-    count: 1,
-    total_count: 3,
-    limit: 25,
-    offset: 0,
-    has_next: true,
+    total_count: 1,
+    has_next: false,
     ...overrides,
   };
 }
 
-function makeOverviewResponse() {
-  return {
-    tables: {},
-    exams: { total: 3, active: 2 },
-    topic_coverage: { total: 0, high_yield: 0 },
-    low_confidence_mappings: 0,
-    stale_review_items: 0,
-    user_facing_readiness: { level: "not_ready", locked_topic_coverage: 0, verified_syllabus_mentions: 0 },
-  };
-}
-
-async function switchToExamsTab() {
-  fireEvent.click(screen.getByTestId("exam-intel-tab-exams"));
+function wrap(ui) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  api.get.mockResolvedValue(makeOverviewResponse());
+  api.get.mockResolvedValue(EMPTY_RESPONSE);
+});
+
+// ── API endpoint ───────────────────────────────────────────────────────────
+
+test("fetches from the management endpoint", async () => {
+  wrap(<AdminExamIntelligence />);
+  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  expect(api.get.mock.calls[0][0]).toContain("/management/exams");
 });
 
 // ── loading state ──────────────────────────────────────────────────────────
 
-test("shows loading state while exams are being fetched", async () => {
+test("shows loading state on initial render before fetch resolves", () => {
   let resolve;
-  api.get.mockImplementation((url) => {
-    if (url.includes("/exams")) {
-      return new Promise((res) => { resolve = res; });
-    }
-    return Promise.resolve(makeOverviewResponse());
-  });
+  api.get.mockImplementation(() => new Promise((r) => { resolve = r; }));
 
   wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
   expect(screen.getByTestId("exam-intel-loading")).toBeInTheDocument();
 
-  await act(async () => { resolve(makeExamsResponse()); });
+  act(() => { resolve(EMPTY_RESPONSE); });
 });
 
-// ── data state renders table ───────────────────────────────────────────────
+// ── data state ─────────────────────────────────────────────────────────────
 
-test("renders exam table after successful load", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
+test("renders exam rows after successful load", async () => {
+  api.get.mockResolvedValue(makeExamsResponse());
 
   wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
 
-  await waitFor(() => expect(screen.getByTestId("exam-intel-exam-table")).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByTestId("exam-mgmt-row-ssc-cgl")).toBeInTheDocument(),
+  );
   expect(screen.getByText("SSC CGL")).toBeInTheDocument();
 });
 
 // ── empty state ────────────────────────────────────────────────────────────
 
-test("renders empty state when no exams returned", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse({ items: [], count: 0, total_count: 0, has_next: false }))
-      : Promise.resolve(makeOverviewResponse())
-  );
+test("renders empty message when no exams returned", async () => {
+  api.get.mockResolvedValue(EMPTY_RESPONSE);
 
   wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
 
-  await waitFor(() => expect(screen.getByText(/no exams registered yet/i)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByTestId("exam-mgmt-table")).toBeInTheDocument(),
+  );
+  expect(screen.getByText(/no exams match your filters/i)).toBeInTheDocument();
 });
 
 // ── error state ────────────────────────────────────────────────────────────
 
-test("renders error state when fetch fails", async () => {
-  api.get.mockImplementation((url) => {
-    if (url.includes("/exams")) return Promise.reject(new Error("network error"));
-    return Promise.resolve(makeOverviewResponse());
-  });
+test("renders error banner when fetch fails", async () => {
+  api.get.mockRejectedValue(new Error("network error"));
 
   wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
 
-  await waitFor(() => expect(screen.getByTestId("exam-intel-error")).toBeInTheDocument());
-  expect(screen.getByTestId("exam-intel-error")).toHaveTextContent("network error");
-});
-
-// ── filter resets page ─────────────────────────────────────────────────────
-
-test("changing search input resets to page 0 and re-calls with q param", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
+  await waitFor(() =>
+    expect(screen.getByTestId("exam-intel-error")).toBeInTheDocument(),
   );
-
-  wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-
-  // Navigate to page 1 first.
-  await act(async () => {
-    fireEvent.click(screen.getByTestId("exam-intel-next"));
-  });
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("offset=25");
-  });
-
-  // Now change the search — page should reset.
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-search"), { target: { value: "ssc" } });
-  });
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("q=ssc");
-    expect(lastUrl).toContain("offset=0");
-  });
 });
 
-test("changing exam_type filter resets to page 0", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
+// ── filter wire: search ────────────────────────────────────────────────────
 
+test("search input triggers fetch with q param", async () => {
   wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+  await waitFor(() => screen.getByTestId("exam-mgmt-table"));
 
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-type-filter"), {
-      target: { value: "entrance" },
-    });
-  });
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("exam_type=entrance");
-    expect(lastUrl).toContain("offset=0");
-  });
+  api.get.mockClear();
+  api.get.mockResolvedValue(EMPTY_RESPONSE);
+
+  fireEvent.change(screen.getByTestId("exam-intel-search"), { target: { value: "upsc" } });
+
+  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  expect(api.get.mock.calls[0][0]).toContain("q=upsc");
 });
 
-test("changing active_state filter resets to page 0", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
-
-  wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-active-filter"), {
-      target: { value: "inactive" },
-    });
-  });
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("active_state=inactive");
-    expect(lastUrl).toContain("offset=0");
-  });
-});
-
-// ── stale-response guard ───────────────────────────────────────────────────
-
-test("stale response from earlier request does not overwrite newer state", async () => {
-  let resolveFirst;
-  let callCount = 0;
-
-  api.get.mockImplementation((url) => {
-    if (!url.includes("/exams")) return Promise.resolve(makeOverviewResponse());
-    callCount++;
-    if (callCount === 1) {
-      // First call: held promise (will resolve late — simulating slow response).
-      return new Promise((res) => { resolveFirst = res; });
-    }
-    // Second call: resolves immediately with search results.
-    return Promise.resolve(makeExamsResponse({ items: [{ ...makeExamsResponse().items[0], name: "IBPS PO" }] }));
-  });
-
-  wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-
-  // The first load is in flight. Change search — triggers second load.
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-search"), { target: { value: "ibps" } });
-  });
-
-  // Now let the first (stale) response land — it should be discarded.
-  await act(async () => { resolveFirst(makeExamsResponse()); });
-
-  // The table should reflect the second (fresh) response, not the first stale one.
-  await waitFor(() => expect(screen.getByTestId("exam-intel-exam-table")).toBeInTheDocument());
-  expect(screen.getByText("IBPS PO")).toBeInTheDocument();
-  expect(screen.queryByText("SSC CGL")).not.toBeInTheDocument();
-});
-
-// ── single dispatch on filter change ──────────────────────────────────────
-
-test("changing a filter triggers exactly one load (no double-fetch from separate effects)", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
-
-  wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-
-  const callsBefore = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
-
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-search"), { target: { value: "ssc" } });
-  });
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("q=ssc");
-  });
-
-  const callsAfter = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
-  // Must be exactly one additional call — not two (which would happen with two separate effects).
-  expect(callsAfter - callsBefore).toBe(1);
-});
-
-// ── header count label never inverted ─────────────────────────────────────
-
-test("header count label does not render inverted span when non-first page returns zero rows", async () => {
-  // First call returns page 0 with 1 item and total_count=30 (so offset branch fires).
-  // Second call (after a data change) returns page 1 with 0 items — offset=25, count=0.
-  let callCount = 0;
-  api.get.mockImplementation((url) => {
-    if (!url.includes("/exams")) return Promise.resolve(makeOverviewResponse());
-    callCount++;
-    if (callCount === 1) {
-      return Promise.resolve(makeExamsResponse({ total_count: 30, has_next: true }));
-    }
-    // Page 1 returns zero rows.
-    return Promise.resolve({
-      items: [], count: 0, total_count: 30, limit: 25, offset: 25, has_next: false,
-    });
-  });
-
-  wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-
-  // Navigate to page 1 — backend returns 0 rows for that page.
-  await act(async () => {
-    fireEvent.click(screen.getByTestId("exam-intel-next"));
-  });
-
-  await waitFor(() => {
-    const label = screen.getByTestId("exam-intel-count-label");
-    const text = label.textContent;
-    // The label must not contain an inverted "end < start" range like "26–25".
-    const match = text.match(/showing (\d+)–(\d+)/);
-    if (match) {
-      expect(Number(match[2])).toBeGreaterThanOrEqual(Number(match[1]));
-    }
-    // When count=0, the "showing X–Y" part must be absent entirely.
-    expect(text).not.toMatch(/showing \d+–\d+/);
-  });
-});
-
-// ── PR-B1: portfolio lane filters ──────────────────────────────────────────
-
-test("selecting 'All (non-archive)' (empty value) sends no management_mode param", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
-
-  wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-
-  // The default option value is "" — verify no management_mode in URL.
-  const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-  const lastUrl = calls[calls.length - 1][0];
-  expect(lastUrl).not.toContain("management_mode");
-});
-
-test("selecting a specific lane sends management_mode param and resets to page 0", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
-
-  wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-
-  // Navigate to page 1.
-  await act(async () => {
-    fireEvent.click(screen.getByTestId("exam-intel-next"));
-  });
-
-  // Change lane filter.
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-lane-filter"), {
-      target: { value: "core" },
-    });
-  });
-
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("management_mode=core");
-    expect(lastUrl).toContain("offset=0");
-  });
-});
-
-test("selecting archive lane sends management_mode=archive", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
-
-  wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-lane-filter"), {
-      target: { value: "archive" },
-    });
-  });
-
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("management_mode=archive");
-  });
-});
-
-test("selecting a cadence filter sends cadence param and resets to page 0", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
-
-  wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-cadence-filter"), {
-      target: { value: "annual" },
-    });
-  });
-
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("cadence=annual");
-    expect(lastUrl).toContain("offset=0");
-  });
-});
-
-test("lane filter change fires exactly one load (single dispatch)", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
-
-  wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-
-  const before = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
-
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-lane-filter"), {
-      target: { value: "light" },
-    });
-  });
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    expect(calls[calls.length - 1][0]).toContain("management_mode=light");
-  });
-
-  const after = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
-  expect(after - before).toBe(1);
-});
-
-// ── PR-C1: active_state filter ────────────────────────────────────────────
+// ── filter wire: active_state ──────────────────────────────────────────────
 
 test("default load sends active_state=active", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
-
   wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-
-  const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-  expect(calls[calls.length - 1][0]).toContain("active_state=active");
+  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  expect(api.get.mock.calls[0][0]).toContain("active_state=active");
 });
 
-test("active_state select renders with Active as default selected option", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
-
+test("active_state selector defaults to Active", async () => {
   wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-
-  const select = screen.getByTestId("exam-intel-active-filter");
-  expect(select.value).toBe("active");
+  expect(screen.getByTestId("exam-intel-active-filter").value).toBe("active");
 });
 
-test("selecting 'all' sends active_state=all and resets to page 0", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
-
+test("changing active_state triggers fetch with updated param", async () => {
   wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+  await waitFor(() => screen.getByTestId("exam-mgmt-table"));
 
-  // Navigate to page 1 first.
-  await act(async () => {
-    fireEvent.click(screen.getByTestId("exam-intel-next"));
+  api.get.mockClear();
+  api.get.mockResolvedValue(EMPTY_RESPONSE);
+
+  fireEvent.change(screen.getByTestId("exam-intel-active-filter"), {
+    target: { value: "inactive" },
   });
 
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-active-filter"), {
-      target: { value: "all" },
-    });
-  });
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    const lastUrl = calls[calls.length - 1][0];
-    expect(lastUrl).toContain("active_state=all");
-    expect(lastUrl).toContain("offset=0");
-  });
+  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  expect(api.get.mock.calls[0][0]).toContain("active_state=inactive");
 });
 
-test("active_state change fires exactly one load (single dispatch)", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
-  );
+// ── filter wire: management_mode ───────────────────────────────────────────
 
+test("lane filter sends management_mode param", async () => {
   wrap(<AdminExamIntelligence />);
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
+  await waitFor(() => screen.getByTestId("exam-mgmt-table"));
 
-  const before = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
+  api.get.mockClear();
+  api.get.mockResolvedValue(EMPTY_RESPONSE);
 
-  await act(async () => {
-    fireEvent.change(screen.getByTestId("exam-intel-active-filter"), {
-      target: { value: "inactive" },
-    });
-  });
-  await waitFor(() => {
-    const calls = api.get.mock.calls.filter(([url]) => url.includes("/exams"));
-    expect(calls[calls.length - 1][0]).toContain("active_state=inactive");
+  fireEvent.change(screen.getByTestId("exam-intel-lane-filter"), {
+    target: { value: "core" },
   });
 
-  const after = api.get.mock.calls.filter(([url]) => url.includes("/exams")).length;
-  expect(after - before).toBe(1);
+  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  expect(api.get.mock.calls[0][0]).toContain("management_mode=core");
 });
 
+test("empty lane filter sends no management_mode param on initial load", async () => {
+  wrap(<AdminExamIntelligence />);
+  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  expect(api.get.mock.calls[0][0]).not.toContain("management_mode");
+});
 
-// ── B3c: lifecycle banner disclosure ──────────────────────────────────────
+// ── filter wire: cadence ───────────────────────────────────────────────────
 
-test("lifecycle banner starts collapsed and expands to show scoped contract copy", async () => {
+test("cadence filter sends cadence param", async () => {
+  wrap(<AdminExamIntelligence />);
+  await waitFor(() => screen.getByTestId("exam-mgmt-table"));
+
+  api.get.mockClear();
+  api.get.mockResolvedValue(EMPTY_RESPONSE);
+
+  fireEvent.change(screen.getByTestId("exam-intel-cadence-filter"), {
+    target: { value: "annual" },
+  });
+
+  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  expect(api.get.mock.calls[0][0]).toContain("cadence=annual");
+});
+
+// ── safety banner ──────────────────────────────────────────────────────────
+
+test("lifecycle banner starts collapsed and expands on click", () => {
   wrap(<AdminExamIntelligence />);
 
   expect(screen.getByTestId("admin-exam-intel-safety")).toBeInTheDocument();
   expect(screen.getByTestId("admin-exam-intel-safety-content")).not.toBeVisible();
-
-  const toggle = screen.getByTestId("admin-exam-intel-safety-toggle");
-  expect(toggle).toHaveAttribute("aria-expanded", "false");
-
-  const content = screen.getByTestId("admin-exam-intel-safety-content");
-
-  fireEvent.click(toggle);
-  const contentScope = within(content);
-  expect(content).toBeVisible();
-  expect(contentScope.getByText(/reviewed/)).toBeInTheDocument();
-  expect(contentScope.getByText(/locked/)).toBeInTheDocument();
-  expect(contentScope.getByText(/verified/)).toBeInTheDocument();
-  expect(content.textContent).toMatch(/Pending and rejected/);
-  expect(toggle).toHaveAttribute("aria-expanded", "true");
-
-  fireEvent.click(toggle);
-
-  expect(content).not.toBeVisible();
-  expect(toggle).toHaveAttribute("aria-expanded", "false");
-});
-
-test("lifecycle banner toggle does not refetch data", async () => {
-  wrap(<AdminExamIntelligence />);
-  await waitFor(() => {
-    expect(api.get.mock.calls.some(([url]) => url.includes("/overview"))).toBe(true);
-  });
-
-  const callsBefore = api.get.mock.calls.length;
-  fireEvent.click(screen.getByTestId("admin-exam-intel-safety-toggle"));
-
-  expect(api.get.mock.calls.length).toBe(callsBefore);
-});
-
-test("tab switches keep a single lifecycle banner with a working toggle", async () => {
-  api.get.mockImplementation((url) =>
-    url.includes("/exams")
-      ? Promise.resolve(makeExamsResponse())
-      : Promise.resolve(makeOverviewResponse())
+  expect(screen.getByTestId("admin-exam-intel-safety-toggle")).toHaveAttribute(
+    "aria-expanded",
+    "false",
   );
 
-  wrap(<AdminExamIntelligence />);
-  expect(screen.getAllByTestId("admin-exam-intel-safety")).toHaveLength(1);
+  fireEvent.click(screen.getByTestId("admin-exam-intel-safety-toggle"));
 
-  await act(async () => { await switchToExamsTab(); });
-  await waitFor(() => screen.getByTestId("exam-intel-exam-table"));
-  expect(screen.getAllByTestId("admin-exam-intel-safety")).toHaveLength(1);
-
-  await act(async () => {
-    fireEvent.click(screen.getByTestId("exam-intel-tab-overview"));
-  });
-  expect(screen.getAllByTestId("admin-exam-intel-safety")).toHaveLength(1);
+  expect(screen.getByTestId("admin-exam-intel-safety-content")).toBeVisible();
+  expect(screen.getByTestId("admin-exam-intel-safety-toggle")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
 
   fireEvent.click(screen.getByTestId("admin-exam-intel-safety-toggle"));
+  expect(screen.getByTestId("admin-exam-intel-safety-content")).not.toBeVisible();
+});
+
+test("banner content includes lifecycle-gated terms", () => {
+  wrap(<AdminExamIntelligence />);
+  fireEvent.click(screen.getByTestId("admin-exam-intel-safety-toggle"));
   const content = screen.getByTestId("admin-exam-intel-safety-content");
-  expect(within(content).getByText(/reviewed/)).toBeInTheDocument();
-  expect(screen.getByTestId("admin-exam-intel-safety-toggle")).toHaveAttribute("aria-expanded", "true");
+  expect(content.textContent).toMatch(/reviewed/);
+  expect(content.textContent).toMatch(/locked/);
+  expect(content.textContent).toMatch(/verified/);
+});
+
+// ── no tabs ────────────────────────────────────────────────────────────────
+
+test("no tab controls are rendered (single-view front door)", async () => {
+  wrap(<AdminExamIntelligence />);
+  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  expect(screen.queryByTestId("exam-intel-tab-overview")).toBeNull();
+  expect(screen.queryByTestId("exam-intel-tab-exams")).toBeNull();
 });

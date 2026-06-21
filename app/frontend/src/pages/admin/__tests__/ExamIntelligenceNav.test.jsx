@@ -2,6 +2,8 @@ import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Routes, Route, Navigate } from "react-router-dom";
 
+jest.mock("../../../shared/config/env", () => ({ ENABLE_DEMO_DATA: false }));
+
 jest.mock("../../../lib/api", () => ({
   __esModule: true,
   api: { get: jest.fn() },
