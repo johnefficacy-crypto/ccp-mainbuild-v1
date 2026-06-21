@@ -9,7 +9,6 @@ jest.mock("../../ExamWorkspaceContext", () => ({
 // Mock ExamIntelGlossary to avoid CSS-in-JS / pill class issues in jsdom
 jest.mock("../../../../../features/admin/exam-intelligence/ExamIntelGlossary", () => ({
   LifecycleLegend: () => null,
-  EXAM_PURPOSE_LABELS: { recruitment: { label: "Recruitment exam" } },
   BUSINESS_PRIORITY_LABELS: { core: { label: "Core" } },
 }));
 
@@ -61,6 +60,75 @@ describe("OverviewPanel", () => {
     setup();
     expect(screen.getByTestId("overview-panel")).toBeTruthy();
   });
+
+  // ── D1: identity section does NOT re-render fields already shown in SmartHeader ──
+
+  test("D1: identity section does not render exam name (shown in SmartHeader)", () => {
+    setup();
+    const identitySection = screen.getByTestId("overview-section-identity");
+    expect(identitySection.textContent).not.toContain("SSC CGL");
+  });
+
+  test("D1: identity section does not render exam slug (shown in SmartHeader)", () => {
+    setup();
+    const identitySection = screen.getByTestId("overview-section-identity");
+    expect(identitySection.textContent).not.toContain("ssc-cgl");
+  });
+
+  test("D1: identity section does not render exam type (shown in SmartHeader)", () => {
+    setup();
+    const identitySection = screen.getByTestId("overview-section-identity");
+    // type is shown as "recruitment" or any label derived from exam_type
+    expect(identitySection.textContent).not.toMatch(/recruitment/i);
+  });
+
+  test("D1: identity section still renders management lane (unique to OverviewPanel)", () => {
+    setup();
+    const identitySection = screen.getByTestId("overview-section-identity");
+    expect(identitySection.textContent).toContain("Management lane");
+    expect(identitySection.textContent).toContain("Core");
+  });
+
+  test("D1: identity section still renders cadence (unique to OverviewPanel)", () => {
+    setup();
+    const identitySection = screen.getByTestId("overview-section-identity");
+    expect(identitySection.textContent).toContain("Cadence");
+    expect(identitySection.textContent).toContain("annual");
+  });
+
+  test("D1: identity section still renders active status (unique to OverviewPanel)", () => {
+    setup();
+    const identitySection = screen.getByTestId("overview-section-identity");
+    expect(identitySection.textContent).toContain("Active");
+    expect(identitySection.textContent).toContain("Yes");
+  });
+
+  // ── D2: readiness section omits overall score (shown in SmartHeader) but keeps per-section rows ──
+
+  test("D2: readiness section does not render overall score percentage header", () => {
+    setup();
+    const readinessSection = screen.getByTestId("overview-section-readiness");
+    // The overall score "42%" must not appear as a prominent heading.
+    // Per-section entries may also have % values, but we check that the
+    // overall-summary block (StatusBadge + "42%" + "not yet ready") is gone.
+    // The overall status badge text "partial" would still appear in per-section rows,
+    // but "not yet ready" text was exclusively in the summary header.
+    expect(readinessSection.textContent).not.toContain("not yet ready");
+    expect(readinessSection.textContent).not.toContain("ready to activate");
+  });
+
+  test("D2: readiness section still renders per-section rows (unique to OverviewPanel)", () => {
+    setup();
+    const readinessSection = screen.getByTestId("overview-section-readiness");
+    // Section labels from BASE_READINESS should appear
+    expect(readinessSection.textContent).toContain("Setup");
+    expect(readinessSection.textContent).toContain("Documents");
+    expect(readinessSection.textContent).toContain("Syllabus Mapper");
+    expect(readinessSection.textContent).toContain("PYQ Workbench");
+    expect(readinessSection.textContent).toContain("Updates");
+  });
+
+  // ── Organisation & family ──
 
   test("org shows — when organization is null", () => {
     setup({ organization: null });

@@ -900,28 +900,7 @@ export default function SetupPanel({ action = null }) {
         </div>
       )}
 
-      {/* Exam info */}
-      <div className="card">
-        <div className="card-head"><h3 className="oc-title">Exam details</h3></div>
-        <div className="card-body grid2">
-          <div className="field">
-            <div className="field-lbl">Name</div>
-            <div className="field-val">{exam?.name ?? "—"}</div>
-          </div>
-          <div className="field">
-            <div className="field-lbl">Slug</div>
-            <div className="field-val mono">{exam?.slug ?? "—"}</div>
-          </div>
-          <div className="field">
-            <div className="field-lbl">Type</div>
-            <div className="field-val">{exam?.exam_type ?? "—"}</div>
-          </div>
-          <div className="field">
-            <div className="field-lbl">Family</div>
-            <div className="field-val">{exam?.family_name ?? exam?.family ?? "—"}</div>
-          </div>
-        </div>
-      </div>
+      {/* Exam details card removed — name/slug/type/family are already shown in SmartHeader (D1 collapse) */}
     </div>
   );
 }

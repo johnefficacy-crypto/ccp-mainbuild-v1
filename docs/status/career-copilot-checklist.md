@@ -91,8 +91,8 @@ Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Ca
 
 | ID | Area | Status | Notes |
 |---|---|---|---|
-| D1 | Exam identity in 3 locations simultaneously | CLEANUP PENDING | SmartHeader (`ExamWorkspace.jsx:110–128`) is canonical. `OverviewPanel.jsx:121–128` and `SetupPanel.jsx:909–924` re-render the same 4 fields (name, slug, type, family) with no added information. |
-| D2 | Readiness scorecard duplicated in header and OverviewPanel | CLEANUP PENDING | `ExamWorkspace.jsx:152–204` (actionable, has CTA). `OverviewPanel.jsx:149–164` (static, same score/status data). Operator sees readiness count twice with no added insight in the panel version. |
+| D1 | Exam identity in 3 locations simultaneously | CODE-FIXED, VALIDATION PENDING | SmartHeader (`ExamWorkspace.jsx:110–128`) is canonical. Name/slug/type/family removed from `OverviewPanel` identity section and `SetupPanel` "Exam details" card (909–924). Unique fields (management lane, cadence, active) preserved in OverviewPanel. D1 regression tests in `OverviewPanel.test.jsx` and `SetupPanel.identity.test.jsx`. |
+| D2 | Readiness scorecard duplicated in header and OverviewPanel | CODE-FIXED, VALIDATION PENDING | `ExamWorkspace.jsx:152–204` (actionable, has CTA) is canonical. Overall score/status summary removed from `OverviewPanel` readiness section; per-section readiness rows (7 sections) are unique to OverviewPanel and preserved. D2 regression tests in `OverviewPanel.test.jsx`. |
 | D3 | "Phases needing dates" is filtered duplicate of main phases list | CLEANUP PENDING | `SetupPanel.jsx:201` filters the phases array; `SetupPanel.jsx:816–901` re-renders them as a separate section with date inputs. No cycle label shown — multi-cycle exams are ambiguous. |
 | D4 | Competition "Exam" column always identical in workspace context | CLEANUP PENDING | `CompetitionPanel.jsx:43` pre-filters by `exam.id`. `CompetitionMetricsTable.jsx:78` still renders `c.exam` column — value is always the same exam within the workspace. |
 
