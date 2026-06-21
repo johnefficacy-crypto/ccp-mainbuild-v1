@@ -82,8 +82,8 @@ Findings confirmed against this checkout. Full audit evidence:
 
 | Area | Status | Notes |
 |---|---|---|
-| BUG-EI-1 `POST .../syllabus/propose` → 404 | PLANNED | `syllabus_mapper.py` queries `document_assets` (wrong table) instead of `syllabus_documents`. `document_assets` has no `exam_id` column; PostgREST returns empty list → 404 raised. Fix: change table name on both occurrences (~line 99 and ~line 503). `ProposerError` and `propose_syllabus_mentions` are defined twice; deduplicate first. |
-| BUG-EI-2 `GET /console/exams/{id}` → 500 | CODE-FIXED, VALIDATION PENDING | Option A chosen: `console_detail.py::_documents()` now queries `syllabus_documents` with `.eq("exam_id", ...)` and `.select("id, trust_status")`. Readiness proxy: `trust_status == "verified"` (was `extraction_status == "succeeded"` on the wrong table). `_AREA_ENTITY_KIND["documents"]` updated to `"syllabus_documents"`. Regression test: `tests/exam_intelligence/test_bug_ei2_documents_table.py` (6 assertions). Branch: `fix/h2-console-detail-500`. |
+| BUG-EI-1 `POST .../syllabus/propose` → 404 | CODE-FIXED, VALIDATION PENDING | `syllabus_mapper.py` now queries `syllabus_documents` (has `exam_id` column) on both occurrences. Duplicate `ProposerError` and `propose_syllabus_mentions` definitions removed. Regression tests in `tests/exam_intelligence/test_syllabus_proposer.py` — 30 tests passing. Branch: `fix/h1-syllabus-propose-404`. |
+| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Fix requires design decision: Option A (query `syllabus_documents` by `exam_id`, use `trust_status`) or Option B (query processing-job status table). |
 
 ### D-series — Redundant data display (4 defects)
 
@@ -162,7 +162,7 @@ Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Ca
 | Item | Current status | Notes |
 |---|---|---|
 | pip-audit dependency versions | PARTIALLY UPDATED | `litellm==1.84.0` and `pypdf==6.13.3` are pinned in `app/backend/requirements.txt`. |
-| pip-audit before pytest sequencing | CODE-FIXED, VALIDATION PENDING | Added `continue-on-error: true` to the pip-audit step in `.github/workflows/ci.yml`; pytest now always runs regardless of pip-audit exit code. |
+| pip-audit before pytest sequencing | STILL OPEN | `.github/workflows/ci.yml` still runs `pip-audit` before `pytest`; if audit exits nonzero, backend tests will not execute. |
 
 ## Prior arcs / live-DB-only tails
 
