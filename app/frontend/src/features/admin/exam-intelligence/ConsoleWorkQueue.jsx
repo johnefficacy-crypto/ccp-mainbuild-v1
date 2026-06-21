@@ -209,7 +209,7 @@ export default function ConsoleWorkQueue() {
       <div className="lbl" style={{ marginBottom: 4 }}>Exam Governance Console</div>
       <h1 className="oc-title disp" style={{ fontSize: 24, marginBottom: 4 }}>Work queue</h1>
       <p className="anno" style={{ marginBottom: 12 }}>
-        Open an exam to work its blockers, or drop into the advanced workspace.
+        Select an exam to manage its blockers, activation checks, and action queue.
       </p>
 
       {/* ── Summary strip: base-scoped counts that double as workflow chips ── */}
@@ -409,13 +409,8 @@ export default function ConsoleWorkQueue() {
                       <span className="anno"> / {e.total_pyq_count ?? 0}</span>
                     </td>
                     <td style={{ textAlign: "right" }}>
-                      <span className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
-                        <Link to={`/admin/exam-intelligence/console/${encodeURIComponent(e.id)}`}
-                              className="btn" data-testid={`console-open-${e.id}`}>Open console</Link>
-                        <Link to={`/admin/exam-intelligence/workspace/${encodeURIComponent(e.id)}`}
-                              className="btn ghost" style={{ color: "var(--ink-mute)" }}
-                              data-testid={`console-workspace-${e.id}`}>Advanced workspace</Link>
-                      </span>
+                      <Link to={`/admin/exam-intelligence/exams/${encodeURIComponent(e.id)}`}
+                            className="btn" data-testid={`console-manage-${e.id}`}>Manage exam</Link>
                     </td>
                   </tr>
                 );

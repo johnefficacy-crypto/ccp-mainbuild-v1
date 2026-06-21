@@ -120,14 +120,16 @@ function ReasonTags({ reasons, testid }) {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function ExamActionConsole({ examId }) {
+export default function ExamActionConsole({ examId, embedded = false }) {
   const { status, data, reload } = useExamDetail(examId);
 
   if (status === "loading") {
+    if (embedded) return <div data-testid="action-console-loading" style={{ padding: "8px 22px", color: "var(--ink-mute)", fontSize: 13 }}>Loading action data…</div>;
     return <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-loading">Loading exam console…</div>;
   }
 
   if (status === "not_found") {
+    if (embedded) return null;
     return (
       <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-not-found">
         <div className="empty">
@@ -139,6 +141,7 @@ export default function ExamActionConsole({ examId }) {
   }
 
   if (status === "error" || !data) {
+    if (embedded) return <div data-testid="action-console-error" style={{ padding: "8px 22px" }}><span className="err-row" style={{ fontSize: 13 }}>Could not load action data.{" "}<button type="button" className="btn" onClick={reload} data-testid="action-console-retry">Retry</button></span></div>;
     return (
       <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-error">
         <div className="err-row">
@@ -159,11 +162,15 @@ export default function ExamActionConsole({ examId }) {
 
   const vMeta = VERDICT_META[verdict.status] || { tone: "pill-dusk", label: humanizeToken(verdict.status) || "Unknown" };
   const mMeta = MOCK_META[mock.status] || MOCK_META.unknown;
-  const workspaceRoute = `/admin/exam-intelligence/workspace/${encodeURIComponent(exam.id)}`;
+  const manageRoute = `/admin/exam-intelligence/exams/${encodeURIComponent(exam.id)}`;
+
+  const padding = embedded ? "12px 22px" : 22;
 
   return (
-    <div className="oc-main" style={{ padding: 22 }} data-testid="exam-action-console">
-      {/* 1. Header — identity from the detail response (no extra request). */}
+    <div className="oc-main" style={{ padding }} data-testid="exam-action-console">
+      {/* 1. Header — identity from the detail response (no extra request).
+          Hidden when embedded inside ExamWorkspace (which already shows the header). */}
+      {!embedded && (
       <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
         <div style={{ minWidth: 0 }}>
           <div className="lbl">Exam Governance Console</div>
@@ -177,9 +184,10 @@ export default function ExamActionConsole({ examId }) {
         </div>
         <div className="row" style={{ gap: 8 }}>
           <Link to="/admin/exam-intelligence/console" className="btn btn-ghost" data-testid="action-console-back">Back to work queue</Link>
-          <Link to={workspaceRoute} className="btn btn-ghost" data-testid="action-console-workspace">Advanced workspace</Link>
+          <Link to={manageRoute} className="btn btn-ghost" data-testid="action-console-workspace">Manage exam</Link>
         </div>
       </div>
+      )}
 
       {/* 2. Activation verdict (backend status, no recompute, no %). */}
       <div className="card" style={{ marginBottom: 12 }} data-testid="activation-verdict">

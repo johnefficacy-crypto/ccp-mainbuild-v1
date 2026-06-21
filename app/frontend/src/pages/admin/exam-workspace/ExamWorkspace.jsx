@@ -1,12 +1,11 @@
 /**
- * ExamWorkspace — Exam Intelligence admin workspace shell.
+ * ExamWorkspace — Manage Exam shell (I8-B).
  *
  * Design source: ccp-mainbuild-v1 handoff / Exam Intelligence Workspace.html
  * CSS: admin-console.css (.oc design system), imported globally via index.css.
  *
- * Routes:
- *   /admin/exam-intelligence/workspace/:exam_id
- *   /admin/exam-intelligence/workspace/:exam_id/:cycle_id
+ * Canonical route: /admin/exam-intelligence/exams/:exam_id
+ * Legacy compat:   /admin/exam-intelligence/workspace/:exam_id  → redirected
  */
 import React, { lazy, Suspense, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -16,7 +15,7 @@ import DocumentsPanel from "./panels/DocumentsPanel";
 import UpdatesPanel from "./panels/UpdatesPanel";
 import CompetitionPanel from "./panels/CompetitionPanel";
 import ReviewActivatePanel from "./panels/ReviewActivatePanel";
-import OverviewPanel from "./panels/OverviewPanel";
+import ExamActionConsole from "../../../features/admin/exam-intelligence/ExamActionConsole";
 import { LifecycleLegend } from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
 
 const SyllabusMapperPanel = lazy(() => import("./syllabus-mapper/SyllabusMapperPanel"));
@@ -25,7 +24,6 @@ const PyqWorkbenchPanel = lazy(() => import("./pyq-workbench/PyqWorkbenchPanel")
 // ─── Tab definitions ────────────────────────────────────────────────────────
 
 const TAB_ORDER = [
-  { id: "overview",   label: "Overview",          kind: "open" },
   { id: "setup",      label: "Setup",             kind: "open" },
   { id: "documents",  label: "Documents",          kind: "open" },
   { id: "syllabus",   label: "Syllabus Mapper",    kind: "readiness", section: "syllabus_mapper" },
@@ -63,10 +61,11 @@ function SmartHeader({ onGotoTab }) {
 
   function handleCycleChange(e) {
     const val = e.target.value;
+    const base = `/admin/exam-intelligence/exams/${exam_id}`;
     if (val) {
-      navigate(`/admin/exam-intelligence/workspace/${exam_id}/${val}`);
+      navigate(`${base}?cycle=${encodeURIComponent(val)}`);
     } else {
-      navigate(`/admin/exam-intelligence/workspace/${exam_id}`);
+      navigate(base);
     }
   }
 
@@ -106,7 +105,7 @@ function SmartHeader({ onGotoTab }) {
       <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
         <div className="min-w-0">
           <div className="row" style={{ gap: 8 }}>
-            <span className="lbl">Exam Intelligence · Workspace</span>
+            <span className="lbl">Exam Management</span>
             {exam?.exam_type && (
               <span className="badge ink no-dot" style={{ fontSize: 9.5 }}>
                 {exam.exam_type}
@@ -299,10 +298,11 @@ function TabStrip({ active, onChange, readiness }) {
 
 function WorkspaceShell() {
   const { loading, error, refetch, readiness } = useExamWorkspace();
+  const { exam_id } = useParams();
   const [searchParams] = useSearchParams();
   const initialTab = TAB_ORDER.some(t => t.id === searchParams.get("tab"))
     ? searchParams.get("tab")
-    : "overview";
+    : "setup";
   const [activeTab, setActiveTab] = useState(initialTab);
   const action = searchParams.get("action") ?? null;
 
@@ -334,7 +334,6 @@ function WorkspaceShell() {
 
   const panelBody = (
     <>
-      {activeTab === "overview" && <OverviewPanel />}
       {activeTab === "setup" && <SetupPanel action={action} />}
       {activeTab === "documents" && <DocumentsPanel onGotoTab={gotoTab} />}
       {activeTab === "syllabus" && (
@@ -356,6 +355,7 @@ function WorkspaceShell() {
   return (
     <div className="oc">
       <SmartHeader onGotoTab={gotoTab} />
+      <ExamActionConsole examId={exam_id} embedded />
       <TabStrip active={activeTab} onChange={setActiveTab} readiness={readiness} />
 
       <main className="oc-main" style={{ paddingTop: 18 }}>

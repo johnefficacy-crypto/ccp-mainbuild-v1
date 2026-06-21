@@ -1,17 +1,19 @@
 /**
- * Tests for ExamWorkspace shell (PR1) + readiness provider (PR2).
+ * Tests for ExamWorkspace shell (I8-B).
  *
  * Covers:
  * - shell renders loading state
  * - shell renders error state with retry button
  * - shell renders exam name from context
  * - shell renders cycle picker populated from cycles[]
- * - shell renders 8 clickable tabs
- * - changing cycle picker updates URL
+ * - shell renders 7 clickable tabs (no Overview after I8-B)
+ * - changing cycle picker navigates to ?cycle= query param
  * - useExamWorkspace() outside provider throws
  * - provider exposes readiness after fetch (PR2)
  * - readiness fetch error does not crash shell (PR2)
  * - refetchReadiness() re-fires the call (PR2)
+ * - action console embedded at /exams/:exam_id (I8-B)
+ * - add-cycle compat redirect preserved (I8-B)
  */
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
@@ -68,32 +70,42 @@ const READINESS_RESPONSE = {
   sections: [],
 };
 
-// ── Mock helper — routes /context calls to CONTEXT_RESPONSE, /readiness to READINESS_RESPONSE ──
+const CONSOLE_RESPONSE = {
+  exam: { id: "exam-1", slug: "ssc-cgl", name: "SSC CGL", organization_name: null, family_name: null },
+  activation_verdict: { status: "ready", headline: "Ready for aspirants", reasons: [] },
+  mock_readiness: { status: "ready", detail: null },
+  action_queue: [],
+  activation_checks: [],
+  stages: [],
+  evidence_refs: [],
+  generated_at: "2026-01-01T00:00:00Z",
+};
 
-function mockBothEndpoints({ contextResponse = CONTEXT_RESPONSE, readinessResponse = READINESS_RESPONSE } = {}) {
+// ── Mock helper ───────────────────────────────────────────────────────────────
+
+function mockAllEndpoints({ contextResponse = CONTEXT_RESPONSE, readinessResponse = READINESS_RESPONSE, consoleResponse = CONSOLE_RESPONSE } = {}) {
   api.get.mockImplementation((url) => {
     if (url.includes("/readiness")) return Promise.resolve(readinessResponse);
+    if (url.includes("/console/exams/")) return Promise.resolve(consoleResponse);
     return Promise.resolve(contextResponse);
   });
 }
 
 // ── Render helper ─────────────────────────────────────────────────────────────
 
-function renderWorkspace(examId = "exam-1", cycleId = null, query = "") {
-  const path = cycleId
-    ? `/admin/exam-intelligence/workspace/${examId}/${cycleId}${query}`
-    : `/admin/exam-intelligence/workspace/${examId}${query}`;
+function renderWorkspace(examId = "exam-1", cycleId = null, extraQuery = "") {
+  const cycleQuery = cycleId ? `?cycle=${cycleId}${extraQuery ? `&${extraQuery.slice(1)}` : ""}` : extraQuery;
+  const path = `/admin/exam-intelligence/exams/${examId}${cycleQuery}`;
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<ExamWorkspace />} />
-        <Route path="/admin/exam-intelligence/workspace/:exam_id/:cycle_id" element={<ExamWorkspace />} />
+        <Route path="/admin/exam-intelligence/exams/:exam_id" element={<ExamWorkspace />} />
       </Routes>
     </MemoryRouter>,
   );
 }
 
-// ── PR1 Tests ─────────────────────────────────────────────────────────────────
+// ── Shell Tests ───────────────────────────────────────────────────────────────
 
 describe("ExamWorkspace shell", () => {
   beforeEach(() => {
@@ -101,9 +113,9 @@ describe("ExamWorkspace shell", () => {
   });
 
   test("renders loading state while fetch is in flight", async () => {
-    // Context never resolves; readiness resolves (doesn't affect shell loading)
     api.get.mockImplementation((url) => {
       if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      if (url.includes("/console/exams/")) return Promise.resolve(CONSOLE_RESPONSE);
       return new Promise(() => {});
     });
     renderWorkspace();
@@ -113,6 +125,7 @@ describe("ExamWorkspace shell", () => {
   test("renders error state with retry button on API failure", async () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      if (url.includes("/console/exams/")) return Promise.resolve(CONSOLE_RESPONSE);
       return Promise.reject(new Error("server error"));
     });
     renderWorkspace();
@@ -127,6 +140,7 @@ describe("ExamWorkspace shell", () => {
     let callCount = 0;
     api.get.mockImplementation((url) => {
       if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      if (url.includes("/console/exams/")) return Promise.resolve(CONSOLE_RESPONSE);
       callCount++;
       if (callCount === 1) return Promise.reject(new Error("fail"));
       return Promise.resolve(CONTEXT_RESPONSE);
@@ -143,21 +157,21 @@ describe("ExamWorkspace shell", () => {
   });
 
   test("renders exam name from context", async () => {
-    mockBothEndpoints();
+    mockAllEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("exam-name"));
     expect(screen.getByTestId("exam-name").textContent).toBe("SSC CGL");
   });
 
   test("no longer renders the Advanced raw-table-editor drawer (Wave 4.6B)", async () => {
-    mockBothEndpoints();
+    mockAllEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("exam-name"));
     expect(screen.queryByText(/raw table editor/i)).toBeNull();
   });
 
   test("renders cycle picker populated from cycles[]", async () => {
-    mockBothEndpoints();
+    mockAllEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("cycle-picker"));
     const picker = screen.getByTestId("cycle-picker");
@@ -167,78 +181,65 @@ describe("ExamWorkspace shell", () => {
     expect(picker.options[2].text).toBe("2025");
   });
 
-  test("renders exactly 8 tabs all clickable", async () => {
-    mockBothEndpoints();
+  test("renders exactly 7 tabs all clickable (no Overview after I8-B)", async () => {
+    mockAllEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(8);
+    expect(tabs).toHaveLength(7);
     tabs.forEach((tab) => {
       expect(tab.disabled).toBeFalsy();
     });
   });
 
-  test("renders all 8 tab labels", async () => {
-    mockBothEndpoints();
+  test("renders all 7 tab labels (no Overview)", async () => {
+    mockAllEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
 
     const expectedLabels = [
-      "Overview", "Setup", "Documents", "Syllabus Mapper", "PYQ Workbench",
+      "Setup", "Documents", "Syllabus Mapper", "PYQ Workbench",
       "Updates", "Competition", "Review & Activate",
     ];
     expectedLabels.forEach((label) => {
       expect(screen.getByText(label)).toBeTruthy();
     });
+    // Overview tab is gone (I8-B)
+    expect(screen.queryByTestId("tab-overview")).toBeNull();
   });
 
-  test("defaults to Overview tab active and renders overview smoke details", async () => {
-    mockBothEndpoints();
+  test("defaults to Setup tab active (Overview removed in I8-B)", async () => {
+    mockAllEndpoints();
     renderWorkspace();
-    await waitFor(() => screen.getByTestId("tab-overview"));
-    const overviewTab = screen.getByTestId("tab-overview");
-    expect(overviewTab.getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByTestId("overview-panel")).toBeTruthy();
+    await waitFor(() => screen.getByTestId("tab-setup"));
+    const setupTab = screen.getByTestId("tab-setup");
+    expect(setupTab.getAttribute("aria-selected")).toBe("true");
   });
 
-  test("overview renders resolved family and organization from workspace context", async () => {
-    mockBothEndpoints({
-      contextResponse: {
-        ...CONTEXT_RESPONSE,
-        family: { id: "fam-1", name: "Resolved Family", slug: "resolved-family" },
-        organization: { id: "org-1", name: "Resolved Organization", type: "central", trust_tier: "verified" },
-      },
-    });
-    renderWorkspace();
-    await waitFor(() => screen.getByTestId("overview-panel"));
-  });
-
-
-  test("workspace/:id?tab=setup starts on Setup tab", async () => {
-    mockBothEndpoints();
+  test("exams/:id?tab=setup starts on Setup tab", async () => {
+    mockAllEndpoints();
     renderWorkspace("exam-1", null, "?tab=setup");
     await waitFor(() => screen.getByTestId("tab-setup"));
     expect(screen.getByTestId("tab-setup").getAttribute("aria-selected")).toBe("true");
     expect(screen.getByText(/Set up this exam's cycles/i)).toBeTruthy();
   });
 
-  test("workspace/:id?tab=setup&action=add-cycle opens cycle-create-section", async () => {
-    mockBothEndpoints();
+  test("exams/:id?tab=setup&action=add-cycle opens cycle-create-section", async () => {
+    mockAllEndpoints();
     renderWorkspace("exam-1", null, "?tab=setup&action=add-cycle");
     await waitFor(() => screen.getByTestId("cycle-create-section"));
     expect(screen.getByTestId("tab-setup").getAttribute("aria-selected")).toBe("true");
   });
 
-  test("workspace/:id without query still defaults to Overview", async () => {
-    mockBothEndpoints();
+  test("exams/:id without query still defaults to Setup", async () => {
+    mockAllEndpoints();
     renderWorkspace();
-    await waitFor(() => screen.getByTestId("tab-overview"));
-    expect(screen.getByTestId("tab-overview").getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByTestId("overview-panel")).toBeTruthy();
+    await waitFor(() => screen.getByTestId("tab-setup"));
+    expect(screen.getByTestId("tab-setup").getAttribute("aria-selected")).toBe("true");
   });
 
-  test("add-cycle route redirects to workspace setup with action=add-cycle", async () => {
+  test("add-cycle route redirects to exams/:id?tab=setup&action=add-cycle", async () => {
     function LocationCapture() {
       const location = useLocation();
       return <div data-testid="location">{location.pathname}{location.search}</div>;
@@ -256,9 +257,8 @@ describe("ExamWorkspace shell", () => {
     await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/admin/exam-intelligence/exams/exam-1?tab=setup&action=add-cycle"));
   });
 
-
-  test("changing cycle picker navigates to cycle URL", async () => {
-    mockBothEndpoints();
+  test("changing cycle picker navigates to ?cycle= query param", async () => {
+    mockAllEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("cycle-picker"));
 
@@ -277,6 +277,58 @@ describe("ExamWorkspace shell", () => {
   });
 });
 
+// ── I8-B: embedded action console ────────────────────────────────────────────
+
+describe("ExamWorkspace embedded action console (I8-B)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("renders verdict from embedded action console", async () => {
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("activation-verdict"));
+    expect(screen.getByTestId("activation-verdict").textContent).toContain("Ready");
+    expect(screen.getByTestId("verdict-headline").textContent).toBe("Ready for aspirants");
+  });
+
+  test("calls console endpoint for exam_id", async () => {
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("activation-verdict"));
+    const consoleCalls = api.get.mock.calls.filter(([u]) => u.includes("/console/exams/exam-1"));
+    expect(consoleCalls.length).toBeGreaterThan(0);
+  });
+
+  test("embedded mode: no action-console-back or action-console-workspace nav shown", async () => {
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("activation-verdict"));
+    expect(screen.queryByTestId("action-console-back")).toBeNull();
+    expect(screen.queryByTestId("action-console-workspace")).toBeNull();
+    expect(screen.queryByTestId("action-console-name")).toBeNull();
+  });
+
+  test("action queue renders when console returns actions", async () => {
+    const consoleWithActions = {
+      ...CONSOLE_RESPONSE,
+      activation_verdict: { status: "blocked", headline: "Not ready", reasons: [] },
+      action_queue: [
+        { id: "setup", severity: "blocker", area: "setup", title: "Fix setup",
+          why: "No phases defined", cta_label: "Go to Setup",
+          cta_route: "/admin/exam-intelligence/exams/exam-1?tab=setup",
+          entity_kind: null, entity_id: null, evidence_refs: [], status: "open" },
+      ],
+      activation_checks: [],
+      stages: [],
+    };
+    mockAllEndpoints({ consoleResponse: consoleWithActions });
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("action-queue"));
+    expect(screen.getByTestId("action-setup")).toBeTruthy();
+    expect(screen.getByTestId("action-cta-setup").getAttribute("href"))
+      .toBe("/admin/exam-intelligence/exams/exam-1?tab=setup");
+  });
+});
+
 // ── PR2 Tests: readiness provider ─────────────────────────────────────────────
 
 describe("ExamWorkspace readiness provider (PR2)", () => {
@@ -285,7 +337,7 @@ describe("ExamWorkspace readiness provider (PR2)", () => {
   });
 
   test("provider exposes readiness after fetch", async () => {
-    mockBothEndpoints();
+    mockAllEndpoints();
     let captured = null;
 
     function ReadinessCapture() {
@@ -295,10 +347,10 @@ describe("ExamWorkspace readiness provider (PR2)", () => {
     }
 
     render(
-      <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1"]}>
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/exams/exam-1"]}>
         <Routes>
           <Route
-            path="/admin/exam-intelligence/workspace/:exam_id"
+            path="/admin/exam-intelligence/exams/:exam_id"
             element={
               <ExamWorkspaceProvider>
                 <ReadinessCapture />
@@ -317,6 +369,7 @@ describe("ExamWorkspace readiness provider (PR2)", () => {
   test("readiness fetch error does not crash shell", async () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/readiness")) return Promise.reject(new Error("readiness fail"));
+      if (url.includes("/console/exams/")) return Promise.resolve(CONSOLE_RESPONSE);
       return Promise.resolve(CONTEXT_RESPONSE);
     });
     renderWorkspace();
@@ -327,7 +380,7 @@ describe("ExamWorkspace readiness provider (PR2)", () => {
   });
 
   test("refetchReadiness re-fires the readiness call", async () => {
-    mockBothEndpoints();
+    mockAllEndpoints();
     let captured = null;
 
     function ReadinessHarness() {
@@ -337,10 +390,10 @@ describe("ExamWorkspace readiness provider (PR2)", () => {
     }
 
     render(
-      <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1"]}>
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/exams/exam-1"]}>
         <Routes>
           <Route
-            path="/admin/exam-intelligence/workspace/:exam_id"
+            path="/admin/exam-intelligence/exams/:exam_id"
             element={
               <ExamWorkspaceProvider>
                 <ReadinessHarness />
@@ -383,21 +436,20 @@ const STANDALONE_READINESS = {
 describe("ExamWorkspace standalone layout regression (B2)", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test("standalone workspace keeps the tab strip and renders no rail (regression)", async () => {
-    mockBothEndpoints({ readinessResponse: STANDALONE_READINESS });
+  test("standalone workspace at /exams/ keeps the tab strip and renders no rail (regression)", async () => {
+    mockAllEndpoints({ readinessResponse: STANDALONE_READINESS });
     render(
-      <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1"]}>
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/exams/exam-1"]}>
         <Routes>
-          <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<ExamWorkspace />} />
+          <Route path="/admin/exam-intelligence/exams/:exam_id" element={<ExamWorkspace />} />
         </Routes>
       </MemoryRouter>,
     );
     await waitFor(() => screen.getByTestId("tab-strip"));
-    expect(screen.getAllByRole("tab")).toHaveLength(8);
+    expect(screen.getAllByRole("tab")).toHaveLength(7);
     expect(screen.getByTestId("cycle-picker")).toBeTruthy();
     expect(screen.getAllByText("40% ready · partial")[0]).toBeTruthy();
     expect(screen.getByTestId("tab-review").textContent).toContain("40%");
-    expect(screen.getByTestId("overview-readiness-sections").textContent).toContain("40%");
     expect(screen.queryByTestId("exam-task-rail")).toBeNull();
     expect(screen.queryByTestId("console-rail-layout")).toBeNull();
   });
@@ -408,20 +460,22 @@ describe("ExamWorkspace standalone layout regression (B2)", () => {
 describe("ExamWorkspace standalone fetch regression (B2)", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test("fetches context and readiness exactly once on initial mount", async () => {
-    mockBothEndpoints({ readinessResponse: STANDALONE_READINESS });
+  test("fetches context, readiness, and console once on initial mount", async () => {
+    mockAllEndpoints({ readinessResponse: STANDALONE_READINESS });
     render(
-      <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1"]}>
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/exams/exam-1"]}>
         <Routes>
-          <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<ExamWorkspace />} />
+          <Route path="/admin/exam-intelligence/exams/:exam_id" element={<ExamWorkspace />} />
         </Routes>
       </MemoryRouter>,
     );
     await waitFor(() => screen.getByTestId("exam-name"));
     const contextCalls = api.get.mock.calls.filter(([url]) => url.includes("/context"));
     const readinessCalls = api.get.mock.calls.filter(([url]) => url.includes("/readiness"));
+    const consoleCalls = api.get.mock.calls.filter(([url]) => url.includes("/console/exams/"));
     expect(contextCalls).toHaveLength(1);
     expect(readinessCalls).toHaveLength(1);
+    expect(consoleCalls).toHaveLength(1);
   });
 });
 
@@ -431,11 +485,11 @@ describe("ExamWorkspace standalone review surface (B2)", () => {
   beforeEach(() => jest.clearAllMocks());
 
   test("review tab renders ReviewActivatePanel without extra readiness fetch", async () => {
-    mockBothEndpoints({ readinessResponse: STANDALONE_READINESS });
+    mockAllEndpoints({ readinessResponse: STANDALONE_READINESS });
     render(
-      <MemoryRouter initialEntries={["/admin/exam-intelligence/workspace/exam-1?tab=review"]}>
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/exams/exam-1?tab=review"]}>
         <Routes>
-          <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<ExamWorkspace />} />
+          <Route path="/admin/exam-intelligence/exams/:exam_id" element={<ExamWorkspace />} />
         </Routes>
       </MemoryRouter>,
     );
