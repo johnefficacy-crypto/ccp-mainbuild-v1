@@ -447,12 +447,11 @@ def set_sources(
 def projection_preview(
     paper_id: str,
     actor: dict = Depends(require_author),
-    sb: Any = Depends(get_supabase_admin),
 ):
     """[author] Dry-run: assess which questions in a PYQ paper would project."""
     paper_id = _validate_uuid_param(paper_id, "paper_id")
     try:
-        return proj_svc.preview_paper_projection(sb, paper_id)
+        return proj_svc.preview_paper_projection(_sb(), paper_id)
     except LookupError as exc:
         raise HTTPException(404, detail=str(exc))
     except Exception as exc:
@@ -464,14 +463,13 @@ def projection_sync(
     paper_id: str,
     body: ProjectionSyncIn = ProjectionSyncIn(),
     actor: dict = Depends(require_publisher),
-    sb: Any = Depends(get_supabase_admin),
 ):
     """[publisher] Atomically project eligible PYQ questions into mock_question_bank."""
     paper_id = _validate_uuid_param(paper_id, "paper_id")
     actor_id = actor.get("id")
     try:
         return proj_svc.sync_paper_projection(
-            sb, paper_id, actor_id,
+            _sb(), paper_id, actor_id,
             audit_reason=body.audit_reason,
             question_ids=body.question_ids,
         )
@@ -485,12 +483,11 @@ def projection_sync(
 def projection_status(
     paper_id: str,
     actor: dict = Depends(require_author),
-    sb: Any = Depends(get_supabase_admin),
 ):
     """[author] Aggregated projection state for a PYQ paper."""
     paper_id = _validate_uuid_param(paper_id, "paper_id")
     try:
-        return proj_svc.get_paper_projection_status(sb, paper_id)
+        return proj_svc.get_paper_projection_status(_sb(), paper_id)
     except LookupError as exc:
         raise HTTPException(404, detail=str(exc))
     except Exception as exc:

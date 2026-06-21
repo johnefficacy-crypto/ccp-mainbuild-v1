@@ -427,8 +427,8 @@ def _make_app(sb: SBStub, actor: dict) -> TestClient:
     app = FastAPI()
     app.include_router(admin_mocks_api.router, prefix="/api")
     app.dependency_overrides[get_current_user] = lambda: actor
-    app.dependency_overrides[admin_mocks_api.get_supabase_admin] = lambda: sb
-    return TestClient(app)
+    admin_mocks_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    return TestClient(app, raise_server_exceptions=False)
 
 
 def _author_actor():
