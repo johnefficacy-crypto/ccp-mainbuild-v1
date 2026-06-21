@@ -267,6 +267,140 @@ code defect is found:
 2. Verify state PSC official/calendar URL backfill.
 3. Reconfirm SEBI Grade A only if a future workflow depends on it.
 
+## Lane H — Exam Intelligence P0 bug fixes
+
+Goal: fix the two confirmed runtime failures surfaced in the 2026-06-20 operator screenshot audit.
+Evidence doc: `docs/audits/exam-intelligence-gaps-2026-06-20.md`.
+
+These are independent of Lanes A–G and can run now.
+
+### H1 — Fix `syllabus/propose` 404 (BUG-EI-1)
+
+- **Type:** backend bug fix.
+- **Write scope:**
+  - `app/backend/app/exam_intelligence/syllabus_mapper.py`
+  - `app/backend/tests/` — regression test for the propose path
+  - checklist row for BUG-EI-1
+- **Do not touch:** frontend, migrations, other study-os files.
+- **Work:**
+  1. Replace `sb.table("document_assets")` with `sb.table("syllabus_documents")` on both occurrences (~line 99 and ~line 503).
+  2. Verify the SELECT columns (`id, exam_id, exam_cycle_id`) exist on `syllabus_documents` (migration 031 confirms they do).
+  3. Investigate and resolve the duplicate `ProposerError` / `propose_syllabus_mentions` definitions in the file — either deduplicate or verify which copy is the live one.
+  4. Add a regression test: mock a `syllabus_documents` row and assert that propose no longer raises 404.
+- **Exit:** propose endpoint returns 200 with mention proposals for a known document.
+
+### H2 — Fix `console/exams/{id}` 500 (BUG-EI-2)
+
+- **Type:** backend bug fix — requires design decision first.
+- **Write scope:**
+  - `app/backend/app/exam_intelligence/console_detail.py`
+  - `app/backend/tests/` — regression test for the console detail path
+  - checklist rows for BUG-EI-2 and "Document readiness extraction status"
+- **Do not touch:** frontend, migrations, other study-os files.
+- **Pre-work design decision (gate before implementation):**
+  The `_documents()` helper must be redesigned. Options:
+  - **Option A:** Query `syllabus_documents` by `exam_id`; use `trust_status == "verified"` as the readiness proxy. Count `verified` docs as "extracted".
+  - **Option B:** Query a `document_processing_jobs` or similar table if text-extraction tracking lives separately.
+  Operator must pick one before code is written. Record decision as a note in this PR.
+- **Work:**
+  1. Implement chosen option in `_documents()`.
+  2. Update `extracted` count logic at `console_detail.py:257` to match new readiness field.
+  3. Fix line 180 label (`"documents": "document_assets"`) to reflect the new source table.
+  4. Add a regression test: mock the chosen table and assert console detail returns 200.
+- **Exit:** console exam detail returns 200 with a non-zero document check when syllabus documents exist.
+
+### H3 — EI UX cleanup batch (UX-EI-1 through UX-EI-5)
+
+Run these as a single frontend cleanup PR since they share no state and all live in the exam-intelligence admin surface.
+
+- **Type:** frontend cleanup.
+- **Write scope:**
+  - `app/frontend/src/features/admin/exam-intelligence/ReviewQueueTable.jsx` — UX-EI-1 raw ID
+  - `app/frontend/src/pages/admin/exam-workspace/panels/SetupPanel.jsx` — UX-EI-1 phaseId, UX-EI-5 cycle context label
+  - `app/frontend/src/pages/admin/exam-workspace/panels/OverviewPanel.jsx` — UX-EI-3 deduplication
+  - targeted tests for affected components
+  - checklist rows for UX-EI-1, UX-EI-3, UX-EI-5
+- **Do not touch:** backend, migrations, `ExamWorkspace.jsx` workspace shell, `ExamActionConsole.jsx`.
+- **Work:**
+  - UX-EI-1: Replace `{r.id}` in ReviewQueueTable with a truncated or humanized display; replace `ptError.phaseId` raw render in SetupPanel error with a friendlier label.
+  - UX-EI-3: Remove or collapse fields from `OverviewPanel` that are already surfaced in the workspace SmartHeader (exam name, family, slug, type, active).
+  - UX-EI-5: Add cycle name/year to the "Phases needing dates" section header so the operator knows which cycle each phase stub belongs to.
+- **Depends on:** none; can run parallel with H1 and H2.
+
+## Lane I — Exam Intelligence structural redesign
+
+Goal: address the 23 structural design defects documented in `docs/reviews/exam-intelligence-design-review-2026-06-20.md`.
+Items are split by category and blocked relationship. P2 items can run now; P3 items require design decisions first.
+
+### I1 — Collapse redundant data: OverviewPanel and SetupPanel header fields (D1, D2)
+
+- **Type:** frontend cleanup.
+- **Write scope:** `OverviewPanel.jsx`, `SetupPanel.jsx` (lines 909–924 only), targeted tests.
+- **Do not touch:** `ExamWorkspace.jsx` SmartHeader, backend.
+- **Work:** Remove or collapse the "Exam identity" section in `OverviewPanel` (name, slug, type, family already in SmartHeader). Remove or minimize the exam detail block in `SetupPanel` (lines 909–924). Retain OverviewPanel sections that add value beyond the header (readiness per-section detail if not collapsed into header).
+- **Depends on:** Operator must confirm which OverviewPanel fields (if any) are not already in SmartHeader.
+
+### I2 — Collapse "Phases needing dates" into main phases list with cycle label (D3)
+
+- **Type:** frontend cleanup.
+- **Write scope:** `SetupPanel.jsx` and targeted tests.
+- **Note:** Partially absorbed into H3 (UX-EI-5 adds cycle label). Full removal of the duplicate section belongs to Lane C (C2 — merge template phases into timeline).
+- **Depends on:** C1 (phase timeline extraction) should land first.
+
+### I3 — PYQ paper overview: replace dropdown with table (F3)
+
+- **Type:** frontend UX improvement.
+- **Write scope:** `PyqWorkbenchPanel.jsx`, targeted tests.
+- **Do not touch:** backend, `PyqPaperWorkspace.jsx` embedded view, other workspace panels.
+- **Work:** Replace flat `<select>` paper picker with a table of papers showing paper year, section, question count, and readiness status. Keep the embedded `<PyqPaperWorkspace>` as the detail view after selection.
+- **Depends on:** none.
+
+### I4 — Bulk import: auto-navigate to imported paper after success (F2)
+
+- **Type:** frontend UX improvement.
+- **Write scope:** `PyqWorkbenchPanel.jsx`, `BulkImportModal.jsx`, targeted tests.
+- **Do not touch:** backend import logic, other panels.
+- **Work:** After a successful bulk import response, close the modal and auto-select the first imported paper in the picker/table. Show a brief confirmation of what was imported before closing.
+- **Depends on:** none.
+
+### I5 — PYQ question pagination (M3)
+
+- **Type:** frontend + backend change.
+- **Write scope:** `PyqPaperWorkspace.jsx`, targeted tests; backend `pyq-questions` endpoint if it supports `offset`/`limit` params (verify first).
+- **Do not touch:** other workspace panels, unrelated PYQ routes.
+- **Work:** Replace `limit=200` with paginated fetching; add page/section navigation in the question list UI.
+- **Depends on:** confirm backend supports pagination on the questions endpoint.
+
+### I6 — Remaining identifier leakage: CMS tables, CompetitionMetrics, Subjects (I3–I5)
+
+- **Type:** frontend cleanup.
+- **Write scope:** `ExamIntelCms.jsx`, `CompetitionMetricsTable.jsx`, targeted tests.
+- **Do not touch:** backend, `ReviewQueueTable.jsx` (covered by H3), `SetupPanel.jsx` (covered by H3).
+- **Work:** Apply `operatorChrome.humanizeToken` to entity `id` columns in CMS tables and the `exam_slug`/`subject_id` columns in Competition and Subjects surfaces.
+- **Depends on:** none; can run in parallel with H3.
+
+### I7 — KnowledgeGovernance: real metrics or remove placeholder lanes (E1)
+
+- **Type:** design decision → implementation.
+- **Write scope:** `KnowledgeGovernance.jsx`, targeted tests; backend overview endpoint if metrics are added.
+- **Blocked on:** DQ-1 (KG value proposition and metric availability).
+- **Two possible outcomes:**
+  - If metrics are available: wire `metricKey` to real endpoints; remove placeholder TODO.
+  - If no metrics planned: remove "Exam truth & planner readiness" lane or fold its links into existing nav.
+
+### I8 — ExamIntelligence.jsx: reduce to ≤2 primary paths (E2)
+
+- **Type:** design decision → implementation.
+- **Write scope:** `ExamIntelligence.jsx`, targeted tests.
+- **Blocked on:** DQ-2 (operator workflow definition — what is the primary goal of this page?).
+- **Work after design gate:** Remove or demote navigation paths that are not the operator's primary intent.
+
+### I9 — Guided cycle-setup workflow (F1)
+
+- **Type:** design → implementation (multi-PR).
+- **Blocked on:** I6-gate (product design deliverable: step order, surface choice, whether to use wizard or checklist pattern).
+- **Note:** This is P3. Do not implement until the design gate clears. The gate deliverable is a step-by-step operator journey doc.
+
 ## Lane G — Later expansion after clean gate
 
 Do not dispatch until Lane A exits clean:
@@ -281,7 +415,7 @@ contract before implementation.
 
 ## Suggested simultaneous dispatch batch
 
-Safe first batch:
+Safe first batch (original):
 
 1. **Agent A:** A1 scheduler evidence (operator/live, docs only).
 2. **Agent B:** B1 `ExamActionConsole` de-leak (frontend scoped).
@@ -289,6 +423,27 @@ Safe first batch:
 4. **Agent D:** D1 document readiness identity/status audit (docs only).
 5. **Agent E:** E1 CI sequencing (workflow scoped).
 
+New batch (Lane H — can run now in parallel with any of the above):
+
+6. **Agent H1:** H1 syllabus-propose fix (backend, narrow scope — `syllabus_mapper.py` + test).
+7. **Agent H2:** H2 console-detail fix (backend — requires design decision first; see H2 pre-work gate).
+8. **Agent H3:** H3 EI UX cleanup (frontend — ReviewQueueTable, SetupPanel, OverviewPanel).
+
+Lane I items that can run now (no design gate required):
+
+9. **Agent I3:** I3 PYQ paper overview table (`PyqWorkbenchPanel.jsx` — replace dropdown with table).
+10. **Agent I4:** I4 bulk import auto-navigate after success (`PyqWorkbenchPanel.jsx`, `BulkImportModal.jsx`).
+11. **Agent I6:** I6 remaining identifier leakage (`ExamIntelCms.jsx`, `CompetitionMetricsTable.jsx`).
+
+Lane I items blocked on design decisions (do not dispatch yet):
+
+- I7 (KG metrics/lanes) — blocked on DQ-1.
+- I8 (ExamIntelligence navigation) — blocked on DQ-2.
+- I9 (guided cycle workflow) — blocked on I6-gate product design.
+- I5 (question pagination) — verify backend pagination support first.
+- I1 (OverviewPanel collapse) — verify with operator which fields to retain.
+
 Do **not** dispatch B2 and C1 to the same agent unless B1 is complete and the
 agent explicitly owns the relevant tests. Do **not** dispatch G-lane work until
-A1/A2 are clean.
+A1/A2 are clean. Do **not** dispatch H2 until the Option A/B design decision is
+recorded (see H2 pre-work gate above).
