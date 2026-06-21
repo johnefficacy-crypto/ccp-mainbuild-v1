@@ -349,7 +349,10 @@ export default function Mocks() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="Mocks logged" value={items.length} />
-        <Stat label="Average score" value={`${avg}%`} />
+        <Stat
+          label={`Average across ${items.length} logged mock${items.length === 1 ? "" : "s"}`}
+          value={`${avg}%`}
+        />
         <Stat label="Best" value={items.length ? `${best}%` : "—"} />
         <Stat
           label="Drift"
@@ -490,7 +493,11 @@ function MockAnalysis({ bundle, onChangeReviewState, onDraftCorrections }) {
       <SectionHeader
         eyebrow={`Mock · ${(m.attempted_at || "").slice(0, 10) || "logged"}`}
         title={`${m.name} · ${m.score ?? "—"}/${m.max_score ?? "—"}`}
-        sub="Subject breakdown and error patterns are extracted from your logged answer sheet."
+        sub={
+          isSelfReported
+            ? "Subject breakdown and error patterns are based on the values you entered."
+            : "Subject breakdown and error patterns are derived from your platform-scored attempt."
+        }
         right={
           <Pill tone={STATE_PILL[reviewState]?.tone || "amber"}>
             {STATE_PILL[reviewState]?.label || reviewState}
@@ -549,8 +556,10 @@ function MockAnalysis({ bundle, onChangeReviewState, onDraftCorrections }) {
         </div>
 
         <div>
-          <Eyebrow>Error patterns</Eyebrow>
-          <ErrorPatternPanel errors={errors} total={totalErrors} />
+          <Eyebrow>
+            {isSelfReported ? "Self-reported error patterns" : "Error patterns"}
+          </Eyebrow>
+          <ErrorPatternPanel errors={errors} total={totalErrors} isSelfReported={isSelfReported} />
         </div>
       </div>
 
@@ -600,7 +609,7 @@ function MockAnalysis({ bundle, onChangeReviewState, onDraftCorrections }) {
   );
 }
 
-function ErrorPatternPanel({ errors, total }) {
+function ErrorPatternPanel({ errors, total, isSelfReported }) {
   return (
     <div className="mt-2 space-y-1.5">
       {ERROR_ROWS.map((r) => {
@@ -623,7 +632,9 @@ function ErrorPatternPanel({ errors, total }) {
         );
       })}
       <div className="rule mt-1 pt-1.5 text-[10.5px] text-clay-700">
-        {total} wrong answers tagged · pattern weighted in next plan
+        {isSelfReported
+          ? `${total} counts entered by you · user-entered, not system-inferred`
+          : `${total} wrong answers tagged · pattern weighted in next plan`}
       </div>
     </div>
   );
