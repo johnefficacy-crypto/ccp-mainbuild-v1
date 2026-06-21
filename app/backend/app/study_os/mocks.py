@@ -18,6 +18,12 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterable
 
+from app.study_os.correction_policy import (
+    CANONICAL_CATEGORIES,
+    CorrectionPolicyInput,
+    correction_title,
+    select_categories,
+)
 from app.utils.safe import safe_required
 
 logger = logging.getLogger("career_copilot.study_os.mocks")
@@ -59,13 +65,17 @@ def _percentage(scored: Any, total: Any) -> float | None:
 
 
 VALID_REVIEW_STATES = {"scheduled", "unreviewed", "reviewed", "correction_drafted"}
-VALID_CORRECTION_CATEGORIES = {
-    "concept_gap",
-    "memory_gap",
-    "careless",
-    "speed_issue",
-    "option_trap",
-}
+# Canonical correction categories are owned by correction_policy (§7); re-exported
+# here under the long-standing name for back-compat.
+VALID_CORRECTION_CATEGORIES = set(CANONICAL_CATEGORIES)
+
+
+class PlatformAttemptCorrectionForbiddenError(ValueError):
+    """Raised when a caller attempts to manually draft corrections for a platform_attempt mock.
+
+    MasteryWriter owns the correction pipeline for platform_attempt mocks.
+    The manual route (this module) is only valid for manual_log and imported_result.
+    """
 
 
 # ──────────────────────────── serialisers ───────────────────────────────────
@@ -322,62 +332,43 @@ def set_review_state(
 
 
 # ─────────────────────── correction-task generation ─────────────────────────
-# Mapping from prototype categories to a default task title template.
-_CORRECTION_DEFAULTS = {
-    "concept_gap": "Concept drill",
-    "memory_gap": "Spaced revision",
-    "careless": "Accuracy drill",
-    "speed_issue": "Timed retrieval set",
-    "option_trap": "Distractor elimination drill",
-}
 
 
 def _draft_corrections_from_mock(mock: dict[str, Any]) -> list[dict[str, Any]]:
-    """Pure rule-based correction-task suggestion.
+    """Manual/logged-mock correction adapter — thin wrapper over the shared policy.
 
-    Reads the mock's `error_patterns` and `weak_topics` and emits one task
-    per category that has any signal. Deterministic — no randomness.
+    Aggregates the ENTIRE ``error_patterns`` dict through correction_policy
+    (alias collisions collapse to one canonical count), then emits one correction
+    per canonical category the policy returns, in the policy's deterministic
+    order, with category-only titles. The persisted ``topic`` for error-backed
+    corrections is ``weak_topics[0]`` (a display label). The shared policy owns
+    the weak-topic concept_gap fallback; because the policy returns one category
+    set per normalized evidence input, manual mocks emit one weak-topic fallback
+    correction for ``weak_topics[0]`` when no recognized error evidence is
+    present. No independent per-key categorization here.
     """
-    out: list[dict[str, Any]] = []
     errors = mock.get("error_patterns") or {}
     weak = list(mock.get("weak_topics") or [])
+    topic = weak[0] if weak else None
 
-    # error_patterns keys map directly onto correction categories.
-    mapping = {
-        "concept": "concept_gap",
-        "memory": "memory_gap",
-        "careless": "careless",
-        "time": "speed_issue",
-        "option": "option_trap",
-    }
-    for key, count in errors.items():
-        try:
-            n = int(count or 0)
-        except (TypeError, ValueError):
-            n = 0
-        if n <= 0:
-            continue
-        cat = mapping.get(key, key if key in VALID_CORRECTION_CATEGORIES else None)
-        if not cat or cat not in VALID_CORRECTION_CATEGORIES:
-            continue
-        topic = weak[0] if weak else None
-        out.append({
+    categories = select_categories(
+        CorrectionPolicyInput(
+            topic=topic,
+            error_counts=dict(errors),
+            weak_topic=bool(weak),
+            evidence_mode="summary",
+        )
+    )
+    out: list[dict[str, Any]] = [
+        {
             "category": cat,
-            "title": f"{_CORRECTION_DEFAULTS[cat]}{' · ' + topic if topic else ''}",
+            "title": correction_title(cat),
             "topic": topic,
             "source_questions": [],
-        })
+        }
+        for cat in categories
+    ]
 
-    # If no error_patterns at all but there are weak topics, draft one
-    # concept-gap drill per weak topic (capped at 3).
-    if not out and weak:
-        for t in weak[:3]:
-            out.append({
-                "category": "concept_gap",
-                "title": f"{_CORRECTION_DEFAULTS['concept_gap']} · {t}",
-                "topic": t,
-                "source_questions": [],
-            })
     return out
 
 
@@ -386,60 +377,48 @@ def draft_correction_tasks(
     user_id: str,
     mock_id: str,
 ) -> list[dict[str, Any]]:
-    """Generate + persist correction-task suggestions for a mock.
+    """Generate + persist correction-task suggestions for a manual mock.
 
-    Replaces any prior drafted (not-yet-applied) corrections for the mock.
-    Flips the mock's review_state to ``correction_drafted``.
+    Atomically replaces any prior drafted (not-yet-applied) corrections for the
+    mock and flips review_state to ``correction_drafted``.  A single call to the
+    replace_manual_mock_correction_drafts RPC performs the full
+    upsert → delete-obsolete → review_state update in one DB transaction, so
+    there is no window where prior drafts are lost on insert failure.
+
+    Passing an empty draft set (no error patterns, no weak topics) is an
+    explicitly supported case: the RPC deletes all existing drafted rows and sets
+    review_state to 'reviewed' (not 'correction_drafted').
+
+    DB failure propagates to the caller — the FastAPI route returns 500.
+
+    Raises:
+        LookupError: mock_id not found or not owned by user_id.
+        PlatformAttemptCorrectionForbiddenError: mock has source_type=platform_attempt;
+            MasteryWriter owns that pipeline — manual drafting is forbidden.
     """
     mock = get_mock(supabase, user_id, mock_id)
     if not mock:
         raise LookupError("mock not found")
 
+    if (mock.get("source_type") or "manual_log") == "platform_attempt":
+        raise PlatformAttemptCorrectionForbiddenError(
+            f"PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN mock_id={mock_id}"
+        )
+
     drafts = _draft_corrections_from_mock(mock)
 
-    # Wipe stale drafts (state='drafted') so we don't accumulate duplicates.
-    _safe(
-        lambda: (
-            supabase.table("mock_correction_tasks")
-            .delete()
-            .eq("user_id", user_id)
-            .eq("mock_test_id", mock_id)
-            .eq("state", "drafted")
-            .execute()
-        ),
-    )
-
-    rows = []
-    if drafts:
-        payload = [
-            {
-                "mock_test_id": mock_id,
-                "user_id": user_id,
-                "category": d["category"],
-                "title": d["title"],
-                "topic": d.get("topic"),
-                "source_questions": d.get("source_questions") or [],
-                "state": "drafted",
-            }
-            for d in drafts
-        ]
-        inserted = _safe(
-            lambda: supabase.table("mock_correction_tasks").insert(payload).execute(),
-            default=None,
-        )
-        rows = getattr(inserted, "data", None) or []
-
-    # Mark the mock as having draft corrections.
-    _safe(
-        lambda: (
-            supabase.table("mock_tests")
-            .update({"review_state": "correction_drafted", "updated_at": _now_iso()})
-            .eq("id", mock_id)
-            .eq("user_id", user_id)
-            .execute()
-        ),
-    )
-
+    # Single atomic RPC: upsert desired rows, delete obsolete drafted rows,
+    # update review_state — all in one transaction.  No _safe wrapper: DB
+    # failure propagates so the caller (study_os.py route) returns 500.
+    result = supabase.rpc(
+        "replace_manual_mock_correction_drafts",
+        {
+            "p_mock_test_id": mock_id,
+            "p_user_id": user_id,
+            "p_drafts": drafts,
+        },
+    ).execute()
+    rows = getattr(result, "data", None) or []
     return [_serialise_correction(r) for r in rows]
 
 

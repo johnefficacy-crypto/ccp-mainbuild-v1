@@ -49,6 +49,18 @@ def _count_since(sb, table: str, ts_col: str, since: datetime, **filters) -> int
         return 0
 
 
+def _count_null(sb, table: str, null_col: str, **filters) -> int:
+    """Count rows where null_col IS NULL, plus optional equality filters."""
+    try:
+        q = sb.table(table).select("id", count="exact").is_(null_col, "null")
+        for k, v in filters.items():
+            q = q.eq(k, v)
+        res = q.execute()
+        return int(getattr(res, "count", None) or 0)
+    except Exception:
+        return 0
+
+
 @router.get("/overview")
 def overview(user: dict = Depends(require_admin)) -> dict:
     sb = get_supabase_admin()
@@ -77,6 +89,23 @@ def overview(user: dict = Depends(require_admin)) -> dict:
         "copyright_open": copyright_received + copyright_triage,
     }
 
+    # --- Knowledge-graph governance counts ---
+    # eligibility_rules: 3 cheap index-range scans on idx_eer_exam_status(exam_id, reviewer_status)
+    # unacked_batches: sparse index idx_reverification_batches_unack (WHERE acknowledged_at IS NULL)
+    # reports_need_action: partial index idx_verification_reports_attention (WHERE superseded_by IS NULL)
+    kg = {
+        "eligibility_rules": {
+            "draft":    _count(sb, "exam_eligibility_rules", reviewer_status="draft"),
+            "verified": _count(sb, "exam_eligibility_rules", reviewer_status="verified"),
+            "archived": _count(sb, "exam_eligibility_rules", reviewer_status="archived"),
+        },
+        "unacked_reverification_batches": _count_null(sb, "reverification_batches", "acknowledged_at"),
+        "reports_need_action": _count_null(
+            sb, "recruitment_verification_reports", "superseded_by",
+            recommended_action="request_admin_review",
+        ),
+    }
+
     try:
         audit_rows = (
             sb.table("admin_audit_logs")
@@ -92,6 +121,7 @@ def overview(user: dict = Depends(require_admin)) -> dict:
 
     return {
         "kpis": kpis,
+        "kg": kg,
         "recent_audit": [
             {
                 "actor": r.get("actor_email") or r.get("actor_id") or "system",

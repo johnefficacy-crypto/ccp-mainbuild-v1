@@ -1,0 +1,553 @@
+{
+  "exam_id": "22222222-2222-2222-2222-222222222222",
+  "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+  "generated_at": "2026-06-16T15:08:37.299935+00:00",
+  "status_value_census": {
+    "mock_question_bank.reviewer_status": {
+      "archived": 15,
+      "published": 160
+    },
+    "pyq_questions.reviewer_status": {
+      "rejected": 2,
+      "verified": 104
+    },
+    "pyq_question_topic_tags.reviewer_status": {
+      "verified": 6
+    },
+    "pyq_papers.trust_status": {
+      "pending": 1,
+      "verified": 2
+    },
+    "exam_topic_coverage.reviewer_status": {
+      "locked": 20
+    }
+  },
+  "phases": [
+    {
+      "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+      "phase_slug": "tier-1",
+      "phase_name": "Tier 1",
+      "section_structure": {
+        "exam_id": "22222222-2222-2222-2222-222222222222",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "phase_count": 1,
+        "section_count": 4,
+        "sections": [
+          {
+            "section_id": "88888888-8888-8888-8888-888888888882",
+            "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+            "subject_id": "55555555-5555-5555-5555-555555555552",
+            "section_label": "English Comprehension",
+            "question_count": 25,
+            "marks": 50,
+            "duration_mins": null,
+            "duration_source": "phase",
+            "missing": [],
+            "complete": true
+          },
+          {
+            "section_id": "9b33337f-4013-48a2-b05f-933c74ed1775",
+            "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+            "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+            "section_label": "General Awareness",
+            "question_count": 25,
+            "marks": 50,
+            "duration_mins": null,
+            "duration_source": "phase",
+            "missing": [],
+            "complete": true
+          },
+          {
+            "section_id": "88888888-8888-8888-8888-888888888883",
+            "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+            "subject_id": "55555555-5555-5555-5555-555555555553",
+            "section_label": "General Intelligence & Reasoning",
+            "question_count": 25,
+            "marks": 50,
+            "duration_mins": null,
+            "duration_source": "phase",
+            "missing": [],
+            "complete": true
+          },
+          {
+            "section_id": "88888888-8888-8888-8888-888888888881",
+            "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+            "subject_id": "55555555-5555-5555-5555-555555555551",
+            "section_label": "Quantitative Aptitude",
+            "question_count": 25,
+            "marks": 50,
+            "duration_mins": null,
+            "duration_source": "phase",
+            "missing": [],
+            "complete": true
+          }
+        ],
+        "sections_missing_structure": 0
+      },
+      "locked_coverage": {
+        "exam_id": "22222222-2222-2222-2222-222222222222",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "by_status": {
+          "locked": 7
+        },
+        "by_section": {
+          "<null>": {
+            "locked": 7
+          }
+        },
+        "total": 7
+      },
+      "verified_pyq_tag_depth": {
+        "exam_id": "22222222-2222-2222-2222-222222222222",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "verified_status": "verified",
+        "depth": [
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666661",
+            "tag_role": "primary",
+            "count": 1
+          },
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666662",
+            "tag_role": "primary",
+            "count": 1
+          },
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666662",
+            "tag_role": "secondary",
+            "count": 1
+          },
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666663",
+            "tag_role": "primary",
+            "count": 1
+          },
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666664",
+            "tag_role": "primary",
+            "count": 1
+          },
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666667",
+            "tag_role": "primary",
+            "count": 1
+          }
+        ],
+        "total": 6
+      },
+      "readiness_verdict": {
+        "exam_id": "22222222-2222-2222-2222-222222222222",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "pool_scope": "subject",
+        "thresholds": {
+          "min_per_section": 30,
+          "min_locked_coverage": 1
+        },
+        "sections": [
+          {
+            "section_id": "88888888-8888-8888-8888-888888888882",
+            "subject_id": "55555555-5555-5555-5555-555555555552",
+            "section_label": "English Comprehension",
+            "verdict": "ready",
+            "reasons": [],
+            "base_pool": 35,
+            "locked_coverage": 7
+          },
+          {
+            "section_id": "9b33337f-4013-48a2-b05f-933c74ed1775",
+            "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+            "section_label": "General Awareness",
+            "verdict": "ready",
+            "reasons": [],
+            "base_pool": 35,
+            "locked_coverage": 7
+          },
+          {
+            "section_id": "88888888-8888-8888-8888-888888888883",
+            "subject_id": "55555555-5555-5555-5555-555555555553",
+            "section_label": "General Intelligence & Reasoning",
+            "verdict": "ready",
+            "reasons": [],
+            "base_pool": 35,
+            "locked_coverage": 7
+          },
+          {
+            "section_id": "88888888-8888-8888-8888-888888888881",
+            "subject_id": "55555555-5555-5555-5555-555555555551",
+            "section_label": "Quantitative Aptitude",
+            "verdict": "ready",
+            "reasons": [],
+            "base_pool": 35,
+            "locked_coverage": 7
+          }
+        ],
+        "summary": {
+          "ready": 4,
+          "thin_bank": 0,
+          "blocked": 0
+        }
+      }
+    }
+  ],
+  "skipped": [],
+  "selectable_mcq_depth": {
+    "exam_id": "22222222-2222-2222-2222-222222222222",
+    "selectable_statuses": [
+      "published"
+    ],
+    "scope": "exam",
+    "pool_scope": "subject",
+    "attribution": "per-section via subject_id; mock_question_bank has no phase column",
+    "base_depth": [
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "1cdce1ef-e454-4354-b62c-c3c8a7a44fb8",
+        "difficulty": "easy",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "1cdce1ef-e454-4354-b62c-c3c8a7a44fb8",
+        "difficulty": "medium",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "4bcdf3cc-ddd0-4f33-99ee-2e0cc9391c36",
+        "difficulty": "easy",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "4bcdf3cc-ddd0-4f33-99ee-2e0cc9391c36",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "66666666-6666-6666-6666-666666666661",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "66666666-6666-6666-6666-666666666661",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "66666666-6666-6666-6666-666666666662",
+        "difficulty": "easy",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "66666666-6666-6666-6666-666666666662",
+        "difficulty": "medium",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "66666666-6666-6666-6666-666666666663",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "66666666-6666-6666-6666-666666666664",
+        "difficulty": "easy",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "66666666-6666-6666-6666-666666666664",
+        "difficulty": "hard",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "66666666-6666-6666-6666-666666666664",
+        "difficulty": "medium",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "a72254eb-1c65-4e0f-a70d-9421c274edc0",
+        "difficulty": "easy",
+        "count": 4
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "a78f3859-0a48-42a3-9720-4a735ce2efd6",
+        "difficulty": "easy",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "a78f3859-0a48-42a3-9720-4a735ce2efd6",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "c799abc2-9e52-4f56-ba41-75be0f4c4d0d",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "topic_id": "cf7e589d-6fa5-4348-b904-a02eaef60e11",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "00ee2e5e-8040-49bc-a6bb-4646a15f4867",
+        "difficulty": "easy",
+        "count": 4
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "00ee2e5e-8040-49bc-a6bb-4646a15f4867",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "2c2271da-0ce7-4c43-945f-62767de1c968",
+        "difficulty": "easy",
+        "count": 4
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "2c2271da-0ce7-4c43-945f-62767de1c968",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "66666666-6666-6666-6666-666666666665",
+        "difficulty": "easy",
+        "count": 4
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "66666666-6666-6666-6666-666666666665",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "66666666-6666-6666-6666-666666666666",
+        "difficulty": "easy",
+        "count": 4
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "66666666-6666-6666-6666-666666666666",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "753c269c-2db7-461f-ac5d-ecd6e5b5307b",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "753c269c-2db7-461f-ac5d-ecd6e5b5307b",
+        "difficulty": "medium",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "b5ff964c-cf57-4acb-bc65-a811bcae06f4",
+        "difficulty": "easy",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "c4b8ebe3-3173-4864-9e04-16ab99470c6e",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "c4b8ebe3-3173-4864-9e04-16ab99470c6e",
+        "difficulty": "medium",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "topic_id": "c89f50a1-b3de-4618-8ada-61259e5133e4",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "175f9260-6e16-46da-90c9-dde69f08009f",
+        "difficulty": "easy",
+        "count": 4
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "175f9260-6e16-46da-90c9-dde69f08009f",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "351d07aa-77ab-45b7-b537-4f12174c2f4c",
+        "difficulty": "easy",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "351d07aa-77ab-45b7-b537-4f12174c2f4c",
+        "difficulty": "medium",
+        "count": 4
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "357fba02-68eb-496f-840a-ba53c826d5dd",
+        "difficulty": "easy",
+        "count": 5
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "66666666-6666-6666-6666-666666666667",
+        "difficulty": "easy",
+        "count": 5
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "a5f810db-2afb-4aff-8de3-a73dac0db297",
+        "difficulty": "easy",
+        "count": 4
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "a5f810db-2afb-4aff-8de3-a73dac0db297",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "c07f5df6-5c3b-49e2-8804-f051e3b968bb",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "c07f5df6-5c3b-49e2-8804-f051e3b968bb",
+        "difficulty": "medium",
+        "count": 2
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "f0cb3e41-21b0-4853-b733-e92084c3e852",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "topic_id": "f0cb3e41-21b0-4853-b733-e92084c3e852",
+        "difficulty": "medium",
+        "count": 2
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "1056e16d-fff0-41aa-8c5c-f695998ba1eb",
+        "difficulty": "easy",
+        "count": 4
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "1056e16d-fff0-41aa-8c5c-f695998ba1eb",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "32075953-479c-4ccd-aea0-352bd4369408",
+        "difficulty": "easy",
+        "count": 5
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "32075953-479c-4ccd-aea0-352bd4369408",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "5cd0e33b-20fd-458a-b526-bece6af7eaa4",
+        "difficulty": "easy",
+        "count": 4
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "5cd0e33b-20fd-458a-b526-bece6af7eaa4",
+        "difficulty": "medium",
+        "count": 1
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "7679d7b2-e3de-46da-89ec-ef59d4a684b0",
+        "difficulty": "easy",
+        "count": 6
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "9134dac0-a8e6-4d7e-bee1-ef9b98def271",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "bfe6feb0-794e-49bd-8d04-34555a478ab9",
+        "difficulty": "easy",
+        "count": 5
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "e931b58d-1722-4f60-8787-a93d16828d27",
+        "difficulty": "easy",
+        "count": 3
+      },
+      {
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "topic_id": "e931b58d-1722-4f60-8787-a93d16828d27",
+        "difficulty": "medium",
+        "count": 2
+      }
+    ],
+    "current_depth": [],
+    "base_total": 140,
+    "current_total": 0
+  },
+  "source_distribution": {
+    "exam_id": "22222222-2222-2222-2222-222222222222",
+    "selectable_statuses": [
+      "published"
+    ],
+    "base_source_distribution": {
+      "by_bank_source_type": {
+        "<null>": 140
+      },
+      "by_bank_source_kind": {
+        "<null>": 140
+      },
+      "by_sources_table_source_kind": {
+        "authored": 140
+      }
+    },
+    "current_source_distribution": {
+      "by_bank_source_type": {},
+      "by_bank_source_kind": {},
+      "by_sources_table_source_kind": {}
+    }
+  }
+}

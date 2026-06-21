@@ -27,6 +27,13 @@ jest.mock("../features/profile/hooks/useMyPersona", () => ({
   default: () => ({ snapshot: null, loading: false, error: null }),
 }));
 
+// useExamOptions calls api.get on mount; stub at hook level so Profile tests
+// don't depend on api.get behaviour and can't be masked by a blanket mock.
+jest.mock("../shared/hooks/useExamOptions", () => ({
+  __esModule: true,
+  default: () => [],
+}));
+
 import useProfileData from "../features/profile/hooks/useProfileData";
 import Profile from "./Profile";
 

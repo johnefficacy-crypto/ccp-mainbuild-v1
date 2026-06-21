@@ -4,7 +4,7 @@
 
 | Claim | Audit said | Verdict | Notes |
 |---|---|---|---|
-| A. Duplicate routers cause shadowing | Yes | **Partially verified** | `community_runtime_router` is mounted *before* `community_people_router` (server.py:185-187). Of 28 routes in `community_people`, 26 are fully shadowed by `community_runtime` and only two are reachable: (1) `POST /community/channels/{c}/threads/{t}/replies/{r}/vote` (drives Claim B), (2) `POST /community/spaces/{s}/channels`. The "shadowing" itself is benign on the 26 paths — but those handlers are seed-only dead code under risk of being silently revived if the include order ever flips. |
+| A. Duplicate routers cause shadowing | Yes | **Partially verified** | `community_runtime_router` is mounted *before* `community_people_router` (server.py:185-187 at audit time). Of 28 routes in `community_people`, 26 are fully shadowed by `community_runtime` and only two are reachable: (1) `POST /community/channels/{c}/threads/{t}/replies/{r}/vote` (drives Claim B), (2) `POST /community/spaces/{s}/channels`. The "shadowing" itself is benign on the 26 paths — but those handlers are seed-only dead code under risk of being silently revived if the include order ever flips. **Post-audit:** `community_people.py` has been deleted; `community_people_router` is no longer mounted. The stale server.py line reference no longer applies. |
 | B. Reply vote broken for DB replies | Yes | **Verified** | `community_runtime.py` defined no `…/replies/{reply_id}/vote` endpoint. The request falls through to `community_people.vote_reply` (line 711), which scans `COMMUNITY_THREADS["topReplies"]` in seed memory and stores votes in a module-level `defaultdict`. DB replies created via `community_runtime.create_thread_reply` → `community_replies` table can never be voted because they aren't in seed. |
 | C. Admin "Hide thread" only updates report row | Yes | **Verified** | `admin_resolve_community_flag` only mutated `forum_reports` / `community_reports` / `community_resource_reports` rows. The target `community_threads`, `community_replies`, `forum_posts`, `forum_comments`, `community_resources` were never touched. Frontend button is labelled "Hide thread" in `app/frontend/src/pages/admin/Community.jsx:61`. (`prototype/screens/AdminCommunity.jsx` is dead prototype HTML.) |
 | D. Mentor contract mismatch | Yes | **Verified — crash risk** | `MentorsScreen.jsx` calls `mentor.badge.includes("AIR")` (line 107) and `.split(" · ")`. Backend `_shape_mentor_profile` does not return `badge`. The screen replaces seed data with backend data as soon as `/api/community/mentors` returns ≥1 row → `MentorTopBadge` throws `TypeError`. Other missing fields (`color`, `blurb`, `served`) only cause visual gaps. |
@@ -13,7 +13,8 @@
 ## Phase 2 — Fixes applied
 
 ### Claim A — Deprecation marker on `community_people` (no router move)
-- `app/backend/app/api/community_people.py`: router now constructed with `deprecated=True` and a router-level dependency that logs `warning("community_people deprecated route served %s %s …")` on every request. No routes removed, mount untouched, response shapes untouched.
+- `app/backend/app/api/community_people.py`: router was constructed with `deprecated=True` and a router-level dependency that logged `warning("community_people deprecated route served %s %s …")` on every request. No routes were removed at that time; mount was untouched; response shapes untouched.
+- **Post-audit (2026-06-20):** `community_people.py` was subsequently **deleted entirely**. The `community_people_router` is no longer imported or mounted in `server.py`. All community routes are now handled exclusively by `community_runtime_router`. See "Phase 2 post-audit update" below.
 
 ### Claim B — DB-backed reply vote
 - `app/backend/app/api/community_runtime.py`: new route `POST /community/channels/{channel_id}/threads/{thread_id}/replies/{reply_id}/vote`.
@@ -22,7 +23,7 @@
   - Stores the vote on `community_votes.reply_id` (column already exists in migration 018, line 126).
   - Atomically updates `community_replies.vote_count` via the new RPC `community_inc_reply_vote_count`.
   - Same toggle / direction-flip semantics as the thread vote.
-- Because `community_runtime_router` is mounted before `community_people_router`, this route now shadows the seed-only handler in `community_people.vote_reply`.
+- Because `community_runtime_router` is mounted before `community_people_router` (at audit time), this route shadowed the seed-only handler in `community_people.vote_reply`. **Post-audit:** `community_people.py` is now deleted, so the shadowing is moot; the `community_runtime` reply-vote handler is the only implementation.
 
 ### Claim C — "Hide" actually hides
 - `app/backend/app/api/community_runtime.py:admin_resolve_community_flag`:
@@ -50,7 +51,7 @@
 ## Files changed
 
 - `app/backend/app/api/community_runtime.py` — atomic counter helper, reply-vote endpoint, hide-target helper, moderation rewrite.
-- `app/backend/app/api/community_people.py` — deprecation logging + `deprecated=True` on router.
+- `app/backend/app/api/community_people.py` — deprecation logging + `deprecated=True` on router at audit time; **subsequently deleted** (see Phase 2 post-audit update).
 - `app/backend/tests/test_community_runtime.py` — three new tests, existing test extended with vote_count atomicity assertion.
 - `app/backend/tests/persona_questions/_stub.py` — `SBStub.rpc()` support.
 - `app/supabase/migrations/089_community_counter_rpcs.sql` — new migration with five increment functions.
@@ -83,11 +84,19 @@ All 712 backend tests pass (5 in this file + 707 elsewhere).
 
 ## Suggested next pass (P1 items in priority order)
 
-1. **Migrate `POST /community/spaces/{space_id}/channels` to DB.** Same class of bug as the reply vote, just admin-only so the blast radius is smaller. Should land alongside the social layer move (P0 #2 in the original audit).
+1. **Migrate `POST /community/spaces/{space_id}/channels` to DB.** Same class of bug as the reply vote, just admin-only so the blast radius is smaller. Should land alongside the social layer move (P0 #2 in the original audit). **Still open** — `COMMUNITY_SPACES` seed data is in `community_seed.py`; no DB-backed channel-create endpoint exists in `community_runtime.py`.
 2. **Admin client / RLS rework.** The admin moderation endpoint uses `get_supabase_admin()` (service role) and trusts `_require_admin`. Push the same checks into RLS so we no longer bypass it.
 3. **Unique constraint on `community_votes (thread_id, user_id)` and `(reply_id, user_id)`.** Currently enforced only by application logic; a duplicate insert from a retry would skew the counter even with atomic RPCs.
 4. **Counter reconcile job.** One-shot SQL to repair `community_threads.reply_count` / `vote_count` / `community_replies.vote_count` / `community_resources.upvote_count` / `report_count` from source tables, idempotent, admin-triggerable.
-5. **Sunset `community_people.py`.** Audit the deprecation-log signal for a week, confirm no surviving callers, then delete (out of scope for this pass per task constraint, but it's the right end state once nothing hits the warning).
+5. ~~**Sunset `community_people.py`.**~~ **COMPLETED** — `community_people.py` was subsequently deleted entirely. `server.py` now contains the note: "community_people_router was removed — every route under that prefix duplicated community_runtime_router's." No deprecation window was needed; the file had no surviving callers. See Phase 2 update below.
 6. **Trust-claim schema split (P1 #10).** Untouched.
 7. **Social layer migration to `/api/study/social/*`** (P0 #2 in the original audit, deferred per task scope).
 8. **`StudyGroupsScreen.jsx` / `PartnersScreen.jsx` seed cleanup** (P1 #11).
+
+## Phase 2 post-audit update (2026-06-20)
+
+**Claim A — community_people.py current state:** The fix described above (adding `deprecated=True` and a logging dependency) represents the state at the time this audit was written. Since then, `community_people.py` was **deleted entirely**. The `community_people_router` is no longer mounted in `server.py`; the line reference `server.py:185-187` from the Phase 1 table is stale. All community routes are now served exclusively by `community_runtime_router`. The "Files changed" entry below is a historical record of the intermediate step; the final state is file deletion.
+
+**Files changed (current state):**
+- `community_people.py` — **deleted** (was deprecated then removed; no longer in the repository)
+- All other files listed below remain present and unchanged from the audit pass.

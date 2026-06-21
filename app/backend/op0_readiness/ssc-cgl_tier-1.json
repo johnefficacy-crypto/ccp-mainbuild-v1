@@ -1,0 +1,206 @@
+{
+  "exam_id": "22222222-2222-2222-2222-222222222222",
+  "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+  "generated_at": "2026-06-15T11:22:41.624890+00:00",
+  "status_value_census": {
+    "mock_question_bank.reviewer_status": {
+      "published": 35
+    },
+    "pyq_questions.reviewer_status": {
+      "rejected": 2,
+      "verified": 104
+    },
+    "pyq_question_topic_tags.reviewer_status": {
+      "verified": 6
+    },
+    "pyq_papers.trust_status": {
+      "pending": 1,
+      "verified": 2
+    },
+    "exam_topic_coverage.reviewer_status": {
+      "locked": 20
+    }
+  },
+  "phases": [
+    {
+      "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+      "phase_slug": "tier-1",
+      "phase_name": "Tier 1",
+      "section_structure": {
+        "exam_id": "22222222-2222-2222-2222-222222222222",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "phase_count": 1,
+        "section_count": 3,
+        "sections": [
+          {
+            "section_id": "88888888-8888-8888-8888-888888888882",
+            "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+            "subject_id": "55555555-5555-5555-5555-555555555552",
+            "section_label": "English Comprehension",
+            "question_count": 25,
+            "marks": 50,
+            "duration_mins": null,
+            "duration_source": "phase",
+            "missing": [],
+            "complete": true
+          },
+          {
+            "section_id": "88888888-8888-8888-8888-888888888883",
+            "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+            "subject_id": "55555555-5555-5555-5555-555555555553",
+            "section_label": "General Intelligence & Reasoning",
+            "question_count": 25,
+            "marks": 50,
+            "duration_mins": null,
+            "duration_source": "phase",
+            "missing": [],
+            "complete": true
+          },
+          {
+            "section_id": "88888888-8888-8888-8888-888888888881",
+            "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+            "subject_id": "55555555-5555-5555-5555-555555555551",
+            "section_label": "Quantitative Aptitude",
+            "question_count": 25,
+            "marks": 50,
+            "duration_mins": null,
+            "duration_source": "phase",
+            "missing": [],
+            "complete": true
+          }
+        ],
+        "sections_missing_structure": 0
+      },
+      "locked_coverage": {
+        "exam_id": "22222222-2222-2222-2222-222222222222",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "by_status": {
+          "locked": 7
+        },
+        "by_section": {
+          "<null>": {
+            "locked": 7
+          }
+        },
+        "total": 7
+      },
+      "verified_pyq_tag_depth": {
+        "exam_id": "22222222-2222-2222-2222-222222222222",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "verified_status": "verified",
+        "depth": [
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666661",
+            "tag_role": "primary",
+            "count": 1
+          },
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666662",
+            "tag_role": "primary",
+            "count": 1
+          },
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666662",
+            "tag_role": "secondary",
+            "count": 1
+          },
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666663",
+            "tag_role": "primary",
+            "count": 1
+          },
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666664",
+            "tag_role": "primary",
+            "count": 1
+          },
+          {
+            "topic_id": "66666666-6666-6666-6666-666666666667",
+            "tag_role": "primary",
+            "count": 1
+          }
+        ],
+        "total": 6
+      },
+      "readiness_verdict": {
+        "exam_id": "22222222-2222-2222-2222-222222222222",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "pool_scope": "subject",
+        "thresholds": {
+          "min_per_section": 30,
+          "min_locked_coverage": 1
+        },
+        "sections": [
+          {
+            "section_id": "88888888-8888-8888-8888-888888888882",
+            "subject_id": "55555555-5555-5555-5555-555555555552",
+            "section_label": "English Comprehension",
+            "verdict": "thin_bank",
+            "reasons": [
+              "thin_mcq_pool"
+            ],
+            "base_pool": 0,
+            "locked_coverage": 7
+          },
+          {
+            "section_id": "88888888-8888-8888-8888-888888888883",
+            "subject_id": "55555555-5555-5555-5555-555555555553",
+            "section_label": "General Intelligence & Reasoning",
+            "verdict": "thin_bank",
+            "reasons": [
+              "thin_mcq_pool"
+            ],
+            "base_pool": 0,
+            "locked_coverage": 7
+          },
+          {
+            "section_id": "88888888-8888-8888-8888-888888888881",
+            "subject_id": "55555555-5555-5555-5555-555555555551",
+            "section_label": "Quantitative Aptitude",
+            "verdict": "thin_bank",
+            "reasons": [
+              "thin_mcq_pool"
+            ],
+            "base_pool": 0,
+            "locked_coverage": 7
+          }
+        ],
+        "summary": {
+          "ready": 0,
+          "thin_bank": 3,
+          "blocked": 0
+        }
+      }
+    }
+  ],
+  "skipped": [],
+  "selectable_mcq_depth": {
+    "exam_id": "22222222-2222-2222-2222-222222222222",
+    "selectable_statuses": [
+      "published"
+    ],
+    "scope": "exam",
+    "pool_scope": "subject",
+    "attribution": "per-section via subject_id; mock_question_bank has no phase column",
+    "base_depth": [],
+    "current_depth": [],
+    "base_total": 0,
+    "current_total": 0
+  },
+  "source_distribution": {
+    "exam_id": "22222222-2222-2222-2222-222222222222",
+    "selectable_statuses": [
+      "published"
+    ],
+    "base_source_distribution": {
+      "by_bank_source_type": {},
+      "by_bank_source_kind": {},
+      "by_sources_table_source_kind": {}
+    },
+    "current_source_distribution": {
+      "by_bank_source_type": {},
+      "by_bank_source_kind": {},
+      "by_sources_table_source_kind": {}
+    }
+  }
+}

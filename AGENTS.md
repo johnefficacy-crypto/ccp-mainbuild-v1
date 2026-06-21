@@ -1,5 +1,6 @@
 <!-- Table of contents -->
 - [graphify](#graphify)
+- [Shared checklist status](#shared-checklist-status)
 - [Known-flaky CI checks](#known-flaky-ci-checks)
 - [Study OS frontend contract](#study-os-frontend-contract)
 - [Frontend governance](#frontend-governance)
@@ -16,6 +17,25 @@ Rules:
 - IF graphify-out/wiki/index.md EXISTS, navigate it instead of reading raw files
 - For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+## Shared checklist status
+
+The repo-level checklist lives at `docs/status/career-copilot-checklist.md`.
+It is the shared source of record for agent-visible status on the Mock Engine
+v2 ↔ Study OS arc, Exam Governance Console cleanup tier, exam-intelligence UX
+cleanup, CI gate status, and live-DB-only tails.
+
+Rules:
+- Before changing code or docs in those areas, read the checklist after the
+  Graphify map.
+- Every PR that changes implementation status, validation status, operator
+  gates, or product decisions in those areas must update the checklist in the
+  same branch.
+- Do not mark live-deployment, token, Render, Supabase, or other operator-only
+  evidence as complete from code inspection alone; use `OPERATOR PENDING` or
+  `VERIFY DB` until the live proof is captured.
+- If a code remediation lands but shadow/live/operator validation remains, use
+  `CODE-FIXED, VALIDATION PENDING` rather than `complete`.
 
 ## Known-flaky CI checks
 
@@ -261,3 +281,48 @@ the install error. Root cause of the recurring drift: local npm 11 treats
 CI's Node 20 / npm 10 expects `node_modules/tailwindcss/node_modules/yaml@2.9.0`
 pinned in the lock. Regenerate the lock with the CI npm major to reproduce:
 `npx -y npm@10 install --package-lock-only`. See PR #566.
+
+### 13. public.exams is a real table — not just UI vocabulary
+`public.exams` exists and is canonical for exam-master identity (cycles,
+phases, study plans, exam intelligence all FK into it). The earlier guidance
+"do not introduce public.exams" was correct at project start; it was
+superseded when the exam-master table was introduced. The invariant that
+remains: `public.recruitments` = canonical recruitment/notification entity;
+`public.exams` = exam-master identity. They are separate entities. Do not
+conflate or merge them. Domain invariant: DB entity = recruitment; frontend
+label = exam; exam registry is separate from recruitments. See
+`docs/architecture/domain-model.md` (updated 2026-06-12).
+
+### 14. Retire ≠ archive — two distinct lifecycle states
+`is_active = false` on `public.exams` means the exam is retired (hidden from
+aspirants via `/api/exams` filter `is_active=true`). `management_mode =
+'archive'` is a SEPARATE operator lane for low-priority exams that are still
+LIVE (`is_active = true`). The "Retire" action (button renamed from
+"Deactivate", PR #630) writes ONLY `is_active = false` and NEVER sets
+`management_mode`. Do not cross these semantics in future code or migrations.
+
+### 15. Exam importer is retired — wizard is the only identity-change path
+`import_exam_registry.py`, `import_subordinate_boards.py`,
+`seed_exam_phases.py`, `dedupe_state_psc_orgs.py` and their tests were
+deleted (PR #631). Identity changes (new exams, cycles, phases) go through
+the operator wizard ONLY (`GuidedExamWizard.jsx` / `AddCycleWizard.jsx`).
+`validate_exam_intelligence_seed.py` is KEPT — it is a live readiness gate,
+not an importer.
+
+### 16. Slug = upsert key — never editable
+`exams.slug` is fenced in `EDIT_EXCLUDED_FIELDS` in the CMS backend.
+Editing a slug after creation breaks bulk-import idempotency (slug is the
+upsert key for seeded rows). The wizard generates slugs from the name at
+create time; they are immutable thereafter. Same invariant applies to
+cycle-bound slugs (recomputed at clone time from exam slug + year +
+cycle_name; never user-editable post-creation).
+
+### 17. Uniqueness constraints for exam identity graph
+- Cycle uniqueness: `(exam_id, year, cycle_name)` — enforced by unique index.
+- Phase uniqueness: `(exam_id, exam_cycle_id, phase_slug)` — enforced by
+  unique index.
+- Generic (cycle-agnostic) template unique index:
+  `(exam_id, phase_slug) WHERE exam_cycle_id IS NULL`.
+- Template-slug collision in `AddCycleWizard` is guarded before insert;
+  clones recompute slugs from the target cycle's bound identifiers.
+  Source: PR #635.

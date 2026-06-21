@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from typing import Any, Callable
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -22,6 +23,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.auth import require_permission
 from app.db.supabase_client import get_supabase_admin
+from app.exam_intelligence import work_queue as _wq
+from app.exam_intelligence.diagnostics import assemble_mock_readiness_report
 from app.exam_intelligence.option_normalize import option_hash, question_hash
 from app.exam_intelligence.readiness import compute_exam_workspace_readiness
 from app.exam_intelligence.syllabus_mapper import (
@@ -220,26 +223,91 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
     return out
 
 
+_Q_STRIP_RE = re.compile(r'[`,()"\\]')
+
+
+def _sanitize_q(raw: str) -> str:
+    """Strip PostgREST structural chars and escape SQL wildcard chars."""
+    q = _Q_STRIP_RE.sub("", raw).strip()
+    q = q.replace("%", r"\%").replace("_", r"\_")
+    return q
+
+
 # ─── 2. Exam list with verified/pending counts ────────────────────────────
 @router.get("/exams")
 def list_exams(
     limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    q: str | None = Query(None),
+    exam_type: str | None = Query(None),
+    active_state: str = Query("active"),
+    management_mode: str | None = Query(None),
+    cadence: str | None = Query(None),
+    exam_family_id: str | None = Query(None),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
+    if active_state not in {"active", "inactive", "all"}:
+        raise HTTPException(status_code=422, detail="active_state must be one of: active, inactive, all")
     sb = get_supabase_admin()
-    exams = _safe(
+
+    def _filtered(cols: str, count: str | None = None):
+        kw = {"count": count} if count else {}
+        qb = sb.table("exams").select(cols, **kw)
+        q_trimmed = _sanitize_q(q or "")
+        if q_trimmed:
+            qb = qb.or_(f"name.ilike.%{q_trimmed}%,slug.ilike.%{q_trimmed}%")
+        if exam_type is not None:
+            qb = qb.eq("exam_type", exam_type)
+        if active_state == "active":
+            qb = qb.eq("is_active", True)
+        elif active_state == "inactive":
+            qb = qb.eq("is_active", False)
+        # active_state == "all": no is_active filter
+        if management_mode == "__null__":
+            # Sentinel: filter for rows with no lane assigned (Unclassified).
+            qb = qb.is_("management_mode", "null")
+        elif management_mode is not None:
+            qb = qb.eq("management_mode", management_mode)
+        else:
+            # Default: hide archive rows; show core/light/index_only/NULL.
+            qb = qb.or_("management_mode.is.null,management_mode.neq.archive")
+        if cadence is not None:
+            qb = qb.eq("cadence", cadence)
+        if exam_family_id is not None:
+            qb = qb.eq("exam_family_id", exam_family_id)
+        return qb
+
+    resp = _safe(
         lambda: (
-            sb.table("exams")
-            .select("id, slug, name, exam_type, is_active, exam_family_id")
+            _filtered("id, slug, name, exam_type, is_active, exam_family_id, management_mode, cadence", count="exact")
             .order("name")
-            .limit(limit)
+            .range(offset, offset + limit - 1)
             .execute()
-            .data
         ),
-        default=[],
-    ) or []
+        default=None,
+    )
+
+    if resp is None:
+        return {"items": [], "count": 0, "total_count": 0, "limit": limit, "offset": offset, "has_next": False}
+
+    if hasattr(resp, "count") and resp.count is not None:
+        # Production: PostgREST returns exact count header and range-sliced data.
+        total_count = resp.count
+        exams = resp.data or []
+    else:
+        # Test stub: range() and count are no-ops; emulate pagination manually.
+        total_count = len(resp.data or [])
+        exams = (resp.data or [])[offset: offset + limit]
+
     if not exams:
-        return {"items": [], "count": 0}
+        return {
+            "items": [],
+            "count": 0,
+            "total_count": total_count,
+            "limit": limit,
+            "offset": offset,
+            "has_next": False,
+        }
     exam_ids = [e["id"] for e in exams if e.get("id")]
 
     syllabus = _safe(
@@ -321,7 +389,116 @@ def list_exams(
                 "readiness_level": readiness_level,
             }
         )
-    return {"items": items, "count": len(items)}
+    return {
+        "items": items,
+        "count": len(items),
+        "total_count": total_count,
+        "limit": limit,
+        "offset": offset,
+        "has_next": offset + len(items) < total_count,
+    }
+
+
+# ─── 2b. Console work queue (Wave 4.6H) — read-only, set-based ─────────────
+class _WorkflowFilter(str, Enum):
+    blocked = "blocked"
+    needs_action = "needs_action"
+    ready = "ready"
+    pending_review = "pending_review"
+    missing_pyq = "missing_pyq"
+    missing_coverage = "missing_coverage"
+    stale_review_queue = "stale_review_queue"
+
+
+class _ConsoleSort(str, Enum):
+    blockers_first = "blockers_first"
+    management_lane = "management_lane"
+    name = "name"
+
+
+def _console_base_filters(
+    q: str | None, exam_type: str | None, active_state: str,
+    management_mode: str | None, cadence: str | None, exam_family_id: str | None,
+) -> dict[str, Any]:
+    if active_state not in {"active", "inactive", "all"}:
+        raise HTTPException(status_code=422, detail="active_state must be one of: active, inactive, all")
+    return {
+        "q_sanitized": _sanitize_q(q or ""),
+        "exam_type": exam_type,
+        "active_state": active_state,
+        "management_mode": management_mode,
+        "cadence": cadence,
+        "exam_family_id": exam_family_id,
+    }
+
+
+@router.get("/console/exams")
+def console_exams(
+    limit: int = Query(25, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    q: str | None = Query(None),
+    exam_type: str | None = Query(None),
+    active_state: str = Query("active"),
+    management_mode: str | None = Query(None),
+    cadence: str | None = Query(None),
+    exam_family_id: str | None = Query(None),
+    workflow: _WorkflowFilter | None = Query(None),
+    sort: _ConsoleSort = Query(_ConsoleSort.blockers_first),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Console work-queue list: base-filtered candidate set, classified into one
+    primary status + orthogonal flags, then workflow-filtered, sorted, paginated.
+    Shares the classifier + candidate scope with /console/summary."""
+    base = _console_base_filters(q, exam_type, active_state, management_mode, cadence, exam_family_id)
+    rows = _wq.build_classified_rows(get_supabase_admin(), base)
+    rows = _wq.apply_workflow(rows, workflow.value if workflow else None)
+    rows = _wq.sort_rows(rows, sort.value)
+    total_count = len(rows)
+    page = rows[offset : offset + limit]
+    return {
+        "items": page,
+        "count": len(page),
+        "total_count": total_count,
+        "limit": limit,
+        "offset": offset,
+        "has_next": offset + len(page) < total_count,
+    }
+
+
+@router.get("/console/summary")
+def console_summary(
+    q: str | None = Query(None),
+    exam_type: str | None = Query(None),
+    active_state: str = Query("active"),
+    management_mode: str | None = Query(None),
+    cadence: str | None = Query(None),
+    exam_family_id: str | None = Query(None),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Catalogue counts over the SAME base-filtered candidate set as the list
+    (no pagination, no workflow filter). Primary statuses are mutually
+    exclusive and sum to total_count; flag counts may overlap."""
+    base = _console_base_filters(q, exam_type, active_state, management_mode, cadence, exam_family_id)
+    rows = _wq.build_classified_rows(get_supabase_admin(), base)
+    counts = _wq.summary_counts(rows)
+    return {
+        **counts,
+        "total_count": len(rows),
+        "generated_at": _now_iso(),
+    }
+
+
+@router.get("/console/exams/{exam_id}")
+def console_exam_detail(
+    exam_id: str,
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Per-exam action console read (4.6I-BE). activation_verdict.status is
+    identical to the /console/exams list status (same aggregate + classifier);
+    mock readiness is separate/advisory. Unknown exam → 404."""
+    from app.exam_intelligence import console_detail as _cd
+
+    return _cd.build_console_detail(get_supabase_admin(), exam_id)
 
 
 # ─── 3. Items for a specific exam (filtered by reviewer_status) ───────────
@@ -1576,12 +1753,46 @@ def exam_workspace_context(
         default=[],
     ) or []
 
+    organization = None
+    organization_id = exam.get("conducting_organization_id")
+    if organization_id:
+        organization_rows = _safe(
+            lambda: (
+                sb.table("organizations")
+                .select("id, name, type, trust_tier")
+                .eq("id", organization_id)
+                .limit(1)
+                .execute()
+                .data
+            ),
+            default=[],
+        )
+        organization = organization_rows[0] if organization_rows else None
+
+    family = None
+    family_id = exam.get("exam_family_id")
+    if family_id:
+        family_rows = _safe(
+            lambda: (
+                sb.table("exam_families")
+                .select("id, name, slug")
+                .eq("id", family_id)
+                .limit(1)
+                .execute()
+                .data
+            ),
+            default=[],
+        )
+        family = family_rows[0] if family_rows else None
+
     return {
         "exam": exam,
         "cycle": cycle,
         "cycles": cycles,
         "phases": phases,
         "readiness": None,  # populated by /readiness endpoint (PR2)
+        "organization": organization,
+        "family": family,
     }
 
 
@@ -1630,6 +1841,27 @@ def _resolve_exam_and_cycle(sb, exam_id: str, cycle_id: str | None) -> None:
                 raise HTTPException(status_code=422, detail="cycle does not belong to exam")
 
 
+def _resolve_exam_phase(sb, exam_id: str, exam_phase_id: str) -> None:
+    """Validate exam_phase_id against exam_id, mirroring the cycle-branch
+    strictness in ``_resolve_exam_and_cycle``: a phase that does not exist is
+    404; a phase that exists but belongs to a different exam is 422. Uses a
+    surfacing read (no ``_safe``) so a real read failure becomes a 5xx rather
+    than a misleading 404/422.
+    """
+    rows = (
+        sb.table("exam_phases")
+        .select("id, exam_id")
+        .eq("id", exam_phase_id)
+        .limit(1)
+        .execute()
+        .data
+    ) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="phase not found")
+    if rows[0].get("exam_id") != exam_id:
+        raise HTTPException(status_code=422, detail="phase does not belong to exam")
+
+
 @router.get("/workspace/{exam_id}/readiness")
 def exam_workspace_readiness(
     exam_id: str,
@@ -1644,6 +1876,70 @@ def exam_workspace_readiness(
     sb = get_supabase_admin()
     _resolve_exam_and_cycle(sb, exam_id, cycle_id)
     return compute_exam_workspace_readiness(sb, exam_id, cycle_id)
+
+
+# ─── Mock readiness (Wave 4.6D0-BE — read-only mock/template impact) ───────
+@router.get("/exams/{exam_id}/mock-readiness")
+def exam_mock_readiness(
+    exam_id: str,
+    exam_phase_id: str | None = Query(default=None),
+    selectable_status: list[str] = Query(default=["verified", "published"]),
+    verified_status: str = Query(default="verified"),
+    min_per_section: int = Query(default=30, ge=0),
+    min_locked_coverage: int = Query(default=1, ge=0),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Exam-scoped mock content-readiness ("mock/template impact") — read-only.
+
+    A thin wrapper over the existing pure ``assemble_mock_readiness_report``
+    diagnostic; no readiness logic is re-implemented here. Verdict tokens
+    (``ready`` / ``thin_bank`` / ``blocked``) come straight from that report.
+
+    Per D-E, NO percentage is surfaced — counts, lists, and lifecycle/verdict
+    tokens only. This is exam-scoped and is NOT the recruitment publish-impact
+    read; it never touches eligibility.
+    """
+    sb = get_supabase_admin()
+    # 404 when the exam doesn't exist — same validation as the /workspace reads.
+    _resolve_exam_and_cycle(sb, exam_id, None)
+    # When scoping to a phase, validate it as strictly as cycles are validated:
+    # unknown phase → 404, phase of another exam → 422.
+    if exam_phase_id is not None:
+        _resolve_exam_phase(sb, exam_id, exam_phase_id)
+
+    # Call the pure diagnostic directly. Deliberately NOT wrapped in _safe: a
+    # real read failure must surface as 5xx, never be swallowed into a
+    # misleading "blocked" verdict.
+    report = assemble_mock_readiness_report(
+        sb,
+        exam_id=exam_id,
+        exam_phase_id=exam_phase_id,
+        selectable_statuses=selectable_status,
+        verified_status=verified_status,
+        min_per_section=min_per_section,
+        min_locked_coverage=min_locked_coverage,
+    )
+
+    # Aggregate the per-phase verdict summaries into one exam-level summary.
+    phases = report.get("phases") or []
+    summary = {"ready": 0, "thin_bank": 0, "blocked": 0}
+    for ph in phases:
+        verdict_summary = (ph.get("readiness_verdict") or {}).get("summary") or {}
+        for key in summary:
+            summary[key] += int(verdict_summary.get(key, 0) or 0)
+
+    return {
+        "exam_id": report.get("exam_id"),
+        "exam_phase_id": report.get("exam_phase_id"),
+        "generated_at": report.get("generated_at"),
+        "thresholds": {
+            "min_per_section": min_per_section,
+            "min_locked_coverage": min_locked_coverage,
+        },
+        "summary": summary,
+        "phases": phases,
+        "skipped": report.get("skipped") or [],
+    }
 
 
 # ════════════════════════════════════════════════════════════════════════

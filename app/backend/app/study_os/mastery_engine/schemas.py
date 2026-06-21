@@ -11,6 +11,13 @@ class AttemptQuestionAnalytics(BaseModel):
     topic_id: str
     microtopic_id: str | None = None
     is_correct: bool
+    # Whether the user actually answered this question (selected_option_id not
+    # null). Only answered rows move mastery; unanswered/marked rows are kept in
+    # the analytics list (they still feed the correction path) but contribute no
+    # mastery delta — see derive_mastery_deltas, which gates on this field.
+    # Default True keeps un-updated callers compatibility-safe; MasteryWriter's
+    # loader always sets it explicitly and is the single source of truth.
+    attempted: bool = True
     difficulty: str = "medium"
     source_type: str = "authored"
     pyq_year: int | None = None
@@ -70,6 +77,9 @@ class CorrectionTaskDraft(BaseModel):
     user_id: str
     topic_id: str
     microtopic_id: str | None = None
+    # Canonical 063 category, derived from error EVIDENCE via correction_policy
+    # (NOT from task_type). MasteryWriter persists this verbatim.
+    category: str | None = None
     task_type: str
     priority: int
     reason: str

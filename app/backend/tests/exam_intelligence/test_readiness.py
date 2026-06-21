@@ -76,6 +76,11 @@ class _TableStub:
         self._in_filters[k] = v
         return self
 
+    def or_(self, expr):
+        # Parse "field.eq.VALUE,field.is.null" used by topic_coverage_snapshot
+        self._or_expr = expr
+        return self
+
     def order(self, *a, **kw):
         return self
 
@@ -84,8 +89,24 @@ class _TableStub:
 
     def execute(self):
         rows = self._rows if not callable(self._rows) else self._rows(self._filters, self._in_filters)
+        # Apply or_ expr: "field.eq.VALUE,field.is.null"
+        or_expr = getattr(self, "_or_expr", None)
+        if or_expr and isinstance(rows, list):
+            import re
+            parts = or_expr.split(",")
+            def _matches_or(row):
+                for part in parts:
+                    m = re.match(r"(\w+)\.eq\.(.+)", part)
+                    if m and row.get(m.group(1)) == m.group(2):
+                        return True
+                    m2 = re.match(r"(\w+)\.is\.null", part)
+                    if m2 and row.get(m2.group(1)) is None:
+                        return True
+                return False
+            rows = [r for r in rows if _matches_or(r)]
         res = MagicMock()
         res.data = rows
+        res.count = len(rows) if isinstance(rows, list) else 0
         return res
 
 
@@ -99,6 +120,9 @@ def _make_sb(
     updates=None,
     competition=None,
     exam_cycles=None,
+    topic_coverage=None,
+    pyq_options=None,
+    pyq_question_topic_tags=None,
 ):
     exam_rows = [exam] if exam else []
     phases_rows = phases or []
@@ -109,6 +133,9 @@ def _make_sb(
     update_rows = updates or []
     comp_rows = competition or []
     cycles_rows = exam_cycles or []
+    coverage_rows = topic_coverage or []
+    options_rows = pyq_options or []
+    topic_tag_rows = pyq_question_topic_tags or []
 
     def _exam_cycles_fn(filters, in_filters):
         rows = cycles_rows
@@ -151,6 +178,28 @@ def _make_sb(
             rows = [d for d in rows if d.get("exam_cycle_id") == filters["exam_cycle_id"]]
         return rows
 
+    def _options_fn(filters, in_filters):
+        rows = options_rows
+        if "question_id" in in_filters:
+            ids = in_filters["question_id"]
+            rows = [r for r in rows if r.get("question_id") in ids]
+        return rows
+
+    def _topic_tag_fn(filters, in_filters):
+        rows = topic_tag_rows
+        if "question_id" in in_filters:
+            ids = in_filters["question_id"]
+            rows = [r for r in rows if r.get("question_id") in ids]
+        return rows
+
+    def _coverage_fn(filters, in_filters):
+        rows = coverage_rows
+        if "exam_id" in filters:
+            rows = [r for r in rows if r.get("exam_id") == filters["exam_id"]]
+        if "exam_cycle_id" in filters:
+            rows = [r for r in rows if r.get("exam_cycle_id") == filters["exam_cycle_id"]]
+        return rows
+
     return _SBStub({
         "exams": exam_rows,
         "exam_cycles": _exam_cycles_fn,
@@ -161,6 +210,9 @@ def _make_sb(
         "pyq_questions": _pyq_q_fn,
         "exam_policy_updates": update_rows,
         "exam_competition_metrics": _comp_fn,
+        "exam_topic_coverage": _coverage_fn,
+        "pyq_options": _options_fn,
+        "pyq_question_topic_tags": _topic_tag_fn,
     })
 
 
@@ -230,7 +282,7 @@ class TestReadyToActivate:
         questions = [
             {"id": f"q{i}", "pyq_paper_id": "p1", "reviewer_status": "verified"} for i in range(5)
         ]
-        comp = [{"id": "c1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "verified"}]
+        comp = [{"id": "c1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "reviewed"}]
         docs = [{"id": "d1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "extraction_status": "succeeded"}]
         updates = [{"id": "u1", "exam_id": "exam-1", "reviewer_status": "verified", "created_at": "2099-01-01"}]
 
@@ -266,7 +318,7 @@ class TestCycleIdScoping:
             {"id": "q2", "pyq_paper_id": "p2", "reviewer_status": "pending"},
         ]
         comp = [
-            {"id": "cm1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "verified"},
+            {"id": "cm1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "reviewed"},
         ]
         cycles = [CYCLE_A]
         return _make_sb(
@@ -339,8 +391,164 @@ class TestScoreMath:
         assert "generated_at" in result
         assert "overall" in result
         assert "sections" in result
+        assert "topic_coverage" in result
         overall = result["overall"]
         assert set(overall.keys()) >= {"status", "score_percent", "ready_to_activate", "blockers"}
+
+    def test_topic_coverage_keys(self):
+        sb = _make_sb(
+            exam=EXAM,
+            topic_coverage=[
+                {"id": "tc1", "exam_id": "exam-1", "reviewer_status": "locked", "is_high_yield": True},
+                {"id": "tc2", "exam_id": "exam-1", "reviewer_status": "draft", "is_high_yield": False},
+                {"id": "tc3", "exam_id": "exam-1", "reviewer_status": "pending_review", "is_high_yield": False},
+            ],
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        tc = result["topic_coverage"]
+        assert set(tc.keys()) == {"total", "draft", "pending", "reviewed", "locked", "high_yield"}
+        assert tc["total"] == 3
+        assert tc["locked"] == 1
+        assert tc["draft"] == 1
+        assert tc["pending"] == 1
+        assert tc["high_yield"] == 1
+
+
+class TestTopicCoverageScoping:
+    def test_topic_coverage_scoped_by_cycle(self):
+        all_coverage = [
+            {"id": "tc1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026",
+             "reviewer_status": "locked", "is_high_yield": True},
+            {"id": "tc2", "exam_id": "exam-1", "exam_cycle_id": "cycle-2025",
+             "reviewer_status": "draft", "is_high_yield": False},
+        ]
+        sb = _make_sb(exam=EXAM, topic_coverage=all_coverage)
+        result_scoped = compute_exam_workspace_readiness(sb, "exam-1", "cycle-2026")
+        result_all = compute_exam_workspace_readiness(sb, "exam-1")
+        tc_scoped = result_scoped["topic_coverage"]
+        tc_all = result_all["topic_coverage"]
+        # Cycle-scoped: only cycle-2026 row
+        assert tc_scoped["total"] == 1
+        assert tc_scoped["locked"] == 1
+        assert tc_scoped["high_yield"] == 1
+        assert tc_scoped["draft"] == 0
+        # No cycle filter: both rows
+        assert tc_all["total"] == 2
+        assert tc_all["locked"] == 1
+        assert tc_all["draft"] == 1
+
+    def test_topic_coverage_cycle_not_present(self):
+        coverage = [
+            {"id": "tc1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2025",
+             "reviewer_status": "locked", "is_high_yield": False},
+        ]
+        sb = _make_sb(exam=EXAM, topic_coverage=coverage)
+        result = compute_exam_workspace_readiness(sb, "exam-1", "cycle-2026")
+        tc = result["topic_coverage"]
+        assert tc["total"] == 0
+
+
+class TestRegressionGuard:
+    """Verify that new additive metrics do NOT change score_percent or any
+    section status/weight relative to a baseline fixture."""
+
+    def _baseline_sb(self):
+        phases = [{"id": "ph-1", "exam_id": "exam-1"}]
+        syllabus = [
+            {"id": f"s{i}", "exam_id": "exam-1", "reviewer_status": "locked"} for i in range(2)
+        ]
+        updates = [{"id": "u1", "exam_id": "exam-1", "reviewer_status": "verified", "created_at": "2099-01-01"}]
+        return _make_sb(exam=EXAM, phases=phases, syllabus=syllabus, updates=updates)
+
+    def _enriched_sb(self):
+        phases = [{"id": "ph-1", "exam_id": "exam-1"}]
+        syllabus = [
+            {"id": f"s{i}", "exam_id": "exam-1", "reviewer_status": "locked"} for i in range(2)
+        ]
+        updates = [{"id": "u1", "exam_id": "exam-1", "reviewer_status": "verified", "created_at": "2099-01-01"}]
+        # Extra tables (new) — must not change score
+        coverage = [{"id": "tc1", "exam_id": "exam-1", "reviewer_status": "locked", "is_high_yield": True}]
+        options = [{"id": "opt1", "question_id": "q-not-present"}]
+        tags = [{"id": "tag1", "question_id": "q-not-present"}]
+        return _make_sb(
+            exam=EXAM, phases=phases, syllabus=syllabus, updates=updates,
+            topic_coverage=coverage, pyq_options=options, pyq_question_topic_tags=tags,
+        )
+
+    def test_score_percent_unchanged(self):
+        baseline = compute_exam_workspace_readiness(self._baseline_sb(), "exam-1")
+        enriched = compute_exam_workspace_readiness(self._enriched_sb(), "exam-1")
+        assert baseline["overall"]["score_percent"] == enriched["overall"]["score_percent"]
+
+    def test_section_statuses_unchanged(self):
+        baseline = compute_exam_workspace_readiness(self._baseline_sb(), "exam-1")
+        enriched = compute_exam_workspace_readiness(self._enriched_sb(), "exam-1")
+        for b_sec, e_sec in zip(baseline["sections"], enriched["sections"]):
+            assert b_sec["section"] == e_sec["section"]
+            assert b_sec["status"] == e_sec["status"], f"status mismatch for {b_sec['section']}"
+            assert b_sec["weight"] == e_sec["weight"], f"weight mismatch for {b_sec['section']}"
+
+    def test_section_count_still_seven(self):
+        result = compute_exam_workspace_readiness(self._enriched_sb(), "exam-1")
+        assert len(result["sections"]) == 7
+
+
+class TestPYQEmptyMetricsKeys:
+    def test_empty_papers_metrics_includes_options_and_tags(self):
+        sb = _make_sb(exam=EXAM)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["status"] == "empty"
+        assert "options_total" in pyq["metrics"]
+        assert pyq["metrics"]["options_total"] == 0
+        assert "topic_tags_total" in pyq["metrics"]
+        assert pyq["metrics"]["topic_tags_total"] == 0
+
+
+class TestCompetitionStatusSemantics:
+    def test_reviewed_row_gives_ready(self):
+        comp = [{"id": "c1", "exam_id": "exam-1", "reviewer_status": "reviewed"}]
+        sb = _make_sb(exam=EXAM, competition=comp)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "competition")
+        assert sec["status"] == "ready"
+
+    def test_locked_beats_reviewed(self):
+        comp = [
+            {"id": "c1", "exam_id": "exam-1", "reviewer_status": "reviewed"},
+            {"id": "c2", "exam_id": "exam-1", "reviewer_status": "locked"},
+        ]
+        sb = _make_sb(exam=EXAM, competition=comp)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "competition")
+        assert sec["status"] == "locked"
+
+    def test_draft_only_gives_partial(self):
+        comp = [{"id": "c1", "exam_id": "exam-1", "reviewer_status": "draft"}]
+        sb = _make_sb(exam=EXAM, competition=comp)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "competition")
+        assert sec["status"] == "partial"
+
+    def test_rejected_only_does_not_promote_to_ready(self):
+        comp = [{"id": "c1", "exam_id": "exam-1", "reviewer_status": "rejected"}]
+        sb = _make_sb(exam=EXAM, competition=comp)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "competition")
+        assert sec["status"] == "partial"
+
+
+class TestUpdatesRejectedCount:
+    def test_rejected_count_in_metrics(self):
+        updates = [
+            {"id": "u1", "exam_id": "exam-1", "reviewer_status": "verified", "created_at": "2099-01-01"},
+            {"id": "u2", "exam_id": "exam-1", "reviewer_status": "rejected", "created_at": "2099-01-01"},
+            {"id": "u3", "exam_id": "exam-1", "reviewer_status": "rejected", "created_at": "2099-01-01"},
+        ]
+        sb = _make_sb(exam=EXAM, updates=updates)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        sec = next(s for s in result["sections"] if s["section"] == "updates")
+        assert sec["metrics"]["rejected"] == 2
 
 
 # ── Tests: HTTP endpoint ──────────────────────────────────────────────────────

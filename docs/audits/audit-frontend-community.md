@@ -44,12 +44,14 @@ If the POST 4xx/5xx (auth lapse, 404 on a stale id, rate limit, server error), t
 
 **Fix:** on error, roll back local state to its pre-call value AND surface a toast. The codebase already has `ToastProvider` (`src/shared/ui/ToastProvider.jsx` per graph index). Use it.
 
-### F-P0-4. Channel-creation hits the deprecated seed-only endpoint
+### F-P0-4. Channel-creation endpoint is gone — button now returns 404
 **File:** `CommunityScreen.jsx:1207-1235`
 
-Posts to `POST /api/community/spaces/${space.id}/channels`. As verified in the previous backend audit (`audit-p0-fixes.md` → "Out of scope" list, P1 #1), this path exists only in `community_people.py` and writes to in-memory `COMMUNITY_SPACES`. The handler returns 200 with a fake channel id, the frontend navigates to it, then `refreshSpaces()` re-fetches and the new channel disappears. Admin gets to create channels that don't persist.
+Posts to `POST /api/community/spaces/${space.id}/channels`. At audit time, this path existed only in `community_people.py` and wrote to in-memory `COMMUNITY_SPACES`. **`community_people.py` has since been deleted**; the endpoint no longer exists in any router (`community_runtime.py`, `community_seed.py`, or `server.py`). The channel-creation button now returns 404 when clicked instead of the previous fake-200 behaviour. The frontend may silently fail or display an error depending on its error handling.
 
-**Fix:** either disable the button until the backend route is moved to `community_runtime` (P1 from previous pass), or route the POST through a backend ticket queue. Don't ship a "create channel" button that lies.
+**Current state (2026-06-20):** Endpoint absent. `community_seed.py` still holds `COMMUNITY_SPACES` seed data but no POST route.
+
+**Fix:** Disable the "Create channel" button until a DB-backed `POST /community/spaces/{id}/channels` route is added to `community_runtime.py`. Do not ship a button that hits a 404.
 
 ### F-P0-5. "New" sort is broken — pinned-only, never sorts by recency
 **File:** `CommunityScreen.jsx:217-219`

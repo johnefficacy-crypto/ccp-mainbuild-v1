@@ -46,6 +46,14 @@ def derive_mastery_deltas(
     topic_attempted = defaultdict(int)
 
     for q in analytics.questions:
+        # Only answered questions move mastery. Unanswered/marked rows are kept
+        # in analytics.questions so the correction path still sees them (e.g.
+        # time_pressure_unattempted → speed correction), but they must not
+        # contribute to weighting, accuracy, attempted counts, or deltas here.
+        # The loader is the single source of truth for ``attempted``; never
+        # re-derive answered-ness from is_correct or any proxy.
+        if not q.attempted:
+            continue
         weight = _difficulty_weight(q.difficulty) * _source_weight(q.source_type)
         if q.source_type == "pyq":
             weight *= _pyq_recency_weight(q.pyq_year)

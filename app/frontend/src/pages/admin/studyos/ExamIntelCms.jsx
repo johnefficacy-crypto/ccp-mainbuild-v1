@@ -1,10 +1,26 @@
 import React, { useEffect, useState } from "react";
 import { RotateCcw, Plus, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
+import useApiAction from "../../../lib/hooks/useApiAction";
 import { parseImportFile } from "../../../lib/bulkImportFile";
 import CmsRefField from "../../../features/admin/shared/CmsRefField";
 import { DateField } from "../../../shared/ui/heavy";
 import ExamIntelDocuments from "./ExamIntelDocuments";
+import {
+  COVERAGE_DEPTH_LABELS,
+  COVERAGE_DEPTH_GROUP_LABEL,
+  COVERAGE_DEPTH_HELPER,
+  PRIORITY_BANDS_GROUP_LABEL,
+  PRIORITY_BANDS_HELPER,
+  band,
+  BUSINESS_PRIORITY_LABELS,
+  REVIEWER_STATUS_LABELS,
+  IS_HIGH_YIELD_LABEL,
+  IS_HIGH_YIELD_HELPER,
+  IS_ACTIVE_LABEL,
+  IS_ACTIVE_HELPER,
+  LifecycleLegend,
+} from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
 
 function OrgRefSelect({ value, onChange, testId }) {
   const [orgs, setOrgs] = useState([]);
@@ -32,6 +48,60 @@ function OrgRefSelect({ value, onChange, testId }) {
         </option>
       ))}
     </select>
+  );
+}
+
+/**
+ * Source registry picker with official-only default and toggle.
+ * Fetches /source-registry?include_discovery=false by default.
+ * Toggle "Show discovery/aggregator sources" switches to include_discovery=true.
+ */
+function SourceRegistryRefField({ value, onChange, testId }) {
+  const [includeDiscovery, setIncludeDiscovery] = useState(false);
+  const [sources, setSources] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    const result = api.get(`/api/admin/exam-intelligence-cms/source-registry?include_discovery=${includeDiscovery}&limit=200`);
+    if (result && typeof result.then === "function") {
+      result
+        .then((d) => { if (active) setSources(Array.isArray(d?.items) ? d.items : []); })
+        .catch(() => {})
+        .finally(() => { if (active) setLoading(false); });
+    } else {
+      setLoading(false);
+    }
+    return () => { active = false; };
+  }, [includeDiscovery]);
+
+  return (
+    <div>
+      <select
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+        data-testid={testId}
+      >
+        <option value="">(none)</option>
+        {loading && <option disabled>Loading…</option>}
+        {sources.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.source_name}{s.source_type ? ` (${s.source_type})` : ""}
+          </option>
+        ))}
+      </select>
+      <label style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4, fontSize: 11, color: "var(--ink-mute)" }}>
+        <input
+          type="checkbox"
+          checked={includeDiscovery}
+          onChange={(e) => setIncludeDiscovery(e.target.checked)}
+          data-testid={testId ? `${testId}-toggle` : undefined}
+        />
+        Show discovery/aggregator sources
+      </label>
+    </div>
   );
 }
 
@@ -93,10 +163,13 @@ const ENTITY_CONFIG = {
       { key: "conducting_organization_id", label: "conducting_organization_id (org)", type: "org-ref" },
       { key: "exam_family_id", label: "exam_family_id", type: "ref", ref: REF_FAMILY },
       { key: "exam_type", label: "exam_type (recruitment|entrance|certification|opportunity|other)" },
+      { key: "management_mode", label: "Business priority", rawName: "management_mode", type: "enum", options: ["core", "light", "index_only", "archive"], defaultValue: "light",
+        optionLabels: { core: BUSINESS_PRIORITY_LABELS.core.label, light: BUSINESS_PRIORITY_LABELS.light.label, index_only: BUSINESS_PRIORITY_LABELS.index_only.label, archive: BUSINESS_PRIORITY_LABELS.archive.label } },
+      { key: "cadence", label: "cadence", type: "enum", options: ["annual", "recurring", "irregular", "one_off", "unknown"], defaultValue: "unknown" },
       { key: "description", label: "description" },
-      { key: "is_active", label: "is_active", type: "bool" },
+      { key: "is_active", label: IS_ACTIVE_LABEL, rawName: "is_active", type: "bool", helperText: IS_ACTIVE_HELPER },
     ],
-    columns: ["slug", "name", "exam_type", "is_active", "created_at"],
+    columns: ["slug", "name", "exam_type", "management_mode", "is_active", "created_at"],
   },
   "exam-cycles": {
     label: "Exam cycles",
@@ -144,7 +217,7 @@ const ENTITY_CONFIG = {
                displayFields: ["original_filename", "created_at"], secondaryKey: "document_kind",
                filters: { exam_id: "exam_id" } } },
       { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
-      { key: "source_id", label: "source_id (source_registry uuid, optional)" },
+      { key: "source_id", label: "source_id (source_registry)", type: "source-registry-ref" },
       { key: "published_at", label: "published_at (dd-mm-yyyy)", type: "date", mode: "any" },
       { key: "fetched_at", label: "fetched_at (dd-mm-yyyy)", type: "date", mode: "any" },
       { key: "content_hash", label: "content_hash (auto-computed by extraction)", type: "readonly" },
@@ -173,18 +246,21 @@ const ENTITY_CONFIG = {
   "exam-topic-coverage": {
     label: "Exam topic coverage",
     fields: [
-      { key: "exam_id", label: "exam_id", required: true, type: "ref", ref: REF_EXAM },
-      { key: "topic_id", label: "topic_id", required: true, type: "ref", ref: refTopic({}) },
+      { key: "exam_id", label: "Exam", rawName: "exam_id", required: true, type: "ref", ref: REF_EXAM },
+      { key: "topic_id", label: "Topic", rawName: "topic_id", required: true, type: "ref", ref: refTopic({}) },
       { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
       { key: "exam_phase_id", label: "exam_phase_id", type: "ref", ref: refPhase({ exam_id: "exam_id", exam_cycle_id: "exam_cycle_id" }) },
       { key: "section_id", label: "section_id (cascades from phase)", type: "ref", ref: refSection({ exam_phase_id: "exam_phase_id" }) },
-      { key: "coverage_depth", label: "coverage_depth", type: "enum", options: COVERAGE_DEPTHS },
+      { key: "coverage_depth", label: COVERAGE_DEPTH_GROUP_LABEL, rawName: "coverage_depth", type: "enum", options: COVERAGE_DEPTHS,
+        optionLabels: COVERAGE_DEPTH_LABELS, helperText: COVERAGE_DEPTH_HELPER },
       { key: "expected_difficulty", label: "expected_difficulty" },
-      { key: "exam_priority_score", label: "exam_priority_score (0–100)", type: "number", step: 0.01, min: 0, max: 100 },
-      { key: "is_high_yield", label: "is_high_yield", type: "bool" },
+      { key: "exam_priority_score", label: PRIORITY_BANDS_GROUP_LABEL, rawName: "exam_priority_score", type: "number", step: 0.01, min: 0, max: 100,
+        showBand: true, helperText: PRIORITY_BANDS_HELPER },
+      { key: "is_high_yield", label: IS_HIGH_YIELD_LABEL, rawName: "is_high_yield", type: "bool", helperText: IS_HIGH_YIELD_HELPER },
       { key: "confidence_score", label: "confidence_score (0–1)", type: "number", step: 0.001, min: 0, max: 1 },
       { key: "source_basis", label: "source_basis", type: "enum", options: COVERAGE_SOURCE_BASES },
-      { key: "reviewer_status", label: "reviewer_status (forced to pending_review on create)", type: "enum", options: COVERAGE_REVIEWER_STATUSES },
+      { key: "reviewer_status", label: "Review status", rawName: "reviewer_status", type: "enum", options: COVERAGE_REVIEWER_STATUSES,
+        optionLabels: Object.fromEntries(Object.entries(REVIEWER_STATUS_LABELS).map(([k, v]) => [k, v.label])) },
       { key: "review_notes", label: "review_notes" },
       { key: "metadata", label: "metadata (JSON object)", type: "json" },
     ],
@@ -200,7 +276,7 @@ const ENTITY_CONFIG = {
       { key: "source_type", label: "source_type (official|aggregator|research|opportunity|unknown)" },
       { key: "source_url", label: "source_url" },
       { key: "exam_cycle_id", label: "exam_cycle_id", type: "ref", ref: refCycle({ exam_id: "exam_id" }) },
-      { key: "source_id", label: "source_id (source_registry uuid, optional)" },
+      { key: "source_id", label: "source_id (source_registry)", type: "source-registry-ref" },
       { key: "claim_status", label: "claim_status", type: "enum", options: POLICY_CLAIM_STATUSES },
       // affects_* may only be true on official sources (DB CHECK + backend guard).
       { key: "affects_plan", label: "affects_plan", type: "bool" },
@@ -296,7 +372,7 @@ const ENTITY_CONFIG = {
       { key: "source_type", label: "source_type", type: "enum", options: PYQ_SOURCE_TYPES },
       { key: "title", label: "title" },
       { key: "source_url", label: "source_url" },
-      { key: "source_id", label: "source_id (source_registry uuid, optional)" },
+      { key: "source_id", label: "source_id (source_registry)", type: "source-registry-ref" },
       { key: "metadata", label: "metadata (JSON object)", type: "json" },
     ],
     columns: ["exam_id", "source_type", "title", "trust_status"],
@@ -392,7 +468,13 @@ const ENTITY_KEYS = Object.keys(ENTITY_CONFIG);
 // Entities that expose a full PATCH route in admin_exam_intel_cms.py and so
 // can be edited from the UI. Everything else stays create-only (lifecycle
 // rows go through the review queue, not here).
-const EDITABLE_ENTITIES = new Set(["exam-families", "exams", "exam-cycles", "exam-phases"]);
+const EDITABLE_ENTITIES = new Set([
+  "exam-families", "exams", "exam-cycles", "exam-phases",
+  // Taxonomy — non-reviewable, backend update routes exist (admin_exam_intel_cms.py:1557,1673,2195).
+  "subjects", "topics",
+  // pyq-sources has a PATCH route but trust_status is pipeline-owned; edit form excludes it.
+  "pyq-sources",
+]);
 // Only these two have a DELETE (soft-delete → is_active=false) route.
 const DEACTIVATABLE_ENTITIES = new Set(["exam-families", "exams"]);
 
@@ -403,7 +485,7 @@ const DEACTIVATABLE_ENTITIES = new Set(["exam-families", "exams"]);
 // status/is_active/phase_order). Source: docs/schema/supabase-current.md.
 const NULLABLE_ON_EDIT = {
   "exam-families": new Set(["description"]),
-  exams: new Set(["exam_family_id", "exam_type", "description"]),
+  exams: new Set(["exam_family_id", "exam_type", "management_mode", "cadence", "description"]),
   "exam-cycles": new Set([
     "notification_date", "application_start", "application_end",
     "exam_start", "exam_end", "source_url",
@@ -411,6 +493,31 @@ const NULLABLE_ON_EDIT = {
   "exam-phases": new Set([
     "exam_cycle_id", "mode", "duration_mins", "total_questions", "total_marks",
   ]),
+  // Taxonomy nullable columns (migration 029).
+  subjects: new Set(["subject_group", "default_difficulty_level", "description"]),
+  topics: new Set(["parent_topic_id", "default_difficulty_level", "description"]),
+  // pyq_sources nullable columns (migration 032); exam_id is required.
+  "pyq-sources": new Set(["source_id", "source_type", "source_url", "title", "metadata"]),
+};
+
+// Fields present in ENTITY_CONFIG but excluded from the edit form because
+// the backend owns them (pipeline-managed) and direct mutation is unsafe.
+// These fields are still shown in the create form (backend overrides them
+// on insert); the edit path skips them entirely.
+const EDIT_EXCLUDED_FIELDS = {
+  // slug is the bulk-import upsert key for subjects (upsert_on="slug" in
+  // _IMPORT_CONFIG). Editing it would turn a re-import into a duplicate insert
+  // instead of an idempotent update, and breaks any slug-keyed references.
+  subjects: new Set(["slug"]),
+  // slug is part of the compound upsert key for topics
+  // (upsert_on="subject_id,parent_topic_id,slug"). Same risk as subjects.
+  // level/subject_id/parent_topic_id stay editable for legitimate re-parenting.
+  topics: new Set(["slug"]),
+  // trust_status is pipeline-owned (forced to 'pending' on create, promoted
+  // only by the trust pipeline — not via CMS edit).
+  // source_id is the external dedup key — same risk class as slug.
+  // exam_id stays editable for re-filing a mis-imported source to the right exam.
+  "pyq-sources": new Set(["trust_status", "source_id"]),
 };
 
 // Helper copy shown under specific date fields. exam_start is the Study OS
@@ -431,6 +538,9 @@ function renderFieldControl(f, values, setValues, idPrefix, entityKey) {
   const set = (val) => setValues((p) => ({ ...p, [f.key]: val }));
   if (f.type === "org-ref") {
     return <OrgRefSelect value={values[f.key] ?? ""} onChange={(val) => set(val)} testId={testId} />;
+  }
+  if (f.type === "source-registry-ref") {
+    return <SourceRegistryRefField value={values[f.key] ?? ""} onChange={(val) => set(val)} testId={testId} />;
   }
   if (f.type === "ref") {
     return (
@@ -460,14 +570,14 @@ function renderFieldControl(f, values, setValues, idPrefix, entityKey) {
   if (f.type === "enum") {
     return (
       <select
-        value={values[f.key] ?? ""}
+        value={values[f.key] ?? f.defaultValue ?? ""}
         onChange={(e) => set(e.target.value)}
         className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
         data-testid={testId}
       >
         <option value="">(skip)</option>
         {f.options.map((o) => (
-          <option key={o} value={o}>{o}</option>
+          <option key={o} value={o}>{f.optionLabels?.[o] ?? o}</option>
         ))}
       </select>
     );
@@ -538,6 +648,26 @@ function renderFieldControl(f, values, setValues, idPrefix, entityKey) {
   );
 }
 
+// Renders sub-text beneath a relabeled field: raw column name in monospace,
+// optional static helper, and dynamic priority band for numeric score fields.
+function renderFieldAnnotation(f, values) {
+  return (
+    <>
+      {f.rawName && (
+        <span className="text-xs font-mono text-muted-foreground">{f.rawName}</span>
+      )}
+      {f.helperText && (
+        <p className="text-xs text-muted-foreground mt-0.5">{f.helperText}</p>
+      )}
+      {f.showBand && values[f.key] !== undefined && values[f.key] !== "" && (
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Band: <strong>{band(values[f.key]).label}</strong>
+        </p>
+      )}
+    </>
+  );
+}
+
 function parseValue(field, raw) {
   if (raw === "" || raw == null) return undefined;
   if (field.type === "bool") return raw === "true";
@@ -580,8 +710,16 @@ export default function AdminExamIntelCms() {
   const [editingRow, setEditingRow] = useState(null);
   const [editValues, setEditValues] = useState({});
   const [editReason, setEditReason] = useState("");
-  const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState(null);
+  // Retire dialog
+  const [retireTarget, setRetireTarget] = useState(null); // { row, label } | null
+  const [retireReason, setRetireReason] = useState("");
+  const [retireError, setRetireError] = useState(null);
+
+  const { run: runCreate, busy: busyCreate } = useApiAction();
+  const { run: runBulk, busy: busyBulk } = useApiAction();
+  const { run: runEdit, busy: busyEdit } = useApiAction();
+  const { run: runRetire, busy: busyRetire } = useApiAction();
 
   const isDocuments = entity === "documents";
   const cfg = ENTITY_CONFIG[entity];
@@ -644,25 +782,27 @@ export default function AdminExamIntelCms() {
     try {
       rows = JSON.parse(bulkRows);
       if (!Array.isArray(rows)) throw new Error("Top-level JSON must be an array");
-    } catch (e) {
-      setStatus({ ok: false, message: `Could not parse rows JSON: ${e.message}` });
+    } catch (ex) {
+      setStatus({ ok: false, message: `Could not parse rows JSON: ${ex.message}` });
       return;
     }
-    try {
-      const r = await api.post("/api/admin/exam-intelligence-cms/bulk-import", {
-        reason: bulkReason.trim(),
-        entity,
-        rows,
-      });
-      setBulkResult(r);
-      setStatus({
-        ok: r.ok,
-        message: `Bulk import: ${r.ok_count}/${r.total} ok, ${r.error_count} errors. audit_id=${r.audit_id}`,
-      });
-      load();
-    } catch (ex) {
-      setStatus({ ok: false, message: getApiErrorMessage(ex) });
-    }
+    await runBulk({
+      action: () =>
+        api.post("/api/admin/exam-intelligence-cms/bulk-import", {
+          reason: bulkReason.trim(),
+          entity,
+          rows,
+        }),
+      onSuccess: (r) => {
+        setBulkResult(r);
+        setStatus({
+          ok: r.ok,
+          message: `Bulk import: ${r.ok_count}/${r.total} ok, ${r.error_count} errors. audit_id=${r.audit_id}`,
+        });
+        load();
+      },
+      errorMessage: "Bulk import failed.",
+    });
   }
 
   async function submitCreate(e) {
@@ -692,19 +832,21 @@ export default function AdminExamIntelCms() {
       setStatus({ ok: false, message: `A ${payload.level} must have a parent topic (level=topic).` });
       return;
     }
-    try {
-      const r = await api.post(`/api/admin/exam-intelligence-cms/${entity}`, {
-        reason: reason.trim(),
-        payload,
-      });
-      setStatus({ ok: true, message: `Created. audit_id=${r.audit_id}` });
-      setShowCreate(false);
-      setFormValues({});
-      setReason("");
-      load();
-    } catch (ex) {
-      setStatus({ ok: false, message: getApiErrorMessage(ex) });
-    }
+    await runCreate({
+      action: () =>
+        api.post(`/api/admin/exam-intelligence-cms/${entity}`, {
+          reason: reason.trim(),
+          payload,
+        }),
+      onSuccess: (r) => {
+        setStatus({ ok: true, message: `Created. audit_id=${r.audit_id}` });
+        setShowCreate(false);
+        setFormValues({});
+        setReason("");
+        load();
+      },
+      errorMessage: "Create failed.",
+    });
   }
 
   function startEdit(row) {
@@ -749,9 +891,10 @@ export default function AdminExamIntelCms() {
     // Diff against the original row: only keys the admin actually changed are
     // submitted. uiOnly (cascade-only) and readonly (server-derived) fields are
     // never sent.
+    const editExcluded = EDIT_EXCLUDED_FIELDS[entity] || new Set();
     const patch = {};
     for (const f of cfg.fields) {
-      if (f.uiOnly || f.type === "readonly") continue;
+      if (f.uiOnly || f.type === "readonly" || editExcluded.has(f.key)) continue;
       let parsed;
       try {
         parsed = parseValue(f, editValues[f.key]);
@@ -777,45 +920,51 @@ export default function AdminExamIntelCms() {
       setEditError("No changes to save.");
       return;
     }
-    setEditBusy(true);
-    try {
-      const r = await api.patch(`/api/admin/exam-intelligence-cms/${entity}/${editingRow.id}`, {
-        reason: editReason.trim(),
-        payload: patch,
-      });
-      setStatus({ ok: true, message: `Updated. audit_id=${r.audit_id}` });
-      cancelEdit();
-      load();
-    } catch (ex) {
-      setEditError(getApiErrorMessage(ex));
-    } finally {
-      setEditBusy(false);
-    }
+    await runEdit({
+      action: () =>
+        api.patch(`/api/admin/exam-intelligence-cms/${entity}/${editingRow.id}`, {
+          reason: editReason.trim(),
+          payload: patch,
+        }),
+      onSuccess: (r) => {
+        setStatus({ ok: true, message: `Updated. audit_id=${r.audit_id}` });
+        cancelEdit();
+        load();
+      },
+      errorMessage: "Save failed.",
+    });
   }
 
-  async function deactivateRow(row) {
+  function deactivateRow(row) {
     // Soft-delete only (backend flips is_active=false; child rows keep their
-    // FK). UI never says "Delete".
+    // FK). Opens the accessible retire dialog instead of window.confirm/prompt.
     if (!isDeactivatable) return;
     const label = (row.name || row.slug || row.id || "").toString();
-    if (!window.confirm(`Deactivate ${cfg.label} "${label}"? It will be hidden (is_active=false), not deleted.`)) {
+    setRetireTarget({ row, label });
+    setRetireReason("");
+    setRetireError(null);
+  }
+
+  async function confirmRetire() {
+    if (!retireTarget) return;
+    if (retireReason.trim().length < 8) {
+      setRetireError("Retire reason must be ≥8 chars.");
       return;
     }
-    const reasonText = window.prompt("Reason for deactivating (≥8 chars, recorded in audit):") || "";
-    if (reasonText.trim().length < 8) {
-      setStatus({ ok: false, message: "Deactivate reason must be ≥8 chars." });
-      return;
-    }
-    try {
-      const r = await api.del(
-        `/api/admin/exam-intelligence-cms/${entity}/${row.id}?reason=${encodeURIComponent(reasonText.trim())}`,
-      );
-      setStatus({ ok: true, message: `Deactivated. audit_id=${r.audit_id}` });
-      if (editingRow && editingRow.id === row.id) cancelEdit();
-      load();
-    } catch (ex) {
-      setStatus({ ok: false, message: getApiErrorMessage(ex) });
-    }
+    const { row } = retireTarget;
+    await runRetire({
+      action: () =>
+        api.del(
+          `/api/admin/exam-intelligence-cms/${entity}/${row.id}?reason=${encodeURIComponent(retireReason.trim())}`,
+        ),
+      onSuccess: (r) => {
+        setStatus({ ok: true, message: `Retired. audit_id=${r.audit_id}` });
+        setRetireTarget(null);
+        if (editingRow && editingRow.id === row.id) cancelEdit();
+        load();
+      },
+      errorMessage: "Retire failed.",
+    });
   }
 
   function insertBulkTemplate() {
@@ -848,13 +997,24 @@ export default function AdminExamIntelCms() {
         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
           Study OS · exam intelligence CMS
         </div>
-        <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight">Exam Intelligence CMS</h1>
+        <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight">Advanced Import / Repair</h1>
         <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
           Create exam families, exams, cycles, phases, syllabus documents, PYQ papers/questions, topic
           coverage, and policy updates. Per spec §12 #4: CMS <strong>feeds</strong> the review queue —
           rows with a review_status / trust_status land at <code>pending</code>; promote them via the
           existing review queue, not here.
         </p>
+      </div>
+
+      <div
+        className="rounded border border-amber-300/70 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
+        role="note"
+        data-testid="cms-caution-banner"
+      >
+        <strong>Power-user repair surface.</strong> For normal work, use the{" "}
+        <strong>Exam Governance Console</strong> and the <strong>Create-exam wizard</strong> — not this
+        page. Raw edits here can break import idempotency (the exam <code>slug</code> is the upsert key
+        and must not change), and exam-identity changes belong in the operator UI, never raw CMS.
       </div>
 
       <div className="flex gap-2 items-end flex-wrap">
@@ -898,6 +1058,13 @@ export default function AdminExamIntelCms() {
           </>
         ) : null}
       </div>
+
+      {entity === "exam-topic-coverage" && (
+        <div className="rounded border border-border/60 bg-card p-4" data-testid="cms-lifecycle-legend">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Review status</h2>
+          <LifecycleLegend />
+        </div>
+      )}
 
       {status ? (
         <div className={`text-sm ${status.ok ? "text-emerald-700" : "text-red-700"}`} role="status" aria-live="polite">
@@ -959,7 +1126,9 @@ export default function AdminExamIntelCms() {
             <span className="block text-xs text-muted-foreground mb-1">Reason (≥8 chars)</span>
             <textarea value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} rows={2} className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background" data-testid="cms-bulk-reason" />
           </label>
-          <button type="submit" className="btn small" data-testid="cms-bulk-submit">Import</button>
+          <button type="submit" className="btn small" disabled={busyBulk} data-testid="cms-bulk-submit">
+            {busyBulk ? "Importing…" : "Import"}
+          </button>
           {bulkResult ? (
             <details className="text-xs mt-2">
               <summary className="cursor-pointer text-muted-foreground">
@@ -986,6 +1155,7 @@ export default function AdminExamIntelCms() {
                   {f.label}{f.required ? <span className="text-red-700"> *</span> : null}
                 </span>
                 {renderFieldControl(f, formValues, setFormValues, "cms-", entity)}
+                {renderFieldAnnotation(f, formValues)}
               </label>
             ))}
           </div>
@@ -999,8 +1169,8 @@ export default function AdminExamIntelCms() {
               data-testid="cms-reason"
             />
           </label>
-          <button type="submit" className="btn small" data-testid="cms-create-submit">
-            Create
+          <button type="submit" className="btn small" disabled={busyCreate} data-testid="cms-create-submit">
+            {busyCreate ? "Creating…" : "Create"}
           </button>
         </form>
       ) : null}
@@ -1015,12 +1185,13 @@ export default function AdminExamIntelCms() {
             row-version check, so the most recent save wins if two admins edit the same row.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {cfg.fields.map((f) => (
+            {cfg.fields.filter((f) => !EDIT_EXCLUDED_FIELDS[entity]?.has(f.key)).map((f) => (
               <label key={f.key} className="block">
                 <span className="block text-xs text-muted-foreground mb-1">
                   {f.label}{f.required ? <span className="text-red-700"> *</span> : null}
                 </span>
                 {renderFieldControl(f, editValues, setEditValues, "cms-edit-", entity)}
+                {renderFieldAnnotation(f, editValues)}
               </label>
             ))}
           </div>
@@ -1038,8 +1209,8 @@ export default function AdminExamIntelCms() {
             <div className="text-sm text-red-700" role="alert" data-testid="cms-edit-error">{editError}</div>
           ) : null}
           <div className="flex gap-2">
-            <button type="submit" className="btn small" data-testid="cms-edit-submit" disabled={editBusy}>
-              {editBusy ? "Saving…" : "Save changes"}
+            <button type="submit" className="btn small" data-testid="cms-edit-submit" disabled={busyEdit}>
+              {busyEdit ? "Saving…" : "Save changes"}
             </button>
             <button type="button" className="btn small" onClick={cancelEdit} data-testid="cms-edit-cancel">
               Cancel
@@ -1070,7 +1241,11 @@ export default function AdminExamIntelCms() {
                 <td className="p-2 font-mono">{r.id?.slice(0, 8)}…</td>
                 {cfg.columns.map((c) => (
                   <td key={c} className="p-2">
-                    {r[c] == null ? "—" : typeof r[c] === "boolean" ? String(r[c]) : String(r[c]).slice(0, 60)}
+                    {r[c] == null
+                    ? (entity === "exams" && c === "management_mode"
+                      ? <span className="text-muted-foreground italic">{BUSINESS_PRIORITY_LABELS.null.label}</span>
+                      : "—")
+                    : typeof r[c] === "boolean" ? String(r[c]) : String(r[c]).slice(0, 60)}
                   </td>
                 ))}
                 {isEditable ? (
@@ -1088,10 +1263,19 @@ export default function AdminExamIntelCms() {
                         type="button"
                         className="btn small ml-1"
                         onClick={() => deactivateRow(r)}
-                        data-testid={`cms-deactivate-${r.id}`}
+                        data-testid={`cms-retire-${r.id}`}
                       >
-                        Deactivate
+                        Retire
                       </button>
+                    ) : null}
+                    {entity === "exams" ? (
+                      <a
+                        href={`/admin/exam-intelligence/exams/${r.id}/add-cycle`}
+                        className="btn small ml-1"
+                        data-testid={`ac-entry-${r.id}`}
+                      >
+                        Add cycle
+                      </a>
                     ) : null}
                   </td>
                 ) : null}
@@ -1105,6 +1289,65 @@ export default function AdminExamIntelCms() {
           </div>
         ) : null}
       </section>
+      ) : null}
+
+      {retireTarget ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="retire-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          data-testid="cms-retire-dialog"
+        >
+          <div className="bg-background rounded-lg border border-border shadow-lg w-full max-w-md p-6 space-y-4">
+            <h2 id="retire-dialog-title" className="font-semibold text-base">
+              Retire {cfg.label} &ldquo;{retireTarget.label}&rdquo;?
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Retiring sets <code>is_active=false</code> and hides this row from aspirants. Active
+              identity rows linked to this entry will no longer appear in exam listings. This action
+              is recorded in the audit log and is reversible only by an admin edit.
+            </p>
+            <label className="block">
+              <span className="block text-xs text-muted-foreground mb-1">
+                Reason for retiring (≥8 chars, recorded in audit)
+              </span>
+              <textarea
+                value={retireReason}
+                onChange={(e) => setRetireReason(e.target.value)}
+                rows={3}
+                autoFocus
+                className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                data-testid="cms-retire-reason"
+              />
+            </label>
+            {retireError ? (
+              <div className="text-sm text-red-700" role="alert" data-testid="cms-retire-error">
+                {retireError}
+              </div>
+            ) : null}
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => setRetireTarget(null)}
+                disabled={busyRetire}
+                data-testid="cms-retire-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn small"
+                onClick={confirmRetire}
+                disabled={busyRetire}
+                data-testid="cms-retire"
+              >
+                {busyRetire ? "Retiring…" : "Confirm retire"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

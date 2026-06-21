@@ -97,7 +97,7 @@ def test_draft_correction_tasks_uses_error_patterns():
     assert refreshed["review_state"] == "correction_drafted"
 
 
-def test_draft_correction_falls_back_to_weak_topics_when_no_errors():
+def test_draft_correction_falls_back_to_first_weak_topic_when_no_errors():
     sb = SBStub({})
     m = mocks_service.create_mock(
         sb,
@@ -111,10 +111,11 @@ def test_draft_correction_falls_back_to_weak_topics_when_no_errors():
         },
     )
     drafts = mocks_service.draft_correction_tasks(sb, "user-1", m["id"])
-    # Capped at 3 weak-topic drills when no error_patterns provided.
-    assert len(drafts) == 3
-    assert all(d["category"] == "concept_gap" for d in drafts)
-    assert [d["topic"] for d in drafts] == ["Polity", "Economy", "History"]
+    # The shared policy owns weak-topic fallback categorization and emits one
+    # category set per normalized evidence input.
+    assert len(drafts) == 1
+    assert drafts[0]["category"] == "concept_gap"
+    assert drafts[0]["topic"] == "Polity"
 
 
 def test_draft_correction_replaces_prior_drafts():
@@ -241,3 +242,234 @@ def test_api_analysis_bundle_shape():
     assert bundle["weak_topics"] == ["Polity"]
     assert bundle["review_state"] == "unreviewed"
     assert bundle["correction_tasks"] == []
+
+
+# ───────────────────── BLOCKER 3: writer authority tests ────────────────────
+
+
+def test_draft_correction_platform_attempt_raises_forbidden():
+    """draft_correction_tasks must raise PlatformAttemptCorrectionForbiddenError
+    for platform_attempt mocks — MasteryWriter owns that pipeline."""
+    import pytest
+    sb = SBStub({})
+    # Insert a platform_attempt mock directly
+    from tests.persona_questions._stub import SBStub as _SB
+    sb2 = _SB({
+        "mock_tests": [{
+            "id": "mt-plat",
+            "user_id": "user-1",
+            "source_type": "platform_attempt",
+            "weak_topics": [],
+            "error_patterns": {},
+            "review_state": "unreviewed",
+            "mock_attempt_id": "att-1",
+        }]
+    })
+    with pytest.raises(mocks_service.PlatformAttemptCorrectionForbiddenError):
+        mocks_service.draft_correction_tasks(sb2, "user-1", "mt-plat")
+
+
+def test_draft_correction_manual_log_allowed():
+    """manual_log mocks can go through the rule-based correction path."""
+    sb = SBStub({})
+    m = mocks_service.create_mock(
+        sb,
+        "user-1",
+        {"name": "M1", "score": 100, "max_score": 200,
+         "error_patterns": {"concept": 2}, "weak_topics": ["Polity"]},
+    )
+    # source_type defaults to manual_log — should succeed
+    drafts = mocks_service.draft_correction_tasks(sb, "user-1", m["id"])
+    assert len(drafts) >= 1
+
+
+def test_draft_correction_imported_result_allowed():
+    """imported_result mocks are also allowed through the manual path."""
+    from tests.persona_questions._stub import SBStub as _SB
+    sb = _SB({
+        "mock_tests": [{
+            "id": "mt-imp",
+            "user_id": "user-1",
+            "source_type": "imported_result",
+            "weak_topics": ["Polity"],
+            "error_patterns": {"concept": 1},
+            "review_state": "unreviewed",
+            "mock_attempt_id": None,
+        }],
+        "mock_correction_tasks": [],
+        "mock_subject_breakdowns": [],
+    })
+    drafts = mocks_service.draft_correction_tasks(sb, "user-1", "mt-imp")
+    assert len(drafts) >= 1
+
+
+def test_api_draft_correction_platform_attempt_returns_409():
+    """POST /mocks/{id}/correction-tasks must return 409 for platform_attempt mocks."""
+    from tests.persona_questions._stub import SBStub as _SB
+    sb = _SB({
+        "mock_tests": [{
+            "id": "mt-plat",
+            "user_id": "user-1",
+            "source_type": "platform_attempt",
+            "weak_topics": [],
+            "error_patterns": {},
+            "review_state": "unreviewed",
+            "mock_attempt_id": "att-1",
+        }],
+        "mock_subject_breakdowns": [],
+    })
+    client = _client(sb)
+    r = client.post("/api/study/mocks/mt-plat/correction-tasks")
+    assert r.status_code == 409
+    body = r.json()
+    assert body["detail"]["error"] == "PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN"
+
+
+def test_api_draft_correction_another_user_mock_returns_404():
+    """A mock owned by a different user returns 404, not 403."""
+    from tests.persona_questions._stub import SBStub as _SB
+    sb = _SB({
+        "mock_tests": [{
+            "id": "mt-other",
+            "user_id": "user-99",
+            "source_type": "manual_log",
+            "weak_topics": ["Polity"],
+            "error_patterns": {"concept": 1},
+            "review_state": "unreviewed",
+            "mock_attempt_id": None,
+        }],
+        "mock_subject_breakdowns": [],
+    })
+    client = _client(sb)
+    r = client.post("/api/study/mocks/mt-other/correction-tasks")
+    assert r.status_code == 404
+
+
+# ─────────────── BLOCKER 2: 23505 conflict handling tests ───────────────────
+
+
+def test_draft_correction_idempotent_when_row_exists():
+    """When a drafted row already exists, the RPC upserts it and returns it."""
+    from tests.persona_questions._stub import SBStub as _SB
+
+    class _ConflictingInsertQuery:
+        def __init__(self, name, db):
+            self.name = name
+            self.db = db
+            self._q = None
+
+        def select(self, *a, **kw):
+            from tests.persona_questions._stub import _Query
+            self._q = _Query(self.name, self.db)
+            return self._q.select(*a, **kw)
+
+        def eq(self, *a, **kw):
+            if self._q:
+                return self._q.eq(*a, **kw)
+            return self
+
+        def delete(self):
+            # No-op: simulate concurrent scenario where another request already
+            # re-inserted the rows after our delete — they'll be present for
+            # the fallback select after insert raises 23505.
+            class _Noop:
+                def eq(self, *a, **kw): return self
+                def execute(self): return type("R", (), {"data": []})()
+            return _Noop()
+
+        def insert(self, payload):
+            self._payload = payload
+            return self
+
+        def execute(self):
+            raise RuntimeError("23505 duplicate key value violates unique constraint")
+
+    class _MockSB(_SB):
+        def __init__(self, db):
+            super().__init__(db)
+            self._conflict_table = None
+
+        def set_conflict_table(self, name):
+            self._conflict_table = name
+
+        def table(self, name):
+            if name == self._conflict_table:
+                return _ConflictingInsertQuery(name, self.db)
+            return super().table(name)
+
+    sb = _MockSB({
+        "mock_tests": [{
+            "id": "mt-1",
+            "user_id": "user-1",
+            "source_type": "manual_log",
+            "weak_topics": ["Polity"],
+            "error_patterns": {"concept": 1},
+            "review_state": "unreviewed",
+            "mock_attempt_id": None,
+        }],
+        "mock_correction_tasks": [
+            # Pre-existing drafted correction
+            {
+                "id": "existing-c1",
+                "mock_test_id": "mt-1",
+                "user_id": "user-1",
+                "category": "concept_gap",
+                "topic": "Polity",
+                "state": "drafted",
+                "title": "Concept Gap",
+                "source_questions": [],
+            }
+        ],
+        "mock_subject_breakdowns": [],
+    })
+    sb.set_conflict_table("mock_correction_tasks")
+
+    result = mocks_service.draft_correction_tasks(sb, "user-1", "mt-1")
+    # Should return the existing row, not raise
+    assert len(result) >= 1
+    assert result[0]["category"] == "concept_gap"
+
+
+def test_draft_correction_rpc_error_propagates():
+    """RPC errors must propagate to the caller — no _safe swallowing (D4 fix)."""
+    import pytest
+    from tests.persona_questions._stub import SBStub as _SB
+
+    class _ErrorSB(_SB):
+        def rpc(self, name, params=None):
+            if name == "replace_manual_mock_correction_drafts":
+                raise RuntimeError("network timeout")
+            return super().rpc(name, params)
+
+    sb = _ErrorSB({
+        "mock_tests": [{
+            "id": "mt-1", "user_id": "user-1",
+            "source_type": "manual_log",
+            "weak_topics": ["Polity"], "error_patterns": {"concept": 1},
+            "review_state": "unreviewed", "mock_attempt_id": None,
+        }],
+        "mock_subject_breakdowns": [],
+    })
+    with pytest.raises(RuntimeError, match="network timeout"):
+        mocks_service.draft_correction_tasks(sb, "user-1", "mt-1")
+
+
+def test_empty_drafts_sets_reviewed_state():
+    """Empty draft set (no error patterns, no weak topics): review_state is set to
+    'reviewed' and the function returns [].  This is the explicitly documented
+    empty-draft contract — the mock has been reviewed but no corrections apply."""
+    from tests.persona_questions._stub import SBStub as _SB
+    sb = _SB({
+        "mock_tests": [{
+            "id": "mt-1", "user_id": "user-1",
+            "source_type": "manual_log",
+            "weak_topics": [], "error_patterns": {},
+            "review_state": "unreviewed", "mock_attempt_id": None,
+        }],
+        "mock_correction_tasks": [],
+        "mock_subject_breakdowns": [],
+    })
+    result = mocks_service.draft_correction_tasks(sb, "user-1", "mt-1")
+    assert result == []
+    mt = sb.db["mock_tests"][0]
+    assert mt.get("review_state") == "reviewed"  # advanced to 'reviewed', not 'correction_drafted'

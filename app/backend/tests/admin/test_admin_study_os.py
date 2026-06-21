@@ -1577,6 +1577,189 @@ def test_cms_update_exam_patches_allowed_fields_only():
     assert "bogus_field" not in exam
 
 
+def test_cms_list_exams_projection_includes_management_mode_and_cadence():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db["exams"][0]["management_mode"] = "core"
+    sb.db["exams"][0]["cadence"] = "annual"
+    app = _cms_app(sb)
+    r = TestClient(app).get("/api/admin/exam-intelligence-cms/exams")
+    assert r.status_code == 200, r.text
+    items = r.json()["items"]
+    assert len(items) >= 1
+    assert "management_mode" in items[0]
+    assert "cadence" in items[0]
+    assert items[0]["management_mode"] == "core"
+    assert items[0]["cadence"] == "annual"
+
+
+def test_cms_create_exam_empty_string_management_mode_422():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/exams",
+        json={"reason": "empty string lane", "payload": {"name": "Z", "management_mode": ""}},
+    )
+    assert r.status_code == 422
+    assert len(sb.db["exams"]) == 1  # no DB write
+
+
+def test_cms_create_exam_empty_string_cadence_422():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/exams",
+        json={"reason": "empty string cadence", "payload": {"name": "Z", "cadence": ""}},
+    )
+    assert r.status_code == 422
+    assert len(sb.db["exams"]) == 1  # no DB write
+
+
+def test_cms_update_exam_empty_string_management_mode_422():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db["exams"][0]["management_mode"] = "core"
+    app = _cms_app(sb)
+    r = TestClient(app).patch(
+        "/api/admin/exam-intelligence-cms/exams/exam-1",
+        json={"reason": "empty string lane on update", "payload": {"management_mode": ""}},
+    )
+    assert r.status_code == 422
+    # Stored value must not have changed
+    assert sb.db["exams"][0]["management_mode"] == "core"
+
+
+def test_cms_update_exam_name_only_preserves_core_lane():
+    # Round-trip corruption proof: changing an unrelated field must never overwrite lane.
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db["exams"][0]["management_mode"] = "core"
+    sb.db["exams"][0]["cadence"] = "annual"
+    app = _cms_app(sb)
+    r = TestClient(app).patch(
+        "/api/admin/exam-intelligence-cms/exams/exam-1",
+        json={"reason": "rename only, no lane sent", "payload": {"name": "Exam X Renamed"}},
+    )
+    assert r.status_code == 200, r.text
+    exam = next(e for e in sb.db["exams"] if e["id"] == "exam-1")
+    assert exam["management_mode"] == "core"
+    assert exam["cadence"] == "annual"
+
+
+def test_cms_update_exam_name_only_preserves_archive_lane():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db["exams"][0]["management_mode"] = "archive"
+    sb.db["exams"][0]["cadence"] = "one_off"
+    app = _cms_app(sb)
+    r = TestClient(app).patch(
+        "/api/admin/exam-intelligence-cms/exams/exam-1",
+        json={"reason": "rename archive exam", "payload": {"name": "Archived Exam Renamed"}},
+    )
+    assert r.status_code == 200, r.text
+    exam = next(e for e in sb.db["exams"] if e["id"] == "exam-1")
+    assert exam["management_mode"] == "archive"
+    assert exam["cadence"] == "one_off"
+
+
+def test_cms_create_exam_no_lane_defaults_light_unknown():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/exams",
+        json={"reason": "create without lane fields", "payload": {"name": "Lane Default Exam"}},
+    )
+    assert r.status_code == 200, r.text
+    exam = next(e for e in sb.db["exams"] if e.get("name") == "Lane Default Exam")
+    assert exam["management_mode"] == "light"
+    assert exam["cadence"] == "unknown"
+
+
+def test_cms_create_exam_explicit_lane_persists():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/exams",
+        json={"reason": "explicit lane and cadence", "payload": {"name": "Core Annual Exam", "management_mode": "core", "cadence": "annual"}},
+    )
+    assert r.status_code == 200, r.text
+    exam = next(e for e in sb.db["exams"] if e.get("name") == "Core Annual Exam")
+    assert exam["management_mode"] == "core"
+    assert exam["cadence"] == "annual"
+
+
+def test_cms_create_exam_invalid_management_mode_422():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/exams",
+        json={"reason": "bad lane value", "payload": {"name": "Z", "management_mode": "bogus_lane"}},
+    )
+    assert r.status_code == 422
+    assert len(sb.db["exams"]) == 1  # no DB write
+
+
+def test_cms_create_exam_invalid_cadence_422():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/exams",
+        json={"reason": "bad cadence value", "payload": {"name": "Z", "cadence": "daily"}},
+    )
+    assert r.status_code == 422
+    assert len(sb.db["exams"]) == 1  # no DB write
+
+
+def test_cms_update_exam_invalid_management_mode_422():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).patch(
+        "/api/admin/exam-intelligence-cms/exams/exam-1",
+        json={"reason": "bad lane on update", "payload": {"management_mode": "bogus_lane"}},
+    )
+    assert r.status_code == 422
+    exam = next(e for e in sb.db["exams"] if e["id"] == "exam-1")
+    assert exam.get("management_mode") != "bogus_lane"
+
+
+def test_cms_update_exam_other_field_does_not_reset_lane():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    # Give the exam a known lane/cadence upfront.
+    sb.db["exams"][0]["management_mode"] = "core"
+    sb.db["exams"][0]["cadence"] = "annual"
+    app = _cms_app(sb)
+    r = TestClient(app).patch(
+        "/api/admin/exam-intelligence-cms/exams/exam-1",
+        json={"reason": "renaming only, no lane sent", "payload": {"name": "Exam X v2"}},
+    )
+    assert r.status_code == 200, r.text
+    exam = next(e for e in sb.db["exams"] if e["id"] == "exam-1")
+    assert exam["management_mode"] == "core"
+    assert exam["cadence"] == "annual"
+
+
+def test_cms_create_exam_slug_is_server_generated():
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/exams",
+        json={"reason": "payload slug ignored", "payload": {"name": "New Exam", "slug": "should-be-ignored"}},
+    )
+    assert r.status_code == 200, r.text
+    exam = next(e for e in sb.db["exams"] if e.get("name") == "New Exam")
+    assert exam["slug"] != "should-be-ignored"
+    assert exam["slug"] == "new-exam"
+
+
 def test_cms_create_cycle_requires_exam_id():
     sb = ExtSBStub()
     _seed_cms(sb)

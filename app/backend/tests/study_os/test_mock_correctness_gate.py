@@ -335,9 +335,15 @@ def test_double_submit_under_live_flag_no_second_audit(monkeypatch):
 
 # ─── Fix 4: derivation ordering (implementation B) ────────────────────────────
 
-def test_mastery_writes_from_raw_data_when_derivation_fails(monkeypatch):
-    """AC5: with derivation mocked to fail, the writer still produces correct
-    deltas from the persisted raw responses (implementation B)."""
+def test_mastery_deferred_when_derivation_fails(monkeypatch):
+    """AC5 (updated): when analytics derivation fails, mastery is deferred, not
+    silently skipped.
+
+    With the classification readiness gate: analytics failure → no classification
+    rows → MasteryClassificationNotReady → mastery retry job rescheduled pending.
+    Both analytics_retry and mastery_retry are queued so recovery is fully
+    automatic once analytics succeeds.
+    """
     sb, _, _ = _seeded_db(topic_id="topic-B")
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
     client = _client(sb)
@@ -350,7 +356,7 @@ def test_mastery_writes_from_raw_data_when_derivation_fails(monkeypatch):
             json={"question_id": q["id"], "selected_option_id": q["correct_option_id"], "client_seq": 1},
         )
 
-    # Derivation (PR4) blows up — must not suppress the mastery write-back.
+    # Derivation (PR4) blows up → no classification rows will be written.
     monkeypatch.setattr(
         svc.attempt_analytics,
         "compute_and_persist",
@@ -360,18 +366,19 @@ def test_mastery_writes_from_raw_data_when_derivation_fails(monkeypatch):
     r = client.post(f"/api/study/mocks/attempts/{attempt_id}/submit")
     assert r.status_code == 200
 
-    # No summary was persisted (derivation failed)...
+    # No summary written (derivation failed).
     assert not sb.db.get("mock_attempt_summary")
-    # ...yet mastery was still applied from raw data: all-correct on an easy
-    # topic → capped +15 db, 50 → 65.
-    audit = [a for a in sb.db.get("user_topic_mastery_audit", []) if a["topic_id"] == "topic-B"]
-    assert len(audit) == 1
-    assert audit[0]["after_mastery_db"] == 65.0
-    # And the failed derivation was queued for retry, not dropped.
-    assert any(
-        j["job_kind"] == "analytics_retry" and j["attempt_id"] == attempt_id
-        for j in sb.db["mock_attempt_jobs"]
-    )
+    # Mastery was deferred — no live writes.
+    assert not sb.db.get("user_topic_mastery_audit")
+    # Both analytics_retry and mastery_retry are queued for automatic recovery.
+    jobs_by_kind = {j["job_kind"] for j in sb.db.get("mock_attempt_jobs", [])}
+    assert "analytics_retry" in jobs_by_kind
+    assert "mastery_retry" in jobs_by_kind
+    mastery_jobs = [
+        j for j in sb.db.get("mock_attempt_jobs", [])
+        if j["job_kind"] == "mastery_retry" and j["attempt_id"] == attempt_id
+    ]
+    assert mastery_jobs[0]["status"] == "pending"
 
 
 # ─── mock_tests_retry job (PR-fix-12) ────────────────────────────────────────
@@ -457,3 +464,223 @@ def test_retry_emit_mock_tests_row_idempotent():
 
     after = len([r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id])
     assert after == 1
+
+
+@pytest.mark.parametrize(
+    ("max_score", "expected"),
+    [(200.0, 200), (200, 200), (Decimal("200.0"), 200)],
+)
+def test_emit_mock_tests_row_coerces_integral_total_marks(max_score, expected):
+    """Inline compat writer stores integral numeric totals as integer values."""
+    sb = SBStub({"mock_tests": [], "mock_attempt_jobs": []})
+    attempt = {
+        "id": "attempt-inline-integral",
+        "template_snapshot": {
+            "name": "Integral Mock",
+            "exam_family": "TEST",
+            "duration_sec": 300,
+        },
+    }
+
+    svc._emit_mock_tests_row(
+        sb,
+        "user-1",
+        attempt,
+        score_raw=123.45,
+        max_score=max_score,
+        total_correct=10,
+        total_wrong=2,
+        total_q=100,
+        submitted_at=_now_iso(),
+    )
+
+    row = sb.db["mock_tests"][0]
+    assert row["total_marks"] == expected
+    assert type(row["total_marks"]) is int
+    assert row["scored_marks"] == 123.45
+
+
+def test_retry_emit_mock_tests_row_recreates_after_22p02_with_integer_total_marks():
+    """Retry path recomputes 200.0 but emits integer 200 after prior 22P02."""
+    sb, template, _ = _seeded_db()
+    template["marks_per_correct"] = 40.0
+    template["marks_per_wrong"] = 0.0
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+
+    # Simulate the initial insert failing with Postgres 22P02 before the fix.
+    sb.db["mock_tests"] = [
+        r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") != attempt_id
+    ]
+    svc.schedule_job(
+        sb,
+        svc.JOB_MOCK_TESTS_RETRY,
+        attempt_id,
+        last_error='invalid input syntax for type integer: "200.0" (22P02)',
+        scheduled_for=_past_iso(5),
+    )
+
+    svc.run_sweeper(sb)
+
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["total_marks"] == 200
+    assert type(rows[0]["total_marks"]) is int
+
+
+
+
+def test_submit_attempt_inline_sums_exact_decimal_marks_to_integral_total():
+    """Inline submit emits integer total_marks for ten Decimal('0.10') snapshots."""
+    sb, _, questions = _seeded_db()
+    for i in range(5, 10):
+        question = _make_question(f"q{i}")
+        questions.append(question)
+        sb.db["mock_question_bank"].append(question)
+        sb.db["mock_question_options"].extend(question["options"])
+    template = sb.db["mock_templates"][0]
+    template["total_questions"] = 10
+    template["config"]["question_ids"] = [q["id"] for q in questions]
+
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    attempt_responses = [
+        r for r in sb.db["mock_attempt_responses"] if r.get("attempt_id") == attempt_id
+    ][:10]
+    sb.db["mock_attempt_responses"] = [
+        r for r in sb.db["mock_attempt_responses"] if r.get("attempt_id") != attempt_id
+    ] + attempt_responses
+    assert len(attempt_responses) == 10
+    for response in attempt_responses:
+        response["question_snapshot"]["marks"] = Decimal("0.10")
+
+    result = svc.submit_attempt(sb, "user-1", attempt_id)
+
+    assert result["status"] == "submitted"
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["total_marks"] == 1
+    assert type(rows[0]["total_marks"]) is int
+    assert rows[0]["scored_marks"] == 0.0
+    assert not [
+        j for j in sb.db["mock_attempt_jobs"]
+        if j.get("job_kind") == svc.JOB_MOCK_TESTS_RETRY
+        and j.get("attempt_id") == attempt_id
+    ]
+
+def test_retry_emit_mock_tests_row_sums_exact_decimal_marks_to_integral_total():
+    """Ten Decimal('0.10') marks sum exactly to integer total_marks 1."""
+    attempt_id = "attempt-decimal-tenths"
+    sb = SBStub({
+        "mock_attempts": [{
+            "id": attempt_id,
+            "user_id": "user-1",
+            "template_snapshot": {"name": "Tenths", "exam_family": "TEST"},
+            "score_raw": 0,
+            "total_correct": 0,
+            "total_wrong": 0,
+            "submitted_at": _now_iso(),
+        }],
+        "mock_attempt_responses": [
+            {"attempt_id": attempt_id, "question_snapshot": {"marks": Decimal("0.10")}}
+            for _ in range(10)
+        ],
+        "mock_tests": [],
+    })
+
+    svc._retry_emit_mock_tests_row(sb, attempt_id)
+
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["total_marks"] == 1
+    assert type(rows[0]["total_marks"]) is int
+
+def test_retry_emit_mock_tests_row_coerces_decimal_integral_total_marks():
+    """Retry path accepts Decimal integral marks and persists an int total."""
+    sb, template, _ = _seeded_db()
+    template["marks_per_correct"] = 40.0
+    template["marks_per_wrong"] = 0.0
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+    sb.db["mock_tests"] = [
+        r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") != attempt_id
+    ]
+    for response in sb.db["mock_attempt_responses"]:
+        if response.get("attempt_id") == attempt_id:
+            response["question_snapshot"]["marks"] = Decimal("40.0")
+
+    svc._retry_emit_mock_tests_row(sb, attempt_id)
+
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["total_marks"] == 200
+    assert type(rows[0]["total_marks"]) is int
+
+
+def test_inline_non_integral_total_succeeds_and_schedules_retry():
+    """Post-finalization compatibility failure must not fail submit."""
+    sb, template, _ = _seeded_db()
+    template["marks_per_correct"] = 40.1
+    template["marks_per_wrong"] = 0.0
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+
+    result = svc.submit_attempt(sb, "user-1", attempt_id)
+
+    assert result["status"] == "submitted"
+    assert result["score_raw"] == 0.0
+    assert not [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    retry_jobs = [
+        j for j in sb.db["mock_attempt_jobs"]
+        if j.get("job_kind") == svc.JOB_MOCK_TESTS_RETRY
+        and j.get("attempt_id") == attempt_id
+        and j.get("status") == "pending"
+    ]
+    assert len(retry_jobs) == 1
+    assert "total_marks must be integral" in retry_jobs[0].get("last_error", "")
+
+
+def test_sweeper_reschedules_non_integral_retry_observably():
+    """Retry conversion failures propagate to sweeper backoff/rescheduling."""
+    sb, template, _ = _seeded_db()
+    template["marks_per_correct"] = 40.1
+    template["marks_per_wrong"] = 0.0
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+
+    counts = svc.run_sweeper(sb)
+
+    assert counts["errors"] == 1
+    assert not [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    retry_jobs = [
+        j for j in sb.db["mock_attempt_jobs"]
+        if j.get("job_kind") == svc.JOB_MOCK_TESTS_RETRY
+        and j.get("attempt_id") == attempt_id
+        and j.get("status") == "pending"
+    ]
+    assert len(retry_jobs) == 1
+    assert retry_jobs[0].get("attempts") == 1
+    assert "total_marks must be integral" in retry_jobs[0].get("last_error", "")
+
+
+def test_retry_emit_mock_tests_row_repeated_retry_is_idempotent_with_integer_total():
+    """Repeated retry calls do not duplicate the recreated compat row."""
+    sb, template, _ = _seeded_db()
+    template["marks_per_correct"] = 40.0
+    template["marks_per_wrong"] = 0.0
+    start = svc.start_attempt(sb, "user-1", "gate-mock")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+    sb.db["mock_tests"] = [
+        r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") != attempt_id
+    ]
+
+    svc._retry_emit_mock_tests_row(sb, attempt_id)
+    svc._retry_emit_mock_tests_row(sb, attempt_id)
+
+    rows = [r for r in sb.db["mock_tests"] if r.get("mock_attempt_id") == attempt_id]
+    assert len(rows) == 1
+    assert rows[0]["total_marks"] == 200

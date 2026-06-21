@@ -22,24 +22,121 @@ const CYCLE_URL = "/api/admin/exam-intelligence-cms/exam-cycles";
 const PHASE_URL = "/api/admin/exam-intelligence-cms/exam-phases";
 const POLICY_URL = "/api/admin/exam-intelligence-cms/policy-updates";
 
+// ─── Guided date-form helpers ─────────────────────────────────────────────────
+
+function buildUrl(base, params) {
+  if (!params) return base;
+  const entries = Object.entries(params).filter(([, v]) => v != null && v !== "");
+  if (entries.length === 0) return base;
+  const qs = entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
+  return `${base}?${qs}`;
+}
+
+const CYCLE_DATE_FIELDS = [
+  { key: "notification_date", label: "Notification date" },
+  { key: "application_start", label: "Application start" },
+  { key: "application_end", label: "Application end" },
+  { key: "exam_start", label: "Exam start" },
+  { key: "exam_end", label: "Exam end" },
+];
+
+const PHASE_DATE_FIELDS = [
+  { key: "phase_start", label: "Phase start" },
+  { key: "phase_end", label: "Phase end" },
+];
+
+function BeforeAfterDate({ fieldKey, label, current, value, onChange }) {
+  return (
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">{label}</label>
+      <div className="flex items-center gap-2">
+        <span
+          className="text-xs text-gray-400 font-mono min-w-[96px] shrink-0"
+          data-testid={`rar-${fieldKey.replace(/_/g, "-")}-current`}
+        >
+          {current || "—"}
+        </span>
+        <span className="text-xs text-gray-300 shrink-0">→</span>
+        <input
+          type="date"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 rounded-xl border border-border bg-white/80 px-3 py-1.5 text-sm"
+          data-testid={`rar-${fieldKey.replace(/_/g, "-")}`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function toDateMs(val) {
+  if (!val) return null;
+  // Accept both "YYYY-MM-DD" and "YYYY-MM-DDT…" (timestamptz from API).
+  // Normalise to midnight UTC by slicing to the leading date part.
+  const dateOnly = String(val).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return NaN;
+  return Date.UTC(
+    Number(dateOnly.slice(0, 4)),
+    Number(dateOnly.slice(5, 7)) - 1,
+    Number(dateOnly.slice(8, 10)),
+  );
+}
+function validateDateOrder({ application_start, application_end, exam_start, exam_end, phase_start, phase_end }) {
+  function checkPair(start, end, label) {
+    if (!start || !end) return null;
+    const s = toDateMs(start);
+    const e = toDateMs(end);
+    if (Number.isNaN(s) || Number.isNaN(e))
+      return `${label}: unrecognised date format — please check the values.`;
+    if (e < s) return `${label} end must be on or after ${label.toLowerCase()} start.`;
+    return null;
+  }
+  return (
+    checkPair(application_start, application_end, "Application") ||
+    checkPair(exam_start, exam_end, "Exam") ||
+    checkPair(phase_start, phase_end, "Phase") ||
+    null
+  );
+}
+
+function buildPatchFromChanges(fields, currentRow, fieldDefs) {
+  const patch = {};
+  for (const { key } of fieldDefs) {
+    const newVal = fields[key] ?? "";
+    if (!newVal) continue;
+    const oldVal = currentRow?.[key] ?? "";
+    if (newVal !== oldVal) patch[key] = newVal;
+  }
+  return patch;
+}
+
 // ─── FK select field backed by a collection ───────────────────────────────────
 
-function FkSelect({ url, value, onChange, labelKey = "name", testId }) {
+function FkSelect({ url, params, value, onChange, onRowChange, labelKey = "name", testId }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const fullUrl = buildUrl(url, params);
   useEffect(() => {
     let active = true;
-    api.get(url)
+    setLoading(true);
+    setItems([]);
+    api.get(fullUrl)
       .then((d) => { if (active) setItems(Array.isArray(d?.items) ? d.items : []); })
       .catch(() => {})
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [url]);
+  }, [fullUrl]);
+
+  function handleChange(e) {
+    const id = e.target.value;
+    onChange(id);
+    if (onRowChange) onRowChange(items.find((it) => it.id === id) || null);
+  }
 
   return (
     <select
       value={value || ""}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={handleChange}
       className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
       data-testid={testId}
     >
@@ -56,10 +153,57 @@ function FkSelect({ url, value, onChange, labelKey = "name", testId }) {
 
 // ─── Apply-registry-action panel ──────────────────────────────────────────────
 
-function ApplyRegistryActionPanel({ reportId, onSuccess }) {
+function RegistryActionProvenance({ report }) {
+  const rows = [
+    ["Evidence summary", report.evidence_summary],
+    ["Resolver status", report.resolver_status],
+    ["Resolver confidence",
+      report.resolver_confidence != null
+        ? `${(report.resolver_confidence * 100).toFixed(0)}%`
+        : null],
+  ].filter(([, v]) => v != null && v !== "");
+  if (rows.length === 0) return null;
+  return (
+    <div
+      className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3"
+      data-testid="rar-provenance"
+    >
+      <h5 className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-2">
+        Action provenance
+      </h5>
+      <dl className="space-y-1 text-xs">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex gap-2">
+            <dt className="text-blue-600 min-w-[130px] shrink-0">{label}:</dt>
+            <dd className="text-gray-900 whitespace-pre-wrap font-mono">
+              {typeof value === "object" && value !== null
+                ? JSON.stringify(value, null, 2)
+                : String(value)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function ApplyRegistryActionPanel({ report, onSuccess }) {
+  const { user } = useAuth();
+  const hasPerm =
+    user?.role === "super_admin" ||
+    (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.cms"));
+
   const [actionType, setActionType] = useState("");
+  // cycle_date_update: cycle picker + guided date fields
   const [examCycleId, setExamCycleId] = useState("");
+  const [selectedCycleRow, setSelectedCycleRow] = useState(null);
+  const [cycleFields, setCycleFields] = useState({});
+  // phase_date_update: two-step flow
+  const [phaseCycleId, setPhaseCycleId] = useState("");
+  const [phaseCycleRow, setPhaseCycleRow] = useState(null);
   const [examPhaseId, setExamPhaseId] = useState("");
+  const [selectedPhaseRow, setSelectedPhaseRow] = useState(null);
+  const [phaseFields, setPhaseFields] = useState({});
   const [policyUpdateId, setPolicyUpdateId] = useState("");
   const [patch, setPatch] = useState("{}");
   const [reason, setReason] = useState("");
@@ -67,11 +211,39 @@ function ApplyRegistryActionPanel({ reportId, onSuccess }) {
   const [error, setError] = useState(null);
   const { run, busy } = useApiAction();
 
+  const scopedExamId = report?.exam_id ?? null;
+  const hasExamScope = !!scopedExamId;
+
+  function getCycleParams() {
+    return hasExamScope ? { exam_id: scopedExamId } : {};
+  }
+  function getPhaseParams() {
+    const p = {};
+    if (hasExamScope) p.exam_id = scopedExamId;
+    if (phaseCycleRow?.id) p.exam_cycle_id = phaseCycleRow.id;
+    return p;
+  }
+
+  function resetActionState() {
+    setExamCycleId("");
+    setSelectedCycleRow(null);
+    setCycleFields({});
+    setPhaseCycleId("");
+    setPhaseCycleRow(null);
+    setExamPhaseId("");
+    setSelectedPhaseRow(null);
+    setPhaseFields({});
+    setPolicyUpdateId("");
+    setPatch("{}");
+    setError(null);
+  }
+
   async function submit(e) {
     e.preventDefault();
     setError(null);
 
-    if (reason.trim().length < 8 || reason.trim().length > 500) {
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < 8 || trimmedReason.length > 500) {
       setError("Reason must be 8–500 characters.");
       return;
     }
@@ -80,163 +252,293 @@ function ApplyRegistryActionPanel({ reportId, onSuccess }) {
       return;
     }
 
-    let parsedPatch;
-    try {
-      parsedPatch = JSON.parse(patch);
-      if (typeof parsedPatch !== "object" || Array.isArray(parsedPatch) || parsedPatch === null) {
-        throw new Error("must be a JSON object");
+    let builtPatch;
+
+    if (actionType === "cycle_date_update") {
+      if (!selectedCycleRow) { setError("Select an exam cycle."); return; }
+      builtPatch = buildPatchFromChanges(cycleFields, selectedCycleRow, CYCLE_DATE_FIELDS);
+      if (Object.keys(builtPatch).length === 0) {
+        setError("No date fields were changed. Update at least one field before applying.");
+        return;
       }
-    } catch {
-      setError("Patch must be a valid JSON object.");
-      return;
+      const dateErr = validateDateOrder({ ...selectedCycleRow, ...cycleFields });
+      if (dateErr) { setError(dateErr); return; }
+    } else if (actionType === "phase_date_update") {
+      if (!phaseCycleRow) { setError("Select an exam cycle to scope the phase picker."); return; }
+      if (!selectedPhaseRow) { setError("Select an exam phase."); return; }
+      builtPatch = buildPatchFromChanges(phaseFields, selectedPhaseRow, PHASE_DATE_FIELDS);
+      if (Object.keys(builtPatch).length === 0) {
+        setError("No date fields were changed. Update at least one field before applying.");
+        return;
+      }
+      const dateErr = validateDateOrder({ ...selectedPhaseRow, ...phaseFields });
+      if (dateErr) { setError(dateErr); return; }
+    } else {
+      try {
+        builtPatch = JSON.parse(patch);
+        if (typeof builtPatch !== "object" || Array.isArray(builtPatch) || builtPatch === null) {
+          throw new Error("must be a JSON object");
+        }
+      } catch {
+        setError("Patch must be a valid JSON object.");
+        return;
+      }
     }
 
     const body = {
       action_type: actionType,
-      patch: parsedPatch,
-      reason: reason.trim(),
+      patch: builtPatch,
+      reason: trimmedReason,
     };
-    if (examCycleId) body.exam_cycle_id = examCycleId;
-    if (examPhaseId) body.exam_phase_id = examPhaseId;
-    if (policyUpdateId) body.policy_update_id = policyUpdateId;
+    if (actionType === "cycle_date_update" && selectedCycleRow?.id) body.exam_cycle_id = selectedCycleRow.id;
+    if (actionType === "phase_date_update" && selectedPhaseRow?.id) body.exam_phase_id = selectedPhaseRow.id;
+    if (actionType === "policy_update_edit" && policyUpdateId) body.policy_update_id = policyUpdateId;
     if (notes.trim()) body.notes = notes.trim();
 
     const res = await run({
-      action: () => api.post(`/api/admin/verification-reports/${reportId}/apply-registry-action`, body),
+      action: () => api.post(`/api/admin/verification-reports/${report.id}/apply-registry-action`, body),
       successMessage: "Registry action applied.",
       errorMessage: "Failed to apply registry action.",
       onSuccess,
     });
 
     if (!res.ok && !res.cancelled) {
-      setError(res.error?.message || "Failed to apply registry action.");
+      const status = res.error?.status;
+      const msg = res.error?.message || "Failed to apply registry action.";
+      setError(status === 422 || status === 409 ? `Server error (${status}): ${msg}` : msg);
     }
   }
 
+  if (!hasPerm) {
+    return (
+      <div className="mt-6 rounded-2xl border border-border bg-white/60 px-5 py-4" data-testid="apply-action-locked">
+        <h4 className="text-sm font-semibold text-gray-900">Apply registry action</h4>
+        <p className="mt-2 text-xs text-gray-500">
+          This action requires the{" "}
+          <span className="font-mono font-semibold text-gray-700">exam_intelligence.cms</span>{" "}
+          permission. Contact your administrator to request access.
+        </p>
+        <div className="flex justify-end pt-3">
+          <button
+            type="button"
+            className="btn btn-primary text-sm"
+            disabled
+            aria-disabled="true"
+            data-testid="rar-submit-locked"
+          >
+            Apply action
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const cycleParams = getCycleParams();
+  const noScopeWarning = !hasExamScope &&
+    (actionType === "cycle_date_update" || actionType === "phase_date_update");
+
   return (
-    <form onSubmit={submit} className="mt-4 space-y-3" noValidate data-testid="apply-action-form">
-      <h4 className="text-sm font-semibold text-gray-900">Apply registry action</h4>
+    <div className="mt-6 rounded-2xl border border-border bg-white/60 px-5 py-4">
+      <form onSubmit={submit} className="space-y-3" noValidate data-testid="apply-action-form">
+        <h4 className="text-sm font-semibold text-gray-900">Apply registry action</h4>
 
-      {/* action_type */}
-      <div>
-        <label className="block text-xs text-gray-500 mb-1" htmlFor="rar-action-type">Action type *</label>
-        <select
-          id="rar-action-type"
-          value={actionType}
-          onChange={(e) => { setActionType(e.target.value); setExamCycleId(""); setExamPhaseId(""); setPolicyUpdateId(""); }}
-          className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
-          data-testid="rar-action-type"
-          required
-        >
-          <option value="">— choose action —</option>
-          {ACTION_TYPES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
-        </select>
-      </div>
+        <RegistryActionProvenance report={report} />
 
-      {/* FK pickers — shown based on action_type */}
-      {actionType === "cycle_date_update" && (
+        {/* action_type */}
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Exam cycle *</label>
-          <FkSelect
-            url={CYCLE_URL}
-            value={examCycleId}
-            onChange={setExamCycleId}
-            labelKey="cycle_name"
-            testId="rar-exam-cycle-id"
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="rar-action-type">Action type *</label>
+          <select
+            id="rar-action-type"
+            value={actionType}
+            onChange={(e) => { setActionType(e.target.value); resetActionState(); }}
+            className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+            data-testid="rar-action-type"
+            required
+          >
+            <option value="">— choose action —</option>
+            {ACTION_TYPES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+          </select>
+        </div>
+
+        {/* Null exam_id degrade warning */}
+        {noScopeWarning && (
+          <div
+            className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+            data-testid="rar-no-scope-warning"
+          >
+            Exam scope unavailable — all records shown. Verify your selection manually.
+          </div>
+        )}
+
+        {/* cycle_date_update: scoped cycle picker + guided date fields */}
+        {actionType === "cycle_date_update" && (
+          <>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Exam cycle *</label>
+              <FkSelect
+                url={CYCLE_URL}
+                params={cycleParams}
+                value={examCycleId}
+                onChange={setExamCycleId}
+                onRowChange={(row) => { setSelectedCycleRow(row); setCycleFields({}); }}
+                labelKey="cycle_name"
+                testId="rar-exam-cycle-id"
+              />
+            </div>
+            {selectedCycleRow && (
+              <div className="space-y-2 rounded-xl border border-border bg-white/40 px-4 py-3">
+                <p className="text-xs text-gray-500">
+                  Current status:{" "}
+                  <span className="font-mono font-semibold">{selectedCycleRow.status || "—"}</span>
+                </p>
+                {CYCLE_DATE_FIELDS.map(({ key, label }) => (
+                  <BeforeAfterDate
+                    key={key}
+                    fieldKey={key}
+                    label={label}
+                    current={selectedCycleRow[key] || ""}
+                    value={cycleFields[key] ?? ""}
+                    onChange={(val) => setCycleFields((prev) => ({ ...prev, [key]: val }))}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* phase_date_update: two-step — cycle picker → phase picker + guided date fields */}
+        {actionType === "phase_date_update" && (
+          <>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Step 1 — Exam cycle *</label>
+              <FkSelect
+                url={CYCLE_URL}
+                params={cycleParams}
+                value={phaseCycleId}
+                onChange={setPhaseCycleId}
+                onRowChange={(row) => { setPhaseCycleRow(row); setExamPhaseId(""); setSelectedPhaseRow(null); setPhaseFields({}); }}
+                labelKey="cycle_name"
+                testId="rar-phase-cycle-id"
+              />
+            </div>
+            {phaseCycleRow && (
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Step 2 — Exam phase *</label>
+                <FkSelect
+                  url={PHASE_URL}
+                  params={getPhaseParams()}
+                  value={examPhaseId}
+                  onChange={setExamPhaseId}
+                  onRowChange={(row) => { setSelectedPhaseRow(row); setPhaseFields({}); }}
+                  labelKey="phase_name"
+                  testId="rar-exam-phase-id"
+                />
+              </div>
+            )}
+            {selectedPhaseRow && (
+              <div className="space-y-2 rounded-xl border border-border bg-white/40 px-4 py-3">
+                <p className="text-xs text-gray-500">
+                  Current status:{" "}
+                  <span className="font-mono font-semibold">{selectedPhaseRow.status || "—"}</span>
+                </p>
+                {PHASE_DATE_FIELDS.map(({ key, label }) => (
+                  <BeforeAfterDate
+                    key={key}
+                    fieldKey={key}
+                    label={label}
+                    current={selectedPhaseRow[key] || ""}
+                    value={phaseFields[key] ?? ""}
+                    onChange={(val) => setPhaseFields((prev) => ({ ...prev, [key]: val }))}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* policy_update_edit: policy FK picker */}
+        {actionType === "policy_update_edit" && (
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Policy update *</label>
+            <FkSelect
+              url={POLICY_URL}
+              value={policyUpdateId}
+              onChange={setPolicyUpdateId}
+              labelKey="title"
+              testId="rar-policy-update-id"
+            />
+          </div>
+        )}
+
+        {/* Patch JSON — only for policy paths */}
+        {(actionType === "policy_update_create" || actionType === "policy_update_edit") && (
+          <div>
+            <label className="block text-xs text-gray-500 mb-1" htmlFor="rar-patch">
+              Patch (JSON object)
+            </label>
+            <textarea
+              id="rar-patch"
+              value={patch}
+              onChange={(e) => setPatch(e.target.value)}
+              rows={3}
+              className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-xs font-mono"
+              data-testid="rar-patch"
+            />
+          </div>
+        )}
+
+        {/* reason */}
+        <div>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="rar-reason">
+            Reason * (8–500 chars)
+          </label>
+          <textarea
+            id="rar-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={2}
+            className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+            data-testid="rar-reason"
+            required
           />
         </div>
-      )}
-      {actionType === "phase_date_update" && (
+
+        {/* notes */}
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Exam phase *</label>
-          <FkSelect
-            url={PHASE_URL}
-            value={examPhaseId}
-            onChange={setExamPhaseId}
-            labelKey="phase_name"
-            testId="rar-exam-phase-id"
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="rar-notes">
+            Notes (optional, ≤2000)
+          </label>
+          <textarea
+            id="rar-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
+            data-testid="rar-notes"
           />
         </div>
-      )}
-      {actionType === "policy_update_edit" && (
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">Policy update *</label>
-          <FkSelect
-            url={POLICY_URL}
-            value={policyUpdateId}
-            onChange={setPolicyUpdateId}
-            labelKey="title"
-            testId="rar-policy-update-id"
-          />
+
+        {error && (
+          <div
+            className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+            data-testid="rar-error"
+          >
+            {error}
+          </div>
+        )}
+
+        <div className="flex justify-end pt-1">
+          <button
+            type="submit"
+            className="btn btn-primary text-sm"
+            disabled={busy || !actionType}
+            data-testid="rar-submit"
+          >
+            {busy ? "Applying…" : "Apply action"}
+          </button>
         </div>
-      )}
-
-      {/* patch JSON */}
-      <div>
-        <label className="block text-xs text-gray-500 mb-1" htmlFor="rar-patch">
-          Patch (JSON object)
-        </label>
-        <textarea
-          id="rar-patch"
-          value={patch}
-          onChange={(e) => setPatch(e.target.value)}
-          rows={3}
-          className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-xs font-mono"
-          data-testid="rar-patch"
-        />
-      </div>
-
-      {/* reason */}
-      <div>
-        <label className="block text-xs text-gray-500 mb-1" htmlFor="rar-reason">
-          Reason * (8–500 chars)
-        </label>
-        <textarea
-          id="rar-reason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={2}
-          className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
-          data-testid="rar-reason"
-          required
-        />
-      </div>
-
-      {/* notes */}
-      <div>
-        <label className="block text-xs text-gray-500 mb-1" htmlFor="rar-notes">
-          Notes (optional, ≤2000)
-        </label>
-        <textarea
-          id="rar-notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={2}
-          className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm"
-          data-testid="rar-notes"
-        />
-      </div>
-
-      {error && (
-        <div
-          className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-          data-testid="rar-error"
-        >
-          {error}
-        </div>
-      )}
-
-      <div className="flex justify-end pt-1">
-        <button
-          type="submit"
-          className="btn btn-primary text-sm"
-          disabled={busy || !actionType}
-          data-testid="rar-submit"
-        >
-          {busy ? "Applying…" : "Apply action"}
-        </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
 
@@ -773,12 +1075,10 @@ function VerificationReportDetail({ reportId, onClose, onActionApplied }) {
             <RunResolverPanel report={report} onSuccess={onActionApplied} />
             <ConfirmProofPanel report={report} onSuccess={onActionApplied} />
             <OverrideConflictPanel report={report} onSuccess={onActionApplied} />
-            <div className="mt-6 rounded-2xl border border-border bg-white/60 px-5 py-4">
-              <ApplyRegistryActionPanel
-                reportId={reportId}
-                onSuccess={onActionApplied}
-              />
-            </div>
+            <ApplyRegistryActionPanel
+              report={report}
+              onSuccess={onActionApplied}
+            />
           </>
         )}
       </aside>
@@ -939,15 +1239,30 @@ function BulkToolbar({ selectedIds, onClear, onDryRun, dryRunResult, onApply, bu
 // before this component ever mounts, preventing the GET from leaking report
 // data to admins who lack exam_intelligence.cms.
 function VerificationReportsContent() {
+  const mountParams = new URLSearchParams(window.location.search);
+  const incomingSourceId = mountParams.get("source_id") || undefined;
+  const incomingStaleStatus = mountParams.get("staleness_status") || undefined;
+
+  const collectionParams =
+    incomingSourceId || incomingStaleStatus
+      ? Object.fromEntries(
+          [
+            incomingSourceId && ["source_id", incomingSourceId],
+            incomingStaleStatus && ["staleness_status", incomingStaleStatus],
+          ].filter(Boolean),
+        )
+      : undefined;
+
+  const collectionUrl = collectionParams
+    ? `/api/admin/verification-reports?${new URLSearchParams(collectionParams).toString()}`
+    : "/api/admin/verification-reports";
+
   const [selectedId, setSelectedId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [dryRunResult, setDryRunResult] = useState(null);
   const [bulkError, setBulkError] = useState(null);
   const [bulkReason, setBulkReason] = useState("");
-  const { items, status, refresh } = useApiCollection(
-    "/api/admin/verification-reports",
-    [],
-  );
+  const { items, status, refresh } = useApiCollection(collectionUrl, []);
   const { run: runBulk, busy: bulkBusy } = useApiAction();
 
   function toggleOne(id) {
@@ -1025,6 +1340,17 @@ function VerificationReportsContent() {
           Refresh
         </button>
       </div>
+
+      {collectionParams && (
+        <div
+          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-800"
+          data-testid="vr-active-filters"
+        >
+          Filtered by batch source
+          {incomingSourceId && <span className="font-mono ml-1">source_id={incomingSourceId}</span>}
+          {incomingStaleStatus && <span className="ml-1">· staleness_status={incomingStaleStatus}</span>}
+        </div>
+      )}
 
       <BulkToolbar
         selectedIds={selectedIds}

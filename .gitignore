@@ -54,3 +54,6 @@ yarn-error.log*
 graphify-out/
 e2e-auth-check.cjs
 test-results/
+.vercel
+.env*
+.claude/worktrees/

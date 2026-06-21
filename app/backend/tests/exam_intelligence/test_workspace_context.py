@@ -28,7 +28,14 @@ _BASE = "/api/admin/exam-intelligence"
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 EXAM = {"id": "exam-1", "slug": "ssc-cgl", "name": "SSC CGL", "exam_type": "recruitment", "is_active": True}
+EXAM_WITH_REFS = {
+    **EXAM,
+    "conducting_organization_id": "org-1",
+    "exam_family_id": "fam-1",
+}
 EXAM_2 = {"id": "exam-2", "slug": "ibps-po", "name": "IBPS PO", "exam_type": "recruitment", "is_active": True}
+ORGANIZATION = {"id": "org-1", "name": "Staff Selection Commission", "type": "central", "trust_tier": "verified"}
+FAMILY = {"id": "fam-1", "name": "SSC", "slug": "ssc"}
 
 CYCLES = [
     {"id": "cycle-2026", "exam_id": "exam-1", "year": 2026, "cycle_name": "2026", "status": "open"},
@@ -57,7 +64,7 @@ def _client(sb_factory):
     return TestClient(app, raise_server_exceptions=False)
 
 
-def _make_sb(exam=EXAM, cycles=None, phases=None, cycle_global=None):
+def _make_sb(exam=EXAM, cycles=None, phases=None, cycle_global=None, organization=ORGANIZATION, family=FAMILY):
     """Build a MagicMock supabase that responds to the workspace context queries."""
     if cycles is None:
         cycles = CYCLES
@@ -87,6 +94,10 @@ def _make_sb(exam=EXAM, cycles=None, phases=None, cycle_global=None):
                         res.data = cycles
                 elif name == "exam_phases":
                     res.data = phases
+                elif name == "organizations":
+                    res.data = [organization] if organization else []
+                elif name == "exam_families":
+                    res.data = [family] if family else []
                 else:
                     res.data = []
                 return res
@@ -137,6 +148,44 @@ class TestWorkspaceContextHappyPath:
         r = c.get(f"{_BASE}/workspace/exam-1/context")
         assert r.status_code == 200
         assert r.json()["readiness"] is None
+
+
+class TestWorkspaceContextResolvedObjects:
+    def test_includes_organization_when_exam_links_conducting_organization(self):
+        c = _client(_make_sb(exam=EXAM_WITH_REFS))
+        r = c.get(f"{_BASE}/workspace/exam-1/context")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["organization"] == ORGANIZATION
+        assert body["exam"]["id"] == "exam-1"
+        assert body["cycle"] is None
+        assert body["cycles"] == CYCLES
+        assert body["phases"] == PHASES
+        assert body["readiness"] is None
+
+    def test_includes_family_when_exam_links_exam_family(self):
+        c = _client(_make_sb(exam=EXAM_WITH_REFS))
+        r = c.get(f"{_BASE}/workspace/exam-1/context")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["family"] == FAMILY
+        assert body["exam"]["id"] == "exam-1"
+        assert body["cycle"] is None
+        assert body["cycles"] == CYCLES
+        assert body["phases"] == PHASES
+        assert body["readiness"] is None
+
+    def test_organization_null_when_no_organization_linked(self):
+        c = _client(_make_sb(exam={**EXAM, "exam_family_id": "fam-1"}))
+        r = c.get(f"{_BASE}/workspace/exam-1/context")
+        assert r.status_code == 200, r.text
+        assert r.json()["organization"] is None
+
+    def test_family_null_when_no_family_linked(self):
+        c = _client(_make_sb(exam={**EXAM, "conducting_organization_id": "org-1"}))
+        r = c.get(f"{_BASE}/workspace/exam-1/context")
+        assert r.status_code == 200, r.text
+        assert r.json()["family"] is None
 
 
 class TestWorkspaceContextWithCycleId:

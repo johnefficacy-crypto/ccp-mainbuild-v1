@@ -22,6 +22,7 @@ class _Query:
         self._pending_update: dict[str, Any] | None = None
         self._pending_upsert: Any = None
         self._on_conflict: list[str] | None = None
+        self._ignore_duplicates = False
 
     def select(self, *args, **kwargs):
         return self
@@ -68,8 +69,14 @@ class _Query:
         return self
 
     def or_(self, *args, **kwargs):
-        # No-op: SBStub doesn't filter on OR expressions; tests that need OR
-        # semantics should use a MagicMock instead.
+        # Faithfully model PostgREST `.or_("a.op.v,b.op.v")`: the row must
+        # satisfy at least ONE listed condition, and the group is ANDed with the
+        # other filters (and any other or_ groups). NULL handling matches
+        # PostgREST — `col.neq.x` excludes NULL, `col.is.null` includes it — so
+        # `.or_("col.is.null,col.neq.x")` keeps NULL rows and drops col==x.
+        if args and isinstance(args[0], str):
+            conds = [tuple(part.split(".", 2)) for part in args[0].split(",")]
+            self.filters.append(("__or__", "or", conds))
         return self
 
     def range(self, *args, **kwargs):
@@ -87,6 +94,7 @@ class _Query:
 
     def upsert(self, payload, on_conflict=None, **kwargs):
         self._pending_upsert = payload
+        self._ignore_duplicates = bool(kwargs.get("ignore_duplicates"))
         if on_conflict:
             self._on_conflict = [c.strip() for c in on_conflict.split(",")]
         return self
@@ -95,12 +103,58 @@ class _Query:
         self._pending_update = "__delete__"  # marker
         return self
 
+    @staticmethod
+    def _coerce(raw):
+        """Map PostgREST literal tokens to Python values."""
+        if raw == "null":
+            return None
+        if raw == "true":
+            return True
+        if raw == "false":
+            return False
+        return raw
+
+    def _or_cond_true(self, row, col, op, raw):
+        """Evaluate a single `col.op.value` condition with PostgREST NULL rules."""
+        cell = row.get(col)
+        if op == "is":
+            return cell is self._coerce(raw)
+        if op == "eq":
+            target = self._coerce(raw)
+            if target is None or isinstance(target, bool):
+                return cell is target
+            return str(cell) == str(target)
+        if op == "neq":
+            target = self._coerce(raw)
+            if cell is None:
+                return False  # NULL <> x is NULL → excluded, like PostgREST
+            if isinstance(target, bool):
+                return cell is not target
+            return str(cell) != str(target)
+        if op in ("gt", "gte", "lt", "lte"):
+            if cell is None:
+                return False
+            a, b = str(cell), str(raw)
+            return {"gt": a > b, "gte": a >= b, "lt": a < b, "lte": a <= b}[op]
+        if op in ("ilike", "like"):
+            if cell is None:
+                return False
+            import re
+            pattern = ".*".join(re.escape(p) for p in raw.split("%"))
+            flags = re.IGNORECASE if op == "ilike" else 0
+            return re.fullmatch(pattern, str(cell), flags) is not None
+        return True  # unknown operator: do not exclude
+
     def _matches(self, row):
         for key, op, val in self.filters:
+            if op == "or":
+                if not any(self._or_cond_true(row, c, o, v) for c, o, v in val):
+                    return False
+                continue
             cell = row.get(key)
             if op == "eq" and cell != val:
                 return False
-            if op == "neq" and cell == val:
+            if op == "neq" and (cell is None or cell == val):
                 return False
             if op == "is" and cell is not (None if val is None else val):
                 return False
@@ -148,7 +202,8 @@ class _Query:
                         match = existing
                         break
                 if match is not None:
-                    match.update(p)
+                    if not self._ignore_duplicates:
+                        match.update(p)
                     upserted.append(match)
                 else:
                     row = dict(p)
@@ -212,9 +267,384 @@ class SBStub:
             return _RpcCall(self._inc("community_resources", params.get("p_resource_id"), "report_count", params.get("p_delta", 0), floor_at_zero=True))
         if name == "apply_mock_mastery_delta":
             return _RpcCall(self._apply_mock_mastery_delta(params))
+        if name == "claim_mock_mastery_retry":
+            return _RpcCall(self._claim_mock_mastery_retry(params))
+        if name == "complete_mock_mastery_retry":
+            return _RpcCall(self._complete_mock_mastery_retry(params))
         if name == "update_pyq_question_review_atomic":
             return _RpcCall(self._update_pyq_question_review_atomic(params))
+        if name == "start_attempt_from_blueprint":
+            return _RpcCall(self._start_attempt_from_blueprint(params))
+        if name == "ensure_mock_correction_draft":
+            return _RpcCall(self._ensure_mock_correction_draft(params))
+        if name == "ensure_mock_correction_drafts":
+            return _RpcCall(self._ensure_mock_correction_drafts(params))
+        if name == "replace_manual_mock_correction_drafts":
+            return _RpcCall(self._replace_manual_mock_correction_drafts(params))
         return _RpcCall(None)
+
+
+    def _claim_mock_mastery_retry(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        import uuid as _uuid
+
+        attempt_id = params.get("p_attempt_id")
+        flag_state = params.get("p_flag_state")
+        lease_until = params.get("p_lease_until")
+        if flag_state not in {"shadow", "live"}:
+            raise RuntimeError("mastery retry flag_state must be shadow or live")
+        jobs = self.db.setdefault("mock_attempt_jobs", [])
+        for job in jobs:
+            if (
+                job.get("job_kind") == "mastery_retry"
+                and job.get("attempt_id") == attempt_id
+                and job.get("status") in {"pending", "running"}
+            ):
+                return [{"id": job.get("id"), "claimed": False}]
+        job = {
+            "id": str(_uuid.uuid4()),
+            "job_kind": "mastery_retry",
+            "attempt_id": attempt_id,
+            "mastery_flag_state": flag_state,
+            "scheduled_for": lease_until,
+            "attempts": 0,
+            "status": "running",
+            "last_error": None,
+        }
+        jobs.append(job)
+        return [{"id": job["id"], "claimed": True}]
+
+    def _complete_mock_mastery_retry(self, params: dict[str, Any]) -> None:
+        job_id = params.get("p_job_id")
+        for job in self.db.setdefault("mock_attempt_jobs", []):
+            if job.get("id") == job_id and job.get("job_kind") == "mastery_retry":
+                job.update({"status": "done", "last_error": None})
+                return None
+        return None
+
+    def _start_attempt_from_blueprint(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        """Emulate the atomic generated-attempt write RPC (migration 178).
+
+        Mirrors the PL/pgSQL transaction: insert blueprint (status 'draft'),
+        insert the owner-scoped attempt (template_id NULL, generated_blueprint_id
+        set, in_progress), freeze the N response rows, flip blueprint -> 'started'
+        — ALL OR NOTHING. Idempotent on (user, blueprint) via the in_progress
+        unique index: a second call with the same blueprint id returns the
+        existing attempt and never double-inserts responses.
+
+        Atomicity is testable: set ``sb._force_response_freeze_failure = True`` to
+        make the response-freeze step raise; because the emulation commits only at
+        the very end, NOTHING is persisted (full rollback).
+        """
+        import uuid as _uuid
+        from datetime import datetime, timezone
+
+        p_user = params.get("p_user")
+        p_exam = params.get("p_exam")
+        p_exam_phase = params.get("p_exam_phase")
+        p_blueprint = params.get("p_blueprint") or {}
+        p_template_snapshot = params.get("p_template_snapshot") or {}
+        p_response_rows = params.get("p_response_rows") or []
+        p_expires_at = params.get("p_expires_at")
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        blueprints = self.db.setdefault("mock_generated_blueprints", [])
+        attempts = self.db.setdefault("mock_attempts", [])
+        responses = self.db.setdefault("mock_attempt_responses", [])
+
+        bp_id = p_blueprint.get("id") or str(_uuid.uuid4())
+
+        # Idempotency: an in_progress attempt already backs this blueprint.
+        for a in attempts:
+            if (
+                a.get("user_id") == p_user
+                and a.get("generated_blueprint_id") == bp_id
+                and a.get("status") == "in_progress"
+            ):
+                for bp in blueprints:
+                    if bp.get("id") == bp_id:
+                        bp["status"] = "started"
+                        bp.setdefault("started_at", now_iso)
+                return [{"blueprint_id": bp_id, "attempt_id": a["id"]}]
+
+        # Atomic rollback hook — raise BEFORE committing anything.
+        if getattr(self, "_force_response_freeze_failure", False):
+            raise RuntimeError("forced response-freeze failure (atomicity test)")
+
+        # HARDENING (migration 179): a brand-new attempt must freeze >=1 response.
+        # Mirrors the PL/pgSQL guard; raising here models the full rollback.
+        if not p_response_rows:
+            raise RuntimeError(
+                "start_attempt_from_blueprint: refusing zero-response attempt"
+            )
+
+        # Build everything in locals; commit at the very end so a mid-build raise
+        # leaves the store untouched (models the single-transaction rollback).
+        existing_bp = next((bp for bp in blueprints if bp.get("id") == bp_id), None)
+        new_bp = None
+        if existing_bp is None:
+            new_bp = {
+                "id": bp_id,
+                "user_id": p_user,
+                "exam_id": p_exam,
+                "exam_phase_id": p_exam_phase,
+                "source": p_blueprint.get("source") or "exam_realistic",
+                "status": "draft",
+                "template_snapshot": p_blueprint.get("template_snapshot") or {},
+                "section_snapshot": p_blueprint.get("section_snapshot") or [],
+                "selector_snapshot": p_blueprint.get("selector_snapshot") or {},
+                "question_ids": list(p_blueprint.get("question_ids") or []),
+                "readiness_snapshot": p_blueprint.get("readiness_snapshot") or {},
+                "expires_at": p_expires_at,
+                "created_at": now_iso,
+            }
+
+        attempt_id = str(_uuid.uuid4())
+        attempt_row = {
+            "id": attempt_id,
+            "user_id": p_user,
+            "template_id": None,
+            "generated_blueprint_id": bp_id,
+            "template_snapshot": p_template_snapshot,
+            "status": "in_progress",
+            "started_at": now_iso,
+            "expires_at": p_expires_at,
+            "current_section_index": 0,
+            "section_locks_enabled": bool(
+                p_template_snapshot.get("section_locks_enabled", False)
+            ),
+        }
+        new_responses = [
+            {
+                "id": str(_uuid.uuid4()),
+                "attempt_id": attempt_id,
+                "question_id": r.get("question_id"),
+                "question_snapshot": r.get("question_snapshot") or {},
+                "is_visited": False,
+                "is_marked_for_review": False,
+                "client_seq": 0,
+            }
+            for r in p_response_rows
+        ]
+
+        # Commit.
+        target_bp = new_bp if new_bp is not None else existing_bp
+        if new_bp is not None:
+            blueprints.append(new_bp)
+        attempts.append(attempt_row)
+        responses.extend(new_responses)
+        target_bp["status"] = "started"
+        target_bp["started_at"] = now_iso
+
+        return [{"blueprint_id": bp_id, "attempt_id": attempt_id}]
+
+    def _ensure_mock_correction_draft(self, params: dict[str, Any]) -> dict[str, Any] | None:
+        """Emulate ensure_mock_correction_draft RPC (migration 182).
+
+        Ownership + source_type guard (D2): raises if the mock is not owned by
+        p_user_id or is not a platform_attempt.  Idempotent: inserts only when
+        no drafted row with the same (mock_test_id, user_id, category, topic)
+        exists; otherwise returns the existing row.
+        """
+        mock_test_id = params.get("p_mock_test_id")
+        user_id = params.get("p_user_id")
+        category = params.get("p_category")
+        topic = params.get("p_topic") or None
+        title = params.get("p_title") or ""
+        source_questions = params.get("p_source_questions") or []
+
+        mock_rows = [
+            r for r in self.db.get("mock_tests", [])
+            if r.get("id") == mock_test_id
+            and r.get("user_id") == user_id
+            and r.get("source_type") == "platform_attempt"
+        ]
+        if not mock_rows:
+            raise RuntimeError("platform_attempt mock not found for user")
+
+        store = self.db.setdefault("mock_correction_tasks", [])
+
+        for row in store:
+            if (
+                row.get("mock_test_id") == mock_test_id
+                and row.get("user_id") == user_id
+                and row.get("category") == category
+                and row.get("state") == "drafted"
+                and (row.get("topic") or None) == topic
+            ):
+                return row
+
+        new_row: dict[str, Any] = {
+            "id": str(uuid.uuid4()),
+            "mock_test_id": mock_test_id,
+            "user_id": user_id,
+            "category": category,
+            "topic": topic,
+            "title": title,
+            "source_questions": source_questions,
+            "state": "drafted",
+            "study_task_id": None,
+            "created_at": None,
+            "applied_at": None,
+        }
+        store.append(new_row)
+        return new_row
+
+    def _ensure_mock_correction_drafts(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        """Emulate ensure_mock_correction_drafts RPC (migration 182).
+
+        Atomic bulk upsert (D1 fix): all drafts are processed in one call.
+        Ownership + source_type guard (D2): raises if mock is not owned by
+        p_user_id or is not a platform_attempt.  ON CONFLICT DO NOTHING per key.
+        """
+        mock_test_id = params.get("p_mock_test_id")
+        user_id = params.get("p_user_id")
+        drafts: list[dict[str, Any]] = params.get("p_drafts") or []
+
+        mock_rows = [
+            r for r in self.db.get("mock_tests", [])
+            if r.get("id") == mock_test_id
+            and r.get("user_id") == user_id
+            and r.get("source_type") == "platform_attempt"
+        ]
+        if not mock_rows:
+            raise RuntimeError("platform_attempt mock not found for user")
+
+        store = self.db.setdefault("mock_correction_tasks", [])
+
+        for d in drafts:
+            cat = d.get("category")
+            topic = d.get("topic") or None
+            title = d.get("title") or ""
+            src_qs = d.get("source_questions") or []
+
+            existing = any(
+                row.get("mock_test_id") == mock_test_id
+                and row.get("user_id") == user_id
+                and row.get("category") == cat
+                and row.get("state") == "drafted"
+                and (row.get("topic") or None) == topic
+                for row in store
+            )
+            if not existing:
+                store.append({
+                    "id": str(uuid.uuid4()),
+                    "mock_test_id": mock_test_id,
+                    "user_id": user_id,
+                    "category": cat,
+                    "topic": topic,
+                    "title": title,
+                    "source_questions": src_qs,
+                    "state": "drafted",
+                    "study_task_id": None,
+                    "created_at": None,
+                    "applied_at": None,
+                })
+
+        return [
+            r for r in store
+            if r.get("mock_test_id") == mock_test_id
+            and r.get("user_id") == user_id
+            and r.get("state") == "drafted"
+        ]
+
+    def _replace_manual_mock_correction_drafts(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        """Emulate replace_manual_mock_correction_drafts RPC (migration 182).
+
+        Single atomic replacement: upsert desired drafted rows, delete obsolete
+        drafted rows (preserving applied/dismissed), update review_state.
+        Mirrors the PL/pgSQL transaction: raises on mock-not-found or
+        platform_attempt; empty p_drafts deletes all and sets 'reviewed'.
+        """
+        mock_test_id = params.get("p_mock_test_id")
+        user_id = params.get("p_user_id")
+        drafts: list[dict[str, Any]] = params.get("p_drafts") or []
+
+        mock_rows = [
+            r for r in self.db.get("mock_tests", [])
+            if r.get("id") == mock_test_id and r.get("user_id") == user_id
+        ]
+        if not mock_rows:
+            raise RuntimeError("mock not found")
+
+        mock = mock_rows[0]
+        if mock.get("source_type") == "platform_attempt":
+            raise RuntimeError("PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN")
+
+        store = self.db.setdefault("mock_correction_tasks", [])
+
+        if not drafts:
+            self.db["mock_correction_tasks"] = [
+                r for r in store
+                if not (
+                    r.get("mock_test_id") == mock_test_id
+                    and r.get("user_id") == user_id
+                    and r.get("state") == "drafted"
+                )
+            ]
+            mock["review_state"] = "reviewed"
+            return []
+
+        # UPSERT: update existing drafted rows or insert new ones.
+        for d in drafts:
+            cat = d.get("category")
+            topic = d.get("topic") or None
+            title = d.get("title") or ""
+            src_qs = d.get("source_questions") or []
+
+            existing = None
+            for row in self.db.get("mock_correction_tasks", []):
+                if (
+                    row.get("mock_test_id") == mock_test_id
+                    and row.get("user_id") == user_id
+                    and row.get("state") == "drafted"
+                    and row.get("category") == cat
+                    and (row.get("topic") or None) == topic
+                ):
+                    existing = row
+                    break
+
+            if existing is not None:
+                existing["state"] = "drafted"
+                existing["title"] = title
+                existing["source_questions"] = src_qs
+            else:
+                self.db["mock_correction_tasks"].append({
+                    "id": str(uuid.uuid4()),
+                    "mock_test_id": mock_test_id,
+                    "user_id": user_id,
+                    "category": cat,
+                    "topic": topic,
+                    "title": title,
+                    "source_questions": src_qs,
+                    "state": "drafted",
+                    "study_task_id": None,
+                    "created_at": None,
+                    "applied_at": None,
+                })
+
+        # DELETE obsolete drafted rows not in the desired set.
+        desired_keys = {
+            (d.get("category"), d.get("topic") or None)
+            for d in drafts
+        }
+        self.db["mock_correction_tasks"] = [
+            r for r in self.db["mock_correction_tasks"]
+            if not (
+                r.get("mock_test_id") == mock_test_id
+                and r.get("user_id") == user_id
+                and r.get("state") == "drafted"
+                and (r.get("category"), r.get("topic") or None) not in desired_keys
+            )
+        ]
+
+        mock["review_state"] = "correction_drafted"
+
+        return [
+            r for r in self.db.get("mock_correction_tasks", [])
+            if r.get("mock_test_id") == mock_test_id
+            and r.get("user_id") == user_id
+            and r.get("state") == "drafted"
+        ]
 
     def _update_pyq_question_review_atomic(self, params: dict[str, Any]) -> dict[str, Any] | None:
         """Emulate the atomic question-review cascade RPC (migration 151)."""

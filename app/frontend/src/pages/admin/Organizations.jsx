@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Building2, History, Pencil, Plus, Search, ShieldCheck, X } from "lucide-react";
 import OrganizationEditPanel from "../../features/admin/organizations/OrganizationEditPanel";
 import { api } from "../../lib/api";
@@ -8,6 +8,120 @@ import useAdminAction from "../../features/admin/shared/useAdminAction";
 import useApiAction from "../../lib/hooks/useApiAction";
 import AuditTimelineDrawer from "../../features/admin/shared/AuditTimelineDrawer";
 import { adminTrustService } from "../../services/adminTrustService";
+
+const REASON_MIN = 8;
+const REASON_MAX = 500;
+
+function VerifyDialog({ org, onClose, onVerified }) {
+  const [reason, setReason] = useState("");
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const { run, busy } = useApiAction();
+  const panelRef = useRef(null);
+  const closeRef = useRef(null);
+  useFocusTrap({ active: true, containerRef: panelRef, onEscape: onClose, initialFocusRef: closeRef });
+
+  const trimmed = reason.trim();
+  const reasonOk = trimmed.length >= REASON_MIN && trimmed.length <= REASON_MAX;
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!reasonOk) return;
+    setError(null);
+    const res = await run({
+      action: () => api.post(`/api/admin/organizations/${org.id}/verify`, { reason: trimmed }),
+      errorMessage: "Verification failed",
+    });
+    if (res.ok) {
+      setResult(res.data);
+      onVerified();
+    } else if (!res.cancelled) {
+      setError(res.error?.message || "Verification failed");
+    }
+  }
+
+  const domain = org.official_domain || org.website_url || org.official_website;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="verify-dialog-title"
+        className="relative w-full max-w-md rounded-2xl border border-border bg-[#FBF6EF] p-6 shadow-xl">
+        <div className="flex items-center justify-between">
+          <h2 id="verify-dialog-title" className="font-heading text-xl">Verify organization</h2>
+          <button ref={closeRef} className="btn btn-ghost h-9 w-9 p-0" onClick={onClose} aria-label="Close"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div className="mt-3 rounded-xl border border-border bg-white/60 p-3 text-sm">
+          <div className="font-medium">{org.name}</div>
+          {domain && <div className="mt-0.5 text-xs text-muted-foreground break-all">{domain}</div>}
+        </div>
+
+        {!result ? (
+          <form onSubmit={submit} className="mt-4 space-y-4" noValidate>
+            <div>
+              <label htmlFor="verify-reason" className="mb-1 block text-xs font-medium text-muted-foreground">
+                Reason <span className="text-destructive">*</span>
+                <span className="ml-1 text-muted-foreground/60">({REASON_MIN}–{REASON_MAX} chars)</span>
+              </label>
+              <textarea
+                id="verify-reason"
+                rows={3}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                maxLength={REASON_MAX}
+                placeholder="e.g. Verified via official GOI portal — domain matches registered website"
+                className="w-full rounded-xl border border-border bg-white/80 px-3 py-2 text-sm resize-none"
+                data-testid="verify-reason-input"
+              />
+              <div className="mt-0.5 text-right text-[11px] text-muted-foreground">{trimmed.length}/{REASON_MAX}</div>
+            </div>
+            {error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</div>}
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn btn-ghost text-xs" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn btn-primary text-xs" disabled={!reasonOk || busy} data-testid="verify-confirm-btn">
+                {busy ? "Verifying…" : "Confirm verify"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800 font-medium">
+              Organization verified
+            </div>
+            {result.checks?.length > 0 && (
+              <div>
+                <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">URL checks passed</div>
+                <ul className="space-y-0.5">
+                  {result.checks.map((c, i) => <li key={i} className="text-xs text-green-700">✓ {c}</li>)}
+                </ul>
+              </div>
+            )}
+            {result.warnings?.length > 0 && (
+              <div>
+                <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">Warnings</div>
+                <ul className="space-y-0.5">
+                  {result.warnings.map((w, i) => <li key={i} className="text-xs text-amber-700">⚠ {w}</li>)}
+                </ul>
+              </div>
+            )}
+            {result.errors?.length > 0 && (
+              <div>
+                <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">Errors</div>
+                <ul className="space-y-0.5">
+                  {result.errors.map((err, i) => <li key={i} className="text-xs text-destructive">✗ {err}</li>)}
+                </ul>
+              </div>
+            )}
+            <div className="flex justify-end">
+              <button className="btn btn-ghost text-xs" onClick={onClose}>Close</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function OrganizationDrawer({ org, onClose, onVerify, onSave, onHistory, busyKey }) {
   const panelRef = useRef(null);
@@ -46,7 +160,7 @@ function OrganizationDrawer({ org, onClose, onVerify, onSave, onHistory, busyKey
           <h3 className="font-semibold">Actions</h3>
           <div className="mt-3">
             <RowActions groupLabel={`Actions for ${org.name}`} actions={[
-              { label: "Verify", ariaLabel: `Verify organization ${org.name}`, onClick: () => onVerify(org.id, org.name), disabled: busyKey === `verify-${org.id}` },
+              { label: "Verify", ariaLabel: `Verify organization ${org.name}`, onClick: () => onVerify(org) },
               { label: "History", ariaLabel: `View history for ${org.name}`, onClick: () => onHistory(org) },
             ]} />
           </div>
@@ -169,15 +283,16 @@ export default function AdminOrganizations() {
   const [error, setError] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createWarnings, setCreateWarnings] = useState(null);
+  const [verifyTarget, setVerifyTarget] = useState(null);
   const { runAction, busyKey, error: actionError } = useAdminAction();
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true); setError(null);
     try { const d = await api.get("/api/admin/organizations"); setItems(d.items || []); } catch (e) { setError(e); } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, []);
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const verify = async (id, name) => runAction({ key: `verify-${id}`, confirm: `Verify ${name}?`, successMessage: `${name} verified`, action: async () => { await api.post(`/api/admin/organizations/${id}/verify`, {}); await load(); } });
+  const verify = useCallback((org) => setVerifyTarget(org), []);
   const save = async (id, payload) => runAction({ key: `save-${id}`, successMessage: "Organization saved", action: async () => { await api.put(`/api/admin/organizations/${id}`, payload || {}); await load(); } });
   const showHistory = async (org) => { const d = await adminTrustService.organizationAudit(org.id); setAuditItems(d.items || []); setAuditTarget(org); };
 
@@ -257,13 +372,20 @@ export default function AdminOrganizations() {
               <div className="mt-4 flex flex-wrap justify-end gap-2">
                 <button className="btn btn-ghost text-xs" onClick={() => setSelected(org)}><Pencil className="h-3.5 w-3.5" /> Edit</button>
                 <button className="btn btn-ghost text-xs" onClick={() => showHistory(org)}><History className="h-3.5 w-3.5" /> History</button>
-                <button className="btn btn-primary text-xs" disabled={busyKey === `verify-${org.id}`} onClick={() => verify(org.id, org.name)}><ShieldCheck className="h-3.5 w-3.5" /> Verify</button>
+                <button className="btn btn-primary text-xs" onClick={() => verify(org)}><ShieldCheck className="h-3.5 w-3.5" /> Verify</button>
               </div>
             </article>
           ))}
         </div>
       ) : null}
       <OrganizationDrawer org={selected} onClose={() => setSelected(null)} onVerify={verify} onSave={save} onHistory={showHistory} busyKey={busyKey} />
+      {verifyTarget && (
+        <VerifyDialog
+          org={verifyTarget}
+          onClose={() => setVerifyTarget(null)}
+          onVerified={() => { load(); }}
+        />
+      )}
       <AuditTimelineDrawer open={!!auditTarget} title={auditTarget?.name || "Organization"} items={auditItems} onClose={() => setAuditTarget(null)} />
       {showCreate && (
         <NewOrgModal
