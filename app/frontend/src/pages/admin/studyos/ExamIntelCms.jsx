@@ -21,6 +21,33 @@ import {
   IS_ACTIVE_HELPER,
   LifecycleLegend,
 } from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
+import { humanizeToken } from "../../../features/admin/exam-intelligence/operatorChrome";
+
+/**
+ * Operator-safe cell value for CMS table columns.
+ *
+ * Applies humanizeToken (which truncates UUID-shaped strings to first 8 chars +
+ * "…") so that raw UUIDs never appear verbatim in the table.  Non-UUID values
+ * (slugs, names, statuses) are passed through unchanged, capped at 60 chars,
+ * so existing display copy is preserved without unintended capitalisation.
+ *
+ * - null/undefined → "—"
+ * - boolean        → "true" / "false"
+ * - UUID string    → humanizeToken(value)  e.g. "550e8400…"
+ * - Other string   → value.slice(0, 60)
+ */
+function renderCellValue(value) {
+  if (value == null) return "—";
+  if (typeof value === "boolean") return String(value);
+  const s = String(value);
+  const humanized = humanizeToken(s);
+  // humanizeToken truncates UUID-shaped values to "${first8}…".
+  // For non-UUID strings it would capitalise and replace underscores — we do
+  // NOT want that for slug/name/status columns. Use humanized only when it
+  // ends with "…", which is the UUID-truncation signal.
+  if (humanized.endsWith("…")) return humanized;
+  return s.slice(0, 60);
+}
 
 function OrgRefSelect({ value, onChange, testId }) {
   const [orgs, setOrgs] = useState([]);
@@ -1238,14 +1265,14 @@ export default function AdminExamIntelCms() {
               </td></tr>
             ) : items.items.map((r) => (
               <tr key={r.id} className="border-t border-border/40">
-                <td className="p-2 font-mono">{r.id?.slice(0, 8)}…</td>
+                <td className="p-2 font-mono">{renderCellValue(r.id)}</td>
                 {cfg.columns.map((c) => (
                   <td key={c} className="p-2">
                     {r[c] == null
                     ? (entity === "exams" && c === "management_mode"
                       ? <span className="text-muted-foreground italic">{BUSINESS_PRIORITY_LABELS.null.label}</span>
                       : "—")
-                    : typeof r[c] === "boolean" ? String(r[c]) : String(r[c]).slice(0, 60)}
+                    : renderCellValue(r[c])}
                   </td>
                 ))}
                 {isEditable ? (

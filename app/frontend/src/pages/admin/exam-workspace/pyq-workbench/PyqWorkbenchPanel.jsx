@@ -5,6 +5,12 @@ import BulkImportModal from "./bulk-import/BulkImportModal";
 
 const PyqPaperWorkspace = lazy(() => import("../../studyos/PyqPaperWorkspace"));
 
+const TRUST_LABEL = {
+  verified: "Verified",
+  rejected: "Rejected",
+  pending: "Pending",
+};
+
 export default function PyqWorkbenchPanel() {
   const { exam, cycle } = useExamWorkspace();
   const examId = exam?.id;
@@ -17,30 +23,21 @@ export default function PyqWorkbenchPanel() {
 
   const [showBulkImport, setShowBulkImport] = useState(false);
 
-  function groupPapers() {
-    if (cycleId) return null; // flat list when cycle is set
-    const groups = {};
-    for (const p of papers) {
-      const key = p.exam_cycle_id || "—";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(p);
-    }
-    return groups;
-  }
-
-  function paperLabel(p) {
-    return [p.year, p.paper_code, p.shift].filter(Boolean).join(" · ") || p.id;
-  }
-
-  const groups = groupPapers();
-
   return (
     <div className="flex flex-col h-full" data-testid="pyq-workbench-panel">
-      {/* Paper picker bar */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 bg-white flex-shrink-0">
-        <label className="text-sm font-medium text-gray-700 whitespace-nowrap" htmlFor="pyq-paper-select">
-          Paper:
-        </label>
+      {/* Paper overview table */}
+      <div className="px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700">PYQ Papers</span>
+          <button
+            type="button"
+            onClick={() => setShowBulkImport(true)}
+            className="text-sm px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 whitespace-nowrap flex-shrink-0"
+            data-testid="bulk-import-btn"
+          >
+            Bulk import questions
+          </button>
+        </div>
         {loading && <span className="text-sm text-gray-400">Loading papers…</span>}
         {error && <span className="text-sm text-rose-600" data-testid="pyq-papers-error">{error}</span>}
         {!loading && !error && papers.length === 0 && (
@@ -49,35 +46,46 @@ export default function PyqWorkbenchPanel() {
           </span>
         )}
         {!loading && papers.length > 0 && (
-          <select
-            id="pyq-paper-select"
-            data-testid="pyq-paper-select"
-            value={selectedPaperId || ""}
-            onChange={(e) => setSelectedPaperId(e.target.value || null)}
-            className="text-sm border border-gray-300 rounded px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          <table
+            className="w-full text-sm border-collapse"
+            data-testid="pyq-paper-table"
           >
-            <option value="">— select a paper —</option>
-            {groups
-              ? Object.entries(groups).map(([cycleKey, ps]) => (
-                  <optgroup key={cycleKey} label={`Cycle: ${cycleKey}`}>
-                    {ps.map((p) => (
-                      <option key={p.id} value={p.id}>{paperLabel(p)}</option>
-                    ))}
-                  </optgroup>
-                ))
-              : papers.map((p) => (
-                  <option key={p.id} value={p.id}>{paperLabel(p)}</option>
-                ))}
-          </select>
+            <thead>
+              <tr className="text-left text-xs text-gray-500 border-b border-gray-200">
+                <th className="pb-1 pr-4 font-medium">Year</th>
+                <th className="pb-1 pr-4 font-medium">Section</th>
+                <th className="pb-1 pr-4 font-medium">Questions</th>
+                <th className="pb-1 font-medium">Readiness</th>
+              </tr>
+            </thead>
+            <tbody>
+              {papers.map((p) => {
+                const isSelected = p.id === selectedPaperId;
+                const expectedCount = p.metadata?.expected_question_count ?? "—";
+                const readiness = TRUST_LABEL[p.trust_status] ?? p.trust_status ?? "—";
+                const section = [p.paper_code, p.shift].filter(Boolean).join(" · ") || "—";
+                return (
+                  <tr
+                    key={p.id}
+                    data-testid={`pyq-paper-row-${p.id}`}
+                    onClick={() => setSelectedPaperId(p.id)}
+                    style={{
+                      cursor: "pointer",
+                      fontWeight: isSelected ? "bold" : "normal",
+                      background: isSelected ? "#eef2ff" : "transparent",
+                    }}
+                    className="border-b border-gray-100 hover:bg-indigo-50 transition-colors"
+                  >
+                    <td className="py-1.5 pr-4">{p.year ?? "—"}</td>
+                    <td className="py-1.5 pr-4">{section}</td>
+                    <td className="py-1.5 pr-4">{expectedCount}</td>
+                    <td className="py-1.5">{readiness}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
-        <button
-          type="button"
-          onClick={() => setShowBulkImport(true)}
-          className="ml-auto text-sm px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 whitespace-nowrap flex-shrink-0"
-          data-testid="bulk-import-btn"
-        >
-          Bulk import questions
-        </button>
       </div>
 
       {/* Workspace area */}

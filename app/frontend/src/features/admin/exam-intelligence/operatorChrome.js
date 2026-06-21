@@ -7,13 +7,21 @@
  * endpoint, or status-logic change. Mono font stays reserved for IDs/codes.
  */
 
-/** Turn a raw token (snake_case / dotted event key) into a safe human label.
- *  Never returns raw snake_case. Empty/nullish → "". */
+const UUID_TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Turn a raw token (snake_case / dotted event key, or UUID) into a safe human
+ *  label. UUID-shaped strings are truncated to first 8 chars + "…" so they are
+ *  recognisable to operators without exposing the full identifier. Never returns
+ *  raw snake_case or a full UUID. Empty/nullish → "". */
 export function humanizeToken(token) {
   if (token == null) return "";
-  const s = String(token).replace(/[._]+/g, " ").trim();
+  const s = String(token).trim();
   if (!s) return "";
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  // Truncate UUID-shaped values — never render a full UUID verbatim.
+  if (UUID_TOKEN_RE.test(s)) return s.slice(0, 8) + "…";
+  const readable = s.replace(/[._]+/g, " ").trim();
+  if (!readable) return "";
+  return readable.charAt(0).toUpperCase() + readable.slice(1);
 }
 
 /** Friendly relative date from an ISO timestamp; older dates fall back to a
@@ -34,15 +42,13 @@ export function relativeDate(iso) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /** Operator-safe actor label. Emails and human names pass through; a UUID-shaped
  *  actor id becomes "Administrator"; empty/"system" becomes "System". Never
  *  renders a raw UUID. */
 export function formatOperatorActor(value) {
   const v = value == null ? "" : String(value).trim();
   if (!v || v.toLowerCase() === "system") return "System";
-  if (UUID_RE.test(v)) return "Administrator";
+  if (UUID_TOKEN_RE.test(v)) return "Administrator";
   return v;
 }
 
