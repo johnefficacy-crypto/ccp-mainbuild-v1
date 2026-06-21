@@ -26,28 +26,34 @@ function wrap() {
   );
 }
 
-// ── 4.6F: exam-truth lane chips point operators at the console ──────────────
+// ── I7 / §4.4: exam-truth lane removed from KG landing ──────────────────────
 
-test("exam-truth lane's first chip is 'Exam Governance Console' routing to /console", async () => {
+test("exam-truth lane card is not rendered", async () => {
   wrap();
   await waitFor(() => expect(api.get).toHaveBeenCalled());
-  const console = screen.getByText("Exam Governance Console");
-  expect(console.closest("a").getAttribute("href")).toBe("/admin/exam-intelligence/console");
+  expect(screen.queryByText("Exam truth & planner readiness")).toBeNull();
 });
 
-test("exam-truth lane chips include Exam Registry and Create exam", async () => {
+test("landing copy describes three lanes, not four", async () => {
   wrap();
   await waitFor(() => expect(api.get).toHaveBeenCalled());
-  expect(screen.getByText("Exam Registry").closest("a").getAttribute("href")).toBe(
-    "/admin/exam-intelligence",
-  );
-  expect(screen.getByText("Create exam").closest("a").getAttribute("href")).toBe(
-    "/admin/exam-intelligence/new",
-  );
+  expect(screen.getByText(/three lanes/i)).toBeInTheDocument();
+  expect(screen.queryByText(/four lanes/i)).toBeNull();
 });
 
-test("'CMS / PYQ' is no longer a primary exam-truth chip", async () => {
+test("exactly three lane cards are rendered", async () => {
   wrap();
   await waitFor(() => expect(api.get).toHaveBeenCalled());
-  expect(screen.queryByText("CMS / PYQ")).toBeNull();
+  expect(screen.getByText("User eligibility truth")).toBeInTheDocument();
+  expect(screen.getByText("Official-source trust & change propagation")).toBeInTheDocument();
+  expect(screen.getByText("AI + personalization guardrails")).toBeInTheDocument();
+  expect(screen.queryByText("Exam truth & planner readiness")).toBeNull();
+});
+
+test("exam-governance links are not present on the KG landing page", async () => {
+  wrap();
+  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  expect(screen.queryByText("Exam Governance Console")).toBeNull();
+  expect(screen.queryByText("Exam Registry")).toBeNull();
+  expect(screen.queryByText("Create exam")).toBeNull();
 });

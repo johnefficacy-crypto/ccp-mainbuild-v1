@@ -1,25 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bot, ClipboardCheck, GraduationCap, ShieldCheck } from "lucide-react";
+import { Bot, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import { humanizeToken, relativeDate, formatOperatorActor, formatAuditNote } from "../../features/admin/exam-intelligence/operatorChrome";
 
-// TODO PR3-BE-enh: add per-lane aggregate counts for "Exam truth & planner
-// readiness" and "AI + personalization guardrails" lanes — no kg metrics are
-// available from the overview endpoint for those two lanes yet.
-
 const LANES = [
-  {
-    label: "Exam truth & planner readiness",
-    icon: GraduationCap,
-    description: "Master exam catalogue, guided exam setup, add-cycle wizard, workspace, and CMS / PYQ paper management.",
-    links: [
-      { to: "/admin/exam-intelligence/console", label: "Exam Governance Console" },
-      { to: "/admin/exam-intelligence", label: "Exam Registry" },
-      { to: "/admin/exam-intelligence/new", label: "Create exam" },
-    ],
-    metricKey: null,
-  },
   {
     label: "User eligibility truth",
     icon: ShieldCheck,
@@ -134,7 +119,7 @@ export default function AdminKnowledgeGovernance() {
             <div className="lbl">Admin · Knowledge Governance</div>
             <h2 className="oc-title disp" style={{ fontSize: 22, marginTop: 4 }}>Knowledge Governance</h2>
             <div className="anno" style={{ marginTop: 4 }}>
-              Four lanes — exam truth, eligibility truth, official-source trust, and AI guardrails.
+              Three lanes — eligibility truth, official-source trust, and AI guardrails.
             </div>
           </div>
           <span className="scrn-tag">knowledge governance</span>
