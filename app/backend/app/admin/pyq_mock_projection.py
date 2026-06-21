@@ -139,7 +139,9 @@ def _check_question_eligibility(
         return False, f"not_exactly_one_correct:{len(correct_options)}"
 
     verified_primary = [
-        t for t in primary_tags if t.get("reviewer_status") == _VERIFIED_TAG
+        t for t in primary_tags
+        if t.get("reviewer_status") == _VERIFIED_TAG
+        and t.get("tag_role") == _PRIMARY_TAG_ROLE
     ]
     if len(verified_primary) != 1:
         return False, f"not_exactly_one_verified_primary_tag:{len(verified_primary)}"

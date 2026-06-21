@@ -153,8 +153,6 @@ begin
   declare
       -- Source rows
       v_q          record;     -- pyq_questions + paper join
-      v_options    record[];   -- pyq_options for this question
-      v_opt        record;
       v_primary_tag record;    -- exactly-one verified primary topic tag
       v_topic      record;     -- topic row (for subject_id)
 
