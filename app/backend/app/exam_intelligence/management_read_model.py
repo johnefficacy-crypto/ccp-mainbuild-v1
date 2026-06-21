@@ -31,8 +31,14 @@ _EXAM_COLS = (
     "id, slug, name, exam_type, is_active, exam_family_id, "
     "management_mode, cadence, conducting_organization_id"
 )
-_CYCLE_COLS = "id, exam_id, name, year, status, created_at"
-_PHASE_COLS = "id, exam_id, exam_cycle_id, name, phase_slug, phase_order, start_date, end_date"
+# Real DB column names — PostgREST returns 42703 if these are wrong.
+# exam_cycles: cycle_name (not name), year, status
+# exam_phases: phase_name (not name), phase_start/phase_end (not start_date/end_date), status
+_CYCLE_COLS = "id, exam_id, cycle_name, year, status, created_at"
+_PHASE_COLS = (
+    "id, exam_id, exam_cycle_id, phase_name, phase_slug, phase_order, "
+    "phase_start, phase_end, status"
+)
 
 
 def _safe(call, default=None):
@@ -75,10 +81,11 @@ def _format_phase(p: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": p.get("id"),
         "slug": p.get("phase_slug"),
-        "label": p.get("name"),
+        "label": p.get("phase_name"),       # DB: phase_name → API: label
         "phase_order": p.get("phase_order"),
-        "start_date": p.get("start_date"),
-        "end_date": p.get("end_date"),
+        "start_date": p.get("phase_start"),  # DB: phase_start → API: start_date
+        "end_date": p.get("phase_end"),      # DB: phase_end   → API: end_date
+        "status": p.get("status"),
     }
 
 
@@ -89,7 +96,7 @@ def _format_cycle(c: dict[str, Any], phases: list[dict[str, Any]]) -> dict[str, 
     )
     return {
         "id": c.get("id"),
-        "name": c.get("name"),
+        "name": c.get("cycle_name"),   # DB: cycle_name → API: name
         "year": c.get("year"),
         "status": c.get("status"),
         "phases": sorted_phases,
@@ -198,6 +205,13 @@ def list_management_exams(
             continue
         row["current_cycle"] = _format_cycle(cur, phases_by_cycle.get(cur.get("id", ""), []))
 
+    # Family options for the front-door dropdown — derived from the full candidate
+    # set (before workflow filter and pagination) so the list stays complete.
+    family_options = sorted(
+        [{"id": fid, "name": family_names[fid]} for fid in family_ids if fid in family_names],
+        key=lambda f: (f["name"] or "").lower(),
+    )
+
     # Workflow filter → sort → paginate
     rows = _wq.apply_workflow(rows, workflow)
     rows = _wq.sort_rows(rows, sort)
@@ -210,6 +224,7 @@ def list_management_exams(
         "limit": limit,
         "offset": offset,
         "has_next": offset + len(page) < total_count,
+        "family_options": family_options,
     }
 
 

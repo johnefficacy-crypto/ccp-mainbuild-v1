@@ -248,12 +248,12 @@ describe("ExamWorkspace shell", () => {
       <MemoryRouter initialEntries={["/admin/exam-intelligence/exams/exam-1/add-cycle"]}>
         <Routes>
           <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AddCycleRedirect />} />
-          <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<LocationCapture />} />
+          <Route path="/admin/exam-intelligence/exams/:exam_id" element={<LocationCapture />} />
         </Routes>
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/admin/exam-intelligence/workspace/exam-1?tab=setup&action=add-cycle"));
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/admin/exam-intelligence/exams/exam-1?tab=setup&action=add-cycle"));
   });
 
 

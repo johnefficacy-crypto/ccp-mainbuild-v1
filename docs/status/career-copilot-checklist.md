@@ -181,7 +181,7 @@ Full decision record: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisi
 | H1 — syllabus/propose linked-document E2E | **CODE-FIXED, VALIDATION PENDING** | operator E2E test on redeploy |
 | IA design-lock document | **MERGED / CODE PRESENT — PR #752** | `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` merged. I8 design gate: satisfied. Next implementation prerequisite: backend management read model (code-fixed, see below). I8-A/B/C: serial, single owner. |
 | I6 cycle-setup gate document | **NOT STARTED** | write after IA lock; gates I9 implementation |
-| I8-A/B/C — Exam Management consolidation | **GATED** | I8 design gate: satisfied once IA lock PR merges; serial, one owner; see design-lock doc for write scopes |
+| I8-A/B/C — Exam Management consolidation | **I8-A: CODE-FIXED, VALIDATION PENDING** | I8-A PR open; I8-B/C gated on I8-A merge; serial, one owner; see design-lock doc for write scopes |
 | Portfolio/readiness read-model (backend) | **CODE-FIXED, VALIDATION PENDING** | `management_read_model.py` + `/management/exams` + `/management/exams/{id}` landed in Phase 0 PR. 21 tests passing. Frontend integration after I8-A. |
 | J1/J2/J3, competition metrics, mixed-PDF, coverage governance, KG rename | **DEFERRED** | contract-first; do not interleave with I8 |
 
@@ -193,8 +193,8 @@ Full decision record: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisi
 | I7 — KG exam lane removal | MERGED / CODE PRESENT — PR #749 | Exam lane card removed from `KnowledgeGovernance.jsx`; count/copy updated from 4 to 3 lanes; landing tests updated. Sidebar exam group untouched (removed atomically in I8-A). |
 | KG sidebar exam group | DEFERRED — I8-A ONLY | Must be removed atomically in I8-A when the new single Exam Management sidebar entry lands. Removing it before a replacement nav entry exists makes exam operations harder to discover. |
 | KG rename ("Knowledge Governance" → "Policy & Trust") | DEFERRED — SEPARATE LATER PR | Touches sidebar labels, masthead/page titles, breadcrumbs, tests. Must not fold into I7 or I8-A. |
-| I8-A — Exam Management front door | GATED — IA LOCK PR PENDING MERGE | One sidebar entry; family/exam/cycle discovery + triage; single-view front door (no competing tabs); one row action: `Manage exam`. Atomically removes ALL old exam sidebar items (Console, Registry, Create exam, Advanced Repair nav entry) in this one PR. |
-| I8-B — Manage Exam consolidation | GATED — I8-A + IA LOCK | Merges per-exam Console information into the exam-management drill-in. Overview tab eliminated. Console CTA routes fixed. |
+| I8-A — Exam Management front door | CODE-FIXED, VALIDATION PENDING | One sidebar entry; family/exam/cycle discovery + triage; single-view front door (no competing tabs); one row action: `Manage exam`. Atomically removes ALL old exam sidebar items (Console, Registry, Create exam, Advanced Repair nav entry) in this one PR. |
+| I8-B — Manage Exam consolidation | GATED — I8-A MERGE | Merges per-exam Console information into the exam-management drill-in. Overview tab eliminated. Console CTA routes fixed. |
 | I8-C — Advanced Repair isolation | GATED — I8-A + IA LOCK | Scope limited to access model only: adds overflow action in Manage Exam, adds `exam_intelligence.cms` permission gate, adds AdminSafetyBanner warning. Sidebar removal already done by I8-A — I8-C does NOT re-do it. |
 | I8 delivery model | LOCKED — NO FAN-OUT | I8-A, I8-B, and I8-C must be **serial and owned by one lane/owner**. Must NOT be fanned out to parallel agents. Shared write scope includes: `AdminShell.jsx`, `adminRoutes.jsx`, `ExamIntelligence.jsx`, `ExamGovernanceConsole.jsx`, `ConsoleWorkQueue.jsx`, `ExamActionConsole.jsx`, `ExamWorkspace.jsx`, action CTA generation, route/title tests, navigation active-state tests. |
 | I9 architecture | LOCKED | Hybrid: (1) bounded mini-wizard for atomic cycle creation only; (2) persistent 9-step activation checklist resumable across sessions. |
