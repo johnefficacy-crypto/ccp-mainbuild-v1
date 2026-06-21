@@ -105,6 +105,10 @@ export default function PyqWorkbenchPanel() {
           papers={papers}
           initialPaperId={selectedPaperId}
           onClose={() => setShowBulkImport(false)}
+          onSuccess={(paperId) => {
+            setSelectedPaperId(paperId);
+            setShowBulkImport(false);
+          }}
         />
       )}
     </div>

@@ -17,6 +17,9 @@
  * - CommitResult "Import another batch" resets to upload step
  * - override_errors checkbox state preserved going back/forward
  * - CSV body is NOT JSON-wrapped (raw text sent to preflight endpoint)
+ * F2: BulkImportModal calls onSuccess(paperId) when result-close-btn clicked
+ * F2: CommitResult shows success banner when committed > 0 and no failures
+ * F2: CommitResult Close button label is "Open paper" when committed > 0
  */
 import React from "react";
 import { render, screen, fireEvent, waitFor, act, renderHook } from "@testing-library/react";
@@ -407,5 +410,135 @@ describe("CommitResult", () => {
     const withStale = { ...COMMIT_OK, per_row: [{ row_number: 1, result: "skipped_stale", reason: "key mismatch" }] };
     render(<CommitResult commitResult={withStale} onImportAnother={() => {}} onClose={() => {}} />);
     expect(document.body.textContent).toContain("skipped_stale");
+  });
+
+  // F2: success banner
+  test("F2: shows success banner when committed > 0 and no failures", () => {
+    render(<CommitResult commitResult={COMMIT_OK} onImportAnother={() => {}} onClose={() => {}} />);
+    expect(screen.getByTestId("commit-success-banner")).toBeTruthy();
+    expect(screen.getByTestId("commit-success-banner").textContent).toContain("2 questions committed");
+  });
+
+  test("F2: no success banner when committed = 0", () => {
+    const noCommit = { committed: 0, skipped: 1, failed: 0, per_row: [] };
+    render(<CommitResult commitResult={noCommit} onImportAnother={() => {}} onClose={() => {}} />);
+    expect(screen.queryByTestId("commit-success-banner")).toBeNull();
+  });
+
+  test("F2: no success banner when there are failures", () => {
+    const withFail = { committed: 1, skipped: 0, failed: 1, per_row: [] };
+    render(<CommitResult commitResult={withFail} onImportAnother={() => {}} onClose={() => {}} />);
+    expect(screen.queryByTestId("commit-success-banner")).toBeNull();
+    expect(screen.getByTestId("commit-failure-banner")).toBeTruthy();
+  });
+
+  test("F2: close button label is 'Open paper' when committed > 0", () => {
+    render(<CommitResult commitResult={COMMIT_OK} onImportAnother={() => {}} onClose={() => {}} />);
+    expect(screen.getByTestId("result-close-btn").textContent).toBe("Open paper");
+  });
+
+  test("F2: close button label is 'Close' when committed = 0", () => {
+    const noCommit = { committed: 0, skipped: 1, failed: 0, per_row: [] };
+    render(<CommitResult commitResult={noCommit} onImportAnother={() => {}} onClose={() => {}} />);
+    expect(screen.getByTestId("result-close-btn").textContent).toBe("Close");
+  });
+});
+
+// ── F2: BulkImportModal onSuccess callback ────────────────────────────────────
+
+describe("F2: BulkImportModal onSuccess", () => {
+  beforeEach(() => { jest.clearAllMocks(); apiFetch.mockResolvedValue(PREFLIGHT_OK); });
+
+  test("F2: onSuccess(paperId) is called with selected paper id when result Close is clicked", async () => {
+    api.post.mockResolvedValue(COMMIT_OK);
+    const onSuccess = jest.fn();
+    const onClose = jest.fn();
+
+    render(
+      <BulkImportModal
+        papers={PAPERS}
+        initialPaperId="p1"
+        onClose={onClose}
+        onSuccess={onSuccess}
+      />,
+    );
+
+    // Upload step: select file and run preflight
+    const fileInput = screen.getByTestId("bulk-csv-input");
+    fireEvent.change(fileInput, {
+      target: { files: [new File(["q,a\n1,b"], "test.csv", { type: "text/csv" })] },
+    });
+    await waitFor(() => expect(screen.getByTestId("bulk-csv-filename").textContent).toBe("test.csv"));
+    fireEvent.click(screen.getByTestId("run-preflight-btn"));
+    await waitFor(() => expect(screen.getByTestId("preflight-preview")).toBeTruthy());
+
+    // Preview step: continue to committing
+    fireEvent.click(screen.getByTestId("continue-to-commit-btn"));
+    await waitFor(() => expect(screen.getByTestId("commit-confirmation")).toBeTruthy());
+
+    // Committing step: enter reason and commit
+    fireEvent.change(screen.getByTestId("commit-reason-input"), { target: { value: "batch import" } });
+    fireEvent.click(screen.getByTestId("commit-import-btn"));
+    await waitFor(() => expect(screen.getByTestId("commit-result")).toBeTruthy());
+
+    // Result step: click Close
+    fireEvent.click(screen.getByTestId("result-close-btn"));
+    expect(onSuccess).toHaveBeenCalledWith("p1");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  test("F2: onSuccess is NOT called when Import another batch is clicked", async () => {
+    api.post.mockResolvedValue(COMMIT_OK);
+    const onSuccess = jest.fn();
+
+    render(
+      <BulkImportModal
+        papers={PAPERS}
+        initialPaperId="p1"
+        onClose={() => {}}
+        onSuccess={onSuccess}
+      />,
+    );
+
+    // Drive to result step
+    const fileInput = screen.getByTestId("bulk-csv-input");
+    fireEvent.change(fileInput, {
+      target: { files: [new File(["q,a"], "t.csv", { type: "text/csv" })] },
+    });
+    await waitFor(() => expect(screen.getByTestId("bulk-csv-filename").textContent).toBe("t.csv"));
+    fireEvent.click(screen.getByTestId("run-preflight-btn"));
+    await waitFor(() => expect(screen.getByTestId("preflight-preview")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("continue-to-commit-btn"));
+    await waitFor(() => expect(screen.getByTestId("commit-confirmation")).toBeTruthy());
+    fireEvent.change(screen.getByTestId("commit-reason-input"), { target: { value: "reason" } });
+    fireEvent.click(screen.getByTestId("commit-import-btn"));
+    await waitFor(() => expect(screen.getByTestId("commit-result")).toBeTruthy());
+
+    // Click "Import another batch" — should NOT call onSuccess
+    fireEvent.click(screen.getByTestId("import-another-btn"));
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  test("F2: works without onSuccess prop (no crash)", async () => {
+    api.post.mockResolvedValue(COMMIT_OK);
+    render(
+      <BulkImportModal papers={PAPERS} initialPaperId="p1" onClose={() => {}} />,
+    );
+
+    const fileInput = screen.getByTestId("bulk-csv-input");
+    fireEvent.change(fileInput, {
+      target: { files: [new File(["q,a"], "t.csv", { type: "text/csv" })] },
+    });
+    await waitFor(() => expect(screen.getByTestId("bulk-csv-filename").textContent).toBe("t.csv"));
+    fireEvent.click(screen.getByTestId("run-preflight-btn"));
+    await waitFor(() => expect(screen.getByTestId("preflight-preview")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("continue-to-commit-btn"));
+    await waitFor(() => expect(screen.getByTestId("commit-confirmation")).toBeTruthy());
+    fireEvent.change(screen.getByTestId("commit-reason-input"), { target: { value: "reason" } });
+    fireEvent.click(screen.getByTestId("commit-import-btn"));
+    await waitFor(() => expect(screen.getByTestId("commit-result")).toBeTruthy());
+
+    // Should not throw
+    expect(() => fireEvent.click(screen.getByTestId("result-close-btn"))).not.toThrow();
   });
 });
