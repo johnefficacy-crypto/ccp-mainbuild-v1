@@ -96,15 +96,17 @@ def compute_content_hash(question: dict, options: list[dict]) -> str:
     Mirrors the hash computed inside ``project_pyq_question_to_mock_bank``
     (migration 183, Section D).  Keep in sync when the RPC hash formula changes.
 
-    chr(0) separators prevent concatenation ambiguity.
+    Formula: q_text NUL sorted_verified_opt_texts_joined_by_NUL NUL verified_correct_opt
+    Only VERIFIED options are included so the hash tracks audited content only.
     """
-    q_text   = (question.get("question_text") or "").strip().lower()
-    opt_texts = sorted((o.get("option_text") or "").strip().lower() for o in options)
-    correct   = sorted(
-        (o.get("option_text") or "").strip().lower()
-        for o in options if o.get("is_correct")
+    q_text = (question.get("question_text") or "").strip().lower()
+    verified = [o for o in options if o.get("reviewer_status") == _VERIFIED_OPTION]
+    opt_texts = sorted((o.get("option_text") or "").strip().lower() for o in verified)
+    correct_opt = next(
+        ((o.get("option_text") or "").strip().lower() for o in verified if o.get("is_correct")),
+        "",
     )
-    raw = "\x00".join([q_text] + opt_texts + ["\x01"] + correct)
+    raw = q_text + "\x00" + "\x00".join(opt_texts) + "\x00" + correct_opt
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 

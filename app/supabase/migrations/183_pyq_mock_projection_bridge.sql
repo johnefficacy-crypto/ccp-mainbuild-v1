@@ -17,8 +17,12 @@
 -- Rollback (non-production, run manually):
 --   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_q ON pyq_questions;
 --   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_p ON pyq_papers;
---   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_o ON pyq_options;
---   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_t ON pyq_question_topic_tags;
+--   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_o_upd ON pyq_options;
+--   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_o_del ON pyq_options;
+--   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_o_ins ON pyq_options;
+--   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_t_upd ON pyq_question_topic_tags;
+--   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_t_del ON pyq_question_topic_tags;
+--   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_t_ins ON pyq_question_topic_tags;
 --   DROP FUNCTION IF EXISTS public.fn_invalidate_pyq_projection();
 --   DROP FUNCTION IF EXISTS public.project_pyq_question_to_mock_bank(uuid,uuid,text);
 --   ALTER TABLE public.mock_question_bank
@@ -27,6 +31,7 @@
 --     DROP COLUMN IF EXISTS pyq_year;
 --   DROP TABLE IF EXISTS public.mock_source_mix_policies;
 --   DROP TABLE IF EXISTS public.pyq_mock_question_projections;
+--   (Constraint extension in mock_question_review_log is backward-compatible; leave in place.)
 
 -- ── A. Runtime snapshot columns on mock_question_bank ───────────────────────
 
@@ -127,6 +132,34 @@ comment on table public.mock_source_mix_policies is
   'most-specific active policy (topic > subject > phase > exam). '
   'No hardcoded IDs — all scoping is by FK to canonical tables.';
 
+-- ── B/C RLS: service-role + admin-only access on both new tables ─────────────
+
+alter table public.pyq_mock_question_projections enable row level security;
+
+create policy "pyq_proj_admin_all"
+  on public.pyq_mock_question_projections for all
+  using (
+    (select (auth.jwt() ->> 'role') in ('service_role'))
+    or (select (auth.jwt() -> 'app_metadata' ->> 'role') in ('admin', 'super_admin'))
+  )
+  with check (
+    (select (auth.jwt() ->> 'role') in ('service_role'))
+    or (select (auth.jwt() -> 'app_metadata' ->> 'role') in ('admin', 'super_admin'))
+  );
+
+alter table public.mock_source_mix_policies enable row level security;
+
+create policy "source_mix_admin_all"
+  on public.mock_source_mix_policies for all
+  using (
+    (select (auth.jwt() ->> 'role') in ('service_role'))
+    or (select (auth.jwt() -> 'app_metadata' ->> 'role') in ('admin', 'super_admin'))
+  )
+  with check (
+    (select (auth.jwt() ->> 'role') in ('service_role'))
+    or (select (auth.jwt() -> 'app_metadata' ->> 'role') in ('admin', 'super_admin'))
+  );
+
 -- ── D. Projection RPC ───────────────────────────────────────────────────────
 --
 -- project_pyq_question_to_mock_bank(p_pyq_question_id, p_actor_id, p_audit_reason)
@@ -139,6 +172,20 @@ comment on table public.mock_source_mix_policies is
 
 do $migration$
 begin
+  -- Extend mock_question_review_log action constraint to include projection
+  -- actions. The constraint was defined in migration 136 with a fixed
+  -- vocabulary that predates this projection feature.
+  execute $ddl$ alter table public.mock_question_review_log drop constraint if exists mock_question_review_log_action_check $ddl$;
+  execute $ddl$
+    alter table public.mock_question_review_log
+      add constraint mock_question_review_log_action_check
+      check (action in (
+        'create','edit','submit','approve','request_changes',
+        'publish','archive','restore','force','unauthorized','import',
+        'pyq_projection_created','pyq_projection_updated'
+      ))
+  $ddl$;
+
   execute $ddl$
 
   create or replace function public.project_pyq_question_to_mock_bank(
@@ -170,9 +217,6 @@ begin
       v_outcome    text;
 
       -- Mock row values
-      v_fp         text;
-      v_new_mock   jsonb;
-      v_inserted   record;
       v_correct_opt_id uuid;
 
       -- Option iteration
@@ -345,8 +389,9 @@ begin
 
       -- ── 3. Compute source content hash ─────────────────────────────────────
       --
-      -- Hash = SHA256( normalized_question_text \0 sorted_option_texts \0 correct_option_text )
-      -- Using chr(0) as separator prevents collisions.
+      -- Hash = SHA256( q_text NUL sorted_verified_opt_texts NUL verified_correct_opt )
+      -- Only VERIFIED options are included so the hash tracks audited content.
+      -- Formula matches compute_content_hash() in pyq_mock_projection.py.
 
       select encode(
           sha256((
@@ -356,11 +401,13 @@ begin
                          order by lower(trim(o.option_text)))
                   from public.pyq_options o
                   where o.question_id = p_pyq_question_id
+                    and o.reviewer_status = 'verified'
               ), '') || chr(0) ||
               coalesce((
                   select lower(trim(c.option_text))
                   from public.pyq_options c
                   where c.question_id = p_pyq_question_id
+                    and c.reviewer_status = 'verified'
                     and c.is_correct = true
                   limit 1
               ), '')
@@ -472,6 +519,7 @@ begin
               reviewer_status,
               source_type,
               source_kind,
+              question_fingerprint,
               pyq_question_id,
               pyq_paper_id,
               pyq_year,
@@ -486,12 +534,14 @@ begin
               v_primary_tag.topic_id,
               v_q.question_text,
               'mcq',
-              coalesce(v_q.observed_difficulty, 'medium'),
+              case when lower(v_q.observed_difficulty) in ('easy','medium','hard')
+                   then lower(v_q.observed_difficulty) else 'medium' end,
               v_q.explanation_text,
               coalesce(v_q.language, 'en'),
               'verified',
               'pyq',
               'pyq',
+              v_content_hash,
               p_pyq_question_id,
               v_q.pyq_paper_id,
               v_q.paper_year,
@@ -502,26 +552,31 @@ begin
           );
       else
           update public.mock_question_bank set
-              exam_id         = v_q.exam_id,
-              subject_id      = v_topic.subject_id,
-              topic_id        = v_primary_tag.topic_id,
-              question_text   = v_q.question_text,
-              question_type   = 'mcq',
-              difficulty      = coalesce(v_q.observed_difficulty, 'medium'),
-              explanation     = v_q.explanation_text,
-              language        = coalesce(v_q.language, 'en'),
-              reviewer_status = 'verified',
-              source_type     = 'pyq',
-              source_kind     = 'pyq',
-              pyq_question_id = p_pyq_question_id,
-              pyq_paper_id    = v_q.pyq_paper_id,
-              pyq_year        = v_q.paper_year,
-              expected_time_sec = v_q.expected_solve_time_sec,
-              updated_at      = now()
+              exam_id              = v_q.exam_id,
+              subject_id           = v_topic.subject_id,
+              topic_id             = v_primary_tag.topic_id,
+              question_text        = v_q.question_text,
+              question_type        = 'mcq',
+              difficulty           = case when lower(v_q.observed_difficulty) in ('easy','medium','hard')
+                                         then lower(v_q.observed_difficulty) else 'medium' end,
+              explanation          = v_q.explanation_text,
+              language             = coalesce(v_q.language, 'en'),
+              reviewer_status      = 'verified',
+              source_type          = 'pyq',
+              source_kind          = 'pyq',
+              question_fingerprint = v_content_hash,
+              pyq_question_id      = p_pyq_question_id,
+              pyq_paper_id         = v_q.pyq_paper_id,
+              pyq_year             = v_q.paper_year,
+              expected_time_sec    = v_q.expected_solve_time_sec,
+              updated_at           = now()
           where id = v_mock_q_id;
       end if;
 
       -- ── 6. Replace mock_question_options atomically ────────────────────────
+      --
+      -- Only VERIFIED options are copied; the fingerprint was already set to
+      -- v_content_hash (which hashes verified options), so both are consistent.
 
       delete from public.mock_question_options
       where question_id = v_mock_q_id;
@@ -533,6 +588,7 @@ begin
                  row_number() over (order by option_label, id) - 1 as opt_idx
           from public.pyq_options
           where question_id = p_pyq_question_id
+            and reviewer_status = 'verified'
           order by option_label, id
       loop
           insert into public.mock_question_options (
@@ -550,30 +606,10 @@ begin
           end if;
       end loop;
 
-      -- Set correct_option_id and compute fingerprint on mock question
+      -- Set correct_option_id (fingerprint already set from v_content_hash above).
       update public.mock_question_bank
-      set correct_option_id    = v_correct_opt_id,
-          question_fingerprint = encode(
-              sha256((
-                  lower(trim(v_q.question_text)) || chr(0) ||
-                  coalesce((
-                      select string_agg(lower(trim(o.option_text)), chr(0)
-                             order by lower(trim(o.option_text)))
-                      from public.mock_question_options o
-                      where o.question_id = v_mock_q_id
-                  ), '') || chr(0) ||
-                  coalesce(
-                      (select lower(trim(o2.option_text))
-                       from public.mock_question_options o2
-                       where o2.question_id = v_mock_q_id
-                         and o2.is_correct = true
-                       limit 1),
-                      ''
-                  )
-              )::bytea),
-              'hex'
-          ),
-          updated_at = now()
+      set correct_option_id = v_correct_opt_id,
+          updated_at        = now()
       where id = v_mock_q_id;
 
       -- ── 7. Replace mock_question_topic_tags ───────────────────────────────
@@ -771,12 +807,15 @@ begin
           return NEW;
 
       elsif TG_TABLE_NAME = 'pyq_options' then
-          -- Any meaningful option change invalidates the projection
+          -- Any meaningful option change (or a new option) invalidates the projection.
           if TG_OP = 'DELETE' then
               v_qid := OLD.question_id;
-          else
+          elsif TG_OP = 'INSERT' then
+              -- Any new option is a material change.
               v_qid := NEW.question_id;
-              -- Only invalidate on material changes
+          else
+              -- UPDATE: only invalidate on material changes.
+              v_qid := NEW.question_id;
               if OLD.is_correct = NEW.is_correct
                  and (OLD.option_text is not distinct from NEW.option_text)
                  and (OLD.reviewer_status is not distinct from NEW.reviewer_status)
@@ -796,7 +835,7 @@ begin
           return NEW;
 
       elsif TG_TABLE_NAME = 'pyq_question_topic_tags' then
-          -- Primary tag changes invalidate the projection
+          -- Primary tag changes (including new primary tags) invalidate the projection.
           if TG_OP = 'DELETE' then
               if OLD.tag_role = 'primary' then
                   update public.pyq_mock_question_projections
@@ -805,7 +844,17 @@ begin
                     and sync_status = 'active';
               end if;
               return OLD;
+          elsif TG_OP = 'INSERT' then
+              -- Inserting a primary tag could push the verified-primary count above 1.
+              if NEW.tag_role = 'primary' then
+                  update public.pyq_mock_question_projections
+                  set sync_status = 'stale', updated_at = now()
+                  where pyq_question_id = NEW.question_id
+                    and sync_status = 'active';
+              end if;
+              return NEW;
           else
+              -- UPDATE
               if NEW.tag_role = 'primary'
                  or (OLD.tag_role = 'primary' and NEW.tag_role != 'primary')
                  or (OLD.reviewer_status is distinct from NEW.reviewer_status
@@ -855,6 +904,13 @@ begin
   for each row execute function public.fn_invalidate_pyq_projection()
   $t$;
 
+  execute 'drop trigger if exists trg_invalidate_pyq_projection_o_ins on public.pyq_options';
+  execute $t$
+  create trigger trg_invalidate_pyq_projection_o_ins
+  after insert on public.pyq_options
+  for each row execute function public.fn_invalidate_pyq_projection()
+  $t$;
+
   execute 'drop trigger if exists trg_invalidate_pyq_projection_t_upd on public.pyq_question_topic_tags';
   execute $t$
   create trigger trg_invalidate_pyq_projection_t_upd
@@ -866,6 +922,13 @@ begin
   execute $t$
   create trigger trg_invalidate_pyq_projection_t_del
   after delete on public.pyq_question_topic_tags
+  for each row execute function public.fn_invalidate_pyq_projection()
+  $t$;
+
+  execute 'drop trigger if exists trg_invalidate_pyq_projection_t_ins on public.pyq_question_topic_tags';
+  execute $t$
+  create trigger trg_invalidate_pyq_projection_t_ins
+  after insert on public.pyq_question_topic_tags
   for each row execute function public.fn_invalidate_pyq_projection()
   $t$;
 
