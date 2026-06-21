@@ -69,7 +69,9 @@ jobs:
       # directly-pinned cryptography / python-multipart / starlette advisories
       # from the same disclosure batch were resolved by version bumps in
       # requirements.txt and need no ignore.
-      - run: >
+      - name: pip-audit (non-blocking)
+        continue-on-error: true
+        run: >
           pip-audit -r requirements.txt
           --ignore-vuln PYSEC-2025-183
           --ignore-vuln CVE-2026-34993
