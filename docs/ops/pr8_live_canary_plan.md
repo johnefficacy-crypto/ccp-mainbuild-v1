@@ -4,9 +4,9 @@
 **Status:** DESIGN PRESENT — EXECUTION BLOCKED
 
 Blocking prerequisites (none may be skipped):
-1. Allowlist implementation PR — not merged (see Allowlist Architecture § below)
-2. Pinned effective mode for delayed correction recovery — not implemented (see Allowlist Architecture §: `_recover_corrections_after_mock_tests` must read original pinned per-attempt flag, not recalculate from current global env)
-3. PR-6 final candidate revalidation — GATE FAILED (re-run required after allowlist and pinned-mode PRs deploy)
+1. Allowlist implementation PR — CODE FIXED (PR #753: `resolve_effective_mastery_flag` + `FF_MOCK_MASTERY_LIVE_USER_IDS` enforcement at sync submit and analytics_retry enqueue)
+2. Pinned effective mode for delayed correction recovery — CODE FIXED (PR #753: `get_or_resolve_pinned_mastery_flag` used at sync submit, analytics_retry D4, and `_recover_corrections_after_mock_tests`; eager mastery enqueue removed from `auto_submit_attempt`)
+3. PR-6 final candidate revalidation — GATE FAILED (re-run required after items 1–2 PRs deploy)
 4. PR-7 14-day shadow gate — NOT STARTED — BLOCKED ON PR-6
 5. Migration 182 — CODE PRESENT, dry-run/apply/permission validation pending
 6. `_apply_error_patterns` schema mismatch — not resolved (see Preflight P9 and Rollback Step 5)
@@ -26,7 +26,7 @@ Blocking prerequisites (none may be skipped):
 |---|------------|--------|
 | 1 | PR-6 final candidate revalidation | **GATE FAILED — RE-RUN REQUIRED** |
 | 2 | PR-7 14-day shadow gate | **NOT STARTED — BLOCKED ON PR-6** |
-| 3 | Live-user allowlist implementation merged, deployed, and validated | **BLOCKED — not implemented** |
+| 3 | Live-user allowlist implementation merged, deployed, and validated | **CODE FIXED (PR #753) — DEPLOYMENT AND VALIDATION PENDING** |
 | 4 | Correction atomicity (PR-5B) deployed — migration 182 applied | **CODE PRESENT — DRY-RUN/APPLY/PERMISSION VALIDATION PENDING** |
 | 5 | Scheduler automatic-drain evidence | OPERATOR PENDING |
 | 6 | Deployed SHA matches approved PR-6 candidate SHA | OPERATOR PENDING |
@@ -39,12 +39,13 @@ until dependency #3 resolves and a clean re-run is completed.
 `START_CONDITION_NOT_MET` (checked 2026-06-20). Start condition failed: PR-6 PASS not met.
 No observation window has opened and no threshold evaluation has occurred. Blocked on #1.
 
-**Dep #3 detail:** As of this document's authoring, `MasteryWriter.process_attempt_sync`
-(`app/backend/app/study_os/mastery_writer.py`, lines 67–106) contains no per-user gate.
-When `FF_MOCK_MASTERY_WRITES=live`, live writes execute for **every** user. There is no
-`FF_MOCK_MASTERY_LIVE_USER_IDS` environment variable, no allowlist table check, and no
-equivalent mechanism. A global unrestricted live flip is **forbidden** — do not proceed
-without the allowlist PR. See Allowlist Architecture § below.
+**Dep #3 detail:** Per-user allowlist is code-implemented in PR #753.
+`resolve_effective_mastery_flag(requested_flag, user_id)` (`mastery_writer.py`) reads
+`FF_MOCK_MASTERY_LIVE_USER_IDS` and downgrades `live` → `shadow` for users not in the list.
+`get_or_resolve_pinned_mastery_flag` (`mock_engine.py`) pins the resolved flag per-attempt
+so FF or allowlist changes after first submit cannot alter the effective mode.
+Remaining gate: merge PR #753, deploy, and run the four-combination resolver matrix on
+staging (see Allowlist Architecture §) before marking this dependency PASS.
 
 **Dep #4 detail:** Migration 182 adds three SECURITY DEFINER RPCs. Code is present in the
 repository. Required before canary: (a) dry-run on staging clone, (b) permission
@@ -126,29 +127,13 @@ required in the correction path. All of the following must pass before canary ex
 
 ## Allowlist Architecture (confirm implementation before execution)
 
-**Current state:** No per-user allowlist exists. `get_mastery_write_flag()` reads a
-global env var and returns the same flag for every user. `MasteryWriter.process_attempt_sync`
-(`mastery_writer.py` lines 67–106) does not branch on user identity.
+**Current state (PR #753 code-fixed, deployment pending):**
+`resolve_effective_mastery_flag(requested_flag, user_id)` (`mastery_writer.py`) implements
+the per-user allowlist. `get_or_resolve_pinned_mastery_flag(sb, attempt_id, user_id)`
+(`mock_engine.py`) pins the resolved mode per-attempt by reading any existing
+non-cancelled mastery_retry job row before falling back to env resolution.
 
-**Required implementation — resolver at enqueue, pinned value at consumers:**
-
-`_run_job JOB_MASTERY_RETRY` (`mock_engine.py` line 1387) already reads the pinned
-`mastery_flag_state` from the job row — this is correct and must not change. The
-allowlist check must be implemented as a resolver called only at the enqueue points where
-`mastery_flag_state` is first written to `mock_attempt_jobs`. Consumer paths must never
-re-resolve — they must read the already-persisted value. The writer then receives the
-already-resolved per-user flag.
-
-Required resolver signature (implement in a separate code PR):
-
-```python
-resolve_effective_mastery_flag(
-    requested_flag: FlagState,  # from get_mastery_write_flag()
-    user_id: str,
-) -> FlagState
-```
-
-Required resolver behavior (fail closed — empty or malformed allowlist → shadow):
+Resolver behavior (fail closed — empty or malformed allowlist → shadow):
 
 | Global flag | User in allowlist | Resolved flag |
 |-------------|-------------------|---------------|
@@ -158,45 +143,39 @@ Required resolver behavior (fail closed — empty or malformed allowlist → sha
 | `live` | no | `shadow` |
 | `live` | allowlist empty or malformed | `shadow` |
 
-**RESOLUTION points** — call `resolve_effective_mastery_flag(get_mastery_write_flag(), user_id)`
-and persist the result as `mastery_flag_state`:
+**RESOLUTION points** — call `get_or_resolve_pinned_mastery_flag(sb, attempt_id, user_id)`
+(which internally calls `resolve_effective_mastery_flag` only when no pinned job exists):
 
-1. **Synchronous submit endpoint** (`api/mock_engine.py` line 174) — resolve using the
-   authenticated `user_id`.
-2. **`_run_job JOB_ANALYTICS_RETRY`** (`mock_engine.py` line 1376) — when enqueueing
-   `JOB_MASTERY_RETRY`, load the attempt owner's `user_id` from the attempt row; call
-   `resolve_effective_mastery_flag`; persist the resolved value as `mastery_flag_state`.
-   This is the primary resolution point for the async path.
-3. **`auto_submit_attempt`** (`mock_engine.py` line 806) — in the allowlist implementation,
-   this function must schedule ONLY `JOB_ANALYTICS_RETRY`; it must NOT call
-   `enqueue_mastery_retry_required` or `resolve_effective_mastery_flag` directly. Resolution
-   happens when `JOB_ANALYTICS_RETRY _run_job` enqueues `JOB_MASTERY_RETRY` (point 2 above).
-   The D2 eager enqueue (`mock_engine.py` lines 830–833) must be removed in the allowlist
-   implementation PR.
+1. **Synchronous submit endpoint** (`api/mock_engine.py`) — `get_or_resolve_pinned_mastery_flag`
+   called with the authenticated `user_id`. CODE FIXED (PR #753).
+2. **`_run_job JOB_ANALYTICS_RETRY`** (`mock_engine.py`) — calls
+   `get_or_resolve_pinned_mastery_flag` after analytics succeeds; enqueues `JOB_MASTERY_RETRY`
+   with the pinned flag. This is the primary resolution point for the async path.
+   CODE FIXED (PR #753).
+3. **`auto_submit_attempt`** (`mock_engine.py`) — schedules ONLY `JOB_ANALYTICS_RETRY`;
+   does NOT call `enqueue_mastery_retry_required` or resolve the mastery flag. D2 eager
+   enqueue removed. Resolution happens when `JOB_ANALYTICS_RETRY _run_job` enqueues
+   `JOB_MASTERY_RETRY` (point 2 above). CODE FIXED (PR #753).
 
 **CONSUMER points** — must NOT call `resolve_effective_mastery_flag` or
 `get_mastery_write_flag()`; must use the already-persisted `mastery_flag_state`:
 
-4. **`_run_job JOB_MASTERY_RETRY`** (`mock_engine.py` line 1385) — reads
-   `mastery_flag_state` from the job row. Already correct; do not change.
-5. **`_recover_corrections_after_mock_tests`** (`mock_engine.py` line 1412) — currently
-   calls `get_mastery_write_flag()` directly (bug: reads the mutable current environment
-   flag). In the allowlist implementation PR, this function must retrieve the original
-   persisted effective mode from the `mastery_retry` job row for the same attempt — it must
-   NOT call `get_mastery_write_flag()` or `resolve_effective_mastery_flag()`. The exact
-   mechanism for retrieving the persisted value (job row lookup, separate parameter, etc.)
-   must be validated for concurrency and retry safety in the implementation PR; do not
-   prescribe the table or field name here without that validation.
+4. **`_run_job JOB_MASTERY_RETRY`** (`mock_engine.py`) — reads `mastery_flag_state` from
+   the job row. Already correct; unchanged.
+5. **`_recover_corrections_after_mock_tests`** (`mock_engine.py`) — now calls
+   `get_or_resolve_pinned_mastery_flag` to read the original persisted mode from the
+   mastery_retry job row for the same attempt. Does NOT call `get_mastery_write_flag()`
+   directly. CODE FIXED (PR #753).
 
 **Failure case this classification prevents:**
 1. Attempt submitted → effective mode resolved to `live` → `mastery_flag_state='live'` pinned to job row
 2. Compat-row creation fails; `_recover_corrections_after_mock_tests` is scheduled
 3. Operator changes `FF_MOCK_MASTERY_WRITES` back to `shadow` (e.g., after a rollback or incident)
-4. Delayed correction recovery runs and recalculates current FF → reads `shadow` → incorrectly
-   skips the required live correction recovery for an attempt that was already processed as live
+4. Delayed correction recovery runs → `get_or_resolve_pinned_mastery_flag` reads the
+   pinned `live` job row → correctly executes live correction recovery.
+   (Pre-fix: re-resolved from current env → read `shadow` → incorrectly skipped live corrections.)
 
-This is a runtime correctness defect independent of the canary — the allowlist PR must
-resolve it before any live traffic.
+This runtime correctness defect is resolved in code by PR #753.
 
 **Required behavior matrix — confirm from deployed code before marking plan READY:**
 
