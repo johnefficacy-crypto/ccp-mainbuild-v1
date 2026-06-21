@@ -501,6 +501,54 @@ def console_exam_detail(
     return _cd.build_console_detail(get_supabase_admin(), exam_id)
 
 
+# ─── 2d. Management read model (Phase 0 — backend prerequisite for I8-A/B) ──
+@router.get("/management/exams")
+def management_exams(
+    limit: int = Query(25, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    q: str | None = Query(None),
+    exam_type: str | None = Query(None),
+    active_state: str = Query("active"),
+    management_mode: str | None = Query(None),
+    cadence: str | None = Query(None),
+    exam_family_id: str | None = Query(None),
+    workflow: _WorkflowFilter | None = Query(None),
+    sort: _ConsoleSort = Query(_ConsoleSort.blockers_first),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Paginated management exam list: family/exam/current-cycle/phase hierarchy
+    with top-level verdict. Backend prerequisite for I8-A/B (design-lock Section 8).
+    Not a UI surface — headless read model only."""
+    from app.exam_intelligence import management_read_model as _mrm
+
+    base = _console_base_filters(q, exam_type, active_state, management_mode, cadence, exam_family_id)
+    return _mrm.list_management_exams(
+        get_supabase_admin(),
+        base_filters=base,
+        workflow=workflow.value if workflow else None,
+        sort=sort.value,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/management/exams/{exam_id}")
+def management_exam_detail(
+    exam_id: str,
+    cycle_id: str | None = Query(default=None),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Single-exam management detail: all cycles, per-cycle section readiness,
+    action queue, and activation verdict (design-lock Section 8). Unknown exam → 404."""
+    from app.exam_intelligence import management_read_model as _mrm
+
+    return _mrm.get_management_exam_detail(
+        get_supabase_admin(),
+        exam_id=exam_id,
+        cycle_id=cycle_id,
+    )
+
+
 # ─── 3. Items for a specific exam (filtered by reviewer_status) ───────────
 @router.get("/exams/{exam_id}/items")
 def list_items(
