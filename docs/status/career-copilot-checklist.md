@@ -83,7 +83,7 @@ Findings confirmed against this checkout. Full audit evidence:
 | Area | Status | Notes |
 |---|---|---|
 | BUG-EI-1 `POST .../syllabus/propose` → 404 | PLANNED | `syllabus_mapper.py` queries `document_assets` (wrong table) instead of `syllabus_documents`. `document_assets` has no `exam_id` column; PostgREST returns empty list → 404 raised. Fix: change table name on both occurrences (~line 99 and ~line 503). `ProposerError` and `propose_syllabus_mentions` are defined twice; deduplicate first. |
-| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Fix requires design decision: Option A (query `syllabus_documents` by `exam_id`, use `trust_status`) or Option B (query processing-job status table). |
+| BUG-EI-2 `GET /console/exams/{id}` → 500 | CODE-FIXED, VALIDATION PENDING | Option A chosen: `console_detail.py::_documents()` now queries `syllabus_documents` with `.eq("exam_id", ...)` and `.select("id, trust_status")`. Readiness proxy: `trust_status == "verified"` (was `extraction_status == "succeeded"` on the wrong table). `_AREA_ENTITY_KIND["documents"]` updated to `"syllabus_documents"`. Regression test: `tests/exam_intelligence/test_bug_ei2_documents_table.py` (6 assertions). Branch: `fix/h2-console-detail-500`. |
 
 ### D-series — Redundant data display (4 defects)
 
