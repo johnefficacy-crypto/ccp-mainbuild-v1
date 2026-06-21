@@ -10,6 +10,7 @@
  * - PyqPaperWorkspace embedded=true drops h-screen wrapper
  * - old route still renders the workspace (useParams fallback)
  * - old route shows banner with correct workspace link
+ * F2: after bulk import success, onSuccess(paperId) auto-selects the imported paper
  */
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -19,6 +20,33 @@ jest.mock("../../../../../lib/api", () => ({
   __esModule: true,
   api: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
 }));
+
+// Mock BulkImportModal so we can simulate onSuccess without driving the full flow
+jest.mock("../bulk-import/BulkImportModal", () => {
+  const React = require("react");
+  return {
+    __esModule: true,
+    default: function MockBulkImportModal({ onSuccess, onClose }) {
+      return (
+        <div data-testid="mock-bulk-import-modal">
+          <button
+            data-testid="mock-import-success-p1"
+            onClick={() => { onSuccess("p1"); onClose(); }}
+          >
+            Simulate success p1
+          </button>
+          <button
+            data-testid="mock-import-success-p2"
+            onClick={() => { onSuccess("p2"); onClose(); }}
+          >
+            Simulate success p2
+          </button>
+          <button data-testid="mock-close-modal" onClick={onClose}>Close</button>
+        </div>
+      );
+    },
+  };
+});
 
 const { api } = require("../../../../../lib/api");
 const ExamWorkspaceContext = require("../../ExamWorkspaceContext");
@@ -174,6 +202,69 @@ describe("PyqWorkbenchPanel", () => {
         expect.stringContaining("/pyq-papers/p1"),
       ),
     );
+  });
+
+  // F2: bulk import auto-navigate
+  test("F2: bulk import open shows modal", async () => {
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("bulk-import-btn"));
+    expect(screen.getByTestId("mock-bulk-import-modal")).toBeTruthy();
+  });
+
+  test("F2: onSuccess from BulkImportModal auto-selects the imported paper", async () => {
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+
+    // Open bulk import modal
+    fireEvent.click(screen.getByTestId("bulk-import-btn"));
+    expect(screen.getByTestId("mock-bulk-import-modal")).toBeTruthy();
+
+    // No paper selected yet
+    expect(screen.getByTestId("pyq-no-paper-selected")).toBeTruthy();
+
+    // Simulate successful import of p1
+    fireEvent.click(screen.getByTestId("mock-import-success-p1"));
+
+    // Modal should close
+    expect(screen.queryByTestId("mock-bulk-import-modal")).toBeNull();
+
+    // p1 should now be selected and PyqPaperWorkspace should begin loading
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("/pyq-papers/p1"),
+      ),
+    );
+  });
+
+  test("F2: onSuccess selects the correct paper (p2) when p2 was imported", async () => {
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("bulk-import-btn"));
+    fireEvent.click(screen.getByTestId("mock-import-success-p2"));
+
+    // p2 should now be selected
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("/pyq-papers/p2"),
+      ),
+    );
+  });
+
+  test("F2: closing modal without success leaves selection unchanged", async () => {
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+
+    // Confirm no paper selected initially
+    expect(screen.getByTestId("pyq-no-paper-selected")).toBeTruthy();
+
+    // Open modal and close without importing
+    fireEvent.click(screen.getByTestId("bulk-import-btn"));
+    fireEvent.click(screen.getByTestId("mock-close-modal"));
+
+    // Selection unchanged — still no paper selected
+    expect(screen.queryByTestId("pyq-no-paper-selected")).toBeTruthy();
   });
 });
 

@@ -6,7 +6,6 @@ import React from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import {
   LifecycleLegend,
-  EXAM_PURPOSE_LABELS,
   BUSINESS_PRIORITY_LABELS,
 } from "../../../../features/admin/exam-intelligence/ExamIntelGlossary";
 
@@ -101,11 +100,6 @@ export default function OverviewPanel() {
     ? (BUSINESS_PRIORITY_LABELS[exam.management_mode]?.label ?? exam.management_mode)
     : "Unclassified";
 
-  const typeLabel = exam?.exam_type
-    ? (EXAM_PURPOSE_LABELS[exam.exam_type]?.label ?? exam.exam_type)
-    : null;
-
-  const overallSec = readiness?.overall;
   const tc = readiness?.topic_coverage;
 
   // Section map for quick lookup
@@ -117,11 +111,9 @@ export default function OverviewPanel() {
       style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}
       data-testid="overview-panel"
     >
-      {/* 1. Exam identity */}
+      {/* 1. Exam identity — name/slug/type/family already shown in SmartHeader (D1 collapse);
+           keep fields unique to this panel only */}
       <Section title="Exam identity" testId="overview-section-identity">
-        <Row label="Name" value={exam?.name} />
-        <Row label="Slug" value={exam?.slug} mono />
-        <Row label="Type" value={typeLabel} />
         <Row label="Management lane" value={mgmtLabel} />
         <Row label="Cadence" value={exam?.cadence ?? "—"} />
         <Row label="Active" value={exam?.is_active === false ? "No" : "Yes"} />
@@ -145,18 +137,10 @@ export default function OverviewPanel() {
         </div>
       </Section>
 
-      {/* 3. Readiness scorecard */}
+      {/* 3. Readiness — overall score/status shown in SmartHeader (D2 collapse); per-section rows
+           are unique to this panel and are preserved */}
       {readiness && (
         <Section title="Readiness" testId="overview-section-readiness">
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <StatusBadge status={overallSec?.status} />
-            <span className="mono" style={{ fontSize: 13, fontWeight: 700 }}>
-              {overallSec?.score_percent ?? 0}%
-            </span>
-            <span style={{ fontSize: 11.5, color: "var(--ink-mute)" }}>
-              {overallSec?.ready_to_activate ? "ready to activate" : "not yet ready"}
-            </span>
-          </div>
           {["setup", "documents", "syllabus_mapper", "pyq_workbench", "updates", "competition", "review_activate"].map(
             (k) => <ReadinessRow key={k} sec={secMap[k]} />,
           )}

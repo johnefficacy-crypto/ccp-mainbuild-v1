@@ -6,7 +6,7 @@ import CommitResult from "./CommitResult";
 import PreflightPreview from "./PreflightPreview";
 import { useBulkImport } from "./useBulkImport";
 
-export default function BulkImportModal({ papers, initialPaperId, onClose }) {
+export default function BulkImportModal({ papers, initialPaperId, onClose, onSuccess }) {
   const {
     state,
     selectPaper,
@@ -130,7 +130,12 @@ export default function BulkImportModal({ papers, initialPaperId, onClose }) {
             <CommitResult
               commitResult={state.commit_result}
               onImportAnother={() => reset(state.selected_paper_id)}
-              onClose={onClose}
+              onClose={() => {
+                if (onSuccess && state.selected_paper_id) {
+                  onSuccess(state.selected_paper_id);
+                }
+                onClose();
+              }}
             />
           )}
         </div>
