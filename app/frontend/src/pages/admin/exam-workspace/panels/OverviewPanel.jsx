@@ -101,7 +101,7 @@ export default function OverviewPanel() {
   const { exam, readiness } = useExamWorkspace();
 
   return (
-    <div className="stack">
+    <div className="stack" data-testid="overview-panel">
       <div className="scrn-head">
         <div>
           <div className="scrn-tag">Overview · exam metadata &amp; readiness</div>
