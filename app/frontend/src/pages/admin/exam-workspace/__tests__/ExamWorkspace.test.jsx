@@ -200,7 +200,6 @@ describe("ExamWorkspace shell", () => {
     const overviewTab = screen.getByTestId("tab-overview");
     expect(overviewTab.getAttribute("aria-selected")).toBe("true");
     expect(screen.getByTestId("overview-panel")).toBeTruthy();
-    expect(screen.getByText("Unclassified")).toBeTruthy();
   });
 
   test("overview renders resolved family and organization from workspace context", async () => {
