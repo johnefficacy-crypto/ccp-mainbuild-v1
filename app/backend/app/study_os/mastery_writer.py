@@ -483,3 +483,46 @@ class MasteryWriter:
 def get_mastery_write_flag() -> FlagState:
     raw = (os.getenv("FF_MOCK_MASTERY_WRITES") or "off").strip().lower()
     return raw if raw in {"off", "shadow", "live"} else "off"
+
+
+def resolve_effective_mastery_flag(requested_flag: FlagState, user_id: str) -> FlagState:
+    """Resolve the global flag against the per-user live allowlist.
+
+    Behaviour matrix:
+      off    → off   (allowlist irrelevant)
+      shadow → shadow (allowlist irrelevant)
+      live + user in allowlist          → live
+      live + user NOT in allowlist      → shadow   (fail-closed)
+      live + allowlist empty/malformed  → shadow   (fail-closed)
+
+    The allowlist is read from FF_MOCK_MASTERY_LIVE_USER_IDS as a
+    comma-separated list of user UUIDs.  An empty or whitespace-only value
+    is treated as "no users allowed" (fail-closed), so flipping the global
+    FF to live with an empty allowlist produces shadow writes only.
+    """
+    if requested_flag != "live":
+        return requested_flag
+
+    raw_ids = os.getenv("FF_MOCK_MASTERY_LIVE_USER_IDS", "").strip()
+    if not raw_ids:
+        logger.warning(
+            "resolve_effective_mastery_flag: FF=live but FF_MOCK_MASTERY_LIVE_USER_IDS "
+            "is empty — downgrading to shadow for user=%s",
+            user_id,
+        )
+        return "shadow"
+
+    try:
+        allowlist = {uid.strip() for uid in raw_ids.split(",") if uid.strip()}
+    except Exception:
+        logger.exception(
+            "resolve_effective_mastery_flag: failed to parse FF_MOCK_MASTERY_LIVE_USER_IDS — "
+            "downgrading to shadow for user=%s",
+            user_id,
+        )
+        return "shadow"
+
+    if user_id in allowlist:
+        return "live"
+
+    return "shadow"

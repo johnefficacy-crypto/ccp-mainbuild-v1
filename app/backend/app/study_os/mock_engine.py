@@ -827,8 +827,10 @@ def auto_submit_attempt(supabase: Any, attempt_id: str) -> dict:
     # sweeper processes mastery after analytics succeeds (D4 also covers this,
     # but an eager enqueue here means mastery is queued even if analytics
     # finishes before the next sweep cycle reads the analytics_retry job).
-    from app.study_os.mastery_writer import get_mastery_write_flag  # noqa: PLC0415
-    _auto_submit_flag = get_mastery_write_flag()
+    # Resolve the effective flag per user so the canary allowlist gates live
+    # writes; attempt["user_id"] is already loaded at the top of this function.
+    from app.study_os.mastery_writer import get_mastery_write_flag, resolve_effective_mastery_flag  # noqa: PLC0415
+    _auto_submit_flag = resolve_effective_mastery_flag(get_mastery_write_flag(), attempt["user_id"])
     if _auto_submit_flag != "off":
         enqueue_mastery_retry_required(supabase, attempt_id, _auto_submit_flag)
     return {"ok": True, "skipped": False, "submitted_at": submitted_at}
@@ -1370,10 +1372,12 @@ def _run_job(supabase: Any, job: dict) -> None:
     elif kind == JOB_ANALYTICS_RETRY:
         attempt_analytics.compute_and_persist(supabase, attempt_id)
         # D4: after analytics succeeds, hand off to mastery if FF is not off.
-        # enqueue_mastery_retry_required is idempotent against active jobs, so a
-        # concurrent or already-pending mastery_retry is safely reset to pending.
-        from app.study_os.mastery_writer import get_mastery_write_flag  # noqa: PLC0415
-        _analytics_retry_flag = get_mastery_write_flag()
+        # Resolve per-user so the canary allowlist gates live writes: fetch the
+        # attempt owner and downgrade "live" → "shadow" if not in the allowlist.
+        from app.study_os.mastery_writer import get_mastery_write_flag, resolve_effective_mastery_flag  # noqa: PLC0415
+        _attempt = _fetch_attempt_by_id(supabase, attempt_id)
+        _attempt_user_id = (_attempt or {}).get("user_id", "")
+        _analytics_retry_flag = resolve_effective_mastery_flag(get_mastery_write_flag(), _attempt_user_id)
         if _analytics_retry_flag != "off":
             enqueue_mastery_retry_required(supabase, attempt_id, _analytics_retry_flag)
     elif kind == JOB_MOCK_TESTS_RETRY:
@@ -1406,10 +1410,32 @@ def _recover_corrections_after_mock_tests(supabase: Any, attempt_id: str) -> Non
     serial-retry idempotent (best-effort read-before-insert dedup), so retrying
     the whole job inserts the correction exactly once across serial retries. It
     only drafts at FF=live and adds NO new mock_tests creation path.
+
+    Pinned-mode: we read the ``mastery_flag_state`` from the most-recent
+    mastery_retry job row for this attempt instead of calling
+    ``get_mastery_write_flag()`` directly.  If the operator changes the global
+    FF between submission and this recovery path, the original per-attempt
+    pinned flag is honoured, preventing corrections from being silently skipped
+    when FF is flipped back to shadow after a live run.
     """
     from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
 
-    MasteryWriter(supabase, get_mastery_write_flag()).redraft_corrections(attempt_id)
+    # Look up the persisted mastery_flag_state from the job row so we honour
+    # the pinned effective flag rather than the current mutable env.
+    _mastery_job_rows = (
+        supabase.table("mock_attempt_jobs")
+        .select("mastery_flag_state")
+        .eq("job_kind", JOB_MASTERY_RETRY)
+        .eq("attempt_id", attempt_id)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    _pinned = _mastery_job_rows[0].get("mastery_flag_state") if _mastery_job_rows else None
+    _effective_flag = _pinned if _pinned in {"off", "shadow", "live"} else get_mastery_write_flag()
+    MasteryWriter(supabase, _effective_flag).redraft_corrections(attempt_id)
 
 
 def run_sweeper(
