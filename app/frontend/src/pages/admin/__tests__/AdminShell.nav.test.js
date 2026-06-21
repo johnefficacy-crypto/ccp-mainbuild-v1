@@ -55,99 +55,104 @@ describe("AdminShell sidebar IA", () => {
   });
 });
 
-describe("AdminShell exam-intel nav title", () => {
-  test("masthead shows Exam Registry at /admin/exam-intelligence", () => {
+describe("AdminShell exam-intel nav title (I8-A)", () => {
+  test("masthead shows Exam Management at /admin/exam-intelligence", () => {
     renderShell("/admin/exam-intelligence");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Registry");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Management");
   });
 
-  test("masthead shows Advanced Import / Repair at /admin/exam-intelligence/cms", () => {
+  test("masthead shows Exam Management at /admin/exam-intelligence/console (no dedicated nav entry)", () => {
+    renderShell("/admin/exam-intelligence/console");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Management");
+  });
+
+  test("masthead shows Exam Management at /admin/exam-intelligence/cms (no dedicated nav entry)", () => {
     renderShell("/admin/exam-intelligence/cms");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Advanced Import / Repair");
-    expect(screen.queryByText("Raw CMS / Bulk Import")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Management");
   });
 
-  test("masthead shows Create exam at /admin/exam-intelligence/new", () => {
+  test("masthead shows Exam Management at /admin/exam-intelligence/new (no dedicated nav entry)", () => {
     renderShell("/admin/exam-intelligence/new");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Create exam");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Management");
   });
 
-  test("masthead shows Exam Governance Console at /admin/exam-intelligence/console", () => {
-    renderShell("/admin/exam-intelligence/console");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Governance Console");
-  });
-
-  test("masthead shows Exam Registry at /admin/exam-intelligence/workspace/exam-abc", () => {
+  test("masthead shows Exam Management at /admin/exam-intelligence/workspace/exam-abc", () => {
     renderShell("/admin/exam-intelligence/workspace/exam-abc");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Registry");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Management");
   });
 
-  test("masthead shows Exam Registry at /admin/exam-intelligence/exams/exam-abc/add-cycle", () => {
+  test("masthead shows Exam Management at /admin/exam-intelligence/exams/exam-abc", () => {
+    renderShell("/admin/exam-intelligence/exams/exam-abc");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Management");
+  });
+
+  test("masthead shows Exam Management at /admin/exam-intelligence/exams/exam-abc/add-cycle", () => {
     renderShell("/admin/exam-intelligence/exams/exam-abc/add-cycle");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Registry");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Exam Management");
   });
 });
 
-describe("AdminShell exam-intel nav active state", () => {
-  test("cms route: Raw CMS nav item active, Registry nav item NOT active", () => {
-    renderShell("/admin/exam-intelligence/cms");
-    const cmsLink = screen.getByTestId("admin-nav-exam-intel-cms");
-    const registryLink = screen.getByTestId("admin-nav-exam-intelligence");
-    expect(cmsLink.className).toContain("active");
-    expect(registryLink.className).not.toContain("active");
+describe("AdminShell exam-intel nav active state (I8-A)", () => {
+  test("Exam Management nav item is active at /admin/exam-intelligence", () => {
+    renderShell("/admin/exam-intelligence");
+    const link = screen.getByTestId("admin-nav-exam-management");
+    expect(link.className).toContain("active");
   });
 
-  test("workspace route: Registry nav item active", () => {
+  test("Exam Management nav item is active at /admin/exam-intelligence/workspace/exam-abc", () => {
     renderShell("/admin/exam-intelligence/workspace/exam-abc");
-    const registryLink = screen.getByTestId("admin-nav-exam-intelligence");
-    expect(registryLink.className).toContain("active");
+    const link = screen.getByTestId("admin-nav-exam-management");
+    expect(link.className).toContain("active");
   });
 
-  test("console route: console nav item active, Registry NOT active", () => {
+  test("Exam Management nav item is active at /admin/exam-intelligence/console", () => {
     renderShell("/admin/exam-intelligence/console");
-    expect(screen.getByTestId("admin-nav-exam-governance-console").className).toContain("active");
-    expect(screen.getByTestId("admin-nav-exam-intelligence").className).not.toContain("active");
+    const link = screen.getByTestId("admin-nav-exam-management");
+    expect(link.className).toContain("active");
+  });
+
+  test("Exam Management nav item is active at /admin/exam-intelligence/exams/exam-abc", () => {
+    renderShell("/admin/exam-intelligence/exams/exam-abc");
+    const link = screen.getByTestId("admin-nav-exam-management");
+    expect(link.className).toContain("active");
   });
 });
 
-describe("Wave 4.6B — Exam-truth lane posture", () => {
-  test("Exam Governance Console is a PRIMARY nav link routing to /console", () => {
+describe("I8-A — Exam Management nav consolidation", () => {
+  test("single Exam Management entry routes to /admin/exam-intelligence", () => {
     renderShell("/admin/exam-intelligence");
-    const link = screen.getByTestId("admin-nav-exam-governance-console");
-    expect(link.getAttribute("href")).toBe("/admin/exam-intelligence/console");
-    // Primary: not inside the Advanced affordance.
-    expect(link.closest("[data-testid='admin-nav-exam-advanced']")).toBeNull();
-  });
-
-  test("Exam Registry link is still present and primary, routing to /admin/exam-intelligence", () => {
-    renderShell("/admin/exam-intelligence");
-    const link = screen.getByTestId("admin-nav-exam-intelligence");
+    const link = screen.getByTestId("admin-nav-exam-management");
     expect(link.getAttribute("href")).toBe("/admin/exam-intelligence");
-    expect(link.closest("[data-testid='admin-nav-exam-advanced']")).toBeNull();
+    expect(link.textContent).toContain("Exam Management");
   });
 
-  test("Create exam is demoted into the Advanced affordance and routes to /new", () => {
+  test("Exam Governance Console is NOT a visible nav link", () => {
     renderShell("/admin/exam-intelligence");
-    const advanced = screen.getByTestId("admin-nav-exam-advanced");
-    const link = screen.getByTestId("admin-nav-guided-exam-wizard");
-    expect(link.textContent).toContain("Create exam");
-    expect(link.getAttribute("href")).toBe("/admin/exam-intelligence/new");
-    expect(advanced.contains(link)).toBe(true);
+    expect(screen.queryByTestId("admin-nav-exam-governance-console")).toBeNull();
   });
 
-  test("Advanced Import / Repair is demoted into the Advanced affordance and routes to /cms", () => {
+  test("Exam Registry is NOT a visible nav link", () => {
     renderShell("/admin/exam-intelligence");
-    const advanced = screen.getByTestId("admin-nav-exam-advanced");
-    const link = screen.getByTestId("admin-nav-exam-intel-cms");
-    expect(link.textContent).toContain("Advanced Import / Repair");
-    expect(link.getAttribute("href")).toBe("/admin/exam-intelligence/cms");
-    expect(advanced.contains(link)).toBe(true);
-    expect(screen.queryByText("Raw CMS / Bulk Import")).toBeNull();
+    expect(screen.queryByTestId("admin-nav-exam-intelligence")).toBeNull();
   });
 
-  test("the four KG lanes (D-A) are unchanged", () => {
+  test("Create exam is NOT a visible nav link", () => {
     renderShell("/admin/exam-intelligence");
-    // Landing + all four lane labels still present and in order.
+    expect(screen.queryByTestId("admin-nav-guided-exam-wizard")).toBeNull();
+  });
+
+  test("Advanced Import / Repair is NOT a visible nav link", () => {
+    renderShell("/admin/exam-intelligence");
+    expect(screen.queryByTestId("admin-nav-exam-intel-cms")).toBeNull();
+  });
+
+  test("the Advanced affordance is NOT rendered", () => {
+    renderShell("/admin/exam-intelligence");
+    expect(screen.queryByTestId("admin-nav-exam-advanced")).toBeNull();
+  });
+
+  test("the four KG lanes are present with correct labels", () => {
+    renderShell("/admin/exam-intelligence");
     expect(screen.getByTestId("admin-nav-kg-landing")).toBeTruthy();
     ["Exam truth & planner readiness",
      "User eligibility truth",

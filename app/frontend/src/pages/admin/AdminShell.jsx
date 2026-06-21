@@ -9,21 +9,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../lib/authContext";
 
-const HAS_OWN_NAV = [
-  "/admin/exam-intelligence/console",
-  "/admin/exam-intelligence/cms",
-  "/admin/exam-intelligence/new",
-];
-
 function isUnder(pathname, base) {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
 function matchesNavItem(pathname, item) {
-  if (item.to === "/admin/exam-intelligence") {
-    if (!isUnder(pathname, item.to)) return false;
-    return !HAS_OWN_NAV.some((base) => isUnder(pathname, base)); // Registry cedes cms + new
-  }
   return item.end ? pathname === item.to : isUnder(pathname, item.to);
 }
 
@@ -42,17 +32,8 @@ const TRUST_PIPELINE = [
 
 const KG_LANDING = { to: "/admin/knowledge-governance", label: "Knowledge Governance", icon: LayoutGrid, end: true, testId: "admin-nav-kg-landing" };
 
-// Primary entries for the Exam-truth lane: the 4.6A governance console is the
-// front door; the Registry stays alongside it.
 const KG_LANE_1 = [
-  { to: "/admin/exam-intelligence/console", label: "Exam Governance Console", icon: ClipboardList, testId: "admin-nav-exam-governance-console" },
-  { to: "/admin/exam-intelligence", label: "Exam Registry", icon: GraduationCap, testId: "admin-nav-exam-intelligence" },
-];
-// Secondary "Advanced" entries: create-exam routes to the EXISTING wizard
-// (no new path); Raw CMS keeps its /cms route. Demoted from primary siblings.
-const KG_LANE_1_ADVANCED = [
-  { to: "/admin/exam-intelligence/new", label: "Create exam", icon: Sparkles, testId: "admin-nav-guided-exam-wizard" },
-  { to: "/admin/exam-intelligence/cms", label: "Advanced Import / Repair", icon: Files, testId: "admin-nav-exam-intel-cms" },
+  { to: "/admin/exam-intelligence", label: "Exam Management", icon: GraduationCap, testId: "admin-nav-exam-management" },
 ];
 const KG_LANE_2 = [
   { to: "/admin/exam-eligibility", label: "Exam Eligibility", icon: ShieldCheck, testId: "admin-nav-exam-eligibility" },
@@ -67,7 +48,7 @@ const KG_LANE_4 = [
   { to: "/admin/persona", label: "Persona", icon: Sparkles, testId: "admin-nav-persona" },
 ];
 const KG_LANES = [
-  { label: "Exam truth & planner readiness", items: KG_LANE_1, advanced: { label: "Advanced", items: KG_LANE_1_ADVANCED } },
+  { label: "Exam truth & planner readiness", items: KG_LANE_1 },
   { label: "User eligibility truth", items: KG_LANE_2 },
   { label: "Official-source trust & change propagation", items: KG_LANE_3 },
   { label: "AI + personalization guardrails", items: KG_LANE_4 },
@@ -111,7 +92,7 @@ const SAFETY = [
 const SECTIONS = [
   { id: "command-center", label: "Command Center", items: COMMAND_CENTER, defaultOpen: true },
   { id: "trust-pipeline", label: "Trust Pipeline", items: TRUST_PIPELINE, defaultOpen: true },
-  { id: "knowledge-governance", label: "Knowledge Governance", landing: KG_LANDING, lanes: KG_LANES, items: [KG_LANDING, ...KG_LANE_1, ...KG_LANE_1_ADVANCED, ...KG_LANE_2, ...KG_LANE_3, ...KG_LANE_4], defaultOpen: false },
+  { id: "knowledge-governance", label: "Knowledge Governance", landing: KG_LANDING, lanes: KG_LANES, items: [KG_LANDING, ...KG_LANE_1, ...KG_LANE_2, ...KG_LANE_3, ...KG_LANE_4], defaultOpen: false },
   { id: "community-marketplace", label: "Community & Marketplace", items: COMMUNITY_MARKETPLACE, defaultOpen: false },
   { id: "study-os", label: "Study OS", items: STUDY_OS, defaultOpen: false },
   { id: "mock-content", label: "Mock Content", items: MOCK_CONTENT, defaultOpen: false },
