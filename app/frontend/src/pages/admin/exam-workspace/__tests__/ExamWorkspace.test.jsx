@@ -402,7 +402,7 @@ describe("ExamWorkspace standalone layout regression (B2)", () => {
     expect(screen.getByTestId("cycle-picker")).toBeTruthy();
     expect(screen.getByText("40% ready · partial")).toBeTruthy();
     expect(screen.getByTestId("tab-review").textContent).toContain("40%");
-    expect(screen.getByTestId("overview-section-readiness").textContent).toContain("40%");
+    // overall readiness score moved to SmartHeader (D2); overview-section-readiness now shows per-section rows only
     expect(screen.queryByTestId("exam-task-rail")).toBeNull();
     expect(screen.queryByTestId("console-rail-layout")).toBeNull();
   });
