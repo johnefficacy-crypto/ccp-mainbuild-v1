@@ -83,7 +83,7 @@ Findings confirmed against this checkout. Full audit evidence:
 | Area | Status | Notes |
 |---|---|---|
 | BUG-EI-1 `POST .../syllabus/propose` → 404 | PLANNED | `syllabus_mapper.py` queries `document_assets` (wrong table) instead of `syllabus_documents`. `document_assets` has no `exam_id` column; PostgREST returns empty list → 404 raised. Fix: change table name on both occurrences (~line 99 and ~line 503). `ProposerError` and `propose_syllabus_mentions` are defined twice; deduplicate first. |
-| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Fix requires design decision: Option A (query `syllabus_documents` by `exam_id`, use `trust_status`) or Option B (query processing-job status table). |
+| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED — AUDITED 2026-06-21 | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Audit verdict: **Option A undercounts** — `syllabus_documents.trust_status` is a human-review gate, NOT an extraction signal. The canonical extraction signal is `document_processing_jobs` where `job_type='text_extract'` and `status='succeeded'`. Same missing-column bug exists in `readiness.py:77`. Fix class: backend-only. Files: `console_detail.py` + `readiness.py`. See `docs/audits/document-readiness-2026-06-21.md`. |
 
 ### D-series — Redundant data display (4 defects)
 
@@ -154,6 +154,7 @@ Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Ca
 | Setup mutations governance | CLEANUP PENDING | Cycle create/edit use `useApiAction`; add phase, phase-date patch, and template promotion still call `api.post`/`api.patch` directly. (Lane C) |
 | Cycle Trust column | CLEANUP PENDING | Cycle Trust is still derived from cycle status (`active` → `locked`, otherwise `verified`) rather than a real trust lifecycle. |
 | Add-cycle product path | CLEANUP PENDING | Route redirects into workspace setup, but `AddCycleWizard.jsx` and direct tests remain. Decide whether to retire or re-promote it. |
+| Document readiness extraction status | AUDITED 2026-06-21 | `extraction_status` does NOT exist on `document_assets`. Real extraction signal: `document_processing_jobs` where `job_type='text_extract'` and `status='succeeded'`. `syllabus_documents.trust_status='verified'` is a human-review gate, orthogonal to extraction. Option A (H2 proposal) undercounts. Outcome: backend-only fix. Named files: `console_detail.py`, `readiness.py`. See `docs/audits/document-readiness-2026-06-21.md`. |
 | Bulk import JSON schema undocumented (UX-EI-4) | PLANNED | `ExamIntelCms.jsx:696` references a bulk-import endpoint; `BulkImportModal.jsx` exists. No in-repo docs describe the JSON/CSV schema, required field values, or whether cycle/phase must be pre-created. |
 | Competition metrics phase/category cutoffs unstructured (UX-EI-6) | DESIGN QUESTION | Migration 055 stores `cutoff_trend` and `vacancy_by_category` as opaque JSONB. No schema for the JSONB structure documented. Phase/category breakdown not structured in API or UI. |
 
