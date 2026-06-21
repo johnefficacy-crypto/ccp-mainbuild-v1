@@ -287,11 +287,25 @@ class MasteryWriter:
             ).execute()
 
     def _apply_error_patterns(self, signals: list[Any]) -> None:
+        # Schema: user_topic_error_patterns (migration 033).
+        # Columns: id, user_id, topic_id, error_type, frequency_count, evidence, ...
+        # microtopic_id and error_count are NOT in the schema; microtopic_id is
+        # stored in evidence JSONB. No unique index covers (user_id, topic_id,
+        # error_type) without exam_id/exam_phase_id, so each signal inserts a
+        # new row; dedup/aggregation happens at read time.
         for s in signals:
-            self.supabase.table("user_topic_error_patterns").upsert({
-                "id": str(uuid4()), "user_id": s.user_id, "topic_id": s.topic_id, "microtopic_id": s.microtopic_id,
-                "error_type": s.error_type, "error_count": s.count,
-            }, on_conflict="user_id,topic_id,microtopic_id,error_type").execute()
+            self.supabase.table("user_topic_error_patterns").insert({
+                "id": str(uuid4()),
+                "user_id": s.user_id,
+                "topic_id": s.topic_id,
+                "error_type": s.error_type,
+                "frequency_count": s.count,
+                "evidence": {
+                    "microtopic_id": s.microtopic_id,
+                    "signal_strength": float(s.signal_strength),
+                    "evidence_question_ids": s.evidence_question_ids,
+                },
+            }).execute()
 
     def _load_mock_test_id_for_attempt(self, attempt_id: str) -> str | None:
         """The mock_tests.id for this attempt's compat row, or None if not emitted
