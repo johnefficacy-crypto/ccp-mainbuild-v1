@@ -30,19 +30,21 @@ Do not dispatch A2/A3 until A1 passes and the allowlist implementation PR merges
 
 ---
 
-## Lane B — Exam Governance Console cleanup
+## Lane B — Exam Governance Console cleanup — **CLOSED**
+
+All Lane B items are CODE PRESENT / COMPLETE. Do not dispatch.
 
 | Work item | Agent type | Status | Depends on |
 |---|---|---|---|
-| B1 De-leak ExamActionConsole labels | Frontend agent | CODE PRESENT | — |
-| B2 Remove orphaned console variant + ExamTaskRail | Frontend agent | CODE PRESENT | B1 (test coordination) |
-| B3a Registry row expansion | Frontend agent | CODE PRESENT | — |
-| B3b Remove CMS `+ New guided exam` CTA | Frontend agent | CODE PRESENT | — |
-| B3c Collapsible lifecycle banner | Frontend agent | CODE PRESENT | — |
-| B3d-2 ConsoleWorkQueue action hierarchy | Frontend agent | CODE PRESENT | — |
-| B3d-3 GuidedExamWizard primary hierarchy | Frontend agent | CODE PRESENT | — |
-| B3d-close CL-5 final cross-surface audit | Frontend audit agent (docs-only) | CLEANUP PENDING | B3d-2 + B3d-3 merged |
-| B4/CL-6b Dormant console plumbing removal | Frontend agent | CODE PRESENT | — |
+| B1 De-leak ExamActionConsole labels | Frontend agent | COMPLETE | — |
+| B2 Remove orphaned console variant + ExamTaskRail | Frontend agent | COMPLETE | — |
+| B3a Registry row expansion | Frontend agent | COMPLETE | — |
+| B3b Remove CMS `+ New guided exam` CTA | Frontend agent | COMPLETE | — |
+| B3c Collapsible lifecycle banner | Frontend agent | COMPLETE | — |
+| B3d-2 ConsoleWorkQueue action hierarchy | Frontend agent | COMPLETE | — |
+| B3d-3 GuidedExamWizard primary hierarchy | Frontend agent | COMPLETE | — |
+| B3d-close CL-5 final cross-surface audit | Frontend audit agent (docs-only) | COMPLETE | — |
+| B4/CL-6b Dormant console plumbing removal | Frontend agent | COMPLETE | — |
 
 ---
 
@@ -173,14 +175,15 @@ Do not dispatch I3, I4, I5, I6, I9, I12 until the corresponding design questions
 
 ---
 
-## Safe next dispatch batch (as of 2026-06-20)
+## Safe next dispatch batch (as of 2026-06-21 — Lane B closed)
+
+Lane B items removed from this table; all complete.
 
 | Priority | Agent | Work | Notes |
 |---|---|---|---|
 | P0 | Backend agent → H1 | Fix `syllabus/propose` 404 | Dispatch immediately; narrow scope |
 | P0 | Backend agent → H2 | Fix console 500 | Requires design decision first (H2-gate) |
 | P1 | Frontend agent → H3 | EI UX cleanup (IDs, OverviewPanel, phases cycle label) | Can run parallel with H1 |
-| P1 | Frontend agent → B1 | ExamActionConsole de-leak | Independent of H-lane |
 | P1 | CI/infra agent → E1 | pip-audit / pytest sequencing | Independent of all other lanes |
 | P2 | Frontend agent → I7 | Bulk import auto-navigate after success | Narrow scope; no backend changes |
 | P2 | Frontend agent → I8 | PYQ paper overview table | Narrow scope; `PyqWorkbenchPanel.jsx` only |
