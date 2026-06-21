@@ -72,16 +72,17 @@ class _Seed:
 
     def cycle(self, cid, exam_id, *, name="Cycle", year=2026, status="active"):
         self.db["exam_cycles"].append({
-            "id": cid, "exam_id": exam_id, "name": name,
+            "id": cid, "exam_id": exam_id, "cycle_name": name,  # real DB column
             "year": year, "status": status, "created_at": _RECENT,
         })
         return self
 
-    def phase(self, pid, exam_id, cycle_id, *, name="Phase", slug="phase", order=1):
+    def phase(self, pid, exam_id, cycle_id, *, name="Phase", slug="phase", order=1,
+              start=None, end=None, status=None):
         self.db["exam_phases"].append({
             "id": pid, "exam_id": exam_id, "exam_cycle_id": cycle_id,
-            "name": name, "phase_slug": slug, "phase_order": order,
-            "start_date": None, "end_date": None,
+            "phase_name": name, "phase_slug": slug, "phase_order": order,  # real DB columns
+            "phase_start": start, "phase_end": end, "status": status,
         })
         return self
 
@@ -247,9 +248,9 @@ def test_management_list_active_cycle_beats_open():
     s = _Seed()
     s.exam("ex1", name="Exam1", locked=1, vpyq=1)
     s.db["exam_cycles"].extend([
-        {"id": "c-open", "exam_id": "ex1", "name": "Open", "year": 2026,
+        {"id": "c-open", "exam_id": "ex1", "cycle_name": "Open", "year": 2026,
          "status": "open", "created_at": _RECENT},
-        {"id": "c-active", "exam_id": "ex1", "name": "Active", "year": 2025,
+        {"id": "c-active", "exam_id": "ex1", "cycle_name": "Active", "year": 2025,
          "status": "active", "created_at": _RECENT},
     ])
     sb = SBStub(s.db)
@@ -310,9 +311,9 @@ def test_management_detail_includes_all_cycles():
     s = _Seed()
     s.exam("ex", name="Exam", locked=1, vpyq=1)
     s.db["exam_cycles"].extend([
-        {"id": "c1", "exam_id": "ex", "name": "2024", "year": 2024,
+        {"id": "c1", "exam_id": "ex", "cycle_name": "2024", "year": 2024,
          "status": "closed", "created_at": _RECENT},
-        {"id": "c2", "exam_id": "ex", "name": "2026", "year": 2026,
+        {"id": "c2", "exam_id": "ex", "cycle_name": "2026", "year": 2026,
          "status": "active", "created_at": _RECENT},
     ])
     sb = SBStub(s.db)
@@ -334,9 +335,9 @@ def test_management_detail_explicit_cycle_id():
     s = _Seed()
     s.exam("ex", name="Exam", locked=1, vpyq=1)
     s.db["exam_cycles"].extend([
-        {"id": "c1", "exam_id": "ex", "name": "2024", "year": 2024,
+        {"id": "c1", "exam_id": "ex", "cycle_name": "2024", "year": 2024,
          "status": "closed", "created_at": _RECENT},
-        {"id": "c2", "exam_id": "ex", "name": "2026", "year": 2026,
+        {"id": "c2", "exam_id": "ex", "cycle_name": "2026", "year": 2026,
          "status": "active", "created_at": _RECENT},
     ])
     sb = SBStub(s.db)
@@ -413,3 +414,88 @@ def test_management_detail_status_parity_with_list():
         detail_r = _detail(client, eid).json()
         assert detail_r["status"] == list_status[eid], eid
         assert detail_r["activation_verdict"]["status"] == list_status[eid], eid
+
+
+# ── Schema-column regression tests ──────────────────────────────────────────
+# These tests exist to prevent stub tests from passing while production
+# PostgREST returns a 42703 (column not found) error due to wrong column names
+# in the SELECT string.
+
+def test_cycle_cols_use_real_db_column_names():
+    """_CYCLE_COLS must contain cycle_name, not the API-normalized 'name' column."""
+    from app.exam_intelligence.management_read_model import _CYCLE_COLS, _PHASE_COLS
+    assert "cycle_name" in _CYCLE_COLS, "_CYCLE_COLS must select cycle_name (real DB col)"
+    # Ensure we haven't accidentally left the wrong column name
+    col_names = {c.strip() for c in _CYCLE_COLS.split(",")}
+    assert "name" not in col_names, "raw 'name' col not in exam_cycles; use cycle_name"
+    assert "phase_name" in _PHASE_COLS, "_PHASE_COLS must select phase_name (real DB col)"
+    assert "phase_start" in _PHASE_COLS, "_PHASE_COLS must select phase_start (real DB col)"
+    assert "phase_end" in _PHASE_COLS, "_PHASE_COLS must select phase_end (real DB col)"
+    phase_col_names = {c.strip() for c in _PHASE_COLS.split(",")}
+    assert "start_date" not in phase_col_names, "start_date not in exam_phases; use phase_start"
+    assert "end_date" not in phase_col_names, "end_date not in exam_phases; use phase_end"
+
+
+def test_list_cycle_name_maps_to_api_name_field():
+    """cycle_name DB column must appear as 'name' in the API response."""
+    s = _Seed()
+    s.exam("ex", name="Exam", locked=1)
+    s.db["exam_cycles"].append({
+        "id": "cy-reg", "exam_id": "ex", "cycle_name": "My Cycle 2026",
+        "year": 2026, "status": "active", "created_at": _RECENT,
+    })
+    sb = SBStub(s.db)
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all")
+    body = r.json()
+    ex = next(i for i in body["items"] if i["id"] == "ex")
+    assert ex["current_cycle"]["name"] == "My Cycle 2026", (
+        "cycle_name DB col must map to .name in the API response"
+    )
+
+
+def test_list_phase_db_columns_map_to_api_fields():
+    """phase_name/phase_start/phase_end/status are exposed as label/start_date/end_date/status."""
+    s = _Seed()
+    s.exam("ex", name="Exam", locked=1)
+    s.db["exam_cycles"].append({
+        "id": "cy-ph-reg", "exam_id": "ex", "cycle_name": "2026",
+        "year": 2026, "status": "active", "created_at": _RECENT,
+    })
+    s.db["exam_phases"].append({
+        "id": "ph-reg", "exam_id": "ex", "exam_cycle_id": "cy-ph-reg",
+        "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1,
+        "phase_start": "2026-06-01", "phase_end": "2026-06-30", "status": "upcoming",
+    })
+    sb = SBStub(s.db)
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all")
+    body = r.json()
+    ex = next(i for i in body["items"] if i["id"] == "ex")
+    ph = ex["current_cycle"]["phases"][0]
+    assert ph["label"] == "Prelims", "phase_name DB col → .label in API"
+    assert ph["start_date"] == "2026-06-01", "phase_start DB col → .start_date in API"
+    assert ph["end_date"] == "2026-06-30", "phase_end DB col → .end_date in API"
+    assert ph["status"] == "upcoming", "phase status must be present in API response"
+
+
+def test_list_response_includes_family_options():
+    """Management list response includes family_options for the family filter dropdown."""
+    client, _ = _client()
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all")
+    body = r.json()
+    assert "family_options" in body, "response must include family_options"
+    fam_opt = next((f for f in body["family_options"] if f["id"] == "fam1"), None)
+    assert fam_opt is not None, "fam1 must appear in family_options"
+    assert fam_opt["name"] == "Civil Services"
+
+
+def test_list_family_options_excluded_when_no_family():
+    """Exams without a family do not contribute phantom entries to family_options."""
+    s = _Seed()
+    s.exam("no-fam", name="No Family Exam", locked=1)  # no family
+    sb = SBStub(s.db)
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/management/exams?active_state=all")
+    body = r.json()
+    assert body["family_options"] == [], "no family → empty family_options"

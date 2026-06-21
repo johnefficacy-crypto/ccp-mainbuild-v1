@@ -54,7 +54,7 @@ export function AddCycleRedirect() {
   const { exam_id } = useParams();
   return (
     <Navigate
-      to={`/admin/exam-intelligence/workspace/${encodeURIComponent(exam_id || "")}?tab=setup&action=add-cycle`}
+      to={`/admin/exam-intelligence/exams/${encodeURIComponent(exam_id || "")}?tab=setup&action=add-cycle`}
       replace
     />
   );
@@ -96,6 +96,7 @@ export const adminRouteElements = (
       <Route path="/admin/exam-intelligence/console/:exam_id" element={<AdminExamGovernanceConsole />} />
       <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
       <Route path="/admin/exam-intelligence/new" element={<AdminGuidedExamWizard />} />
+      <Route path="/admin/exam-intelligence/exams/:exam_id" element={<AdminExamWorkspace />} />
       <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AddCycleRedirect />} />
       <Route path="/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace" element={<AdminPyqPaperWorkspace />} />
       <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<AdminExamWorkspace />} />
