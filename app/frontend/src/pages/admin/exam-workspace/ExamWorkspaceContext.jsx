@@ -25,6 +25,11 @@ export function ExamWorkspaceProvider({ children }) {
   const [readiness_loading, setReadinessLoading] = useState(false);
   const [readiness_error, setReadinessError] = useState("");
 
+  // Management data — cycle-aware authority for verdict, action queue, identity
+  const [mgmt, setMgmt] = useState(null);
+  const [mgmtLoading, setMgmtLoading] = useState(false);
+  const [mgmtError, setMgmtError] = useState("");
+
   const fetchContext = useCallback(async () => {
     if (!exam_id) return;
     setLoading(true);
@@ -66,14 +71,34 @@ export function ExamWorkspaceProvider({ children }) {
     }
   }, [exam_id, cycleId]);
 
+  const fetchMgmt = useCallback(async () => {
+    if (!exam_id) return;
+    setMgmtLoading(true);
+    setMgmtError("");
+    try {
+      const params = new URLSearchParams();
+      if (cycleId) params.set("cycle_id", cycleId);
+      const qs = params.toString();
+      const url = `${REVIEW_BASE}/management/exams/${encodeURIComponent(exam_id)}${qs ? `?${qs}` : ""}`;
+      const d = await api.get(url);
+      setMgmt(d);
+    } catch (e) {
+      setMgmtError(e?.message || "Failed to load management data");
+    } finally {
+      setMgmtLoading(false);
+    }
+  }, [exam_id, cycleId]);
+
   useEffect(() => { fetchContext(); }, [fetchContext]);
   useEffect(() => { fetchReadiness(); }, [fetchReadiness]);
+  useEffect(() => { fetchMgmt(); }, [fetchMgmt]);
 
   return (
     <ExamWorkspaceContext.Provider
       value={{
         exam, cycle, cycles, phases, organization, family, loading, error, refetch: fetchContext,
         readiness, readiness_loading, readiness_error, refetchReadiness: fetchReadiness,
+        mgmt, mgmtLoading, mgmtError, refetchMgmt: fetchMgmt,
       }}
     >
       {children}

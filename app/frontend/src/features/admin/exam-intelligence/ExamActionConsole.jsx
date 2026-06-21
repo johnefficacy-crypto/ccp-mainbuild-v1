@@ -13,6 +13,11 @@ import { humanizeToken } from "./operatorChrome";
  * routes — this component never recomputes them. Editing happens by following an
  * action's CTA into /workspace/:exam_id. No evidence fetch / drawer yet, no
  * mutations, no readiness/confidence percentage.
+ *
+ * When `data` prop is supplied (e.g. from ExamWorkspace management endpoint),
+ * the component renders that data directly and skips the fetch entirely.
+ * The management endpoint shape has flat exam fields at the top level; the
+ * console endpoint shape has an `exam` sub-object — both are handled.
  */
 
 const VERDICT_META = {
@@ -75,10 +80,11 @@ function evidenceCount(refs) {
 // ── Data hook: loading | live | not_found | error, stale-protected ──────────
 
 function useExamDetail(examId) {
-  const [state, setState] = useState({ status: "loading", data: null, error: null });
+  const [state, setState] = useState({ status: examId ? "loading" : "idle", data: null, error: null });
   const seq = useRef(0);
 
   const load = useCallback(() => {
+    if (!examId) return;
     const mySeq = ++seq.current;
     // Clear any prior exam's data immediately so stale rows never linger.
     setState({ status: "loading", data: null, error: null });
@@ -95,7 +101,10 @@ function useExamDetail(examId) {
       });
   }, [examId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!examId) return;
+    load();
+  }, [load]);
   return { ...state, reload: load };
 }
 
@@ -120,44 +129,66 @@ function ReasonTags({ reasons, testid }) {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function ExamActionConsole({ examId, embedded = false }) {
-  const { status, data, reload } = useExamDetail(examId);
+export default function ExamActionConsole({ examId, embedded = false, data: injectedData = null }) {
+  // When injectedData is provided, skip the fetch entirely.
+  const fetchTarget = injectedData ? null : examId;
+  const { status, data: fetchedData, reload } = useExamDetail(fetchTarget);
 
-  if (status === "loading") {
-    if (embedded) return <div data-testid="action-console-loading" style={{ padding: "8px 22px", color: "var(--ink-mute)", fontSize: 13 }}>Loading action data…</div>;
-    return <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-loading">Loading exam console…</div>;
-  }
+  // Fetch-path error/loading states (only when not using injected data)
+  if (!injectedData) {
+    if (status === "loading") {
+      if (embedded) return <div data-testid="action-console-loading" style={{ padding: "8px 22px", color: "var(--ink-mute)", fontSize: 13 }}>Loading action data…</div>;
+      return <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-loading">Loading exam console…</div>;
+    }
 
-  if (status === "not_found") {
-    if (embedded) return null;
-    return (
-      <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-not-found">
-        <div className="empty">
-          <div className="empty-title">Exam not found.</div>
-          <Link to="/admin/exam-intelligence/console" className="btn" data-testid="not-found-back">Back to work queue</Link>
+    if (status === "not_found") {
+      if (embedded) {
+        return (
+          <div data-testid="action-console-not-found" style={{ padding: "8px 22px" }}>
+            <span className="err-row" style={{ fontSize: 13 }}>Exam not found in action console.</span>
+          </div>
+        );
+      }
+      return (
+        <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-not-found">
+          <div className="empty">
+            <div className="empty-title">Exam not found.</div>
+            <Link to="/admin/exam-intelligence/console" className="btn" data-testid="not-found-back">Back to work queue</Link>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (status === "error" || !data) {
-    if (embedded) return <div data-testid="action-console-error" style={{ padding: "8px 22px" }}><span className="err-row" style={{ fontSize: 13 }}>Could not load action data.{" "}<button type="button" className="btn" onClick={reload} data-testid="action-console-retry">Retry</button></span></div>;
-    return (
-      <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-error">
-        <div className="err-row">
-          Could not load the exam console.{" "}
-          <button type="button" className="btn" onClick={reload} data-testid="action-console-retry">Retry</button>
+    if (status === "error" || !fetchedData) {
+      if (embedded) return <div data-testid="action-console-error" style={{ padding: "8px 22px" }}><span className="err-row" style={{ fontSize: 13 }}>Could not load action data.{" "}<button type="button" className="btn" onClick={reload} data-testid="action-console-retry">Retry</button></span></div>;
+      return (
+        <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-error">
+          <div className="err-row">
+            Could not load the exam console.{" "}
+            <button type="button" className="btn" onClick={reload} data-testid="action-console-retry">Retry</button>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
-  const exam = data.exam || {};
-  const verdict = data.activation_verdict || {};
-  const mock = data.mock_readiness || { status: "unknown" };
-  const actions = Array.isArray(data.action_queue) ? data.action_queue : [];
-  const checks = Array.isArray(data.activation_checks) ? data.activation_checks : [];
-  const stages = Array.isArray(data.stages) ? data.stages : [];
+  const raw = injectedData ?? fetchedData;
+  if (!raw) return null;
+
+  // Normalize shape: management endpoint has flat exam fields at top level;
+  // console endpoint wraps them in an `exam` sub-object.
+  const exam = raw.exam || {
+    id: raw.id,
+    slug: raw.slug,
+    name: raw.name,
+    organization_name: raw.organization_name,
+    family_name: raw.family_name,
+  };
+  const verdict = raw.activation_verdict || {};
+  const mock = raw.mock_readiness || { status: "unknown" };
+  const actions = Array.isArray(raw.action_queue) ? raw.action_queue : [];
+  const checks = Array.isArray(raw.activation_checks) ? raw.activation_checks : [];
+  const stages = Array.isArray(raw.stages) ? raw.stages : [];
   const checkByArea = Object.fromEntries(checks.map((c) => [c.area, c]));
 
   const vMeta = VERDICT_META[verdict.status] || { tone: "pill-dusk", label: humanizeToken(verdict.status) || "Unknown" };

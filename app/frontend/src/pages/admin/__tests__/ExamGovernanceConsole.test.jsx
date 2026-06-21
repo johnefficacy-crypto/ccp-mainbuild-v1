@@ -90,17 +90,18 @@ function detailFor(id) {
     mock_readiness: { status: ready ? "ready" : "blocked", detail: "2 thin section(s)" },
     action_queue: ready ? [] : [
       { id: "topic_coverage", severity: "blocker", area: "topic_coverage", title: "Lock topic coverage",
-        why: "The planner consumes only locked coverage rows.", cta_label: "Open workspace",
-        cta_route: `/admin/exam-intelligence/exams/${id}`, entity_kind: "exam_topic_coverage",
-        entity_id: null, evidence_refs: [{ kind: "exam_topic_coverage", row_id: "c1" }], status: "open" },
+        why: "The planner consumes only locked coverage rows.", cta_label: "Review unlocked rows",
+        cta_route: `/admin/exam-intelligence/exams/${id}?tab=syllabus&status=pending_review&row=c1`,
+        entity_kind: "exam_topic_coverage", entity_id: "c1",
+        evidence_refs: [{ kind: "exam_topic_coverage", row_id: "c1" }], status: "open" },
       { id: "pyq", severity: "action", area: "pyq", title: "Verify PYQ",
-        why: "Questions need verified paper + question + topic tag.", cta_label: "Open workspace",
-        cta_route: `/admin/exam-intelligence/exams/${id}`, entity_kind: null, entity_id: null,
-        evidence_refs: [], status: "open" },
+        why: "Questions need verified paper + question + topic tag.", cta_label: "Review pending questions",
+        cta_route: `/admin/exam-intelligence/exams/${id}?tab=pyq&status=pending`,
+        entity_kind: null, entity_id: null, evidence_refs: [], status: "open" },
       { id: "mock_readiness", severity: "advisory", area: "mock_readiness", title: "Strengthen the mock bank",
-        why: "Mock bank is thin or blocked (advisory only).", cta_label: "Open workspace",
-        cta_route: `/admin/exam-intelligence/exams/${id}`, entity_kind: null, entity_id: null,
-        evidence_refs: [], status: "open" },
+        why: "Mock bank is thin or blocked (advisory only).", cta_label: "Go to Review & Activate",
+        cta_route: `/admin/exam-intelligence/exams/${id}?tab=review`,
+        entity_kind: null, entity_id: null, evidence_refs: [], status: "open" },
     ],
     activation_checks: [
       { area: "setup", gate: "hard", state: "done", detail: "1 phase(s) defined", reasons: [], evidence_refs: [] },
@@ -404,7 +405,7 @@ describe("ExamGovernanceConsole — exam selected (action console)", () => {
     await waitFor(() => expect(screen.getByTestId("action-queue")).toBeTruthy());
     const items = screen.getAllByTestId(/^action-(topic_coverage|pyq|mock_readiness)$/);
     expect(items.map((el) => el.getAttribute("data-severity"))).toEqual(["blocker", "action", "advisory"]);
-    expect(screen.getByTestId("action-cta-topic_coverage").getAttribute("href")).toBe("/admin/exam-intelligence/exams/exam-1");
+    expect(screen.getByTestId("action-cta-topic_coverage").getAttribute("href")).toBe("/admin/exam-intelligence/exams/exam-1?tab=syllabus&status=pending_review&row=c1");
   });
 
   test("checks grouped by backend stages with gate + state labels + mapped reasons", async () => {

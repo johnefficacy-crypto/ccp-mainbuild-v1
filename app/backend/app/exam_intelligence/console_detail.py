@@ -190,21 +190,25 @@ def _severity_for(area: str, state: str) -> str:
     return "action"
 
 
-def _deep_link(area: str, exam_id: str, cycle_id: str | None) -> tuple[str, str]:
+def _deep_link(area: str, exam_id: str, cycle_id: str | None,
+               entity_row_id: str | None = None) -> tuple[str, str]:
     """Return (cta_label, cta_route) for one action area (design-lock Section 7.2).
 
     Every CTA deep-links to the exact task state in the canonical Manage Exam
     route; generic "Open workspace" labels are intentionally absent.
+    entity_row_id is appended as &row={id} where the panel can use it to
+    pre-select the causal row.
     """
     base = f"/admin/exam-intelligence/exams/{exam_id}"
     cyc = f"cycle={cycle_id}&" if cycle_id else ""
+    row = f"&row={entity_row_id}" if entity_row_id else ""
     _routes: dict[str, tuple[str, str]] = {
         "setup":          ("Go to Setup",              f"{base}?tab=setup"),
         "documents":      ("Go to Documents",           f"{base}?{cyc}tab=documents"),
-        "syllabus":       ("Review pending mentions",   f"{base}?tab=syllabus&status=pending"),
-        "topic_coverage": ("Review unlocked rows",      f"{base}?tab=syllabus&status=pending_review"),
-        "pyq":            ("Review pending questions",  f"{base}?{cyc}tab=pyq&status=pending"),
-        "updates":        ("Review pending updates",    f"{base}?tab=updates&status=pending"),
+        "syllabus":       ("Review pending mentions",   f"{base}?tab=syllabus&status=pending{row}"),
+        "topic_coverage": ("Review unlocked rows",      f"{base}?tab=syllabus&status=pending_review{row}"),
+        "pyq":            ("Review pending questions",  f"{base}?{cyc}tab=pyq&status=pending{row}"),
+        "updates":        ("Review pending updates",    f"{base}?tab=updates&status=pending{row}"),
         "competition":    ("Open competition",           f"{base}?{cyc}tab=competition"),
         "mock_readiness": ("Go to Review & Activate",  f"{base}?tab=review"),
     }
@@ -219,7 +223,8 @@ def _build_action_queue(checks: list[dict[str, Any]], exam_id: str,
         if area == "publish" or chk["state"] in {"done", "unknown"}:
             continue
         title, why = _ACTION_COPY[area]
-        cta_label, cta_route = _deep_link(area, exam_id, cycle_id)
+        entity_row_id = chk["evidence_refs"][0]["row_id"] if chk.get("evidence_refs") else None
+        cta_label, cta_route = _deep_link(area, exam_id, cycle_id, entity_row_id)
         items.append({
             "id": area,
             "severity": _severity_for(area, chk["state"]),
@@ -229,7 +234,7 @@ def _build_action_queue(checks: list[dict[str, Any]], exam_id: str,
             "cta_label": cta_label,
             "cta_route": cta_route,
             "entity_kind": _AREA_ENTITY_KIND.get(area),
-            "entity_id": None,
+            "entity_id": entity_row_id,
             "evidence_refs": chk["evidence_refs"],
             "status": "open",
         })

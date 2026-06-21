@@ -491,6 +491,7 @@ def console_summary(
 @router.get("/console/exams/{exam_id}")
 def console_exam_detail(
     exam_id: str,
+    cycle_id: str | None = Query(default=None),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     """Per-exam action console read (4.6I-BE). activation_verdict.status is
@@ -498,7 +499,7 @@ def console_exam_detail(
     mock readiness is separate/advisory. Unknown exam → 404."""
     from app.exam_intelligence import console_detail as _cd
 
-    return _cd.build_console_detail(get_supabase_admin(), exam_id)
+    return _cd.build_console_detail(get_supabase_admin(), exam_id, cycle_id=cycle_id)
 
 
 # ─── 2d. Management read model (Phase 0 — backend prerequisite for I8-A/B) ──

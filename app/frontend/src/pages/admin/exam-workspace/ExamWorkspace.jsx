@@ -6,9 +6,18 @@
  *
  * Canonical route: /admin/exam-intelligence/exams/:exam_id
  * Legacy compat:   /admin/exam-intelligence/workspace/:exam_id  → redirected
+ *
+ * URL is the single source of tab state:
+ *   ?tab=<id>      active tab (default: setup)
+ *   ?cycle=<id>    selected cycle (normalized from backend current_cycle on first load)
+ *   ?status=<s>    pre-filter for syllabus/pyq/updates panels
+ *   ?document=<id> pre-select document in DocumentsPanel
+ *   ?paper=<id>    pre-select paper in PyqWorkbenchPanel
+ *   ?row=<id>      pre-select row in syllabus/pyq panels
+ *   ?action=<a>    inline action for setup (e.g. add-cycle)
  */
-import React, { lazy, Suspense, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import React, { lazy, Suspense, useEffect } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ExamWorkspaceProvider, useExamWorkspace } from "./ExamWorkspaceContext";
 import SetupPanel from "./panels/SetupPanel";
 import DocumentsPanel from "./panels/DocumentsPanel";
@@ -16,7 +25,11 @@ import UpdatesPanel from "./panels/UpdatesPanel";
 import CompetitionPanel from "./panels/CompetitionPanel";
 import ReviewActivatePanel from "./panels/ReviewActivatePanel";
 import ExamActionConsole from "../../../features/admin/exam-intelligence/ExamActionConsole";
-import { LifecycleLegend } from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
+import {
+  BUSINESS_PRIORITY_LABELS,
+  CADENCE_LABELS,
+  LifecycleLegend,
+} from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
 
 const SyllabusMapperPanel = lazy(() => import("./syllabus-mapper/SyllabusMapperPanel"));
 const PyqWorkbenchPanel = lazy(() => import("./pyq-workbench/PyqWorkbenchPanel"));
@@ -37,61 +50,45 @@ function sectionByKey(readiness, sectionKey) {
   return readiness?.sections?.find((s) => s.section === sectionKey) || null;
 }
 
-function totalBlockers(readiness) {
-  return (readiness?.sections || [])
-    .filter((s) => s.section !== "review_activate")
-    .reduce((n, s) => n + (s.blockers?.length || 0), 0);
-}
-
-// Current stage = first non-ready/locked section (excluding the terminal
-// review_activate). Single source of truth for the "what's blocking now"
-// highlight, reused by the SmartHeader.
-function currentStageSection(readiness) {
-  return (readiness?.sections || []).find(
-    (s) => s.section !== "review_activate" && !(s.status === "ready" || s.status === "locked"),
-  ) || null;
+function getMgmtModeLabel(mode) {
+  if (mode == null) return (BUSINESS_PRIORITY_LABELS.null || {}).label || "Unclassified";
+  return ((BUSINESS_PRIORITY_LABELS[mode] || BUSINESS_PRIORITY_LABELS.null) || {}).label || mode;
 }
 
 // ─── Smart readiness header ──────────────────────────────────────────────────
 
 function SmartHeader({ onGotoTab }) {
-  const { exam, cycles, cycle, readiness } = useExamWorkspace();
+  const { exam, cycles, cycle, readiness, mgmt, organization, family } = useExamWorkspace();
   const { exam_id } = useParams();
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   function handleCycleChange(e) {
     const val = e.target.value;
-    const base = `/admin/exam-intelligence/exams/${exam_id}`;
-    if (val) {
-      navigate(`${base}?cycle=${encodeURIComponent(val)}`);
-    } else {
-      navigate(base);
-    }
+    const tab = searchParams.get("tab") || "setup";
+    const next = new URLSearchParams();
+    if (val) next.set("cycle", val);
+    next.set("tab", tab);
+    // Preserve status/action; drop document/paper/row on cycle change
+    const status = searchParams.get("status");
+    const action = searchParams.get("action");
+    if (status) next.set("status", status);
+    if (action) next.set("action", action);
+    setSearchParams(next);
   }
 
-  const blockers = totalBlockers(readiness);
-  const scorePercent = readiness?.overall?.score_percent ?? 0;
-  const overallStatus = readiness?.overall?.status ?? "empty";
+  const verdict = mgmt?.activation_verdict || {};
+  const blockerCount = mgmt?.blocker_count ?? 0;
+  const firstBlockerText = mgmt?.first_blocker_text ?? null;
+  const actionQueue = Array.isArray(mgmt?.action_queue) ? mgmt.action_queue : [];
+  const firstAction = actionQueue[0] ?? null;
 
-  // Current stage = first non-ready/locked section (shared derivation).
-  const currentSec = currentStageSection(readiness);
-  const stageLabel = currentSec ? currentSec.label : "Ready to activate";
+  const managementMode = mgmt?.management_mode ?? exam?.management_mode ?? null;
+  const cadence = mgmt?.cadence ?? exam?.cadence ?? null;
+  const isActive = mgmt?.is_active ?? exam?.is_active ?? null;
+  const familyName = mgmt?.family_name ?? family?.name ?? null;
+  const orgName = mgmt?.organization_name ?? organization?.name ?? null;
 
-  // Next action = highest-weight blocked section
-  const nextSec = [...(readiness?.sections || [])]
-    .filter((s) => (s.blockers?.length || 0) > 0)
-    .sort((a, b) => (b.weight || 0) - (a.weight || 0))[0];
-  const nextLine = nextSec
-    ? `${nextSec.blockers[0]} — open ${nextSec.label}`
-    : "All sections clear — review & activate";
-
-  const tabForSection = {
-    setup: "setup", documents: "documents",
-    syllabus_mapper: "syllabus", pyq_workbench: "pyq",
-    updates: "updates", competition: "competition",
-    review_activate: "review",
-  };
-  const nextTabId = nextSec ? (tabForSection[nextSec.section] ?? "review") : "review";
+  const cadenceLabel = cadence ? (CADENCE_LABELS[cadence] || cadence) : null;
 
   return (
     <div
@@ -119,12 +116,20 @@ function SmartHeader({ onGotoTab }) {
           >
             {exam?.name ?? exam_id}
           </h1>
-          {exam?.slug && (
-            <div className="row-sub" style={{ marginTop: 2 }}>
-              {exam.family_name ?? exam.family ?? ""}{exam.family_name || exam.family ? " · " : ""}
-              <span className="mono">{exam.slug}</span>
-            </div>
-          )}
+          {/* Identity: mode · cadence · active/inactive · family · org · slug */}
+          <div className="row-sub" style={{ marginTop: 2, gap: 6, flexWrap: "wrap" }}>
+            <span>{getMgmtModeLabel(managementMode)}</span>
+            {cadenceLabel && <><span style={{ opacity: 0.4 }}>·</span><span>{cadenceLabel}</span></>}
+            <span style={{ opacity: 0.4 }}>·</span>
+            <span className={`badge ${isActive ? "info" : "neutral"} no-dot`} style={{ fontSize: 9.5 }}>
+              {isActive ? "Active" : "Inactive"}
+            </span>
+            {familyName && <><span style={{ opacity: 0.4 }}>·</span><span>{familyName}</span></>}
+            {orgName && <><span style={{ opacity: 0.4 }}>·</span><span>{orgName}</span></>}
+            {exam?.slug && (
+              <><span style={{ opacity: 0.4 }}>·</span><span className="mono">{exam.slug}</span></>
+            )}
+          </div>
         </div>
 
         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -147,25 +152,21 @@ function SmartHeader({ onGotoTab }) {
         </div>
       </div>
 
-      {/* Readiness strip */}
-      {readiness && (
+      {/* Activation status strip — backend verdict authority only */}
+      {mgmt && verdict.status && (
         <div
-          className="next-action warn"
+          className={`next-action${verdict.status === "ready" ? "" : " warn"}`}
           style={{ margin: "14px 0", gridTemplateColumns: "auto 1fr auto", gap: 16 }}
+          data-testid="smart-header-status"
         >
           <div>
-            <span className="lbl">Current stage</span>
+            <span className="lbl">Activation status</span>
             <div
               className="oc-title"
               style={{ fontSize: 16, marginTop: 4, color: "var(--paper)" }}
+              data-testid="smart-header-verdict"
             >
-              {stageLabel}
-            </div>
-            <div
-              className="mono"
-              style={{ fontSize: 10.5, color: "rgba(250,247,242,0.7)", marginTop: 2 }}
-            >
-              {`${scorePercent}% ready · ${overallStatus}`}
+              {verdict.headline || verdict.status}
             </div>
           </div>
           <div
@@ -175,30 +176,47 @@ function SmartHeader({ onGotoTab }) {
             }}
           >
             <span className="lbl">Next action</span>
-            <div style={{ fontSize: 13.5, marginTop: 4, color: "var(--paper)" }}>
-              {nextLine}
+            <div style={{ fontSize: 13.5, marginTop: 4, color: "var(--paper)" }}
+                 data-testid="smart-header-next-action">
+              {firstBlockerText || firstAction?.why || "All activation gates pass"}
             </div>
-            <div className="row" style={{ marginTop: 8, gap: 8 }}>
-              <span
-                className="badge blocker no-dot"
-                style={{ background: "rgba(250,247,242,0.16)", color: "var(--paper)" }}
-              >
-                {blockers} activation blocker{blockers === 1 ? "" : "s"}
-              </span>
-            </div>
+            {blockerCount > 0 && (
+              <div className="row" style={{ marginTop: 8, gap: 8 }}>
+                <span
+                  className="badge blocker no-dot"
+                  style={{ background: "rgba(250,247,242,0.16)", color: "var(--paper)" }}
+                  data-testid="smart-header-blocker-count"
+                >
+                  {blockerCount} activation blocker{blockerCount === 1 ? "" : "s"}
+                </span>
+              </div>
+            )}
           </div>
-          <button
-            className="btn primary"
-            style={{
-              background: "var(--paper)",
-              color: "var(--ink)",
-              borderColor: "var(--paper)",
-              alignSelf: "center",
-            }}
-            onClick={() => onGotoTab(nextTabId)}
-          >
-            Go to next action →
-          </button>
+          {firstAction?.cta_route ? (
+            <Link
+              to={firstAction.cta_route}
+              className="btn primary"
+              style={{
+                background: "var(--paper)",
+                color: "var(--ink)",
+                borderColor: "var(--paper)",
+                alignSelf: "center",
+              }}
+              data-testid="smart-header-cta"
+            >
+              {firstAction.cta_label || "Go to next action"} →
+            </Link>
+          ) : null}
+        </div>
+      )}
+
+      {/* Advisory content readiness from workspace context */}
+      {readiness && (
+        <div className="ctx-strip" style={{ marginTop: 4 }}>
+          <span className="lbl" style={{ marginRight: 8 }}>Advisory content readiness</span>
+          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-mute)" }}>
+            {readiness.overall?.score_percent ?? 0}%
+          </span>
         </div>
       )}
 
@@ -208,7 +226,7 @@ function SmartHeader({ onGotoTab }) {
   );
 }
 
-// ─── 8-tab strip ─────────────────────────────────────────────────────────────
+// ─── 7-tab strip ─────────────────────────────────────────────────────────────
 
 function TabStrip({ active, onChange, readiness }) {
   return (
@@ -297,16 +315,45 @@ function TabStrip({ active, onChange, readiness }) {
 // ─── Main shell ───────────────────────────────────────────────────────────────
 
 function WorkspaceShell() {
-  const { loading, error, refetch, readiness } = useExamWorkspace();
+  const { loading, error, refetch, readiness, mgmt } = useExamWorkspace();
   const { exam_id } = useParams();
-  const [searchParams] = useSearchParams();
-  const initialTab = TAB_ORDER.some(t => t.id === searchParams.get("tab"))
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // URL is the single source of tab state
+  const activeTab = TAB_ORDER.some((t) => t.id === searchParams.get("tab"))
     ? searchParams.get("tab")
     : "setup";
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const action = searchParams.get("action") ?? null;
 
-  function gotoTab(id) { setActiveTab(id); }
+  const action = searchParams.get("action") ?? null;
+  const status = searchParams.get("status") ?? null;
+  const documentId = searchParams.get("document") ?? null;
+  const paperId = searchParams.get("paper") ?? null;
+  const rowId = searchParams.get("row") ?? null;
+
+  function gotoTab(id) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", id);
+      return next;
+    });
+  }
+
+  // Initial cycle normalization: if no ?cycle= yet and mgmt has a current_cycle,
+  // set it via replace navigation so the back button doesn't land here.
+  const currentCycleId = mgmt?.current_cycle?.id;
+  useEffect(() => {
+    if (!currentCycleId) return;
+    if (searchParams.get("cycle")) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("cycle", currentCycleId);
+        return next;
+      },
+      { replace: true },
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentCycleId]);
 
   if (loading) {
     return (
@@ -335,18 +382,20 @@ function WorkspaceShell() {
   const panelBody = (
     <>
       {activeTab === "setup" && <SetupPanel action={action} />}
-      {activeTab === "documents" && <DocumentsPanel onGotoTab={gotoTab} />}
+      {activeTab === "documents" && (
+        <DocumentsPanel onGotoTab={gotoTab} documentId={documentId} />
+      )}
       {activeTab === "syllabus" && (
         <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>
-          <SyllabusMapperPanel />
+          <SyllabusMapperPanel status={status} rowId={rowId} />
         </Suspense>
       )}
       {activeTab === "pyq" && (
         <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>
-          <PyqWorkbenchPanel />
+          <PyqWorkbenchPanel paperId={paperId} rowId={rowId} status={status} />
         </Suspense>
       )}
-      {activeTab === "updates" && <UpdatesPanel />}
+      {activeTab === "updates" && <UpdatesPanel status={status} />}
       {activeTab === "competition" && <CompetitionPanel />}
       {activeTab === "review" && <ReviewActivatePanel onGotoTab={gotoTab} />}
     </>
@@ -355,8 +404,9 @@ function WorkspaceShell() {
   return (
     <div className="oc">
       <SmartHeader onGotoTab={gotoTab} />
-      <ExamActionConsole examId={exam_id} embedded />
-      <TabStrip active={activeTab} onChange={setActiveTab} readiness={readiness} />
+      {/* Pass management data so ExamActionConsole skips its own fetch */}
+      <ExamActionConsole examId={exam_id} embedded data={mgmt} />
+      <TabStrip active={activeTab} onChange={gotoTab} readiness={readiness} />
 
       <main className="oc-main" style={{ paddingTop: 18 }}>
         {panelBody}
