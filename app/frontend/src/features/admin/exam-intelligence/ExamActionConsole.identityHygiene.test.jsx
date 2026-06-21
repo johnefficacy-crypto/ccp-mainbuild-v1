@@ -90,3 +90,42 @@ test("ExamActionConsole humanizes reachable reason fallbacks without leaking ide
   expect(text).not.toMatch(/zzz_unmapped_reason/);
   assertNoLeaks(text);
 });
+
+
+// CL-1b regression guard: humanizeToken must truncate a UUID that leaks into a
+// verdict-status fallback. If humanizeToken is bypassed and the raw UUID reaches
+// JSX, this test fails.
+const PLANTED_UUID = '550e8400-e29b-41d4-a716-446655440000';
+const HUMANIZED_PREFIX = '550e8400…'; // first 8 chars + ellipsis
+
+test('CL-1b: UUID planted in verdict.status fallback is truncated, never rendered raw', async () => {
+  const fixtureWithUuidStatus = {
+    ...FIXTURE,
+    exam: { ...FIXTURE.exam, id: PLANTED_UUID },
+    // Plant the UUID directly as an unmapped verdict status. The component
+    // resolves to humanizeToken(verdict.status) || "Unknown" — with the fix
+    // this returns the 8-char truncation; without the fix the raw UUID leaks.
+    activation_verdict: {
+      status: PLANTED_UUID,
+      headline: 'Planted headline',
+      reasons: [],
+    },
+  };
+
+  api.get.mockImplementation((url) => {
+    if (url.includes(`/console/exams/${PLANTED_UUID}`)) return Promise.resolve(fixtureWithUuidStatus);
+    return Promise.reject(new Error(`unexpected url ${url}`));
+  });
+
+  render(<MemoryRouter><ExamActionConsole examId={PLANTED_UUID} /></MemoryRouter>);
+  await waitFor(() => expect(screen.getByTestId('exam-action-console')).toBeInTheDocument());
+
+  const text = document.body.textContent;
+
+  // The humanized prefix must appear (proves humanizeToken ran and truncated).
+  expect(text).toContain(HUMANIZED_PREFIX);
+
+  // The full raw UUID must NOT appear anywhere in rendered text.
+  expect(text).not.toContain(PLANTED_UUID);
+  expect(text).not.toMatch(UUID_RE);
+});
