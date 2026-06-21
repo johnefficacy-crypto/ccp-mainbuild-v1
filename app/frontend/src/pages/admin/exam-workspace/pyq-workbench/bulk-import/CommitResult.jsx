@@ -10,9 +10,15 @@ const RESULT_STYLES = {
 export default function CommitResult({ commitResult, onImportAnother, onClose }) {
   const { committed = 0, skipped = 0, failed = 0, per_row = [] } = commitResult || {};
   const hasFailed = failed > 0;
+  const hasCommitted = committed > 0;
 
   return (
     <div className="flex flex-col h-full" data-testid="commit-result">
+      {hasCommitted && !hasFailed && (
+        <div className="rounded bg-green-50 border border-green-300 px-3 py-2 text-sm text-green-800 mb-4" data-testid="commit-success-banner">
+          Import complete — {committed} question{committed !== 1 ? "s" : ""} committed. Close to open the paper.
+        </div>
+      )}
       {hasFailed && (
         <div className="rounded bg-yellow-50 border border-yellow-300 px-3 py-2 text-sm text-yellow-800 mb-4" data-testid="commit-failure-banner">
           Some rows failed. Review the table below.
@@ -84,7 +90,7 @@ export default function CommitResult({ commitResult, onImportAnother, onClose })
           className="text-sm px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-900"
           data-testid="result-close-btn"
         >
-          Close
+          {hasCommitted ? "Open paper" : "Close"}
         </button>
       </div>
     </div>
