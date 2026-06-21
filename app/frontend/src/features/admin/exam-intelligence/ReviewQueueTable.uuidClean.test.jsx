@@ -3,7 +3,7 @@
  *
  * Asserts that raw UUIDs are never rendered as visible text in the
  * Row id column. The fix replaces {r.id} with humanizeToken(r.id),
- * which produces "#<first-8-chars>" for UUID-shaped values.
+ * which produces "<first-8-chars>…" (truncated + ellipsis) for UUID-shaped values.
  */
 import React from "react";
 import { render, screen } from "@testing-library/react";
@@ -48,7 +48,7 @@ describe("ReviewQueueTable — UX-EI-1: no raw UUIDs in Row id column", () => {
     expect(screen.queryByText(UUID_ID_2)).toBeNull();
   });
 
-  test("renders humanized short prefix (#<first-8-chars>) instead of UUID", () => {
+  test("renders humanized short prefix (first-8-chars + …) instead of UUID", () => {
     render(
       <ReviewQueueTable
         items={ROWS}
@@ -57,9 +57,9 @@ describe("ReviewQueueTable — UX-EI-1: no raw UUIDs in Row id column", () => {
         busyRowId={null}
       />,
     );
-    // humanizeToken("#a4cad004") — first 8 hex chars
-    expect(screen.getByText("#a4cad004")).toBeTruthy();
-    expect(screen.getByText("#b8f3e001")).toBeTruthy();
+    // humanizeToken(uuid) → first 8 hex chars + ellipsis (e.g. "a4cad004…")
+    expect(screen.getByText("a4cad004…")).toBeTruthy();
+    expect(screen.getByText("b8f3e001…")).toBeTruthy();
   });
 
   test("expand button still has correct data-testid using full id", () => {
@@ -75,7 +75,7 @@ describe("ReviewQueueTable — UX-EI-1: no raw UUIDs in Row id column", () => {
     expect(screen.getByTestId(`exam-intel-review-${UUID_ID}-expand`)).toBeTruthy();
   });
 
-  test("non-UUID short ids pass through unchanged", () => {
+  test("non-UUID short ids are humanized (first letter capitalized)", () => {
     const shortRow = {
       id: "mention-42",
       normalized_text: "Some text",
@@ -91,7 +91,7 @@ describe("ReviewQueueTable — UX-EI-1: no raw UUIDs in Row id column", () => {
         busyRowId={null}
       />,
     );
-    // Non-UUID IDs are returned as-is by humanizeToken
-    expect(screen.getByText("mention-42")).toBeTruthy();
+    // humanizeToken capitalizes the first letter of non-UUID ids
+    expect(screen.getByText("Mention-42")).toBeTruthy();
   });
 });
