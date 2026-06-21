@@ -24,6 +24,7 @@ from app.core.permissions import (
 from app.db.supabase_client import get_supabase_admin
 from app.admin import mock_questions as svc
 from app.admin import mock_import as imp_svc
+from app.admin import pyq_mock_projection as proj_svc
 
 logger = logging.getLogger("career_copilot.api.admin_mocks")
 
@@ -153,6 +154,11 @@ class SourceIn(BaseModel):
 
 class CommitImportIn(BaseModel):
     import_token: str
+
+
+class ProjectionSyncIn(BaseModel):
+    audit_reason: str = "admin_sync"
+    question_ids: list[str] | None = None
 
 
 # ── Questions CRUD ─────────────────────────────────────────────────────────────
@@ -434,6 +440,59 @@ def set_sources(
 
 
 # ── Bulk import ────────────────────────────────────────────────────────────────
+
+# ── PYQ → Mock Bank projection ────────────────────────────────────────────────
+
+@router.get("/pyq-papers/{paper_id}/projection/preview")
+def projection_preview(
+    paper_id: str,
+    actor: dict = Depends(require_author),
+):
+    """[author] Dry-run: assess which questions in a PYQ paper would project."""
+    paper_id = _validate_uuid_param(paper_id, "paper_id")
+    try:
+        return proj_svc.preview_paper_projection(_sb(), paper_id)
+    except LookupError as exc:
+        raise HTTPException(404, detail=str(exc))
+    except Exception as exc:
+        _handle(exc, "projection_preview")
+
+
+@router.post("/pyq-papers/{paper_id}/projection/sync", status_code=200)
+def projection_sync(
+    paper_id: str,
+    body: ProjectionSyncIn = ProjectionSyncIn(),
+    actor: dict = Depends(require_publisher),
+):
+    """[publisher] Atomically project eligible PYQ questions into mock_question_bank."""
+    paper_id = _validate_uuid_param(paper_id, "paper_id")
+    actor_id = actor.get("id")
+    try:
+        return proj_svc.sync_paper_projection(
+            _sb(), paper_id, actor_id,
+            audit_reason=body.audit_reason,
+            question_ids=body.question_ids,
+        )
+    except LookupError as exc:
+        raise HTTPException(404, detail=str(exc))
+    except Exception as exc:
+        _handle(exc, "projection_sync")
+
+
+@router.get("/pyq-papers/{paper_id}/projection/status")
+def projection_status(
+    paper_id: str,
+    actor: dict = Depends(require_author),
+):
+    """[author] Aggregated projection state for a PYQ paper."""
+    paper_id = _validate_uuid_param(paper_id, "paper_id")
+    try:
+        return proj_svc.get_paper_projection_status(_sb(), paper_id)
+    except LookupError as exc:
+        raise HTTPException(404, detail=str(exc))
+    except Exception as exc:
+        _handle(exc, "projection_status")
+
 
 @router.post("/questions/import/dry-run")
 async def import_dry_run(

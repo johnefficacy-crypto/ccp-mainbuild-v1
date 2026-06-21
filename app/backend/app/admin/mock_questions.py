@@ -209,6 +209,9 @@ def create_question(supabase: Any, actor: dict, data: dict) -> dict:
     if len(options_raw) < 2:
         raise ValueError("at least 2 options required")
     correct_options = [o for o in options_raw if o.get("is_correct")]
+    q_type = data.get("question_type", "mcq")
+    if q_type == "mcq" and len(correct_options) != 1:
+        raise ValueError("MCQ requires exactly one correct option")
     if not correct_options:
         raise ValueError("exactly one correct option required")
 
@@ -344,6 +347,9 @@ def update_question(supabase: Any, actor: dict, question_id: str, data: dict,
         if len(options_raw) < 2:
             raise ValueError("at least 2 options required")
         correct_opts = [o for o in options_raw if o.get("is_correct")]
+        updated_q_type = data.get("question_type") or q.get("question_type", "mcq")
+        if updated_q_type == "mcq" and len(correct_opts) != 1:
+            raise ValueError("MCQ requires exactly one correct option")
         if not correct_opts:
             raise ValueError("exactly one correct option required")
 
