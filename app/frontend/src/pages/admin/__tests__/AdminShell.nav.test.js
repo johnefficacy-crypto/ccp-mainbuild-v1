@@ -30,7 +30,7 @@ function renderShell(path = "/admin") {
 }
 
 describe("AdminShell sidebar IA", () => {
-  test("renders exactly 6 top-level groups", () => {
+  test("renders exactly 7 top-level groups", () => {
     renderShell("/admin");
     const groups = screen.getAllByTestId(/^admin-nav-group-/);
     expect(groups).toHaveLength(7);

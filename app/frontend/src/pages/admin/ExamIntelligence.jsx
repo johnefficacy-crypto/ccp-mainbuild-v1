@@ -1,21 +1,27 @@
-import React, { useReducer } from "react";
+import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
-import useApiCollection from "../../lib/hooks/useApiCollection";
+import { api } from "../../lib/api";
 import {
   BUSINESS_PRIORITY_LABELS,
   CADENCE_LABELS,
   EXAM_PURPOSE_LABELS,
+  getBusinessPriorityLabel,
 } from "../../features/admin/exam-intelligence/ExamIntelGlossary";
 import { AdminSafetyBanner } from "../../shared/ui/core";
 import { PageHeader, StatusDot } from "../../shared/ui/studyos";
+
+const PAGE_SIZE = 25;
 
 const INITIAL_FILTERS = {
   search: "",
   examType: "",
   activeState: "active",
+  familyId: "",
   managementMode: "",
   cadence: "",
+  workflow: "",
+  sort: "blockers_first",
 };
 
 function filtersReducer(state, action) {
@@ -27,38 +33,268 @@ function filtersReducer(state, action) {
   }
 }
 
-function buildParams(filters) {
-  const p = { limit: "200" };
+function buildParams(filters, offset) {
+  const p = { limit: String(PAGE_SIZE), offset: String(offset) };
   if (filters.search.trim()) p.q = filters.search.trim();
   if (filters.examType) p.exam_type = filters.examType;
   if (filters.activeState) p.active_state = filters.activeState;
+  if (filters.familyId) p.exam_family_id = filters.familyId;
   if (filters.managementMode) p.management_mode = filters.managementMode;
   if (filters.cadence) p.cadence = filters.cadence;
+  if (filters.workflow) p.workflow = filters.workflow;
+  if (filters.sort) p.sort = filters.sort;
   return p;
 }
 
-const STATUS_CHIP_CLASS = {
-  ready: "bg-green-50 text-green-700",
-  needs_action: "bg-amber-50 text-amber-700",
-  blocked: "bg-red-50 text-red-700",
+const STATUS_META = {
+  ready:        { label: "Ready",        cls: "bg-green-50 text-green-700" },
+  needs_action: { label: "Needs action", cls: "bg-amber-50 text-amber-700" },
+  blocked:      { label: "Blocked",      cls: "bg-red-50 text-red-700" },
 };
 
-const STATUS_LABEL = {
-  ready: "Ready",
-  needs_action: "Needs action",
-  blocked: "Blocked",
-};
+function StatusChip({ status }) {
+  const meta = STATUS_META[status];
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+        meta ? meta.cls : "bg-gray-100 text-gray-600"
+      }`}
+    >
+      {meta ? meta.label : (status ?? "—")}
+    </span>
+  );
+}
+
+const WORKFLOW_OPTIONS = [
+  { value: "",                   label: "All workflows" },
+  { value: "blocked",            label: "Blocked" },
+  { value: "needs_action",       label: "Needs action" },
+  { value: "ready",              label: "Ready" },
+  { value: "pending_review",     label: "Pending review" },
+  { value: "stale_review_queue", label: "Stale review queue" },
+  { value: "missing_pyq",        label: "Missing PYQ" },
+  { value: "missing_coverage",   label: "Missing coverage" },
+];
+
+const SORT_OPTIONS = [
+  { value: "blockers_first",   label: "Blockers first" },
+  { value: "management_lane",  label: "Management lane" },
+  { value: "name",             label: "Name A–Z" },
+];
+
+function MoreMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="btn btn-ghost text-xs"
+        data-testid="exam-mgmt-more-trigger"
+      >
+        More
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 z-50 mt-1 min-w-[10rem] rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5"
+          data-testid="exam-mgmt-more-menu"
+        >
+          <Link
+            to="/admin/exam-intelligence/new"
+            role="menuitem"
+            className="block px-4 py-2 text-sm hover:bg-gray-50"
+            data-testid="exam-mgmt-create-exam"
+            onClick={() => setOpen(false)}
+          >
+            Create exam
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReadinessDots({ r }) {
+  if (!r) return <span className="text-muted-foreground">—</span>;
+  return (
+    <>
+      <span className={r.setup === "ready" ? "text-green-600" : "text-amber-600"}>S</span>
+      <span className={r.topic_coverage === "ready" ? "text-green-600" : "text-amber-600"}>T</span>
+      <span className={r.pyq === "ready" ? "text-green-600" : "text-amber-600"}>P</span>
+      {(r.pending_review_count ?? 0) > 0 && (
+        <span className="ml-1 text-amber-600">+{r.pending_review_count}⌛</span>
+      )}
+    </>
+  );
+}
+
+function ExamRow({ item }) {
+  const cycle = item.current_cycle;
+  return (
+    <tr
+      className="border-b last:border-0 align-top"
+      data-testid={`exam-mgmt-row-${item.slug}`}
+    >
+      <td className="py-2 pr-3">
+        <StatusChip status={item.status} />
+        {item.blocker_count > 0 && (
+          <span
+            className="ml-1 text-xs text-red-600"
+            data-testid={`exam-mgmt-blockers-${item.slug}`}
+          >
+            ×{item.blocker_count}
+          </span>
+        )}
+      </td>
+      <td className="py-2 pr-3">
+        <span className="font-medium" data-testid={`exam-mgmt-name-${item.slug}`}>
+          {item.name}
+        </span>
+        {item.family_name && (
+          <div
+            className="text-xs text-muted-foreground"
+            data-testid={`exam-mgmt-family-${item.slug}`}
+          >
+            {item.family_name}
+          </div>
+        )}
+      </td>
+      <td
+        className="py-2 pr-3 text-xs text-muted-foreground"
+        data-testid={`exam-mgmt-org-${item.slug}`}
+      >
+        {item.organization_name ?? "—"}
+      </td>
+      <td className="py-2 pr-3 text-xs text-muted-foreground">
+        <div data-testid={`exam-mgmt-mode-${item.slug}`}>
+          {getBusinessPriorityLabel(item.management_mode)}
+        </div>
+        <div data-testid={`exam-mgmt-cadence-${item.slug}`}>
+          {CADENCE_LABELS[item.cadence] ?? item.cadence ?? "—"}
+        </div>
+      </td>
+      <td
+        className="py-2 pr-3 text-xs"
+        data-testid={`exam-mgmt-active-${item.slug}`}
+      >
+        {item.is_active ? "Active" : "Inactive"}
+      </td>
+      <td
+        className="py-2 pr-3 text-xs text-muted-foreground"
+        data-testid={`exam-mgmt-cycle-${item.slug}`}
+      >
+        {cycle ? (
+          <>
+            <div className="font-medium text-foreground">
+              {[cycle.name, cycle.year].filter(Boolean).join(" ")}
+              {cycle.status && (
+                <span className="ml-1 font-normal text-muted-foreground">
+                  ({cycle.status})
+                </span>
+              )}
+            </div>
+            {(cycle.phases ?? []).map((ph) => (
+              <div key={ph.id} className="mt-0.5" data-testid={`exam-mgmt-phase-${ph.id}`}>
+                <span>{ph.label}</span>
+                {ph.status && <span className="ml-1">({ph.status})</span>}
+                {(ph.start_date || ph.end_date) && (
+                  <span className="ml-1 text-muted-foreground">
+                    {ph.start_date ?? "?"} – {ph.end_date ?? "?"}
+                  </span>
+                )}
+              </div>
+            ))}
+          </>
+        ) : (
+          "—"
+        )}
+      </td>
+      <td className="py-2 pr-3 text-xs text-muted-foreground max-w-xs truncate">
+        {item.first_blocker_text ?? ""}
+      </td>
+      <td className="py-2 pr-3 text-xs" data-testid={`exam-mgmt-readiness-${item.slug}`}>
+        <ReadinessDots r={item.readiness_summary} />
+      </td>
+      <td className="py-2 text-right">
+        <Link
+          to={`/admin/exam-intelligence/exams/${item.id}`}
+          className="btn btn-ghost text-xs"
+          data-testid={`exam-mgmt-manage-${item.slug}`}
+        >
+          Manage exam
+        </Link>
+      </td>
+    </tr>
+  );
+}
 
 export default function AdminExamIntelligence() {
   const [filters, dispatch] = useReducer(filtersReducer, INITIAL_FILTERS);
+  const [offset, setOffset] = useState(0);
+  const [status, setStatus] = useState("loading");
+  const [data, setData] = useState({
+    items: [],
+    totalCount: 0,
+    familyOptions: [],
+    hasNext: false,
+    offset: 0,
+  });
+  const seqRef = useRef(0);
 
-  const { items, status, refresh } = useApiCollection(
-    "/api/admin/exam-intelligence/management/exams",
-    [],
-    { params: buildParams(filters) },
-  );
+  const fetchPage = useCallback(async (currentFilters, currentOffset) => {
+    const seq = ++seqRef.current;
+    setStatus("loading");
+    try {
+      const params = buildParams(currentFilters, currentOffset);
+      const qs = new URLSearchParams(params).toString();
+      const res = await api.get(
+        `/api/admin/exam-intelligence/management/exams?${qs}`,
+      );
+      if (seq !== seqRef.current) return;
+      if (!res || !Array.isArray(res.items)) {
+        setStatus("error");
+        return;
+      }
+      setData({
+        items: res.items,
+        totalCount: res.total_count ?? 0,
+        familyOptions: res.family_options ?? [],
+        hasNext: res.has_next ?? false,
+        offset: currentOffset,
+      });
+      setStatus(res.items.length === 0 ? "empty" : "live");
+    } catch {
+      if (seq !== seqRef.current) return;
+      setStatus("error");
+    }
+  }, []);
 
-  const isLoading = status === "loading";
+  useEffect(() => {
+    fetchPage(filters, offset);
+  }, [fetchPage, filters, offset]);
+
+  function setFilter(key, value) {
+    dispatch({ type: "SET_FILTER", key, value });
+    setOffset(0);
+  }
+
+  const hasPrev = data.offset > 0;
+  const rangeStart = data.totalCount === 0 ? 0 : data.offset + 1;
+  const rangeEnd = data.offset + data.items.length;
 
   return (
     <div className="space-y-6" data-testid="admin-exam-intelligence-page">
@@ -72,14 +308,8 @@ export default function AdminExamIntelligence() {
         sub="Review status, cycle health, and coverage readiness for every active exam."
         right={
           <span className="inline-flex items-center gap-2 flex-wrap justify-end">
-            <Link
-              to="/admin/exam-intelligence/new"
-              className="btn btn-ghost text-xs"
-              data-testid="exam-mgmt-create-exam"
-            >
-              Create exam
-            </Link>
             <StatusDot state="live" label="Live" />
+            <MoreMenu />
           </span>
         }
       />
@@ -106,18 +336,14 @@ export default function AdminExamIntelligence() {
             type="search"
             placeholder="Search name or slug…"
             value={filters.search}
-            onChange={(e) =>
-              dispatch({ type: "SET_FILTER", key: "search", value: e.target.value })
-            }
+            onChange={(e) => setFilter("search", e.target.value)}
             className="input input-sm w-48"
             data-testid="exam-intel-search"
             aria-label="Search exams"
           />
           <select
             value={filters.examType}
-            onChange={(e) =>
-              dispatch({ type: "SET_FILTER", key: "examType", value: e.target.value })
-            }
+            onChange={(e) => setFilter("examType", e.target.value)}
             className="select select-sm w-44"
             data-testid="exam-intel-type-filter"
             aria-label="Filter by exam purpose"
@@ -129,9 +355,7 @@ export default function AdminExamIntelligence() {
           </select>
           <select
             value={filters.activeState}
-            onChange={(e) =>
-              dispatch({ type: "SET_FILTER", key: "activeState", value: e.target.value })
-            }
+            onChange={(e) => setFilter("activeState", e.target.value)}
             className="select select-sm w-28"
             data-testid="exam-intel-active-filter"
             aria-label="Filter by active status"
@@ -141,10 +365,20 @@ export default function AdminExamIntelligence() {
             <option value="all">All</option>
           </select>
           <select
+            value={filters.familyId}
+            onChange={(e) => setFilter("familyId", e.target.value)}
+            className="select select-sm w-44"
+            data-testid="exam-intel-family-filter"
+            aria-label="Filter by exam family"
+          >
+            <option value="">All families</option>
+            {data.familyOptions.map((f) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+          <select
             value={filters.managementMode}
-            onChange={(e) =>
-              dispatch({ type: "SET_FILTER", key: "managementMode", value: e.target.value })
-            }
+            onChange={(e) => setFilter("managementMode", e.target.value)}
             className="select select-sm w-44"
             data-testid="exam-intel-lane-filter"
             aria-label="Filter by business priority"
@@ -159,9 +393,7 @@ export default function AdminExamIntelligence() {
           </select>
           <select
             value={filters.cadence}
-            onChange={(e) =>
-              dispatch({ type: "SET_FILTER", key: "cadence", value: e.target.value })
-            }
+            onChange={(e) => setFilter("cadence", e.target.value)}
             className="select select-sm w-36"
             data-testid="exam-intel-cadence-filter"
             aria-label="Filter by cadence"
@@ -171,21 +403,28 @@ export default function AdminExamIntelligence() {
               <option key={k} value={k}>{label}</option>
             ))}
           </select>
-          <div className="ml-auto flex items-center gap-2">
-            {status !== "loading" && (
-              <p className="text-xs text-muted-foreground" data-testid="exam-intel-count-label">
-                {items.length} exam{items.length === 1 ? "" : "s"}
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={refresh}
-              className="btn btn-ghost text-xs"
-              data-testid="exam-intel-refresh"
-            >
-              {isLoading ? "Loading…" : "Refresh"}
-            </button>
-          </div>
+          <select
+            value={filters.workflow}
+            onChange={(e) => setFilter("workflow", e.target.value)}
+            className="select select-sm w-44"
+            data-testid="exam-intel-workflow-filter"
+            aria-label="Filter by workflow status"
+          >
+            {WORKFLOW_OPTIONS.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <select
+            value={filters.sort}
+            onChange={(e) => setFilter("sort", e.target.value)}
+            className="select select-sm w-44"
+            data-testid="exam-intel-sort"
+            aria-label="Sort exams"
+          >
+            {SORT_OPTIONS.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
         </div>
 
         {status === "error" && (
@@ -197,15 +436,49 @@ export default function AdminExamIntelligence() {
           </div>
         )}
 
-        {isLoading && (
-          <div className="text-xs text-muted-foreground py-4" data-testid="exam-intel-loading">
+        {status === "loading" && (
+          <div
+            className="text-xs text-muted-foreground py-4"
+            data-testid="exam-intel-loading"
+          >
             Loading…
           </div>
         )}
 
         {(status === "live" || status === "empty") && (
           <div data-testid="exam-mgmt-table">
-            {items.length === 0 ? (
+            <div className="flex items-center justify-between mb-2">
+              <p
+                className="text-xs text-muted-foreground"
+                data-testid="exam-intel-count-label"
+              >
+                {data.totalCount === 0
+                  ? "No exams"
+                  : `${rangeStart}–${rangeEnd} of ${data.totalCount} exam${data.totalCount === 1 ? "" : "s"}`}
+              </p>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  disabled={!hasPrev}
+                  onClick={() => setOffset(Math.max(0, data.offset - PAGE_SIZE))}
+                  className="btn btn-ghost text-xs"
+                  data-testid="exam-intel-prev"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={!data.hasNext}
+                  onClick={() => setOffset(data.offset + PAGE_SIZE)}
+                  className="btn btn-ghost text-xs"
+                  data-testid="exam-intel-next"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+
+            {data.items.length === 0 ? (
               <p className="text-xs text-muted-foreground py-6 text-center">
                 No exams match your filters.
               </p>
@@ -213,55 +486,20 @@ export default function AdminExamIntelligence() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-xs text-muted-foreground">
-                    <th className="text-left py-2 pr-4 font-medium">Status</th>
-                    <th className="text-left py-2 pr-4 font-medium">Exam</th>
-                    <th className="text-left py-2 pr-4 font-medium">Current cycle</th>
-                    <th className="text-left py-2 pr-4 font-medium">Note</th>
+                    <th className="text-left py-2 pr-3 font-medium">Status</th>
+                    <th className="text-left py-2 pr-3 font-medium">Exam / Family</th>
+                    <th className="text-left py-2 pr-3 font-medium">Organisation</th>
+                    <th className="text-left py-2 pr-3 font-medium">Lane / Cadence</th>
+                    <th className="text-left py-2 pr-3 font-medium">Active</th>
+                    <th className="text-left py-2 pr-3 font-medium">Current cycle</th>
+                    <th className="text-left py-2 pr-3 font-medium">First blocker</th>
+                    <th className="text-left py-2 pr-3 font-medium">Readiness</th>
                     <th className="py-2" />
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
-                    <tr
-                      key={item.id}
-                      className="border-b last:border-0"
-                      data-testid={`exam-mgmt-row-${item.slug}`}
-                    >
-                      <td className="py-2 pr-4">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CHIP_CLASS[item.status] ?? ""}`}
-                        >
-                          {STATUS_LABEL[item.status] ?? item.status}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-4">
-                        <span className="font-medium">{item.name}</span>
-                        {item.family_name && (
-                          <span className="ml-1.5 text-xs text-muted-foreground">
-                            {item.family_name}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 text-xs text-muted-foreground">
-                        {item.current_cycle
-                          ? [item.current_cycle.name, item.current_cycle.year]
-                              .filter(Boolean)
-                              .join(" ")
-                          : "—"}
-                      </td>
-                      <td className="py-2 pr-4 text-xs text-muted-foreground max-w-xs truncate">
-                        {item.first_blocker_text ?? ""}
-                      </td>
-                      <td className="py-2 text-right">
-                        <Link
-                          to={`/admin/exam-intelligence/exams/${item.id}`}
-                          className="btn btn-ghost text-xs"
-                          data-testid={`exam-mgmt-manage-${item.slug}`}
-                        >
-                          Manage exam
-                        </Link>
-                      </td>
-                    </tr>
+                  {data.items.map((item) => (
+                    <ExamRow key={item.id} item={item} />
                   ))}
                 </tbody>
               </table>

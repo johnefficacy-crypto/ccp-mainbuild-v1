@@ -90,11 +90,16 @@ test("exam row 'Manage exam' link routes to /admin/exam-intelligence/exams/:exam
         first_blocker_text: null,
         current_cycle: null,
         family_name: null,
+        organization_name: null,
+        management_mode: null,
+        cadence: null,
+        is_active: true,
         readiness_summary: { setup: "ready", topic_coverage: "ready", pyq: "ready", pending_review_count: 0, stale_review_count: 0 },
       },
     ],
     total_count: 1,
     has_next: false,
+    family_options: [],
   });
 
   render(
@@ -150,9 +155,9 @@ test("cms route renders ExamIntelCms", async () => {
   );
 });
 
-// ── 5b. I8-A header CTAs: Create exam is secondary ghost; no Open Console or Advanced CMS ──
+// ── 5b. I8-A header CTAs: Create exam is overflow-only; no standalone CTA, no Console, no Advanced CMS ──
 
-test("ExamIntelligence page: Create exam is a ghost action; console and advanced-cms CTAs are gone", async () => {
+test("ExamIntelligence page: Create exam is overflow-only; old CTAs are gone", async () => {
   api.get.mockResolvedValue(EMPTY_RESPONSE);
   render(
     <MemoryRouter initialEntries={["/admin/exam-intelligence"]}>
@@ -166,11 +171,14 @@ test("ExamIntelligence page: Create exam is a ghost action; console and advanced
   expect(screen.queryByTestId("registry-advanced-cms")).toBeNull();
   expect(screen.queryByTestId("registry-create-exam")).toBeNull();
 
-  // Create exam exists as a secondary ghost action.
-  const createBtn = screen.getByTestId("exam-mgmt-create-exam");
-  expect(createBtn.getAttribute("href")).toBe("/admin/exam-intelligence/new");
-  expect(createBtn.classList.contains("btn-ghost")).toBe(true);
-  expect(createBtn.classList.contains("btn-primary")).toBe(false);
+  // Create exam is NOT a standalone visible button — only exists inside the overflow menu.
+  expect(screen.queryByTestId("exam-mgmt-create-exam")).toBeNull();
+
+  // Opening More reveals Create exam.
+  fireEvent.click(screen.getByTestId("exam-mgmt-more-trigger"));
+  const createExam = screen.getByTestId("exam-mgmt-create-exam");
+  expect(createExam.getAttribute("href")).toBe("/admin/exam-intelligence/new");
+  expect(createExam.classList.contains("btn-primary")).toBe(false);
 });
 
 // ── 5c. Exam Intel CMS entry is absent from the Study OS sidebar group ──
@@ -219,14 +227,16 @@ test("selecting Unclassified in lane filter sends management_mode=__null__ to ma
 // ── 7. Status chips are rendered for each status variant ──
 
 test("management rows render correct status chip label", async () => {
+  const base = { organization_name: null, management_mode: null, cadence: null, is_active: true, readiness_summary: null, family_options: [] };
   api.get.mockResolvedValueOnce({
     items: [
-      { id: "e1", slug: "exam-a", name: "Exam A", status: "ready", blocker_count: 0, first_blocker_text: null, current_cycle: null, family_name: null },
-      { id: "e2", slug: "exam-b", name: "Exam B", status: "needs_action", blocker_count: 1, first_blocker_text: "Missing PYQ", current_cycle: null, family_name: null },
-      { id: "e3", slug: "exam-c", name: "Exam C", status: "blocked", blocker_count: 2, first_blocker_text: "No cycle", current_cycle: null, family_name: null },
+      { ...base, id: "e1", slug: "exam-a", name: "Exam A", status: "ready", blocker_count: 0, first_blocker_text: null, current_cycle: null, family_name: null },
+      { ...base, id: "e2", slug: "exam-b", name: "Exam B", status: "needs_action", blocker_count: 1, first_blocker_text: "Missing PYQ", current_cycle: null, family_name: null },
+      { ...base, id: "e3", slug: "exam-c", name: "Exam C", status: "blocked", blocker_count: 2, first_blocker_text: "No cycle", current_cycle: null, family_name: null },
     ],
     total_count: 3,
     has_next: false,
+    family_options: [],
   });
 
   render(
@@ -241,7 +251,8 @@ test("management rows render correct status chip label", async () => {
   expect(screen.getByTestId("exam-mgmt-row-exam-b")).toBeTruthy();
   expect(screen.getByTestId("exam-mgmt-row-exam-c")).toBeTruthy();
 
-  expect(screen.getByText("Ready")).toBeTruthy();
-  expect(screen.getByText("Needs action")).toBeTruthy();
-  expect(screen.getByText("Blocked")).toBeTruthy();
+  // getAllByText: workflow dropdown also contains these labels
+  expect(screen.getAllByText("Ready").length).toBeGreaterThanOrEqual(1);
+  expect(screen.getAllByText("Needs action").length).toBeGreaterThanOrEqual(1);
+  expect(screen.getAllByText("Blocked").length).toBeGreaterThanOrEqual(1);
 });
