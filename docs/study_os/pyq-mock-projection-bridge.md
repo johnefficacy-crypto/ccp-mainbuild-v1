@@ -29,11 +29,12 @@ A PYQ question is eligible for projection when ALL of the following hold:
 | `pyq_questions.reviewer_status = 'verified'` | Question reviewed and approved |
 | `pyq_questions.question_type = 'mcq'` | Only MCQ supported in mock engine |
 | `question_text` not empty | No blank questions |
-| ≥ 2 verified `pyq_options` | Minimum selector options |
-| Exactly 1 `pyq_options.is_correct = true` among verified options | MCQ invariant |
+| ≥ 2 **verified** `pyq_options` | Minimum selector options (verified only) |
+| Every verified option has non-empty `option_text` | No blank option text |
+| Exactly 1 **verified** `pyq_options.is_correct = true` | MCQ invariant (verified only) |
+| If `pyq_questions.correct_option_id` is non-null, it must match the verified correct option | Pointer consistency |
 | Exactly 1 verified `pyq_question_topic_tags` with `tag_role = 'primary'` | Topic routing |
 | `topics.subject_id` not null | Subject must be resolvable |
-| `pyq_papers.exam_id` = `pyq_questions.pyq_paper_id`'s exam | Exam consistency |
 
 ## Idempotency
 
@@ -57,23 +58,6 @@ Only **verified** options are included in the hash.  `chr(0)` (NUL) is the
 only separator — no `chr(1)` sentinel.  The Python `compute_content_hash()`
 in `pyq_mock_projection.py` and the SQL hash in migration 183 section 3
 must always use identical formulas.
-
-## Eligibility rules (extended)
-
-A PYQ question is eligible for projection when ALL of the following hold:
-
-| Condition | Why |
-|-----------|-----|
-| `pyq_papers.trust_status = 'verified'` | Paper provenance must be verified |
-| `pyq_questions.reviewer_status = 'verified'` | Question reviewed and approved |
-| `pyq_questions.question_type = 'mcq'` | Only MCQ supported in mock engine |
-| `question_text` not empty | No blank questions |
-| ≥ 2 **verified** `pyq_options` | Minimum selector options (verified only) |
-| Every verified option has non-empty `option_text` | No blank option text |
-| Exactly 1 **verified** `pyq_options.is_correct = true` | MCQ invariant (verified only) |
-| If `pyq_questions.correct_option_id` is non-null, it must match the verified correct option | Pointer consistency |
-| Exactly 1 verified `pyq_question_topic_tags` with `tag_role = 'primary'` | Topic routing |
-| `topics.subject_id` not null | Subject must be resolvable |
 
 ## Invalidation triggers
 
@@ -117,6 +101,37 @@ Mount: `/api/admin/mocks/pyq-papers/{paper_id}/projection/`
 | GET | `/preview` | author | Dry-run — which questions would sync |
 | POST | `/sync` | publisher | Execute projection |
 | GET | `/status` | author | Aggregated projection state |
+
+### POST `/sync` request body
+
+```json
+{
+  "audit_reason": "string (required, 8–500 chars)",
+  "question_ids": ["uuid", "..."]
+}
+```
+
+`audit_reason` is **required** (min 8, max 500 characters).  Requests without
+it return HTTP 422.  `question_ids` is optional; omit to sync all eligible
+questions in the paper.
+
+### POST `/sync` response notes
+
+- HTTP 200: normal result (per-question `outcome` values: `projected`, `updated`,
+  `unchanged`, `ineligible`, `skipped`)
+- HTTP 409: one or more questions had a fingerprint conflict — another row in
+  `mock_question_bank` has the same content hash but a different lineage.  The
+  response body contains `error: "fingerprint_conflict"` and the conflicting
+  `question_id`.
+
+## Active-lineage guard
+
+The selector layer (`diagnostics.py` `selectable_mcq_depth` and
+`mock_blueprint_selection.py` `_exam_base_pool`) applies a Python-layer safety
+check: any question whose `pyq_question_id` is set but has no `active` row in
+`pyq_mock_question_projections` is excluded from the pool before the blueprint
+runs.  This prevents stale projected questions from being served after an
+invalidation trigger fires and before the operator re-syncs.
 
 ## Frontend surface
 

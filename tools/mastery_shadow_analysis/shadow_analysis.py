@@ -1096,34 +1096,75 @@ def multi_exam_coverage(
     required_exam_ids: list[str],
     required_exam_slugs: list[str],
     min_questions: int = 1,
+    from_utc: str | None = None,
+    to_utc: str | None = None,
+    days: int | None = None,
     output_json: bool = False,
 ) -> None:
     """Validate FF_MOCK_MASTERY_WRITES shadow coverage across multiple exams.
 
-    Queries the shadow audit table (``user_topic_mastery_audit``) and joins to
-    ``mock_attempt_responses`` to determine per-exam, per-phase, per-subject
-    and per-source-kind breakdown of questions in the shadow path.
+    Uses ``mock_mastery_shadow`` (flag_state='shadow') as the source of truth
+    and joins to ``mock_attempts`` for exam_id + ``mock_attempt_responses``
+    for per-question source_kind breakdown.
+
+    At least one --required-exam-id or --required-exam-slug must be supplied;
+    the command exits ERROR without them (no-track runs are meaningless).
+
+    Time window: supply --from-utc/--to-utc or --days to restrict
+    ``decided_at``; omitting all three reads the full history.
 
     Exits:
-      0 — PASS: all required exams meet the min_questions threshold
-      3 — INSUFFICIENT_DATA: required exams have fewer than min_questions
+      0 — PASS: all required exam tracks meet the min_questions threshold
+      3 — INSUFFICIENT_DATA: a required track is below threshold, or no shadow data
       4 — CORRUPT: invariant violations detected
-      2 — ERROR: credential / query failure
+      2 — ERROR: credential / query failure, or no tracks supplied
     """
     cmd = "multi_exam_coverage"
     sb = _get_supabase()
 
-    # ── 1. Fetch shadow audit rows ─────────────────────────────────────────────
-    try:
-        audit_rows = _fetch_paginated(
-            sb,
-            "user_topic_mastery_audit",
-            lambda t: t.select(
-                "id, user_id, topic_id, attempt_id, delta_applied_db, reason, "
-                "before_mastery_db, after_mastery_db"
-            ).neq("reason", "manual"),
-            order_by="id",
+    # ── 0. Require at least one track ─────────────────────────────────────────
+    if not required_exam_ids and not required_exam_slugs:
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": cmd,
+                "status": "ERROR",
+                "error": "NO_TRACKS_SUPPLIED",
+                "detail": (
+                    "At least one --required-exam-id or --required-exam-slug must be "
+                    "specified. Running without tracks would always PASS vacuously."
+                ),
+            },
+            output_json,
         )
+        sys.exit(_EXIT_ERROR)
+
+    # ── 0b. Resolve time window ────────────────────────────────────────────────
+    now_utc = datetime.now(timezone.utc)
+    if from_utc:
+        window_start: str | None = from_utc
+        window_end: str | None = to_utc or now_utc.isoformat()
+    elif days is not None:
+        window_start = (now_utc - timedelta(days=days)).isoformat()
+        window_end = now_utc.isoformat()
+    else:
+        window_start = None
+        window_end = None
+
+    # ── 1. Fetch mock_mastery_shadow rows (flag_state='shadow') ───────────────
+    def _shadow_query(t: Any) -> Any:
+        q = t.select(
+            "id, attempt_id, user_id, topic_id, "
+            "proposed_delta_db, current_mastery_db, would_be_mastery_db, decided_at"
+        ).eq("flag_state", "shadow")
+        if window_start:
+            q = q.gte("decided_at", window_start)
+        if window_end:
+            q = q.lte("decided_at", window_end)
+        return q
+
+    try:
+        shadow_rows = _fetch_paginated(sb, "mock_mastery_shadow", _shadow_query, order_by="id")
     except Exception as exc:
         _emit_result(
             {
@@ -1131,46 +1172,79 @@ def multi_exam_coverage(
                 "command": cmd,
                 "status": "ERROR",
                 "error": "QUERY_FAILED",
-                "detail": f"user_topic_mastery_audit fetch failed: {exc}",
+                "detail": f"mock_mastery_shadow fetch failed: {exc}",
             },
             output_json,
         )
         sys.exit(_EXIT_ERROR)
 
-    if not audit_rows:
+    if not shadow_rows:
         _emit_result(
             {
                 "schema_version": 1,
                 "command": cmd,
                 "status": "INSUFFICIENT_DATA",
                 "error": "NO_SHADOW_DATA",
-                "detail": "No shadow audit rows found — FF_MOCK_MASTERY_WRITES not yet active.",
+                "detail": (
+                    "No shadow rows found (flag_state='shadow'). "
+                    "FF_MOCK_MASTERY_WRITES may not be active, or no attempts "
+                    "in the specified time window."
+                ),
                 "required_exam_ids": required_exam_ids,
                 "required_exam_slugs": required_exam_slugs,
+                "window": {"from_utc": window_start, "to_utc": window_end},
             },
             output_json,
         )
         sys.exit(_EXIT_INSUFFICIENT)
 
-    # ── 2. Fetch attempt responses to get per-question provenance ─────────────
-    attempt_ids = list({r["attempt_id"] for r in audit_rows if r.get("attempt_id")})
+    # ── 2. Resolve attempt_id → exam_id via mock_attempts ─────────────────────
+    attempt_ids = list({r["attempt_id"] for r in shadow_rows if r.get("attempt_id")})
+    attempt_exam_map: dict[str, str] = {}
+
+    for batch_start in range(0, len(attempt_ids), 100):
+        batch = attempt_ids[batch_start: batch_start + 100]
+        try:
+            attempt_rows = (
+                sb.table("mock_attempts")
+                .select("id, exam_id")
+                .in_("id", batch)
+                .execute()
+                .data
+                or []
+            )
+            for r in attempt_rows:
+                if r.get("exam_id"):
+                    attempt_exam_map[r["id"]] = r["exam_id"]
+        except Exception as exc:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd,
+                    "status": "ERROR",
+                    "error": "QUERY_FAILED",
+                    "detail": f"mock_attempts fetch failed: {exc}",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
+
+    # ── 3. Fetch question snapshots for source_kind + subject breakdown ────────
     responses_by_attempt: dict[str, list[dict]] = defaultdict(list)
 
-    if attempt_ids:
+    for batch_start in range(0, len(attempt_ids), 100):
+        batch = attempt_ids[batch_start: batch_start + 100]
         try:
-            # Fetch in batches of 100 to avoid URL length limits.
-            for batch_start in range(0, len(attempt_ids), 100):
-                batch = attempt_ids[batch_start: batch_start + 100]
-                batch_rows = (
-                    sb.table("mock_attempt_responses")
-                    .select("attempt_id, question_id, question_snapshot")
-                    .in_("attempt_id", batch)
-                    .execute()
-                    .data
-                    or []
-                )
-                for row in batch_rows:
-                    responses_by_attempt[row["attempt_id"]].append(row)
+            resp_rows = (
+                sb.table("mock_attempt_responses")
+                .select("attempt_id, question_snapshot")
+                .in_("attempt_id", batch)
+                .execute()
+                .data
+                or []
+            )
+            for r in resp_rows:
+                responses_by_attempt[r["attempt_id"]].append(r)
         except Exception as exc:
             _emit_result(
                 {
@@ -1184,7 +1258,7 @@ def multi_exam_coverage(
             )
             sys.exit(_EXIT_ERROR)
 
-    # ── 3. Fetch exam metadata for slug resolution ────────────────────────────
+    # ── 4. Fetch exam metadata for slug resolution ────────────────────────────
     exam_meta: dict[str, dict] = {}
     try:
         exam_rows = (
@@ -1215,36 +1289,29 @@ def multi_exam_coverage(
 
     all_required_ids = set(required_exam_ids) | required_ids_from_slugs
 
-    # ── 4. Build per-exam coverage stats ──────────────────────────────────────
-    # For each audit row, extract exam_id from the frozen question_snapshot.
+    # ── 5. Build per-exam coverage stats ──────────────────────────────────────
     per_exam: dict[str, dict] = defaultdict(lambda: {
-        "question_count": 0,
-        "attempt_count": 0,
+        "shadow_row_count": 0,
+        "unique_attempts": set(),
         "source_split": defaultdict(int),
         "subject_breakdown": defaultdict(int),
-        "phase_breakdown": defaultdict(int),
+        "pyq_year_breakdown": defaultdict(int),
     })
-    seen_attempts_per_exam: dict[str, set] = defaultdict(set)
-    invariant_violations: list[str] = []
 
-    for audit_row in audit_rows:
-        attempt_id = audit_row.get("attempt_id")
+    for shadow_row in shadow_rows:
+        attempt_id = shadow_row.get("attempt_id")
         if not attempt_id:
             continue
-        responses = responses_by_attempt.get(attempt_id) or []
-        for resp in responses:
+        exam_id = attempt_exam_map.get(attempt_id)
+        if not exam_id:
+            continue
+
+        bucket = per_exam[exam_id]
+        bucket["shadow_row_count"] += 1
+        bucket["unique_attempts"].add(attempt_id)
+
+        for resp in responses_by_attempt.get(attempt_id, []):
             snap = resp.get("question_snapshot") or {}
-            exam_id = snap.get("exam_id")
-            if not exam_id:
-                continue
-
-            bucket = per_exam[exam_id]
-            bucket["question_count"] += 1
-
-            if attempt_id not in seen_attempts_per_exam[exam_id]:
-                seen_attempts_per_exam[exam_id].add(attempt_id)
-                bucket["attempt_count"] += 1
-
             source_kind = snap.get("source_kind") or snap.get("source_type") or "unknown"
             bucket["source_split"][source_kind] += 1
 
@@ -1252,7 +1319,11 @@ def multi_exam_coverage(
             if subject_id:
                 bucket["subject_breakdown"][subject_id] += 1
 
-    # Convert defaultdicts to plain dicts for JSON serialization.
+            pyq_year = snap.get("pyq_year")
+            if pyq_year:
+                bucket["pyq_year_breakdown"][str(pyq_year)] += 1
+
+    # Serialize (sets → counts, defaultdicts → plain dicts).
     exam_coverage: list[dict] = []
     for exam_id, bucket in per_exam.items():
         meta = exam_meta.get(exam_id, {})
@@ -1260,43 +1331,40 @@ def multi_exam_coverage(
             "exam_id": exam_id,
             "exam_slug": meta.get("slug"),
             "exam_name": meta.get("name"),
-            "question_count": bucket["question_count"],
-            "attempt_count": bucket["attempt_count"],
+            "shadow_row_count": bucket["shadow_row_count"],
+            "unique_attempt_count": len(bucket["unique_attempts"]),
             "source_split": dict(bucket["source_split"]),
             "subject_breakdown": dict(bucket["subject_breakdown"]),
+            "pyq_year_breakdown": dict(bucket["pyq_year_breakdown"]),
         })
 
     exam_coverage.sort(key=lambda r: r["exam_id"])
 
-    # ── 5. Check required exam coverage ───────────────────────────────────────
-    covered_exam_ids = {r["exam_id"] for r in exam_coverage}
+    # ── 6. Check required exam coverage ───────────────────────────────────────
     insufficient_exams: list[dict] = []
     for eid in all_required_ids:
         entry = next((r for r in exam_coverage if r["exam_id"] == eid), None)
-        count = entry["question_count"] if entry else 0
+        count = entry["shadow_row_count"] if entry else 0
         if count < min_questions:
             meta = exam_meta.get(eid, {})
             insufficient_exams.append({
                 "exam_id": eid,
                 "exam_slug": meta.get("slug"),
-                "question_count": count,
+                "shadow_row_count": count,
                 "required_minimum": min_questions,
             })
 
-    if missing_slugs:
-        for slug in missing_slugs:
-            insufficient_exams.append({
-                "exam_slug": slug,
-                "exam_id": None,
-                "question_count": 0,
-                "required_minimum": min_questions,
-                "error": "slug_not_found_in_db",
-            })
+    for slug in missing_slugs:
+        insufficient_exams.append({
+            "exam_slug": slug,
+            "exam_id": None,
+            "shadow_row_count": 0,
+            "required_minimum": min_questions,
+            "error": "slug_not_found_in_db",
+        })
 
     status: str
-    if invariant_violations:
-        status = "CORRUPT"
-    elif insufficient_exams:
+    if insufficient_exams:
         status = "INSUFFICIENT_DATA"
     else:
         status = "PASS"
@@ -1306,20 +1374,21 @@ def multi_exam_coverage(
             "schema_version": 1,
             "command": cmd,
             "status": status,
+            "source_table": "mock_mastery_shadow",
+            "flag_state_filter": "shadow",
+            "window": {"from_utc": window_start, "to_utc": window_end},
+            "total_shadow_rows": len(shadow_rows),
             "total_exams_in_shadow": len(exam_coverage),
             "required_exam_ids": list(all_required_ids),
             "min_questions_threshold": min_questions,
             "insufficient_exams": insufficient_exams,
             "exam_coverage": exam_coverage,
-            "invariant_violations": invariant_violations,
             "thresholds": {
                 "min_questions_per_exam": min_questions,
             },
         },
         output_json,
     )
-    if status == "CORRUPT":
-        sys.exit(_EXIT_CORRUPT)
     if status == "INSUFFICIENT_DATA":
         sys.exit(_EXIT_INSUFFICIENT)
     sys.exit(_EXIT_OK)
@@ -1405,6 +1474,27 @@ def main() -> None:
         type=int,
         default=1,
         help="Minimum shadow question count required per exam (default 1)",
+    )
+    mec.add_argument(
+        "--from-utc",
+        dest="from_utc",
+        metavar="ISO8601",
+        default=None,
+        help="Window start (UTC); filter mock_mastery_shadow on decided_at",
+    )
+    mec.add_argument(
+        "--to-utc",
+        dest="to_utc",
+        metavar="ISO8601",
+        default=None,
+        help="Window end (UTC); used with --from-utc",
+    )
+    mec.add_argument(
+        "--days",
+        dest="days",
+        type=int,
+        default=None,
+        help="Rolling window in days back from now (default: no window filter)",
     )
 
     lac = sp.add_parser(
@@ -1559,6 +1649,9 @@ def main() -> None:
             required_exam_ids=getattr(a, "required_exam_id", None) or [],
             required_exam_slugs=getattr(a, "required_exam_slug", None) or [],
             min_questions=a.min_questions,
+            from_utc=getattr(a, "from_utc", None),
+            to_utc=getattr(a, "to_utc", None),
+            days=getattr(a, "days", None),
             output_json=output_json,
         )
 
