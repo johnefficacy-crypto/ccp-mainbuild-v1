@@ -137,15 +137,37 @@ describe("PyqWorkbenchPanel", () => {
     });
   });
 
-  test("paper select appears after load", async () => {
+  // F3: paper picker must be a table, not a <select>
+  test("F3: no <select> element renders in the paper picker area", async () => {
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await waitFor(() => expect(screen.getByTestId("pyq-paper-select")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.queryByTestId("pyq-paper-select")).toBeNull();
+    expect(document.querySelector("select")).toBeNull();
   });
 
-  test("selecting a paper renders PyqPaperWorkspace", async () => {
+  test("F3: table renders one row per paper", async () => {
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await waitFor(() => expect(screen.getByTestId("pyq-paper-select")).toBeTruthy());
-    fireEvent.change(screen.getByTestId("pyq-paper-select"), { target: { value: "p1" } });
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("pyq-paper-row-p1")).toBeTruthy();
+    expect(screen.getByTestId("pyq-paper-row-p2")).toBeTruthy();
+  });
+
+  test("F3: clicking a table row updates selection and passes paper to PyqPaperWorkspace", async () => {
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("pyq-paper-row-p1"));
+    // After row click, the workspace loads questions for the selected paper
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("/pyq-papers/p1"),
+      ),
+    );
+  });
+
+  test("selecting a paper via table row renders PyqPaperWorkspace", async () => {
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("pyq-paper-row-p1"));
     // After selection, the workspace loads questions (embedded PyqPaperWorkspace)
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith(
