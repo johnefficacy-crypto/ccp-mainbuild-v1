@@ -1115,6 +1115,7 @@ _OPTION_FIELDS = {"option_label", "option_text", "normalized_option_hash", "norm
 def list_pyq_questions(
     pyq_paper_id: str | None = Query(default=None),
     reviewer_status: str | None = Query(default=None),
+    source_kind: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _admin: dict = Depends(require_permission(PERM_CMS)),
@@ -1126,6 +1127,8 @@ def list_pyq_questions(
         q = q.eq("pyq_paper_id", pyq_paper_id)
     if reviewer_status:
         q = q.eq("reviewer_status", reviewer_status)
+    if source_kind:
+        q = q.eq("source_kind", source_kind)
     res = q.range(offset, offset + limit - 1).execute()
     return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
 
