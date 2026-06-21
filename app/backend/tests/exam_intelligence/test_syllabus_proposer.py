@@ -148,7 +148,7 @@ def _make_sb(
         for p in raw_pages
     ]
     data = {
-        "document_assets": docs or [DOC],
+        "syllabus_documents": docs or [DOC],
         "document_pages": enriched_pages,
         "topics": topics or TOPICS,
         "exam_subject_map": esm or ESM,
@@ -174,7 +174,7 @@ def _client(sb_factory):
 def _post(sb, body: dict):
     inserts = []
     sb_with_inserts = _make_sb(
-        docs=sb._data.get("document_assets"),
+        docs=sb._data.get("syllabus_documents"),
         pages=sb._data.get("document_pages"),
         topics=sb._data.get("topics"),
         esm=sb._data.get("exam_subject_map"),
@@ -438,3 +438,71 @@ class TestReadOnly:
         assert r.status_code == 200
         # No insert should have touched syllabus_topic_mentions
         assert inserts == [], f"Expected no inserts, got: {inserts}"
+
+
+# ── Regression: BUG-EI-1 ──────────────────────────────────────────────────────
+# The proposer previously queried sb.table("document_assets") which has no
+# exam_id column.  PostgREST returned an empty result set → ProposerError(404).
+# Fix: query sb.table("syllabus_documents") (migration 031 confirms the table
+# and columns: id, exam_id, exam_cycle_id, trust_status, ...).
+
+
+class TestRegressionBugEI1:
+    """Guard against re-introduction of the document_assets/syllabus_documents table-name bug."""
+
+    def test_propose_uses_syllabus_documents_not_document_assets(self):
+        """Stub only populates syllabus_documents; document_assets is empty.
+
+        Before the fix, proposer queried document_assets → empty result → 404.
+        After the fix, it queries syllabus_documents → document found → 200.
+        """
+        pages = [{"page_number": 1, "text_content": "Arithmetic section."}]
+        # syllabus_documents is populated; document_assets deliberately absent
+        data = {
+            "syllabus_documents": [DOC],
+            "document_assets": [],  # empty — would have caused 404 before fix
+            "document_pages": [{**p, "document_id": DOC_ID} for p in pages],
+            "topics": TOPICS,
+            "exam_subject_map": ESM,
+            "topic_aliases": ALIASES,
+            "exams": [EXAM],
+            "exam_cycles": [CYCLE_A],
+            "exam_phases": [PHASE_A],
+            "syllabus_topic_mentions": [],
+        }
+        stub = _SBStub(data)
+        c = _client(lambda: stub)
+        r = c.post(
+            f"{_BASE}/workspace/{EXAM_ID}/syllabus/propose",
+            json={"syllabus_document_id": DOC_ID},
+        )
+        assert r.status_code == 200, (
+            f"BUG-EI-1 regression: expected 200 but got {r.status_code}. "
+            f"Proposer may be querying document_assets instead of syllabus_documents. "
+            f"Response: {r.text}"
+        )
+        body = r.json()
+        assert body["exam_id"] == EXAM_ID
+        assert body["syllabus_document_id"] == DOC_ID
+        assert isinstance(body["proposals"], list)
+
+    def test_propose_document_assets_empty_returns_200_not_404(self):
+        """document_assets table being empty must not affect proposer result."""
+        pages = [{"page_number": 1, "text_content": "Logical Reasoning covered here."}]
+        sb = _make_sb(pages=pages)
+        # Overwrite document_assets to empty to simulate table existing but being unrelated
+        sb._data["document_assets"] = []
+        r, _ = _post(sb, {"syllabus_document_id": DOC_ID})
+        assert r.status_code == 200, (
+            f"Expected 200, got {r.status_code}. Response: {r.text}"
+        )
+
+    def test_propose_with_syllabus_document_row_returns_proposals(self):
+        """End-to-end: a syllabus_documents row + page content → proposals list non-empty."""
+        pages = [{"page_number": 1, "text_content": "Arithmetic fundamentals are critical."}]
+        sb = _make_sb(pages=pages)
+        r, _ = _post(sb, {"syllabus_document_id": DOC_ID})
+        assert r.status_code == 200
+        proposals = r.json()["proposals"]
+        assert len(proposals) >= 1, "Expected at least one proposal for 'Arithmetic'"
+        assert proposals[0]["match_method"] == "topic_alias_exact"

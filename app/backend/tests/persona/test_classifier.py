@@ -14,7 +14,6 @@ def _base_signals(**overrides):
         "preferred_states_count": 0,
         "weekly_hours_goal": None,
         "study_mode": None,
-        "target_exam_year": None,
         "task_completion_rate_14d": None,
         "missed_task_count_14d": 0,
         "skipped_task_count_14d": 0,
@@ -122,14 +121,6 @@ def test_consistent_executor_when_completion_high():
     assert result["dimensions"]["execution_risk"] == "low"
 
 
-# ─── motivation ─────────────────────────────────────────────────────────────
-def test_target_year_current_or_past_is_deadline_sensitive():
-    current_year = datetime.now(timezone.utc).year
-    result = classify_persona(_base_signals(target_exam_year=current_year))
-    assert result["dimensions"]["motivation_state"] == "deadline_sensitive"
-    assert result["dimensions"]["preparation_stage"] == "final_window_aspirant"
-
-
 # ─── resource constraint contract ───────────────────────────────────────────
 def test_budget_sensitive_never_inferred_from_category():
     signals = _base_signals()
@@ -150,7 +141,6 @@ def test_working_beginner_primary_persona():
         study_mode="working_professional",
         weekly_hours_goal=10,
         goal_exams_count=1,
-        target_exam_year=datetime.now(timezone.utc).year + 2,
     )
     result = classify_persona(signals)
     assert result["dimensions"]["time_constraint"] == "working_professional"

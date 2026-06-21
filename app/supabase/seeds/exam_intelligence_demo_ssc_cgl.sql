@@ -23,16 +23,37 @@
 begin;
 
 -- ── Exam registry ────────────────────────────────────────────────────────
-insert into public.exam_families (id, slug, name, description) values
-  ('11111111-1111-1111-1111-111111111111', 'ssc', 'Staff Selection Commission',
-   'Central government recruitment via the Staff Selection Commission.')
-on conflict (id) do nothing;
+do $$
+declare
+  ssc_family_id uuid;
+  ssc_exam_id uuid;
+begin
+  insert into public.exam_families (id, slug, name, description) values
+    ('11111111-1111-1111-1111-111111111111', 'ssc', 'Staff Selection Commission',
+     'Central government recruitment via the Staff Selection Commission.')
+  on conflict (slug) do update
+    set name = excluded.name,
+        description = excluded.description
+  returning id into ssc_family_id;
 
-insert into public.exams (id, exam_family_id, slug, name, exam_type, default_difficulty_level, description) values
-  ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111',
-   'ssc-cgl', 'SSC CGL', 'recruitment', 'medium_high',
-   'Combined Graduate Level examination for Group B and Group C posts.')
-on conflict (id) do nothing;
+  insert into public.exams (id, exam_family_id, slug, name, exam_type, default_difficulty_level, description) values
+    ('22222222-2222-2222-2222-222222222222', ssc_family_id,
+     'ssc-cgl', 'SSC CGL', 'recruitment', 'medium_high',
+     'Combined Graduate Level examination for Group B and Group C posts.')
+  on conflict (slug) do update
+    set exam_family_id = excluded.exam_family_id,
+        name = excluded.name,
+        exam_type = excluded.exam_type,
+        default_difficulty_level = excluded.default_difficulty_level,
+        description = excluded.description
+  returning id into ssc_exam_id;
+
+  if ssc_exam_id <> '22222222-2222-2222-2222-222222222222'::uuid then
+    raise exception 'SSC CGL seed expected canonical exam id %, but slug ssc-cgl resolved to %. Repair exam identity before re-running this seed.',
+      '22222222-2222-2222-2222-222222222222'::uuid,
+      ssc_exam_id;
+  end if;
+end $$;
 
 insert into public.exam_cycles
   (id, exam_id, year, cycle_name, status, notification_date, application_start,

@@ -6,6 +6,7 @@ from datetime import date, datetime, timezone
 from urllib.parse import urlparse
 import requests
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, field_validator
 
 from app.core.auth import require_permission
 from app.db.supabase_client import get_supabase_admin
@@ -360,8 +361,22 @@ for action in ("archive", "withdraw"):
         return _h
     router.post(f"/admin/recruitments/{{recruitment_id}}/{action}")(_make(action))
 
+class VerifyOrganizationRequest(BaseModel):
+    reason: str
+
+    @field_validator("reason")
+    @classmethod
+    def reason_length(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 8:
+            raise ValueError("reason must be at least 8 characters")
+        if len(v) > 500:
+            raise ValueError("reason must be at most 500 characters")
+        return v
+
+
 @router.post("/admin/organizations/{organization_id}/verify")
-def verify_organization(organization_id: str, admin: dict = Depends(require_permission("organizations.manage"))):
+def verify_organization(organization_id: str, body: VerifyOrganizationRequest, admin: dict = Depends(require_permission("organizations.manage"))):
     sb = get_supabase_admin()
     rows = sb.table("organizations").select("*").eq("id", organization_id).limit(1).execute().data or []
     if not rows:
@@ -373,7 +388,7 @@ def verify_organization(organization_id: str, admin: dict = Depends(require_perm
     update = {"trust_tier": "verified" if status=="verified" else ("unverified" if status=="failed" else "unknown"), "verification_notes": f"status={status}", "official_domain": domain or org.get("official_domain")}
     if status == "verified":
         update.update({"is_verified": True, "verified_by": admin.get("id"), "verified_at": datetime.now(timezone.utc).isoformat()})
-    sb.table("organizations").update(update).eq("id", organization_id).execute(); _audit(sb, admin, "organization.verify", "organization", organization_id, before_payload=org, after_payload=update)
+    sb.table("organizations").update(update).eq("id", organization_id).execute(); _audit(sb, admin, "organization.verify", "organization", organization_id, before_payload=org, after_payload=update, metadata={"operator_reason": body.reason})
     return {"ok": True, "organization_id": organization_id, "checks": checks, "warnings": warnings, "errors": errors}
 
 

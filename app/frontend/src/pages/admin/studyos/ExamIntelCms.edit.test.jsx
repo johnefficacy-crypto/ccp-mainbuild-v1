@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// One row per entity so each Edit/Deactivate button has a stable test id.
+// One row per entity so each Edit/Retire button has a stable test id.
 const mockListRows = {
   "exam-families": [
     { id: "fam-11111111", slug: "ssc", name: "SSC", description: "old desc", is_active: true },
@@ -30,7 +30,24 @@ const mockListRows = {
     },
   ],
   subjects: [
-    { id: "sub-11111111", slug: "quant", name: "Quant", subject_group: null, is_active: true },
+    {
+      id: "sub-11111111", slug: "quant", name: "Quant",
+      subject_group: "Mathematics", default_difficulty_level: null, is_active: true,
+    },
+  ],
+  topics: [
+    {
+      id: "top-11111111", subject_id: "sub-11111111", slug: "algebra",
+      name: "Algebra", level: "topic", parent_topic_id: null,
+      default_difficulty_level: null, description: null, is_active: true,
+    },
+  ],
+  "pyq-sources": [
+    {
+      id: "src-11111111", exam_id: "exam-11111111", source_type: "official",
+      title: "Official 2024 Paper", source_url: null, trust_status: "pending",
+      source_id: "ext-dedup-key-001",
+    },
   ],
 };
 
@@ -43,6 +60,10 @@ jest.mock("../../../lib/api", () => ({
   __esModule: true,
   api: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), del: jest.fn() },
   getApiErrorMessage: (e) => String(e?.message || e),
+}));
+
+jest.mock("../../../shared/ui/core", () => ({
+  useToast: () => ({ success: jest.fn(), error: jest.fn(), info: jest.fn() }),
 }));
 
 // eslint-disable-next-line global-require
@@ -80,27 +101,20 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-test("Edit button renders for each of the four editable entities", async () => {
+test("Edit button renders for each of the seven editable entities", async () => {
   renderWithClient();
   for (const [entity, rows] of [
     ["exam-families", mockListRows["exam-families"]],
     ["exams", mockListRows.exams],
     ["exam-cycles", mockListRows["exam-cycles"]],
     ["exam-phases", mockListRows["exam-phases"]],
+    ["subjects", mockListRows.subjects],
+    ["topics", mockListRows.topics],
+    ["pyq-sources", mockListRows["pyq-sources"]],
   ]) {
     selectEntity(entity);
     expect(await screen.findByTestId(`cms-edit-${rows[0].id}`)).toBeTruthy();
   }
-});
-
-test("non-editable entity (subjects) shows no Edit button or actions column", async () => {
-  renderWithClient();
-  selectEntity("subjects");
-  // Row renders…
-  await waitFor(() => expect(screen.getByText("quant")).toBeTruthy());
-  // …but no Edit affordance and no actions header.
-  expect(screen.queryByTestId("cms-edit-sub-11111111")).toBeNull();
-  expect(screen.queryByText("actions")).toBeNull();
 });
 
 test("clicking Edit pre-fills fields from the row", async () => {
@@ -199,43 +213,250 @@ test("successful PATCH closes the form and reloads the list", async () => {
   expect(api.get.mock.calls.length).toBeGreaterThan(getCallsBefore);
 });
 
-test("Deactivate (exams): confirm + reason required, soft-deletes via DELETE with reason query", async () => {
-  const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
-  const promptSpy = jest.spyOn(window, "prompt").mockReturnValue("retiring this exam from the catalogue");
-  try {
-    renderWithClient();
-    selectEntity("exams");
-    const btn = await screen.findByTestId("cms-deactivate-exam-11111111");
-    // Never labelled "Delete".
-    expect(btn.textContent).toMatch("Deactivate");
-    expect(btn.textContent).not.toMatch(/Delete/i);
-    fireEvent.click(btn);
+test("Retire (exams): dialog collects reason, soft-deletes via DELETE with reason query", async () => {
+  renderWithClient();
+  selectEntity("exams");
+  const btn = await screen.findByTestId("cms-retire-exam-11111111");
+  expect(btn.textContent).toMatch("Retire");
+  expect(btn.textContent).not.toMatch(/Delete/i);
+  fireEvent.click(btn);
 
-    await waitFor(() => expect(api.del).toHaveBeenCalled());
-    expect(confirmSpy).toHaveBeenCalled();
-    const [url] = api.del.mock.calls[0];
-    expect(url).toBe(
-      "/api/admin/exam-intelligence-cms/exams/exam-11111111?reason=retiring%20this%20exam%20from%20the%20catalogue",
-    );
-  } finally {
-    confirmSpy.mockRestore();
-    promptSpy.mockRestore();
-  }
+  // Dialog opens — no browser confirm/prompt.
+  await screen.findByTestId("cms-retire-dialog");
+  fireEvent.change(screen.getByTestId("cms-retire-reason"), {
+    target: { value: "retiring this exam from the catalogue" },
+  });
+  fireEvent.click(screen.getByTestId("cms-retire"));
+
+  await waitFor(() => expect(api.del).toHaveBeenCalled());
+  const [url] = api.del.mock.calls[0];
+  expect(url).toBe(
+    "/api/admin/exam-intelligence-cms/exams/exam-11111111?reason=retiring%20this%20exam%20from%20the%20catalogue",
+  );
 });
 
-test("Deactivate with a too-short reason does not call DELETE", async () => {
-  const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
-  const promptSpy = jest.spyOn(window, "prompt").mockReturnValue("short");
-  try {
-    renderWithClient();
-    selectEntity("exams");
-    fireEvent.click(await screen.findByTestId("cms-deactivate-exam-11111111"));
-    await waitFor(() =>
-      expect(screen.getByRole("status").textContent).toMatch(/Deactivate reason must be ≥8 chars/),
-    );
-    expect(api.del).not.toHaveBeenCalled();
-  } finally {
-    confirmSpy.mockRestore();
-    promptSpy.mockRestore();
-  }
+test("Retire with a too-short reason does not call DELETE", async () => {
+  renderWithClient();
+  selectEntity("exams");
+  fireEvent.click(await screen.findByTestId("cms-retire-exam-11111111"));
+
+  // Dialog opens; submit without filling the reason field.
+  await screen.findByTestId("cms-retire-dialog");
+  fireEvent.click(screen.getByTestId("cms-retire"));
+
+  await waitFor(() =>
+    expect(screen.getByTestId("cms-retire-error").textContent).toMatch(/Retire reason must be ≥8 chars/),
+  );
+  expect(api.del).not.toHaveBeenCalled();
+});
+
+// ── Taxonomy edit tests ────────────────────────────────────────────────
+
+test("subjects: Edit button renders and prefills name + subject_group", async () => {
+  renderWithClient();
+  selectEntity("subjects");
+  fireEvent.click(await screen.findByTestId("cms-edit-sub-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.getByTestId("cms-edit-field-name").value).toBe("Quant");
+  expect(screen.getByTestId("cms-edit-field-subject_group").value).toBe("Mathematics");
+});
+
+test("subjects: PATCH sends only changed fields to /subjects/{id}", async () => {
+  renderWithClient();
+  selectEntity("subjects");
+  fireEvent.click(await screen.findByTestId("cms-edit-sub-11111111"));
+  await screen.findByTestId("cms-edit-form");
+
+  fireEvent.change(screen.getByTestId("cms-edit-field-name"), {
+    target: { value: "Quantitative Aptitude" },
+  });
+  fireEvent.change(screen.getByTestId("cms-edit-reason"), {
+    target: { value: "expand the subject name" },
+  });
+  fireEvent.click(screen.getByTestId("cms-edit-submit"));
+
+  await waitFor(() => expect(api.patch).toHaveBeenCalled());
+  const [url, body] = api.patch.mock.calls[0];
+  expect(url).toBe("/api/admin/exam-intelligence-cms/subjects/sub-11111111");
+  expect(body.payload).toEqual({ name: "Quantitative Aptitude" });
+  expect(body.reason).toBe("expand the subject name");
+});
+
+test("topics: Edit button renders and prefills name + level", async () => {
+  renderWithClient();
+  selectEntity("topics");
+  fireEvent.click(await screen.findByTestId("cms-edit-top-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.getByTestId("cms-edit-field-name").value).toBe("Algebra");
+  expect(screen.getByTestId("cms-edit-field-level").value).toBe("topic");
+});
+
+test("topics: PATCH sends only changed fields to /topics/{id}", async () => {
+  renderWithClient();
+  selectEntity("topics");
+  fireEvent.click(await screen.findByTestId("cms-edit-top-11111111"));
+  await screen.findByTestId("cms-edit-form");
+
+  fireEvent.change(screen.getByTestId("cms-edit-field-name"), {
+    target: { value: "Linear Algebra" },
+  });
+  fireEvent.change(screen.getByTestId("cms-edit-reason"), {
+    target: { value: "rename topic to be more specific" },
+  });
+  fireEvent.click(screen.getByTestId("cms-edit-submit"));
+
+  await waitFor(() => expect(api.patch).toHaveBeenCalled());
+  const [url, body] = api.patch.mock.calls[0];
+  expect(url).toBe("/api/admin/exam-intelligence-cms/topics/top-11111111");
+  expect(body.payload).toEqual({ name: "Linear Algebra" });
+  expect(body.reason).toBe("rename topic to be more specific");
+});
+
+test("pyq-sources: Edit button renders and prefills title", async () => {
+  renderWithClient();
+  selectEntity("pyq-sources");
+  fireEvent.click(await screen.findByTestId("cms-edit-src-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.getByTestId("cms-edit-field-title").value).toBe("Official 2024 Paper");
+});
+
+test("pyq-sources: trust_status field is NOT rendered in the edit form", async () => {
+  renderWithClient();
+  selectEntity("pyq-sources");
+  fireEvent.click(await screen.findByTestId("cms-edit-src-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.queryByTestId("cms-edit-field-trust_status")).toBeNull();
+});
+
+test("pyq-sources: PATCH does not send trust_status even if row has it", async () => {
+  renderWithClient();
+  selectEntity("pyq-sources");
+  fireEvent.click(await screen.findByTestId("cms-edit-src-11111111"));
+  await screen.findByTestId("cms-edit-form");
+
+  fireEvent.change(screen.getByTestId("cms-edit-field-title"), {
+    target: { value: "Official 2024 Paper (revised)" },
+  });
+  fireEvent.change(screen.getByTestId("cms-edit-reason"), {
+    target: { value: "correct the paper title" },
+  });
+  fireEvent.click(screen.getByTestId("cms-edit-submit"));
+
+  await waitFor(() => expect(api.patch).toHaveBeenCalled());
+  const [url, body] = api.patch.mock.calls[0];
+  expect(url).toBe("/api/admin/exam-intelligence-cms/pyq-sources/src-11111111");
+  expect(body.payload).toEqual({ title: "Official 2024 Paper (revised)" });
+  expect(body.payload).not.toHaveProperty("trust_status");
+});
+
+test("reviewable entities (exam-topic-coverage) have no Edit button", async () => {
+  renderWithClient();
+  selectEntity("exam-topic-coverage");
+  // Table renders with rows column header but no actions column.
+  await waitFor(() => expect(screen.queryByText("actions")).toBeNull());
+});
+
+// ── Identity / dedup-key fencing tests ────────────────────────────────
+
+test("subjects: slug field is NOT rendered in the edit form", async () => {
+  renderWithClient();
+  selectEntity("subjects");
+  fireEvent.click(await screen.findByTestId("cms-edit-sub-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.queryByTestId("cms-edit-field-slug")).toBeNull();
+});
+
+test("subjects: PATCH does not include slug even if row has it", async () => {
+  renderWithClient();
+  selectEntity("subjects");
+  fireEvent.click(await screen.findByTestId("cms-edit-sub-11111111"));
+  await screen.findByTestId("cms-edit-form");
+
+  fireEvent.change(screen.getByTestId("cms-edit-field-name"), {
+    target: { value: "Quantitative Aptitude" },
+  });
+  fireEvent.change(screen.getByTestId("cms-edit-reason"), {
+    target: { value: "rename the subject" },
+  });
+  fireEvent.click(screen.getByTestId("cms-edit-submit"));
+
+  await waitFor(() => expect(api.patch).toHaveBeenCalled());
+  const [, body] = api.patch.mock.calls[0];
+  expect(body.payload).not.toHaveProperty("slug");
+  expect(body.payload).toEqual({ name: "Quantitative Aptitude" });
+});
+
+test("topics: slug field is NOT rendered in the edit form", async () => {
+  renderWithClient();
+  selectEntity("topics");
+  fireEvent.click(await screen.findByTestId("cms-edit-top-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.queryByTestId("cms-edit-field-slug")).toBeNull();
+});
+
+test("topics: PATCH does not include slug even if row has it", async () => {
+  renderWithClient();
+  selectEntity("topics");
+  fireEvent.click(await screen.findByTestId("cms-edit-top-11111111"));
+  await screen.findByTestId("cms-edit-form");
+
+  fireEvent.change(screen.getByTestId("cms-edit-field-name"), {
+    target: { value: "Linear Algebra" },
+  });
+  fireEvent.change(screen.getByTestId("cms-edit-reason"), {
+    target: { value: "rename topic" },
+  });
+  fireEvent.click(screen.getByTestId("cms-edit-submit"));
+
+  await waitFor(() => expect(api.patch).toHaveBeenCalled());
+  const [, body] = api.patch.mock.calls[0];
+  expect(body.payload).not.toHaveProperty("slug");
+  expect(body.payload).toEqual({ name: "Linear Algebra" });
+});
+
+test("topics: level, subject_id, parent_topic_id ARE rendered (not over-fenced)", async () => {
+  renderWithClient();
+  selectEntity("topics");
+  fireEvent.click(await screen.findByTestId("cms-edit-top-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  // level and subject_id must be present — legitimate re-parenting use case.
+  expect(screen.getByTestId("cms-edit-field-level")).toBeTruthy();
+  expect(screen.getByTestId("cms-edit-field-subject_id")).toBeTruthy();
+  expect(screen.getByTestId("cms-edit-field-parent_topic_id")).toBeTruthy();
+});
+
+test("pyq-sources: source_id field is NOT rendered in the edit form", async () => {
+  renderWithClient();
+  selectEntity("pyq-sources");
+  fireEvent.click(await screen.findByTestId("cms-edit-src-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.queryByTestId("cms-edit-field-source_id")).toBeNull();
+});
+
+test("pyq-sources: PATCH does not include source_id", async () => {
+  renderWithClient();
+  selectEntity("pyq-sources");
+  fireEvent.click(await screen.findByTestId("cms-edit-src-11111111"));
+  await screen.findByTestId("cms-edit-form");
+
+  fireEvent.change(screen.getByTestId("cms-edit-field-title"), {
+    target: { value: "Official 2024 Paper (revised)" },
+  });
+  fireEvent.change(screen.getByTestId("cms-edit-reason"), {
+    target: { value: "correct the title" },
+  });
+  fireEvent.click(screen.getByTestId("cms-edit-submit"));
+
+  await waitFor(() => expect(api.patch).toHaveBeenCalled());
+  const [, body] = api.patch.mock.calls[0];
+  expect(body.payload).not.toHaveProperty("source_id");
+  expect(body.payload).not.toHaveProperty("trust_status");
+});
+
+test("pyq-sources: exam_id IS rendered (not over-fenced)", async () => {
+  renderWithClient();
+  selectEntity("pyq-sources");
+  fireEvent.click(await screen.findByTestId("cms-edit-src-11111111"));
+  await screen.findByTestId("cms-edit-form");
+  expect(screen.getByTestId("cms-edit-field-exam_id")).toBeTruthy();
 });

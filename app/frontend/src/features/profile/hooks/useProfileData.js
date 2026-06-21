@@ -28,7 +28,7 @@ export default function useProfileData() {
         ex_serviceman: !!u.profile?.ex_serviceman, service_years: u.profile?.service_years ?? "", govt_employee: !!u.profile?.govt_employee,
         qualification: u.profile?.qualification || "", education_level: u.profile?.education_level || "", stream: u.profile?.stream || "", qualification_year: u.profile?.qualification_year || "",
         percentage: u.profile?.percentage || "", cgpa: u.profile?.cgpa || "", goal_exams: u.profile?.goal_exams || [], preferred_states: u.profile?.preferred_states || [], preferred_sectors: u.profile?.preferred_sectors || [],
-        willing_to_relocate: u.profile?.willing_to_relocate ?? true, study_mode: u.profile?.study_mode || "", weekly_hours_goal: u.profile?.weekly_hours_goal || "", target_exam_year: u.profile?.target_exam_year || "",
+        willing_to_relocate: u.profile?.willing_to_relocate ?? true, study_mode: u.profile?.study_mode || "", weekly_hours_goal: u.profile?.weekly_hours_goal || "", target_exam: u.profile?.target_exam || "",
       });
       setCompletion(c || {});
       const optional = await Promise.allSettled([

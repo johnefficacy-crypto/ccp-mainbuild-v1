@@ -41,7 +41,7 @@ From `app/backend`:
 
 ## Architecture overview
 
-The backend runs as a FastAPI app (`app/backend/server.py`) with `/api` routers for auth, eligibility, notifications, admin scrape/trust, payments, canonical APIs, and placeholders. It uses Supabase REST (via `supabase-py`) and optional asyncpg pool health checks. Primary runtime wiring is in `server.py` lifespan and router registration.
+The backend runs as a FastAPI app (`app/backend/server.py`) with `/api` routers for auth, eligibility, notifications, admin scrape/trust, payments, canonical APIs, and the remaining placeholder compatibility router. It uses Supabase REST (via `supabase-py`) and optional asyncpg pool health checks. Primary runtime wiring is in `server.py` lifespan and router registration.
 
 ### Background scheduler (APScheduler)
 
@@ -96,7 +96,7 @@ Key backend modules:
 - `aspirant_exam_attempts`
 - `aspirant_exam_credentials`
 
-For migration-by-migration details, see `docs/migrations.md`.
+For migration-by-migration guidance, see `docs/reference/MIGRATIONS.md`.
 
 ---
 

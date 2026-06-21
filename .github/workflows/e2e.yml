@@ -46,9 +46,12 @@ jobs:
           echo "SB_SERVICE_ROLE_KEY=$(jq -r '.SERVICE_ROLE_KEY' /tmp/sb.json)" >> "$GITHUB_ENV"
 
       - name: Seed E2E fixtures
+        # Apply via the guarded wrapper so the test-only seeds can never run
+        # against a production Supabase host (mirrors the E2E_SUPABASE_URL guard).
         run: |
-          psql "$SB_DB_URL" -v ON_ERROR_STOP=1 -f app/supabase/seeds/e2e_fixtures.sql
-          psql "$SB_DB_URL" -v ON_ERROR_STOP=1 -f app/supabase/seeds/e2e_workspace_fixtures.sql
+          ./app/supabase/seeds/apply_e2e_fixtures.sh "$SB_DB_URL" \
+            app/supabase/seeds/e2e_fixtures.sql \
+            app/supabase/seeds/e2e_workspace_fixtures.sql
 
       - name: Install system dependencies (Tesseract OCR)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-eng

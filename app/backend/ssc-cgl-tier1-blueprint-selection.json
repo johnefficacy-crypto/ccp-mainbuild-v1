@@ -1,0 +1,487 @@
+{
+  "service": "exam_realistic_blueprint",
+  "source": "exam_realistic",
+  "exam_id": "22222222-2222-2222-2222-222222222222",
+  "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+  "user_id": "664d94c6-907d-482a-8a0b-95571712075f",
+  "persisted": false,
+  "authored_structure_scope": true,
+  "scope_note": "readiness computed over AUTHORED exam_phase_sections only; whether that structure is officially complete (e.g. all real sections authored) is a human canary-prep gate, NOT enforced in code",
+  "thresholds": {
+    "selectable_statuses": [
+      "published"
+    ],
+    "verified_status": "verified",
+    "min_per_section": 30,
+    "min_locked_coverage": 1
+  },
+  "outcome": "ready",
+  "template_snapshot": {
+    "source": "exam_realistic",
+    "exam_id": "22222222-2222-2222-2222-222222222222",
+    "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+    "authored_structure_scope": true,
+    "authored_section_count": 4,
+    "envelope_present": true,
+    "thresholds": {
+      "selectable_statuses": [
+        "published"
+      ],
+      "verified_status": "verified",
+      "min_per_section": 30,
+      "min_locked_coverage": 1
+    }
+  },
+  "section_snapshot": [
+    {
+      "section_id": "88888888-8888-8888-8888-888888888883",
+      "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+      "subject_id": "55555555-5555-5555-5555-555555555553",
+      "section_label": "General Intelligence & Reasoning",
+      "question_count": 25,
+      "marks": 50,
+      "negative_marking": "0.50 per wrong answer",
+      "duration_mins": null,
+      "duration_source": "phase",
+      "weightage_percent": 25,
+      "difficulty_level": null,
+      "sort_order": 1,
+      "structure_complete": true,
+      "missing": []
+    },
+    {
+      "section_id": "9b33337f-4013-48a2-b05f-933c74ed1775",
+      "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+      "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+      "section_label": "General Awareness",
+      "question_count": 25,
+      "marks": 50,
+      "negative_marking": "0.50 per wrong answer",
+      "duration_mins": null,
+      "duration_source": "phase",
+      "weightage_percent": 25,
+      "difficulty_level": "medium",
+      "sort_order": 2,
+      "structure_complete": true,
+      "missing": []
+    },
+    {
+      "section_id": "88888888-8888-8888-8888-888888888881",
+      "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+      "subject_id": "55555555-5555-5555-5555-555555555551",
+      "section_label": "Quantitative Aptitude",
+      "question_count": 25,
+      "marks": 50,
+      "negative_marking": "0.50 per wrong answer",
+      "duration_mins": null,
+      "duration_source": "phase",
+      "weightage_percent": 25,
+      "difficulty_level": null,
+      "sort_order": 3,
+      "structure_complete": true,
+      "missing": []
+    },
+    {
+      "section_id": "88888888-8888-8888-8888-888888888882",
+      "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+      "subject_id": "55555555-5555-5555-5555-555555555552",
+      "section_label": "English Comprehension",
+      "question_count": 25,
+      "marks": 50,
+      "negative_marking": "0.50 per wrong answer",
+      "duration_mins": null,
+      "duration_source": "phase",
+      "weightage_percent": 25,
+      "difficulty_level": null,
+      "sort_order": 4,
+      "structure_complete": true,
+      "missing": []
+    }
+  ],
+  "selector_snapshot": {
+    "ladder": [
+      "exposure_cooldown",
+      "personalization",
+      "source_mix",
+      "difficulty_mix"
+    ],
+    "non_relaxable": [
+      "section_count",
+      "timing",
+      "negative_marking",
+      "section_lock",
+      "interface_mode"
+    ],
+    "pool_predicate": "diagnostics.selectable_mcq_depth base pool: reviewer_status in selectable, answerable types (mcq/msq/integer), is_current/is_current_based excluded, e2e_fixture excluded / NULL provenance retained, not-expired; scoped by section subject_id. Equals the pool the readiness verdict was computed over.",
+    "sections": [
+      {
+        "section_id": "88888888-8888-8888-8888-888888888883",
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "section_label": "General Intelligence & Reasoning",
+        "question_count": 25,
+        "eligible_pool_count": 35,
+        "selected_count": 25,
+        "shortfall": 0,
+        "relaxed_rungs": [],
+        "rungs": [
+          {
+            "rung": "exposure_cooldown",
+            "status": "inert_a_pr4_not_implemented",
+            "relaxed": false
+          },
+          {
+            "rung": "personalization",
+            "status": "inert_a_pr5_not_implemented",
+            "relaxed": false
+          },
+          {
+            "rung": "source_mix",
+            "status": "not_applicable_no_targets",
+            "relaxed": false
+          },
+          {
+            "rung": "difficulty_mix",
+            "status": "applied_no_mix",
+            "relaxed": false
+          }
+        ],
+        "source_basis": "readiness_base_pool"
+      },
+      {
+        "section_id": "9b33337f-4013-48a2-b05f-933c74ed1775",
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "section_label": "General Awareness",
+        "question_count": 25,
+        "eligible_pool_count": 35,
+        "selected_count": 25,
+        "shortfall": 0,
+        "relaxed_rungs": [],
+        "rungs": [
+          {
+            "rung": "exposure_cooldown",
+            "status": "inert_a_pr4_not_implemented",
+            "relaxed": false
+          },
+          {
+            "rung": "personalization",
+            "status": "inert_a_pr5_not_implemented",
+            "relaxed": false
+          },
+          {
+            "rung": "source_mix",
+            "status": "not_applicable_no_targets",
+            "relaxed": false
+          },
+          {
+            "rung": "difficulty_mix",
+            "status": "applied_no_mix",
+            "relaxed": false
+          }
+        ],
+        "source_basis": "readiness_base_pool"
+      },
+      {
+        "section_id": "88888888-8888-8888-8888-888888888881",
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "section_label": "Quantitative Aptitude",
+        "question_count": 25,
+        "eligible_pool_count": 35,
+        "selected_count": 25,
+        "shortfall": 0,
+        "relaxed_rungs": [],
+        "rungs": [
+          {
+            "rung": "exposure_cooldown",
+            "status": "inert_a_pr4_not_implemented",
+            "relaxed": false
+          },
+          {
+            "rung": "personalization",
+            "status": "inert_a_pr5_not_implemented",
+            "relaxed": false
+          },
+          {
+            "rung": "source_mix",
+            "status": "not_applicable_no_targets",
+            "relaxed": false
+          },
+          {
+            "rung": "difficulty_mix",
+            "status": "applied_no_mix",
+            "relaxed": false
+          }
+        ],
+        "source_basis": "readiness_base_pool"
+      },
+      {
+        "section_id": "88888888-8888-8888-8888-888888888882",
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "section_label": "English Comprehension",
+        "question_count": 25,
+        "eligible_pool_count": 35,
+        "selected_count": 25,
+        "shortfall": 0,
+        "relaxed_rungs": [],
+        "rungs": [
+          {
+            "rung": "exposure_cooldown",
+            "status": "inert_a_pr4_not_implemented",
+            "relaxed": false
+          },
+          {
+            "rung": "personalization",
+            "status": "inert_a_pr5_not_implemented",
+            "relaxed": false
+          },
+          {
+            "rung": "source_mix",
+            "status": "not_applicable_no_targets",
+            "relaxed": false
+          },
+          {
+            "rung": "difficulty_mix",
+            "status": "applied_no_mix",
+            "relaxed": false
+          }
+        ],
+        "source_basis": "readiness_base_pool"
+      }
+    ],
+    "any_shortfall": false
+  },
+  "question_ids": [
+    "03592fb2-d703-4bd9-ac7a-165cb9b52082",
+    "06f61388-1fb9-4e20-81b6-d6ccc29102bb",
+    "07cac82b-bcfa-4dcc-aa2b-5bd27e71aabd",
+    "0db954e9-22ed-4667-ae7d-78abdadc070d",
+    "12989431-1a94-45f7-8041-5938c68706dd",
+    "1a70e4a3-a412-410e-b697-afdc3158d309",
+    "2163a59e-d4b0-4a18-a5d1-d09c2afcea65",
+    "24f8ce69-9807-4c23-bfff-eeac35490328",
+    "35726901-4cbd-4812-987e-c0ff8294fa55",
+    "42f77342-58df-4fc7-b84a-e23957681e62",
+    "44737518-e3fe-4a05-9b43-70c78ea0a483",
+    "47511dca-c595-4e04-9829-d1b2aea43281",
+    "558ecec8-08db-47a3-9d1b-e0ae9a5718a5",
+    "5bf16ff2-c11b-4434-974f-ad2887a8c065",
+    "8032b407-48e2-448e-93b6-c1be93cd7ec4",
+    "86d6a625-8718-494a-9e9a-5fc6f26a0b1e",
+    "9ea382d3-1f98-422b-84f0-6c111d88e210",
+    "a48b362c-240e-43a2-9f1a-91f192661146",
+    "a7da4271-8c0b-46c7-abcd-cad933063470",
+    "a8774692-1296-4ad2-94cc-bf778149ce9f",
+    "ab11cfc6-81ad-4ea6-9395-1432550e8ed9",
+    "aff58de9-6b8b-47c1-9fee-c31735535bfc",
+    "b22759e7-8f69-4b5d-be2a-7c9dcfbde4c3",
+    "b904a1ec-0d85-4b24-84c2-20254ca77546",
+    "bd56b1a6-7146-412a-855e-07a29e876c71",
+    "048c02a7-49ac-4dd2-9f6c-d8aaf95c3484",
+    "093bb95e-3196-495b-ba8b-979d40909879",
+    "0d0b1b6b-4b4c-469b-9f95-83cfe2fca5b4",
+    "1396ac52-689c-45b4-8109-e4e35a970ed6",
+    "156e68e7-37b9-4743-a473-f6bad62174e1",
+    "1d59dde8-5374-44ba-b2d6-42f445017f44",
+    "2020b226-39b5-4091-b298-09cb5f91b4a8",
+    "2982fe1c-ebf0-40ed-9ba1-f03978dd6c9e",
+    "2a383308-15e4-482c-a304-1060b9aa289f",
+    "38835362-96f9-4b17-a05f-c4bd48ecd462",
+    "3c528a04-2e10-4fd6-b2d8-e0b4391ef892",
+    "3cf9c0a1-c3a7-43d4-8b10-866b3b38a877",
+    "411e60b9-6d1d-4891-be14-3fb9ccf1d34a",
+    "42e82894-a7a1-40cb-bdc4-9d43245a6bca",
+    "43ab2ff2-2cf5-4af0-a5d6-a63dea6d3b95",
+    "44cdb36f-0b90-4293-91d9-0a2a9189dcc0",
+    "53036dcd-0e3c-45b2-a2dd-166bbd8c4b79",
+    "553dd0c6-d623-4c94-b082-4af47c3c4208",
+    "56a19e05-5b85-469e-9a2e-4999518336f6",
+    "629ba6d7-f5f8-4e3a-879d-72e13eeaf4ba",
+    "78d7c34f-af6f-43ea-af39-1835c503e0b6",
+    "7b93fb85-a2b7-4590-8f06-2e7a69aa748d",
+    "88dbe12f-43ae-49c1-a699-b58078822a05",
+    "8fa010ca-bd16-4554-95bc-7fb96428c679",
+    "949320e5-aefc-4b50-aaa8-9d308212c4ab",
+    "061014a5-71bb-46db-adf2-cd003d6053e4",
+    "0c8948c8-b7d3-4c45-a0ad-0e05684e0339",
+    "18f86820-9046-46cb-849b-d472c2020ae0",
+    "195b7e0d-dda7-4b67-896f-f5bad628ce26",
+    "3602bb15-a103-4861-945f-803a4a4eb160",
+    "3775a30d-4fd5-4e91-8fd6-11c287646d9e",
+    "37b5a6f9-d7d8-42b7-a432-4ae7abb16957",
+    "3d281e24-94a3-4d24-bf50-469b9fcbf4a3",
+    "4569a840-5a16-41fe-91dc-3de509ee69ff",
+    "4ad86a42-774f-4c33-97ef-ead9b7a50662",
+    "5f0d868b-49e4-4819-a6cd-d33706015949",
+    "6122ecf0-5682-4d99-82cf-d6c0432d49ec",
+    "6b8049d1-d413-491c-a704-0dbc9a3792aa",
+    "6de78664-c69d-4e1d-8146-ec08821eda13",
+    "6f4529b9-d9a8-4b0e-b04f-89a37b1618ec",
+    "7507db83-fb7d-433e-a077-ddcfd9b50d47",
+    "7568e755-dc02-47d3-81cb-c1bb0c807d9b",
+    "7848a4b0-c95c-4c8d-b818-d9f66443b13c",
+    "851d9227-7b42-4ac1-8502-ed3a034e8ce2",
+    "8c4eb12d-840b-42dc-91f1-58a80b640941",
+    "aab1a77e-c47e-419a-9d96-c3edd06ac26c",
+    "b25b30fd-0f0b-407b-9ee3-7e900f674075",
+    "bbf2c973-aefe-4f08-b86a-f65d79de180c",
+    "c716e596-7136-485e-84f7-5e4cfed22f7c",
+    "cf269ece-2368-4f36-8279-0e6ddf030f36",
+    "01a293ba-aafa-45d2-b5cd-4254fabb6bc7",
+    "0272cf15-95b9-436f-ae0e-8ad7afa4144c",
+    "1ab9deb3-118c-4275-9d9a-fa308b934dbe",
+    "21e49f3c-fcc0-47ec-b997-0cb666ba306d",
+    "2f6b346c-a426-40c7-bedc-7f423e087f77",
+    "30a9dcad-5baf-4c13-aa6d-40047835b39f",
+    "37ca8866-2958-419d-9d2a-dfed89246db6",
+    "3eda7c87-9a5f-4a9c-a893-da21e8061bdd",
+    "3f880f9f-5f31-418c-a067-26175307030a",
+    "4f990d69-5c47-4947-afe9-7f3b5aa6484b",
+    "52fb31f2-a53b-4406-b00f-52c1564493d6",
+    "550344fe-c466-495a-8340-22daeb4f69ae",
+    "58965964-dadb-4ab4-a7c0-bbef363aa08d",
+    "62bd6705-da33-4390-ac84-a132661855dc",
+    "669899ad-4bbc-4fc1-996d-ae1e9e4fd37b",
+    "6dba4143-1706-4c07-868a-d515e3a42d12",
+    "78bfa9bf-b1e5-44f0-92b8-9e47849fe2ac",
+    "7e4a7e49-064c-4f84-a372-4032febfa88d",
+    "8205a2b6-3dda-44a9-9305-eda8a2ce3900",
+    "922e60a4-9371-43dd-8ac1-9c59ca016212",
+    "97b8035f-46a7-4981-a008-1b2bb61e1a1e",
+    "9d9b003d-27c7-4612-a5a2-9c9f1fe7959d",
+    "9fbefeed-196f-4ce4-8426-cba27d960253",
+    "a61bfeec-b359-47b9-a39f-3e950e2b8aeb",
+    "b068064e-40c4-4225-8083-458f6cb1187f"
+  ],
+  "readiness_snapshot": {
+    "verdict": {
+      "exam_id": "22222222-2222-2222-2222-222222222222",
+      "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+      "pool_scope": "subject",
+      "thresholds": {
+        "min_per_section": 30,
+        "min_locked_coverage": 1
+      },
+      "sections": [
+        {
+          "section_id": "88888888-8888-8888-8888-888888888882",
+          "subject_id": "55555555-5555-5555-5555-555555555552",
+          "section_label": "English Comprehension",
+          "verdict": "ready",
+          "reasons": [],
+          "base_pool": 35,
+          "locked_coverage": 7
+        },
+        {
+          "section_id": "9b33337f-4013-48a2-b05f-933c74ed1775",
+          "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+          "section_label": "General Awareness",
+          "verdict": "ready",
+          "reasons": [],
+          "base_pool": 35,
+          "locked_coverage": 7
+        },
+        {
+          "section_id": "88888888-8888-8888-8888-888888888883",
+          "subject_id": "55555555-5555-5555-5555-555555555553",
+          "section_label": "General Intelligence & Reasoning",
+          "verdict": "ready",
+          "reasons": [],
+          "base_pool": 35,
+          "locked_coverage": 7
+        },
+        {
+          "section_id": "88888888-8888-8888-8888-888888888881",
+          "subject_id": "55555555-5555-5555-5555-555555555551",
+          "section_label": "Quantitative Aptitude",
+          "verdict": "ready",
+          "reasons": [],
+          "base_pool": 35,
+          "locked_coverage": 7
+        }
+      ],
+      "summary": {
+        "ready": 4,
+        "thin_bank": 0,
+        "blocked": 0
+      }
+    },
+    "summary": {
+      "ready": 4,
+      "thin_bank": 0,
+      "blocked": 0
+    }
+  },
+  "structural_envelope": {
+    "exam_id": "22222222-2222-2222-2222-222222222222",
+    "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+    "authored_structure_scope": true,
+    "authored_section_count": 4,
+    "sections_missing_structure": 0,
+    "sections": [
+      {
+        "section_id": "88888888-8888-8888-8888-888888888883",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "subject_id": "55555555-5555-5555-5555-555555555553",
+        "section_label": "General Intelligence & Reasoning",
+        "question_count": 25,
+        "marks": 50,
+        "negative_marking": "0.50 per wrong answer",
+        "duration_mins": null,
+        "duration_source": "phase",
+        "weightage_percent": 25,
+        "difficulty_level": null,
+        "sort_order": 1,
+        "structure_complete": true,
+        "missing": []
+      },
+      {
+        "section_id": "9b33337f-4013-48a2-b05f-933c74ed1775",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "subject_id": "f8034c83-cb92-4878-a4ce-eef118b0ecec",
+        "section_label": "General Awareness",
+        "question_count": 25,
+        "marks": 50,
+        "negative_marking": "0.50 per wrong answer",
+        "duration_mins": null,
+        "duration_source": "phase",
+        "weightage_percent": 25,
+        "difficulty_level": "medium",
+        "sort_order": 2,
+        "structure_complete": true,
+        "missing": []
+      },
+      {
+        "section_id": "88888888-8888-8888-8888-888888888881",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "subject_id": "55555555-5555-5555-5555-555555555551",
+        "section_label": "Quantitative Aptitude",
+        "question_count": 25,
+        "marks": 50,
+        "negative_marking": "0.50 per wrong answer",
+        "duration_mins": null,
+        "duration_source": "phase",
+        "weightage_percent": 25,
+        "difficulty_level": null,
+        "sort_order": 3,
+        "structure_complete": true,
+        "missing": []
+      },
+      {
+        "section_id": "88888888-8888-8888-8888-888888888882",
+        "exam_phase_id": "44444444-4444-4444-4444-444444444441",
+        "subject_id": "55555555-5555-5555-5555-555555555552",
+        "section_label": "English Comprehension",
+        "question_count": 25,
+        "marks": 50,
+        "negative_marking": "0.50 per wrong answer",
+        "duration_mins": null,
+        "duration_source": "phase",
+        "weightage_percent": 25,
+        "difficulty_level": null,
+        "sort_order": 4,
+        "structure_complete": true,
+        "missing": []
+      }
+    ]
+  },
+  "section_shortfall": []
+}

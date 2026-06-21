@@ -1,5 +1,5 @@
-import React, {lazy } from "react";
-import { Navigate, Route } from "react-router-dom";
+import React, { lazy } from "react";
+import { Navigate, Route, useParams } from "react-router-dom";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
 import { ADMIN_ROLES } from "../lib/rbac";
 import RouteErrorBoundary from "../components/RouteErrorBoundary";
@@ -35,7 +35,9 @@ const AdminStudyOsReports = lazy(() => import("../pages/admin/studyos/Reports"))
 const AdminStudyOsSocial = lazy(() => import("../pages/admin/studyos/Social"));
 const AdminPyqPaperWorkspace = lazy(() => import("../pages/admin/studyos/PyqPaperWorkspace"));
 const AdminExamWorkspace = lazy(() => import("../pages/admin/exam-workspace/ExamWorkspace"));
+const AdminExamGovernanceConsole = lazy(() => import("../pages/admin/ExamGovernanceConsole"));
 const AdminExamIntelCms = lazy(() => import("../pages/admin/studyos/ExamIntelCms"));
+const AdminGuidedExamWizard = lazy(() => import("../pages/admin/studyos/GuidedExamWizard"));
 const AdminContentAccessRequests = lazy(() => import("../pages/admin/studyos/ContentAccessRequests"));
 const AdminGroupsConsole = lazy(() => import("../pages/admin/community/GroupsConsole"));
 const AdminPartnersConsole = lazy(() => import("../pages/admin/community/PartnersConsole"));
@@ -46,6 +48,17 @@ const AdminMockQuestionEditor = lazy(() => import("../pages/admin/mocks/Question
 const AdminMockImportWizard = lazy(() => import("../pages/admin/mocks/ImportWizard"));
 const AdminVerificationReports = lazy(() => import("../pages/admin/VerificationReports"));
 const AdminReverificationBatches = lazy(() => import("../pages/admin/ReverificationBatches"));
+const AdminKnowledgeGovernance = lazy(() => import("../pages/admin/KnowledgeGovernance"));
+
+export function AddCycleRedirect() {
+  const { exam_id } = useParams();
+  return (
+    <Navigate
+      to={`/admin/exam-intelligence/workspace/${encodeURIComponent(exam_id || "")}?tab=setup&action=add-cycle`}
+      replace
+    />
+  );
+}
 
 export const adminRouteElements = (
   <>
@@ -61,7 +74,6 @@ export const adminRouteElements = (
     <Route path="/admin/promotion-queue" element={<Navigate to="/admin/operations?mode=queue" replace />} />
     <Route path="/admin/eligibility-ops" element={<AdminEligibilityOps />} />
     <Route path="/admin/sources" element={<AdminSources />} />
-    <Route path="/admin/organizations" element={<AdminOrganizations />} />
     <Route path="/admin/scraper" element={<AdminScraper />} />
     <Route path="/admin/notifications" element={<AdminNotifications />} />
     <Route path="/admin/marketplace" element={<AdminMarketplace />} />
@@ -73,14 +85,23 @@ export const adminRouteElements = (
     <Route path="/admin/community/groups" element={<AdminGroupsConsole />} />
     <Route path="/admin/community/partners" element={<AdminPartnersConsole />} />
     <Route path="/admin/community/resources" element={<AdminResourcesReviewQueue />} />
-    <Route path="/admin/ai-policy" element={<AdminAIPolicy />} />
-    <Route path="/admin/persona" element={<AdminPersona />} />
-    <Route path="/admin/exam-intelligence" element={<AdminExamIntelligence />} />
-    <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
-    <Route path="/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace" element={<AdminPyqPaperWorkspace />} />
-    <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<AdminExamWorkspace />} />
-    <Route path="/admin/exam-intelligence/workspace/:exam_id/:cycle_id" element={<AdminExamWorkspace />} />
-    <Route path="/admin/exam-eligibility" element={<AdminExamEligibility />} />
+    {/* Knowledge governance */}
+    <Route element={<RouteErrorBoundary />}>
+      <Route path="/admin/knowledge-governance" element={<AdminKnowledgeGovernance />} />
+      <Route path="/admin/organizations" element={<AdminOrganizations />} />
+      <Route path="/admin/ai-policy" element={<AdminAIPolicy />} />
+      <Route path="/admin/persona" element={<AdminPersona />} />
+      <Route path="/admin/exam-intelligence" element={<AdminExamIntelligence />} />
+      <Route path="/admin/exam-intelligence/console" element={<AdminExamGovernanceConsole />} />
+      <Route path="/admin/exam-intelligence/console/:exam_id" element={<AdminExamGovernanceConsole />} />
+      <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
+      <Route path="/admin/exam-intelligence/new" element={<AdminGuidedExamWizard />} />
+      <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AddCycleRedirect />} />
+      <Route path="/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace" element={<AdminPyqPaperWorkspace />} />
+      <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<AdminExamWorkspace />} />
+      <Route path="/admin/exam-intelligence/workspace/:exam_id/:cycle_id" element={<AdminExamWorkspace />} />
+      <Route path="/admin/exam-eligibility" element={<AdminExamEligibility />} />
+    </Route>
     <Route path="/admin/moderation" element={<AdminModerationQueue />} />
     <Route path="/admin/kpis" element={<AdminKPIs />} />
     <Route path="/admin/copyright" element={<AdminCopyright />} />
@@ -91,7 +112,7 @@ export const adminRouteElements = (
     <Route path="/admin/study-os/mocks" element={<AdminStudyOsMockTrust />} />
     <Route path="/admin/study-os/reports" element={<AdminStudyOsReports />} />
     <Route path="/admin/study-os/social" element={<AdminStudyOsSocial />} />
-    <Route path="/admin/study-os/exam-intel-cms" element={<Navigate to="/admin/exam-intelligence" replace />} />
+    <Route path="/admin/study-os/exam-intel-cms" element={<Navigate to="/admin/exam-intelligence/cms" replace />} />
     <Route path="/admin/study-os/content-access" element={<AdminContentAccessRequests />} />
     {/* Mock Content */}
     <Route path="/admin/mocks/questions" element={<AdminMockQuestionList />} />

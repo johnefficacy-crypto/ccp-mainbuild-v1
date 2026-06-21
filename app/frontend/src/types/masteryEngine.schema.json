@@ -25,6 +25,11 @@
         "required": true,
         "nullable": false
       },
+      "attempted": {
+        "type": "bool",
+        "required": false,
+        "nullable": false
+      },
       "difficulty": {
         "type": "str",
         "required": false,
@@ -137,6 +142,11 @@
         "nullable": false
       },
       "microtopic_id": {
+        "type": "str",
+        "required": false,
+        "nullable": true
+      },
+      "category": {
         "type": "str",
         "required": false,
         "nullable": true

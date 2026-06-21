@@ -26,6 +26,7 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
+from app.study_os.exam_target_window import resolve_exam_target_window
 from app.study_os.planner import (  # type: ignore
     _load_locked_coverage,
     _load_user_signals,
@@ -152,6 +153,24 @@ def _load_active_cycle(supabase: Any, exam_id: str) -> dict[str, Any] | None:
             .select("id, cycle_name, status, year")
             .eq("exam_id", exam_id)
             .order("exam_start", desc=True)
+            .limit(1)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    return rows[0] if rows else None
+
+
+def _load_cycle_by_id(supabase: Any, cycle_id: str) -> dict[str, Any] | None:
+    rows = _safe(
+        lambda: (
+            supabase.table("exam_cycles")
+            .select(
+                "id, cycle_name, status, notification_date, application_start, "
+                "application_end, exam_start, exam_end, year"
+            )
+            .eq("id", cycle_id)
             .limit(1)
             .execute()
             .data
@@ -492,6 +511,7 @@ def _build_subjects(
 def _build_risk_flags(
     *,
     exam_start: date | None,
+    has_connected_target: bool,
     today: date,
     cycle_progress: dict[str, Any],
     overdue_count: int,
@@ -499,7 +519,7 @@ def _build_risk_flags(
     subjects: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     flags: list[dict[str, Any]] = []
-    if exam_start is None:
+    if not has_connected_target:
         flags.append({
             "code": "no_exam_date",
             "label": "No verified exam date",
@@ -582,12 +602,20 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
     exam_id = target.get("id") if target else None
     exam_name = (target.get("name") if target else None) or (target.get("slug") if target else None)
 
-    cycle = _load_active_cycle(supabase, exam_id) if exam_id else None
-    cycle_id = cycle.get("id") if cycle else None
-    exam_start = _to_date(cycle.get("exam_start")) if cycle else None
-    phases = _load_phases(supabase, exam_id, cycle_id) if exam_id else []
-    primary_phase = next((p for p in phases if p.get("status") in {None, "active"}), phases[0] if phases else None)
     today = _today()
+    resolver_result = (
+        resolve_exam_target_window(supabase, exam_id=exam_id, manual_phase_id=None, today=today)
+        if exam_id else None
+    )
+
+    # Single cycle authority: use the resolver's chosen cycle; no separate _load_active_cycle call.
+    resolver_cycle_id = resolver_result["cycle_id"] if resolver_result else None
+    cycle = _load_cycle_by_id(supabase, resolver_cycle_id) if resolver_cycle_id else None
+    phases = _load_phases(supabase, exam_id, resolver_cycle_id) if exam_id and resolver_cycle_id else []
+    primary_phase = next((p for p in phases if p.get("status") in {None, "active"}), phases[0] if phases else None)
+
+    # Resolver's target date is the single source of truth for the planning horizon.
+    timeline_target_date = _to_date(resolver_result["target_date"]) if resolver_result else None
 
     plan = _load_active_plan(supabase, user_id)
     plan_id = plan.get("id") if plan else None
@@ -595,26 +623,36 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
     plan_end = _to_date(plan.get("end_date")) if plan else None
     plan_created = _to_date(plan.get("created_at")) if plan else None
     cycle_start = plan_start or plan_created or today
-    cycle_end = exam_start or plan_end or (cycle_start + timedelta(days=30))
+    cycle_end = timeline_target_date or plan_end or (cycle_start + timedelta(days=30))
 
     version_row = _latest_plan_version(supabase, plan_id)
 
-    # Even when there's no plan or no exam_start, we still want to surface
-    # the exam_context + an empty payload rather than a hard 404.
-    if not plan and not exam_start:
+    # Even when there's no plan or the resolver has no target, we still want
+    # to surface the exam_context + an empty payload rather than a hard 404.
+    if not plan and (not resolver_result or resolver_result["status"] == "not_connected"):
         empty = _empty_payload({
             "exam_context": {
                 "exam_id": exam_id,
                 "exam_name": exam_name,
                 "cycle": cycle.get("cycle_name") if cycle else None,
-                "phase": primary_phase.get("phase_name") if primary_phase else None,
-                "exam_start": _iso(exam_start),
-                "days_remaining": None,
+                "phase": (
+                    (resolver_result["target_phase_name"] if resolver_result else None)
+                    or (primary_phase.get("phase_name") if primary_phase else None)
+                ),
+                "exam_start": resolver_result["target_date"] if resolver_result else None,
+                "days_remaining": resolver_result["days_remaining"] if resolver_result else None,
                 "trust_status": "preview",
+                "target_date": resolver_result["target_date"] if resolver_result else None,
+                "target_kind": resolver_result["target_kind"] if resolver_result else None,
+                "target_phase_id": resolver_result["target_phase_id"] if resolver_result else None,
+                "target_phase_slug": resolver_result["target_phase_slug"] if resolver_result else None,
+                "target_phase_name": resolver_result["target_phase_name"] if resolver_result else None,
+                "diagnostic": resolver_result["diagnostic"] if resolver_result else None,
             },
         })
         empty["risk_flags"] = _build_risk_flags(
             exam_start=None,
+            has_connected_target=False,
             today=today,
             cycle_progress=empty["cycle_progress"],
             overdue_count=0,
@@ -651,7 +689,7 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
     actual_progress_pct = _pct(completed_units, total_units) if total_units else 0
     gap_pct = planned_progress_pct - actual_progress_pct
 
-    if not exam_start:
+    if not resolver_result or resolver_result["status"] == "not_connected":
         status = "not_connected"
     elif gap_pct >= 10:
         status = "behind"
@@ -673,10 +711,10 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
         except Exception:  # noqa: BLE001
             logger.debug("plan_timeline user signal preload failed", exc_info=True)
 
-    series = _build_series(tasks, cycle_start, exam_start, total_units) if exam_start else []
+    series = _build_series(tasks, cycle_start, timeline_target_date, total_units) if timeline_target_date else []
     subjects = _build_subjects(tasks, sessions, locked_subject_ids)
     milestones = _build_milestones(cycle, phases, today)
-    phase_bands = _build_phase_bands(cycle_start, exam_start)
+    phase_bands = _build_phase_bands(cycle_start, timeline_target_date)
 
     overdue = _load_overdue_count(supabase, user_id, today)
     unreviewed_mocks = _load_unreviewed_mocks(supabase, user_id)
@@ -691,8 +729,13 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
         "unit": "tasks" if use_counts else "minutes",
     }
 
+    has_connected_target = (
+        resolver_result is not None
+        and resolver_result["status"] == "connected"
+    )
     risk_flags = _build_risk_flags(
-        exam_start=exam_start,
+        exam_start=timeline_target_date,
+        has_connected_target=has_connected_target,
         today=today,
         cycle_progress=cycle_progress,
         overdue_count=overdue,
@@ -714,10 +757,21 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
             "exam_id": exam_id,
             "exam_name": exam_name,
             "cycle": cycle.get("cycle_name") if cycle else None,
-            "phase": primary_phase.get("phase_name") if primary_phase else None,
-            "exam_start": _iso(exam_start),
-            "days_remaining": (exam_start - today).days if exam_start else None,
-            "trust_status": "locked" if exam_start else "preview",
+            "phase": (
+                (resolver_result["target_phase_name"] if resolver_result else None)
+                or (primary_phase.get("phase_name") if primary_phase else None)
+            ),
+            # exam_start: set to resolver target_date so FE "Exam on" shows the
+            # real planning target. Null when resolver has no target (FE handles null).
+            "exam_start": resolver_result["target_date"] if resolver_result else None,
+            "days_remaining": resolver_result["days_remaining"] if resolver_result else None,
+            "trust_status": "locked" if (resolver_result and resolver_result["status"] == "connected") else "preview",
+            "target_date": resolver_result["target_date"] if resolver_result else None,
+            "target_kind": resolver_result["target_kind"] if resolver_result else None,
+            "target_phase_id": resolver_result["target_phase_id"] if resolver_result else None,
+            "target_phase_slug": resolver_result["target_phase_slug"] if resolver_result else None,
+            "target_phase_name": resolver_result["target_phase_name"] if resolver_result else None,
+            "diagnostic": resolver_result["diagnostic"] if resolver_result else None,
         },
         "plan_context": {
             "plan_id": plan_id,

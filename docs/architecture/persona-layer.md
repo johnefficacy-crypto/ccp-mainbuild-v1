@@ -92,7 +92,6 @@ It is **not** displayed to users in PR1.
 | `preferred_states_count` | `aspirant_preferences.preferred_states` |
 | `weekly_hours_goal` | `profiles.weekly_hours_goal` (fallback: `aspirant_preferences.study_hours_per_day × 7`) |
 | `study_mode` | `aspirant_preferences.study_mode` |
-| `target_exam_year` | `profiles.target_exam_year` |
 | `task_completion_rate_14d` / `missed_task_count_14d` / `skipped_task_count_14d` | `study_tasks` filtered by `updated_at >= now() - 14d` |
 | `focus_minutes_7d` | `study_sessions.duration_mins` (fallback: legacy `duration_minutes`) over last 7 days |
 | `mocks_taken_30d` | `mock_tests` filtered by `attempted_at >= now() - 30d` |

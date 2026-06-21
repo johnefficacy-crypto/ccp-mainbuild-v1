@@ -493,3 +493,27 @@ def test_list_audit_entries_returns_all_for_entity_type_when_id_omitted(sb):
     ]
     out = _list_audit(entity_type="source")
     assert out["total"] == 2
+
+
+def test_list_audit_entries_accepts_exam_eligibility_rule(sb):
+    rule_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    sb.tables["admin_audit_logs"] = [
+        {
+            "id": "e1",
+            "action": "eligibility_rule.verify",
+            "entity_type": "exam_eligibility_rule",
+            "entity_id": rule_id,
+            "actor_email": "admin@example.com",
+            "notes": "Confirmed",
+        },
+    ]
+    out = _list_audit(entity_type="exam_eligibility_rule", entity_id=rule_id)
+    assert out["total"] == 1
+    assert out["items"][0]["action"] == "eligibility_rule.verify"
+
+
+def test_list_audit_entries_exam_eligibility_rule_empty_returns_no_items(sb):
+    sb.tables["admin_audit_logs"] = []
+    out = _list_audit(entity_type="exam_eligibility_rule", entity_id="no-such-rule")
+    assert out["items"] == []
+    assert out["total"] == 0

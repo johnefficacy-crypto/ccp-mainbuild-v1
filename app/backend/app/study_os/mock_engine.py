@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
 
 from app.study_os.attempt_events import record_server_event
@@ -22,8 +23,19 @@ from app.study_os.attempt_event_types import (
     ATTEMPT_SUBMITTED,
     QUESTION_ANSWERED,
 )
+from app.utils.safe import safe_required
 
 logger = logging.getLogger("career_copilot.study_os.mock_engine")
+
+# E2E Playwright fixtures seed mock_question_bank rows tagged with this
+# source_type (app/supabase/seeds/e2e_fixtures.sql). They are 'published' so the
+# fixed-id E2E selector can load them inside the E2E DB, but they must NEVER be
+# eligible for production POOL selection — otherwise a test fixture could leak
+# into a real generated/criteria-built attempt. The fixed-id path
+# (_load_questions_for_template) loads explicit ids and is intentionally NOT
+# filtered, so E2E keeps working.
+_E2E_FIXTURE_SOURCE_TYPE = "e2e_fixture"
+
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────
@@ -42,6 +54,22 @@ def _safe(call, default=None):
     except Exception as exc:  # noqa: BLE001
         logger.warning("mock_engine supabase call failed: %s", exc)
         return default
+
+
+def _to_decimal_marks(value: int | float | Decimal) -> Decimal:
+    """Normalize mark values without inheriting binary-float artifacts."""
+    decimal_value = Decimal(str(value))
+    if not decimal_value.is_finite():
+        raise ValueError(f"total_marks must be finite, got {value!r}")
+    return decimal_value
+
+
+def _to_integral_marks(value: int | float | Decimal) -> int:
+    """Return ``value`` as an int only when it is mathematically integral."""
+    decimal_value = _to_decimal_marks(value)
+    if decimal_value != decimal_value.to_integral_value():
+        raise ValueError(f"total_marks must be integral, got {value!r}")
+    return int(decimal_value)
 
 
 def _require(call, op: str):
@@ -164,7 +192,17 @@ def _select_criteria_question_ids(supabase: Any, selector: dict, question_count:
         return []
     filters = selector.get("filters") or {}
     _SELECTABLE = ["verified", "published", "live"]
-    q = supabase.table("mock_question_bank").select("*").in_("reviewer_status", _SELECTABLE)
+    # Exclude E2E fixtures by construction: the criteria pool builds real
+    # (generated) attempts, so a fixture row must never be drawn into one even if
+    # it is published in this DB. Use is.null OR neq so NULL-provenance rows
+    # (e.g. legacy authored questions) are RETAINED — a plain neq would drop them
+    # because NULL <> 'e2e_fixture' is NULL in Postgres.
+    q = (
+        supabase.table("mock_question_bank")
+        .select("*")
+        .in_("reviewer_status", _SELECTABLE)
+        .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
+    )
     if filters.get("exam_family"):
         q = q.eq("exam_family", filters["exam_family"])
     if filters.get("subject_id"):
@@ -591,23 +629,41 @@ def _finalize_submission(
             "marks_awarded": awarded,
         })
 
+    # Per-response score writes are correctness-critical: a silent failure here
+    # would flip the attempt to ``submitted`` (below) while individual responses
+    # keep null/stale marks. Use safe_required and raise on failure so the
+    # attempt is left ``in_progress`` (the safe state) and the caller can retry —
+    # re-scoring is idempotent because marks come from the frozen snapshot and
+    # these are overwrites, not increments.
     for upd in updates:
-        _safe(
+        written = safe_required(
             lambda u=upd: supabase.table("mock_attempt_responses")
             .update({"is_correct": u["is_correct"], "marks_awarded": u["marks_awarded"]})
             .eq("id", u["id"])
             .execute(),
-            default=None,
+            op="mock_engine.finalize_response_score",
+            log=logger,
         )
+        if written is None:
+            raise SubmissionPersistenceError(
+                f"response score write failed: attempt={attempt_id} response={upd['id']}"
+            )
 
     total_q = len(responses)
     max_score = sum(
-        float((r.get("question_snapshot") or {}).get("marks") or 1)
-        for r in responses
+        (_to_decimal_marks((r.get("question_snapshot") or {}).get("marks") or 1)
+         for r in responses),
+        Decimal("0"),
     )
-    pct = round(score_raw / max_score * 100, 2) if max_score > 0 else 0.0
+    max_score_float = float(max_score)
+    pct = round(score_raw / max_score_float * 100, 2) if max_score_float > 0 else 0.0
 
-    _safe(
+    # Attempt finalization is correctness-critical: this flip + aggregate scores
+    # is the headline result the client reads back. A silent failure must not be
+    # reported as a successful submission. Raising here (before the submitted
+    # event and the mock_tests compat row below) leaves the attempt
+    # ``in_progress`` so a retry re-runs cleanly.
+    finalized = safe_required(
         lambda: supabase.table("mock_attempts")
         .update({
             "status": "submitted",
@@ -620,8 +676,13 @@ def _finalize_submission(
         })
         .eq("id", attempt_id)
         .execute(),
-        default=None,
+        op="mock_engine.finalize_attempt",
+        log=logger,
     )
+    if finalized is None:
+        raise AttemptFinalizationError(
+            f"attempt finalization write failed: attempt={attempt_id}"
+        )
 
     # Server-authoritative event — written immediately after the status flip.
     record_server_event(
@@ -653,6 +714,42 @@ def _finalize_submission(
     return updated_attempt, responses, updates
 
 
+def _repair_submitted_side_effects(supabase: Any, attempt_id: str) -> None:
+    """Idempotently reconcile post-finalize side effects for a submitted attempt.
+
+    Covers the ambiguous case where the ``mock_attempts`` finalization UPDATE
+    committed on the server but the client call raised before the submitted
+    event, the ``mock_tests`` compat row, or analytics derivation ran — so the
+    resubmit fast path would otherwise skip them forever. Self-healing and
+    best-effort: when a side effect is missing it schedules the existing retry
+    job (the sweeper drains it and both jobs are idempotent). Never raises — a
+    repair failure must not break an otherwise-successful resubmit. The
+    ATTEMPT_SUBMITTED event is telemetry only (not source of truth) and is
+    intentionally not re-emitted here to avoid duplicate events.
+    """
+    compat = _safe(
+        lambda: supabase.table("mock_tests")
+        .select("id")
+        .eq("mock_attempt_id", attempt_id)
+        .limit(1)
+        .execute(),
+        default=None,
+    )
+    if not getattr(compat, "data", None):
+        schedule_job(supabase, JOB_MOCK_TESTS_RETRY, attempt_id)
+
+    summary = _safe(
+        lambda: supabase.table("mock_attempt_summary")
+        .select("attempt_id")
+        .eq("attempt_id", attempt_id)
+        .limit(1)
+        .execute(),
+        default=None,
+    )
+    if not getattr(summary, "data", None):
+        schedule_job(supabase, JOB_ANALYTICS_RETRY, attempt_id)
+
+
 def submit_attempt(
     supabase: Any,
     user_id: str,
@@ -663,6 +760,11 @@ def submit_attempt(
     attempt = _fetch_attempt(supabase, user_id, attempt_id)
 
     if attempt["status"] == "submitted":
+        # Reconcile the ambiguous "finalization UPDATE committed but the client
+        # raised before the side effects ran" case: a retry would otherwise take
+        # this fast path and never (re)create the mock_tests compat row or
+        # analytics, leaving a submitted attempt missing from history/analytics.
+        _repair_submitted_side_effects(supabase, attempt_id)
         return _build_result(supabase, attempt)
 
     if attempt["status"] != "in_progress":
@@ -721,6 +823,14 @@ def auto_submit_attempt(supabase: Any, attempt_id: str) -> dict:
         submitted_at=submitted_at, event_type=ATTEMPT_AUTO_SUBMITTED,
     )
     schedule_job(supabase, JOB_ANALYTICS_RETRY, attempt_id)
+    # D2: parity with the manual submit path — enqueue mastery_retry so the
+    # sweeper processes mastery after analytics succeeds (D4 also covers this,
+    # but an eager enqueue here means mastery is queued even if analytics
+    # finishes before the next sweep cycle reads the analytics_retry job).
+    from app.study_os.mastery_writer import get_mastery_write_flag  # noqa: PLC0415
+    _auto_submit_flag = get_mastery_write_flag()
+    if _auto_submit_flag != "off":
+        enqueue_mastery_retry_required(supabase, attempt_id, _auto_submit_flag)
     return {"ok": True, "skipped": False, "submitted_at": submitted_at}
 
 
@@ -918,13 +1028,14 @@ def _emit_mock_tests_row(
     duration_mins = round(duration_sec / 60) if duration_sec else None
 
     try:
+        total_marks = _to_integral_marks(max_score)
         supabase.table("mock_tests").insert({
             "user_id": user_id,
             "test_name": snap.get("name") or "Mock",
             "title": snap.get("name") or "Mock",
             "exam_name": snap.get("exam_family") or snap.get("slug") or "",
             "scored_marks": round(score_raw, 2),
-            "total_marks": max_score,
+            "total_marks": total_marks,
             "duration_mins": duration_mins,
             "correct_answers": total_correct,
             "wrong_answers": total_wrong,
@@ -970,7 +1081,9 @@ def _retry_emit_mock_tests_row(supabase: Any, attempt_id: str) -> None:
     )
     responses = getattr(resp_rows, "data", None) or []
     max_score = sum(
-        float((r.get("question_snapshot") or {}).get("marks") or 1) for r in responses
+        (_to_decimal_marks((r.get("question_snapshot") or {}).get("marks") or 1)
+         for r in responses),
+        Decimal("0"),
     )
 
     snap = attempt.get("template_snapshot") or {}
@@ -981,6 +1094,8 @@ def _retry_emit_mock_tests_row(supabase: Any, attempt_id: str) -> None:
     total_wrong = int(attempt.get("total_wrong") or 0)
     submitted_at = attempt.get("submitted_at") or _now_iso()
 
+    total_marks = _to_integral_marks(max_score)
+
     # Propagate exceptions so the sweeper's retry/backoff loop handles them.
     supabase.table("mock_tests").insert({
         "user_id": attempt["user_id"],
@@ -988,7 +1103,7 @@ def _retry_emit_mock_tests_row(supabase: Any, attempt_id: str) -> None:
         "title": snap.get("name") or "Mock",
         "exam_name": snap.get("exam_family") or snap.get("slug") or "",
         "scored_marks": round(score_raw, 2),
-        "total_marks": max_score,
+        "total_marks": total_marks,
         "duration_mins": duration_mins,
         "correct_answers": total_correct,
         "wrong_answers": total_wrong,
@@ -1010,6 +1125,22 @@ class AnswerPersistenceError(RuntimeError):
     pass
 
 
+class SubmissionPersistenceError(RuntimeError):
+    """A per-response score write failed during finalization.
+
+    Raised before the attempt is flipped to ``submitted``, so the attempt is
+    left ``in_progress`` and the submission is safely re-runnable.
+    """
+
+
+class AttemptFinalizationError(RuntimeError):
+    """The attempt status/score finalization write failed.
+
+    Raised before the submitted event and mock_tests compat row are emitted, so
+    the attempt is left ``in_progress`` and the submission is safely re-runnable.
+    """
+
+
 class SubmitConsistencyError(RuntimeError):
     pass
 
@@ -1025,6 +1156,7 @@ JOB_AUTO_SUBMIT = "auto_submit"
 JOB_ANALYTICS_RETRY = "analytics_retry"
 JOB_MASTERY_RETRY = "mastery_retry"
 JOB_MOCK_TESTS_RETRY = "mock_tests_retry"
+_JOB_LEASE_SECONDS = 60
 
 _ACTIVE_JOB_STATUSES = ["pending", "running"]
 
@@ -1076,6 +1208,112 @@ def schedule_job(
         _safe(lambda: supabase.table("mock_attempt_jobs").insert(payload).execute(), default=None)  # safe-write-ok: fire-and-forget job scheduling; sweeper re-enqueues missed auto-submit jobs
 
 
+
+
+def _validate_mastery_retry_flag(flag_state: str | None) -> None:
+    if flag_state not in {"shadow", "live"}:
+        raise ValueError("mastery retry flag_state must be shadow or live")
+
+
+def _mastery_lease_until() -> str:
+    return (_now() + timedelta(seconds=_JOB_LEASE_SECONDS)).isoformat()
+
+
+def _mastery_retry_done(supabase: Any, attempt_id: str, flag_state: str) -> bool:
+    _validate_mastery_retry_flag(flag_state)
+    rows = (
+        supabase.table("mock_attempt_jobs")
+        .select("id")
+        .eq("job_kind", JOB_MASTERY_RETRY)
+        .eq("attempt_id", attempt_id)
+        .eq("mastery_flag_state", flag_state)
+        .eq("status", "done")
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return bool(rows)
+
+
+def mastery_retry_done(supabase: Any, attempt_id: str, flag_state: str) -> bool:
+    return _mastery_retry_done(supabase, attempt_id, flag_state)
+
+
+def claim_mastery_retry_required(supabase: Any, attempt_id: str, flag_state: str) -> str | None:
+    _validate_mastery_retry_flag(flag_state)
+    rows = (
+        supabase.rpc(
+            "claim_mock_mastery_retry",
+            {
+                "p_attempt_id": attempt_id,
+                "p_flag_state": flag_state,
+                "p_lease_until": _mastery_lease_until(),
+            },
+        )
+        .execute()
+        .data
+        or []
+    )
+    if not rows:
+        return None
+    row = rows[0]
+    return row.get("id") if row.get("claimed") else None
+
+
+def enqueue_mastery_retry_required(
+    supabase: Any,
+    attempt_id: str,
+    flag_state: str,
+    *,
+    last_error: str | None = None,
+    scheduled_for: str | None = None,
+) -> None:
+    _validate_mastery_retry_flag(flag_state)
+    rows = (
+        supabase.table("mock_attempt_jobs")
+        .select("id,attempts,mastery_flag_state")
+        .eq("job_kind", JOB_MASTERY_RETRY)
+        .eq("attempt_id", attempt_id)
+        .eq("mastery_flag_state", flag_state)
+        .in_("status", _ACTIVE_JOB_STATUSES)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    now_iso = scheduled_for or _now_iso()
+    if rows:
+        patch = {"status": "pending", "scheduled_for": now_iso, "updated_at": _now_iso()}
+        if last_error is not None:
+            patch["last_error"] = last_error[:500]
+        supabase.table("mock_attempt_jobs").update(patch).eq("id", rows[0]["id"]).execute()
+        return
+    payload = {
+        "job_kind": JOB_MASTERY_RETRY,
+        "attempt_id": attempt_id,
+        "mastery_flag_state": flag_state,
+        "scheduled_for": now_iso,
+        "attempts": 0,
+        "status": "pending",
+        "last_error": last_error[:500] if last_error else None,
+    }
+    supabase.table("mock_attempt_jobs").insert(payload).execute()
+
+
+def mark_mastery_retry_pending_required(supabase: Any, job_id: str, last_error: str) -> None:
+    supabase.table("mock_attempt_jobs").update({
+        "status": "pending",
+        "scheduled_for": _now_iso(),
+        "last_error": last_error[:500],
+        "updated_at": _now_iso(),
+    }).eq("id", job_id).execute()
+
+
+def complete_mastery_retry_required(supabase: Any, job_id: str) -> None:
+    supabase.rpc("complete_mock_mastery_retry", {"p_job_id": job_id}).execute()
+
+
 def _complete_job(supabase: Any, job_kind: str, attempt_id: str) -> None:
     """Mark any active job for (job_kind, attempt) done — keeps the row for audit."""
     _safe(
@@ -1094,7 +1332,7 @@ def _mark_running(supabase: Any, job: dict, now: datetime) -> int:
     attempts = int(job.get("attempts") or 0) + 1
     _safe(
         lambda: supabase.table("mock_attempt_jobs")
-        .update({"status": "running", "attempts": attempts, "updated_at": now.isoformat()})
+        .update({"status": "running", "attempts": attempts, "scheduled_for": (now + timedelta(seconds=_JOB_LEASE_SECONDS)).isoformat(), "updated_at": now.isoformat()})
         .eq("id", job["id"])
         .execute(),
         default=None,
@@ -1131,10 +1369,47 @@ def _run_job(supabase: Any, job: dict) -> None:
         auto_submit_attempt(supabase, attempt_id)
     elif kind == JOB_ANALYTICS_RETRY:
         attempt_analytics.compute_and_persist(supabase, attempt_id)
+        # D4: after analytics succeeds, hand off to mastery if FF is not off.
+        # enqueue_mastery_retry_required is idempotent against active jobs, so a
+        # concurrent or already-pending mastery_retry is safely reset to pending.
+        from app.study_os.mastery_writer import get_mastery_write_flag  # noqa: PLC0415
+        _analytics_retry_flag = get_mastery_write_flag()
+        if _analytics_retry_flag != "off":
+            enqueue_mastery_retry_required(supabase, attempt_id, _analytics_retry_flag)
     elif kind == JOB_MOCK_TESTS_RETRY:
         _retry_emit_mock_tests_row(supabase, attempt_id)
+        _recover_corrections_after_mock_tests(supabase, attempt_id)
+    elif kind == JOB_MASTERY_RETRY:
+        from app.study_os.mastery_writer import MasteryWriter
+
+        flag_state = job.get("mastery_flag_state")
+        _validate_mastery_retry_flag(flag_state)
+        MasteryWriter(supabase, flag_state).process_attempt_sync(attempt_id)
     else:
         raise RuntimeError(f"unknown job_kind {kind!r}")
+
+
+def _recover_corrections_after_mock_tests(supabase: Any, attempt_id: str) -> None:
+    """Recovery hook (decision doc §4b): once the mock_tests compat row is
+    (re-)emitted, re-run correction drafting so a transient missing-row miss in
+    MasteryWriter is recovered rather than silently lost.
+
+    Failures INTENTIONALLY propagate: this runs inside ``_run_job`` (after
+    ``_retry_emit_mock_tests_row``), so an exception here flows up to
+    ``run_sweeper``, which reschedules the JOB_MOCK_TESTS_RETRY job with backoff
+    and preserves ``last_error``. The job is therefore marked done only after
+    BOTH the compat-row recovery AND the correction recovery succeed — a failed
+    correction can no longer be swallowed and mismarked as success.
+
+    Serial-retry safe: ``_retry_emit_mock_tests_row`` is idempotent (reuses the
+    existing compat row, never recreates it) and ``redraft_corrections`` is
+    serial-retry idempotent (best-effort read-before-insert dedup), so retrying
+    the whole job inserts the correction exactly once across serial retries. It
+    only drafts at FF=live and adds NO new mock_tests creation path.
+    """
+    from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
+
+    MasteryWriter(supabase, get_mastery_write_flag()).redraft_corrections(attempt_id)
 
 
 def run_sweeper(
@@ -1190,7 +1465,10 @@ def run_sweeper(
         kind = job.get("job_kind")
         try:
             _run_job(supabase, job)
-            _complete_job(supabase, kind, job.get("attempt_id"))
+            if kind == JOB_MASTERY_RETRY:
+                complete_mastery_retry_required(supabase, job["id"])
+            else:
+                _complete_job(supabase, kind, job.get("attempt_id"))
             if kind == JOB_AUTO_SUBMIT:
                 counts["auto_submitted"] += 1
             elif kind == JOB_ANALYTICS_RETRY:

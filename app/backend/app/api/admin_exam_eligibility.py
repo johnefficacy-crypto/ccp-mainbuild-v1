@@ -40,6 +40,28 @@ from app.exam_eligibility.evaluator import invalidate_eligibility_rules_cache
 
 logger = logging.getLogger("career_copilot.api.admin_exam_eligibility")
 
+
+def _audit(
+    sb,
+    admin: dict,
+    action: str,
+    entity_type: str,
+    entity_id: str,
+    before_payload=None,
+    after_payload=None,
+    metadata=None,
+) -> None:
+    sb.table("admin_audit_logs").insert({
+        "action": action,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "actor_id": admin.get("id"),
+        "actor_email": admin.get("email"),
+        "old_value": before_payload,
+        "new_value": after_payload,
+        "notes": str(metadata or ""),
+    }).execute()
+
 ADMIN_PERM = "exam_eligibility.manage"
 
 router = APIRouter(prefix="/admin/exam-eligibility", tags=["admin-exam-eligibility"])
@@ -66,6 +88,7 @@ class RuleCreate(BaseModel):
     source_url: str | None = None
     source_notes: str | None = None
     reviewer_status: str = Field(default="draft")
+    waiver_reason: str | None = None
 
 
 class RuleUpdate(BaseModel):
@@ -77,6 +100,7 @@ class RuleUpdate(BaseModel):
     source_url: str | None = None
     source_notes: str | None = None
     reviewer_status: str | None = None
+    waiver_reason: str | None = None
 
 
 def _validate_rule_shape(
@@ -105,6 +129,21 @@ def _validate_rule_shape(
                 status_code=400,
                 detail=f"{rule_type} requires value_text",
             )
+
+
+def _require_trust_provenance(source_url: str | None, waiver_reason: str | None) -> None:
+    """Setting reviewer_status='verified' or archiving requires a source URL or an explicit waiver."""
+    if source_url and str(source_url).strip():
+        return
+    if waiver_reason and str(waiver_reason).strip():
+        return
+    raise HTTPException(
+        status_code=422,
+        detail=(
+            "Trust-transition requires either a non-empty source_url "
+            "or a waiver_reason explaining why source documentation is unavailable."
+        ),
+    )
 
 
 # ── Read endpoints ───────────────────────────────────────────────────────
@@ -238,6 +277,7 @@ def create_rule(
         "reviewer_status": body.reviewer_status,
     }
     if body.reviewer_status == "verified":
+        _require_trust_provenance(body.source_url, body.waiver_reason)
         payload["verified_by"] = admin.get("id")
         payload["verified_at"] = datetime.now(timezone.utc).isoformat()
     inserted = (
@@ -247,8 +287,18 @@ def create_rule(
         .data
         or []
     )
+    row = inserted[0] if inserted else None
+    _audit(
+        supabase,
+        admin,
+        "eligibility_rule.create",
+        "exam_eligibility_rule",
+        str(row["id"]) if row else "unknown",
+        after_payload=row,
+        metadata=body.waiver_reason,
+    )
     invalidate_eligibility_rules_cache()
-    return {"rule": inserted[0] if inserted else None}
+    return {"rule": row}
 
 
 @router.put("/rules/{rule_id}")
@@ -261,7 +311,9 @@ def update_rule(
     existing = (
         supabase.table("exam_eligibility_rules")
         .select(
-            "id, exam_id, scope, rule_type, value_num, value_text, reviewer_status"
+            "id, exam_id, scope, rule_type, value_num, value_text, "
+            "is_knockout, source_url, source_notes, reviewer_status, "
+            "verified_by, verified_at, created_at, updated_at"
         )
         .eq("id", str(rule_id))
         .limit(1)
@@ -305,12 +357,18 @@ def update_rule(
         patch["source_url"] = body.source_url
     if body.source_notes is not None:
         patch["source_notes"] = body.source_notes
+    transitioning_to_verified = (
+        body.reviewer_status == "verified"
+        and current.get("reviewer_status") != "verified"
+    )
     if body.reviewer_status is not None:
         patch["reviewer_status"] = body.reviewer_status
         # Promotion to ``verified`` stamps the reviewer + timestamp; any
         # transition AWAY from verified clears them so we never claim a
         # draft row was verified by someone.
         if body.reviewer_status == "verified":
+            effective_source_url = body.source_url if body.source_url is not None else current.get("source_url")
+            _require_trust_provenance(effective_source_url, body.waiver_reason)
             patch["verified_by"] = admin.get("id")
             patch["verified_at"] = datetime.now(timezone.utc).isoformat()
         else:
@@ -326,6 +384,17 @@ def update_rule(
         .data
         or []
     )
+    audit_action = "eligibility_rule.verify" if transitioning_to_verified else "eligibility_rule.update"
+    _audit(
+        supabase,
+        admin,
+        audit_action,
+        "exam_eligibility_rule",
+        str(rule_id),
+        before_payload=current,
+        after_payload=updated[0] if updated else patch,
+        metadata=body.waiver_reason,
+    )
     invalidate_eligibility_rules_cache()
     return {"rule": updated[0] if updated else None}
 
@@ -334,12 +403,17 @@ def update_rule(
 def delete_rule(
     rule_id: UUID,
     hard: bool = Query(default=False),
+    waiver_reason: str | None = Query(default=None),
     admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
     existing = (
         supabase.table("exam_eligibility_rules")
-        .select("id")
+        .select(
+            "id, exam_id, scope, rule_type, value_num, value_text, "
+            "is_knockout, source_url, source_notes, reviewer_status, "
+            "verified_by, verified_at, created_at, updated_at"
+        )
         .eq("id", str(rule_id))
         .limit(1)
         .execute()
@@ -348,19 +422,39 @@ def delete_rule(
     )
     if not existing:
         raise HTTPException(status_code=404, detail="rule_not_found")
+    current = existing[0]
 
     if hard:
         supabase.table("exam_eligibility_rules").delete().eq("id", str(rule_id)).execute()
+        _audit(
+            supabase,
+            admin,
+            "eligibility_rule.delete",
+            "exam_eligibility_rule",
+            str(rule_id),
+            before_payload=current,
+            metadata=waiver_reason,
+        )
         invalidate_eligibility_rules_cache()
         return {"deleted": True, "hard": True}
 
-    supabase.table("exam_eligibility_rules").update(
-        {
-            "reviewer_status": "archived",
-            "verified_by": None,
-            "verified_at": None,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
-    ).eq("id", str(rule_id)).execute()
+    _require_trust_provenance(current.get("source_url"), waiver_reason)
+    archive_patch = {
+        "reviewer_status": "archived",
+        "verified_by": None,
+        "verified_at": None,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    supabase.table("exam_eligibility_rules").update(archive_patch).eq("id", str(rule_id)).execute()
+    _audit(
+        supabase,
+        admin,
+        "eligibility_rule.archive",
+        "exam_eligibility_rule",
+        str(rule_id),
+        before_payload=current,
+        after_payload={**current, **archive_patch},
+        metadata=waiver_reason,
+    )
     invalidate_eligibility_rules_cache()
     return {"deleted": True, "hard": False, "archived_by": admin.get("id")}

@@ -20,6 +20,7 @@ jest.mock("../../../lib/api", () => ({
 jest.mock("../../../shared/ui/core", () => ({
   __esModule: true,
   LoadingSkeleton: () => null,
+  useToast: () => ({ success: jest.fn(), error: jest.fn() }),
 }));
 
 import AdminExamEligibility from "../ExamEligibility";
@@ -170,9 +171,23 @@ test("verify button on a draft rule posts a status update", async () => {
   await act(async () => {
     fireEvent.click(screen.getByTestId(`verify-${RULE_A}`));
   });
+  // Dialog opens — fill reason and check source unavailable, then confirm.
+  await waitFor(() => expect(screen.getByTestId("confirm-dialog")).toBeTruthy());
+  await act(async () => {
+    fireEvent.change(screen.getByTestId("dialog-reason"), {
+      target: { value: "Confirmed against official notification" },
+    });
+    fireEvent.click(screen.getByTestId("dialog-source-unavailable"));
+    fireEvent.click(screen.getByTestId("dialog-confirm"));
+  });
+  await waitFor(() => expect(mockPut).toHaveBeenCalled());
   expect(mockPut).toHaveBeenCalledWith(
     `/api/admin/exam-eligibility/rules/${RULE_A}`,
-    { reviewer_status: "verified" },
+    {
+      reviewer_status: "verified",
+      source_url: null,
+      waiver_reason: "Confirmed against official notification",
+    },
   );
 });
 

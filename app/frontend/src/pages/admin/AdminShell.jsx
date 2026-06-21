@@ -9,6 +9,24 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../lib/authContext";
 
+const HAS_OWN_NAV = [
+  "/admin/exam-intelligence/console",
+  "/admin/exam-intelligence/cms",
+  "/admin/exam-intelligence/new",
+];
+
+function isUnder(pathname, base) {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
+function matchesNavItem(pathname, item) {
+  if (item.to === "/admin/exam-intelligence") {
+    if (!isUnder(pathname, item.to)) return false;
+    return !HAS_OWN_NAV.some((base) => isUnder(pathname, base)); // Registry cedes cms + new
+  }
+  return item.end ? pathname === item.to : isUnder(pathname, item.to);
+}
+
 const COMMAND_CENTER = [
   { to: "/admin", label: "Overview", icon: LayoutGrid, end: true, testId: "admin-nav-overview" },
   { to: "/admin/operations", label: "Pipeline Workspace", icon: GaugeCircle, end: true, testId: "admin-nav-operations" },
@@ -22,14 +40,37 @@ const TRUST_PIPELINE = [
   { to: "/admin/audit", label: "Audit Trail", icon: ScrollText, testId: "admin-nav-audit-log" },
 ];
 
-const KNOWLEDGE_GOVERNANCE = [
-  { to: "/admin/exam-intelligence", label: "Exam Intelligence", icon: GraduationCap, testId: "admin-nav-exam-intelligence" },
+const KG_LANDING = { to: "/admin/knowledge-governance", label: "Knowledge Governance", icon: LayoutGrid, end: true, testId: "admin-nav-kg-landing" };
+
+// Primary entries for the Exam-truth lane: the 4.6A governance console is the
+// front door; the Registry stays alongside it.
+const KG_LANE_1 = [
+  { to: "/admin/exam-intelligence/console", label: "Exam Governance Console", icon: ClipboardList, testId: "admin-nav-exam-governance-console" },
+  { to: "/admin/exam-intelligence", label: "Exam Registry", icon: GraduationCap, testId: "admin-nav-exam-intelligence" },
+];
+// Secondary "Advanced" entries: create-exam routes to the EXISTING wizard
+// (no new path); Raw CMS keeps its /cms route. Demoted from primary siblings.
+const KG_LANE_1_ADVANCED = [
+  { to: "/admin/exam-intelligence/new", label: "Create exam", icon: Sparkles, testId: "admin-nav-guided-exam-wizard" },
+  { to: "/admin/exam-intelligence/cms", label: "Advanced Import / Repair", icon: Files, testId: "admin-nav-exam-intel-cms" },
+];
+const KG_LANE_2 = [
   { to: "/admin/exam-eligibility", label: "Exam Eligibility", icon: ShieldCheck, testId: "admin-nav-exam-eligibility" },
+];
+const KG_LANE_3 = [
   { to: "/admin/organizations", label: "Organizations", icon: Users2, testId: "admin-nav-organizations" },
   { to: "/admin/verification-reports", label: "Verification Reports", icon: ClipboardCheck, testId: "admin-nav-verification-reports" },
   { to: "/admin/reverification-batches", label: "Reverification Batches", icon: RefreshCcw, testId: "admin-nav-reverification-batches" },
+];
+const KG_LANE_4 = [
   { to: "/admin/ai-policy", label: "AI Governance", icon: Bot, testId: "admin-nav-ai-policy" },
   { to: "/admin/persona", label: "Persona", icon: Sparkles, testId: "admin-nav-persona" },
+];
+const KG_LANES = [
+  { label: "Exam truth & planner readiness", items: KG_LANE_1, advanced: { label: "Advanced", items: KG_LANE_1_ADVANCED } },
+  { label: "User eligibility truth", items: KG_LANE_2 },
+  { label: "Official-source trust & change propagation", items: KG_LANE_3 },
+  { label: "AI + personalization guardrails", items: KG_LANE_4 },
 ];
 
 const COMMUNITY_MARKETPLACE = [
@@ -70,7 +111,7 @@ const SAFETY = [
 const SECTIONS = [
   { id: "command-center", label: "Command Center", items: COMMAND_CENTER, defaultOpen: true },
   { id: "trust-pipeline", label: "Trust Pipeline", items: TRUST_PIPELINE, defaultOpen: true },
-  { id: "knowledge-governance", label: "Knowledge Governance", items: KNOWLEDGE_GOVERNANCE, defaultOpen: false },
+  { id: "knowledge-governance", label: "Knowledge Governance", landing: KG_LANDING, lanes: KG_LANES, items: [KG_LANDING, ...KG_LANE_1, ...KG_LANE_1_ADVANCED, ...KG_LANE_2, ...KG_LANE_3, ...KG_LANE_4], defaultOpen: false },
   { id: "community-marketplace", label: "Community & Marketplace", items: COMMUNITY_MARKETPLACE, defaultOpen: false },
   { id: "study-os", label: "Study OS", items: STUDY_OS, defaultOpen: false },
   { id: "mock-content", label: "Mock Content", items: MOCK_CONTENT, defaultOpen: false },
@@ -80,10 +121,7 @@ const SECTIONS = [
 function getPageTitle(pathname) {
   for (const section of SECTIONS) {
     for (const item of section.items) {
-      const matches = item.end
-        ? pathname === item.to
-        : pathname === item.to || pathname.startsWith(`${item.to}/`);
-      if (matches) return item.label;
+      if (matchesNavItem(pathname, item)) return item.label;
     }
   }
   return "Admin operations console";
@@ -98,6 +136,7 @@ function formatSync(now) {
 }
 
 function Sidebar({ onClose, openMap, onToggleSection }) {
+  const { pathname } = useLocation();
   return (
     <aside className="oc-sidebar flex flex-col" data-testid="admin-sidebar">
       <div className="oc-brand">
@@ -132,22 +171,85 @@ function Sidebar({ onClose, openMap, onToggleSection }) {
               </button>
               {open ? (
                 <div id={`admin-nav-section-${section.id}`}>
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
+                  {section.landing ? (() => {
+                    const LandingIcon = section.landing.icon;
                     return (
                       <NavLink
-                        key={item.to}
-                        to={item.to}
-                        end={item.end}
+                        key={section.landing.to}
+                        to={section.landing.to}
+                        end={section.landing.end}
                         onClick={onClose}
                         className={({ isActive }) => `oc-navlink${isActive ? " active" : ""}`}
-                        data-testid={item.testId}
+                        data-testid={section.landing.testId}
                       >
-                        {Icon ? <Icon className="nav-glyph" /> : null}
-                        <span className="truncate">{item.label}</span>
+                        {LandingIcon ? <LandingIcon className="nav-glyph" /> : null}
+                        <span className="truncate">{section.landing.label}</span>
                       </NavLink>
                     );
-                  })}
+                  })() : null}
+                  {section.lanes
+                    ? section.lanes.map((lane) => (
+                        <div key={lane.label}>
+                          <div className="oc-section" style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, paddingTop: 10, paddingBottom: 2, cursor: "default" }}>
+                            {lane.label}
+                          </div>
+                          {lane.items.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <NavLink
+                                key={item.to}
+                                to={item.to}
+                                end={item.end}
+                                onClick={onClose}
+                                className={() => `oc-navlink${matchesNavItem(pathname, item) ? " active" : ""}`}
+                                data-testid={item.testId}
+                              >
+                                {Icon ? <Icon className="nav-glyph" /> : null}
+                                <span className="truncate">{item.label}</span>
+                              </NavLink>
+                            );
+                          })}
+                          {lane.advanced ? (
+                            <div data-testid="admin-nav-exam-advanced">
+                              <div className="oc-section" style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.4, paddingTop: 8, paddingBottom: 2, cursor: "default" }}>
+                                {lane.advanced.label}
+                              </div>
+                              {lane.advanced.items.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                  <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    end={item.end}
+                                    onClick={onClose}
+                                    className={() => `oc-navlink${matchesNavItem(pathname, item) ? " active" : ""}`}
+                                    data-testid={item.testId}
+                                  >
+                                    {Icon ? <Icon className="nav-glyph" /> : null}
+                                    <span className="truncate">{item.label}</span>
+                                  </NavLink>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))
+                    : section.items.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <NavLink
+                            key={item.to}
+                            to={item.to}
+                            end={item.end}
+                            onClick={onClose}
+                            className={({ isActive }) => `oc-navlink${isActive ? " active" : ""}`}
+                            data-testid={item.testId}
+                          >
+                            {Icon ? <Icon className="nav-glyph" /> : null}
+                            <span className="truncate">{item.label}</span>
+                          </NavLink>
+                        );
+                      })}
                 </div>
               ) : null}
             </div>
@@ -171,7 +273,7 @@ function initialOpenMap(pathname) {
   // Auto-open the section that contains the current route so the active
   // link is visible even when its group is collapsed by default.
   for (const section of SECTIONS) {
-    if (section.items.some((item) => pathname === item.to || pathname.startsWith(`${item.to}/`))) {
+    if (section.items.some((item) => matchesNavItem(pathname, item))) {
       map[section.id] = true;
     }
   }
@@ -218,7 +320,7 @@ export default function AdminShell() {
     setOpenMap((prev) => {
       const next = { ...prev };
       for (const section of SECTIONS) {
-        if (section.items.some((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`))) {
+        if (section.items.some((item) => matchesNavItem(location.pathname, item))) {
           next[section.id] = true;
         }
       }

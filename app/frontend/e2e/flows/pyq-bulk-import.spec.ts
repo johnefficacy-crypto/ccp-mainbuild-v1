@@ -207,8 +207,8 @@ test.describe("Flow: PYQ bulk import UI modal", () => {
     await page.getByTestId("tab-pyq").click();
     await expect(page.getByTestId("pyq-workbench-panel")).toBeVisible({ timeout: 20_000 });
 
-    // Select the seeded paper from the dropdown
-    await page.getByTestId("pyq-paper-select").selectOption({ value: WORKSPACE.paperId });
+    // Select the seeded paper from the table (replaced <select> with table in I3)
+    await page.getByTestId(`pyq-paper-row-${WORKSPACE.paperId}`).click();
     await expect(page.getByTestId("bulk-import-btn")).toBeVisible({ timeout: 10_000 });
 
     // Open bulk import modal

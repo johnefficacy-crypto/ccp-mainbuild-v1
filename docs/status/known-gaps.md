@@ -1,11 +1,14 @@
 ---
 owner: ops
 status: live
-last_verified_against_code: 2026-06-02
-last_modified: 2026-06-02
+last_verified_against_code: 2026-06-20
+last_modified: 2026-06-20
+related_audits:
+  - docs/audits/exam-intelligence-gaps-2026-06-20.md
 source_of_truth: code
 related_code:
   - app/backend
+  - app/frontend
 related_migrations:
   - app/supabase/migrations
 review_cadence: per-sprint
@@ -13,33 +16,40 @@ review_cadence: per-sprint
 
 # Known Gaps
 
-## Production-readiness blockers (verified 2026-06-02)
+This file lists gaps re-checked against the current codebase. Historical audit
+findings in `docs/audits/` are point-in-time evidence; re-verify them before
+treating them as open work.
 
-- No P0 production-readiness blockers from Wave 0 PR-001/PR-002 remain open on the current branch; remaining P1 contract/runtime-hardening items remain below.
+## Recently resolved / no longer open
 
-## Recently resolved
+- **AI chat durability** — `/api/ai/*` is backed by `ai_conversations` and `ai_messages`; the old in-memory chat placeholder is superseded.
+- **Admin overview durability** — `/api/admin/overview` and the unconstrained audit feed read Supabase-backed tables through `admin_overview.py`.
+- **Accountability route extraction** — partners, groups, and mentor booking routes are owned by `accountability.py` / `study_compare.py`; the placeholder accountability router is intentionally empty.
+- **Duplicate admin placeholders** — placeholder `/admin/notifications`, `/admin/marketplace`, and `/admin/ai-policy` read endpoints were removed in favor of real routers.
+- **Blog CMS admin API backend auth** — `/api/admin/blogs*` requires backend auth and permissioned mutations.
+- **OCR/Tesseract startup guard** — importing `server.py` is no longer blocked by a missing Tesseract binary.
+- **Subscription active-row invariant** — duplicate active/past_due subscription rows are retired by the unique active-row migration.
+- **Community reply vote** — `POST …/replies/{id}/vote` is now DB-backed in `community_runtime.py`; the old seed-memory handler in `community_people.py` no longer applies.
+- **Community admin "Hide" action** — `admin_resolve_community_flag` with `action="hide"` now flips the target entity's `status="hidden"` before updating the report row.
+- **Mentor badge crash** — `MentorsScreen.jsx` now applies an `adaptMentor()` adapter that fills `badge`, `color`, `blurb`, and `served` before rendering, preventing `TypeError` on missing fields.
+- **Community counter races** — five atomic RPC functions in migration `089_community_counter_rpcs.sql` replace client-side read-modify-write; all counter update sites route through `_rpc_inc`.
+- **`community_people` router** — `community_people.py` was deleted; `server.py` now serves all community routes exclusively from `community_runtime_router`.
 
-- **Blog CMS admin API backend auth** — `/api/admin/blogs*` now requires backend auth: reads use `require_admin`, and create/update/publish/archive use `require_permission("blogs.manage")`. Regression tests cover unauthenticated, normal-user, admin-read, and content-admin mutation paths.
-- **OCR/Tesseract startup guard** — importing `server.py` is no longer blocked by a missing Tesseract binary; OCR checks happen lazily at OCR call time, and E2E installs `tesseract-ocr` / `tesseract-ocr-eng` for OCR-enabled runtime coverage.
-- **Subscription active-row invariant** — migration `164_subscription_active_unique_index.sql` retires duplicate active/past_due rows and recreates `user_subscriptions_user_active_idx` as a unique partial index.
+## Open contract/runtime gaps
 
-## In-flight
+- **BUG-EI-1: Syllabus propose 404** — `POST /api/admin/exam-intelligence/workspace/{exam_id}/syllabus/propose` always returns 404 even when the document exists in storage. Root cause: `syllabus_mapper.py` queries `document_assets` (wrong table, no `exam_id` column) instead of `syllabus_documents`. Fix: two-line table-name change; file also contains duplicate function definitions that must be deduplicated. See `docs/audits/exam-intelligence-gaps-2026-06-20.md`.
+- **BUG-EI-2: Console exam detail 500** — `GET /api/admin/exam-intelligence/console/exams/{exam_id}` returns 500. Root cause: `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. The `_documents()` function must be redesigned to query `syllabus_documents` or a processing-job status table. This is the confirmed version of the earlier "Document readiness extraction status NEEDS TARGETED RECHECK" finding. See `docs/audits/exam-intelligence-gaps-2026-06-20.md`.
+- **AI chat response contract** — `/api/ai/chat` persists messages, but returns `reply` as a shaped message object. Any frontend surface that expects a plain text `reply` must be aligned before production.
+- **Real LLM provider behind `/api/ai/chat`** — responses are scripted (`scripted-v1`). Provider integration, prompt governance, and response-quality evaluation remain pending.
+- **Residual placeholder/static routes** — `placeholders.py` is still mounted for a small set of static/demo surfaces and an admin notification toggle compatibility path. Do not use it for new canonical behavior.
+- **Notification CTA route contract** — emitted alert CTAs need a route matrix so every link lands on an existing frontend route.
+- **Marketplace/community error handling** — several screens still need stronger API error states so production failures do not look like empty/seed data.
+- **Downloadable reports** — CSV/JSON are inline; PDF generation and signed-URL storage still need a worker path.
+- **Leadership KPIs** — recompute is admin-triggered; a nightly snapshot job is not yet scheduled.
+- **Supabase Auth invite delivery** — `/admin/users/create` records/audits users but still needs email invite delivery through the auth/notification path.
 
-- **AI chat response contract** — `/api/ai/chat` is now durable, but the frontend expects a text `reply` while the backend returns a shaped message object. Align the shape before production.
-- **Notification CTA route contract** — alert CTAs need a route matrix so every emitted link lands on an existing frontend route before launch.
-- **Placeholder/static runtime surfaces** — `placeholders.py` still mounts static/in-memory fallbacks for non-canonical surfaces and a few static admin endpoints. Gate or remove these in production.
+## Operational gaps
 
-## Real but rough
-
-- **Real LLM provider behind `/api/ai/chat`** — scripted replies today; durable conversation/message persistence exists, but model/provider integration and response-copy accuracy remain pending.
-- **Marketplace / community error handling** — several pages silently suppress API failures or keep seed data, which can mask broken production data paths.
-- **Downloadable Reports** — PDF generation still queued only; CSV/JSON work inline. Needs a worker.
-- **Leadership KPIs** — recompute is admin-triggered today; nightly snapshot job not yet scheduled.
-- **Supabase Auth invite delivery** — `/admin/users/create` writes an audit log but doesn't yet send the email invite. Hook this into the existing notifications dispatcher.
-
-## Operational
-
-- Admin governance gap list requires periodic refresh against implementation evidence.
-- Scraper operations need a dedicated day-2 runbook and incident handling playbook.
-- Notification templates + retries are partially scoped.
+- Admin governance gap lists require periodic refresh against code evidence.
+- Scraper operations need recurring day-2 review of source SLAs and incident procedures.
 - Production deployment evidence is incomplete in-repo: document runtime OS packages, CORS origins, Supabase/Razorpay env, scheduler singleton ownership, and smoke checks.

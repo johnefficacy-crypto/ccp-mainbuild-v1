@@ -46,6 +46,7 @@ from app.exam_intelligence.diagnostics import (
 )
 from app.exam_intelligence.lookup import invalidate_exam_lookup_cache
 from app.exam_intelligence.option_normalize import option_hash, question_hash
+from app.utils.safe import safe_required
 
 logger = logging.getLogger("career_copilot.api.admin_exam_intel_cms")
 
@@ -237,8 +238,11 @@ def soft_delete_exam_family(
 _EXAM_FIELDS = {
     "exam_family_id", "name", "exam_type", "default_difficulty_level",
     "description", "is_active", "metadata", "conducting_organization_id",
+    "management_mode", "cadence",
 }
 _EXAM_TYPES = ("recruitment", "entrance", "certification", "opportunity", "other")
+_EXAM_MGMT_MODES = ("core", "light", "index_only", "archive")
+_EXAM_CADENCES = ("annual", "recurring", "irregular", "one_off", "unknown")
 
 
 def _exam_slug(name: str, org: dict | None) -> str:
@@ -259,7 +263,7 @@ def list_exams(
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
     q = supabase.table("exams").select(
-        "id, exam_family_id, slug, name, exam_type, default_difficulty_level, description, is_active, metadata, conducting_organization_id, created_at, updated_at",
+        "id, exam_family_id, slug, name, exam_type, default_difficulty_level, description, is_active, metadata, conducting_organization_id, management_mode, cadence, created_at, updated_at",
         count="exact",
     ).order("created_at", desc=True)
     if is_active is not None:
@@ -282,8 +286,16 @@ def create_exam(
         raise HTTPException(status_code=422, detail="name is required")
     if row.get("exam_type") and row["exam_type"] not in _EXAM_TYPES:
         raise HTTPException(status_code=422, detail=f"exam_type must be one of {_EXAM_TYPES}")
+    if "management_mode" in row and row["management_mode"] is not None and row["management_mode"] not in _EXAM_MGMT_MODES:
+        raise HTTPException(status_code=422, detail=f"management_mode must be one of {_EXAM_MGMT_MODES}")
+    if "cadence" in row and row["cadence"] is not None and row["cadence"] not in _EXAM_CADENCES:
+        raise HTTPException(status_code=422, detail=f"cadence must be one of {_EXAM_CADENCES}")
     if row.get("exam_family_id") and not _safe_select(supabase, "exam_families", id=row["exam_family_id"]):
         raise HTTPException(status_code=422, detail="exam_family_id does not resolve")
+
+    # Apply create-only defaults after validation so invalid explicit values still 422.
+    row.setdefault("management_mode", "light")
+    row.setdefault("cadence", "unknown")
 
     # Resolve conducting org for slug generation (nullable — no 422 if absent).
     org: dict | None = None
@@ -321,6 +333,10 @@ def update_exam(
     patch = {k: v for k, v in body.payload.items() if k in _EXAM_FIELDS}
     if not patch:
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if "management_mode" in patch and patch["management_mode"] is not None and patch["management_mode"] not in _EXAM_MGMT_MODES:
+        raise HTTPException(status_code=422, detail=f"management_mode must be one of {_EXAM_MGMT_MODES}")
+    if "cadence" in patch and patch["cadence"] is not None and patch["cadence"] not in _EXAM_CADENCES:
+        raise HTTPException(status_code=422, detail=f"cadence must be one of {_EXAM_CADENCES}")
     patch["updated_at"] = _now_iso()
     updated = supabase.table("exams").update(patch).eq("id", exam_id).execute().data or []
     invalidate_exam_lookup_cache()
@@ -518,6 +534,120 @@ def update_phase(
         new_value={"reason": body.reason, "patch": patch, "previous": existing},
     )
     return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+class PromoteTemplateBody(BaseModel):
+    template_phase_id: str
+    target_cycle_id: str
+    phase_start: str
+    phase_end: str | None = None
+    phase_order: int | None = None
+    status: str | None = None
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+@router.post("/exam-phases/promote-template", status_code=201)
+def promote_template_to_cycle(
+    body: PromoteTemplateBody,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+
+    # 1. Load source template phase
+    source = _safe_select(supabase, "exam_phases", id=body.template_phase_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="template phase not found")
+
+    # 2. Must be a template (no cycle binding)
+    if source.get("exam_cycle_id") is not None:
+        raise HTTPException(status_code=422, detail="source_phase_must_be_template")
+
+    # 3. Load target cycle
+    cycle = _safe_select(supabase, "exam_cycles", id=body.target_cycle_id)
+    if not cycle:
+        raise HTTPException(status_code=404, detail="target cycle not found")
+
+    # 4. Cycle must belong to the same exam
+    if cycle.get("exam_id") != source.get("exam_id"):
+        raise HTTPException(status_code=422, detail="target_cycle_exam_mismatch")
+
+    # 5. Validate inputs
+    if not body.phase_start:
+        raise HTTPException(status_code=422, detail="phase_start is required")
+    if body.phase_end is not None and body.phase_end < body.phase_start:
+        raise HTTPException(status_code=422, detail="invalid_phase_date_range")
+    if body.status is not None and body.status not in _PHASE_STATUSES:
+        raise HTTPException(status_code=422, detail="invalid_status")
+
+    # 6. Collision check
+    existing_phases = supabase.table("exam_phases").select("id").eq(
+        "exam_id", source["exam_id"]
+    ).eq("exam_cycle_id", body.target_cycle_id).eq(
+        "phase_slug", source["phase_slug"]
+    ).execute().data or []
+    if existing_phases:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "cycle_phase_already_exists",
+                "existing_phase_id": existing_phases[0]["id"],
+            },
+        )
+
+    # 7. Insert new phase via safe_required
+    now_iso = _now_iso()
+    new_row = {
+        "exam_id": source["exam_id"],
+        "exam_cycle_id": body.target_cycle_id,
+        "phase_name": source["phase_name"],
+        "phase_slug": source["phase_slug"],
+        "phase_order": body.phase_order if body.phase_order is not None else source.get("phase_order", 0),
+        "status": body.status or "expected",
+        "phase_start": body.phase_start,
+        "phase_end": body.phase_end,
+        "metadata": {
+            "promoted_from_template_phase_id": source["id"],
+            "promoted_from_template_at": now_iso,
+            "promoted_via": "exam_workspace.promote_template_to_cycle",
+            "promote_reason": body.reason,
+        },
+    }
+    inserted = safe_required(
+        lambda: supabase.table("exam_phases").insert(new_row).execute(),
+        op="exam_phases.promote_template_insert",
+    )
+    if inserted is None:
+        raise HTTPException(status_code=500, detail="persist_failed")
+    created = inserted[0]
+    phase_id = created["id"]
+
+    # 8. Required audit via safe_required (NOT _audit — must not silently swallow)
+    audit_rows = safe_required(
+        lambda: supabase.table("admin_audit_logs").insert({
+            "actor_id": admin.get("id"),
+            "actor_email": admin.get("email"),
+            "action": "exam_intel.cms.phase.promote_template",
+            "entity_type": "exam_phase",
+            "entity_id": phase_id,
+            "new_value": {
+                "reason": body.reason,
+                "template_phase_id": body.template_phase_id,
+                "target_cycle_id": body.target_cycle_id,
+                "row": created,
+            },
+            "notes": "admin_exam_intel_cms",
+        }).execute(),
+        op="admin_audit_logs.promote_template_insert",
+    )
+    if audit_rows is None:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "audit_write_failed", "phase_id": phase_id},
+        )
+
+    # 9. Return 201 with created phase
+    return {"ok": True, "audit_id": audit_rows[0].get("id") if audit_rows else None, "row": created}
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -2686,6 +2816,54 @@ def bulk_import(
         "ok_count": ok_count,
         "error_count": error_count,
         "results": results,
+    }
+
+
+
+# ─── Source registry (picker list) ───────────────────────────────────────────
+
+
+@router.get("/source-registry")
+def list_source_registry(
+    include_discovery: bool = Query(
+        default=False,
+        description="When false (default) only official, non-discovery sources are returned. "
+                    "Set true to include aggregator / discovery-only sources.",
+    ),
+    source_type: str | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Source registry picker — returns official sources by default.
+
+    The default filter (is_official_source=true AND discovery_only=false AND
+    is_active=true) keeps the picker clean for exam-setup workflows. Pass
+    include_discovery=true to surface aggregator / discovery-only rows (e.g. for
+    advanced auditing). Note: include_discovery bypasses is_official_source and
+    discovery_only but NEVER is_active — inactive sources are excluded from every
+    response regardless of the toggle.
+    """
+    supabase = get_supabase_admin()
+    query = supabase.table("source_registry").select(
+        "id, source_name, official_url, source_type, is_official_source, "
+        "discovery_only, can_publish_directly, is_active",
+        count="exact",
+    ).order("source_name")
+    # is_active is filtered unconditionally — inactive sources never appear,
+    # even when include_discovery=true.
+    query = query.eq("is_active", True)
+    if not include_discovery:
+        query = query.eq("is_official_source", True).eq("discovery_only", False)
+    if source_type:
+        query = query.eq("source_type", source_type)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {
+        "items": res.data or [],
+        "total": getattr(res, "count", None),
+        "limit": limit,
+        "offset": offset,
     }
 
 

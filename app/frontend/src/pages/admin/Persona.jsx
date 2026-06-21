@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Compass } from "lucide-react";
 import { api } from "../../lib/api";
+import useApiAction from "../../lib/hooks/useApiAction";
 import PersonaOverviewCards from "../../features/admin/persona/PersonaOverviewCards";
 import PersonaQuestionBankTable from "../../features/admin/persona/PersonaQuestionBankTable";
 import PersonaQuestionEditor from "../../features/admin/persona/PersonaQuestionEditor";
@@ -30,13 +31,14 @@ export default function AdminPersona() {
   const [bankActiveFilter, setBankActiveFilter] = useState("all");
   const [bankQuery, setBankQuery] = useState("");
   const [bankLoading, setBankLoading] = useState(false);
+  const [bankError, setBankError] = useState("");
   const [editing, setEditing] = useState(null);
   const [editorError, setEditorError] = useState("");
-  const [editorSaving, setEditorSaving] = useState(false);
 
   // Snapshots state
   const [snapshots, setSnapshots] = useState({ items: [], count: 0 });
   const [snapshotsLoading, setSnapshotsLoading] = useState(false);
+  const [snapshotsError, setSnapshotsError] = useState("");
 
   // Inspector state
   const [inspectorUserId, setInspectorUserId] = useState("");
@@ -45,12 +47,16 @@ export default function AdminPersona() {
   const [queue, setQueue] = useState({ items: [], count: 0 });
   const [queueStatus, setQueueStatus] = useState("all");
   const [queueLoading, setQueueLoading] = useState(false);
-  const [queueProcessing, setQueueProcessing] = useState(false);
+  const [queueError, setQueueError] = useState("");
 
   // Events state
   const [events, setEvents] = useState({ items: [], count: 0 });
   const [eventsFilters, setEventsFilters] = useState({ user_id: "", event_type: "", processed: "" });
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState("");
+
+  const { run: runQuestionMutation, busy: questionBusy } = useApiAction();
+  const { run: runQueueProcess, busy: queueProcessing } = useApiAction();
 
   const loadOverview = useCallback(async () => {
     setOverviewError("");
@@ -64,6 +70,7 @@ export default function AdminPersona() {
 
   const loadBank = useCallback(async () => {
     setBankLoading(true);
+    setBankError("");
     try {
       const params = new URLSearchParams();
       params.set("active", bankActiveFilter);
@@ -72,7 +79,7 @@ export default function AdminPersona() {
       const d = await api.get(`/api/admin/persona/question-bank?${params.toString()}`);
       setBank({ items: d?.items || [], count: d?.count || 0 });
     } catch (e) {
-      setBank({ items: [], count: 0 });
+      setBankError(e?.message || "Could not load question bank");
     } finally {
       setBankLoading(false);
     }
@@ -80,11 +87,12 @@ export default function AdminPersona() {
 
   const loadSnapshots = useCallback(async () => {
     setSnapshotsLoading(true);
+    setSnapshotsError("");
     try {
       const d = await api.get(`/api/admin/persona/snapshots?limit=50`);
       setSnapshots({ items: d?.items || [], count: d?.count || 0 });
-    } catch {
-      setSnapshots({ items: [], count: 0 });
+    } catch (e) {
+      setSnapshotsError(e?.message || "Could not load snapshots");
     } finally {
       setSnapshotsLoading(false);
     }
@@ -92,12 +100,13 @@ export default function AdminPersona() {
 
   const loadQueue = useCallback(async () => {
     setQueueLoading(true);
+    setQueueError("");
     try {
       const params = new URLSearchParams({ status: queueStatus, limit: "100" });
       const d = await api.get(`/api/admin/persona/recompute-queue?${params.toString()}`);
       setQueue({ items: d?.items || [], count: d?.count || 0 });
-    } catch {
-      setQueue({ items: [], count: 0 });
+    } catch (e) {
+      setQueueError(e?.message || "Could not load recompute queue");
     } finally {
       setQueueLoading(false);
     }
@@ -105,6 +114,7 @@ export default function AdminPersona() {
 
   const loadEvents = useCallback(async () => {
     setEventsLoading(true);
+    setEventsError("");
     try {
       const params = new URLSearchParams({ limit: "100" });
       if (eventsFilters.user_id.trim()) params.set("user_id", eventsFilters.user_id.trim());
@@ -112,8 +122,8 @@ export default function AdminPersona() {
       if (eventsFilters.processed) params.set("processed", eventsFilters.processed);
       const d = await api.get(`/api/admin/persona/signal-events?${params.toString()}`);
       setEvents({ items: d?.items || [], count: d?.count || 0 });
-    } catch {
-      setEvents({ items: [], count: 0 });
+    } catch (e) {
+      setEventsError(e?.message || "Could not load signal events");
     } finally {
       setEventsLoading(false);
     }
@@ -129,46 +139,48 @@ export default function AdminPersona() {
 
   async function patchQuestion(payload) {
     if (!editing) return;
-    setEditorSaving(true);
     setEditorError("");
-    try {
-      await api.patch(
-        `/api/admin/persona/question-bank/${encodeURIComponent(editing.question_key)}`,
-        payload,
-      );
-      setEditing(null);
-      await loadBank();
-    } catch (e) {
-      setEditorError(e?.message || "Patch failed");
-    } finally {
-      setEditorSaving(false);
+    const result = await runQuestionMutation({
+      action: () =>
+        api.patch(
+          `/api/admin/persona/question-bank/${encodeURIComponent(editing.question_key)}`,
+          payload,
+        ),
+      successMessage: "Question updated",
+      errorMessage: "Patch failed",
+      onSuccess: () => {
+        setEditing(null);
+        loadBank();
+      },
+    });
+    if (!result?.ok) {
+      setEditorError(result?.error?.message || "Patch failed");
     }
   }
 
   async function toggleActive(question) {
-    setEditorError("");
-    try {
-      await api.patch(
-        `/api/admin/persona/question-bank/${encodeURIComponent(question.question_key)}`,
-        { is_active: !question.is_active },
-      );
-      await loadBank();
-    } catch (e) {
-      setEditorError(e?.message || "Toggle failed");
-    }
+    await runQuestionMutation({
+      action: () =>
+        api.patch(
+          `/api/admin/persona/question-bank/${encodeURIComponent(question.question_key)}`,
+          { is_active: !question.is_active },
+        ),
+      errorMessage: "Toggle failed",
+      onSuccess: () => loadBank(),
+    });
   }
 
   async function processQueue(limit) {
-    setQueueProcessing(true);
-    try {
-      await api.post("/api/admin/persona/recompute-queue/process", { limit: limit || 25 });
-      await loadQueue();
-      await loadOverview();
-    } catch {
-      // soft-fail
-    } finally {
-      setQueueProcessing(false);
-    }
+    await runQueueProcess({
+      action: () =>
+        api.post("/api/admin/persona/recompute-queue/process", { limit: limit || 25 }),
+      successMessage: "Queue processing triggered",
+      errorMessage: "Could not process queue",
+      onSuccess: () => {
+        loadQueue();
+        loadOverview();
+      },
+    });
   }
 
   function gotoInspector(userId) {
@@ -262,22 +274,24 @@ export default function AdminPersona() {
               {bankLoading ? "Loading…" : "Refresh"}
             </button>
           </div>
-          {editorError ? (
-            <div className="rounded-xl bg-dusk-50 text-dusk-800 text-xs px-3 py-2">{editorError}</div>
+          {bankError ? (
+            <div className="rounded-xl bg-dusk-50 text-dusk-800 text-xs px-3 py-2 flex items-center justify-between gap-2">
+              <span>{bankError}</span>
+              <button type="button" className="btn btn-ghost text-xs" onClick={loadBank}>Retry</button>
+            </div>
           ) : null}
-          <PersonaQuestionBankTable
-            items={bank.items}
-            onEdit={(q) => {
-              setEditorError("");
-              setEditing(q);
-            }}
-            onToggleActive={toggleActive}
-          />
+          {!bankLoading && !bankError ? (
+            <PersonaQuestionBankTable
+              items={bank.items}
+              onEdit={(q) => setEditing(q)}
+              onToggleActive={toggleActive}
+            />
+          ) : null}
           {editing ? (
             <PersonaQuestionEditor
               question={editing}
               error={editorError}
-              saving={editorSaving}
+              saving={questionBusy}
               onClose={() => setEditing(null)}
               onSave={patchQuestion}
             />
@@ -295,7 +309,15 @@ export default function AdminPersona() {
               {snapshotsLoading ? "Loading…" : "Refresh"}
             </button>
           </div>
-          <PersonaSnapshotTable items={snapshots.items} onInspectUser={gotoInspector} />
+          {snapshotsError ? (
+            <div className="rounded-xl bg-dusk-50 text-dusk-800 text-xs px-3 py-2 flex items-center justify-between gap-2">
+              <span>{snapshotsError}</span>
+              <button type="button" className="btn btn-ghost text-xs" onClick={loadSnapshots}>Retry</button>
+            </div>
+          ) : null}
+          {!snapshotsLoading && !snapshotsError ? (
+            <PersonaSnapshotTable items={snapshots.items} onInspectUser={gotoInspector} />
+          ) : null}
         </section>
       ) : null}
 
@@ -322,11 +344,19 @@ export default function AdminPersona() {
               {queueLoading ? "Loading…" : "Refresh"}
             </button>
           </div>
-          <PersonaQueueTable
-            items={queue.items}
-            onProcess={processQueue}
-            processing={queueProcessing}
-          />
+          {queueError ? (
+            <div className="rounded-xl bg-dusk-50 text-dusk-800 text-xs px-3 py-2 flex items-center justify-between gap-2">
+              <span>{queueError}</span>
+              <button type="button" className="btn btn-ghost text-xs" onClick={loadQueue}>Retry</button>
+            </div>
+          ) : null}
+          {!queueLoading && !queueError ? (
+            <PersonaQueueTable
+              items={queue.items}
+              onProcess={processQueue}
+              processing={queueProcessing}
+            />
+          ) : null}
         </section>
       ) : null}
 
@@ -368,7 +398,15 @@ export default function AdminPersona() {
               {eventsLoading ? "Loading…" : "Refresh"}
             </button>
           </div>
-          <PersonaSignalEventsTable items={events.items} />
+          {eventsError ? (
+            <div className="rounded-xl bg-dusk-50 text-dusk-800 text-xs px-3 py-2 flex items-center justify-between gap-2">
+              <span>{eventsError}</span>
+              <button type="button" className="btn btn-ghost text-xs" onClick={loadEvents}>Retry</button>
+            </div>
+          ) : null}
+          {!eventsLoading && !eventsError ? (
+            <PersonaSignalEventsTable items={events.items} />
+          ) : null}
         </section>
       ) : null}
     </div>

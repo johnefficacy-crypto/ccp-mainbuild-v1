@@ -106,6 +106,7 @@ const ADMIN_NAV_PATHS = [
   "/admin/eligibility-ops",
   "/admin/audit",
   // Knowledge Governance
+  "/admin/exam-intelligence/console",
   "/admin/exam-intelligence",
   "/admin/exam-eligibility",
   "/admin/organizations",
@@ -165,6 +166,8 @@ const ADMIN_ROUTE_PATHS = new Set([
   "/admin/ai-policy",
   "/admin/persona",
   "/admin/exam-intelligence",
+  "/admin/exam-intelligence/console",
+  "/admin/exam-intelligence/console/:exam_id",
   "/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace",
   "/admin/exam-intelligence/workspace/:exam_id",
   "/admin/exam-intelligence/workspace/:exam_id/:cycle_id",

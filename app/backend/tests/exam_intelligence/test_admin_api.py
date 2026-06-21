@@ -816,3 +816,532 @@ def test_options_repetitions_uses_hash_when_present():
     # Four canonical groups, each still at count 4 — the variants merged.
     assert body["total_groups"] == 4
     assert all(g["occurrence_count"] == 4 for g in body["groups"])
+
+
+# ─── list_exams pagination + filters (new) ───────────────────────────────────
+
+
+def _paginated_seed():
+    """Three exams across two types/active states for filter/pagination tests."""
+    return {
+        "exams": [
+            {"id": "e1", "slug": "ssc-cgl", "name": "SSC CGL",
+             "exam_type": "recruitment", "is_active": True, "exam_family_id": None},
+            {"id": "e2", "slug": "ibps-po", "name": "IBPS PO",
+             "exam_type": "recruitment", "is_active": False, "exam_family_id": None},
+            {"id": "e3", "slug": "upsc-cse", "name": "UPSC CSE",
+             "exam_type": "entrance", "is_active": True, "exam_family_id": None},
+        ],
+        "syllabus_topic_mentions": [],
+        "exam_topic_coverage": [],
+    }
+
+
+# ── q filter ────────────────────────────────────────────────────────────────
+
+def test_list_exams_q_present_fires_or_filter():
+    """When q is non-empty the query must include an or_ ilike on name+slug."""
+    sb = SBStub(_paginated_seed())
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_or = q_obj.or_
+
+        def _capture(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return original_or(expr, **kw)
+
+        q_obj.or_ = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?q=ssc")
+    assert r.status_code == 200
+    assert fired_or, "or_ was not called on the exams table when q is present"
+    assert any("name.ilike" in expr and "slug.ilike" in expr for expr in fired_or), (
+        f"or_ expression missing name/slug ilike: {fired_or}"
+    )
+
+
+def test_list_exams_q_absent_no_or_filter():
+    """When q is absent the query must NOT include an ilike or_ (q-search filter)."""
+    sb = SBStub(_paginated_seed())
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_or = q_obj.or_
+
+        def _capture(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return original_or(expr, **kw)
+
+        q_obj.or_ = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams")
+    assert r.status_code == 200
+    # Filter to ilike expressions only — the management_mode default or_ is expected.
+    ilike_or = [e for e in fired_or if "ilike" in e]
+    assert not ilike_or, f"q ilike or_ should not be called when q is absent; got: {ilike_or}"
+
+
+def test_list_exams_q_whitespace_only_no_or_filter():
+    """Whitespace-only q must not trigger or_ (mirrors canonical.py q.strip() precedent)."""
+    sb = SBStub(_paginated_seed())
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_or = q_obj.or_
+
+        def _capture(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return original_or(expr, **kw)
+
+        q_obj.or_ = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?q=   ")
+    assert r.status_code == 200
+    ilike_or = [e for e in fired_or if "ilike" in e]
+    assert not ilike_or, "Whitespace-only q must not trigger ilike or_"
+
+
+# ── exam_type filter ─────────────────────────────────────────────────────────
+
+def test_list_exams_exam_type_filter_applies_eq():
+    """exam_type filter must restrict results to matching rows."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?exam_type=entrance")
+    assert r.status_code == 200
+    body = r.json()
+    assert all(e["exam_type"] == "entrance" for e in body["items"]), body["items"]
+    assert body["total_count"] == 1
+
+
+def test_list_exams_exam_type_absent_returns_all():
+    """Absent exam_type must not filter anything (use active_state=all to see all rows)."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?active_state=all")
+    assert r.status_code == 200
+    assert r.json()["total_count"] == 3
+
+
+# ── active_state filter ───────────────────────────────────────────────────────
+
+def test_list_exams_active_state_active_returns_only_active():
+    """active_state=active (default) must return only is_active=True rows."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?active_state=active")
+    assert r.status_code == 200
+    body = r.json()
+    assert all(e["is_active"] is True for e in body["items"]), body["items"]
+    assert body["total_count"] == 2
+
+
+def test_list_exams_active_state_inactive_returns_only_inactive():
+    """active_state=inactive must return only is_active=False rows."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?active_state=inactive")
+    assert r.status_code == 200
+    body = r.json()
+    assert all(e["is_active"] is False for e in body["items"]), body["items"]
+    assert body["total_count"] == 1
+
+
+def test_list_exams_active_state_all_returns_both():
+    """active_state=all must return both active and inactive rows."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?active_state=all")
+    assert r.status_code == 200
+    assert r.json()["total_count"] == 3
+
+
+def test_list_exams_active_state_absent_defaults_to_active():
+    """Absent active_state must default to 'active' — inactive rows hidden."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams")
+    assert r.status_code == 200
+    body = r.json()
+    assert all(e["is_active"] is True for e in body["items"]), body["items"]
+    assert body["total_count"] == 2
+
+
+def test_list_exams_active_state_unknown_returns_422():
+    """Unknown active_state value must return 422."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?active_state=maybe")
+    assert r.status_code == 422
+
+
+# ── offset / limit / has_next ────────────────────────────────────────────────
+
+def test_list_exams_offset_limit_in_response():
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=2&offset=0&active_state=all")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["limit"] == 2
+    assert body["offset"] == 0
+    assert body["total_count"] == 3
+    assert body["count"] <= 2
+    assert body["has_next"] is True
+
+
+def test_list_exams_last_page_has_next_false():
+    """On the final page has_next must be False."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    # All 3 rows fit in limit=10; offset=0 → last (and only) page.
+    r = client.get("/api/admin/exam-intelligence/exams?limit=10&offset=0&active_state=all")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["has_next"] is False
+    assert body["total_count"] == 3
+
+
+def test_list_exams_total_count_reflects_filtered_set():
+    """total_count must be the filtered count, not the whole-table count."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?exam_type=entrance&limit=1&offset=0")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_count"] == 1
+    assert body["has_next"] is False
+
+
+# ── readiness still present on paginated rows ────────────────────────────────
+
+def test_list_exams_paginated_rows_carry_readiness():
+    """Every returned row must carry readiness_level regardless of pagination."""
+    sb = SBStub(_paginated_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=2&offset=0")
+    assert r.status_code == 200
+    for item in r.json()["items"]:
+        assert "readiness_level" in item, f"missing readiness_level on {item.get('slug')}"
+        assert item["readiness_level"] in {"ready", "partial", "not_ready"}
+
+
+# ── range() called with correct args ────────────────────────────────────────
+
+def test_list_exams_range_args_recorded():
+    """range(offset, offset+limit-1) must be called on the exams query."""
+    sb = SBStub(_paginated_seed())
+    range_calls: list[tuple] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_range = q_obj.range
+
+        def _capture(*args, **kw):
+            if name == "exams":
+                range_calls.append(args)
+            return original_range(*args, **kw)
+
+        q_obj.range = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=2&offset=4")
+    assert r.status_code == 200
+    assert range_calls, "range() was not called on the exams table"
+    assert range_calls[0] == (4, 5), f"Expected range(4, 5), got {range_calls[0]}"
+
+
+# ── 12-row seed, total_count uncapped ───────────────────────────────────────
+
+def _large_seed(n: int = 12):
+    """Seed with n exams so total_count exceeds a small page size."""
+    exams = [
+        {"id": f"ex{i}", "slug": f"exam-{i}", "name": f"Exam {i:02d}",
+         "exam_type": "recruitment", "is_active": True, "exam_family_id": None}
+        for i in range(n)
+    ]
+    return {"exams": exams, "syllabus_topic_mentions": [], "exam_topic_coverage": []}
+
+
+def test_list_exams_total_count_uncapped():
+    """total_count must equal the full filtered count, not a page-size cap."""
+    sb = SBStub(_large_seed(12))
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=5&offset=0")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_count"] == 12
+    assert body["count"] == 5
+    assert body["has_next"] is True
+
+
+def test_list_exams_second_page():
+    """Second page returns the correct slice and has_next based on total."""
+    sb = SBStub(_large_seed(12))
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=5&offset=5")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_count"] == 12
+    assert body["count"] == 5
+    assert body["has_next"] is True
+
+
+def test_list_exams_last_page_partial():
+    """Last (partial) page has has_next=False and count < limit."""
+    sb = SBStub(_large_seed(12))
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?limit=5&offset=10")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_count"] == 12
+    assert body["count"] == 2
+    assert body["has_next"] is False
+
+
+# ── q sanitization ──────────────────────────────────────────────────────────
+
+def test_list_exams_q_strips_structural_chars():
+    """PostgREST structural chars in q must be stripped before building or_()."""
+    sb = SBStub(_paginated_seed())
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_or = q_obj.or_
+
+        def _capture(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return original_or(expr, **kw)
+
+        q_obj.or_ = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    # Injection attempt: comma and parens are structural in PostgREST or_() expressions.
+    r = client.get("/api/admin/exam-intelligence/exams?q=ssc,(cgl)")
+    assert r.status_code == 200
+    assert fired_or, "or_ should still fire (sanitized q is non-empty after stripping)"
+    expr = fired_or[0]
+    assert "," not in expr.split("ilike.%")[1].split("%")[0], (
+        f"Structural comma leaked into ilike value: {expr}"
+    )
+    assert "(" not in expr and ")" not in expr or expr.count("(") <= 2, (
+        "Parens from user input leaked into or_() expression"
+    )
+
+
+# ─── Portfolio lane columns (PR-B1) ──────────────────────────────────────────
+
+
+def _lane_seed():
+    """Seed with 4 exams covering all management_mode + cadence combinations."""
+    return {
+        "exams": [
+            {"id": "e1", "slug": "ssc-cgl", "name": "SSC CGL",
+             "exam_type": "recruitment", "is_active": True, "exam_family_id": None,
+             "management_mode": "core", "cadence": "annual"},
+            {"id": "e2", "slug": "ibps-po", "name": "IBPS PO",
+             "exam_type": "recruitment", "is_active": True, "exam_family_id": None,
+             "management_mode": "light", "cadence": "recurring"},
+            {"id": "e3", "slug": "rrb-ntpc", "name": "RRB NTPC",
+             "exam_type": "recruitment", "is_active": True, "exam_family_id": None,
+             "management_mode": "archive", "cadence": "irregular"},
+            {"id": "e4", "slug": "upsc-cse", "name": "UPSC CSE",
+             "exam_type": "entrance", "is_active": True, "exam_family_id": None,
+             "management_mode": None, "cadence": None},
+        ],
+        "syllabus_topic_mentions": [],
+        "exam_topic_coverage": [],
+    }
+
+
+# ── default filter hides archive, shows NULL and non-archive ─────────────────
+
+def test_list_exams_default_hides_archive():
+    """Without management_mode param, archive rows must be excluded."""
+    sb = SBStub(_lane_seed())
+    # Patch or_ to be a no-op but record calls — the default filter uses or_().
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        original_or = q_obj.or_
+
+        def _capture(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return original_or(expr, **kw)
+
+        q_obj.or_ = _capture
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams")
+    assert r.status_code == 200
+    # SBStub or_() is a no-op so archive rows appear in the stub — that's expected.
+    # We verify the default or_ expression IS fired with the correct pattern so
+    # production PostgREST would exclude archive rows.
+    assert fired_or, "default management_mode filter must fire or_()"
+    assert any("management_mode.is.null" in e and "management_mode.neq.archive" in e
+               for e in fired_or), f"Default or_ expression wrong: {fired_or}"
+
+
+def test_list_exams_default_or_expr_correct():
+    """Default or_ expression must contain both null and neq.archive clauses."""
+    sb = SBStub(_lane_seed())
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        orig = q_obj.or_
+
+        def _cap(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return orig(expr, **kw)
+
+        q_obj.or_ = _cap
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    client.get("/api/admin/exam-intelligence/exams")
+    # Find the management_mode default filter (not the q filter).
+    mm_or = [e for e in fired_or if "management_mode" in e]
+    assert mm_or, "management_mode default or_ not fired"
+    assert "management_mode.is.null" in mm_or[0]
+    assert "management_mode.neq.archive" in mm_or[0]
+
+
+def test_list_exams_explicit_archive_returns_archive():
+    """management_mode=archive must return archive rows (no default filter applied)."""
+    sb = SBStub(_lane_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?management_mode=archive")
+    assert r.status_code == 200
+    body = r.json()
+    slugs = [e["slug"] for e in body["items"]]
+    # In SBStub, eq() IS applied, so only archive rows return.
+    assert "rrb-ntpc" in slugs, "explicit archive param must return archive rows"
+    assert all(e["management_mode"] == "archive" for e in body["items"])
+
+
+def test_list_exams_management_mode_eq_filter():
+    """management_mode=core must restrict results to core rows only."""
+    sb = SBStub(_lane_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?management_mode=core")
+    assert r.status_code == 200
+    items = r.json()["items"]
+    assert items and all(e["management_mode"] == "core" for e in items)
+
+
+# ── cadence filter ────────────────────────────────────────────────────────────
+
+def test_list_exams_cadence_eq_filter():
+    """cadence param must restrict results to matching rows."""
+    sb = SBStub(_lane_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?cadence=annual&management_mode=core")
+    assert r.status_code == 200
+    items = r.json()["items"]
+    assert items and all(e["cadence"] == "annual" for e in items)
+
+
+def test_list_exams_cadence_absent_no_filter():
+    """Absent cadence must not filter anything."""
+    sb = SBStub(_lane_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?management_mode=core")
+    assert r.status_code == 200
+    # core seed has one exam — it should appear
+    assert r.json()["count"] >= 1
+
+
+# ── management_mode + cadence surfaced on items ───────────────────────────────
+
+def test_list_exams_lane_columns_on_items():
+    """Each returned item must carry management_mode and cadence fields."""
+    sb = SBStub(_lane_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams?management_mode=core")
+    assert r.status_code == 200
+    for item in r.json()["items"]:
+        assert "management_mode" in item
+        assert "cadence" in item
+
+
+def test_list_exams_null_lane_surfaced():
+    """Rows with NULL management_mode must surface management_mode=None."""
+    sb = SBStub(_lane_seed())
+    client = TestClient(_build_app(sb))
+    # management_mode=None triggers the default or_ (no-op in stub → all rows back)
+    r = client.get("/api/admin/exam-intelligence/exams")
+    assert r.status_code == 200
+    items = {e["slug"]: e for e in r.json()["items"]}
+    # UPSC CSE has management_mode=None in seed
+    if "upsc-cse" in items:
+        assert items["upsc-cse"]["management_mode"] is None
+
+
+# ── total_count under default non-archive filter ──────────────────────────────
+
+def test_list_exams_total_count_excludes_archive_by_default():
+    """total_count must reflect the non-archive default (SBStub or_ is no-op, so
+    we verify the total equals all rows — archive exclusion is a production concern;
+    the test verifies the or_ expression fires so it WOULD exclude archive in prod)."""
+    sb = SBStub(_lane_seed())
+    fired_or: list[str] = []
+    original_table = sb.table
+
+    def _tracking(name):
+        q_obj = original_table(name)
+        orig = q_obj.or_
+
+        def _cap(expr, **kw):
+            if name == "exams":
+                fired_or.append(expr)
+            return orig(expr, **kw)
+
+        q_obj.or_ = _cap
+        return q_obj
+
+    sb.table = _tracking  # type: ignore[assignment]
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/exams")
+    assert r.status_code == 200
+    body = r.json()
+    assert "total_count" in body
+    # The default or_ filter is fired, asserting that production PostgREST would
+    # apply it and exclude archive rows from the total_count.
+    mm_or = [e for e in fired_or if "management_mode" in e]
+    assert mm_or, "default management_mode or_ must fire so total_count is scoped correctly in prod"

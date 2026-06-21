@@ -96,6 +96,15 @@ _ALLOWED_LIFECYCLE = _ALLOWED_LIFECYCLE | {
     "stale_source_changed", "stale_canonical_changed", "needs_reverification",
 }
 
+# staleness_status check-constraint values from migration 083.
+_ALLOWED_STALENESS = {
+    "fresh",
+    "stale_source_changed",
+    "stale_canonical_changed",
+    "needs_reverification",
+    "pending_reverification_batch",
+}
+
 
 # ── In-process rate-limit state (PR2 stop-gap) ─────────────────────────
 #
@@ -144,6 +153,7 @@ class VerificationReportListItem(BaseModel):
     scrape_queue_id: str | None
     recruitment_id: str | None
     lifecycle_status: str
+    staleness_status: str
     criticality_tier: str
     exam_family_key: str | None
     recommended_action: str
@@ -170,6 +180,8 @@ def list_verification_reports(
     tier: str | None = Query(default=None),
     recommended_action: str | None = Query(default=None),
     include_superseded: bool = Query(default=False),
+    source_id: str | None = Query(default=None),
+    staleness_status: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _: dict = Depends(require_admin),
@@ -178,6 +190,12 @@ def list_verification_reports(
 
     Defaults to active (non-superseded) reports newest-first. Filters
     are rejected with 422 if outside the PR1 enum sets.
+
+    ``source_id`` filters by the source that generated the queue item backing
+    each report (resolved via scrape_queue.source_id, not a direct column).
+    ``staleness_status`` filters by the staleness column added in migration 083.
+    The two may be combined to fetch all ``pending_reverification_batch`` reports
+    belonging to a specific source batch.
     """
     if lifecycle is not None and lifecycle not in _ALLOWED_LIFECYCLE:
         raise HTTPException(status_code=422, detail=f"unknown lifecycle: {lifecycle!r}")
@@ -185,15 +203,35 @@ def list_verification_reports(
         raise HTTPException(status_code=422, detail=f"unknown tier: {tier!r}")
     if recommended_action is not None and recommended_action not in _ALLOWED_RECOMMENDED:
         raise HTTPException(status_code=422, detail=f"unknown recommended_action: {recommended_action!r}")
+    if staleness_status is not None and staleness_status not in _ALLOWED_STALENESS:
+        raise HTTPException(status_code=422, detail=f"unknown staleness_status: {staleness_status!r}")
 
     supabase = get_supabase_admin()
+
+    # source_id is not a direct column on reports; resolve through scrape_queue.
+    if source_id is not None:
+        queue_rows = (
+            supabase.table("scrape_queue")
+            .select("id")
+            .eq("source_id", source_id)
+            .limit(1000)
+            .execute()
+            .data
+            or []
+        )
+        if not queue_rows:
+            return VerificationReportListResponse(items=[], limit=limit, offset=offset)
+        source_queue_ids = [r["id"] for r in queue_rows]
+    else:
+        source_queue_ids = None
+
     q = (
         supabase.table("recruitment_verification_reports")
         .select(
             "id, scrape_queue_id, recruitment_id, lifecycle_status, "
-            "criticality_tier, exam_family_key, recommended_action, "
-            "trigger_reason, report_version, chain_root_id, "
-            "created_at, updated_at"
+            "staleness_status, criticality_tier, exam_family_key, "
+            "recommended_action, trigger_reason, report_version, "
+            "chain_root_id, created_at, updated_at"
         )
         .order("created_at", desc=True)
         .range(offset, offset + limit - 1)
@@ -206,6 +244,10 @@ def list_verification_reports(
         q = q.eq("criticality_tier", tier)
     if recommended_action is not None:
         q = q.eq("recommended_action", recommended_action)
+    if staleness_status is not None:
+        q = q.eq("staleness_status", staleness_status)
+    if source_queue_ids is not None:
+        q = q.in_("scrape_queue_id", source_queue_ids)
 
     rows = q.execute().data or []
     items = [VerificationReportListItem(**r) for r in rows]
@@ -220,6 +262,21 @@ def get_verification_report(
     """Return the full report row including jsonb columns.
 
     No mutation; safe to call from an admin detail drawer.
+
+    A derived ``exam_id`` is injected as a top-level key to let the UI scope
+    FK pickers (cycle / phase / policy) to the correct exam without an extra
+    round-trip.  Resolution path:
+
+        report.recruitment_id → recruitments.exam_id   (preferred when present)
+        otherwise → None
+
+    scrape_queue is intentionally not consulted: queue-stage exam linkage is
+    unverified data; only the post-promotion recruitments.exam_id is a trusted
+    scope key.  A queue-only report legitimately has no exam to scope to —
+    returning null is correct behaviour, not a degradation.
+
+    The resolve is READ-ONLY and best-effort: any miss, empty result, or
+    transport error yields exam_id=None without raising.
     """
     supabase = get_supabase_admin()
     rows = (
@@ -233,7 +290,28 @@ def get_verification_report(
     )
     if not rows:
         raise HTTPException(status_code=404, detail="verification_report not found")
-    return rows[0]
+    report = rows[0]
+
+    # Resolve derived exam_id (best-effort, never raises).
+    derived_exam_id: str | None = None
+    recruitment_id = report.get("recruitment_id")
+    if recruitment_id:
+        try:
+            rec_rows = (
+                supabase.table("recruitments")
+                .select("exam_id")
+                .eq("id", recruitment_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            if rec_rows:
+                derived_exam_id = rec_rows[0].get("exam_id")
+        except Exception:  # noqa: BLE001
+            derived_exam_id = None
+
+    return {**report, "exam_id": derived_exam_id}
 
 
 # ── PR2 mutation endpoints ────────────────────────────────────────────

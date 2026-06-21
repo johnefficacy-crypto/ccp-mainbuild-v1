@@ -1,5 +1,9 @@
 -- exam_intelligence_demo_upsc_cse.sql
--- Phase 12 pilot seed — UPSC CSE.
+-- Phase 12 historical/demo seed — UPSC CSE.
+--
+-- Seed hygiene: this file targets the canonical UPSC CSE survivor exam ID
+-- (5466e62f-7382-4a38-ba96-2fe5fbfeaba2) and must not recreate the stale
+-- merged-from exam ID (a0000002-0000-0000-0000-000000000001) as upsc-cse.
 --
 -- Adds multi-year cycles (2021, 2022, 2023, 2024, 2025) plus reviewed
 -- competition metrics rows so the aspirant-facing Exam Intelligence tab
@@ -15,38 +19,59 @@
 --   cutoff_trend       : {"<category>": <marks>}
 --   vacancy_by_category: {"<category>": <count>}
 --
--- All rows use deterministic UUIDs and `on conflict (id) do nothing`, so
--- this file is safe to re-run. Apply with:
+-- Registry rows upsert by slug and downstream rows use deterministic UUIDs with
+-- `on conflict (id) do nothing`, so this file is safe to re-run. Apply with:
 --   psql "$DATABASE_URL" -f exam_intelligence_demo_upsc_cse.sql
 
 begin;
 
 -- ── Exam registry ────────────────────────────────────────────────────────
-insert into public.exam_families (id, slug, name, description) values
-  ('a0000001-0000-0000-0000-000000000001', 'upsc',
-   'Union Public Service Commission',
-   'Premier central recruitment for All-India services and Group A officers.')
-on conflict (id) do nothing;
+do $$
+declare
+  upsc_family_id uuid;
+  upsc_exam_id uuid;
+begin
+  insert into public.exam_families (id, slug, name, description) values
+    ('a0000001-0000-0000-0000-000000000001', 'upsc',
+     'Union Public Service Commission',
+     'Premier central recruitment for All-India services and Group A officers.')
+  on conflict (slug) do update
+    set name = excluded.name,
+        description = excluded.description
+  returning id into upsc_family_id;
 
-insert into public.exams (id, exam_family_id, slug, name, exam_type, default_difficulty_level, description) values
-  ('a0000002-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000001',
-   'upsc-cse', 'UPSC CSE', 'recruitment', 'high',
-   'Civil Services Examination — Prelims, Mains and Personality Test for IAS, IPS, IFS and allied services.')
-on conflict (id) do nothing;
+  insert into public.exams (id, exam_family_id, slug, name, exam_type, default_difficulty_level, description) values
+    ('5466e62f-7382-4a38-ba96-2fe5fbfeaba2', upsc_family_id,
+     'upsc-cse', 'UPSC CSE', 'recruitment', 'high',
+     'Civil Services Examination — Prelims, Mains and Personality Test for IAS, IPS, IFS and allied services.')
+  on conflict (slug) do update
+    set exam_family_id = excluded.exam_family_id,
+        name = excluded.name,
+        exam_type = excluded.exam_type,
+        default_difficulty_level = excluded.default_difficulty_level,
+        description = excluded.description
+  returning id into upsc_exam_id;
+
+  if upsc_exam_id <> '5466e62f-7382-4a38-ba96-2fe5fbfeaba2'::uuid then
+    raise exception 'UPSC CSE seed expected canonical exam id %, but slug upsc-cse resolved to %. Repair exam identity before re-running this seed.',
+      '5466e62f-7382-4a38-ba96-2fe5fbfeaba2'::uuid,
+      upsc_exam_id;
+  end if;
+end $$;
 
 -- Five cycles so trend lines render with meaningful slope.
 insert into public.exam_cycles
   (id, exam_id, year, cycle_name, status, notification_date, application_start,
    application_end, exam_start, source_url) values
-  ('a0000003-0000-0000-0000-000000000021', 'a0000002-0000-0000-0000-000000000001',
+  ('a0000003-0000-0000-0000-000000000021', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    2021, 'CSE 2021', 'completed', '2021-03-04', '2021-03-04', '2021-03-24', '2021-10-10', 'https://upsc.gov.in/'),
-  ('a0000003-0000-0000-0000-000000000022', 'a0000002-0000-0000-0000-000000000001',
+  ('a0000003-0000-0000-0000-000000000022', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    2022, 'CSE 2022', 'completed', '2022-02-02', '2022-02-02', '2022-02-22', '2022-06-05', 'https://upsc.gov.in/'),
-  ('a0000003-0000-0000-0000-000000000023', 'a0000002-0000-0000-0000-000000000001',
+  ('a0000003-0000-0000-0000-000000000023', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    2023, 'CSE 2023', 'completed', '2023-02-01', '2023-02-01', '2023-02-21', '2023-05-28', 'https://upsc.gov.in/'),
-  ('a0000003-0000-0000-0000-000000000024', 'a0000002-0000-0000-0000-000000000001',
+  ('a0000003-0000-0000-0000-000000000024', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    2024, 'CSE 2024', 'completed', '2024-02-14', '2024-02-14', '2024-03-05', '2024-06-16', 'https://upsc.gov.in/'),
-  ('a0000003-0000-0000-0000-000000000025', 'a0000002-0000-0000-0000-000000000001',
+  ('a0000003-0000-0000-0000-000000000025', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    2025, 'CSE 2025', 'active', '2025-01-22', '2025-01-22', '2025-02-11', '2025-05-25', 'https://upsc.gov.in/')
 on conflict (id) do nothing;
 
@@ -54,13 +79,13 @@ on conflict (id) do nothing;
 insert into public.exam_phases
   (id, exam_id, exam_cycle_id, phase_name, phase_slug, phase_order, mode,
    duration_mins, total_questions, total_marks, negative_marking, status) values
-  ('a0000004-0000-0000-0000-000000000001', 'a0000002-0000-0000-0000-000000000001',
+  ('a0000004-0000-0000-0000-000000000001', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    null, 'Prelims', 'prelims', 1, 'omr',
    120, 100, 200, '1/3 negative', 'active'),
-  ('a0000004-0000-0000-0000-000000000002', 'a0000002-0000-0000-0000-000000000001',
+  ('a0000004-0000-0000-0000-000000000002', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    null, 'Mains', 'mains', 2, 'descriptive',
    180, null, 1750, 'none', 'active'),
-  ('a0000004-0000-0000-0000-000000000003', 'a0000002-0000-0000-0000-000000000001',
+  ('a0000004-0000-0000-0000-000000000003', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    null, 'Personality Test', 'interview', 3, 'in_person',
    null, null, 275, 'none', 'active')
 on conflict (id) do nothing;
@@ -89,7 +114,7 @@ on conflict (id) do nothing;
 
 -- ── PYQ inventory (one verified Prelims paper per year, 2021–2024) ──────
 insert into public.pyq_sources (id, exam_id, source_type, source_url, title, trust_status) values
-  ('a0000007-0000-0000-0000-000000000001', 'a0000002-0000-0000-0000-000000000001',
+  ('a0000007-0000-0000-0000-000000000001', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    'official', 'https://upsc.gov.in/examinations/previous-question-papers',
    'UPSC official previous papers archive', 'verified')
 on conflict (id) do nothing;
@@ -98,19 +123,19 @@ insert into public.pyq_papers
   (id, pyq_source_id, exam_id, exam_cycle_id, exam_phase_id, year, paper_date,
    shift, paper_code, source_url, source_type, trust_status) values
   ('a0000008-0000-0000-0000-000000000021', 'a0000007-0000-0000-0000-000000000001',
-   'a0000002-0000-0000-0000-000000000001', 'a0000003-0000-0000-0000-000000000021',
+   '5466e62f-7382-4a38-ba96-2fe5fbfeaba2', 'a0000003-0000-0000-0000-000000000021',
    'a0000004-0000-0000-0000-000000000001', 2021, '2021-10-10', 'Shift I', 'GS Paper I',
    'https://upsc.gov.in/sites/default/files/QP-CSP-21-GS-P1.pdf', 'official', 'verified'),
   ('a0000008-0000-0000-0000-000000000022', 'a0000007-0000-0000-0000-000000000001',
-   'a0000002-0000-0000-0000-000000000001', 'a0000003-0000-0000-0000-000000000022',
+   '5466e62f-7382-4a38-ba96-2fe5fbfeaba2', 'a0000003-0000-0000-0000-000000000022',
    'a0000004-0000-0000-0000-000000000001', 2022, '2022-06-05', 'Shift I', 'GS Paper I',
    'https://upsc.gov.in/sites/default/files/QP-CSP-22-GS-P1.pdf', 'official', 'verified'),
   ('a0000008-0000-0000-0000-000000000023', 'a0000007-0000-0000-0000-000000000001',
-   'a0000002-0000-0000-0000-000000000001', 'a0000003-0000-0000-0000-000000000023',
+   '5466e62f-7382-4a38-ba96-2fe5fbfeaba2', 'a0000003-0000-0000-0000-000000000023',
    'a0000004-0000-0000-0000-000000000001', 2023, '2023-05-28', 'Shift I', 'GS Paper I',
    'https://upsc.gov.in/sites/default/files/QP-CSP-23-GS-P1.pdf', 'official', 'verified'),
   ('a0000008-0000-0000-0000-000000000024', 'a0000007-0000-0000-0000-000000000001',
-   'a0000002-0000-0000-0000-000000000001', 'a0000003-0000-0000-0000-000000000024',
+   '5466e62f-7382-4a38-ba96-2fe5fbfeaba2', 'a0000003-0000-0000-0000-000000000024',
    'a0000004-0000-0000-0000-000000000001', 2024, '2024-06-16', 'Shift I', 'GS Paper I',
    'https://upsc.gov.in/sites/default/files/QP-CSP-24-GS-P1.pdf', 'official', 'verified')
 on conflict (id) do nothing;
@@ -276,7 +301,7 @@ insert into public.exam_competition_metrics
    competition_pressure_score, source_basis, confidence_score, evidence_count,
    reviewer_status, reviewed_at, reviewer_notes) values
   -- 2021
-  ('a000000b-0000-0000-0000-000000000021', 'a0000002-0000-0000-0000-000000000001',
+  ('a000000b-0000-0000-0000-000000000021', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    'a0000003-0000-0000-0000-000000000021', 'a0000004-0000-0000-0000-000000000001',
    712,
    '{"general": 305, "obc": 191, "sc": 105, "st": 53, "ews": 58}'::jsonb,
@@ -287,7 +312,7 @@ insert into public.exam_competition_metrics
    '2022-03-15T00:00:00+00:00',
    'Vacancies + cutoffs cross-checked against official 2021 results PDF.'),
   -- 2022
-  ('a000000b-0000-0000-0000-000000000022', 'a0000002-0000-0000-0000-000000000001',
+  ('a000000b-0000-0000-0000-000000000022', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    'a0000003-0000-0000-0000-000000000022', 'a0000004-0000-0000-0000-000000000001',
    1022,
    '{"general": 423, "obc": 275, "sc": 152, "st": 76, "ews": 96}'::jsonb,
@@ -298,7 +323,7 @@ insert into public.exam_competition_metrics
    '2023-04-10T00:00:00+00:00',
    'Vacancies + cutoffs cross-checked against official 2022 results.'),
   -- 2023
-  ('a000000b-0000-0000-0000-000000000023', 'a0000002-0000-0000-0000-000000000001',
+  ('a000000b-0000-0000-0000-000000000023', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    'a0000003-0000-0000-0000-000000000023', 'a0000004-0000-0000-0000-000000000001',
    1105,
    '{"general": 442, "obc": 298, "sc": 165, "st": 82, "ews": 118}'::jsonb,
@@ -309,7 +334,7 @@ insert into public.exam_competition_metrics
    '2024-03-05T00:00:00+00:00',
    'Cutoff drop driven by CSAT difficulty spike — confirmed by analysis rooms and official notification.'),
   -- 2024
-  ('a000000b-0000-0000-0000-000000000024', 'a0000002-0000-0000-0000-000000000001',
+  ('a000000b-0000-0000-0000-000000000024', '5466e62f-7382-4a38-ba96-2fe5fbfeaba2',
    'a0000003-0000-0000-0000-000000000024', 'a0000004-0000-0000-0000-000000000001',
    1056,
    '{"general": 424, "obc": 285, "sc": 158, "st": 78, "ews": 111}'::jsonb,
@@ -326,7 +351,7 @@ on conflict (id) do nothing;
 -- the aspirant ExamDetail page resolve exam_slug and surface the
 -- Intelligence tab content immediately.
 update public.recruitments
-   set exam_id = 'a0000002-0000-0000-0000-000000000001'
+   set exam_id = '5466e62f-7382-4a38-ba96-2fe5fbfeaba2'
  where exam_id is null
    and (lower(name) like 'upsc cse%' or lower(name) like 'civil services%')
    and lower(coalesce(name, '')) not like '%mains test series%';

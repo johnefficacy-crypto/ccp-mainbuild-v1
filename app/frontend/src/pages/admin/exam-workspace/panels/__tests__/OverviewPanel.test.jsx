@@ -1,154 +1,113 @@
-/**
- * OverviewPanel — UX-EI-3 (D1) regression tests.
- *
- * Asserts that:
- * 1. Duplicate exam identity fields (name, slug, type, family) are absent —
- *    they already live in SmartHeader and must not be duplicated here.
- * 2. Non-duplicate config fields (cadence, management_mode, is_active) are present.
- * 3. The readiness sections summary is still rendered (must NOT be removed).
- */
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
+// Mock ExamWorkspaceContext so we don't need the full provider fetch chain
 jest.mock("../../ExamWorkspaceContext", () => ({
-  __esModule: true,
   useExamWorkspace: jest.fn(),
+}));
+
+// Mock ExamIntelGlossary to avoid CSS-in-JS / pill class issues in jsdom
+jest.mock("../../../../../features/admin/exam-intelligence/ExamIntelGlossary", () => ({
+  LifecycleLegend: () => null,
+  EXAM_PURPOSE_LABELS: { recruitment: { label: "Recruitment exam" } },
+  BUSINESS_PRIORITY_LABELS: { core: { label: "Core" } },
 }));
 
 const { useExamWorkspace } = require("../../ExamWorkspaceContext");
 const OverviewPanel = require("../OverviewPanel").default;
 
 const BASE_EXAM = {
-  id: "exam-uuid-1",
-  name: "UPSC CSE",
-  slug: "upsc-cse",
-  exam_type: "civil_services",
-  family: "UPSC",
-  family_name: "UPSC",
-  is_active: true,
+  id: "exam-1",
+  name: "SSC CGL",
+  slug: "ssc-cgl",
+  exam_type: "recruitment",
+  management_mode: "core",
   cadence: "annual",
-  management_mode: "central",
+  is_active: true,
 };
 
-const READINESS = {
-  overall: { score_percent: 60, status: "partial" },
+const BASE_READINESS = {
+  overall: { status: "partial", score_percent: 42, ready_to_activate: false },
   sections: [
-    {
-      section: "setup",
-      label: "Setup",
-      status: "ready",
-      weight: 1,
-      blockers: [],
-      note: "1 phase defined",
-    },
-    {
-      section: "syllabus_mapper",
-      label: "Syllabus Mapper",
-      status: "partial",
-      weight: 2,
-      blockers: ["no topic-coverage rows"],
-      note: "",
-    },
+    { section: "setup", label: "Setup", status: "ready", score_percent: 100, weight: 2, blockers: [], counts: {}, metrics: { phase_count: 1 } },
+    { section: "documents", label: "Documents", status: "partial", score_percent: 50, weight: 1, blockers: [], counts: {}, metrics: { total: 2, extracted: 1, pending: 1, failed: 0 } },
+    { section: "syllabus_mapper", label: "Syllabus Mapper", status: "partial", score_percent: 50, weight: 2, blockers: [], counts: {}, metrics: {} },
+    { section: "pyq_workbench", label: "PYQ Workbench", status: "ready", score_percent: 100, weight: 3, blockers: [], counts: {}, metrics: { papers: 2, questions_total: 40, questions_verified: 40, questions_locked: 20, options_total: 160, topic_tags_total: 80 } },
+    { section: "updates", label: "Updates", status: "empty", score_percent: 0, weight: 1, blockers: [], counts: {}, metrics: { total: 0, pending: 0, verified: 0, stale: 0, rejected: 0 } },
+    { section: "competition", label: "Competition", status: "empty", score_percent: 0, weight: 1, blockers: [], counts: {}, metrics: { present_for_cycle: false, reviewer_status: null, breakdown: { draft: 0, reviewed: 0, locked: 0 } } },
+    { section: "review_activate", label: "Review & Activate", status: "partial", score_percent: 0, weight: 0, blockers: [], counts: {}, metrics: {} },
   ],
+  topic_coverage: { total: 10, draft: 2, pending: 1, reviewed: 3, locked: 4, high_yield: 2 },
 };
 
-function setup({ exam = BASE_EXAM, readiness = READINESS } = {}) {
-  useExamWorkspace.mockReturnValue({ exam, readiness });
+function setup(overrides = {}) {
+  useExamWorkspace.mockReturnValue({
+    exam: BASE_EXAM,
+    cycle: null,
+    cycles: [],
+    phases: [{ id: "ph-1" }],
+    readiness: BASE_READINESS,
+    organization: null,
+    family: null,
+    ...overrides,
+  });
   return render(<OverviewPanel />);
 }
 
-// ── D1: Duplicate identity fields must be absent ──────────────────────────────
+describe("OverviewPanel", () => {
+  afterEach(() => jest.clearAllMocks());
 
-describe("OverviewPanel — UX-EI-3: no duplicate SmartHeader fields", () => {
-  test("does NOT render exam name as a labelled field value", () => {
+  test("renders overview-panel root", () => {
     setup();
-    // SmartHeader renders the name; OverviewPanel must not also show it as a field.
-    // We look for a <div class="field-val"> that contains the exact exam name.
-    const vals = document.querySelectorAll(".field-val");
-    const nameVals = Array.from(vals).filter(el => el.textContent.trim() === "UPSC CSE");
-    expect(nameVals).toHaveLength(0);
+    expect(screen.getByTestId("overview-panel")).toBeTruthy();
   });
 
-  test("does NOT render slug as a labelled field value", () => {
+  test("org shows — when organization is null", () => {
+    setup({ organization: null });
+    expect(screen.getByTestId("overview-org").textContent).toBe("—");
+  });
+
+  test("org shows name when organization provided", () => {
+    setup({ organization: { id: "org-1", name: "UPSC Board", type: "central", trust_tier: "verified" } });
+    expect(screen.getByTestId("overview-org").textContent).toBe("UPSC Board");
+  });
+
+  test("org falls back to exam.organization_name when organization is null", () => {
+    setup({
+      exam: { ...BASE_EXAM, organization_name: "Fallback Org" },
+      organization: null,
+    });
+    expect(screen.getByTestId("overview-org").textContent).toBe("Fallback Org");
+  });
+
+  test("family shows — when family is null", () => {
+    setup({ family: null });
+    expect(screen.getByTestId("overview-family").textContent).toBe("—");
+  });
+
+  test("family shows name when family provided", () => {
+    setup({ family: { id: "fam-1", name: "Civil Services" } });
+    expect(screen.getByTestId("overview-family").textContent).toBe("Civil Services");
+  });
+
+  test("family falls back to exam.family_name when family is null", () => {
+    setup({
+      exam: { ...BASE_EXAM, family_name: "Fallback Family" },
+      family: null,
+    });
+    expect(screen.getByTestId("overview-family").textContent).toBe("Fallback Family");
+  });
+
+  test("topic coverage section renders total count", () => {
     setup();
-    const vals = document.querySelectorAll(".field-val");
-    const slugVals = Array.from(vals).filter(el => el.textContent.trim() === "upsc-cse");
-    expect(slugVals).toHaveLength(0);
+    expect(screen.getByTestId("overview-section-topic-coverage")).toBeTruthy();
+    expect(screen.getByTestId("overview-section-topic-coverage").textContent).toContain("10");
   });
 
-  test("does NOT render exam type as a labelled field value", () => {
+  test("pyq workbench section renders options_total and topic_tags_total", () => {
     setup();
-    const vals = document.querySelectorAll(".field-val");
-    const typeVals = Array.from(vals).filter(el =>
-      el.textContent.trim() === "civil_services"
-    );
-    expect(typeVals).toHaveLength(0);
-  });
-
-  test("does NOT render family name as a labelled field value", () => {
-    setup();
-    const vals = document.querySelectorAll(".field-val");
-    const familyVals = Array.from(vals).filter(el => el.textContent.trim() === "UPSC");
-    expect(familyVals).toHaveLength(0);
-  });
-});
-
-// ── Non-duplicate fields must be present ──────────────────────────────────────
-
-describe("OverviewPanel — non-duplicate fields are shown", () => {
-  test("shows cadence field", () => {
-    setup();
-    expect(screen.getByTestId("overview-cadence").textContent).toBe("annual");
-  });
-
-  test("shows management_mode field", () => {
-    setup();
-    expect(screen.getByTestId("overview-management-mode").textContent).toBe("central");
-  });
-
-  test("shows is_active as Yes/No", () => {
-    setup();
-    expect(screen.getByTestId("overview-is-active").textContent).toBe("Yes");
-  });
-
-  test("shows is_active=false as No", () => {
-    setup({ exam: { ...BASE_EXAM, is_active: false } });
-    expect(screen.getByTestId("overview-is-active").textContent).toBe("No");
-  });
-
-  test("shows — for null cadence", () => {
-    setup({ exam: { ...BASE_EXAM, cadence: null } });
-    expect(screen.getByTestId("overview-cadence").textContent).toBe("—");
-  });
-});
-
-// ── Readiness sections must still be present ──────────────────────────────────
-
-describe("OverviewPanel — readiness sections are NOT removed", () => {
-  test("renders the readiness summary card", () => {
-    setup();
-    expect(screen.getByTestId("overview-readiness-card")).toBeTruthy();
-  });
-
-  test("renders per-section rows for each readiness section", () => {
-    setup();
-    expect(screen.getByTestId("overview-section-setup")).toBeTruthy();
-    expect(screen.getByTestId("overview-section-syllabus_mapper")).toBeTruthy();
-  });
-
-  test("shows section labels in the readiness summary", () => {
-    setup();
-    expect(screen.getByText("Setup")).toBeTruthy();
-    expect(screen.getByText("Syllabus Mapper")).toBeTruthy();
-  });
-
-  test("shows blocker text for a blocked section", () => {
-    setup();
-    expect(screen.getByText(/no topic-coverage rows/i)).toBeTruthy();
-  });
-
-  test("renders readiness data-testid container", () => {
-    setup();
-    expect(screen.getByTestId("overview-readiness-sections")).toBeTruthy();
+    const pyqSection = screen.getByTestId("overview-section-pyq");
+    expect(pyqSection.textContent).toContain("160"); // options_total
+    expect(pyqSection.textContent).toContain("80");  // topic_tags_total
   });
 });

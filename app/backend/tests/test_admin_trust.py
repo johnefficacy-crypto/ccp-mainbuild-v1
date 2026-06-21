@@ -277,6 +277,85 @@ def test_eligibility_ops_surfaces_stale_query_failure(monkeypatch):
     assert "PGRST200" in out["stale_results_error"]
 
 
+# ───────────────────────────────────────────────────────────────────────────
+# verify_organization – reason field validation
+# ───────────────────────────────────────────────────────────────────────────
+
+import pytest
+from pydantic import ValidationError as PydanticValidationError
+from app.api.admin_trust import VerifyOrganizationRequest
+
+
+@pytest.mark.parametrize("reason", ["", "short", "1234567"])
+def test_verify_request_rejects_reason_too_short(reason):
+    with pytest.raises(PydanticValidationError):
+        VerifyOrganizationRequest(reason=reason)
+
+
+def test_verify_request_rejects_reason_too_long():
+    with pytest.raises(PydanticValidationError):
+        VerifyOrganizationRequest(reason="x" * 501)
+
+
+def test_verify_request_accepts_valid_reason():
+    req = VerifyOrganizationRequest(reason="Verified via official GOI portal")
+    assert len(req.reason) >= 8
+
+
+class _VerifySB:
+    """Stub for verify_organization: tracks org update and audit insert."""
+
+    def __init__(self, org):
+        self.org = org
+        self.updates = []
+        self.audits = []
+
+    def table(self, name):
+        outer = self
+
+        class T:
+            def __init__(self, tname):
+                self.tname = tname
+                self._payload = None
+                self._filters = {}
+
+            def select(self, *a, **k): return self
+            def eq(self, k, v): self._filters[k] = v; return self
+            def limit(self, *a, **k): return self
+            def update(self, payload): self._payload = payload; return self
+            def insert(self, payload): self._payload = payload; return self
+
+            def execute(self):
+                if self.tname == "organizations":
+                    if self._payload is not None:
+                        outer.updates.append(dict(self._payload))
+                        return R([{**outer.org, **self._payload}])
+                    return R([outer.org])
+                if self.tname == "admin_audit_logs":
+                    if self._payload is not None:
+                        outer.audits.append(dict(self._payload))
+                    return R([{}])
+                return R([])
+
+        return T(name)
+
+
+def test_verify_organization_audits_operator_reason(monkeypatch):
+    org = {"id": "org-1", "website_url": "https://example.gov.in", "official_domain": None}
+    sb = _VerifySB(org)
+    monkeypatch.setattr(admin_trust, "get_supabase_admin", lambda: sb)
+    monkeypatch.setattr(admin_trust, "_verify_url", lambda url: (["dns_ok"], [], [], None, None))
+    body = VerifyOrganizationRequest(reason="Manually confirmed on official portal")
+    admin = {"id": "admin-1", "email": "ops@example.com"}
+    out = admin_trust.verify_organization("org-1", body, admin)
+    assert out["ok"] is True
+    assert sb.audits, "expected audit row"
+    audit = sb.audits[0]
+    assert audit["action"] == "organization.verify"
+    notes = audit.get("notes", "")
+    assert "operator_reason" in notes
+    assert "Manually confirmed on official portal" in notes
+
 def test_publish_with_no_onboarded_users_is_still_ok(monkeypatch):
     """Empty fan-out must succeed (no users to enqueue) and the publish should
     still mark the recruitment published."""

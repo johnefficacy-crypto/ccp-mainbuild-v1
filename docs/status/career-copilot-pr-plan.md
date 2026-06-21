@@ -1,0 +1,449 @@
+# Career Copilot remaining-work PR plan
+
+Last planned from repo state: 2026-06-20 at `main @ a2ded8c`.
+
+This plan decomposes the remaining Career Copilot work into small PRs that can
+be assigned to simultaneous agents without overlapping write scopes. Status
+terms come from `docs/status/career-copilot-checklist.md`.
+
+## Parallelization rules
+
+1. Each PR owns only the files listed in its **write scope**. If an agent needs a
+   file outside that scope, it must stop and split or re-plan the PR.
+2. Checklist updates are allowed in every PR, but keep them to the rows touched
+   by that PR.
+3. Do not combine backend validation gates, frontend cleanup, and UX redesign in
+   the same PR.
+4. Operator-only tasks produce dated evidence docs; they do not edit runtime
+   code unless a separate implementation PR is opened.
+5. `FF_MOCK_MASTERY_WRITES=live`, A-PR4/A-PR5, and Track C remain blocked until
+   the validation gate in Lane A passes.
+
+## Lane map
+
+| Lane | Can run now? | Blocking relationship | Primary owner |
+|---|---:|---|---|
+| A. Mock Engine validation gate | Yes, operator-led | Blocks `FF=live`, A-PR4/A-PR5, Track C | Operator / backend validator |
+| B. Exam Governance cleanup | Yes | Independent of Lane A | Frontend cleanup agent |
+| C. Exam workspace setup/timeline UX | Yes, after design lock | Independent of Lane A/B if scoped to SetupPanel | Frontend UX agent |
+| D. Document readiness identity/status audit | Yes | May feed Lane C or a backend fix later | Backend+frontend auditor |
+| E. Backend CI audit sequencing | Yes | Independent infrastructure PR | CI/backend infra agent |
+| F. Live-DB tails | Yes, operator-led | Does not block code cleanup unless evidence changes status | Operator |
+| G. Track C / personalization expansion | No | Waits on Lane A clean gate | Backend+frontend feature agents later |
+
+## Lane A — Mock Engine validation gate
+
+Goal: prove the already-landed code remediations against live/operator evidence
+without flipping `FF_MOCK_MASTERY_WRITES=live`.
+
+### PR #716 — Shadow gate prerequisite hardening — **MERGED**
+
+### PR #718 — Platform-review authority hardening (code-only, prerequisite for A1/A2/A3 clean-state signoff)
+
+Fixes 5 confirmed bugs in `canonical.py::review_mock`:
+
+1. **BUG-A — `review_status` silent mutation:** removed Pydantic default from `review_status`; patch built from `model_fields_set` only so omitted fields are never overwritten.
+2. **BUG-B — TOCTOU race:** scoped UPDATE (`id + user_id + source_type`) replaces the single-predicate update; zero-row result triggers 4-case diagnostic.
+3. **BUG-C — platform path pollution:** `aggregated_error_types` derivation and breakdown/mastery/regen writes are fully isolated to the manual/imported path.
+4. **Denylist → allowlist:** `_PLATFORM_REVIEW_ALLOWED` replaces `_PLATFORM_FORBIDDEN`; future body fields are rejected by default for platform mocks.
+5. **FK ordering (seedAttempt.ts):** `resetAttempts` now deletes `mock_tests` compat rows (`mock_attempt_id IN attemptIds`) before deleting `mock_attempts` to avoid FK violations.
+
+PR #718 adds regression coverage for the existing PR #716 correction-task authority guard; it does not modify that guard (`study_os.py`, `mocks.py`, and `mastery_writer.py` are empty diff vs main).
+
+**Write scope (changed files only):**
+- `app/backend/app/api/canonical.py`
+- `app/backend/tests/study_os/test_mock_review.py`
+- `app/frontend/e2e/fixtures/seedAttempt.ts`
+- `docs/status/career-copilot-checklist.md`
+- `docs/status/career-copilot-pr-plan.md`
+
+### PR #716 — Shadow gate prerequisite hardening (original)
+
+Fixes 6 blocking review findings against the mastery shadow gate:
+
+1. **Correction idempotency (23505):** `_draft_correction_tasks` in `mastery_writer.py`
+   and `draft_correction_tasks` in `mocks.py` now handle PostgreSQL 23505 uniqueness
+   conflicts idempotently. Migration 181 dedup CTE fixed for `NULL created_at`.
+2. **Platform-attempt correction guard:** `POST /api/study/mocks/{id}/correction-tasks`
+   returns HTTP 409 (`PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN`) for
+   `source_type=platform_attempt` mocks.
+3. **`derive_preview` three sections:** redesigned to return `persisted_shadow_decision`,
+   `current_read_only_preview`, and `replay_consistency` with zero writes.
+4. **Shadow analysis tool redesign:** `shadow-replay` (self-consistency), `live-audit-compare`
+   (canary-only), `tasks-overlap` (with semantic note); correct env vars; real pagination.
+5. **Canary plan hardened:** user allowlist made a hard prerequisite; rollback scoped to
+   exact canary attempt_ids covering all 5 affected tables.
+6. **Status docs:** this file and `docs/status/career-copilot-checklist.md` updated.
+
+### A1 — Scheduler/job visibility evidence
+
+- **Type:** operator evidence doc only.
+- **Write scope:** `docs/audits/*scheduler*2026-*.md`, checklist row updates.
+- **Do not touch:** `app/backend/app/study_os/*`, migrations, frontend.
+- **Work:** capture both scheduler env vars (`ENABLE_SCHEDULER=true` primary gate,
+  `DISABLE_SCHEDULER=true` override kill switch), scheduler startup/registration,
+  `/api/admin/jobs` payload, manual sweeper run, and pending-job drain.
+- **Exit:** checklist scheduler row moves from `OPERATOR PENDING` to either
+  verified or code-defect-found. If code defect is found, open a separate A1-fix
+  PR with a narrow backend scope.
+
+### A2 — Repeat off/shadow validation evidence
+
+- **Type:** operator evidence doc only.
+- **Write scope:** new dated shadow-validation report under `docs/audits/`,
+  checklist row updates.
+- **Do not touch:** the 2026-06-18 failed report.
+- **Work:** prove only answered topics get deltas, classification-enriched
+  corrections match, resubmit creates no new shadow rows, compat row exists with
+  integral marks, and retry jobs drain.
+- **Exit:** if clean, `FF=live` can move from `BLOCKED` to next controlled live
+  canary plan. If not clean, file one defect-specific backend PR per root cause.
+
+### A3 — Live canary plan, not implementation
+
+- **Type:** plan/evidence doc only (canary plan exists at `docs/ops/pr8_live_canary_plan.md`).
+- **Write scope:** `docs/runbooks/` or `docs/audits/`, checklist row updates.
+- **Depends on:** A1 and A2 clean, **AND** the user-allowlist implementation PR merged.
+- **Hard prerequisite — not optional:** `FF_MOCK_MASTERY_WRITES` is currently global.
+  A live canary MUST be bounded to a named user allowlist before this plan can be
+  approved. The allowlist implementation PR (check `user_id` against an explicit
+  allow-list before calling `MasteryWriter.process_attempt_sync`) must be merged and
+  the allowlist must be non-empty with named consenting users. Rollback is scoped to
+  exact canary attempt_ids recorded in pre-canary queries — not a time window.
+- **Work:** confirm allowlist implementation merged, populate allowlist, run
+  pre-canary queries, flip flag for bounded users, verify post-canary queries against
+  success thresholds, attach evidence to PR9.
+- **Exit:** only after all success thresholds pass should any expansion of the
+  allowlist or full promotion occur. Never flip without allowlist in place.
+
+## Lane B — Exam Governance cleanup
+
+Goal: remove console-era leftovers now that `/console/:exam_id` renders
+`ExamActionConsole`.
+
+### B1 — De-leak `ExamActionConsole` labels
+
+- **Type:** frontend cleanup.
+- **Write scope:**
+  - `app/frontend/src/features/admin/exam-intelligence/ExamActionConsole.jsx`
+  - `app/frontend/src/features/admin/exam-intelligence/operatorChrome.js`
+  - targeted tests under `app/frontend/src/features/admin/exam-intelligence/`
+  - checklist row for CL-1b
+- **Do not touch:** `ExamWorkspace.jsx`, `ExamTaskRail.jsx`, backend routes.
+- **Work:** replace local token humanization with shared operator chrome helpers
+  where compatible; add regression coverage for UUID/API-token leakage.
+- **Tests:** targeted frontend tests for `ExamActionConsole` / identifier hygiene.
+
+### B2 — Remove orphaned console variant and task rail
+
+- **Type:** frontend cleanup.
+- **Write scope:**
+  - `app/frontend/src/pages/admin/exam-workspace/ExamWorkspace.jsx`
+  - `app/frontend/src/pages/admin/exam-workspace/ExamTaskRail.jsx`
+  - `app/frontend/src/pages/admin/exam-workspace/__tests__/ExamWorkspace.test.jsx`
+  - `app/frontend/src/pages/admin/__tests__/ExamGovernanceConsole.test.jsx`
+  - checklist row for CL-6
+- **Depends on:** B1 only if tests share helper expectations; otherwise can run
+  in parallel if the agents coordinate test ownership.
+- **Work:** remove `variant="console"` branches and `ExamTaskRail` if no longer
+  imported; keep standalone workspace behavior unchanged.
+- **Tests:** workspace and governance-console frontend tests.
+
+### B3 — Remaining console polish PRs
+
+Run these as separate PRs because they touch different user-facing surfaces:
+
+| PR | Write scope | Notes |
+|---|---|---|
+| B3a registry row expansion / dead columns | registry/list components and tests only | CL-2. |
+| B3b remove CMS `+ New guided exam` CTA | `ExamIntelCms.jsx` and its tests only | CL-3. |
+| B3c collapsible lifecycle banner | banner component/tests only | CL-4. |
+| B3d-2 Console Work Queue action hierarchy | `ConsoleWorkQueue.jsx`, targeted console tests, and existing admin-console button styling only | CL-5; the queue has no screen-level primary CTA. Pressed workflow filters use selected-state styling rather than primary-action styling. Repeated `Open console` and `Advanced workspace` links are contextual row actions, not screen primaries. |
+| B3d-3 Guided Exam Wizard primary-action hierarchy | `GuidedExamWizard.jsx` and its targeted tests only | CL-5; Organization mode selectors must use pressed-state styling rather than primary-action styling. The forward or create action remains the sole primary action on each wizard step. |
+| B3d-close cross-surface CL-5 closure audit | audit and status documentation only | **COMPLETE in this checkout.** Offline local-proof audit passed across Registry, Work Queue, Action Console, Guided Wizard, Workspace Smart Header, and Advanced Import / Repair; CL-5 is marked `CODE PRESENT IN THIS CHECKOUT`. |
+| B4 / CL-6b remove dormant console presentation plumbing | `ExamWorkspaceContext.jsx`, `OverviewPanel.jsx`, `ReviewActivatePanel.jsx`, orphaned `ExamPublishImpact.jsx`, its isolated test, targeted workspace/console regression tests, and the checklist row only | CL-6b; remove the unused provider `variant`, remove dormant console-only presentation branches, delete orphaned `ExamPublishImpact` and its isolated test, and preserve the active standalone workspace and `ExamActionConsole` routes. |
+
+#### CL-5 one-primary-per-screen rule
+
+- A screen may expose at most one screen-level primary CTA.
+- Pressed filter states must not use primary-action styling.
+- Repeated table-row actions are contextual, not screen primaries.
+- Local form submission buttons are scoped to their form/card and are not automatically competing screen-level CTAs.
+- `SetupPanel` redesign remains owned by Lane C and must not be absorbed into B3d.
+- B3d-close must not modify runtime code.
+- B3d-close must not modify tests.
+- B3d-close must not fix violations discovered during the audit.
+- Discovered violations require a separate implementation PR.
+- CL-5 is complete in this checkout after the B3d-close audit passed against the locally seeded dispatch SHA with B3d-1/B3d-2/B3d-3 evidence present.
+
+## Lane C — Exam workspace setup/timeline UX
+
+Goal: clean the chaotic setup workflow without cross-wiring console or CMS.
+
+### C0 — Design lock / component ownership preflight
+
+- **Type:** read-only design doc.
+- **Write scope:** `docs/reviews/` or `docs/status/`, checklist row updates.
+- **Work:** decide whether to refactor `SetupPanel` in place or introduce a new
+  child component such as `PhaseTimelineManager`.
+- **Exit:** explicit write scopes for C1-C4.
+
+### C1 — Phase timeline table extraction
+
+- **Type:** frontend refactor.
+- **Write scope:** `SetupPanel.jsx`, new component under
+  `app/frontend/src/pages/admin/exam-workspace/panels/`, and targeted tests.
+- **Do not touch:** documents, syllabus, PYQ, competition, backend.
+- **Work:** replace phase boxes with a grouped table that distinguishes
+  template vs cycle-bound phases and keeps current create/edit behavior intact.
+
+### C2 — Merge Template Phases and Phases Needing Dates into timeline
+
+- **Type:** frontend UX cleanup.
+- **Write scope:** same new timeline component and tests only.
+- **Depends on:** C1.
+- **Work:** render missing-date rows inline with badges; remove duplicate template
+  rendering outside the timeline.
+
+### C3 — Fast date-entry mode
+
+- **Type:** frontend performance/UX.
+- **Write scope:** timeline date-entry component and tests only.
+- **Depends on:** C1 or C2.
+- **Work:** use native `input type="date"` or a focused drawer for dense rows;
+  avoid mounting two `DateField`/DayPicker controls per row.
+
+### C4 — Setup mutation governance
+
+- **Type:** frontend governance fix.
+- **Write scope:** `SetupPanel.jsx` / extracted setup hooks and tests only.
+- **Can run parallel with:** C1 only if C1 owns rendering components and C4 owns
+  mutation handlers; otherwise run after C1.
+- **Work:** migrate add-phase, phase-date patch, and template promotion to
+  `useApiAction`; preserve audit reason requirements and refetch behavior.
+
+## Lane D — Document readiness identity/status audit
+
+Goal: resolve the suspected mismatch between upload/list/document identity,
+`extraction_status`, and readiness/console checks.
+
+### D1 — Read-only contract audit
+
+- **Type:** audit doc only.
+- **Write scope:** `docs/reviews/` or `docs/audits/`, checklist row updates.
+- **Work:** trace `document_assets`, `syllabus_documents`, `document_pages`,
+  extraction jobs/status fields, workspace readiness, and console detail.
+- **Exit:** one of: no bug; backend-only fix; frontend-only selector fix; or
+  coordinated backend+frontend fix.
+
+### D2 — Narrow implementation fix, if D1 finds a bug
+
+- **Type:** implementation, scope chosen by D1.
+- **Write scope:** only the files named by D1.
+- **Rule:** do not combine with Setup timeline work.
+
+## Lane E — Backend CI audit sequencing
+
+Goal: make backend tests run even when dependency audit findings need attention.
+
+### E1 — CI sequencing PR
+
+- **Type:** infrastructure.
+- **Write scope:** `.github/workflows/ci.yml`, backend requirements only if needed,
+  checklist row updates.
+- **Do not touch:** application code.
+- **Work:** preserve `pip-audit` visibility while ensuring `pytest` still runs or
+  is reported independently; avoid silent CVE suppression.
+- **Tests:** workflow syntax check where available; no app test changes.
+
+## Lane F — Live-DB-only tails
+
+Goal: keep live state separate from code-verifiable status.
+
+Run each as an operator evidence task with no runtime code changes unless a real
+code defect is found:
+
+1. Verify/delete `e2e-workspace-exam` prod row.
+2. Verify state PSC official/calendar URL backfill.
+3. Reconfirm SEBI Grade A only if a future workflow depends on it.
+
+## Lane H — Exam Intelligence P0 bug fixes
+
+Goal: fix the two confirmed runtime failures surfaced in the 2026-06-20 operator screenshot audit.
+Evidence doc: `docs/audits/exam-intelligence-gaps-2026-06-20.md`.
+
+These are independent of Lanes A–G and can run now.
+
+### H1 — Fix `syllabus/propose` 404 (BUG-EI-1)
+
+- **Type:** backend bug fix.
+- **Write scope:**
+  - `app/backend/app/exam_intelligence/syllabus_mapper.py`
+  - `app/backend/tests/` — regression test for the propose path
+  - checklist row for BUG-EI-1
+- **Do not touch:** frontend, migrations, other study-os files.
+- **Work:**
+  1. Replace `sb.table("document_assets")` with `sb.table("syllabus_documents")` on both occurrences (~line 99 and ~line 503).
+  2. Verify the SELECT columns (`id, exam_id, exam_cycle_id`) exist on `syllabus_documents` (migration 031 confirms they do).
+  3. Investigate and resolve the duplicate `ProposerError` / `propose_syllabus_mentions` definitions in the file — either deduplicate or verify which copy is the live one.
+  4. Add a regression test: mock a `syllabus_documents` row and assert that propose no longer raises 404.
+- **Exit:** propose endpoint returns 200 with mention proposals for a known document.
+
+### H2 — Fix `console/exams/{id}` 500 (BUG-EI-2)
+
+- **Type:** backend bug fix — requires design decision first.
+- **Write scope:**
+  - `app/backend/app/exam_intelligence/console_detail.py`
+  - `app/backend/tests/` — regression test for the console detail path
+  - checklist rows for BUG-EI-2 and "Document readiness extraction status"
+- **Do not touch:** frontend, migrations, other study-os files.
+- **Pre-work design decision (gate before implementation):**
+  The `_documents()` helper must be redesigned. Options:
+  - **Option A:** Query `syllabus_documents` by `exam_id`; use `trust_status == "verified"` as the readiness proxy. Count `verified` docs as "extracted".
+  - **Option B:** Query a `document_processing_jobs` or similar table if text-extraction tracking lives separately.
+  Operator must pick one before code is written. Record decision as a note in this PR.
+- **Work:**
+  1. Implement chosen option in `_documents()`.
+  2. Update `extracted` count logic at `console_detail.py:257` to match new readiness field.
+  3. Fix line 180 label (`"documents": "document_assets"`) to reflect the new source table.
+  4. Add a regression test: mock the chosen table and assert console detail returns 200.
+- **Exit:** console exam detail returns 200 with a non-zero document check when syllabus documents exist.
+
+### H3 — EI UX cleanup batch (UX-EI-1 through UX-EI-5)
+
+Run these as a single frontend cleanup PR since they share no state and all live in the exam-intelligence admin surface.
+
+- **Type:** frontend cleanup.
+- **Write scope:**
+  - `app/frontend/src/features/admin/exam-intelligence/ReviewQueueTable.jsx` — UX-EI-1 raw ID
+  - `app/frontend/src/pages/admin/exam-workspace/panels/SetupPanel.jsx` — UX-EI-1 phaseId, UX-EI-5 cycle context label
+  - `app/frontend/src/pages/admin/exam-workspace/panels/OverviewPanel.jsx` — UX-EI-3 deduplication
+  - targeted tests for affected components
+  - checklist rows for UX-EI-1, UX-EI-3, UX-EI-5
+- **Do not touch:** backend, migrations, `ExamWorkspace.jsx` workspace shell, `ExamActionConsole.jsx`.
+- **Work:**
+  - UX-EI-1: Replace `{r.id}` in ReviewQueueTable with a truncated or humanized display; replace `ptError.phaseId` raw render in SetupPanel error with a friendlier label.
+  - UX-EI-3: Remove or collapse fields from `OverviewPanel` that are already surfaced in the workspace SmartHeader (exam name, family, slug, type, active).
+  - UX-EI-5: Add cycle name/year to the "Phases needing dates" section header so the operator knows which cycle each phase stub belongs to.
+- **Depends on:** none; can run parallel with H1 and H2.
+
+## Lane I — Exam Intelligence structural redesign
+
+Goal: address the 23 structural design defects documented in `docs/reviews/exam-intelligence-design-review-2026-06-20.md`.
+Items are split by category and blocked relationship. P2 items can run now; P3 items require design decisions first.
+
+### I1 — Collapse redundant data: OverviewPanel and SetupPanel header fields (D1, D2)
+
+- **Type:** frontend cleanup.
+- **Write scope:** `OverviewPanel.jsx`, `SetupPanel.jsx` (lines 909–924 only), targeted tests.
+- **Do not touch:** `ExamWorkspace.jsx` SmartHeader, backend.
+- **Work:** Remove or collapse the "Exam identity" section in `OverviewPanel` (name, slug, type, family already in SmartHeader). Remove or minimize the exam detail block in `SetupPanel` (lines 909–924). Retain OverviewPanel sections that add value beyond the header (readiness per-section detail if not collapsed into header).
+- **Depends on:** Operator must confirm which OverviewPanel fields (if any) are not already in SmartHeader.
+
+### I2 — Collapse "Phases needing dates" into main phases list with cycle label (D3)
+
+- **Type:** frontend cleanup.
+- **Write scope:** `SetupPanel.jsx` and targeted tests.
+- **Note:** Partially absorbed into H3 (UX-EI-5 adds cycle label). Full removal of the duplicate section belongs to Lane C (C2 — merge template phases into timeline).
+- **Depends on:** C1 (phase timeline extraction) should land first.
+
+### I3 — PYQ paper overview: replace dropdown with table (F3)
+
+- **Type:** frontend UX improvement.
+- **Write scope:** `PyqWorkbenchPanel.jsx`, targeted tests.
+- **Do not touch:** backend, `PyqPaperWorkspace.jsx` embedded view, other workspace panels.
+- **Work:** Replace flat `<select>` paper picker with a table of papers showing paper year, section, question count, and readiness status. Keep the embedded `<PyqPaperWorkspace>` as the detail view after selection.
+- **Depends on:** none.
+
+### I4 — Bulk import: auto-navigate to imported paper after success (F2)
+
+- **Type:** frontend UX improvement.
+- **Write scope:** `PyqWorkbenchPanel.jsx`, `BulkImportModal.jsx`, targeted tests.
+- **Do not touch:** backend import logic, other panels.
+- **Work:** After a successful bulk import response, close the modal and auto-select the first imported paper in the picker/table. Show a brief confirmation of what was imported before closing.
+- **Depends on:** none.
+
+### I5 — PYQ question pagination (M3)
+
+- **Type:** frontend + backend change.
+- **Write scope:** `PyqPaperWorkspace.jsx`, targeted tests; backend `pyq-questions` endpoint if it supports `offset`/`limit` params (verify first).
+- **Do not touch:** other workspace panels, unrelated PYQ routes.
+- **Work:** Replace `limit=200` with paginated fetching; add page/section navigation in the question list UI.
+- **Depends on:** confirm backend supports pagination on the questions endpoint.
+
+### I6 — Remaining identifier leakage: CMS tables, CompetitionMetrics, Subjects (I3–I5)
+
+- **Type:** frontend cleanup.
+- **Write scope:** `ExamIntelCms.jsx`, `CompetitionMetricsTable.jsx`, targeted tests.
+- **Do not touch:** backend, `ReviewQueueTable.jsx` (covered by H3), `SetupPanel.jsx` (covered by H3).
+- **Work:** Apply `operatorChrome.humanizeToken` to entity `id` columns in CMS tables and the `exam_slug`/`subject_id` columns in Competition and Subjects surfaces.
+- **Depends on:** none; can run in parallel with H3.
+
+### I7 — KnowledgeGovernance: real metrics or remove placeholder lanes (E1)
+
+- **Type:** design decision → implementation.
+- **Write scope:** `KnowledgeGovernance.jsx`, targeted tests; backend overview endpoint if metrics are added.
+- **Blocked on:** DQ-1 (KG value proposition and metric availability).
+- **Two possible outcomes:**
+  - If metrics are available: wire `metricKey` to real endpoints; remove placeholder TODO.
+  - If no metrics planned: remove "Exam truth & planner readiness" lane or fold its links into existing nav.
+
+### I8 — ExamIntelligence.jsx: reduce to ≤2 primary paths (E2)
+
+- **Type:** design decision → implementation.
+- **Write scope:** `ExamIntelligence.jsx`, targeted tests.
+- **Blocked on:** DQ-2 (operator workflow definition — what is the primary goal of this page?).
+- **Work after design gate:** Remove or demote navigation paths that are not the operator's primary intent.
+
+### I9 — Guided cycle-setup workflow (F1)
+
+- **Type:** design → implementation (multi-PR).
+- **Blocked on:** I6-gate (product design deliverable: step order, surface choice, whether to use wizard or checklist pattern).
+- **Note:** This is P3. Do not implement until the design gate clears. The gate deliverable is a step-by-step operator journey doc.
+
+## Lane G — Later expansion after clean gate
+
+Do not dispatch until Lane A exits clean:
+
+1. A-PR4 exposure cooldown.
+2. A-PR5 mastery-informed mock selection.
+3. Track C question model v2: stimulus/shared passages, media, non-MCQ scoring.
+4. Wave 5 PYQ weighting into generated mock mix.
+
+Each of these needs its own preflight to define schema, scoring, and frontend
+contract before implementation.
+
+## Suggested simultaneous dispatch batch
+
+Safe first batch (original):
+
+1. **Agent A:** A1 scheduler evidence (operator/live, docs only).
+2. **Agent B:** B1 `ExamActionConsole` de-leak (frontend scoped).
+3. **Agent C:** C0 setup timeline design lock (docs only).
+4. **Agent D:** D1 document readiness identity/status audit (docs only).
+5. **Agent E:** E1 CI sequencing (workflow scoped).
+
+New batch (Lane H — can run now in parallel with any of the above):
+
+6. **Agent H1:** H1 syllabus-propose fix (backend, narrow scope — `syllabus_mapper.py` + test).
+7. **Agent H2:** H2 console-detail fix (backend — requires design decision first; see H2 pre-work gate).
+8. **Agent H3:** H3 EI UX cleanup (frontend — ReviewQueueTable, SetupPanel, OverviewPanel).
+
+Lane I items that can run now (no design gate required):
+
+9. **Agent I3:** I3 PYQ paper overview table (`PyqWorkbenchPanel.jsx` — replace dropdown with table).
+10. **Agent I4:** I4 bulk import auto-navigate after success (`PyqWorkbenchPanel.jsx`, `BulkImportModal.jsx`).
+11. **Agent I6:** I6 remaining identifier leakage (`ExamIntelCms.jsx`, `CompetitionMetricsTable.jsx`).
+
+Lane I items blocked on design decisions (do not dispatch yet):
+
+- I7 (KG metrics/lanes) — blocked on DQ-1.
+- I8 (ExamIntelligence navigation) — blocked on DQ-2.
+- I9 (guided cycle workflow) — blocked on I6-gate product design.
+- I5 (question pagination) — verify backend pagination support first.
+- I1 (OverviewPanel collapse) — verify with operator which fields to retain.
+
+Do **not** dispatch B2 and C1 to the same agent unless B1 is complete and the
+agent explicitly owns the relevant tests. Do **not** dispatch G-lane work until
+A1/A2 are clean. Do **not** dispatch H2 until the Option A/B design decision is
+recorded (see H2 pre-work gate above).

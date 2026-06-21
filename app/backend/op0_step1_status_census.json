@@ -1,0 +1,19 @@
+{
+  "mock_question_bank.reviewer_status": {
+    "published": 35
+  },
+  "pyq_questions.reviewer_status": {
+    "rejected": 2,
+    "verified": 104
+  },
+  "pyq_question_topic_tags.reviewer_status": {
+    "verified": 6
+  },
+  "pyq_papers.trust_status": {
+    "pending": 1,
+    "verified": 2
+  },
+  "exam_topic_coverage.reviewer_status": {
+    "locked": 20
+  }
+}

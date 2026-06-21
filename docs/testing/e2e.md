@@ -49,7 +49,9 @@ Node 20, Python 3.12.
 # 1. Local Supabase (applies migrations) + content seed
 cd app/supabase
 supabase start
-psql "$(supabase status -o json | jq -r '.DB_URL')" -f seeds/e2e_fixtures.sql
+# Guarded applier: refuses any *.supabase.co (production) host, then runs psql.
+./seeds/apply_e2e_fixtures.sh "$(supabase status -o json | jq -r '.DB_URL')" \
+  seeds/e2e_fixtures.sql
 
 # capture connection details (printed by `supabase status`)
 export SB_API_URL=$(supabase status -o json | jq -r '.API_URL')
