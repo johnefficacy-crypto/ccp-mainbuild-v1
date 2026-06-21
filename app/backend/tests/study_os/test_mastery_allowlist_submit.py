@@ -36,8 +36,8 @@ from tests.persona_questions._stub import SBStub
 
 # ── constants ─────────────────────────────────────────────────────────────────
 
-USER_ALLOWLISTED = "allow-0000-0000-0000-000000000001"
-USER_NOT_LISTED = "notlist-000-0000-0000-000000000002"
+USER_ALLOWLISTED = "a0000001-0000-0000-0000-000000000001"
+USER_NOT_LISTED = "a0000002-0000-0000-0000-000000000002"
 ATTEMPT_ID = "aaaaattt-0000-0000-0000-000000000001"
 
 
@@ -726,56 +726,53 @@ class TestWriterFailure:
         assert sub_r.headers["Retry-After"] == "1"
 
 
-# ── resolve_effective_mastery_flag integration ────────────────────────────────
+# ── get_or_resolve_pinned_mastery_flag integration ───────────────────────────
 
-class TestResolveEffectiveMasteryFlagCalledCorrectly:
-    def test_resolve_called_with_global_flag_and_user_id(self, monkeypatch):
-        """Confirm the endpoint calls resolve_effective_mastery_flag(global_flag, user_id)."""
+class TestGetOrResolvePinnedMasteryFlagCalledCorrectly:
+    def test_pinned_flag_called_with_sb_attempt_user(self, monkeypatch):
+        """Confirm the endpoint calls get_or_resolve_pinned_mastery_flag(sb, attempt_id, user_id).
+
+        With no existing mastery jobs (fresh submit), the function falls through
+        to resolve_effective_mastery_flag(get_mastery_write_flag(), user_id) and
+        returns 'live' for an allowlisted user.
+        """
         monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
         monkeypatch.setenv("FF_MOCK_MASTERY_LIVE_USER_IDS", USER_ALLOWLISTED)
 
         sb = _seeded_db_for_user(USER_ALLOWLISTED)
-        resolve_calls: list[tuple[str, str]] = []
+        pinned_calls: list[tuple] = []
 
-        real_resolve = mock_engine_api.resolve_effective_mastery_flag
+        from app.study_os import mock_engine as svc_mod
+        real_pinned = svc_mod.get_or_resolve_pinned_mastery_flag
 
-        def _spy_resolve(requested_flag: str, user_id: str) -> str:
-            resolve_calls.append((requested_flag, user_id))
-            return real_resolve(requested_flag, user_id)
+        def _spy_pinned(supabase: Any, attempt_id: str, user_id: str) -> str:
+            pinned_calls.append((attempt_id, user_id))
+            return real_pinned(supabase, attempt_id, user_id)
 
         with (
-            patch.object(mock_engine_api, "resolve_effective_mastery_flag", side_effect=_spy_resolve),
+            patch.object(mock_engine_api, "get_or_resolve_pinned_mastery_flag", side_effect=_spy_pinned),
             patch.object(mock_engine_api, "mastery_retry_done", return_value=False),
             patch.object(mock_engine_api, "claim_mastery_retry_required", return_value=None),
         ):
-            _start_and_submit(sb, USER_ALLOWLISTED)
+            attempt_id, status = _start_and_submit(sb, USER_ALLOWLISTED)
 
-        assert len(resolve_calls) == 1, "resolve_effective_mastery_flag must be called exactly once"
-        called_flag, called_user = resolve_calls[0]
-        assert called_flag == "live", f"Expected global 'live' passed to resolver, got '{called_flag}'"
-        assert called_user == USER_ALLOWLISTED, f"Expected user_id in resolver, got '{called_user}'"
+        assert status == 200
+        assert len(pinned_calls) == 1, "get_or_resolve_pinned_mastery_flag must be called exactly once"
+        called_attempt, called_user = pinned_calls[0]
+        assert called_attempt == attempt_id, f"Expected attempt_id in call, got '{called_attempt}'"
+        assert called_user == USER_ALLOWLISTED, f"Expected user_id in call, got '{called_user}'"
 
-    def test_resolve_not_called_when_flag_is_off(self, monkeypatch):
-        """When global flag is 'off', resolve is still called (but returns 'off' immediately)."""
+    def test_pinned_flag_off_skips_mastery(self, monkeypatch):
+        """When pinned flag resolves to 'off', mastery_retry_done is not consulted."""
         monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "off")
         monkeypatch.delenv("FF_MOCK_MASTERY_LIVE_USER_IDS", raising=False)
 
         sb = _seeded_db_for_user(USER_ALLOWLISTED)
-        resolve_calls: list[tuple[str, str]] = []
-
-        real_resolve = mock_engine_api.resolve_effective_mastery_flag
-
-        def _spy_resolve(requested_flag: str, user_id: str) -> str:
-            resolve_calls.append((requested_flag, user_id))
-            return real_resolve(requested_flag, user_id)
 
         with (
-            patch.object(mock_engine_api, "resolve_effective_mastery_flag", side_effect=_spy_resolve),
             patch.object(mock_engine_api, "mastery_retry_done") as mock_done,
         ):
             _start_and_submit(sb, USER_ALLOWLISTED)
 
-        # resolve is called with 'off'; returns 'off'; mastery_retry_done not called
-        assert len(resolve_calls) == 1
-        assert resolve_calls[0][0] == "off"
+        # get_or_resolve_pinned_mastery_flag returns 'off' → mastery_retry_done not called
         mock_done.assert_not_called()

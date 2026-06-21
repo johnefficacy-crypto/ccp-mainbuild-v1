@@ -848,7 +848,11 @@ def test_shadow_retry_remains_shadow_after_env_changes_to_live(monkeypatch):
     assert sb.db.get("user_topic_mastery_audit", []) == []
 
 
-def test_shadow_done_does_not_count_as_live_done(monkeypatch):
+def test_shadow_done_pins_mode_on_resubmit(monkeypatch):
+    """Pinned-mode: a completed shadow mastery job pins the attempt to shadow.
+    A second submit with FF=live must NOT create a new live mastery job — the
+    mode is locked to the original shadow job for this attempt's lifetime.
+    """
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
     sb = _sb()
     attempt_id = _start_generated(sb)
@@ -858,15 +862,17 @@ def test_shadow_done_does_not_count_as_live_done(monkeypatch):
     assert client.post(f"/api/study/mocks/attempts/{attempt_id}/submit").status_code == 200
     assert [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("mastery_flag_state") == "shadow" and j.get("status") == "done"]
 
-    # Upgrade to live for the re-submit; add user to allowlist so the effective flag is live
+    # Attempt to upgrade to live on re-submit — pinned mode must block it.
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
     monkeypatch.setenv("FF_MOCK_MASTERY_LIVE_USER_IDS", USER)
     assert client.post(f"/api/study/mocks/attempts/{attempt_id}/submit").status_code == 200
 
-    assert [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("mastery_flag_state") == "live" and j.get("status") == "done"]
-    flags = {r["flag_state"] for r in sb.db.get("mock_mastery_shadow", []) if r["attempt_id"] == attempt_id}
-    assert {"shadow", "live"}.issubset(flags)
-    assert sb.db.get("user_topic_mastery_audit", [])
+    # Pinned mode: the existing shadow job pins the effective flag to shadow.
+    # No new live mastery job must be created.
+    live_done = [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("mastery_flag_state") == "live"]
+    assert not live_done, "pinned shadow must prevent a live mastery job on re-submit"
+    shadow_done = [j for j in sb.db.get("mock_attempt_jobs", []) if j.get("mastery_flag_state") == "shadow" and j.get("status") == "done"]
+    assert shadow_done, "shadow mastery job must remain done after re-submit"
 
 
 def test_mastery_retry_enqueue_failure_is_observable(monkeypatch):

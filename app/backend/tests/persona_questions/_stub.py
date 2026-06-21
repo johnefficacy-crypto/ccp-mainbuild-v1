@@ -10,6 +10,17 @@ class _Exec:
         self.data = data
 
 
+class _NotProxy:
+    """Proxy returned by ``_Query.not_`` to negate the next chained filter."""
+
+    def __init__(self, query: "_Query"):
+        self._query = query
+
+    def in_(self, key, vals):
+        self._query.filters.append((key, "not_in", list(vals)))
+        return self._query
+
+
 class _Query:
     def __init__(self, name, db):
         self.name = name
@@ -23,6 +34,7 @@ class _Query:
         self._pending_upsert: Any = None
         self._on_conflict: list[str] | None = None
         self._ignore_duplicates = False
+        self.not_: Any = _NotProxy(self)  # q.not_.in_(...) negates the next filter
 
     def select(self, *args, **kwargs):
         return self
@@ -167,6 +179,8 @@ class _Query:
             if op == "lt" and not (cell is not None and cell < val):
                 return False
             if op == "in" and cell not in val:
+                return False
+            if op == "not_in" and cell in val:
                 return False
         return True
 

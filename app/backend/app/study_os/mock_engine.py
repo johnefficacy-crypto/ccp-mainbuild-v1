@@ -823,16 +823,13 @@ def auto_submit_attempt(supabase: Any, attempt_id: str) -> dict:
         submitted_at=submitted_at, event_type=ATTEMPT_AUTO_SUBMITTED,
     )
     schedule_job(supabase, JOB_ANALYTICS_RETRY, attempt_id)
-    # D2: parity with the manual submit path — enqueue mastery_retry so the
-    # sweeper processes mastery after analytics succeeds (D4 also covers this,
-    # but an eager enqueue here means mastery is queued even if analytics
-    # finishes before the next sweep cycle reads the analytics_retry job).
-    # Resolve the effective flag per user so the canary allowlist gates live
-    # writes; attempt["user_id"] is already loaded at the top of this function.
-    from app.study_os.mastery_writer import get_mastery_write_flag, resolve_effective_mastery_flag  # noqa: PLC0415
-    _auto_submit_flag = resolve_effective_mastery_flag(get_mastery_write_flag(), attempt["user_id"])
-    if _auto_submit_flag != "off":
-        enqueue_mastery_retry_required(supabase, attempt_id, _auto_submit_flag)
+    # D2 (revised): do NOT eagerly enqueue mastery_retry here. The
+    # JOB_ANALYTICS_RETRY handler (D4) is the single resolution point for mastery
+    # mode, calling get_or_resolve_pinned_mastery_flag after analytics succeeds.
+    # Eager enqueue here would resolve the flag from the current env before
+    # analytics runs, racing with any FF or allowlist change between auto-submit
+    # and the analytics job, and could create a conflicting live+shadow pair for
+    # the same attempt.
     return {"ok": True, "skipped": False, "submitted_at": submitted_at}
 
 
@@ -1163,6 +1160,42 @@ _JOB_LEASE_SECONDS = 60
 _ACTIVE_JOB_STATUSES = ["pending", "running"]
 
 
+def get_or_resolve_pinned_mastery_flag(sb: Any, attempt_id: str, user_id: str) -> str:
+    """Return the single pinned mastery mode for this attempt.
+
+    - If one mastery_retry job exists (non-cancelled/non-permanently-failed) → return its mode
+    - If both 'live' and 'shadow' jobs exist → log loudly, return 'shadow' (fail closed)
+    - If no mastery job exists → resolve from env + allowlist
+
+    This prevents the race where the global FF or allowlist changes between the
+    synchronous submit and a later analytics_retry / correction-recovery run,
+    causing the same attempt to accumulate BOTH a live and a shadow mastery job.
+    """
+    rows = (
+        sb.table("mock_attempt_jobs")
+        .select("mastery_flag_state")
+        .eq("attempt_id", attempt_id)
+        .eq("job_kind", JOB_MASTERY_RETRY)
+        .not_.in_("status", ["cancelled", "failed_permanent"])
+        .execute()
+        .data
+        or []
+    )
+    modes = {r["mastery_flag_state"] for r in rows if r.get("mastery_flag_state")}
+    if len(modes) == 1:
+        return modes.pop()
+    if len(modes) > 1:
+        logger.error(
+            "MASTERY_MODE_CONFLICT: attempt %s has both %s mastery jobs — failing closed to shadow",
+            attempt_id,
+            modes,
+        )
+        return "shadow"
+    # No existing job — resolve from environment
+    from app.study_os.mastery_writer import get_mastery_write_flag, resolve_effective_mastery_flag  # noqa: PLC0415
+    return resolve_effective_mastery_flag(get_mastery_write_flag(), user_id)
+
+
 def _backoff_seconds(attempts: int) -> int:
     return min(2 ** max(attempts, 1), 300)
 
@@ -1372,12 +1405,13 @@ def _run_job(supabase: Any, job: dict) -> None:
     elif kind == JOB_ANALYTICS_RETRY:
         attempt_analytics.compute_and_persist(supabase, attempt_id)
         # D4: after analytics succeeds, hand off to mastery if FF is not off.
-        # Resolve per-user so the canary allowlist gates live writes: fetch the
-        # attempt owner and downgrade "live" → "shadow" if not in the allowlist.
-        from app.study_os.mastery_writer import get_mastery_write_flag, resolve_effective_mastery_flag  # noqa: PLC0415
+        # Use get_or_resolve_pinned_mastery_flag so the mode is pinned to any
+        # existing mastery_retry job rather than re-resolved from the current env.
+        # This prevents a FF or allowlist change between submit and analytics_retry
+        # from producing conflicting live+shadow jobs for the same attempt.
         _attempt = _fetch_attempt_by_id(supabase, attempt_id)
         _attempt_user_id = (_attempt or {}).get("user_id", "")
-        _analytics_retry_flag = resolve_effective_mastery_flag(get_mastery_write_flag(), _attempt_user_id)
+        _analytics_retry_flag = get_or_resolve_pinned_mastery_flag(supabase, attempt_id, _attempt_user_id)
         if _analytics_retry_flag != "off":
             enqueue_mastery_retry_required(supabase, attempt_id, _analytics_retry_flag)
     elif kind == JOB_MOCK_TESTS_RETRY:
@@ -1411,30 +1445,25 @@ def _recover_corrections_after_mock_tests(supabase: Any, attempt_id: str) -> Non
     the whole job inserts the correction exactly once across serial retries. It
     only drafts at FF=live and adds NO new mock_tests creation path.
 
-    Pinned-mode: we read the ``mastery_flag_state`` from the most-recent
-    mastery_retry job row for this attempt instead of calling
-    ``get_mastery_write_flag()`` directly.  If the operator changes the global
-    FF between submission and this recovery path, the original per-attempt
-    pinned flag is honoured, preventing corrections from being silently skipped
-    when FF is flipped back to shadow after a live run.
+    Pinned-mode: we call ``get_or_resolve_pinned_mastery_flag`` instead of
+    ``get_mastery_write_flag()`` directly.  That function returns the mode from
+    any existing non-cancelled mastery_retry job for this attempt; if the
+    operator changes the global FF between submission and this recovery path, the
+    original per-attempt pinned flag is honoured.  If conflicting modes are
+    detected (MASTERY_MODE_CONFLICT), it returns "shadow" (fail closed), so
+    no live correction drafts are written.
     """
-    from app.study_os.mastery_writer import MasteryWriter, get_mastery_write_flag
+    from app.study_os.mastery_writer import MasteryWriter  # noqa: PLC0415
 
-    # Look up the persisted mastery_flag_state from the job row so we honour
-    # the pinned effective flag rather than the current mutable env.
-    _mastery_job_rows = (
-        supabase.table("mock_attempt_jobs")
-        .select("mastery_flag_state")
-        .eq("job_kind", JOB_MASTERY_RETRY)
-        .eq("attempt_id", attempt_id)
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-        .data
-        or []
-    )
-    _pinned = _mastery_job_rows[0].get("mastery_flag_state") if _mastery_job_rows else None
-    _effective_flag = _pinned if _pinned in {"off", "shadow", "live"} else get_mastery_write_flag()
+    # Use get_or_resolve_pinned_mastery_flag to pin the mode to any existing
+    # mastery_retry job rather than re-resolving from the current env. This
+    # prevents corrections being silently skipped when the operator flips the
+    # global FF back to shadow after a live run. If conflicting modes are
+    # detected (MASTERY_MODE_CONFLICT), the function returns "shadow" (fail
+    # closed), so we skip live correction drafts rather than risk a double-write.
+    _attempt = _fetch_attempt_by_id(supabase, attempt_id)
+    _attempt_user_id = (_attempt or {}).get("user_id", "")
+    _effective_flag = get_or_resolve_pinned_mastery_flag(supabase, attempt_id, _attempt_user_id)
     MasteryWriter(supabase, _effective_flag).redraft_corrections(attempt_id)
 
 
