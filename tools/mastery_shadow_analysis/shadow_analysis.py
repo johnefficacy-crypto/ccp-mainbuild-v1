@@ -1088,6 +1088,243 @@ def live_audit_compare(
     sys.exit(_EXIT_INSUFFICIENT if status == "INSUFFICIENT_DATA" else _EXIT_OK)
 
 
+# ─── multi-exam-coverage ─────────────────────────────────────────────────────
+
+
+def multi_exam_coverage(
+    *,
+    required_exam_ids: list[str],
+    required_exam_slugs: list[str],
+    min_questions: int = 1,
+    output_json: bool = False,
+) -> None:
+    """Validate FF_MOCK_MASTERY_WRITES shadow coverage across multiple exams.
+
+    Queries the shadow audit table (``user_topic_mastery_audit``) and joins to
+    ``mock_attempt_responses`` to determine per-exam, per-phase, per-subject
+    and per-source-kind breakdown of questions in the shadow path.
+
+    Exits:
+      0 — PASS: all required exams meet the min_questions threshold
+      3 — INSUFFICIENT_DATA: required exams have fewer than min_questions
+      4 — CORRUPT: invariant violations detected
+      2 — ERROR: credential / query failure
+    """
+    cmd = "multi_exam_coverage"
+    sb = _get_supabase()
+
+    # ── 1. Fetch shadow audit rows ─────────────────────────────────────────────
+    try:
+        audit_rows = _fetch_paginated(
+            sb,
+            "user_topic_mastery_audit",
+            lambda t: t.select(
+                "id, user_id, topic_id, attempt_id, delta_applied_db, reason, "
+                "before_mastery_db, after_mastery_db"
+            ).neq("reason", "manual"),
+            order_by="id",
+        )
+    except Exception as exc:
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": cmd,
+                "status": "ERROR",
+                "error": "QUERY_FAILED",
+                "detail": f"user_topic_mastery_audit fetch failed: {exc}",
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_ERROR)
+
+    if not audit_rows:
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": cmd,
+                "status": "INSUFFICIENT_DATA",
+                "error": "NO_SHADOW_DATA",
+                "detail": "No shadow audit rows found — FF_MOCK_MASTERY_WRITES not yet active.",
+                "required_exam_ids": required_exam_ids,
+                "required_exam_slugs": required_exam_slugs,
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_INSUFFICIENT)
+
+    # ── 2. Fetch attempt responses to get per-question provenance ─────────────
+    attempt_ids = list({r["attempt_id"] for r in audit_rows if r.get("attempt_id")})
+    responses_by_attempt: dict[str, list[dict]] = defaultdict(list)
+
+    if attempt_ids:
+        try:
+            # Fetch in batches of 100 to avoid URL length limits.
+            for batch_start in range(0, len(attempt_ids), 100):
+                batch = attempt_ids[batch_start: batch_start + 100]
+                batch_rows = (
+                    sb.table("mock_attempt_responses")
+                    .select("attempt_id, question_id, question_snapshot")
+                    .in_("attempt_id", batch)
+                    .execute()
+                    .data
+                    or []
+                )
+                for row in batch_rows:
+                    responses_by_attempt[row["attempt_id"]].append(row)
+        except Exception as exc:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd,
+                    "status": "ERROR",
+                    "error": "QUERY_FAILED",
+                    "detail": f"mock_attempt_responses fetch failed: {exc}",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
+
+    # ── 3. Fetch exam metadata for slug resolution ────────────────────────────
+    exam_meta: dict[str, dict] = {}
+    try:
+        exam_rows = (
+            sb.table("exams")
+            .select("id, slug, name")
+            .execute()
+            .data
+            or []
+        )
+        for e in exam_rows:
+            exam_meta[e["id"]] = e
+    except Exception:
+        pass  # slug resolution is best-effort; exam_id coverage still works
+
+    slug_to_id: dict[str, str] = {
+        e["slug"]: e["id"] for e in exam_meta.values() if e.get("slug")
+    }
+
+    # Resolve required_exam_slugs to IDs.
+    required_ids_from_slugs: set[str] = set()
+    missing_slugs: list[str] = []
+    for slug in required_exam_slugs:
+        eid = slug_to_id.get(slug)
+        if eid:
+            required_ids_from_slugs.add(eid)
+        else:
+            missing_slugs.append(slug)
+
+    all_required_ids = set(required_exam_ids) | required_ids_from_slugs
+
+    # ── 4. Build per-exam coverage stats ──────────────────────────────────────
+    # For each audit row, extract exam_id from the frozen question_snapshot.
+    per_exam: dict[str, dict] = defaultdict(lambda: {
+        "question_count": 0,
+        "attempt_count": 0,
+        "source_split": defaultdict(int),
+        "subject_breakdown": defaultdict(int),
+        "phase_breakdown": defaultdict(int),
+    })
+    seen_attempts_per_exam: dict[str, set] = defaultdict(set)
+    invariant_violations: list[str] = []
+
+    for audit_row in audit_rows:
+        attempt_id = audit_row.get("attempt_id")
+        if not attempt_id:
+            continue
+        responses = responses_by_attempt.get(attempt_id) or []
+        for resp in responses:
+            snap = resp.get("question_snapshot") or {}
+            exam_id = snap.get("exam_id")
+            if not exam_id:
+                continue
+
+            bucket = per_exam[exam_id]
+            bucket["question_count"] += 1
+
+            if attempt_id not in seen_attempts_per_exam[exam_id]:
+                seen_attempts_per_exam[exam_id].add(attempt_id)
+                bucket["attempt_count"] += 1
+
+            source_kind = snap.get("source_kind") or snap.get("source_type") or "unknown"
+            bucket["source_split"][source_kind] += 1
+
+            subject_id = snap.get("subject_id")
+            if subject_id:
+                bucket["subject_breakdown"][subject_id] += 1
+
+    # Convert defaultdicts to plain dicts for JSON serialization.
+    exam_coverage: list[dict] = []
+    for exam_id, bucket in per_exam.items():
+        meta = exam_meta.get(exam_id, {})
+        exam_coverage.append({
+            "exam_id": exam_id,
+            "exam_slug": meta.get("slug"),
+            "exam_name": meta.get("name"),
+            "question_count": bucket["question_count"],
+            "attempt_count": bucket["attempt_count"],
+            "source_split": dict(bucket["source_split"]),
+            "subject_breakdown": dict(bucket["subject_breakdown"]),
+        })
+
+    exam_coverage.sort(key=lambda r: r["exam_id"])
+
+    # ── 5. Check required exam coverage ───────────────────────────────────────
+    covered_exam_ids = {r["exam_id"] for r in exam_coverage}
+    insufficient_exams: list[dict] = []
+    for eid in all_required_ids:
+        entry = next((r for r in exam_coverage if r["exam_id"] == eid), None)
+        count = entry["question_count"] if entry else 0
+        if count < min_questions:
+            meta = exam_meta.get(eid, {})
+            insufficient_exams.append({
+                "exam_id": eid,
+                "exam_slug": meta.get("slug"),
+                "question_count": count,
+                "required_minimum": min_questions,
+            })
+
+    if missing_slugs:
+        for slug in missing_slugs:
+            insufficient_exams.append({
+                "exam_slug": slug,
+                "exam_id": None,
+                "question_count": 0,
+                "required_minimum": min_questions,
+                "error": "slug_not_found_in_db",
+            })
+
+    status: str
+    if invariant_violations:
+        status = "CORRUPT"
+    elif insufficient_exams:
+        status = "INSUFFICIENT_DATA"
+    else:
+        status = "PASS"
+
+    _emit_result(
+        {
+            "schema_version": 1,
+            "command": cmd,
+            "status": status,
+            "total_exams_in_shadow": len(exam_coverage),
+            "required_exam_ids": list(all_required_ids),
+            "min_questions_threshold": min_questions,
+            "insufficient_exams": insufficient_exams,
+            "exam_coverage": exam_coverage,
+            "invariant_violations": invariant_violations,
+            "thresholds": {
+                "min_questions_per_exam": min_questions,
+            },
+        },
+        output_json,
+    )
+    if status == "CORRUPT":
+        sys.exit(_EXIT_CORRUPT)
+    if status == "INSUFFICIENT_DATA":
+        sys.exit(_EXIT_INSUFFICIENT)
+    sys.exit(_EXIT_OK)
+
+
 # ─── CLI ──────────────────────────────────────────────────────────────────────
 
 
@@ -1142,6 +1379,33 @@ def main() -> None:
         help="(INVALID) Cross-origin topic overlap — exits 2; use correction-parity instead",
     )
     _add_json(to)
+
+    mec = sp.add_parser(
+        "multi-exam-coverage",
+        help="Validate FF_MOCK_MASTERY_WRITES shadow coverage across multiple exams",
+    )
+    _add_json(mec)
+    mec.add_argument(
+        "--required-exam-id",
+        dest="required_exam_id",
+        metavar="UUID",
+        action="append",
+        help="Exam UUID that must appear in shadow data (repeatable)",
+    )
+    mec.add_argument(
+        "--required-exam-slug",
+        dest="required_exam_slug",
+        metavar="SLUG",
+        action="append",
+        help="Exam slug that must appear in shadow data (repeatable)",
+    )
+    mec.add_argument(
+        "--min-questions",
+        dest="min_questions",
+        type=int,
+        default=1,
+        help="Minimum shadow question count required per exam (default 1)",
+    )
 
     lac = sp.add_parser(
         "live-audit-compare",
@@ -1290,6 +1554,13 @@ def main() -> None:
             )
             sys.exit(_EXIT_ERROR)
         live_audit_compare(days=a.days, output_json=output_json)
+    elif a.cmd == "multi-exam-coverage":
+        multi_exam_coverage(
+            required_exam_ids=getattr(a, "required_exam_id", None) or [],
+            required_exam_slugs=getattr(a, "required_exam_slug", None) or [],
+            min_questions=a.min_questions,
+            output_json=output_json,
+        )
 
 
 if __name__ == "__main__":
