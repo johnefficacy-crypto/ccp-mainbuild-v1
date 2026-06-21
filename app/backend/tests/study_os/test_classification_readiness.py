@@ -5,7 +5,7 @@ Tests:
   2. MasteryWriter gate: raises MasteryClassificationNotReady + schedules analytics_retry (B)
   3. api/mock_engine submit route: classification not ready → 200, mastery rescheduled (C)
   4. _run_job JOB_ANALYTICS_RETRY → enqueue mastery_retry when FF != off (D4)
-  5. auto_submit_attempt → enqueue mastery_retry when FF != off (D2)
+  5. auto_submit_attempt → enqueue analytics_retry only, mastery deferred (D2 revised)
   6. Idempotency: duplicate mastery_retry not inserted when active job exists
 """
 from __future__ import annotations
@@ -312,10 +312,15 @@ def test_analytics_retry_job_enqueues_mastery_retry_live(monkeypatch):
     assert mastery_jobs[0]["mastery_flag_state"] == "live"
 
 
-# ─── D2: auto_submit_attempt enqueues mastery_retry ───────────────────────────
+# ─── D2 (revised): auto_submit_attempt enqueues analytics_retry only ──────────
 
-def test_auto_submit_enqueues_mastery_retry_when_flag_shadow(monkeypatch):
-    """auto_submit_attempt enqueues mastery_retry when FF=shadow."""
+def test_auto_submit_enqueues_analytics_retry_not_mastery(monkeypatch):
+    """D2 (revised): auto_submit_attempt enqueues analytics_retry only.
+    Mastery mode is deferred to the JOB_ANALYTICS_RETRY handler (D4) so the
+    flag is resolved after analytics succeeds, preventing a race between
+    auto-submit time and any subsequent FF/allowlist change.
+    """
+    from app.study_os.mock_engine import JOB_ANALYTICS_RETRY
     sb, template, _ = _seeded_db()
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "shadow")
 
@@ -325,12 +330,16 @@ def test_auto_submit_enqueues_mastery_retry_when_flag_shadow(monkeypatch):
 
     auto_submit_attempt(sb, attempt_id)
 
+    analytics_jobs = [
+        j for j in sb.db.get("mock_attempt_jobs", [])
+        if j["job_kind"] == JOB_ANALYTICS_RETRY and j["attempt_id"] == attempt_id
+    ]
+    assert analytics_jobs, "analytics_retry job must be enqueued"
     mastery_jobs = [
         j for j in sb.db.get("mock_attempt_jobs", [])
         if j["job_kind"] == JOB_MASTERY_RETRY and j["attempt_id"] == attempt_id
     ]
-    assert len(mastery_jobs) >= 1
-    assert mastery_jobs[0]["mastery_flag_state"] == "shadow"
+    assert not mastery_jobs, "mastery_retry must NOT be enqueued at auto-submit time (D2 revised)"
 
 
 def test_auto_submit_does_not_enqueue_mastery_when_flag_off(monkeypatch):

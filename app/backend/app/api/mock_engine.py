@@ -20,8 +20,6 @@ from app.db.supabase_client import get_supabase_admin
 from app.study_os.mastery_writer import (
     MasteryClassificationNotReady,
     MasteryWriter,
-    get_mastery_write_flag,
-    resolve_effective_mastery_flag,
 )
 from app.study_os.mock_engine import (
     AnswerPersistenceError,
@@ -31,6 +29,7 @@ from app.study_os.mock_engine import (
     SubmitConsistencyError,
     claim_mastery_retry_required,
     complete_mastery_retry_required,
+    get_or_resolve_pinned_mastery_flag,
     mark_mastery_retry_pending_required,
     mastery_retry_done,
     get_attempt,
@@ -176,12 +175,12 @@ async def submit(
         # derivation failure cannot silently suppress the write-back.
         was_submitted = _attempt_status(sb, attempt_id) == "submitted"
         result = submit_attempt(sb, user_id, attempt_id, body.claimed_answered_count)
-        # Resolve the per-user effective flag: a global FF=live value must be
-        # downgraded to shadow for any user not in the live canary allowlist
-        # (FF_MOCK_MASTERY_LIVE_USER_IDS).  Using the raw global flag here would
-        # allow a live canary bypass for non-allowlisted users.
-        requested_flag = get_mastery_write_flag()
-        flag_state = resolve_effective_mastery_flag(requested_flag, user_id)
+        # Resolve the per-user effective flag, pinned to any existing mastery job
+        # so a global FF or allowlist change between submit and a later
+        # analytics_retry cannot produce BOTH a live and a shadow mastery job for
+        # the same attempt. On first submit there is no existing job, so this
+        # also enforces the per-user allowlist (live → shadow for non-listed users).
+        flag_state = get_or_resolve_pinned_mastery_flag(sb, attempt_id, user_id)
         if flag_state != "off" and not (was_submitted and mastery_retry_done(sb, attempt_id, flag_state)):
             try:
                 claimed_job_id = claim_mastery_retry_required(sb, attempt_id, flag_state)

@@ -90,38 +90,39 @@ def _count_mastery_jobs(sb: SBStub) -> list[dict]:
     return [j for j in sb.db["mock_attempt_jobs"] if j.get("job_kind") == JOB_MASTERY_RETRY]
 
 
+def _count_analytics_jobs(sb: SBStub) -> list[dict]:
+    from app.study_os.mock_engine import JOB_ANALYTICS_RETRY
+    return [j for j in sb.db["mock_attempt_jobs"] if j.get("job_kind") == JOB_ANALYTICS_RETRY]
+
+
 class TestAutoSubmitAllowlist:
-    def test_allowlisted_user_enqueues_live_mastery_job(self, monkeypatch):
+    """D2 (revised): auto_submit_attempt enqueues only analytics_retry.
+    Mastery mode is resolved later by the JOB_ANALYTICS_RETRY handler
+    (get_or_resolve_pinned_mastery_flag), so no eager mastery flag
+    resolution happens at auto-submit time regardless of FF or allowlist.
+    """
+
+    def test_auto_submit_enqueues_analytics_retry_not_mastery(self, monkeypatch):
+        """auto_submit_attempt must enqueue analytics_retry, not mastery_retry."""
         monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
         monkeypatch.setenv("FF_MOCK_MASTERY_LIVE_USER_IDS", USER_A)
         from app.study_os import mock_engine as engine
         sb = SBStub(_make_auto_submit_db(USER_A))
         engine.auto_submit_attempt(sb, ATTEMPT)
-        jobs = _count_mastery_jobs(sb)
-        assert jobs, "mastery_retry job must be enqueued for allowlisted user"
-        assert jobs[0]["mastery_flag_state"] == "live"
+        assert _count_analytics_jobs(sb), "analytics_retry job must be enqueued"
+        assert _count_mastery_jobs(sb) == [], "mastery_retry must NOT be enqueued at auto-submit time"
 
-    def test_non_allowlisted_user_enqueues_shadow_mastery_job(self, monkeypatch):
+    def test_auto_submit_no_mastery_job_for_non_allowlisted_user(self, monkeypatch):
+        """D2 fix: non-allowlisted users also get NO eager mastery_retry at auto-submit."""
         monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
         monkeypatch.setenv("FF_MOCK_MASTERY_LIVE_USER_IDS", USER_A)
         from app.study_os import mock_engine as engine
         sb = SBStub(_make_auto_submit_db(USER_B))
         engine.auto_submit_attempt(sb, ATTEMPT)
-        jobs = _count_mastery_jobs(sb)
-        assert jobs, "mastery_retry job must be enqueued (as shadow) for non-allowlisted user"
-        assert jobs[0]["mastery_flag_state"] == "shadow"
+        assert _count_mastery_jobs(sb) == [], "mastery_retry must NOT be enqueued at auto-submit time"
 
-    def test_empty_allowlist_enqueues_shadow_for_any_user(self, monkeypatch):
-        monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
-        monkeypatch.setenv("FF_MOCK_MASTERY_LIVE_USER_IDS", "")
-        from app.study_os import mock_engine as engine
-        sb = SBStub(_make_auto_submit_db(USER_A))
-        engine.auto_submit_attempt(sb, ATTEMPT)
-        jobs = _count_mastery_jobs(sb)
-        assert jobs, "mastery_retry job must be enqueued (as shadow) when allowlist is empty"
-        assert jobs[0]["mastery_flag_state"] == "shadow"
-
-    def test_ff_off_does_not_enqueue_mastery_job(self, monkeypatch):
+    def test_auto_submit_no_mastery_job_when_ff_off(self, monkeypatch):
+        """FF=off: analytics_retry is enqueued; mastery_retry is still deferred."""
         monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "off")
         monkeypatch.delenv("FF_MOCK_MASTERY_LIVE_USER_IDS", raising=False)
         from app.study_os import mock_engine as engine

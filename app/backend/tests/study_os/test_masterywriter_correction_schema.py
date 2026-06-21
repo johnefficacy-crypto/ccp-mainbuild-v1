@@ -37,7 +37,14 @@ def _reset_metrics():
     mw.correction_metrics.clear()
 
 
-def _seed(sb: SBStub, *, with_mock_tests: bool = True, error_type: str | None = "concept_gap", n: int = 3) -> None:
+def _seed(
+    sb: SBStub,
+    *,
+    with_mock_tests: bool = True,
+    error_type: str | None = "concept_gap",
+    n: int = 3,
+    pinned_mastery_flag: str | None = None,
+) -> None:
     sb.db["mock_attempts"] = [{"id": ATTEMPT, "user_id": USER}]
     # These are answered (selected_option_id set) wrong questions: attempted=True
     # so mastery moves. error_type now comes from the classification table, not
@@ -74,6 +81,20 @@ def _seed(sb: SBStub, *, with_mock_tests: bool = True, error_type: str | None = 
             "source_type": "platform_attempt",
         }]
         if with_mock_tests
+        else []
+    )
+    # Seed a pinned mastery_retry job so get_or_resolve_pinned_mastery_flag
+    # returns the specified flag without consulting env/allowlist.
+    from app.study_os.mock_engine import JOB_MASTERY_RETRY
+    sb.db["mock_attempt_jobs"] = (
+        [{
+            "id": "seed-mastery-job",
+            "job_kind": JOB_MASTERY_RETRY,
+            "attempt_id": ATTEMPT,
+            "mastery_flag_state": pinned_mastery_flag,
+            "status": "done",
+        }]
+        if pinned_mastery_flag is not None
         else []
     )
     sb.db.setdefault("mock_correction_tasks", [])
@@ -162,7 +183,9 @@ def test_run_job_retry_hook_recovers_corrections(monkeypatch):
     # AND re-runs correction drafting.
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
     sb = SBStub()
-    _seed(sb, with_mock_tests=True)  # row exists so _retry no-ops; hook still drafts
+    # Seed a pinned live mastery_retry job so get_or_resolve_pinned_mastery_flag
+    # returns "live" without consulting env/allowlist (pinned-mode contract).
+    _seed(sb, with_mock_tests=True, pinned_mastery_flag="live")
     engine._run_job(sb, {"job_kind": engine.JOB_MOCK_TESTS_RETRY, "attempt_id": ATTEMPT})
     assert any(r["mock_test_id"] == MOCK_TEST_ID for r in sb.db["mock_correction_tasks"])
 
@@ -305,11 +328,20 @@ def test_sweeper_recovers_correction_after_transient_failure(monkeypatch):
         ],
         "mock_tests": [],
         "mock_correction_tasks": [],
-        "mock_attempt_jobs": [{
-            "id": "job-1", "job_kind": engine.JOB_MOCK_TESTS_RETRY,
-            "attempt_id": ATTEMPT, "scheduled_for": past, "attempts": 0,
-            "status": "pending", "last_error": None,
-        }],
+        "mock_attempt_jobs": [
+            {
+                "id": "job-1", "job_kind": engine.JOB_MOCK_TESTS_RETRY,
+                "attempt_id": ATTEMPT, "scheduled_for": past, "attempts": 0,
+                "status": "pending", "last_error": None,
+            },
+            # Pinned mastery_retry job with status=done so get_or_resolve_pinned_mastery_flag
+            # returns "live" without consulting env/allowlist (pinned-mode contract).
+            {
+                "id": "job-m", "job_kind": engine.JOB_MASTERY_RETRY,
+                "attempt_id": ATTEMPT, "mastery_flag_state": "live",
+                "status": "done",
+            },
+        ],
         "user_topic_mastery": [], "user_topic_mastery_audit": [],
         "user_topic_error_patterns": [], "mock_mastery_shadow": [],
     })
