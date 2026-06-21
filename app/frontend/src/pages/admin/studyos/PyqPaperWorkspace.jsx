@@ -22,6 +22,8 @@ import { api } from "../../../lib/api";
 const CMS_BASE = "/api/admin/exam-intelligence-cms";
 const REVIEW_BASE = "/api/admin/exam-intelligence";
 
+const PAGE_SIZE = 50;
+
 const STATUS_COLORS = {
   pending: "bg-amber-100 text-amber-800",
   verified: "bg-emerald-100 text-emerald-800",
@@ -39,12 +41,6 @@ const QUESTION_TYPES = ["mcq", "numerical", "descriptive", "caselet", "matching"
 const DIFFICULTY_OPTIONS = ["easy", "medium", "hard", "very_hard"];
 const REJECT_REASONS = ["incomplete", "duplicate", "out_of_scope", "illegible", "other"];
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F"];
-
-const SORT_OPTIONS = [
-  { value: "question_number", label: "Q# ascending" },
-  { value: "confidence_asc", label: "Confidence (low first)" },
-  { value: "status", label: "Pending first" },
-];
 
 const AUDIT_REASON = "workspace reviewer action";
 
@@ -65,27 +61,6 @@ function confidenceFromField(confidenceByField) {
   return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100);
 }
 
-function sortQuestions(questions, sortBy) {
-  const cloned = [...questions];
-  if (sortBy === "question_number") {
-    return cloned.sort((a, b) => (a.question_number ?? 9999) - (b.question_number ?? 9999));
-  }
-  if (sortBy === "confidence_asc") {
-    return cloned.sort((a, b) => {
-      const ca = confidenceFromField(a.confidence_by_field) ?? 101;
-      const cb = confidenceFromField(b.confidence_by_field) ?? 101;
-      return ca - cb;
-    });
-  }
-  if (sortBy === "status") {
-    const order = { pending: 0, needs_correction: 1, verified: 2, rejected: 3 };
-    return cloned.sort(
-      (a, b) => (order[a.reviewer_status] ?? 9) - (order[b.reviewer_status] ?? 9),
-    );
-  }
-  return cloned;
-}
-
 // ── Left pane ─────────────────────────────────────────────────────────────────
 
 function QuestionList({
@@ -93,23 +68,31 @@ function QuestionList({
   selectedId,
   onSelect,
   progress,
-  sortBy,
-  setSortBy,
   statusFilter,
   setStatusFilter,
   sourceKindFilter,
   setSourceKindFilter,
   onAddMissing,
+  offset,
+  total,
+  pageSize,
+  onPageChange,
 }) {
   const missingNumbers = progress?.missing || [];
 
+  // source_kind is client-side only (not supported by server filter).
+  // reviewer_status is handled server-side; questions already filtered.
   const filtered = questions.filter((q) => {
-    if (statusFilter !== "all" && q.reviewer_status !== statusFilter) return false;
     if (sourceKindFilter !== "all" && (q.source_kind || "manual") !== sourceKindFilter) return false;
     return true;
   });
 
-  const sorted = sortQuestions(filtered, sortBy);
+  const pageStart = offset + 1;
+  const pageEnd = offset + questions.length;
+  const canPrev = offset > 0;
+  const canNext = total !== null
+    ? offset + pageSize < total
+    : questions.length === pageSize;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -129,7 +112,7 @@ function QuestionList({
         </div>
       )}
 
-      {/* Filters */}
+      {/* Filters + pagination */}
       <div className="p-2 border-b border-clay-200 space-y-1.5 text-[11px]">
         <div className="flex gap-1.5 flex-wrap">
           <select
@@ -150,22 +133,45 @@ function QuestionList({
               <option key={k} value={k}>{k}</option>
             ))}
           </select>
-          <select
-            className="rounded border border-clay-200 px-1.5 py-0.5 text-[11px] bg-white"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
         </div>
-        <p className="text-clay-500">{sorted.length} shown</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-clay-500" data-testid="question-list-count">
+            {filtered.length} shown
+            {total !== null && (
+              <span data-testid="question-list-total"> · {total} total</span>
+            )}
+          </p>
+          <div className="flex items-center gap-1" data-testid="pagination-controls">
+            <button
+              type="button"
+              className="btn btn-ghost p-0.5 disabled:opacity-40"
+              onClick={() => onPageChange(Math.max(0, offset - pageSize))}
+              disabled={!canPrev}
+              aria-label="Previous page"
+              data-testid="pagination-prev"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-[10px] text-clay-500 min-w-[50px] text-center" data-testid="pagination-range">
+              {questions.length > 0 ? `${pageStart}–${pageEnd}` : "0"}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost p-0.5 disabled:opacity-40"
+              onClick={() => onPageChange(offset + pageSize)}
+              disabled={!canNext}
+              aria-label="Next page"
+              data-testid="pagination-next"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Question rows */}
       <div className="overflow-y-auto flex-1">
-        {sorted.map((q) => {
+        {filtered.map((q) => {
           const conf = confidenceFromField(q.confidence_by_field);
           const isSelected = q.id === selectedId;
           return (
@@ -201,14 +207,14 @@ function QuestionList({
                 {q.source_kind && (
                   <Badge
                     label={q.source_kind}
-                    colorClass={SOURCE_KIND_COLORS[q.source_kind] || "bg-gray-100 text-gray-600"}
+                    colorClass={SOURCE_KIND_COLORS[q.source_kind] || "bg-gray-100 text-sky-700"}
                   />
                 )}
               </div>
             </button>
           );
         })}
-        {sorted.length === 0 && (
+        {filtered.length === 0 && (
           <p className="p-4 text-[12px] text-muted-foreground">No questions match the filters.</p>
         )}
       </div>
@@ -1102,9 +1108,12 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
 
   const [progress, setProgress] = useState(null);
 
-  const [sortBy, setSortBy] = useState("question_number");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceKindFilter, setSourceKindFilter] = useState("all");
+
+  // Pagination state
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(null);
 
   const [pdfDocumentId, setPdfDocumentId] = useState(null);
   const [pdfPage, setPdfPage] = useState(null);
@@ -1124,17 +1133,27 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     }
   }, [pyq_paper_id]);
 
+  // Returns the fetched items so callers can act on them without waiting for
+  // the async state update (setQuestions is enqueued, not synchronous).
   const loadQuestions = useCallback(async () => {
     setLoadError("");
     try {
-      const res = await api.get(
-        `${CMS_BASE}/pyq-questions?pyq_paper_id=${encodeURIComponent(pyq_paper_id)}&limit=200`,
-      );
-      setQuestions(res.items || []);
+      const params = new URLSearchParams({
+        pyq_paper_id: pyq_paper_id,
+        limit: String(PAGE_SIZE),
+        offset: String(offset),
+      });
+      if (statusFilter !== "all") params.set("reviewer_status", statusFilter);
+      const res = await api.get(`${CMS_BASE}/pyq-questions?${params}`);
+      const items = res.items || [];
+      setQuestions(items);
+      setTotal(res.total ?? null);
+      return items;
     } catch (e) {
       setLoadError(e?.message || "Could not load questions");
+      return [];
     }
-  }, [pyq_paper_id]);
+  }, [pyq_paper_id, offset, statusFilter]);
 
   const loadProgress = useCallback(async () => {
     try {
@@ -1162,12 +1181,31 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     }
   }, []);
 
+  // Reload when paper changes (initial load) or when offset/statusFilter changes
+  // (loadQuestions closes over offset + statusFilter; loadPaper/loadProgress are
+  // stable unless pyq_paper_id changes, so extra fetches of paper/progress on
+  // pagination are intentional — progress reflects live server counts).
   useEffect(() => {
     setLoading(true);
     Promise.all([loadPaper(), loadQuestions(), loadProgress()]).finally(() =>
       setLoading(false),
     );
   }, [loadPaper, loadQuestions, loadProgress]);
+
+  // ── Filter handlers — reset offset so results are correct ───────────────
+
+  function handleStatusFilterChange(value) {
+    setStatusFilter(value);
+    setOffset(0);
+  }
+
+  // ── Pagination ───────────────────────────────────────────────────────────
+
+  function handlePageChange(newOffset) {
+    setOffset(Math.max(0, newOffset));
+    setSelectedQuestion(null);
+    setSelectedOptions([]);
+  }
 
   // ── Question selection ───────────────────────────────────────────────────
 
@@ -1181,17 +1219,11 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   }
 
   function navigateQuestion(delta) {
-    const sorted = sortQuestions(
-      questions.filter((q) => {
-        if (statusFilter !== "all" && q.reviewer_status !== statusFilter) return false;
-        if (sourceKindFilter !== "all" && (q.source_kind || "manual") !== sourceKindFilter)
-          return false;
-        return true;
-      }),
-      sortBy,
+    const visible = questions.filter((q) =>
+      sourceKindFilter === "all" || (q.source_kind || "manual") === sourceKindFilter,
     );
-    const idx = sorted.findIndex((q) => q.id === selectedQuestion?.id);
-    const next = sorted[idx + delta];
+    const idx = visible.findIndex((q) => q.id === selectedQuestion?.id);
+    const next = visible[idx + delta];
     if (next) selectQuestion(next);
   }
 
@@ -1218,21 +1250,19 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // ── After-save refresh ───────────────────────────────────────────────────
 
   async function handleSaved() {
-    await loadQuestions();
-    await loadProgress();
-    await loadOptions(selectedQuestion?.id);
+    const [items] = await Promise.all([
+      loadQuestions(),
+      loadProgress(),
+      loadOptions(selectedQuestion?.id),
+    ]);
     if (selectedQuestion) {
-      const refreshed = await api
-        .get(
-          `${CMS_BASE}/pyq-questions?pyq_paper_id=${encodeURIComponent(pyq_paper_id)}&limit=200`,
-        )
-        .then((r) => (r.items || []).find((q) => q.id === selectedQuestion.id))
-        .catch(() => null);
+      const refreshed = items.find((q) => q.id === selectedQuestion.id) || null;
       if (refreshed) setSelectedQuestion(refreshed);
     }
   }
 
-  function handleStatusChange(questionId, nextStatus) {
+  // Refetch after a review status change and clamp to prev page if now empty.
+  async function handleStatusChange(questionId, nextStatus) {
     setQuestions((prev) =>
       prev.map((q) =>
         q.id === questionId ? { ...q, reviewer_status: nextStatus } : q,
@@ -1240,6 +1270,10 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     );
     if (selectedQuestion?.id === questionId) {
       setSelectedQuestion((p) => p && { ...p, reviewer_status: nextStatus });
+    }
+    const items = await loadQuestions();
+    if (items.length === 0 && offset > 0) {
+      setOffset(Math.max(0, offset - PAGE_SIZE));
     }
     loadProgress();
   }
@@ -1256,8 +1290,12 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
 
   async function handleCreatedQuestion(q) {
     setShowAddMissing(false);
-    await loadQuestions();
     await loadProgress();
+    if (offset === 0) {
+      await loadQuestions();
+    } else {
+      setOffset(0);  // effect triggers loadQuestions(offset=0)
+    }
     selectQuestion(q);
   }
 
@@ -1273,7 +1311,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
         .join(" · ")
     : pyq_paper_id;
 
-  if (loading) {
+  if (loading && !paper) {
     return (
       <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">
         Loading workspace…
@@ -1337,13 +1375,15 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
             selectedId={selectedQuestion?.id}
             onSelect={selectQuestion}
             progress={progress}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
             statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
+            setStatusFilter={handleStatusFilterChange}
             sourceKindFilter={sourceKindFilter}
             setSourceKindFilter={setSourceKindFilter}
             onAddMissing={handleAddMissing}
+            offset={offset}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={handlePageChange}
           />
         </div>
 
