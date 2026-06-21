@@ -136,9 +136,20 @@ def _check_question_eligibility(
     if len(verified_options) < 2:
         return False, f"too_few_verified_options:{len(verified_options)}"
 
+    empty_text = [
+        o for o in verified_options
+        if not (o.get("option_text") or "").strip()
+    ]
+    if empty_text:
+        return False, f"empty_verified_option_text:{len(empty_text)}"
+
     correct_options = [o for o in verified_options if o.get("is_correct")]
     if len(correct_options) != 1:
         return False, f"not_exactly_one_correct:{len(correct_options)}"
+
+    correct_id = question.get("correct_option_id")
+    if correct_id is not None and correct_options[0].get("id") != correct_id:
+        return False, f"correct_option_id_mismatch:{correct_id}"
 
     verified_primary = [
         t for t in primary_tags
@@ -277,24 +288,18 @@ def sync_paper_projection(
 
     for q in questions:
         qid = q["id"]
-        try:
-            rpc_result = (
-                sb.rpc(
-                    "project_pyq_question_to_mock_bank",
-                    {
-                        "p_pyq_question_id": qid,
-                        "p_actor_id": actor_id,
-                        "p_audit_reason": audit_reason,
-                    },
-                )
-                .execute()
-                .data
+        rpc_result = (
+            sb.rpc(
+                "project_pyq_question_to_mock_bank",
+                {
+                    "p_pyq_question_id": qid,
+                    "p_actor_id": actor_id,
+                    "p_audit_reason": audit_reason,
+                },
             )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("projection RPC error question=%s: %s", qid, exc)
-            outcome_counts["error"] += 1
-            results.append({"question_id": qid, "outcome": "error", "detail": str(exc)})
-            continue
+            .execute()
+            .data
+        )
 
         # RPC returns a JSONB record or list-of-one
         result_data: dict = {}

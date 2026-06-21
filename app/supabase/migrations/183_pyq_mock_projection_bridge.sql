@@ -24,6 +24,7 @@
 --   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_t_del ON pyq_question_topic_tags;
 --   DROP TRIGGER IF EXISTS trg_invalidate_pyq_projection_t_ins ON pyq_question_topic_tags;
 --   DROP FUNCTION IF EXISTS public.fn_invalidate_pyq_projection();
+--   DROP FUNCTION IF EXISTS public.fn_invalidate_projection_for_question(uuid);
 --   DROP FUNCTION IF EXISTS public.project_pyq_question_to_mock_bank(uuid,uuid,text);
 --   ALTER TABLE public.mock_question_bank
 --     DROP COLUMN IF EXISTS pyq_question_id,
@@ -204,11 +205,12 @@ begin
       v_topic      record;     -- topic row (for subject_id)
 
       -- Derived values
-      v_content_hash   text;
-      v_correct_count  integer;
-      v_option_count   integer;
-      v_verified_opt_count integer;
-      v_primary_tag_count  integer;
+      v_content_hash        text;
+      v_correct_count       integer;
+      v_option_count        integer;
+      v_verified_opt_count  integer;
+      v_empty_opt_count     integer;
+      v_primary_tag_count   integer;
 
       -- Projection identity
       v_projection record;
@@ -299,40 +301,63 @@ begin
           );
       end if;
 
-      -- (e) Options: count verified + exactly one correct
+      -- (e) Options: verified count ≥ 2; no empty verified text; exactly one
+      --     verified option is correct; correct_option_id (if set) must agree.
       select
-          count(*)                                        as total,
-          count(*) filter (where reviewer_status = 'verified') as verified_count,
-          count(*) filter (where is_correct = true)      as correct_count
-      into v_option_count, v_verified_opt_count, v_correct_count
+          count(*)                                                             as total,
+          count(*) filter (where reviewer_status = 'verified')                as verified_count,
+          count(*) filter (where reviewer_status = 'verified' and is_correct)  as correct_verified_count,
+          count(*) filter (
+              where reviewer_status = 'verified'
+                and coalesce(trim(option_text), '') = ''
+          )                                                                    as empty_text_count
+      into v_option_count, v_verified_opt_count, v_correct_count, v_empty_opt_count
       from public.pyq_options
       where question_id = p_pyq_question_id;
 
-      if v_option_count < 2 then
+      if v_verified_opt_count < 2 then
           return jsonb_build_object(
-              'outcome',          'blocked',
-              'reason',           'insufficient_options',
-              'option_count',     v_option_count,
-              'pyq_question_id',  p_pyq_question_id
+              'outcome',               'blocked',
+              'reason',                'insufficient_verified_options',
+              'verified_option_count', v_verified_opt_count,
+              'pyq_question_id',       p_pyq_question_id
           );
       end if;
 
-      if v_verified_opt_count < 2 then
+      if v_empty_opt_count > 0 then
           return jsonb_build_object(
-              'outcome',              'blocked',
-              'reason',               'insufficient_verified_options',
-              'verified_option_count', v_verified_opt_count,
-              'pyq_question_id',      p_pyq_question_id
+              'outcome',          'blocked',
+              'reason',           'empty_verified_option_text',
+              'empty_opt_count',  v_empty_opt_count,
+              'pyq_question_id',  p_pyq_question_id
           );
       end if;
 
       if v_correct_count != 1 then
           return jsonb_build_object(
               'outcome',          'blocked',
-              'reason',           'not_exactly_one_correct_option',
+              'reason',           'not_exactly_one_verified_correct_option',
               'correct_count',    v_correct_count,
               'pyq_question_id',  p_pyq_question_id
           );
+      end if;
+
+      -- Correct_option_id pointer must agree with the verified correct option.
+      if v_q.pyq_correct_option_id is not null then
+          if not exists (
+              select 1 from public.pyq_options
+              where question_id     = p_pyq_question_id
+                and reviewer_status = 'verified'
+                and is_correct      = true
+                and id              = v_q.pyq_correct_option_id
+          ) then
+              return jsonb_build_object(
+                  'outcome',           'blocked',
+                  'reason',            'correct_option_id_mismatch',
+                  'stated_correct_id', v_q.pyq_correct_option_id,
+                  'pyq_question_id',   p_pyq_question_id
+              );
+          end if;
       end if;
 
       -- (f) Exactly one verified primary topic tag
@@ -734,12 +759,7 @@ begin
 
   exception
       when others then
-          return jsonb_build_object(
-              'outcome',         'error',
-              'error',           SQLERRM,
-              'sqlstate',        SQLSTATE,
-              'pyq_question_id', p_pyq_question_id
-          );
+          raise;
   end;
   $fn$
   $ddl$;
@@ -754,6 +774,30 @@ begin
   -- Selector guard (mock_blueprint_selection.py) additionally excludes
   -- mock_question_bank rows whose pyq_question_id has no active projection.
 
+  -- Shared helper: atomically mark one PYQ question's projection stale and
+  -- downgrade the corresponding mock_question_bank row to draft so it falls
+  -- out of every selector pool. Called from all trigger branches (fail-closed).
+  execute $ddl$
+  create or replace function public.fn_invalidate_projection_for_question(p_qid uuid)
+  returns void
+  language plpgsql
+  security definer
+  set search_path = public
+  as $fn$
+  begin
+      update public.pyq_mock_question_projections
+      set sync_status = 'stale', updated_at = now()
+      where pyq_question_id = p_qid
+        and sync_status = 'active';
+
+      update public.mock_question_bank
+      set reviewer_status = 'draft', updated_at = now()
+      where pyq_question_id = p_qid
+        and reviewer_status in ('verified', 'published', 'live');
+  end;
+  $fn$
+  $ddl$;
+
   execute $ddl$
   create or replace function public.fn_invalidate_pyq_projection()
   returns trigger
@@ -764,109 +808,74 @@ begin
   declare
       v_qid uuid;
   begin
-      -- Determine the affected pyq_question_id
       if TG_TABLE_NAME = 'pyq_questions' then
-          -- Invalidate when question leaves verified state
+          -- Invalidate when question leaves verified state.
           if TG_OP = 'UPDATE'
              and OLD.reviewer_status = 'verified'
              and NEW.reviewer_status != 'verified'
           then
-              update public.pyq_mock_question_projections
-              set sync_status = 'stale', updated_at = now()
-              where pyq_question_id = NEW.id
-                and sync_status = 'active';
-
-              -- Downgrade mock question to non-selectable
-              update public.mock_question_bank
-              set reviewer_status = 'draft', updated_at = now()
-              where pyq_question_id = NEW.id
-                and reviewer_status in ('verified', 'published', 'live');
+              perform public.fn_invalidate_projection_for_question(NEW.id);
           end if;
           return NEW;
 
       elsif TG_TABLE_NAME = 'pyq_papers' then
-          -- Invalidate all projections for questions in this paper
-          if TG_OP = 'UPDATE'
-             and OLD.trust_status = 'verified'
-             and NEW.trust_status != 'verified'
-          then
-              update public.pyq_mock_question_projections proj
-              set sync_status = 'stale', updated_at = now()
-              from public.pyq_questions q
-              where q.pyq_paper_id = NEW.id
-                and proj.pyq_question_id = q.id
-                and proj.sync_status = 'active';
-
-              update public.mock_question_bank m
-              set reviewer_status = 'draft', updated_at = now()
-              from public.pyq_questions q
-              where q.pyq_paper_id = NEW.id
-                and m.pyq_question_id = q.id
-                and m.reviewer_status in ('verified', 'published', 'live');
+          -- Invalidate all questions in the paper on trust_status OR exam_phase_id change.
+          if TG_OP = 'UPDATE' and (
+              (OLD.trust_status = 'verified' and NEW.trust_status != 'verified')
+              or (OLD.exam_phase_id is distinct from NEW.exam_phase_id)
+          ) then
+              for v_qid in
+                  select id from public.pyq_questions where pyq_paper_id = NEW.id
+              loop
+                  perform public.fn_invalidate_projection_for_question(v_qid);
+              end loop;
           end if;
           return NEW;
 
       elsif TG_TABLE_NAME = 'pyq_options' then
-          -- Any meaningful option change (or a new option) invalidates the projection.
+          -- Any material option change (INSERT/DELETE or UPDATE on key fields)
+          -- invalidates the projection. Uses shared helper which also downgrades
+          -- mock_question_bank so the question falls out of the selector pool.
           if TG_OP = 'DELETE' then
-              v_qid := OLD.question_id;
-          elsif TG_OP = 'INSERT' then
-              -- Any new option is a material change.
-              v_qid := NEW.question_id;
-          else
-              -- UPDATE: only invalidate on material changes.
-              v_qid := NEW.question_id;
-              if OLD.is_correct = NEW.is_correct
-                 and (OLD.option_text is not distinct from NEW.option_text)
-                 and (OLD.reviewer_status is not distinct from NEW.reviewer_status)
-              then
-                  return NEW;
-              end if;
-          end if;
-
-          update public.pyq_mock_question_projections
-          set sync_status = 'stale', updated_at = now()
-          where pyq_question_id = v_qid
-            and sync_status = 'active';
-
-          if TG_OP = 'DELETE' then
+              perform public.fn_invalidate_projection_for_question(OLD.question_id);
               return OLD;
+          end if;
+          if TG_OP = 'INSERT' then
+              perform public.fn_invalidate_projection_for_question(NEW.question_id);
+              return NEW;
+          end if;
+          -- UPDATE: only invalidate on material field changes.
+          if OLD.is_correct is distinct from NEW.is_correct
+             or (OLD.option_text is distinct from NEW.option_text)
+             or (OLD.reviewer_status is distinct from NEW.reviewer_status)
+          then
+              perform public.fn_invalidate_projection_for_question(NEW.question_id);
           end if;
           return NEW;
 
       elsif TG_TABLE_NAME = 'pyq_question_topic_tags' then
-          -- Primary tag changes (including new primary tags) invalidate the projection.
           if TG_OP = 'DELETE' then
               if OLD.tag_role = 'primary' then
-                  update public.pyq_mock_question_projections
-                  set sync_status = 'stale', updated_at = now()
-                  where pyq_question_id = OLD.question_id
-                    and sync_status = 'active';
+                  perform public.fn_invalidate_projection_for_question(OLD.question_id);
               end if;
               return OLD;
-          elsif TG_OP = 'INSERT' then
+          end if;
+          if TG_OP = 'INSERT' then
               -- Inserting a primary tag could push the verified-primary count above 1.
               if NEW.tag_role = 'primary' then
-                  update public.pyq_mock_question_projections
-                  set sync_status = 'stale', updated_at = now()
-                  where pyq_question_id = NEW.question_id
-                    and sync_status = 'active';
-              end if;
-              return NEW;
-          else
-              -- UPDATE
-              if NEW.tag_role = 'primary'
-                 or (OLD.tag_role = 'primary' and NEW.tag_role != 'primary')
-                 or (OLD.reviewer_status is distinct from NEW.reviewer_status
-                     and (OLD.tag_role = 'primary' or NEW.tag_role = 'primary'))
-              then
-                  update public.pyq_mock_question_projections
-                  set sync_status = 'stale', updated_at = now()
-                  where pyq_question_id = NEW.question_id
-                    and sync_status = 'active';
+                  perform public.fn_invalidate_projection_for_question(NEW.question_id);
               end if;
               return NEW;
           end if;
+          -- UPDATE
+          if NEW.tag_role = 'primary'
+             or (OLD.tag_role = 'primary' and NEW.tag_role != 'primary')
+             or (OLD.reviewer_status is distinct from NEW.reviewer_status
+                 and (OLD.tag_role = 'primary' or NEW.tag_role = 'primary'))
+          then
+              perform public.fn_invalidate_projection_for_question(NEW.question_id);
+          end if;
+          return NEW;
       end if;
 
       return coalesce(NEW, OLD);
@@ -944,6 +953,14 @@ begin
 
   execute 'revoke all on function public.fn_invalidate_pyq_projection() from public';
   execute 'grant execute on function public.fn_invalidate_pyq_projection() to service_role';
+
+  execute 'revoke all on function public.fn_invalidate_projection_for_question(uuid) from public';
+  execute 'grant execute on function public.fn_invalidate_projection_for_question(uuid) to service_role';
+
+  -- Revoke direct DML on new tables from public/anon/authenticated.
+  -- All projection writes must go through the SECURITY DEFINER RPC only.
+  execute 'revoke insert, update, delete on public.pyq_mock_question_projections from public, anon, authenticated';
+  execute 'revoke insert, update, delete on public.mock_source_mix_policies from public, anon, authenticated';
 
   perform pg_notify('pgrst', 'reload schema');
 end;

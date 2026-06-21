@@ -157,7 +157,7 @@ class CommitImportIn(BaseModel):
 
 
 class ProjectionSyncIn(BaseModel):
-    audit_reason: str = "admin_sync"
+    audit_reason: str = Field(..., min_length=8, max_length=500)
     question_ids: list[str] | None = None
 
 
@@ -461,14 +461,14 @@ def projection_preview(
 @router.post("/pyq-papers/{paper_id}/projection/sync", status_code=200)
 def projection_sync(
     paper_id: str,
-    body: ProjectionSyncIn = ProjectionSyncIn(),
+    body: ProjectionSyncIn,
     actor: dict = Depends(require_publisher),
 ):
     """[publisher] Atomically project eligible PYQ questions into mock_question_bank."""
     paper_id = _validate_uuid_param(paper_id, "paper_id")
     actor_id = actor.get("id")
     try:
-        return proj_svc.sync_paper_projection(
+        result = proj_svc.sync_paper_projection(
             _sb(), paper_id, actor_id,
             audit_reason=body.audit_reason,
             question_ids=body.question_ids,
@@ -477,6 +477,17 @@ def projection_sync(
         raise HTTPException(404, detail=str(exc))
     except Exception as exc:
         _handle(exc, "projection_sync")
+
+    # Surface fingerprint conflicts from RPC as 409 (not silent outcome counts).
+    conflicts = [q for q in result.get("questions", []) if q.get("outcome") == "conflict"]
+    if conflicts:
+        raise HTTPException(409, detail={
+            "error": "fingerprint_conflict",
+            "question_id": conflicts[0].get("question_id"),
+            "detail": conflicts[0].get("detail", {}),
+        })
+
+    return result
 
 
 @router.get("/pyq-papers/{paper_id}/projection/status")

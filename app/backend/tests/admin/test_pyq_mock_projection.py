@@ -201,6 +201,49 @@ class TestCheckEligibility:
         assert eligible is False
         assert "not_exactly_one_correct" in reason
 
+    def test_unverified_correct_blocks_eligibility(self):
+        """Unverified option with is_correct=True must not count; no verified correct → blocked."""
+        opts = [
+            {"id": "opt-0", "question_id": Q_ID, "option_text": "A", "is_correct": False, "reviewer_status": "verified"},
+            {"id": "opt-1", "question_id": Q_ID, "option_text": "B", "is_correct": False, "reviewer_status": "verified"},
+            {"id": "opt-2", "question_id": Q_ID, "option_text": "C", "is_correct": True,  "reviewer_status": "draft"},
+        ]
+        eligible, reason = self._eligible_call(options=opts)
+        assert eligible is False
+        assert "not_exactly_one_correct" in reason
+
+    def test_empty_verified_option_text_blocked(self):
+        """Verified option with blank text must block projection."""
+        opts = [
+            {"id": "opt-0", "question_id": Q_ID, "option_text": "  ", "is_correct": True,  "reviewer_status": "verified"},
+            {"id": "opt-1", "question_id": Q_ID, "option_text": "B",  "is_correct": False, "reviewer_status": "verified"},
+        ]
+        eligible, reason = self._eligible_call(options=opts)
+        assert eligible is False
+        assert "empty_verified_option_text" in reason
+
+    def test_correct_option_id_mismatch_blocked(self):
+        """correct_option_id pointing to a non-correct verified option must block."""
+        opts = _options(correct_idx=0)  # opt-0 is the verified correct
+        q = {**_question(), "correct_option_id": "opt-3"}  # pointer disagrees
+        eligible, reason = self._eligible_call(question=q, options=opts)
+        assert eligible is False
+        assert "correct_option_id_mismatch" in reason
+
+    def test_correct_option_id_matching_passes(self):
+        """correct_option_id that matches the verified correct option must pass."""
+        opts = _options(correct_idx=0)  # opt-0 is correct
+        q = {**_question(), "correct_option_id": "opt-0"}
+        eligible, reason = self._eligible_call(question=q, options=opts)
+        assert eligible is True
+
+    def test_correct_option_id_null_skips_check(self):
+        """correct_option_id = None must not trigger the mismatch check."""
+        opts = _options(correct_idx=1)
+        q = {**_question(), "correct_option_id": None}
+        eligible, reason = self._eligible_call(question=q, options=opts)
+        assert eligible is True
+
     def test_no_primary_tag(self):
         eligible, reason = self._eligible_call(tags=[])
         assert eligible is False
@@ -338,7 +381,8 @@ class TestSyncPaperProjection:
         assert calls[0]["p_pyq_question_id"] == Q_ID
         assert calls[0]["p_actor_id"] == ACTOR_ID
 
-    def test_rpc_error_counted(self):
+    def test_rpc_exception_propagates(self):
+        """Internal RPC errors must propagate as exceptions, not silently return outcome='error'."""
         sb = _seed_sb()
         original_rpc = sb.rpc
 
@@ -351,9 +395,8 @@ class TestSyncPaperProjection:
             return original_rpc(name, params)
 
         sb.rpc = fail_rpc
-        result = sync_paper_projection(sb, PAPER_ID, ACTOR_ID)
-        assert result["outcomes"]["error"] == 1
-        assert result["questions"][0]["outcome"] == "error"
+        with pytest.raises(RuntimeError):
+            sync_paper_projection(sb, PAPER_ID, ACTOR_ID)
 
     def test_unknown_question_id_rejected(self):
         sb = _seed_sb()
@@ -457,8 +500,11 @@ class TestProjectionAPIEndpoints:
 
     def test_sync_requires_publisher(self):
         sb = _seed_sb()
-        client = _make_app(sb, _author_actor())  # only author
-        resp = client.post(f"/api/admin/mocks/pyq-papers/{PAPER_ID}/projection/sync")
+        client = _make_app(sb, _author_actor())  # only author, not publisher
+        resp = client.post(
+            f"/api/admin/mocks/pyq-papers/{PAPER_ID}/projection/sync",
+            json={"audit_reason": "operator_test_sync"},
+        )
         assert resp.status_code == 403
 
     def test_sync_returns_200_for_publisher(self):
@@ -477,10 +523,57 @@ class TestProjectionAPIEndpoints:
 
         sb.rpc = ok_rpc
         client = _make_app(sb, _publisher_actor())
-        resp = client.post(f"/api/admin/mocks/pyq-papers/{PAPER_ID}/projection/sync")
+        resp = client.post(
+            f"/api/admin/mocks/pyq-papers/{PAPER_ID}/projection/sync",
+            json={"audit_reason": "operator_manual_sync"},
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["attempted"] == 1
+
+    def test_sync_audit_reason_required(self):
+        """POST /sync without body must return 422 (audit_reason is required)."""
+        sb = _seed_sb()
+        client = _make_app(sb, _publisher_actor())
+        resp = client.post(f"/api/admin/mocks/pyq-papers/{PAPER_ID}/projection/sync")
+        assert resp.status_code == 422
+
+    def test_sync_audit_reason_too_short(self):
+        """audit_reason shorter than 8 chars must return 422."""
+        sb = _seed_sb()
+        client = _make_app(sb, _publisher_actor())
+        resp = client.post(
+            f"/api/admin/mocks/pyq-papers/{PAPER_ID}/projection/sync",
+            json={"audit_reason": "short"},
+        )
+        assert resp.status_code == 422
+
+    def test_sync_conflict_outcome_returns_409(self):
+        """RPC returning outcome='conflict' must surface as 409 from the endpoint."""
+        sb = _seed_sb()
+        original_rpc = sb.rpc
+
+        def conflict_rpc(name, params=None):
+            if name == "project_pyq_question_to_mock_bank":
+                class _R:
+                    def execute(self):
+                        class _E:
+                            data = [{
+                                "outcome": "conflict",
+                                "mock_question_id": "mock-1",
+                                "conflicting_pyq_id": "other-pyq",
+                            }]
+                        return _E()
+                return _R()
+            return original_rpc(name, params)
+
+        sb.rpc = conflict_rpc
+        client = _make_app(sb, _publisher_actor())
+        resp = client.post(
+            f"/api/admin/mocks/pyq-papers/{PAPER_ID}/projection/sync",
+            json={"audit_reason": "operator_manual_sync"},
+        )
+        assert resp.status_code == 409
 
     def test_status_returns_200_for_author(self):
         sb = _seed_sb()

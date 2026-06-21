@@ -156,11 +156,22 @@ def _resolve_source_mix_policy(
     winning_rows = [r for r in candidates if _specificity(r) == best_specificity]
 
     # Collapse winning rows into a source_kind → target_ratio dict.
+    # Duplicate source_kind entries at the same scope level are a configuration
+    # error — log a warning and use the first-encountered row only.
     mix: dict[str, float] = {}
     for r in winning_rows:
         sk = r.get("source_kind")
-        if sk and sk not in mix:
-            mix[sk] = float(r.get("target_ratio") or 0)
+        if not sk:
+            continue
+        if sk in mix:
+            logger.warning(
+                "duplicate source_kind=%r at same policy scope "
+                "(exam=%s phase=%s subject=%s topic=%s); "
+                "using first-encountered row, ignoring id=%s",
+                sk, exam_id, exam_phase_id, subject_id, topic_id, r.get("id"),
+            )
+            continue
+        mix[sk] = float(r.get("target_ratio") or 0)
 
     return mix if mix else None
 
@@ -180,13 +191,36 @@ def _exam_base_pool(sb, *, exam_id: str, selectable_statuses, now_iso: str) -> l
         .select(
             "id, exam_id, subject_id, topic_id, difficulty, question_type, "
             "reviewer_status, is_current, is_current_based, valid_until, "
-            "source_type, source_kind"
+            "source_type, source_kind, pyq_question_id"
         )
         .eq("exam_id", exam_id)
         .in_("reviewer_status", statuses)
         .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
         .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
     )
+
+    # Active-lineage guard: pyq-derived questions are only selectable when a
+    # corresponding active projection exists. The invalidation trigger already
+    # downgrades reviewer_status to 'draft', but this Python-layer check is
+    # belt-and-suspenders against trigger failures or manual status overrides.
+    pyq_rows = [r for r in rows if r.get("pyq_question_id")]
+    active_mock_ids: set[str] = set()
+    if pyq_rows:
+        try:
+            proj_rows = (
+                sb.table("pyq_mock_question_projections")
+                .select("mock_question_id")
+                .eq("sync_status", "active")
+                .execute()
+                .data
+            ) or []
+            active_mock_ids = {p["mock_question_id"] for p in proj_rows}
+        except Exception:
+            logger.warning(
+                "pyq_mock_question_projections query failed; "
+                "excluding all pyq-derived questions from pool (fail-closed)"
+            )
+
     pool = [
         r
         for r in rows
@@ -194,6 +228,8 @@ def _exam_base_pool(sb, *, exam_id: str, selectable_statuses, now_iso: str) -> l
         # is_current / is_current_based are segmented OUT of the base pool by the
         # diagnostic; the base mock must not draw time-bound items.
         and not (bool(r.get("is_current")) or bool(r.get("is_current_based")))
+        # Active-lineage guard: skip pyq questions with no active projection.
+        and (not r.get("pyq_question_id") or r.get("id") in active_mock_ids)
     ]
     pool.sort(key=lambda r: str(r.get("id")))  # stable, unseeded ordering
     return pool

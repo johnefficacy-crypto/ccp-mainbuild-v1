@@ -47,25 +47,46 @@ Content changes produce `outcome: updated`.
 ```
 SHA256(
   lower(strip(question_text)) + chr(0) +
-  sorted_option_texts joined by chr(0) +
-  chr(1) +
-  sorted_correct_option_texts joined by chr(0)
+  sorted_verified_option_texts joined by chr(0) +
+  chr(0) +
+  lower(strip(verified_correct_option_text))
 )
 ```
 
-chr(0) separators prevent concatenation ambiguity.  The Python
-`compute_content_hash()` in `pyq_mock_projection.py` mirrors this exactly.
+Only **verified** options are included in the hash.  `chr(0)` (NUL) is the
+only separator — no `chr(1)` sentinel.  The Python `compute_content_hash()`
+in `pyq_mock_projection.py` and the SQL hash in migration 183 section 3
+must always use identical formulas.
+
+## Eligibility rules (extended)
+
+A PYQ question is eligible for projection when ALL of the following hold:
+
+| Condition | Why |
+|-----------|-----|
+| `pyq_papers.trust_status = 'verified'` | Paper provenance must be verified |
+| `pyq_questions.reviewer_status = 'verified'` | Question reviewed and approved |
+| `pyq_questions.question_type = 'mcq'` | Only MCQ supported in mock engine |
+| `question_text` not empty | No blank questions |
+| ≥ 2 **verified** `pyq_options` | Minimum selector options (verified only) |
+| Every verified option has non-empty `option_text` | No blank option text |
+| Exactly 1 **verified** `pyq_options.is_correct = true` | MCQ invariant (verified only) |
+| If `pyq_questions.correct_option_id` is non-null, it must match the verified correct option | Pointer consistency |
+| Exactly 1 verified `pyq_question_topic_tags` with `tag_role = 'primary'` | Topic routing |
+| `topics.subject_id` not null | Subject must be resolvable |
 
 ## Invalidation triggers
 
-When canonical content changes, the projection is automatically downgraded:
+When canonical content changes, the projection is automatically downgraded
+(implemented via `fn_invalidate_projection_for_question` shared helper):
 
 | Trigger event | Effect |
 |---------------|--------|
 | `pyq_questions` reviewer_status leaves 'verified' | projection → stale, mock bank → draft |
-| `pyq_papers` trust_status leaves 'verified' | all paper projections → stale |
-| `pyq_options` is_correct/option_text/reviewer_status changes | projection → stale |
-| `pyq_question_topic_tags` primary tag changes or removed | projection → stale |
+| `pyq_papers` trust_status leaves 'verified' | all paper projections → stale, mock bank → draft |
+| `pyq_papers` exam_phase_id changes | all paper projections → stale, mock bank → draft |
+| `pyq_options` INSERT, DELETE, or material UPDATE | projection → stale, mock bank → draft |
+| `pyq_question_topic_tags` primary tag INSERT/DELETE/UPDATE | projection → stale, mock bank → draft |
 
 After a projection goes stale, the mock bank row's `reviewer_status` is
 downgraded to `draft` so it falls out of the selectable pool until the
