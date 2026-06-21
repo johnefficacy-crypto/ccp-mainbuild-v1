@@ -80,12 +80,9 @@ function QuestionList({
 }) {
   const missingNumbers = progress?.missing || [];
 
-  // source_kind is client-side only (not supported by server filter).
-  // reviewer_status is handled server-side; questions already filtered.
-  const filtered = questions.filter((q) => {
-    if (sourceKindFilter !== "all" && (q.source_kind || "manual") !== sourceKindFilter) return false;
-    return true;
-  });
+  // Both reviewer_status and source_kind are server-side params — questions
+  // arrive pre-filtered. No client-side refiltering needed.
+  const filtered = questions;
 
   const pageStart = offset + 1;
   const pageEnd = offset + questions.length;
@@ -1144,6 +1141,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
         offset: String(offset),
       });
       if (statusFilter !== "all") params.set("reviewer_status", statusFilter);
+      if (sourceKindFilter !== "all") params.set("source_kind", sourceKindFilter);
       const res = await api.get(`${CMS_BASE}/pyq-questions?${params}`);
       const items = res.items || [];
       setQuestions(items);
@@ -1153,7 +1151,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
       setLoadError(e?.message || "Could not load questions");
       return [];
     }
-  }, [pyq_paper_id, offset, statusFilter]);
+  }, [pyq_paper_id, offset, statusFilter, sourceKindFilter]);
 
   const loadProgress = useCallback(async () => {
     try {
@@ -1199,6 +1197,11 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     setOffset(0);
   }
 
+  function handleSourceKindFilterChange(value) {
+    setSourceKindFilter(value);
+    setOffset(0);
+  }
+
   // ── Pagination ───────────────────────────────────────────────────────────
 
   function handlePageChange(newOffset) {
@@ -1219,11 +1222,8 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   }
 
   function navigateQuestion(delta) {
-    const visible = questions.filter((q) =>
-      sourceKindFilter === "all" || (q.source_kind || "manual") === sourceKindFilter,
-    );
-    const idx = visible.findIndex((q) => q.id === selectedQuestion?.id);
-    const next = visible[idx + delta];
+    const idx = questions.findIndex((q) => q.id === selectedQuestion?.id);
+    const next = questions[idx + delta];
     if (next) selectQuestion(next);
   }
 
@@ -1378,7 +1378,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
             statusFilter={statusFilter}
             setStatusFilter={handleStatusFilterChange}
             sourceKindFilter={sourceKindFilter}
-            setSourceKindFilter={setSourceKindFilter}
+            setSourceKindFilter={handleSourceKindFilterChange}
             onAddMissing={handleAddMissing}
             offset={offset}
             total={total}

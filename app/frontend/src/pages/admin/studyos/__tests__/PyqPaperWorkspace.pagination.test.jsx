@@ -287,3 +287,68 @@ test("pagination range label shows 1–50 on first page of 60", async () => {
   await waitFor(() => screen.getByTestId("pagination-range"));
   expect(screen.getByTestId("pagination-range").textContent).toMatch(/1[–-]50/);
 });
+
+// ── source_kind server-side filter tests ──────────────────────────────────────
+
+test("source_kind filter sends server query param, not client-side filter", async () => {
+  api.get.mockImplementation(buildGetMock());
+  renderWorkspace();
+  await waitFor(() => screen.getByTestId("question-list-pane"));
+
+  // Second combobox is the source_kind filter (value="all" initially)
+  const allSelects = screen.getAllByRole("combobox");
+  const sourceSelect = allSelects.find(
+    (el) => el.value === "all" && el !== allSelects[0],
+  ) || allSelects[1];
+  expect(sourceSelect).toBeTruthy();
+
+  await act(async () => {
+    fireEvent.change(sourceSelect, { target: { value: "auto_extracted" } });
+  });
+
+  await waitFor(() => {
+    const calls = api.get.mock.calls.map(([url]) => url);
+    expect(calls.some((u) => u.includes("source_kind=auto_extracted"))).toBe(true);
+  });
+});
+
+test("offset resets to 0 when source_kind filter changes from page 2", async () => {
+  api.get.mockImplementation(buildGetMock({ total: 60 }));
+  renderWorkspace();
+  await waitFor(() => screen.getByTestId("pagination-next"));
+
+  // Go to page 2
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("pagination-next"));
+  });
+  await waitFor(() => {
+    expect(api.get.mock.calls.some(([u]) => u.includes("offset=50"))).toBe(true);
+  });
+
+  // Change source_kind filter — must reset offset to 0
+  const allSelects = screen.getAllByRole("combobox");
+  const sourceSelect = allSelects.find(
+    (el) => el.value === "all" && el !== allSelects[0],
+  ) || allSelects[1];
+  await act(async () => {
+    fireEvent.change(sourceSelect, { target: { value: "manual" } });
+  });
+
+  await waitFor(() => {
+    const calls = api.get.mock.calls.map(([url]) => url);
+    const resetCall = calls.find(
+      (u) => u.includes("source_kind=manual") && u.includes("offset=0"),
+    );
+    expect(resetCall).toBeDefined();
+  });
+});
+
+test("no limit=200 present in any pyq-questions API call", async () => {
+  api.get.mockImplementation(buildGetMock());
+  renderWorkspace();
+  await waitFor(() => screen.getByTestId("question-list-pane"));
+  const questionCalls = api.get.mock.calls
+    .map(([url]) => url)
+    .filter((u) => u.includes("/pyq-questions?"));
+  expect(questionCalls.every((u) => !u.includes("limit=200"))).toBe(true);
+});
