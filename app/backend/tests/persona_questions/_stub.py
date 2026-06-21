@@ -34,6 +34,7 @@ class _Query:
         self._pending_upsert: Any = None
         self._on_conflict: list[str] | None = None
         self._ignore_duplicates = False
+        self.not_: Any = _NotProxy(self)  # q.not_.in_(...) negates the next filter
 
     def select(self, *args, **kwargs):
         return self
@@ -69,11 +70,6 @@ class _Query:
     def in_(self, key, vals):
         self.filters.append((key, "in", list(vals)))
         return self
-
-    @property
-    def not_(self):
-        """Return a proxy that negates the next filter operation."""
-        return _NotProxy(self)
 
     def order(self, key, desc=False, **kwargs):
         self._order_key = key
