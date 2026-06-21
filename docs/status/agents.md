@@ -1,6 +1,7 @@
 ---
 owner: ops
 last_modified: 2026-06-20
+use timestamp including both date and time.
 verified_against: main @ a2ded8c
 ---
 
