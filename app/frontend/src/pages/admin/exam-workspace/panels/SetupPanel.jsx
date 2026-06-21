@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
 import DateField from "../../../../shared/ui/DateField";
+import { formatDDMMYYYY } from "../../../../shared/forms/dateFormat";
 import useApiAction from "../../../../lib/hooks/useApiAction";
 import CycleForm from "../../../../features/admin/exam-intelligence/forms/CycleForm";
 import PhaseForm from "../../../../features/admin/exam-intelligence/forms/PhaseForm";
-import PhaseTimeline from "./PhaseTimeline";
 
 function TrustBadge({ status }) {
   const map = {
@@ -29,6 +29,35 @@ function slugify(s) {
     .replace(/^-+|-+$/g, "");
 }
 
+function formatPhaseWindow(phase) {
+  if (phase.phase_start) {
+    const start = formatDDMMYYYY(phase.phase_start);
+    const end = phase.phase_end ? ` – ${formatDDMMYYYY(phase.phase_end)}` : "";
+    return start + end;
+  }
+  // Legacy freeform fallback for un-backfilled rows.
+  return phase.metadata?.phase_window ?? phase.phase_window ?? "TBD";
+}
+
+function legacyWindow(phase) {
+  return phase.metadata?.phase_window || phase.phase_window || null;
+}
+
+function needsPhaseDateAuthoring(phase) {
+  if (phase.phase_start) return false;
+  const metadata = phase.metadata || {};
+  return Boolean(
+    legacyWindow(phase) ||
+    metadata.needs_phase_date_authoring === true ||
+    metadata.import_source === "exam_registry_workbook"
+  );
+}
+
+function phaseDateSourceLabel(phase) {
+  const windowText = legacyWindow(phase);
+  if (windowText) return `Legacy: ${windowText}`;
+  return "Imported workbook phase stub";
+}
 
 const CYCLE_STATUSES = ["expected", "open", "active", "closed", "completed", "cancelled"];
 const PHASE_STATUSES = ["expected", "active", "completed", "cancelled"];
@@ -60,6 +89,10 @@ export default function SetupPanel({ action = null }) {
   const [ptError, setPtError] = useState(null); // null | {type, message, phaseId?, existingId?}
   const [ptSuccess, setPtSuccess] = useState("");
 
+  // ── worklist: inline patch state per phase id ───────────────────────────
+  const [patchEdits, setPatchEdits] = useState({});
+  const [datedPhaseIds, setDatedPhaseIds] = useState(new Set());
+
   // ── cycle create form ───────────────────────────────────────────────────
   const EMPTY_CYCLE = {
     cycle_name: "", year: "", status: "expected",
@@ -83,6 +116,13 @@ export default function SetupPanel({ action = null }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action]);
+
+  function editFor(id) {
+    return patchEdits[id] ?? { start: null, end: null, saving: false, err: "" };
+  }
+  function setEdit(id, updates) {
+    setPatchEdits(prev => ({ ...prev, [id]: { ...editFor(id), ...updates } }));
+  }
 
   const templatePhases = phases.filter(p => p.exam_cycle_id == null);
 
@@ -157,6 +197,11 @@ export default function SetupPanel({ action = null }) {
       setPtBusy(false);
     }
   }
+
+  const phaseDateWorklistPhases = phases.filter(needsPhaseDateAuthoring);
+  const needsDates = phaseDateWorklistPhases.filter(
+    p => !datedPhaseIds.has(p.id)
+  );
 
   // ── cycle create/edit handlers ──────────────────────────────────────────
 
@@ -261,6 +306,23 @@ export default function SetupPanel({ action = null }) {
       setSaveErr(e?.message || "Failed to add phase");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function patchPhaseDate(phase) {
+    const edit = editFor(phase.id);
+    setEdit(phase.id, { saving: true, err: "" });
+    try {
+      await api.patch(`/api/admin/exam-intelligence-cms/exam-phases/${phase.id}`, {
+        reason: "Set structured phase dates via worklist",
+        payload: {
+          phase_start: edit.start || null,
+          phase_end: edit.end || null,
+        },
+      });
+      setDatedPhaseIds(prev => new Set([...prev, phase.id]));
+    } catch (e) {
+      setEdit(phase.id, { saving: false, err: e?.message || "Failed to save" });
     }
   }
 
@@ -457,7 +519,28 @@ export default function SetupPanel({ action = null }) {
           )}
         </div>
         <div className="card-body" style={{ paddingBottom: 4 }}>
-          <PhaseTimeline phases={phases} cycles={cycles} />
+          {phases.length === 0 ? (
+            <div className="empty" style={{ padding: "16px 0" }}>
+              <div className="empty-title">No phases defined</div>
+              <div>Add the first phase below.</div>
+            </div>
+          ) : (
+            <div className="phase-rail">
+              {phases.map((p, i) => (
+                <div
+                  key={p.id}
+                  className={
+                    "phase" +
+                    (p.status === "active" ? " active" : p.status === "completed" ? " done" : "")
+                  }
+                >
+                  <div className="phase-num">PH-{i + 1}</div>
+                  <div className="phase-name">{p.phase_name ?? p.name}</div>
+                  <div className="phase-count">{formatPhaseWindow(p)}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {addingPhase && (
           <div
@@ -730,10 +813,109 @@ export default function SetupPanel({ action = null }) {
           )}
       </div>
 
-      {/* "Phases needing dates" standalone section removed (D3 / C2):
-          missing-date phases are now flagged inline in the PhaseTimeline above. */}
+      {/* Phases needing dates — missing phase_start plus explicit worklist signal */}
+      {phaseDateWorklistPhases.length > 0 && (
+        <div className="card" data-testid="phase-date-worklist">
+          <div className="card-head">
+            <h3 className="oc-title">Phases needing dates</h3>
+            <span className="anno">
+              {needsDates.length === 0
+                ? "All phases have structured dates ✓"
+                : `${needsDates.length} phase${needsDates.length !== 1 ? "s" : ""} without a structured start date`}
+            </span>
+          </div>
+          {needsDates.length === 0 ? (
+            <div className="card-body">
+              <div className="empty" style={{ padding: "12px 0" }}>
+                <div className="empty-title" data-testid="worklist-all-dated">
+                  All phases have structured dates
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="card-body">
+              {needsDates.map(phase => {
+                const edit = editFor(phase.id);
+                // Resolve the cycle this phase belongs to for context display.
+                const phaseCycle = cycles.find(
+                  c => c.id === (phase.exam_cycle_id ?? phase.cycle_id)
+                ) || null;
+                const cycleLabel = phaseCycle
+                  ? `${phaseCycle.cycle_name ?? phaseCycle.name ?? "Cycle"}${phaseCycle.year ? ` (${phaseCycle.year})` : ""}`
+                  : null;
+                return (
+                  <div
+                    key={phase.id}
+                    data-testid={`worklist-row-${phase.id}`}
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 10,
+                      alignItems: "flex-start",
+                      padding: "10px 0",
+                      borderBottom: "1px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ minWidth: 160, flex: "0 0 auto" }}>
+                      <div className="field-lbl">{phase.phase_name ?? phase.name}</div>
+                      {cycleLabel && (
+                        <div
+                          className="row-sub"
+                          data-testid={`worklist-cycle-${phase.id}`}
+                          style={{ fontSize: 11, color: "var(--info)", marginTop: 1, fontWeight: 500 }}
+                        >
+                          {cycleLabel}
+                        </div>
+                      )}
+                      <div
+                        className="row-sub"
+                        data-testid={`worklist-legacy-${phase.id}`}
+                        style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}
+                      >
+                        {phaseDateSourceLabel(phase)}
+                      </div>
+                    </div>
+                    <div style={{ minWidth: 170 }}>
+                      <DateField
+                        value={edit.start}
+                        onChange={v => setEdit(phase.id, { start: v })}
+                        mode="any"
+                        label="Phase start"
+                        name={`worklist-phase-start-${phase.id}`}
+                        id={`worklist-phase-start-${phase.id}`}
+                      />
+                    </div>
+                    <div style={{ minWidth: 170 }}>
+                      <DateField
+                        value={edit.end}
+                        onChange={v => setEdit(phase.id, { end: v })}
+                        mode="any"
+                        label="Phase end"
+                        name={`worklist-phase-end-${phase.id}`}
+                        id={`worklist-phase-end-${phase.id}`}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end", paddingTop: 20 }}>
+                      <button
+                        className="btn primary small"
+                        data-testid={`worklist-save-${phase.id}`}
+                        onClick={() => patchPhaseDate(phase)}
+                        disabled={edit.saving || !edit.start}
+                      >
+                        {edit.saving ? "Saving…" : "Set dates"}
+                      </button>
+                      {edit.err && (
+                        <span className="err-row" style={{ fontSize: 11 }}>{edit.err}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Exam details card removed — name/slug/type/family are already shown in SmartHeader (D1 collapse) */}
     </div>
   );
 }

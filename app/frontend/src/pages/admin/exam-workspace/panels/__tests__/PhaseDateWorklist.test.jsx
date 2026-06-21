@@ -1,19 +1,14 @@
 /**
- * D3 / C2 regression tests — "Phases needing dates" standalone section removed.
+ * Tests for the "Phases needing dates" worklist in SetupPanel.
  *
- * After the D3 fix the standalone "Phases needing dates" card is gone from
- * SetupPanel. Missing-date phases are now flagged inline inside PhaseTimeline
- * via a "Needs date" badge and cycle label.
- *
- * These tests assert:
- *  1. The phase-date-worklist card is NO LONGER rendered by SetupPanel.
- *  2. SetupPanel still renders the main PhaseTimeline (the phases section).
- *  3. Phases with missing dates appear with "Needs date" badges in the timeline.
- *  4. The cycle label from H3 (UX-EI-5) is shown in the timeline for cycle-bound
- *     missing-date phases.
+ * The worklist is keyed off phase_start IS NULL plus an explicit authoring
+ * signal: legacy phase_window, workbook import_source, or
+ * needs_phase_date_authoring. It must NOT key off phase_window_needs_review
+ * (regression guard for the 165 flag hole where TBD rows were neither dated
+ * nor flagged).
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 jest.mock("../../../../../lib/api", () => ({
   __esModule: true,
@@ -25,6 +20,8 @@ jest.mock("../../ExamWorkspaceContext", () => ({
   useExamWorkspace: jest.fn(),
 }));
 
+// SetupPanel now imports useApiAction (for cycle create/edit). Mock it so
+// tests never need a ToastProvider context — mirrors Organizations.create.test.jsx.
 jest.mock("../../../../../lib/hooks/useApiAction", () => ({
   __esModule: true,
   default: () => ({
@@ -37,162 +34,247 @@ jest.mock("../../../../../lib/hooks/useApiAction", () => ({
   }),
 }));
 
-jest.mock("../../../../../shared/forms/dateFormat", () => ({
-  __esModule: true,
-  formatDDMMYYYY: (d) => d,
-}));
-
+const { api } = require("../../../../../lib/api");
 const { useExamWorkspace } = require("../../ExamWorkspaceContext");
 const SetupPanel = require("../SetupPanel").default;
 
 const BASE_EXAM = { id: "exam-1", name: "UPSC CSE", slug: "upsc-cse" };
-const BASE_CYCLES = [{ id: "cyc-1", status: "active", cycle_name: "2026", year: 2026 }];
+const BASE_CYCLES = [{ id: "cyc-1", status: "active", cycle_name: "2026" }];
 
 beforeEach(() => {
-  jest.clearAllMocks();
-  const { api } = require("../../../../../lib/api");
+  api.get.mockReset();
+  api.post.mockReset();
+  api.patch.mockReset();
   api.patch.mockResolvedValue({ ok: true });
 });
 
-// ── D3: standalone worklist card is gone ─────────────────────────────────────
+// ── worklist visibility ──────────────────────────────────────────────────────
 
-describe("D3 regression: 'Phases needing dates' standalone section removed", () => {
-  test("phase-date-worklist card is NOT rendered when phases have missing dates", () => {
+describe("worklist visibility", () => {
+  test("shows worklist card when phases have a legacy window but no phase_start", () => {
     useExamWorkspace.mockReturnValue({
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        {
-          id: "ph-1",
-          phase_name: "Prelims",
-          phase_start: null,
-          metadata: { phase_window: "TBD" },
-        },
+        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+          metadata: { phase_window: "TBD" } },
       ],
-      refetch: jest.fn(),
+    });
+    render(<SetupPanel />);
+    expect(screen.getByTestId("phase-date-worklist")).toBeTruthy();
+    expect(screen.getByTestId("worklist-row-ph-1")).toBeTruthy();
+  });
+
+  test("shows legacy string in worklist row so operator sees source text", () => {
+    useExamWorkspace.mockReturnValue({
+      exam: BASE_EXAM,
+      cycles: BASE_CYCLES,
+      phases: [
+        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+          metadata: { phase_window: "May–June 2026" } },
+      ],
+    });
+    render(<SetupPanel />);
+    expect(screen.getByTestId("worklist-legacy-ph-1").textContent).toMatch("May–June 2026");
+  });
+
+  test("hides worklist card when no phases have a date-authoring signal", () => {
+    useExamWorkspace.mockReturnValue({
+      exam: BASE_EXAM,
+      cycles: BASE_CYCLES,
+      phases: [
+        { id: "ph-1", phase_name: "Prelims", phase_start: "2026-05-24", metadata: {} },
+      ],
     });
     render(<SetupPanel />);
     expect(screen.queryByTestId("phase-date-worklist")).toBeNull();
   });
 
-  test("'Phases needing dates' heading is NOT rendered", () => {
+  test("shows workbook-imported stubs without overloading phase_window", () => {
     useExamWorkspace.mockReturnValue({
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        {
-          id: "ph-1",
-          phase_name: "Prelims",
-          phase_start: null,
-          metadata: { needs_phase_date_authoring: true },
-        },
+        { id: "ph-import", phase_name: "Prelims", phase_start: null,
+          metadata: {
+            import_source: "exam_registry_workbook",
+            needs_phase_date_authoring: true,
+          } },
       ],
-      refetch: jest.fn(),
     });
     render(<SetupPanel />);
-    expect(screen.queryByText("Phases needing dates")).toBeNull();
+    expect(screen.getByTestId("phase-date-worklist")).toBeTruthy();
+    expect(screen.getByTestId("worklist-row-ph-import")).toBeTruthy();
+    expect(screen.getByTestId("worklist-legacy-ph-import").textContent).toMatch(
+      "Imported workbook phase stub"
+    );
   });
 
-  test("phase-date-worklist card is NOT rendered even with no missing-date phases", () => {
+  test("shows explicit authoring stubs without phase_window or import_source", () => {
     useExamWorkspace.mockReturnValue({
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        {
-          id: "ph-1",
-          phase_name: "Prelims",
-          phase_start: "2026-05-24",
-          metadata: {},
-        },
+        { id: "ph-author", phase_name: "Mains", phase_start: null,
+          metadata: { needs_phase_date_authoring: true } },
       ],
-      refetch: jest.fn(),
+    });
+    render(<SetupPanel />);
+    expect(screen.getByTestId("worklist-row-ph-author")).toBeTruthy();
+  });
+
+  test("does not include imported stubs that already have phase_start", () => {
+    useExamWorkspace.mockReturnValue({
+      exam: BASE_EXAM,
+      cycles: BASE_CYCLES,
+      phases: [
+        { id: "ph-import-dated", phase_name: "Prelims", phase_start: "2026-05-24",
+          metadata: {
+            import_source: "exam_registry_workbook",
+            needs_phase_date_authoring: true,
+          } },
+      ],
     });
     render(<SetupPanel />);
     expect(screen.queryByTestId("phase-date-worklist")).toBeNull();
+  });
+
+  test("does not include phases that already have phase_start in worklist", () => {
+    useExamWorkspace.mockReturnValue({
+      exam: BASE_EXAM,
+      cycles: BASE_CYCLES,
+      phases: [
+        { id: "ph-1", phase_name: "Prelims", phase_start: "2026-05-24",
+          metadata: { phase_window: "24 May 2026" } },
+        { id: "ph-2", phase_name: "Mains", phase_start: null,
+          metadata: { phase_window: "TBD" } },
+      ],
+    });
+    render(<SetupPanel />);
+    expect(screen.queryByTestId("worklist-row-ph-1")).toBeNull();
+    expect(screen.getByTestId("worklist-row-ph-2")).toBeTruthy();
   });
 });
 
-// ── PhaseTimeline still rendered ──────────────────────────────────────────────
+// ── keyed off phase_start, not the flag ─────────────────────────────────────
 
-describe("SetupPanel still renders PhaseTimeline", () => {
-  test("phase-timeline is rendered when phases exist", () => {
+describe("worklist keys off phase_start IS NULL (regression guard)", () => {
+  test("TBD row (not flagged by 165) appears in worklist — keyed off phase_start null", () => {
+    // This phase has no phase_window_needs_review flag (the 165 hole) but
+    // DOES have a legacy window and no phase_start. It must appear.
     useExamWorkspace.mockReturnValue({
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        {
-          id: "ph-1",
-          phase_name: "Prelims",
-          phase_start: "2026-05-24",
-          status: "active",
-          metadata: {},
-        },
+        { id: "ph-tbd", phase_name: "Tier I", phase_start: null,
+          metadata: { phase_window: "TBD" /* no phase_window_needs_review */ } },
       ],
-      refetch: jest.fn(),
     });
     render(<SetupPanel />);
-    expect(screen.getByTestId("phase-timeline")).toBeTruthy();
+    expect(screen.getByTestId("worklist-row-ph-tbd")).toBeTruthy();
+    expect(screen.getByTestId("worklist-legacy-ph-tbd").textContent).toMatch("TBD");
   });
 
-  test("PhaseTimeline shows 'Needs date' badge for missing-date phase", () => {
+  test("row flagged needs_review=true but already has phase_start is NOT in worklist", () => {
     useExamWorkspace.mockReturnValue({
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        {
-          id: "ph-missing",
-          phase_name: "Prelims",
-          phase_start: null,
-          exam_cycle_id: "cyc-1",
-          status: "expected",
-          metadata: { phase_window: "TBD" },
-        },
+        { id: "ph-x", phase_name: "Tier II", phase_start: "2026-06-01",
+          metadata: { phase_window: "01 Jun 2026", phase_window_needs_review: true } },
       ],
-      refetch: jest.fn(),
     });
     render(<SetupPanel />);
-    expect(screen.getByTestId("phase-needs-date-badge-ph-missing")).toBeTruthy();
-    expect(screen.getByTestId("phase-needs-date-badge-ph-missing").textContent).toBe("Needs date");
+    expect(screen.queryByTestId("worklist-row-ph-x")).toBeNull();
+  });
+});
+
+// ── save / patch flow ────────────────────────────────────────────────────────
+
+describe("worklist save flow", () => {
+  test("Set dates button is disabled when no start date entered", () => {
+    useExamWorkspace.mockReturnValue({
+      exam: BASE_EXAM,
+      cycles: BASE_CYCLES,
+      phases: [
+        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+          metadata: { phase_window: "TBD" } },
+      ],
+    });
+    render(<SetupPanel />);
+    expect(screen.getByTestId("worklist-save-ph-1").disabled).toBe(true);
   });
 
-  test("PhaseTimeline shows cycle label for missing-date phase bound to a cycle (H3/UX-EI-5)", () => {
+  test("PATCHes with phase_start/phase_end when date entered and saved", async () => {
     useExamWorkspace.mockReturnValue({
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        {
-          id: "ph-missing",
-          phase_name: "Prelims",
-          phase_start: null,
-          exam_cycle_id: "cyc-1",
-          status: "expected",
-          metadata: { phase_window: "TBD" },
-        },
+        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+          metadata: { phase_window: "TBD" } },
       ],
-      refetch: jest.fn(),
     });
     render(<SetupPanel />);
-    const label = screen.getByTestId("phase-cycle-label-ph-missing");
-    expect(label).toBeTruthy();
-    expect(label.textContent).toBe("2026 (2026)");
+
+    // Enter a date into the phase start DateField for ph-1.
+    const startInputs = screen.getAllByLabelText(/phase start/i);
+    fireEvent.change(startInputs[startInputs.length - 1], {
+      target: { value: "24-05-2026" },
+    });
+
+    fireEvent.click(screen.getByTestId("worklist-save-ph-1"));
+
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+
+    const [url, body] = api.patch.mock.calls[0];
+    expect(url).toBe("/api/admin/exam-intelligence-cms/exam-phases/ph-1");
+    expect(body.reason.length).toBeGreaterThanOrEqual(8);
+    expect(body.payload.phase_start).toBe("2026-05-24");
+    expect(body.payload.phase_end).toBeNull();
   });
 
-  test("PhaseTimeline does NOT show badge for phase that already has dates", () => {
+  test("row drops from worklist after successful PATCH", async () => {
     useExamWorkspace.mockReturnValue({
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        {
-          id: "ph-dated",
-          phase_name: "Prelims",
-          phase_start: "2026-05-24",
-          status: "active",
-          metadata: {},
-        },
+        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+          metadata: { phase_window: "TBD" } },
       ],
-      refetch: jest.fn(),
     });
     render(<SetupPanel />);
-    expect(screen.queryByTestId("phase-needs-date-badge-ph-dated")).toBeNull();
+
+    const startInputs = screen.getAllByLabelText(/phase start/i);
+    fireEvent.change(startInputs[startInputs.length - 1], {
+      target: { value: "24-05-2026" },
+    });
+
+    fireEvent.click(screen.getByTestId("worklist-save-ph-1"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("worklist-row-ph-1")).toBeNull()
+    );
+  });
+
+  test("shows all-dated empty state when all worklist rows have been saved", async () => {
+    useExamWorkspace.mockReturnValue({
+      exam: BASE_EXAM,
+      cycles: BASE_CYCLES,
+      phases: [
+        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+          metadata: { phase_window: "TBD" } },
+      ],
+    });
+    render(<SetupPanel />);
+
+    const startInputs = screen.getAllByLabelText(/phase start/i);
+    fireEvent.change(startInputs[startInputs.length - 1], {
+      target: { value: "24-05-2026" },
+    });
+    fireEvent.click(screen.getByTestId("worklist-save-ph-1"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("worklist-all-dated")).toBeTruthy()
+    );
   });
 });
