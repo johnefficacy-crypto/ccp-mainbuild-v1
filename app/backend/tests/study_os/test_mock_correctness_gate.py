@@ -314,6 +314,7 @@ def test_double_submit_under_live_flag_no_second_audit(monkeypatch):
     audit row and identical results, no exception."""
     sb, _, _ = _seeded_db(topic_id="topic-A")
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
+    monkeypatch.setenv("FF_MOCK_MASTERY_LIVE_USER_IDS", "user-1")
     client = _client(sb)
 
     start = client.post("/api/study/mocks/attempts/start", json={"template_slug": "gate-mock"})
