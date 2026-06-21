@@ -19,6 +19,10 @@ non-ready status has no classifier-owned explanation.
 Guards: no score_percent/confidence_score/confidence_percent leaves this module;
 every correctness-critical read pages fully and uses ``execute_or_raise``
 (failure → 5xx, never a fabricated verdict); unknown exam → 404. Read-only.
+
+BUG-EI-2 fix (Option A): ``_documents()`` now queries ``syllabus_documents``
+(which has ``exam_id`` and ``trust_status``) instead of ``document_assets``
+(which has neither). ``trust_status == "verified"`` is the readiness proxy.
 """
 from __future__ import annotations
 
@@ -90,9 +94,12 @@ def _paged(sb, make_query, operation: str) -> list[dict[str, Any]]:
 
 
 def _documents(sb, exam_id: str) -> list[dict[str, Any]]:
+    # Option A (BUG-EI-2): query syllabus_documents (has exam_id + trust_status).
+    # document_assets has neither exam_id nor extraction_status; querying it
+    # caused a PostgREST 42703 error → HTTP 500.
     return _paged(
         sb,
-        lambda: sb.table("document_assets").select("id, extraction_status")
+        lambda: sb.table("syllabus_documents").select("id, trust_status")
         .eq("exam_id", exam_id).order("id"),
         "console_detail.documents",
     )
@@ -172,12 +179,13 @@ _ACTION_COPY = {
 
 # Area-level entity kind. NULL for PYQ because a PYQ action's causal rows can be
 # questions, tags, OR options — the precise kinds live in evidence_refs.
+# BUG-EI-2: "documents" maps to "syllabus_documents" (was "document_assets").
 _AREA_ENTITY_KIND = {
     "topic_coverage": "exam_topic_coverage",
     "syllabus": "syllabus_topic_mention",
     "updates": "exam_policy_updates",
     "competition": "exam_competition_metrics",
-    "documents": "document_assets",
+    "documents": "syllabus_documents",
     "setup": "exam_phases",
     "pyq": None,
     "mock_readiness": None,
@@ -253,12 +261,13 @@ def build_console_detail(sb, exam_id: str) -> dict[str, Any]:
     else:
         checks.append(_check("setup", "hard", "blocked", "No exam phases defined", ["no_phases"]))
 
-    # documents (advisory)
-    extracted = sum(1 for r in docs if r.get("extraction_status") == "succeeded")
+    # documents (advisory) — trust_status=="verified" is the readiness proxy
+    # (BUG-EI-2: was extraction_status=="succeeded" queried on wrong table).
+    extracted = sum(1 for r in docs if r.get("trust_status") == "verified")
     if extracted >= 1:
-        checks.append(_check("documents", "advisory", "done", f"{extracted} document(s) extracted"))
+        checks.append(_check("documents", "advisory", "done", f"{extracted} document(s) verified"))
     elif docs:
-        checks.append(_check("documents", "advisory", "needs_action", f"{len(docs)} uploaded, none extracted"))
+        checks.append(_check("documents", "advisory", "needs_action", f"{len(docs)} uploaded, none verified"))
     else:
         checks.append(_check("documents", "advisory", "needs_action", "No documents uploaded"))
 

@@ -82,8 +82,8 @@ Findings confirmed against this checkout. Full audit evidence:
 
 | Area | Status | Notes |
 |---|---|---|
-| BUG-EI-1 `POST .../syllabus/propose` → 404 | PLANNED | `syllabus_mapper.py` queries `document_assets` (wrong table) instead of `syllabus_documents`. `document_assets` has no `exam_id` column; PostgREST returns empty list → 404 raised. Fix: change table name on both occurrences (~line 99 and ~line 503). `ProposerError` and `propose_syllabus_mentions` are defined twice; deduplicate first. |
-| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED — AUDITED 2026-06-21 | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Audit verdict: **Option A undercounts** — `syllabus_documents.trust_status` is a human-review gate, NOT an extraction signal. The canonical extraction signal is `document_processing_jobs` where `job_type='text_extract'` and `status='succeeded'`. Same missing-column bug exists in `readiness.py:77`. Fix class: backend-only. Files: `console_detail.py` + `readiness.py`. See `docs/audits/document-readiness-2026-06-21.md`. |
+| BUG-EI-1 `POST .../syllabus/propose` → 404 | CODE-FIXED, VALIDATION PENDING | `syllabus_mapper.py` now queries `syllabus_documents` (has `exam_id` column) on both occurrences. Duplicate `ProposerError` and `propose_syllabus_mentions` definitions removed. Regression tests in `tests/exam_intelligence/test_syllabus_proposer.py` — 30 tests passing. Branch: `fix/h1-syllabus-propose-404`. |
+| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Fix requires design decision: Option A (query `syllabus_documents` by `exam_id`, use `trust_status`) or Option B (query processing-job status table). |
 
 ### D-series — Redundant data display (4 defects)
 

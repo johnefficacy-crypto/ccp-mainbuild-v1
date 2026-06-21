@@ -59,3 +59,4 @@ e2e-auth-check.cjs
 test-results/
 .vercel
 .env*
+.claude/worktrees/
