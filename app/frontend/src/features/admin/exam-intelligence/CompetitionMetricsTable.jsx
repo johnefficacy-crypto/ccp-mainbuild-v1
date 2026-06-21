@@ -1,6 +1,7 @@
 import React from "react";
 import { BarChart3 } from "lucide-react";
 import { StatusBadge, ConfidencePill, EmptyState } from "../../../shared/ui/core";
+import { humanizeToken } from "./operatorChrome";
 
 // exam_competition_metrics review surface.
 //
@@ -75,7 +76,7 @@ export default function CompetitionMetricsTable({ items, onReview, busyRowId }) 
             const busy = busyRowId === c.id;
             return (
               <tr key={c.id} className="border-t border-clay-100 align-top">
-                <td className="px-4 py-2 text-xs">{c.exam || c.exam_slug || "—"}</td>
+                <td className="px-4 py-2 text-xs">{humanizeToken(c.exam || c.exam_slug) || "—"}</td>
                 <td className="px-4 py-2 text-right tabular-nums">
                   {c.vacancy_total ?? "—"}
                 </td>

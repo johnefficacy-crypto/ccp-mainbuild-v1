@@ -83,7 +83,7 @@ Findings confirmed against this checkout. Full audit evidence:
 | Area | Status | Notes |
 |---|---|---|
 | BUG-EI-1 `POST .../syllabus/propose` → 404 | CODE-FIXED, VALIDATION PENDING | `syllabus_mapper.py` now queries `syllabus_documents` (has `exam_id` column) on both occurrences. Duplicate `ProposerError` and `propose_syllabus_mentions` definitions removed. Regression tests in `tests/exam_intelligence/test_syllabus_proposer.py` — 30 tests passing. Branch: `fix/h1-syllabus-propose-404`. |
-| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Fix requires design decision: Option A (query `syllabus_documents` by `exam_id`, use `trust_status`) or Option B (query processing-job status table). |
+| BUG-EI-2 `GET /console/exams/{id}` → 500 | PLANNED — AUDITED 2026-06-21 | `console_detail.py::_documents()` queries `document_assets` with `.eq("exam_id", ...)` and `.select("id, extraction_status")` — neither column exists on that table. Audit verdict: **Option A undercounts** — `syllabus_documents.trust_status` is a human-review gate, NOT an extraction signal. The canonical extraction signal is `document_processing_jobs` where `job_type='text_extract'` and `status='succeeded'`. Same missing-column bug exists in `readiness.py:77`. Fix class: backend-only. Files: `console_detail.py` + `readiness.py`. See `docs/audits/document-readiness-2026-06-21.md`. |
 
 ### D-series — Redundant data display (4 defects)
 
@@ -140,9 +140,9 @@ Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Ca
 |---|---|---|---|---|
 | I1 | ReviewQueueTable "Row id" button | `ReviewQueueTable.jsx:92` | CLEANUP PENDING | `{r.id}` raw UUID rendered. `operatorChrome.humanizeToken` pattern exists but not applied here. Covered by H3. |
 | I2 | SetupPanel phase error message | `SetupPanel.jsx:803` | CLEANUP PENDING | `{ptError.phaseId}` raw UUID in error message text. Covered by H3. |
-| I3 | ExamIntelCms entity table rows | `ExamIntelCms.jsx` (multiple) | CLEANUP PENDING | Entity `id` fields shown in table cells across CMS entity tables. Not covered by H3 — needs separate pass. |
-| I4 | Competition table "exam" column in workspace | `CompetitionMetricsTable.jsx:78` | CLEANUP PENDING | `c.exam_slug` rendered alongside workspace header already displaying slug. Overlaps with D4 fix. |
-| I5 | Subjects CMS surface | `ExamIntelCms.jsx` subjects entity | CLEANUP PENDING | `subject_id` column visible in subjects table. Overlaps with M4 fix. |
+| I3 | ExamIntelCms entity table rows | `ExamIntelCms.jsx` (multiple) | CODE-FIXED, VALIDATION PENDING | `renderCellValue` helper imported from `operatorChrome.humanizeToken`; UUID-shaped id/FK cells now rendered as `${first8}…` instead of the full identifier. All entity table rows (exam-families, exams, cycles, phases, topics, coverage, etc.) use this path. 4-test identifier regression added in `ExamIntelCms.identifiers.test.jsx`. |
+| I4 | Competition table "exam" column in workspace | `CompetitionMetricsTable.jsx:78` | CODE-FIXED, VALIDATION PENDING | `humanizeToken(c.exam \|\| c.exam_slug) \|\| "—"` replaces the raw `c.exam_slug` render. `humanizeToken` truncates UUID-shaped exam slugs and transforms snake_case slugs into readable labels. 4-test regression in `CompetitionMetricsTable.identifiers.test.jsx`. |
+| I5 | Subjects CMS surface | `ExamIntelCms.jsx` subjects entity | CODE-FIXED, VALIDATION PENDING | `subject_id` column in the topics entity table now goes through `renderCellValue` (same fix as I3) — UUID is truncated to `${first8}…`. Covered by `ExamIntelCms.identifiers.test.jsx` test "I5: subject_id FK column is truncated". |
 
 ### Prior setup/workspace UX items
 
