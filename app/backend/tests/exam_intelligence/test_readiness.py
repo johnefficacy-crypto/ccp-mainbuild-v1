@@ -87,6 +87,9 @@ class _TableStub:
     def limit(self, n):
         return self
 
+    def range(self, *a, **kw):
+        return self
+
     def execute(self):
         rows = self._rows if not callable(self._rows) else self._rows(self._filters, self._in_filters)
         # Apply or_ expr: "field.eq.VALUE,field.is.null"
@@ -793,7 +796,8 @@ class TestDocumentExtractionCounts:
     def test_no_assets_returns_zeros(self):
         sb = _make_sb(exam=EXAM)
         counts = load_doc_extraction_counts(sb, "exam-1")
-        assert counts == {"total": 0, "extracted": 0, "pending": 0, "failed": 0, "not_started": 0}
+        assert counts == {"total": 0, "extracted": 0, "pending": 0, "failed": 0,
+                          "needs_review": 0, "not_started": 0}
 
     def test_latest_job_wins_on_multiple_runs(self):
         """When the same asset has multiple jobs (retries), the latest created_at wins."""

@@ -29,10 +29,13 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from app.db.utils import execute_or_raise
+
 logger = logging.getLogger("career_copilot.exam_intelligence.readiness")
 
 _STATUS_SCORE = {"empty": 0, "partial": 50, "ready": 80, "locked": 100}
 _STALE_DAYS = 30
+_DOC_PAGE = 1000
 
 
 def _now_iso() -> str:
@@ -73,29 +76,72 @@ def _setup(sb, exam_id: str) -> dict:
     }
 
 
-def load_doc_extraction_counts(sb, exam_id: str, cycle_id: str | None = None) -> dict:
+def _doc_pages_strict(sb, make_query, operation: str) -> list[dict]:
+    """Full-pagination, fail-closed fetch. Any DB failure raises DatabaseError (→ 5xx)."""
+    out: list[dict] = []
+    start = 0
+    while True:
+        page = execute_or_raise(
+            operation,
+            lambda s=start: make_query().range(s, s + _DOC_PAGE - 1).execute().data,
+        ) or []
+        out.extend(page)
+        if len(page) < _DOC_PAGE:
+            break
+        start += _DOC_PAGE
+    return out
+
+
+def load_doc_extraction_counts(
+    sb, exam_id: str, cycle_id: str | None = None, *, strict: bool = False
+) -> dict:
     """Return extraction counts for admin_exam_intelligence docs owned by exam_id.
 
     Extraction status is sourced from document_processing_jobs (job_type='text_extract',
-    latest job per asset). trust_status on syllabus_documents is a human-review gate,
-    not an extraction signal (BUG-EI-2 final fix).
+    latest job per asset, deterministic by (created_at, id)).
+    trust_status on syllabus_documents is a human-review gate, not an extraction
+    signal (BUG-EI-2 final fix).
 
     document_assets has no exam_id column; ownership is stored in metadata JSONB
     by admin_exam_intel_documents.py at upload time.
+
+    strict=True (console): fail-closed — any DB failure raises DatabaseError (→ 5xx).
+    strict=False (workspace readiness): fail-soft — DB failures degrade to zero counts.
     """
     # Fetch all admin EI assets; filter to exam (and optionally cycle) in Python
     # because document_assets.exam_id does not exist as a column.
-    asset_rows = _safe(
-        lambda: (
-            sb.table("document_assets")
-            .select("id, metadata")
-            .eq("scope", "admin_exam_intelligence")
-            .limit(2000)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
+    if strict:
+        asset_rows = _doc_pages_strict(
+            sb,
+            lambda: (
+                sb.table("document_assets")
+                .select("id, metadata")
+                .eq("scope", "admin_exam_intelligence")
+                .order("id")
+            ),
+            "doc_extraction.assets",
+        )
+    else:
+        def _load_assets() -> list[dict]:
+            out: list[dict] = []
+            start = 0
+            while True:
+                page = (
+                    sb.table("document_assets")
+                    .select("id, metadata")
+                    .eq("scope", "admin_exam_intelligence")
+                    .order("id")
+                    .range(start, start + _DOC_PAGE - 1)
+                    .execute()
+                    .data
+                ) or []
+                out.extend(page)
+                if len(page) < _DOC_PAGE:
+                    break
+                start += _DOC_PAGE
+            return out
+
+        asset_rows = _safe(_load_assets, default=[]) or []
 
     assets = [r for r in asset_rows if (r.get("metadata") or {}).get("exam_id") == exam_id]
     if cycle_id:
@@ -103,7 +149,8 @@ def load_doc_extraction_counts(sb, exam_id: str, cycle_id: str | None = None) ->
 
     total = len(assets)
     if total == 0:
-        return {"total": 0, "extracted": 0, "pending": 0, "failed": 0, "not_started": 0}
+        return {"total": 0, "extracted": 0, "pending": 0, "failed": 0,
+                "needs_review": 0, "not_started": 0}
 
     asset_ids = [r["id"] for r in assets]
 
@@ -111,35 +158,59 @@ def load_doc_extraction_counts(sb, exam_id: str, cycle_id: str | None = None) ->
     all_jobs: list[dict] = []
     for i in range(0, len(asset_ids), 500):
         batch = asset_ids[i : i + 500]
-        jobs = _safe(
-            lambda b=batch: (
-                sb.table("document_processing_jobs")
-                .select("document_id, status, created_at")
-                .in_("document_id", b)
-                .eq("job_type", "text_extract")
-                .limit(5000)
-                .execute()
-                .data
-            ),
-            default=[],
-        ) or []
+        if strict:
+            jobs = _doc_pages_strict(
+                sb,
+                lambda b=batch: (
+                    sb.table("document_processing_jobs")
+                    .select("document_id, status, created_at, id")
+                    .in_("document_id", b)
+                    .eq("job_type", "text_extract")
+                    .order("id")
+                ),
+                "doc_extraction.jobs",
+            )
+        else:
+            def _load_batch(b=batch) -> list[dict]:
+                out: list[dict] = []
+                start = 0
+                while True:
+                    page = (
+                        sb.table("document_processing_jobs")
+                        .select("document_id, status, created_at, id")
+                        .in_("document_id", b)
+                        .eq("job_type", "text_extract")
+                        .order("id")
+                        .range(start, start + _DOC_PAGE - 1)
+                        .execute()
+                        .data
+                    ) or []
+                    out.extend(page)
+                    if len(page) < _DOC_PAGE:
+                        break
+                    start += _DOC_PAGE
+                return out
+
+            jobs = _safe(_load_batch, default=[]) or []
         all_jobs.extend(jobs)
 
-    # Latest job per asset: sort ascending so the last entry wins on ties.
+    # Latest job per asset: deterministic by (created_at, id) so ties resolve consistently.
     latest: dict[str, str] = {}
-    for j in sorted(all_jobs, key=lambda x: x.get("created_at") or ""):
+    for j in sorted(all_jobs, key=lambda x: (x.get("created_at") or "", x.get("id") or "")):
         latest[j["document_id"]] = j["status"]
 
-    extracted   = sum(1 for aid in asset_ids if latest.get(aid) == "succeeded")
-    pending     = sum(1 for aid in asset_ids if latest.get(aid) in {"queued", "running"})
-    failed      = sum(1 for aid in asset_ids if latest.get(aid) == "failed")
-    not_started = sum(1 for aid in asset_ids if aid not in latest)
+    extracted    = sum(1 for aid in asset_ids if latest.get(aid) == "succeeded")
+    pending      = sum(1 for aid in asset_ids if latest.get(aid) in {"queued", "running"})
+    failed       = sum(1 for aid in asset_ids if latest.get(aid) == "failed")
+    needs_review = sum(1 for aid in asset_ids if latest.get(aid) == "needs_review")
+    not_started  = sum(1 for aid in asset_ids if aid not in latest)
 
     return {
         "total": total,
         "extracted": extracted,
         "pending": pending,
         "failed": failed,
+        "needs_review": needs_review,
         "not_started": not_started,
     }
 

@@ -231,7 +231,8 @@ def build_console_detail(sb, exam_id: str) -> dict[str, Any]:
     family_name = _family_name(sb, exam.get("exam_family_id"))
 
     # Advisory-area reads (not owned by the classifier) — strict + paged.
-    doc_counts = load_doc_extraction_counts(sb, exam_id)
+    # strict=True: any DB failure raises DatabaseError → 5xx (never fabricated zero counts).
+    doc_counts = load_doc_extraction_counts(sb, exam_id, strict=True)
     syllabus_verified = _syllabus_verified_count(sb, exam_id)
     competition = _competition(sb, exam_id)
     mock = _mock_readiness(sb, exam_id)

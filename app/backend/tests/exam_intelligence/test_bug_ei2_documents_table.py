@@ -25,11 +25,14 @@ Assertions:
 """
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api import admin_exam_intelligence as admin_api
 from app.core.auth import get_current_user
+from app.exam_intelligence.readiness import load_doc_extraction_counts
 from tests.persona_questions._stub import SBStub
 
 
@@ -222,3 +225,95 @@ def test_documents_action_item_entity_kind_is_document_assets():
     doc_items = [i for i in body["action_queue"] if i["area"] == "documents"]
     assert doc_items, "documents area should be in action_queue when no docs present"
     assert doc_items[0]["entity_kind"] == "document_assets", doc_items[0]
+
+
+# ── 8. Strict path: asset read failure → 5xx ────────────────────────────────
+
+def test_strict_asset_read_failure_returns_500():
+    """console endpoint must return 5xx when document_assets read fails (strict=True)."""
+    class BrokenAssetSB(SBStub):
+        def table(self, name):
+            if name == "document_assets":
+                m = MagicMock()
+                m.select.return_value = m
+                m.eq.return_value = m
+                m.order.return_value = m
+                m.range.return_value = m
+                m.execute.side_effect = RuntimeError("DB asset read failure")
+                return m
+            return super().table(name)
+
+    db = _minimal_ready_db(doc_assets=[], doc_jobs=[])
+    client = TestClient(_build_app(BrokenAssetSB(db)), raise_server_exceptions=False)
+    r = client.get("/api/admin/exam-intelligence/console/exams/e1")
+    assert r.status_code == 500, r.text
+
+
+# ── 9. Strict path: job read failure → 5xx ──────────────────────────────────
+
+def test_strict_job_read_failure_returns_500():
+    """console endpoint must return 5xx when document_processing_jobs read fails (strict=True)."""
+    class BrokenJobSB(SBStub):
+        def table(self, name):
+            if name == "document_processing_jobs":
+                m = MagicMock()
+                m.select.return_value = m
+                m.eq.return_value = m
+                m.in_.return_value = m
+                m.order.return_value = m
+                m.range.return_value = m
+                m.execute.side_effect = RuntimeError("DB job read failure")
+                return m
+            return super().table(name)
+
+    db = _minimal_ready_db(
+        doc_assets=[_admin_ei_asset("da1")],
+        doc_jobs=[],
+    )
+    client = TestClient(_build_app(BrokenJobSB(db)), raise_server_exceptions=False)
+    r = client.get("/api/admin/exam-intelligence/console/exams/e1")
+    assert r.status_code == 500, r.text
+
+
+# ── 10. needs_review status in vocabulary ────────────────────────────────────
+
+def test_needs_review_job_counted_in_vocabulary():
+    """An asset whose latest text_extract job has status='needs_review' is counted
+    under needs_review (not extracted, pending, failed, or not_started)."""
+    from app.exam_intelligence.readiness import load_doc_extraction_counts
+
+    db = _minimal_ready_db(
+        doc_assets=[_admin_ei_asset("da1"), _admin_ei_asset("da2")],
+        doc_jobs=[
+            _text_extract_job("da1", "needs_review"),
+            _text_extract_job("da2", "succeeded"),
+        ],
+    )
+    counts = load_doc_extraction_counts(SBStub(db), "e1", strict=True)
+    assert counts["needs_review"] == 1, counts
+    assert counts["extracted"] == 1, counts
+    assert counts["not_started"] == 0, counts
+    assert "needs_review" in counts
+
+
+# ── 11. Deterministic latest job: (created_at, id) tiebreaker ───────────────
+
+def test_latest_job_id_tiebreaker_when_same_created_at():
+    """When two jobs share the same created_at, the one with the higher id wins
+    (lexicographic sort ascending on (created_at, id) — last entry wins)."""
+    from app.exam_intelligence.readiness import load_doc_extraction_counts
+
+    # job-A (id='a') → failed; job-B (id='b') → succeeded — same created_at.
+    # After sort by (created_at, id), 'b' > 'a', so job-B wins → extracted.
+    db = _minimal_ready_db(
+        doc_assets=[_admin_ei_asset("da1")],
+        doc_jobs=[
+            {"document_id": "da1", "job_type": "text_extract",
+             "status": "failed", "created_at": _RECENT, "id": "job-a"},
+            {"document_id": "da1", "job_type": "text_extract",
+             "status": "succeeded", "created_at": _RECENT, "id": "job-b"},
+        ],
+    )
+    counts = load_doc_extraction_counts(SBStub(db), "e1", strict=True)
+    assert counts["extracted"] == 1, f"job-b (id='job-b') should win tiebreak: {counts}"
+    assert counts["failed"] == 0, counts
