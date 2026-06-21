@@ -1,6 +1,6 @@
 # Career Copilot remaining-work PR plan
 
-Last planned from repo state: 2026-06-20 at `main @ a2ded8c`.
+Last planned from repo state: 2026-06-21 at `main @ 2308b31`. IA decisions locked: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`.
 
 This plan decomposes the remaining Career Copilot work into small PRs that can
 be assigned to simultaneous agents without overlapping write scopes. Status
@@ -258,25 +258,23 @@ These are independent of Lanes A–G and can run now.
   4. Add a regression test: mock a `syllabus_documents` row and assert that propose no longer raises 404.
 - **Exit:** propose endpoint returns 200 with mention proposals for a known document.
 
-### H2 — Fix `console/exams/{id}` 500 (BUG-EI-2)
+### H2 — Fix `console/exams/{id}` → 500 and readiness.py wrong column (BUG-EI-2)
 
-- **Type:** backend bug fix — requires design decision first.
+- **Type:** backend bug fix — **design decision LOCKED; no pre-work gate required**.
+- **Status: P0 / READY TO DISPATCH.**
 - **Write scope:**
   - `app/backend/app/exam_intelligence/console_detail.py`
-  - `app/backend/tests/` — regression test for the console detail path
+  - `app/backend/app/exam_intelligence/readiness.py`
+  - `app/backend/tests/exam_intelligence/` — regression tests for both paths
   - checklist rows for BUG-EI-2 and "Document readiness extraction status"
 - **Do not touch:** frontend, migrations, other study-os files.
-- **Pre-work design decision (gate before implementation):**
-  The `_documents()` helper must be redesigned. Options:
-  - **Option A:** Query `syllabus_documents` by `exam_id`; use `trust_status == "verified"` as the readiness proxy. Count `verified` docs as "extracted".
-  - **Option B:** Query a `document_processing_jobs` or similar table if text-extraction tracking lives separately.
-  Operator must pick one before code is written. Record decision as a note in this PR.
+- **Locked design decision (2026-06-21):** Option B. Canonical extraction signal is `document_processing_jobs` where `job_type='text_extract'`; latest `status` determines succeeded/pending/failed/needs_review/not_started. `syllabus_documents.trust_status='verified'` is a human-review gate orthogonal to extraction — NOT a valid proxy. Option A (trust_status) undercounts and is rejected.
 - **Work:**
-  1. Implement chosen option in `_documents()`.
-  2. Update `extracted` count logic at `console_detail.py:257` to match new readiness field.
-  3. Fix line 180 label (`"documents": "document_assets"`) to reflect the new source table.
-  4. Add a regression test: mock the chosen table and assert console detail returns 200.
-- **Exit:** console exam detail returns 200 with a non-zero document check when syllabus documents exist.
+  1. Redesign `_documents()` in `console_detail.py`: load `document_assets` ownership from metadata; apply exam/cycle filter from metadata; batch-load latest `document_processing_jobs` per asset (`job_type='text_extract'`); return explicit status per document.
+  2. Fix `readiness.py:77` with the same approach (same bug — queries non-existent `document_assets.exam_id` and `.extraction_status`).
+  3. Implement shared logic between `console_detail.py` and `readiness.py` to avoid duplication.
+  4. Add regression tests: mock `document_processing_jobs` rows; assert 200 with correct extraction status.
+- **Exit:** console exam detail and readiness endpoint both return 200; extraction status uses `document_processing_jobs`, not `trust_status`.
 
 ### H3 — EI UX cleanup batch (UX-EI-1 through UX-EI-5)
 
@@ -334,11 +332,13 @@ Items are split by category and blocked relationship. P2 items can run now; P3 i
 
 ### I5 — PYQ question pagination (M3)
 
-- **Type:** frontend + backend change.
-- **Write scope:** `PyqPaperWorkspace.jsx`, targeted tests; backend `pyq-questions` endpoint if it supports `offset`/`limit` params (verify first).
+- **Type:** frontend — **READY TO DISPATCH (with constraint).**
+- **Backend pagination confirmed:** endpoint already supports `paper`, reviewer-status filter, `limit`, `offset`, exact `total`, deterministic question-number ordering. No backend changes required.
+- **Write scope:** `PyqPaperWorkspace.jsx`, targeted tests.
 - **Do not touch:** other workspace panels, unrelated PYQ routes.
+- **Constraint:** must NOT hardcode old routes that I8-A will remove. Before implementing pagination: move supported filters server-side; keep deterministic server ordering; add `source_kind` server filter if required; remove or defer confidence/status sort controls unless globally correct; reset offset on filter/paper changes; clamp page after mutations; show total after filters; refetch after review actions.
 - **Work:** Replace `limit=200` with paginated fetching; add page/section navigation in the question list UI.
-- **Depends on:** confirm backend supports pagination on the questions endpoint.
+- **Exit:** 100+ question papers paginate correctly; filter changes reset to page 1; total count visible.
 
 ### I6 — Remaining identifier leakage: CMS tables, CompetitionMetrics, Subjects (I3–I5)
 
@@ -348,27 +348,51 @@ Items are split by category and blocked relationship. P2 items can run now; P3 i
 - **Work:** Apply `operatorChrome.humanizeToken` to entity `id` columns in CMS tables and the `exam_slug`/`subject_id` columns in Competition and Subjects surfaces.
 - **Depends on:** none; can run in parallel with H3.
 
-### I7 — KnowledgeGovernance: real metrics or remove placeholder lanes (E1)
+### I7 — KnowledgeGovernance: remove exam lane (E1)
 
-- **Type:** design decision → implementation.
-- **Write scope:** `KnowledgeGovernance.jsx`, targeted tests; backend overview endpoint if metrics are added.
-- **Blocked on:** DQ-1 (KG value proposition and metric availability).
-- **Two possible outcomes:**
-  - If metrics are available: wire `metricKey` to real endpoints; remove placeholder TODO.
-  - If no metrics planned: remove "Exam truth & planner readiness" lane or fold its links into existing nav.
+- **Type:** frontend cleanup — **UNBLOCKED; READY TO DISPATCH.**
+- **DQ-1 resolved (2026-06-21):** remove the exam lane/card. Console already owns triage. KG lane adds no unique capability and duplicates existing nav.
+- **Write scope:**
+  - `app/frontend/src/pages/admin/KnowledgeGovernance.jsx` — remove "Exam truth & planner readiness" lane/card
+  - landing-page count/copy update (4 lanes → 3)
+  - targeted tests for landing-page lane count and links
+  - checklist row for E1
+- **Do not touch:** sidebar exam group (deferred to I8-A), KG rename (separate later PR), backend metrics, routing.
+- **Work:**
+  1. Remove the exam lane block from `KnowledgeGovernance.jsx`.
+  2. Update count/copy text from "4 lanes" → "3 lanes" (or equivalent).
+  3. Update landing-page tests.
+- **Exit:** landing page renders 3 lanes; no exam links appear on KG landing; sidebar exam group unchanged.
 
-### I8 — ExamIntelligence.jsx: reduce to ≤2 primary paths (E2)
+### I8 — Exam Management consolidation (E2) — GATED; SERIAL; ONE OWNER
 
-- **Type:** design decision → implementation.
-- **Write scope:** `ExamIntelligence.jsx`, targeted tests.
-- **Blocked on:** DQ-2 (operator workflow definition — what is the primary goal of this page?).
-- **Work after design gate:** Remove or demote navigation paths that are not the operator's primary intent.
+- **Type:** structural redesign — **GATED on IA design-lock document.**
+- **DQ-2 resolved (2026-06-21):** old "registry-first cleanup" approach is superseded. One visible Exam Management front door combining Registry + Console purposes. "Console" and "Workspace" must not be peer product choices.
+- **CRITICAL: I8-A, I8-B, and I8-C must be serial and owned by one lane/owner. Do NOT fan out to parallel agents.** Shared write scope is too large: `AdminShell.jsx`, `adminRoutes.jsx`, `ExamIntelligence.jsx`, `ExamGovernanceConsole.jsx`, `ConsoleWorkQueue.jsx`, `ExamActionConsole.jsx`, `ExamWorkspace.jsx`, action CTA generation, route/title tests, navigation active-state tests.
+
+#### I8-A — Exam Management front door (GATED — IA design lock)
+
+- **Write scope:** `AdminShell.jsx`, `adminRoutes.jsx`, new `ExamManagement.jsx` (or replacement route), tests.
+- **Goal:** One sidebar entry replacing the existing exam group. Family/exam/cycle discovery + triage in one page. Status filters. One row/drill-in action: `Manage exam`. Atomically adds new entry, removes old KG sidebar exam group, and removes visible Registry/Console peer navigation. Adds legacy route compatibility.
+- **Redirect strategy:** Add canonical routes first; then change navigation and internal links; then validate all entry points; then convert old visible URLs to redirects; then remove orphaned shells/components only after redirect tests pass. Never create an intermediate 404 state.
+
+#### I8-B — Manage Exam consolidation (GATED — I8-A + IA design lock)
+
+- **Write scope:** `ExamWorkspace.jsx` (or successor), `ExamActionConsole.jsx`, `console_detail.py` (blocker deep-link contract), tests.
+- **Goal:** Merge per-exam Console information into the exam-management drill-in. Show blocker, status, next action, and readiness in one selected-exam context. Remove visible "Open console" vs "Advanced workspace" choice. Implement locked deep-link blocker contract (every CTA routes to exact task state: `?tab=syllabus&status=pending`, `?tab=documents&document={id}`, etc.).
+- **Blocked on:** IA design lock must choose one canonical readiness authority: Console detail/action queue OR workspace readiness sections OR unified read model.
+
+#### I8-C — Advanced Repair isolation (GATED — I8-A + IA design lock)
+
+- **Write scope:** `AdminShell.jsx` (remove CMS from nav), `ExamIntelCms.jsx` (or successor overflow entry), tests.
+- **Goal:** Remove CMS from normal navigation. Expose selected-exam `Manage exam → More → Advanced repair` — scoped to selected exam, permission-gated, explicit warning. Global super-admin recovery may remain but must not be a primary CTA.
 
 ### I9 — Guided cycle-setup workflow (F1)
 
-- **Type:** design → implementation (multi-PR).
-- **Blocked on:** I6-gate (product design deliverable: step order, surface choice, whether to use wizard or checklist pattern).
-- **Note:** This is P3. Do not implement until the design gate clears. The gate deliverable is a step-by-step operator journey doc.
+- **Type:** design → implementation (multi-PR) — **ARCHITECTURE LOCKED; IMPLEMENTATION GATED.**
+- **Architecture locked (2026-06-21):** Hybrid. (1) Bounded mini-wizard for atomic cycle creation (identity + dates + phase selection + review + save → return to Manage Exam). (2) Persistent 9-step activation checklist resumable across sessions (Cycle details → Phases and schedule → Source documents → Extraction → Syllabus mapping → PYQ readiness → Policy updates → Competition context → Review and activate).
+- **Blocked on:** I6 cycle-setup gate document (see §Documentation gates below). Must define, for all 9 steps: completion source, hard/advisory/N-A gate, deep-link target, resume behaviour, empty-state behaviour, selected-cycle behaviour, management-mode/cadence applicability, `AddCycleWizard` decision (reuse/embed/remove), progress derivation (backend-derived vs frontend-composed), manual-mark-complete rules.
+- **Do not dispatch I9 implementation until gate document is approved.**
 
 ## Lane G — Later expansion after clean gate
 
@@ -382,38 +406,111 @@ Do not dispatch until Lane A exits clean:
 Each of these needs its own preflight to define schema, scoring, and frontend
 contract before implementation.
 
-## Suggested simultaneous dispatch batch
+## Lane J — CMS → Manage Exam capability migration (DEFERRED — GATED BY I8)
 
-Lane B is **closed** — all B items confirmed CODE PRESENT; do not dispatch.
+Do not dispatch until I8-A/B/C are complete.
 
-Safe first batch (original — Lane B entries removed):
+### J1 — Advanced Repair scoping
 
-1. **Agent A:** A1 scheduler evidence (operator/live, docs only).
-2. **Agent C:** C0 setup timeline design lock (docs only).
-3. **Agent D:** D1 document readiness identity/status audit (docs only).
-4. **Agent E:** E1 CI sequencing (workflow scoped).
+- Selected exam scope, selected cycle scope where applicable, search, filters, pagination.
+- Explicit "Advanced Repair" warning; permission gate.
+- Gated by I8-C.
 
-New batch (Lane H — can run now in parallel with any of the above):
+### J2 — Missing operational editors in Manage Exam
 
-6. **Agent H1:** H1 syllabus-propose fix (backend, narrow scope — `syllabus_mapper.py` + test).
-7. **Agent H2:** H2 console-detail fix (backend — requires design decision first; see H2 pre-work gate).
-8. **Agent H3:** H3 EI UX cleanup (frontend — ReviewQueueTable, SetupPanel, OverviewPanel).
+Move normal work out of the generic CMS and into Manage Exam tabs:
+topic/microtopic management, alias management, prerequisite editing, historical paper creation, question/option correction, policy flag correction, cycle-specific entity management.
 
-Lane I items that can run now (no design gate required):
+Each capability is its own focused PR. Do not combine them.
 
-9. **Agent I3:** I3 PYQ paper overview table (`PyqWorkbenchPanel.jsx` — replace dropdown with table).
-10. **Agent I4:** I4 bulk import auto-navigate after success (`PyqWorkbenchPanel.jsx`, `BulkImportModal.jsx`).
-11. **Agent I6:** I6 remaining identifier leakage (`ExamIntelCms.jsx`, `CompetitionMetricsTable.jsx`).
+### J3 — Schema/domain redesign (CONTRACT-FIRST)
 
-Lane I items blocked on design decisions (do not dispatch yet):
+Phase/category competition cutoffs, applied vs appeared candidate counts, mixed-format PDF extraction, evidence-based coverage scoring, structured competition breakdowns. Each needs its own domain contract and potentially schema changes before implementation. Do not interleave with I8 navigation work.
 
-- I7 (KG metrics/lanes) — blocked on DQ-1.
-- I8 (ExamIntelligence navigation) — blocked on DQ-2.
-- I9 (guided cycle workflow) — blocked on I6-gate product design.
-- I5 (question pagination) — verify backend pagination support first.
-- I1 (OverviewPanel collapse) — verify with operator which fields to retain.
+## Documentation gates
 
-Do **not** dispatch B2 and C1 to the same agent unless B1 is complete and the
-agent explicitly owns the relevant tests. Do **not** dispatch G-lane work until
-A1/A2 are clean. Do **not** dispatch H2 until the Option A/B design decision is
-recorded (see H2 pre-work gate above).
+These are planning/decision documents, not code PRs. They gate downstream implementation.
+
+### IA design-lock document (KEYSTONE — write next)
+
+Gates all of I8-A/B/C. Must define:
+
+- no-new-surface rule and surface-count exit test
+- canonical visible route map
+- canonical page names and route ownership
+- page/component ownership (Exam Management, Manage Exam, Advanced Repair)
+- front-door content spec
+- selected-exam content spec
+- canonical readiness source of truth (Console detail vs workspace vs unified read model)
+- blocker/deep-link CTA contract
+- portfolio/readiness read-model data contract and status vocabulary
+- Advanced Repair access model
+- old-route compatibility strategy
+- redirect sequence
+- component retirement plan
+- test migration plan
+
+### I6 cycle-setup gate document (write after IA lock)
+
+Gates I9 implementation. Must define, for all 9 activation checklist steps:
+
+- completion source
+- hard gate vs advisory vs N/A
+- deep-link target
+- resume behaviour
+- empty-state behaviour
+- selected-cycle behaviour
+- management-mode/cadence applicability
+- `AddCycleWizard` decision (reuse / embed / remove)
+- progress derivation (backend-derived vs frontend-composed)
+- manual-mark-complete rules
+
+## Lane K — Mock semantics trust fix (READY — ISOLATED)
+
+Independent of all IA work. Can run in parallel with H2, I7, I5.
+
+- **Write scope:** `app/frontend/src/pages/study/Mocks.jsx`, targeted tests.
+- **Work:**
+  1. Relabel "Error patterns" → "Self-reported error patterns".
+  2. Relabel average score display → "Average across N logged mocks".
+  3. Add explanatory copy: time pressure / misread / guesswork / concept gap are user-entered values for manually logged mocks, not platform-inferred.
+  4. For platform attempts, derive only what telemetry supports; do not infer unsupported causal labels from correctness alone.
+- **Exit:** mock results page clearly attributes self-reported data to the user; no misleading platform-inference language.
+
+## Suggested simultaneous dispatch batch (updated 2026-06-21)
+
+Lane B is **closed** — all B items CODE PRESENT; do not dispatch.
+
+### Immediate dispatch (no gates)
+
+These can run in parallel now:
+
+1. **Agent H2:** H2 BUG-EI-2 extraction readiness fix — **P0**. `console_detail.py` + `readiness.py` + tests. Design decision locked; no pre-work gate.
+2. **Agent I7:** I7 KG exam lane removal. `KnowledgeGovernance.jsx` + tests only. DQ-1 resolved.
+3. **Agent K:** Mock semantics trust fix. `Mocks.jsx` + tests. Isolated; no dependencies.
+4. **Agent I5:** I5 PYQ pagination. `PyqPaperWorkspace.jsx` + tests. Backend pagination confirmed; do not hardcode old routes.
+
+### Parallel with immediate batch
+
+5. **Agent A:** A1 scheduler evidence (operator/live, docs only).
+6. **Agent E:** E1 CI sequencing (`.github/workflows/ci.yml` only).
+
+### Write-next (documentation)
+
+7. **One owner:** IA design-lock document (see §Documentation gates). Keystone gate for all I8 work. Do not parallelize; single design owner.
+
+### Blocked until IA design lock
+
+- I8-A, I8-B, I8-C — serial, one owner, cannot start until IA lock is approved.
+- Portfolio read-model backend — after IA contract is locked.
+- J1, J2, J3 — after I8-A/B/C.
+
+### Blocked until Lane A clean gate
+
+- G-lane work (A-PR4, A-PR5, Track C) — do not dispatch.
+
+### Do not dispatch
+
+- I9 — blocked on I6 gate document (write after IA lock).
+- J3, competition metrics, mixed-PDF, coverage governance — contract-first; deferred.
+- KG rename — separate later PR; do not fold into I7 or I8-A.

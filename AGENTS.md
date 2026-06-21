@@ -23,7 +23,11 @@ Rules:
 The repo-level checklist lives at `docs/status/career-copilot-checklist.md`.
 It is the shared source of record for agent-visible status on the Mock Engine
 v2 ↔ Study OS arc, Exam Governance Console cleanup tier, exam-intelligence UX
-cleanup, CI gate status, and live-DB-only tails.
+cleanup, Exam Management IA locked decisions, CI gate status, and live-DB-only tails.
+
+The Exam Management IA decision record is at `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`. Read it before touching any of: `KnowledgeGovernance.jsx`, `ExamIntelligence.jsx`, `ExamGovernanceConsole.jsx`, `AdminShell.jsx`, `adminRoutes.jsx`, `ExamWorkspace.jsx`, `ExamActionConsole.jsx`, `ConsoleWorkQueue.jsx`, `console_detail.py`, or `readiness.py`.
+
+No-new-surface rule (locked): **No new top-level destination unless it removes at least two existing top-level destinations.** A new sidebar item or promoted top-level route IS a surface. A backend endpoint, embedded component, or drill-in page is NOT. Violating this rule restarts the IA problem the work is trying to solve.
 
 Rules:
 - Before changing code or docs in those areas, read the checklist after the
@@ -316,6 +320,14 @@ upsert key for seeded rows). The wizard generates slugs from the name at
 create time; they are immutable thereafter. Same invariant applies to
 cycle-bound slugs (recomputed at clone time from exam slug + year +
 cycle_name; never user-editable post-creation).
+
+### 18. No-new-surface rule for navigation
+
+Before adding any new admin navigation entry, count: (a) how many top-level destinations exist now; (b) how many will exist after the PR. If the number stays equal or increases, the PR fails the IA objective. The test is "did the visible surface count go down?" A new route that folds two existing surfaces into one passes; a new route added alongside existing surfaces fails. Do not treat a "portfolio/matrix" dashboard, a "coverage lane", or a second "workspace variant" as neutral — each is a new surface. See `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md` §9.
+
+### 19. Serial delivery for shared-write-scope redesigns
+
+When multiple implementation PRs must edit the same navigation/routing files — `AdminShell.jsx`, `adminRoutes.jsx`, page shells, context providers, route/title tests — they MUST be dispatched serially to one owner, not fanned out to parallel agents. Parallel agents on shared routing files produce conflicts, duplicate dead code, and broken active-nav state. I8-A → I8-B → I8-C is the canonical example: all three touch routing and navigation; all three must be one agent's sequential work. If a prompt says "implement I8-A and I8-B in parallel", refuse and re-sequence.
 
 ### 17. Uniqueness constraints for exam identity graph
 - Cycle uniqueness: `(exam_id, year, cycle_name)` — enforced by unique index.
