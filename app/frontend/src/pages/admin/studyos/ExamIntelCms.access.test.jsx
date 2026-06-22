@@ -332,3 +332,80 @@ describe("ExamIntelCms create form scope prefill (I8-C)", () => {
     await waitFor(() => expect(screen.getByTestId("cms-create-form")).toBeTruthy());
   });
 });
+
+// ── CMS load() gen-guard deferred-response tests (I8-C Issue 3) ──────────────
+
+describe("ExamIntelCms load() invalidates stale responses", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("stale exam-cycles response cannot land after entity switches to documents", async () => {
+    mockUseAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" });
+
+    let resolveExamCycles;
+    // exam-families (default) resolves immediately
+    api.get.mockResolvedValueOnce({ items: [], total: 0 });
+    // exam-cycles request is deferred
+    api.get.mockReturnValueOnce(new Promise((res) => { resolveExamCycles = res; }));
+    // subsequent calls resolve immediately
+    api.get.mockResolvedValue({ items: [], total: 0 });
+
+    renderCms();
+    await waitFor(() => screen.getByTestId("cms-entity-select"));
+
+    // Switch to exam-cycles — starts deferred load
+    fireEvent.change(screen.getByTestId("cms-entity-select"), { target: { value: "exam-cycles" } });
+
+    // Switch to documents before exam-cycles response arrives (gen should increment)
+    fireEvent.change(screen.getByTestId("cms-entity-select"), { target: { value: "documents" } });
+    expect(screen.getByTestId("documents-panel")).toBeTruthy();
+
+    // Resolve stale exam-cycles request with a recognizable cycle_name
+    resolveExamCycles({ items: [{ id: "stale-000", year: 2020, cycle_name: "Stale 2020 Cycle", status: "closed" }], total: 1 });
+
+    // Flush async
+    await new Promise((r) => setTimeout(r, 0));
+
+    // Documents panel still shows — stale response did not corrupt UI state
+    expect(screen.getByTestId("documents-panel")).toBeTruthy();
+    // Stale cycle name must not be visible anywhere
+    expect(screen.queryByText("Stale 2020 Cycle")).toBeNull();
+  });
+
+  test("stale authorized response cannot mutate denied state after permission removed", async () => {
+    // Start authorized
+    mockUseAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" });
+
+    let resolveAuthorized;
+    api.get.mockReturnValueOnce(new Promise((res) => { resolveAuthorized = res; }));
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/cms"]}>
+        <Routes>
+          <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // Switch to denied (permission removed) before response arrives
+    mockUseAuth.mockReturnValue({ user: { role: "admin", permissions: [] }, status: "backend_authed" });
+    rerender(
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/cms"]}>
+        <Routes>
+          <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("advanced-repair-denied")).toBeTruthy();
+
+    // Resolve the stale authorized request with items
+    resolveAuthorized({ items: [{ id: "auth-001", name: "Leaked Family" }], total: 1 });
+
+    await new Promise((r) => setTimeout(r, 0));
+
+    // Denied screen still shows — stale response did not restore CMS UI
+    expect(screen.getByTestId("advanced-repair-denied")).toBeTruthy();
+    expect(screen.queryByTestId("admin-exam-intel-cms")).toBeNull();
+    expect(screen.queryByText("Leaked Family")).toBeNull();
+  });
+});

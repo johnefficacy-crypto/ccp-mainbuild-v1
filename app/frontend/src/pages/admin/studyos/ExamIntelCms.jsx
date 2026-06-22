@@ -798,6 +798,7 @@ export default function AdminExamIntelCms() {
   const bulkCap = { "pyq-questions": 2000, "pyq-options": 4000, "pyq-question-topic-tags": 2000 }[entity] || 500;
 
   async function load() {
+    const gen = ++loadGenRef.current;
     if (!isAuthorized) return;
     // The Documents panel manages its own data via the upload/list endpoints.
     if (isDocuments) {
@@ -805,7 +806,6 @@ export default function AdminExamIntelCms() {
       setBusy(false);
       return;
     }
-    const gen = ++loadGenRef.current;
     setBusy(true);
     setErr(null);
     try {
@@ -1120,7 +1120,7 @@ export default function AdminExamIntelCms() {
           className="rounded border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
           data-testid="advanced-repair-scope-summary"
         >
-          Scoped to{" "}
+          Context filter —{" "}
           {scopeExamId && <>exam <code>{scopeExamId}</code></>}
           {scopeExamId && scopeCycleId && " · "}
           {scopeCycleId && <>cycle <code>{scopeCycleId}</code></>}

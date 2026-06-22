@@ -49,6 +49,7 @@ function renderDocs(props = {}) {
 beforeEach(() => {
   api.get.mockReset();
   api.get.mockResolvedValue({ items: [], total: 0 });
+  api.post.mockReset();
 });
 
 // ── Scoped list request on mount ──────────────────────────────────────────────
@@ -184,14 +185,18 @@ test("stale response from old exam scope cannot overwrite docs after scope chang
 });
 
 test("document rows from previous scope are cleared immediately on scope transition", async () => {
-  // First scope resolves with a doc
-  api.get.mockResolvedValueOnce({ items: [{ id: "doc-1", title: "Old Doc", type: "pdf" }], total: 1 });
-  // Second scope (after rerender) resolves with nothing
+  // First scope resolves with a real doc row
+  api.get.mockResolvedValueOnce({
+    items: [{ id: "doc-1", document_kind: "syllabus", original_filename: "old.pdf", status: "pending" }],
+    total: 1,
+  });
+  // Second scope resolves empty
   api.get.mockResolvedValue({ items: [], total: 0 });
 
   const { rerender } = renderDocs({ scopeExamId: "exam-has-docs" });
 
-  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  // Wait for the old doc row to actually appear in the DOM
+  await waitFor(() => screen.getByTestId("doc-row-doc-1"));
 
   rerender(
     <MemoryRouter>
@@ -199,19 +204,23 @@ test("document rows from previous scope are cleared immediately on scope transit
     </MemoryRouter>,
   );
 
-  // After scope change, old docs must not persist
+  // After scope change, the old doc row must disappear
   await waitFor(() => {
-    expect(screen.queryByText("Old Doc")).toBeNull();
+    expect(screen.queryByTestId("doc-row-doc-1")).toBeNull();
   });
 });
 
 test("failed new-scope request does not restore old-scope docs", async () => {
-  api.get.mockResolvedValueOnce({ items: [{ id: "doc-a", title: "Prev Doc", type: "pdf" }], total: 1 });
+  api.get.mockResolvedValueOnce({
+    items: [{ id: "doc-a", document_kind: "pyq_paper", original_filename: "prev.pdf", status: "processed" }],
+    total: 1,
+  });
   api.get.mockRejectedValue(new Error("network error"));
 
   const { rerender } = renderDocs({ scopeExamId: "exam-prev" });
 
-  await waitFor(() => expect(api.get).toHaveBeenCalled());
+  // Wait for the old doc row to actually appear
+  await waitFor(() => screen.getByTestId("doc-row-doc-a"));
 
   rerender(
     <MemoryRouter>
@@ -219,8 +228,141 @@ test("failed new-scope request does not restore old-scope docs", async () => {
     </MemoryRouter>,
   );
 
-  // Even after failed new request, old docs must not reappear
+  // Even after failed new request, old doc row must not reappear
   await waitFor(() => {
-    expect(screen.queryByText("Prev Doc")).toBeNull();
+    expect(screen.queryByTestId("doc-row-doc-a")).toBeNull();
   });
+});
+
+// ── Multi-step workflow protection (scopeGenRef) ──────────────────────────────
+
+test("selected file is cleared when exam scope changes", async () => {
+  const { rerender } = renderDocs({ scopeExamId: "exam-a" });
+
+  // Simulate selecting a PDF file
+  const pdf = new File(["dummy"], "report.pdf", { type: "application/pdf" });
+  fireEvent.change(screen.getByTestId("doc-file"), { target: { files: [pdf] } });
+
+  // Set document_kind to pass the first validation checks
+  fireEvent.change(screen.getByTestId("doc-field-document_kind"), { target: { value: "syllabus" } });
+
+  // Change scope — this should clear the selected file
+  rerender(
+    <MemoryRouter>
+      <ExamIntelDocuments scopeExamId="exam-b" />
+    </MemoryRouter>,
+  );
+
+  // Submit — if file was cleared, we get "Choose a PDF file." before any API call
+  fireEvent.submit(screen.getByTestId("doc-upload-form"));
+
+  await waitFor(() => {
+    expect(screen.getByRole("status").textContent).toContain("Choose a PDF file");
+  });
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+test("upload completion from old scope cannot set success status in new scope", async () => {
+  api.get.mockResolvedValue({ items: [], total: 0 });
+
+  let resolveUploadUrl;
+  api.post.mockReturnValueOnce(new Promise((res) => { resolveUploadUrl = res; }));
+
+  const { rerender } = renderDocs({ scopeExamId: "exam-upload-a" });
+
+  // Set document_kind and file, then submit
+  fireEvent.change(screen.getByTestId("doc-field-document_kind"), { target: { value: "syllabus" } });
+  const pdf = new File(["dummy"], "test.pdf", { type: "application/pdf" });
+  fireEvent.change(screen.getByTestId("doc-file"), { target: { files: [pdf] } });
+
+  // Kick off the upload (upload-url request starts)
+  fireEvent.submit(screen.getByTestId("doc-upload-form"));
+
+  // Change scope before upload-url resolves
+  rerender(
+    <MemoryRouter>
+      <ExamIntelDocuments scopeExamId="exam-upload-b" />
+    </MemoryRouter>,
+  );
+
+  // Resolve the stale upload-url with a signed response
+  resolveUploadUrl({ upload_url: "https://storage.example.com/put", document_id: "doc-stale" });
+
+  // Wait for any async effects to flush
+  await waitFor(() => {
+    expect(api.get.mock.calls.some(([u]) => u.includes("exam_id=exam-upload-b"))).toBe(true);
+  });
+
+  // No success status from old scope should appear
+  expect(screen.queryByText(/Extraction queued/)).toBeNull();
+});
+
+test("pages response from old scope cannot display after scope changes", async () => {
+  const sharedDoc = { id: "shared-doc", document_kind: "syllabus", original_filename: "shared.pdf", status: "processed" };
+
+  // Mocks must be in call-order: exam-a list → deferred pages → exam-b list
+  let resolvePagesOld;
+  api.get
+    .mockResolvedValueOnce({ items: [sharedDoc], total: 1 })
+    .mockReturnValueOnce(new Promise((res) => { resolvePagesOld = res; }))
+    .mockResolvedValueOnce({ items: [sharedDoc], total: 1 });
+
+  const { rerender } = renderDocs({ scopeExamId: "exam-pages-a" });
+
+  // Wait for exam-a doc row
+  await waitFor(() => screen.getByTestId("doc-row-shared-doc"));
+
+  // Click Pages (consumes the deferred mock)
+  fireEvent.click(screen.getByTestId("doc-pages-shared-doc"));
+
+  // Change scope before pages resolve
+  rerender(
+    <MemoryRouter>
+      <ExamIntelDocuments scopeExamId="exam-pages-b" />
+    </MemoryRouter>,
+  );
+
+  // Wait for exam-b doc list to load
+  await waitFor(() => screen.getByTestId("doc-row-shared-doc"));
+
+  // Resolve old pages with distinctive stale content
+  resolvePagesOld({ items: [{ page_number: 1, extraction_status: "done", text_content: "Stale page content exam-a" }] });
+
+  await new Promise((r) => setTimeout(r, 0));
+
+  // Stale page content from exam-a must not appear
+  expect(screen.queryByText("Stale page content exam-a")).toBeNull();
+});
+
+test("link confirmation from old scope cannot set success status after scope changes", async () => {
+  const doc = { id: "link-doc", document_kind: "syllabus", original_filename: "link.pdf", status: "processed" };
+  api.get.mockResolvedValueOnce({ items: [doc], total: 1 });
+  api.get.mockResolvedValue({ items: [], total: 0 });
+
+  let resolveLink;
+  api.post.mockReturnValueOnce(new Promise((res) => { resolveLink = res; }));
+
+  const { rerender } = renderDocs({ scopeExamId: "exam-link-a" });
+
+  // Wait for doc row to appear and open the link picker
+  await waitFor(() => screen.getByTestId("doc-row-link-doc"));
+  fireEvent.click(screen.getByTestId("doc-link-syllabus-link-doc"));
+
+  // Change scope before link resolves
+  rerender(
+    <MemoryRouter>
+      <ExamIntelDocuments scopeExamId="exam-link-b" />
+    </MemoryRouter>,
+  );
+
+  // Resolve the stale link request
+  resolveLink({ ok: true });
+
+  // Wait for async to flush
+  await waitFor(() => {
+    expect(api.get.mock.calls.some(([u]) => u.includes("exam_id=exam-link-b"))).toBe(true);
+  });
+
+  // No success status from the old-scope link should appear
+  expect(screen.queryByText(/Linked document/)).toBeNull();
 });
