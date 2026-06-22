@@ -264,6 +264,7 @@ begin
 
       -- (a) Paper must be verified
       if v_q.paper_trust_status != 'verified' then
+          perform public.fn_block_projection_for_question(p_pyq_question_id);
           return jsonb_build_object(
               'outcome',          'blocked',
               'reason',           'paper_not_verified',
@@ -274,6 +275,7 @@ begin
 
       -- (b) Question must be verified
       if v_q.q_reviewer_status != 'verified' then
+          perform public.fn_block_projection_for_question(p_pyq_question_id);
           return jsonb_build_object(
               'outcome',            'blocked',
               'reason',             'question_not_verified',
@@ -284,6 +286,7 @@ begin
 
       -- (c) Must be MCQ
       if v_q.question_type != 'mcq' then
+          perform public.fn_block_projection_for_question(p_pyq_question_id);
           return jsonb_build_object(
               'outcome',          'blocked',
               'reason',           'not_mcq',
@@ -294,6 +297,7 @@ begin
 
       -- (d) Question text must be non-empty
       if coalesce(trim(v_q.question_text), '') = '' then
+          perform public.fn_block_projection_for_question(p_pyq_question_id);
           return jsonb_build_object(
               'outcome',         'blocked',
               'reason',          'empty_question_text',
@@ -316,6 +320,7 @@ begin
       where question_id = p_pyq_question_id;
 
       if v_verified_opt_count < 2 then
+          perform public.fn_block_projection_for_question(p_pyq_question_id);
           return jsonb_build_object(
               'outcome',               'blocked',
               'reason',                'insufficient_verified_options',
@@ -325,6 +330,7 @@ begin
       end if;
 
       if v_empty_opt_count > 0 then
+          perform public.fn_block_projection_for_question(p_pyq_question_id);
           return jsonb_build_object(
               'outcome',          'blocked',
               'reason',           'empty_verified_option_text',
@@ -334,6 +340,7 @@ begin
       end if;
 
       if v_correct_count != 1 then
+          perform public.fn_block_projection_for_question(p_pyq_question_id);
           return jsonb_build_object(
               'outcome',          'blocked',
               'reason',           'not_exactly_one_verified_correct_option',
@@ -351,6 +358,7 @@ begin
                 and is_correct      = true
                 and id              = v_q.pyq_correct_option_id
           ) then
+              perform public.fn_block_projection_for_question(p_pyq_question_id);
               return jsonb_build_object(
                   'outcome',           'blocked',
                   'reason',            'correct_option_id_mismatch',
@@ -369,6 +377,7 @@ begin
         and reviewer_status = 'verified';
 
       if v_primary_tag_count != 1 then
+          perform public.fn_block_projection_for_question(p_pyq_question_id);
           return jsonb_build_object(
               'outcome',             'blocked',
               'reason',              'primary_topic_tag_count_not_one',
@@ -395,6 +404,7 @@ begin
       limit 1;
 
       if not found then
+          perform public.fn_block_projection_for_question(p_pyq_question_id);
           return jsonb_build_object(
               'outcome',         'blocked',
               'reason',          'primary_topic_invalid_or_inactive',
@@ -404,6 +414,7 @@ begin
       end if;
 
       if v_topic.subject_id is null then
+          perform public.fn_block_projection_for_question(p_pyq_question_id);
           return jsonb_build_object(
               'outcome',         'blocked',
               'reason',          'primary_topic_has_no_subject',
@@ -542,6 +553,7 @@ begin
               explanation,
               language,
               reviewer_status,
+              published_at,
               source_type,
               source_kind,
               question_fingerprint,
@@ -563,7 +575,8 @@ begin
                    then lower(v_q.observed_difficulty) else 'medium' end,
               v_q.explanation_text,
               coalesce(v_q.language, 'en'),
-              'verified',
+              'published',
+              now(),
               'pyq',
               'pyq',
               v_content_hash,
@@ -586,7 +599,11 @@ begin
                                          then lower(v_q.observed_difficulty) else 'medium' end,
               explanation          = v_q.explanation_text,
               language             = coalesce(v_q.language, 'en'),
-              reviewer_status      = 'verified',
+              reviewer_status      = 'published',
+              published_at         = coalesce(
+                                         (select published_at from public.mock_question_bank where id = v_mock_q_id),
+                                         now()
+                                     ),
               source_type          = 'pyq',
               source_kind          = 'pyq',
               question_fingerprint = v_content_hash,
@@ -735,8 +752,8 @@ begin
           v_mock_q_id,
           p_actor_id,
           'pyq_projection_' || v_outcome,
-          case when v_is_new then null else 'verified' end,
-          'verified',
+          case when v_is_new then null else 'published' end,
+          'published',
           p_audit_reason,
           now()
       );
@@ -798,6 +815,30 @@ begin
   $fn$
   $ddl$;
 
+  -- Helper: mark a projection as permanently blocked (ineligible re-sync) and
+  -- downgrade the mock bank row to draft. Called by the projection RPC when
+  -- an eligibility check fails on a question that was previously active.
+  execute $ddl$
+  create or replace function public.fn_block_projection_for_question(p_qid uuid)
+  returns void
+  language plpgsql
+  security definer
+  set search_path = public
+  as $fn$
+  begin
+      update public.pyq_mock_question_projections
+      set sync_status = 'blocked', updated_at = now()
+      where pyq_question_id = p_qid
+        and sync_status = 'active';
+
+      update public.mock_question_bank
+      set reviewer_status = 'draft', updated_at = now()
+      where pyq_question_id = p_qid
+        and reviewer_status in ('verified', 'published', 'live');
+  end;
+  $fn$
+  $ddl$;
+
   execute $ddl$
   create or replace function public.fn_invalidate_pyq_projection()
   returns trigger
@@ -809,12 +850,19 @@ begin
       v_qid uuid;
   begin
       if TG_TABLE_NAME = 'pyq_questions' then
-          -- Invalidate when question leaves verified state.
-          if TG_OP = 'UPDATE'
-             and OLD.reviewer_status = 'verified'
-             and NEW.reviewer_status != 'verified'
-          then
-              perform public.fn_invalidate_projection_for_question(NEW.id);
+          if TG_OP = 'UPDATE' then
+              -- Invalidate when question leaves verified state.
+              if OLD.reviewer_status = 'verified' and NEW.reviewer_status != 'verified' then
+                  perform public.fn_invalidate_projection_for_question(NEW.id);
+              -- Invalidate when content changes while question remains verified
+              -- (question_text, question_type, or correct_option_id pointer drift).
+              elsif NEW.reviewer_status = 'verified' and (
+                  OLD.question_text       is distinct from NEW.question_text
+                  or OLD.question_type    is distinct from NEW.question_type
+                  or OLD.correct_option_id is distinct from NEW.correct_option_id
+              ) then
+                  perform public.fn_invalidate_projection_for_question(NEW.id);
+              end if;
           end if;
           return NEW;
 
@@ -956,6 +1004,9 @@ begin
 
   execute 'revoke all on function public.fn_invalidate_projection_for_question(uuid) from public';
   execute 'grant execute on function public.fn_invalidate_projection_for_question(uuid) to service_role';
+
+  execute 'revoke all on function public.fn_block_projection_for_question(uuid) from public';
+  execute 'grant execute on function public.fn_block_projection_for_question(uuid) to service_role';
 
   -- Revoke direct DML on new tables from public/anon/authenticated.
   -- All projection writes must go through the SECURITY DEFINER RPC only.

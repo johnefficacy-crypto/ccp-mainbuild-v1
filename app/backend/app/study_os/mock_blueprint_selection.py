@@ -97,17 +97,18 @@ def _resolve_source_mix_policy(
     exam_phase_id: str | None = None,
     subject_id: str | None = None,
     topic_id: str | None = None,
-) -> dict | None:
-    """Return the most-specific active source-mix policy or None.
+) -> tuple[dict | None, dict | None]:
+    """Return the most-specific active source-mix policy or (None, None).
 
     Queries ``mock_source_mix_policies`` with the scope hierarchy:
-    topic > subject > phase > exam.  Returns the highest-priority active policy
-    as a ``{source_kind: ratio}`` dict suitable for ``_select_section``, or None
-    when no policy is configured for this scope.
+    topic > subject > phase > exam.  Returns a 2-tuple:
+    - ``mix``: ``{source_kind: target_ratio}`` suitable for ``_apportion_order``
+    - ``constraints``: ``{source_kind: {"min": float, "max": float, "fallback": str}}``
+      for enforcement in ``_select_section`` after selection
 
-    The returned dict collapses multiple rows for different source_kind values
-    under the winning policy scope into a single target_ratio mapping so the
-    existing ``_apportion_order`` call signature is unchanged.
+    Both are None when no policy applies. ``topic_id`` must be provided by the
+    caller for topic-scoped policies to apply; section-level callers pass None
+    and only subject/phase/exam-scoped policies match.
     """
     try:
         rows = (
@@ -125,10 +126,10 @@ def _resolve_source_mix_policy(
     except Exception:
         # Table may not exist in older environments — fail open (no policy).
         logger.warning("mock_source_mix_policies query failed; skipping policy resolution")
-        return None
+        return None, None
 
     if not rows:
-        return None
+        return None, None
 
     # Filter to rows that match the current scope at each level.
     def _scope_matches(row: dict) -> bool:
@@ -142,7 +143,7 @@ def _resolve_source_mix_policy(
 
     candidates = [r for r in rows if _scope_matches(r)]
     if not candidates:
-        return None
+        return None, None
 
     # Pick the most-specific scope by priority: topic → subject → phase → exam.
     def _specificity(row: dict) -> int:
@@ -155,10 +156,11 @@ def _resolve_source_mix_policy(
     best_specificity = _specificity(candidates[0])
     winning_rows = [r for r in candidates if _specificity(r) == best_specificity]
 
-    # Collapse winning rows into a source_kind → target_ratio dict.
+    # Collapse winning rows into target-ratio and constraints dicts.
     # Duplicate source_kind entries at the same scope level are a configuration
     # error — log a warning and use the first-encountered row only.
     mix: dict[str, float] = {}
+    constraints: dict[str, dict] = {}
     for r in winning_rows:
         sk = r.get("source_kind")
         if not sk:
@@ -172,8 +174,15 @@ def _resolve_source_mix_policy(
             )
             continue
         mix[sk] = float(r.get("target_ratio") or 0)
+        constraints[sk] = {
+            "min": float(r.get("minimum_ratio") or 0),
+            "max": float(r.get("maximum_ratio") or 1),
+            "fallback": r.get("fallback_policy") or "relax_to_available",
+        }
 
-    return mix if mix else None
+    if not mix:
+        return None, None
+    return mix, constraints
 
 
 def _exam_base_pool(sb, *, exam_id: str, selectable_statuses, now_iso: str) -> list[dict]:
@@ -274,12 +283,25 @@ def _apportion_order(rows: list[dict], target: int, mix: dict, key: str, *, defa
     return chosen, relaxed
 
 
-def _select_section(pool: list[dict], target: int, *, source_mix: dict | None, difficulty_mix: dict | None):
+def _select_section(
+    pool: list[dict],
+    target: int,
+    *,
+    source_mix: dict | None,
+    source_mix_constraints: dict | None = None,
+    difficulty_mix: dict | None,
+):
     """Run the relaxation ladder over one section's eligible pool.
 
     Returns ``(question_ids, rungs)``. ``rungs`` lists every ladder rung in fixed
     order with its status + whether it relaxed — so the snapshot reflects exactly
     what happened, including the inert A-PR4/A-PR5 rungs.
+
+    ``source_mix_constraints`` is ``{source_kind: {"min": float, "max": float,
+    "fallback": str}}`` from ``_resolve_source_mix_policy``. When provided,
+    minimum_ratio is enforced after apportionment: if the selected proportion of
+    a source_kind is below its minimum and fallback_policy is 'block', the
+    section returns no questions and a blocking rung status.
     """
     rungs: list[dict] = [
         {"rung": "exposure_cooldown", "status": "inert_a_pr4_not_implemented", "relaxed": False},
@@ -310,6 +332,46 @@ def _select_section(pool: list[dict], target: int, *, source_mix: dict | None, d
     else:
         chosen_ids = [r["id"] for r in candidates[:target]]
         rungs.append({"rung": "difficulty_mix", "status": "applied_no_mix", "relaxed": False})
+
+    # ── min/max constraint enforcement ────────────────────────────────────────
+    if source_mix_constraints and chosen_ids and target > 0:
+        chosen_set = set(chosen_ids)
+        chosen_rows = [r for r in pool if r["id"] in chosen_set]
+        n = len(chosen_rows)
+        for sk, c in source_mix_constraints.items():
+            sk_count = sum(1 for r in chosen_rows if (r.get("source_kind") or r.get("source_type")) == sk)
+            actual_ratio = sk_count / n if n > 0 else 0.0
+            min_ratio = c.get("min", 0.0)
+            max_ratio = c.get("max", 1.0)
+            fallback = c.get("fallback", "relax_to_available")
+            if actual_ratio < min_ratio:
+                if fallback == "block":
+                    logger.warning(
+                        "source_mix minimum_ratio constraint blocked selection: "
+                        "source_kind=%r actual=%.3f min=%.3f target=%d",
+                        sk, actual_ratio, min_ratio, target,
+                    )
+                    rungs.append({
+                        "rung": "source_mix_min_constraint",
+                        "status": "blocked_min_ratio_unmet",
+                        "source_kind": sk,
+                        "actual_ratio": round(actual_ratio, 4),
+                        "minimum_ratio": min_ratio,
+                        "relaxed": False,
+                    })
+                    return [], rungs
+                else:
+                    logger.warning(
+                        "source_mix minimum_ratio not met but fallback=relax_to_available: "
+                        "source_kind=%r actual=%.3f min=%.3f; proceeding with available",
+                        sk, actual_ratio, min_ratio,
+                    )
+            if actual_ratio > max_ratio:
+                logger.warning(
+                    "source_mix maximum_ratio exceeded: "
+                    "source_kind=%r actual=%.3f max=%.3f",
+                    sk, actual_ratio, max_ratio,
+                )
 
     return chosen_ids, rungs
 
@@ -377,17 +439,21 @@ def build_blueprint_with_selection(
         eligible = [r for r in base_pool if r.get("subject_id") == subject_id]
 
         # Resolve source-mix: envelope wins if explicitly set, else DB policy.
+        # topic_id is None here because sections are subject-scoped and may span
+        # multiple topics; topic-level policies must be resolved at topic granularity
+        # by callers that have a single topic_id in scope.
         envelope_mix = sec.get("source_mix")
         if envelope_mix:
             resolved_mix = envelope_mix
+            resolved_constraints = None  # envelope carries target ratios only
             mix_source = "envelope"
         else:
-            resolved_mix = _resolve_source_mix_policy(
+            resolved_mix, resolved_constraints = _resolve_source_mix_policy(
                 sb,
                 exam_id=exam_id,
                 exam_phase_id=exam_phase_id,
                 subject_id=subject_id,
-                topic_id=None,  # section-level resolution only
+                topic_id=None,
             )
             mix_source = "db_policy" if resolved_mix else "none"
 
@@ -395,6 +461,7 @@ def build_blueprint_with_selection(
             eligible,
             target,
             source_mix=resolved_mix,
+            source_mix_constraints=resolved_constraints,
             difficulty_mix=sec.get("difficulty_mix"),
         )
         selected_count = len(chosen_ids)

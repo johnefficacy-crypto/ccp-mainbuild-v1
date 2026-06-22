@@ -53,6 +53,8 @@ export default function PyqMockProjectionPanel({ paperId }) {
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [statusError, setStatusError] = useState(null);
+  const [previewError, setPreviewError] = useState(null);
+  const [auditReason, setAuditReason] = useState("");
   const { run: runSync, busy: syncing } = useApiAction();
 
   const fetchStatus = useCallback(async () => {
@@ -73,11 +75,12 @@ export default function PyqMockProjectionPanel({ paperId }) {
     if (!paperId) return;
     setLoadingPreview(true);
     setPreview(null);
+    setPreviewError(null);
     try {
       const data = await api.get(_BASE(paperId) + "/preview");
       setPreview(data);
     } catch (e) {
-      // Non-fatal — preview is optional.
+      setPreviewError(e?.message || "Failed to load projection preview");
     } finally {
       setLoadingPreview(false);
     }
@@ -88,17 +91,22 @@ export default function PyqMockProjectionPanel({ paperId }) {
       fetchStatus();
       setPreview(null);
       setSyncResult(null);
+      setAuditReason("");
     }
   }, [paperId, fetchStatus]);
 
   const handleSync = () => {
+    if (auditReason.trim().length < 8) return;
     runSync({
       action: async () => {
-        const data = await api.post(_BASE(paperId) + "/sync", {});
+        const data = await api.post(_BASE(paperId) + "/sync", {
+          audit_reason: auditReason.trim(),
+        });
         return data;
       },
       onSuccess: (data) => {
         setSyncResult(data);
+        setAuditReason("");
         fetchStatus();
       },
       successMessage: "Projection sync complete.",
@@ -115,26 +123,37 @@ export default function PyqMockProjectionPanel({ paperId }) {
     >
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-gray-700">Mock projection</span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={fetchPreview}
-            disabled={loadingPreview}
-            className="text-xs px-2.5 py-1 rounded border border-gray-300 text-gray-600 hover:bg-white disabled:opacity-50"
-            data-testid="projection-preview-btn"
-          >
-            {loadingPreview ? "Loading…" : "Preview"}
-          </button>
-          <button
-            type="button"
-            onClick={handleSync}
-            disabled={syncing}
-            className="text-xs px-2.5 py-1 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
-            data-testid="projection-sync-btn"
-          >
-            {syncing ? "Syncing…" : "Sync to mock bank"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={fetchPreview}
+          disabled={loadingPreview}
+          className="text-xs px-2.5 py-1 rounded border border-gray-300 text-gray-600 hover:bg-white disabled:opacity-50"
+          data-testid="projection-preview-btn"
+        >
+          {loadingPreview ? "Loading…" : "Preview"}
+        </button>
+      </div>
+
+      {/* Audit reason + sync — required before sync is allowed */}
+      <div className="flex gap-2 mb-2">
+        <input
+          type="text"
+          value={auditReason}
+          onChange={(e) => setAuditReason(e.target.value)}
+          placeholder="Audit reason (min 8 chars)"
+          maxLength={500}
+          className="flex-1 text-xs px-2 py-1 rounded border border-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+          data-testid="projection-audit-reason-input"
+        />
+        <button
+          type="button"
+          onClick={handleSync}
+          disabled={syncing || auditReason.trim().length < 8}
+          className="text-xs px-2.5 py-1 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+          data-testid="projection-sync-btn"
+        >
+          {syncing ? "Syncing…" : "Sync to mock bank"}
+        </button>
       </div>
 
       {/* Status summary */}
@@ -170,6 +189,13 @@ export default function PyqMockProjectionPanel({ paperId }) {
             </p>
           )}
         </div>
+      )}
+
+      {/* Preview error */}
+      {previewError && (
+        <p className="text-xs text-rose-600 mt-1" data-testid="projection-preview-error">
+          {previewError}
+        </p>
       )}
 
       {/* Preview results */}

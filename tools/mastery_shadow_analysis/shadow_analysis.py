@@ -1198,24 +1198,25 @@ def multi_exam_coverage(
         )
         sys.exit(_EXIT_INSUFFICIENT)
 
-    # ── 2. Resolve attempt_id → exam_id via mock_attempts ─────────────────────
+    # ── 2. Resolve attempt_id → exam_id via mock_attempts → mock_templates ────
+    # mock_attempts has no exam_id column; exam_id lives on mock_templates.
     attempt_ids = list({r["attempt_id"] for r in shadow_rows if r.get("attempt_id")})
-    attempt_exam_map: dict[str, str] = {}
+    attempt_template_map: dict[str, str] = {}
 
     for batch_start in range(0, len(attempt_ids), 100):
         batch = attempt_ids[batch_start: batch_start + 100]
         try:
             attempt_rows = (
                 sb.table("mock_attempts")
-                .select("id, exam_id")
+                .select("id, template_id")
                 .in_("id", batch)
                 .execute()
                 .data
                 or []
             )
             for r in attempt_rows:
-                if r.get("exam_id"):
-                    attempt_exam_map[r["id"]] = r["exam_id"]
+                if r.get("template_id"):
+                    attempt_template_map[r["id"]] = r["template_id"]
         except Exception as exc:
             _emit_result(
                 {
@@ -1228,6 +1229,41 @@ def multi_exam_coverage(
                 output_json,
             )
             sys.exit(_EXIT_ERROR)
+
+    template_ids = list(set(attempt_template_map.values()))
+    template_exam_map: dict[str, str] = {}
+    for batch_start in range(0, len(template_ids), 100):
+        batch = template_ids[batch_start: batch_start + 100]
+        try:
+            tmpl_rows = (
+                sb.table("mock_templates")
+                .select("id, exam_id")
+                .in_("id", batch)
+                .execute()
+                .data
+                or []
+            )
+            for r in tmpl_rows:
+                if r.get("exam_id"):
+                    template_exam_map[r["id"]] = r["exam_id"]
+        except Exception as exc:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd,
+                    "status": "ERROR",
+                    "error": "QUERY_FAILED",
+                    "detail": f"mock_templates fetch failed: {exc}",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
+
+    attempt_exam_map: dict[str, str] = {
+        attempt_id: template_exam_map[tmpl_id]
+        for attempt_id, tmpl_id in attempt_template_map.items()
+        if tmpl_id in template_exam_map
+    }
 
     # ── 3. Fetch question snapshots for source_kind + subject breakdown ────────
     responses_by_attempt: dict[str, list[dict]] = defaultdict(list)
@@ -1290,6 +1326,29 @@ def multi_exam_coverage(
     all_required_ids = set(required_exam_ids) | required_ids_from_slugs
 
     # ── 5. Build per-exam coverage stats ──────────────────────────────────────
+    # Pre-compute per-attempt response stats so they are added to the exam
+    # bucket exactly once per attempt, not once per shadow_row per attempt.
+    attempt_response_stats: dict[str, dict] = {}
+    for attempt_id, responses in responses_by_attempt.items():
+        source_split: dict[str, int] = defaultdict(int)
+        subject_breakdown: dict[str, int] = defaultdict(int)
+        pyq_year_breakdown: dict[str, int] = defaultdict(int)
+        for resp in responses:
+            snap = resp.get("question_snapshot") or {}
+            source_kind = snap.get("source_kind") or snap.get("source_type") or "unknown"
+            source_split[source_kind] += 1
+            subject_id = snap.get("subject_id")
+            if subject_id:
+                subject_breakdown[subject_id] += 1
+            pyq_year = snap.get("pyq_year")
+            if pyq_year:
+                pyq_year_breakdown[str(pyq_year)] += 1
+        attempt_response_stats[attempt_id] = {
+            "source_split": source_split,
+            "subject_breakdown": subject_breakdown,
+            "pyq_year_breakdown": pyq_year_breakdown,
+        }
+
     per_exam: dict[str, dict] = defaultdict(lambda: {
         "shadow_row_count": 0,
         "unique_attempts": set(),
@@ -1297,6 +1356,8 @@ def multi_exam_coverage(
         "subject_breakdown": defaultdict(int),
         "pyq_year_breakdown": defaultdict(int),
     })
+
+    seen_attempt_in_exam: set[tuple[str, str]] = set()
 
     for shadow_row in shadow_rows:
         attempt_id = shadow_row.get("attempt_id")
@@ -1310,18 +1371,17 @@ def multi_exam_coverage(
         bucket["shadow_row_count"] += 1
         bucket["unique_attempts"].add(attempt_id)
 
-        for resp in responses_by_attempt.get(attempt_id, []):
-            snap = resp.get("question_snapshot") or {}
-            source_kind = snap.get("source_kind") or snap.get("source_type") or "unknown"
-            bucket["source_split"][source_kind] += 1
-
-            subject_id = snap.get("subject_id")
-            if subject_id:
-                bucket["subject_breakdown"][subject_id] += 1
-
-            pyq_year = snap.get("pyq_year")
-            if pyq_year:
-                bucket["pyq_year_breakdown"][str(pyq_year)] += 1
+        # Merge response breakdown only once per (attempt, exam) pair.
+        pair = (attempt_id, exam_id)
+        if pair not in seen_attempt_in_exam:
+            seen_attempt_in_exam.add(pair)
+            stats = attempt_response_stats.get(attempt_id, {})
+            for k, v in stats.get("source_split", {}).items():
+                bucket["source_split"][k] += v
+            for k, v in stats.get("subject_breakdown", {}).items():
+                bucket["subject_breakdown"][k] += v
+            for k, v in stats.get("pyq_year_breakdown", {}).items():
+                bucket["pyq_year_breakdown"][k] += v
 
     # Serialize (sets → counts, defaultdicts → plain dicts).
     exam_coverage: list[dict] = []

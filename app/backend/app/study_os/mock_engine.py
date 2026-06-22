@@ -110,6 +110,30 @@ def _load_questions_for_template(supabase: Any, template: dict) -> list[dict]:
         .execute()
     questions = {r["id"]: r for r in (q_exec.data or [])}
 
+    # Active-lineage guard (belt-and-suspenders): exclude PYQ-derived questions
+    # whose projection has gone stale or blocked since template creation.
+    pyq_ids = [qid for qid, q in questions.items() if q.get("pyq_question_id")]
+    if pyq_ids:
+        try:
+            proj_rows = (
+                supabase.table("pyq_mock_question_projections")
+                .select("mock_question_id")
+                .eq("sync_status", "active")
+                .execute()
+                .data
+            ) or []
+            active_mock_ids = {p["mock_question_id"] for p in proj_rows}
+            questions = {
+                qid: q for qid, q in questions.items()
+                if not q.get("pyq_question_id") or qid in active_mock_ids
+            }
+        except Exception:
+            # Fail-closed: exclude all PYQ-derived questions if the guard query fails.
+            questions = {
+                qid: q for qid, q in questions.items()
+                if not q.get("pyq_question_id")
+            }
+
     opt_exec = supabase.table("mock_question_options") \
         .select("*") \
         .in_("question_id", question_ids) \
