@@ -702,9 +702,8 @@ describe("PyqPaperWorkspace deep-link (I8-B)", () => {
 
     // Select q-b1 on paper B — immediate options (Wellington)
     fireEvent.click(screen.getByTestId("question-list-item-q-b1"));
-    await waitFor(() =>
-      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("question_id=q-b1")),
-    );
+    // Wait until Wellington is actually rendered before resolving the stale promise
+    await waitFor(() => screen.getByDisplayValue("Wellington"));
 
     // Resolve stale q1 options — must be discarded; Wellington must remain visible
     await act(async () => { resolveStaleQ1Options({ items: OPTIONS }); });
