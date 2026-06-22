@@ -17,7 +17,8 @@
 
 - I6 DECISION TO LOCK: No route, component, API, backend, database migration, automated test, or runtime behavior change is authorized here.
 - I6 DECISION TO LOCK: No I9 implementation, I8-C implementation, new top-level surface, checklist completion claim, or operator/live validation claim is authorized here.
-- I6 DECISION TO LOCK: PR #758 must remain draft; this document does not make I6 approved, does not unblock I9, and does not authorize merging before the operator closes all DERIVED and UNRESOLVED items.
+- I6 DECISION TO LOCK: PR #761 must remain draft; this document does not make I6 approved, does not unblock I9, and does not authorize merging before the operator closes all DERIVED and UNRESOLVED items.
+- SUPERSESSION: PR #761 supersedes PR #758. PR #758 must be closed without merge after PR #761's corrections are confirmed and all checks remain green. Do not merge both PRs; they modify the same I6 gate document and checklist.
 
 ## Source authority and decision labels
 
@@ -210,8 +211,8 @@ These scenarios define I9 "done" for the operator. All scenarios are DERIVED —
 | Contract statement | Label |
 |---|---|
 | PR #757 merged at 385912b; post-#757 rebase verification is complete. | REBASE COMPLETE |
-| PR #758 must remain draft and must not merge until corrections, operator approval of all DERIVED and UNRESOLVED items, and I8-C sequencing requirements are satisfied. | I6 DECISION TO LOCK |
-| I8-C (Advanced Repair isolation) is now unblocked by PR #757 merge; I8-C must complete before I9 implementation is dispatched because it still owns shared Manage Exam lane access/overflow behavior. | SOURCE-LOCKED for serial I8 ownership; I8-C implementation not yet started. |
+| PR #761 must remain draft and must not merge until operator approval of all DERIVED and UNRESOLVED items and I8-C sequencing requirements are satisfied. PR #758 must be closed without merge as superseded. | I6 DECISION TO LOCK |
+| I8-C (Advanced Repair isolation) is IN PROGRESS — PR #759; I8-C must complete before I9 implementation is dispatched because it still owns shared Manage Exam lane access/overflow behavior. | SOURCE-LOCKED for serial I8 ownership; I8-C implementation active in PR #759. |
 | No I9 runtime work may be hidden inside this docs/checklist PR. | SOURCE-LOCKED |
 | No PR #756/PYQ projection behavior is treated as merged source unless it is present on the eventual rebased base. | I6 DECISION TO LOCK |
 
@@ -229,7 +230,7 @@ These scenarios define I9 "done" for the operator. All scenarios are DERIVED —
 | Management endpoint supplying verdict/action queue without duplicate console fetch. | VERIFIED | `management_read_model.get_management_exam_detail` (lines 292–319) returns `activation_verdict`, `action_queue`, `activation_checks`, `stages`, `evidence_refs` from single `build_console_detail` call at line 290; single fetch path. |
 | Current-cycle normalization behavior. | VERIFIED | Backend: `work_queue.select_current_cycle` (work_queue.py:415–432) priority: active > open > expected > highest year > lowest UUID. Frontend: ExamWorkspace.jsx:343–350 normalizes `?cycle=` from `mgmt.current_cycle.id` only on first load (guard: `if (searchParams.get("cycle")) return`). |
 | Deep-link parameters reaching intended panels. | VERIFIED | ExamWorkspace.jsx:328–331 reads `status`, `documentId`, `paperId`, `rowId` from `searchParams` and passes to panels via props. |
-| I8-C completed before I9 dispatch. | NOT YET — I8-C unblocked, not started | PR #757 merged; I8-C implementation pending. I9 dispatch remains blocked on I8-C completion. |
+| I8-C completed before I9 dispatch. | NOT YET — I8-C IN PROGRESS (PR #759) | PR #757 merged; I8-C active in PR #759. I9 dispatch remains blocked on I8-C merge. |
 
 ## Source index
 
