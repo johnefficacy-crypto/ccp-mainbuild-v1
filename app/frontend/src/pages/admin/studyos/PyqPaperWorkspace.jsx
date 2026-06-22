@@ -1319,7 +1319,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
       });
     }
     return () => { cancelled = true; };
-  }, [rowId, questions, loading, loadOptions, fetchQuestionById]);
+  }, [rowId, questions, loading, loadOptions, fetchQuestionById, pyq_paper_id]);
 
   // ── After-save refresh ───────────────────────────────────────────────────
 
