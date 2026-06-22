@@ -303,6 +303,78 @@ def test_criteria_thin_pool_raises_lookup_error():
     assert sb.db.get("mock_attempts", []) == [], "no attempt row must be written on thin-pool failure"
 
 
+def test_criteria_zero_eligible_pool_does_not_fall_through_to_legacy_config():
+    """Regression: when all criteria-pool rows are stale PYQ and the eligible pool is
+    completely empty, start_attempt() must raise LookupError rather than falling through
+    to template.config.question_ids (the legacy config fallback).
+
+    Without the early-return fix, select_questions_for_template() returns [] and
+    start_attempt() silently starts an attempt from config.question_ids.  With the fix
+    the criteria requirements are checked before the early return.
+    """
+    pyq_ids = [
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002",
+        "00000000-0000-0000-0000-000000000003",
+    ]
+    legacy_ids = ["legacy-q-1", "legacy-q-2", "legacy-q-3"]
+
+    def _q_bank(qid: str) -> dict:
+        opts = [{"id": f"opt-{qid}-{i}", "question_id": qid, "option_text": f"Opt {i}",
+                 "option_index": i, "is_correct": i == 0}
+                for i in range(4)]
+        return {
+            "id": qid,
+            "exam_family": "TEST",
+            "question_text": f"Q {qid[:8]}",
+            "question_type": "mcq",
+            "difficulty": "medium",
+            "correct_option_id": f"opt-{qid}-0",
+            "reviewer_status": "published",
+            "pyq_question_id": f"pyq-src-{qid}",
+            "options": opts,
+        }
+
+    template = {
+        "id": "tmpl-zero-pool",
+        "slug": "zero-pool-mock",
+        "name": "Zero Pool Mock",
+        "exam_family": "TEST",
+        "total_questions": 3,
+        "duration_sec": 300,
+        "negative_marking": False,
+        "marks_per_correct": 1.0,
+        "marks_per_wrong": 0.0,
+        "config": {"question_ids": legacy_ids},  # legacy fallback must NOT be used
+        "status": "active",
+    }
+    section = {
+        "id": "sec-zero",
+        "template_id": template["id"],
+        "section_index": 0,
+        "name": "Zero Pool Section",
+        "question_count": 3,
+        "selector": {"mode": "criteria", "filters": {}},
+    }
+    questions = [_q_bank(qid) for qid in pyq_ids]
+    db = {
+        "mock_templates": [template],
+        "mock_template_sections": [section],
+        "mock_question_bank": [dict(q) for q in questions],
+        "mock_question_options": [o for q in questions for o in q["options"]],
+        "mock_attempts": [],
+        "mock_attempt_responses": [],
+        # All projections are stale → zero active IDs → entire criteria pool excluded
+        "pyq_mock_question_projections": [
+            {"mock_question_id": qid, "sync_status": "stale"} for qid in pyq_ids
+        ],
+    }
+    sb = SBStub(db)
+    with pytest.raises(LookupError, match="criteria section requires"):
+        svc.start_attempt(sb, "user-1", "zero-pool-mock")
+    assert sb.db.get("mock_attempts", []) == [], "no attempt row must be written on zero-pool failure"
+
+
 def test_start_attempt_uses_criteria_template():
     """End-to-end: a criteria-only template no longer needs the PR1 seed fallback."""
     questions = [_q("easy") for _ in range(5)]

@@ -239,6 +239,36 @@ class TestComputeContentHash:
         h2 = compute_content_hash(_question(), opts, paper={"source_type": "unofficial"})
         assert h1 != h2
 
+    # ── Normalization parity (Python must match the SQL hash formula) ──────────
+
+    def test_blank_language_normalizes_to_en(self):
+        """Empty and NULL language must both hash identically to 'en'."""
+        opts = _options()
+        h_empty = compute_content_hash(_question(language=""), opts)
+        h_en    = compute_content_hash(_question(language="en"), opts)
+        assert h_empty == h_en
+
+    def test_whitespace_language_normalizes_to_en(self):
+        """Whitespace-only language must normalize to 'en', not to empty string."""
+        opts = _options()
+        h_ws = compute_content_hash(_question(language="   "), opts)
+        h_en = compute_content_hash(_question(language="en"), opts)
+        assert h_ws == h_en
+
+    def test_whitespace_difficulty_normalizes_to_stripped_value(self):
+        """Difficulty with surrounding whitespace must hash the same as the trimmed form."""
+        opts = _options()
+        h_padded  = compute_content_hash(_question(observed_difficulty="easy  "), opts)
+        h_trimmed = compute_content_hash(_question(observed_difficulty="easy"), opts)
+        assert h_padded == h_trimmed
+
+    def test_zero_expected_time_differs_from_none(self):
+        """expected_solve_time_sec=0 is a valid value ('0') and must not hash as None ('')."""
+        opts = _options()
+        h_zero = compute_content_hash(_question(expected_solve_time_sec=0), opts)
+        h_none = compute_content_hash(_question(expected_solve_time_sec=None), opts)
+        assert h_zero != h_none
+
 
 # ─── Unit: _check_question_eligibility ────────────────────────────────────────
 

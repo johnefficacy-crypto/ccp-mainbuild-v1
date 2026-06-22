@@ -131,8 +131,10 @@ def compute_content_hash(
     expl         = (question.get("explanation_text") or "").strip().lower()
     raw_diff     = (question.get("observed_difficulty") or "").strip().lower()
     diff         = raw_diff if raw_diff in ("easy", "medium", "hard") else "medium"
-    language     = (question.get("language") or "en").strip().lower()
-    exp_time     = str(question.get("expected_solve_time_sec") or "")
+    _lang_raw = (question.get("language") or "").strip()
+    language  = (_lang_raw or "en").lower()
+    _time     = question.get("expected_solve_time_sec")
+    exp_time  = "" if _time is None else str(_time)
     paper_id     = str(question.get("pyq_paper_id") or "")
     _p           = paper or {}
     paper_year   = str(_p.get("year") or "")

@@ -363,6 +363,16 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
             if requested > 0:
                 criteria_requirements.append((requested, frozenset(section_ids)))
     if not ordered:
+        # Even with an empty pool, validate criteria section requirements so that
+        # a zero-eligible pool raises LookupError rather than returning [] and
+        # falling through to the legacy _load_questions_for_template() fallback.
+        for requested_count, section_id_set in criteria_requirements:
+            if len(section_id_set) < requested_count:
+                raise LookupError(
+                    f"criteria section requires {requested_count} question(s) but only "
+                    f"{len(section_id_set)} are available after status/expiry/lineage filtering; "
+                    f"unavailable IDs: []"
+                )
         return []
 
     from datetime import datetime, timezone

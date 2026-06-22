@@ -459,9 +459,9 @@ begin
           sha256((
               coalesce(lower(trim(v_q.question_text)), '') || chr(0) ||
               coalesce(lower(trim(v_q.explanation_text)), '') || chr(0) ||
-              (case when lower(coalesce(v_q.observed_difficulty, '')) in ('easy','medium','hard')
-                    then lower(v_q.observed_difficulty) else 'medium' end) || chr(0) ||
-              lower(coalesce(v_q.language, 'en')) || chr(0) ||
+              (case when lower(trim(coalesce(v_q.observed_difficulty, ''))) in ('easy','medium','hard')
+                    then lower(trim(v_q.observed_difficulty)) else 'medium' end) || chr(0) ||
+              coalesce(nullif(lower(trim(coalesce(v_q.language, ''))), ''), 'en') || chr(0) ||
               coalesce(v_q.expected_solve_time_sec::text, '') || chr(0) ||
               coalesce(v_q.pyq_paper_id::text, '') || chr(0) ||
               coalesce(v_q.paper_year::text, '') || chr(0) ||
