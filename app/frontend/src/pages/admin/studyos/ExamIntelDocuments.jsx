@@ -57,8 +57,13 @@ const refPhase = (filters) => ({ endpoint: "exam-phases", labelKey: "phase_name"
  * operator inspect extracted pages and link a document into a syllabus /
  * PYQ-paper row. Reuses the shared Combobox pickers.
  */
-export default function ExamIntelDocuments() {
-  const [form, setForm] = useState({ structural_format: "unknown", source_kind: "unknown" });
+export default function ExamIntelDocuments({ scopeExamId, scopeCycleId }) {
+  const [form, setForm] = useState(() => ({
+    structural_format: "unknown",
+    source_kind: "unknown",
+    exam_id: scopeExamId || "",
+    exam_cycle_id: scopeCycleId || "",
+  }));
   const [formatOverridden, setFormatOverridden] = useState(false);
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -86,6 +91,14 @@ export default function ExamIntelDocuments() {
   useEffect(() => {
     loadList();
   }, [loadList]);
+
+  useEffect(() => {
+    setForm((prev) => ({
+      ...prev,
+      ...(scopeExamId != null ? { exam_id: scopeExamId } : {}),
+      ...(scopeCycleId != null ? { exam_cycle_id: scopeCycleId } : {}),
+    }));
+  }, [scopeExamId, scopeCycleId]);
 
   async function refreshStatus(docId) {
     try {
