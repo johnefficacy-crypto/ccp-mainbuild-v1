@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { RotateCcw, Upload, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
 import CmsRefField from "../../../features/admin/shared/CmsRefField";
@@ -57,8 +57,13 @@ const refPhase = (filters) => ({ endpoint: "exam-phases", labelKey: "phase_name"
  * operator inspect extracted pages and link a document into a syllabus /
  * PYQ-paper row. Reuses the shared Combobox pickers.
  */
-export default function ExamIntelDocuments() {
-  const [form, setForm] = useState({ structural_format: "unknown", source_kind: "unknown" });
+export default function ExamIntelDocuments({ scopeExamId, scopeCycleId }) {
+  const [form, setForm] = useState(() => ({
+    structural_format: "unknown",
+    source_kind: "unknown",
+    exam_id: scopeExamId || "",
+    exam_cycle_id: scopeCycleId || "",
+  }));
   const [formatOverridden, setFormatOverridden] = useState(false);
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -69,27 +74,52 @@ export default function ExamIntelDocuments() {
   const [linkTarget, setLinkTarget] = useState({ docId: null, kind: null, targetId: "", reason: "" });
 
   const filterExamId = form.exam_id || "";
+  const loadGenRef = useRef(0);
+  const scopeGenRef = useRef(0);
 
   const loadList = useCallback(async () => {
     if (!filterExamId) {
       setDocs([]);
       return;
     }
+    const gen = ++loadGenRef.current;
     try {
       const r = await api.get(`${DOC_BASE}?exam_id=${encodeURIComponent(filterExamId)}`);
+      if (gen !== loadGenRef.current) return;
       setDocs(r.items || []);
     } catch (e) {
+      if (gen !== loadGenRef.current) return;
       setStatus({ ok: false, message: getApiErrorMessage(e) });
     }
   }, [filterExamId]);
+
+  useEffect(() => {
+    loadGenRef.current += 1;
+    scopeGenRef.current += 1;
+    setDocs([]);
+    setPages({ docId: null, items: null });
+    setLinkTarget({ docId: null, kind: null, targetId: "", reason: "" });
+    setStatus(null);
+    setPollId(null);
+    setFile(null);
+    setBusy(false);
+    setForm((prev) => ({
+      ...prev,
+      exam_id: scopeExamId ?? "",
+      exam_cycle_id: scopeCycleId ?? "",
+      exam_phase_id: "",
+    }));
+  }, [scopeExamId, scopeCycleId]);
 
   useEffect(() => {
     loadList();
   }, [loadList]);
 
   async function refreshStatus(docId) {
+    const scopeGen = scopeGenRef.current;
     try {
       const r = await api.get(`${DOC_BASE}/${docId}`);
+      if (scopeGen !== scopeGenRef.current) return null;
       setDocs((prev) => prev.map((d) => (d.id === docId
         ? { ...d, status: r.document.status, pages_count: r.pages_count, extraction: r.extraction }
         : d)));
@@ -107,6 +137,7 @@ export default function ExamIntelDocuments() {
     if (!file) return setStatus({ ok: false, message: "Choose a PDF file." });
     if (file.type !== "application/pdf") return setStatus({ ok: false, message: "Only PDF files are accepted." });
 
+    const scopeGen = scopeGenRef.current;
     setBusy(true);
     try {
       const signed = await api.post(`${DOC_BASE}/upload-url`, {
@@ -122,6 +153,7 @@ export default function ExamIntelDocuments() {
         source_kind: form.source_kind || null,
         sanitized_from_document_id: form.sanitized_from_document_id || null,
       });
+      if (scopeGen !== scopeGenRef.current) return;
       // PUT the bytes straight into Supabase Storage via the signed URL.
       const put = await fetch(signed.upload_url, {
         method: "PUT",
@@ -129,26 +161,39 @@ export default function ExamIntelDocuments() {
         body: file,
       });
       if (!put.ok) throw new Error(`Storage upload failed (${put.status})`);
+      if (scopeGen !== scopeGenRef.current) return;
       await api.post(`${DOC_BASE}/complete-upload`, { document_id: signed.document_id });
+      if (scopeGen !== scopeGenRef.current) return;
       setStatus({ ok: true, message: `Uploaded ${file.name}. Extraction queued.` });
       setFile(null);
       await loadList();
-      // Begin polling the freshly-uploaded doc until extraction is terminal.
-      startPoll(signed.document_id);
+      if (scopeGen !== scopeGenRef.current) return;
+      startPoll(signed.document_id, scopeGen);
     } catch (ex) {
+      if (scopeGen !== scopeGenRef.current) return;
       setStatus({ ok: false, message: getApiErrorMessage(ex) });
     } finally {
-      setBusy(false);
+      if (scopeGen === scopeGenRef.current) setBusy(false);
     }
   }
 
-  function startPoll(docId) {
+  function startPoll(docId, scopeGen) {
     if (pollId) clearInterval(pollId);
     const id = setInterval(async () => {
+      if (scopeGen !== scopeGenRef.current) {
+        clearInterval(id);
+        setPollId((current) => (current === id ? null : current));
+        return;
+      }
       const st = await refreshStatus(docId);
+      if (scopeGen !== scopeGenRef.current) {
+        clearInterval(id);
+        setPollId((current) => (current === id ? null : current));
+        return;
+      }
       if (st === "processed" || st === "failed" || st == null) {
         clearInterval(id);
-        setPollId(null);
+        setPollId((current) => (current === id ? null : current));
       }
     }, 3000);
     setPollId(id);
@@ -161,10 +206,13 @@ export default function ExamIntelDocuments() {
       setPages({ docId: null, items: null });
       return;
     }
+    const scopeGen = scopeGenRef.current;
     try {
       const r = await api.get(`${DOC_BASE}/${docId}/pages`);
+      if (scopeGen !== scopeGenRef.current) return;
       setPages({ docId, items: r.items || [] });
     } catch (e) {
+      if (scopeGen !== scopeGenRef.current) return;
       setStatus({ ok: false, message: getApiErrorMessage(e) });
     }
   }
@@ -175,15 +223,18 @@ export default function ExamIntelDocuments() {
     if (!reason || reason.trim().length < 8) {
       return setStatus({ ok: false, message: "Reason must be at least 8 characters." });
     }
+    const scopeGen = scopeGenRef.current;
     const path = kind === "syllabus" ? "link-to-syllabus" : "link-to-pyq-paper";
     const payload = kind === "syllabus"
       ? { reason: reason.trim(), syllabus_document_id: targetId }
       : { reason: reason.trim(), pyq_paper_id: targetId };
     try {
       await api.post(`${DOC_BASE}/${docId}/${path}`, payload);
+      if (scopeGen !== scopeGenRef.current) return;
       setStatus({ ok: true, message: `Linked document to ${kind}.` });
       setLinkTarget({ docId: null, kind: null, targetId: "", reason: "" });
     } catch (e) {
+      if (scopeGen !== scopeGenRef.current) return;
       setStatus({ ok: false, message: getApiErrorMessage(e) });
     }
   }

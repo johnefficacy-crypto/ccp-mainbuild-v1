@@ -16,7 +16,7 @@
  *   ?row=<id>      pre-select row in syllabus/pyq panels
  *   ?action=<a>    inline action for setup (e.g. add-cycle)
  */
-import React, { lazy, Suspense, useEffect } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ExamWorkspaceProvider, useExamWorkspace } from "./ExamWorkspaceContext";
 import SetupPanel from "./panels/SetupPanel";
@@ -30,6 +30,7 @@ import {
   CADENCE_LABELS,
   LifecycleLegend,
 } from "../../../features/admin/exam-intelligence/ExamIntelGlossary";
+import { useAuth } from "../../../lib/authContext";
 
 const SyllabusMapperPanel = lazy(() => import("./syllabus-mapper/SyllabusMapperPanel"));
 const PyqWorkbenchPanel = lazy(() => import("./pyq-workbench/PyqWorkbenchPanel"));
@@ -55,12 +56,115 @@ function getMgmtModeLabel(mode) {
   return ((BUSINESS_PRIORITY_LABELS[mode] || BUSINESS_PRIORITY_LABELS.null) || {}).label || mode;
 }
 
+// ─── Advanced Repair overflow menu ──────────────────────────────────────────
+
+function AdvancedRepairMenu({ examId, cycleId }) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+  const triggerRef = useRef(null);
+
+  // Focus first menu item when menu opens
+  useEffect(() => {
+    if (!open) return;
+    const firstItem = menuRef.current?.querySelector('[role="menuitem"]');
+    firstItem?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutside(e) {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target) &&
+        triggerRef.current && !triggerRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    }
+    function handleKey(e) {
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+      if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) {
+        e.preventDefault();
+        const items = Array.from(menuRef.current?.querySelectorAll('[role="menuitem"]') || []);
+        if (!items.length) return;
+        const idx = items.indexOf(document.activeElement);
+        let next;
+        if (e.key === "ArrowDown") next = items[(idx + 1) % items.length];
+        else if (e.key === "ArrowUp") next = items[(idx - 1 + items.length) % items.length];
+        else if (e.key === "Home") next = items[0];
+        else if (e.key === "End") next = items[items.length - 1];
+        next?.focus();
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  function closeAndRestoreFocus() {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  const repairHref =
+    `/admin/exam-intelligence/cms?exam_id=${encodeURIComponent(examId)}` +
+    (cycleId ? `&cycle_id=${encodeURIComponent(cycleId)}` : "") +
+    "&entity=documents";
+
+  return (
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="btn small"
+        data-testid="workspace-more-trigger"
+      >
+        More
+      </button>
+      {open && (
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label="More actions"
+          className="absolute right-0 z-50 mt-1 min-w-[12rem] rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5"
+          data-testid="workspace-more-menu"
+        >
+          <Link
+            to={repairHref}
+            role="menuitem"
+            tabIndex={0}
+            className="block px-4 py-2 text-sm hover:bg-gray-50"
+            data-testid="workspace-advanced-repair-link"
+            onClick={closeAndRestoreFocus}
+          >
+            Advanced Repair
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Smart readiness header ──────────────────────────────────────────────────
 
 function SmartHeader({ onGotoTab }) {
   const { exam, cycles, cycle, readiness, mgmt, organization, family } = useExamWorkspace();
+  const { user } = useAuth();
   const { exam_id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const hasCmsPermission =
+    user?.role === "super_admin" ||
+    user?.permissions?.includes("exam_intelligence.cms");
 
   function handleCycleChange(e) {
     const val = e.target.value;
@@ -89,6 +193,8 @@ function SmartHeader({ onGotoTab }) {
   const orgName = mgmt?.organization_name ?? organization?.name ?? null;
 
   const cadenceLabel = cadence ? (CADENCE_LABELS[cadence] || cadence) : null;
+
+  const cycleId = searchParams.get("cycle") ?? null;
 
   return (
     <div
@@ -132,23 +238,30 @@ function SmartHeader({ onGotoTab }) {
           </div>
         </div>
 
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div className="lbl" style={{ marginBottom: 4 }}>Cycle</div>
-          <select
-            className="input"
-            style={{ minWidth: 180 }}
-            value={cycle?.id ?? ""}
-            onChange={handleCycleChange}
-            data-testid="cycle-picker"
-          >
-            <option value="">All cycles</option>
-            {cycles.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.cycle_name ?? c.name ?? c.id}
-                {c.status === "active" ? " · active" : ""}
-              </option>
-            ))}
-          </select>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {hasCmsPermission && (
+              <AdvancedRepairMenu examId={exam_id} cycleId={cycleId} />
+            )}
+            <div>
+              <div className="lbl" style={{ marginBottom: 4 }}>Cycle</div>
+              <select
+                className="input"
+                style={{ minWidth: 180 }}
+                value={cycle?.id ?? ""}
+                onChange={handleCycleChange}
+                data-testid="cycle-picker"
+              >
+                <option value="">All cycles</option>
+                {cycles.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.cycle_name ?? c.name ?? c.id}
+                    {c.status === "active" ? " · active" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { RotateCcw, Plus, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
 import useApiAction from "../../../lib/hooks/useApiAction";
 import { parseImportFile } from "../../../lib/bulkImportFile";
+import { useAuth } from "../../../lib/authContext";
+import AdminSafetyBanner from "../../../shared/ui/AdminSafetyBanner";
 import CmsRefField from "../../../features/admin/shared/CmsRefField";
 import { DateField } from "../../../shared/ui/heavy";
 import ExamIntelDocuments from "./ExamIntelDocuments";
@@ -171,6 +174,27 @@ const PYQ_OPTION_LABELS = ["A", "B", "C", "D", "E"];
 const COMPETITION_SOURCE_BASES = ["manual", "official", "reviewed_analysis", "derived", "model_generated"];
 // exam_policy_updates.claim_status CHECK (migration 056).
 const POLICY_CLAIM_STATUSES = ["unverified", "official_confirmed", "superseded"];
+
+// Entities whose list endpoint accepts exam_id as a query param.
+// Source of truth: admin_exam_intel_cms.py GET route signatures (verified).
+const ENTITY_EXAM_SCOPE = new Set([
+  "exam-cycles",
+  "exam-phases",
+  "syllabus-documents",
+  "pyq-papers",
+  "exam-topic-coverage",
+  "policy-updates",
+  "exam-competition-metrics",
+  "pyq-sources",
+  "syllabus-topic-mentions",
+]);
+
+// Entities whose list endpoint also accepts exam_cycle_id (the DB column name).
+// Only two endpoints support this in the current backend.
+const ENTITY_CYCLE_SCOPE = new Set([
+  "exam-phases",
+  "pyq-papers",
+]);
 
 const ENTITY_CONFIG = {
   "exam-families": {
@@ -719,7 +743,22 @@ function parseValue(field, raw) {
 }
 
 export default function AdminExamIntelCms() {
-  const [entity, setEntity] = useState("exam-families");
+  const { user, status: authStatus } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  const scopeExamId = searchParams.get("exam_id") ?? null;
+  const scopeCycleId = searchParams.get("cycle_id") ?? null;
+
+  const hasCmsPermission =
+    user?.role === "super_admin" ||
+    user?.permissions?.includes("exam_intelligence.cms");
+
+  const isAuthorized = hasCmsPermission;
+
+  const [entity, setEntity] = useState(() => {
+    const e = searchParams.get("entity");
+    return e && (ENTITY_KEYS.includes(e) || e === "documents") ? e : "exam-families";
+  });
   const [items, setItems] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -743,6 +782,8 @@ export default function AdminExamIntelCms() {
   const [retireReason, setRetireReason] = useState("");
   const [retireError, setRetireError] = useState(null);
 
+  const loadGenRef = useRef(0);
+
   const { run: runCreate, busy: busyCreate } = useApiAction();
   const { run: runBulk, busy: busyBulk } = useApiAction();
   const { run: runEdit, busy: busyEdit } = useApiAction();
@@ -757,6 +798,8 @@ export default function AdminExamIntelCms() {
   const bulkCap = { "pyq-questions": 2000, "pyq-options": 4000, "pyq-question-topic-tags": 2000 }[entity] || 500;
 
   async function load() {
+    const gen = ++loadGenRef.current;
+    if (!isAuthorized) return;
     // The Documents panel manages its own data via the upload/list endpoints.
     if (isDocuments) {
       setItems(null);
@@ -766,13 +809,22 @@ export default function AdminExamIntelCms() {
     setBusy(true);
     setErr(null);
     try {
-      const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?limit=50`);
+      const params = new URLSearchParams({ limit: "50" });
+      if (scopeExamId && ENTITY_EXAM_SCOPE.has(entity)) {
+        params.set("exam_id", scopeExamId);
+      }
+      if (scopeCycleId && ENTITY_CYCLE_SCOPE.has(entity)) {
+        params.set("exam_cycle_id", scopeCycleId);
+      }
+      const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?${params}`);
+      if (gen !== loadGenRef.current) return;
       setItems(r);
     } catch (e) {
+      if (gen !== loadGenRef.current) return;
       setErr(getApiErrorMessage(e));
       setItems(null);
     } finally {
-      setBusy(false);
+      if (gen === loadGenRef.current) setBusy(false);
     }
   }
 
@@ -1008,7 +1060,14 @@ export default function AdminExamIntelCms() {
     setBulkRows("");
     setBulkResult(null);
     setFileParseError("");
-    setFormValues({});
+    const prefill = {};
+    if (scopeExamId && cfg?.fields.some((f) => !f.uiOnly && f.key === "exam_id")) {
+      prefill.exam_id = scopeExamId;
+    }
+    if (scopeCycleId && cfg?.fields.some((f) => !f.uiOnly && f.key === "exam_cycle_id")) {
+      prefill.exam_cycle_id = scopeCycleId;
+    }
+    setFormValues(prefill);
     setReason("");
     setEditingRow(null);
     setEditValues({});
@@ -1016,7 +1075,21 @@ export default function AdminExamIntelCms() {
     setEditError(null);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entity]);
+  }, [entity, isAuthorized, scopeExamId, scopeCycleId]);
+
+  if (authStatus === "checking") {
+    return <div data-testid="advanced-repair-checking" style={{ padding: "2rem" }}>Checking permissions…</div>;
+  }
+  if (!isAuthorized) {
+    return (
+      <div data-testid="advanced-repair-denied" style={{ padding: "2rem" }}>
+        <h2>Access denied</h2>
+        <p>
+          Advanced Repair requires the <code>exam_intelligence.cms</code> permission.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5" data-testid="admin-exam-intel-cms">
@@ -1033,16 +1106,26 @@ export default function AdminExamIntelCms() {
         </p>
       </div>
 
-      <div
-        className="rounded border border-amber-300/70 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
-        role="note"
-        data-testid="cms-caution-banner"
+      <AdminSafetyBanner
+        title="Advanced Repair — exceptional use only"
+        testId="advanced-repair-safety-banner"
+        collapsible={false}
       >
-        <strong>Power-user repair surface.</strong> For normal work, use the{" "}
-        <strong>Exam Governance Console</strong> and the <strong>Create-exam wizard</strong> — not this
-        page. Raw edits here can break import idempotency (the exam <code>slug</code> is the upsert key
-        and must not change), and exam-identity changes belong in the operator UI, never raw CMS.
-      </div>
+        Use this surface only for exceptional repair, deduplication, migration recovery, or
+        broken-reference correction. Normal operational work belongs in Manage Exam. Raw changes can
+        affect linked exam data and remain subject to the existing review and locking lifecycle.
+      </AdminSafetyBanner>
+      {(scopeExamId || scopeCycleId) && (
+        <div
+          className="rounded border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+          data-testid="advanced-repair-scope-summary"
+        >
+          Context filter —{" "}
+          {scopeExamId && <>exam <code>{scopeExamId}</code></>}
+          {scopeExamId && scopeCycleId && " · "}
+          {scopeCycleId && <>cycle <code>{scopeCycleId}</code></>}
+        </div>
+      )}
 
       <div className="flex gap-2 items-end flex-wrap">
         <label>
@@ -1101,7 +1184,7 @@ export default function AdminExamIntelCms() {
 
       {err ? <div className="text-sm text-red-700" role="alert">{err}</div> : null}
 
-      {isDocuments ? <ExamIntelDocuments /> : null}
+      {isDocuments ? <ExamIntelDocuments scopeExamId={scopeExamId} scopeCycleId={scopeCycleId} /> : null}
 
       {!isDocuments && showBulk && cfg.supportsBulk !== false ? (
         <form onSubmit={submitBulk} className="rounded border border-border/60 bg-card p-4 space-y-2" data-testid="cms-bulk-form">
