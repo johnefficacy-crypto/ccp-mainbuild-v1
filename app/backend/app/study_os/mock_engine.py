@@ -294,8 +294,40 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
             ordered.extend(_select_criteria_question_ids(supabase, selector, int(sec.get("question_count") or 0)))
     if not ordered:
         return []
-    q_rows = _safe(lambda: supabase.table("mock_question_bank").select("*").in_("id", ordered).execute(), default=None)
+
+    from datetime import datetime, timezone
+    _now_iso = datetime.now(timezone.utc).isoformat()
+    _SELECTABLE = ["verified", "published", "live"]
+    q_rows = _safe(
+        lambda: supabase.table("mock_question_bank")
+        .select("*")
+        .in_("id", ordered)
+        .in_("reviewer_status", _SELECTABLE)
+        .or_(f"valid_until.is.null,valid_until.gt.{_now_iso}")
+        .execute(),
+        default=None,
+    )
     by_id = {r["id"]: r for r in (getattr(q_rows, "data", None) or [])}
+
+    # Active-lineage guard: exclude PYQ-derived questions with non-active projections.
+    pyq_ids = [qid for qid, q in by_id.items() if q.get("pyq_question_id")]
+    if pyq_ids:
+        try:
+            proj_rows = (
+                supabase.table("pyq_mock_question_projections")
+                .select("mock_question_id")
+                .eq("sync_status", "active")
+                .execute()
+                .data
+            ) or []
+            active_mock_ids = {p["mock_question_id"] for p in proj_rows}
+            by_id = {
+                qid: q for qid, q in by_id.items()
+                if not q.get("pyq_question_id") or qid in active_mock_ids
+            }
+        except Exception:
+            # Fail-closed: exclude all PYQ-derived questions if guard query fails.
+            by_id = {qid: q for qid, q in by_id.items() if not q.get("pyq_question_id")}
     # Attach options (ordered by option_index) — without these the frozen
     # snapshot has no options and the attempt renders no answer choices.
     opt_rows = _safe(

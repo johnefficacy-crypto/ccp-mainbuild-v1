@@ -1198,17 +1198,19 @@ def multi_exam_coverage(
         )
         sys.exit(_EXIT_INSUFFICIENT)
 
-    # ── 2. Resolve attempt_id → exam_id via mock_attempts → mock_templates ────
-    # mock_attempts has no exam_id column; exam_id lives on mock_templates.
+    # ── 2. Resolve attempt_id → exam_id ──────────────────────────────────────
+    # Fixed-template attempts: mock_attempts.template_id → mock_templates.exam_id
+    # Generated attempts:      mock_attempts.generated_blueprint_id → mock_generated_blueprints.exam_id
     attempt_ids = list({r["attempt_id"] for r in shadow_rows if r.get("attempt_id")})
-    attempt_template_map: dict[str, str] = {}
+    attempt_template_map: dict[str, str] = {}   # attempt_id → template_id
+    attempt_blueprint_map: dict[str, str] = {}  # attempt_id → generated_blueprint_id
 
     for batch_start in range(0, len(attempt_ids), 100):
         batch = attempt_ids[batch_start: batch_start + 100]
         try:
             attempt_rows = (
                 sb.table("mock_attempts")
-                .select("id, template_id")
+                .select("id, template_id, generated_blueprint_id")
                 .in_("id", batch)
                 .execute()
                 .data
@@ -1217,6 +1219,8 @@ def multi_exam_coverage(
             for r in attempt_rows:
                 if r.get("template_id"):
                     attempt_template_map[r["id"]] = r["template_id"]
+                elif r.get("generated_blueprint_id"):
+                    attempt_blueprint_map[r["id"]] = r["generated_blueprint_id"]
         except Exception as exc:
             _emit_result(
                 {
@@ -1230,6 +1234,7 @@ def multi_exam_coverage(
             )
             sys.exit(_EXIT_ERROR)
 
+    # Resolve template_id → exam_id via mock_templates.
     template_ids = list(set(attempt_template_map.values()))
     template_exam_map: dict[str, str] = {}
     for batch_start in range(0, len(template_ids), 100):
@@ -1259,11 +1264,44 @@ def multi_exam_coverage(
             )
             sys.exit(_EXIT_ERROR)
 
-    attempt_exam_map: dict[str, str] = {
-        attempt_id: template_exam_map[tmpl_id]
-        for attempt_id, tmpl_id in attempt_template_map.items()
-        if tmpl_id in template_exam_map
-    }
+    # Resolve generated_blueprint_id → exam_id via mock_generated_blueprints.
+    blueprint_ids = list(set(attempt_blueprint_map.values()))
+    blueprint_exam_map: dict[str, str] = {}
+    for batch_start in range(0, len(blueprint_ids), 100):
+        batch = blueprint_ids[batch_start: batch_start + 100]
+        try:
+            bp_rows = (
+                sb.table("mock_generated_blueprints")
+                .select("id, exam_id")
+                .in_("id", batch)
+                .execute()
+                .data
+                or []
+            )
+            for r in bp_rows:
+                if r.get("exam_id"):
+                    blueprint_exam_map[r["id"]] = r["exam_id"]
+        except Exception as exc:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd,
+                    "status": "ERROR",
+                    "error": "QUERY_FAILED",
+                    "detail": f"mock_generated_blueprints fetch failed: {exc}",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
+
+    # Build the final attempt → exam map (template path takes precedence).
+    attempt_exam_map: dict[str, str] = {}
+    for attempt_id, tmpl_id in attempt_template_map.items():
+        if tmpl_id in template_exam_map:
+            attempt_exam_map[attempt_id] = template_exam_map[tmpl_id]
+    for attempt_id, bp_id in attempt_blueprint_map.items():
+        if attempt_id not in attempt_exam_map and bp_id in blueprint_exam_map:
+            attempt_exam_map[attempt_id] = blueprint_exam_map[bp_id]
 
     # ── 3. Fetch question snapshots for source_kind + subject breakdown ────────
     responses_by_attempt: dict[str, list[dict]] = defaultdict(list)
@@ -1271,16 +1309,26 @@ def multi_exam_coverage(
     for batch_start in range(0, len(attempt_ids), 100):
         batch = attempt_ids[batch_start: batch_start + 100]
         try:
-            resp_rows = (
-                sb.table("mock_attempt_responses")
-                .select("attempt_id, question_snapshot")
-                .in_("attempt_id", batch)
-                .execute()
-                .data
-                or []
-            )
-            for r in resp_rows:
-                responses_by_attempt[r["attempt_id"]].append(r)
+            # Paginate within each attempt batch: 100 attempts × up to 100 questions
+            # each = 10 000 rows, exceeding PostgREST's default 1 000-row page size.
+            page_size = 1000
+            offset = 0
+            while True:
+                page = (
+                    sb.table("mock_attempt_responses")
+                    .select("attempt_id, question_snapshot")
+                    .in_("attempt_id", batch)
+                    .order("id")
+                    .range(offset, offset + page_size - 1)
+                    .execute()
+                    .data
+                    or []
+                )
+                for r in page:
+                    responses_by_attempt[r["attempt_id"]].append(r)
+                if len(page) < page_size:
+                    break
+                offset += page_size
         except Exception as exc:
             _emit_result(
                 {

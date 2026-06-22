@@ -149,8 +149,8 @@ def _resolve_source_mix_policy(
     def _specificity(row: dict) -> int:
         for priority, col in enumerate(_POLICY_SCOPE_PRIORITY):
             if row.get(col):
-                return -priority  # negative so most-specific (index 0) sorts first
-        return -len(_POLICY_SCOPE_PRIORITY)
+                return priority  # lowest index = most specific; sort ascending
+        return len(_POLICY_SCOPE_PRIORITY)
 
     candidates.sort(key=_specificity)
     best_specificity = _specificity(candidates[0])

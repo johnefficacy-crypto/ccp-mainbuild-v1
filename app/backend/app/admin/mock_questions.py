@@ -343,6 +343,19 @@ def update_question(supabase: Any, actor: dict, question_id: str, data: dict,
     options_raw: list[dict] | None = data.get("options")
     opts = _fetch_options(supabase, question_id)
 
+    # When changing question_type to 'mcq' without supplying new options, validate
+    # that the stored options already satisfy exactly-one-correct.
+    if (
+        options_raw is None
+        and data.get("question_type") == "mcq"
+        and q.get("question_type") != "mcq"
+    ):
+        correct_stored = [o for o in opts if o.get("is_correct")]
+        if len(correct_stored) != 1:
+            raise ValueError(
+                "MCQ requires exactly one correct option; provide options to correct them"
+            )
+
     if options_raw is not None:
         if len(options_raw) < 2:
             raise ValueError("at least 2 options required")
