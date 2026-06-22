@@ -41,7 +41,14 @@ ACTOR_ID  = "actor-001"
 
 
 def _paper(trust_status: str = "verified") -> dict:
-    return {"id": PAPER_ID, "exam_id": EXAM_ID, "year": 2023, "trust_status": trust_status}
+    return {
+        "id": PAPER_ID,
+        "exam_id": EXAM_ID,
+        "year": 2023,
+        "trust_status": trust_status,
+        "source_url": "https://example.com/paper.pdf",
+        "source_type": "official",
+    }
 
 
 def _question(
@@ -213,6 +220,24 @@ class TestComputeContentHash:
         h1 = compute_content_hash(_question(), opts, all_verified_tags=_primary_tag())
         h2 = compute_content_hash(_question(), opts, all_verified_tags=_primary_tag() + [unverified_tag])
         assert h1 == h2
+
+    def test_changes_when_paper_exam_id_changes(self):
+        opts = _options()
+        h1 = compute_content_hash(_question(), opts, paper={"exam_id": "exam-A", "year": 2023})
+        h2 = compute_content_hash(_question(), opts, paper={"exam_id": "exam-B", "year": 2023})
+        assert h1 != h2
+
+    def test_changes_when_paper_source_url_changes(self):
+        opts = _options()
+        h1 = compute_content_hash(_question(), opts, paper={"source_url": "https://old.example.com/paper.pdf"})
+        h2 = compute_content_hash(_question(), opts, paper={"source_url": "https://new.example.com/paper.pdf"})
+        assert h1 != h2
+
+    def test_changes_when_paper_source_type_changes(self):
+        opts = _options()
+        h1 = compute_content_hash(_question(), opts, paper={"source_type": "official"})
+        h2 = compute_content_hash(_question(), opts, paper={"source_type": "unofficial"})
+        assert h1 != h2
 
 
 # ─── Unit: _check_question_eligibility ────────────────────────────────────────
@@ -401,6 +426,33 @@ class TestPreviewPaperProjection:
         q_entry = result["questions"][0]
         assert q_entry["eligible"] is True
         assert q_entry["would_update"] is True
+        assert result["would_update_count"] == 1
+
+    def test_stale_projection_with_matching_hash_reports_would_update(self):
+        """Stale sync_status alone (not hash divergence) must trigger re-projection.
+
+        If a projection is stale but the hash hasn't changed, preview must still
+        report would_update=True so the operator knows the RPC needs to run to
+        restore active status.
+        """
+        content_hash = compute_content_hash(
+            _question(), _options(), paper=_paper(), all_verified_tags=_primary_tag()
+        )
+        projection = {
+            "pyq_question_id": Q_ID,
+            "mock_question_id": "mock-1",
+            "sync_status": "stale",
+            "source_content_hash": content_hash,  # hash matches — but status is not active
+            "projected_at": "2026-01-01T00:00:00",
+            "updated_at": "2026-01-01T00:00:00",
+        }
+        sb = _seed_sb(projections=[projection])
+        result = preview_paper_projection(sb, PAPER_ID)
+        q_entry = result["questions"][0]
+        assert q_entry["eligible"] is True
+        assert q_entry["would_update"] is True, (
+            "stale projection with matching hash must still require re-projection"
+        )
         assert result["would_update_count"] == 1
 
 

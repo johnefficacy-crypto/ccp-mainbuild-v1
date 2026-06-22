@@ -443,14 +443,14 @@ begin
       -- ── 3. Compute source content hash ─────────────────────────────────────
       --
       -- Hash = SHA256 over ALL fields projected to mock_question_bank so that
-      -- any change to explanation, difficulty, language, expected time, paper
-      -- year, option ordering (label), or verified topic tags causes a stale
-      -- detection.  Formula matches compute_content_hash() in
-      -- pyq_mock_projection.py (NUL=chr(0), FS=chr(31), RS=chr(30)).
+      -- any change causes a stale detection.  Formula matches
+      -- compute_content_hash() in pyq_mock_projection.py
+      -- (NUL=chr(0), FS=chr(31), RS=chr(30)).
       --
       -- Sections (chr(0)-separated):
       --   q_text | explanation | difficulty | language | expected_solve_time_sec
-      --   | pyq_paper_id | paper_year
+      --   | pyq_paper_id | paper_year | paper_exam_id | paper_source_url
+      --   | paper_source_type
       --   | verified opt_label chr(30) opt_text (chr(31)-joined, sorted label,id)
       --   | verified correct_opt_text
       --   | verified topic_id chr(30) tag_role (chr(31)-joined, sorted topic_id,role)
@@ -465,6 +465,9 @@ begin
               coalesce(v_q.expected_solve_time_sec::text, '') || chr(0) ||
               coalesce(v_q.pyq_paper_id::text, '') || chr(0) ||
               coalesce(v_q.paper_year::text, '') || chr(0) ||
+              coalesce(v_q.exam_id::text, '') || chr(0) ||
+              coalesce(v_q.paper_source_url, '') || chr(0) ||
+              coalesce(v_q.paper_source_type, '') || chr(0) ||
               coalesce((
                   select string_agg(
                       coalesce(lower(o.option_label), '') || chr(30) ||

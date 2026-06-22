@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
+
 from app.study_os import mock_engine as svc
 from app.study_os.mock_engine import _criteria_difficulty_targets
 from tests.persona_questions._stub import SBStub
@@ -124,7 +126,7 @@ def test_criteria_excludes_unpublished():
     questions.append({**_q("easy"), "reviewer_status": "draft"})
     sb, template_id = _db_with_section(
         {"mode": "criteria", "filters": {}},
-        10,
+        3,  # request exactly the 3 published; fail-closed rejects under-count
         questions,
     )
     selected = svc.select_questions_for_template(sb, template_id, "user-1")
@@ -142,7 +144,7 @@ def test_criteria_excludes_fixtures_keeps_null_and_authored():
     fixture = {**_q("easy"), "source_type": "e2e_fixture"}
     sb, template_id = _db_with_section(
         {"mode": "criteria", "filters": {}},
-        10,
+        2,  # request exactly the 2 non-fixture; fail-closed rejects under-count
         [null_prov, authored, fixture],
     )
     selected = svc.select_questions_for_template(sb, template_id, "user-1")
@@ -229,6 +231,76 @@ def test_criteria_stale_pyq_excluded_and_backfilled():
     assert len(selected) == 3, f"expected 3 questions, got {len(selected)}"
     assert pyq_mock_id not in selected_ids, "stale PYQ must not appear in selection"
     assert selected_ids == set(authored_ids), "all three authored questions must be selected"
+
+
+def test_criteria_thin_pool_raises_lookup_error():
+    """Regression: a genuinely underfilled pool must raise LookupError, not silently
+    start an attempt with fewer questions than the section target.
+
+    Setup: section wants 3; pool has 1 stale PYQ-derived + 2 authored (3 total, but
+    only 2 survive the lineage filter). start_attempt() must be rejected before
+    writing any attempt or response rows.
+    """
+    pyq_mock_id = "00000000-0000-0000-0000-000000000002"
+    authored_ids = [
+        "bbbbbbbb-0000-0000-0000-000000000001",
+        "bbbbbbbb-0000-0000-0000-000000000002",
+    ]
+    pyq_question_id = "pyq-src-thin"
+
+    def _q_bank(qid: str, pyq_question_id: str | None = None) -> dict:
+        opts = [{"id": f"opt-{qid}-{i}", "question_id": qid, "option_text": f"Opt {i}",
+                 "option_index": i, "is_correct": i == 0}
+                for i in range(4)]
+        return {
+            "id": qid,
+            "exam_family": "TEST",
+            "question_text": f"Q {qid[:8]}",
+            "question_type": "mcq",
+            "difficulty": "medium",
+            "correct_option_id": f"opt-{qid}-0",
+            "reviewer_status": "published",
+            "pyq_question_id": pyq_question_id,
+            "options": opts,
+        }
+
+    template = {
+        "id": "tmpl-thin-pool",
+        "slug": "thin-pool-mock",
+        "name": "Thin Pool Mock",
+        "exam_family": "TEST",
+        "total_questions": 3,
+        "duration_sec": 300,
+        "negative_marking": False,
+        "marks_per_correct": 1.0,
+        "marks_per_wrong": 0.0,
+        "config": {},
+        "status": "active",
+    }
+    section = {
+        "id": "sec-thin",
+        "template_id": template["id"],
+        "section_index": 0,
+        "name": "Thin Section",
+        "question_count": 3,
+        "selector": {"mode": "criteria", "filters": {}},
+    }
+    questions = [_q_bank(pyq_mock_id, pyq_question_id)] + [_q_bank(aid) for aid in authored_ids]
+    db = {
+        "mock_templates": [template],
+        "mock_template_sections": [section],
+        "mock_question_bank": [dict(q) for q in questions],
+        "mock_question_options": [o for q in questions for o in q["options"]],
+        "mock_attempts": [],
+        "mock_attempt_responses": [],
+        "pyq_mock_question_projections": [
+            {"mock_question_id": pyq_mock_id, "sync_status": "stale"},
+        ],
+    }
+    sb = SBStub(db)
+    with pytest.raises(LookupError, match="criteria section requires"):
+        svc.start_attempt(sb, "user-1", "thin-pool-mock")
+    assert sb.db.get("mock_attempts", []) == [], "no attempt row must be written on thin-pool failure"
 
 
 def test_start_attempt_uses_criteria_template():

@@ -35,7 +35,7 @@ _PRIMARY_TAG_ROLE     = "primary"
 def _fetch_paper(sb: Any, paper_id: str) -> dict | None:
     rows = (
         sb.table("pyq_papers")
-        .select("id, exam_id, year, trust_status")
+        .select("id, exam_id, year, trust_status, source_url, source_type")
         .eq("id", paper_id)
         .limit(1)
         .execute()
@@ -127,14 +127,18 @@ def compute_content_hash(
     """
     NUL, FS, RS = "\x00", "\x1f", "\x1e"
 
-    q_text    = (question.get("question_text") or "").strip().lower()
-    expl      = (question.get("explanation_text") or "").strip().lower()
-    raw_diff  = (question.get("observed_difficulty") or "").strip().lower()
-    diff      = raw_diff if raw_diff in ("easy", "medium", "hard") else "medium"
-    language  = (question.get("language") or "en").strip().lower()
-    exp_time  = str(question.get("expected_solve_time_sec") or "")
-    paper_id  = str(question.get("pyq_paper_id") or "")
-    paper_year = str((paper or {}).get("year") or "")
+    q_text       = (question.get("question_text") or "").strip().lower()
+    expl         = (question.get("explanation_text") or "").strip().lower()
+    raw_diff     = (question.get("observed_difficulty") or "").strip().lower()
+    diff         = raw_diff if raw_diff in ("easy", "medium", "hard") else "medium"
+    language     = (question.get("language") or "en").strip().lower()
+    exp_time     = str(question.get("expected_solve_time_sec") or "")
+    paper_id     = str(question.get("pyq_paper_id") or "")
+    _p           = paper or {}
+    paper_year   = str(_p.get("year") or "")
+    paper_exam   = str(_p.get("exam_id") or "")
+    paper_src_url  = str(_p.get("source_url") or "")
+    paper_src_type = str(_p.get("source_type") or "")
 
     verified_opts = sorted(
         (o for o in options if o.get("reviewer_status") == _VERIFIED_OPTION),
@@ -159,7 +163,8 @@ def compute_content_hash(
     )
 
     raw = NUL.join([
-        q_text, expl, diff, language, exp_time, paper_id, paper_year,
+        q_text, expl, diff, language, exp_time, paper_id,
+        paper_year, paper_exam, paper_src_url, paper_src_type,
         opt_parts, correct_opt, tag_parts,
     ])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -272,7 +277,13 @@ def preview_paper_projection(sb: Any, paper_id: str) -> dict:
             eligible_count += 1
             if projection:
                 already_projected += 1
-                if projection.get("source_content_hash") != content_hash:
+                # Mark would_update when the hash changed (content drift) OR when
+                # the projection is not active (e.g. stale/blocked from a paper-level
+                # field change that doesn't affect the hash itself).  A stale
+                # projection with a matching hash will still be re-projected by the
+                # RPC to restore active status.
+                if (projection.get("sync_status") != "active"
+                        or projection.get("source_content_hash") != content_hash):
                     entry["would_update"] = True
                     would_update += 1
                 else:

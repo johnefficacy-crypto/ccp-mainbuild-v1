@@ -325,6 +325,9 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
         return []
     ordered: list[str] = []
     fixed_required: set[str] = set()  # IDs that must survive all filters
+    # Each entry is (requested_count, frozenset_of_selected_ids) for criteria sections.
+    # Used post-filter to fail-closed when a section ends up genuinely underfilled.
+    criteria_requirements: list[tuple[int, frozenset[str]]] = []
 
     # Fetch active PYQ mock IDs once; passed to criteria selector so that stale
     # projections are excluded from the pool before allocation, not silently
@@ -351,10 +354,14 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
             ordered.extend(ids)
             fixed_required.update(ids)
         elif mode == "criteria":
-            ordered.extend(_select_criteria_question_ids(
-                supabase, selector, int(sec.get("question_count") or 0),
+            requested = int(sec.get("question_count") or 0)
+            section_ids = _select_criteria_question_ids(
+                supabase, selector, requested,
                 active_pyq_mock_ids=_active_pyq_mock_ids,
-            ))
+            )
+            ordered.extend(section_ids)
+            if requested > 0:
+                criteria_requirements.append((requested, frozenset(section_ids)))
     if not ordered:
         return []
 
@@ -400,6 +407,20 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
                 f"{len(missing)} question(s) in fixed-template section(s) are "
                 f"unavailable (stale, blocked, expired, or not in bank): "
                 f"{sorted(missing)}"
+            )
+
+    # Fail-closed: abort if any criteria section ends up genuinely underfilled.
+    # Pre-allocation lineage filtering removes stale PYQ rows, but if the eligible
+    # pool is genuinely thin the section count will be below the configured target.
+    # Starting a shortened attempt would give a misleading experience; fail instead.
+    for requested_count, section_id_set in criteria_requirements:
+        surviving = [qid for qid in section_id_set if qid in by_id]
+        if len(surviving) < requested_count:
+            unavailable = sorted(section_id_set - by_id.keys())
+            raise LookupError(
+                f"criteria section requires {requested_count} question(s) but only "
+                f"{len(surviving)} are available after status/expiry/lineage filtering; "
+                f"unavailable IDs: {unavailable}"
             )
 
     # Attach options (ordered by option_index) — without these the frozen
