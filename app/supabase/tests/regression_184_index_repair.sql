@@ -73,7 +73,7 @@ begin
               and (select a.attname from pg_attribute a
                    where a.attrelid = i.indrelid
                      and a.attnum   = i.indkey[0]) = 'pyq_question_id'
-              and pg_get_expr(i.indpred, i.indrelid) = 'pyq_question_id IS NOT NULL'
+              and trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL'
           )
     ) then
         execute 'drop index public.uq_mock_qbank_pyq_question_id';
@@ -104,7 +104,7 @@ begin
       and (select a.attname from pg_attribute a
            where a.attrelid = i.indrelid
              and a.attnum   = i.indkey[0])   = 'pyq_question_id'
-      and pg_get_expr(i.indpred, i.indrelid) = 'pyq_question_id IS NOT NULL';
+      and trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL';
 
     if v_count = 0 then
         raise exception
@@ -165,7 +165,7 @@ begin
               and (select a.attname from pg_attribute a
                    where a.attrelid = i.indrelid
                      and a.attnum   = i.indkey[0]) = 'pyq_question_id'
-              and pg_get_expr(i.indpred, i.indrelid) = 'pyq_question_id IS NOT NULL'
+              and trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL'
           )
     ) then
         execute 'drop index public.uq_mock_qbank_pyq_question_id';
@@ -196,7 +196,7 @@ begin
       and (select a.attname from pg_attribute a
            where a.attrelid = i.indrelid
              and a.attnum   = i.indkey[0])   = 'pyq_question_id'
-      and pg_get_expr(i.indpred, i.indrelid) = 'pyq_question_id IS NOT NULL';
+      and trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL';
 
     if v_count = 0 then
         raise exception
