@@ -711,4 +711,94 @@ describe("PyqPaperWorkspace deep-link (I8-B)", () => {
     expect(screen.queryByDisplayValue("Mumbai")).toBeNull();
     expect(screen.getByDisplayValue("Wellington")).toBeTruthy();
   });
+
+  // ── Round-8: progressGenRef per-call guard ────────────────────────────────
+
+  test("stale save-triggered progress does not overwrite review-triggered progress after Verify", async () => {
+    // Verify: saveDraft → handleSaved calls loadProgress (stale, deferred)
+    //         doReview  → handleStatusChange calls loadProgress (new, immediate)
+    // The stale save-progress must be discarded; the review-progress must win.
+    const PROGRESS_REVIEWED = {
+      ...PROGRESS,
+      by_status: { pending: 0, verified: 2, rejected: 1 },
+    };
+    let resolveSaveProgress;
+    const saveProgressP = new Promise((res) => { resolveSaveProgress = res; });
+    let progressCallCount = 0;
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes("/pyq-questions?"))
+        return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes("/progress")) {
+        progressCallCount += 1;
+        if (progressCallCount === 1) return Promise.resolve(PROGRESS);     // initial
+        if (progressCallCount === 2) return saveProgressP;                 // save-refresh (stale)
+        return Promise.resolve(PROGRESS_REVIEWED);                         // review-refresh (new)
+      }
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      return Promise.resolve({});
+    });
+    api.patch.mockResolvedValue({ ok: true });
+
+    renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Select q1 and click Verify — triggers save-refresh (stale) then review-refresh (new)
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    await waitFor(() => screen.getByTestId("btn-verify"));
+    fireEvent.click(screen.getByTestId("btn-verify"));
+
+    // Wait until the review-refresh progress is rendered (2 verified)
+    await waitFor(() => expect(document.body.textContent).toContain("2 verified"));
+
+    // Resolve the stale save-progress — the UI must not revert to 1 verified
+    await act(async () => { resolveSaveProgress(PROGRESS); });
+    expect(document.body.textContent).toContain("2 verified");
+  });
+
+  test("stale progress from old paper does not overwrite new paper progress after switch", async () => {
+    const PROGRESS_B = {
+      paper_id: PAPER_B_ID,
+      total_expected: 10,
+      present: 2,
+      missing: [],
+      by_status: { pending: 2, verified: 0, rejected: 0 },
+    };
+    let resolveStalePaperAProgress;
+    const stalePaperAProgressP = new Promise((res) => { resolveStalePaperAProgress = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes(`/pyq-papers/${PAPER_B_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER_B);
+      if (url.includes(`pyq_paper_id=${PAPER_ID}`)) return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes(`pyq_paper_id=${PAPER_B_ID}`)) return Promise.resolve({ items: [], total: 0 });
+      if (url.includes(`${PAPER_ID}/progress`)) return stalePaperAProgressP;
+      if (url.includes(`${PAPER_B_ID}/progress`)) return Promise.resolve(PROGRESS_B);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: [] });
+      return Promise.resolve({});
+    });
+
+    const { rerender } = renderEmbedded({});
+    // Confirm paper A's progress request has fired (it will remain pending)
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining(`${PAPER_ID}/progress`)),
+    );
+
+    // Switch to paper B before paper A's progress resolves
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_B_ID} embedded />
+      </MemoryRouter>,
+    );
+    // Wait for paper B's progress to render (10 total expected)
+    await waitFor(() => expect(document.body.textContent).toContain("/ 10 expected"));
+
+    // Resolve the stale paper A progress — must be discarded; paper B counts must remain
+    await act(async () => { resolveStalePaperAProgress(PROGRESS); });
+    expect(document.body.textContent).toContain("/ 10 expected");
+  });
 });

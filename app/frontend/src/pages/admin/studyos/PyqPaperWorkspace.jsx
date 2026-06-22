@@ -1110,8 +1110,9 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
 
   const deepLinkApplied = useRef(false);
   const loadGenRef = useRef(0);       // macro: incremented on paper/status-prop change
-  const questionsGenRef = useRef(0);  // micro: incremented per data-loading effect call
+  const questionsGenRef = useRef(0);  // micro: incremented per loadQuestions call
   const optionsGenRef = useRef(0);    // per loadOptions call
+  const progressGenRef = useRef(0);   // per loadProgress call
   const [deepLinkNotFound, setDeepLinkNotFound] = useState(false);
 
   // Pagination state
@@ -1168,14 +1169,17 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
 
   const loadProgress = useCallback(async () => {
     const gen = loadGenRef.current;
+    progressGenRef.current += 1;
+    const pgen = progressGenRef.current;
     try {
       const res = await api.get(
         `${CMS_BASE}/pyq-papers/${encodeURIComponent(pyq_paper_id)}/progress`,
       );
-      if (loadGenRef.current !== gen) return;
+      if (loadGenRef.current !== gen || progressGenRef.current !== pgen) return null;
       setProgress(res);
+      return res;
     } catch {
-      /* best-effort */
+      return null;
     }
   }, [pyq_paper_id]);
 
@@ -1213,6 +1217,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   useEffect(() => {
     loadGenRef.current += 1;
     optionsGenRef.current += 1;   // discard any running loadOptions from the old paper
+    progressGenRef.current += 1;  // discard any running loadProgress from the old paper
     setPaper(null);
     setQuestions([]);
     setProgress(null);
@@ -1232,6 +1237,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   useEffect(() => {
     loadGenRef.current += 1;
     optionsGenRef.current += 1;   // discard any running loadOptions from the old status context
+    progressGenRef.current += 1;  // discard any running loadProgress from the old status context
     setStatusFilter(status ?? "all");
     setOffset(0);
     setSelectedQuestion(null);
