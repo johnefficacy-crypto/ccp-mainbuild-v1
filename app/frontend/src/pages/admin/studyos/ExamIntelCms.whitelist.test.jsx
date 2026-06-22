@@ -4,6 +4,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // The page fetches the entity list on mount; stub the API so each test
 // stays focused on which form / bulk-template fields the entity exposes.
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
+}))
+
+jest.mock("../../../lib/supabase", () => ({
+  __esModule: true,
+  supabase: { auth: { getSession: jest.fn(), onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })) } },
+}))
+jest.mock("../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" }),
+}))
+
 jest.mock("../../../lib/api", () => ({
   __esModule: true,
   api: { get: jest.fn(() => Promise.resolve({ items: [], total: 0 })), post: jest.fn() },
