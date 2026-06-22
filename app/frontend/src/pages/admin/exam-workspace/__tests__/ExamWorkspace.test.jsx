@@ -833,6 +833,7 @@ describe("ExamWorkspace More menu (I8-C)", () => {
     fireEvent.click(screen.getByTestId("workspace-more-trigger"));
     const link = screen.getByTestId("workspace-advanced-repair-link");
     expect(link.getAttribute("href")).toContain("exam_id=exam-42");
+    expect(link.getAttribute("href")).toContain("entity=documents");
   });
 
   test("Advanced Repair link includes cycle_id when cycle is selected", async () => {
@@ -843,6 +844,7 @@ describe("ExamWorkspace More menu (I8-C)", () => {
     fireEvent.click(screen.getByTestId("workspace-more-trigger"));
     const link = screen.getByTestId("workspace-advanced-repair-link");
     expect(link.getAttribute("href")).toContain("cycle_id=cycle-2026");
+    expect(link.getAttribute("href")).toContain("entity=documents");
   });
 
   test("Advanced Repair link omits cycle_id when no cycle is selected", async () => {
@@ -853,6 +855,7 @@ describe("ExamWorkspace More menu (I8-C)", () => {
     fireEvent.click(screen.getByTestId("workspace-more-trigger"));
     const link = screen.getByTestId("workspace-advanced-repair-link");
     expect(link.getAttribute("href")).not.toContain("cycle_id");
+    expect(link.getAttribute("href")).toContain("entity=documents");
   });
 
   test("Escape key closes the More menu", async () => {

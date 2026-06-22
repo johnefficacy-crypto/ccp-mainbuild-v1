@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RotateCcw, Plus, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
@@ -753,12 +753,12 @@ export default function AdminExamIntelCms() {
     user?.role === "super_admin" ||
     user?.permissions?.includes("exam_intelligence.cms");
 
-  // exam-scoped path allows exam_intelligence.cms; global path (no exam_id) is super_admin only
-  const isAuthorized = scopeExamId
-    ? hasCmsPermission
-    : user?.role === "super_admin";
+  const isAuthorized = hasCmsPermission;
 
-  const [entity, setEntity] = useState("exam-families");
+  const [entity, setEntity] = useState(() => {
+    const e = searchParams.get("entity");
+    return e && (ENTITY_KEYS.includes(e) || e === "documents") ? e : "exam-families";
+  });
   const [items, setItems] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -782,6 +782,8 @@ export default function AdminExamIntelCms() {
   const [retireReason, setRetireReason] = useState("");
   const [retireError, setRetireError] = useState(null);
 
+  const loadGenRef = useRef(0);
+
   const { run: runCreate, busy: busyCreate } = useApiAction();
   const { run: runBulk, busy: busyBulk } = useApiAction();
   const { run: runEdit, busy: busyEdit } = useApiAction();
@@ -803,6 +805,7 @@ export default function AdminExamIntelCms() {
       setBusy(false);
       return;
     }
+    const gen = ++loadGenRef.current;
     setBusy(true);
     setErr(null);
     try {
@@ -814,12 +817,14 @@ export default function AdminExamIntelCms() {
         params.set("exam_cycle_id", scopeCycleId);
       }
       const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?${params}`);
+      if (gen !== loadGenRef.current) return;
       setItems(r);
     } catch (e) {
+      if (gen !== loadGenRef.current) return;
       setErr(getApiErrorMessage(e));
       setItems(null);
     } finally {
-      setBusy(false);
+      if (gen === loadGenRef.current) setBusy(false);
     }
   }
 
@@ -1080,8 +1085,7 @@ export default function AdminExamIntelCms() {
       <div data-testid="advanced-repair-denied" style={{ padding: "2rem" }}>
         <h2>Access denied</h2>
         <p>
-          Advanced Repair requires the <code>exam_intelligence.cms</code> permission
-          {!scopeExamId ? " and super-admin role for global access" : ""}.
+          Advanced Repair requires the <code>exam_intelligence.cms</code> permission.
         </p>
       </div>
     );
