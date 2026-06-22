@@ -1109,6 +1109,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   const [sourceKindFilter, setSourceKindFilter] = useState("all");
 
   const deepLinkApplied = useRef(false);
+  const loadGenRef = useRef(0);
   const [deepLinkNotFound, setDeepLinkNotFound] = useState(false);
 
   // Pagination state
@@ -1125,8 +1126,10 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
 
   const loadPaper = useCallback(async () => {
     if (!pyq_paper_id) return;
+    const gen = loadGenRef.current;
     try {
       const res = await api.get(`${CMS_BASE}/pyq-papers/${encodeURIComponent(pyq_paper_id)}`);
+      if (loadGenRef.current !== gen) return;
       setPaper(res || null);
     } catch {
       /* best-effort */
@@ -1136,6 +1139,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // Returns the fetched items so callers can act on them without waiting for
   // the async state update (setQuestions is enqueued, not synchronous).
   const loadQuestions = useCallback(async () => {
+    const gen = loadGenRef.current;
     setLoadError("");
     try {
       const params = new URLSearchParams({
@@ -1146,21 +1150,25 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
       if (statusFilter !== "all") params.set("reviewer_status", statusFilter);
       if (sourceKindFilter !== "all") params.set("source_kind", sourceKindFilter);
       const res = await api.get(`${CMS_BASE}/pyq-questions?${params}`);
+      if (loadGenRef.current !== gen) return [];
       const items = res.items || [];
       setQuestions(items);
       setTotal(res.total ?? null);
       return items;
     } catch (e) {
+      if (loadGenRef.current !== gen) return [];
       setLoadError(e?.message || "Could not load questions");
       return [];
     }
   }, [pyq_paper_id, offset, statusFilter, sourceKindFilter]);
 
   const loadProgress = useCallback(async () => {
+    const gen = loadGenRef.current;
     try {
       const res = await api.get(
         `${CMS_BASE}/pyq-papers/${encodeURIComponent(pyq_paper_id)}/progress`,
       );
+      if (loadGenRef.current !== gen) return;
       setProgress(res);
     } catch {
       /* best-effort */
@@ -1191,8 +1199,14 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   }, []);
 
   // ── Reset all paper-scoped state when the paper changes ─────────────────
-  // Must run before the data-loading effect so the new load starts clean.
+  // Increment load generation so any in-flight responses from the previous
+  // paper are discarded when they resolve. Must run before the data-loading
+  // effect so the new load starts from a clean slate.
   useEffect(() => {
+    loadGenRef.current += 1;
+    setPaper(null);
+    setQuestions([]);
+    setProgress(null);
     setSelectedQuestion(null);
     setSelectedOptions([]);
     setPdfDocumentId(null);
@@ -1202,6 +1216,19 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     deepLinkApplied.current = false;
     setDeepLinkNotFound(false);
   }, [pyq_paper_id]);
+
+  // ── Sync status prop → statusFilter; increment gen to discard in-flight ─
+  // Must run before the data-loading effect so data-loading always captures
+  // the post-increment generation (avoids discarding the initial load on mount).
+  useEffect(() => {
+    loadGenRef.current += 1;
+    setStatusFilter(status ?? "all");
+    setOffset(0);
+    setSelectedQuestion(null);
+    setSelectedOptions([]);
+    deepLinkApplied.current = false;
+    setDeepLinkNotFound(false);
+  }, [status]);
 
   // Reload when paper changes (initial load) or when offset/statusFilter changes
   // (loadQuestions closes over offset + statusFilter; loadPaper/loadProgress are
@@ -1271,21 +1298,12 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     return () => window.removeEventListener("keydown", handleKey);
   });
 
-  // ── Deep-link: reset guard when rowId or status prop changes ────────────────
+  // ── Deep-link: reset guard when rowId prop changes ───────────────────────
 
   useEffect(() => {
     deepLinkApplied.current = false;
     setDeepLinkNotFound(false);
   }, [rowId]);
-
-  useEffect(() => {
-    setStatusFilter(status ?? "all");
-    setOffset(0);
-    setSelectedQuestion(null);
-    setSelectedOptions([]);
-    deepLinkApplied.current = false;
-    setDeepLinkNotFound(false);
-  }, [status]);
 
   // ── Deep-link: auto-select question matching rowId ───────────────────────
 
@@ -1293,7 +1311,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     if (!rowId || loading) return;
     if (deepLinkApplied.current) return;
     let cancelled = false;
-    const q = questions.find((q) => q.id === rowId);
+    const q = questions.find((q) => q.id === rowId && q.pyq_paper_id === pyq_paper_id);
     if (q) {
       deepLinkApplied.current = true;
       setDeepLinkNotFound(false);
