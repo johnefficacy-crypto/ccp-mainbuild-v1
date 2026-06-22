@@ -96,6 +96,7 @@
 | `cycle_readiness.computed_at` | ISO-8601 timestamp at which this field was computed | DERIVED — OPERATOR APPROVAL REQUIRED |
 | `cycle_readiness.contract_version` | Monotone integer identifying this contract shape; frontend must reject or surface a warning when the received `contract_version` does not match the version it was built against | DERIVED — OPERATOR APPROVAL REQUIRED |
 | `cycle_readiness.steps` | Ordered array of nine step objects (one per checklist area) | DERIVED — OPERATOR APPROVAL REQUIRED |
+| `cycle_readiness_error` | Top-level sibling field (not nested under `cycle_readiness`); present and set to `"cycle_not_found"` when `cycle_readiness` is `null` due to an unknown requested `cycle_id`; absent when `cycle_readiness` is non-null or when the failure is at the HTTP level (5xx) | DERIVED — OPERATOR APPROVAL REQUIRED |
 
 **Proposed step object shape:**
 
@@ -105,7 +106,7 @@
 | `label` | string | Human-readable step name |
 | `status` | string enum | Aggregated from `checks[]` per the step's `aggregation_rule`; see status vocabulary and per-check shape below |
 | `gate_class` | string enum | Aggregated summary: `hard` if any check in `checks[]` is `gate_class: hard`; `advisory` if all checks are advisory |
-| `evidence_scope` | string enum | Summary label for steps with a single evidence source; for mixed steps see individual `checks[].evidence_scope` |
+| `evidence_scope` | string enum | `"selected_cycle"` or `"exam_wide"` for single-check steps (mirrors the single check's value); `"mixed"` when `checks[]` contains entries with differing `evidence_scope` values; individual `checks[].evidence_scope` is always authoritative for per-check scope |
 | `action_cta` | object or null | `{ "label": string, "url": string }` pointing to the deep-link target for this step's highest-priority corrective action; null when no specific action is needed or available |
 | `note` | string or null | Operator-readable explanation of current status; null when not needed |
 | `checks` | array of check objects | Per-evidence-source check objects; single-check steps have exactly one entry; mixed steps (syllabus_mapping, policy_updates) have multiple |
@@ -131,6 +132,13 @@
 | `all_advisory` | Step is `needs_action` if any check returns `needs_action`; `complete` if all checks return `complete` or `not_applicable` | `policy_updates` (advisory: `selected_cycle_updates`, `exam_wide_updates`) |
 
 All field names in the step object and check object are DERIVED — OPERATOR APPROVAL REQUIRED.
+
+**Cross-rule status precedence:**
+
+- `blocked` is set at the step level by the dependency chain (a preceding hard-gate step is not `complete`); it overrides aggregation entirely — if a step is `blocked`, its `checks[]` statuses are not consulted.
+- Within aggregation, when checks disagree, the precedence order is: `needs_action` > `incomplete` > `not_applicable` > `complete`. A step cannot be `complete` while any contributing check is `needs_action` or `incomplete`.
+- If all checks for a step return `not_applicable`, the step status is `not_applicable` regardless of aggregation rule.
+- For `hard_gate_then_advisory`: the hard check cannot itself be `not_applicable` (hard gates must have evaluable evidence); advisory checks may be `not_applicable` and are treated as satisfied for the purpose of step-level completion.
 
 **Proposed status vocabulary:**
 
@@ -161,8 +169,8 @@ All `not_applicable` trigger rules are DERIVED — OPERATOR APPROVAL REQUIRED an
 | Case | Trigger | `cycle_readiness` response | Frontend behavior |
 |---|---|---|---|
 | Valid no current cycle | Exam exists; no `exam_cycles` rows; or `?cycle_id=` absent and `select_current_cycle` returns `null` | Non-null object: `{ cycle_id: null, contract_version: …, computed_at: …, steps: […] }` where `cycle_details.status = 'incomplete'` and all downstream steps `status = 'blocked'` | Render all nine steps; show "Cycle details — incomplete" CTA pointing to `?tab=setup`; downstream steps show "blocked — create a cycle first" |
-| Unknown requested cycle | `?cycle_id=` supplied but that UUID does not exist in `exam_cycles` for this exam | `null` | Render all steps as `unavailable`; surface "Requested cycle not found" message; do not show any step as complete or incomplete |
-| Backend unavailable | Database error, 5xx, or other backend failure computing `cycle_readiness` | Omitted or `null` | Render all steps as `unavailable`; no steps shown as complete or incomplete; frontend must not infer completion from local state |
+| Unknown requested cycle | `?cycle_id=` supplied but that UUID does not exist in `exam_cycles` for this exam | HTTP 200; `cycle_readiness: null`; top-level `cycle_readiness_error: "cycle_not_found"` present in response body | Surface "Requested cycle not found" message (distinct from service-unavailable state); render all steps as `unavailable`; do not show any step as complete or incomplete |
+| Backend unavailable | Database error, 5xx, or other backend failure | HTTP 5xx; no `cycle_readiness` or `cycle_readiness_error` in response body; endpoint fails at the HTTP transport level | Frontend detects HTTP error (not JSON body inspection); render all steps as `unavailable`; no steps shown as complete or incomplete; must not infer completion from local state |
 
 ## Nine-step activation matrix
 
@@ -264,23 +272,24 @@ These scenarios define I9 "done" for the operator. All scenarios are DERIVED —
 
 All decisions below are DERIVED — OPERATOR APPROVAL REQUIRED until the operator explicitly marks them APPROVED or DEFERRED. Stable IDs must not be renumbered; close a decision by updating its Status and Resolution cells only.
 
-| ID | Decision | Status | Affected section | Proposed resolution | Approver | Date |
-|---|---|---|---|---|---|---|
-| D01 | Extension point: extend `GET /management/exams/{exam_id}` vs. introduce a separate endpoint for nine-step progress | UNRESOLVED | I9 backend contract proposal | Extend existing endpoint with `cycle_readiness` field; no new endpoint | — | — |
-| D02 | Top-level field name `cycle_readiness` | UNRESOLVED | I9 backend contract proposal | `cycle_readiness` | — | — |
-| D03 | Status vocabulary: `complete`, `incomplete`, `needs_action`, `not_applicable`, `blocked` | UNRESOLVED | Status vocabulary | Accept proposed five-value enum | — | — |
-| D04 | `contract_version` field inclusion and version-check semantics | UNRESOLVED | I9 backend contract proposal | Add monotone integer; frontend warns on mismatch | — | — |
-| D05 | `source_documents` required document set definition per exam / `management_mode` | UNRESOLVED — OPERATOR DECISION REQUIRED | Nine-step matrix — Source documents | No proposed resolution; operator must define required document types | — | — |
-| D06 | `extraction` all-documents-success threshold | UNRESOLVED | Nine-step matrix — Extraction | At least one `succeeded` job satisfies step; all-documents threshold deferred | — | — |
-| D07 | `syllabus_mapping` aggregation: `hard_gate_then_advisory` (locked_coverage hard; mention_review advisory) | UNRESOLVED | Nine-step matrix — Syllabus mapping; aggregation rules | Accept `hard_gate_then_advisory` rule | — | — |
-| D08 | Selected-cycle scope for locked topic coverage (`exam_topic_coverage` lacks `exam_cycle_id` column) | UNRESOLVED | Nine-step matrix — Syllabus mapping | Use exam-wide scope until schema adds `exam_cycle_id`; label `evidence_scope: 'exam_wide'` | — | — |
-| D09 | `policy_updates` inheritance rule: include both `exam_cycle_id = selected_cycle.id` AND `exam_cycle_id IS NULL` rows | UNRESOLVED | Nine-step matrix — Policy updates | Accept proposed inheritance rule; label mixed evidence with per-check `evidence_scope` | — | — |
-| D10 | `pyq_readiness` selected-cycle filter (no `exam_cycle_id` on `pyq_papers`) | UNRESOLVED | Nine-step matrix — PYQ readiness | Use exam-wide scope until schema adds `exam_cycle_id`; label `evidence_scope: 'exam_wide'` | — | — |
-| D11 | `competition_context` `not_applicable` triggers per `management_mode` | UNRESOLVED | Nine-step matrix — Competition context; not_applicable trigger rules | Accept proposed rules: `not_applicable` for `light`/`index_only`/`archive` when no `reviewed`/`locked` rows exist | — | — |
-| D12 | `review_activate` hard prerequisite set (cycle_details + phases_schedule + syllabus_mapping locked_coverage) | UNRESOLVED | Nine-step matrix — Review and activate | Accept proposed three-prerequisite predicate; no circular reference to full `cycle_readiness.steps` | — | — |
-| D13 | Manual mark-complete override policy (exceptional permission-gated override) | UNRESOLVED — OPERATOR DECISION REQUIRED | Resume and completion policy; nine-step matrix | No proposed resolution; requires operator definition of permission model and audit requirements | — | — |
-| D14 | Management-mode applicability matrix: `light`, `index_only`, `archive` step baseline rules | UNRESOLVED | Management-mode × cadence matrix | Accept proposed per-mode baselines; cadence modifiers remain deferred pending §18.2 governance contract | — | — |
-| D15 | `not_applicable` machine-readable reason field in backend response | UNRESOLVED | Nine-step matrix — Competition context; not_applicable trigger rules | Backend must include a `not_applicable_reason` string or code in the step object when status is `not_applicable` | — | — |
+| ID | Decision | Status | Affected section | Proposed resolution | Final resolution / Deferral rationale | Approver | Date |
+|---|---|---|---|---|---|---|---|
+| D01 | Extension point: extend `GET /management/exams/{exam_id}` vs. introduce a separate endpoint for nine-step progress | UNRESOLVED | I9 backend contract proposal | Extend existing endpoint with `cycle_readiness` field; no new endpoint | — | — | — |
+| D02 | Top-level field name `cycle_readiness` | UNRESOLVED | I9 backend contract proposal | `cycle_readiness` | — | — | — |
+| D03 | Status vocabulary: `complete`, `incomplete`, `needs_action`, `not_applicable`, `blocked` | UNRESOLVED | Status vocabulary | Accept proposed five-value enum | — | — | — |
+| D04 | `contract_version` field inclusion and version-check semantics | UNRESOLVED | I9 backend contract proposal | Add monotone integer; frontend warns on mismatch | — | — | — |
+| D05 | `source_documents` required document set definition per exam / `management_mode` | UNRESOLVED — OPERATOR DECISION REQUIRED | Nine-step matrix — Source documents | No proposed resolution; operator must define required document types | — | — | — |
+| D06 | `extraction` all-documents-success threshold | UNRESOLVED | Nine-step matrix — Extraction | At least one `succeeded` job satisfies step; all-documents threshold deferred | — | — | — |
+| D07 | `syllabus_mapping` aggregation: `hard_gate_then_advisory` (locked_coverage hard; mention_review advisory) | UNRESOLVED | Nine-step matrix — Syllabus mapping; aggregation rules | Accept `hard_gate_then_advisory` rule | — | — | — |
+| D08 | Selected-cycle scope for locked topic coverage (`exam_topic_coverage` lacks `exam_cycle_id` column) | UNRESOLVED | Nine-step matrix — Syllabus mapping | Use exam-wide scope until schema adds `exam_cycle_id`; label `evidence_scope: 'exam_wide'` | — | — | — |
+| D09 | `policy_updates` inheritance rule: include both `exam_cycle_id = selected_cycle.id` AND `exam_cycle_id IS NULL` rows | UNRESOLVED | Nine-step matrix — Policy updates | Accept proposed inheritance rule; label mixed evidence with per-check `evidence_scope` | — | — | — |
+| D10 | `pyq_readiness` selected-cycle filter (no `exam_cycle_id` on `pyq_papers`) | UNRESOLVED | Nine-step matrix — PYQ readiness | Use exam-wide scope until schema adds `exam_cycle_id`; label `evidence_scope: 'exam_wide'` | — | — | — |
+| D11 | `competition_context` `not_applicable` triggers per `management_mode` | UNRESOLVED | Nine-step matrix — Competition context; not_applicable trigger rules | Accept proposed rules: `not_applicable` for `light`/`index_only`/`archive` when no `reviewed`/`locked` rows exist | — | — | — |
+| D12 | `review_activate` hard prerequisite set (cycle_details + phases_schedule + syllabus_mapping locked_coverage) | UNRESOLVED | Nine-step matrix — Review and activate | Accept proposed three-prerequisite predicate; no circular reference to full `cycle_readiness.steps` | — | — | — |
+| D13 | Manual mark-complete override policy (exceptional permission-gated override) | UNRESOLVED — OPERATOR DECISION REQUIRED | Resume and completion policy; nine-step matrix | No proposed resolution; requires operator definition of permission model and audit requirements | — | — | — |
+| D14 | Management-mode applicability matrix: `light`, `index_only`, `archive` step baseline rules | UNRESOLVED | Management-mode × cadence matrix | Accept proposed per-mode baselines; cadence modifiers remain deferred pending §18.2 governance contract | — | — | — |
+| D15 | `not_applicable` machine-readable reason field in backend response | UNRESOLVED | Nine-step matrix — Competition context; not_applicable trigger rules | Backend must include a `not_applicable_reason` string or code in the step object when status is `not_applicable` | — | — | — |
+| D16 | `cycle_readiness_error` companion field and `"cycle_not_found"` error code | UNRESOLVED | I9 backend contract proposal; Fail-closed rules | Add sibling `cycle_readiness_error` field to distinguish unknown-cycle (HTTP 200 + error code) from backend-unavailable (HTTP 5xx) | — | — | — |
 
 ## I6 exit criteria
 
@@ -289,10 +298,10 @@ I6 is approved and I9 is unblocked **only when all of the following conditions a
 | # | Condition | Current state |
 |---|---|---|
 | E1 | All UNRESOLVED — OPERATOR DECISION REQUIRED items (D05, D13) receive explicit operator resolution or a documented deferral rationale | NOT MET |
-| E2 | All DERIVED — PROPOSED RESOLUTION items (D01–D04, D06–D12, D14–D15) receive operator yes/no approval | NOT MET |
-| E3 | Decision register D01–D15 all reach status APPROVED or DEFERRED (with rationale) | NOT MET |
+| E2 | All DERIVED — PROPOSED RESOLUTION items (D01–D04, D06–D12, D14–D16) receive operator yes/no approval | NOT MET |
+| E3 | Decision register D01–D16 all reach status APPROVED or DEFERRED (with rationale) | NOT MET |
 | E4 | I8-C (Advanced Repair isolation) merges; I9 dispatch blocked until then | NOT MET — PR #759 in progress |
-| E5 | PR #761 CI checks remain green after all document corrections | NOT MET — pending commit/push |
+| E5 | PR #761 CI checks remain green after all document corrections | MET at 97ac6f7 — Vercel deployed; pr-body-check passed. Re-evaluated on each new push. |
 | E6 | Operator explicitly approves this gate document and marks PR #761 ready for merge | NOT MET |
 
 Until E1–E6 are all met, PR #761 must remain draft, I9 implementation must not begin, and no runtime behavior may be changed under cover of this docs/checklist PR.
