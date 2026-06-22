@@ -80,7 +80,7 @@ if exists (
           -- must have exactly the right partial predicate; indpred IS NOT NULL is
           -- insufficient — a wrong predicate like "reviewer_status = 'published'"
           -- would still pass.  pg_get_expr returns the predicate as decompiled SQL.
-          and trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL'
+          and coalesce(trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL', false)
       )
 ) then
     -- Wrong index exists: drop it so the correct one is created below.

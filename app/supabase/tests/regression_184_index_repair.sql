@@ -73,7 +73,7 @@ begin
               and (select a.attname from pg_attribute a
                    where a.attrelid = i.indrelid
                      and a.attnum   = i.indkey[0]) = 'pyq_question_id'
-              and trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL'
+              and coalesce(trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL', false)
           )
     ) then
         execute 'drop index public.uq_mock_qbank_pyq_question_id';
@@ -165,7 +165,7 @@ begin
               and (select a.attname from pg_attribute a
                    where a.attrelid = i.indrelid
                      and a.attnum   = i.indkey[0]) = 'pyq_question_id'
-              and trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL'
+              and coalesce(trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL', false)
           )
     ) then
         execute 'drop index public.uq_mock_qbank_pyq_question_id';
@@ -203,6 +203,99 @@ begin
             'FAIL test 2: correct index not present after wrong-predicate replacement';
     end if;
     raise notice 'PASS test 2: wrong-predicate same-named index was detected and replaced';
+end;
+$$;
+
+ROLLBACK;
+
+
+-- ── Test 3: same-named non-partial index ──────────────────────────────────
+-- Scenario: a UNIQUE (pyq_question_id) index exists with the right name but
+-- no WHERE clause.  pg_get_expr(indpred, indrelid) returns NULL for a
+-- non-partial index.  Without coalesce, the predicate comparison evaluates
+-- to NULL inside NOT (...), which is also NULL, so the guard does not fire.
+-- Expected: guard drops it; correct partial predicate is created.
+
+BEGIN;
+
+drop index if exists public.uq_mock_qbank_pyq_question_id;
+create unique index uq_mock_qbank_pyq_question_id
+    on public.mock_question_bank(pyq_question_id);
+
+-- Confirm setup: index is non-partial (indpred IS NULL).
+do $$
+begin
+    assert exists (
+        select 1
+        from pg_class ci
+        join pg_index  i  on i.indexrelid = ci.oid
+        join pg_class  ct on ct.oid        = i.indrelid
+        join pg_namespace n on n.oid       = ct.relnamespace
+        where n.nspname  = 'public'
+          and ct.relname = 'mock_question_bank'
+          and ci.relname = 'uq_mock_qbank_pyq_question_id'
+          and i.indpred is null
+    ), 'setup failed: non-partial index not created';
+end;
+$$;
+
+-- Run guard (verbatim copy of migration 184 §1 pre-create block).
+do $$
+begin
+    if exists (
+        select 1
+        from pg_class ci
+        join pg_index  i  on i.indexrelid = ci.oid
+        join pg_class  ct on ct.oid        = i.indrelid
+        join pg_namespace n on n.oid       = ct.relnamespace
+        where n.nspname  = 'public'
+          and ct.relname = 'mock_question_bank'
+          and ci.relname = 'uq_mock_qbank_pyq_question_id'
+          and not (
+              i.indisunique = true
+              and i.indnkeyatts = 1
+              and i.indnatts    = 1
+              and (select a.attname from pg_attribute a
+                   where a.attrelid = i.indrelid
+                     and a.attnum   = i.indkey[0]) = 'pyq_question_id'
+              and coalesce(trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL', false)
+          )
+    ) then
+        execute 'drop index public.uq_mock_qbank_pyq_question_id';
+    end if;
+end;
+$$;
+
+create unique index if not exists uq_mock_qbank_pyq_question_id
+    on public.mock_question_bank(pyq_question_id)
+    where pyq_question_id is not null;
+
+-- Assert: correct index is now in place.
+do $$
+declare
+    v_count int;
+begin
+    select count(*) into v_count
+    from pg_class ci
+    join pg_index  i  on i.indexrelid = ci.oid
+    join pg_class  ct on ct.oid        = i.indrelid
+    join pg_namespace n on n.oid       = ct.relnamespace
+    where n.nspname  = 'public'
+      and ct.relname = 'mock_question_bank'
+      and ci.relname = 'uq_mock_qbank_pyq_question_id'
+      and i.indisunique                       = true
+      and i.indnkeyatts                      = 1
+      and i.indnatts                         = 1
+      and (select a.attname from pg_attribute a
+           where a.attrelid = i.indrelid
+             and a.attnum   = i.indkey[0])   = 'pyq_question_id'
+      and trim(both '()' from pg_get_expr(i.indpred, i.indrelid)) = 'pyq_question_id IS NOT NULL';
+
+    if v_count = 0 then
+        raise exception
+            'FAIL test 3: correct index not present after non-partial replacement';
+    end if;
+    raise notice 'PASS test 3: non-partial same-named index was detected and replaced';
 end;
 $$;
 
