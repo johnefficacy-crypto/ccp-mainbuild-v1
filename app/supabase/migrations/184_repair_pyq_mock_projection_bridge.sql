@@ -50,6 +50,36 @@ if v_dupes is not null then
 end if;
 
 -- ── 1. Unique index ────────────────────────────────────────────────────────
+--
+-- 'CREATE UNIQUE INDEX IF NOT EXISTS' silently skips when an index with the
+-- same name already exists, regardless of whether that index is unique, covers
+-- the right column, or has the correct partial predicate.  Detect and drop a
+-- mismatched same-named index first so the correct one is always installed.
+
+if exists (
+    select 1
+    from pg_class ci
+    join pg_index  i  on i.indexrelid = ci.oid
+    join pg_class  ct on ct.oid        = i.indrelid
+    join pg_namespace n on n.oid       = ct.relnamespace
+    where n.nspname  = 'public'
+      and ct.relname = 'mock_question_bank'
+      and ci.relname = 'uq_mock_qbank_pyq_question_id'
+      and not (
+          -- must be unique
+          i.indisunique = true
+          -- must cover exactly pyq_question_id
+          and (select a.attname
+               from pg_attribute a
+               where a.attrelid = i.indrelid
+                 and a.attnum   = i.indkey[0]) = 'pyq_question_id'
+          -- must have a partial predicate (WHERE pyq_question_id IS NOT NULL)
+          and i.indpred is not null
+      )
+) then
+    -- Wrong index exists: drop it so the correct one is created below.
+    execute 'drop index public.uq_mock_qbank_pyq_question_id';
+end if;
 
 create unique index if not exists uq_mock_qbank_pyq_question_id
   on public.mock_question_bank(pyq_question_id)
@@ -858,15 +888,29 @@ begin
         raise exception 'ASSERT: public.fn_invalidate_pyq_projection() not found';
     end if;
 
-    -- Unique index exists on mock_question_bank
+    -- Unique index exists, is genuinely unique, covers pyq_question_id, and has
+    -- a partial predicate (WHERE pyq_question_id IS NOT NULL).
+    -- Checking only pg_indexes.indexname is insufficient: a non-unique or
+    -- differently-shaped same-named index would pass a name-only test.
     select count(*) into v_count
-    from pg_indexes
-    where schemaname = 'public'
-      and tablename  = 'mock_question_bank'
-      and indexname  = 'uq_mock_qbank_pyq_question_id';
+    from pg_class ci
+    join pg_index  i  on i.indexrelid = ci.oid
+    join pg_class  ct on ct.oid        = i.indrelid
+    join pg_namespace n on n.oid       = ct.relnamespace
+    where n.nspname  = 'public'
+      and ct.relname = 'mock_question_bank'
+      and ci.relname = 'uq_mock_qbank_pyq_question_id'
+      and i.indisunique = true
+      and (select a.attname
+           from pg_attribute a
+           where a.attrelid = i.indrelid
+             and a.attnum   = i.indkey[0]) = 'pyq_question_id'
+      and i.indpred is not null;
 
     if v_count = 0 then
-        raise exception 'ASSERT: unique index uq_mock_qbank_pyq_question_id not found on mock_question_bank';
+        raise exception
+            'ASSERT: uq_mock_qbank_pyq_question_id is missing or has wrong shape '
+            '(must be UNIQUE, on column pyq_question_id, with partial predicate)';
     end if;
 
     -- All 8 invalidation triggers exist
