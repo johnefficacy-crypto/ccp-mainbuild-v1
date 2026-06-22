@@ -187,17 +187,60 @@ def _first_evidence_by_kinds(evidence_refs: list[dict], kinds: set[str]) -> dict
     return next((r for r in evidence_refs if r.get("kind") in kinds), None)
 
 
-def _resolve_pyq_paper_id(sb, question_id: str) -> str | None:
-    """Resolve a question/tag/option row_id to its owning pyq_paper_id via DB lookup."""
-    rows = (
-        sb.table("pyq_questions")
-        .select("id, pyq_paper_id")
-        .eq("id", question_id)
-        .limit(1)
-        .execute()
-        .data
-    ) or []
-    return rows[0].get("pyq_paper_id") if rows else None
+def _resolve_pyq_paper_id(
+    sb, kind: str, row_id: str
+) -> tuple[str | None, str | None]:
+    """Resolve a PYQ evidence ref to (paper_id, question_id).
+
+    - pyq_question: row_id is question → direct lookup
+    - pyq_question_topic_tag: row_id is tag → lookup tag.question_id → lookup question
+    - pyq_option: row_id is option → lookup option.question_id → lookup question
+
+    Returns (paper_id, question_id) so the CTA can link to the question directly.
+    """
+    def _get_question(question_id: str) -> tuple[str | None, str | None]:
+        rows = (
+            sb.table("pyq_questions")
+            .select("id, pyq_paper_id")
+            .eq("id", question_id)
+            .limit(1)
+            .execute()
+            .data
+        ) or []
+        if not rows:
+            return None, None
+        return rows[0].get("pyq_paper_id"), question_id
+
+    if kind == "pyq_question":
+        return _get_question(row_id)
+
+    if kind == "pyq_question_topic_tag":
+        tag_rows = (
+            sb.table("pyq_question_topic_tags")
+            .select("id, question_id")
+            .eq("id", row_id)
+            .limit(1)
+            .execute()
+            .data
+        ) or []
+        if not tag_rows:
+            return None, None
+        return _get_question(tag_rows[0].get("question_id") or "")
+
+    if kind == "pyq_option":
+        opt_rows = (
+            sb.table("pyq_options")
+            .select("id, question_id")
+            .eq("id", row_id)
+            .limit(1)
+            .execute()
+            .data
+        ) or []
+        if not opt_rows:
+            return None, None
+        return _get_question(opt_rows[0].get("question_id") or "")
+
+    return None, None
 
 
 def _severity_for(area: str, state: str) -> str:
@@ -261,11 +304,13 @@ def _build_action_queue(sb, checks: list[dict[str, Any]], exam_id: str,
                 evidence_refs, {"pyq_question", "pyq_question_topic_tag", "pyq_option"}
             )
             if qref:
-                entity_row_id = qref["row_id"]
                 try:
-                    paper_id = _resolve_pyq_paper_id(sb, entity_row_id)
+                    paper_id, entity_row_id = _resolve_pyq_paper_id(
+                        sb, qref["kind"], qref["row_id"]
+                    )
                 except Exception:  # noqa: BLE001
                     paper_id = None
+                    entity_row_id = qref["row_id"]
         elif area == "syllabus":
             ref = _first_evidence_by_kinds(evidence_refs, {"syllabus_topic_mention"})
             entity_row_id = ref["row_id"] if ref else None

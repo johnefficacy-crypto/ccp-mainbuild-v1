@@ -692,3 +692,78 @@ describe("ExamWorkspace management-data race prevention", () => {
     await waitFor(() => expect(screen.getByTestId("exam-action-console")).toBeInTheDocument());
   });
 });
+
+// ── I8-B: deep-link row passing to panels ────────────────────────────────────
+
+describe("ExamWorkspace deep-link panel receiving (I8-B)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("?tab=updates&row=upd-1 shows not-found banner when update absent from list", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      if (url.includes("/management/exams/")) return Promise.resolve(MANAGEMENT_RESPONSE);
+      if (url.includes("/policy-updates")) return Promise.resolve({ items: [] });
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+    renderWorkspace("exam-1", null, "?tab=updates&row=upd-1");
+    await waitFor(() =>
+      expect(screen.getByTestId("update-deep-link-not-found")).toBeInTheDocument(),
+    );
+  });
+
+  test("?tab=updates&row=upd-1 hides not-found banner when update exists", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      if (url.includes("/management/exams/")) return Promise.resolve(MANAGEMENT_RESPONSE);
+      if (url.includes("/policy-updates")) return Promise.resolve({
+        items: [
+          { id: "upd-1", title: "Test policy update", reviewer_status: "pending",
+            source_type: "official", affects_plan: false, change_summary: null },
+        ],
+      });
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+    renderWorkspace("exam-1", null, "?tab=updates&row=upd-1");
+    await waitFor(() => screen.getByTestId("tab-updates"));
+    // Wait for load to settle — no not-found banner
+    await waitFor(() =>
+      expect(screen.queryByTestId("update-deep-link-not-found")).toBeNull(),
+    );
+  });
+
+  test("?tab=documents&document=da-1 fetches asset from document_assets ID space and shows highlighted card", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      if (url.includes("/management/exams/")) return Promise.resolve(MANAGEMENT_RESPONSE);
+      if (url.includes("/documents/da-1")) return Promise.resolve({
+        document: { id: "da-1", filename: "syllabus-2026.pdf" },
+        extraction: { status: "succeeded" },
+        pages_count: 42,
+      });
+      if (url.includes("/syllabus-documents")) return Promise.resolve({ items: [] });
+      if (url.includes("/pyq-papers")) return Promise.resolve({ items: [] });
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+    renderWorkspace("exam-1", null, "?tab=documents&document=da-1");
+    await waitFor(() =>
+      expect(screen.getByTestId("doc-deep-link-asset")).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("doc-deep-link-not-found")).toBeNull();
+  });
+
+  test("?tab=documents&document=da-missing shows not-found when asset fetch fails", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      if (url.includes("/management/exams/")) return Promise.resolve(MANAGEMENT_RESPONSE);
+      if (url.includes("/documents/da-missing")) return Promise.reject(new Error("Not found"));
+      if (url.includes("/syllabus-documents")) return Promise.resolve({ items: [] });
+      if (url.includes("/pyq-papers")) return Promise.resolve({ items: [] });
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+    renderWorkspace("exam-1", null, "?tab=documents&document=da-missing");
+    await waitFor(() =>
+      expect(screen.getByTestId("doc-deep-link-not-found")).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("doc-deep-link-asset")).toBeNull();
+  });
+});

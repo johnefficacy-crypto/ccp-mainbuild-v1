@@ -92,19 +92,79 @@ class TestFirstEvidenceByKinds:
 
 
 class TestResolvePyqPaperId:
-    def test_resolves_paper_id(self):
+    def test_resolves_paper_id_from_question(self):
         sb = MagicMock()
         sb.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
             {"id": "q1", "pyq_paper_id": "paper-1"}
         ]
-        result = _resolve_pyq_paper_id(sb, "q1")
-        assert result == "paper-1"
+        paper_id, question_id = _resolve_pyq_paper_id(sb, "pyq_question", "q1")
+        assert paper_id == "paper-1"
+        assert question_id == "q1"
 
-    def test_returns_none_when_not_found(self):
+    def test_returns_none_tuple_when_not_found(self):
         sb = MagicMock()
         sb.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
-        result = _resolve_pyq_paper_id(sb, "unknown")
-        assert result is None
+        paper_id, question_id = _resolve_pyq_paper_id(sb, "pyq_question", "unknown")
+        assert paper_id is None
+        assert question_id is None
+
+    def test_resolves_tag_to_question_to_paper(self):
+        """pyq_question_topic_tag → question_id → pyq_paper_id."""
+        sb = MagicMock()
+        call_count = 0
+
+        def table_side_effect(name):
+            nonlocal call_count
+            call_count += 1
+            m = MagicMock()
+            if name == "pyq_question_topic_tags":
+                m.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+                    {"id": "tag-1", "question_id": "q1"}
+                ]
+            elif name == "pyq_questions":
+                m.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+                    {"id": "q1", "pyq_paper_id": "paper-1"}
+                ]
+            return m
+
+        sb.table.side_effect = table_side_effect
+        paper_id, question_id = _resolve_pyq_paper_id(sb, "pyq_question_topic_tag", "tag-1")
+        assert paper_id == "paper-1"
+        assert question_id == "q1"
+
+    def test_resolves_option_to_question_to_paper(self):
+        """pyq_option → question_id → pyq_paper_id."""
+        sb = MagicMock()
+
+        def table_side_effect(name):
+            m = MagicMock()
+            if name == "pyq_options":
+                m.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+                    {"id": "opt-1", "question_id": "q2"}
+                ]
+            elif name == "pyq_questions":
+                m.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+                    {"id": "q2", "pyq_paper_id": "paper-2"}
+                ]
+            return m
+
+        sb.table.side_effect = table_side_effect
+        paper_id, question_id = _resolve_pyq_paper_id(sb, "pyq_option", "opt-1")
+        assert paper_id == "paper-2"
+        assert question_id == "q2"
+
+    def test_tag_not_found_returns_none_tuple(self):
+        sb = MagicMock()
+        sb.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        paper_id, question_id = _resolve_pyq_paper_id(sb, "pyq_question_topic_tag", "missing")
+        assert paper_id is None
+        assert question_id is None
+
+    def test_unknown_kind_returns_none_tuple(self):
+        sb = MagicMock()
+        paper_id, question_id = _resolve_pyq_paper_id(sb, "unknown_kind", "x")
+        assert paper_id is None
+        assert question_id is None
 
 
 class TestBuildActionQueue:

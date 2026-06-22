@@ -1090,7 +1090,7 @@ function ProgressBar({ progress }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = false }) {
+export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = false, status = null, rowId = null }) {
   const { pyq_paper_id: pyq_paper_id_param } = useParams();
   const pyq_paper_id = paperIdProp || pyq_paper_id_param;
   const navigate = useNavigate();
@@ -1105,8 +1105,11 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
 
   const [progress, setProgress] = useState(null);
 
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(status ?? "all");
   const [sourceKindFilter, setSourceKindFilter] = useState("all");
+
+  const deepLinkApplied = useRef(false);
+  const [deepLinkNotFound, setDeepLinkNotFound] = useState(false);
 
   // Pagination state
   const [offset, setOffset] = useState(0);
@@ -1247,6 +1250,26 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     return () => window.removeEventListener("keydown", handleKey);
   });
 
+  // ── Deep-link: auto-select question matching rowId ───────────────────────
+
+  useEffect(() => {
+    if (!rowId || loading) return;
+    if (deepLinkApplied.current) return;
+    const q = questions.find((q) => q.id === rowId);
+    if (q) {
+      deepLinkApplied.current = true;
+      setDeepLinkNotFound(false);
+      setSelectedQuestion(q);
+      loadOptions(q.id);
+      if (q.source_document_id) {
+        setPdfDocumentId(q.source_document_id);
+        setPdfPage(q.source_page || 1);
+      }
+    } else {
+      setDeepLinkNotFound(true);
+    }
+  }, [rowId, questions, loading, loadOptions]);
+
   // ── After-save refresh ───────────────────────────────────────────────────
 
   async function handleSaved() {
@@ -1362,6 +1385,15 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
           <p className="text-[11px] text-rose-600">{loadError}</p>
         )}
       </div>
+
+      {rowId && deepLinkNotFound && !loading && (
+        <div
+          className="flex-shrink-0 px-4 py-2 bg-rose-50 border-b border-rose-200 text-[12px] text-rose-700"
+          data-testid="pyq-deep-link-not-found"
+        >
+          Question {rowId} was not found in this paper&rsquo;s question list.
+        </div>
+      )}
 
       {/* Three-pane layout */}
       <div className="flex flex-1 overflow-hidden">

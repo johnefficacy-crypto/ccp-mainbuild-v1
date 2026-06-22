@@ -383,7 +383,7 @@ function WorkspaceShell() {
     <>
       {activeTab === "setup" && <SetupPanel action={action} />}
       {activeTab === "documents" && (
-        <DocumentsPanel onGotoTab={gotoTab} documentId={documentId} />
+        <DocumentsPanel onGotoTab={gotoTab} documentId={documentId} docStatus={status} />
       )}
       {activeTab === "syllabus" && (
         <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>
@@ -395,7 +395,7 @@ function WorkspaceShell() {
           <PyqWorkbenchPanel paperId={paperId} rowId={rowId} status={status} />
         </Suspense>
       )}
-      {activeTab === "updates" && <UpdatesPanel status={status} />}
+      {activeTab === "updates" && <UpdatesPanel status={status} rowId={rowId} />}
       {activeTab === "competition" && <CompetitionPanel />}
       {activeTab === "review" && <ReviewActivatePanel onGotoTab={gotoTab} />}
     </>
