@@ -43,7 +43,7 @@ export default function SyllabusMapperPanel({ status = null, rowId = null }) {
     } finally {
       setPendingLoading(false);
     }
-  }, [examId, status, rowId, showPendingList]);
+  }, [examId, status, showPendingList]);
 
   useEffect(() => { loadPending(); }, [loadPending]);
 
