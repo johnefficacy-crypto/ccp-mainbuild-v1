@@ -224,7 +224,13 @@ def _criteria_difficulty_targets(mix: dict, total: int) -> dict[str, int]:
     return floors
 
 
-def _select_criteria_question_ids(supabase: Any, selector: dict, question_count: int) -> list[str]:
+def _select_criteria_question_ids(
+    supabase: Any,
+    selector: dict,
+    question_count: int,
+    *,
+    active_pyq_mock_ids: frozenset[str] | None = None,
+) -> list[str]:
     """Resolve a ``criteria`` section selector to concrete published question ids.
 
     Honours the bank filters the admin UI can configure (exam_family, subject_id,
@@ -233,6 +239,12 @@ def _select_criteria_question_ids(supabase: Any, selector: dict, question_count:
     the legacy ``config.question_ids`` path. If a difficulty bucket is short, the
     deficit is backfilled from the rest of the eligible pool so a thin bucket
     can't silently shrink the section below ``question_count``.
+
+    ``active_pyq_mock_ids``: when supplied, PYQ-derived rows (pyq_question_id IS
+    NOT NULL) that are NOT in the set are excluded from the pool before
+    allocation/backfill.  This prevents stale/blocked projections from being
+    selected and then silently dropped by the caller's lineage guard, which would
+    produce a shortened attempt without error.
     """
     if question_count <= 0:
         return []
@@ -262,6 +274,13 @@ def _select_criteria_question_ids(supabase: Any, selector: dict, question_count:
         r for r in (getattr(rows, "data", None) or [])
         if not r.get("valid_until") or str(r["valid_until"]) > now_iso
     ]
+    # Active-lineage guard applied inside the pool (before allocation/backfill)
+    # so that stale PYQ rows cannot be drawn and then silently dropped later.
+    if active_pyq_mock_ids is not None:
+        pool = [
+            r for r in pool
+            if not r.get("pyq_question_id") or r["id"] in active_pyq_mock_ids
+        ]
     # Deterministic ordering so the same template config yields the same set.
     pool.sort(key=lambda r: str(r.get("id")))
 
@@ -295,6 +314,10 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
     unavailable (wrong status, expired, or lineage-blocked), raises LookupError
     rather than returning a shortened set.  A shortened fixed attempt would give
     a misleadingly different experience and must never start.
+
+    Criteria sections apply active-lineage filtering inside the pool (before
+    allocation/backfill) so a stale/blocked PYQ row is never selected and
+    cannot cause silent underfill.
     """
     sections = _safe(lambda: supabase.table("mock_template_sections").select("*").eq("template_id", template_id).order("section_index").execute(), default=None)
     sec_rows = getattr(sections, "data", None) or []
@@ -302,6 +325,23 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
         return []
     ordered: list[str] = []
     fixed_required: set[str] = set()  # IDs that must survive all filters
+
+    # Fetch active PYQ mock IDs once; passed to criteria selector so that stale
+    # projections are excluded from the pool before allocation, not silently
+    # dropped after — which would shorten the section without error.
+    try:
+        _proj = (
+            supabase.table("pyq_mock_question_projections")
+            .select("mock_question_id")
+            .eq("sync_status", "active")
+            .execute()
+            .data
+        ) or []
+        _active_pyq_mock_ids: frozenset[str] = frozenset(p["mock_question_id"] for p in _proj)
+    except Exception:
+        # Fail-closed: if projection table is inaccessible, treat all PYQ rows
+        # as inactive so they cannot enter the criteria pool.
+        _active_pyq_mock_ids = frozenset()
 
     for sec in sec_rows:
         selector = sec.get("selector") or {}
@@ -311,7 +351,10 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
             ordered.extend(ids)
             fixed_required.update(ids)
         elif mode == "criteria":
-            ordered.extend(_select_criteria_question_ids(supabase, selector, int(sec.get("question_count") or 0)))
+            ordered.extend(_select_criteria_question_ids(
+                supabase, selector, int(sec.get("question_count") or 0),
+                active_pyq_mock_ids=_active_pyq_mock_ids,
+            ))
     if not ordered:
         return []
 

@@ -168,6 +168,69 @@ def test_fixed_selector_still_loads_e2e_fixtures():
     assert all(q["source_type"] == "e2e_fixture" for q in selected)
 
 
+def test_criteria_stale_pyq_excluded_and_backfilled():
+    """Regression: stale/inactive PYQ-derived rows are filtered from the criteria
+    pool BEFORE allocation so they cannot displace authored questions and silently
+    shorten the section.
+
+    Pool (sorted by id, pyq-mock sorts first): pyq-mock, authored-0..authored-2.
+    Without the lineage-in-pool fix, the selector picks [pyq-mock, a-0, a-1]
+    then the caller's lineage guard drops pyq-mock → only 2 questions returned.
+    With the fix, pyq-mock is excluded from the pool before selection, so the
+    selector correctly picks authored-0..authored-2 → 3 questions returned.
+    """
+    # Use UUIDs that sort pyq-mock before the authored rows.
+    pyq_mock_id = "00000000-0000-0000-0000-000000000001"
+    authored_ids = [
+        "aaaaaaaa-0000-0000-0000-000000000001",
+        "aaaaaaaa-0000-0000-0000-000000000002",
+        "aaaaaaaa-0000-0000-0000-000000000003",
+    ]
+    pyq_question_id = "pyq-src-1"
+
+    def _q_bank(qid: str, pyq_question_id: str | None = None) -> dict:
+        opts = [{"id": f"opt-{qid}-{i}", "question_id": qid, "option_text": f"Opt {i}",
+                 "option_index": i, "is_correct": i == 0}
+                for i in range(4)]
+        return {
+            "id": qid,
+            "exam_family": "TEST",
+            "question_text": f"Q {qid[:8]}",
+            "question_type": "mcq",
+            "difficulty": "medium",
+            "correct_option_id": f"opt-{qid}-0",
+            "reviewer_status": "published",
+            "pyq_question_id": pyq_question_id,
+            "options": opts,
+        }
+
+    template_id = "tmpl-criteria-stale"
+    section = {
+        "id": "sec-stale",
+        "template_id": template_id,
+        "section_index": 0,
+        "name": "Stale Section",
+        "question_count": 3,
+        "selector": {"mode": "criteria", "filters": {}},
+    }
+    questions = [_q_bank(pyq_mock_id, pyq_question_id)] + [_q_bank(aid) for aid in authored_ids]
+    db = {
+        "mock_template_sections": [section],
+        "mock_question_bank": [dict(q) for q in questions],
+        "mock_question_options": [o for q in questions for o in q["options"]],
+        # pyq-mock has a stale projection (sync_status != 'active') → should be excluded
+        "pyq_mock_question_projections": [
+            {"mock_question_id": pyq_mock_id, "sync_status": "stale"},
+        ],
+    }
+    sb = SBStub(db)
+    selected = svc.select_questions_for_template(sb, template_id, "user-1")
+    selected_ids = {q["id"] for q in selected}
+    assert len(selected) == 3, f"expected 3 questions, got {len(selected)}"
+    assert pyq_mock_id not in selected_ids, "stale PYQ must not appear in selection"
+    assert selected_ids == set(authored_ids), "all three authored questions must be selected"
+
+
 def test_start_attempt_uses_criteria_template():
     """End-to-end: a criteria-only template no longer needs the PR1 seed fallback."""
     questions = [_q("easy") for _ in range(5)]

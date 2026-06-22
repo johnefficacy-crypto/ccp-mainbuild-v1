@@ -48,8 +48,9 @@ def _question(
     reviewer_status: str = "verified",
     question_type: str = "mcq",
     question_text: str = "What is X?",
+    **extras,
 ) -> dict:
-    return {
+    base = {
         "id": Q_ID,
         "pyq_paper_id": PAPER_ID,
         "question_text": question_text,
@@ -58,7 +59,11 @@ def _question(
         "correct_option_id": None,
         "observed_difficulty": "medium",
         "expected_solve_time_sec": 60,
+        "explanation_text": "Because X.",
+        "language": "en",
     }
+    base.update(extras)
+    return base
 
 
 def _options(
@@ -71,6 +76,7 @@ def _options(
             "id": f"opt-{i}",
             "question_id": Q_ID,
             "option_text": f"Option {chr(65 + i)}",
+            "option_label": chr(65 + i),
             "is_correct": i == correct_idx,
             "reviewer_status": reviewer_status,
         }
@@ -138,6 +144,74 @@ class TestComputeContentHash:
         opts = _options()
         h1 = compute_content_hash(_question(question_text="What IS X?"), opts)
         h2 = compute_content_hash(_question(question_text="what is x?"), opts)
+        assert h1 == h2
+
+    # ── Regression: every projected field changes the hash ─────────────────────
+
+    def test_changes_when_explanation_changes(self):
+        opts = _options()
+        h1 = compute_content_hash(_question(explanation_text="Explanation A"), opts)
+        h2 = compute_content_hash(_question(explanation_text="Explanation B"), opts)
+        assert h1 != h2
+
+    def test_changes_when_difficulty_changes(self):
+        opts = _options()
+        h1 = compute_content_hash(_question(observed_difficulty="easy"), opts)
+        h2 = compute_content_hash(_question(observed_difficulty="hard"), opts)
+        assert h1 != h2
+
+    def test_changes_when_language_changes(self):
+        opts = _options()
+        h1 = compute_content_hash(_question(language="en"), opts)
+        h2 = compute_content_hash(_question(language="hi"), opts)
+        assert h1 != h2
+
+    def test_changes_when_expected_time_changes(self):
+        opts = _options()
+        h1 = compute_content_hash(_question(expected_solve_time_sec=60), opts)
+        h2 = compute_content_hash(_question(expected_solve_time_sec=120), opts)
+        assert h1 != h2
+
+    def test_changes_when_paper_year_changes(self):
+        opts = _options()
+        h1 = compute_content_hash(_question(), opts, paper={"year": 2020})
+        h2 = compute_content_hash(_question(), opts, paper={"year": 2023})
+        assert h1 != h2
+
+    def test_changes_when_option_label_changes(self):
+        opts_a = _options()
+        # Swap labels on two options (different ordering)
+        opts_b = [dict(o, option_label="B" if o["option_label"] == "A" else
+                              "A" if o["option_label"] == "B" else o["option_label"])
+                  for o in _options()]
+        h1 = compute_content_hash(_question(), opts_a)
+        h2 = compute_content_hash(_question(), opts_b)
+        assert h1 != h2
+
+    def test_changes_when_non_primary_verified_tag_added(self):
+        opts = _options()
+        extra_tag = {
+            "id": "tag-2",
+            "question_id": Q_ID,
+            "topic_id": "topic-secondary",
+            "tag_role": "secondary",
+            "reviewer_status": "verified",
+        }
+        h1 = compute_content_hash(_question(), opts, all_verified_tags=_primary_tag())
+        h2 = compute_content_hash(_question(), opts, all_verified_tags=_primary_tag() + [extra_tag])
+        assert h1 != h2
+
+    def test_unverified_tag_does_not_affect_hash(self):
+        opts = _options()
+        unverified_tag = {
+            "id": "tag-3",
+            "question_id": Q_ID,
+            "topic_id": "topic-unverified",
+            "tag_role": "secondary",
+            "reviewer_status": "draft",
+        }
+        h1 = compute_content_hash(_question(), opts, all_verified_tags=_primary_tag())
+        h2 = compute_content_hash(_question(), opts, all_verified_tags=_primary_tag() + [unverified_tag])
         assert h1 == h2
 
 
@@ -294,7 +368,10 @@ class TestPreviewPaperProjection:
         assert "paper_not_verified" in result["questions"][0]["reason"]
 
     def test_already_projected_no_change(self):
-        content_hash = compute_content_hash(_question(), _options())
+        # Hash must be computed with the same inputs preview uses (paper + all verified tags).
+        content_hash = compute_content_hash(
+            _question(), _options(), paper=_paper(), all_verified_tags=_primary_tag()
+        )
         projection = {
             "pyq_question_id": Q_ID,
             "mock_question_id": "mock-1",

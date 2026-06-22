@@ -49,7 +49,8 @@ def _fetch_paper_questions(sb: Any, paper_id: str) -> list[dict]:
         sb.table("pyq_questions")
         .select(
             "id, pyq_paper_id, question_text, question_type, reviewer_status, "
-            "correct_option_id, observed_difficulty, expected_solve_time_sec"
+            "correct_option_id, observed_difficulty, expected_solve_time_sec, "
+            "explanation_text, language"
         )
         .eq("pyq_paper_id", paper_id)
         .execute()
@@ -60,7 +61,7 @@ def _fetch_paper_questions(sb: Any, paper_id: str) -> list[dict]:
 def _fetch_options_for_question(sb: Any, question_id: str) -> list[dict]:
     return (
         sb.table("pyq_options")
-        .select("id, question_id, option_text, is_correct, reviewer_status")
+        .select("id, question_id, option_text, option_label, is_correct, reviewer_status")
         .eq("question_id", question_id)
         .execute()
         .data
@@ -78,6 +79,17 @@ def _fetch_primary_tags(sb: Any, question_id: str) -> list[dict]:
     ) or []
 
 
+def _fetch_all_verified_tags(sb: Any, question_id: str) -> list[dict]:
+    return (
+        sb.table("pyq_question_topic_tags")
+        .select("id, question_id, topic_id, tag_role, reviewer_status")
+        .eq("question_id", question_id)
+        .eq("reviewer_status", _VERIFIED_TAG)
+        .execute()
+        .data
+    ) or []
+
+
 def _fetch_existing_projection(sb: Any, question_id: str) -> dict | None:
     rows = (
         sb.table("pyq_mock_question_projections")
@@ -90,23 +102,66 @@ def _fetch_existing_projection(sb: Any, question_id: str) -> dict | None:
     return rows[0] if rows else None
 
 
-def compute_content_hash(question: dict, options: list[dict]) -> str:
-    """Stable SHA-256 hash of canonical content.
+def compute_content_hash(
+    question: dict,
+    options: list[dict],
+    paper: dict | None = None,
+    all_verified_tags: list[dict] | None = None,
+) -> str:
+    """Stable SHA-256 hash of ALL fields projected to mock_question_bank.
 
     Mirrors the hash computed inside ``project_pyq_question_to_mock_bank``
     (migration 183, Section D).  Keep in sync when the RPC hash formula changes.
 
-    Formula: q_text NUL sorted_verified_opt_texts_joined_by_NUL NUL verified_correct_opt
-    Only VERIFIED options are included so the hash tracks audited content only.
+    Formula (NUL = \\x00, FS = \\x1f between items in a list, RS = \\x1e within item):
+        q_text NUL explanation NUL difficulty NUL language NUL expected_time_sec
+        NUL paper_id NUL paper_year
+        NUL verified_opt_label RS opt_text (joined by FS, sorted by label then id)
+        NUL correct_opt_text
+        NUL verified_tag_topic_id RS tag_role (joined by FS, sorted by topic_id then role)
+
+    All projected fields are included so that changing explanation, difficulty,
+    language, expected time, paper year, option ordering (label), or any verified
+    topic tag all produce a different hash — causing preview to report "would_update"
+    and sync to re-project the row.
     """
-    q_text = (question.get("question_text") or "").strip().lower()
-    verified = [o for o in options if o.get("reviewer_status") == _VERIFIED_OPTION]
-    opt_texts = sorted((o.get("option_text") or "").strip().lower() for o in verified)
+    NUL, FS, RS = "\x00", "\x1f", "\x1e"
+
+    q_text    = (question.get("question_text") or "").strip().lower()
+    expl      = (question.get("explanation_text") or "").strip().lower()
+    raw_diff  = (question.get("observed_difficulty") or "").strip().lower()
+    diff      = raw_diff if raw_diff in ("easy", "medium", "hard") else "medium"
+    language  = (question.get("language") or "en").strip().lower()
+    exp_time  = str(question.get("expected_solve_time_sec") or "")
+    paper_id  = str(question.get("pyq_paper_id") or "")
+    paper_year = str((paper or {}).get("year") or "")
+
+    verified_opts = sorted(
+        (o for o in options if o.get("reviewer_status") == _VERIFIED_OPTION),
+        key=lambda o: ((o.get("option_label") or "").lower(), o.get("id") or ""),
+    )
+    opt_parts = FS.join(
+        (o.get("option_label") or "").lower() + RS + (o.get("option_text") or "").strip().lower()
+        for o in verified_opts
+    )
     correct_opt = next(
-        ((o.get("option_text") or "").strip().lower() for o in verified if o.get("is_correct")),
+        ((o.get("option_text") or "").strip().lower() for o in verified_opts if o.get("is_correct")),
         "",
     )
-    raw = q_text + "\x00" + "\x00".join(opt_texts) + "\x00" + correct_opt
+
+    v_tags = sorted(
+        (t for t in (all_verified_tags or []) if t.get("reviewer_status") == _VERIFIED_TAG),
+        key=lambda t: (t.get("topic_id") or "", t.get("tag_role") or ""),
+    )
+    tag_parts = FS.join(
+        (t.get("topic_id") or "") + RS + (t.get("tag_role") or "")
+        for t in v_tags
+    )
+
+    raw = NUL.join([
+        q_text, expl, diff, language, exp_time, paper_id, paper_year,
+        opt_parts, correct_opt, tag_parts,
+    ])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -199,10 +254,11 @@ def preview_paper_projection(sb: Any, paper_id: str) -> dict:
         qid = q["id"]
         options    = _fetch_options_for_question(sb, qid)
         p_tags     = _fetch_primary_tags(sb, qid)
+        all_tags   = _fetch_all_verified_tags(sb, qid)
         projection = _fetch_existing_projection(sb, qid)
 
         eligible, reason = _check_question_eligibility(paper, q, options, p_tags)
-        content_hash = compute_content_hash(q, options) if eligible else None
+        content_hash = compute_content_hash(q, options, paper=paper, all_verified_tags=all_tags) if eligible else None
 
         entry: dict = {
             "question_id": qid,

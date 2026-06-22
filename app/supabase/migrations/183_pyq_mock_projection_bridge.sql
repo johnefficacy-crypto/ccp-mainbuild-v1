@@ -442,16 +442,35 @@ begin
 
       -- ── 3. Compute source content hash ─────────────────────────────────────
       --
-      -- Hash = SHA256( q_text NUL sorted_verified_opt_texts NUL verified_correct_opt )
-      -- Only VERIFIED options are included so the hash tracks audited content.
-      -- Formula matches compute_content_hash() in pyq_mock_projection.py.
+      -- Hash = SHA256 over ALL fields projected to mock_question_bank so that
+      -- any change to explanation, difficulty, language, expected time, paper
+      -- year, option ordering (label), or verified topic tags causes a stale
+      -- detection.  Formula matches compute_content_hash() in
+      -- pyq_mock_projection.py (NUL=chr(0), FS=chr(31), RS=chr(30)).
+      --
+      -- Sections (chr(0)-separated):
+      --   q_text | explanation | difficulty | language | expected_solve_time_sec
+      --   | pyq_paper_id | paper_year
+      --   | verified opt_label chr(30) opt_text (chr(31)-joined, sorted label,id)
+      --   | verified correct_opt_text
+      --   | verified topic_id chr(30) tag_role (chr(31)-joined, sorted topic_id,role)
 
       select encode(
           sha256((
               coalesce(lower(trim(v_q.question_text)), '') || chr(0) ||
+              coalesce(lower(trim(v_q.explanation_text)), '') || chr(0) ||
+              (case when lower(coalesce(v_q.observed_difficulty, '')) in ('easy','medium','hard')
+                    then lower(v_q.observed_difficulty) else 'medium' end) || chr(0) ||
+              lower(coalesce(v_q.language, 'en')) || chr(0) ||
+              coalesce(v_q.expected_solve_time_sec::text, '') || chr(0) ||
+              coalesce(v_q.pyq_paper_id::text, '') || chr(0) ||
+              coalesce(v_q.paper_year::text, '') || chr(0) ||
               coalesce((
-                  select string_agg(lower(trim(o.option_text)), chr(0)
-                         order by lower(trim(o.option_text)))
+                  select string_agg(
+                      coalesce(lower(o.option_label), '') || chr(30) ||
+                      coalesce(lower(trim(o.option_text)), ''),
+                      chr(31) order by coalesce(lower(o.option_label), ''), o.id
+                  )
                   from public.pyq_options o
                   where o.question_id = p_pyq_question_id
                     and o.reviewer_status = 'verified'
@@ -463,6 +482,16 @@ begin
                     and c.reviewer_status = 'verified'
                     and c.is_correct = true
                   limit 1
+              ), '') || chr(0) ||
+              coalesce((
+                  select string_agg(
+                      coalesce(t.topic_id::text, '') || chr(30) ||
+                      coalesce(t.tag_role, ''),
+                      chr(31) order by t.topic_id, t.tag_role
+                  )
+                  from public.pyq_question_topic_tags t
+                  where t.question_id = p_pyq_question_id
+                    and t.reviewer_status = 'verified'
               ), '')
           )::bytea),
           'hex'
@@ -883,12 +912,19 @@ begin
               -- Invalidate when question leaves verified state.
               if OLD.reviewer_status = 'verified' and NEW.reviewer_status != 'verified' then
                   perform public.fn_invalidate_projection_for_question(NEW.id);
-              -- Invalidate when content changes while question remains verified
-              -- (question_text, question_type, or correct_option_id pointer drift).
+              -- Invalidate when any projected field changes while question stays verified.
+              -- Covers question_text, question_type, correct_option_id pointer, and all
+              -- fields copied to mock_question_bank: explanation, difficulty, language,
+              -- expected solve time, and paper FK (which carries year, exam via join).
               elsif NEW.reviewer_status = 'verified' and (
-                  OLD.question_text       is distinct from NEW.question_text
-                  or OLD.question_type    is distinct from NEW.question_type
-                  or OLD.correct_option_id is distinct from NEW.correct_option_id
+                  OLD.question_text             is distinct from NEW.question_text
+                  or OLD.question_type          is distinct from NEW.question_type
+                  or OLD.correct_option_id      is distinct from NEW.correct_option_id
+                  or OLD.explanation_text       is distinct from NEW.explanation_text
+                  or OLD.observed_difficulty    is distinct from NEW.observed_difficulty
+                  or OLD.expected_solve_time_sec is distinct from NEW.expected_solve_time_sec
+                  or OLD.language               is distinct from NEW.language
+                  or OLD.pyq_paper_id           is distinct from NEW.pyq_paper_id
               ) then
                   perform public.fn_invalidate_projection_for_question(NEW.id);
               end if;
@@ -896,10 +932,16 @@ begin
           return NEW;
 
       elsif TG_TABLE_NAME = 'pyq_papers' then
-          -- Invalidate all questions in the paper on trust_status OR exam_phase_id change.
+          -- Invalidate all questions in the paper when any projected paper field changes:
+          -- trust_status (eligibility gate), exam_phase_id, exam_id (maps to mock exam_id),
+          -- year (projected as pyq_year), source_url, source_type (audit provenance).
           if TG_OP = 'UPDATE' and (
               (OLD.trust_status = 'verified' and NEW.trust_status != 'verified')
               or (OLD.exam_phase_id is distinct from NEW.exam_phase_id)
+              or (OLD.exam_id       is distinct from NEW.exam_id)
+              or (OLD.year          is distinct from NEW.year)
+              or (OLD.source_url    is distinct from NEW.source_url)
+              or (OLD.source_type   is distinct from NEW.source_type)
           ) then
               for v_qid in
                   select id from public.pyq_questions where pyq_paper_id = NEW.id
@@ -921,34 +963,39 @@ begin
               perform public.fn_invalidate_projection_for_question(NEW.question_id);
               return NEW;
           end if;
-          -- UPDATE: only invalidate on material field changes.
-          if OLD.is_correct is distinct from NEW.is_correct
-             or (OLD.option_text is distinct from NEW.option_text)
-             or (OLD.reviewer_status is distinct from NEW.reviewer_status)
+          -- UPDATE: invalidate on any field that affects the projected option row or
+          -- hash, including option_label (controls display ordering in mock bank).
+          if OLD.is_correct         is distinct from NEW.is_correct
+             or OLD.option_text     is distinct from NEW.option_text
+             or OLD.option_label    is distinct from NEW.option_label
+             or OLD.reviewer_status is distinct from NEW.reviewer_status
           then
               perform public.fn_invalidate_projection_for_question(NEW.question_id);
           end if;
           return NEW;
 
       elsif TG_TABLE_NAME = 'pyq_question_topic_tags' then
+          -- All verified tags are projected to mock_question_topic_tags and included
+          -- in the content hash, so any INSERT/DELETE/UPDATE to a verified tag
+          -- (regardless of role) must invalidate.  Primary tag changes also affect
+          -- subject_id/topic_id routing on the mock row.
           if TG_OP = 'DELETE' then
-              if OLD.tag_role = 'primary' then
+              if OLD.reviewer_status = 'verified' then
                   perform public.fn_invalidate_projection_for_question(OLD.question_id);
               end if;
               return OLD;
           end if;
           if TG_OP = 'INSERT' then
-              -- Inserting a primary tag could push the verified-primary count above 1.
-              if NEW.tag_role = 'primary' then
+              if NEW.reviewer_status = 'verified' then
                   perform public.fn_invalidate_projection_for_question(NEW.question_id);
               end if;
               return NEW;
           end if;
-          -- UPDATE
-          if NEW.tag_role = 'primary'
-             or (OLD.tag_role = 'primary' and NEW.tag_role != 'primary')
-             or (OLD.reviewer_status is distinct from NEW.reviewer_status
-                 and (OLD.tag_role = 'primary' or NEW.tag_role = 'primary'))
+          -- UPDATE: invalidate if the tag is or becomes verified, or if the primary
+          -- role changes (affects routing fields).
+          if (OLD.reviewer_status = 'verified' or NEW.reviewer_status = 'verified')
+             or (OLD.tag_role is distinct from NEW.tag_role)
+             or (OLD.topic_id is distinct from NEW.topic_id)
           then
               perform public.fn_invalidate_projection_for_question(NEW.question_id);
           end if;
