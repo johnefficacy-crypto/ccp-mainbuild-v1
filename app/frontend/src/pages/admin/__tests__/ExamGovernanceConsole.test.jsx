@@ -90,17 +90,18 @@ function detailFor(id) {
     mock_readiness: { status: ready ? "ready" : "blocked", detail: "2 thin section(s)" },
     action_queue: ready ? [] : [
       { id: "topic_coverage", severity: "blocker", area: "topic_coverage", title: "Lock topic coverage",
-        why: "The planner consumes only locked coverage rows.", cta_label: "Open workspace",
-        cta_route: `/admin/exam-intelligence/workspace/${id}`, entity_kind: "exam_topic_coverage",
-        entity_id: null, evidence_refs: [{ kind: "exam_topic_coverage", row_id: "c1" }], status: "open" },
+        why: "The planner consumes only locked coverage rows.", cta_label: "Review unlocked rows",
+        cta_route: `/admin/exam-intelligence/exams/${id}?tab=syllabus&status=pending_review&row=c1`,
+        entity_kind: "exam_topic_coverage", entity_id: "c1",
+        evidence_refs: [{ kind: "exam_topic_coverage", row_id: "c1" }], status: "open" },
       { id: "pyq", severity: "action", area: "pyq", title: "Verify PYQ",
-        why: "Questions need verified paper + question + topic tag.", cta_label: "Open workspace",
-        cta_route: `/admin/exam-intelligence/workspace/${id}`, entity_kind: null, entity_id: null,
-        evidence_refs: [], status: "open" },
+        why: "Questions need verified paper + question + topic tag.", cta_label: "Review pending questions",
+        cta_route: `/admin/exam-intelligence/exams/${id}?tab=pyq&status=pending`,
+        entity_kind: null, entity_id: null, evidence_refs: [], status: "open" },
       { id: "mock_readiness", severity: "advisory", area: "mock_readiness", title: "Strengthen the mock bank",
-        why: "Mock bank is thin or blocked (advisory only).", cta_label: "Open workspace",
-        cta_route: `/admin/exam-intelligence/workspace/${id}`, entity_kind: null, entity_id: null,
-        evidence_refs: [], status: "open" },
+        why: "Mock bank is thin or blocked (advisory only).", cta_label: "Go to Review & Activate",
+        cta_route: `/admin/exam-intelligence/exams/${id}?tab=review`,
+        entity_kind: null, entity_id: null, evidence_refs: [], status: "open" },
     ],
     activation_checks: [
       { area: "setup", gate: "hard", state: "done", detail: "1 phase(s) defined", reasons: [], evidence_refs: [] },
@@ -295,18 +296,16 @@ describe("ExamGovernanceConsole — work queue (no exam selected)", () => {
     expect(screen.getByTestId("console-flag-exam-1-pending_review").textContent).toBe("Pending review");
   });
 
-  test("row actions: neutral → /console/:id, ghost → /workspace/:id, no work-queue primary styling", async () => {
+  test("row actions: single Manage exam link → /exams/:id, no work-queue primary styling", async () => {
     mockApi();
     renderConsole("/admin/exam-intelligence/console");
-    await waitFor(() => expect(screen.getByTestId("console-open-exam-1")).toBeTruthy());
-    const openConsole = screen.getByTestId("console-open-exam-1");
-    const advancedWorkspace = screen.getByTestId("console-workspace-exam-1");
-    expect(openConsole.getAttribute("href")).toBe("/admin/exam-intelligence/console/exam-1");
-    expect(advancedWorkspace.getAttribute("href")).toBe("/admin/exam-intelligence/workspace/exam-1");
-    expect(openConsole.classList.contains("btn-primary")).toBe(false);
-    expect(openConsole.classList.contains("primary")).toBe(false);
-    expect(advancedWorkspace.classList.contains("btn-primary")).toBe(false);
-    expect(advancedWorkspace.classList.contains("primary")).toBe(false);
+    await waitFor(() => expect(screen.getByTestId("console-manage-exam-1")).toBeTruthy());
+    const manageLink = screen.getByTestId("console-manage-exam-1");
+    expect(manageLink.getAttribute("href")).toBe("/admin/exam-intelligence/exams/exam-1");
+    expect(manageLink.classList.contains("btn-primary")).toBe(false);
+    expect(manageLink.classList.contains("primary")).toBe(false);
+    expect(screen.queryByTestId("console-open-exam-1")).toBeNull();
+    expect(screen.queryByTestId("console-workspace-exam-1")).toBeNull();
 
     const workQueue = screen.getByTestId("console-work-queue");
     expect(workQueue.querySelector(".btn-primary, .primary")).toBeNull();
@@ -377,7 +376,7 @@ describe("ExamGovernanceConsole — exam selected (action console)", () => {
     expect(screen.getByTestId("action-console-meta").textContent).toContain("Staff Selection Commission");
     expect(screen.getByTestId("action-console-meta").textContent).toContain("SSC Family");
     expect(screen.getByTestId("action-console-back").getAttribute("href")).toBe("/admin/exam-intelligence/console");
-    expect(screen.getByTestId("action-console-workspace").getAttribute("href")).toBe("/admin/exam-intelligence/workspace/exam-1");
+    expect(screen.getByTestId("action-console-workspace").getAttribute("href")).toBe("/admin/exam-intelligence/exams/exam-1");
   });
 
   test("blocked verdict: backend status + headline + mapped reasons (no raw tokens)", async () => {
@@ -406,7 +405,7 @@ describe("ExamGovernanceConsole — exam selected (action console)", () => {
     await waitFor(() => expect(screen.getByTestId("action-queue")).toBeTruthy());
     const items = screen.getAllByTestId(/^action-(topic_coverage|pyq|mock_readiness)$/);
     expect(items.map((el) => el.getAttribute("data-severity"))).toEqual(["blocker", "action", "advisory"]);
-    expect(screen.getByTestId("action-cta-topic_coverage").getAttribute("href")).toBe("/admin/exam-intelligence/workspace/exam-1");
+    expect(screen.getByTestId("action-cta-topic_coverage").getAttribute("href")).toBe("/admin/exam-intelligence/exams/exam-1?tab=syllabus&status=pending_review&row=c1");
   });
 
   test("checks grouped by backend stages with gate + state labels + mapped reasons", async () => {

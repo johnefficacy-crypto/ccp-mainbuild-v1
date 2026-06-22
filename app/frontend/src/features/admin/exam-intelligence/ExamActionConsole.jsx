@@ -13,6 +13,11 @@ import { humanizeToken } from "./operatorChrome";
  * routes — this component never recomputes them. Editing happens by following an
  * action's CTA into /workspace/:exam_id. No evidence fetch / drawer yet, no
  * mutations, no readiness/confidence percentage.
+ *
+ * When `data` prop is supplied (e.g. from ExamWorkspace management endpoint),
+ * the component renders that data directly and skips the fetch entirely.
+ * The management endpoint shape has flat exam fields at the top level; the
+ * console endpoint shape has an `exam` sub-object — both are handled.
  */
 
 const VERDICT_META = {
@@ -75,10 +80,11 @@ function evidenceCount(refs) {
 // ── Data hook: loading | live | not_found | error, stale-protected ──────────
 
 function useExamDetail(examId) {
-  const [state, setState] = useState({ status: "loading", data: null, error: null });
+  const [state, setState] = useState({ status: examId ? "loading" : "idle", data: null, error: null });
   const seq = useRef(0);
 
   const load = useCallback(() => {
+    if (!examId) return;
     const mySeq = ++seq.current;
     // Clear any prior exam's data immediately so stale rows never linger.
     setState({ status: "loading", data: null, error: null });
@@ -95,7 +101,11 @@ function useExamDetail(examId) {
       });
   }, [examId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!examId) return;
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load]);
   return { ...state, reload: load };
 }
 
@@ -120,50 +130,105 @@ function ReasonTags({ reasons, testid }) {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function ExamActionConsole({ examId }) {
-  const { status, data, reload } = useExamDetail(examId);
+export default function ExamActionConsole({
+  examId,
+  embedded = false,
+  data: injectedData = null,
+  dataStatus = null,
+  onRetry = null,
+}) {
+  // dataStatus !== null means managed/injected mode: never fetch the console endpoint.
+  // When dataStatus is null (standalone mode), fall back to the fetch-based flow.
+  const managedMode = dataStatus !== null;
+  const fetchTarget = managedMode || injectedData ? null : examId;
+  const { status, data: fetchedData, reload } = useExamDetail(fetchTarget);
 
-  if (status === "loading") {
-    return <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-loading">Loading exam console…</div>;
-  }
-
-  if (status === "not_found") {
-    return (
-      <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-not-found">
-        <div className="empty">
-          <div className="empty-title">Exam not found.</div>
-          <Link to="/admin/exam-intelligence/console" className="btn" data-testid="not-found-back">Back to work queue</Link>
+  // Managed mode: use dataStatus to drive loading/error/render without ever fetching /console/exams/
+  if (managedMode) {
+    if (dataStatus === "loading") {
+      if (embedded) return <div data-testid="action-console-loading" style={{ padding: "8px 22px", color: "var(--ink-mute)", fontSize: 13 }}>Loading action data…</div>;
+      return <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-loading">Loading exam console…</div>;
+    }
+    if (dataStatus === "error") {
+      const retryBtn = onRetry ? <button type="button" className="btn" onClick={onRetry} data-testid="action-console-retry">Retry</button> : null;
+      if (embedded) return <div data-testid="action-console-error" style={{ padding: "8px 22px" }}><span className="err-row" style={{ fontSize: 13 }}>Could not load action data.{" "}{retryBtn}</span></div>;
+      return (
+        <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-error">
+          <div className="err-row">Could not load the exam console.{" "}{retryBtn}</div>
         </div>
-      </div>
-    );
+      );
+    }
+    // dataStatus === "ready" — fall through to render injectedData
   }
 
-  if (status === "error" || !data) {
-    return (
-      <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-error">
-        <div className="err-row">
-          Could not load the exam console.{" "}
-          <button type="button" className="btn" onClick={reload} data-testid="action-console-retry">Retry</button>
+  // Fetch-path error/loading states (only when not using injected data)
+  if (!managedMode && !injectedData) {
+    if (status === "loading") {
+      if (embedded) return <div data-testid="action-console-loading" style={{ padding: "8px 22px", color: "var(--ink-mute)", fontSize: 13 }}>Loading action data…</div>;
+      return <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-loading">Loading exam console…</div>;
+    }
+
+    if (status === "not_found") {
+      if (embedded) {
+        return (
+          <div data-testid="action-console-not-found" style={{ padding: "8px 22px" }}>
+            <span className="err-row" style={{ fontSize: 13 }}>Exam not found in action console.</span>
+          </div>
+        );
+      }
+      return (
+        <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-not-found">
+          <div className="empty">
+            <div className="empty-title">Exam not found.</div>
+            <Link to="/admin/exam-intelligence/console" className="btn" data-testid="not-found-back">Back to work queue</Link>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+
+    if (status === "error" || !fetchedData) {
+      if (embedded) return <div data-testid="action-console-error" style={{ padding: "8px 22px" }}><span className="err-row" style={{ fontSize: 13 }}>Could not load action data.{" "}<button type="button" className="btn" onClick={reload} data-testid="action-console-retry">Retry</button></span></div>;
+      return (
+        <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-error">
+          <div className="err-row">
+            Could not load the exam console.{" "}
+            <button type="button" className="btn" onClick={reload} data-testid="action-console-retry">Retry</button>
+          </div>
+        </div>
+      );
+    }
   }
 
-  const exam = data.exam || {};
-  const verdict = data.activation_verdict || {};
-  const mock = data.mock_readiness || { status: "unknown" };
-  const actions = Array.isArray(data.action_queue) ? data.action_queue : [];
-  const checks = Array.isArray(data.activation_checks) ? data.activation_checks : [];
-  const stages = Array.isArray(data.stages) ? data.stages : [];
+  const raw = injectedData ?? fetchedData;
+  if (!raw) return null;
+
+  // Normalize shape: management endpoint has flat exam fields at top level;
+  // console endpoint wraps them in an `exam` sub-object.
+  const exam = raw.exam || {
+    id: raw.id,
+    slug: raw.slug,
+    name: raw.name,
+    organization_name: raw.organization_name,
+    family_name: raw.family_name,
+  };
+  const verdict = raw.activation_verdict || {};
+  const mock = raw.mock_readiness || { status: "unknown" };
+  const actions = Array.isArray(raw.action_queue) ? raw.action_queue : [];
+  const checks = Array.isArray(raw.activation_checks) ? raw.activation_checks : [];
+  const stages = Array.isArray(raw.stages) ? raw.stages : [];
   const checkByArea = Object.fromEntries(checks.map((c) => [c.area, c]));
 
   const vMeta = VERDICT_META[verdict.status] || { tone: "pill-dusk", label: humanizeToken(verdict.status) || "Unknown" };
   const mMeta = MOCK_META[mock.status] || MOCK_META.unknown;
-  const workspaceRoute = `/admin/exam-intelligence/workspace/${encodeURIComponent(exam.id)}`;
+  const manageRoute = `/admin/exam-intelligence/exams/${encodeURIComponent(exam.id)}`;
+
+  const padding = embedded ? "12px 22px" : 22;
 
   return (
-    <div className="oc-main" style={{ padding: 22 }} data-testid="exam-action-console">
-      {/* 1. Header — identity from the detail response (no extra request). */}
+    <div className="oc-main" style={{ padding }} data-testid="exam-action-console">
+      {/* 1. Header — identity from the detail response (no extra request).
+          Hidden when embedded inside ExamWorkspace (which already shows the header). */}
+      {!embedded && (
       <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
         <div style={{ minWidth: 0 }}>
           <div className="lbl">Exam Governance Console</div>
@@ -177,9 +242,10 @@ export default function ExamActionConsole({ examId }) {
         </div>
         <div className="row" style={{ gap: 8 }}>
           <Link to="/admin/exam-intelligence/console" className="btn btn-ghost" data-testid="action-console-back">Back to work queue</Link>
-          <Link to={workspaceRoute} className="btn btn-ghost" data-testid="action-console-workspace">Advanced workspace</Link>
+          <Link to={manageRoute} className="btn btn-ghost" data-testid="action-console-workspace">Manage exam</Link>
         </div>
       </div>
+      )}
 
       {/* 2. Activation verdict (backend status, no recompute, no %). */}
       <div className="card" style={{ marginBottom: 12 }} data-testid="activation-verdict">

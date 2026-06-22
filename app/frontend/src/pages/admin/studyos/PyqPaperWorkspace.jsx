@@ -1090,7 +1090,7 @@ function ProgressBar({ progress }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = false }) {
+export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = false, status = null, rowId = null }) {
   const { pyq_paper_id: pyq_paper_id_param } = useParams();
   const pyq_paper_id = paperIdProp || pyq_paper_id_param;
   const navigate = useNavigate();
@@ -1105,8 +1105,15 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
 
   const [progress, setProgress] = useState(null);
 
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(status ?? "all");
   const [sourceKindFilter, setSourceKindFilter] = useState("all");
+
+  const deepLinkApplied = useRef(false);
+  const loadGenRef = useRef(0);       // macro: incremented on paper/status-prop change
+  const questionsGenRef = useRef(0);  // micro: incremented per loadQuestions call
+  const optionsGenRef = useRef(0);    // per loadOptions call
+  const progressGenRef = useRef(0);   // per loadProgress call
+  const [deepLinkNotFound, setDeepLinkNotFound] = useState(false);
 
   // Pagination state
   const [offset, setOffset] = useState(0);
@@ -1122,8 +1129,10 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
 
   const loadPaper = useCallback(async () => {
     if (!pyq_paper_id) return;
+    const gen = loadGenRef.current;
     try {
       const res = await api.get(`${CMS_BASE}/pyq-papers/${encodeURIComponent(pyq_paper_id)}`);
+      if (loadGenRef.current !== gen) return;
       setPaper(res || null);
     } catch {
       /* best-effort */
@@ -1133,6 +1142,9 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // Returns the fetched items so callers can act on them without waiting for
   // the async state update (setQuestions is enqueued, not synchronous).
   const loadQuestions = useCallback(async () => {
+    const gen = loadGenRef.current;
+    questionsGenRef.current += 1;          // allocate a fresh token for this call
+    const qgen = questionsGenRef.current;
     setLoadError("");
     try {
       const params = new URLSearchParams({
@@ -1143,51 +1155,110 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
       if (statusFilter !== "all") params.set("reviewer_status", statusFilter);
       if (sourceKindFilter !== "all") params.set("source_kind", sourceKindFilter);
       const res = await api.get(`${CMS_BASE}/pyq-questions?${params}`);
+      if (loadGenRef.current !== gen || questionsGenRef.current !== qgen) return [];
       const items = res.items || [];
       setQuestions(items);
       setTotal(res.total ?? null);
       return items;
     } catch (e) {
+      if (loadGenRef.current !== gen || questionsGenRef.current !== qgen) return [];
       setLoadError(e?.message || "Could not load questions");
       return [];
     }
   }, [pyq_paper_id, offset, statusFilter, sourceKindFilter]);
 
   const loadProgress = useCallback(async () => {
+    const gen = loadGenRef.current;
+    progressGenRef.current += 1;
+    const pgen = progressGenRef.current;
     try {
       const res = await api.get(
         `${CMS_BASE}/pyq-papers/${encodeURIComponent(pyq_paper_id)}/progress`,
       );
+      if (loadGenRef.current !== gen || progressGenRef.current !== pgen) return null;
       setProgress(res);
+      return res;
     } catch {
-      /* best-effort */
+      return null;
     }
   }, [pyq_paper_id]);
+
+  const fetchQuestionById = useCallback(async (id) => {
+    try {
+      return await api.get(`${CMS_BASE}/pyq-questions/${encodeURIComponent(id)}`);
+    } catch {
+      return null;
+    }
+  }, []);
 
   const loadOptions = useCallback(async (questionId) => {
     if (!questionId) {
       setSelectedOptions([]);
       return;
     }
+    optionsGenRef.current += 1;
+    const ogen = optionsGenRef.current;
     try {
       const res = await api.get(
         `${CMS_BASE}/pyq-options?question_id=${encodeURIComponent(questionId)}&limit=10`,
       );
+      if (optionsGenRef.current !== ogen) return;
       setSelectedOptions(res.items || []);
     } catch {
+      if (optionsGenRef.current !== ogen) return;
       setSelectedOptions([]);
     }
   }, []);
+
+  // ── Reset all paper-scoped state when the paper changes ─────────────────
+  // Increment load generation so any in-flight responses from the previous
+  // paper are discarded when they resolve. Must run before the data-loading
+  // effect so the new load starts from a clean slate.
+  useEffect(() => {
+    loadGenRef.current += 1;
+    optionsGenRef.current += 1;   // discard any running loadOptions from the old paper
+    progressGenRef.current += 1;  // discard any running loadProgress from the old paper
+    setPaper(null);
+    setQuestions([]);
+    setProgress(null);
+    setSelectedQuestion(null);
+    setSelectedOptions([]);
+    setPdfDocumentId(null);
+    setPdfPage(null);
+    setOffset(0);
+    setTotal(null);
+    deepLinkApplied.current = false;
+    setDeepLinkNotFound(false);
+  }, [pyq_paper_id]);
+
+  // ── Sync status prop → statusFilter; increment gen to discard in-flight ─
+  // Must run before the data-loading effect so data-loading always captures
+  // the post-increment generation (avoids discarding the initial load on mount).
+  useEffect(() => {
+    loadGenRef.current += 1;
+    optionsGenRef.current += 1;   // discard any running loadOptions from the old status context
+    progressGenRef.current += 1;  // discard any running loadProgress from the old status context
+    setStatusFilter(status ?? "all");
+    setOffset(0);
+    setSelectedQuestion(null);
+    setSelectedOptions([]);
+    deepLinkApplied.current = false;
+    setDeepLinkNotFound(false);
+  }, [status]);
 
   // Reload when paper changes (initial load) or when offset/statusFilter changes
   // (loadQuestions closes over offset + statusFilter; loadPaper/loadProgress are
   // stable unless pyq_paper_id changes, so extra fetches of paper/progress on
   // pagination are intentional — progress reflects live server counts).
+  // loadQuestions self-allocates its token; we guard setLoading(false) with a
+  // cleanup flag so an older effect cannot clear loading for a newer request.
   useEffect(() => {
     setLoading(true);
-    Promise.all([loadPaper(), loadQuestions(), loadProgress()]).finally(() =>
-      setLoading(false),
-    );
+    let effectActive = true;
+    Promise.all([loadPaper(), loadQuestions(), loadProgress()]).finally(() => {
+      if (effectActive) setLoading(false);
+    });
+    return () => { effectActive = false; };
   }, [loadPaper, loadQuestions, loadProgress]);
 
   // ── Filter handlers — reset offset so results are correct ───────────────
@@ -1205,6 +1276,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // ── Pagination ───────────────────────────────────────────────────────────
 
   function handlePageChange(newOffset) {
+    optionsGenRef.current += 1;   // discard any running loadOptions from the old page's selection
     setOffset(Math.max(0, newOffset));
     setSelectedQuestion(null);
     setSelectedOptions([]);
@@ -1246,6 +1318,47 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   });
+
+  // ── Deep-link: reset guard when rowId prop changes ───────────────────────
+
+  useEffect(() => {
+    deepLinkApplied.current = false;
+    setDeepLinkNotFound(false);
+  }, [rowId]);
+
+  // ── Deep-link: auto-select question matching rowId ───────────────────────
+
+  useEffect(() => {
+    if (!rowId || loading) return;
+    if (deepLinkApplied.current) return;
+    let cancelled = false;
+    const q = questions.find((q) => q.id === rowId && q.pyq_paper_id === pyq_paper_id);
+    if (q) {
+      deepLinkApplied.current = true;
+      setDeepLinkNotFound(false);
+      setSelectedQuestion(q);
+      loadOptions(q.id);
+      if (q.source_document_id) {
+        setPdfDocumentId(q.source_document_id);
+        setPdfPage(q.source_page || 1);
+      }
+    } else {
+      // Not on current page — fetch directly by ID (pagination-safe).
+      fetchQuestionById(rowId).then((fetched) => {
+        if (cancelled) return;
+        if (!fetched || fetched.pyq_paper_id !== pyq_paper_id) { setDeepLinkNotFound(true); return; }
+        deepLinkApplied.current = true;
+        setDeepLinkNotFound(false);
+        setSelectedQuestion(fetched);
+        loadOptions(fetched.id);
+        if (fetched.source_document_id) {
+          setPdfDocumentId(fetched.source_document_id);
+          setPdfPage(fetched.source_page || 1);
+        }
+      });
+    }
+    return () => { cancelled = true; };
+  }, [rowId, questions, loading, loadOptions, fetchQuestionById, pyq_paper_id]);
 
   // ── After-save refresh ───────────────────────────────────────────────────
 
@@ -1362,6 +1475,15 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
           <p className="text-[11px] text-rose-600">{loadError}</p>
         )}
       </div>
+
+      {rowId && deepLinkNotFound && !loading && (
+        <div
+          className="flex-shrink-0 px-4 py-2 bg-rose-50 border-b border-rose-200 text-[12px] text-rose-700"
+          data-testid="pyq-deep-link-not-found"
+        >
+          Question {rowId} was not found in this paper&rsquo;s question list.
+        </div>
+      )}
 
       {/* Three-pane layout */}
       <div className="flex flex-1 overflow-hidden">

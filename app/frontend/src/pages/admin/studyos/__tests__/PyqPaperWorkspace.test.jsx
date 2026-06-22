@@ -35,6 +35,7 @@ const QUESTIONS = [
     confidence_by_field: { question_text: 0.92 },
     content_hash: "abc123",
     metadata: {},
+    pyq_paper_id: PAPER_ID,
   },
   {
     id: "q2",
@@ -47,6 +48,7 @@ const QUESTIONS = [
     confidence_by_field: null,
     content_hash: "def456",
     metadata: {},
+    pyq_paper_id: PAPER_ID,
   },
   {
     id: "q3",
@@ -59,6 +61,7 @@ const QUESTIONS = [
     confidence_by_field: { question_text: 0.55 },
     content_hash: "ghi789",
     metadata: {},
+    pyq_paper_id: PAPER_ID,
   },
 ];
 
@@ -251,4 +254,551 @@ test("Save draft button calls PATCH without changing status", async () => {
     expect.stringContaining("/review"),
     expect.anything(),
   );
+});
+
+// ── Deep-link receiving tests (I8-B round-3 + round-4) ───────────────────────
+
+const PAPER_B_ID = "paper-uuid-2";
+const PAPER_B = { ...PAPER, id: PAPER_B_ID, paper_code: "GS-II" };
+
+describe("PyqPaperWorkspace deep-link (I8-B)", () => {
+  const Q_PAGE2 = {
+    id: "q-page2",
+    question_number: 99,
+    question_text: "Page-2 question text",
+    reviewer_status: "pending",
+    source_kind: "auto_extracted",
+    source_document_id: "doc-2",
+    source_page: 7,
+    confidence_by_field: {},
+    content_hash: "xyz999",
+    metadata: {},
+    pyq_paper_id: PAPER_ID,  // same paper — valid fetch
+  };
+
+  const Q_WRONG_PAPER = {
+    id: "q-wrong-paper",
+    question_number: 1,
+    question_text: "Question from another paper",
+    reviewer_status: "pending",
+    source_kind: "auto_extracted",
+    source_document_id: null,
+    source_page: null,
+    confidence_by_field: {},
+    content_hash: "cross-paper",
+    metadata: {},
+    pyq_paper_id: "some-other-paper-id",  // different paper — should reject
+  };
+
+  function renderEmbedded(extraProps = {}, paperId = PAPER_ID) {
+    return render(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={paperId} embedded {...extraProps} />
+      </MemoryRouter>,
+    );
+  }
+
+  function setupDeepLinkMocks() {
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`)) return Promise.resolve(PAPER);
+      if (url.includes(`/pyq-papers/${PAPER_B_ID}`)) return Promise.resolve(PAPER_B);
+      if (url.includes(`pyq_paper_id=${PAPER_B_ID}`)) return Promise.resolve({ items: [], total: 0 });
+      if (url.includes("pyq_paper_id=") && url.includes("reviewer_status=rejected"))
+        return Promise.resolve({ items: [], total: 0 });
+      if (url.includes("/pyq-questions?")) return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes(`/progress`)) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      if (url.includes("/pyq-questions/q-page2")) return Promise.resolve(Q_PAGE2);
+      if (url.includes("/pyq-questions/q-wrong-paper")) return Promise.resolve(Q_WRONG_PAPER);
+      if (url.includes("/pyq-questions/invalid-row")) return Promise.reject(new Error("Not found"));
+      if (url.includes("/pyq-questions/q1")) return Promise.resolve({ ...QUESTIONS[0], pyq_paper_id: PAPER_ID });
+      if (url.includes("/pyq-questions/q2")) return Promise.resolve({ ...QUESTIONS[1], pyq_paper_id: PAPER_ID });
+      return Promise.resolve({});
+    });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupDeepLinkMocks();
+  });
+
+  test("question beyond page 1: fetches by ID and auto-selects", async () => {
+    renderEmbedded({ rowId: "q-page2" });
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("/pyq-questions/q-page2")),
+    );
+    await waitFor(() => screen.getByTestId("editor-question-text"));
+    expect(screen.getByTestId("editor-question-text").value).toContain("Page-2 question");
+  });
+
+  test("status prop initializes statusFilter and is sent to API", async () => {
+    renderEmbedded({ status: "pending" });
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("reviewer_status=pending")),
+    );
+  });
+
+  test("rowId change without remount re-applies deep link to new question", async () => {
+    const { rerender } = renderEmbedded({ rowId: "q1" });
+    await waitFor(() => screen.getByTestId("editor-question-text"));
+    expect(screen.getByTestId("editor-question-text").value).toContain("capital of India");
+
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_ID} embedded rowId="q2" />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      const ta = screen.getByTestId("editor-question-text");
+      expect(ta.value).toContain("first PM of India");
+    });
+  });
+
+  test("invalid rowId shows not-found banner and does not select anything", async () => {
+    renderEmbedded({ rowId: "invalid-row" });
+    await waitFor(() => screen.getByTestId("pyq-deep-link-not-found"));
+    expect(screen.queryByTestId("editor-question-text")).toBeNull();
+  });
+
+  // ── Round-4 additions ─────────────────────────────────────────────────────
+
+  test("paper change without remount clears stale question selection", async () => {
+    const { rerender } = renderEmbedded({ rowId: "q1" });
+    await waitFor(() => screen.getByTestId("editor-question-text"));
+    expect(screen.getByTestId("editor-question-text").value).toContain("capital of India");
+
+    // Switch to a different paper (paper B returns no questions)
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_B_ID} embedded />
+      </MemoryRouter>,
+    );
+    // Stale question editor must be gone
+    await waitFor(() => expect(screen.queryByTestId("editor-question-text")).toBeNull());
+  });
+
+  test("status prop change without remount resets selection and sends new filter", async () => {
+    const { rerender } = renderEmbedded({ rowId: "q1", status: null });
+    await waitFor(() => screen.getByTestId("editor-question-text"));
+
+    // Change status prop to "rejected" (mock returns empty list for rejected filter)
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_ID} embedded status="rejected" />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.queryByTestId("editor-question-text")).toBeNull());
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("reviewer_status=rejected")),
+    );
+  });
+
+  test("cross-paper fetchQuestionById result shows not-found banner", async () => {
+    // q-wrong-paper is returned by the API but belongs to a different paper
+    renderEmbedded({ rowId: "q-wrong-paper" });
+    await waitFor(() => screen.getByTestId("pyq-deep-link-not-found"));
+    expect(screen.queryByTestId("editor-question-text")).toBeNull();
+  });
+
+  // ── Round-5: request-race safety ──────────────────────────────────────────
+
+  test("stale paper-A question response does not overwrite paper-B state after rapid switch", async () => {
+    let resolveStaleQuestions;
+    const staleQuestionsP = new Promise((res) => { resolveStaleQuestions = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes(`/pyq-papers/${PAPER_B_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER_B);
+      if (url.includes("/pyq-questions?") && url.includes(`pyq_paper_id=${PAPER_ID}`))
+        return staleQuestionsP;
+      if (url.includes("/pyq-questions?") && url.includes(`pyq_paper_id=${PAPER_B_ID}`))
+        return Promise.resolve({ items: [], total: 0 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      return Promise.resolve({});
+    });
+
+    const { rerender } = render(
+      <MemoryRouter><PyqPaperWorkspace paperId={PAPER_ID} embedded /></MemoryRouter>,
+    );
+    // Switch to paper B before paper A's questions resolve
+    rerender(
+      <MemoryRouter><PyqPaperWorkspace paperId={PAPER_B_ID} embedded /></MemoryRouter>,
+    );
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining(`pyq_paper_id=${PAPER_B_ID}`)),
+    );
+    // Resolve the stale paper A response — it must be discarded by the gen guard
+    await act(async () => { resolveStaleQuestions({ items: QUESTIONS, total: 3 }); });
+    expect(screen.queryByTestId("question-list-item-q1")).toBeNull();
+    expect(screen.queryByTestId("question-list-item-q2")).toBeNull();
+  });
+
+  test("stale status-filter question response does not overwrite new filter state after rapid switch", async () => {
+    let resolveStaleVerified;
+    const staleVerifiedP = new Promise((res) => { resolveStaleVerified = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes("/pyq-questions?") && url.includes("reviewer_status=verified"))
+        return staleVerifiedP;
+      if (url.includes("/pyq-questions?") && url.includes("reviewer_status=pending"))
+        return Promise.resolve({ items: [], total: 0 });
+      if (url.includes("/pyq-questions?"))
+        return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      return Promise.resolve({});
+    });
+
+    const { rerender } = render(
+      <MemoryRouter><PyqPaperWorkspace paperId={PAPER_ID} embedded status="verified" /></MemoryRouter>,
+    );
+    // Switch to pending before verified response resolves
+    rerender(
+      <MemoryRouter><PyqPaperWorkspace paperId={PAPER_ID} embedded status="pending" /></MemoryRouter>,
+    );
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("reviewer_status=pending")),
+    );
+    // Resolve the stale verified response — it must be discarded by the gen guard
+    await act(async () => { resolveStaleVerified({ items: QUESTIONS, total: 3 }); });
+    expect(screen.queryByTestId("question-list-item-q1")).toBeNull();
+    expect(screen.queryByTestId("question-list-item-q2")).toBeNull();
+  });
+
+  // ── Round-6: same-generation query races + option race ───────────────────
+
+  test("stale paper-A page-2 question response does not overwrite paper-B page-1 state", async () => {
+    let resolveStalePage2;
+    const stalePage2P = new Promise((res) => { resolveStalePage2 = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes(`/pyq-papers/${PAPER_B_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER_B);
+      // Paper A page 1 (offset=0)
+      if (url.includes(`pyq_paper_id=${PAPER_ID}`) && !url.includes("offset=50"))
+        return Promise.resolve({ items: QUESTIONS, total: 53 });
+      // Paper A page 2 (offset=50) — stale
+      if (url.includes(`pyq_paper_id=${PAPER_ID}`) && url.includes("offset=50"))
+        return stalePage2P;
+      // Paper B — always empty
+      if (url.includes(`pyq_paper_id=${PAPER_B_ID}`))
+        return Promise.resolve({ items: [], total: 0 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      return Promise.resolve({});
+    });
+
+    const { rerender } = renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Navigate to page 2 of paper A — stale promise starts
+    fireEvent.click(screen.getByTestId("pagination-next"));
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("offset=50")),
+    );
+
+    // Switch to paper B before page-2 resolves
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_B_ID} embedded />
+      </MemoryRouter>,
+    );
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining(`pyq_paper_id=${PAPER_B_ID}`)),
+    );
+
+    // Resolve the stale page-2 response — must be discarded
+    await act(async () => { resolveStalePage2({ items: QUESTIONS, total: 53 }); });
+    expect(screen.queryByTestId("question-list-item-q1")).toBeNull();
+    expect(screen.queryByTestId("question-list-item-q2")).toBeNull();
+  });
+
+  test("stale local-filter question response does not overwrite new filter state", async () => {
+    let resolveStalePending;
+    const stalePendingP = new Promise((res) => { resolveStalePending = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      // initial "all" filter — immediate
+      if (url.includes("/pyq-questions?") && !url.includes("reviewer_status="))
+        return Promise.resolve({ items: QUESTIONS, total: 3 });
+      // "pending" filter — stale
+      if (url.includes("/pyq-questions?") && url.includes("reviewer_status=pending"))
+        return stalePendingP;
+      // "verified" filter — immediate empty (new state)
+      if (url.includes("/pyq-questions?") && url.includes("reviewer_status=verified"))
+        return Promise.resolve({ items: [], total: 0 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      return Promise.resolve({});
+    });
+
+    renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Change local filter to "pending" — stale request starts
+    const statusSelect = screen.getAllByRole("combobox")[0];
+    fireEvent.change(statusSelect, { target: { value: "pending" } });
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("reviewer_status=pending")),
+    );
+
+    // Change to "verified" before pending resolves
+    fireEvent.change(statusSelect, { target: { value: "verified" } });
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("reviewer_status=verified")),
+    );
+
+    // Resolve the stale pending response — must be discarded
+    await act(async () => { resolveStalePending({ items: QUESTIONS, total: 3 }); });
+    expect(screen.queryByTestId("question-list-item-q1")).toBeNull();
+    expect(screen.queryByTestId("question-list-item-q2")).toBeNull();
+  });
+
+  test("stale loadOptions response does not overwrite options for a new question selection", async () => {
+    const Q2_OPTIONS = [
+      { id: "o3", question_id: "q2", option_label: "A", option_text: "Nehru", is_correct: true },
+    ];
+    let resolveStaleQ1Options;
+    const staleQ1OptionsP = new Promise((res) => { resolveStaleQ1Options = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes("/pyq-questions?")) return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?") && url.includes("question_id=q1")) return staleQ1OptionsP;
+      if (url.includes("/pyq-options?") && url.includes("question_id=q2"))
+        return Promise.resolve({ items: Q2_OPTIONS });
+      return Promise.resolve({});
+    });
+
+    renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Select q1 — starts stale options load
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    // Immediately select q2 — starts immediate options load
+    fireEvent.click(screen.getByTestId("question-list-item-q2"));
+
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("question_id=q2")),
+    );
+
+    // Resolve stale q1 options — must be discarded
+    await act(async () => { resolveStaleQ1Options({ items: OPTIONS }); });
+
+    // "Delhi" and "Mumbai" (q1 options) must not appear in q2's editor
+    expect(screen.queryByDisplayValue("Delhi")).toBeNull();
+    expect(screen.queryByDisplayValue("Mumbai")).toBeNull();
+  });
+
+  // ── Round-7: manual-refresh token races + optionsGenRef invalidation ──────
+
+  test("stale save-refresh does not overwrite review-refresh question list after Verify", async () => {
+    // handleVerify: saveDraft (calls onSaved without await) → doReview (calls onStatusChange
+    // without await). Both handleSaved and handleStatusChange call loadQuestions concurrently.
+    // The save-refresh (stale) must be discarded; the review-refresh (new) must win.
+    let resolveSaveRefresh;
+    const saveRefreshP = new Promise((res) => { resolveSaveRefresh = res; });
+    let questionsGetCount = 0;
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes("/pyq-questions?")) {
+        questionsGetCount += 1;
+        if (questionsGetCount === 1) return Promise.resolve({ items: QUESTIONS, total: 3 }); // initial
+        if (questionsGetCount === 2) return saveRefreshP;  // save-refresh (stale)
+        // review-refresh: q1 now verified, q2/q3 absent
+        return Promise.resolve({
+          items: [{ ...QUESTIONS[0], reviewer_status: "verified" }],
+          total: 1,
+        });
+      }
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      return Promise.resolve({});
+    });
+    api.patch.mockResolvedValue({ ok: true });
+
+    renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Select q1 then click Verify — triggers both save-refresh and review-refresh
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    await waitFor(() => screen.getByTestId("btn-verify"));
+    fireEvent.click(screen.getByTestId("btn-verify"));
+
+    // Wait until the review-refresh wins and q2/q3 are gone
+    await waitFor(() => expect(screen.queryByTestId("question-list-item-q2")).toBeNull());
+
+    // Resolve the stale save-refresh — q2 and q3 must not reappear
+    await act(async () => { resolveSaveRefresh({ items: QUESTIONS, total: 3 }); });
+    expect(screen.queryByTestId("question-list-item-q2")).toBeNull();
+    expect(screen.queryByTestId("question-list-item-q3")).toBeNull();
+  });
+
+  test("stale loadOptions from paper A does not populate options after switching to paper B", async () => {
+    const QB1_OPTIONS = [
+      { id: "o-b1", question_id: "q-b1", option_label: "A", option_text: "Wellington", is_correct: false },
+    ];
+    const Q_B1 = {
+      id: "q-b1",
+      question_number: 1,
+      question_text: "First question of paper B",
+      reviewer_status: "pending",
+      source_kind: "manual",
+      source_document_id: null,
+      source_page: null,
+      confidence_by_field: {},
+      content_hash: "qb1hash",
+      metadata: {},
+      pyq_paper_id: PAPER_B_ID,
+    };
+    let resolveStaleQ1Options;
+    const staleQ1OptionsP = new Promise((res) => { resolveStaleQ1Options = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes(`/pyq-papers/${PAPER_B_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER_B);
+      if (url.includes(`pyq_paper_id=${PAPER_ID}`))
+        return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes(`pyq_paper_id=${PAPER_B_ID}`))
+        return Promise.resolve({ items: [Q_B1], total: 1 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?") && url.includes("question_id=q1")) return staleQ1OptionsP;
+      if (url.includes("/pyq-options?") && url.includes("question_id=q-b1"))
+        return Promise.resolve({ items: QB1_OPTIONS });
+      return Promise.resolve({});
+    });
+
+    const { rerender } = renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Select q1 on paper A — stale options start loading
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("question_id=q1")),
+    );
+
+    // Switch to paper B before q1 options resolve — paper reset increments optionsGenRef
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_B_ID} embedded />
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getByTestId("question-list-item-q-b1"));
+
+    // Select q-b1 on paper B — immediate options (Wellington)
+    fireEvent.click(screen.getByTestId("question-list-item-q-b1"));
+    // Wait until Wellington is actually rendered before resolving the stale promise
+    await waitFor(() => screen.getByDisplayValue("Wellington"));
+
+    // Resolve stale q1 options — must be discarded; Wellington must remain visible
+    await act(async () => { resolveStaleQ1Options({ items: OPTIONS }); });
+    expect(screen.queryByDisplayValue("Delhi")).toBeNull();
+    expect(screen.queryByDisplayValue("Mumbai")).toBeNull();
+    expect(screen.getByDisplayValue("Wellington")).toBeTruthy();
+  });
+
+  // ── Round-8: progressGenRef per-call guard ────────────────────────────────
+
+  test("stale save-triggered progress does not overwrite review-triggered progress after Verify", async () => {
+    // Verify: saveDraft → handleSaved calls loadProgress (stale, deferred)
+    //         doReview  → handleStatusChange calls loadProgress (new, immediate)
+    // The stale save-progress must be discarded; the review-progress must win.
+    const PROGRESS_REVIEWED = {
+      ...PROGRESS,
+      by_status: { pending: 0, verified: 2, rejected: 1 },
+    };
+    let resolveSaveProgress;
+    const saveProgressP = new Promise((res) => { resolveSaveProgress = res; });
+    let progressCallCount = 0;
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes("/pyq-questions?"))
+        return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes("/progress")) {
+        progressCallCount += 1;
+        if (progressCallCount === 1) return Promise.resolve(PROGRESS);     // initial
+        if (progressCallCount === 2) return saveProgressP;                 // save-refresh (stale)
+        return Promise.resolve(PROGRESS_REVIEWED);                         // review-refresh (new)
+      }
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      return Promise.resolve({});
+    });
+    api.patch.mockResolvedValue({ ok: true });
+
+    renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Select q1 and click Verify — triggers save-refresh (stale) then review-refresh (new)
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    await waitFor(() => screen.getByTestId("btn-verify"));
+    fireEvent.click(screen.getByTestId("btn-verify"));
+
+    // Wait until the review-refresh progress is rendered (2 verified)
+    await waitFor(() => expect(document.body.textContent).toContain("2 verified"));
+
+    // Resolve the stale save-progress — the UI must not revert to 1 verified
+    await act(async () => { resolveSaveProgress(PROGRESS); });
+    expect(document.body.textContent).toContain("2 verified");
+  });
+
+  test("stale progress from old paper does not overwrite new paper progress after switch", async () => {
+    const PROGRESS_B = {
+      paper_id: PAPER_B_ID,
+      total_expected: 10,
+      present: 2,
+      missing: [],
+      by_status: { pending: 2, verified: 0, rejected: 0 },
+    };
+    let resolveStalePaperAProgress;
+    const stalePaperAProgressP = new Promise((res) => { resolveStalePaperAProgress = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes(`/pyq-papers/${PAPER_B_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER_B);
+      if (url.includes(`pyq_paper_id=${PAPER_ID}`)) return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes(`pyq_paper_id=${PAPER_B_ID}`)) return Promise.resolve({ items: [], total: 0 });
+      if (url.includes(`${PAPER_ID}/progress`)) return stalePaperAProgressP;
+      if (url.includes(`${PAPER_B_ID}/progress`)) return Promise.resolve(PROGRESS_B);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: [] });
+      return Promise.resolve({});
+    });
+
+    const { rerender } = renderEmbedded({});
+    // Confirm paper A's progress request has fired (it will remain pending)
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining(`${PAPER_ID}/progress`)),
+    );
+
+    // Switch to paper B before paper A's progress resolves
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_B_ID} embedded />
+      </MemoryRouter>,
+    );
+    // Wait for paper B's progress to render (10 total expected)
+    await waitFor(() => expect(document.body.textContent).toContain("/ 10 expected"));
+
+    // Resolve the stale paper A progress — must be discarded; paper B counts must remain
+    await act(async () => { resolveStalePaperAProgress(PROGRESS); });
+    expect(document.body.textContent).toContain("/ 10 expected");
+  });
 });

@@ -428,7 +428,7 @@ function LinkForm({ docId, docKind, pyqPapers, onLink, onCancel }) {
 
 // ─── DocumentsPanel (main) ───────────────────────────────────────────────────
 
-export default function DocumentsPanel({ onGotoTab }) {
+export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus = null }) {
   const { exam, cycle, cycles, phases } = useExamWorkspace();
 
   // ── Linked docs (syllabus_documents + pyq_papers tables) ────────────────
@@ -448,6 +448,11 @@ export default function DocumentsPanel({ onGotoTab }) {
   // ── Link UI ──────────────────────────────────────────────────────────────
   const [linkingId,  setLinkingId]  = useState(null);
   const [pyqPapers,  setPyqPapers]  = useState([]);
+
+  // ── Deep-link: asset fetched by document_assets.id ───────────────────────
+  const [linkedAsset,        setLinkedAsset]        = useState(null);
+  const [linkedAssetLoading, setLinkedAssetLoading] = useState(false);
+  const [deepLinkNotFound,   setDeepLinkNotFound]   = useState(false);
 
   // ── Load linked docs ──────────────────────────────────────────────────────
 
@@ -472,6 +477,25 @@ export default function DocumentsPanel({ onGotoTab }) {
   }, [exam?.id, cycle?.id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!documentId) { setLinkedAsset(null); setDeepLinkNotFound(false); return; }
+    let cancelled = false;
+    setLinkedAssetLoading(true);
+    api.get(`${DOC_BASE}/${encodeURIComponent(documentId)}`)
+      .then((r) => {
+        if (cancelled) return;
+        setLinkedAsset(r);
+        setDeepLinkNotFound(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLinkedAsset(null);
+        setDeepLinkNotFound(true);
+      })
+      .finally(() => { if (!cancelled) setLinkedAssetLoading(false); });
+    return () => { cancelled = true; };
+  }, [documentId]);
 
   // ── Stop all polls on unmount ─────────────────────────────────────────────
 
@@ -621,6 +645,35 @@ export default function DocumentsPanel({ onGotoTab }) {
         {listError && (
           <div className="err-row" data-testid="docs-list-error">{listError}</div>
         )}
+        {linkedAssetLoading && (
+          <div className="skel" style={{ height: 40, marginBottom: 8 }} data-testid="doc-deep-link-loading" />
+        )}
+        {linkedAsset && !linkedAssetLoading && (
+          <div
+            className="card"
+            style={{ outline: "2px solid var(--ink-accent)", background: "var(--paper-light)" }}
+            data-testid="doc-deep-link-asset"
+          >
+            <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>
+                  {linkedAsset.document?.title || linkedAsset.document?.original_filename || documentId}
+                </div>
+                {docStatus && (
+                  <div style={{ fontSize: 11, color: "var(--ink-mute)", marginTop: 2 }}>
+                    Extraction status: {docStatus}
+                  </div>
+                )}
+              </div>
+              <ExtractionBadge status={linkedAsset.extraction?.status || docStatus || "unknown"} />
+            </div>
+          </div>
+        )}
+        {deepLinkNotFound && (
+          <div className="warn-row" data-testid="doc-deep-link-not-found">
+            Document {documentId} was not found.
+          </div>
+        )}
         <div className="card" style={{ borderStyle: "dashed" }}>
           <div className="empty" style={{ padding: "28px 18px" }}>
             <div className="empty-title" data-testid="docs-empty-title">
@@ -651,6 +704,35 @@ export default function DocumentsPanel({ onGotoTab }) {
       {header}
       {listError && (
         <div className="err-row" data-testid="docs-list-error">{listError}</div>
+      )}
+      {linkedAssetLoading && (
+        <div className="skel" style={{ height: 40, marginBottom: 8 }} data-testid="doc-deep-link-loading" />
+      )}
+      {linkedAsset && !linkedAssetLoading && (
+        <div
+          className="card"
+          style={{ outline: "2px solid var(--ink-accent)", background: "var(--paper-light)" }}
+          data-testid="doc-deep-link-asset"
+        >
+          <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>
+                {linkedAsset.document?.title || linkedAsset.document?.original_filename || documentId}
+              </div>
+              {docStatus && (
+                <div style={{ fontSize: 11, color: "var(--ink-mute)", marginTop: 2 }}>
+                  Extraction status: {docStatus}
+                </div>
+              )}
+            </div>
+            <ExtractionBadge status={linkedAsset.extraction?.status || docStatus || "unknown"} />
+          </div>
+        </div>
+      )}
+      {deepLinkNotFound && (
+        <div className="warn-row" data-testid="doc-deep-link-not-found">
+          Document {documentId} was not found.
+        </div>
       )}
 
       {/* In-flight uploads: document_assets pending link (steps 3-6) */}
@@ -753,7 +835,11 @@ export default function DocumentsPanel({ onGotoTab }) {
                     })
                   : "—";
                 return (
-                  <tr key={d.id} data-testid={`linked-doc-row-${d.id}`}>
+                  <tr
+                    key={d.id}
+                    data-testid={`linked-doc-row-${d.id}`}
+                    style={d.id === documentId ? { background: "var(--paper-light)", outline: "2px solid var(--ink-accent)" } : undefined}
+                  >
                     <td>
                       <div className="row-ttl">{name}</div>
                       {d.source_url && (

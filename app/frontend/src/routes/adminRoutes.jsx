@@ -60,6 +60,13 @@ export function AddCycleRedirect() {
   );
 }
 
+// Compat redirects: legacy workspace and per-exam console URLs → Manage Exam.
+function ExamRedirect() {
+  const { exam_id, cycle_id } = useParams();
+  const to = `/admin/exam-intelligence/exams/${encodeURIComponent(exam_id || "")}${cycle_id ? `?cycle=${encodeURIComponent(cycle_id)}` : ""}`;
+  return <Navigate to={to} replace />;
+}
+
 export const adminRouteElements = (
   <>
     <Route element={<ProtectedRoute role={ADMIN_ROLES} requireBackend><AdminShell /></ProtectedRoute>}>
@@ -93,14 +100,14 @@ export const adminRouteElements = (
       <Route path="/admin/persona" element={<AdminPersona />} />
       <Route path="/admin/exam-intelligence" element={<AdminExamIntelligence />} />
       <Route path="/admin/exam-intelligence/console" element={<AdminExamGovernanceConsole />} />
-      <Route path="/admin/exam-intelligence/console/:exam_id" element={<AdminExamGovernanceConsole />} />
+      <Route path="/admin/exam-intelligence/console/:exam_id" element={<ExamRedirect />} />
       <Route path="/admin/exam-intelligence/cms" element={<AdminExamIntelCms />} />
       <Route path="/admin/exam-intelligence/new" element={<AdminGuidedExamWizard />} />
       <Route path="/admin/exam-intelligence/exams/:exam_id" element={<AdminExamWorkspace />} />
       <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AddCycleRedirect />} />
       <Route path="/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace" element={<AdminPyqPaperWorkspace />} />
-      <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<AdminExamWorkspace />} />
-      <Route path="/admin/exam-intelligence/workspace/:exam_id/:cycle_id" element={<AdminExamWorkspace />} />
+      <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<ExamRedirect />} />
+      <Route path="/admin/exam-intelligence/workspace/:exam_id/:cycle_id" element={<ExamRedirect />} />
       <Route path="/admin/exam-eligibility" element={<AdminExamEligibility />} />
     </Route>
     <Route path="/admin/moderation" element={<AdminModerationQueue />} />

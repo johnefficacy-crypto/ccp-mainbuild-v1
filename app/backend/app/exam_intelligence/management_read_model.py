@@ -314,5 +314,6 @@ def get_management_exam_detail(
         "activation_checks": console["activation_checks"],
         "stages": console["stages"],
         "evidence_refs": console["evidence_refs"],
+        "mock_readiness": console.get("mock_readiness"),
         "generated_at": _wq._now().isoformat(),
     }

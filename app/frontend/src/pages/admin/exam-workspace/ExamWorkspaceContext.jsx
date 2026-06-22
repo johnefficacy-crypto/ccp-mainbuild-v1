@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { api } from "../../../lib/api";
 
 const ExamWorkspaceContext = createContext(null);
@@ -7,7 +7,9 @@ const ExamWorkspaceContext = createContext(null);
 const REVIEW_BASE = "/api/admin/exam-intelligence";
 
 export function ExamWorkspaceProvider({ children }) {
-  const { exam_id, cycle_id } = useParams();
+  const { exam_id } = useParams();
+  const [searchParams] = useSearchParams();
+  const cycleId = searchParams.get("cycle") || null;
 
   const [exam, setExam] = useState(null);
   const [cycle, setCycle] = useState(null);
@@ -23,13 +25,18 @@ export function ExamWorkspaceProvider({ children }) {
   const [readiness_loading, setReadinessLoading] = useState(false);
   const [readiness_error, setReadinessError] = useState("");
 
+  // Management data — cycle-aware authority for verdict, action queue, identity
+  const [mgmt, setMgmt] = useState(null);
+  const [mgmtLoading, setMgmtLoading] = useState(false);
+  const [mgmtError, setMgmtError] = useState("");
+
   const fetchContext = useCallback(async () => {
     if (!exam_id) return;
     setLoading(true);
     setError("");
     try {
       const params = new URLSearchParams();
-      if (cycle_id) params.set("cycle_id", cycle_id);
+      if (cycleId) params.set("cycle_id", cycleId);
       const qs = params.toString();
       const url = `${REVIEW_BASE}/workspace/${encodeURIComponent(exam_id)}/context${qs ? `?${qs}` : ""}`;
       const d = await api.get(url);
@@ -44,7 +51,7 @@ export function ExamWorkspaceProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [exam_id, cycle_id]);
+  }, [exam_id, cycleId]);
 
   const fetchReadiness = useCallback(async () => {
     if (!exam_id) return;
@@ -52,7 +59,7 @@ export function ExamWorkspaceProvider({ children }) {
     setReadinessError("");
     try {
       const params = new URLSearchParams();
-      if (cycle_id) params.set("cycle_id", cycle_id);
+      if (cycleId) params.set("cycle_id", cycleId);
       const qs = params.toString();
       const url = `${REVIEW_BASE}/workspace/${encodeURIComponent(exam_id)}/readiness${qs ? `?${qs}` : ""}`;
       const d = await api.get(url);
@@ -62,16 +69,36 @@ export function ExamWorkspaceProvider({ children }) {
     } finally {
       setReadinessLoading(false);
     }
-  }, [exam_id, cycle_id]);
+  }, [exam_id, cycleId]);
+
+  const fetchMgmt = useCallback(async () => {
+    if (!exam_id) return;
+    setMgmtLoading(true);
+    setMgmtError("");
+    try {
+      const params = new URLSearchParams();
+      if (cycleId) params.set("cycle_id", cycleId);
+      const qs = params.toString();
+      const url = `${REVIEW_BASE}/management/exams/${encodeURIComponent(exam_id)}${qs ? `?${qs}` : ""}`;
+      const d = await api.get(url);
+      setMgmt(d);
+    } catch (e) {
+      setMgmtError(e?.message || "Failed to load management data");
+    } finally {
+      setMgmtLoading(false);
+    }
+  }, [exam_id, cycleId]);
 
   useEffect(() => { fetchContext(); }, [fetchContext]);
   useEffect(() => { fetchReadiness(); }, [fetchReadiness]);
+  useEffect(() => { fetchMgmt(); }, [fetchMgmt]);
 
   return (
     <ExamWorkspaceContext.Provider
       value={{
         exam, cycle, cycles, phases, organization, family, loading, error, refetch: fetchContext,
         readiness, readiness_loading, readiness_error, refetchReadiness: fetchReadiness,
+        mgmt, mgmtLoading, mgmtError, refetchMgmt: fetchMgmt,
       }}
     >
       {children}
