@@ -8,7 +8,7 @@
  * - scope change on mounted component updates list request deterministically
  */
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 jest.mock("../../../lib/api", () => ({
@@ -365,4 +365,130 @@ test("link confirmation from old scope cannot set success status after scope cha
 
   // No success status from the old-scope link should appear
   expect(screen.queryByText(/Linked document/)).toBeNull();
+});
+
+// ── Upload busy-state race protection ─────────────────────────────────────────
+
+test("upload A scope-changed, upload B starts, A settles: B stays busy until B settles", async () => {
+  api.get.mockResolvedValue({ items: [], total: 0 });
+
+  let resolveUploadA;
+  // Upload A's upload-url is deferred; upload B's is also deferred so B stays in-flight
+  api.post
+    .mockReturnValueOnce(new Promise((res) => { resolveUploadA = res; }))
+    .mockReturnValueOnce(new Promise(() => {}));
+
+  const { rerender } = renderDocs({ scopeExamId: "exam-busy-a" });
+
+  // Start upload A
+  fireEvent.change(screen.getByTestId("doc-field-document_kind"), { target: { value: "syllabus" } });
+  fireEvent.change(screen.getByTestId("doc-file"), { target: { files: [new File(["x"], "a.pdf", { type: "application/pdf" })] } });
+  fireEvent.submit(screen.getByTestId("doc-upload-form"));
+
+  // Scope changes to B — sync effect resets busy to false, increments scopeGenRef
+  rerender(
+    <MemoryRouter>
+      <ExamIntelDocuments scopeExamId="exam-busy-b" />
+    </MemoryRouter>,
+  );
+
+  // Start upload B in new scope — sets busy=true again
+  fireEvent.change(screen.getByTestId("doc-field-document_kind"), { target: { value: "syllabus" } });
+  fireEvent.change(screen.getByTestId("doc-file"), { target: { files: [new File(["x"], "b.pdf", { type: "application/pdf" })] } });
+  fireEvent.submit(screen.getByTestId("doc-upload-form"));
+
+  // B is now busy
+  expect(screen.getByTestId("doc-upload-submit")).toBeDisabled();
+
+  // Resolve A's stale upload-url — A's finally must NOT clear B's busy state (scopeGen mismatch)
+  await act(async () => {
+    resolveUploadA({ upload_url: "https://storage.example.com/stale", document_id: "doc-stale" });
+    await new Promise((r) => setTimeout(r, 0));
+  });
+
+  // B must still be busy
+  expect(screen.getByTestId("doc-upload-submit")).toBeDisabled();
+});
+
+// ── Poll identity race protection ─────────────────────────────────────────────
+
+test("stale poll A tick cannot cancel poll B interval after scope change", async () => {
+  // Mock setInterval/clearInterval so we can fire ticks manually
+  const capturedCallbacks = new Map(); // survives clearInterval — lets us fire stale ticks
+  const activeCallbacks = new Map();   // removed on clearInterval — reflects live intervals
+  let nextId = 500;
+
+  jest.spyOn(global, "setInterval").mockImplementation((fn) => {
+    const id = ++nextId;
+    capturedCallbacks.set(id, fn);
+    activeCallbacks.set(id, fn);
+    return id;
+  });
+  jest.spyOn(global, "clearInterval").mockImplementation((id) => {
+    activeCallbacks.delete(id);
+  });
+  global.fetch = jest.fn().mockResolvedValue({ ok: true });
+
+  let resolveRefreshA;
+  // api.get call order: A-mount-list, A-post-upload-list, poll-A-refreshStatus (deferred),
+  //                     B-scope-change-list, B-post-upload-list
+  api.get
+    .mockResolvedValueOnce({ items: [], total: 0 })
+    .mockResolvedValueOnce({ items: [], total: 0 })
+    .mockReturnValueOnce(new Promise((res) => { resolveRefreshA = res; }))
+    .mockResolvedValueOnce({ items: [], total: 0 })
+    .mockResolvedValueOnce({ items: [], total: 0 });
+
+  api.post
+    .mockResolvedValueOnce({ upload_url: "https://s.example.com/a", document_id: "da" })
+    .mockResolvedValueOnce({})  // complete-upload A
+    .mockResolvedValueOnce({ upload_url: "https://s.example.com/b", document_id: "db" })
+    .mockResolvedValueOnce({});  // complete-upload B
+
+  try {
+    const { rerender } = renderDocs({ scopeExamId: "exam-poll-a" });
+
+    // Complete upload A → triggers startPoll A → idA enters activeCallbacks
+    fireEvent.change(screen.getByTestId("doc-field-document_kind"), { target: { value: "syllabus" } });
+    fireEvent.change(screen.getByTestId("doc-file"), {
+      target: { files: [new File(["x"], "a.pdf", { type: "application/pdf" })] },
+    });
+    fireEvent.submit(screen.getByTestId("doc-upload-form"));
+    await waitFor(() => expect(activeCallbacks.size).toBe(1));
+    const idA = [...activeCallbacks.keys()][0];
+
+    // Manually fire poll A's tick — passes pre-check (same scope), starts deferred refreshStatus
+    const tickAPromise = capturedCallbacks.get(idA)();
+
+    // Scope changes → sync effect: scopeGenRef++, setPollId(null) → clearInterval(idA) removes idA
+    rerender(
+      <MemoryRouter>
+        <ExamIntelDocuments scopeExamId="exam-poll-b" />
+      </MemoryRouter>,
+    );
+    // Wait for [pollId] effect cleanup to call clearInterval(idA)
+    await waitFor(() => expect(activeCallbacks.has(idA)).toBe(false));
+
+    // Complete upload B → triggers startPoll B → idB enters activeCallbacks
+    fireEvent.change(screen.getByTestId("doc-field-document_kind"), { target: { value: "syllabus" } });
+    fireEvent.change(screen.getByTestId("doc-file"), {
+      target: { files: [new File(["x"], "b.pdf", { type: "application/pdf" })] },
+    });
+    fireEvent.submit(screen.getByTestId("doc-upload-form"));
+    await waitFor(() => expect(activeCallbacks.size).toBe(1));
+    const idB = [...activeCallbacks.keys()][0];
+    expect(idB).not.toBe(idA);
+
+    // Resolve poll A's stale refreshStatus — scopeGen mismatch causes tick to call
+    // setPollId((current) => current === idA ? null : current)
+    // Since current=idB ≠ idA, idB is NOT cleared from activeCallbacks
+    resolveRefreshA({ document: { status: "pending" }, pages_count: 0 });
+    await tickAPromise;
+
+    // Poll B must still be active — its interval was not cancelled by the stale A tick
+    expect(activeCallbacks.has(idB)).toBe(true);
+  } finally {
+    jest.restoreAllMocks();
+    delete global.fetch;
+  }
 });

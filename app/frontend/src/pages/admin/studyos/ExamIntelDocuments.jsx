@@ -173,7 +173,7 @@ export default function ExamIntelDocuments({ scopeExamId, scopeCycleId }) {
       if (scopeGen !== scopeGenRef.current) return;
       setStatus({ ok: false, message: getApiErrorMessage(ex) });
     } finally {
-      setBusy(false);
+      if (scopeGen === scopeGenRef.current) setBusy(false);
     }
   }
 
@@ -182,13 +182,18 @@ export default function ExamIntelDocuments({ scopeExamId, scopeCycleId }) {
     const id = setInterval(async () => {
       if (scopeGen !== scopeGenRef.current) {
         clearInterval(id);
-        setPollId(null);
+        setPollId((current) => (current === id ? null : current));
         return;
       }
       const st = await refreshStatus(docId);
+      if (scopeGen !== scopeGenRef.current) {
+        clearInterval(id);
+        setPollId((current) => (current === id ? null : current));
+        return;
+      }
       if (st === "processed" || st === "failed" || st == null) {
         clearInterval(id);
-        setPollId(null);
+        setPollId((current) => (current === id ? null : current));
       }
     }, 3000);
     setPollId(id);

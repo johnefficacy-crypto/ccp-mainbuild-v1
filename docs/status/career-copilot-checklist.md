@@ -181,7 +181,7 @@ Full decision record: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisi
 | H1 — syllabus/propose linked-document E2E | **CODE-FIXED, VALIDATION PENDING** | operator E2E test on redeploy |
 | IA design-lock document | **MERGED / CODE PRESENT — PR #752** | `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` merged. I8 design gate: satisfied. Next implementation prerequisite: backend management read model (code-fixed, see below). I8-A/B/C: serial, single owner. |
 | I6 cycle-setup gate document | **NOT STARTED** | write after IA lock; gates I9 implementation |
-| I8-A/B/C — Exam Management consolidation | **I8-A: MERGED (PR #755) · I8-B: MERGED (PR #757) · I8-C: IN PROGRESS (PR #759)** | I8-A merged at `899f450b`; I8-B merged at `385912bd`; I8-C PR #759 open (draft) — auth hydration + Documents scope blockers being resolved; serial, one owner |
+| I8-A/B/C — Exam Management consolidation | **I8-A: MERGED (PR #755) · I8-B: MERGED (PR #757) · I8-C: IN PROGRESS (PR #759)** | I8-A merged at `899f450b`; I8-B merged at `385912bd`; I8-C PR #759 open (draft) — auth hydration + Documents scope props fixed; scopeGen workflow protection + load() gen guard + strengthened scope tests landed; upload-busy finally race + poll-identity setPollId race fixed and regression-tested; WAI-ARIA keyboard nav complete; browser smoke test pending + third reviewer pass; serial, one owner |
 | Portfolio/readiness read-model (backend) | **CODE-FIXED, VALIDATION PENDING** | `management_read_model.py` + `/management/exams` + `/management/exams/{id}` landed in Phase 0 PR. 21 tests passing. Frontend integration after I8-A. |
 | J1/J2/J3, competition metrics, mixed-PDF, coverage governance, KG rename | **DEFERRED** | contract-first; do not interleave with I8 |
 
