@@ -1133,6 +1133,26 @@ def list_pyq_questions(
     return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
 
 
+@router.get("/pyq-questions/{question_id}")
+def get_pyq_question(
+    question_id: str,
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    rows = (
+        supabase.table("pyq_questions")
+        .select("*")
+        .eq("id", question_id)
+        .limit(1)
+        .execute()
+        .data
+    ) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="Question not found")
+    return rows[0]
+
+
 @router.post("/pyq-questions")
 def create_pyq_question(
     body: WriteEnvelope,

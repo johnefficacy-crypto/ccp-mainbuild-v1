@@ -252,3 +252,91 @@ test("Save draft button calls PATCH without changing status", async () => {
     expect.anything(),
   );
 });
+
+// ── Deep-link receiving tests (I8-B round-3) ─────────────────────────────────
+
+describe("PyqPaperWorkspace deep-link (I8-B)", () => {
+  const Q_PAGE2 = {
+    id: "q-page2",
+    question_number: 99,
+    question_text: "Page-2 question text",
+    reviewer_status: "pending",
+    source_kind: "auto_extracted",
+    source_document_id: "doc-2",
+    source_page: 7,
+    confidence_by_field: {},
+    content_hash: "xyz999",
+    metadata: {},
+  };
+
+  function renderEmbedded(extraProps = {}) {
+    return render(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_ID} embedded {...extraProps} />
+      </MemoryRouter>,
+    );
+  }
+
+  function setupDeepLinkMocks({ questionOnPage2 = false, notFound = false } = {}) {
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`)) return Promise.resolve(PAPER);
+      if (url.includes("/pyq-questions?")) return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      if (url.includes("/pyq-questions/q-page2")) {
+        return questionOnPage2 ? Promise.resolve(Q_PAGE2) : Promise.reject(new Error("Not found"));
+      }
+      if (url.includes("/pyq-questions/invalid-row")) {
+        return Promise.reject(new Error("Not found"));
+      }
+      if (url.includes("/pyq-questions/q1")) return Promise.resolve(QUESTIONS[0]);
+      if (url.includes("/pyq-questions/q2")) return Promise.resolve(QUESTIONS[1]);
+      return Promise.resolve({});
+    });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupDeepLinkMocks({ questionOnPage2: true });
+  });
+
+  test("question beyond page 1: fetches by ID and auto-selects", async () => {
+    renderEmbedded({ rowId: "q-page2" });
+    // Should call the single-question endpoint
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("/pyq-questions/q-page2")),
+    );
+    // Editor should show the fetched question text
+    await waitFor(() => screen.getByTestId("editor-question-text"));
+    expect(screen.getByTestId("editor-question-text").value).toContain("Page-2 question");
+  });
+
+  test("status prop initializes statusFilter and is sent to API", async () => {
+    renderEmbedded({ status: "pending" });
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("reviewer_status=pending")),
+    );
+  });
+
+  test("rowId change without remount re-applies deep link to new question", async () => {
+    const { rerender } = renderEmbedded({ rowId: "q1" });
+    await waitFor(() => screen.getByTestId("editor-question-text"));
+    expect(screen.getByTestId("editor-question-text").value).toContain("capital of India");
+
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_ID} embedded rowId="q2" />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      const ta = screen.getByTestId("editor-question-text");
+      expect(ta.value).toContain("first PM of India");
+    });
+  });
+
+  test("invalid rowId shows not-found banner and does not select anything", async () => {
+    renderEmbedded({ rowId: "invalid-row" });
+    await waitFor(() => screen.getByTestId("pyq-deep-link-not-found"));
+    expect(screen.queryByTestId("editor-question-text")).toBeNull();
+  });
+});

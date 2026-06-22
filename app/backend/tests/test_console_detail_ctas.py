@@ -236,3 +236,15 @@ class TestBuildActionQueue:
         checks = [{"area": "syllabus", "state": "done", "evidence_refs": []}]
         items = _build_action_queue(sb, checks, EXAM_ID, None)
         assert len(items) == 0
+
+    def test_pyq_exception_fallback_omits_entity_row_id(self):
+        """DB error in _resolve_pyq_paper_id must not leak a tag/option row_id as a question row."""
+        sb = MagicMock()
+        sb.table.side_effect = RuntimeError("DB error")
+        checks = [{
+            "area": "pyq", "state": "needs_action",
+            "evidence_refs": [{"kind": "pyq_question_topic_tag", "row_id": "tag-99"}],
+        }]
+        items = _build_action_queue(sb, checks, EXAM_ID, CYCLE_ID)
+        assert len(items) == 1
+        assert "row=" not in items[0]["cta_route"]

@@ -1167,6 +1167,14 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     }
   }, [pyq_paper_id]);
 
+  const fetchQuestionById = useCallback(async (id) => {
+    try {
+      return await api.get(`${CMS_BASE}/pyq-questions/${encodeURIComponent(id)}`);
+    } catch {
+      return null;
+    }
+  }, []);
+
   const loadOptions = useCallback(async (questionId) => {
     if (!questionId) {
       setSelectedOptions([]);
@@ -1250,11 +1258,23 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     return () => window.removeEventListener("keydown", handleKey);
   });
 
+  // ── Deep-link: reset guard when rowId or status prop changes ────────────────
+
+  useEffect(() => {
+    deepLinkApplied.current = false;
+    setDeepLinkNotFound(false);
+  }, [rowId]);
+
+  useEffect(() => {
+    setStatusFilter(status ?? "all");
+  }, [status]);
+
   // ── Deep-link: auto-select question matching rowId ───────────────────────
 
   useEffect(() => {
     if (!rowId || loading) return;
     if (deepLinkApplied.current) return;
+    let cancelled = false;
     const q = questions.find((q) => q.id === rowId);
     if (q) {
       deepLinkApplied.current = true;
@@ -1266,9 +1286,22 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
         setPdfPage(q.source_page || 1);
       }
     } else {
-      setDeepLinkNotFound(true);
+      // Not on current page — fetch directly by ID (pagination-safe).
+      fetchQuestionById(rowId).then((fetched) => {
+        if (cancelled) return;
+        if (!fetched) { setDeepLinkNotFound(true); return; }
+        deepLinkApplied.current = true;
+        setDeepLinkNotFound(false);
+        setSelectedQuestion(fetched);
+        loadOptions(fetched.id);
+        if (fetched.source_document_id) {
+          setPdfDocumentId(fetched.source_document_id);
+          setPdfPage(fetched.source_page || 1);
+        }
+      });
     }
-  }, [rowId, questions, loading, loadOptions]);
+    return () => { cancelled = true; };
+  }, [rowId, questions, loading, loadOptions, fetchQuestionById]);
 
   // ── After-save refresh ───────────────────────────────────────────────────
 

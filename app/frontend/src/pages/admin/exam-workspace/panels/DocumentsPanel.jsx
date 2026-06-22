@@ -657,7 +657,7 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
             <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>
-                  {linkedAsset.document?.filename || documentId}
+                  {linkedAsset.document?.title || linkedAsset.document?.original_filename || documentId}
                 </div>
                 {docStatus && (
                   <div style={{ fontSize: 11, color: "var(--ink-mute)", marginTop: 2 }}>
@@ -717,7 +717,7 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
           <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>
-                {linkedAsset.document?.filename || documentId}
+                {linkedAsset.document?.title || linkedAsset.document?.original_filename || documentId}
               </div>
               {docStatus && (
                 <div style={{ fontSize: 11, color: "var(--ink-mute)", marginTop: 2 }}>

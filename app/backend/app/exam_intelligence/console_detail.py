@@ -310,7 +310,7 @@ def _build_action_queue(sb, checks: list[dict[str, Any]], exam_id: str,
                     )
                 except Exception:  # noqa: BLE001
                     paper_id = None
-                    entity_row_id = qref["row_id"]
+                    entity_row_id = None
         elif area == "syllabus":
             ref = _first_evidence_by_kinds(evidence_refs, {"syllabus_topic_mention"})
             entity_row_id = ref["row_id"] if ref else None
