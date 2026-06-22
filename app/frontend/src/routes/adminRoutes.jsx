@@ -35,7 +35,6 @@ const AdminStudyOsReports = lazy(() => import("../pages/admin/studyos/Reports"))
 const AdminStudyOsSocial = lazy(() => import("../pages/admin/studyos/Social"));
 const AdminPyqPaperWorkspace = lazy(() => import("../pages/admin/studyos/PyqPaperWorkspace"));
 const AdminExamWorkspace = lazy(() => import("../pages/admin/exam-workspace/ExamWorkspace"));
-const AdminExamGovernanceConsole = lazy(() => import("../pages/admin/ExamGovernanceConsole"));
 const AdminExamIntelCms = lazy(() => import("../pages/admin/studyos/ExamIntelCms"));
 const AdminGuidedExamWizard = lazy(() => import("../pages/admin/studyos/GuidedExamWizard"));
 const AdminContentAccessRequests = lazy(() => import("../pages/admin/studyos/ContentAccessRequests"));
