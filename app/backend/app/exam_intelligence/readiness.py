@@ -257,9 +257,9 @@ def load_first_failing_doc_strict(sb, exam_id: str, cycle_id: str | None = None)
     for aid in asset_ids:
         st = latest.get(aid)
         if st == "failed":
-            return {"row_id": aid, "extraction_status": "failed"}
+            return {"kind": "document_assets", "row_id": aid, "extraction_status": "failed"}
         if st in {"queued", "running"} or st is None:
-            return {"row_id": aid, "extraction_status": "pending"}
+            return {"kind": "document_assets", "row_id": aid, "extraction_status": "pending"}
     return None
 
 
