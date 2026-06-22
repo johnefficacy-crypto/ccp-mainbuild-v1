@@ -367,40 +367,11 @@ def _select_section(
         def _src(r: dict) -> str | None:
             return r.get("source_kind") or r.get("source_type") or None
 
-        # ── per-source minimum-ratio check (independent; early-exit on block) ─
-        for sk, c in source_mix_constraints.items():
-            sk_count = sum(1 for r in chosen_rows if _src(r) == sk)
-            actual_ratio = sk_count / n if n > 0 else 0.0
-            min_ratio = c.get("min", 0.0)
-            fallback = c.get("fallback", "relax_to_available")
-            if actual_ratio < min_ratio:
-                if fallback == "block":
-                    logger.warning(
-                        "source_mix minimum_ratio constraint blocked selection: "
-                        "source_kind=%r actual=%.3f min=%.3f target=%d",
-                        sk, actual_ratio, min_ratio, target,
-                    )
-                    rungs.append({
-                        "rung": "source_mix_min_constraint",
-                        "status": "blocked_min_ratio_unmet",
-                        "source_kind": sk,
-                        "actual_ratio": round(actual_ratio, 4),
-                        "minimum_ratio": min_ratio,
-                        "relaxed": False,
-                    })
-                    return [], rungs
-                else:
-                    logger.warning(
-                        "source_mix minimum_ratio not met but fallback=relax_to_available: "
-                        "source_kind=%r actual=%.3f min=%.3f; proceeding with available",
-                        sk, actual_ratio, min_ratio,
-                    )
-
         # ── combined maximum-ratio enforcement (single pass, all caps at once) ─
-        # All caps are computed against the same n so bounds share one denominator.
-        # Processing chosen_ids once while honouring every cap simultaneously
-        # prevents a later source's backfill from re-adding rows removed by an
-        # earlier cap — which would silently violate the earlier constraint.
+        # Max caps run BEFORE min checks: the max pass may rebalance chosen_rows
+        # (e.g. trim excess pyq and backfill authored), which can lift a source's
+        # ratio above its minimum threshold.  Evaluating mins on the pre-rebalance
+        # selection would block valid configurations.
         active_caps: dict[str, int] = {
             sk: int(c.get("max", 1.0) * n)
             for sk, c in source_mix_constraints.items()
@@ -466,6 +437,37 @@ def _select_section(
                         "capped_to": cap,
                         "relaxed": True,
                     })
+
+        # ── per-source minimum-ratio check (evaluated on post-max chosen_rows) ─
+        # Runs after max enforcement so that rebalancing that lifts a source above
+        # its minimum threshold is not falsely blocked by the pre-rebalance ratio.
+        for sk, c in source_mix_constraints.items():
+            sk_count = sum(1 for r in chosen_rows if _src(r) == sk)
+            actual_ratio = sk_count / n if n > 0 else 0.0
+            min_ratio = c.get("min", 0.0)
+            fallback = c.get("fallback", "relax_to_available")
+            if actual_ratio < min_ratio:
+                if fallback == "block":
+                    logger.warning(
+                        "source_mix minimum_ratio constraint blocked selection: "
+                        "source_kind=%r actual=%.3f min=%.3f target=%d",
+                        sk, actual_ratio, min_ratio, target,
+                    )
+                    rungs.append({
+                        "rung": "source_mix_min_constraint",
+                        "status": "blocked_min_ratio_unmet",
+                        "source_kind": sk,
+                        "actual_ratio": round(actual_ratio, 4),
+                        "minimum_ratio": min_ratio,
+                        "relaxed": False,
+                    })
+                    return [], rungs
+                else:
+                    logger.warning(
+                        "source_mix minimum_ratio not met but fallback=relax_to_available: "
+                        "source_kind=%r actual=%.3f min=%.3f; proceeding with available",
+                        sk, actual_ratio, min_ratio,
+                    )
 
     return chosen_ids, rungs
 

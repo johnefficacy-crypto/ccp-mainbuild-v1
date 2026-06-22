@@ -429,3 +429,32 @@ class TestSourceMixMaxRatio:
         assert all(r["status"] == "enforced_max_ratio" for r in max_rungs)
         # Confirm removed pyq rows were not re-added during authored backfill
         assert not any(qid in {"pyq-5", "pyq-6", "pyq-7"} for qid in chosen_ids)
+
+    def test_min_evaluated_after_max_rebalance_not_before(self):
+        # Regression: min check must run on POST-max chosen_rows, not pre-rebalance.
+        # target=10, pool: 8 pyq + 5 authored.
+        # Initial selection (pool order): 8 pyq + 2 authored → authored ratio = 0.2.
+        # pyq.max=0.5, authored.min=0.5, fallback=block.
+        # Pre-rebalance: authored ratio 0.2 < 0.5 → OLD code blocks here (wrong).
+        # After max enforcement: 5 pyq + 5 authored → authored ratio 0.5 ≥ 0.5 → ok.
+        pool = [_pool_row(f"pyq-{i}", "pyq") for i in range(8)]
+        pool += [_pool_row(f"auth-{i}", "authored") for i in range(5)]
+        constraints = {
+            "pyq": {"min": 0.0, "max": 0.5, "fallback": "relax_to_available"},
+            "authored": {"min": 0.5, "max": 1.0, "fallback": "block"},
+        }
+        chosen_ids, rungs = _select_section(
+            pool, 10,
+            source_mix=None, source_mix_constraints=constraints, difficulty_mix=None,
+        )
+        pool_by_id = {r["id"]: r for r in pool}
+        n = len(chosen_ids)
+        authored_count = sum(1 for qid in chosen_ids if pool_by_id[qid]["source_kind"] == "authored")
+        # Must succeed (not blocked) and meet both constraints
+        assert n == 10
+        assert authored_count >= 5  # authored.min = 0.5 * 10 = 5
+        assert authored_count <= 10  # authored.max = 1.0
+        pyq_count = n - authored_count
+        assert pyq_count <= 5  # pyq.max = 0.5
+        # No blocked rung
+        assert not any(r.get("status") == "blocked_min_ratio_unmet" for r in rungs)
