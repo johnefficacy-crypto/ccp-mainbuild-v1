@@ -68,13 +68,19 @@ if exists (
       and not (
           -- must be unique
           i.indisunique = true
+          -- must have exactly one key column (rejects UNIQUE (pyq_question_id, id))
+          and i.indnkeyatts = 1
+          -- must have no INCLUDE columns (indnatts = key cols + include cols)
+          and i.indnatts    = 1
           -- must cover exactly pyq_question_id
           and (select a.attname
                from pg_attribute a
                where a.attrelid = i.indrelid
                  and a.attnum   = i.indkey[0]) = 'pyq_question_id'
-          -- must have a partial predicate (WHERE pyq_question_id IS NOT NULL)
-          and i.indpred is not null
+          -- must have exactly the right partial predicate; indpred IS NOT NULL is
+          -- insufficient — a wrong predicate like "reviewer_status = 'published'"
+          -- would still pass.  pg_get_expr returns the predicate as decompiled SQL.
+          and pg_get_expr(i.indpred, i.indrelid) = 'pyq_question_id IS NOT NULL'
       )
 ) then
     -- Wrong index exists: drop it so the correct one is created below.
@@ -888,10 +894,10 @@ begin
         raise exception 'ASSERT: public.fn_invalidate_pyq_projection() not found';
     end if;
 
-    -- Unique index exists, is genuinely unique, covers pyq_question_id, and has
-    -- a partial predicate (WHERE pyq_question_id IS NOT NULL).
-    -- Checking only pg_indexes.indexname is insufficient: a non-unique or
-    -- differently-shaped same-named index would pass a name-only test.
+    -- Unique index exists with exactly the right shape:
+    --   UNIQUE (pyq_question_id) WHERE pyq_question_id IS NOT NULL
+    -- indnkeyatts=1 rejects composite keys; indnatts=1 rejects INCLUDE columns;
+    -- pg_get_expr comparison rejects a same-named index with a different predicate.
     select count(*) into v_count
     from pg_class ci
     join pg_index  i  on i.indexrelid = ci.oid
@@ -900,17 +906,19 @@ begin
     where n.nspname  = 'public'
       and ct.relname = 'mock_question_bank'
       and ci.relname = 'uq_mock_qbank_pyq_question_id'
-      and i.indisunique = true
+      and i.indisunique                                = true
+      and i.indnkeyatts                               = 1
+      and i.indnatts                                  = 1
       and (select a.attname
            from pg_attribute a
            where a.attrelid = i.indrelid
-             and a.attnum   = i.indkey[0]) = 'pyq_question_id'
-      and i.indpred is not null;
+             and a.attnum   = i.indkey[0])            = 'pyq_question_id'
+      and pg_get_expr(i.indpred, i.indrelid)          = 'pyq_question_id IS NOT NULL';
 
     if v_count = 0 then
         raise exception
             'ASSERT: uq_mock_qbank_pyq_question_id is missing or has wrong shape '
-            '(must be UNIQUE, on column pyq_question_id, with partial predicate)';
+            '(must be UNIQUE, single-column pyq_question_id, predicate = ''pyq_question_id IS NOT NULL'')';
     end if;
 
     -- All 8 invalidation triggers exist
