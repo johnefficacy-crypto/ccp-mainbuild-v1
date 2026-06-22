@@ -1070,7 +1070,7 @@ export default function AdminExamIntelCms() {
     setEditError(null);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entity]);
+  }, [entity, isAuthorized, scopeExamId, scopeCycleId]);
 
   if (authStatus === "checking") {
     return <div data-testid="advanced-repair-checking" style={{ padding: "2rem" }}>Checking permissions…</div>;
@@ -1180,7 +1180,7 @@ export default function AdminExamIntelCms() {
 
       {err ? <div className="text-sm text-red-700" role="alert">{err}</div> : null}
 
-      {isDocuments ? <ExamIntelDocuments /> : null}
+      {isDocuments ? <ExamIntelDocuments scopeExamId={scopeExamId} scopeCycleId={scopeCycleId} /> : null}
 
       {!isDocuments && showBulk && cfg.supportsBulk !== false ? (
         <form onSubmit={submitBulk} className="rounded border border-border/60 bg-card p-4 space-y-2" data-testid="cms-bulk-form">
