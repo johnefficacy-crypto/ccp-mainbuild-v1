@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { RotateCcw, Upload, FileText } from "lucide-react";
 import { api, getApiErrorMessage } from "../../../lib/api";
 import CmsRefField from "../../../features/admin/shared/CmsRefField";
@@ -74,31 +74,42 @@ export default function ExamIntelDocuments({ scopeExamId, scopeCycleId }) {
   const [linkTarget, setLinkTarget] = useState({ docId: null, kind: null, targetId: "", reason: "" });
 
   const filterExamId = form.exam_id || "";
+  const loadGenRef = useRef(0);
 
   const loadList = useCallback(async () => {
     if (!filterExamId) {
       setDocs([]);
       return;
     }
+    const gen = ++loadGenRef.current;
     try {
       const r = await api.get(`${DOC_BASE}?exam_id=${encodeURIComponent(filterExamId)}`);
+      if (gen !== loadGenRef.current) return;
       setDocs(r.items || []);
     } catch (e) {
+      if (gen !== loadGenRef.current) return;
       setStatus({ ok: false, message: getApiErrorMessage(e) });
     }
   }, [filterExamId]);
 
   useEffect(() => {
-    loadList();
-  }, [loadList]);
-
-  useEffect(() => {
+    loadGenRef.current += 1;
+    setDocs([]);
+    setPages({ docId: null, items: null });
+    setLinkTarget({ docId: null, kind: null, targetId: "", reason: "" });
+    setStatus(null);
+    setPollId(null);
     setForm((prev) => ({
       ...prev,
-      ...(scopeExamId != null ? { exam_id: scopeExamId } : {}),
-      ...(scopeCycleId != null ? { exam_cycle_id: scopeCycleId } : {}),
+      exam_id: scopeExamId ?? "",
+      exam_cycle_id: scopeCycleId ?? "",
+      exam_phase_id: "",
     }));
   }, [scopeExamId, scopeCycleId]);
+
+  useEffect(() => {
+    loadList();
+  }, [loadList]);
 
   async function refreshStatus(docId) {
     try {

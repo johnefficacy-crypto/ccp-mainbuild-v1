@@ -5,7 +5,7 @@
  * - Auth checking state (loading indicator, no CMS UI)
  * - Denied access — zero API calls, denied message shown
  * - exam_intelligence.cms grants scoped access (exam_id param)
- * - super_admin required for global (no exam_id) access
+ * - exam_intelligence.cms permission grants access globally (Model A: permission-based auth)
  * - AdminSafetyBanner visible on authorized render
  * - Old caution copy ("Exam Governance Console", "Create-exam wizard") absent
  * - Scoped list requests include correct exam_id / exam_cycle_id params
@@ -104,13 +104,12 @@ describe("ExamIntelCms access denied", () => {
     expect(api.get).not.toHaveBeenCalled();
   });
 
-  test("denied for admin with cms permission visiting global CMS (super_admin only)", async () => {
+  test("admin without exam_intelligence.cms is denied even with exam scope", async () => {
     mockUseAuth.mockReturnValue({
-      user: { role: "admin", permissions: ["exam_intelligence.cms"] },
+      user: { role: "admin", permissions: [] },
       status: "backend_authed",
     });
-    // No exam_id in URL → requires super_admin
-    renderCms();
+    renderCms("?exam_id=exam-1");
     expect(screen.getByTestId("advanced-repair-denied")).toBeTruthy();
     expect(api.get).not.toHaveBeenCalled();
   });
@@ -149,6 +148,16 @@ describe("ExamIntelCms authorized access", () => {
     mockUseAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" });
     mockDefaultApiResponse();
     renderCms("?exam_id=exam-1");
+    await waitFor(() => expect(screen.getByTestId("admin-exam-intel-cms")).toBeTruthy());
+  });
+
+  test("admin with exam_intelligence.cms can access global CMS without exam scope (Model A)", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { role: "admin", permissions: ["exam_intelligence.cms"] },
+      status: "backend_authed",
+    });
+    mockDefaultApiResponse();
+    renderCms();
     await waitFor(() => expect(screen.getByTestId("admin-exam-intel-cms")).toBeTruthy());
   });
 });

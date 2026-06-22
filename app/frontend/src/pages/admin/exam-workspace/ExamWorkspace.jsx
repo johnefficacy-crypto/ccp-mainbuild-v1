@@ -80,7 +80,8 @@ function AdvancedRepairMenu({ examId, cycleId }) {
 
   const repairHref =
     `/admin/exam-intelligence/cms?exam_id=${encodeURIComponent(examId)}` +
-    (cycleId ? `&cycle_id=${encodeURIComponent(cycleId)}` : "");
+    (cycleId ? `&cycle_id=${encodeURIComponent(cycleId)}` : "") +
+    "&entity=documents";
 
   return (
     <div className="relative" ref={menuRef}>
