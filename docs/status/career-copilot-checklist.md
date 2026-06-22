@@ -180,7 +180,7 @@ Full decision record: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisi
 | I5 — PYQ question pagination | **MERGED / CODE PRESENT** | PR #747 merged. |
 | H1 — syllabus/propose linked-document E2E | **CODE-FIXED, VALIDATION PENDING** | operator E2E test on redeploy |
 | IA design-lock document | **MERGED / CODE PRESENT — PR #752** | `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` merged. I8 design gate: satisfied. Next implementation prerequisite: backend management read model (code-fixed, see below). I8-A/B/C: serial, single owner. |
-| I6 cycle-setup gate document | **NOT STARTED** | write after IA lock; gates I9 implementation |
+| I6 cycle-setup gate document | **DRAFT / REVISION REQUIRED — PR #758** | Draft gate exists and contract corrections are being made. PR #757 merge + post-merge rebase verification remain pending; operator approval of derived/unresolved decisions remains pending; I8-C remains prerequisite; I9 remains blocked. Do not mark I6/I9 complete or operator/live validation complete. |
 | I8-A/B/C — Exam Management consolidation | **I8-A: CODE-FIXED, VALIDATION PENDING** | I8-A PR open; I8-B/C gated on I8-A merge; serial, one owner; see design-lock doc for write scopes |
 | Portfolio/readiness read-model (backend) | **CODE-FIXED, VALIDATION PENDING** | `management_read_model.py` + `/management/exams` + `/management/exams/{id}` landed in Phase 0 PR. 21 tests passing. Frontend integration after I8-A. |
 | J1/J2/J3, competition metrics, mixed-PDF, coverage governance, KG rename | **DEFERRED** | contract-first; do not interleave with I8 |
