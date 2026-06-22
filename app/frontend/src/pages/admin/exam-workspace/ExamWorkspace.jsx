@@ -61,14 +61,43 @@ function getMgmtModeLabel(mode) {
 function AdvancedRepairMenu({ examId, cycleId }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
+  const triggerRef = useRef(null);
+
+  // Focus first menu item when menu opens
+  useEffect(() => {
+    if (!open) return;
+    const firstItem = menuRef.current?.querySelector('[role="menuitem"]');
+    firstItem?.focus();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     function handleOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setOpen(false);
+      if (
+        menuRef.current && !menuRef.current.contains(e.target) &&
+        triggerRef.current && !triggerRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
     }
     function handleKey(e) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+      if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) {
+        e.preventDefault();
+        const items = Array.from(menuRef.current?.querySelectorAll('[role="menuitem"]') || []);
+        if (!items.length) return;
+        const idx = items.indexOf(document.activeElement);
+        let next;
+        if (e.key === "ArrowDown") next = items[(idx + 1) % items.length];
+        else if (e.key === "ArrowUp") next = items[(idx - 1 + items.length) % items.length];
+        else if (e.key === "Home") next = items[0];
+        else if (e.key === "End") next = items[items.length - 1];
+        next?.focus();
+      }
     }
     document.addEventListener("mousedown", handleOutside);
     document.addEventListener("keydown", handleKey);
@@ -78,14 +107,20 @@ function AdvancedRepairMenu({ examId, cycleId }) {
     };
   }, [open]);
 
+  function closeAndRestoreFocus() {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
   const repairHref =
     `/admin/exam-intelligence/cms?exam_id=${encodeURIComponent(examId)}` +
     (cycleId ? `&cycle_id=${encodeURIComponent(cycleId)}` : "") +
     "&entity=documents";
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -97,6 +132,7 @@ function AdvancedRepairMenu({ examId, cycleId }) {
       </button>
       {open && (
         <div
+          ref={menuRef}
           role="menu"
           aria-label="More actions"
           className="absolute right-0 z-50 mt-1 min-w-[12rem] rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5"
@@ -105,9 +141,10 @@ function AdvancedRepairMenu({ examId, cycleId }) {
           <Link
             to={repairHref}
             role="menuitem"
+            tabIndex={0}
             className="block px-4 py-2 text-sm hover:bg-gray-50"
             data-testid="workspace-advanced-repair-link"
-            onClick={() => setOpen(false)}
+            onClick={closeAndRestoreFocus}
           >
             Advanced Repair
           </Link>

@@ -868,4 +868,74 @@ describe("ExamWorkspace More menu (I8-C)", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByTestId("workspace-more-menu")).toBeNull());
   });
+
+  test("menu opens with focus on first item", async () => {
+    mockAuthUser = { role: "super_admin", permissions: [] };
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-more-trigger"));
+    fireEvent.click(screen.getByTestId("workspace-more-trigger"));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByTestId("workspace-advanced-repair-link"));
+    });
+  });
+
+  test("Escape restores focus to trigger button", async () => {
+    mockAuthUser = { role: "super_admin", permissions: [] };
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-more-trigger"));
+    screen.getByTestId("workspace-more-trigger").focus();
+    fireEvent.click(screen.getByTestId("workspace-more-trigger"));
+    await waitFor(() => screen.getByTestId("workspace-more-menu"));
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByTestId("workspace-more-trigger"));
+    });
+  });
+
+  test("ArrowDown on last item wraps to first item", async () => {
+    mockAuthUser = { role: "super_admin", permissions: [] };
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-more-trigger"));
+    fireEvent.click(screen.getByTestId("workspace-more-trigger"));
+    await waitFor(() => screen.getByTestId("workspace-more-menu"));
+    // With one item, ArrowDown wraps back to itself
+    fireEvent.keyDown(document, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(screen.getByTestId("workspace-advanced-repair-link"));
+  });
+
+  test("ArrowUp on first item wraps to last item", async () => {
+    mockAuthUser = { role: "super_admin", permissions: [] };
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-more-trigger"));
+    fireEvent.click(screen.getByTestId("workspace-more-trigger"));
+    await waitFor(() => screen.getByTestId("workspace-more-menu"));
+    fireEvent.keyDown(document, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(screen.getByTestId("workspace-advanced-repair-link"));
+  });
+
+  test("Home moves focus to first menu item", async () => {
+    mockAuthUser = { role: "super_admin", permissions: [] };
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-more-trigger"));
+    fireEvent.click(screen.getByTestId("workspace-more-trigger"));
+    await waitFor(() => screen.getByTestId("workspace-more-menu"));
+    fireEvent.keyDown(document, { key: "Home" });
+    expect(document.activeElement).toBe(screen.getByTestId("workspace-advanced-repair-link"));
+  });
+
+  test("End moves focus to last menu item", async () => {
+    mockAuthUser = { role: "super_admin", permissions: [] };
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-more-trigger"));
+    fireEvent.click(screen.getByTestId("workspace-more-trigger"));
+    await waitFor(() => screen.getByTestId("workspace-more-menu"));
+    fireEvent.keyDown(document, { key: "End" });
+    expect(document.activeElement).toBe(screen.getByTestId("workspace-advanced-repair-link"));
+  });
 });
