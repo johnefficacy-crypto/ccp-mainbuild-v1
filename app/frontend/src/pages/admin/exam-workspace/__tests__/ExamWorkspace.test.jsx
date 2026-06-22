@@ -639,3 +639,56 @@ describe("useExamWorkspace", () => {
     spy.mockRestore();
   });
 });
+
+
+// ── Management data loading/error race prevention ─────────────────────────────
+
+describe("ExamWorkspace management-data race prevention", () => {
+  test("shows loading state while management data is pending", async () => {
+    let resolveMgmt;
+    const mgmtPromise = new Promise((resolve) => { resolveMgmt = resolve; });
+    api.get.mockImplementation((url) => {
+      if (url.includes("/management/exams/")) return mgmtPromise;
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+
+    renderWorkspace();
+    // Shell must render (context loaded) but console must show loading, not fetch /console/exams/
+    await waitFor(() => expect(screen.queryByTestId("workspace-loading")).not.toBeInTheDocument());
+    expect(screen.getByTestId("action-console-loading")).toBeInTheDocument();
+    expect(api.get).not.toHaveBeenCalledWith(expect.stringContaining("/console/exams/"));
+    resolveMgmt(MANAGEMENT_RESPONSE);
+    await waitFor(() => expect(screen.getByTestId("exam-action-console")).toBeInTheDocument());
+  });
+
+  test("shows error + Retry when management request fails, zero console calls", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/management/exams/")) return Promise.reject(new Error("500"));
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+
+    renderWorkspace();
+    await waitFor(() => expect(screen.getByTestId("action-console-error")).toBeInTheDocument());
+    expect(screen.getByTestId("action-console-retry")).toBeInTheDocument();
+    expect(api.get).not.toHaveBeenCalledWith(expect.stringContaining("/console/exams/"));
+  });
+
+  test("Retry restores management data", async () => {
+    let callCount = 0;
+    api.get.mockImplementation((url) => {
+      if (url.includes("/management/exams/")) {
+        callCount++;
+        return callCount === 1 ? Promise.reject(new Error("500")) : Promise.resolve(MANAGEMENT_RESPONSE);
+      }
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+
+    renderWorkspace();
+    await waitFor(() => expect(screen.getByTestId("action-console-error")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("action-console-retry"));
+    await waitFor(() => expect(screen.getByTestId("exam-action-console")).toBeInTheDocument());
+  });
+});

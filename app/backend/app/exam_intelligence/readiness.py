@@ -215,6 +215,54 @@ def load_doc_extraction_counts(
     }
 
 
+def load_first_failing_doc_strict(sb, exam_id: str, cycle_id: str | None = None) -> dict | None:
+    """Return {row_id, extraction_status} for first failed/pending document asset (strict pager).
+    Returns None when all docs are extracted or there are no docs.
+    """
+    asset_rows = _doc_pages_strict(
+        sb,
+        lambda: (
+            sb.table("document_assets")
+            .select("id, metadata")
+            .eq("scope", "admin_exam_intelligence")
+            .order("id")
+        ),
+        "first_failing_doc.assets",
+    )
+    assets = [r for r in asset_rows if (r.get("metadata") or {}).get("exam_id") == exam_id]
+    if cycle_id:
+        assets = [r for r in assets if (r.get("metadata") or {}).get("exam_cycle_id") == cycle_id]
+    if not assets:
+        return None
+    asset_ids = [r["id"] for r in assets]
+    all_jobs: list[dict] = []
+    for i in range(0, len(asset_ids), 500):
+        batch = asset_ids[i : i + 500]
+        all_jobs.extend(
+            _doc_pages_strict(
+                sb,
+                lambda b=batch: (
+                    sb.table("document_processing_jobs")
+                    .select("document_id, status, created_at, id")
+                    .in_("document_id", b)
+                    .eq("job_type", "text_extract")
+                    .order("id")
+                ),
+                "first_failing_doc.jobs",
+            )
+        )
+    latest: dict[str, str] = {}
+    for j in sorted(all_jobs, key=lambda x: (x.get("created_at") or "", x.get("id") or "")):
+        latest[j["document_id"]] = j["status"]
+    for aid in asset_ids:
+        st = latest.get(aid)
+        if st == "failed":
+            return {"row_id": aid, "extraction_status": "failed"}
+        if st in {"queued", "running"} or st is None:
+            return {"row_id": aid, "extraction_status": "pending"}
+    return None
+
+
 def _documents(sb, exam_id: str, cycle_id: str | None) -> dict:
     counts    = load_doc_extraction_counts(sb, exam_id, cycle_id)
     total     = counts["total"]

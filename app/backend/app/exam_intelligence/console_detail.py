@@ -33,7 +33,7 @@ from fastapi import HTTPException
 from app.db.utils import execute_or_raise
 from app.exam_intelligence import work_queue as _wq
 from app.exam_intelligence.diagnostics import assemble_mock_readiness_report
-from app.exam_intelligence.readiness import load_doc_extraction_counts
+from app.exam_intelligence.readiness import load_doc_extraction_counts, load_first_failing_doc_strict
 
 # Mock-readiness inputs mirror the existing /exams/{id}/mock-readiness defaults.
 _SELECTABLE_MOCK_STATUSES = ["verified", "published"]
@@ -182,6 +182,24 @@ _AREA_ENTITY_KIND = {
 }
 
 
+def _first_evidence_by_kinds(evidence_refs: list[dict], kinds: set[str]) -> dict | None:
+    """Return first evidence_ref whose kind is in the given set, or None."""
+    return next((r for r in evidence_refs if r.get("kind") in kinds), None)
+
+
+def _resolve_pyq_paper_id(sb, question_id: str) -> str | None:
+    """Resolve a question/tag/option row_id to its owning pyq_paper_id via DB lookup."""
+    rows = (
+        sb.table("pyq_questions")
+        .select("id, pyq_paper_id")
+        .eq("id", question_id)
+        .limit(1)
+        .execute()
+        .data
+    ) or []
+    return rows[0].get("pyq_paper_id") if rows else None
+
+
 def _severity_for(area: str, state: str) -> str:
     if area in _HARD_AREAS and state == "blocked":
         return "blocker"
@@ -190,41 +208,85 @@ def _severity_for(area: str, state: str) -> str:
     return "action"
 
 
-def _deep_link(area: str, exam_id: str, cycle_id: str | None,
-               entity_row_id: str | None = None) -> tuple[str, str]:
-    """Return (cta_label, cta_route) for one action area (design-lock Section 7.2).
+def _deep_link(
+    area: str, exam_id: str, cycle_id: str | None,
+    entity_row_id: str | None = None,
+    paper_id: str | None = None,
+    doc_status: str | None = None,
+) -> tuple[str, str]:
+    """Return (cta_label, cta_route) per the locked I8-B deep-link contract (design §7.2).
 
-    Every CTA deep-links to the exact task state in the canonical Manage Exam
-    route; generic "Open workspace" labels are intentionally absent.
-    entity_row_id is appended as &row={id} where the panel can use it to
-    pre-select the causal row.
+    Each area generates the exact task-state URL needed to land on the causal entity:
+    - syllabus/topic_coverage: ?row={mention_or_coverage_id}
+    - pyq: ?paper={paper_id}&row={question_id}
+    - updates: ?row={update_id}
+    - documents: ?document={doc_id}&status={failed|pending}
     """
     base = f"/admin/exam-intelligence/exams/{exam_id}"
     cyc = f"cycle={cycle_id}&" if cycle_id else ""
     row = f"&row={entity_row_id}" if entity_row_id else ""
+    pap = f"&paper={paper_id}" if paper_id else ""
+    doc_s = f"&status={doc_status}" if doc_status else ""
+    doc_id_param = f"&document={entity_row_id}" if entity_row_id else ""
     _routes: dict[str, tuple[str, str]] = {
-        "setup":          ("Go to Setup",              f"{base}?tab=setup"),
-        "documents":      ("Go to Documents",           f"{base}?{cyc}tab=documents"),
-        "syllabus":       ("Review pending mentions",   f"{base}?tab=syllabus&status=pending{row}"),
-        "topic_coverage": ("Review unlocked rows",      f"{base}?tab=syllabus&status=pending_review{row}"),
-        "pyq":            ("Review pending questions",  f"{base}?{cyc}tab=pyq&status=pending{row}"),
-        "updates":        ("Review pending updates",    f"{base}?tab=updates&status=pending{row}"),
-        "competition":    ("Open competition",           f"{base}?{cyc}tab=competition"),
-        "mock_readiness": ("Go to Review & Activate",  f"{base}?tab=review"),
+        "setup":          ("Go to Setup",             f"{base}?tab=setup"),
+        "documents":      ("Go to Documents",          f"{base}?{cyc}tab=documents{doc_id_param}{doc_s}"),
+        "syllabus":       ("Review pending mentions",  f"{base}?tab=syllabus&status=pending{row}"),
+        "topic_coverage": ("Review unlocked rows",     f"{base}?tab=syllabus&status=pending_review{row}"),
+        "pyq":            ("Review pending questions", f"{base}?{cyc}tab=pyq{pap}&status=pending{row}"),
+        "updates":        ("Review pending updates",   f"{base}?tab=updates&status=pending{row}"),
+        "competition":    ("Open competition",          f"{base}?{cyc}tab=competition"),
+        "mock_readiness": ("Go to Review & Activate", f"{base}?tab=review"),
     }
     return _routes.get(area, ("Open workspace", base))
 
 
-def _build_action_queue(checks: list[dict[str, Any]], exam_id: str,
+def _build_action_queue(sb, checks: list[dict[str, Any]], exam_id: str,
                         cycle_id: str | None = None) -> list[dict[str, Any]]:
+    """Build the ordered action queue using kind-specific evidence selection."""
     items: list[dict[str, Any]] = []
     for chk in checks:
         area = chk["area"]
         if area == "publish" or chk["state"] in {"done", "unknown"}:
             continue
         title, why = _ACTION_COPY[area]
-        entity_row_id = chk["evidence_refs"][0]["row_id"] if chk.get("evidence_refs") else None
-        cta_label, cta_route = _deep_link(area, exam_id, cycle_id, entity_row_id)
+        evidence_refs = chk.get("evidence_refs", [])
+
+        entity_row_id: str | None = None
+        paper_id: str | None = None
+        doc_status: str | None = None
+
+        if area == "pyq":
+            qref = _first_evidence_by_kinds(
+                evidence_refs, {"pyq_question", "pyq_question_topic_tag", "pyq_option"}
+            )
+            if qref:
+                entity_row_id = qref["row_id"]
+                try:
+                    paper_id = _resolve_pyq_paper_id(sb, entity_row_id)
+                except Exception:  # noqa: BLE001
+                    paper_id = None
+        elif area == "syllabus":
+            ref = _first_evidence_by_kinds(evidence_refs, {"syllabus_topic_mention"})
+            entity_row_id = ref["row_id"] if ref else None
+        elif area == "topic_coverage":
+            ref = _first_evidence_by_kinds(evidence_refs, {"exam_topic_coverage"})
+            entity_row_id = ref["row_id"] if ref else None
+        elif area == "updates":
+            ref = _first_evidence_by_kinds(evidence_refs, {"exam_policy_updates"})
+            entity_row_id = ref["row_id"] if ref else None
+        elif area == "documents":
+            ref = _first_evidence_by_kinds(evidence_refs, {"document_assets"})
+            if ref:
+                entity_row_id = ref["row_id"]
+                doc_status = ref.get("extraction_status")
+        else:
+            entity_row_id = evidence_refs[0]["row_id"] if evidence_refs else None
+
+        cta_label, cta_route = _deep_link(
+            area, exam_id, cycle_id, entity_row_id,
+            paper_id=paper_id, doc_status=doc_status,
+        )
         items.append({
             "id": area,
             "severity": _severity_for(area, chk["state"]),
@@ -235,7 +297,7 @@ def _build_action_queue(checks: list[dict[str, Any]], exam_id: str,
             "cta_route": cta_route,
             "entity_kind": _AREA_ENTITY_KIND.get(area),
             "entity_id": entity_row_id,
-            "evidence_refs": chk["evidence_refs"],
+            "evidence_refs": evidence_refs,
             "status": "open",
         })
     items.sort(key=lambda i: (_SEVERITY_RANK[i["severity"]], _AREA_ORDER.index(i["area"])))
@@ -260,6 +322,11 @@ def build_console_detail(sb, exam_id: str, cycle_id: str | None = None) -> dict[
     # Advisory-area reads (not owned by the classifier) — strict + paged.
     # strict=True: any DB failure raises DatabaseError → 5xx (never fabricated zero counts).
     doc_counts = load_doc_extraction_counts(sb, exam_id, strict=True)
+    failing_doc = (
+        load_first_failing_doc_strict(sb, exam_id, cycle_id)
+        if doc_counts["total"] > 0 and doc_counts["extracted"] < doc_counts["total"]
+        else None
+    )
     syllabus_verified = _syllabus_verified_count(sb, exam_id)
     competition = _competition(sb, exam_id)
     mock = _mock_readiness(sb, exam_id)
@@ -287,7 +354,10 @@ def build_console_detail(sb, exam_id: str, cycle_id: str | None = None) -> dict[
     if extracted >= 1:
         checks.append(_check("documents", "advisory", "done", f"{extracted} document(s) extracted"))
     elif doc_total >= 1:
-        checks.append(_check("documents", "advisory", "needs_action", f"{doc_total} uploaded, none extracted"))
+        doc_evidence = [failing_doc] if failing_doc else []
+        checks.append(_check("documents", "advisory", "needs_action",
+                             f"{doc_total} uploaded, none extracted",
+                             evidence_refs=doc_evidence))
     else:
         checks.append(_check("documents", "advisory", "needs_action", "No documents uploaded"))
 
@@ -373,7 +443,7 @@ def build_console_detail(sb, exam_id: str, cycle_id: str | None = None) -> dict[
     # Order checks deterministically by area.
     checks.sort(key=lambda c: _AREA_ORDER.index(c["area"]))
 
-    action_queue = _build_action_queue(checks, exam_id, cycle_id)
+    action_queue = _build_action_queue(sb, checks, exam_id, cycle_id)
 
     # Top-level evidence_refs = de-duplicated union of every check's refs.
     seen: set[tuple] = set()

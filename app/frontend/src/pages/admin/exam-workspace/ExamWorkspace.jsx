@@ -315,7 +315,7 @@ function TabStrip({ active, onChange, readiness }) {
 // ─── Main shell ───────────────────────────────────────────────────────────────
 
 function WorkspaceShell() {
-  const { loading, error, refetch, readiness, mgmt } = useExamWorkspace();
+  const { loading, error, refetch, readiness, mgmt, mgmtLoading, mgmtError, refetchMgmt } = useExamWorkspace();
   const { exam_id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -405,7 +405,13 @@ function WorkspaceShell() {
     <div className="oc">
       <SmartHeader onGotoTab={gotoTab} />
       {/* Pass management data so ExamActionConsole skips its own fetch */}
-      <ExamActionConsole examId={exam_id} embedded data={mgmt} />
+      <ExamActionConsole
+        examId={exam_id}
+        embedded
+        data={mgmt}
+        dataStatus={mgmtLoading ? "loading" : mgmtError ? "error" : "ready"}
+        onRetry={refetchMgmt}
+      />
       <TabStrip active={activeTab} onChange={gotoTab} readiness={readiness} />
 
       <main className="oc-main" style={{ paddingTop: 18 }}>

@@ -130,13 +130,39 @@ function ReasonTags({ reasons, testid }) {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function ExamActionConsole({ examId, embedded = false, data: injectedData = null }) {
-  // When injectedData is provided, skip the fetch entirely.
-  const fetchTarget = injectedData ? null : examId;
+export default function ExamActionConsole({
+  examId,
+  embedded = false,
+  data: injectedData = null,
+  dataStatus = null,
+  onRetry = null,
+}) {
+  // dataStatus !== null means managed/injected mode: never fetch the console endpoint.
+  // When dataStatus is null (standalone mode), fall back to the fetch-based flow.
+  const managedMode = dataStatus !== null;
+  const fetchTarget = managedMode || injectedData ? null : examId;
   const { status, data: fetchedData, reload } = useExamDetail(fetchTarget);
 
+  // Managed mode: use dataStatus to drive loading/error/render without ever fetching /console/exams/
+  if (managedMode) {
+    if (dataStatus === "loading") {
+      if (embedded) return <div data-testid="action-console-loading" style={{ padding: "8px 22px", color: "var(--ink-mute)", fontSize: 13 }}>Loading action data…</div>;
+      return <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-loading">Loading exam console…</div>;
+    }
+    if (dataStatus === "error") {
+      const retryBtn = onRetry ? <button type="button" className="btn" onClick={onRetry} data-testid="action-console-retry">Retry</button> : null;
+      if (embedded) return <div data-testid="action-console-error" style={{ padding: "8px 22px" }}><span className="err-row" style={{ fontSize: 13 }}>Could not load action data.{" "}{retryBtn}</span></div>;
+      return (
+        <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-error">
+          <div className="err-row">Could not load the exam console.{" "}{retryBtn}</div>
+        </div>
+      );
+    }
+    // dataStatus === "ready" — fall through to render injectedData
+  }
+
   // Fetch-path error/loading states (only when not using injected data)
-  if (!injectedData) {
+  if (!managedMode && !injectedData) {
     if (status === "loading") {
       if (embedded) return <div data-testid="action-console-loading" style={{ padding: "8px 22px", color: "var(--ink-mute)", fontSize: 13 }}>Loading action data…</div>;
       return <div className="oc-main" style={{ padding: 22 }} data-testid="action-console-loading">Loading exam console…</div>;

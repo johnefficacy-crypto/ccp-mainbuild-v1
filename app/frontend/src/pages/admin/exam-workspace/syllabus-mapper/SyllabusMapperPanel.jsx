@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { api } from "../../../../lib/api";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import AcceptPreviewModal from "./AcceptPreviewModal";
@@ -11,10 +11,46 @@ import TopicEditDrawer from "./topic-edit/TopicEditDrawer";
 import { useTopicEdit } from "./topic-edit/useTopicEdit";
 import { useSyllabusMapper } from "./useSyllabusMapper";
 
-export default function SyllabusMapperPanel() {
+export default function SyllabusMapperPanel({ status = null, rowId = null }) {
   const { exam } = useExamWorkspace();
   const examId = exam?.id;
   const [showModal, setShowModal] = useState(false);
+
+  // Deep-link state: when status or rowId is provided, fetch and show the pending review list
+  const [pendingItems, setPendingItems] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingError, setPendingError] = useState("");
+  const [rowNotFound, setRowNotFound] = useState(false);
+
+  const showPendingList = status || rowId;
+
+  const loadPending = useCallback(async () => {
+    if (!examId || !showPendingList) return;
+    setPendingLoading(true);
+    setPendingError("");
+    try {
+      if (status === "pending_review") {
+        const qs = new URLSearchParams({ exam_id: examId, status: "pending_review", limit: "50" });
+        const d = await api.get(`/api/admin/exam-intelligence/topic-coverage?${qs}`);
+        setPendingItems(d?.items || []);
+      } else {
+        const qs = new URLSearchParams({ kind: "syllabus_topic_mention", status: "pending", limit: "50" });
+        const d = await api.get(`/api/admin/exam-intelligence/exams/${examId}/items?${qs}`);
+        setPendingItems(d?.items || []);
+      }
+    } catch (e) {
+      setPendingError(e?.message || "Failed to load pending items");
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [examId, status, rowId, showPendingList]);
+
+  useEffect(() => { loadPending(); }, [loadPending]);
+
+  useEffect(() => {
+    if (!rowId || pendingLoading || pendingError) return;
+    setRowNotFound(!pendingItems.some((item) => item.id === rowId));
+  }, [rowId, pendingItems, pendingLoading, pendingError]);
   const [pageText, setPageText] = useState("");
 
   const mapper = useSyllabusMapper(examId);
@@ -42,6 +78,34 @@ export default function SyllabusMapperPanel() {
 
   return (
     <div className="flex flex-col h-full" data-testid="syllabus-mapper-panel">
+      {/* Deep-link: show pending review list when status/rowId is in the URL */}
+      {showPendingList && (
+        <div className="border-b border-gray-200 bg-amber-50 px-4 py-3" data-testid="syllabus-pending-list">
+          <div className="text-xs font-medium text-amber-800 mb-2">
+            {status === "pending_review" ? "Pending topic coverage rows" : "Pending syllabus mentions"}
+          </div>
+          {pendingLoading && <div className="text-sm text-gray-400">Loading…</div>}
+          {pendingError && <div className="text-sm text-rose-600" data-testid="syllabus-pending-error">{pendingError}</div>}
+          {rowNotFound && !pendingLoading && (
+            <div className="text-sm text-rose-600" data-testid="syllabus-row-not-found">
+              Row {rowId} was not found in pending items for this exam.
+            </div>
+          )}
+          {!pendingLoading && pendingItems.length > 0 && (
+            <ul className="text-sm divide-y divide-gray-100 max-h-40 overflow-y-auto" data-testid="syllabus-pending-items">
+              {pendingItems.map((item) => (
+                <li
+                  key={item.id}
+                  data-testid={`syllabus-pending-item-${item.id}`}
+                  style={item.id === rowId ? { background: "#fef9c3", outline: "1px solid #ca8a04", padding: "4px 6px", borderRadius: 2 } : { padding: "4px 6px" }}
+                >
+                  {item.raw_text || item.topic_id || item.id}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {/* Top bar */}
       <div className="flex items-center gap-4 px-4 py-2 border-b border-gray-200 bg-white flex-wrap">
         <DocumentSelector

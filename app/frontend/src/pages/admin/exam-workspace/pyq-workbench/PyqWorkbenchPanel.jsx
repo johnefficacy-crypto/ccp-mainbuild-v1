@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { usePyqWorkbench } from "./usePyqWorkbench";
 import BulkImportModal from "./bulk-import/BulkImportModal";
@@ -11,7 +11,7 @@ const TRUST_LABEL = {
   pending: "Pending",
 };
 
-export default function PyqWorkbenchPanel() {
+export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status = null }) {
   const { exam, cycle } = useExamWorkspace();
   const examId = exam?.id;
   const cycleId = cycle?.id ?? null;
@@ -22,6 +22,19 @@ export default function PyqWorkbenchPanel() {
   );
 
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [paperNotFound, setPaperNotFound] = useState(false);
+
+  // Auto-select paperId once papers have loaded
+  useEffect(() => {
+    if (!paperId || loading || papers.length === 0) return;
+    const found = papers.some((p) => p.id === paperId);
+    if (found) {
+      setSelectedPaperId(paperId);
+      setPaperNotFound(false);
+    } else {
+      setPaperNotFound(true);
+    }
+  }, [paperId, papers, loading, setSelectedPaperId]);
 
   return (
     <div className="flex flex-col h-full" data-testid="pyq-workbench-panel">
@@ -40,6 +53,11 @@ export default function PyqWorkbenchPanel() {
         </div>
         {loading && <span className="text-sm text-gray-400">Loading papers…</span>}
         {error && <span className="text-sm text-rose-600" data-testid="pyq-papers-error">{error}</span>}
+        {paperNotFound && (
+          <span className="text-sm text-rose-600" data-testid="pyq-paper-not-found">
+            Paper {paperId} was not found in this exam/cycle.
+          </span>
+        )}
         {!loading && !error && papers.length === 0 && (
           <span className="text-sm text-gray-500" data-testid="pyq-empty-state">
             No PYQ papers for this exam/cycle. Create one in the CMS.
@@ -92,7 +110,7 @@ export default function PyqWorkbenchPanel() {
       <div className="flex-1 min-h-0">
         {selectedPaperId ? (
           <Suspense fallback={<div className="p-8 text-gray-400">Loading…</div>}>
-            <PyqPaperWorkspace paperId={selectedPaperId} embedded />
+            <PyqPaperWorkspace paperId={selectedPaperId} embedded rowId={rowId} status={status} />
           </Suspense>
         ) : (
           <div className="h-full flex items-center justify-center text-gray-400 text-sm" data-testid="pyq-no-paper-selected">

@@ -428,7 +428,7 @@ function LinkForm({ docId, docKind, pyqPapers, onLink, onCancel }) {
 
 // ─── DocumentsPanel (main) ───────────────────────────────────────────────────
 
-export default function DocumentsPanel({ onGotoTab }) {
+export default function DocumentsPanel({ onGotoTab, documentId = null }) {
   const { exam, cycle, cycles, phases } = useExamWorkspace();
 
   // ── Linked docs (syllabus_documents + pyq_papers tables) ────────────────
@@ -448,6 +448,9 @@ export default function DocumentsPanel({ onGotoTab }) {
   // ── Link UI ──────────────────────────────────────────────────────────────
   const [linkingId,  setLinkingId]  = useState(null);
   const [pyqPapers,  setPyqPapers]  = useState([]);
+
+  // Deep-link state
+  const [deepLinkNotFound, setDeepLinkNotFound] = useState(false);
 
   // ── Load linked docs ──────────────────────────────────────────────────────
 
@@ -472,6 +475,15 @@ export default function DocumentsPanel({ onGotoTab }) {
   }, [exam?.id, cycle?.id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!documentId || loading) return;
+    const allIds = [
+      ...docs.map((d) => d.id),
+      ...papers.map((p) => p.id),
+    ];
+    setDeepLinkNotFound(!allIds.includes(documentId));
+  }, [documentId, docs, papers, loading]);
 
   // ── Stop all polls on unmount ─────────────────────────────────────────────
 
@@ -652,6 +664,11 @@ export default function DocumentsPanel({ onGotoTab }) {
       {listError && (
         <div className="err-row" data-testid="docs-list-error">{listError}</div>
       )}
+      {deepLinkNotFound && (
+        <div className="warn-row" data-testid="doc-deep-link-not-found">
+          Document {documentId} was not found in this exam/cycle.
+        </div>
+      )}
 
       {/* In-flight uploads: document_assets pending link (steps 3-6) */}
       {inFlight.length > 0 && (
@@ -753,7 +770,11 @@ export default function DocumentsPanel({ onGotoTab }) {
                     })
                   : "—";
                 return (
-                  <tr key={d.id} data-testid={`linked-doc-row-${d.id}`}>
+                  <tr
+                    key={d.id}
+                    data-testid={`linked-doc-row-${d.id}`}
+                    style={d.id === documentId ? { background: "var(--paper-light)", outline: "2px solid var(--ink-accent)" } : undefined}
+                  >
                     <td>
                       <div className="row-ttl">{name}</div>
                       {d.source_url && (

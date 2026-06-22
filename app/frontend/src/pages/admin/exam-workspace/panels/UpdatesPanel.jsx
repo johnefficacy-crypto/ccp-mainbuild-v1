@@ -16,7 +16,7 @@ function TrustBadge({ status }) {
 
 const EI_BASE = "/api/admin/exam-intelligence";
 
-export default function UpdatesPanel() {
+export default function UpdatesPanel({ status: statusFilter = null, rowId = null }) {
   const { exam } = useExamWorkspace();
 
   const [updates, setUpdates] = useState([]);
@@ -24,6 +24,7 @@ export default function UpdatesPanel() {
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [deepLinkNotFound, setDeepLinkNotFound] = useState(false);
 
   const [newTitle, setNewTitle] = useState("");
   const [newSource, setNewSource] = useState("");
@@ -34,8 +35,9 @@ export default function UpdatesPanel() {
     setLoading(true);
     setError("");
     try {
-      const qs = new URLSearchParams({ status: "all", limit: "200" });
+      const qs = new URLSearchParams({ limit: "200" });
       if (exam?.id) qs.set("exam_id", exam.id);
+      qs.set("status", statusFilter || "all");
       const d = await api.get(`${EI_BASE}/policy-updates?${qs}`);
       setUpdates(d?.items || []);
     } catch (e) {
@@ -43,9 +45,14 @@ export default function UpdatesPanel() {
     } finally {
       setLoading(false);
     }
-  }, [exam?.id]);
+  }, [exam?.id, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!rowId || loading) return;
+    setDeepLinkNotFound(!updates.some((u) => u.id === rowId));
+  }, [rowId, updates, loading]);
 
   async function verify(id) {
     setBusyId(id);
@@ -170,6 +177,11 @@ export default function UpdatesPanel() {
       )}
 
       {error && <div className="err-row">{error}</div>}
+      {deepLinkNotFound && (
+        <div className="warn-row" data-testid="update-deep-link-not-found">
+          Update {rowId} was not found for this exam.
+        </div>
+      )}
 
       <div className="card">
         {updates.length === 0 && !loading ? (
@@ -191,7 +203,11 @@ export default function UpdatesPanel() {
             </thead>
             <tbody>
               {updates.map((u) => (
-                <tr key={u.id}>
+                <tr
+                  key={u.id}
+                  data-testid={`update-row-${u.id}`}
+                  style={u.id === rowId ? { background: "var(--paper-light)", outline: "2px solid var(--ink-accent)" } : undefined}
+                >
                   <td>
                     <div className="row-ttl">{u.title}</div>
                     <div className="row-sub">
