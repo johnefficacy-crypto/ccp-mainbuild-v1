@@ -523,6 +523,141 @@ def test_fixed_then_criteria_excludes_fixed_ids():
     assert sb.db.get("mock_attempts", []) == [], "no attempt row must be written on fixed+criteria underfill"
 
 
+def test_criteria_then_fixed_excludes_fixed_ids_from_criteria():
+    """A criteria section followed by a fixed section must not share any question IDs.
+
+    Without the pre-scan fix, criteria picks freely from the full pool (including
+    questions also listed in the later fixed section), leaving duplicates in ordered.
+    With the fix, fixed IDs are collected upfront and excluded from criteria allocation.
+    """
+    questions = [_q("easy") for _ in range(3)] + [_q("medium") for _ in range(2)]
+    fixed_ids = [questions[3]["id"], questions[4]["id"]]  # last 2 are fixed
+
+    template_id = "tmpl-criteria-then-fixed"
+    sections = [
+        {
+            "id": "sec-criteria",
+            "template_id": template_id,
+            "section_index": 0,
+            "name": "Criteria Section",
+            "question_count": 3,
+            "selector": {"mode": "criteria", "filters": {}},
+        },
+        {
+            "id": "sec-fixed",
+            "template_id": template_id,
+            "section_index": 1,
+            "name": "Fixed Section",
+            "question_count": 2,
+            "selector": {"mode": "fixed", "question_ids": fixed_ids},
+        },
+    ]
+    db = {
+        "mock_template_sections": sections,
+        "mock_question_bank": [dict(q) for q in questions],
+        "mock_question_options": [o for q in questions for o in q["options"]],
+    }
+    sb = SBStub(db)
+    selected = svc.select_questions_for_template(sb, template_id, "user-1")
+    ids = [q["id"] for q in selected]
+    assert len(ids) == 5, f"expected 5 questions, got {len(ids)}"
+    assert len(set(ids)) == 5, "criteria section must not reuse fixed IDs"
+    assert set(fixed_ids) <= {q["id"] for q in selected}, "fixed IDs must appear in result"
+
+
+def test_overlapping_fixed_sections_raise_lookup_error():
+    """Two fixed sections with a shared question ID must raise LookupError before
+    any DB query, not fail at the DB constraint after writing the attempt row."""
+    shared_q = _q("easy")
+    other_q  = _q("easy")
+
+    template = {
+        "id": "tmpl-dup-fixed",
+        "slug": "dup-fixed-mock",
+        "name": "Dup Fixed Mock",
+        "exam_family": "TEST",
+        "total_questions": 3,
+        "duration_sec": 300,
+        "negative_marking": False,
+        "marks_per_correct": 1.0,
+        "marks_per_wrong": 0.0,
+        "config": {},
+        "status": "active",
+    }
+    sections = [
+        {
+            "id": "sec-fixed-a",
+            "template_id": template["id"],
+            "section_index": 0,
+            "name": "Fixed A",
+            "question_count": 2,
+            "selector": {"mode": "fixed", "question_ids": [shared_q["id"], other_q["id"]]},
+        },
+        {
+            "id": "sec-fixed-b",
+            "template_id": template["id"],
+            "section_index": 1,
+            "name": "Fixed B",
+            "question_count": 1,
+            "selector": {"mode": "fixed", "question_ids": [shared_q["id"]]},  # overlap
+        },
+    ]
+    db = {
+        "mock_templates": [template],
+        "mock_template_sections": sections,
+        "mock_question_bank": [dict(q) for q in [shared_q, other_q]],
+        "mock_question_options": [o for q in [shared_q, other_q] for o in q["options"]],
+        "mock_attempts": [],
+        "mock_attempt_responses": [],
+    }
+    sb = SBStub(db)
+    with pytest.raises(LookupError, match="overlapping question IDs"):
+        svc.start_attempt(sb, "user-1", "dup-fixed-mock")
+    assert sb.db.get("mock_attempts", []) == [], "no attempt row must be written on fixed overlap"
+
+
+def test_intra_fixed_duplicate_raises_lookup_error():
+    """A fixed section that lists the same question ID twice must raise LookupError
+    before any DB query, not fail at the DB constraint after writing the attempt row."""
+    q = _q("easy")
+
+    template = {
+        "id": "tmpl-intra-dup",
+        "slug": "intra-dup-mock",
+        "name": "Intra Dup Mock",
+        "exam_family": "TEST",
+        "total_questions": 2,
+        "duration_sec": 300,
+        "negative_marking": False,
+        "marks_per_correct": 1.0,
+        "marks_per_wrong": 0.0,
+        "config": {},
+        "status": "active",
+    }
+    sections = [
+        {
+            "id": "sec-intra-dup",
+            "template_id": template["id"],
+            "section_index": 0,
+            "name": "Intra Dup Section",
+            "question_count": 2,
+            "selector": {"mode": "fixed", "question_ids": [q["id"], q["id"]]},  # same ID twice
+        },
+    ]
+    db = {
+        "mock_templates": [template],
+        "mock_template_sections": sections,
+        "mock_question_bank": [dict(q)],
+        "mock_question_options": list(q["options"]),
+        "mock_attempts": [],
+        "mock_attempt_responses": [],
+    }
+    sb = SBStub(db)
+    with pytest.raises(LookupError, match="duplicate question IDs"):
+        svc.start_attempt(sb, "user-1", "intra-dup-mock")
+    assert sb.db.get("mock_attempts", []) == [], "no attempt row must be written on intra-fixed duplicate"
+
+
 def test_start_attempt_uses_criteria_template():
     """End-to-end: a criteria-only template no longer needs the PR1 seed fallback."""
     questions = [_q("easy") for _ in range(5)]

@@ -338,9 +338,32 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
     # Each entry is (requested_count, frozenset_of_selected_ids) for criteria sections.
     # Used post-filter to fail-closed when a section ends up genuinely underfilled.
     criteria_requirements: list[tuple[int, frozenset[str]]] = []
-    # Cross-section deduplication: track every ID already allocated so each
-    # criteria section receives a fresh, non-overlapping draw from the pool.
-    selected_ids: set[str] = set()
+
+    # ── Pass 1: collect and validate all fixed IDs upfront ────────────────────
+    # Reserved before any criteria allocation so criteria sections can exclude
+    # them regardless of their position (criteria→fixed, fixed→fixed, intra-fixed
+    # duplicates all produce LookupError here rather than a DB constraint failure).
+    all_fixed_ids: set[str] = set()
+    for sec in sec_rows:
+        selector = sec.get("selector") or {}
+        if selector.get("mode") == "fixed":
+            ids = list(selector.get("question_ids") or [])
+            id_set = set(ids)
+            if len(ids) != len(id_set):
+                seen: dict[str, int] = {}
+                for _i in ids:
+                    seen[_i] = seen.get(_i, 0) + 1
+                dupes = sorted(k for k, v in seen.items() if v > 1)
+                raise LookupError(
+                    f"fixed section '{sec.get('name') or sec.get('id', '?')}' "
+                    f"contains duplicate question IDs: {dupes}"
+                )
+            overlap = id_set & all_fixed_ids
+            if overlap:
+                raise LookupError(
+                    f"fixed sections have overlapping question IDs: {sorted(overlap)}"
+                )
+            all_fixed_ids.update(id_set)
 
     # Fetch active PYQ mock IDs once; passed to criteria selector so that stale
     # projections are excluded from the pool before allocation, not silently
@@ -359,6 +382,12 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
         # as inactive so they cannot enter the criteria pool.
         _active_pyq_mock_ids = frozenset()
 
+    # ── Pass 2: allocate per section ──────────────────────────────────────────
+    # Criteria sections exclude all fixed IDs (all_fixed_ids) plus any IDs
+    # already allocated by prior criteria sections (criteria_selected), so no
+    # question ID can appear in more than one section regardless of order.
+    criteria_selected: set[str] = set()
+
     for sec in sec_rows:
         selector = sec.get("selector") or {}
         mode = selector.get("mode")
@@ -366,16 +395,15 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
             ids = list(selector.get("question_ids") or [])
             ordered.extend(ids)
             fixed_required.update(ids)
-            selected_ids.update(ids)
         elif mode == "criteria":
             requested = int(sec.get("question_count") or 0)
             section_ids = _select_criteria_question_ids(
                 supabase, selector, requested,
                 active_pyq_mock_ids=_active_pyq_mock_ids,
-                exclude_ids=frozenset(selected_ids),
+                exclude_ids=frozenset(all_fixed_ids | criteria_selected),
             )
             ordered.extend(section_ids)
-            selected_ids.update(section_ids)
+            criteria_selected.update(section_ids)
             if requested > 0:
                 criteria_requirements.append((requested, frozenset(section_ids)))
     if not ordered:
