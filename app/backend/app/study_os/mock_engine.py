@@ -230,6 +230,7 @@ def _select_criteria_question_ids(
     question_count: int,
     *,
     active_pyq_mock_ids: frozenset[str] | None = None,
+    exclude_ids: frozenset[str] | None = None,
 ) -> list[str]:
     """Resolve a ``criteria`` section selector to concrete published question ids.
 
@@ -245,6 +246,11 @@ def _select_criteria_question_ids(
     allocation/backfill.  This prevents stale/blocked projections from being
     selected and then silently dropped by the caller's lineage guard, which would
     produce a shortened attempt without error.
+
+    ``exclude_ids``: question IDs already allocated to prior sections in the same
+    template.  Excluded from the pool before selection so the same question cannot
+    appear in more than one section of the same attempt (which would violate the
+    unique constraint on mock_attempt_responses(attempt_id, question_id)).
     """
     if question_count <= 0:
         return []
@@ -281,6 +287,10 @@ def _select_criteria_question_ids(
             r for r in pool
             if not r.get("pyq_question_id") or r["id"] in active_pyq_mock_ids
         ]
+    # Cross-section deduplication: remove IDs already allocated to prior sections
+    # so the same question cannot appear twice in the same attempt snapshot.
+    if exclude_ids:
+        pool = [r for r in pool if r["id"] not in exclude_ids]
     # Deterministic ordering so the same template config yields the same set.
     pool.sort(key=lambda r: str(r.get("id")))
 
@@ -328,6 +338,9 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
     # Each entry is (requested_count, frozenset_of_selected_ids) for criteria sections.
     # Used post-filter to fail-closed when a section ends up genuinely underfilled.
     criteria_requirements: list[tuple[int, frozenset[str]]] = []
+    # Cross-section deduplication: track every ID already allocated so each
+    # criteria section receives a fresh, non-overlapping draw from the pool.
+    selected_ids: set[str] = set()
 
     # Fetch active PYQ mock IDs once; passed to criteria selector so that stale
     # projections are excluded from the pool before allocation, not silently
@@ -353,13 +366,16 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
             ids = list(selector.get("question_ids") or [])
             ordered.extend(ids)
             fixed_required.update(ids)
+            selected_ids.update(ids)
         elif mode == "criteria":
             requested = int(sec.get("question_count") or 0)
             section_ids = _select_criteria_question_ids(
                 supabase, selector, requested,
                 active_pyq_mock_ids=_active_pyq_mock_ids,
+                exclude_ids=frozenset(selected_ids),
             )
             ordered.extend(section_ids)
+            selected_ids.update(section_ids)
             if requested > 0:
                 criteria_requirements.append((requested, frozenset(section_ids)))
     if not ordered:

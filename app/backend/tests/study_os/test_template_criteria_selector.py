@@ -375,6 +375,154 @@ def test_criteria_zero_eligible_pool_does_not_fall_through_to_legacy_config():
     assert sb.db.get("mock_attempts", []) == [], "no attempt row must be written on zero-pool failure"
 
 
+# ── Multi-section deduplication ───────────────────────────────────────────────
+
+def test_multi_section_criteria_deduplicates_across_sections():
+    """Two criteria sections drawing from the same pool must receive disjoint sets.
+
+    Without the cross-section exclude_ids fix, both sections draw from the full
+    pool and can return the same IDs, violating uq_mar_attempt_question.
+    """
+    questions = [_q("easy") for _ in range(3)] + [_q("medium") for _ in range(3)]
+    template_id = "tmpl-multi-dedup"
+    sections = [
+        {
+            "id": "sec-a",
+            "template_id": template_id,
+            "section_index": 0,
+            "name": "Section A",
+            "question_count": 3,
+            "selector": {"mode": "criteria", "filters": {}},
+        },
+        {
+            "id": "sec-b",
+            "template_id": template_id,
+            "section_index": 1,
+            "name": "Section B",
+            "question_count": 3,
+            "selector": {"mode": "criteria", "filters": {}},
+        },
+    ]
+    db = {
+        "mock_template_sections": sections,
+        "mock_question_bank": [dict(q) for q in questions],
+        "mock_question_options": [o for q in questions for o in q["options"]],
+    }
+    sb = SBStub(db)
+    selected = svc.select_questions_for_template(sb, template_id, "user-1")
+    ids = [q["id"] for q in selected]
+    assert len(ids) == 6, f"expected 6 questions, got {len(ids)}"
+    assert len(set(ids)) == 6, "duplicate question IDs across sections must not occur"
+
+
+def test_multi_section_pool_exhaustion_raises_lookup_error():
+    """When two criteria sections exhaust the shared pool, the underfilled second
+    section raises LookupError and no attempt row is written.
+
+    Pool has 5 questions; section A wants 3, section B wants 3. After A takes 3,
+    only 2 remain for B → underfill → LookupError.
+    """
+    questions = [_q("easy") for _ in range(5)]
+    template = {
+        "id": "tmpl-exhaust",
+        "slug": "exhaust-mock",
+        "name": "Exhaust Mock",
+        "exam_family": "TEST",
+        "total_questions": 6,
+        "duration_sec": 300,
+        "negative_marking": False,
+        "marks_per_correct": 1.0,
+        "marks_per_wrong": 0.0,
+        "config": {},
+        "status": "active",
+    }
+    sections = [
+        {
+            "id": "sec-a",
+            "template_id": template["id"],
+            "section_index": 0,
+            "name": "Section A",
+            "question_count": 3,
+            "selector": {"mode": "criteria", "filters": {}},
+        },
+        {
+            "id": "sec-b",
+            "template_id": template["id"],
+            "section_index": 1,
+            "name": "Section B",
+            "question_count": 3,
+            "selector": {"mode": "criteria", "filters": {}},
+        },
+    ]
+    db = {
+        "mock_templates": [template],
+        "mock_template_sections": sections,
+        "mock_question_bank": [dict(q) for q in questions],
+        "mock_question_options": [o for q in questions for o in q["options"]],
+        "mock_attempts": [],
+        "mock_attempt_responses": [],
+    }
+    sb = SBStub(db)
+    with pytest.raises(LookupError, match="criteria section requires"):
+        svc.start_attempt(sb, "user-1", "exhaust-mock")
+    assert sb.db.get("mock_attempts", []) == [], "no attempt row must be written on pool exhaustion"
+
+
+def test_fixed_then_criteria_excludes_fixed_ids():
+    """A criteria section following a fixed section must not reuse fixed IDs.
+
+    Fixed section claims 3 from a pool of 5; criteria section wants 3 but only 2
+    remain after excluding the fixed IDs → underfill → LookupError, no attempt written.
+    """
+    fixed_qs = [_q("easy") for _ in range(3)]
+    extra_qs = [_q("medium") for _ in range(2)]
+    all_questions = fixed_qs + extra_qs
+
+    template = {
+        "id": "tmpl-fixed-criteria",
+        "slug": "fixed-criteria-mock",
+        "name": "Fixed+Criteria Mock",
+        "exam_family": "TEST",
+        "total_questions": 6,
+        "duration_sec": 300,
+        "negative_marking": False,
+        "marks_per_correct": 1.0,
+        "marks_per_wrong": 0.0,
+        "config": {},
+        "status": "active",
+    }
+    sections = [
+        {
+            "id": "sec-fixed",
+            "template_id": template["id"],
+            "section_index": 0,
+            "name": "Fixed Section",
+            "question_count": 3,
+            "selector": {"mode": "fixed", "question_ids": [q["id"] for q in fixed_qs]},
+        },
+        {
+            "id": "sec-criteria",
+            "template_id": template["id"],
+            "section_index": 1,
+            "name": "Criteria Section",
+            "question_count": 3,
+            "selector": {"mode": "criteria", "filters": {}},
+        },
+    ]
+    db = {
+        "mock_templates": [template],
+        "mock_template_sections": sections,
+        "mock_question_bank": [dict(q) for q in all_questions],
+        "mock_question_options": [o for q in all_questions for o in q["options"]],
+        "mock_attempts": [],
+        "mock_attempt_responses": [],
+    }
+    sb = SBStub(db)
+    with pytest.raises(LookupError, match="criteria section requires"):
+        svc.start_attempt(sb, "user-1", "fixed-criteria-mock")
+    assert sb.db.get("mock_attempts", []) == [], "no attempt row must be written on fixed+criteria underfill"
+
+
 def test_start_attempt_uses_criteria_template():
     """End-to-end: a criteria-only template no longer needs the PR1 seed fallback."""
     questions = [_q("easy") for _ in range(5)]
