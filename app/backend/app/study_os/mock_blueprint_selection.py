@@ -128,7 +128,7 @@ def _resolve_source_mix_policy(
         # Any other failure (transient, auth, unexpected) → fail-closed to avoid silently
         # running a blueprint without its configured policy.
         msg = str(_exc).lower()
-        if any(kw in msg for kw in ("does not exist", "undefined_table", "42p01", "relation")):
+        if any(kw in msg for kw in ("does not exist", "undefined_table", "42p01")):
             logger.debug("mock_source_mix_policies not deployed; skipping policy resolution")
             return None, None, None
         logger.error("mock_source_mix_policies query failed unexpectedly: %s", _exc)
@@ -401,7 +401,7 @@ def _select_section(
                 # Enforce: remove excess sk rows from the tail of chosen_ids, then
                 # backfill with non-sk eligible rows.  This is a best-effort fix;
                 # difficulty-within-source-bucket rebalancing is deferred to PR-7.
-                max_allowed = int(max_ratio * target)
+                max_allowed = int(max_ratio * n)  # use actual selected count, not target
                 excess = sk_count - max_allowed
                 if excess > 0:
                     new_chosen: list[str] = []
@@ -422,11 +422,23 @@ def _select_section(
                             new_chosen.append(r["id"])
                             already.add(r["id"])
                     chosen_ids = new_chosen
+                    # Recompute chosen_rows and n so subsequent sk iterations see
+                    # the updated selection, and to correctly report the outcome.
+                    chosen_rows = [pool_by_id[qid] for qid in chosen_ids if qid in pool_by_id]
+                    n = len(chosen_rows)
+                    final_sk = sum(1 for r in chosen_rows if _sk_match(r))
+                    final_ratio = final_sk / n if n > 0 else 0.0
+                    status = (
+                        "enforced_max_ratio"
+                        if final_ratio <= max_ratio + 1e-9
+                        else "enforced_max_ratio_partial"
+                    )
                     rungs.append({
                         "rung": "source_mix_max_constraint",
-                        "status": "enforced_max_ratio",
+                        "status": status,
                         "source_kind": sk,
                         "actual_ratio": round(actual_ratio, 4),
+                        "final_ratio": round(final_ratio, 4),
                         "maximum_ratio": max_ratio,
                         "was_count": sk_count,
                         "capped_to": max_allowed,

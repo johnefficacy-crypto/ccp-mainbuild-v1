@@ -134,6 +134,16 @@ def _load_questions_for_template(supabase: Any, template: dict) -> list[dict]:
                 if not q.get("pyq_question_id")
             }
 
+    # Fail-closed: if the template config lists specific question IDs, all of them
+    # must survive status/expiry/lineage filtering — a shortened fixed attempt is wrong.
+    missing = set(question_ids) - questions.keys()
+    if missing:
+        raise LookupError(
+            f"{len(missing)} question(s) in fixed-template config are "
+            f"unavailable (stale, blocked, expired, or not in bank): "
+            f"{sorted(missing)}"
+        )
+
     opt_exec = supabase.table("mock_question_options") \
         .select("*") \
         .in_("question_id", question_ids) \

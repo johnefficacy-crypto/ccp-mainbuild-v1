@@ -344,3 +344,58 @@ def test_blocked_outcome_leaves_selection_empty():
     assert payload["outcome"] == "blocked"
     assert payload["question_ids"] == []
     assert payload["selector_snapshot"]["sections"] == []
+
+
+# ── source-mix max_ratio enforcement ─────────────────────────────────────────
+
+from app.study_os.mock_blueprint_selection import _select_section  # noqa: E402
+
+
+def _pool_row(qid: str, source_kind: str) -> dict:
+    return {"id": qid, "source_kind": source_kind, "difficulty": "medium"}
+
+
+class TestSourceMixMaxRatio:
+    """max_ratio enforcement: correct status for full vs partial enforcement."""
+
+    def test_max_ratio_fully_enforced_when_backfill_available(self):
+        # 8 pyq + 5 authored (13 total), target 10, max_ratio 0.5 for pyq
+        # Initial selection: 8 pyq + 2 authored. After removing 3 excess pyq, backfill
+        # the 3 remaining authored → 5 pyq + 5 authored = 10 rows, ratio exactly 0.5.
+        pool = [_pool_row(f"pyq-{i}", "pyq") for i in range(8)]
+        pool += [_pool_row(f"auth-{i}", "authored") for i in range(5)]
+        constraints = {"pyq": {"min": 0.0, "max": 0.5, "fallback": "relax_to_available"}}
+        chosen_ids, rungs = _select_section(
+            pool, 10,
+            source_mix=None, source_mix_constraints=constraints, difficulty_mix=None,
+        )
+        pool_by_id = {r["id"]: r for r in pool}
+        pyq_count = sum(1 for qid in chosen_ids if pool_by_id[qid]["source_kind"] == "pyq")
+        n = len(chosen_ids)
+        assert n == 10
+        assert pyq_count <= 5  # max 50% of 10
+        max_rungs = [r for r in rungs if r["rung"] == "source_mix_max_constraint"]
+        assert len(max_rungs) == 1
+        assert max_rungs[0]["status"] == "enforced_max_ratio"
+        assert max_rungs[0]["final_ratio"] <= 0.5 + 1e-9
+
+    def test_max_ratio_partial_when_backfill_insufficient(self):
+        # 8 pyq + 2 authored (10 total), target 10, max_ratio 0.5 for pyq
+        # After removing 3 pyq: 5 pyq + 2 authored = 7 rows; no authored left to backfill.
+        # Final ratio = 5/7 ≈ 0.71 > 0.5 → status must be enforced_max_ratio_partial.
+        pool = [_pool_row(f"pyq-{i}", "pyq") for i in range(8)]
+        pool += [_pool_row(f"auth-{i}", "authored") for i in range(2)]
+        constraints = {"pyq": {"min": 0.0, "max": 0.5, "fallback": "relax_to_available"}}
+        chosen_ids, rungs = _select_section(
+            pool, 10,
+            source_mix=None, source_mix_constraints=constraints, difficulty_mix=None,
+        )
+        pool_by_id = {r["id"]: r for r in pool}
+        pyq_count = sum(1 for qid in chosen_ids if pool_by_id[qid]["source_kind"] == "pyq")
+        n = len(chosen_ids)
+        final_ratio = pyq_count / n if n > 0 else 0.0
+        assert final_ratio > 0.5  # constraint could not be fully met
+        max_rungs = [r for r in rungs if r["rung"] == "source_mix_max_constraint"]
+        assert len(max_rungs) == 1
+        assert max_rungs[0]["status"] == "enforced_max_ratio_partial"
+        assert max_rungs[0]["final_ratio"] > 0.5
