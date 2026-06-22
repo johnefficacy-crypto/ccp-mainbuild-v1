@@ -1142,7 +1142,8 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // the async state update (setQuestions is enqueued, not synchronous).
   const loadQuestions = useCallback(async () => {
     const gen = loadGenRef.current;
-    const qgen = questionsGenRef.current;  // set by caller before invoking
+    questionsGenRef.current += 1;          // allocate a fresh token for this call
+    const qgen = questionsGenRef.current;
     setLoadError("");
     try {
       const params = new URLSearchParams({
@@ -1211,6 +1212,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // effect so the new load starts from a clean slate.
   useEffect(() => {
     loadGenRef.current += 1;
+    optionsGenRef.current += 1;   // discard any running loadOptions from the old paper
     setPaper(null);
     setQuestions([]);
     setProgress(null);
@@ -1229,6 +1231,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // the post-increment generation (avoids discarding the initial load on mount).
   useEffect(() => {
     loadGenRef.current += 1;
+    optionsGenRef.current += 1;   // discard any running loadOptions from the old status context
     setStatusFilter(status ?? "all");
     setOffset(0);
     setSelectedQuestion(null);
@@ -1241,13 +1244,15 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // (loadQuestions closes over offset + statusFilter; loadPaper/loadProgress are
   // stable unless pyq_paper_id changes, so extra fetches of paper/progress on
   // pagination are intentional — progress reflects live server counts).
+  // loadQuestions self-allocates its token; we guard setLoading(false) with a
+  // cleanup flag so an older effect cannot clear loading for a newer request.
   useEffect(() => {
-    questionsGenRef.current += 1;
-    const qgen = questionsGenRef.current;
     setLoading(true);
+    let effectActive = true;
     Promise.all([loadPaper(), loadQuestions(), loadProgress()]).finally(() => {
-      if (questionsGenRef.current === qgen) setLoading(false);
+      if (effectActive) setLoading(false);
     });
+    return () => { effectActive = false; };
   }, [loadPaper, loadQuestions, loadProgress]);
 
   // ── Filter handlers — reset offset so results are correct ───────────────
@@ -1265,6 +1270,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // ── Pagination ───────────────────────────────────────────────────────────
 
   function handlePageChange(newOffset) {
+    optionsGenRef.current += 1;   // discard any running loadOptions from the old page's selection
     setOffset(Math.max(0, newOffset));
     setSelectedQuestion(null);
     setSelectedOptions([]);

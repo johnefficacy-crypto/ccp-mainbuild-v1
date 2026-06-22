@@ -600,4 +600,116 @@ describe("PyqPaperWorkspace deep-link (I8-B)", () => {
     expect(screen.queryByDisplayValue("Delhi")).toBeNull();
     expect(screen.queryByDisplayValue("Mumbai")).toBeNull();
   });
+
+  // ── Round-7: manual-refresh token races + optionsGenRef invalidation ──────
+
+  test("stale save-refresh does not overwrite review-refresh question list after Verify", async () => {
+    // handleVerify: saveDraft (calls onSaved without await) → doReview (calls onStatusChange
+    // without await). Both handleSaved and handleStatusChange call loadQuestions concurrently.
+    // The save-refresh (stale) must be discarded; the review-refresh (new) must win.
+    let resolveSaveRefresh;
+    const saveRefreshP = new Promise((res) => { resolveSaveRefresh = res; });
+    let questionsGetCount = 0;
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes("/pyq-questions?")) {
+        questionsGetCount += 1;
+        if (questionsGetCount === 1) return Promise.resolve({ items: QUESTIONS, total: 3 }); // initial
+        if (questionsGetCount === 2) return saveRefreshP;  // save-refresh (stale)
+        // review-refresh: q1 now verified, q2/q3 absent
+        return Promise.resolve({
+          items: [{ ...QUESTIONS[0], reviewer_status: "verified" }],
+          total: 1,
+        });
+      }
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      return Promise.resolve({});
+    });
+    api.patch.mockResolvedValue({ ok: true });
+
+    renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Select q1 then click Verify — triggers both save-refresh and review-refresh
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    await waitFor(() => screen.getByTestId("btn-verify"));
+    fireEvent.click(screen.getByTestId("btn-verify"));
+
+    // Wait until the review-refresh wins and q2/q3 are gone
+    await waitFor(() => expect(screen.queryByTestId("question-list-item-q2")).toBeNull());
+
+    // Resolve the stale save-refresh — q2 and q3 must not reappear
+    await act(async () => { resolveSaveRefresh({ items: QUESTIONS, total: 3 }); });
+    expect(screen.queryByTestId("question-list-item-q2")).toBeNull();
+    expect(screen.queryByTestId("question-list-item-q3")).toBeNull();
+  });
+
+  test("stale loadOptions from paper A does not populate options after switching to paper B", async () => {
+    const QB1_OPTIONS = [
+      { id: "o-b1", question_id: "q-b1", option_label: "A", option_text: "Wellington", is_correct: false },
+    ];
+    const Q_B1 = {
+      id: "q-b1",
+      question_number: 1,
+      question_text: "First question of paper B",
+      reviewer_status: "pending",
+      source_kind: "manual",
+      source_document_id: null,
+      source_page: null,
+      confidence_by_field: {},
+      content_hash: "qb1hash",
+      metadata: {},
+      pyq_paper_id: PAPER_B_ID,
+    };
+    let resolveStaleQ1Options;
+    const staleQ1OptionsP = new Promise((res) => { resolveStaleQ1Options = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes(`/pyq-papers/${PAPER_B_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER_B);
+      if (url.includes(`pyq_paper_id=${PAPER_ID}`))
+        return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes(`pyq_paper_id=${PAPER_B_ID}`))
+        return Promise.resolve({ items: [Q_B1], total: 1 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?") && url.includes("question_id=q1")) return staleQ1OptionsP;
+      if (url.includes("/pyq-options?") && url.includes("question_id=q-b1"))
+        return Promise.resolve({ items: QB1_OPTIONS });
+      return Promise.resolve({});
+    });
+
+    const { rerender } = renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Select q1 on paper A — stale options start loading
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("question_id=q1")),
+    );
+
+    // Switch to paper B before q1 options resolve — paper reset increments optionsGenRef
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_B_ID} embedded />
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getByTestId("question-list-item-q-b1"));
+
+    // Select q-b1 on paper B — immediate options (Wellington)
+    fireEvent.click(screen.getByTestId("question-list-item-q-b1"));
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("question_id=q-b1")),
+    );
+
+    // Resolve stale q1 options — must be discarded; Wellington must remain visible
+    await act(async () => { resolveStaleQ1Options({ items: OPTIONS }); });
+    expect(screen.queryByDisplayValue("Delhi")).toBeNull();
+    expect(screen.queryByDisplayValue("Mumbai")).toBeNull();
+    expect(screen.getByDisplayValue("Wellington")).toBeTruthy();
+  });
 });
