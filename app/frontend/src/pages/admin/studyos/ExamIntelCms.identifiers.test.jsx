@@ -16,6 +16,20 @@ const UUID = "550e8400-e29b-41d4-a716-446655440000";
 const UUID2 = "660f9500-f30c-52e5-b827-557766551111";
 const UUID_PREFIX = "550e8400"; // first 8 hex chars — what should appear after truncation
 
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
+}))
+
+jest.mock("../../../lib/supabase", () => ({
+  __esModule: true,
+  supabase: { auth: { getSession: jest.fn(), onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })) } },
+}))
+jest.mock("../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" }),
+}))
+
 jest.mock("../../../lib/api", () => ({
   __esModule: true,
   api: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), del: jest.fn() },

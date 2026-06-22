@@ -22,6 +22,20 @@ const CYCLE_ROW = {
 
 const examsUrl = "/api/admin/exam-intelligence-cms/exams?limit=50";
 
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
+}))
+
+jest.mock("../../../lib/supabase", () => ({
+  __esModule: true,
+  supabase: { auth: { getSession: jest.fn(), onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })) } },
+}))
+jest.mock("../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" }),
+}))
+
 jest.mock("../../../lib/api", () => ({
   __esModule: true,
   api: { get: jest.fn(), post: jest.fn() },
@@ -63,13 +77,16 @@ test("heading is 'Advanced Import / Repair' (reframed, not 'Raw CMS / Bulk Impor
   expect(screen.queryByText("Raw CMS / Bulk Import")).toBeNull();
 });
 
-test("shows the power-user caution banner steering to Console + Create-exam wizard", () => {
+test("shows AdminSafetyBanner (I8-C: replaced old amber caution banner)", () => {
   renderPage();
-  const banner = screen.getByTestId("cms-caution-banner");
+  const banner = screen.getByTestId("advanced-repair-safety-banner");
   expect(banner).toBeTruthy();
-  expect(banner.textContent).toMatch(/Exam Governance Console/);
-  expect(banner.textContent).toMatch(/Create-exam wizard/);
-  expect(banner.textContent).toMatch(/slug/); // idempotency / upsert-key warning
+  // New copy steers to Manage Exam, not legacy Console/wizard
+  expect(banner.textContent).toMatch(/Advanced Repair/);
+  expect(banner.textContent).toMatch(/Manage Exam/);
+  // Old references must be absent
+  expect(banner.textContent).not.toMatch(/Exam Governance Console/);
+  expect(banner.textContent).not.toMatch(/Create-exam wizard/);
 });
 
 test("CMS functionality is intact — the entity selector + tool still render (regression)", () => {
@@ -79,9 +96,9 @@ test("CMS functionality is intact — the entity selector + tool still render (r
   expect(vals).toEqual(expect.arrayContaining(["exam-topic-coverage", "pyq-questions"]));
 });
 
-test("no percentage in the reframed header copy", () => {
+test("no percentage in the safety banner or heading copy", () => {
   renderPage();
-  expect(screen.getByTestId("cms-caution-banner").textContent).not.toContain("%");
+  expect(screen.getByTestId("advanced-repair-safety-banner").textContent).not.toContain("%");
   expect(screen.getByRole("heading", { level: 1 }).textContent).not.toContain("%");
 });
 
