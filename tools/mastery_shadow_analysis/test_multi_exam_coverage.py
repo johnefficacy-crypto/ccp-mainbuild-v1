@@ -30,6 +30,8 @@ class _Query:
         self.db = db
         self.filters: list = []
         self._order_col: str | None = None
+        self._range_start: int | None = None
+        self._range_end: int | None = None
 
     def select(self, *a: Any, **kw: Any) -> "_Query":
         return self
@@ -51,6 +53,8 @@ class _Query:
         return self
 
     def range(self, start: int, end: int) -> "_Query":
+        self._range_start = start
+        self._range_end = end
         return self
 
     def limit(self, n: int) -> "_Query":
@@ -85,6 +89,9 @@ class _Query:
         matched = [r for r in rows if self._matches(r)]
         if self._order_col:
             matched.sort(key=lambda r: (r.get(self._order_col) or ""))
+        # Apply range slicing so pagination tests exercise real page boundaries.
+        if self._range_start is not None and self._range_end is not None:
+            matched = matched[self._range_start: self._range_end + 1]
         return _Exec(matched)
 
 
@@ -410,3 +417,36 @@ class TestMultiExamCoverageOutput:
         r = _run(sb, required_exam_ids=[EXAM_A], required_exam_slugs=[], min_questions=1)
         coverage = r["result"]["exam_coverage"]
         assert coverage[0]["unique_attempt_count"] == 1
+
+
+class TestMultiExamCoveragePagination:
+    def test_over_1000_responses_no_loss_or_duplication(self):
+        """1 001 response rows for a single attempt → all returned, none duplicated.
+
+        The stub's range() now slices rows so pagination logic is exercised for
+        real: the inner while-loop must make two round trips (pages 0-999, 1000-1000)
+        and the consumer must deduplicate by response id rather than trust uniqueness.
+        """
+        N = 1001
+        resp_rows = [
+            {
+                "id": f"resp-{i:05d}",
+                "attempt_id": ATTEMPT_1,
+                "question_snapshot": {
+                    "id": f"q-{i:05d}",
+                    "subject_id": SUBJ_1,
+                    "source_kind": "authored",
+                    "topic_id": TOPIC_1,
+                },
+            }
+            for i in range(N)
+        ]
+        db = _seed_db(response_rows=resp_rows)
+        sb = SBStub(db)
+        r = _run(sb, required_exam_ids=[EXAM_A], required_exam_slugs=[], min_questions=1)
+        # All 1001 responses must be counted (no truncation, no duplication).
+        coverage = r["result"]["exam_coverage"]
+        assert coverage[0]["shadow_row_count"] >= 1
+        # The source_split for "authored" must reflect all 1001 rows.
+        authored_count = coverage[0]["source_split"].get("authored", 0)
+        assert authored_count == N, f"expected {N} authored responses, got {authored_count}"

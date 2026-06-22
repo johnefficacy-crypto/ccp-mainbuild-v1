@@ -279,17 +279,27 @@ def _select_criteria_question_ids(supabase: Any, selector: dict, question_count:
 
 
 def select_questions_for_template(supabase: Any, template_id: str, user_id: str) -> list[dict]:
-    """PR2d selector hook; supports section ``fixed`` and ``criteria`` selectors."""
+    """PR2d selector hook; supports section ``fixed`` and ``criteria`` selectors.
+
+    Fail-closed for fixed sections: if any question in a fixed-mode selector is
+    unavailable (wrong status, expired, or lineage-blocked), raises LookupError
+    rather than returning a shortened set.  A shortened fixed attempt would give
+    a misleadingly different experience and must never start.
+    """
     sections = _safe(lambda: supabase.table("mock_template_sections").select("*").eq("template_id", template_id).order("section_index").execute(), default=None)
     sec_rows = getattr(sections, "data", None) or []
     if not sec_rows:
         return []
     ordered: list[str] = []
+    fixed_required: set[str] = set()  # IDs that must survive all filters
+
     for sec in sec_rows:
         selector = sec.get("selector") or {}
         mode = selector.get("mode")
         if mode == "fixed":
-            ordered.extend(selector.get("question_ids") or [])
+            ids = list(selector.get("question_ids") or [])
+            ordered.extend(ids)
+            fixed_required.update(ids)
         elif mode == "criteria":
             ordered.extend(_select_criteria_question_ids(supabase, selector, int(sec.get("question_count") or 0)))
     if not ordered:
@@ -328,6 +338,17 @@ def select_questions_for_template(supabase: Any, template_id: str, user_id: str)
         except Exception:
             # Fail-closed: exclude all PYQ-derived questions if guard query fails.
             by_id = {qid: q for qid, q in by_id.items() if not q.get("pyq_question_id")}
+
+    # Fail-closed: abort if any fixed-section question is unavailable after filtering.
+    if fixed_required:
+        missing = fixed_required - by_id.keys()
+        if missing:
+            raise LookupError(
+                f"{len(missing)} question(s) in fixed-template section(s) are "
+                f"unavailable (stale, blocked, expired, or not in bank): "
+                f"{sorted(missing)}"
+            )
+
     # Attach options (ordered by option_index) — without these the frozen
     # snapshot has no options and the attempt renders no answer choices.
     opt_rows = _safe(

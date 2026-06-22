@@ -846,6 +846,9 @@ begin
   set search_path = public
   as $fn$
   begin
+      -- Update any active or stale projection (but not already-blocked or archived).
+      -- A question that went stale and is then found ineligible should be blocked,
+      -- not left in the stale state with an outdated last_sync_result.
       update public.pyq_mock_question_projections
       set sync_status      = 'blocked',
           last_sync_result = jsonb_build_object(
@@ -855,7 +858,7 @@ begin
           ),
           updated_at       = now()
       where pyq_question_id = p_qid
-        and sync_status = 'active';
+        and sync_status not in ('blocked', 'archived');
 
       update public.mock_question_bank
       set reviewer_status = 'draft', updated_at = now()
