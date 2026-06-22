@@ -97,17 +97,18 @@ def _resolve_source_mix_policy(
     exam_phase_id: str | None = None,
     subject_id: str | None = None,
     topic_id: str | None = None,
-) -> tuple[dict | None, dict | None]:
-    """Return the most-specific active source-mix policy or (None, None).
+) -> tuple[dict | None, dict | None, dict | None]:
+    """Return the most-specific active source-mix policy or ``(None, None, None)``.
 
     Queries ``mock_source_mix_policies`` with the scope hierarchy:
-    topic > subject > phase > exam.  Returns a 2-tuple:
+    topic > subject > phase > exam.  Returns a 3-tuple:
     - ``mix``: ``{source_kind: target_ratio}`` suitable for ``_apportion_order``
     - ``constraints``: ``{source_kind: {"min": float, "max": float, "fallback": str}}``
       for enforcement in ``_select_section`` after selection
+    - ``policy_meta``: audit dict with ``policy_ids``, ``scope_level``, and scope IDs
 
-    Both are None when no policy applies. ``topic_id`` must be provided by the
-    caller for topic-scoped policies to apply; section-level callers pass None
+    All three are None when no policy applies. ``topic_id`` must be provided by
+    the caller for topic-scoped policies to apply; section-level callers pass None
     and only subject/phase/exam-scoped policies match.
     """
     try:
@@ -360,20 +361,18 @@ def _select_section(
     # ── min/max constraint enforcement ────────────────────────────────────────
     if source_mix_constraints and chosen_ids and target > 0:
         pool_by_id = {r["id"]: r for r in pool}
-        chosen_set = set(chosen_ids)
         chosen_rows = [pool_by_id[qid] for qid in chosen_ids if qid in pool_by_id]
         n = len(chosen_rows)
 
-        for sk, c in source_mix_constraints.items():
-            def _sk_match(r: dict) -> bool:
-                return (r.get("source_kind") or r.get("source_type")) == sk
+        def _src(r: dict) -> str | None:
+            return r.get("source_kind") or r.get("source_type") or None
 
-            sk_count = sum(1 for r in chosen_rows if _sk_match(r))
+        # ── per-source minimum-ratio check (independent; early-exit on block) ─
+        for sk, c in source_mix_constraints.items():
+            sk_count = sum(1 for r in chosen_rows if _src(r) == sk)
             actual_ratio = sk_count / n if n > 0 else 0.0
             min_ratio = c.get("min", 0.0)
-            max_ratio = c.get("max", 1.0)
             fallback = c.get("fallback", "relax_to_available")
-
             if actual_ratio < min_ratio:
                 if fallback == "block":
                     logger.warning(
@@ -397,51 +396,74 @@ def _select_section(
                         sk, actual_ratio, min_ratio,
                     )
 
-            if actual_ratio > max_ratio and max_ratio < 1.0:
-                # Enforce: remove excess sk rows from the tail of chosen_ids, then
-                # backfill with non-sk eligible rows.  This is a best-effort fix;
-                # difficulty-within-source-bucket rebalancing is deferred to PR-7.
-                max_allowed = int(max_ratio * n)  # use actual selected count, not target
-                excess = sk_count - max_allowed
-                if excess > 0:
-                    new_chosen: list[str] = []
-                    removed = 0
-                    for qid in reversed(chosen_ids):
-                        r = pool_by_id.get(qid)
-                        if r and _sk_match(r) and removed < excess:
-                            removed += 1
-                            continue
-                        new_chosen.append(qid)
-                    new_chosen.reverse()
-                    # Backfill from pool: non-sk rows not already chosen.
-                    already = set(new_chosen)
-                    for r in pool:
-                        if len(new_chosen) >= target:
-                            break
-                        if r["id"] not in already and not _sk_match(r):
-                            new_chosen.append(r["id"])
-                            already.add(r["id"])
-                    chosen_ids = new_chosen
-                    # Recompute chosen_rows and n so subsequent sk iterations see
-                    # the updated selection, and to correctly report the outcome.
-                    chosen_rows = [pool_by_id[qid] for qid in chosen_ids if qid in pool_by_id]
-                    n = len(chosen_rows)
-                    final_sk = sum(1 for r in chosen_rows if _sk_match(r))
-                    final_ratio = final_sk / n if n > 0 else 0.0
+        # ── combined maximum-ratio enforcement (single pass, all caps at once) ─
+        # All caps are computed against the same n so bounds share one denominator.
+        # Processing chosen_ids once while honouring every cap simultaneously
+        # prevents a later source's backfill from re-adding rows removed by an
+        # earlier cap — which would silently violate the earlier constraint.
+        active_caps: dict[str, int] = {
+            sk: int(c.get("max", 1.0) * n)
+            for sk, c in source_mix_constraints.items()
+            if c.get("max", 1.0) < 1.0
+        }
+        if active_caps:
+            pre_counts: dict[str, int] = {}
+            for r in chosen_rows:
+                sk2 = _src(r)
+                if sk2:
+                    pre_counts[sk2] = pre_counts.get(sk2, 0) + 1
+            pre_n = n
+
+            violated = {sk2 for sk2, cap in active_caps.items()
+                        if pre_counts.get(sk2, 0) > cap}
+            if violated:
+                caps_left = dict(active_caps)
+                new_chosen: list[str] = []
+                for qid in chosen_ids:
+                    r = pool_by_id.get(qid)
+                    sk2 = _src(r) if r else None
+                    if sk2 in caps_left and caps_left[sk2] <= 0:
+                        continue  # over this source's cap
+                    new_chosen.append(qid)
+                    if sk2 in caps_left:
+                        caps_left[sk2] -= 1
+                # Backfill: only add rows that fit within all remaining caps.
+                already = set(new_chosen)
+                for r in pool:
+                    if len(new_chosen) >= target:
+                        break
+                    if r["id"] in already:
+                        continue
+                    sk2 = _src(r)
+                    if sk2 in active_caps and caps_left.get(sk2, 0) <= 0:
+                        continue  # would exceed this source's cap
+                    new_chosen.append(r["id"])
+                    already.add(r["id"])
+                    if sk2 in active_caps:
+                        caps_left[sk2] -= 1
+                chosen_ids = new_chosen
+                chosen_rows = [pool_by_id[qid] for qid in chosen_ids if qid in pool_by_id]
+                n = len(chosen_rows)
+                for sk2 in sorted(violated):
+                    cap = active_caps[sk2]
+                    pre_count = pre_counts.get(sk2, 0)
+                    final_count = sum(1 for r in chosen_rows if _src(r) == sk2)
+                    final_ratio = final_count / n if n > 0 else 0.0
+                    max_ratio_val = source_mix_constraints[sk2].get("max", 1.0)
                     status = (
                         "enforced_max_ratio"
-                        if final_ratio <= max_ratio + 1e-9
+                        if final_ratio <= max_ratio_val + 1e-9
                         else "enforced_max_ratio_partial"
                     )
                     rungs.append({
                         "rung": "source_mix_max_constraint",
                         "status": status,
-                        "source_kind": sk,
-                        "actual_ratio": round(actual_ratio, 4),
+                        "source_kind": sk2,
+                        "actual_ratio": round(pre_count / pre_n if pre_n > 0 else 0.0, 4),
                         "final_ratio": round(final_ratio, 4),
-                        "maximum_ratio": max_ratio,
-                        "was_count": sk_count,
-                        "capped_to": max_allowed,
+                        "maximum_ratio": max_ratio_val,
+                        "was_count": pre_count,
+                        "capped_to": cap,
                         "relaxed": True,
                     })
 

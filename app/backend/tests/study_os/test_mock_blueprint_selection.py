@@ -399,3 +399,33 @@ class TestSourceMixMaxRatio:
         assert len(max_rungs) == 1
         assert max_rungs[0]["status"] == "enforced_max_ratio_partial"
         assert max_rungs[0]["final_ratio"] > 0.5
+
+    def test_two_simultaneous_max_constraints_are_compositional(self):
+        # target=10; pool: 8 pyq + 8 authored (16 total); both capped at max 0.5.
+        # Pool order puts pyq first, so initial selection is pyq-0..7 + auth-0..1 (10 rows).
+        # Combined caps: int(0.5 * 10) = 5 per source.
+        # Single-pass enforcement: keep pyq-0..4 (5), keep auth-0..1 (2), drop pyq-5..7.
+        # Backfill authored up to authored cap (5): add auth-2..4.
+        # Final: 5 pyq + 5 authored = 10.  pyq-5, pyq-6, pyq-7 must NOT reappear.
+        pool = [_pool_row(f"pyq-{i}", "pyq") for i in range(8)]
+        pool += [_pool_row(f"auth-{i}", "authored") for i in range(8)]
+        constraints = {
+            "pyq": {"min": 0.0, "max": 0.5, "fallback": "relax_to_available"},
+            "authored": {"min": 0.0, "max": 0.5, "fallback": "relax_to_available"},
+        }
+        chosen_ids, rungs = _select_section(
+            pool, 10,
+            source_mix=None, source_mix_constraints=constraints, difficulty_mix=None,
+        )
+        pool_by_id = {r["id"]: r for r in pool}
+        n = len(chosen_ids)
+        pyq_count = sum(1 for qid in chosen_ids if pool_by_id[qid]["source_kind"] == "pyq")
+        authored_count = sum(1 for qid in chosen_ids if pool_by_id[qid]["source_kind"] == "authored")
+        assert n == 10
+        assert pyq_count <= 5
+        assert authored_count <= 5
+        max_rungs = [r for r in rungs if r["rung"] == "source_mix_max_constraint"]
+        assert len(max_rungs) >= 1
+        assert all(r["status"] == "enforced_max_ratio" for r in max_rungs)
+        # Confirm removed pyq rows were not re-added during authored backfill
+        assert not any(qid in {"pyq-5", "pyq-6", "pyq-7"} for qid in chosen_ids)
