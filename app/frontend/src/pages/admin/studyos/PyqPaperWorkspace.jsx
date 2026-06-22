@@ -1109,7 +1109,9 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   const [sourceKindFilter, setSourceKindFilter] = useState("all");
 
   const deepLinkApplied = useRef(false);
-  const loadGenRef = useRef(0);
+  const loadGenRef = useRef(0);       // macro: incremented on paper/status-prop change
+  const questionsGenRef = useRef(0);  // micro: incremented per data-loading effect call
+  const optionsGenRef = useRef(0);    // per loadOptions call
   const [deepLinkNotFound, setDeepLinkNotFound] = useState(false);
 
   // Pagination state
@@ -1140,6 +1142,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // the async state update (setQuestions is enqueued, not synchronous).
   const loadQuestions = useCallback(async () => {
     const gen = loadGenRef.current;
+    const qgen = questionsGenRef.current;  // set by caller before invoking
     setLoadError("");
     try {
       const params = new URLSearchParams({
@@ -1150,13 +1153,13 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
       if (statusFilter !== "all") params.set("reviewer_status", statusFilter);
       if (sourceKindFilter !== "all") params.set("source_kind", sourceKindFilter);
       const res = await api.get(`${CMS_BASE}/pyq-questions?${params}`);
-      if (loadGenRef.current !== gen) return [];
+      if (loadGenRef.current !== gen || questionsGenRef.current !== qgen) return [];
       const items = res.items || [];
       setQuestions(items);
       setTotal(res.total ?? null);
       return items;
     } catch (e) {
-      if (loadGenRef.current !== gen) return [];
+      if (loadGenRef.current !== gen || questionsGenRef.current !== qgen) return [];
       setLoadError(e?.message || "Could not load questions");
       return [];
     }
@@ -1188,12 +1191,16 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
       setSelectedOptions([]);
       return;
     }
+    optionsGenRef.current += 1;
+    const ogen = optionsGenRef.current;
     try {
       const res = await api.get(
         `${CMS_BASE}/pyq-options?question_id=${encodeURIComponent(questionId)}&limit=10`,
       );
+      if (optionsGenRef.current !== ogen) return;
       setSelectedOptions(res.items || []);
     } catch {
+      if (optionsGenRef.current !== ogen) return;
       setSelectedOptions([]);
     }
   }, []);
@@ -1235,10 +1242,12 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   // stable unless pyq_paper_id changes, so extra fetches of paper/progress on
   // pagination are intentional — progress reflects live server counts).
   useEffect(() => {
+    questionsGenRef.current += 1;
+    const qgen = questionsGenRef.current;
     setLoading(true);
-    Promise.all([loadPaper(), loadQuestions(), loadProgress()]).finally(() =>
-      setLoading(false),
-    );
+    Promise.all([loadPaper(), loadQuestions(), loadProgress()]).finally(() => {
+      if (questionsGenRef.current === qgen) setLoading(false);
+    });
   }, [loadPaper, loadQuestions, loadProgress]);
 
   // ── Filter handlers — reset offset so results are correct ───────────────

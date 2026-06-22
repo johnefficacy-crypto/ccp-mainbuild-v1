@@ -469,4 +469,135 @@ describe("PyqPaperWorkspace deep-link (I8-B)", () => {
     expect(screen.queryByTestId("question-list-item-q1")).toBeNull();
     expect(screen.queryByTestId("question-list-item-q2")).toBeNull();
   });
+
+  // ── Round-6: same-generation query races + option race ───────────────────
+
+  test("stale paper-A page-2 question response does not overwrite paper-B page-1 state", async () => {
+    let resolveStalePage2;
+    const stalePage2P = new Promise((res) => { resolveStalePage2 = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes(`/pyq-papers/${PAPER_B_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER_B);
+      // Paper A page 1 (offset=0)
+      if (url.includes(`pyq_paper_id=${PAPER_ID}`) && !url.includes("offset=50"))
+        return Promise.resolve({ items: QUESTIONS, total: 53 });
+      // Paper A page 2 (offset=50) — stale
+      if (url.includes(`pyq_paper_id=${PAPER_ID}`) && url.includes("offset=50"))
+        return stalePage2P;
+      // Paper B — always empty
+      if (url.includes(`pyq_paper_id=${PAPER_B_ID}`))
+        return Promise.resolve({ items: [], total: 0 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      return Promise.resolve({});
+    });
+
+    const { rerender } = renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Navigate to page 2 of paper A — stale promise starts
+    fireEvent.click(screen.getByTestId("pagination-next"));
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("offset=50")),
+    );
+
+    // Switch to paper B before page-2 resolves
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_B_ID} embedded />
+      </MemoryRouter>,
+    );
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining(`pyq_paper_id=${PAPER_B_ID}`)),
+    );
+
+    // Resolve the stale page-2 response — must be discarded
+    await act(async () => { resolveStalePage2({ items: QUESTIONS, total: 53 }); });
+    expect(screen.queryByTestId("question-list-item-q1")).toBeNull();
+    expect(screen.queryByTestId("question-list-item-q2")).toBeNull();
+  });
+
+  test("stale local-filter question response does not overwrite new filter state", async () => {
+    let resolveStalePending;
+    const stalePendingP = new Promise((res) => { resolveStalePending = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      // initial "all" filter — immediate
+      if (url.includes("/pyq-questions?") && !url.includes("reviewer_status="))
+        return Promise.resolve({ items: QUESTIONS, total: 3 });
+      // "pending" filter — stale
+      if (url.includes("/pyq-questions?") && url.includes("reviewer_status=pending"))
+        return stalePendingP;
+      // "verified" filter — immediate empty (new state)
+      if (url.includes("/pyq-questions?") && url.includes("reviewer_status=verified"))
+        return Promise.resolve({ items: [], total: 0 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+      return Promise.resolve({});
+    });
+
+    renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Change local filter to "pending" — stale request starts
+    const statusSelect = screen.getAllByRole("combobox")[0];
+    fireEvent.change(statusSelect, { target: { value: "pending" } });
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("reviewer_status=pending")),
+    );
+
+    // Change to "verified" before pending resolves
+    fireEvent.change(statusSelect, { target: { value: "verified" } });
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("reviewer_status=verified")),
+    );
+
+    // Resolve the stale pending response — must be discarded
+    await act(async () => { resolveStalePending({ items: QUESTIONS, total: 3 }); });
+    expect(screen.queryByTestId("question-list-item-q1")).toBeNull();
+    expect(screen.queryByTestId("question-list-item-q2")).toBeNull();
+  });
+
+  test("stale loadOptions response does not overwrite options for a new question selection", async () => {
+    const Q2_OPTIONS = [
+      { id: "o3", question_id: "q2", option_label: "A", option_text: "Nehru", is_correct: true },
+    ];
+    let resolveStaleQ1Options;
+    const staleQ1OptionsP = new Promise((res) => { resolveStaleQ1Options = res; });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("questions") && !url.includes("progress"))
+        return Promise.resolve(PAPER);
+      if (url.includes("/pyq-questions?")) return Promise.resolve({ items: QUESTIONS, total: 3 });
+      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes("/pyq-options?") && url.includes("question_id=q1")) return staleQ1OptionsP;
+      if (url.includes("/pyq-options?") && url.includes("question_id=q2"))
+        return Promise.resolve({ items: Q2_OPTIONS });
+      return Promise.resolve({});
+    });
+
+    renderEmbedded({});
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+
+    // Select q1 — starts stale options load
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    // Immediately select q2 — starts immediate options load
+    fireEvent.click(screen.getByTestId("question-list-item-q2"));
+
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("question_id=q2")),
+    );
+
+    // Resolve stale q1 options — must be discarded
+    await act(async () => { resolveStaleQ1Options({ items: OPTIONS }); });
+
+    // "Delhi" and "Mumbai" (q1 options) must not appear in q2's editor
+    expect(screen.queryByDisplayValue("Delhi")).toBeNull();
+    expect(screen.queryByDisplayValue("Mumbai")).toBeNull();
+  });
 });
