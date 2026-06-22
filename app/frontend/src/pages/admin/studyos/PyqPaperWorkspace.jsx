@@ -1190,6 +1190,19 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     }
   }, []);
 
+  // ── Reset all paper-scoped state when the paper changes ─────────────────
+  // Must run before the data-loading effect so the new load starts clean.
+  useEffect(() => {
+    setSelectedQuestion(null);
+    setSelectedOptions([]);
+    setPdfDocumentId(null);
+    setPdfPage(null);
+    setOffset(0);
+    setTotal(null);
+    deepLinkApplied.current = false;
+    setDeepLinkNotFound(false);
+  }, [pyq_paper_id]);
+
   // Reload when paper changes (initial load) or when offset/statusFilter changes
   // (loadQuestions closes over offset + statusFilter; loadPaper/loadProgress are
   // stable unless pyq_paper_id changes, so extra fetches of paper/progress on
@@ -1267,6 +1280,11 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
 
   useEffect(() => {
     setStatusFilter(status ?? "all");
+    setOffset(0);
+    setSelectedQuestion(null);
+    setSelectedOptions([]);
+    deepLinkApplied.current = false;
+    setDeepLinkNotFound(false);
   }, [status]);
 
   // ── Deep-link: auto-select question matching rowId ───────────────────────
@@ -1289,7 +1307,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
       // Not on current page — fetch directly by ID (pagination-safe).
       fetchQuestionById(rowId).then((fetched) => {
         if (cancelled) return;
-        if (!fetched) { setDeepLinkNotFound(true); return; }
+        if (!fetched || fetched.pyq_paper_id !== pyq_paper_id) { setDeepLinkNotFound(true); return; }
         deepLinkApplied.current = true;
         setDeepLinkNotFound(false);
         setSelectedQuestion(fetched);

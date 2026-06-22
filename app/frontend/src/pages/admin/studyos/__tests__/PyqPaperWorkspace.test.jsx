@@ -253,7 +253,10 @@ test("Save draft button calls PATCH without changing status", async () => {
   );
 });
 
-// ── Deep-link receiving tests (I8-B round-3) ─────────────────────────────────
+// ── Deep-link receiving tests (I8-B round-3 + round-4) ───────────────────────
+
+const PAPER_B_ID = "paper-uuid-2";
+const PAPER_B = { ...PAPER, id: PAPER_B_ID, paper_code: "GS-II" };
 
 describe("PyqPaperWorkspace deep-link (I8-B)", () => {
   const Q_PAGE2 = {
@@ -267,46 +270,60 @@ describe("PyqPaperWorkspace deep-link (I8-B)", () => {
     confidence_by_field: {},
     content_hash: "xyz999",
     metadata: {},
+    pyq_paper_id: PAPER_ID,  // same paper — valid fetch
   };
 
-  function renderEmbedded(extraProps = {}) {
+  const Q_WRONG_PAPER = {
+    id: "q-wrong-paper",
+    question_number: 1,
+    question_text: "Question from another paper",
+    reviewer_status: "pending",
+    source_kind: "auto_extracted",
+    source_document_id: null,
+    source_page: null,
+    confidence_by_field: {},
+    content_hash: "cross-paper",
+    metadata: {},
+    pyq_paper_id: "some-other-paper-id",  // different paper — should reject
+  };
+
+  function renderEmbedded(extraProps = {}, paperId = PAPER_ID) {
     return render(
       <MemoryRouter initialEntries={["/"]}>
-        <PyqPaperWorkspace paperId={PAPER_ID} embedded {...extraProps} />
+        <PyqPaperWorkspace paperId={paperId} embedded {...extraProps} />
       </MemoryRouter>,
     );
   }
 
-  function setupDeepLinkMocks({ questionOnPage2 = false, notFound = false } = {}) {
+  function setupDeepLinkMocks() {
     api.get.mockImplementation((url) => {
       if (url.includes(`/pyq-papers/${PAPER_ID}`)) return Promise.resolve(PAPER);
+      if (url.includes(`/pyq-papers/${PAPER_B_ID}`)) return Promise.resolve(PAPER_B);
+      if (url.includes(`pyq_paper_id=${PAPER_B_ID}`)) return Promise.resolve({ items: [], total: 0 });
+      if (url.includes("pyq_paper_id=") && url.includes("reviewer_status=rejected"))
+        return Promise.resolve({ items: [], total: 0 });
       if (url.includes("/pyq-questions?")) return Promise.resolve({ items: QUESTIONS, total: 3 });
-      if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+      if (url.includes(`/progress`)) return Promise.resolve(PROGRESS);
       if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
-      if (url.includes("/pyq-questions/q-page2")) {
-        return questionOnPage2 ? Promise.resolve(Q_PAGE2) : Promise.reject(new Error("Not found"));
-      }
-      if (url.includes("/pyq-questions/invalid-row")) {
-        return Promise.reject(new Error("Not found"));
-      }
-      if (url.includes("/pyq-questions/q1")) return Promise.resolve(QUESTIONS[0]);
-      if (url.includes("/pyq-questions/q2")) return Promise.resolve(QUESTIONS[1]);
+      if (url.includes("/pyq-questions/q-page2")) return Promise.resolve(Q_PAGE2);
+      if (url.includes("/pyq-questions/q-wrong-paper")) return Promise.resolve(Q_WRONG_PAPER);
+      if (url.includes("/pyq-questions/invalid-row")) return Promise.reject(new Error("Not found"));
+      if (url.includes("/pyq-questions/q1")) return Promise.resolve({ ...QUESTIONS[0], pyq_paper_id: PAPER_ID });
+      if (url.includes("/pyq-questions/q2")) return Promise.resolve({ ...QUESTIONS[1], pyq_paper_id: PAPER_ID });
       return Promise.resolve({});
     });
   }
 
   beforeEach(() => {
     jest.clearAllMocks();
-    setupDeepLinkMocks({ questionOnPage2: true });
+    setupDeepLinkMocks();
   });
 
   test("question beyond page 1: fetches by ID and auto-selects", async () => {
     renderEmbedded({ rowId: "q-page2" });
-    // Should call the single-question endpoint
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith(expect.stringContaining("/pyq-questions/q-page2")),
     );
-    // Editor should show the fetched question text
     await waitFor(() => screen.getByTestId("editor-question-text"));
     expect(screen.getByTestId("editor-question-text").value).toContain("Page-2 question");
   });
@@ -336,6 +353,46 @@ describe("PyqPaperWorkspace deep-link (I8-B)", () => {
 
   test("invalid rowId shows not-found banner and does not select anything", async () => {
     renderEmbedded({ rowId: "invalid-row" });
+    await waitFor(() => screen.getByTestId("pyq-deep-link-not-found"));
+    expect(screen.queryByTestId("editor-question-text")).toBeNull();
+  });
+
+  // ── Round-4 additions ─────────────────────────────────────────────────────
+
+  test("paper change without remount clears stale question selection", async () => {
+    const { rerender } = renderEmbedded({ rowId: "q1" });
+    await waitFor(() => screen.getByTestId("editor-question-text"));
+    expect(screen.getByTestId("editor-question-text").value).toContain("capital of India");
+
+    // Switch to a different paper (paper B returns no questions)
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_B_ID} embedded />
+      </MemoryRouter>,
+    );
+    // Stale question editor must be gone
+    await waitFor(() => expect(screen.queryByTestId("editor-question-text")).toBeNull());
+  });
+
+  test("status prop change without remount resets selection and sends new filter", async () => {
+    const { rerender } = renderEmbedded({ rowId: "q1", status: null });
+    await waitFor(() => screen.getByTestId("editor-question-text"));
+
+    // Change status prop to "rejected" (mock returns empty list for rejected filter)
+    rerender(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_ID} embedded status="rejected" />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.queryByTestId("editor-question-text")).toBeNull());
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("reviewer_status=rejected")),
+    );
+  });
+
+  test("cross-paper fetchQuestionById result shows not-found banner", async () => {
+    // q-wrong-paper is returned by the API but belongs to a different paper
+    renderEmbedded({ rowId: "q-wrong-paper" });
     await waitFor(() => screen.getByTestId("pyq-deep-link-not-found"));
     expect(screen.queryByTestId("editor-question-text")).toBeNull();
   });
