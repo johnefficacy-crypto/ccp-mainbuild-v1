@@ -94,7 +94,7 @@
 | Top-level field name | `cycle_readiness` | DERIVED — OPERATOR APPROVAL REQUIRED |
 | `cycle_readiness.cycle_id` | Selected cycle UUID or `null` if no cycle is selected | DERIVED — OPERATOR APPROVAL REQUIRED |
 | `cycle_readiness.computed_at` | ISO-8601 timestamp at which this field was computed | DERIVED — OPERATOR APPROVAL REQUIRED |
-| `cycle_readiness.contract_version` | Monotone integer identifying this contract shape; frontend must reject or surface a warning when the received `contract_version` does not match the version it was built against | DERIVED — OPERATOR APPROVAL REQUIRED |
+| `contract_version` (top-level) | Required top-level integer on the composite management-detail response; version 1 for the initial I9 contract; frontend must not interpret readiness, verdict, or actions when the version is absent, unsupported, or unrecognized — render identity/navigation only and show an inline compatibility error; warning-only mode prohibited | APPROVED — D04 |
 | `cycle_readiness.steps` | Ordered array of nine step objects (one per checklist area) | DERIVED — OPERATOR APPROVAL REQUIRED |
 | `cycle_readiness_error` | Top-level sibling field (not nested under `cycle_readiness`); present and set to `"cycle_not_found"` when `cycle_readiness` is `null` due to an unknown requested `cycle_id`; absent when `cycle_readiness` is non-null or when the failure is at the HTTP level (5xx) | DERIVED — OPERATOR APPROVAL REQUIRED |
 
@@ -128,29 +128,35 @@
 | Rule | Meaning | Steps using this rule |
 |---|---|---|
 | `single_check` | Step status equals the single check's status; no aggregation needed | `cycle_details`, `phases_schedule`, `source_documents`, `extraction`, `pyq_readiness`, `competition_context`, `review_activate` |
-| `hard_gate_then_advisory` | If the hard check is not `complete` → step inherits the hard check's status; if hard check is `complete` and advisory check is not `complete` → step is `needs_action`; all checks `complete` → step is `complete` | `syllabus_mapping` (hard: `locked_coverage`; advisory: `mention_review`) |
-| `all_advisory` | Step is `needs_action` if any check returns `needs_action`; `complete` if all checks return `complete` or `not_applicable` | `policy_updates` (advisory: `selected_cycle_updates`, `exam_wide_updates`) |
+| `hard_gate_then_advisory` | If the hard check is not `ready` → step inherits the hard check's status; if hard check is `ready` and advisory check is neither `ready` nor `not_applicable` → step inherits the advisory check's status; all checks `ready` or `not_applicable` → step is `ready` | `syllabus_mapping` (hard: `locked_coverage`; advisory: `mention_review`) |
+| `all_advisory` | Step inherits the most-severe non-`ready` check status when checks disagree; step is `ready` if all checks are `ready` or `not_applicable` | `policy_updates` (advisory: `selected_cycle_updates`, `exam_wide_updates`) |
 
 All field names in the step object and check object are DERIVED — OPERATOR APPROVAL REQUIRED.
 
 **Cross-rule status precedence:**
 
-- `blocked` is set at the step level by the dependency chain (a preceding hard-gate step is not `complete`); it overrides aggregation entirely — if a step is `blocked`, its `checks[]` statuses are not consulted.
-- Within aggregation, when checks disagree, the precedence order is: `needs_action` > `incomplete` > `not_applicable` > `complete`. A step cannot be `complete` while any contributing check is `needs_action` or `incomplete`.
+- A step is `ready` only when all required checks are `ready` or `not_applicable`; any other check state prevents `ready`.
+- Within aggregation, when checks disagree on non-`ready` states, severity precedence (highest to lowest): `failed` > `stale` > `review_pending` > `extracting` > `uploaded` > `missing`. The step inherits the most-severe contributing check's status.
 - If all checks for a step return `not_applicable`, the step status is `not_applicable` regardless of aggregation rule.
 - For `hard_gate_then_advisory`: the hard check cannot itself be `not_applicable` (hard gates must have evaluable evidence); advisory checks may be `not_applicable` and are treated as satisfied for the purpose of step-level completion.
+- Prerequisite failures do not synthesize a downstream `blocked` status. Downstream steps carry their own evidence state; blocker/prerequisite context is expressed in separate metadata fields.
 
-**Proposed status vocabulary:**
+**Locked step/check status vocabulary (D03 APPROVED — original proposal rejected and amended):**
 
 | Status value | Meaning |
 |---|---|
-| `complete` | Evidence passes all predicates for this step; no corrective action needed |
-| `incomplete` | Step has not yet been started or is in progress but not blocked |
-| `needs_action` | Specific correctable problem found (e.g., failed extraction job, pending review row) |
-| `not_applicable` | Operator-approved N/A for this exam's management_mode; does not block activation |
-| `blocked` | A preceding hard-gate step is not `complete`; this step cannot be meaningfully evaluated. Dependency chain: `cycle_details` (hard) → `phases_schedule` (hard) → steps 3–8 (`source_documents` through `competition_context`) → `review_activate` |
+| `missing` | No evidence created or uploaded yet |
+| `uploaded` | Evidence present but not yet processed or reviewed |
+| `extracting` | Extraction job in progress |
+| `review_pending` | Awaiting human review or verification |
+| `ready` | Evidence passes all predicates for this step; no corrective action needed |
+| `stale` | Previously valid evidence is outdated and requires re-processing or re-review |
+| `failed` | Processing or extraction job failed; corrective action required |
+| `not_applicable` | Step does not apply to this exam's management mode; requires typed `not_applicable_reason` (D15) |
 
-Status vocabulary is DERIVED — OPERATOR APPROVAL REQUIRED.
+Corrective urgency is expressed through action queue items and blocker metadata, not step status. Activation authority is the top-level verdict (`blocked | needs_action | ready`) from `work_queue.classify_exam`. A prerequisite failure must not synthesize a downstream `blocked` step status; downstream steps carry their own evidence state plus prerequisite/blocker metadata.
+
+Mapping from rejected original proposal: `complete` → `ready`; `incomplete` → actual evidence state (`missing`, `uploaded`, `extracting`, `review_pending`, `stale`, or `failed`); `needs_action` → action queue/blocker metadata while step status remains the actual evidence state; `blocked` as step status → use `not_applicable` with typed reason when a step cannot be evaluated, or let the step report its own evidence state independently.
 
 **Proposed `not_applicable` trigger rules:**
 
@@ -218,10 +224,10 @@ I6 DECISION TO LOCK: Do not infer cadence-specific `not_applicable` behavior fro
 | Browser back/forward | URL-owned `exam_id`/`cycle`/`tab` state determines view; backend still owns progress. `?cycle=` param preserved through tab navigation. | I6 DECISION TO LOCK; REBASE COMPLETE: cycle-param preservation confirmed in ExamWorkspace.jsx:63–76. |
 | Switching cycles | Recompute `cycle_readiness` from canonical evidence for the new cycle; previous-cycle evidence must not leak. | I6 DECISION TO LOCK; REBASE COMPLETE: ExamWorkspace.jsx cycle-change handler drops `document`/`paper`/`row` but preserves `tab`. |
 | Exam-scoped inherited evidence | May appear in selected-cycle view only when labelled `evidence_scope: 'exam_wide'` in backend response. | I6 DECISION TO LOCK |
-| No selected/current cycle | Show Setup/no-current-cycle state; all downstream selected-cycle steps show `blocked`; `select_current_cycle` normalization uses priority order (active > open > expected > highest year > lowest UUID). | I6 DECISION TO LOCK; REBASE COMPLETE. |
-| Pending extraction (`queued`/`running`) | Show `incomplete` until backend evidence changes. | I6 DECISION TO LOCK |
-| Extraction `needs_review` or `failed` | Show `needs_action` with locked failed-document route when document ID is available; `needs_review` jobs must not display as `incomplete`. | I6 DECISION TO LOCK |
-| Rejected/needs-correction review rows | Keep affected evidence `incomplete`/`needs_action` until normal review lifecycle resolves rows. | I6 DECISION TO LOCK |
+| No selected/current cycle | Show Setup/no-current-cycle state; downstream selected-cycle steps report `not_applicable` (with typed reason) when they cannot be evaluated without a cycle; `select_current_cycle` normalization uses priority order (active > open > expected > highest year > lowest UUID). | I6 DECISION TO LOCK; REBASE COMPLETE. |
+| Pending extraction (`queued`/`running`) | Show `extracting` until backend evidence changes. | I6 DECISION TO LOCK |
+| Extraction `needs_review` or `failed` | `needs_review` → `review_pending`; `failed` → `failed`; show CTA with locked failed-document route when document ID is available; `review_pending` jobs must not display as `extracting`. | I6 DECISION TO LOCK |
+| Rejected/needs-correction review rows | Keep affected evidence in its actual evidence state (`review_pending`/`failed`) until normal review lifecycle resolves rows; urgency is expressed through action queue, not step status. | I6 DECISION TO LOCK |
 | Superseded evidence | Remove completion if superseded evidence was the only supporting proof. | I6 DECISION TO LOCK |
 | Backend progress unavailable | Fail closed; omit `cycle_readiness` or return it as `null`; frontend renders `unavailable` for all steps rather than frontend-inferred completion. | I6 DECISION TO LOCK |
 | Manual mark complete | Evidence-derived steps cannot be manually completed; exceptional override is UNRESOLVED — OPERATOR DECISION REQUIRED and must be permission-gated/audited if ever approved. | I6 DECISION TO LOCK plus UNRESOLVED — OPERATOR DECISION REQUIRED |
@@ -232,14 +238,14 @@ These scenarios define I9 "done" for the operator. All scenarios are DERIVED —
 
 | Scenario | ID | Precondition | Expected backend `cycle_readiness` outcome | Expected frontend behavior |
 |---|---|---|---|---|
-| No cycle selected | A1 | Exam exists; no `exam_cycles` rows exist or no `?cycle=` and `select_current_cycle` returns `null`. | `cycle_details.status = 'incomplete'`; all other steps `status = 'blocked'`; `cycle_details.action_cta` points to `?tab=setup`. | Checklist shows "Cycle details — incomplete" with Setup CTA; all downstream steps show "blocked — create a cycle first". |
-| Cycle created, no phases | A2 | `exam_cycles` row exists with `cycle_name` and `year`; no `exam_phases` row with `exam_cycle_id = selected_cycle.id`. | `cycle_details.status = 'complete'`; `phases_schedule.status = 'incomplete'` (its own hard gate unmet, but no preceding step is blocking it); all downstream steps (`source_documents` through `review_activate`) `status = 'blocked'`. | Checklist shows "Cycle details — complete"; "Phases and schedule — incomplete" with Setup CTA; all downstream steps show "blocked — add at least one phase first". |
-| Phase added to selected cycle | A3 | At least one `exam_phases` row with `exam_cycle_id = selected_cycle.id`. | `cycle_details.status = 'complete'`; `phases_schedule.status = 'complete'`; downstream steps become `incomplete` (no longer `blocked`). | Checklist unlocks downstream steps as `incomplete`; admin can begin working on documents, syllabus, PYQ, etc. |
-| Full readiness | A4 | All nine evidence predicates met; `activation_verdict.status = 'ready'`. | All steps `status = 'complete'`; `review_activate.status = 'complete'`. | Checklist shows all nine steps complete; Review & Activate CTA enabled. |
+| No cycle selected | A1 | Exam exists; no `exam_cycles` rows exist or no `?cycle=` and `select_current_cycle` returns `null`. | `cycle_details.status = 'missing'`; all other steps `status = 'not_applicable'` (with `not_applicable_reason` indicating no cycle context); `cycle_details.action_cta` points to `?tab=setup`. | Checklist shows "Cycle details — no cycle created" with Setup CTA; all downstream steps show as not applicable — create a cycle first. |
+| Cycle created, no phases | A2 | `exam_cycles` row exists with `cycle_name` and `year`; no `exam_phases` row with `exam_cycle_id = selected_cycle.id`. | `cycle_details.status = 'ready'`; `phases_schedule.status = 'missing'` (its own evidence absent, evaluated independently); all downstream steps (`source_documents` through `review_activate`) `status = 'not_applicable'` (with typed reason indicating phases prerequisite not met). | Checklist shows "Cycle details — ready"; "Phases and schedule — missing" with Setup CTA; downstream steps shown as not applicable until phases are added. |
+| Phase added to selected cycle | A3 | At least one `exam_phases` row with `exam_cycle_id = selected_cycle.id`. | `cycle_details.status = 'ready'`; `phases_schedule.status = 'ready'`; downstream steps become `missing` (now evaluable, no evidence yet). | Checklist unlocks downstream steps as `missing`; admin can begin working on documents, syllabus, PYQ, etc. |
+| Full readiness | A4 | All nine evidence predicates met; `activation_verdict.status = 'ready'`. | All steps `status = 'ready'`; `review_activate.status = 'ready'`. | Checklist shows all nine steps ready; Review & Activate CTA enabled. |
 | Resume after refresh | A5 | Admin partially completes steps, refreshes browser (same URL, same `?cycle=`). | Backend recomputes `cycle_readiness` from evidence; returns same step statuses as before refresh. | No step status changes on refresh; localStorage is not consulted; checklist state matches backend. |
 | Cycle switch | A6 | Admin changes `?cycle=` param to a different cycle with different evidence. | Backend computes `cycle_readiness` for the newly selected cycle; evidence from previous cycle does not appear. | Checklist fully recomputes; previous-cycle completed steps are not carried over; `evidence_scope` labels reflect the new cycle. |
 | Backend unavailable | A7 | Management endpoint returns 5xx or `cycle_readiness` is `null`. | `cycle_readiness` is omitted or `null`. | Frontend renders all steps as `unavailable`; no steps shown as complete; no steps shown as `incomplete` that were previously shown as `complete`. |
-| Failed extraction | A8 | At least one `document_processing_jobs` row with `job_type = 'text_extract'` and `status = 'failed'`. | `extraction.status = 'needs_action'`; `action_cta.url = '/admin/exam-intelligence/exams/{exam_id}?cycle={cycle_id}&tab=documents&document={document_id}&status=failed'` when document ID known. | Extraction step shows "needs action" with CTA to the failed document page. |
+| Failed extraction | A8 | At least one `document_processing_jobs` row with `job_type = 'text_extract'` and `status = 'failed'`. | `extraction.status = 'failed'`; `action_cta.url = '/admin/exam-intelligence/exams/{exam_id}?cycle={cycle_id}&tab=documents&document={document_id}&status=failed'` when document ID known. | Extraction step shows "failed" with CTA to the failed document page; corrective urgency expressed via action queue. |
 | index_only exam | A9 | Exam has `management_mode = 'index_only'`; operator has approved `not_applicable` rules for this mode. | `source_documents.status = 'not_applicable'`; `extraction.status = 'not_applicable'`; `syllabus_mapping.status = 'not_applicable'`; `pyq_readiness.status = 'not_applicable'`; `competition_context.status = 'not_applicable'`; `cycle_details`, `phases_schedule`, `policy_updates`, `review_activate` remain active. | Checklist shows five steps as "not applicable"; remaining four active steps follow normal completion rules. |
 
 ## Dependency and ordering contract
@@ -274,10 +280,10 @@ All decisions below are DERIVED — OPERATOR APPROVAL REQUIRED until the operato
 
 | ID | Decision | Status | Affected section | Proposed resolution | Final resolution / Deferral rationale | Approver | Date |
 |---|---|---|---|---|---|---|---|
-| D01 | Extension point: extend `GET /management/exams/{exam_id}` vs. introduce a separate endpoint for nine-step progress | UNRESOLVED | I9 backend contract proposal | Extend existing endpoint with `cycle_readiness` field; no new endpoint | — | — | — |
-| D02 | Top-level field name `cycle_readiness` | UNRESOLVED | I9 backend contract proposal | `cycle_readiness` | — | — | — |
-| D03 | Status vocabulary: `complete`, `incomplete`, `needs_action`, `not_applicable`, `blocked` | UNRESOLVED | Status vocabulary | Accept proposed five-value enum | — | — | — |
-| D04 | `contract_version` field inclusion and version-check semantics | UNRESOLVED | I9 backend contract proposal | Add monotone integer; frontend warns on mismatch | — | — | — |
+| D01 | Extension point: extend `GET /management/exams/{exam_id}` vs. introduce a separate endpoint for nine-step progress | APPROVED | I9 backend contract proposal | Extend existing endpoint with `cycle_readiness` field; no new endpoint | Extend existing composite management-detail endpoint; no new canonical endpoint; `section_readiness` alias during migration; legacy `/workspace/{exam_id}/context` and `/readiness` routes retained until separate cleanup after usage proven absent. See `Exam-Cycle-Setup-D01-D04-Decision-Record-2026-06-23.md`. | johnefficacy-crypto (operator) | 2026-06-23 |
+| D02 | Top-level field name `cycle_readiness` | APPROVED | I9 backend contract proposal | `cycle_readiness` | Canonical field name locked as `cycle_readiness`; backend-selected cycle semantics locked; temporary identical `section_readiness` alias during migration; both aliases must originate from the same computation. See `Exam-Cycle-Setup-D01-D04-Decision-Record-2026-06-23.md`. | johnefficacy-crypto (operator) | 2026-06-23 |
+| D03 | Status vocabulary: `complete`, `incomplete`, `needs_action`, `not_applicable`, `blocked` | APPROVED — ORIGINAL PROPOSAL REJECTED AND AMENDED | Status vocabulary | Accept proposed five-value enum | Proposed five-value enum REJECTED; locked eight-value step/check vocabulary: `missing|uploaded|extracting|review_pending|ready|stale|failed|not_applicable`; urgency → action queue/blocker metadata; activation authority → top-level verdict `blocked|needs_action|ready` from `classify_exam`. See `Exam-Cycle-Setup-D01-D04-Decision-Record-2026-06-23.md`. | johnefficacy-crypto (operator) | 2026-06-23 |
+| D04 | `contract_version` field inclusion and version-check semantics | APPROVED | I9 backend contract proposal | Add monotone integer; frontend warns on mismatch | Top-level integer `contract_version: 1` on composite management-detail response (not nested inside `cycle_readiness`); unsupported/absent version renders identity/navigation only and shows inline compatibility error; warning-only mode prohibited. See `Exam-Cycle-Setup-D01-D04-Decision-Record-2026-06-23.md`. | johnefficacy-crypto (operator) | 2026-06-23 |
 | D05 | `source_documents` required document set definition per exam / `management_mode` | APPROVED | Nine-step matrix — Source documents | No proposed resolution; operator must define required document types | Required evidence derived from `management_mode + exam_type + selected_cycle + phase_kind`; no per-slug requirement list; `management_mode IS NULL` requires operator action (no silent default). See `Exam-Cycle-Setup-D05-Document-Requirements-Decision-2026-06-23.md`. | johnefficacy-crypto (operator) | 2026-06-23 |
 | D06 | `extraction` all-documents-success threshold | UNRESOLVED | Nine-step matrix — Extraction | At least one `succeeded` job satisfies step; all-documents threshold deferred | — | — | — |
 | D07 | `syllabus_mapping` aggregation: `hard_gate_then_advisory` (locked_coverage hard; mention_review advisory) | UNRESOLVED | Nine-step matrix — Syllabus mapping; aggregation rules | Accept `hard_gate_then_advisory` rule | — | — | — |
@@ -298,8 +304,8 @@ I6 is approved and I9 is unblocked **only when all of the following conditions a
 | # | Condition | Current state |
 |---|---|---|
 | E1 | All UNRESOLVED — OPERATOR DECISION REQUIRED items (D05, D13) receive explicit operator resolution or a documented deferral rationale | NOT MET — D05 APPROVED 2026-06-23; D13 unresolved |
-| E2 | All DERIVED — PROPOSED RESOLUTION items (D01–D04, D06–D12, D14–D16) receive operator yes/no approval | NOT MET — D09–D12, D14–D16 APPROVED 2026-06-23; D01–D04, D06–D08 open |
-| E3 | Decision register D01–D16 all reach status APPROVED or DEFERRED (with rationale) | NOT MET — D05, D09–D12, D14–D16 APPROVED; D01–D04, D06–D08, D13 open |
+| E2 | All DERIVED — PROPOSED RESOLUTION items (D01–D04, D06–D12, D14–D16) receive operator yes/no approval | NOT MET — D01–D04, D09–D12, D14–D16 APPROVED 2026-06-23; D06–D08 open |
+| E3 | Decision register D01–D16 all reach status APPROVED or DEFERRED (with rationale) | NOT MET — D01–D05, D09–D12, D14–D16 APPROVED; D06–D08, D13 open |
 | E4 | I8-C (Advanced Repair isolation) merges; I9 dispatch blocked until then | MET — PR #759 merged at a98a0dc |
 | E5 | PR #761 CI checks remain green after all document corrections | NOT MET — E2E failed at 6f5c264 (transient: Supabase CLI rate limit, no tests ran); re-evaluated after each push |
 | E6 | Operator explicitly approves this gate document and marks PR #761 ready for merge | NOT MET |
