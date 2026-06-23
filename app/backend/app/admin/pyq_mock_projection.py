@@ -35,7 +35,7 @@ _PRIMARY_TAG_ROLE     = "primary"
 def _fetch_paper(sb: Any, paper_id: str) -> dict | None:
     rows = (
         sb.table("pyq_papers")
-        .select("id, exam_id, year, trust_status, source_url, source_type")
+        .select("id, exam_id, year, trust_status, source_url, source_type, source_document_id")
         .eq("id", paper_id)
         .limit(1)
         .execute()
@@ -141,6 +141,7 @@ def compute_content_hash(
     paper_exam   = str(_p.get("exam_id") or "")
     paper_src_url  = str(_p.get("source_url") or "")
     paper_src_type = str(_p.get("source_type") or "")
+    paper_src_doc_id = str(_p.get("source_document_id") or "")
 
     verified_opts = sorted(
         (o for o in options if o.get("reviewer_status") == _VERIFIED_OPTION),
@@ -166,7 +167,7 @@ def compute_content_hash(
 
     raw = NUL.join([
         q_text, expl, diff, language, exp_time, paper_id,
-        paper_year, paper_exam, paper_src_url, paper_src_type,
+        paper_year, paper_exam, paper_src_url, paper_src_type, paper_src_doc_id,
         opt_parts, correct_opt, tag_parts,
     ])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()

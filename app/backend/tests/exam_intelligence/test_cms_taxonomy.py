@@ -138,12 +138,41 @@ class _RpcQuery:
             )
 
         # 6. Provenance gate re-validated on the locked row values.
+        #    Mirrors migration 186's updated step 6: source_type required;
+        #    at least one anchor (source_url or source_document_id); if
+        #    source_document_id is set, validate the document_assets row.
         if current == "pending" and target == "verified":
             blocking = []
-            if not (paper.get("source_url") and str(paper.get("source_url")).strip()):
-                blocking.append("source_url")
+
+            # (a) source_type must be known
             if paper.get("source_type") in (None, "", "unknown"):
                 blocking.append("source_type")
+
+            # (b) at least one provenance anchor required
+            if (not (paper.get("source_url") and str(paper.get("source_url")).strip())
+                    and paper.get("source_document_id") is None):
+                blocking.append("source_url")
+
+            # (c) validate attached document if present
+            doc_id = paper.get("source_document_id")
+            if doc_id is not None:
+                docs = self._db.get("document_assets", [])
+                doc = next((d for d in docs if d.get("id") == doc_id), None)
+                if doc is None:
+                    blocking.append("source_document_id_not_found")
+                else:
+                    if doc.get("scope") != "admin_exam_intelligence":
+                        blocking.append("source_document_id_wrong_scope")
+                    if doc.get("document_kind") != "pyq_paper":
+                        blocking.append("source_document_id_wrong_kind")
+                    if doc.get("status") in ("failed", "archived"):
+                        blocking.append("source_document_id_bad_status")
+                    if not doc.get("storage_bucket") or not doc.get("storage_path"):
+                        blocking.append("source_document_id_no_storage")
+                    doc_exam = (doc.get("metadata") or {}).get("exam_id")
+                    if doc_exam and doc_exam != paper.get("exam_id"):
+                        blocking.append("source_document_id_exam_mismatch")
+
             if blocking:
                 raise Exception(
                     f"provenance_incomplete: blocking_fields={','.join(blocking)}"

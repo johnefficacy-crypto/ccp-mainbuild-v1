@@ -9,7 +9,11 @@ Covers:
     pending  → verified ✓   pending  → rejected ✓
     verified → rejected ✓   rejected → pending  ✓
     rejected → verified ✗   verified → pending  ✗  (no-ops also ✗)
-- Provenance gate: pending → verified blocked when source_url/source_type missing
+- Provenance gate (migration 186): pending → verified requires source_type AND
+    at least one anchor (source_url or valid source_document_id); document
+    validation is enforced: scope, document_kind, status, storage, exam_id.
+- Signed-PDF endpoint: rejects document_id that is not the paper's attached doc.
+- Hash formula: source_document_id is included so changing it invalidates hash.
 - Audit-first: audit log written before status update; raises on audit failure
 - Conditional update: 409 when trust_status changed concurrently
 - 404 for unknown paper
@@ -389,3 +393,257 @@ def test_reason_too_short_422():
     sb = TaxSBStub(_seed())
     r = _review(_client(sb), status="verified", reason="short")
     assert r.status_code == 422, r.text
+
+
+# ── Migration 186: source_document_id provenance gate ─────────────────────────
+
+_VALID_DOC = {
+    "id": "doc-1",
+    "scope": "admin_exam_intelligence",
+    "document_kind": "pyq_paper",
+    "status": "processed",
+    "storage_bucket": "exam-docs",
+    "storage_path": "upsc/2024-paper.pdf",
+    "metadata": {"exam_id": "e1"},
+}
+
+
+def _seed_with_doc(trust_status="pending", doc=None, **extra):
+    """Paper with source_document_id set (no source_url by default)."""
+    doc_row = dict(_VALID_DOC) if doc is None else doc
+    paper = {
+        "id": "p1", "exam_id": "e1", "year": 2024,
+        "trust_status": trust_status,
+        "source_url": None,
+        "source_type": "official",
+        "source_document_id": "doc-1",
+        **extra,
+    }
+    return {
+        "pyq_papers": [paper],
+        "admin_audit_logs": [],
+        "document_assets": [doc_row],
+    }
+
+
+# ── Provenance anchor variants ─────────────────────────────────────────────────
+
+
+def test_source_url_only_passes():
+    """source_url present and source_type valid → no document needed."""
+    sb = TaxSBStub(_seed("pending"))  # existing seed has source_url
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 200, r.text
+
+
+def test_source_document_only_passes():
+    """source_document_id present (valid doc) and source_type valid → no source_url needed."""
+    sb = TaxSBStub(_seed_with_doc())
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 200, r.text
+    assert r.json()["row"]["trust_status"] == "verified"
+
+
+def test_both_url_and_document_passes():
+    """Having both source_url and source_document_id is fine."""
+    sb = TaxSBStub(_seed_with_doc(source_url="https://upsc.gov.in/2024.pdf"))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 200, r.text
+
+
+def test_neither_url_nor_document_blocks():
+    """Neither source_url nor source_document_id → blocks with 'source_url'."""
+    sb = TaxSBStub(_seed("pending", source_url=None, source_document_id=None))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    detail = r.json()["detail"]
+    assert detail["error"] == "provenance_incomplete"
+    assert "source_url" in detail["blocking_fields"]
+
+
+def test_document_not_found_blocks():
+    """source_document_id points to a non-existent document_assets row."""
+    db = _seed_with_doc()
+    db["document_assets"] = []  # no document rows
+    sb = TaxSBStub(db)
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    detail = r.json()["detail"]
+    assert "source_document_id_not_found" in detail["blocking_fields"]
+    assert len(db.get("admin_audit_logs", [])) == 0
+
+
+def test_document_wrong_scope_blocks():
+    """Document with wrong scope is rejected."""
+    doc = {**_VALID_DOC, "scope": "personal_library"}
+    sb = TaxSBStub(_seed_with_doc(doc=doc))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    assert "source_document_id_wrong_scope" in r.json()["detail"]["blocking_fields"]
+
+
+def test_document_wrong_kind_blocks():
+    """Document with document_kind != 'pyq_paper' is rejected."""
+    doc = {**_VALID_DOC, "document_kind": "syllabus"}
+    sb = TaxSBStub(_seed_with_doc(doc=doc))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    assert "source_document_id_wrong_kind" in r.json()["detail"]["blocking_fields"]
+
+
+def test_document_failed_status_blocks():
+    """Document with status='failed' is rejected."""
+    doc = {**_VALID_DOC, "status": "failed"}
+    sb = TaxSBStub(_seed_with_doc(doc=doc))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    assert "source_document_id_bad_status" in r.json()["detail"]["blocking_fields"]
+
+
+def test_document_archived_status_blocks():
+    """Document with status='archived' is rejected."""
+    doc = {**_VALID_DOC, "status": "archived"}
+    sb = TaxSBStub(_seed_with_doc(doc=doc))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    assert "source_document_id_bad_status" in r.json()["detail"]["blocking_fields"]
+
+
+def test_document_no_storage_blocks():
+    """Document with empty storage_bucket is rejected."""
+    doc = {**_VALID_DOC, "storage_bucket": None, "storage_path": None}
+    sb = TaxSBStub(_seed_with_doc(doc=doc))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    assert "source_document_id_no_storage" in r.json()["detail"]["blocking_fields"]
+
+
+def test_document_exam_mismatch_blocks():
+    """Document metadata.exam_id disagrees with paper.exam_id."""
+    doc = {**_VALID_DOC, "metadata": {"exam_id": "other-exam"}}
+    sb = TaxSBStub(_seed_with_doc(doc=doc))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    assert "source_document_id_exam_mismatch" in r.json()["detail"]["blocking_fields"]
+
+
+def test_document_no_exam_metadata_passes():
+    """Document without metadata.exam_id does not trigger exam_mismatch check."""
+    doc = {**_VALID_DOC, "metadata": {}}
+    sb = TaxSBStub(_seed_with_doc(doc=doc))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 200, r.text
+
+
+def test_document_gate_does_not_apply_to_rejected():
+    """pending → rejected is allowed even with a bad document attached."""
+    doc = {**_VALID_DOC, "document_kind": "syllabus"}  # wrong kind — irrelevant for rejection
+    sb = TaxSBStub(_seed_with_doc(doc=doc))
+    r = _review(_client(sb), status="rejected")
+    assert r.status_code == 200, r.text
+
+
+# ── Signed-PDF endpoint ownership check (migration 186 hardening) ─────────────
+
+
+class _StorageStub:
+    def from_(self, _bucket):
+        return self
+
+    def create_signed_url(self, path, _ttl):
+        return {"signedURL": f"https://storage.test/{path}?sig=abc"}
+
+
+class _DocTaxSBStub(TaxSBStub):
+    def __init__(self, db=None):
+        super().__init__(db)
+        self.storage = _StorageStub()
+
+
+def _pdf_client(sb):
+    app = FastAPI()
+    app.include_router(cms_api.router, prefix="/api")
+    cms_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    app.dependency_overrides[cms_api._flag_enabled] = lambda: None
+    app.dependency_overrides[get_current_user] = lambda: _SUPER
+    return TestClient(app, raise_server_exceptions=False)
+
+
+def _pdf_seed():
+    return {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": None,
+            "source_type": "official",
+            "source_document_id": "doc-1",
+        }],
+        "document_assets": [{
+            **_VALID_DOC,
+            "original_filename": "upsc-2024.pdf",
+            "page_count": 32,
+        }],
+        "admin_audit_logs": [],
+    }
+
+
+def test_signed_pdf_attached_document_returns_url():
+    """GET /signed-pdf with the paper's own source_document_id succeeds."""
+    sb = _DocTaxSBStub(_pdf_seed())
+    r = _pdf_client(sb).get(f"{_BASE}/pyq-papers/p1/signed-pdf?document_id=doc-1")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "signed_url" in body
+    assert body["signed_url"].startswith("https://storage.test/")
+
+
+def test_signed_pdf_unattached_document_is_403():
+    """GET /signed-pdf with a different document_id is rejected with 403."""
+    sb = _DocTaxSBStub(_pdf_seed())
+    r = _pdf_client(sb).get(f"{_BASE}/pyq-papers/p1/signed-pdf?document_id=other-doc")
+    assert r.status_code == 403, r.text
+
+
+def test_signed_pdf_unknown_paper_is_404():
+    """GET /signed-pdf for a non-existent paper returns 404."""
+    sb = _DocTaxSBStub(_pdf_seed())
+    r = _pdf_client(sb).get(f"{_BASE}/pyq-papers/no-such-paper/signed-pdf?document_id=doc-1")
+    assert r.status_code == 404, r.text
+
+
+# ── Content hash covers source_document_id ────────────────────────────────────
+
+
+def test_content_hash_changes_when_source_document_id_changes():
+    """Changing source_document_id produces a different hash (hash formula covers it).
+
+    This verifies that the Python preview layer will correctly report 'would_update'
+    when a paper's source_document_id is modified — triggering a re-projection.
+    """
+    from app.admin.pyq_mock_projection import compute_content_hash
+
+    q = {
+        "question_text": "Sample question?",
+        "explanation_text": "",
+        "observed_difficulty": "medium",
+        "language": "en",
+        "expected_solve_time_sec": 60,
+        "pyq_paper_id": "p1",
+    }
+    opts: list = []
+    paper_no_doc = {
+        "year": 2024, "exam_id": "e1",
+        "source_url": "https://upsc.gov.in/2024.pdf",
+        "source_type": "official",
+        "source_document_id": None,
+    }
+    paper_with_doc = {**paper_no_doc, "source_document_id": "doc-uuid-1"}
+    paper_diff_doc = {**paper_no_doc, "source_document_id": "doc-uuid-2"}
+
+    h_none = compute_content_hash(q, opts, paper_no_doc)
+    h_doc1 = compute_content_hash(q, opts, paper_with_doc)
+    h_doc2 = compute_content_hash(q, opts, paper_diff_doc)
+
+    assert h_none != h_doc1, "Adding source_document_id must change the hash"
+    assert h_doc1 != h_doc2, "Different source_document_id values must produce different hashes"
+    assert h_none != h_doc2, "Transitivity: all three must be distinct"

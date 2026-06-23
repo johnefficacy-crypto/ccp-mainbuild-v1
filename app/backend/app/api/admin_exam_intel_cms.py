@@ -722,7 +722,7 @@ def create_syllabus_document(
 _PAPER_FIELDS = {
     "pyq_source_id", "exam_id", "exam_cycle_id", "exam_phase_id",
     "year", "paper_date", "shift", "paper_code", "source_url",
-    "source_type", "content_hash", "metadata",
+    "source_type", "source_document_id", "content_hash", "metadata",
 }
 _PAPER_SOURCE_TYPES = ("official", "memory_based", "coaching", "community", "aggregator", "unknown")
 
@@ -823,12 +823,10 @@ _ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
     "rejected": ("pending",),
 }
 
-# Fields that must be present/non-unknown before pending → verified is allowed.
-# Each entry: (field_name, predicate_returning_true_when_satisfied).
-_VERIFICATION_REQUIRED_FIELDS = (
-    ("source_url",  lambda v: bool(v and str(v).strip())),
-    ("source_type", lambda v: v not in (None, "", "unknown")),
-)
+# Provenance anchor: either source_url or source_document_id must be present.
+# source_type must always be a known value. Document content validation is
+# authoritative inside the RPC (under the row lock); Python only checks that
+# at least one anchor field is populated so the operator gets an early signal.
 
 # All valid target statuses (union of all allowed-transition values)
 _ALL_TARGET_STATUSES = frozenset(s for targets in _ALLOWED_TRANSITIONS.values() for s in targets)
@@ -884,12 +882,17 @@ def review_pyq_paper(
             ),
         )
 
-    # Provenance gate: pending → verified requires complete paper provenance.
+    # Provenance gate: pending → verified requires (a) valid source_type and
+    # (b) at least one anchor — non-empty source_url OR a source_document_id.
+    # Document content validation is authoritative in the RPC (under the row
+    # lock); Python only gives an early signal on obviously missing anchors.
     if from_status == "pending" and body.status == "verified":
-        blocking = [
-            field for field, ok in _VERIFICATION_REQUIRED_FIELDS
-            if not ok(existing.get(field))
-        ]
+        blocking: list[str] = []
+        if existing.get("source_type") in (None, "", "unknown"):
+            blocking.append("source_type")
+        if (not (existing.get("source_url") and str(existing.get("source_url")).strip())
+                and not existing.get("source_document_id")):
+            blocking.append("source_url")
         if blocking:
             raise HTTPException(
                 status_code=422,
@@ -1089,8 +1092,11 @@ def pyq_paper_signed_pdf(
 ) -> dict[str, Any]:
     """Return a short-lived signed URL for viewing a source PDF in the workspace."""
     supabase = get_supabase_admin()
-    if not _safe_select(supabase, "pyq_papers", id=paper_id):
+    paper = _safe_select(supabase, "pyq_papers", id=paper_id)
+    if not paper:
         raise HTTPException(status_code=404, detail="pyq_paper not found")
+    if paper.get("source_document_id") != document_id:
+        raise HTTPException(status_code=403, detail="document not attached to this paper")
 
     asset = (
         supabase.table("document_assets")

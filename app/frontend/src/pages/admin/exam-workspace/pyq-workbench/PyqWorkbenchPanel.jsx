@@ -76,6 +76,77 @@ function PaperReviewModal({ paper, targetStatus, onCancel, onSubmit }) {
   );
 }
 
+function AttachDocModal({ paper, onCancel, onSubmit }) {
+  const [documentId, setDocumentId] = useState(paper.source_document_id || "");
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!documentId.trim()) { setErr("Document ID is required."); return; }
+    if (reason.trim().length < 8) { setErr("Reason must be at least 8 characters."); return; }
+    setSubmitting(true);
+    setErr(null);
+    try {
+      await onSubmit(paper.id, documentId.trim(), reason.trim());
+    } catch (ex) {
+      setErr(ex?.message || "Attach failed");
+      setSubmitting(false);
+    }
+  }
+
+  const isReplace = Boolean(paper.source_document_id);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" data-testid="attach-doc-modal">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 flex flex-col gap-4"
+      >
+        <h2 className="text-base font-semibold text-gray-800">
+          {isReplace ? "Replace" : "Attach"} source document — {paper.year ?? "—"}
+        </h2>
+        <label className="flex flex-col gap-1 text-sm text-gray-700">
+          Document ID <span className="text-gray-400 font-normal">(UUID of document_assets row)</span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={documentId}
+            onChange={(e) => setDocumentId(e.target.value)}
+            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none font-mono"
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            data-testid="attach-doc-id-input"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-gray-700">
+          Reason <span className="text-gray-400 font-normal">(required, ≥ 8 chars)</span>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={2}
+            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none resize-none"
+            placeholder="e.g. Linked official UPSC PDF uploaded 2024-06-20"
+            data-testid="attach-doc-reason"
+          />
+        </label>
+        {err && <p className="text-xs text-rose-600" data-testid="attach-doc-error">{err}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit" disabled={submitting} className="px-3 py-1.5 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" data-testid="attach-doc-submit">
+            {submitting ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status = null }) {
   const { exam, cycle } = useExamWorkspace();
   const examId = exam?.id;
@@ -84,8 +155,10 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const { user } = useAuth();
   const canReview = user?.role === "super_admin" ||
     (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.review"));
+  const canEdit = user?.role === "super_admin" ||
+    (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.cms"));
 
-  const { papers, selectedPaperId, setSelectedPaperId, loading, error, reviewPaper } = usePyqWorkbench(
+  const { papers, selectedPaperId, setSelectedPaperId, loading, error, reviewPaper, patchPaper, getPaperSignedPdf } = usePyqWorkbench(
     examId,
     cycleId,
   );
@@ -93,6 +166,8 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [paperNotFound, setPaperNotFound] = useState(false);
   const [reviewTarget, setReviewTarget] = useState(null); // { paper, targetStatus }
+  const [attachTarget, setAttachTarget] = useState(null); // { paper }
+  const [pdfError, setPdfError] = useState(null);
 
   // Auto-select paperId once papers have loaded
   useEffect(() => {
@@ -109,6 +184,21 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   async function handleReviewSubmit(pid, targetStatus, reason) {
     await reviewPaper(pid, targetStatus, reason);
     setReviewTarget(null);
+  }
+
+  async function handleAttachSubmit(pid, documentId, reason) {
+    await patchPaper(pid, { source_document_id: documentId }, reason);
+    setAttachTarget(null);
+  }
+
+  async function handleViewPdf(paper) {
+    setPdfError(null);
+    try {
+      const url = await getPaperSignedPdf(paper.id, paper.source_document_id);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (ex) {
+      setPdfError(ex?.message || "Failed to get signed URL");
+    }
   }
 
   return (
@@ -137,6 +227,9 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           <span className="text-sm text-gray-500" data-testid="pyq-empty-state">
             No PYQ papers for this exam/cycle. Create one in the CMS.
           </span>
+        )}
+        {pdfError && (
+          <p className="text-xs text-rose-600 mt-1" data-testid="pdf-error">{pdfError}</p>
         )}
         {!loading && papers.length > 0 && (
           <table
@@ -212,6 +305,43 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
                           )}
                         </>
                       )}
+                      {/* Source document actions — available to CMS editors */}
+                      {canEdit && (
+                        <>
+                          {p.source_document_id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleViewPdf(p)}
+                                className="text-xs px-2 py-0.5 rounded border border-sky-300 text-sky-700 hover:bg-sky-50 mr-1"
+                                data-testid={`view-pdf-btn-${p.id}`}
+                                title="View source PDF"
+                              >
+                                PDF
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setAttachTarget({ paper: p })}
+                                className="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                                data-testid={`replace-doc-btn-${p.id}`}
+                                title="Replace source document"
+                              >
+                                Replace Doc
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setAttachTarget({ paper: p })}
+                              className="text-xs px-2 py-0.5 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+                              data-testid={`attach-doc-btn-${p.id}`}
+                              title="Attach source document"
+                            >
+                              Attach Doc
+                            </button>
+                          )}
+                        </>
+                      )}
                     </td>
                   </tr>
                 );
@@ -256,6 +386,13 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           targetStatus={reviewTarget.targetStatus}
           onCancel={() => setReviewTarget(null)}
           onSubmit={handleReviewSubmit}
+        />
+      )}
+      {attachTarget && (
+        <AttachDocModal
+          paper={attachTarget.paper}
+          onCancel={() => setAttachTarget(null)}
+          onSubmit={handleAttachSubmit}
         />
       )}
     </div>
