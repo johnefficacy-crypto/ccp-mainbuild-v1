@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
+import { useAuth } from "../../../../lib/authContext";
 import { usePyqWorkbench } from "./usePyqWorkbench";
 import BulkImportModal from "./bulk-import/BulkImportModal";
 import PyqMockProjectionPanel from "./PyqMockProjectionPanel";
@@ -77,6 +78,10 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const { exam, cycle } = useExamWorkspace();
   const examId = exam?.id;
   const cycleId = cycle?.id ?? null;
+
+  const { user } = useAuth();
+  const canReview = user?.role === "super_admin" ||
+    (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.review"));
 
   const { papers, selectedPaperId, setSelectedPaperId, loading, error, reviewPaper } = usePyqWorkbench(
     examId,
@@ -168,25 +173,42 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
                     <td className="py-1.5 pr-4">{expectedCount}</td>
                     <td className="py-1.5 pr-4">{readiness}</td>
                     <td className="py-1.5" onClick={(e) => e.stopPropagation()}>
-                      {p.trust_status !== "verified" && (
-                        <button
-                          type="button"
-                          onClick={() => setReviewTarget({ paper: p, targetStatus: "verified" })}
-                          className="text-xs px-2 py-0.5 rounded border border-emerald-400 text-emerald-700 hover:bg-emerald-50 mr-1"
-                          data-testid={`verify-paper-btn-${p.id}`}
-                        >
-                          Verify
-                        </button>
-                      )}
-                      {p.trust_status !== "rejected" && (
-                        <button
-                          type="button"
-                          onClick={() => setReviewTarget({ paper: p, targetStatus: "rejected" })}
-                          className="text-xs px-2 py-0.5 rounded border border-rose-300 text-rose-600 hover:bg-rose-50"
-                          data-testid={`reject-paper-btn-${p.id}`}
-                        >
-                          Reject
-                        </button>
+                      {canReview && (
+                        <>
+                          {/* pending → verified */}
+                          {p.trust_status === "pending" && (
+                            <button
+                              type="button"
+                              onClick={() => setReviewTarget({ paper: p, targetStatus: "verified" })}
+                              className="text-xs px-2 py-0.5 rounded border border-emerald-400 text-emerald-700 hover:bg-emerald-50 mr-1"
+                              data-testid={`verify-paper-btn-${p.id}`}
+                            >
+                              Verify
+                            </button>
+                          )}
+                          {/* pending → rejected  |  verified → rejected */}
+                          {(p.trust_status === "pending" || p.trust_status === "verified") && (
+                            <button
+                              type="button"
+                              onClick={() => setReviewTarget({ paper: p, targetStatus: "rejected" })}
+                              className="text-xs px-2 py-0.5 rounded border border-rose-300 text-rose-600 hover:bg-rose-50"
+                              data-testid={`reject-paper-btn-${p.id}`}
+                            >
+                              Reject
+                            </button>
+                          )}
+                          {/* rejected → pending (re-queue for review) */}
+                          {p.trust_status === "rejected" && (
+                            <button
+                              type="button"
+                              onClick={() => setReviewTarget({ paper: p, targetStatus: "pending" })}
+                              className="text-xs px-2 py-0.5 rounded border border-amber-400 text-amber-700 hover:bg-amber-50"
+                              data-testid={`requeue-paper-btn-${p.id}`}
+                            >
+                              Re-queue
+                            </button>
+                          )}
+                        </>
                       )}
                     </td>
                   </tr>

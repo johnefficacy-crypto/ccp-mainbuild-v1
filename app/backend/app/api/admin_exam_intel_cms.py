@@ -53,6 +53,7 @@ logger = logging.getLogger("career_copilot.api.admin_exam_intel_cms")
 router = APIRouter(prefix="/admin/exam-intelligence-cms", tags=["admin-exam-intelligence-cms"])
 
 PERM_CMS = "exam_intelligence.cms"
+PERM_REVIEW = "exam_intelligence.review"
 
 
 # ─── Helpers (mirror admin_study_os patterns) ─────────────────────────────
@@ -814,11 +815,27 @@ def update_pyq_paper(
     return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
 
 
-_PAPER_REVIEW_STATUSES = ("verified", "rejected")
+# Allowed trust_status transitions for pyq_papers.
+# Any transition not listed here is rejected with 422.
+_ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "pending":  ("verified", "rejected"),
+    "verified": ("rejected",),
+    "rejected": ("pending",),
+}
+
+# Fields that must be present/non-unknown before pending → verified is allowed.
+# Each entry: (field_name, predicate_returning_true_when_satisfied).
+_VERIFICATION_REQUIRED_FIELDS = (
+    ("source_url",  lambda v: bool(v and str(v).strip())),
+    ("source_type", lambda v: v not in (None, "", "unknown")),
+)
+
+# All valid target statuses (union of all allowed-transition values)
+_ALL_TARGET_STATUSES = frozenset(s for targets in _ALLOWED_TRANSITIONS.values() for s in targets)
 
 
 class PaperReviewBody(BaseModel):
-    status: str = Field(..., description="Target trust_status: 'verified' or 'rejected'")
+    status: str = Field(..., description="Target trust_status: 'verified', 'rejected', or 'pending'")
     reason: str = Field(..., min_length=8, max_length=500)
 
 
@@ -826,45 +843,111 @@ class PaperReviewBody(BaseModel):
 def review_pyq_paper(
     paper_id: str,
     body: PaperReviewBody,
-    admin: dict = Depends(require_permission(PERM_CMS)),
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    """Transition a PYQ paper's trust_status to 'verified' or 'rejected'.
+    """Transition a PYQ paper's trust_status.
 
-    This is the only path that can move a paper out of 'pending'.
-    Requires an explicit reason (≥ 8 chars) recorded in admin_audit_logs
-    with reviewer identity, from/to status, and timestamp.
+    Allowed transitions::
+
+        pending  → verified | rejected
+        verified → rejected
+        rejected → pending
+
+    For ``pending → verified``, the paper must have ``source_url`` set and
+    ``source_type`` not 'unknown'; a 422 with ``blocking_fields`` is returned
+    otherwise so the operator can complete the record first.
+
+    The audit log is written **before** the status update so the intent is
+    always captured even if the subsequent UPDATE fails.  The UPDATE is
+    guarded on the current trust_status (optimistic-lock) to prevent silent
+    overwrites when two operators act concurrently.
     """
-    if body.status not in _PAPER_REVIEW_STATUSES:
+    if body.status not in _ALL_TARGET_STATUSES:
         raise HTTPException(
             status_code=422,
-            detail=f"status must be one of {_PAPER_REVIEW_STATUSES}",
+            detail=f"status must be one of {sorted(_ALL_TARGET_STATUSES)}",
         )
     supabase = get_supabase_admin()
     existing = _safe_select(supabase, "pyq_papers", id=paper_id)
     if not existing:
         raise HTTPException(status_code=404, detail="pyq_paper not found")
+
     from_status = existing.get("trust_status", "pending")
+    allowed = _ALLOWED_TRANSITIONS.get(from_status, ())
+    if body.status not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Transition '{from_status}' → '{body.status}' is not allowed. "
+                f"Allowed targets from '{from_status}': {list(allowed)}"
+            ),
+        )
+
+    # Provenance gate: pending → verified requires complete paper provenance.
+    if from_status == "pending" and body.status == "verified":
+        blocking = [
+            field for field, ok in _VERIFICATION_REQUIRED_FIELDS
+            if not ok(existing.get(field))
+        ]
+        if blocking:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "provenance_incomplete", "blocking_fields": blocking},
+            )
+
+    # Write audit FIRST — raises on failure so status is never updated without
+    # an audit record.
+    try:
+        audit_rows = (
+            supabase.table("admin_audit_logs")
+            .insert({
+                "actor_id":    admin.get("id"),
+                "actor_email": admin.get("email"),
+                "action":      "exam_intel.cms.pyq_paper.review",
+                "entity_type": "pyq_paper",
+                "entity_id":   paper_id,
+                "new_value": {
+                    "from_status":   from_status,
+                    "to_status":     body.status,
+                    "reason":        body.reason,
+                    "reviewed_by":   admin.get("email"),
+                    "reviewed_at":   _now_iso(),
+                },
+                "notes": "admin_exam_intel_cms",
+            })
+            .execute()
+            .data or []
+        )
+    except Exception as exc:
+        logger.exception("audit log write failed in review_pyq_paper; aborting transition")
+        raise HTTPException(
+            status_code=500,
+            detail="Audit log write failed; transition aborted to preserve auditability",
+        ) from exc
+
+    audit_id = audit_rows[0].get("id") if audit_rows else None
+
+    # Conditional update — guard on expected current status to detect concurrent
+    # modifications (optimistic lock: 0 rows → 409).
     updated = (
         supabase.table("pyq_papers")
         .update({"trust_status": body.status, "updated_at": _now_iso()})
         .eq("id", paper_id)
+        .eq("trust_status", from_status)
         .execute()
         .data or []
     )
-    audit_id = _audit(
-        supabase, admin, "exam_intel.cms.pyq_paper.review",
-        entity_type="pyq_paper", entity_id=paper_id,
-        new_value={
-            "from_status": from_status,
-            "to_status": body.status,
-            "reason": body.reason,
-            "reviewed_by": admin.get("email"),
-            "reviewed_at": _now_iso(),
-        },
-    )
-    row = updated[0] if updated else {**existing, "trust_status": body.status}
-    return {"ok": True, "audit_id": audit_id, "row": row}
+    if not updated:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Concurrent modification: paper trust_status is no longer '{from_status}'. "
+                "Re-fetch and retry."
+            ),
+        )
+
+    return {"ok": True, "audit_id": audit_id, "row": updated[0]}
 
 
 # ════════════════════════════════════════════════════════════════════════

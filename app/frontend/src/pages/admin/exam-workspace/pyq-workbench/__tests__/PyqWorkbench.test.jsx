@@ -48,7 +48,13 @@ jest.mock("../bulk-import/BulkImportModal", () => {
   };
 });
 
+jest.mock("../../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: jest.fn(),
+}));
+
 const { api } = require("../../../../../lib/api");
+const { useAuth } = require("../../../../../lib/authContext");
 const ExamWorkspaceContext = require("../../ExamWorkspaceContext");
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -129,7 +135,11 @@ const PyqPaperWorkspace = require("../../../studyos/PyqPaperWorkspace").default;
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("PyqWorkbenchPanel", () => {
-  beforeEach(() => { jest.clearAllMocks(); mockContextApi(); });
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockContextApi();
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: [] } });
+  });
 
   test("fetches papers on mount with correct exam_id", async () => {
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
@@ -273,6 +283,7 @@ describe("PyqPaperWorkspace — paperId prop / embedded", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: [] } });
     api.get.mockImplementation((url) => {
       if (url.includes(`/pyq-papers/${PAPER_ID}`) && !url.includes("?")) {
         return Promise.resolve(PAPER_P1);
@@ -360,5 +371,155 @@ describe("PyqPaperWorkspace — paperId prop / embedded", () => {
     const link = screen.getByTestId("workspace-banner-link");
     // PAPER_P1 has exam_id=exam-1, exam_cycle_id=cycle-1
     expect(link.getAttribute("href")).toContain(`/workspace/${EXAM_ID}/${CYCLE_ID}`);
+  });
+});
+
+// ── Review lifecycle (comment #4777966548, item 5) ────────────────────────────
+
+const REVIEW_PAPERS = [
+  {
+    id: "p-pending", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+    source_url: "https://upsc.gov.in/2024.pdf", source_type: "official",
+  },
+  { id: "p-verified", exam_id: EXAM_ID, year: 2023, trust_status: "verified" },
+  { id: "p-rejected", exam_id: EXAM_ID, year: 2022, trust_status: "rejected" },
+];
+
+function mockApiForReview() {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+    if (url.includes("/context")) return Promise.resolve({
+      exam: { id: EXAM_ID, name: "Test" }, cycle: null, cycles: [], phases: [],
+    });
+    if (url.includes("/pyq-papers?")) return Promise.resolve({ items: REVIEW_PAPERS });
+    return Promise.resolve({});
+  });
+}
+
+describe("PyqWorkbenchPanel — paper lifecycle review", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockApiForReview();
+  });
+
+  test("review buttons hidden when user lacks exam_intelligence.review", async () => {
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.cms"] } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.queryByTestId("verify-paper-btn-p-pending")).toBeNull();
+    expect(screen.queryByTestId("reject-paper-btn-p-pending")).toBeNull();
+    expect(screen.queryByTestId("requeue-paper-btn-p-rejected")).toBeNull();
+  });
+
+  test("review buttons visible when user has exam_intelligence.review", async () => {
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.review"] } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    // pending → Verify + Reject
+    expect(screen.getByTestId("verify-paper-btn-p-pending")).toBeTruthy();
+    expect(screen.getByTestId("reject-paper-btn-p-pending")).toBeTruthy();
+    // verified → Reject only (no Verify)
+    expect(screen.queryByTestId("verify-paper-btn-p-verified")).toBeNull();
+    expect(screen.getByTestId("reject-paper-btn-p-verified")).toBeTruthy();
+    // rejected → Re-queue only (no Verify, no Reject)
+    expect(screen.queryByTestId("verify-paper-btn-p-rejected")).toBeNull();
+    expect(screen.queryByTestId("reject-paper-btn-p-rejected")).toBeNull();
+    expect(screen.getByTestId("requeue-paper-btn-p-rejected")).toBeTruthy();
+  });
+
+  test("super_admin sees review buttons even without review permission in permissions array", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("verify-paper-btn-p-pending")).toBeTruthy();
+    expect(screen.getByTestId("requeue-paper-btn-p-rejected")).toBeTruthy();
+  });
+
+  test("clicking Verify opens PaperReviewModal with Verify submit label", async () => {
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.review"] } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("verify-paper-btn-p-pending")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("verify-paper-btn-p-pending"));
+    expect(screen.getByTestId("paper-review-modal")).toBeTruthy();
+    expect(screen.getByTestId("paper-review-submit")).toHaveTextContent("Verify");
+  });
+
+  test("clicking Reject opens PaperReviewModal with Reject submit label", async () => {
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.review"] } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("reject-paper-btn-p-pending")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("reject-paper-btn-p-pending"));
+    expect(screen.getByTestId("paper-review-modal")).toBeTruthy();
+    expect(screen.getByTestId("paper-review-submit")).toHaveTextContent("Reject");
+  });
+
+  test("successful review calls api.post with correct payload and refreshes paper list", async () => {
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.review"] } });
+    api.post.mockResolvedValue({ ok: true, audit_id: "a1", row: { id: "p-pending", trust_status: "verified" } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("verify-paper-btn-p-pending")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("verify-paper-btn-p-pending"));
+    fireEvent.change(screen.getByTestId("paper-review-reason"), {
+      target: { value: "confirmed via official UPSC source PDF" },
+    });
+    fireEvent.click(screen.getByTestId("paper-review-submit"));
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/pyq-papers/p-pending/review"),
+        { status: "verified", reason: "confirmed via official UPSC source PDF" },
+      ),
+    );
+    // Papers refetched after success
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("/pyq-papers?")),
+    );
+    // Modal closes on success
+    await waitFor(() => expect(screen.queryByTestId("paper-review-modal")).toBeNull());
+  });
+
+  test("API error shows error message in modal without closing it", async () => {
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.review"] } });
+    api.post.mockRejectedValue(new Error("provenance_incomplete"));
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("verify-paper-btn-p-pending")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("verify-paper-btn-p-pending"));
+    fireEvent.change(screen.getByTestId("paper-review-reason"), {
+      target: { value: "confirmed via official UPSC source PDF" },
+    });
+    fireEvent.click(screen.getByTestId("paper-review-submit"));
+
+    await waitFor(() => expect(screen.getByTestId("paper-review-error")).toBeTruthy());
+    expect(screen.getByTestId("paper-review-error")).toHaveTextContent("provenance_incomplete");
+    // Modal stays open so operator can correct and retry
+    expect(screen.getByTestId("paper-review-modal")).toBeTruthy();
+  });
+
+  test("client-side guard: reason shorter than 8 chars blocks submit without calling api", async () => {
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.review"] } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("verify-paper-btn-p-pending")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("verify-paper-btn-p-pending"));
+    fireEvent.change(screen.getByTestId("paper-review-reason"), { target: { value: "short" } });
+    fireEvent.click(screen.getByTestId("paper-review-submit"));
+
+    expect(screen.getByTestId("paper-review-error")).toHaveTextContent("8 characters");
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  test("Cancel button closes modal without calling api.post", async () => {
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.review"] } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("verify-paper-btn-p-pending")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("verify-paper-btn-p-pending"));
+    expect(screen.getByTestId("paper-review-modal")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(screen.queryByTestId("paper-review-modal")).toBeNull();
+    expect(api.post).not.toHaveBeenCalled();
   });
 });
