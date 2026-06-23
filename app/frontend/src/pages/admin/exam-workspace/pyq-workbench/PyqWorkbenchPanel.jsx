@@ -158,7 +158,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const canEdit = user?.role === "super_admin" ||
     (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.cms"));
 
-  const { papers, selectedPaperId, setSelectedPaperId, loading, error, reviewPaper, patchPaper, setProvenance, getPaperSignedPdf } = usePyqWorkbench(
+  const { papers, selectedPaperId, setSelectedPaperId, loading, error, reviewPaper, setProvenance, getPaperSignedPdf } = usePyqWorkbench(
     examId,
     cycleId,
   );
