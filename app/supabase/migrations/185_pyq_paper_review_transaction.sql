@@ -39,6 +39,12 @@ DECLARE
     v_blocking       text[];
 BEGIN
     -- 1. Validate reason length before touching the DB.
+    --    Explicit NULL guard because trim(NULL)=NULL and length(NULL)=NULL, so
+    --    the length comparison would evaluate to NULL (unknown) and silently pass.
+    IF p_reason IS NULL THEN
+        RAISE EXCEPTION 'invalid_reason: reason must not be null'
+            USING ERRCODE = 'P0422';
+    END IF;
     v_reason_trimmed := trim(p_reason);
     IF length(v_reason_trimmed) < 8 OR length(v_reason_trimmed) > 500 THEN
         RAISE EXCEPTION 'invalid_reason: reason must be 8-500 characters (got %)',
@@ -118,7 +124,7 @@ BEGIN
         jsonb_build_object(
             'from_status', p_expected_status,
             'to_status',   p_target_status,
-            'reason',      p_reason,
+            'reason',      v_reason_trimmed,
             'reviewed_by', p_actor_email,
             'reviewed_at', now()::text
         ),

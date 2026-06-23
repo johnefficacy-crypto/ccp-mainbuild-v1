@@ -308,6 +308,29 @@ def test_direct_rpc_rejects_short_reason():
     )
 
 
+def test_direct_rpc_rejects_null_reason():
+    """RPC refuses a null reason — trim(NULL)/length(NULL) would silently bypass
+    the length check in SQL without the explicit IS NULL guard."""
+    sb = TaxSBStub(_seed("pending"))
+    _rpc_raises(
+        sb,
+        {**_VALID_RPC_PARAMS, "p_reason": None},
+        "invalid_reason",
+    )
+
+
+def test_direct_rpc_rejects_whitespace_only_reason():
+    """RPC refuses an all-whitespace reason: trimmed length is 0 < 8.
+    Covers the padded-reason path where raw input looks non-empty but collapses
+    to nothing after trim, confirming no audit row and no status mutation."""
+    sb = TaxSBStub(_seed("pending"))
+    _rpc_raises(
+        sb,
+        {**_VALID_RPC_PARAMS, "p_reason": "   "},
+        "invalid_reason",
+    )
+
+
 def test_direct_rpc_rejects_provenance_missing():
     """RPC refuses pending→verified when the paper's source_url is absent,
     even without the Python provenance precheck firing."""

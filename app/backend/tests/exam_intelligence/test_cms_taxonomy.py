@@ -91,9 +91,14 @@ class _RpcQuery:
 
         p = self._params
 
-        # 1. Reason length (DB validates on locked row; Python/Pydantic catches it
-        #    first in normal flow, but direct-RPC calls reach here).
-        reason_trimmed = (p.get("p_reason") or "").strip()
+        # 1. Reason validation — mirrors SQL step 1.
+        #    Explicit None guard: Python's `or ""` would silently coerce None to
+        #    an empty string, masking the null path that bypasses SQL's length check
+        #    (trim(NULL)=NULL, length(NULL)=NULL, condition evaluates to NULL/unknown).
+        reason = p.get("p_reason")
+        if reason is None:
+            raise Exception("invalid_reason: reason must not be null")
+        reason_trimmed = reason.strip()
         if not (8 <= len(reason_trimmed) <= 500):
             raise Exception(
                 f"invalid_reason: reason must be 8-500 characters (got {len(reason_trimmed)})"
@@ -156,7 +161,7 @@ class _RpcQuery:
             "new_value": {
                 "from_status":  p["p_expected_status"],
                 "to_status":    p["p_target_status"],
-                "reason":       p["p_reason"],
+                "reason":       reason_trimmed,
                 "reviewed_by":  p["p_actor_email"],
                 "reviewed_at":  "now",
             },
