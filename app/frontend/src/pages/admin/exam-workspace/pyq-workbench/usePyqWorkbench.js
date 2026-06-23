@@ -37,10 +37,15 @@ export function usePyqWorkbench(examId, cycleId) {
     await fetchPapers();
   }, [fetchPapers]);
 
+  const setProvenance = useCallback(async (paperId, payload, reason) => {
+    await api.post(`${CMS_BASE}/pyq-papers/${paperId}/set-provenance`, { payload, reason });
+    await fetchPapers();
+  }, [fetchPapers]);
+
   const getPaperSignedPdf = useCallback(async (paperId, documentId) => {
     const data = await api.get(`${CMS_BASE}/pyq-papers/${paperId}/signed-pdf?document_id=${encodeURIComponent(documentId)}`);
     return data.signed_url;
   }, []);
 
-  return { papers, selectedPaperId, setSelectedPaperId, loading, error, refetch: fetchPapers, reviewPaper, patchPaper, getPaperSignedPdf };
+  return { papers, selectedPaperId, setSelectedPaperId, loading, error, refetch: fetchPapers, reviewPaper, patchPaper, setProvenance, getPaperSignedPdf };
 }

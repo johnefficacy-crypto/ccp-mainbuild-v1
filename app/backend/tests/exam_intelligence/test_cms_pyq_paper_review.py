@@ -708,3 +708,110 @@ def test_content_hash_changes_when_source_document_id_changes():
     assert h_none != h_doc1, "Adding source_document_id must change the hash"
     assert h_doc1 != h_doc2, "Different source_document_id values must produce different hashes"
     assert h_none != h_doc2, "Transitivity: all three must be distinct"
+
+
+# ── PATCH guard: provenance fields locked on verified papers ───────────────────
+
+
+def test_patch_provenance_fields_on_verified_paper_is_422():
+    """Changing source_document_id via generic PATCH on a verified paper is blocked."""
+    sb = TaxSBStub(_seed("verified"))
+    r = _client(sb, _CMS_ONLY).patch(
+        f"{_BASE}/pyq-papers/p1",
+        json={"reason": "switch to new doc uuid", "payload": {"source_document_id": "new-doc"}},
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detail"]["error"] == "provenance_locked"
+
+
+def test_patch_provenance_source_url_on_verified_paper_is_422():
+    """Changing source_url via generic PATCH on a verified paper is blocked."""
+    sb = TaxSBStub(_seed("verified"))
+    r = _client(sb, _CMS_ONLY).patch(
+        f"{_BASE}/pyq-papers/p1",
+        json={"reason": "update url to new version", "payload": {"source_url": "https://new.url/"}},
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detail"]["error"] == "provenance_locked"
+
+
+def test_patch_non_provenance_fields_on_verified_paper_is_200():
+    """Non-provenance fields (e.g. metadata) can still be patched on a verified paper."""
+    sb = TaxSBStub(_seed("verified"))
+    r = _client(sb, _CMS_ONLY).patch(
+        f"{_BASE}/pyq-papers/p1",
+        json={"reason": "fix metadata typo longer text", "payload": {"metadata": {"note": "ok"}}},
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_patch_provenance_on_pending_paper_is_200():
+    """Provenance fields can be changed via PATCH when paper is pending."""
+    sb = TaxSBStub(_seed("pending"))
+    r = _client(sb, _CMS_ONLY).patch(
+        f"{_BASE}/pyq-papers/p1",
+        json={"reason": "correcting source url now", "payload": {"source_url": "https://upsc.gov.in/v2.pdf"}},
+    )
+    assert r.status_code == 200, r.text
+
+
+# ── set-provenance endpoint ────────────────────────────────────────────────────
+
+
+def _set_prov(client, paper_id="p1", payload=None, reason="changing source document for paper"):
+    return client.post(
+        f"{_BASE}/pyq-papers/{paper_id}/set-provenance",
+        json={"reason": reason, "payload": payload or {"source_document_id": "doc-1"}},
+    )
+
+
+def test_set_provenance_attaches_document_on_pending_paper():
+    """set-provenance with a valid document on a pending paper succeeds."""
+    sb = TaxSBStub(_seed_with_doc())
+    r = _set_prov(_client(sb, _CMS_ONLY))
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok"] is True
+    assert body["demoted_from_verified"] is False
+
+
+def test_set_provenance_on_verified_paper_demotes_to_pending():
+    """set-provenance on a verified paper moves it back to pending."""
+    sb = TaxSBStub(_seed_with_doc(trust_status="verified"))
+    r = _set_prov(_client(sb, _CMS_ONLY))
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["demoted_from_verified"] is True
+    assert body["row"]["trust_status"] == "pending"
+
+
+def test_set_provenance_wrong_kind_is_422():
+    """set-provenance with a document of wrong kind is rejected."""
+    doc = {**_VALID_DOC, "document_kind": "syllabus"}
+    sb = TaxSBStub(_seed_with_doc(doc=doc))
+    r = _set_prov(_client(sb, _CMS_ONLY))
+    assert r.status_code == 422, r.text
+    assert "source_document_id_wrong_kind" in r.json()["detail"]["blocking_fields"]
+
+
+def test_set_provenance_failed_doc_is_422():
+    """set-provenance with a failed document is rejected."""
+    doc = {**_VALID_DOC, "status": "failed"}
+    sb = TaxSBStub(_seed_with_doc(doc=doc))
+    r = _set_prov(_client(sb, _CMS_ONLY))
+    assert r.status_code == 422, r.text
+    assert "source_document_id_bad_status" in r.json()["detail"]["blocking_fields"]
+
+
+def test_set_provenance_unknown_paper_is_404():
+    """set-provenance on a non-existent paper returns 404."""
+    sb = TaxSBStub(_seed_with_doc())
+    r = _set_prov(_client(sb, _CMS_ONLY), paper_id="no-such")
+    assert r.status_code == 404, r.text
+
+
+def test_set_provenance_no_fields_is_422():
+    """set-provenance with an empty payload is rejected."""
+    sb = TaxSBStub(_seed_with_doc())
+    r = _set_prov(_client(sb, _CMS_ONLY), payload={"year": 2024})
+    assert r.status_code == 422, r.text

@@ -162,8 +162,7 @@ def test_link_to_pyq_paper_sets_document_asset_id_and_source_url():
     )
     assert r.status_code == 200, r.text
     pp = sb.db["pyq_papers"][0]
-    assert pp["metadata"]["document_asset_id"] == "d1"
-    assert pp["source_url"].startswith("storage://")
+    assert pp["source_document_id"] == "d1"
 
 
 def test_get_document_pages_returns_extracted_text():

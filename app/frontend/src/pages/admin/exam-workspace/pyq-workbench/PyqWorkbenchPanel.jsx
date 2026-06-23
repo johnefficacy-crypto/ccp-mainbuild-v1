@@ -158,7 +158,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const canEdit = user?.role === "super_admin" ||
     (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.cms"));
 
-  const { papers, selectedPaperId, setSelectedPaperId, loading, error, reviewPaper, patchPaper, getPaperSignedPdf } = usePyqWorkbench(
+  const { papers, selectedPaperId, setSelectedPaperId, loading, error, reviewPaper, patchPaper, setProvenance, getPaperSignedPdf } = usePyqWorkbench(
     examId,
     cycleId,
   );
@@ -187,7 +187,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   }
 
   async function handleAttachSubmit(pid, documentId, reason) {
-    await patchPaper(pid, { source_document_id: documentId }, reason);
+    await setProvenance(pid, { source_document_id: documentId }, reason);
     setAttachTarget(null);
   }
 

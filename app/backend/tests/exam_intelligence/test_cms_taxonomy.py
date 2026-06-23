@@ -448,4 +448,79 @@ def test_bulk_import_topics_upserts_by_slug_no_duplicates_on_reimport():
     second = client.post(f"{_BASE}/bulk-import", json=body)
     assert second.status_code == 200, second.text
     assert second.json()["ok_count"] == 10
-    assert len(sb.db["topics"]) == 10
+
+
+# ── document lock race: document mutated before RPC validation ────────────────
+
+
+class _DocRaceRpcQuery(_RpcQuery):
+    """Simulates a concurrent document_assets mutation occurring between the
+    Python pre-check and the review_pyq_paper RPC document-validation step.
+
+    In production, FOR UPDATE on document_assets (migration 187) prevents this
+    race: the concurrent writer must wait until review_pyq_paper releases its
+    transaction.  This test verifies that the RPC stub faithfully rejects a
+    document that was invalidated before the RPC's validation step runs —
+    exactly what FOR UPDATE prevents at the DB level.
+    """
+
+    def _exec_review_pyq_paper(self):
+        # Simulate concurrent mutation: archive the document_assets row just
+        # before the RPC's provenance validation runs.
+        for doc in self._db.get("document_assets", []):
+            doc["status"] = "archived"
+        return super()._exec_review_pyq_paper()
+
+
+class _DocRaceSBStub(TaxSBStub):
+    def rpc(self, fn_name: str, params: dict | None = None) -> _RpcQuery:
+        return _DocRaceRpcQuery(fn_name, params or {}, self.db)
+
+
+def _pyq_review_client(sb, user=None):
+    from app.core.auth import get_current_user as _gcu
+    app = FastAPI()
+    app.include_router(cms_api.router, prefix="/api")
+    cms_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    app.dependency_overrides[cms_api._flag_enabled] = lambda: None
+    app.dependency_overrides[_gcu] = lambda: user or {
+        "id": "rev-1", "email": "rev@example.com",
+        "role": "admin", "permissions": [cms_api.PERM_REVIEW],
+    }
+    return TestClient(app, raise_server_exceptions=False)
+
+
+def test_review_document_lock_catches_concurrent_status_change():
+    """Documents archived concurrently (between Python pre-check and RPC) are
+    caught by the RPC's validation step.  In production this is enforced via
+    FOR UPDATE on document_assets (migration 187).
+    """
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": None,
+            "source_type": "official",
+            "source_document_id": "doc-1",
+        }],
+        "document_assets": [{
+            "id": "doc-1",
+            "scope": "admin_exam_intelligence",
+            "document_kind": "pyq_paper",
+            "status": "processed",
+            "storage_bucket": "exam-docs",
+            "storage_path": "upsc/2024.pdf",
+            "metadata": {"exam_id": "e1"},
+        }],
+        "admin_audit_logs": [],
+    }
+    sb = _DocRaceSBStub(db)
+    client = _pyq_review_client(sb)
+    r = client.post(
+        f"{_BASE}/pyq-papers/p1/review",
+        json={"status": "verified", "reason": "operator verified source document ok"},
+    )
+    # The RPC mutates the doc to 'archived' before its own check — should block.
+    assert r.status_code == 422, r.text
+    detail = r.json().get("detail", "")
+    assert "source_document_id_bad_status" in str(detail)

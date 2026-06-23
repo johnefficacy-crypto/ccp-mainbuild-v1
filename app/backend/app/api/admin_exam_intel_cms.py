@@ -725,6 +725,9 @@ _PAPER_FIELDS = {
     "source_type", "source_document_id", "content_hash", "metadata",
 }
 _PAPER_SOURCE_TYPES = ("official", "memory_based", "coaching", "community", "aggregator", "unknown")
+# Provenance fields that require re-validation when a paper is verified.
+# Changes to these fields on a verified paper must go through set-provenance.
+_PROVENANCE_FIELDS = frozenset({"source_url", "source_type", "source_document_id"})
 
 
 @router.get("/pyq-papers")
@@ -806,6 +809,19 @@ def update_pyq_paper(
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
     if patch.get("source_type") and patch["source_type"] not in _PAPER_SOURCE_TYPES:
         raise HTTPException(status_code=422, detail=f"source_type must be one of {_PAPER_SOURCE_TYPES}")
+    if existing.get("trust_status") == "verified" and _PROVENANCE_FIELDS & set(patch):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "provenance_locked",
+                "message": (
+                    "Provenance fields (source_url, source_type, source_document_id) "
+                    "cannot be changed on a verified paper. "
+                    "Use POST /pyq-papers/{id}/set-provenance, which validates the new "
+                    "provenance and moves the paper back to pending for re-review."
+                ),
+            },
+        )
     updated = supabase.table("pyq_papers").update(patch).eq("id", paper_id).execute().data or []
     audit_id = _audit(
         supabase, admin, "exam_intel.cms.pyq_paper.update",
@@ -813,6 +829,93 @@ def update_pyq_paper(
         new_value={"reason": body.reason, "patch": patch, "previous": existing},
     )
     return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+@router.post("/pyq-papers/{paper_id}/set-provenance")
+def set_pyq_paper_provenance(
+    paper_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Update provenance fields with full document validation.
+
+    Validates the resulting provenance state (same six invariants as
+    review_pyq_paper). If the paper is currently verified it is automatically
+    moved back to pending, requiring re-review before the projection RPC can run.
+    """
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_papers", id=paper_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+
+    patch = {k: v for k, v in body.payload.items() if k in _PROVENANCE_FIELDS}
+    if not patch:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Payload must contain at least one of: {sorted(_PROVENANCE_FIELDS)}",
+        )
+    if "source_type" in patch and patch["source_type"] not in _PAPER_SOURCE_TYPES:
+        raise HTTPException(status_code=422, detail=f"source_type must be one of {_PAPER_SOURCE_TYPES}")
+
+    # Compute the resulting provenance state after applying the patch
+    result_source_type = patch.get("source_type", existing.get("source_type"))
+    result_source_url = patch.get("source_url", existing.get("source_url"))
+    result_source_doc_id = patch.get("source_document_id", existing.get("source_document_id"))
+
+    # Run the same provenance gate as review_pyq_paper (Python side; SQL RPC
+    # re-runs it under DB lock at verification time)
+    blocking: list[str] = []
+    if result_source_type in (None, "", "unknown"):
+        blocking.append("source_type")
+    if not (result_source_url and str(result_source_url).strip()) and not result_source_doc_id:
+        blocking.append("source_url")
+
+    if result_source_doc_id:
+        doc = _safe_select(supabase, "document_assets", id=result_source_doc_id)
+        if not doc:
+            blocking.append("source_document_id_not_found")
+        else:
+            if doc.get("scope") != "admin_exam_intelligence":
+                blocking.append("source_document_id_wrong_scope")
+            if doc.get("document_kind") != "pyq_paper":
+                blocking.append("source_document_id_wrong_kind")
+            if doc.get("status") in ("failed", "archived"):
+                blocking.append("source_document_id_bad_status")
+            if not doc.get("storage_bucket") or not doc.get("storage_path"):
+                blocking.append("source_document_id_no_storage")
+            doc_exam = (doc.get("metadata") or {}).get("exam_id")
+            if doc_exam and doc_exam != existing.get("exam_id"):
+                blocking.append("source_document_id_exam_mismatch")
+
+    if blocking:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "provenance_incomplete", "blocking_fields": blocking},
+        )
+
+    was_verified = existing.get("trust_status") == "verified"
+    update: dict[str, Any] = dict(patch)
+    if was_verified:
+        update["trust_status"] = "pending"
+
+    updated = supabase.table("pyq_papers").update(update).eq("id", paper_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_paper.set_provenance",
+        entity_type="pyq_paper", entity_id=paper_id,
+        new_value={
+            "reason": body.reason,
+            "patch": patch,
+            "previous_provenance": {k: existing.get(k) for k in _PROVENANCE_FIELDS},
+            "demoted_from_verified": was_verified,
+        },
+    )
+    return {
+        "ok": True,
+        "audit_id": audit_id,
+        "demoted_from_verified": was_verified,
+        "row": updated[0] if updated else {**existing, **update},
+    }
 
 
 # Allowed trust_status transitions for pyq_papers.
