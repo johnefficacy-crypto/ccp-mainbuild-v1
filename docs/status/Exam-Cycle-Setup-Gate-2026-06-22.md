@@ -308,7 +308,7 @@ I6 is approved and I9 is unblocked **only when all of the following conditions a
 | E3 | Decision register D01–D16 all reach status APPROVED or DEFERRED (with rationale) | MET — D01–D16 all APPROVED (D13 APPROVED 2026-06-24 as controlled temporary admin-readiness waiver) |
 | E4 | I8-C (Advanced Repair isolation) merges; I9 dispatch blocked until then | MET — PR #759 merged at a98a0dc |
 | E5 | PR #761 CI checks remain green after all document corrections | NOT MET — re-evaluating on be32970 (operator D13 approval commit); re-evaluated after each push |
-| E6 | Operator explicitly approves this gate document and marks PR #761 ready for merge | NOT MET |
+| E6 | Operator explicitly approves this gate document and marks PR #761 ready for merge | MET — johnefficacy-crypto approved I6 gate 2026-06-24; PR #761 authorized to be marked ready once final-head CI green; I9 and D13 waiver implementation remain separate follow-up PRs |
 
 Until E1–E6 are all met, PR #761 must remain draft, I9 implementation must not begin, and no runtime behavior may be changed under cover of this docs/checklist PR.
 
