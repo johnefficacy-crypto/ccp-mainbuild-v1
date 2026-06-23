@@ -611,6 +611,67 @@ def test_signed_pdf_unknown_paper_is_404():
     assert r.status_code == 404, r.text
 
 
+def test_signed_pdf_wrong_scope_is_403():
+    """Document with wrong scope cannot be signed."""
+    seed = _pdf_seed()
+    seed["document_assets"][0]["scope"] = "personal_library"
+    sb = _DocTaxSBStub(seed)
+    r = _pdf_client(sb).get(f"{_BASE}/pyq-papers/p1/signed-pdf?document_id=doc-1")
+    assert r.status_code == 403, r.text
+    assert "source_document_id_wrong_scope" in r.json()["detail"]["reasons"]
+
+
+def test_signed_pdf_wrong_kind_is_403():
+    """Document with document_kind != 'pyq_paper' cannot be signed."""
+    seed = _pdf_seed()
+    seed["document_assets"][0]["document_kind"] = "syllabus"
+    sb = _DocTaxSBStub(seed)
+    r = _pdf_client(sb).get(f"{_BASE}/pyq-papers/p1/signed-pdf?document_id=doc-1")
+    assert r.status_code == 403, r.text
+    assert "source_document_id_wrong_kind" in r.json()["detail"]["reasons"]
+
+
+def test_signed_pdf_failed_status_is_403():
+    """Document with status='failed' cannot be signed."""
+    seed = _pdf_seed()
+    seed["document_assets"][0]["status"] = "failed"
+    sb = _DocTaxSBStub(seed)
+    r = _pdf_client(sb).get(f"{_BASE}/pyq-papers/p1/signed-pdf?document_id=doc-1")
+    assert r.status_code == 403, r.text
+    assert "source_document_id_bad_status" in r.json()["detail"]["reasons"]
+
+
+def test_signed_pdf_archived_status_is_403():
+    """Document with status='archived' cannot be signed."""
+    seed = _pdf_seed()
+    seed["document_assets"][0]["status"] = "archived"
+    sb = _DocTaxSBStub(seed)
+    r = _pdf_client(sb).get(f"{_BASE}/pyq-papers/p1/signed-pdf?document_id=doc-1")
+    assert r.status_code == 403, r.text
+    assert "source_document_id_bad_status" in r.json()["detail"]["reasons"]
+
+
+def test_signed_pdf_no_storage_is_403():
+    """Document missing storage path cannot be signed."""
+    seed = _pdf_seed()
+    seed["document_assets"][0]["storage_bucket"] = None
+    seed["document_assets"][0]["storage_path"] = None
+    sb = _DocTaxSBStub(seed)
+    r = _pdf_client(sb).get(f"{_BASE}/pyq-papers/p1/signed-pdf?document_id=doc-1")
+    assert r.status_code == 403, r.text
+    assert "source_document_id_no_storage" in r.json()["detail"]["reasons"]
+
+
+def test_signed_pdf_exam_mismatch_is_403():
+    """Document metadata.exam_id disagrees with paper.exam_id — signing blocked."""
+    seed = _pdf_seed()
+    seed["document_assets"][0]["metadata"] = {"exam_id": "other-exam"}
+    sb = _DocTaxSBStub(seed)
+    r = _pdf_client(sb).get(f"{_BASE}/pyq-papers/p1/signed-pdf?document_id=doc-1")
+    assert r.status_code == 403, r.text
+    assert "source_document_id_exam_mismatch" in r.json()["detail"]["reasons"]
+
+
 # ── Content hash covers source_document_id ────────────────────────────────────
 
 

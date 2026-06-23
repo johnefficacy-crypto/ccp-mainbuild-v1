@@ -1100,7 +1100,7 @@ def pyq_paper_signed_pdf(
 
     asset = (
         supabase.table("document_assets")
-        .select("id, storage_bucket, storage_path, original_filename, page_count")
+        .select("id, scope, document_kind, status, storage_bucket, storage_path, original_filename, page_count, metadata")
         .eq("id", document_id)
         .limit(1)
         .execute()
@@ -1111,10 +1111,28 @@ def pyq_paper_signed_pdf(
         raise HTTPException(status_code=404, detail="document_asset not found")
     row = asset[0]
 
+    # Re-run the same document invariants enforced by review_pyq_paper RPC.
+    # Prevents signing a URL for a document that would fail verification.
+    doc_errors: list[str] = []
+    if row.get("scope") != "admin_exam_intelligence":
+        doc_errors.append("source_document_id_wrong_scope")
+    if row.get("document_kind") != "pyq_paper":
+        doc_errors.append("source_document_id_wrong_kind")
+    if row.get("status") in ("failed", "archived"):
+        doc_errors.append("source_document_id_bad_status")
+    if not row.get("storage_bucket") or not row.get("storage_path"):
+        doc_errors.append("source_document_id_no_storage")
+    doc_exam = (row.get("metadata") or {}).get("exam_id")
+    if doc_exam and doc_exam != paper.get("exam_id"):
+        doc_errors.append("source_document_id_exam_mismatch")
+    if doc_errors:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "document_not_signable", "reasons": doc_errors},
+        )
+
     bucket = row.get("storage_bucket")
     path = row.get("storage_path")
-    if not bucket or not path:
-        raise HTTPException(status_code=422, detail="Document has no storage path")
 
     try:
         result = supabase.storage.from_(bucket).create_signed_url(path, 3600)
