@@ -307,7 +307,7 @@ I6 is approved and I9 is unblocked **only when all of the following conditions a
 | E2 | All DERIVED — PROPOSED RESOLUTION items (D01–D04, D06–D12, D14–D16) receive operator yes/no approval | MET — D01–D04, D06–D12, D14–D16 all APPROVED 2026-06-23 |
 | E3 | Decision register D01–D16 all reach status APPROVED or DEFERRED (with rationale) | NOT MET — D01–D12, D14–D16 APPROVED; D13 open |
 | E4 | I8-C (Advanced Repair isolation) merges; I9 dispatch blocked until then | MET — PR #759 merged at a98a0dc |
-| E5 | PR #761 CI checks remain green after all document corrections | NOT MET — E2E failed at 6f5c264 (transient: Supabase CLI rate limit, no tests ran); re-evaluated after each push |
+| E5 | PR #761 CI checks remain green after all document corrections | MET — all checks green at d687503 (backend, frontend, e2e, safe-write-lint, validate-pr-body, click-through, Vercel) |
 | E6 | Operator explicitly approves this gate document and marks PR #761 ready for merge | NOT MET |
 
 Until E1–E6 are all met, PR #761 must remain draft, I9 implementation must not begin, and no runtime behavior may be changed under cover of this docs/checklist PR.
