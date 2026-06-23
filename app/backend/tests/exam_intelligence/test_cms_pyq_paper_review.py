@@ -27,7 +27,7 @@ from fastapi.testclient import TestClient
 
 from app.api import admin_exam_intel_cms as cms_api
 from app.core.auth import get_current_user
-from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub
+from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub, _AuditFailSBStub
 
 _BASE = "/api/admin/exam-intelligence-cms"
 
@@ -815,3 +815,36 @@ def test_set_provenance_no_fields_is_422():
     sb = TaxSBStub(_seed_with_doc())
     r = _set_prov(_client(sb, _CMS_ONLY), payload={"year": 2024})
     assert r.status_code == 422, r.text
+
+
+# ── Audit atomicity regression ────────────────────────────────────────────────
+
+
+def test_set_provenance_audit_failure_returns_500_and_paper_unchanged():
+    """If the DB-level audit INSERT fails, the transaction rolls back the
+    pyq_papers UPDATE too.  Endpoint returns 500; paper is unchanged; no audit
+    row is written.  Regression for the update-then-best-effort-audit pattern
+    replaced by the atomic cms_set_pyq_paper_provenance RPC (migration 188).
+    """
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": "https://original.example.com/paper.pdf",
+            "source_type": "official",
+        }],
+        "admin_audit_logs": [],
+        "document_assets": [],
+    }
+    sb = _AuditFailSBStub(db)
+    r = _client(sb, _CMS_ONLY).post(
+        f"{_BASE}/pyq-papers/p1/set-provenance",
+        json={
+            "reason": "updating source url to new version",
+            "payload": {"source_url": "https://new.example.com/v2.pdf"},
+        },
+    )
+    assert r.status_code == 500, r.text
+    # Paper must be unchanged — the RPC rolled back both the UPDATE and audit INSERT.
+    assert db["pyq_papers"][0]["source_url"] == "https://original.example.com/paper.pdf"
+    assert len(db["admin_audit_logs"]) == 0

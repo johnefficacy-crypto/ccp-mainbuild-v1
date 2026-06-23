@@ -77,6 +77,10 @@ class _RpcQuery:
     def execute(self) -> "_Exec":
         if self._fn_name == "review_pyq_paper":
             return self._exec_review_pyq_paper()
+        if self._fn_name == "cms_set_pyq_paper_provenance":
+            return self._exec_cms_set_pyq_paper_provenance()
+        if self._fn_name == "cms_link_document_to_pyq_paper":
+            return self._exec_cms_link_document_to_pyq_paper()
         raise NotImplementedError(f"RPC {self._fn_name!r} not stubbed in TaxSBStub")
 
     def _exec_review_pyq_paper(self) -> "_Exec":
@@ -199,6 +203,72 @@ class _RpcQuery:
         paper["trust_status"] = p["p_target_status"]
         paper["updated_at"]   = "now"
         return _Exec({"ok": True, "audit_id": audit_id, "row": dict(paper)})
+
+    def _exec_cms_set_pyq_paper_provenance(self) -> "_Exec":
+        """Mirror the atomic UPDATE + audit INSERT of migration 188 Part A."""
+        import uuid as _uuid
+
+        p = self._params
+        papers = self._db.setdefault("pyq_papers", [])
+        paper = next((r for r in papers if str(r.get("id")) == str(p["p_paper_id"])), None)
+        if paper is None:
+            raise Exception(f"not_found: paper {p['p_paper_id']} does not exist")
+
+        patch = p.get("p_patch", {})
+        for field in ("source_url", "source_type", "source_document_id"):
+            if field in patch:
+                paper[field] = patch[field]
+        if p.get("p_was_verified"):
+            paper["trust_status"] = "pending"
+
+        audit_id = str(_uuid.uuid4())
+        self._db.setdefault("admin_audit_logs", []).append({
+            "id": audit_id,
+            "actor_id": p.get("p_actor_id"),
+            "actor_email": p.get("p_actor_email"),
+            "action": "exam_intel.cms.pyq_paper.set_provenance",
+            "entity_type": "pyq_paper",
+            "entity_id": p["p_paper_id"],
+            "new_value": {
+                "reason": p.get("p_reason"),
+                "patch": patch,
+                "previous_provenance": p.get("p_previous_provenance"),
+                "demoted_from_verified": p.get("p_was_verified"),
+            },
+            "notes": "admin_exam_intel_cms",
+        })
+        return _Exec({"audit_id": audit_id, "demoted_from_verified": p.get("p_was_verified")})
+
+    def _exec_cms_link_document_to_pyq_paper(self) -> "_Exec":
+        """Mirror the atomic UPDATE + audit INSERT of migration 188 Part B."""
+        import uuid as _uuid
+
+        p = self._params
+        papers = self._db.setdefault("pyq_papers", [])
+        paper = next((r for r in papers if str(r.get("id")) == str(p["p_paper_id"])), None)
+        if paper is None:
+            raise Exception(f"not_found: paper {p['p_paper_id']} does not exist")
+
+        paper["source_document_id"] = p["p_document_id"]
+        if p.get("p_was_verified"):
+            paper["trust_status"] = "pending"
+
+        audit_id = str(_uuid.uuid4())
+        self._db.setdefault("admin_audit_logs", []).append({
+            "id": audit_id,
+            "actor_id": p.get("p_actor_id"),
+            "actor_email": p.get("p_actor_email"),
+            "action": "exam_intel.cms.document.link_pyq_paper",
+            "entity_type": "pyq_paper",
+            "entity_id": p["p_paper_id"],
+            "new_value": {
+                "reason": p.get("p_reason"),
+                "document_asset_id": p["p_document_id"],
+                "demoted_from_verified": p.get("p_was_verified"),
+            },
+            "notes": "admin_exam_intel_cms",
+        })
+        return _Exec({"audit_id": audit_id, "demoted_from_verified": p.get("p_was_verified")})
 
 
 class TaxSBStub(SBStub):
@@ -448,6 +518,33 @@ def test_bulk_import_topics_upserts_by_slug_no_duplicates_on_reimport():
     second = client.post(f"{_BASE}/bulk-import", json=body)
     assert second.status_code == 200, second.text
     assert second.json()["ok_count"] == 10
+
+
+# ── audit atomicity: audit INSERT failure rolls back pyq_papers UPDATE ────────
+
+
+class _AuditFailRpcQuery(_RpcQuery):
+    """Simulates a DB-level audit INSERT failure (e.g., constraint violation on
+    admin_audit_logs).  In production the SQL function's transaction rolls back
+    the pyq_papers UPDATE atomically — no partial mutation is committed.  This
+    stub reproduces the observable effect: the RPC raises before performing any
+    in-memory writes, so the endpoint returns 500 and the paper row is unchanged.
+    """
+
+    def _exec_cms_set_pyq_paper_provenance(self):
+        raise Exception(
+            "audit_insert_failure: simulated constraint violation on admin_audit_logs"
+        )
+
+    def _exec_cms_link_document_to_pyq_paper(self):
+        raise Exception(
+            "audit_insert_failure: simulated constraint violation on admin_audit_logs"
+        )
+
+
+class _AuditFailSBStub(TaxSBStub):
+    def rpc(self, fn_name: str, params: dict | None = None) -> _RpcQuery:
+        return _AuditFailRpcQuery(fn_name, params or {}, self.db)
 
 
 # ── document lock race: document mutated before RPC validation ────────────────

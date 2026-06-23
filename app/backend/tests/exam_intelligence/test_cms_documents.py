@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from app.api import admin_exam_intel_documents as docs_api
 from app.api.admin_exam_intel_cms import PERM_CMS
 from app.core.auth import get_current_user
-from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub
+from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub, _AuditFailRpcQuery
 
 _BASE = "/api/admin/exam-intelligence-cms/documents"
 
@@ -163,6 +163,40 @@ def test_link_to_pyq_paper_sets_document_asset_id_and_source_url():
     assert r.status_code == 200, r.text
     pp = sb.db["pyq_papers"][0]
     assert pp["source_document_id"] == "d1"
+
+
+class _DocAuditFailSBStub(DocSBStub):
+    """DocSBStub variant that uses _AuditFailRpcQuery for all RPC calls."""
+
+    def rpc(self, fn_name, params=None):
+        return _AuditFailRpcQuery(fn_name, params or {}, self.db)
+
+
+def test_link_to_pyq_paper_audit_failure_returns_500_and_paper_unchanged():
+    """If the DB-level audit INSERT fails, the transaction rolls back the
+    pyq_papers UPDATE too.  Endpoint returns 500; source_document_id is not
+    set; no audit row written.  Regression for the update-then-best-effort-audit
+    pattern replaced by the atomic cms_link_document_to_pyq_paper RPC (migration 188).
+    """
+    sb = _DocAuditFailSBStub({
+        **_seed(),
+        "document_assets": [
+            {"id": "d1", "scope": "admin_exam_intelligence", "document_kind": "pyq_paper",
+             "status": "processed", "metadata": {"exam_id": "e1"},
+             "storage_bucket": "b", "storage_path": "admin/p1.pdf", "content_hash": "abc"},
+        ],
+        "pyq_papers": [{"id": "pp1", "exam_id": "e1", "metadata": {}}],
+        "admin_audit_logs": [],
+    })
+    r = _client(sb).post(
+        f"{_BASE}/d1/link-to-pyq-paper",
+        json={"reason": "attach uploaded pyq paper", "pyq_paper_id": "pp1"},
+    )
+    assert r.status_code == 500, r.text
+    # Paper must be unchanged — the RPC rolled back both writes atomically.
+    pp = sb.db["pyq_papers"][0]
+    assert pp.get("source_document_id") is None
+    assert len(sb.db["admin_audit_logs"]) == 0
 
 
 def test_get_document_pages_returns_extracted_text():

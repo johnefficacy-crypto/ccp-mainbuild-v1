@@ -899,22 +899,30 @@ def set_pyq_paper_provenance(
     if was_verified:
         update["trust_status"] = "pending"
 
-    updated = supabase.table("pyq_papers").update(update).eq("id", paper_id).execute().data or []
-    audit_id = _audit(
-        supabase, admin, "exam_intel.cms.pyq_paper.set_provenance",
-        entity_type="pyq_paper", entity_id=paper_id,
-        new_value={
-            "reason": body.reason,
-            "patch": patch,
-            "previous_provenance": {k: existing.get(k) for k in _PROVENANCE_FIELDS},
-            "demoted_from_verified": was_verified,
-        },
-    )
+    try:
+        rpc_data = supabase.rpc(
+            "cms_set_pyq_paper_provenance",
+            {
+                "p_paper_id":            paper_id,
+                "p_actor_id":            admin.get("id"),
+                "p_actor_email":         admin.get("email"),
+                "p_patch":               patch,
+                "p_reason":              body.reason,
+                "p_previous_provenance": {k: existing.get(k) for k in _PROVENANCE_FIELDS},
+                "p_was_verified":        was_verified,
+            },
+        ).execute().data
+    except Exception as exc:
+        logger.exception("cms_set_pyq_paper_provenance RPC failed; mutation rolled back")
+        raise HTTPException(
+            status_code=500,
+            detail="Provenance update failed; no change was recorded.",
+        ) from exc
     return {
         "ok": True,
-        "audit_id": audit_id,
+        "audit_id": (rpc_data or {}).get("audit_id"),
         "demoted_from_verified": was_verified,
-        "row": updated[0] if updated else {**existing, **update},
+        "row": {**existing, **update},
     }
 
 

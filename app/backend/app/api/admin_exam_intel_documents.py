@@ -521,22 +521,32 @@ def link_to_pyq_paper(
         )
 
     was_verified = paper.get("trust_status") == "verified"
-    patch: dict = {"source_document_id": document_id, "updated_at": _now_iso()}
+    try:
+        rpc_data = sb.rpc(
+            "cms_link_document_to_pyq_paper",
+            {
+                "p_document_id":  document_id,
+                "p_paper_id":     body.pyq_paper_id,
+                "p_actor_id":     admin.get("id"),
+                "p_actor_email":  admin.get("email"),
+                "p_reason":       body.reason,
+                "p_was_verified": was_verified,
+            },
+        ).execute().data
+    except Exception as exc:
+        logger.exception("cms_link_document_to_pyq_paper RPC failed; mutation rolled back")
+        raise HTTPException(
+            status_code=500,
+            detail="Link mutation failed; no change was recorded.",
+        ) from exc
+    synthetic_patch: dict = {"source_document_id": document_id}
     if was_verified:
-        patch["trust_status"] = "pending"
-
-    updated = sb.table("pyq_papers").update(patch).eq("id", body.pyq_paper_id).execute().data or []
-    result = updated[0] if updated else paper | patch
-    audit_id = _audit(
-        sb, admin, "exam_intel.cms.document.link_pyq_paper",
-        entity_type="pyq_paper", entity_id=body.pyq_paper_id,
-        new_value={
-            "reason": body.reason,
-            "document_asset_id": document_id,
-            "demoted_from_verified": was_verified,
-        },
-    )
-    return {"ok": True, "audit_id": audit_id, "pyq_paper": result}
+        synthetic_patch["trust_status"] = "pending"
+    return {
+        "ok": True,
+        "audit_id": (rpc_data or {}).get("audit_id"),
+        "pyq_paper": paper | synthetic_patch,
+    }
 
 
 def _extension(filename: str) -> str:
