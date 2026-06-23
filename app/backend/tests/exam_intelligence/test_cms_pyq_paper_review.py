@@ -27,7 +27,7 @@ from fastapi.testclient import TestClient
 
 from app.api import admin_exam_intel_cms as cms_api
 from app.core.auth import get_current_user
-from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub, _AuditFailSBStub
+from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub, _AuditFailSBStub, _SetProvenanceDocRaceSBStub
 
 _BASE = "/api/admin/exam-intelligence-cms"
 
@@ -818,6 +818,50 @@ def test_set_provenance_no_fields_is_422():
 
 
 # ── Audit atomicity regression ────────────────────────────────────────────────
+
+
+def test_set_provenance_doc_race_returns_422_and_paper_unchanged():
+    """Document archived concurrently (between Python precheck and RPC) is caught
+    by the RPC's FOR UPDATE + validation step (migration 189).  The endpoint must
+    return 422 with provenance_incomplete / source_document_id_bad_status; the
+    paper row must be unchanged and no audit row written.
+    """
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": None,
+            "source_type": "official",
+            "source_document_id": None,
+        }],
+        "document_assets": [{
+            "id": "doc-1",
+            "scope": "admin_exam_intelligence",
+            "document_kind": "pyq_paper",
+            "status": "processed",
+            "storage_bucket": "exam-docs",
+            "storage_path": "upsc/2024.pdf",
+            "metadata": {"exam_id": "e1"},
+        }],
+        "admin_audit_logs": [],
+    }
+    sb = _SetProvenanceDocRaceSBStub(db)
+    r = _client(sb, _CMS_ONLY).post(
+        f"{_BASE}/pyq-papers/p1/set-provenance",
+        json={
+            "reason": "attaching source document to pyq paper",
+            "payload": {"source_document_id": "doc-1"},
+        },
+    )
+    # Python precheck passes (doc is 'processed'); RPC archives it before its
+    # own validation → blocked with source_document_id_bad_status.
+    assert r.status_code == 422, r.text
+    detail = r.json().get("detail", {})
+    assert "provenance_incomplete" in str(detail)
+    assert "source_document_id_bad_status" in str(detail)
+    # Paper must be unchanged — the RPC raised before mutating.
+    assert db["pyq_papers"][0].get("source_document_id") is None
+    assert len(db["admin_audit_logs"]) == 0
 
 
 def test_set_provenance_audit_failure_returns_500_and_paper_unchanged():

@@ -913,6 +913,19 @@ def set_pyq_paper_provenance(
             },
         ).execute().data
     except Exception as exc:
+        msg = str(exc)
+        msg_lower = msg.lower()
+        if "provenance_incomplete" in msg_lower:
+            blocking_exc: list[str] = []
+            if "blocking_fields=" in msg_lower:
+                fields_raw = msg_lower.split("blocking_fields=", 1)[1].split()[0].rstrip(".,")
+                blocking_exc = [f for f in fields_raw.split(",") if f]
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "provenance_incomplete", "blocking_fields": blocking_exc},
+            ) from exc
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
         logger.exception("cms_set_pyq_paper_provenance RPC failed; mutation rolled back")
         raise HTTPException(
             status_code=500,

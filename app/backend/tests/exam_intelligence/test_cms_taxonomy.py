@@ -205,7 +205,11 @@ class _RpcQuery:
         return _Exec({"ok": True, "audit_id": audit_id, "row": dict(paper)})
 
     def _exec_cms_set_pyq_paper_provenance(self) -> "_Exec":
-        """Mirror the atomic UPDATE + audit INSERT of migration 188 Part A."""
+        """Mirror the atomic UPDATE + audit INSERT of migration 189 Part A.
+
+        Includes paper lock + conditional document lock + six invariant checks,
+        mirroring the FOR UPDATE + validation added in migration 189.
+        """
         import uuid as _uuid
 
         p = self._params
@@ -215,6 +219,33 @@ class _RpcQuery:
             raise Exception(f"not_found: paper {p['p_paper_id']} does not exist")
 
         patch = p.get("p_patch", {})
+
+        # Validate document when source_document_id is being set to a non-null value.
+        if "source_document_id" in patch and patch["source_document_id"] is not None:
+            doc_id = str(patch["source_document_id"])
+            docs = self._db.get("document_assets", [])
+            doc = next((d for d in docs if str(d.get("id")) == doc_id), None)
+            blocking: list[str] = []
+            if doc is None:
+                blocking.append("source_document_id_not_found")
+            else:
+                if doc.get("scope") != "admin_exam_intelligence":
+                    blocking.append("source_document_id_wrong_scope")
+                if doc.get("document_kind") != "pyq_paper":
+                    blocking.append("source_document_id_wrong_kind")
+                if doc.get("status") in ("failed", "archived"):
+                    blocking.append("source_document_id_bad_status")
+                if not doc.get("storage_bucket") or not doc.get("storage_path"):
+                    blocking.append("source_document_id_no_storage")
+                doc_exam = (doc.get("metadata") or {}).get("exam_id")
+                paper_exam = str(paper.get("exam_id") or "")
+                if doc_exam and paper_exam and doc_exam != paper_exam:
+                    blocking.append("source_document_id_exam_mismatch")
+            if blocking:
+                raise Exception(
+                    f"provenance_incomplete: blocking_fields={','.join(blocking)}"
+                )
+
         for field in ("source_url", "source_type", "source_document_id"):
             if field in patch:
                 paper[field] = patch[field]
@@ -240,7 +271,11 @@ class _RpcQuery:
         return _Exec({"audit_id": audit_id, "demoted_from_verified": p.get("p_was_verified")})
 
     def _exec_cms_link_document_to_pyq_paper(self) -> "_Exec":
-        """Mirror the atomic UPDATE + audit INSERT of migration 188 Part B."""
+        """Mirror the atomic UPDATE + audit INSERT of migration 189 Part B.
+
+        Includes paper lock + unconditional document lock + six invariant checks,
+        mirroring the FOR UPDATE + validation added in migration 189.
+        """
         import uuid as _uuid
 
         p = self._params
@@ -248,6 +283,31 @@ class _RpcQuery:
         paper = next((r for r in papers if str(r.get("id")) == str(p["p_paper_id"])), None)
         if paper is None:
             raise Exception(f"not_found: paper {p['p_paper_id']} does not exist")
+
+        # Always validate the document_assets row.
+        doc_id = str(p["p_document_id"])
+        docs = self._db.get("document_assets", [])
+        doc = next((d for d in docs if str(d.get("id")) == doc_id), None)
+        blocking: list[str] = []
+        if doc is None:
+            blocking.append("source_document_id_not_found")
+        else:
+            if doc.get("scope") != "admin_exam_intelligence":
+                blocking.append("source_document_id_wrong_scope")
+            if doc.get("document_kind") != "pyq_paper":
+                blocking.append("source_document_id_wrong_kind")
+            if doc.get("status") in ("failed", "archived"):
+                blocking.append("source_document_id_bad_status")
+            if not doc.get("storage_bucket") or not doc.get("storage_path"):
+                blocking.append("source_document_id_no_storage")
+            doc_exam = (doc.get("metadata") or {}).get("exam_id")
+            paper_exam = str(paper.get("exam_id") or "")
+            if doc_exam and paper_exam and doc_exam != paper_exam:
+                blocking.append("source_document_id_exam_mismatch")
+        if blocking:
+            raise Exception(
+                f"document_not_linkable: blocking_fields={','.join(blocking)}"
+            )
 
         paper["source_document_id"] = p["p_document_id"]
         if p.get("p_was_verified"):
@@ -572,6 +632,27 @@ class _DocRaceRpcQuery(_RpcQuery):
 class _DocRaceSBStub(TaxSBStub):
     def rpc(self, fn_name: str, params: dict | None = None) -> _RpcQuery:
         return _DocRaceRpcQuery(fn_name, params or {}, self.db)
+
+
+class _SetProvenanceDocRaceRpcQuery(_RpcQuery):
+    """Simulates a concurrent document_assets mutation occurring between the
+    Python pre-check and the cms_set_pyq_paper_provenance RPC validation step.
+
+    In production, FOR UPDATE on document_assets (migration 189) prevents this
+    race: the concurrent writer must wait until the RPC releases its transaction.
+    This stub archives the document before the RPC's own validation runs —
+    exactly what FOR UPDATE prevents at the DB level.
+    """
+
+    def _exec_cms_set_pyq_paper_provenance(self):
+        for doc in self._db.get("document_assets", []):
+            doc["status"] = "archived"
+        return super()._exec_cms_set_pyq_paper_provenance()
+
+
+class _SetProvenanceDocRaceSBStub(TaxSBStub):
+    def rpc(self, fn_name: str, params: dict | None = None) -> _RpcQuery:
+        return _SetProvenanceDocRaceRpcQuery(fn_name, params or {}, self.db)
 
 
 def _pyq_review_client(sb, user=None):

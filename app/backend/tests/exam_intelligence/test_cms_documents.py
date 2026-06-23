@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from app.api import admin_exam_intel_documents as docs_api
 from app.api.admin_exam_intel_cms import PERM_CMS
 from app.core.auth import get_current_user
-from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub, _AuditFailRpcQuery
+from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub, _AuditFailRpcQuery, _RpcQuery
 
 _BASE = "/api/admin/exam-intelligence-cms/documents"
 
@@ -170,6 +170,57 @@ class _DocAuditFailSBStub(DocSBStub):
 
     def rpc(self, fn_name, params=None):
         return _AuditFailRpcQuery(fn_name, params or {}, self.db)
+
+
+class _LinkDocRaceRpcQuery(_RpcQuery):
+    """Simulates a concurrent document_assets mutation occurring between the
+    Python pre-check and the cms_link_document_to_pyq_paper RPC validation step.
+
+    In production, FOR UPDATE on document_assets (migration 189) prevents this
+    race.  This stub archives the document before the RPC's own validation runs.
+    """
+
+    def _exec_cms_link_document_to_pyq_paper(self):
+        for doc in self._db.get("document_assets", []):
+            doc["status"] = "archived"
+        return super()._exec_cms_link_document_to_pyq_paper()
+
+
+class _LinkDocRaceSBStub(DocSBStub):
+    def rpc(self, fn_name, params=None):
+        return _LinkDocRaceRpcQuery(fn_name, params or {}, self.db)
+
+
+def test_link_to_pyq_paper_doc_race_returns_422_and_paper_unchanged():
+    """Document archived concurrently (between Python precheck and RPC) is caught
+    by the RPC's FOR UPDATE + validation step (migration 189).  The endpoint must
+    return 422 with document_not_linkable / source_document_id_bad_status; the
+    paper row must be unchanged and no audit row written.
+    """
+    sb = _LinkDocRaceSBStub({
+        **_seed(),
+        "document_assets": [
+            {"id": "d1", "scope": "admin_exam_intelligence", "document_kind": "pyq_paper",
+             "status": "processed", "metadata": {"exam_id": "e1"},
+             "storage_bucket": "b", "storage_path": "admin/p1.pdf", "content_hash": "abc"},
+        ],
+        "pyq_papers": [{"id": "pp1", "exam_id": "e1", "metadata": {}}],
+        "admin_audit_logs": [],
+    })
+    r = _client(sb).post(
+        f"{_BASE}/d1/link-to-pyq-paper",
+        json={"reason": "attach uploaded pyq paper", "pyq_paper_id": "pp1"},
+    )
+    # Python precheck passes (doc is 'processed'); RPC archives it before its
+    # own validation → blocked with source_document_id_bad_status.
+    assert r.status_code == 422, r.text
+    detail = r.json().get("detail", {})
+    assert "document_not_linkable" in str(detail)
+    assert "source_document_id_bad_status" in str(detail)
+    # Paper must be unchanged — the RPC raised before mutating.
+    pp = sb.db["pyq_papers"][0]
+    assert pp.get("source_document_id") is None
+    assert len(sb.db["admin_audit_logs"]) == 0
 
 
 def test_link_to_pyq_paper_audit_failure_returns_500_and_paper_unchanged():
