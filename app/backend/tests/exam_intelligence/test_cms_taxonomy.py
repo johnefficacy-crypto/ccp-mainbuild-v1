@@ -80,23 +80,71 @@ class _RpcQuery:
         raise NotImplementedError(f"RPC {self._fn_name!r} not stubbed in TaxSBStub")
 
     def _exec_review_pyq_paper(self) -> "_Exec":
+        """Mirror every check in migration 185's review_pyq_paper() function.
+
+        Order of checks deliberately matches the SQL: reason → target_status →
+        lock/not_found → concurrent_modification → transition → provenance →
+        atomic writes.  Ensures any bypass of Python prechecks is caught here
+        exactly as it would be at the DB level.
+        """
         import uuid as _uuid
 
         p = self._params
+
+        # 1. Reason length (DB validates on locked row; Python/Pydantic catches it
+        #    first in normal flow, but direct-RPC calls reach here).
+        reason_trimmed = (p.get("p_reason") or "").strip()
+        if not (8 <= len(reason_trimmed) <= 500):
+            raise Exception(
+                f"invalid_reason: reason must be 8-500 characters (got {len(reason_trimmed)})"
+            )
+
+        # 2. Target status must be a known value.
+        if p.get("p_target_status") not in ("verified", "rejected", "pending"):
+            raise Exception(
+                f"invalid_target_status: {p.get('p_target_status')!r} is not a recognised trust_status"
+            )
+
         papers = self._db.setdefault("pyq_papers", [])
         paper = next((r for r in papers if r.get("id") == p["p_paper_id"]), None)
 
+        # 3. Not found.
         if paper is None:
             raise Exception(f"not_found: paper {p['p_paper_id']} does not exist")
 
+        # 4. Concurrent-modification guard (FOR UPDATE equivalent).
         if paper.get("trust_status") != p["p_expected_status"]:
             raise Exception(
                 f"concurrent_modification: expected trust_status={p['p_expected_status']!r}"
                 f" but found {paper.get('trust_status')!r}. Re-fetch and retry."
             )
 
-        # Atomic: write audit row and update paper in the same logical transaction.
-        # The stub ensures both mutations either both happen or neither does.
+        # 5. Transition validation on the locked row's actual status.
+        _allowed: dict[str, tuple[str, ...]] = {
+            "pending":  ("verified", "rejected"),
+            "verified": ("rejected",),
+            "rejected": ("pending",),
+        }
+        current = paper.get("trust_status")
+        target  = p["p_target_status"]
+        if target not in _allowed.get(current, ()):
+            raise Exception(
+                f"transition_not_allowed: {current} -> {target} is not a permitted transition"
+            )
+
+        # 6. Provenance gate re-validated on the locked row values.
+        if current == "pending" and target == "verified":
+            blocking = []
+            if not (paper.get("source_url") and str(paper.get("source_url")).strip()):
+                blocking.append("source_url")
+            if paper.get("source_type") in (None, "", "unknown"):
+                blocking.append("source_type")
+            if blocking:
+                raise Exception(
+                    f"provenance_incomplete: blocking_fields={','.join(blocking)}"
+                )
+
+        # 7+8. Atomic: audit row INSERT + paper UPDATE (both or neither).
         audit_id = str(_uuid.uuid4())
         self._db.setdefault("admin_audit_logs", []).append({
             "id":          audit_id,

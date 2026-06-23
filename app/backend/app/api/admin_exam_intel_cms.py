@@ -914,15 +914,33 @@ def review_pyq_paper(
             },
         ).execute()
     except Exception as exc:
-        msg = str(exc).lower()
-        if "concurrent_modification" in msg:
+        msg = str(exc)
+        msg_lower = msg.lower()
+        # concurrent_modification → 409
+        if "concurrent_modification" in msg_lower:
             raise HTTPException(
                 status_code=409,
-                detail=(
-                    f"Concurrent modification: paper trust_status changed since read. "
-                    "Re-fetch and retry."
-                ),
+                detail="Concurrent modification: paper trust_status changed since read. Re-fetch and retry.",
             ) from exc
+        # provenance_incomplete → 422 with structured blocking_fields
+        if "provenance_incomplete" in msg_lower:
+            blocking: list[str] = []
+            if "blocking_fields=" in msg_lower:
+                fields_raw = msg_lower.split("blocking_fields=", 1)[1].split()[0].rstrip(".,")
+                blocking = [f for f in fields_raw.split(",") if f]
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "provenance_incomplete", "blocking_fields": blocking},
+            ) from exc
+        # other RPC contract failures → 422
+        if any(tok in msg_lower for tok in (
+            "transition_not_allowed", "invalid_reason",
+            "invalid_target_status", "not_allowed",
+        )):
+            raise HTTPException(status_code=422, detail=msg) from exc
+        # paper deleted between SELECT and RPC → 404
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
         logger.exception("review_pyq_paper RPC failed; no status change recorded")
         raise HTTPException(
             status_code=500,

@@ -261,6 +261,98 @@ def test_no_false_audit_on_conflict():
     assert logs[0]["new_value"]["to_status"] == "verified"
 
 
+# ── Direct-RPC validation (RPC is authoritative without Python prechecks) ─────
+
+
+def _rpc_raises(sb, params: dict, expected_substr: str) -> None:
+    """Call _RpcQuery.execute() directly; assert it raises and the message contains
+    expected_substr; assert no audit row was written (rollback semantics)."""
+    rpc = sb.rpc("review_pyq_paper", params)
+    raised = False
+    try:
+        rpc.execute()
+    except Exception as exc:
+        raised = True
+        assert expected_substr in str(exc), f"Expected {expected_substr!r} in {str(exc)!r}"
+    assert raised, f"Expected RPC to raise with {expected_substr!r} but it returned normally"
+    assert len(sb.db.get("admin_audit_logs", [])) == 0, "No audit row on RPC failure"
+
+
+_VALID_RPC_PARAMS = {
+    "p_paper_id":        "p1",
+    "p_expected_status": "pending",
+    "p_target_status":   "verified",
+    "p_reason":          "operator confirmed source documents",
+    "p_actor_id":        "rev-1",
+    "p_actor_email":     "reviewer@example.com",
+}
+
+
+def test_direct_rpc_rejects_invalid_transition():
+    """RPC refuses rejected→verified even when Python prechecks are bypassed."""
+    sb = TaxSBStub(_seed("rejected"))
+    _rpc_raises(
+        sb,
+        {**_VALID_RPC_PARAMS, "p_expected_status": "rejected", "p_target_status": "verified"},
+        "transition_not_allowed",
+    )
+
+
+def test_direct_rpc_rejects_short_reason():
+    """RPC refuses a reason shorter than 8 characters regardless of Pydantic."""
+    sb = TaxSBStub(_seed("pending"))
+    _rpc_raises(
+        sb,
+        {**_VALID_RPC_PARAMS, "p_reason": "short"},
+        "invalid_reason",
+    )
+
+
+def test_direct_rpc_rejects_provenance_missing():
+    """RPC refuses pending→verified when the paper's source_url is absent,
+    even without the Python provenance precheck firing."""
+    sb = TaxSBStub(_seed("pending", source_url=None))
+    _rpc_raises(
+        sb,
+        _VALID_RPC_PARAMS,
+        "provenance_incomplete",
+    )
+
+
+# ── Provenance race ────────────────────────────────────────────────────
+
+
+class _ProvenanceRaceStub(TaxSBStub):
+    """Simulates a concurrent CMS edit that clears source_url *after* Python's
+    pre-validation SELECT passes but before the RPC acquires its lock.
+    trust_status is unchanged, so the concurrent-modification guard does NOT
+    fire — only the provenance re-check on the locked row catches the race."""
+
+    def rpc(self, fn_name, params=None):
+        if fn_name == "review_pyq_paper":
+            p = params or {}
+            for paper in self.db.get("pyq_papers", []):
+                if paper.get("id") == p.get("p_paper_id"):
+                    paper["source_url"] = None   # concurrent CMS edit
+        return super().rpc(fn_name, params)
+
+
+def test_provenance_race_no_audit_no_status_change():
+    """Python SELECT sees valid source_url → precheck passes.  Between that and
+    the RPC, a concurrent writer clears source_url (trust_status unchanged).
+    The RPC re-checks provenance on the locked row → 422; no audit row written
+    and trust_status remains 'pending'."""
+    sb = _ProvenanceRaceStub(_seed("pending"))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    detail = r.json()["detail"]
+    assert detail["error"] == "provenance_incomplete"
+    assert "source_url" in detail["blocking_fields"]
+    # Atomicity: no false audit row and trust_status not changed
+    assert len(sb.db.get("admin_audit_logs", [])) == 0
+    assert sb.db["pyq_papers"][0]["trust_status"] == "pending"
+
+
 # ── Other error cases ──────────────────────────────────────────────────
 
 
