@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { usePyqWorkbench } from "./usePyqWorkbench";
 import BulkImportModal from "./bulk-import/BulkImportModal";
@@ -12,18 +12,80 @@ const TRUST_LABEL = {
   pending: "Pending",
 };
 
+function PaperReviewModal({ paper, targetStatus, onCancel, onSubmit }) {
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState(null);
+  const textareaRef = useRef(null);
+
+  useEffect(() => { textareaRef.current?.focus(); }, []);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (reason.trim().length < 8) { setErr("Reason must be at least 8 characters."); return; }
+    setSubmitting(true);
+    setErr(null);
+    try {
+      await onSubmit(paper.id, targetStatus, reason.trim());
+    } catch (ex) {
+      setErr(ex?.message || "Review failed");
+      setSubmitting(false);
+    }
+  }
+
+  const label = targetStatus === "verified" ? "Verify" : "Reject";
+  const btnClass = targetStatus === "verified"
+    ? "px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+    : "px-3 py-1.5 text-sm rounded bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" data-testid="paper-review-modal">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 flex flex-col gap-4"
+      >
+        <h2 className="text-base font-semibold text-gray-800">
+          {label} paper — {paper.year ?? "—"} {[paper.paper_code, paper.shift].filter(Boolean).join(" · ")}
+        </h2>
+        <label className="flex flex-col gap-1 text-sm text-gray-700">
+          Reason <span className="text-gray-400 font-normal">(required, ≥ 8 chars)</span>
+          <textarea
+            ref={textareaRef}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none resize-none"
+            placeholder="e.g. Confirmed against official UPSC 2024 paper PDF"
+            data-testid="paper-review-reason"
+          />
+        </label>
+        {err && <p className="text-xs text-rose-600" data-testid="paper-review-error">{err}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit" disabled={submitting} className={btnClass} data-testid="paper-review-submit">
+            {submitting ? "Saving…" : label}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status = null }) {
   const { exam, cycle } = useExamWorkspace();
   const examId = exam?.id;
   const cycleId = cycle?.id ?? null;
 
-  const { papers, selectedPaperId, setSelectedPaperId, loading, error } = usePyqWorkbench(
+  const { papers, selectedPaperId, setSelectedPaperId, loading, error, reviewPaper } = usePyqWorkbench(
     examId,
     cycleId,
   );
 
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [paperNotFound, setPaperNotFound] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState(null); // { paper, targetStatus }
 
   // Auto-select paperId once papers have loaded
   useEffect(() => {
@@ -36,6 +98,11 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
       setPaperNotFound(true);
     }
   }, [paperId, papers, loading, setSelectedPaperId]);
+
+  async function handleReviewSubmit(pid, targetStatus, reason) {
+    await reviewPaper(pid, targetStatus, reason);
+    setReviewTarget(null);
+  }
 
   return (
     <div className="flex flex-col h-full" data-testid="pyq-workbench-panel">
@@ -74,7 +141,8 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
                 <th className="pb-1 pr-4 font-medium">Year</th>
                 <th className="pb-1 pr-4 font-medium">Section</th>
                 <th className="pb-1 pr-4 font-medium">Questions</th>
-                <th className="pb-1 font-medium">Readiness</th>
+                <th className="pb-1 pr-4 font-medium">Readiness</th>
+                <th className="pb-1 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -98,7 +166,29 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
                     <td className="py-1.5 pr-4">{p.year ?? "—"}</td>
                     <td className="py-1.5 pr-4">{section}</td>
                     <td className="py-1.5 pr-4">{expectedCount}</td>
-                    <td className="py-1.5">{readiness}</td>
+                    <td className="py-1.5 pr-4">{readiness}</td>
+                    <td className="py-1.5" onClick={(e) => e.stopPropagation()}>
+                      {p.trust_status !== "verified" && (
+                        <button
+                          type="button"
+                          onClick={() => setReviewTarget({ paper: p, targetStatus: "verified" })}
+                          className="text-xs px-2 py-0.5 rounded border border-emerald-400 text-emerald-700 hover:bg-emerald-50 mr-1"
+                          data-testid={`verify-paper-btn-${p.id}`}
+                        >
+                          Verify
+                        </button>
+                      )}
+                      {p.trust_status !== "rejected" && (
+                        <button
+                          type="button"
+                          onClick={() => setReviewTarget({ paper: p, targetStatus: "rejected" })}
+                          className="text-xs px-2 py-0.5 rounded border border-rose-300 text-rose-600 hover:bg-rose-50"
+                          data-testid={`reject-paper-btn-${p.id}`}
+                        >
+                          Reject
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -134,6 +224,14 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
             setSelectedPaperId(paperId);
             setShowBulkImport(false);
           }}
+        />
+      )}
+      {reviewTarget && (
+        <PaperReviewModal
+          paper={reviewTarget.paper}
+          targetStatus={reviewTarget.targetStatus}
+          onCancel={() => setReviewTarget(null)}
+          onSubmit={handleReviewSubmit}
         />
       )}
     </div>

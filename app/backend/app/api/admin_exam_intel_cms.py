@@ -814,6 +814,59 @@ def update_pyq_paper(
     return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
 
 
+_PAPER_REVIEW_STATUSES = ("verified", "rejected")
+
+
+class PaperReviewBody(BaseModel):
+    status: str = Field(..., description="Target trust_status: 'verified' or 'rejected'")
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+@router.post("/pyq-papers/{paper_id}/review")
+def review_pyq_paper(
+    paper_id: str,
+    body: PaperReviewBody,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Transition a PYQ paper's trust_status to 'verified' or 'rejected'.
+
+    This is the only path that can move a paper out of 'pending'.
+    Requires an explicit reason (≥ 8 chars) recorded in admin_audit_logs
+    with reviewer identity, from/to status, and timestamp.
+    """
+    if body.status not in _PAPER_REVIEW_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"status must be one of {_PAPER_REVIEW_STATUSES}",
+        )
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_papers", id=paper_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+    from_status = existing.get("trust_status", "pending")
+    updated = (
+        supabase.table("pyq_papers")
+        .update({"trust_status": body.status, "updated_at": _now_iso()})
+        .eq("id", paper_id)
+        .execute()
+        .data or []
+    )
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_paper.review",
+        entity_type="pyq_paper", entity_id=paper_id,
+        new_value={
+            "from_status": from_status,
+            "to_status": body.status,
+            "reason": body.reason,
+            "reviewed_by": admin.get("email"),
+            "reviewed_at": _now_iso(),
+        },
+    )
+    row = updated[0] if updated else {**existing, "trust_status": body.status}
+    return {"ok": True, "audit_id": audit_id, "row": row}
+
+
 # ════════════════════════════════════════════════════════════════════════
 #  PYQ paper workspace sub-endpoints (PR4)
 # ════════════════════════════════════════════════════════════════════════

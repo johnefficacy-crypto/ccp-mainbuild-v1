@@ -27,5 +27,10 @@ export function usePyqWorkbench(examId, cycleId) {
 
   useEffect(() => { fetchPapers(); }, [fetchPapers]);
 
-  return { papers, selectedPaperId, setSelectedPaperId, loading, error, refetch: fetchPapers };
+  const reviewPaper = useCallback(async (paperId, status, reason) => {
+    await api.post(`${CMS_BASE}/pyq-papers/${paperId}/review`, { status, reason });
+    await fetchPapers();
+  }, [fetchPapers]);
+
+  return { papers, selectedPaperId, setSelectedPaperId, loading, error, refetch: fetchPapers, reviewPaper };
 }
