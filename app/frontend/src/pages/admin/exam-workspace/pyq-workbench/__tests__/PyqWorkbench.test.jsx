@@ -522,4 +522,18 @@ describe("PyqWorkbenchPanel — paper lifecycle review", () => {
     expect(screen.queryByTestId("paper-review-modal")).toBeNull();
     expect(api.post).not.toHaveBeenCalled();
   });
+
+  test("Re-queue opens modal with 'Re-queue' label and amber style (not Reject/rose)", async () => {
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.review"] } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("requeue-paper-btn-p-rejected")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("requeue-paper-btn-p-rejected"));
+    expect(screen.getByTestId("paper-review-modal")).toBeTruthy();
+    // Submit button must say "Re-queue", not "Reject"
+    const submitBtn = screen.getByTestId("paper-review-submit");
+    expect(submitBtn).toHaveTextContent("Re-queue");
+    expect(submitBtn.className).toMatch(/amber/);
+    expect(submitBtn.className).not.toMatch(/rose/);
+  });
 });

@@ -896,58 +896,41 @@ def review_pyq_paper(
                 detail={"error": "provenance_incomplete", "blocking_fields": blocking},
             )
 
-    # Write audit FIRST — raises on failure so status is never updated without
-    # an audit record.
+    # Single atomic RPC: audit INSERT + paper UPDATE in one DB transaction.
+    # If a concurrent writer changed trust_status between the SELECT above and
+    # the RPC, the function detects it via SELECT FOR UPDATE + expected-status
+    # guard and raises "concurrent_modification" → both writes are rolled back
+    # (no false audit rows).
     try:
-        audit_rows = (
-            supabase.table("admin_audit_logs")
-            .insert({
-                "actor_id":    admin.get("id"),
-                "actor_email": admin.get("email"),
-                "action":      "exam_intel.cms.pyq_paper.review",
-                "entity_type": "pyq_paper",
-                "entity_id":   paper_id,
-                "new_value": {
-                    "from_status":   from_status,
-                    "to_status":     body.status,
-                    "reason":        body.reason,
-                    "reviewed_by":   admin.get("email"),
-                    "reviewed_at":   _now_iso(),
-                },
-                "notes": "admin_exam_intel_cms",
-            })
-            .execute()
-            .data or []
-        )
+        result = supabase.rpc(
+            "review_pyq_paper",
+            {
+                "p_paper_id":        paper_id,
+                "p_expected_status": from_status,
+                "p_target_status":   body.status,
+                "p_reason":          body.reason,
+                "p_actor_id":        admin.get("id"),
+                "p_actor_email":     admin.get("email"),
+            },
+        ).execute()
     except Exception as exc:
-        logger.exception("audit log write failed in review_pyq_paper; aborting transition")
+        msg = str(exc).lower()
+        if "concurrent_modification" in msg:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Concurrent modification: paper trust_status changed since read. "
+                    "Re-fetch and retry."
+                ),
+            ) from exc
+        logger.exception("review_pyq_paper RPC failed; no status change recorded")
         raise HTTPException(
             status_code=500,
-            detail="Audit log write failed; transition aborted to preserve auditability",
+            detail="Review transaction failed; no status change recorded.",
         ) from exc
 
-    audit_id = audit_rows[0].get("id") if audit_rows else None
-
-    # Conditional update — guard on expected current status to detect concurrent
-    # modifications (optimistic lock: 0 rows → 409).
-    updated = (
-        supabase.table("pyq_papers")
-        .update({"trust_status": body.status, "updated_at": _now_iso()})
-        .eq("id", paper_id)
-        .eq("trust_status", from_status)
-        .execute()
-        .data or []
-    )
-    if not updated:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                f"Concurrent modification: paper trust_status is no longer '{from_status}'. "
-                "Re-fetch and retry."
-            ),
-        )
-
-    return {"ok": True, "audit_id": audit_id, "row": updated[0]}
+    data = result.data
+    return {"ok": True, "audit_id": data["audit_id"], "row": data["row"]}
 
 
 # ════════════════════════════════════════════════════════════════════════

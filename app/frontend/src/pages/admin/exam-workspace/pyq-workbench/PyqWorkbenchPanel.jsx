@@ -34,10 +34,12 @@ function PaperReviewModal({ paper, targetStatus, onCancel, onSubmit }) {
     }
   }
 
-  const label = targetStatus === "verified" ? "Verify" : "Reject";
-  const btnClass = targetStatus === "verified"
-    ? "px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-    : "px-3 py-1.5 text-sm rounded bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50";
+  const REVIEW_ACTION = {
+    verified: { label: "Verify",   btnClass: "px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50" },
+    rejected: { label: "Reject",   btnClass: "px-3 py-1.5 text-sm rounded bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50" },
+    pending:  { label: "Re-queue", btnClass: "px-3 py-1.5 text-sm rounded bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50" },
+  };
+  const { label, btnClass } = REVIEW_ACTION[targetStatus] ?? REVIEW_ACTION.rejected;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" data-testid="paper-review-modal">

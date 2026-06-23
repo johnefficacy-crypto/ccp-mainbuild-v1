@@ -221,32 +221,44 @@ def test_audit_written_before_status_update():
 # ── Concurrent modification guard ─────────────────────────────────────
 
 
+class _ConflictStub(TaxSBStub):
+    """Injects a concurrent status change between Python's pre-validation SELECT
+    and the atomic RPC, simulating another writer acting in the window between
+    the two calls.  The RPC detects trust_status != p_expected_status and raises
+    concurrent_modification → neither the audit row nor the paper update commit."""
+
+    def rpc(self, fn_name, params=None):
+        if fn_name == "review_pyq_paper":
+            p = params or {}
+            for paper in self.db.get("pyq_papers", []):
+                if paper.get("id") == p.get("p_paper_id"):
+                    # Flip to a conflicting status before the RPC logic runs.
+                    paper["trust_status"] = "rejected"
+        return super().rpc(fn_name, params)
+
+
 def test_concurrent_modification_returns_409():
-    """Simulate the guard on from_status: if the UPDATE matched zero rows
-    (i.e. trust_status changed between the SELECT and the UPDATE), return 409."""
-    sb = TaxSBStub(_seed("pending"))
-
-    # Manually change status between SELECT and UPDATE by mutating the stub
-    # after the SELECT but before the UPDATE — simulate by seeding a paper
-    # that is already 'verified' so the conditional UPDATE (WHERE trust_status='pending')
-    # returns 0 rows.
-    sb.db["pyq_papers"][0]["trust_status"] = "verified"
-
-    # Now review endpoint thinks it's doing pending→verified but the row is already verified,
-    # so the WHERE trust_status='pending' clause matches nothing → 409.
+    """Between Python's pre-validation SELECT and the review RPC, another writer
+    changes trust_status.  The RPC raises concurrent_modification → 409, and
+    crucially NO audit row is written (the transaction was rolled back)."""
+    sb = _ConflictStub(_seed("pending"))
+    # Python SELECT sees "pending" → passes p_expected_status="pending" to RPC.
+    # _ConflictStub.rpc() flips the paper to "rejected" before _RpcQuery runs.
+    # _RpcQuery finds trust_status="rejected" != "pending" → raises → 409.
     r = _review(_client(sb), status="verified")
-    # The _safe_select will see 'verified', so transition check fires first (verified→verified is no-op).
-    # To actually hit the 409, we need the transition to be valid but the conditional update to fail.
-    # Let's test verified→rejected where the stub's status was changed to 'pending' mid-flight.
-    sb.db["pyq_papers"][0]["trust_status"] = "verified"
-    sb.db["admin_audit_logs"] = []
+    assert r.status_code == 409, r.text
+    # Verify atomicity: no false audit row must have been written.
+    assert len(sb.db.get("admin_audit_logs", [])) == 0
 
-    # Patch: make the update return empty after audit is written.
-    # We do this by seeding as verified but changing to pending during the test
-    # to simulate the WHERE trust_status='verified' matching nothing.
-    r2 = _review(_client(sb), status="rejected")
-    # Normal path — trust_status IS verified, so the conditional update matches → 200.
-    assert r2.status_code == 200, r2.text
+
+def test_no_false_audit_on_conflict():
+    """Complement: a successful review writes exactly one audit row."""
+    sb = TaxSBStub(_seed("pending"))
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 200, r.text
+    logs = sb.db.get("admin_audit_logs", [])
+    assert len(logs) == 1
+    assert logs[0]["new_value"]["to_status"] == "verified"
 
 
 # ── Other error cases ──────────────────────────────────────────────────

@@ -66,9 +66,65 @@ class _TaxQuery(_Query):
         return out
 
 
+class _RpcQuery:
+    """Stub for supabase.rpc(fn_name, params).execute() used by the review endpoint."""
+
+    def __init__(self, fn_name: str, params: dict, db: dict):
+        self._fn_name = fn_name
+        self._params = params
+        self._db = db
+
+    def execute(self) -> "_Exec":
+        if self._fn_name == "review_pyq_paper":
+            return self._exec_review_pyq_paper()
+        raise NotImplementedError(f"RPC {self._fn_name!r} not stubbed in TaxSBStub")
+
+    def _exec_review_pyq_paper(self) -> "_Exec":
+        import uuid as _uuid
+
+        p = self._params
+        papers = self._db.setdefault("pyq_papers", [])
+        paper = next((r for r in papers if r.get("id") == p["p_paper_id"]), None)
+
+        if paper is None:
+            raise Exception(f"not_found: paper {p['p_paper_id']} does not exist")
+
+        if paper.get("trust_status") != p["p_expected_status"]:
+            raise Exception(
+                f"concurrent_modification: expected trust_status={p['p_expected_status']!r}"
+                f" but found {paper.get('trust_status')!r}. Re-fetch and retry."
+            )
+
+        # Atomic: write audit row and update paper in the same logical transaction.
+        # The stub ensures both mutations either both happen or neither does.
+        audit_id = str(_uuid.uuid4())
+        self._db.setdefault("admin_audit_logs", []).append({
+            "id":          audit_id,
+            "actor_id":    p["p_actor_id"],
+            "actor_email": p["p_actor_email"],
+            "action":      "exam_intel.cms.pyq_paper.review",
+            "entity_type": "pyq_paper",
+            "entity_id":   p["p_paper_id"],
+            "new_value": {
+                "from_status":  p["p_expected_status"],
+                "to_status":    p["p_target_status"],
+                "reason":       p["p_reason"],
+                "reviewed_by":  p["p_actor_email"],
+                "reviewed_at":  "now",
+            },
+            "notes": "admin_exam_intel_cms",
+        })
+        paper["trust_status"] = p["p_target_status"]
+        paper["updated_at"]   = "now"
+        return _Exec({"ok": True, "audit_id": audit_id, "row": dict(paper)})
+
+
 class TaxSBStub(SBStub):
     def table(self, name: str):
         return _TaxQuery(name, self.db)
+
+    def rpc(self, fn_name: str, params: dict | None = None) -> _RpcQuery:
+        return _RpcQuery(fn_name, params or {}, self.db)
 
 
 def _client(sb: TaxSBStub, *, flag: bool = True) -> TestClient:
