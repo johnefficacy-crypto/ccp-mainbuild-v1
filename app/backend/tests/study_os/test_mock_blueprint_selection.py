@@ -344,3 +344,117 @@ def test_blocked_outcome_leaves_selection_empty():
     assert payload["outcome"] == "blocked"
     assert payload["question_ids"] == []
     assert payload["selector_snapshot"]["sections"] == []
+
+
+# ── source-mix max_ratio enforcement ─────────────────────────────────────────
+
+from app.study_os.mock_blueprint_selection import _select_section  # noqa: E402
+
+
+def _pool_row(qid: str, source_kind: str) -> dict:
+    return {"id": qid, "source_kind": source_kind, "difficulty": "medium"}
+
+
+class TestSourceMixMaxRatio:
+    """max_ratio enforcement: correct status for full vs partial enforcement."""
+
+    def test_max_ratio_fully_enforced_when_backfill_available(self):
+        # 8 pyq + 5 authored (13 total), target 10, max_ratio 0.5 for pyq
+        # Initial selection: 8 pyq + 2 authored. After removing 3 excess pyq, backfill
+        # the 3 remaining authored → 5 pyq + 5 authored = 10 rows, ratio exactly 0.5.
+        pool = [_pool_row(f"pyq-{i}", "pyq") for i in range(8)]
+        pool += [_pool_row(f"auth-{i}", "authored") for i in range(5)]
+        constraints = {"pyq": {"min": 0.0, "max": 0.5, "fallback": "relax_to_available"}}
+        chosen_ids, rungs = _select_section(
+            pool, 10,
+            source_mix=None, source_mix_constraints=constraints, difficulty_mix=None,
+        )
+        pool_by_id = {r["id"]: r for r in pool}
+        pyq_count = sum(1 for qid in chosen_ids if pool_by_id[qid]["source_kind"] == "pyq")
+        n = len(chosen_ids)
+        assert n == 10
+        assert pyq_count <= 5  # max 50% of 10
+        max_rungs = [r for r in rungs if r["rung"] == "source_mix_max_constraint"]
+        assert len(max_rungs) == 1
+        assert max_rungs[0]["status"] == "enforced_max_ratio"
+        assert max_rungs[0]["final_ratio"] <= 0.5 + 1e-9
+
+    def test_max_ratio_partial_when_backfill_insufficient(self):
+        # 8 pyq + 2 authored (10 total), target 10, max_ratio 0.5 for pyq
+        # After removing 3 pyq: 5 pyq + 2 authored = 7 rows; no authored left to backfill.
+        # Final ratio = 5/7 ≈ 0.71 > 0.5 → status must be enforced_max_ratio_partial.
+        pool = [_pool_row(f"pyq-{i}", "pyq") for i in range(8)]
+        pool += [_pool_row(f"auth-{i}", "authored") for i in range(2)]
+        constraints = {"pyq": {"min": 0.0, "max": 0.5, "fallback": "relax_to_available"}}
+        chosen_ids, rungs = _select_section(
+            pool, 10,
+            source_mix=None, source_mix_constraints=constraints, difficulty_mix=None,
+        )
+        pool_by_id = {r["id"]: r for r in pool}
+        pyq_count = sum(1 for qid in chosen_ids if pool_by_id[qid]["source_kind"] == "pyq")
+        n = len(chosen_ids)
+        final_ratio = pyq_count / n if n > 0 else 0.0
+        assert final_ratio > 0.5  # constraint could not be fully met
+        max_rungs = [r for r in rungs if r["rung"] == "source_mix_max_constraint"]
+        assert len(max_rungs) == 1
+        assert max_rungs[0]["status"] == "enforced_max_ratio_partial"
+        assert max_rungs[0]["final_ratio"] > 0.5
+
+    def test_two_simultaneous_max_constraints_are_compositional(self):
+        # target=10; pool: 8 pyq + 8 authored (16 total); both capped at max 0.5.
+        # Pool order puts pyq first, so initial selection is pyq-0..7 + auth-0..1 (10 rows).
+        # Combined caps: int(0.5 * 10) = 5 per source.
+        # Single-pass enforcement: keep pyq-0..4 (5), keep auth-0..1 (2), drop pyq-5..7.
+        # Backfill authored up to authored cap (5): add auth-2..4.
+        # Final: 5 pyq + 5 authored = 10.  pyq-5, pyq-6, pyq-7 must NOT reappear.
+        pool = [_pool_row(f"pyq-{i}", "pyq") for i in range(8)]
+        pool += [_pool_row(f"auth-{i}", "authored") for i in range(8)]
+        constraints = {
+            "pyq": {"min": 0.0, "max": 0.5, "fallback": "relax_to_available"},
+            "authored": {"min": 0.0, "max": 0.5, "fallback": "relax_to_available"},
+        }
+        chosen_ids, rungs = _select_section(
+            pool, 10,
+            source_mix=None, source_mix_constraints=constraints, difficulty_mix=None,
+        )
+        pool_by_id = {r["id"]: r for r in pool}
+        n = len(chosen_ids)
+        pyq_count = sum(1 for qid in chosen_ids if pool_by_id[qid]["source_kind"] == "pyq")
+        authored_count = sum(1 for qid in chosen_ids if pool_by_id[qid]["source_kind"] == "authored")
+        assert n == 10
+        assert pyq_count <= 5
+        assert authored_count <= 5
+        max_rungs = [r for r in rungs if r["rung"] == "source_mix_max_constraint"]
+        assert len(max_rungs) >= 1
+        assert all(r["status"] == "enforced_max_ratio" for r in max_rungs)
+        # Confirm removed pyq rows were not re-added during authored backfill
+        assert not any(qid in {"pyq-5", "pyq-6", "pyq-7"} for qid in chosen_ids)
+
+    def test_min_evaluated_after_max_rebalance_not_before(self):
+        # Regression: min check must run on POST-max chosen_rows, not pre-rebalance.
+        # target=10, pool: 8 pyq + 5 authored.
+        # Initial selection (pool order): 8 pyq + 2 authored → authored ratio = 0.2.
+        # pyq.max=0.5, authored.min=0.5, fallback=block.
+        # Pre-rebalance: authored ratio 0.2 < 0.5 → OLD code blocks here (wrong).
+        # After max enforcement: 5 pyq + 5 authored → authored ratio 0.5 ≥ 0.5 → ok.
+        pool = [_pool_row(f"pyq-{i}", "pyq") for i in range(8)]
+        pool += [_pool_row(f"auth-{i}", "authored") for i in range(5)]
+        constraints = {
+            "pyq": {"min": 0.0, "max": 0.5, "fallback": "relax_to_available"},
+            "authored": {"min": 0.5, "max": 1.0, "fallback": "block"},
+        }
+        chosen_ids, rungs = _select_section(
+            pool, 10,
+            source_mix=None, source_mix_constraints=constraints, difficulty_mix=None,
+        )
+        pool_by_id = {r["id"]: r for r in pool}
+        n = len(chosen_ids)
+        authored_count = sum(1 for qid in chosen_ids if pool_by_id[qid]["source_kind"] == "authored")
+        # Must succeed (not blocked) and meet both constraints
+        assert n == 10
+        assert authored_count >= 5  # authored.min = 0.5 * 10 = 5
+        assert authored_count <= 10  # authored.max = 1.0
+        pyq_count = n - authored_count
+        assert pyq_count <= 5  # pyq.max = 0.5
+        # No blocked rung
+        assert not any(r.get("status") == "blocked_min_ratio_unmet" for r in rungs)

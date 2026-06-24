@@ -53,6 +53,7 @@ logger = logging.getLogger("career_copilot.api.admin_exam_intel_cms")
 router = APIRouter(prefix="/admin/exam-intelligence-cms", tags=["admin-exam-intelligence-cms"])
 
 PERM_CMS = "exam_intelligence.cms"
+PERM_REVIEW = "exam_intelligence.review"
 
 
 # ─── Helpers (mirror admin_study_os patterns) ─────────────────────────────
@@ -721,9 +722,12 @@ def create_syllabus_document(
 _PAPER_FIELDS = {
     "pyq_source_id", "exam_id", "exam_cycle_id", "exam_phase_id",
     "year", "paper_date", "shift", "paper_code", "source_url",
-    "source_type", "content_hash", "metadata",
+    "source_type", "source_document_id", "content_hash", "metadata",
 }
 _PAPER_SOURCE_TYPES = ("official", "memory_based", "coaching", "community", "aggregator", "unknown")
+# Provenance fields that require re-validation when a paper is verified.
+# Changes to these fields on a verified paper must go through set-provenance.
+_PROVENANCE_FIELDS = frozenset({"source_url", "source_type", "source_document_id"})
 
 
 @router.get("/pyq-papers")
@@ -805,6 +809,19 @@ def update_pyq_paper(
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
     if patch.get("source_type") and patch["source_type"] not in _PAPER_SOURCE_TYPES:
         raise HTTPException(status_code=422, detail=f"source_type must be one of {_PAPER_SOURCE_TYPES}")
+    if existing.get("trust_status") == "verified" and _PROVENANCE_FIELDS & set(patch):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "provenance_locked",
+                "message": (
+                    "Provenance fields (source_url, source_type, source_document_id) "
+                    "cannot be changed on a verified paper. "
+                    "Use POST /pyq-papers/{id}/set-provenance, which validates the new "
+                    "provenance and moves the paper back to pending for re-review."
+                ),
+            },
+        )
     updated = supabase.table("pyq_papers").update(patch).eq("id", paper_id).execute().data or []
     audit_id = _audit(
         supabase, admin, "exam_intel.cms.pyq_paper.update",
@@ -812,6 +829,253 @@ def update_pyq_paper(
         new_value={"reason": body.reason, "patch": patch, "previous": existing},
     )
     return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+@router.post("/pyq-papers/{paper_id}/set-provenance")
+def set_pyq_paper_provenance(
+    paper_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Update provenance fields with full document validation.
+
+    Validates the resulting provenance state (same six invariants as
+    review_pyq_paper). If the paper is currently verified it is automatically
+    moved back to pending, requiring re-review before the projection RPC can run.
+    """
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_papers", id=paper_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+
+    patch = {k: v for k, v in body.payload.items() if k in _PROVENANCE_FIELDS}
+    if not patch:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Payload must contain at least one of: {sorted(_PROVENANCE_FIELDS)}",
+        )
+    if "source_type" in patch and patch["source_type"] not in _PAPER_SOURCE_TYPES:
+        raise HTTPException(status_code=422, detail=f"source_type must be one of {_PAPER_SOURCE_TYPES}")
+
+    # Compute the resulting provenance state after applying the patch
+    result_source_type = patch.get("source_type", existing.get("source_type"))
+    result_source_url = patch.get("source_url", existing.get("source_url"))
+    result_source_doc_id = patch.get("source_document_id", existing.get("source_document_id"))
+
+    # Run the same provenance gate as review_pyq_paper (Python side; SQL RPC
+    # re-runs it under DB lock at verification time)
+    blocking: list[str] = []
+    if result_source_type in (None, "", "unknown"):
+        blocking.append("source_type")
+    if not (result_source_url and str(result_source_url).strip()) and not result_source_doc_id:
+        blocking.append("source_url")
+
+    if result_source_doc_id:
+        doc = _safe_select(supabase, "document_assets", id=result_source_doc_id)
+        if not doc:
+            blocking.append("source_document_id_not_found")
+        else:
+            if doc.get("scope") != "admin_exam_intelligence":
+                blocking.append("source_document_id_wrong_scope")
+            if doc.get("document_kind") != "pyq_paper":
+                blocking.append("source_document_id_wrong_kind")
+            if doc.get("status") in ("failed", "archived"):
+                blocking.append("source_document_id_bad_status")
+            if not doc.get("storage_bucket") or not doc.get("storage_path"):
+                blocking.append("source_document_id_no_storage")
+            doc_exam = (doc.get("metadata") or {}).get("exam_id")
+            if doc_exam and doc_exam != existing.get("exam_id"):
+                blocking.append("source_document_id_exam_mismatch")
+
+    if blocking:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "provenance_incomplete", "blocking_fields": blocking},
+        )
+
+    was_verified = existing.get("trust_status") == "verified"
+    update: dict[str, Any] = dict(patch)
+    if was_verified:
+        update["trust_status"] = "pending"
+
+    try:
+        rpc_data = supabase.rpc(
+            "cms_set_pyq_paper_provenance",
+            {
+                "p_paper_id":            paper_id,
+                "p_actor_id":            admin.get("id"),
+                "p_actor_email":         admin.get("email"),
+                "p_patch":               patch,
+                "p_reason":              body.reason,
+                "p_previous_provenance": {k: existing.get(k) for k in _PROVENANCE_FIELDS},
+                "p_was_verified":        was_verified,
+            },
+        ).execute().data
+    except Exception as exc:
+        msg = str(exc)
+        msg_lower = msg.lower()
+        if "provenance_incomplete" in msg_lower:
+            blocking_exc: list[str] = []
+            if "blocking_fields=" in msg_lower:
+                fields_raw = msg_lower.split("blocking_fields=", 1)[1].split()[0].rstrip(".,")
+                blocking_exc = [f for f in fields_raw.split(",") if f]
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "provenance_incomplete", "blocking_fields": blocking_exc},
+            ) from exc
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
+        logger.exception("cms_set_pyq_paper_provenance RPC failed; mutation rolled back")
+        raise HTTPException(
+            status_code=500,
+            detail="Provenance update failed; no change was recorded.",
+        ) from exc
+    return {
+        "ok": True,
+        "audit_id": (rpc_data or {}).get("audit_id"),
+        "demoted_from_verified": was_verified,
+        "row": {**existing, **update},
+    }
+
+
+# Allowed trust_status transitions for pyq_papers.
+# Any transition not listed here is rejected with 422.
+_ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "pending":  ("verified", "rejected"),
+    "verified": ("rejected",),
+    "rejected": ("pending",),
+}
+
+# Provenance anchor: either source_url or source_document_id must be present.
+# source_type must always be a known value. Document content validation is
+# authoritative inside the RPC (under the row lock); Python only checks that
+# at least one anchor field is populated so the operator gets an early signal.
+
+# All valid target statuses (union of all allowed-transition values)
+_ALL_TARGET_STATUSES = frozenset(s for targets in _ALLOWED_TRANSITIONS.values() for s in targets)
+
+
+class PaperReviewBody(BaseModel):
+    status: str = Field(..., description="Target trust_status: 'verified', 'rejected', or 'pending'")
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+@router.post("/pyq-papers/{paper_id}/review")
+def review_pyq_paper(
+    paper_id: str,
+    body: PaperReviewBody,
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Transition a PYQ paper's trust_status.
+
+    Allowed transitions::
+
+        pending  → verified | rejected
+        verified → rejected
+        rejected → pending
+
+    For ``pending → verified``, the paper must have ``source_url`` set and
+    ``source_type`` not 'unknown'; a 422 with ``blocking_fields`` is returned
+    otherwise so the operator can complete the record first.
+
+    The audit log is written **before** the status update so the intent is
+    always captured even if the subsequent UPDATE fails.  The UPDATE is
+    guarded on the current trust_status (optimistic-lock) to prevent silent
+    overwrites when two operators act concurrently.
+    """
+    if body.status not in _ALL_TARGET_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"status must be one of {sorted(_ALL_TARGET_STATUSES)}",
+        )
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_papers", id=paper_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="pyq_paper not found")
+
+    from_status = existing.get("trust_status", "pending")
+    allowed = _ALLOWED_TRANSITIONS.get(from_status, ())
+    if body.status not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Transition '{from_status}' → '{body.status}' is not allowed. "
+                f"Allowed targets from '{from_status}': {list(allowed)}"
+            ),
+        )
+
+    # Provenance gate: pending → verified requires (a) valid source_type and
+    # (b) at least one anchor — non-empty source_url OR a source_document_id.
+    # Document content validation is authoritative in the RPC (under the row
+    # lock); Python only gives an early signal on obviously missing anchors.
+    if from_status == "pending" and body.status == "verified":
+        blocking: list[str] = []
+        if existing.get("source_type") in (None, "", "unknown"):
+            blocking.append("source_type")
+        if (not (existing.get("source_url") and str(existing.get("source_url")).strip())
+                and not existing.get("source_document_id")):
+            blocking.append("source_url")
+        if blocking:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "provenance_incomplete", "blocking_fields": blocking},
+            )
+
+    # Single atomic RPC: audit INSERT + paper UPDATE in one DB transaction.
+    # If a concurrent writer changed trust_status between the SELECT above and
+    # the RPC, the function detects it via SELECT FOR UPDATE + expected-status
+    # guard and raises "concurrent_modification" → both writes are rolled back
+    # (no false audit rows).
+    try:
+        result = supabase.rpc(
+            "review_pyq_paper",
+            {
+                "p_paper_id":        paper_id,
+                "p_expected_status": from_status,
+                "p_target_status":   body.status,
+                "p_reason":          body.reason,
+                "p_actor_id":        admin.get("id"),
+                "p_actor_email":     admin.get("email"),
+            },
+        ).execute()
+    except Exception as exc:
+        msg = str(exc)
+        msg_lower = msg.lower()
+        # concurrent_modification → 409
+        if "concurrent_modification" in msg_lower:
+            raise HTTPException(
+                status_code=409,
+                detail="Concurrent modification: paper trust_status changed since read. Re-fetch and retry.",
+            ) from exc
+        # provenance_incomplete → 422 with structured blocking_fields
+        if "provenance_incomplete" in msg_lower:
+            blocking: list[str] = []
+            if "blocking_fields=" in msg_lower:
+                fields_raw = msg_lower.split("blocking_fields=", 1)[1].split()[0].rstrip(".,")
+                blocking = [f for f in fields_raw.split(",") if f]
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "provenance_incomplete", "blocking_fields": blocking},
+            ) from exc
+        # other RPC contract failures → 422
+        if any(tok in msg_lower for tok in (
+            "transition_not_allowed", "invalid_reason",
+            "invalid_target_status", "not_allowed",
+        )):
+            raise HTTPException(status_code=422, detail=msg) from exc
+        # paper deleted between SELECT and RPC → 404
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
+        logger.exception("review_pyq_paper RPC failed; no status change recorded")
+        raise HTTPException(
+            status_code=500,
+            detail="Review transaction failed; no status change recorded.",
+        ) from exc
+
+    data = result.data
+    return {"ok": True, "audit_id": data["audit_id"], "row": data["row"]}
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -952,12 +1216,15 @@ def pyq_paper_signed_pdf(
 ) -> dict[str, Any]:
     """Return a short-lived signed URL for viewing a source PDF in the workspace."""
     supabase = get_supabase_admin()
-    if not _safe_select(supabase, "pyq_papers", id=paper_id):
+    paper = _safe_select(supabase, "pyq_papers", id=paper_id)
+    if not paper:
         raise HTTPException(status_code=404, detail="pyq_paper not found")
+    if paper.get("source_document_id") != document_id:
+        raise HTTPException(status_code=403, detail="document not attached to this paper")
 
     asset = (
         supabase.table("document_assets")
-        .select("id, storage_bucket, storage_path, original_filename, page_count")
+        .select("id, scope, document_kind, status, storage_bucket, storage_path, original_filename, page_count, metadata")
         .eq("id", document_id)
         .limit(1)
         .execute()
@@ -968,10 +1235,28 @@ def pyq_paper_signed_pdf(
         raise HTTPException(status_code=404, detail="document_asset not found")
     row = asset[0]
 
+    # Re-run the same document invariants enforced by review_pyq_paper RPC.
+    # Prevents signing a URL for a document that would fail verification.
+    doc_errors: list[str] = []
+    if row.get("scope") != "admin_exam_intelligence":
+        doc_errors.append("source_document_id_wrong_scope")
+    if row.get("document_kind") != "pyq_paper":
+        doc_errors.append("source_document_id_wrong_kind")
+    if row.get("status") in ("failed", "archived"):
+        doc_errors.append("source_document_id_bad_status")
+    if not row.get("storage_bucket") or not row.get("storage_path"):
+        doc_errors.append("source_document_id_no_storage")
+    doc_exam = (row.get("metadata") or {}).get("exam_id")
+    if doc_exam and doc_exam != paper.get("exam_id"):
+        doc_errors.append("source_document_id_exam_mismatch")
+    if doc_errors:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "document_not_signable", "reasons": doc_errors},
+        )
+
     bucket = row.get("storage_bucket")
     path = row.get("storage_path")
-    if not bucket or not path:
-        raise HTTPException(status_code=422, detail="Document has no storage path")
 
     try:
         result = supabase.storage.from_(bucket).create_signed_url(path, 3600)

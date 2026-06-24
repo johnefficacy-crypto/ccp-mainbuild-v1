@@ -85,6 +85,130 @@ _POOL_PREDICATE_NOTE = (
     "Equals the pool the readiness verdict was computed over."
 )
 
+# Scope hierarchy for policy resolution: topic > subject > phase > exam.
+# The most specific active policy that matches wins; ties broken by creation order.
+_POLICY_SCOPE_PRIORITY = ("topic_id", "subject_id", "exam_phase_id", "exam_id")
+
+
+def _resolve_source_mix_policy(
+    sb,
+    *,
+    exam_id: str,
+    exam_phase_id: str | None = None,
+    subject_id: str | None = None,
+    topic_id: str | None = None,
+) -> tuple[dict | None, dict | None, dict | None]:
+    """Return the most-specific active source-mix policy or ``(None, None, None)``.
+
+    Queries ``mock_source_mix_policies`` with the scope hierarchy:
+    topic > subject > phase > exam.  Returns a 3-tuple:
+    - ``mix``: ``{source_kind: target_ratio}`` suitable for ``_apportion_order``
+    - ``constraints``: ``{source_kind: {"min": float, "max": float, "fallback": str}}``
+      for enforcement in ``_select_section`` after selection
+    - ``policy_meta``: audit dict with ``policy_ids``, ``scope_level``, and scope IDs
+
+    All three are None when no policy applies. ``topic_id`` must be provided by
+    the caller for topic-scoped policies to apply; section-level callers pass None
+    and only subject/phase/exam-scoped policies match.
+    """
+    try:
+        rows = (
+            sb.table("mock_source_mix_policies")
+            .select(
+                "id, exam_id, exam_phase_id, subject_id, topic_id, "
+                "source_kind, target_ratio, minimum_ratio, maximum_ratio, "
+                "fallback_policy, is_active"
+            )
+            .eq("exam_id", exam_id)
+            .eq("is_active", True)
+            .execute()
+            .data
+        ) or []
+    except Exception as _exc:
+        # "relation does not exist" → table not yet deployed → fail-open (backward compat).
+        # Any other failure (transient, auth, unexpected) → fail-closed to avoid silently
+        # running a blueprint without its configured policy.
+        msg = str(_exc).lower()
+        if any(kw in msg for kw in ("does not exist", "undefined_table", "42p01")):
+            logger.debug("mock_source_mix_policies not deployed; skipping policy resolution")
+            return None, None, None
+        logger.error("mock_source_mix_policies query failed unexpectedly: %s", _exc)
+        raise RuntimeError(f"source_mix_policy query failed: {_exc}") from _exc
+
+    if not rows:
+        return None, None, None
+
+    # Filter to rows that match the current scope at each level.
+    def _scope_matches(row: dict) -> bool:
+        if row.get("topic_id") and row["topic_id"] != topic_id:
+            return False
+        if row.get("subject_id") and row["subject_id"] != subject_id:
+            return False
+        if row.get("exam_phase_id") and row["exam_phase_id"] != exam_phase_id:
+            return False
+        return True
+
+    candidates = [r for r in rows if _scope_matches(r)]
+    if not candidates:
+        return None, None, None
+
+    # Pick the most-specific scope by priority: topic → subject → phase → exam.
+    def _specificity(row: dict) -> int:
+        for priority, col in enumerate(_POLICY_SCOPE_PRIORITY):
+            if row.get(col):
+                return priority  # lowest index = most specific; sort ascending
+        return len(_POLICY_SCOPE_PRIORITY)
+
+    candidates.sort(key=_specificity)
+    best_specificity = _specificity(candidates[0])
+    winning_rows = [r for r in candidates if _specificity(r) == best_specificity]
+
+    # Collapse winning rows into target-ratio and constraints dicts.
+    # Duplicate source_kind entries at the same scope level are a configuration
+    # error — log a warning and use the first-encountered row only.
+    mix: dict[str, float] = {}
+    constraints: dict[str, dict] = {}
+    for r in winning_rows:
+        sk = r.get("source_kind")
+        if not sk:
+            continue
+        if sk in mix:
+            logger.warning(
+                "duplicate source_kind=%r at same policy scope "
+                "(exam=%s phase=%s subject=%s topic=%s); "
+                "using first-encountered row, ignoring id=%s",
+                sk, exam_id, exam_phase_id, subject_id, topic_id, r.get("id"),
+            )
+            continue
+        mix[sk] = float(r.get("target_ratio") or 0)
+        constraints[sk] = {
+            "min": float(r.get("minimum_ratio") or 0),
+            "max": float(r.get("maximum_ratio") or 1),
+            "fallback": r.get("fallback_policy") or "relax_to_available",
+        }
+
+    if not mix:
+        return None, None, None
+
+    # Determine the scope level that won (for audit trail in selector_snapshot).
+    _scope_name_for_col = {
+        "topic_id": "topic", "subject_id": "subject",
+        "exam_phase_id": "phase", "exam_id": "exam",
+    }
+    scope_level = next(
+        (_scope_name_for_col[col] for col in _POLICY_SCOPE_PRIORITY if candidates[0].get(col)),
+        "exam",
+    )
+    policy_meta = {
+        "policy_ids": [r["id"] for r in winning_rows if r.get("id")],
+        "scope_level": scope_level,
+        "exam_id": exam_id,
+        "exam_phase_id": exam_phase_id,
+        "subject_id": subject_id,
+        "topic_id": topic_id,
+    }
+    return mix, constraints, policy_meta
+
 
 def _exam_base_pool(sb, *, exam_id: str, selectable_statuses, now_iso: str) -> list[dict]:
     """Eligible BASE pool for the exam, matching selectable_mcq_depth EXACTLY.
@@ -101,13 +225,36 @@ def _exam_base_pool(sb, *, exam_id: str, selectable_statuses, now_iso: str) -> l
         .select(
             "id, exam_id, subject_id, topic_id, difficulty, question_type, "
             "reviewer_status, is_current, is_current_based, valid_until, "
-            "source_type, source_kind"
+            "source_type, source_kind, pyq_question_id"
         )
         .eq("exam_id", exam_id)
         .in_("reviewer_status", statuses)
         .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
         .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
     )
+
+    # Active-lineage guard: pyq-derived questions are only selectable when a
+    # corresponding active projection exists. The invalidation trigger already
+    # downgrades reviewer_status to 'draft', but this Python-layer check is
+    # belt-and-suspenders against trigger failures or manual status overrides.
+    pyq_rows = [r for r in rows if r.get("pyq_question_id")]
+    active_mock_ids: set[str] = set()
+    if pyq_rows:
+        try:
+            proj_rows = (
+                sb.table("pyq_mock_question_projections")
+                .select("mock_question_id")
+                .eq("sync_status", "active")
+                .execute()
+                .data
+            ) or []
+            active_mock_ids = {p["mock_question_id"] for p in proj_rows}
+        except Exception:
+            logger.warning(
+                "pyq_mock_question_projections query failed; "
+                "excluding all pyq-derived questions from pool (fail-closed)"
+            )
+
     pool = [
         r
         for r in rows
@@ -115,6 +262,8 @@ def _exam_base_pool(sb, *, exam_id: str, selectable_statuses, now_iso: str) -> l
         # is_current / is_current_based are segmented OUT of the base pool by the
         # diagnostic; the base mock must not draw time-bound items.
         and not (bool(r.get("is_current")) or bool(r.get("is_current_based")))
+        # Active-lineage guard: skip pyq questions with no active projection.
+        and (not r.get("pyq_question_id") or r.get("id") in active_mock_ids)
     ]
     pool.sort(key=lambda r: str(r.get("id")))  # stable, unseeded ordering
     return pool
@@ -159,12 +308,25 @@ def _apportion_order(rows: list[dict], target: int, mix: dict, key: str, *, defa
     return chosen, relaxed
 
 
-def _select_section(pool: list[dict], target: int, *, source_mix: dict | None, difficulty_mix: dict | None):
+def _select_section(
+    pool: list[dict],
+    target: int,
+    *,
+    source_mix: dict | None,
+    source_mix_constraints: dict | None = None,
+    difficulty_mix: dict | None,
+):
     """Run the relaxation ladder over one section's eligible pool.
 
     Returns ``(question_ids, rungs)``. ``rungs`` lists every ladder rung in fixed
     order with its status + whether it relaxed — so the snapshot reflects exactly
     what happened, including the inert A-PR4/A-PR5 rungs.
+
+    ``source_mix_constraints`` is ``{source_kind: {"min": float, "max": float,
+    "fallback": str}}`` from ``_resolve_source_mix_policy``. When provided,
+    minimum_ratio is enforced after apportionment: if the selected proportion of
+    a source_kind is below its minimum and fallback_policy is 'block', the
+    section returns no questions and a blocking rung status.
     """
     rungs: list[dict] = [
         {"rung": "exposure_cooldown", "status": "inert_a_pr4_not_implemented", "relaxed": False},
@@ -195,6 +357,117 @@ def _select_section(pool: list[dict], target: int, *, source_mix: dict | None, d
     else:
         chosen_ids = [r["id"] for r in candidates[:target]]
         rungs.append({"rung": "difficulty_mix", "status": "applied_no_mix", "relaxed": False})
+
+    # ── min/max constraint enforcement ────────────────────────────────────────
+    if source_mix_constraints and chosen_ids and target > 0:
+        pool_by_id = {r["id"]: r for r in pool}
+        chosen_rows = [pool_by_id[qid] for qid in chosen_ids if qid in pool_by_id]
+        n = len(chosen_rows)
+
+        def _src(r: dict) -> str | None:
+            return r.get("source_kind") or r.get("source_type") or None
+
+        # ── combined maximum-ratio enforcement (single pass, all caps at once) ─
+        # Max caps run BEFORE min checks: the max pass may rebalance chosen_rows
+        # (e.g. trim excess pyq and backfill authored), which can lift a source's
+        # ratio above its minimum threshold.  Evaluating mins on the pre-rebalance
+        # selection would block valid configurations.
+        active_caps: dict[str, int] = {
+            sk: int(c.get("max", 1.0) * n)
+            for sk, c in source_mix_constraints.items()
+            if c.get("max", 1.0) < 1.0
+        }
+        if active_caps:
+            pre_counts: dict[str, int] = {}
+            for r in chosen_rows:
+                sk2 = _src(r)
+                if sk2:
+                    pre_counts[sk2] = pre_counts.get(sk2, 0) + 1
+            pre_n = n
+
+            violated = {sk2 for sk2, cap in active_caps.items()
+                        if pre_counts.get(sk2, 0) > cap}
+            if violated:
+                caps_left = dict(active_caps)
+                new_chosen: list[str] = []
+                for qid in chosen_ids:
+                    r = pool_by_id.get(qid)
+                    sk2 = _src(r) if r else None
+                    if sk2 in caps_left and caps_left[sk2] <= 0:
+                        continue  # over this source's cap
+                    new_chosen.append(qid)
+                    if sk2 in caps_left:
+                        caps_left[sk2] -= 1
+                # Backfill: only add rows that fit within all remaining caps.
+                already = set(new_chosen)
+                for r in pool:
+                    if len(new_chosen) >= target:
+                        break
+                    if r["id"] in already:
+                        continue
+                    sk2 = _src(r)
+                    if sk2 in active_caps and caps_left.get(sk2, 0) <= 0:
+                        continue  # would exceed this source's cap
+                    new_chosen.append(r["id"])
+                    already.add(r["id"])
+                    if sk2 in active_caps:
+                        caps_left[sk2] -= 1
+                chosen_ids = new_chosen
+                chosen_rows = [pool_by_id[qid] for qid in chosen_ids if qid in pool_by_id]
+                n = len(chosen_rows)
+                for sk2 in sorted(violated):
+                    cap = active_caps[sk2]
+                    pre_count = pre_counts.get(sk2, 0)
+                    final_count = sum(1 for r in chosen_rows if _src(r) == sk2)
+                    final_ratio = final_count / n if n > 0 else 0.0
+                    max_ratio_val = source_mix_constraints[sk2].get("max", 1.0)
+                    status = (
+                        "enforced_max_ratio"
+                        if final_ratio <= max_ratio_val + 1e-9
+                        else "enforced_max_ratio_partial"
+                    )
+                    rungs.append({
+                        "rung": "source_mix_max_constraint",
+                        "status": status,
+                        "source_kind": sk2,
+                        "actual_ratio": round(pre_count / pre_n if pre_n > 0 else 0.0, 4),
+                        "final_ratio": round(final_ratio, 4),
+                        "maximum_ratio": max_ratio_val,
+                        "was_count": pre_count,
+                        "capped_to": cap,
+                        "relaxed": True,
+                    })
+
+        # ── per-source minimum-ratio check (evaluated on post-max chosen_rows) ─
+        # Runs after max enforcement so that rebalancing that lifts a source above
+        # its minimum threshold is not falsely blocked by the pre-rebalance ratio.
+        for sk, c in source_mix_constraints.items():
+            sk_count = sum(1 for r in chosen_rows if _src(r) == sk)
+            actual_ratio = sk_count / n if n > 0 else 0.0
+            min_ratio = c.get("min", 0.0)
+            fallback = c.get("fallback", "relax_to_available")
+            if actual_ratio < min_ratio:
+                if fallback == "block":
+                    logger.warning(
+                        "source_mix minimum_ratio constraint blocked selection: "
+                        "source_kind=%r actual=%.3f min=%.3f target=%d",
+                        sk, actual_ratio, min_ratio, target,
+                    )
+                    rungs.append({
+                        "rung": "source_mix_min_constraint",
+                        "status": "blocked_min_ratio_unmet",
+                        "source_kind": sk,
+                        "actual_ratio": round(actual_ratio, 4),
+                        "minimum_ratio": min_ratio,
+                        "relaxed": False,
+                    })
+                    return [], rungs
+                else:
+                    logger.warning(
+                        "source_mix minimum_ratio not met but fallback=relax_to_available: "
+                        "source_kind=%r actual=%.3f min=%.3f; proceeding with available",
+                        sk, actual_ratio, min_ratio,
+                    )
 
     return chosen_ids, rungs
 
@@ -260,16 +533,48 @@ def build_blueprint_with_selection(
         target = int(target_raw) if target_raw not in (None, "") else 0
 
         eligible = [r for r in base_pool if r.get("subject_id") == subject_id]
+
+        # Resolve source-mix: envelope wins if explicitly set, else DB policy.
+        # topic_id is None here because sections are subject-scoped and may span
+        # multiple topics; topic-level policies must be resolved at topic granularity
+        # by callers that have a single topic_id in scope.
+        envelope_mix = sec.get("source_mix")
+        if envelope_mix:
+            resolved_mix = envelope_mix
+            resolved_constraints = None  # envelope carries target ratios only
+            policy_meta: dict | None = None
+            mix_source = "envelope"
+        else:
+            # topic_id is None here: sections span multiple topics and topic-level
+            # policy resolution must be done at topic granularity by callers that
+            # hold a single topic_id.  Topic-context policies are deferred to PR-7.
+            resolved_mix, resolved_constraints, policy_meta = _resolve_source_mix_policy(
+                sb,
+                exam_id=exam_id,
+                exam_phase_id=exam_phase_id,
+                subject_id=subject_id,
+                topic_id=None,
+            )
+            mix_source = "db_policy" if resolved_mix else "none"
+
         chosen_ids, rungs = _select_section(
             eligible,
             target,
-            source_mix=sec.get("source_mix"),
+            source_mix=resolved_mix,
+            source_mix_constraints=resolved_constraints,
             difficulty_mix=sec.get("difficulty_mix"),
         )
         selected_count = len(chosen_ids)
         shortfall = max(0, target - selected_count)
         if shortfall > 0:
             any_selection_shortfall = True
+
+        # Count actual selected questions per source_kind for the audit trail.
+        eligible_by_id = {r["id"]: r for r in eligible}
+        actual_source_counts: dict[str, int] = {}
+        for qid in chosen_ids:
+            sk = (eligible_by_id.get(qid) or {}).get("source_kind", "unknown")
+            actual_source_counts[sk] = actual_source_counts.get(sk, 0) + 1
 
         relaxed_rungs = [r["rung"] for r in rungs if r.get("relaxed")]
         selector_sections.append(
@@ -284,6 +589,12 @@ def build_blueprint_with_selection(
                 "relaxed_rungs": relaxed_rungs,
                 "rungs": rungs,
                 "source_basis": "readiness_base_pool",
+                # Source-mix provenance and actual allocation for audit trail.
+                "source_mix_resolved": resolved_mix,
+                "source_mix_constraints": resolved_constraints,
+                "source_mix_actual_counts": actual_source_counts,
+                "source_mix_source": mix_source,
+                "source_mix_policy_meta": policy_meta,
             }
         )
         all_question_ids.extend(chosen_ids)

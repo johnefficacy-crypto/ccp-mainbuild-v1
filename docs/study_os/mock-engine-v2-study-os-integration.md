@@ -24,6 +24,7 @@ related_migrations:
   - app/supabase/migrations/135_mock_engine_core.sql
   - app/supabase/migrations/174_mock_generated_blueprints.sql
   - app/supabase/migrations/175_mock_attempts_generated_blueprint.sql
+  - app/supabase/migrations/183_pyq_mock_projection_bridge.sql
 review_cadence: per-sprint
 ---
 

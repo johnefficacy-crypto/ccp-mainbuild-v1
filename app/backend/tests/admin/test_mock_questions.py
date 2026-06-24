@@ -574,18 +574,13 @@ class TestSelectorHardening:
         assert "published" in selectable
 
     def test_expired_question_excluded_via_ttl_filter(self):
-        """valid_until in the past should be excluded."""
+        """valid_until in the past is excluded; fail-closed raises LookupError
+        because the configured fixed ID becomes unavailable after TTL filtering."""
         from app.study_os.mock_engine import _load_questions_for_template
-
-        past_iso = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-        expired_q = {
-            "id": "q-exp", "reviewer_status": "published",
-            "valid_until": past_iso, "question_text": "Old event?", "options": []
-        }
 
         sb = MagicMock()
         chain = MagicMock()
-        chain.execute.return_value = MagicMock(data=[])  # DB filtered it out
+        chain.execute.return_value = MagicMock(data=[])  # DB TTL-filtered it out
         sb.table.return_value.select.return_value = chain
         chain.eq.return_value = chain
         chain.or_.return_value = chain
@@ -593,8 +588,10 @@ class TestSelectorHardening:
         chain.limit.return_value = chain
 
         template = {"id": "tmpl-1", "config": {"question_ids": ["q-exp"]}}
-        result = _load_questions_for_template(sb, template)
-        # Verify the TTL filter (or_) was applied
+        # Fail-closed: configured ID unavailable after TTL filtering → LookupError.
+        with pytest.raises(LookupError, match="unavailable"):
+            _load_questions_for_template(sb, template)
+        # Verify the TTL filter (or_) was still applied before the fail-closed check.
         assert chain.or_.called
 
 

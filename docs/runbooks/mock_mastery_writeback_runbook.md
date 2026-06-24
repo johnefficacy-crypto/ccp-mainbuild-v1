@@ -38,6 +38,14 @@ Subcommands:
   live-audit-compare Compare live shadow writes against audit trail (CANARY-ONLY)
     --days N              Rolling window in days (default 14)
 
+  multi-exam-coverage  Validate shadow coverage across multiple exams (PYQ bridge readiness)
+    --required-exam-id UUID   Exam UUID that must appear in shadow data (repeatable)
+    --required-exam-slug SLUG Exam slug that must appear in shadow data (repeatable)
+    --min-questions N         Min shadow rows required per exam (default 1)
+    --from-utc ISO8601        Window start (filters mock_mastery_shadow.decided_at)
+    --to-utc ISO8601          Window end (used with --from-utc)
+    --days N                  Rolling window in days (no default; omit for all-time)
+
   tasks-overlap      (INVALID) Exits 2 — use correction-parity instead
 
 Exit codes:

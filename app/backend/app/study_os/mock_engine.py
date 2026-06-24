@@ -110,6 +110,40 @@ def _load_questions_for_template(supabase: Any, template: dict) -> list[dict]:
         .execute()
     questions = {r["id"]: r for r in (q_exec.data or [])}
 
+    # Active-lineage guard (belt-and-suspenders): exclude PYQ-derived questions
+    # whose projection has gone stale or blocked since template creation.
+    pyq_ids = [qid for qid, q in questions.items() if q.get("pyq_question_id")]
+    if pyq_ids:
+        try:
+            proj_rows = (
+                supabase.table("pyq_mock_question_projections")
+                .select("mock_question_id")
+                .eq("sync_status", "active")
+                .execute()
+                .data
+            ) or []
+            active_mock_ids = {p["mock_question_id"] for p in proj_rows}
+            questions = {
+                qid: q for qid, q in questions.items()
+                if not q.get("pyq_question_id") or qid in active_mock_ids
+            }
+        except Exception:
+            # Fail-closed: exclude all PYQ-derived questions if the guard query fails.
+            questions = {
+                qid: q for qid, q in questions.items()
+                if not q.get("pyq_question_id")
+            }
+
+    # Fail-closed: if the template config lists specific question IDs, all of them
+    # must survive status/expiry/lineage filtering — a shortened fixed attempt is wrong.
+    missing = set(question_ids) - questions.keys()
+    if missing:
+        raise LookupError(
+            f"{len(missing)} question(s) in fixed-template config are "
+            f"unavailable (stale, blocked, expired, or not in bank): "
+            f"{sorted(missing)}"
+        )
+
     opt_exec = supabase.table("mock_question_options") \
         .select("*") \
         .in_("question_id", question_ids) \
@@ -134,6 +168,11 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
     PR2: marks are template-bound (not question-bound), so they are passed in
     from the template config rather than read from the question row.
     Existing snapshots already have marks frozen; this only affects new attempts.
+
+    Migration 183 provenance fields (pyq_year, pyq_question_id, pyq_paper_id,
+    exam_id, subject_id, source_kind) are frozen here so mastery write-back and
+    diagnostic tooling can re-derive PYQ lineage from the frozen attempt record
+    without reading the live bank.
     """
     return {
         "id": q["id"],
@@ -151,6 +190,13 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
         "difficulty": q.get("difficulty") or "medium",
         "source_type": q.get("source_type") or "authored",
         "expected_time_sec": q.get("expected_time_sec"),
+        # PYQ provenance — set for projected questions, null for authored.
+        "exam_id": q.get("exam_id"),
+        "subject_id": q.get("subject_id"),
+        "source_kind": q.get("source_kind"),
+        "pyq_year": q.get("pyq_year"),
+        "pyq_question_id": q.get("pyq_question_id"),
+        "pyq_paper_id": q.get("pyq_paper_id"),
         "options": [
             {
                 "id": o["id"],
@@ -178,7 +224,14 @@ def _criteria_difficulty_targets(mix: dict, total: int) -> dict[str, int]:
     return floors
 
 
-def _select_criteria_question_ids(supabase: Any, selector: dict, question_count: int) -> list[str]:
+def _select_criteria_question_ids(
+    supabase: Any,
+    selector: dict,
+    question_count: int,
+    *,
+    active_pyq_mock_ids: frozenset[str] | None = None,
+    exclude_ids: frozenset[str] | None = None,
+) -> list[str]:
     """Resolve a ``criteria`` section selector to concrete published question ids.
 
     Honours the bank filters the admin UI can configure (exam_family, subject_id,
@@ -187,6 +240,17 @@ def _select_criteria_question_ids(supabase: Any, selector: dict, question_count:
     the legacy ``config.question_ids`` path. If a difficulty bucket is short, the
     deficit is backfilled from the rest of the eligible pool so a thin bucket
     can't silently shrink the section below ``question_count``.
+
+    ``active_pyq_mock_ids``: when supplied, PYQ-derived rows (pyq_question_id IS
+    NOT NULL) that are NOT in the set are excluded from the pool before
+    allocation/backfill.  This prevents stale/blocked projections from being
+    selected and then silently dropped by the caller's lineage guard, which would
+    produce a shortened attempt without error.
+
+    ``exclude_ids``: question IDs already allocated to prior sections in the same
+    template.  Excluded from the pool before selection so the same question cannot
+    appear in more than one section of the same attempt (which would violate the
+    unique constraint on mock_attempt_responses(attempt_id, question_id)).
     """
     if question_count <= 0:
         return []
@@ -216,6 +280,17 @@ def _select_criteria_question_ids(supabase: Any, selector: dict, question_count:
         r for r in (getattr(rows, "data", None) or [])
         if not r.get("valid_until") or str(r["valid_until"]) > now_iso
     ]
+    # Active-lineage guard applied inside the pool (before allocation/backfill)
+    # so that stale PYQ rows cannot be drawn and then silently dropped later.
+    if active_pyq_mock_ids is not None:
+        pool = [
+            r for r in pool
+            if not r.get("pyq_question_id") or r["id"] in active_pyq_mock_ids
+        ]
+    # Cross-section deduplication: remove IDs already allocated to prior sections
+    # so the same question cannot appear twice in the same attempt snapshot.
+    if exclude_ids:
+        pool = [r for r in pool if r["id"] not in exclude_ids]
     # Deterministic ordering so the same template config yields the same set.
     pool.sort(key=lambda r: str(r.get("id")))
 
@@ -243,23 +318,165 @@ def _select_criteria_question_ids(supabase: Any, selector: dict, question_count:
 
 
 def select_questions_for_template(supabase: Any, template_id: str, user_id: str) -> list[dict]:
-    """PR2d selector hook; supports section ``fixed`` and ``criteria`` selectors."""
+    """PR2d selector hook; supports section ``fixed`` and ``criteria`` selectors.
+
+    Fail-closed for fixed sections: if any question in a fixed-mode selector is
+    unavailable (wrong status, expired, or lineage-blocked), raises LookupError
+    rather than returning a shortened set.  A shortened fixed attempt would give
+    a misleadingly different experience and must never start.
+
+    Criteria sections apply active-lineage filtering inside the pool (before
+    allocation/backfill) so a stale/blocked PYQ row is never selected and
+    cannot cause silent underfill.
+    """
     sections = _safe(lambda: supabase.table("mock_template_sections").select("*").eq("template_id", template_id).order("section_index").execute(), default=None)
     sec_rows = getattr(sections, "data", None) or []
     if not sec_rows:
         return []
     ordered: list[str] = []
+    fixed_required: set[str] = set()  # IDs that must survive all filters
+    # Each entry is (requested_count, frozenset_of_selected_ids) for criteria sections.
+    # Used post-filter to fail-closed when a section ends up genuinely underfilled.
+    criteria_requirements: list[tuple[int, frozenset[str]]] = []
+
+    # ── Pass 1: collect and validate all fixed IDs upfront ────────────────────
+    # Reserved before any criteria allocation so criteria sections can exclude
+    # them regardless of their position (criteria→fixed, fixed→fixed, intra-fixed
+    # duplicates all produce LookupError here rather than a DB constraint failure).
+    all_fixed_ids: set[str] = set()
+    for sec in sec_rows:
+        selector = sec.get("selector") or {}
+        if selector.get("mode") == "fixed":
+            ids = list(selector.get("question_ids") or [])
+            id_set = set(ids)
+            if len(ids) != len(id_set):
+                seen: dict[str, int] = {}
+                for _i in ids:
+                    seen[_i] = seen.get(_i, 0) + 1
+                dupes = sorted(k for k, v in seen.items() if v > 1)
+                raise LookupError(
+                    f"fixed section '{sec.get('name') or sec.get('id', '?')}' "
+                    f"contains duplicate question IDs: {dupes}"
+                )
+            overlap = id_set & all_fixed_ids
+            if overlap:
+                raise LookupError(
+                    f"fixed sections have overlapping question IDs: {sorted(overlap)}"
+                )
+            all_fixed_ids.update(id_set)
+
+    # Fetch active PYQ mock IDs once; passed to criteria selector so that stale
+    # projections are excluded from the pool before allocation, not silently
+    # dropped after — which would shorten the section without error.
+    try:
+        _proj = (
+            supabase.table("pyq_mock_question_projections")
+            .select("mock_question_id")
+            .eq("sync_status", "active")
+            .execute()
+            .data
+        ) or []
+        _active_pyq_mock_ids: frozenset[str] = frozenset(p["mock_question_id"] for p in _proj)
+    except Exception:
+        # Fail-closed: if projection table is inaccessible, treat all PYQ rows
+        # as inactive so they cannot enter the criteria pool.
+        _active_pyq_mock_ids = frozenset()
+
+    # ── Pass 2: allocate per section ──────────────────────────────────────────
+    # Criteria sections exclude all fixed IDs (all_fixed_ids) plus any IDs
+    # already allocated by prior criteria sections (criteria_selected), so no
+    # question ID can appear in more than one section regardless of order.
+    criteria_selected: set[str] = set()
+
     for sec in sec_rows:
         selector = sec.get("selector") or {}
         mode = selector.get("mode")
         if mode == "fixed":
-            ordered.extend(selector.get("question_ids") or [])
+            ids = list(selector.get("question_ids") or [])
+            ordered.extend(ids)
+            fixed_required.update(ids)
         elif mode == "criteria":
-            ordered.extend(_select_criteria_question_ids(supabase, selector, int(sec.get("question_count") or 0)))
+            requested = int(sec.get("question_count") or 0)
+            section_ids = _select_criteria_question_ids(
+                supabase, selector, requested,
+                active_pyq_mock_ids=_active_pyq_mock_ids,
+                exclude_ids=frozenset(all_fixed_ids | criteria_selected),
+            )
+            ordered.extend(section_ids)
+            criteria_selected.update(section_ids)
+            if requested > 0:
+                criteria_requirements.append((requested, frozenset(section_ids)))
     if not ordered:
+        # Even with an empty pool, validate criteria section requirements so that
+        # a zero-eligible pool raises LookupError rather than returning [] and
+        # falling through to the legacy _load_questions_for_template() fallback.
+        for requested_count, section_id_set in criteria_requirements:
+            if len(section_id_set) < requested_count:
+                raise LookupError(
+                    f"criteria section requires {requested_count} question(s) but only "
+                    f"{len(section_id_set)} are available after status/expiry/lineage filtering; "
+                    f"unavailable IDs: []"
+                )
         return []
-    q_rows = _safe(lambda: supabase.table("mock_question_bank").select("*").in_("id", ordered).execute(), default=None)
+
+    from datetime import datetime, timezone
+    _now_iso = datetime.now(timezone.utc).isoformat()
+    _SELECTABLE = ["verified", "published", "live"]
+    q_rows = _safe(
+        lambda: supabase.table("mock_question_bank")
+        .select("*")
+        .in_("id", ordered)
+        .in_("reviewer_status", _SELECTABLE)
+        .or_(f"valid_until.is.null,valid_until.gt.{_now_iso}")
+        .execute(),
+        default=None,
+    )
     by_id = {r["id"]: r for r in (getattr(q_rows, "data", None) or [])}
+
+    # Active-lineage guard: exclude PYQ-derived questions with non-active projections.
+    pyq_ids = [qid for qid, q in by_id.items() if q.get("pyq_question_id")]
+    if pyq_ids:
+        try:
+            proj_rows = (
+                supabase.table("pyq_mock_question_projections")
+                .select("mock_question_id")
+                .eq("sync_status", "active")
+                .execute()
+                .data
+            ) or []
+            active_mock_ids = {p["mock_question_id"] for p in proj_rows}
+            by_id = {
+                qid: q for qid, q in by_id.items()
+                if not q.get("pyq_question_id") or qid in active_mock_ids
+            }
+        except Exception:
+            # Fail-closed: exclude all PYQ-derived questions if guard query fails.
+            by_id = {qid: q for qid, q in by_id.items() if not q.get("pyq_question_id")}
+
+    # Fail-closed: abort if any fixed-section question is unavailable after filtering.
+    if fixed_required:
+        missing = fixed_required - by_id.keys()
+        if missing:
+            raise LookupError(
+                f"{len(missing)} question(s) in fixed-template section(s) are "
+                f"unavailable (stale, blocked, expired, or not in bank): "
+                f"{sorted(missing)}"
+            )
+
+    # Fail-closed: abort if any criteria section ends up genuinely underfilled.
+    # Pre-allocation lineage filtering removes stale PYQ rows, but if the eligible
+    # pool is genuinely thin the section count will be below the configured target.
+    # Starting a shortened attempt would give a misleading experience; fail instead.
+    for requested_count, section_id_set in criteria_requirements:
+        surviving = [qid for qid in section_id_set if qid in by_id]
+        if len(surviving) < requested_count:
+            unavailable = sorted(section_id_set - by_id.keys())
+            raise LookupError(
+                f"criteria section requires {requested_count} question(s) but only "
+                f"{len(surviving)} are available after status/expiry/lineage filtering; "
+                f"unavailable IDs: {unavailable}"
+            )
+
     # Attach options (ordered by option_index) — without these the frozen
     # snapshot has no options and the attempt renders no answer choices.
     opt_rows = _safe(

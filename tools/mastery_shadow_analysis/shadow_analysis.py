@@ -1088,6 +1088,420 @@ def live_audit_compare(
     sys.exit(_EXIT_INSUFFICIENT if status == "INSUFFICIENT_DATA" else _EXIT_OK)
 
 
+# ─── multi-exam-coverage ─────────────────────────────────────────────────────
+
+
+def multi_exam_coverage(
+    *,
+    required_exam_ids: list[str],
+    required_exam_slugs: list[str],
+    min_questions: int = 1,
+    from_utc: str | None = None,
+    to_utc: str | None = None,
+    days: int | None = None,
+    output_json: bool = False,
+) -> None:
+    """Validate FF_MOCK_MASTERY_WRITES shadow coverage across multiple exams.
+
+    Uses ``mock_mastery_shadow`` (flag_state='shadow') as the source of truth
+    and joins to ``mock_attempts`` for exam_id + ``mock_attempt_responses``
+    for per-question source_kind breakdown.
+
+    At least one --required-exam-id or --required-exam-slug must be supplied;
+    the command exits ERROR without them (no-track runs are meaningless).
+
+    Time window: supply --from-utc/--to-utc or --days to restrict
+    ``decided_at``; omitting all three reads the full history.
+
+    Exits:
+      0 — PASS: all required exam tracks meet the min_questions threshold
+      3 — INSUFFICIENT_DATA: a required track is below threshold, or no shadow data
+      4 — CORRUPT: invariant violations detected
+      2 — ERROR: credential / query failure, or no tracks supplied
+    """
+    cmd = "multi_exam_coverage"
+    sb = _get_supabase()
+
+    # ── 0. Require at least one track ─────────────────────────────────────────
+    if not required_exam_ids and not required_exam_slugs:
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": cmd,
+                "status": "ERROR",
+                "error": "NO_TRACKS_SUPPLIED",
+                "detail": (
+                    "At least one --required-exam-id or --required-exam-slug must be "
+                    "specified. Running without tracks would always PASS vacuously."
+                ),
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_ERROR)
+
+    # ── 0b. Resolve time window ────────────────────────────────────────────────
+    now_utc = datetime.now(timezone.utc)
+    if from_utc:
+        window_start: str | None = from_utc
+        window_end: str | None = to_utc or now_utc.isoformat()
+    elif days is not None:
+        window_start = (now_utc - timedelta(days=days)).isoformat()
+        window_end = now_utc.isoformat()
+    else:
+        window_start = None
+        window_end = None
+
+    # ── 1. Fetch mock_mastery_shadow rows (flag_state='shadow') ───────────────
+    def _shadow_query(t: Any) -> Any:
+        q = t.select(
+            "id, attempt_id, user_id, topic_id, "
+            "proposed_delta_db, current_mastery_db, would_be_mastery_db, decided_at"
+        ).eq("flag_state", "shadow")
+        if window_start:
+            q = q.gte("decided_at", window_start)
+        if window_end:
+            q = q.lte("decided_at", window_end)
+        return q
+
+    try:
+        shadow_rows = _fetch_paginated(sb, "mock_mastery_shadow", _shadow_query, order_by="id")
+    except Exception as exc:
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": cmd,
+                "status": "ERROR",
+                "error": "QUERY_FAILED",
+                "detail": f"mock_mastery_shadow fetch failed: {exc}",
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_ERROR)
+
+    if not shadow_rows:
+        _emit_result(
+            {
+                "schema_version": 1,
+                "command": cmd,
+                "status": "INSUFFICIENT_DATA",
+                "error": "NO_SHADOW_DATA",
+                "detail": (
+                    "No shadow rows found (flag_state='shadow'). "
+                    "FF_MOCK_MASTERY_WRITES may not be active, or no attempts "
+                    "in the specified time window."
+                ),
+                "required_exam_ids": required_exam_ids,
+                "required_exam_slugs": required_exam_slugs,
+                "window": {"from_utc": window_start, "to_utc": window_end},
+            },
+            output_json,
+        )
+        sys.exit(_EXIT_INSUFFICIENT)
+
+    # ── 2. Resolve attempt_id → exam_id ──────────────────────────────────────
+    # Fixed-template attempts: mock_attempts.template_id → mock_templates.exam_id
+    # Generated attempts:      mock_attempts.generated_blueprint_id → mock_generated_blueprints.exam_id
+    attempt_ids = list({r["attempt_id"] for r in shadow_rows if r.get("attempt_id")})
+    attempt_template_map: dict[str, str] = {}   # attempt_id → template_id
+    attempt_blueprint_map: dict[str, str] = {}  # attempt_id → generated_blueprint_id
+
+    for batch_start in range(0, len(attempt_ids), 100):
+        batch = attempt_ids[batch_start: batch_start + 100]
+        try:
+            attempt_rows = (
+                sb.table("mock_attempts")
+                .select("id, template_id, generated_blueprint_id")
+                .in_("id", batch)
+                .execute()
+                .data
+                or []
+            )
+            for r in attempt_rows:
+                if r.get("template_id"):
+                    attempt_template_map[r["id"]] = r["template_id"]
+                elif r.get("generated_blueprint_id"):
+                    attempt_blueprint_map[r["id"]] = r["generated_blueprint_id"]
+        except Exception as exc:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd,
+                    "status": "ERROR",
+                    "error": "QUERY_FAILED",
+                    "detail": f"mock_attempts fetch failed: {exc}",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
+
+    # Resolve template_id → exam_id via mock_templates.
+    template_ids = list(set(attempt_template_map.values()))
+    template_exam_map: dict[str, str] = {}
+    for batch_start in range(0, len(template_ids), 100):
+        batch = template_ids[batch_start: batch_start + 100]
+        try:
+            tmpl_rows = (
+                sb.table("mock_templates")
+                .select("id, exam_id")
+                .in_("id", batch)
+                .execute()
+                .data
+                or []
+            )
+            for r in tmpl_rows:
+                if r.get("exam_id"):
+                    template_exam_map[r["id"]] = r["exam_id"]
+        except Exception as exc:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd,
+                    "status": "ERROR",
+                    "error": "QUERY_FAILED",
+                    "detail": f"mock_templates fetch failed: {exc}",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
+
+    # Resolve generated_blueprint_id → exam_id via mock_generated_blueprints.
+    blueprint_ids = list(set(attempt_blueprint_map.values()))
+    blueprint_exam_map: dict[str, str] = {}
+    for batch_start in range(0, len(blueprint_ids), 100):
+        batch = blueprint_ids[batch_start: batch_start + 100]
+        try:
+            bp_rows = (
+                sb.table("mock_generated_blueprints")
+                .select("id, exam_id")
+                .in_("id", batch)
+                .execute()
+                .data
+                or []
+            )
+            for r in bp_rows:
+                if r.get("exam_id"):
+                    blueprint_exam_map[r["id"]] = r["exam_id"]
+        except Exception as exc:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd,
+                    "status": "ERROR",
+                    "error": "QUERY_FAILED",
+                    "detail": f"mock_generated_blueprints fetch failed: {exc}",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
+
+    # Build the final attempt → exam map (template path takes precedence).
+    attempt_exam_map: dict[str, str] = {}
+    for attempt_id, tmpl_id in attempt_template_map.items():
+        if tmpl_id in template_exam_map:
+            attempt_exam_map[attempt_id] = template_exam_map[tmpl_id]
+    for attempt_id, bp_id in attempt_blueprint_map.items():
+        if attempt_id not in attempt_exam_map and bp_id in blueprint_exam_map:
+            attempt_exam_map[attempt_id] = blueprint_exam_map[bp_id]
+
+    # ── 3. Fetch question snapshots for source_kind + subject breakdown ────────
+    responses_by_attempt: dict[str, list[dict]] = defaultdict(list)
+
+    for batch_start in range(0, len(attempt_ids), 100):
+        batch = attempt_ids[batch_start: batch_start + 100]
+        try:
+            # Paginate within each attempt batch: 100 attempts × up to 100 questions
+            # each = 10 000 rows, exceeding PostgREST's default 1 000-row page size.
+            page_size = 1000
+            offset = 0
+            while True:
+                page = (
+                    sb.table("mock_attempt_responses")
+                    .select("attempt_id, question_snapshot")
+                    .in_("attempt_id", batch)
+                    .order("id")
+                    .range(offset, offset + page_size - 1)
+                    .execute()
+                    .data
+                    or []
+                )
+                for r in page:
+                    responses_by_attempt[r["attempt_id"]].append(r)
+                if len(page) < page_size:
+                    break
+                offset += page_size
+        except Exception as exc:
+            _emit_result(
+                {
+                    "schema_version": 1,
+                    "command": cmd,
+                    "status": "ERROR",
+                    "error": "QUERY_FAILED",
+                    "detail": f"mock_attempt_responses fetch failed: {exc}",
+                },
+                output_json,
+            )
+            sys.exit(_EXIT_ERROR)
+
+    # ── 4. Fetch exam metadata for slug resolution ────────────────────────────
+    exam_meta: dict[str, dict] = {}
+    try:
+        exam_rows = (
+            sb.table("exams")
+            .select("id, slug, name")
+            .execute()
+            .data
+            or []
+        )
+        for e in exam_rows:
+            exam_meta[e["id"]] = e
+    except Exception:
+        pass  # slug resolution is best-effort; exam_id coverage still works
+
+    slug_to_id: dict[str, str] = {
+        e["slug"]: e["id"] for e in exam_meta.values() if e.get("slug")
+    }
+
+    # Resolve required_exam_slugs to IDs.
+    required_ids_from_slugs: set[str] = set()
+    missing_slugs: list[str] = []
+    for slug in required_exam_slugs:
+        eid = slug_to_id.get(slug)
+        if eid:
+            required_ids_from_slugs.add(eid)
+        else:
+            missing_slugs.append(slug)
+
+    all_required_ids = set(required_exam_ids) | required_ids_from_slugs
+
+    # ── 5. Build per-exam coverage stats ──────────────────────────────────────
+    # Pre-compute per-attempt response stats so they are added to the exam
+    # bucket exactly once per attempt, not once per shadow_row per attempt.
+    attempt_response_stats: dict[str, dict] = {}
+    for attempt_id, responses in responses_by_attempt.items():
+        source_split: dict[str, int] = defaultdict(int)
+        subject_breakdown: dict[str, int] = defaultdict(int)
+        pyq_year_breakdown: dict[str, int] = defaultdict(int)
+        for resp in responses:
+            snap = resp.get("question_snapshot") or {}
+            source_kind = snap.get("source_kind") or snap.get("source_type") or "unknown"
+            source_split[source_kind] += 1
+            subject_id = snap.get("subject_id")
+            if subject_id:
+                subject_breakdown[subject_id] += 1
+            pyq_year = snap.get("pyq_year")
+            if pyq_year:
+                pyq_year_breakdown[str(pyq_year)] += 1
+        attempt_response_stats[attempt_id] = {
+            "source_split": source_split,
+            "subject_breakdown": subject_breakdown,
+            "pyq_year_breakdown": pyq_year_breakdown,
+        }
+
+    per_exam: dict[str, dict] = defaultdict(lambda: {
+        "shadow_row_count": 0,
+        "unique_attempts": set(),
+        "source_split": defaultdict(int),
+        "subject_breakdown": defaultdict(int),
+        "pyq_year_breakdown": defaultdict(int),
+    })
+
+    seen_attempt_in_exam: set[tuple[str, str]] = set()
+
+    for shadow_row in shadow_rows:
+        attempt_id = shadow_row.get("attempt_id")
+        if not attempt_id:
+            continue
+        exam_id = attempt_exam_map.get(attempt_id)
+        if not exam_id:
+            continue
+
+        bucket = per_exam[exam_id]
+        bucket["shadow_row_count"] += 1
+        bucket["unique_attempts"].add(attempt_id)
+
+        # Merge response breakdown only once per (attempt, exam) pair.
+        pair = (attempt_id, exam_id)
+        if pair not in seen_attempt_in_exam:
+            seen_attempt_in_exam.add(pair)
+            stats = attempt_response_stats.get(attempt_id, {})
+            for k, v in stats.get("source_split", {}).items():
+                bucket["source_split"][k] += v
+            for k, v in stats.get("subject_breakdown", {}).items():
+                bucket["subject_breakdown"][k] += v
+            for k, v in stats.get("pyq_year_breakdown", {}).items():
+                bucket["pyq_year_breakdown"][k] += v
+
+    # Serialize (sets → counts, defaultdicts → plain dicts).
+    exam_coverage: list[dict] = []
+    for exam_id, bucket in per_exam.items():
+        meta = exam_meta.get(exam_id, {})
+        exam_coverage.append({
+            "exam_id": exam_id,
+            "exam_slug": meta.get("slug"),
+            "exam_name": meta.get("name"),
+            "shadow_row_count": bucket["shadow_row_count"],
+            "unique_attempt_count": len(bucket["unique_attempts"]),
+            "source_split": dict(bucket["source_split"]),
+            "subject_breakdown": dict(bucket["subject_breakdown"]),
+            "pyq_year_breakdown": dict(bucket["pyq_year_breakdown"]),
+        })
+
+    exam_coverage.sort(key=lambda r: r["exam_id"])
+
+    # ── 6. Check required exam coverage ───────────────────────────────────────
+    insufficient_exams: list[dict] = []
+    for eid in all_required_ids:
+        entry = next((r for r in exam_coverage if r["exam_id"] == eid), None)
+        count = entry["shadow_row_count"] if entry else 0
+        if count < min_questions:
+            meta = exam_meta.get(eid, {})
+            insufficient_exams.append({
+                "exam_id": eid,
+                "exam_slug": meta.get("slug"),
+                "shadow_row_count": count,
+                "required_minimum": min_questions,
+            })
+
+    for slug in missing_slugs:
+        insufficient_exams.append({
+            "exam_slug": slug,
+            "exam_id": None,
+            "shadow_row_count": 0,
+            "required_minimum": min_questions,
+            "error": "slug_not_found_in_db",
+        })
+
+    status: str
+    if insufficient_exams:
+        status = "INSUFFICIENT_DATA"
+    else:
+        status = "PASS"
+
+    _emit_result(
+        {
+            "schema_version": 1,
+            "command": cmd,
+            "status": status,
+            "source_table": "mock_mastery_shadow",
+            "flag_state_filter": "shadow",
+            "window": {"from_utc": window_start, "to_utc": window_end},
+            "total_shadow_rows": len(shadow_rows),
+            "total_exams_in_shadow": len(exam_coverage),
+            "required_exam_ids": list(all_required_ids),
+            "min_questions_threshold": min_questions,
+            "insufficient_exams": insufficient_exams,
+            "exam_coverage": exam_coverage,
+            "thresholds": {
+                "min_questions_per_exam": min_questions,
+            },
+        },
+        output_json,
+    )
+    if status == "INSUFFICIENT_DATA":
+        sys.exit(_EXIT_INSUFFICIENT)
+    sys.exit(_EXIT_OK)
+
+
 # ─── CLI ──────────────────────────────────────────────────────────────────────
 
 
@@ -1142,6 +1556,54 @@ def main() -> None:
         help="(INVALID) Cross-origin topic overlap — exits 2; use correction-parity instead",
     )
     _add_json(to)
+
+    mec = sp.add_parser(
+        "multi-exam-coverage",
+        help="Validate FF_MOCK_MASTERY_WRITES shadow coverage across multiple exams",
+    )
+    _add_json(mec)
+    mec.add_argument(
+        "--required-exam-id",
+        dest="required_exam_id",
+        metavar="UUID",
+        action="append",
+        help="Exam UUID that must appear in shadow data (repeatable)",
+    )
+    mec.add_argument(
+        "--required-exam-slug",
+        dest="required_exam_slug",
+        metavar="SLUG",
+        action="append",
+        help="Exam slug that must appear in shadow data (repeatable)",
+    )
+    mec.add_argument(
+        "--min-questions",
+        dest="min_questions",
+        type=int,
+        default=1,
+        help="Minimum shadow question count required per exam (default 1)",
+    )
+    mec.add_argument(
+        "--from-utc",
+        dest="from_utc",
+        metavar="ISO8601",
+        default=None,
+        help="Window start (UTC); filter mock_mastery_shadow on decided_at",
+    )
+    mec.add_argument(
+        "--to-utc",
+        dest="to_utc",
+        metavar="ISO8601",
+        default=None,
+        help="Window end (UTC); used with --from-utc",
+    )
+    mec.add_argument(
+        "--days",
+        dest="days",
+        type=int,
+        default=None,
+        help="Rolling window in days back from now (default: no window filter)",
+    )
 
     lac = sp.add_parser(
         "live-audit-compare",
@@ -1290,6 +1752,16 @@ def main() -> None:
             )
             sys.exit(_EXIT_ERROR)
         live_audit_compare(days=a.days, output_json=output_json)
+    elif a.cmd == "multi-exam-coverage":
+        multi_exam_coverage(
+            required_exam_ids=getattr(a, "required_exam_id", None) or [],
+            required_exam_slugs=getattr(a, "required_exam_slug", None) or [],
+            min_questions=a.min_questions,
+            from_utc=getattr(a, "from_utc", None),
+            to_utc=getattr(a, "to_utc", None),
+            days=getattr(a, "days", None),
+            output_json=output_json,
+        )
 
 
 if __name__ == "__main__":

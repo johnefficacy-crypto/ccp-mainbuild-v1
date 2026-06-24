@@ -27,5 +27,25 @@ export function usePyqWorkbench(examId, cycleId) {
 
   useEffect(() => { fetchPapers(); }, [fetchPapers]);
 
-  return { papers, selectedPaperId, setSelectedPaperId, loading, error, refetch: fetchPapers };
+  const reviewPaper = useCallback(async (paperId, status, reason) => {
+    await api.post(`${CMS_BASE}/pyq-papers/${paperId}/review`, { status, reason });
+    await fetchPapers();
+  }, [fetchPapers]);
+
+  const patchPaper = useCallback(async (paperId, payload, reason) => {
+    await api.patch(`${CMS_BASE}/pyq-papers/${paperId}`, { payload, reason });
+    await fetchPapers();
+  }, [fetchPapers]);
+
+  const setProvenance = useCallback(async (paperId, payload, reason) => {
+    await api.post(`${CMS_BASE}/pyq-papers/${paperId}/set-provenance`, { payload, reason });
+    await fetchPapers();
+  }, [fetchPapers]);
+
+  const getPaperSignedPdf = useCallback(async (paperId, documentId) => {
+    const data = await api.get(`${CMS_BASE}/pyq-papers/${paperId}/signed-pdf?document_id=${encodeURIComponent(documentId)}`);
+    return data.signed_url;
+  }, []);
+
+  return { papers, selectedPaperId, setSelectedPaperId, loading, error, refetch: fetchPapers, reviewPaper, patchPaper, setProvenance, getPaperSignedPdf };
 }

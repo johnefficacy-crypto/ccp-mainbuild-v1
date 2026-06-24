@@ -74,23 +74,26 @@ def _build_db(question_status: str) -> tuple[SBStub, str]:
 # ── Draft questions cannot start an attempt ────────────────────────────────────
 
 def test_draft_questions_not_selectable():
-    """An attempt start fails with LookupError when all bank questions are in draft."""
+    """An attempt start fails with LookupError when all bank questions are in draft.
+    Fail-closed: the loader now raises immediately listing the unavailable IDs."""
     sb, slug = _build_db("draft")
-    with pytest.raises(LookupError, match="no available questions"):
+    with pytest.raises(LookupError, match="unavailable"):
         svc.start_attempt(sb, "user-1", slug)
 
 
 def test_reviewed_questions_not_selectable():
-    """'reviewed' is an intermediate state; questions are not yet selectable."""
+    """'reviewed' is an intermediate state; questions are not yet selectable.
+    Fail-closed: the loader now raises immediately listing the unavailable IDs."""
     sb, slug = _build_db("reviewed")
-    with pytest.raises(LookupError, match="no available questions"):
+    with pytest.raises(LookupError, match="unavailable"):
         svc.start_attempt(sb, "user-1", slug)
 
 
 def test_in_review_questions_not_selectable():
-    """'in_review' (authoring pipeline) is not the live gate."""
+    """'in_review' (authoring pipeline) is not the live gate.
+    Fail-closed: the loader now raises immediately listing the unavailable IDs."""
     sb, slug = _build_db("in_review")
-    with pytest.raises(LookupError, match="no available questions"):
+    with pytest.raises(LookupError, match="unavailable"):
         svc.start_attempt(sb, "user-1", slug)
 
 
@@ -114,9 +117,10 @@ def test_published_questions_selectable():
 
 # ── Mixed bank: only verified rows are served ─────────────────────────────────
 
-def test_only_verified_questions_served_in_mixed_bank():
-    """In a bank with mixed statuses, only verified/published questions are
-    included in the attempt; draft and reviewed questions are silently skipped."""
+def test_fixed_config_with_mixed_statuses_raises_on_unavailable():
+    """A fixed-config template that lists unavailable IDs (draft/reviewed) alongside
+    available ones must raise LookupError — fail-closed prevents a silently shortened
+    attempt.  The error names the specific unavailable IDs."""
     draft_q = _question("draft", "draft-q")
     reviewed_q = _question("reviewed", "reviewed-q")
     verified_q = _question("verified", "verified-q")
@@ -148,10 +152,5 @@ def test_only_verified_questions_served_in_mixed_bank():
         "mock_tests": [],
     }
     sb = SBStub(db)
-    result = svc.start_attempt(sb, "user-1", "mixed")
-
-    served_ids = {q["question_id"] for q in result["questions"]}
-    assert verified_q["id"] in served_ids
-    assert published_q["id"] in served_ids
-    assert draft_q["id"] not in served_ids
-    assert reviewed_q["id"] not in served_ids
+    with pytest.raises(LookupError, match="unavailable"):
+        svc.start_attempt(sb, "user-1", "mixed")

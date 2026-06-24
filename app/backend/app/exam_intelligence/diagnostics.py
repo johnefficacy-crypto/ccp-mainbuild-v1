@@ -401,7 +401,8 @@ def selectable_mcq_depth(
         lambda: sb.table("mock_question_bank")
         .select(
             "id, exam_id, subject_id, topic_id, difficulty, question_type, "
-            "reviewer_status, is_current, is_current_based, valid_until"
+            "reviewer_status, is_current, is_current_based, valid_until, "
+            "pyq_question_id"
         )
         .eq("exam_id", exam_id)
         .in_("reviewer_status", statuses)
@@ -409,12 +410,35 @@ def selectable_mcq_depth(
         .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
     )
 
+    # Active-lineage guard (belt-and-suspenders): pyq-derived questions must
+    # have an active projection even if reviewer_status was not downgraded.
+    pyq_rows = [r for r in rows if r.get("pyq_question_id")]
+    active_mock_ids: set[str] = set()
+    if pyq_rows:
+        try:
+            proj_rows = (
+                sb.table("pyq_mock_question_projections")
+                .select("mock_question_id")
+                .eq("sync_status", "active")
+                .execute()
+                .data
+            ) or []
+            active_mock_ids = {p["mock_question_id"] for p in proj_rows}
+        except Exception:
+            logger.warning(
+                "pyq_mock_question_projections query failed; "
+                "excluding all pyq-derived questions from depth count (fail-closed)"
+            )
+
     base_groups: dict = defaultdict(int)
     current_groups: dict = defaultdict(int)
     base_total = 0
     current_total = 0
     for r in rows:
         if not _not_expired(r.get("valid_until"), now_iso):
+            continue
+        # Skip pyq-derived questions with no active projection.
+        if r.get("pyq_question_id") and r.get("id") not in active_mock_ids:
             continue
         gkey = (r.get("subject_id"), r.get("topic_id"), r.get("difficulty"))
         is_current = bool(r.get("is_current")) or bool(r.get("is_current_based"))

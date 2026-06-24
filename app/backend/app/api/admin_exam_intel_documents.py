@@ -488,6 +488,12 @@ def link_to_pyq_paper(
     admin: dict = Depends(require_permission(PERM_CMS)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
+    """Link a document_assets row to a PYQ paper via source_document_id.
+
+    Runs the same six document invariants as review_pyq_paper. If the paper is
+    currently verified it is moved back to pending so provenance must be
+    re-reviewed before the projection RPC can run.
+    """
     sb = get_supabase_admin()
     asset = _load_admin_asset(sb, document_id)
     if not asset:
@@ -496,20 +502,64 @@ def link_to_pyq_paper(
     if not paper:
         raise HTTPException(status_code=404, detail="pyq_paper not found")
 
-    meta = {**(paper.get("metadata") or {}), "document_asset_id": document_id}
-    patch = {
-        "metadata": meta,
-        "source_url": f"storage://{asset['storage_bucket']}/{asset['storage_path']}",
-        "updated_at": _now_iso(),
+    # Run the same document invariants as review_pyq_paper step 6c.
+    # (_load_admin_asset already verified scope='admin_exam_intelligence'.)
+    blocking: list[str] = []
+    if asset.get("document_kind") != "pyq_paper":
+        blocking.append("source_document_id_wrong_kind")
+    if asset.get("status") in ("failed", "archived"):
+        blocking.append("source_document_id_bad_status")
+    if not asset.get("storage_bucket") or not asset.get("storage_path"):
+        blocking.append("source_document_id_no_storage")
+    doc_exam = (asset.get("metadata") or {}).get("exam_id")
+    if doc_exam and doc_exam != paper.get("exam_id"):
+        blocking.append("source_document_id_exam_mismatch")
+    if blocking:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "document_not_linkable", "blocking_fields": blocking},
+        )
+
+    was_verified = paper.get("trust_status") == "verified"
+    try:
+        rpc_data = sb.rpc(
+            "cms_link_document_to_pyq_paper",
+            {
+                "p_document_id":  document_id,
+                "p_paper_id":     body.pyq_paper_id,
+                "p_actor_id":     admin.get("id"),
+                "p_actor_email":  admin.get("email"),
+                "p_reason":       body.reason,
+                "p_was_verified": was_verified,
+            },
+        ).execute().data
+    except Exception as exc:
+        msg = str(exc)
+        msg_lower = msg.lower()
+        if "document_not_linkable" in msg_lower:
+            blocking_exc: list[str] = []
+            if "blocking_fields=" in msg_lower:
+                fields_raw = msg_lower.split("blocking_fields=", 1)[1].split()[0].rstrip(".,")
+                blocking_exc = [f for f in fields_raw.split(",") if f]
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "document_not_linkable", "blocking_fields": blocking_exc},
+            ) from exc
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
+        logger.exception("cms_link_document_to_pyq_paper RPC failed; mutation rolled back")
+        raise HTTPException(
+            status_code=500,
+            detail="Link mutation failed; no change was recorded.",
+        ) from exc
+    synthetic_patch: dict = {"source_document_id": document_id}
+    if was_verified:
+        synthetic_patch["trust_status"] = "pending"
+    return {
+        "ok": True,
+        "audit_id": (rpc_data or {}).get("audit_id"),
+        "pyq_paper": paper | synthetic_patch,
     }
-    updated = sb.table("pyq_papers").update(patch).eq("id", body.pyq_paper_id).execute().data or []
-    result = updated[0] if updated else paper | patch
-    audit_id = _audit(
-        sb, admin, "exam_intel.cms.document.link_pyq_paper",
-        entity_type="pyq_paper", entity_id=body.pyq_paper_id,
-        new_value={"reason": body.reason, "document_asset_id": document_id},
-    )
-    return {"ok": True, "audit_id": audit_id, "pyq_paper": result}
 
 
 def _extension(filename: str) -> str:
