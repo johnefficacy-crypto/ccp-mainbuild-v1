@@ -165,6 +165,8 @@ const ADMIN_ROUTE_PATHS = new Set([
   "/admin/ai-policy",
   "/admin/persona",
   "/admin/exam-intelligence",
+  "/admin/exam-intelligence/cms",
+  "/admin/exam-intelligence/new",
   "/admin/exam-intelligence/console",
   "/admin/exam-intelligence/console/:exam_id",
   "/admin/exam-intelligence/exams/:exam_id",

@@ -11,6 +11,20 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
+}))
+
+jest.mock("../../../../lib/supabase", () => ({
+  __esModule: true,
+  supabase: { auth: { getSession: jest.fn(), onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })) } },
+}))
+jest.mock("../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" }),
+}))
+
 jest.mock("../../../../lib/api", () => ({
   __esModule: true,
   api: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), del: jest.fn() },
