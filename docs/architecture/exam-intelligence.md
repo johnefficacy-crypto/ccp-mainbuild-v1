@@ -1,5 +1,7 @@
 # Exam Intelligence Contracts — v1 (PR5)
 
+> **Historical contract.** This document records the PR5 verified-only contract and must not be read as the current end-state architecture. The code-verified PYQ intelligence target, existing capability map, score semantics, and phased gap plan are in [`pyq-intelligence-v2.md`](./pyq-intelligence-v2.md). Live implementation status remains in `docs/status/career-copilot-checklist.md`.
+
 ## Purpose
 
 PR5 adds a thin **contract layer** on top of the exam-intelligence
