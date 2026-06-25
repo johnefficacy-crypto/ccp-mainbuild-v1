@@ -154,7 +154,9 @@ Request body:
   "exam_phase_id": "...",            // optional provenance
   "source": {                        // optional; see OD-1 / B.5
     "existing_pyq_source_id": null,  // when set, reuse; do NOT create or mutate its trust_status
-    "source_registry_id": "...",
+    "source_id": null,               // CANONICAL: pyq_sources.source_id — FK to source_registry (migration 032).
+                                     // This is the field admitted by _PYQ_SOURCE_FIELDS; do NOT invent
+                                     // "source_registry_id" (it would be rejected by _reject_unknown).
     "source_type": "official",       // must be in _PYQ_SOURCE_TYPES
     "title": "...", "source_url": "...", "metadata": {}
   },
