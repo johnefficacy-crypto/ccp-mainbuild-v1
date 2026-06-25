@@ -173,80 +173,80 @@ export default function CommunityScreen() {
         className="flex min-h-[680px] max-h-none flex-col overflow-hidden rounded-2xl border border-border bg-field-paper shadow-sm lg:max-h-[calc(100vh-210px)] lg:flex-row"
       >
         <aside className="w-full shrink-0 border-b border-field-line bg-field-canvas lg:w-[286px] lg:border-b-0 lg:border-r">
-        <CommunityTopNav spaces={spaces} activeId={space?.id} onPick={pickSpace} />
-        <ChannelsRail
-          space={space}
-          activeId={channel?.id}
-          onPick={pickChannel}
-          isAdmin={isAdmin}
-          onCreateChannel={() => setNewChannelOpen(true)}
-        />
+          <CommunityTopNav spaces={spaces} activeId={space?.id} onPick={pickSpace} />
+          <ChannelsRail
+            space={space}
+            activeId={channel?.id}
+            onPick={pickChannel}
+            isAdmin={isAdmin}
+            onCreateChannel={() => setNewChannelOpen(true)}
+          />
         </aside>
 
         <section className="flex-1 min-w-0 flex flex-col bg-field-paper">
-        <ChannelHeader space={space} channel={channel} onCompose={() => setComposerOpen(true)} />
-        {channel ? <ChannelRules channel={channel} /> : null}
+          <ChannelHeader space={space} channel={channel} onCompose={() => setComposerOpen(true)} />
+          {channel ? <ChannelRules channel={channel} /> : null}
 
-        {thread ? (
-          <ThreadDetail
-            thread={thread}
-            channel={channel}
-            users={users}
-            onBack={closeThread}
-            onChanged={() => refreshChannelThreads(channel.id, sort)}
-          />
-        ) : (
-          <>
-            <ThreadToolbar sort={sort} onSort={setSort} channel={channel} count={threads.length} />
-            <div className="flex-1 overflow-auto">
-              <div className="px-6 py-5 max-w-[1100px]">
-                {sortedThreads.length === 0 ? (
-                  <FieldEmpty
-                    icon="◌"
-                    title="No threads yet in this channel."
-                    body="Be the first to start one."
-                  />
-                ) : (
-                  <div className="space-y-2.5">
-                    {sortedThreads.map((t) => (
-                      <ThreadCard
-                        key={t.id}
-                        thread={t}
-                        users={users}
-                        channelId={channel.id}
-                        onOpen={() => openThread(t)}
-                        onVoted={() => refreshChannelThreads(channel.id, sort)}
-                      />
-                    ))}
-                  </div>
-                )}
+          {thread ? (
+            <ThreadDetail
+              thread={thread}
+              channel={channel}
+              users={users}
+              onBack={closeThread}
+              onChanged={() => refreshChannelThreads(channel.id, sort)}
+            />
+          ) : (
+            <>
+              <ThreadToolbar sort={sort} onSort={setSort} channel={channel} count={threads.length} />
+              <div className="flex-1 overflow-auto">
+                <div className="px-6 py-5 max-w-[1100px]">
+                  {sortedThreads.length === 0 ? (
+                    <FieldEmpty
+                      icon="◌"
+                      title="No threads yet in this channel."
+                      body="Be the first to start one."
+                    />
+                  ) : (
+                    <div className="space-y-2.5">
+                      {sortedThreads.map((t) => (
+                        <ThreadCard
+                          key={t.id}
+                          thread={t}
+                          users={users}
+                          channelId={channel.id}
+                          onOpen={() => openThread(t)}
+                          onVoted={() => refreshChannelThreads(channel.id, sort)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <CommunityFooter space={space} />
               </div>
-              <CommunityFooter space={space} />
-            </div>
-          </>
-        )}
+            </>
+          )}
         </section>
 
-      {composerOpen ? (
-        <ComposerDrawer
-          channel={channel}
-          onClose={() => setComposerOpen(false)}
-          onCreated={(newThread) => {
-            refreshChannelThreads(channel.id, sort);
-            if (newThread?.id) navigate(`/app/community/${space.id}/${channel.id}/${newThread.id}`);
-          }}
-        />
-      ) : null}
+        {composerOpen ? (
+          <ComposerDrawer
+            channel={channel}
+            onClose={() => setComposerOpen(false)}
+            onCreated={(newThread) => {
+              refreshChannelThreads(channel.id, sort);
+              if (newThread?.id) navigate(`/app/community/${space.id}/${channel.id}/${newThread.id}`);
+            }}
+          />
+        ) : null}
 
-      {newChannelOpen ? (
-        <NewChannelDrawer
-          space={space}
-          onClose={() => setNewChannelOpen(false)}
-          onCreated={() => {
-            refreshSpaces();
-          }}
-        />
-      ) : null}
+        {newChannelOpen ? (
+          <NewChannelDrawer
+            space={space}
+            onClose={() => setNewChannelOpen(false)}
+            onCreated={() => {
+              refreshSpaces();
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );
