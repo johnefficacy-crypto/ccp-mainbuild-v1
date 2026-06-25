@@ -1,11 +1,13 @@
 # PYQ Source and Paper Onboarding Gate — J2 Contract
 
 - Document type: J2 sub-gate — contextual PYQ onboarding implementation contract
-- Status: DRAFT — OD-1…OD-6 RESOLVED by operator review (2026-06-25); **final approval still pending PR #763 merge + rebase + re-verification**
-- Date: 2026-06-25 (rev. 2 — rebaselined onto PR #763)
+- Status: **APPROVED — IMPLEMENTATION AUTHORIZED**
+- Operator approved: 2026-06-25
+- Baseline: `main` after PR #763 (merge commit `fe1c54ea`)
+- Date: 2026-06-25 (rev. 3 — rebased onto merged main; post-#763 facts re-verified; gate approved)
 - Parent track: `J2 — missing operational editors in Manage Exam` (`docs/status/career-copilot-checklist.md` row "J2"), specifically the **historical paper creation** sub-item.
-- Baseline: This revision describes the **post-PR-#763** codebase. PR #763 is not yet merged at the time of writing; its diff was read directly from `refs/pull/763/head` and every "POST-#763 SOURCE FACT" below was verified against that ref. Before this gate leaves DRAFT, the implementation branch MUST be rebased onto the `main` that results from merging #763, and every POST-#763 SOURCE FACT re-verified against merged source.
-- Effect: No PYQ-onboarding implementation PR may be dispatched until (a) PR #763 is merged, (b) this gate is rebased and re-verified against the resulting `main`, and (c) the operator moves this document out of DRAFT.
+- Baseline detail: This document describes the **post-PR-#763 merged `main`** codebase. **PR #763 merged on 2026-06-25** at merge commit `fe1c54ea`. Every "POST-#763 SOURCE FACT" below was **re-verified against merged `main`** (not the pre-merge `refs/pull/763/head` ref); the merge's follow-up fix commits did not change any cited fact.
+- Effect: The contextual PYQ onboarding implementation is **authorized** within the bounded scope of Section E. It must still observe the dependency in Section F.4 — **migration 191's staging validation (`OPERATOR VALIDATED`) is a prerequisite for the implementation PR**, because the onboarding RPC links documents through the same provenance machinery migration 191 extends.
 - Repository scope of the PR that introduces this document: **documentation and checklist only**. No runtime, route, component, API, migration, or test change is authorized by this file.
 
 ---
@@ -33,11 +35,11 @@
 | Label | Definition |
 |---|---|
 | SOURCE-LOCKED | Explicitly stated in a merged findings, design-lock, or APPROVED decision document. |
-| POST-#763 SOURCE FACT | Behavior present on `refs/pull/763/head`, verified during this revision; becomes a current source fact once #763 merges. Not automatically a product rule. |
-| DECISION TO LOCK | A decision this artifact proposes to lock once approved. |
-| OPERATOR-RESOLVED (2026-06-25) | A formerly-open decision (OD-n) that the operator resolved in the 2026-06-25 review. |
+| POST-#763 SOURCE FACT | Behavior present on **merged `main`** (after PR #763, `fe1c54ea`), re-verified during this revision. Not automatically a product rule. |
+| DECISION TO LOCK | A decision locked by this gate; binding on the implementation PR (gate APPROVED 2026-06-25). |
+| OPERATOR-RESOLVED (2026-06-25) | A formerly-open decision (OD-n) the operator resolved in the 2026-06-25 review; now LOCKED (Section C). |
 
-**Authority discipline:** code evidence alone is not a product decision. Every POST-#763 SOURCE FACT below was re-verified against `refs/pull/763/head` (merge-base `dca3ec57`). These MUST be re-verified against merged `main` after #763 lands.
+**Authority discipline:** code evidence alone is not a product decision. Every POST-#763 SOURCE FACT below was re-verified against **merged `main`** at `fe1c54ea` (the line numbers cited are the merged-`main` lines).
 
 ---
 
@@ -57,7 +59,7 @@
 
 ## Section 0 — Baseline: what PR #763 already provides
 
-PR #763 ("PYQ provenance: include source") changes runtime provenance behavior. The following are POST-#763 SOURCE FACTs (verified from `refs/pull/763/head`). The onboarding implementation MUST reuse and extend these, not reimplement or contradict them.
+PR #763 ("PYQ provenance: include source") changed runtime provenance behavior and is now merged into `main` (`fe1c54ea`). The following are POST-#763 SOURCE FACTs (re-verified against merged `main`; line numbers are merged-`main` lines). The onboarding implementation MUST reuse and extend these, not reimplement or contradict them.
 
 | Capability | POST-#763 state | Evidence |
 |---|---|---|
@@ -88,7 +90,7 @@ This residual gap is the entire scope of the onboarding implementation.
 | 1 | Raw CMS removal from normal nav is intentional and correctly implemented. | CONFIRMED — SOURCE-LOCKED (unchanged by #763) | Design-Lock §1.1/§3.2/§9; checklist "I8-C" MERGED. |
 | 2 | PYQ **source creation** has no normal contextual UI. | STILL OPEN after #763 — #763 adds source *selection*, not *creation*. | `usePyqWorkbench.js` (#763) `fetchPyqSources` exists; no create-source method anywhere but `ExamIntelCms.jsx`. |
 | 3 | PYQ **paper creation** has no normal contextual UI. | STILL OPEN after #763 — Workbench loads/edits existing papers only. | `PyqWorkbenchPanel.jsx` (#763) has no "Add PYQ paper" action; empty state line 388 still points to CMS. |
-| 4 | Document `source_kind` ≠ `pyq_sources.source_type`. | CONFIRMED (unchanged). | `admin_exam_intel_documents.py` `DocUploadUrlRequest.source_kind` vs `admin_exam_intel_cms.py` `_PYQ_SOURCE_TYPES` (line 2588 on the #763 ref; ~2574 on pre-#763 main — re-verify post-merge per Section F). |
+| 4 | Document `source_kind` ≠ `pyq_sources.source_type`. | CONFIRMED (unchanged). | `admin_exam_intel_documents.py` `DocUploadUrlRequest.source_kind` vs `admin_exam_intel_cms.py:2588` `_PYQ_SOURCE_TYPES` (merged `main`). |
 | 5 | Paper/source creation + document upload fragmented across surfaces. | PARTIALLY CLOSED by #763 (picker + selector are now contextual); creation still fragmented. | §0 above. |
 | 6 | Manual `document_assets` UUID entry in the attach modal. | CLOSED by #763 — replaced by the picker. | `PaperProvenanceModal` (#763) "Replaces the old raw-UUID AttachDocModal". |
 | 7 | PYQ source review ownership unclear. | CONFIRMED (unchanged) — #763 does not promote or synchronize `pyq_sources.trust_status`. | `admin_exam_intel_cms.py:2567-2569`; #763 validates source exists/exam-match only. |
@@ -132,7 +134,7 @@ Flow:
 
 ```
 Python validates request shape (reason 8–500 chars; exam_id resolves; cycle/phase FKs)
-  → PostgreSQL RPC (new migration, numbered from post-#763 main):
+  → PostgreSQL RPC (new migration, numbered MAX(main)+1 from current `main` + deployed schema_migrations state):
       lock/validate referenced rows (exam, optional cycle/phase, optional document, optional existing source)
       create optional pyq_source (trust_status forced 'pending')         [skip if existing_pyq_source_id given]
       create pyq_paper (trust_status forced 'pending'; pyq_source_id set when resolved)
@@ -186,16 +188,16 @@ Response on success returns `{ ok, audit_id, source:{id,created,trust_status}, p
 
 ---
 
-## Section C — OD decisions (resolved 2026-06-25)
+## Section C — OD decisions (LOCKED — operator-approved 2026-06-25)
 
-| ID | Decision | Operator resolution |
+| ID | Decision | Final locked position |
 |---|---|---|
-| OD-1 | Paper creation without a `pyq_source`. | **APPROVED (tightened).** Optional; verifiable when `source_type` valid AND (`source_url` OR `source_document_id`). Source offered first, not required. |
-| OD-2 | Source trust: fold into paper verification vs separate lifecycle. | **REJECTED folded-trust wording.** v1: source trust unchanged and out of scope; `pyq_sources` is an optional reusable grouping record. Source lifecycle is a separate contract. |
-| OD-3 | Surface source-less papers. | **APPROVED with rename.** Neutral advisory "No reusable source record", narrowed to the advisory case; distinct from blockers. |
-| OD-4 | Manual UUID fallback vs picker-only. | **REJECTED fallback. Picker-only** in the normal Workbench; ID-level recovery stays in Advanced Repair. |
-| OD-5 | Inline upload vs select-only v1. | **APPROVED select-only** for v1; document list exam-wide; inline upload a separate follow-up. |
-| OD-6 | Application rollback vs DB transaction/RPC. | **REJECTED app rollback. Use a PostgreSQL RPC transaction**; permit one forward migration numbered from post-#763 `main` (do not preassign). |
+| OD-1 | Paper creation without a `pyq_source`. | **LOCKED — `pyq_source_id` remains optional.** Verifiable when `source_type` valid AND (`source_url` OR `source_document_id`). Source offered first, not required. |
+| OD-2 | Source trust lifecycle. | **LOCKED — no source-trust promotion in v1.** Source trust unchanged and out of scope; `pyq_sources` is an optional reusable grouping record. Source lifecycle is a separate future contract. |
+| OD-3 | Surface source-less papers. | **LOCKED — neutral "No reusable source record" advisory.** Narrowed to the advisory case; distinct from blockers. |
+| OD-4 | Manual UUID fallback vs picker-only. | **LOCKED — picker-only; no UUID fallback** in the normal Workbench. ID-level recovery stays in Advanced Repair. |
+| OD-5 | Inline upload vs select-only v1. | **LOCKED — select an existing uploaded document in v1.** Document list exam-wide; inline upload a separate follow-up. |
+| OD-6 | Rollback mechanism. | **LOCKED — PostgreSQL transactional RPC** (not application-level rollback); one forward migration numbered from current `main` + deployed `schema_migrations` (do not assume 192). |
 
 ---
 
@@ -231,7 +233,7 @@ Response on success returns `{ ok, audit_id, source:{id,created,trust_status}, p
 
 | Layer | Allowed | Not allowed |
 |---|---|---|
-| Backend | `admin_exam_intel_cms.py` (add `/pyq-onboarding` only); **one** new migration adding the onboarding RPC, numbered MAX(main)+1 **after #763 merges** (do not preassign); new `tests/exam_intelligence/test_pyq_onboarding.py` | Changes to `review_pyq_paper`/projection RPCs; extraction pipeline; making `pyq_source_id` NOT NULL |
+| Backend | `admin_exam_intel_cms.py` (add `/pyq-onboarding` only); **one** new migration adding the onboarding RPC, numbered MAX(main)+1 from current `main` + the deployed `schema_migrations` state (do **not** assume 192); new `tests/exam_intelligence/test_pyq_onboarding.py` | Changes to `review_pyq_paper`/projection RPCs; extraction pipeline; making `pyq_source_id` NOT NULL |
 | Frontend | `PyqWorkbenchPanel.jsx`, `usePyqWorkbench.js`, a new `AddPyqPaperModal.jsx`; **extract a shared `PyqProvenanceFields` component** used by BOTH `PaperProvenanceModal` (#763) and `AddPyqPaperModal` so the source-type selector, document picker, `pyq_source` selector, URL field, and blocker formatting exist once; reuse `useApiAction` and #763's error handling; workbench tests | `AdminShell.jsx`, `adminRoutes.jsx`, any sidebar/route file; `ExamIntelCms.jsx`; a second independent provenance/picker/selector implementation |
 | Docs | `docs/status/career-copilot-checklist.md` (J2 sub-row), this gate doc | — |
 
@@ -239,20 +241,32 @@ Response on success returns `{ ok, audit_id, source:{id,created,trust_status}, p
 
 ---
 
-## Section F — Sequencing and checklist
+## Section F — Sequencing, dependency, and checklist
 
-**Required sequence (operator review 2026-06-25):**
+**F.1 — Sequence status (operator review 2026-06-25):**
 
-1. Complete and merge PR #763.
-2. Rebase this gate / its branch onto the resulting `main`.
-3. Re-verify every POST-#763 SOURCE FACT against merged source; update if #763 changed before merge.
-4. Confirm OD-1…OD-6 resolutions (Section C) still hold.
-5. Operator moves this document out of DRAFT; only then dispatch the onboarding implementation PR.
+1. ✅ PR #763 merged into `main` at `fe1c54ea` (2026-06-25).
+2. ✅ This gate's branch rebased onto merged `main`; diff is documentation-only (`PYQ-Source-and-Paper-Onboarding-Gate-2026-06-25.md`, `career-copilot-checklist.md`).
+3. ✅ Every POST-#763 SOURCE FACT re-verified against merged `main`; no cited fact changed under #763's follow-up fix commits.
+4. ✅ OD-1…OD-6 resolved and LOCKED (Section C).
+5. ✅ Gate status set to **APPROVED — IMPLEMENTATION AUTHORIZED**; PR #764 to be merged.
+6. ⏭ Dispatch the bounded onboarding implementation PR (Section E) — **after the F.4 prerequisite is `OPERATOR VALIDATED`.**
 
-**Checklist:** the J2 row in `docs/status/career-copilot-checklist.md` is annotated to say this gate **proposes** (not "locks") the contextual flow; implementation remains gated on PR #763 merge + the OD resolutions + this document leaving DRAFT. No completion or operator-validation claim is made.
+**F.2 — Checklist:** the J2 row in `docs/status/career-copilot-checklist.md` records that this gate is APPROVED and that implementation is authorized within Section E, gated on the F.4 migration-191 staging prerequisite. No live/operator-deployment claim about the onboarding RPC is made.
 
-**Overlap with PR #763:** the only shared file is `docs/status/career-copilot-checklist.md` (separate hunks — #763 adds a provenance-fix row near the projection section; this PR edits the later J2 row). Rebase after #763 regardless. There is no runtime file collision (this PR has no runtime changes).
+**F.3 — Overlap with PR #763:** the only shared file was `docs/status/career-copilot-checklist.md` (separate hunks — #763's migration-191 provenance row vs this PR's J2 row); the rebase merged both cleanly. There is no runtime file collision (this PR has no runtime changes).
+
+**F.4 — Migration 191 staging validation (PREREQUISITE FOR THE IMPLEMENTATION PR — OPERATOR ACTION):**
+
+PR #763 merged the code for migration 191 but its deployment validation is `CODE-FIXED, VALIDATION PENDING` / `OPERATOR PENDING` (checklist row "PYQ paper provenance UX and backend contract fixes (migration 191)"). Because the onboarding RPC links documents through the same provenance invariants migration 191 extends, the onboarding implementation PR MUST NOT be built on top of it until the operator records `OPERATOR VALIDATED` for:
+
+1. Apply migration 191 to staging.
+2. Confirm `cms_set_pyq_paper_provenance` exists.
+3. Grant matrix: `anon` cannot execute; `authenticated` cannot execute; `service_role` can execute.
+4. Behavioral: valid `pyq_source_id`; missing source; cross-exam source; verified-paper provenance change demotes to pending; document picker returns readable records.
+
+This validation cannot be proven from repo code alone (live Supabase/staging evidence required) and is therefore outside the scope of this documentation gate.
 
 ---
 
-*This document is a planning artifact. No runtime files were changed in the PR that introduced it. It does not unblock implementation until PR #763 merges, this gate is rebased and re-verified, and the operator moves it out of DRAFT.*
+*This document is a planning artifact. No runtime files were changed in the PR that introduced it. The gate is APPROVED; the onboarding implementation PR is authorized within Section E and gated on the F.4 migration-191 staging validation being `OPERATOR VALIDATED`.*
