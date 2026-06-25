@@ -340,3 +340,52 @@ test("Refresh button re-fetches the linked docs list", async () => {
     ).toBeGreaterThan(before),
   );
 });
+
+// ── 9. Processed-but-unlinked doc rehydration (P1-2 regression) ──────────────
+
+test("processed pyq_paper doc not linked to any paper appears in inFlight after load", async () => {
+  const PROCESSED_UNLINKED = {
+    id: "doc-unlinked-processed",
+    filename: "upsc-2024-gs1.pdf",
+    document_kind: "pyq_paper",
+    status: "processed",
+    page_count: 32,
+    extraction: {},
+  };
+
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers")) return Promise.resolve({ items: [] }); // no linked papers
+    if (url.includes("documents?")) return Promise.resolve({ items: [PROCESSED_UNLINKED] });
+    return Promise.resolve({ items: [] });
+  });
+
+  renderPanel();
+  // Panel reaches docs-populated because inFlight becomes non-empty
+  await waitFor(() => screen.getByTestId("inflight-row-doc-unlinked-processed"));
+});
+
+test("processed pyq_paper doc already linked to a paper is excluded from inFlight", async () => {
+  const LINKED_DOC = {
+    id: "doc-already-linked",
+    filename: "upsc-2023.pdf",
+    document_kind: "pyq_paper",
+    status: "processed",
+    extraction: {},
+  };
+  const PAPER_WITH_LINK = {
+    id: "paper-linked", source_document_id: "doc-already-linked",
+  };
+
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers")) return Promise.resolve({ items: [PAPER_WITH_LINK] });
+    if (url.includes("documents?")) return Promise.resolve({ items: [LINKED_DOC] });
+    return Promise.resolve({ items: [] });
+  });
+
+  renderPanel();
+  // No inFlight row for the linked doc; panel shows docs-populated because of the linked paper
+  await waitFor(() => screen.getByTestId("docs-populated"));
+  expect(screen.queryByTestId("inflight-row-doc-already-linked")).toBeNull();
+});

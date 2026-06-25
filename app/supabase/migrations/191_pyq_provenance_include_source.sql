@@ -30,16 +30,17 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_paper       record;
-    v_doc         record;
-    v_source      record;
-    v_doc_id      uuid;
-    v_source_id   uuid;
-    v_blocking    text[];
-    v_audit_id    uuid;
+    v_paper          record;
+    v_doc            record;
+    v_source         record;
+    v_doc_id         uuid;
+    v_source_id      uuid;
+    v_blocking       text[];
+    v_audit_id       uuid;
+    v_was_verified   boolean;
 BEGIN
     -- Lock the paper row for the duration of this transaction.
-    SELECT id, exam_id INTO v_paper
+    SELECT id, exam_id, trust_status INTO v_paper
     FROM public.pyq_papers
     WHERE id = p_paper_id::uuid
     FOR UPDATE;
@@ -48,6 +49,10 @@ BEGIN
         RAISE EXCEPTION 'not_found: paper % does not exist', p_paper_id
             USING ERRCODE = 'P0404';
     END IF;
+
+    -- Derive demotion flag from the locked row, not from the caller-supplied
+    -- boolean (which was computed by Python before the lock was acquired).
+    v_was_verified := (v_paper.trust_status = 'verified');
 
     -- When source_document_id is being set to a non-null value, lock and
     -- validate the document_assets row inside this transaction.
@@ -130,7 +135,7 @@ BEGIN
         pyq_source_id      = CASE WHEN p_patch ? 'pyq_source_id'
                                    THEN (p_patch->>'pyq_source_id')::uuid
                                    ELSE pyq_source_id      END,
-        trust_status       = CASE WHEN p_was_verified THEN 'pending' ELSE trust_status END,
+        trust_status       = CASE WHEN v_was_verified THEN 'pending' ELSE trust_status END,
         updated_at         = now()
     WHERE id = p_paper_id::uuid;
 
@@ -153,7 +158,7 @@ BEGIN
             'reason',                p_reason,
             'patch',                 p_patch,
             'previous_provenance',   p_previous_provenance,
-            'demoted_from_verified', p_was_verified
+            'demoted_from_verified', v_was_verified
         ),
         'admin_exam_intel_cms'
     )
@@ -161,7 +166,7 @@ BEGIN
 
     RETURN jsonb_build_object(
         'audit_id',              v_audit_id,
-        'demoted_from_verified', p_was_verified
+        'demoted_from_verified', v_was_verified
     );
 END;
 $$;

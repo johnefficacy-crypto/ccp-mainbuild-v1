@@ -48,7 +48,7 @@ export function usePyqWorkbench(examId, cycleId) {
   }, []);
 
   const fetchPaperQuestions = useCallback(async (paperId) => {
-    const res = await api.get(`${CMS_BASE}/pyq-questions?paper_id=${encodeURIComponent(paperId)}&limit=200`);
+    const res = await api.get(`${CMS_BASE}/pyq-questions?pyq_paper_id=${encodeURIComponent(paperId)}&limit=200`);
     return res.items || [];
   }, []);
 

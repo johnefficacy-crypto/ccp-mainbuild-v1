@@ -884,3 +884,166 @@ describe("PyqWorkbenchPanel — provenance gate + PaperProvenanceModal", () => {
     await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
   });
 });
+
+// ── Fix 3 — review-only user permission gate ───────────────────────────────────
+
+describe("PyqWorkbenchPanel — review-only user provenance gate", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("review-only user sees 'CMS provenance confirmation required' span, not the button", async () => {
+    useAuth.mockReturnValue({
+      user: { role: "admin", permissions: ["exam_intelligence.review"] },
+    });
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.queryByTestId("confirm-provenance-btn-p-no-type")).toBeNull();
+    expect(screen.getByTestId("provenance-needed-p-no-type")).toBeTruthy();
+    expect(screen.getByTestId("provenance-needed-p-no-type").textContent).toContain(
+      "CMS provenance confirmation required",
+    );
+  });
+
+  test("super_admin still sees 'Confirm provenance' button", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy();
+    expect(screen.queryByTestId("provenance-needed-p-no-type")).toBeNull();
+  });
+});
+
+// ── Fix 1 — question-derived document inference ────────────────────────────────
+
+const PAPER_NO_DOC = {
+  id: "p-infer", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+  source_url: null, source_type: null, source_document_id: null, pyq_source_id: null,
+};
+
+function mockApiWithQuestions(papers, questions, opts = {}) {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+    if (url.includes("/context")) return Promise.resolve({
+      exam: { id: EXAM_ID, name: "Test" }, cycle: null, cycles: [], phases: [],
+    });
+    if (url.includes("/pyq-papers?")) return Promise.resolve({ items: papers });
+    if (url.includes("/documents?") && url.includes("document_kind=pyq_paper")) {
+      return Promise.resolve({ items: opts.docs || MODAL_DOCS });
+    }
+    if (url.includes("/pyq-sources?")) return Promise.resolve({ items: opts.sources || [] });
+    if (url.includes("/pyq-questions?")) return Promise.resolve({ items: questions });
+    return Promise.resolve({});
+  });
+}
+
+describe("PyqWorkbenchPanel — question-derived document inference (P1-1)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+  });
+
+  test("fetchPaperQuestions is called with pyq_paper_id param, not paper_id", async () => {
+    mockApiWithQuestions([PAPER_NO_DOC], []);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => screen.getByTestId("confirm-provenance-btn-p-infer"));
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-infer"));
+    await waitFor(() => screen.getByTestId("paper-provenance-modal"));
+
+    const questionsCall = api.get.mock.calls.find((c) => c[0].includes("pyq-questions"));
+    expect(questionsCall).toBeTruthy();
+    expect(questionsCall[0]).toContain("pyq_paper_id=");
+    expect(questionsCall[0]).not.toMatch(/[?&]paper_id=/);
+  });
+
+  test("modal preselects the document most questions reference", async () => {
+    const QUESTIONS = [
+      { id: "q1", source_document_id: "doc-uuid-1" },
+      { id: "q2", source_document_id: "doc-uuid-1" },
+      { id: "q3", source_document_id: "doc-uuid-1" },
+      { id: "q4", source_document_id: "doc-uuid-2" },
+    ];
+    mockApiWithQuestions([PAPER_NO_DOC], QUESTIONS);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => screen.getByTestId("confirm-provenance-btn-p-infer"));
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-infer"));
+    await waitFor(() => screen.getByTestId("paper-provenance-modal"));
+
+    // Wait for async data to load and preselect effect to fire
+    await waitFor(() => {
+      const sel = screen.getByTestId("provenance-document-id");
+      if (sel.value !== "doc-uuid-1") throw new Error("not yet preselected");
+    });
+    expect(screen.getByTestId("provenance-document-id").value).toBe("doc-uuid-1");
+  });
+
+  test("modal does not preselect when two docs are tied", async () => {
+    const QUESTIONS = [
+      { id: "q1", source_document_id: "doc-uuid-1" },
+      { id: "q2", source_document_id: "doc-uuid-2" },
+    ];
+    mockApiWithQuestions([PAPER_NO_DOC], QUESTIONS);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => screen.getByTestId("confirm-provenance-btn-p-infer"));
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-infer"));
+    await waitFor(() => screen.getByTestId("paper-provenance-modal"));
+    // Give async ops time to settle
+    await waitFor(() => {
+      const sel = screen.getByTestId("provenance-document-id");
+      const opts = Array.from(sel.options).map((o) => o.text);
+      return opts.some((t) => t.includes("upsc-2024-gs1.pdf"));
+    });
+    expect(screen.getByTestId("provenance-document-id").value).toBe("");
+  });
+
+  test("document dropdown shows question count next to each doc", async () => {
+    const QUESTIONS = [
+      { id: "q1", source_document_id: "doc-uuid-1" },
+      { id: "q2", source_document_id: "doc-uuid-1" },
+      { id: "q3", source_document_id: "doc-uuid-2" },
+    ];
+    mockApiWithQuestions([PAPER_NO_DOC], QUESTIONS);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => screen.getByTestId("confirm-provenance-btn-p-infer"));
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-infer"));
+    await waitFor(() => screen.getByTestId("paper-provenance-modal"));
+
+    // Wait for counts to appear in options
+    await waitFor(() => {
+      const opts = Array.from(screen.getByTestId("provenance-document-id").options).map((o) => o.text);
+      return opts.some((t) => t.includes("2 questions"));
+    });
+
+    const optionTexts = Array.from(
+      screen.getByTestId("provenance-document-id").options,
+    ).map((o) => o.text);
+    expect(optionTexts.some((t) => t.includes("2 questions"))).toBe(true);
+    expect(optionTexts.some((t) => t.includes("1 question"))).toBe(true);
+  });
+
+  test("modal does not preselect when paper already has source_document_id", async () => {
+    const PAPER_WITH_DOC = {
+      ...PAPER_NO_DOC, id: "p-has-doc", source_document_id: "doc-uuid-2",
+    };
+    const QUESTIONS = [
+      { id: "q1", source_document_id: "doc-uuid-1" },
+      { id: "q2", source_document_id: "doc-uuid-1" },
+    ];
+    mockApiWithQuestions([PAPER_WITH_DOC], QUESTIONS, { docs: MODAL_DOCS });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    // Paper has source_document_id so it shows canEdit buttons
+    await waitFor(() => screen.getByTestId("replace-doc-btn-p-has-doc"));
+    fireEvent.click(screen.getByTestId("replace-doc-btn-p-has-doc"));
+    await waitFor(() => screen.getByTestId("paper-provenance-modal"));
+
+    // Let async ops settle
+    await waitFor(() => {
+      const opts = Array.from(screen.getByTestId("provenance-document-id").options).map((o) => o.text);
+      return opts.some((t) => t.includes("upsc-2024-gs1.pdf"));
+    });
+    // Existing source_document_id (doc-uuid-2) must be preserved, not overwritten by inference
+    expect(screen.getByTestId("provenance-document-id").value).toBe("doc-uuid-2");
+  });
+});

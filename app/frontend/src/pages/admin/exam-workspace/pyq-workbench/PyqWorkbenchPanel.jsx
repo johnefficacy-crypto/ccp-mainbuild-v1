@@ -98,11 +98,29 @@ function PaperReviewModal({ paper, targetStatus, onCancel, onSubmit }) {
 // questions (if already fetched), lets admin pick source type / URL / document
 // from dropdown of known pyq_paper documents, and source registry entry.
 
-function PaperProvenanceModal({ paper, onCancel, onSubmit, pyqDocuments, pyqSources }) {
+function PaperProvenanceModal({ paper, onCancel, onSubmit, pyqDocuments, pyqSources, docCounts }) {
   const [sourceType, setSourceType]     = useState(paper.source_type || "");
   const [sourceUrl, setSourceUrl]       = useState(paper.source_url || "");
   const [documentId, setDocumentId]     = useState(paper.source_document_id || "");
   const [pyqSourceId, setPyqSourceId]   = useState(paper.pyq_source_id || "");
+
+  // Preselect the document that the most questions already reference,
+  // but only when the paper has no existing source_document_id.
+  useEffect(() => {
+    if (paper.source_document_id) return;
+    if (!docCounts || docCounts.size === 0) return;
+    if (!pyqDocuments || pyqDocuments.length === 0) return;
+    let maxCount = 0;
+    let topDocId = null;
+    let tied = false;
+    for (const [id, count] of docCounts) {
+      if (count > maxCount) { maxCount = count; topDocId = id; tied = false; }
+      else if (count === maxCount) { tied = true; }
+    }
+    if (!tied && topDocId && pyqDocuments.some((d) => d.id === topDocId)) {
+      setDocumentId(topDocId);
+    }
+  }, [paper.source_document_id, docCounts, pyqDocuments]);
   const [reason, setReason]             = useState("");
   const [submitting, setSubmitting]     = useState(false);
   const [err, setErr]                   = useState(null);
@@ -186,12 +204,16 @@ function PaperProvenanceModal({ paper, onCancel, onSubmit, pyqDocuments, pyqSour
             data-testid="provenance-document-id"
           >
             <option value="">— none —</option>
-            {(pyqDocuments || []).map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.original_filename || d.id}
-                {d.page_count ? ` (${d.page_count}pp)` : ""}
-              </option>
-            ))}
+            {(pyqDocuments || []).map((d) => {
+              const qCount = docCounts?.get(d.id);
+              return (
+                <option key={d.id} value={d.id}>
+                  {d.original_filename || d.id}
+                  {d.page_count ? ` (${d.page_count}pp)` : ""}
+                  {qCount ? ` · ${qCount} question${qCount === 1 ? "" : "s"}` : ""}
+                </option>
+              );
+            })}
           </select>
         </label>
 
@@ -262,7 +284,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const {
     papers, selectedPaperId, setSelectedPaperId, loading, error,
     reviewPaper, saveProvenance, getPaperSignedPdf,
-    fetchPyqDocuments, fetchPyqSources,
+    fetchPyqDocuments, fetchPyqSources, fetchPaperQuestions,
   } = usePyqWorkbench(examId, cycleId);
 
   const [showBulkImport, setShowBulkImport] = useState(false);
@@ -274,6 +296,8 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   // Lazy-loaded lists for the PaperProvenanceModal
   const [pyqDocuments, setPyqDocuments] = useState([]);
   const [pyqSources, setPyqSources]     = useState([]);
+  // question-count keyed by source_document_id (Map<string, number>)
+  const [pyqDocCounts, setPyqDocCounts] = useState(() => new Map());
 
   // Auto-select paperId once papers have loaded
   useEffect(() => {
@@ -289,15 +313,26 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
 
   const openProvenanceModal = useCallback(async (paper) => {
     setProvenanceTarget({ paper });
-    // Load documents and sources lazily when the modal opens
+    setPyqDocCounts(new Map());
     try {
-      const [docs, sources] = await Promise.all([fetchPyqDocuments(), fetchPyqSources()]);
+      const [docs, sources, questions] = await Promise.all([
+        fetchPyqDocuments(),
+        fetchPyqSources(),
+        fetchPaperQuestions(paper.id),
+      ]);
       setPyqDocuments(docs);
       setPyqSources(sources);
+      const counts = new Map();
+      for (const q of questions) {
+        if (q.source_document_id) {
+          counts.set(q.source_document_id, (counts.get(q.source_document_id) || 0) + 1);
+        }
+      }
+      setPyqDocCounts(counts);
     } catch {
       // non-fatal: modal still opens with empty lists
     }
-  }, [fetchPyqDocuments, fetchPyqSources]);
+  }, [fetchPyqDocuments, fetchPyqSources, fetchPaperQuestions]);
 
   async function handleReviewSubmit(pid, targetStatus, reason) {
     await reviewPaper(pid, targetStatus, reason);
@@ -408,7 +443,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
                               >
                                 Verify
                               </button>
-                            ) : (
+                            ) : canEdit ? (
                               <button
                                 type="button"
                                 onClick={() => handleVerifyClick(p)}
@@ -417,6 +452,13 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
                               >
                                 Confirm provenance
                               </button>
+                            ) : (
+                              <span
+                                className="text-xs text-amber-600 mr-1"
+                                data-testid={`provenance-needed-${p.id}`}
+                              >
+                                CMS provenance confirmation required
+                              </span>
                             )
                           )}
                           {/* pending → rejected  |  verified → rejected */}
@@ -531,6 +573,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           paper={provenanceTarget.paper}
           pyqDocuments={pyqDocuments}
           pyqSources={pyqSources}
+          docCounts={pyqDocCounts}
           onCancel={() => setProvenanceTarget(null)}
           onSubmit={handleProvenanceSubmit}
         />

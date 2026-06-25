@@ -471,21 +471,27 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
       ]);
       setDocs(sylResult?.items   || sylResult   || []);
       setPapers(pyqResult?.items || pyqResult   || []);
-      // Rehydrate inFlight: merge backend docs that are still processing,
-      // excluding any that have already reached a terminal state, to avoid
-      // polling docs the backend has already finalized.
+      // Rehydrate inFlight: keep docs that are unlinked (not yet attached to a
+      // pyq_paper) and not failed. Processed-but-unlinked docs must stay visible
+      // so the operator can still link them. Linked docs are already shown in the
+      // linked-docs table and must not re-appear here.
       const rawPayload = pyqDocResult?.items ?? pyqDocResult;
       const backendDocs = Array.isArray(rawPayload) ? rawPayload : [];
+      const linkedDocIds = new Set(
+        (pyqResult?.items || pyqResult || [])
+          .map((p) => p.source_document_id)
+          .filter(Boolean),
+      );
+      const rehydrated = backendDocs.filter(
+        (d) => d.status !== "failed" && !linkedDocIds.has(d.id),
+      );
       setInFlight((prev) => {
         const backendIds = new Set(backendDocs.map((d) => d.id));
-        // Keep local-only entries that haven't appeared in backend yet
         const localOnly = prev.filter((d) => !backendIds.has(d.id));
-        // Add backend docs that are not yet terminal
-        const nonTerminal = backendDocs.filter(
-          (d) => !isTerminalDocStatus(d.status),
-        );
-        return [...localOnly, ...nonTerminal];
+        return [...localOnly, ...rehydrated];
       });
+      // Restart polling only for non-terminal rehydrated docs
+      rehydrated.filter((d) => !isTerminalDocStatus(d.status)).forEach((d) => startPoll(d.id));
     } catch (e) {
       setListError(e?.message || "Failed to load documents");
     } finally {
