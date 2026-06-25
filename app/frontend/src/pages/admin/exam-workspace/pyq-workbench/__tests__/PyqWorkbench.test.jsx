@@ -1192,3 +1192,253 @@ describe("PyqWorkbenchPanel — question-derived document inference (P1-1)", () 
     expect(screen.getByTestId("provenance-document-id").value).toBe("doc-uuid-2");
   });
 });
+
+// ── Contextual PYQ onboarding (J2 — Section D) ───────────────────────────────
+
+const ONBOARD_DOCS = [
+  { id: "doc-uuid-1", original_filename: "upsc-2024-gs1.pdf", page_count: 32, status: "processed" },
+  {
+    id: "doc-uuid-long",
+    original_filename:
+      "extremely-long-commission-archive-filename-that-clips-the-option-2024-gs-paper-i.pdf",
+    page_count: 40, status: "processed",
+  },
+];
+
+const ONBOARD_SOURCES = [
+  { id: "src-1", title: "UPSC Official 2024", exam_id: EXAM_ID },
+];
+
+function mockApiForOnboarding(papers, opts = {}) {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+    if (url.includes("/context")) return Promise.resolve({
+      exam: { id: EXAM_ID, name: "SSC CGL" }, cycle: null, cycles: [], phases: [],
+    });
+    if (url.includes("/pyq-papers?")) return Promise.resolve({ items: papers });
+    if (url.includes("/documents?") && url.includes("document_kind=pyq_paper")) {
+      return Promise.resolve({ items: opts.docs || ONBOARD_DOCS });
+    }
+    if (url.includes("/pyq-sources?")) return Promise.resolve({ items: opts.sources || ONBOARD_SOURCES });
+    return Promise.resolve({});
+  });
+}
+
+describe("PyqWorkbenchPanel — contextual onboarding (J2)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+  });
+
+  // D: empty-state copy
+  test("empty state renders 'Add the first PYQ paper' and does NOT mention CMS; copy is exam-wide", async () => {
+    mockApiForOnboarding([]);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-empty-state")).toBeTruthy());
+    const empty = screen.getByTestId("pyq-empty-state");
+    expect(empty.textContent).toContain("No PYQ papers for this exam");
+    expect(empty.textContent).not.toContain("CMS");
+    expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy();
+    expect(screen.getByTestId("add-first-pyq-paper-btn").textContent).toContain("Add the first PYQ paper");
+  });
+
+  // D: header action beside Bulk import
+  test("panel header renders an 'Add PYQ paper' action beside Bulk import", async () => {
+    mockApiForOnboarding(PAPERS);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("add-pyq-paper-btn")).toBeTruthy();
+    expect(screen.getByTestId("add-pyq-paper-btn").textContent).toContain("Add PYQ paper");
+    expect(screen.getByTestId("bulk-import-btn")).toBeTruthy();
+  });
+
+  // D: modal reuses picker + pyq_source selector, no raw-UUID input (OD-4)
+  test("the onboarding modal reuses the document picker + pyq_source selector with no raw-UUID input", async () => {
+    mockApiForOnboarding([]);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
+    await waitFor(() => expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy());
+
+    // Reused document picker (a <select>, populated from exam-scoped documents)
+    await waitFor(() => {
+      const sel = screen.getByTestId("add-pyq-evidence-document-id");
+      const texts = Array.from(sel.options).map((o) => o.text);
+      if (!texts.some((t) => t.includes("upsc-2024-gs1.pdf"))) throw new Error("docs not loaded");
+    });
+    const docSelect = screen.getByTestId("add-pyq-evidence-document-id");
+    expect(docSelect.tagName).toBe("SELECT");
+    // No raw-UUID text input for the document anywhere in the modal
+    const modal = screen.getByTestId("add-pyq-paper-modal");
+    const textInputs = Array.from(modal.querySelectorAll("input"));
+    textInputs.forEach((inp) => {
+      expect(inp.getAttribute("data-testid")).not.toMatch(/document/i);
+    });
+    // Reused pyq_source selector
+    expect(screen.getByTestId("add-pyq-existing-source-id")).toBeTruthy();
+    expect(screen.getByTestId("add-pyq-source-pyq-source-id")).toBeTruthy();
+  });
+
+  // D: filename clip fix — long filenames carry a full-text title tooltip
+  test("long document filenames are truncated in the label but kept in the title tooltip", async () => {
+    mockApiForOnboarding([]);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
+    await waitFor(() => {
+      const sel = screen.getByTestId("add-pyq-evidence-document-id");
+      if (sel.options.length < 3) throw new Error("docs not loaded");
+    });
+    const sel = screen.getByTestId("add-pyq-evidence-document-id");
+    const longOpt = Array.from(sel.options).find((o) => o.value === "doc-uuid-long");
+    expect(longOpt).toBeTruthy();
+    // visible label is truncated (contains the ellipsis), title holds the full name
+    expect(longOpt.text).toContain("…");
+    expect(longOpt.title).toContain(
+      "extremely-long-commission-archive-filename-that-clips-the-option-2024-gs-paper-i.pdf",
+    );
+  });
+
+  // D: advisory, not blocker (OD-3)
+  test("paper with valid provenance but no pyq_source_id shows 'No reusable source record' advisory, not a blocker", async () => {
+    const ADVISORY_PAPER = [{
+      id: "p-advisory", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+      source_type: "official", source_url: "https://upsc.gov.in/2024.pdf",
+      source_document_id: null, pyq_source_id: null,
+    }];
+    mockApiForOnboarding(ADVISORY_PAPER);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    const advisory = screen.getByTestId("no-source-record-advisory-p-advisory");
+    expect(advisory.textContent).toContain("No reusable source record");
+    // It must NOT be a provenance blocker — Verify (complete provenance) is shown.
+    expect(screen.getByTestId("verify-paper-btn-p-advisory")).toBeTruthy();
+    expect(screen.queryByTestId("confirm-provenance-btn-p-advisory")).toBeNull();
+  });
+
+  test("paper WITH a pyq_source_id shows no advisory badge", async () => {
+    const LINKED_PAPER = [{
+      id: "p-linked", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+      source_type: "official", source_url: "https://upsc.gov.in/2024.pdf",
+      source_document_id: null, pyq_source_id: "src-1",
+    }];
+    mockApiForOnboarding(LINKED_PAPER);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.queryByTestId("no-source-record-advisory-p-linked")).toBeNull();
+  });
+
+  // D: submitting calls POST /pyq-onboarding and selects the returned paper
+  test("submitting calls POST /pyq-onboarding and selects the returned paper", async () => {
+    mockApiForOnboarding([]);
+    api.post.mockResolvedValue({
+      ok: true, audit_id: "aud-1",
+      source: { id: "src-new", created: true, trust_status: "pending" },
+      paper: { id: "p-new", trust_status: "pending", pyq_source_id: "src-new" },
+      document_link: { document_id: "doc-uuid-1", linked: true },
+    });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
+    await waitFor(() => expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2024" } });
+    fireEvent.change(screen.getByTestId("add-pyq-source-source-type"), { target: { value: "official" } });
+    fireEvent.change(screen.getByTestId("add-pyq-source-source-url"), {
+      target: { value: "https://upsc.gov.in/2024.pdf" },
+    });
+    fireEvent.change(screen.getByTestId("add-pyq-reason"), {
+      target: { value: "added official 2024 paper from commission archive" },
+    });
+    fireEvent.click(screen.getByTestId("add-pyq-submit"));
+
+    // POST to the LOCKED endpoint with contract-shaped body
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/pyq-onboarding"),
+        expect.objectContaining({
+          reason: "added official 2024 paper from commission archive",
+          exam_id: EXAM_ID,
+          paper: expect.objectContaining({ year: 2024 }),
+        }),
+      ),
+    );
+    // Body uses canonical source.source_id, never source_registry_id
+    const body = api.post.mock.calls.find((c) => c[0].includes("/pyq-onboarding"))[1];
+    expect(body.source).not.toBeNull();
+    expect("source_id" in body.source).toBe(true);
+    expect("source_registry_id" in body.source).toBe(false);
+    expect(body.paper.metadata).toHaveProperty("expected_question_count");
+
+    // Modal closes and the returned paper is selected → workspace loads it
+    await waitFor(() => expect(screen.queryByTestId("add-pyq-paper-modal")).toBeNull());
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("/pyq-papers/p-new")),
+    );
+  });
+
+  test("onboarding without a source but with valid paper provenance omits the source block (OD-1)", async () => {
+    mockApiForOnboarding([]);
+    api.post.mockResolvedValue({ ok: true, audit_id: "a", paper: { id: "p-nosrc" } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
+    await waitFor(() => expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2024" } });
+    // Pick an evidence document instead of a source → paper provenance complete
+    await waitFor(() => {
+      const sel = screen.getByTestId("add-pyq-evidence-document-id");
+      if (sel.options.length < 2) throw new Error("docs not loaded");
+    });
+    fireEvent.change(screen.getByTestId("add-pyq-evidence-document-id"), {
+      target: { value: "doc-uuid-1" },
+    });
+    fireEvent.change(screen.getByTestId("add-pyq-reason"), {
+      target: { value: "added paper linked to uploaded pdf only" },
+    });
+    fireEvent.click(screen.getByTestId("add-pyq-submit"));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    const body = api.post.mock.calls.find((c) => c[0].includes("/pyq-onboarding"))[1];
+    expect(body.source).toBeNull();
+    expect(body.document_id).toBe("doc-uuid-1");
+  });
+
+  test("client guard: missing year blocks submit without calling api.post", async () => {
+    mockApiForOnboarding([]);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
+    await waitFor(() => expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("add-pyq-reason"), {
+      target: { value: "trying without a year value here" },
+    });
+    fireEvent.click(screen.getByTestId("add-pyq-submit"));
+    expect(screen.getByTestId("add-pyq-error").textContent).toContain("Year");
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  test("backend blocking_fields surface in operator-readable form", async () => {
+    mockApiForOnboarding([]);
+    const err = new Error("onboarding blocked");
+    err.blocking_fields = ["document_id"];
+    api.post.mockRejectedValue(err);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
+    await waitFor(() => expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2024" } });
+    fireEvent.change(screen.getByTestId("add-pyq-reason"), {
+      target: { value: "valid reason that is long enough" },
+    });
+    fireEvent.click(screen.getByTestId("add-pyq-submit"));
+
+    await waitFor(() => expect(screen.getByTestId("add-pyq-error")).toBeTruthy());
+    expect(screen.getByTestId("add-pyq-error").textContent).toContain("document_id");
+    // Modal stays open so the operator can correct
+    expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy();
+  });
+});

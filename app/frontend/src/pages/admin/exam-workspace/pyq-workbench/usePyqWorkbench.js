@@ -13,6 +13,7 @@ export function usePyqWorkbench(examId, cycleId) {
   const { run: runReviewAction } = useApiAction();
   const { run: runPatchAction } = useApiAction();
   const { run: runProvenanceAction } = useApiAction();
+  const { run: runOnboardAction } = useApiAction();
 
   const fetchPapers = useCallback(async () => {
     if (!examId) return;
@@ -57,6 +58,19 @@ export function usePyqWorkbench(examId, cycleId) {
     if (!result?.ok && !result?.cancelled) throw result?.error ?? new Error("Provenance save failed");
   }, [runProvenanceAction, fetchPapers]);
 
+  // Contextual paper onboarding. POSTs the LOCKED /pyq-onboarding contract,
+  // refetches the (exam-wide) paper list, and returns the created paper id so
+  // the panel can select it. Surfaces backend {error, blocking_fields} by
+  // re-throwing the structured error for the modal's api helpers.
+  const onboardPaper = useCallback(async (body) => {
+    const result = await runOnboardAction({
+      action: () => api.post(`${CMS_BASE}/pyq-onboarding`, body),
+      onSuccess: fetchPapers,
+    });
+    if (!result?.ok && !result?.cancelled) throw result?.error ?? new Error("Onboarding failed");
+    return result?.data?.paper?.id ?? null;
+  }, [runOnboardAction, fetchPapers]);
+
   const getPaperSignedPdf = useCallback(async (paperId, documentId) => {
     const data = await api.get(`${CMS_BASE}/pyq-papers/${paperId}/signed-pdf?document_id=${encodeURIComponent(documentId)}`);
     return data.signed_url;
@@ -91,6 +105,7 @@ export function usePyqWorkbench(examId, cycleId) {
     reviewPaper,
     patchPaper,
     saveProvenance,
+    onboardPaper,
     getPaperSignedPdf,
     fetchPaperQuestions,
     fetchPyqDocuments,

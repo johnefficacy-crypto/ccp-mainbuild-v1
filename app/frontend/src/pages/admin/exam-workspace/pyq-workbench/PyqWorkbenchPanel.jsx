@@ -5,6 +5,8 @@ import { usePyqWorkbench } from "./usePyqWorkbench";
 import { getApiBlockingFields } from "../../../../lib/api";
 import BulkImportModal from "./bulk-import/BulkImportModal";
 import PyqMockProjectionPanel from "./PyqMockProjectionPanel";
+import PyqProvenanceFields from "./PyqProvenanceFields";
+import AddPyqPaperModal from "./AddPyqPaperModal";
 
 const PyqPaperWorkspace = lazy(() => import("../../studyos/PyqPaperWorkspace"));
 
@@ -12,15 +14,6 @@ const TRUST_LABEL = {
   verified: "Verified",
   rejected: "Rejected",
   pending: "Pending",
-};
-
-const SOURCE_TYPE_LABELS = {
-  official:     "Official",
-  memory_based: "Memory-based",
-  coaching:     "Coaching",
-  community:    "Community",
-  aggregator:   "Aggregator",
-  unknown:      "Unknown",
 };
 
 export function isPaperProvenanceComplete(paper) {
@@ -160,83 +153,25 @@ function PaperProvenanceModal({ paper, onCancel, onSubmit, pyqDocuments, pyqSour
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" data-testid="paper-provenance-modal">
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 flex flex-col gap-4"
+        className="bg-white rounded-lg shadow-xl w-full max-w-xl p-6 flex flex-col gap-4"
       >
         <h2 className="text-base font-semibold text-gray-800">
           {isReplace ? "Update" : "Set"} provenance — {paperLabel || "—"}
         </h2>
 
-        {/* Source type */}
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          Source type <span className="text-gray-400 font-normal">(required for verification)</span>
-          <select
-            value={sourceType}
-            onChange={(e) => setSourceType(e.target.value)}
-            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none"
-            data-testid="provenance-source-type"
-          >
-            <option value="">— not selected —</option>
-            {Object.entries(SOURCE_TYPE_LABELS).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
-          </select>
-        </label>
-
-        {/* Source URL */}
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          Source URL <span className="text-gray-400 font-normal">(public download link)</span>
-          <input
-            type="url"
-            value={sourceUrl}
-            onChange={(e) => setSourceUrl(e.target.value)}
-            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none"
-            placeholder="https://upsc.gov.in/…"
-            data-testid="provenance-source-url"
-          />
-        </label>
-
-        {/* Source document picker */}
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          Source document <span className="text-gray-400 font-normal">(uploaded PDF)</span>
-          <select
-            value={documentId}
-            onChange={(e) => setDocumentId(e.target.value)}
-            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none font-mono"
-            data-testid="provenance-document-id"
-          >
-            <option value="">— none —</option>
-            {(pyqDocuments || []).map((d) => {
-              const qCount = docCounts?.get(d.id);
-              return (
-                <option key={d.id} value={d.id}>
-                  {d.original_filename || d.id}
-                  {d.page_count ? ` (${d.page_count}pp)` : ""}
-                  {qCount ? ` · ${qCount} question${qCount === 1 ? "" : "s"}` : ""}
-                </option>
-              );
-            })}
-          </select>
-        </label>
-
-        {/* Source registry entry */}
-        {(pyqSources || []).length > 0 && (
-          <label className="flex flex-col gap-1 text-sm text-gray-700">
-            Source registry entry <span className="text-gray-400 font-normal">(optional)</span>
-            <select
-              value={pyqSourceId}
-              onChange={(e) => setPyqSourceId(e.target.value)}
-              className="mt-1 block w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none"
-              data-testid="provenance-pyq-source-id"
-            >
-              <option value="">— none —</option>
-              {(pyqSources || []).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title || s.source_url || s.id}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <PyqProvenanceFields
+          sourceType={sourceType}
+          onSourceTypeChange={setSourceType}
+          sourceUrl={sourceUrl}
+          onSourceUrlChange={setSourceUrl}
+          documentId={documentId}
+          onDocumentIdChange={setDocumentId}
+          pyqSourceId={pyqSourceId}
+          onPyqSourceIdChange={setPyqSourceId}
+          pyqDocuments={pyqDocuments}
+          pyqSources={pyqSources}
+          docCounts={docCounts}
+        />
 
         {/* Reason */}
         <label className="flex flex-col gap-1 text-sm text-gray-700">
@@ -275,6 +210,9 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const { exam, cycle } = useExamWorkspace();
   const examId = exam?.id;
   const cycleId = cycle?.id ?? null;
+  // A selected cycle may carry a single active phase as provenance; the context
+  // exposes phases as a list, not a single selection, so default to null.
+  const phaseId = cycle?.exam_phase_id ?? null;
 
   const { user } = useAuth();
   const canReview = user?.role === "super_admin" ||
@@ -284,11 +222,12 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
 
   const {
     papers, selectedPaperId, setSelectedPaperId, loading, error,
-    reviewPaper, saveProvenance, getPaperSignedPdf,
+    reviewPaper, saveProvenance, onboardPaper, getPaperSignedPdf,
     fetchPyqDocuments, fetchPyqSources, fetchPaperQuestions,
   } = usePyqWorkbench(examId, cycleId);
 
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showAddPaper, setShowAddPaper] = useState(false);
   const [paperNotFound, setPaperNotFound] = useState(false);
   const [reviewTarget, setReviewTarget] = useState(null); // { paper, targetStatus }
   const [provenanceTarget, setProvenanceTarget] = useState(null); // { paper }
@@ -332,6 +271,17 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
     }).catch(() => {});
   }, [fetchPyqDocuments, fetchPyqSources, fetchPaperQuestions]);
 
+  const openAddPaperModal = useCallback(() => {
+    setShowAddPaper(true);
+    setPyqDocuments([]);
+    setPyqSources([]);
+    setPyqDocCounts(new Map());
+    // Load the exam-scoped picker lists the modal reuses. Independent fetches
+    // so a failure on one optional list does not discard the other.
+    fetchPyqDocuments().then(setPyqDocuments).catch(() => {});
+    fetchPyqSources().then(setPyqSources).catch(() => {});
+  }, [fetchPyqDocuments, fetchPyqSources]);
+
   async function handleReviewSubmit(pid, targetStatus, reason) {
     await reviewPaper(pid, targetStatus, reason);
     setReviewTarget(null);
@@ -367,14 +317,26 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
       <div className="px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-gray-700">PYQ Papers</span>
-          <button
-            type="button"
-            onClick={() => setShowBulkImport(true)}
-            className="text-sm px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 whitespace-nowrap flex-shrink-0"
-            data-testid="bulk-import-btn"
-          >
-            Bulk import questions
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {canEdit && (
+              <button
+                type="button"
+                onClick={openAddPaperModal}
+                className="text-sm px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 whitespace-nowrap"
+                data-testid="add-pyq-paper-btn"
+              >
+                Add PYQ paper
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowBulkImport(true)}
+              className="text-sm px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 whitespace-nowrap"
+              data-testid="bulk-import-btn"
+            >
+              Bulk import questions
+            </button>
+          </div>
         </div>
         {loading && <span className="text-sm text-gray-400">Loading papers…</span>}
         {error && <span className="text-sm text-rose-600" data-testid="pyq-papers-error">{error}</span>}
@@ -384,9 +346,19 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           </span>
         )}
         {!loading && !error && papers.length === 0 && (
-          <span className="text-sm text-gray-500" data-testid="pyq-empty-state">
-            No PYQ papers for this exam. Create one in the CMS.
-          </span>
+          <div className="text-sm text-gray-500 flex flex-col items-start gap-2" data-testid="pyq-empty-state">
+            <span>No PYQ papers for this exam yet.</span>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={openAddPaperModal}
+                className="text-sm px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                data-testid="add-first-pyq-paper-btn"
+              >
+                Add the first PYQ paper
+              </button>
+            )}
+          </div>
         )}
         {pdfError && (
           <p className="text-xs text-rose-600 mt-1" data-testid="pdf-error">{pdfError}</p>
@@ -412,6 +384,9 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
                 const readiness = TRUST_LABEL[p.trust_status] ?? p.trust_status ?? "—";
                 const section = [p.paper_code, p.shift].filter(Boolean).join(" · ") || "—";
                 const provenanceComplete = isPaperProvenanceComplete(p);
+                // OD-3: complete provenance but no reusable source record is an
+                // ADVISORY, not a blocker. Distinct from isPaperProvenanceComplete.
+                const noReusableSource = provenanceComplete && !p.pyq_source_id;
                 return (
                   <tr
                     key={p.id}
@@ -426,7 +401,18 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
                     <td className="py-1.5 pr-4" data-testid={`pyq-paper-row-${p.id}`}>{p.year ?? "—"}</td>
                     <td className="py-1.5 pr-4">{section}</td>
                     <td className="py-1.5 pr-4">{expectedCount}</td>
-                    <td className="py-1.5 pr-4">{readiness}</td>
+                    <td className="py-1.5 pr-4">
+                      {readiness}
+                      {noReusableSource && (
+                        <span
+                          className="ml-2 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 align-middle"
+                          data-testid={`no-source-record-advisory-${p.id}`}
+                          title="This paper has complete provenance but is not linked to a reusable source record."
+                        >
+                          No reusable source record
+                        </span>
+                      )}
+                    </td>
                     <td className="py-1.5" onClick={(e) => e.stopPropagation()}>
                       {canReview && (
                         <>
@@ -555,6 +541,22 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           onSuccess={(pid) => {
             setSelectedPaperId(pid);
             setShowBulkImport(false);
+          }}
+        />
+      )}
+      {showAddPaper && (
+        <AddPyqPaperModal
+          examId={examId}
+          examName={exam?.name}
+          cycleId={cycleId}
+          phaseId={phaseId}
+          pyqDocuments={pyqDocuments}
+          pyqSources={pyqSources}
+          onboardPaper={onboardPaper}
+          onCancel={() => setShowAddPaper(false)}
+          onSuccess={(newPaperId) => {
+            setShowAddPaper(false);
+            if (newPaperId) setSelectedPaperId(newPaperId);
           }}
         />
       )}
