@@ -88,6 +88,25 @@ function ExtractionBadge({ status }) {
 // document_kind, status:"processing", extraction:{}, page_count:null }) on
 // success so the parent can start polling step 4.
 
+// Operator-facing labels must never be a raw UUID. Cycles carry `cycle_name`/
+// `year`; phases carry `phase_name`/`phase_slug` (the context never sets a bare
+// `name`/`label`, which is why these dropdowns used to fall through to `id`).
+const shortId = (id) => (id ? `…${String(id).slice(-6)}` : "");
+function cycleOptionLabel(c) {
+  const name = c.cycle_name ?? c.name ?? c.label;
+  if (name) {
+    const year = c.year != null ? String(c.year) : "";
+    // Prefix the year for context, but avoid "2026 · 2026" when the cycle name
+    // already carries it.
+    return year && !String(name).includes(year) ? `${year} · ${name}` : String(name);
+  }
+  return `Cycle ${shortId(c.id)}`;
+}
+function phaseOptionLabel(p) {
+  const name = p.phase_name ?? p.name ?? p.label ?? p.phase_slug;
+  return name || `Phase ${shortId(p.id)}`;
+}
+
 function UploadForm({ exam, cycles, phases, defaultCycleId, onUploaded }) {
   const [kind, setKind]                   = useState("syllabus");
   const [sourceKind, setSourceKind]       = useState("unknown");
@@ -237,7 +256,7 @@ function UploadForm({ exam, cycles, phases, defaultCycleId, onUploaded }) {
             >
               <option value="">Exam-level (no cycle)</option>
               {cycles.map((c) => (
-                <option key={c.id} value={c.id}>{c.name ?? c.label ?? c.id}</option>
+                <option key={c.id} value={c.id}>{cycleOptionLabel(c)}</option>
               ))}
             </select>
           </label>
@@ -255,7 +274,7 @@ function UploadForm({ exam, cycles, phases, defaultCycleId, onUploaded }) {
             >
               <option value="">No phase</option>
               {phases.map((p) => (
-                <option key={p.id} value={p.id}>{p.name ?? p.label ?? p.id}</option>
+                <option key={p.id} value={p.id}>{phaseOptionLabel(p)}</option>
               ))}
             </select>
           </label>
