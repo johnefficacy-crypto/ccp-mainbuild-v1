@@ -148,10 +148,16 @@ def locked_topic_coverage_summary(supabase: Any, exam_id: str) -> list[dict[str,
 
 
 def verified_pyq_topic_counts(supabase: Any, exam_id: str) -> dict[str, int]:
-    """Return ``{topic_id: verified_pyq_count}`` for ``exam_id``.
+    """Return ``{topic_id: verified_primary_pyq_count}`` for ``exam_id``.
 
-    Only counts PYQ question→topic tags whose ``reviewer_status='verified'``.
-    Joins through ``pyq_papers`` → ``pyq_questions`` → ``pyq_question_topic_tags``.
+    Counts only ``tag_role='primary'`` tags from verified papers/questions.
+    Secondary, trap, calculation_layer, and conceptual_layer associations are
+    intentionally excluded — one question must not inflate a topic's frequency
+    through multiple roles. This is the primary-only frequency contract.
+
+    Joins: ``pyq_papers`` (trust_status='verified') →
+           ``pyq_questions`` (reviewer_status='verified') →
+           ``pyq_question_topic_tags`` (reviewer_status='verified', tag_role='primary').
     """
     if not exam_id:
         return {}
@@ -203,17 +209,20 @@ def verified_pyq_topic_counts(supabase: Any, exam_id: str) -> dict[str, int]:
             .select("question_id, topic_id, reviewer_status, tag_role")
             .in_("question_id", question_ids)
             .eq("reviewer_status", "verified")
+            .eq("tag_role", "primary")   # ← primary-only frequency contract
             .limit(10000)
             .execute()
             .data
         ),
         default=[],
         table="pyq_question_topic_tags",
-        operation="select_verified",
+        operation="select_verified_primary",
     ) or []
 
     counts: dict[str, int] = {}
     for tag in tag_rows:
+        if tag.get("tag_role") != "primary":  # defense-in-depth: primary-only
+            continue
         topic_id = tag.get("topic_id")
         if not topic_id:
             continue
