@@ -302,9 +302,15 @@ class TestReadyToActivate:
         syllabus = [
             {"id": f"s{i}", "exam_id": "exam-1", "reviewer_status": "locked"} for i in range(3)
         ]
-        papers = [{"id": "p1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026"}]
+        # D10: paper must have trust_status="verified" to pass gate 1.
+        papers = [{"id": "p1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026",
+                   "reviewer_status": "verified", "trust_status": "verified"}]
         questions = [
             {"id": f"q{i}", "pyq_paper_id": "p1", "reviewer_status": "verified"} for i in range(5)
+        ]
+        # D10: each question needs at least one verified topic tag (gate 3).
+        topic_tags = [
+            {"id": f"tag{i}", "question_id": f"q{i}", "reviewer_status": "verified"} for i in range(5)
         ]
         comp = [{"id": "c1", "exam_id": "exam-1", "exam_cycle_id": "cycle-2026", "reviewer_status": "reviewed"}]
         docs = [{"id": "d1", "scope": "admin_exam_intelligence",
@@ -319,6 +325,7 @@ class TestReadyToActivate:
             syllabus=syllabus,
             pyq_papers=papers,
             pyq_questions=questions,
+            pyq_question_topic_tags=topic_tags,
             competition=comp,
             documents=docs,
             doc_jobs=doc_jobs,
@@ -377,11 +384,13 @@ class TestCycleIdScoping:
         assert docs_with["metrics"]["total"] == 1
         assert docs_without["metrics"]["total"] == 2
 
-    def test_pyq_scoped_by_cycle(self):
+    def test_pyq_not_scoped_by_cycle(self):
+        # D10: pyq_workbench is ALWAYS exam-wide; cycle_id is provenance context only.
         sb = self._make_cycle_sb()
         result_with = compute_exam_workspace_readiness(sb, "exam-1", "cycle-2026")
         pyq = next(s for s in result_with["sections"] if s["section"] == "pyq_workbench")
-        assert pyq["metrics"]["papers"] == 1
+        # Both papers (cycle-2026 AND cycle-2025) must be counted — NOT just 1.
+        assert pyq["metrics"]["papers"] == 2
 
     def test_competition_scoped_by_cycle(self):
         sb = self._make_cycle_sb()
@@ -882,3 +891,200 @@ class TestDocumentsSectionExtraction:
         result2 = compute_exam_workspace_readiness(sb2, "exam-1")
         sec2 = next(s for s in result2["sections"] if s["section"] == "documents")
         assert sec2["score_percent"] == 80  # ready
+
+
+# ── D10 PYQ workbench tests ───────────────────────────────────────────────────
+
+
+def _verified_paper(paper_id: str, cycle_id: str) -> dict:
+    """Build a pyq_papers row that passes D10 gate 1 (trust_status='verified')."""
+    return {
+        "id": paper_id,
+        "exam_id": "exam-1",
+        "exam_cycle_id": cycle_id,
+        "reviewer_status": "verified",
+        "trust_status": "verified",
+    }
+
+
+def _verified_question(question_id: str, paper_id: str) -> dict:
+    """Build a pyq_questions row that passes D10 gate 2 (reviewer_status='verified')."""
+    return {
+        "id": question_id,
+        "pyq_paper_id": paper_id,
+        "reviewer_status": "verified",
+    }
+
+
+def _verified_tag(tag_id: str, question_id: str) -> dict:
+    """Build a pyq_question_topic_tags row that passes D10 gate 3 (reviewer_status='verified')."""
+    return {
+        "id": tag_id,
+        "question_id": question_id,
+        "reviewer_status": "verified",
+    }
+
+
+class TestPYQWorkbenchD10ExamWide:
+    """D10: pyq_workbench is always exam-wide — cycle_id is provenance context only."""
+
+    def test_pyq_workbench_exam_wide_ignores_cycle_id(self):
+        """Papers from all cycles are counted even when cycle_id is specified.
+
+        Two papers: one from cycle-2026, one from cycle-2025.
+        Both are fully verified (all three D10 gates pass for both).
+        Calling with cycle_id='cycle-2026' must still count both papers.
+        """
+        papers = [
+            _verified_paper("p-2026", "cycle-2026"),
+            _verified_paper("p-2025", "cycle-2025"),
+        ]
+        questions = [
+            _verified_question("q-2026", "p-2026"),
+            _verified_question("q-2025", "p-2025"),
+        ]
+        tags = [
+            _verified_tag("t-2026", "q-2026"),
+            _verified_tag("t-2025", "q-2025"),
+        ]
+        sb = _make_sb(
+            exam=EXAM,
+            pyq_papers=papers,
+            pyq_questions=questions,
+            pyq_question_topic_tags=tags,
+            exam_cycles=[CYCLE_A],
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1", cycle_id="cycle-2026")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+
+        assert pyq["status"] == "ready"
+        # Both papers from both cycles must be counted.
+        assert pyq["metrics"]["papers"] == 2, (
+            "D10: papers_total must be exam-wide (2), not cycle-scoped (1)"
+        )
+        # pyq_readiness sub-object must also report both papers.
+        assert pyq["metrics"]["pyq_readiness"]["papers_total"] == 2
+
+    def test_pyq_workbench_no_cycle_same_as_with_cycle(self):
+        """verified_question_count is identical whether cycle_id is None or provided.
+
+        This is the core D10 invariant: the selected_cycle_id parameter must
+        never change the count of verified questions.
+        """
+        papers = [
+            _verified_paper("p-2026", "cycle-2026"),
+            _verified_paper("p-2025", "cycle-2025"),
+        ]
+        questions = [
+            _verified_question("q-2026", "p-2026"),
+            _verified_question("q-2025", "p-2025"),
+        ]
+        tags = [
+            _verified_tag("t-2026", "q-2026"),
+            _verified_tag("t-2025", "q-2025"),
+        ]
+        sb = _make_sb(
+            exam=EXAM,
+            pyq_papers=papers,
+            pyq_questions=questions,
+            pyq_question_topic_tags=tags,
+            exam_cycles=[CYCLE_A],
+        )
+        result_no_cycle = compute_exam_workspace_readiness(sb, "exam-1", cycle_id=None)
+        result_with_cycle = compute_exam_workspace_readiness(sb, "exam-1", cycle_id="some-cycle")
+
+        pyq_no_cycle = next(s for s in result_no_cycle["sections"] if s["section"] == "pyq_workbench")
+        pyq_with_cycle = next(s for s in result_with_cycle["sections"] if s["section"] == "pyq_workbench")
+
+        count_no_cycle = pyq_no_cycle["metrics"]["pyq_readiness"]["verified_question_count"]
+        count_with_cycle = pyq_with_cycle["metrics"]["pyq_readiness"]["verified_question_count"]
+
+        assert count_no_cycle == count_with_cycle, (
+            f"D10 invariant violated: verified_question_count changed from "
+            f"{count_no_cycle} (no cycle) to {count_with_cycle} (with cycle)"
+        )
+
+    def test_pyq_workbench_three_gate_trust_required_no_tag(self):
+        """Gate 3 missing (no tag) → review_pending → partial status.
+
+        verified paper + verified question + NO tag = partial (review_pending).
+        """
+        papers = [_verified_paper("p1", "cycle-2026")]
+        questions = [_verified_question("q1", "p1")]
+        # No topic tags at all — gate 3 fails for q1.
+        sb = _make_sb(
+            exam=EXAM,
+            pyq_papers=papers,
+            pyq_questions=questions,
+            pyq_question_topic_tags=[],
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+
+        # D10 state: review_pending (gates 1+2 pass but gate 3 fails) → legacy "partial".
+        assert pyq["status"] == "partial", (
+            "No tag means gate 3 fails; D10 state=review_pending maps to legacy partial"
+        )
+        ev = pyq["metrics"]["pyq_readiness"]
+        assert ev["verified_question_count"] == 0
+        assert ev["questions_eligible_before_tag_gate"] == 1  # cleared gates 1+2
+        assert ev["state"] == "review_pending"
+
+    def test_pyq_workbench_three_gate_pending_question(self):
+        """Gate 2 missing (question not verified) → review_pending → partial status.
+
+        verified paper + PENDING question + verified tag = partial (review_pending).
+        Gate 2 fails (reviewer_status != 'verified'), so question never reaches gate 3.
+        """
+        papers = [_verified_paper("p1", "cycle-2026")]
+        questions = [
+            {
+                "id": "q1",
+                "pyq_paper_id": "p1",
+                "reviewer_status": "pending",  # gate 2 fails
+            }
+        ]
+        tags = [_verified_tag("t1", "q1")]
+        sb = _make_sb(
+            exam=EXAM,
+            pyq_papers=papers,
+            pyq_questions=questions,
+            pyq_question_topic_tags=tags,
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+
+        assert pyq["status"] == "partial", (
+            "Pending question fails gate 2; D10 state=review_pending maps to legacy partial"
+        )
+        ev = pyq["metrics"]["pyq_readiness"]
+        assert ev["verified_question_count"] == 0
+        assert ev["pending_question_count"] == 1
+        assert ev["state"] == "review_pending"
+
+    def test_pyq_workbench_metrics_pyq_readiness_exposed(self):
+        """After D10 fix, metrics['pyq_readiness'] must exist and carry scope='exam_wide'."""
+        papers = [_verified_paper("p1", "cycle-2026")]
+        questions = [_verified_question("q1", "p1")]
+        tags = [_verified_tag("t1", "q1")]
+        sb = _make_sb(
+            exam=EXAM,
+            pyq_papers=papers,
+            pyq_questions=questions,
+            pyq_question_topic_tags=tags,
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+
+        assert "pyq_readiness" in pyq["metrics"], (
+            "D10: metrics['pyq_readiness'] key must be present in pyq_workbench section"
+        )
+        ev = pyq["metrics"]["pyq_readiness"]
+        assert ev["scope"] == "exam_wide", (
+            f"D10: scope must be 'exam_wide', got {ev['scope']!r}"
+        )
+        # Legacy status vocabulary is still returned at the section level.
+        assert pyq["status"] in {"empty", "partial", "ready"}, (
+            "Legacy status vocab (empty/partial/ready) must be returned — not 'locked' "
+            "or raw D10 state names"
+        )

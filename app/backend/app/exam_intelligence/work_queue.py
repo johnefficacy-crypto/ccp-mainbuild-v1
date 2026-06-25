@@ -34,6 +34,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable
 
 from app.db.utils import execute_or_raise
+from app.exam_intelligence.pyq_readiness import aggregate_pyq_evidence_batch
 
 # ── Constants (grounded in source) ──────────────────────────────────────────
 # Review-queue staleness threshold. Mirrors
@@ -236,7 +237,7 @@ def aggregate(sb, exams: list[dict[str, Any]], *, include_details: bool = False)
                       "exam_policy_updates", r.get("id"))
 
     # ── PYQ: papers → questions → tags/options. Three-gate verified count. ──
-    papers = _batch_paged(sb, "pyq_papers", "exam_id", exam_ids, "id, exam_id, trust_status")
+    papers = _batch_paged(sb, "pyq_papers", "exam_id", exam_ids, "id, exam_id, trust_status, exam_cycle_id")
     paper_exam = {p["id"]: p.get("exam_id") for p in papers if p.get("id")}
     verified_paper_ids = {p["id"] for p in papers if p.get("trust_status") == "verified"}
     paper_ids = list(paper_exam.keys())
@@ -245,6 +246,7 @@ def aggregate(sb, exams: list[dict[str, Any]], *, include_details: bool = False)
     # Questions that clear gates 1+2 (verified paper + verified question), pending
     # only the verified-tag gate; resolved after the tag read.
     verified_eligible: dict[str, str] = {}
+    all_questions: list[dict] = []
     if paper_ids:
         for r in _batch_paged(sb, "pyq_questions", "pyq_paper_id", paper_ids,
                               "id, pyq_paper_id, reviewer_status, created_at"):
@@ -254,18 +256,17 @@ def aggregate(sb, exams: list[dict[str, Any]], *, include_details: bool = False)
                 continue
             qid = r.get("id")
             question_exam[qid] = exam_id
-            slot["total_pyq_count"] += 1
+            all_questions.append(r)
             if r.get("reviewer_status") == "verified" and r.get("pyq_paper_id") in verified_paper_ids:
                 verified_eligible[qid] = exam_id
             _bump_pending(exam_id, r.get("reviewer_status"), r.get("created_at"), "pyq_questions", qid)
 
     question_ids = list(question_exam.keys())
-    verified_tag_qids: set[str] = set()
+    all_tags: list[dict] = []
     if question_ids:
         for r in _batch_paged(sb, "pyq_question_topic_tags", "question_id", question_ids,
                               "id, question_id, reviewer_status, created_at"):
-            if r.get("reviewer_status") == "verified" and r.get("question_id") in verified_eligible:
-                verified_tag_qids.add(r.get("question_id"))
+            all_tags.append(r)
             _bump_pending(question_exam.get(r.get("question_id")), r.get("reviewer_status"),
                           r.get("created_at"), "pyq_question_topic_tags", r.get("id"))
         for r in _batch_paged(sb, "pyq_options", "question_id", question_ids,
@@ -273,10 +274,11 @@ def aggregate(sb, exams: list[dict[str, Any]], *, include_details: bool = False)
             _bump_pending(question_exam.get(r.get("question_id")), r.get("reviewer_status"),
                           r.get("created_at"), "pyq_options", r.get("id"))
 
-    # Gate 3: only questions with ≥1 verified tag count — distinct per question.
-    for qid, exam_id in verified_eligible.items():
-        if qid in verified_tag_qids:
-            agg[exam_id]["verified_pyq_count"] += 1
+    # Delegate three-gate verified count and total to the shared batch aggregator.
+    pyq_batch = aggregate_pyq_evidence_batch(papers=papers, questions=all_questions, topic_tags=all_tags)
+    for eid in exam_ids:
+        agg[eid]["verified_pyq_count"] = pyq_batch.get(eid, {}).get("verified_question_count", 0)
+        agg[eid]["total_pyq_count"] = pyq_batch.get(eid, {}).get("questions_total", 0)
 
     return agg
 
