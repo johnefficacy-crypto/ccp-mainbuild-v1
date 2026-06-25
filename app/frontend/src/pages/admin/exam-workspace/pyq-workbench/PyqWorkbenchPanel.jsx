@@ -382,7 +382,6 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
                 return (
                   <tr
                     key={p.id}
-                    data-testid={`pyq-paper-row-${p.id}`}
                     onClick={() => setSelectedPaperId(p.id)}
                     style={{
                       cursor: "pointer",
@@ -391,7 +390,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
                     }}
                     className="border-b border-gray-100 hover:bg-indigo-50 transition-colors"
                   >
-                    <td className="py-1.5 pr-4">{p.year ?? "—"}</td>
+                    <td className="py-1.5 pr-4" data-testid={`pyq-paper-row-${p.id}`}>{p.year ?? "—"}</td>
                     <td className="py-1.5 pr-4">{section}</td>
                     <td className="py-1.5 pr-4">{expectedCount}</td>
                     <td className="py-1.5 pr-4">{readiness}</td>
