@@ -492,12 +492,11 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     setListError("");
     try {
       const qs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
-      if (cycle?.id) qs.set("cycle_id", cycle.id);
+      if (cycle?.id) qs.set("exam_cycle_id", cycle.id);
       const docQs = new URLSearchParams({ exam_id: exam.id, document_kind: "pyq_paper", limit: "200" });
-      const [sylResult, pyqResult, pyqDocResult] = await Promise.all([
+      const [sylResult, pyqResult] = await Promise.all([
         api.get(`${CMS}/syllabus-documents?${qs}`),
         api.get(`${CMS}/pyq-papers?${qs}`),
-        api.get(`${DOC_BASE}?${docQs}`).catch(() => null),
       ]);
       setDocs(sylResult?.items   || sylResult   || []);
       setPapers(pyqResult?.items || pyqResult   || []);
@@ -505,6 +504,12 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
       // pyq_paper) and not failed. Processed-but-unlinked docs must stay visible
       // so the operator can still link them. Linked docs are already shown in the
       // linked-docs table and must not re-appear here.
+      let pyqDocResult = null;
+      try {
+        pyqDocResult = await api.get(`${DOC_BASE}?${docQs}`);
+      } catch (docErr) {
+        setListError(docErr?.message || "Failed to load document recovery list");
+      }
       const rawPayload = pyqDocResult?.items ?? pyqDocResult;
       const backendDocs = Array.isArray(rawPayload) ? rawPayload : [];
       const linkedDocIds = new Set(
@@ -575,7 +580,7 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     if (doc.document_kind === "pyq_paper") {
       try {
         const qs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
-        if (cycle?.id) qs.set("cycle_id", cycle.id);
+        if (cycle?.id) qs.set("exam_cycle_id", cycle.id);
         const r = await api.get(`${CMS}/pyq-papers?${qs}`);
         setPyqPapers(r?.items || r || []);
       } catch {

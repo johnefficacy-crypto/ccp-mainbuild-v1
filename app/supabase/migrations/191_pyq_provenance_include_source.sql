@@ -75,10 +75,24 @@ BEGIN
         'pyq_source_id',      v_paper.pyq_source_id
     );
 
-    -- When source_document_id is being set to a non-null value, lock and
-    -- validate the document_assets row inside this transaction.
-    IF (p_patch ? 'source_document_id') AND (p_patch->>'source_document_id') IS NOT NULL THEN
-        v_doc_id   := (p_patch->>'source_document_id')::uuid;
+    -- Compute merged provenance (locked current values overridden by patch)
+    -- before any validation so every check uses the authoritative merged state.
+    v_merged_source_type        := CASE WHEN p_patch ? 'source_type'
+                                        THEN p_patch->>'source_type'
+                                        ELSE v_paper.source_type        END;
+    v_merged_source_url         := CASE WHEN p_patch ? 'source_url'
+                                        THEN p_patch->>'source_url'
+                                        ELSE v_paper.source_url         END;
+    v_merged_source_document_id := CASE WHEN p_patch ? 'source_document_id'
+                                        THEN (p_patch->>'source_document_id')::uuid
+                                        ELSE v_paper.source_document_id END;
+
+    -- Validate the merged source_document_id regardless of whether it came
+    -- from the patch or the locked row.  A document that was valid during
+    -- Python's pre-check may have been archived/failed by a concurrent writer
+    -- before this RPC acquired the lock; the FOR UPDATE here catches that race.
+    IF v_merged_source_document_id IS NOT NULL THEN
+        v_doc_id   := v_merged_source_document_id;
         v_blocking := ARRAY[]::text[];
 
         SELECT * INTO v_doc
@@ -141,30 +155,27 @@ BEGIN
         END IF;
     END IF;
 
-    -- Compute merged provenance (locked current values overridden by patch)
-    -- and enforce the completeness gate under the lock.
-    v_merged_source_type        := CASE WHEN p_patch ? 'source_type'
-                                        THEN p_patch->>'source_type'
-                                        ELSE v_paper.source_type        END;
-    v_merged_source_url         := CASE WHEN p_patch ? 'source_url'
-                                        THEN p_patch->>'source_url'
-                                        ELSE v_paper.source_url         END;
-    v_merged_source_document_id := CASE WHEN p_patch ? 'source_document_id'
-                                        THEN (p_patch->>'source_document_id')::uuid
-                                        ELSE v_paper.source_document_id END;
-
-    -- Gate: source_type must be non-null and not 'unknown'; at least one of
-    -- source_url or source_document_id must be present.
+    -- Gate: source_type must be non-null, non-empty (after trim), and not 'unknown';
+    -- at least one anchor (source_url with non-blank content or source_document_id)
+    -- must be present.  Trim semantics match the Python pre-check so a concurrent
+    -- PATCH replacing a valid value with a blank string is caught under the lock.
     IF NOT (
         v_merged_source_type IS NOT NULL
+        AND trim(v_merged_source_type) != ''
         AND v_merged_source_type != 'unknown'
-        AND (v_merged_source_url IS NOT NULL OR v_merged_source_document_id IS NOT NULL)
+        AND (
+            (v_merged_source_url IS NOT NULL AND trim(v_merged_source_url) != '')
+            OR v_merged_source_document_id IS NOT NULL
+        )
     ) THEN
         v_blocking := ARRAY[]::text[];
-        IF v_merged_source_type IS NULL OR v_merged_source_type = 'unknown' THEN
+        IF v_merged_source_type IS NULL
+           OR trim(v_merged_source_type) = ''
+           OR v_merged_source_type = 'unknown' THEN
             v_blocking := array_append(v_blocking, 'source_type');
         END IF;
-        IF v_merged_source_url IS NULL AND v_merged_source_document_id IS NULL THEN
+        IF (v_merged_source_url IS NULL OR trim(v_merged_source_url) = '')
+           AND v_merged_source_document_id IS NULL THEN
             v_blocking := array_append(v_blocking, 'source_url');
         END IF;
         RAISE EXCEPTION 'provenance_incomplete: blocking_fields=%',

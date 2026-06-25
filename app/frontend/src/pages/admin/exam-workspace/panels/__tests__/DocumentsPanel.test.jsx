@@ -27,15 +27,11 @@ jest.mock("../../../../../lib/api", () => ({
 }));
 
 jest.mock("../../ExamWorkspaceContext", () => ({
-  useExamWorkspace: () => ({
-    exam:   { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" },
-    cycle:  null,
-    cycles: [{ id: "cy-1", exam_id: "exam-1", year: 2026, cycle_name: "2026" }],
-    phases: [],
-  }),
+  useExamWorkspace: jest.fn(),
 }));
 
 const { api } = require("../../../../../lib/api");
+const { useExamWorkspace: mockUseExamWorkspace } = require("../../ExamWorkspaceContext");
 const DocumentsPanel = require("../DocumentsPanel").default;
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -72,6 +68,12 @@ function renderPanel(props = {}) {
 beforeEach(() => {
   jest.resetAllMocks();
   global.fetch = jest.fn(() => Promise.resolve({ ok: true, status: 200 }));
+  mockUseExamWorkspace.mockReturnValue({
+    exam:   { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" },
+    cycle:  null,
+    cycles: [{ id: "cy-1", exam_id: "exam-1", year: 2026, cycle_name: "2026" }],
+    phases: [],
+  });
 });
 
 // ── 1. Loading state ──────────────────────────────────────────────────────────
@@ -391,4 +393,45 @@ test("processed pyq_paper doc already linked to a paper is excluded from inFligh
   // No inFlight row for the linked doc; panel shows docs-populated because of the linked paper
   await waitFor(() => screen.getByTestId("docs-populated"));
   expect(screen.queryByTestId("inflight-row-doc-already-linked")).toBeNull();
+});
+
+// ── 11. Active cycle scoping uses exam_cycle_id ───────────────────────────────
+
+test("active cycle: load() passes exam_cycle_id (not cycle_id) to syllabus-documents and pyq-papers", async () => {
+  mockUseExamWorkspace.mockReturnValue({
+    exam:   { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" },
+    cycle:  { id: "cy-1" },
+    cycles: [{ id: "cy-1", exam_id: "exam-1", year: 2026, cycle_name: "2026" }],
+    phases: [],
+  });
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers"))         return Promise.resolve({ items: [] });
+    return Promise.resolve({ items: [] });
+  });
+  renderPanel();
+  await waitFor(() => screen.getByTestId("docs-empty"));
+
+  const sylCall = api.get.mock.calls.find((c) => c[0].includes("syllabus-documents"));
+  expect(sylCall[0]).toContain("exam_cycle_id=cy-1");
+  // Regex checks [?&]cycle_id= (not preceded by "exam_") — guards the old broken param name.
+  expect(sylCall[0]).not.toMatch(/[?&]cycle_id=/);
+
+  const pyqCall = api.get.mock.calls.find((c) => c[0].includes("pyq-papers?"));
+  expect(pyqCall[0]).toContain("exam_cycle_id=cy-1");
+  expect(pyqCall[0]).not.toMatch(/[?&]cycle_id=/);
+});
+
+// ── 12. Document recovery failure surfaces as list error ──────────────────────
+
+test("document recovery fetch failure is surfaced as list error, not swallowed", async () => {
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers"))         return Promise.resolve({ items: [] });
+    if (url.includes("documents?"))         return Promise.reject(new Error("storage unavailable"));
+    return Promise.resolve({ items: [] });
+  });
+  renderPanel();
+  await waitFor(() => screen.getByTestId("docs-list-error"));
+  expect(screen.getByTestId("docs-list-error").textContent).toMatch(/storage unavailable/i);
 });

@@ -780,13 +780,20 @@ describe("PyqWorkbenchPanel — provenance gate + PaperProvenanceModal", () => {
     expect(optionTexts.some((t) => t === "doc-uuid-1")).toBe(false);
   });
 
-  // Test 16
-  test("saving provenance calls POST /set-provenance with correct payload", async () => {
+  // Test 16 — diff-based payload: only changed fields are sent.
+  // Paper starts with source_type=null, source_url=null; user sets both.
+  // Both must appear in the payload because both are genuine changes.
+  test("saving provenance calls POST /set-provenance with changed fields in payload", async () => {
+    const PAPER_NO_TYPE_NO_URL = [{
+      id: "p-no-type-url", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+      source_type: null, source_url: null,
+      source_document_id: null, pyq_source_id: null,
+    }];
     api.post.mockResolvedValue({ ok: true, audit_id: "a1", demoted_from_verified: false });
-    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    mockApiForProvenance(PAPER_NO_TYPE_NO_URL);
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-no-type"));
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-no-type-url")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-no-type-url"));
     await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
 
     fireEvent.change(screen.getByTestId("provenance-source-type"), { target: { value: "official" } });
@@ -902,6 +909,65 @@ describe("PyqWorkbenchPanel — provenance gate + PaperProvenanceModal", () => {
     await waitFor(() => expect(screen.getByTestId("replace-doc-btn-p-with-doc")).toBeTruthy());
     fireEvent.click(screen.getByTestId("replace-doc-btn-p-with-doc"));
     await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+  });
+
+  // P1-3 regressions: diff-based payload
+  test("no-op save on verified paper shows 'No changes to save.' without calling api.post", async () => {
+    const VERIFIED_COMPLETE = [{
+      id: "p-ver-noop", exam_id: EXAM_ID, year: 2023, trust_status: "verified",
+      source_type: "official", source_url: "https://upsc.gov.in/2023.pdf",
+      source_document_id: null, pyq_source_id: null,
+    }];
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForProvenance(VERIFIED_COMPLETE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("attach-doc-btn-p-ver-noop")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("attach-doc-btn-p-ver-noop"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("provenance-reason"), {
+      target: { value: "no actual changes being made here" },
+    });
+    fireEvent.click(screen.getByTestId("provenance-submit"));
+
+    await waitFor(() => expect(screen.getByTestId("provenance-error")).toBeTruthy());
+    expect(screen.getByTestId("provenance-error").textContent).toContain("No changes to save");
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  test("clearing source_type sends source_type: null in payload", async () => {
+    // Paper has source_type="official" but no anchor → confirm-provenance-btn shows.
+    // User opens modal (source_type initialises to "official"), clears it,
+    // and submits — payload must include source_type: null.
+    const PAPER_WITH_TYPE_INCOMPLETE = [{
+      id: "p-clear-type", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+      source_type: "official",   // pre-populated; user will clear it
+      source_url: null,          // no anchor → incomplete provenance
+      source_document_id: null, pyq_source_id: null,
+    }];
+    api.post.mockResolvedValue({ ok: true, audit_id: "a-clear", demoted_from_verified: false });
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForProvenance(PAPER_WITH_TYPE_INCOMPLETE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-clear-type")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-clear-type"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+
+    // source_type is pre-filled with "official"; clear it to ""
+    fireEvent.change(screen.getByTestId("provenance-source-type"), { target: { value: "" } });
+    fireEvent.change(screen.getByTestId("provenance-reason"), {
+      target: { value: "clearing source type explicitly" },
+    });
+    fireEvent.click(screen.getByTestId("provenance-submit"));
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/set-provenance"),
+        expect.objectContaining({
+          payload: expect.objectContaining({ source_type: null }),
+        }),
+      ),
+    );
   });
 });
 

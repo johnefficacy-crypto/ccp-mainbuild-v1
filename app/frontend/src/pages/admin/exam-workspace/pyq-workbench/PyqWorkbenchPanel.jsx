@@ -131,14 +131,15 @@ function PaperProvenanceModal({ paper, onCancel, onSubmit, pyqDocuments, pyqSour
   async function handleSubmit(e) {
     e.preventDefault();
     if (reason.trim().length < 8) { setErr("Reason must be at least 8 characters."); return; }
+    const newSourceType = sourceType || null;
+    const newSourceUrl  = sourceUrl.trim() || null;
+    const newDocId      = documentId || null;
+    const newPyqSrcId   = pyqSourceId || null;
     const payload = {};
-    if (sourceType) payload.source_type = sourceType;
-    if (sourceUrl.trim()) payload.source_url = sourceUrl.trim();
-    else if (paper.source_url) payload.source_url = null;
-    if (documentId) payload.source_document_id = documentId;
-    else if (paper.source_document_id) payload.source_document_id = null;
-    if (pyqSourceId) payload.pyq_source_id = pyqSourceId;
-    else if (paper.pyq_source_id) payload.pyq_source_id = null;
+    if (newSourceType !== (paper.source_type        || null)) payload.source_type         = newSourceType;
+    if (newSourceUrl  !== (paper.source_url         || null)) payload.source_url          = newSourceUrl;
+    if (newDocId      !== (paper.source_document_id || null)) payload.source_document_id  = newDocId;
+    if (newPyqSrcId   !== (paper.pyq_source_id      || null)) payload.pyq_source_id       = newPyqSrcId;
     if (Object.keys(payload).length === 0) { setErr("No changes to save."); return; }
     setSubmitting(true);
     setErr(null);

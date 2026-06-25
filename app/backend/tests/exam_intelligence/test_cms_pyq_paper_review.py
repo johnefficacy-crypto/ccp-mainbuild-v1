@@ -27,7 +27,15 @@ from fastapi.testclient import TestClient
 
 from app.api import admin_exam_intel_cms as cms_api
 from app.core.auth import get_current_user
-from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub, _AuditFailSBStub, _SetProvenanceDocRaceSBStub
+from tests.exam_intelligence.test_cms_taxonomy import (
+    TaxSBStub,
+    _AuditFailSBStub,
+    _SetProvenanceDocRaceSBStub,
+    _SetProvenanceBlankSourceTypeRaceSBStub,
+    _SetProvenanceWhitespaceSourceUrlRaceSBStub,
+    _SetProvenanceRetainedDocArchiveRaceSBStub,
+    _SetProvenanceUnpatchedFieldChangeSBStub,
+)
 
 _BASE = "/api/admin/exam-intelligence-cms"
 
@@ -1091,3 +1099,123 @@ def test_set_provenance_audit_includes_pyq_source_id_in_previous_provenance():
     prev = logs[0]["new_value"]["previous_provenance"]
     assert "pyq_source_id" in prev, "previous_provenance must include pyq_source_id"
     assert prev["pyq_source_id"] == "src-1"
+
+
+# ── P1-1 regression: trim semantics in RPC gate ───────────────────────────────
+
+
+def test_set_provenance_blank_source_type_under_lock_is_422():
+    """If a concurrent writer blanks source_type after Python's pre-check,
+    the RPC gate must reject the blank string (trim semantics)."""
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": "https://upsc.gov.in/2024.pdf",
+            "source_type": "official",   # valid when Python checks; blanked by race stub
+            "source_document_id": None, "pyq_source_id": None,
+        }],
+        "admin_audit_logs": [],
+    }
+    sb = _SetProvenanceBlankSourceTypeRaceSBStub(db)
+    # Patch does not include source_type — the gate uses the locked row's value.
+    r = _client(sb, _CMS_ONLY).post(
+        f"{_BASE}/pyq-papers/p1/set-provenance",
+        json={"reason": "updating source url only", "payload": {"source_url": "https://upsc.gov.in/v2.pdf"}},
+    )
+    assert r.status_code == 422, r.text
+    detail = str(r.json().get("detail", ""))
+    assert "provenance_incomplete" in detail
+    assert "source_type" in detail
+
+
+def test_set_provenance_whitespace_source_url_under_lock_is_422():
+    """If a concurrent writer replaces source_url with whitespace after Python's
+    pre-check, the RPC gate must reject the whitespace-only URL (trim semantics)."""
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": "https://upsc.gov.in/2024.pdf",   # valid when Python checks
+            "source_type": "official",
+            "source_document_id": None, "pyq_source_id": None,
+        }],
+        "admin_audit_logs": [],
+    }
+    sb = _SetProvenanceWhitespaceSourceUrlRaceSBStub(db)
+    # Patch does not include source_url — the gate uses the (now-whitespace) locked row's value.
+    # Use a valid source_type so Python's pre-RPC validation passes; the race is inside the RPC.
+    r = _client(sb, _CMS_ONLY).post(
+        f"{_BASE}/pyq-papers/p1/set-provenance",
+        json={"reason": "updating source type only", "payload": {"source_type": "memory_based"}},
+    )
+    assert r.status_code == 422, r.text
+    detail = str(r.json().get("detail", ""))
+    assert "provenance_incomplete" in detail
+    assert "source_url" in detail
+
+
+def test_set_provenance_retained_doc_archived_concurrently_is_422():
+    """If the retained source_document_id (not in the patch) is archived between
+    Python's pre-check and the RPC lock, the RPC must re-validate it and reject."""
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": None,
+            "source_type": "official",
+            "source_document_id": "doc-1",   # retained, not in patch
+            "pyq_source_id": None,
+        }],
+        "document_assets": [dict(_VALID_DOC)],
+        "admin_audit_logs": [],
+    }
+    sb = _SetProvenanceRetainedDocArchiveRaceSBStub(db)
+    # Patch changes source_type only; source_document_id is retained from the locked row.
+    # Use a valid source_type so Python's pre-RPC validation passes; the archive race fires inside the RPC.
+    r = _client(sb, _CMS_ONLY).post(
+        f"{_BASE}/pyq-papers/p1/set-provenance",
+        json={"reason": "attaching source registry entry", "payload": {"source_type": "memory_based"}},
+    )
+    assert r.status_code == 422, r.text
+    detail = str(r.json().get("detail", ""))
+    assert "provenance_incomplete" in detail
+    assert "source_document_id_bad_status" in detail
+    assert db["pyq_papers"][0].get("trust_status") == "pending"
+    assert len(db["admin_audit_logs"]) == 0
+
+
+# ── P1-2 regression: response row reflects concurrent unpatched-field change ──
+
+
+def test_set_provenance_response_row_is_authoritative_after_rpc():
+    """The response row must come from a re-select after the RPC, not from
+    {**existing, **patch}.  A concurrent write to an unpatched field must appear
+    in the response."""
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": "https://upsc.gov.in/2024.pdf",
+            "source_type": "official",   # unpatched; race stub changes this to "unofficial"
+            "source_document_id": None, "pyq_source_id": None,
+        }],
+        "admin_audit_logs": [],
+    }
+    sb = _SetProvenanceUnpatchedFieldChangeSBStub(db)
+    r = _client(sb, _CMS_ONLY).post(
+        f"{_BASE}/pyq-papers/p1/set-provenance",
+        json={
+            "reason": "updating source url to v2",
+            "payload": {"source_url": "https://upsc.gov.in/v2.pdf"},
+        },
+    )
+    assert r.status_code == 200, r.text
+    row = r.json().get("row", {})
+    # The re-select must see the concurrent source_type change.
+    assert row.get("source_type") == "unofficial", (
+        "response row must reflect concurrent write to unpatched field, "
+        f"got source_type={row.get('source_type')!r}"
+    )
+    # The patched field must also be present.
+    assert row.get("source_url") == "https://upsc.gov.in/v2.pdf"

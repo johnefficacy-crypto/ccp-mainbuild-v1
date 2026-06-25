@@ -938,11 +938,18 @@ def set_pyq_paper_provenance(
             detail="Provenance update failed; no change was recorded.",
         ) from exc
     rpc = rpc_data or {}
+    # Re-select the paper after the RPC so the response row is always authoritative.
+    # Using the pre-lock `existing` snapshot would expose any concurrent field change
+    # to an unpatched column as stale data in the caller's UI.
+    paper_after = _safe_select(supabase, "pyq_papers", id=paper_id)
     return {
         "ok": True,
         "audit_id": rpc.get("audit_id"),
         "demoted_from_verified": rpc.get("demoted_from_verified", False),
-        "row": {**existing, **patch, "trust_status": rpc.get("trust_status_after", existing.get("trust_status"))},
+        "row": paper_after if paper_after is not None else {
+            **existing, **patch,
+            "trust_status": rpc.get("trust_status_after", existing.get("trust_status")),
+        },
     }
 
 
