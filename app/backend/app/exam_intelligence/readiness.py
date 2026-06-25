@@ -13,7 +13,7 @@ CYCLE_ID SEMANTICS
 
   Cycle-scoped sections (cycle_id filters when provided; else all cycles):
     documents      — document_processing_jobs (text_extract) for exam_id [+ cycle_id]
-    pyq_workbench  — pyq_papers + pyq_questions for exam_id [+ cycle_id]
+    pyq_workbench  — pyq_papers + pyq_questions + pyq_question_topic_tags for exam_id (always exam-wide; cycle_id is provenance context only)
     competition    — exam_competition_metrics for exam_id [+ cycle_id]
 
   review_activate — derived rollup of the above 6 sections (weight=0).
@@ -30,6 +30,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.db.utils import execute_or_raise
+from app.exam_intelligence.pyq_readiness import aggregate_pyq_evidence
 
 logger = logging.getLogger("career_copilot.exam_intelligence.readiness")
 
@@ -365,115 +366,175 @@ def _topic_coverage_snapshot(sb, exam_id: str, cycle_id: str | None) -> dict:
 
 
 def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
-    papers_q = sb.table("pyq_papers").select("id, exam_cycle_id").eq("exam_id", exam_id)
-    if cycle_id:
-        papers_q = papers_q.eq("exam_cycle_id", cycle_id)
-    papers = _safe(lambda: papers_q.limit(500).execute().data, default=[]) or []
-    paper_count = len(papers)
+    # D10: fetch ALL papers for exam_id — NO cycle filter whatsoever.
+    # Full pagination + failure tracking (fail-soft: degrade, not crash).
+    _PAGE = 500
+    _read_failed = False
 
-    if paper_count == 0:
-        return {
-            "section": "pyq_workbench",
-            "label": "PYQ Workbench",
-            "status": "empty",
-            "score_percent": 0,
-            "weight": 3,
-            "blockers": ["no PYQ papers uploaded"],
-            "counts": {"present": 0, "required": 1},
-            "metrics": {"papers": 0, "questions_total": 0, "questions_verified": 0, "questions_locked": 0, "options_total": 0, "topic_tags_total": 0},
-        }
+    def _paged(make_query, label):
+        nonlocal _read_failed
+        out: list[dict] = []
+        start = 0
+        while True:
+            try:
+                page = make_query().order("id").range(start, start + _PAGE - 1).execute().data or []
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("pyq_workbench read failed (%s): %s", label, exc)
+                _read_failed = True
+                return out
+            out.extend(page)
+            if len(page) < _PAGE:
+                break
+            start += _PAGE
+        return out
 
-    paper_ids = [p["id"] for p in papers]
-    # Fetch questions for these papers in chunks to avoid URL length limits
-    all_questions = []
-    chunk = 100
-    for i in range(0, len(paper_ids), chunk):
-        batch = paper_ids[i : i + chunk]
-        qs = _safe(
+    papers = _paged(
+        lambda: sb.table("pyq_papers").select("id, exam_cycle_id, trust_status").eq("exam_id", exam_id),
+        "papers",
+    )
+
+    paper_ids = [p["id"] for p in papers if p.get("id")]
+
+    # Fetch all questions in chunks (URL-length safety) with pagination inside each chunk.
+    all_questions: list[dict] = []
+    for i in range(0, len(paper_ids), 100):
+        batch = paper_ids[i : i + 100]
+        all_questions.extend(_paged(
             lambda b=batch: (
                 sb.table("pyq_questions")
                 .select("id, pyq_paper_id, reviewer_status")
                 .in_("pyq_paper_id", b)
-                .limit(20000)
-                .execute()
-                .data
             ),
-            default=[],
-        ) or []
-        all_questions.extend(qs)
-
-    questions_total = len(all_questions)
-    questions_verified = sum(1 for q in all_questions if q.get("reviewer_status") in {"verified", "locked"})
-    questions_locked = sum(1 for q in all_questions if q.get("reviewer_status") == "locked")
-    questions_pending = sum(1 for q in all_questions if q.get("reviewer_status") in {"pending", "needs_correction"})
+            "questions",
+        ))
 
     question_ids = [q["id"] for q in all_questions if q.get("id")]
-    options_total = 0
-    topic_tags_total = 0
-    if question_ids:
-        # Use count-only queries (no row data) in larger batches to minimise round trips
-        for i in range(0, len(question_ids), 500):
-            batch = question_ids[i : i + 500]
-            opts_count = _safe(
-                lambda b=batch: (
-                    sb.table("pyq_options")
-                    .select("id", count="exact")
-                    .in_("question_id", b)
-                    .limit(0)
-                    .execute()
-                    .count
-                ),
-                default=0,
-            ) or 0
-            options_total += opts_count
-            tags_count = _safe(
-                lambda b=batch: (
-                    sb.table("pyq_question_topic_tags")
-                    .select("id", count="exact")
-                    .in_("question_id", b)
-                    .limit(0)
-                    .execute()
-                    .count
-                ),
-                default=0,
-            ) or 0
-            topic_tags_total += tags_count
 
-    papers_with_no_questions = sum(
-        1 for p in papers
-        if not any(q["pyq_paper_id"] == p["id"] for q in all_questions)
+    # Fetch all topic tags in chunks (needed for gate 3).
+    all_topic_tags: list[dict] = []
+    for i in range(0, len(question_ids), 100):
+        batch = question_ids[i : i + 100]
+        all_topic_tags.extend(_paged(
+            lambda b=batch: (
+                sb.table("pyq_question_topic_tags")
+                .select("id, question_id, reviewer_status")
+                .in_("question_id", b)
+            ),
+            "topic_tags",
+        ))
+
+    # topic_tags_total is available directly from loaded rows.
+    topic_tags_total = len(all_topic_tags)
+
+    # Restore options_total count-only query (fail-soft, not required for trust gates).
+    options_total = 0
+    for i in range(0, len(question_ids), 500):
+        batch = question_ids[i : i + 500]
+        cnt = _safe(
+            lambda b=batch: (
+                sb.table("pyq_options")
+                .select("id", count="exact")
+                .in_("question_id", b)
+                .limit(0)
+                .execute()
+                .count
+            ),
+            default=0,
+        ) or 0
+        options_total += cnt
+
+    # Delegate all readiness logic to the D10 canonical aggregator.
+    ev = aggregate_pyq_evidence(
+        papers=papers,
+        questions=all_questions,
+        topic_tags=all_topic_tags,
+        selected_cycle_id=cycle_id,
     )
 
-    if questions_total == 0:
-        status = "partial"  # papers exist but no questions
-    elif questions_locked == questions_total and questions_total > 0:
-        status = "locked"
-    elif questions_total > 0 and questions_verified / questions_total >= 0.5:
-        status = "ready"
-    else:
-        status = "partial"
+    # If any required read failed, override state to "failed".
+    if _read_failed:
+        ev = {**ev, "state": "failed"}
 
-    blockers = []
-    if papers_with_no_questions > 0:
-        blockers.append(f"{papers_with_no_questions} paper{'s' if papers_with_no_questions != 1 else ''} with 0 questions")
-    if questions_pending > 0:
-        blockers.append(f"{questions_pending} question{'s' if questions_pending != 1 else ''} pending review")
+    d10_state = ev.get("state", "missing")
+
+    # Map D10 state → legacy section vocabulary.
+    # D10 does not use "locked"; legacy "locked" remains valid for syllabus/competition.
+    _D10_TO_LEGACY = {
+        "missing": "empty",
+        "review_pending": "partial",
+        "ready": "ready",
+        "failed": "empty",    # fail-soft: degrade to empty with blocker
+    }
+    legacy_status = _D10_TO_LEGACY.get(d10_state, "empty")
+
+    # Build blockers from D10 evidence fields.
+    blockers: list[str] = []
+    if _read_failed:
+        blockers.append("pyq readiness read failed — data may be incomplete")
+    elif ev.get("papers_total", 0) == 0:
+        blockers.append("no PYQ papers uploaded")
+    elif d10_state == "missing":
+        # papers exist but all are rejected — no usable corpus remains
+        total = ev.get("papers_total", 0)
+        blockers.append(
+            f"no usable PYQ corpus — all {total} paper"
+            f"{'s are' if total != 1 else ' is'} rejected"
+        )
+    else:
+        papers_pending_review = ev.get("papers_pending_review", 0)
+        if papers_pending_review > 0:
+            blockers.append(f"{papers_pending_review} paper{'s' if papers_pending_review != 1 else ''} pending review")
+        pending_question_count = ev.get("pending_question_count", 0)
+        if pending_question_count > 0:
+            blockers.append(f"{pending_question_count} question{'s' if pending_question_count != 1 else ''} pending review")
+        # Gate-3 blocker: questions cleared gates 1+2 but no verified tag yet.
+        eligible = ev.get("questions_eligible_before_tag_gate", 0)
+        if eligible > 0 and ev.get("verified_question_count", 0) == 0:
+            pending_tags = ev.get("pending_tag_count", 0)
+            if pending_tags > 0:
+                blockers.append(f"{pending_tags} topic tag{'s' if pending_tags != 1 else ''} pending review")
+            else:
+                blockers.append(f"{eligible} question{'s' if eligible != 1 else ''} missing verified topic tag")
+        # Catch-all: review_pending with no corrective blocker yet.
+        # Covers: verified paper + zero questions, verified paper + all rejected questions.
+        if not blockers and ev.get("verified_question_count", 0) == 0:
+            q_on_vp = ev.get("questions_on_verified_papers", 0)
+            if q_on_vp == 0:
+                verified_paper_count = sum(
+                    1 for p in papers if p.get("trust_status") == "verified"
+                )
+                if verified_paper_count > 0:
+                    blockers.append(
+                        f"{verified_paper_count} verified paper"
+                        f"{'s' if verified_paper_count != 1 else ''} "
+                        "have no questions uploaded"
+                    )
+            else:
+                blockers.append(
+                    f"{q_on_vp} question"
+                    f"{'s' if q_on_vp != 1 else ''} on verified paper(s) "
+                    "lack verified reviewer status"
+                )
 
     return {
         "section": "pyq_workbench",
         "label": "PYQ Workbench",
-        "status": status,
-        "score_percent": _STATUS_SCORE[status],
+        "status": legacy_status,
+        "score_percent": _STATUS_SCORE[legacy_status],
         "weight": 3,
         "blockers": blockers,
-        "counts": {"present": questions_verified, "required": questions_total or 1},
+        "counts": {
+            "present": ev.get("verified_question_count", 0),
+            "required": max(ev.get("questions_total", 0), 1),
+        },
         "metrics": {
-            "papers": paper_count,
-            "questions_total": questions_total,
-            "questions_verified": questions_verified,
-            "questions_locked": questions_locked,
+            "papers": ev.get("papers_total", 0),
+            "questions_total": ev.get("questions_total", 0),
+            "questions_verified": ev.get("verified_question_count", 0),
+            "questions_locked": 0,          # always 0; "locked" is not valid per D10/schema
             "options_total": options_total,
             "topic_tags_total": topic_tags_total,
+            "pyq_readiness": ev,            # full D10 canonical object, additive
         },
     }
 
