@@ -31,6 +31,14 @@ from app.exam_intelligence.syllabus_mapper import (
     preview_accept,
     propose_syllabus_mentions,
 )
+try:
+    from app.exam_intelligence.score_snapshots import (
+        compute_exam_topic_scores,
+        MODEL_VERSION as _SNAPSHOT_MODEL_VERSION,
+    )
+except ImportError:  # score_snapshots.py created by parallel agent — tolerate missing during build
+    compute_exam_topic_scores = None  # type: ignore[assignment]
+    _SNAPSHOT_MODEL_VERSION = "v1"
 from app.study_os.mission_control import invalidate_per_exam_intelligence
 from app.study_os.plan_impact import compute_plan_impact, record_plan_impact_decision
 
@@ -1767,6 +1775,18 @@ class _AcceptCommitBody(BaseModel):
     reason: str
 
 
+class ScoreSnapshotReviewBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: str
+    reviewer_notes: str | None = None
+
+
+class ComputeSnapshotBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    model_version: str | None = None
+    exam_phase_id: str | None = None
+
+
 def _validate_accept_body(proposals: list, *, require_client_key: bool = False) -> None:
     if not proposals:
         raise HTTPException(status_code=422, detail="proposals must not be empty")
@@ -1824,3 +1844,124 @@ def syllabus_accept_commit(
         reason=body.reason,
         actor_id=actor_id,
     )
+
+
+# ─── Score Snapshots ──────────────────────────────────────────────────────
+
+_SNAPSHOT_STATUSES = {"draft", "reviewed", "locked", "rejected"}
+_SNAPSHOT_TRANSITIONS = {
+    "draft": {"reviewed", "rejected"},
+    "reviewed": {"locked", "rejected", "draft"},
+    "locked": {"reviewed"},
+    "rejected": {"draft"},
+}
+_SNAPSHOT_COLUMNS = (
+    "id, exam_id, exam_phase_id, topic_id, model_version, computed_at, "
+    "exam_priority_score, is_high_yield, confidence_score, evidence_count, "
+    "score_components, input_summary, status, reviewed_by, reviewed_at, reviewer_notes"
+)
+
+
+@router.get("/exams/{exam_id}/score-snapshots")
+def list_score_snapshots(
+    exam_id: str,
+    status: str | None = Query(default=None),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """List ``exam_topic_score_snapshots`` rows for an exam, ordered by computed_at DESC."""
+    if status is not None and status not in _SNAPSHOT_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid status {status!r}. Must be one of: {sorted(_SNAPSHOT_STATUSES)}",
+        )
+    sb = get_supabase_admin()
+
+    def _builder():
+        q = sb.table("exam_topic_score_snapshots").select(_SNAPSHOT_COLUMNS).eq("exam_id", exam_id)
+        if status is not None:
+            q = q.eq("status", status)
+        return q.order("computed_at", desc=True).limit(500).execute().data
+
+    rows = _safe(_builder, default=[]) or []
+    return {"snapshots": rows, "total": len(rows), "exam_id": exam_id}
+
+
+@router.patch("/score-snapshots/{snapshot_id}/review")
+def review_score_snapshot(
+    snapshot_id: str,
+    body: ScoreSnapshotReviewBody,
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Move an ``exam_topic_score_snapshots`` row through its review lifecycle.
+
+    Allowed transitions::
+
+        draft     → reviewed | rejected
+        reviewed  → locked | rejected | draft
+        locked    → reviewed  (reversal; reviewer_notes required)
+        rejected  → draft
+    """
+    sb = get_supabase_admin()
+    existing = (
+        _safe(
+            lambda: sb.table("exam_topic_score_snapshots")
+            .select("id, status")
+            .eq("id", snapshot_id)
+            .limit(1)
+            .execute()
+            .data,
+            default=[],
+        )
+        or []
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="snapshot not found")
+    current_status = existing[0].get("status")
+    new_status = body.status
+    allowed = _SNAPSHOT_TRANSITIONS.get(current_status, set())
+    if new_status not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Cannot transition from {current_status!r} to {new_status!r}. Allowed: {sorted(allowed)}",
+        )
+    # Reverting a locked snapshot requires reviewer notes for audit trail.
+    if current_status == "locked" and new_status == "reviewed" and not body.reviewer_notes:
+        raise HTTPException(
+            status_code=422,
+            detail="reviewer_notes required when reverting a locked snapshot",
+        )
+    update: dict[str, Any] = {
+        "status": new_status,
+        "reviewed_by": admin["id"],
+        "reviewed_at": _now_iso(),
+    }
+    if body.reviewer_notes is not None:
+        update["reviewer_notes"] = body.reviewer_notes
+    _safe(
+        lambda: sb.table("exam_topic_score_snapshots").update(update).eq("id", snapshot_id).execute(),
+        default=None,
+    )
+    return {"ok": True, "snapshot_id": snapshot_id, "new_status": new_status}
+
+
+@router.post("/exams/{exam_id}/score-snapshots/compute")
+def compute_score_snapshots(
+    exam_id: str,
+    body: ComputeSnapshotBody = Body(default_factory=ComputeSnapshotBody),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Trigger snapshot computation for all topics in an exam.
+
+    Delegates to ``compute_exam_topic_scores`` from
+    ``app.exam_intelligence.score_snapshots``. Returns a summary of written,
+    skipped, and error counts alongside the model_version used.
+    """
+    if compute_exam_topic_scores is None:
+        raise HTTPException(
+            status_code=503,
+            detail="score_snapshots service is not available (module not yet installed)",
+        )
+    sb = get_supabase_admin()
+    mv = body.model_version or _SNAPSHOT_MODEL_VERSION
+    result = compute_exam_topic_scores(sb, exam_id, mv, exam_phase_id=body.exam_phase_id)
+    return {**result, "exam_id": exam_id, "model_version": mv}
