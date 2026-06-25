@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/authContext";
 import useApiAction from "../../lib/hooks/useApiAction";
+import { useBreadcrumbLeaf } from "../../shared/navigation/BreadcrumbLeafContext";
+import CommunityModuleHeader from "./CommunityModuleHeader";
 import {
   COMMUNITY_SPACES as SEED_SPACES,
   COMMUNITY_USERS as SEED_USERS,
@@ -161,88 +163,94 @@ export default function CommunityScreen() {
   }
 
   const sortedThreads = useMemo(() => sortThreads(threads, sort, users), [threads, sort, users]);
+  let breadcrumbLabel = null;
+  if (params.threadId) breadcrumbLabel = thread?.title || null;
+  else if (params.channelId) breadcrumbLabel = channel?.name || null;
+  else if (params.spaceId) breadcrumbLabel = space?.name || null;
+  useBreadcrumbLeaf(breadcrumbLabel);
 
   return (
-    <div
-      data-testid="community-page"
-      className="flex overflow-hidden bg-field-paper text-field-ink"
-      style={{ height: "calc(100vh - 60px)" }}
-    >
-      <aside className="w-[286px] border-r border-field-line bg-field-canvas flex flex-col shrink-0">
-        <CommunityTopNav spaces={spaces} activeId={space?.id} onPick={pickSpace} />
-        <ChannelsRail
-          space={space}
-          activeId={channel?.id}
-          onPick={pickChannel}
-          isAdmin={isAdmin}
-          onCreateChannel={() => setNewChannelOpen(true)}
-        />
-      </aside>
-
-      <section className="flex-1 min-w-0 flex flex-col bg-field-paper">
-        <ChannelHeader space={space} channel={channel} onCompose={() => setComposerOpen(true)} />
-        {channel ? <ChannelRules channel={channel} /> : null}
-
-        {thread ? (
-          <ThreadDetail
-            thread={thread}
-            channel={channel}
-            users={users}
-            onBack={closeThread}
-            onChanged={() => refreshChannelThreads(channel.id, sort)}
+    <div data-testid="community-page" className="text-field-ink">
+      <CommunityModuleHeader />
+      <div
+        className="flex min-h-[680px] max-h-none flex-col overflow-hidden rounded-2xl border border-border bg-field-paper shadow-sm lg:max-h-[calc(100vh-210px)] lg:flex-row"
+      >
+        <aside className="w-full shrink-0 border-b border-field-line bg-field-canvas lg:w-[286px] lg:border-b-0 lg:border-r">
+          <CommunityTopNav spaces={spaces} activeId={space?.id} onPick={pickSpace} />
+          <ChannelsRail
+            space={space}
+            activeId={channel?.id}
+            onPick={pickChannel}
+            isAdmin={isAdmin}
+            onCreateChannel={() => setNewChannelOpen(true)}
           />
-        ) : (
-          <>
-            <ThreadToolbar sort={sort} onSort={setSort} channel={channel} count={threads.length} />
-            <div className="flex-1 overflow-auto">
-              <div className="px-6 py-5 max-w-[1100px]">
-                {sortedThreads.length === 0 ? (
-                  <FieldEmpty
-                    icon="◌"
-                    title="No threads yet in this channel."
-                    body="Be the first to start one."
-                  />
-                ) : (
-                  <div className="space-y-2.5">
-                    {sortedThreads.map((t) => (
-                      <ThreadCard
-                        key={t.id}
-                        thread={t}
-                        users={users}
-                        channelId={channel.id}
-                        onOpen={() => openThread(t)}
-                        onVoted={() => refreshChannelThreads(channel.id, sort)}
-                      />
-                    ))}
-                  </div>
-                )}
+        </aside>
+
+        <section className="flex-1 min-w-0 flex flex-col bg-field-paper">
+          <ChannelHeader space={space} channel={channel} onCompose={() => setComposerOpen(true)} />
+          {channel ? <ChannelRules channel={channel} /> : null}
+
+          {thread ? (
+            <ThreadDetail
+              thread={thread}
+              channel={channel}
+              users={users}
+              onBack={closeThread}
+              onChanged={() => refreshChannelThreads(channel.id, sort)}
+            />
+          ) : (
+            <>
+              <ThreadToolbar sort={sort} onSort={setSort} channel={channel} count={threads.length} />
+              <div className="flex-1 overflow-auto">
+                <div className="px-6 py-5 max-w-[1100px]">
+                  {sortedThreads.length === 0 ? (
+                    <FieldEmpty
+                      icon="◌"
+                      title="No threads yet in this channel."
+                      body="Be the first to start one."
+                    />
+                  ) : (
+                    <div className="space-y-2.5">
+                      {sortedThreads.map((t) => (
+                        <ThreadCard
+                          key={t.id}
+                          thread={t}
+                          users={users}
+                          channelId={channel.id}
+                          onOpen={() => openThread(t)}
+                          onVoted={() => refreshChannelThreads(channel.id, sort)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <CommunityFooter space={space} />
               </div>
-              <CommunityFooter space={space} />
-            </div>
-          </>
-        )}
-      </section>
+            </>
+          )}
+        </section>
 
-      {composerOpen ? (
-        <ComposerDrawer
-          channel={channel}
-          onClose={() => setComposerOpen(false)}
-          onCreated={(newThread) => {
-            refreshChannelThreads(channel.id, sort);
-            if (newThread?.id) navigate(`/app/community/${space.id}/${channel.id}/${newThread.id}`);
-          }}
-        />
-      ) : null}
+        {composerOpen ? (
+          <ComposerDrawer
+            channel={channel}
+            onClose={() => setComposerOpen(false)}
+            onCreated={(newThread) => {
+              refreshChannelThreads(channel.id, sort);
+              if (newThread?.id) navigate(`/app/community/${space.id}/${channel.id}/${newThread.id}`);
+            }}
+          />
+        ) : null}
 
-      {newChannelOpen ? (
-        <NewChannelDrawer
-          space={space}
-          onClose={() => setNewChannelOpen(false)}
-          onCreated={() => {
-            refreshSpaces();
-          }}
-        />
-      ) : null}
+        {newChannelOpen ? (
+          <NewChannelDrawer
+            space={space}
+            onClose={() => setNewChannelOpen(false)}
+            onCreated={() => {
+              refreshSpaces();
+            }}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

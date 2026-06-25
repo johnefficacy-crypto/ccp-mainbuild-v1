@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import CommunityModuleHeader from "./CommunityModuleHeader";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
 import { ENABLE_DEMO_DATA } from "../../shared/config/env";
@@ -90,6 +91,7 @@ export default function StudyGroupsScreen() {
 
   return (
     <FieldPage testId="groups-page">
+      <CommunityModuleHeader />
       <FieldHeader
         eyebrow="Study Groups"
         title="Pace yourself with people on the same exam."

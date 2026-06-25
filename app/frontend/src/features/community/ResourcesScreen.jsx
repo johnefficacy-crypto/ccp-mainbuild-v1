@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import CommunityModuleHeader from "./CommunityModuleHeader";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
 import { useAuth } from "../../lib/authContext";
@@ -106,6 +107,7 @@ export default function ResourcesScreen() {
 
   return (
     <FieldPage testId="resources-page">
+      <CommunityModuleHeader />
       <FieldHeader
         eyebrow="Resource library"
         title="Free, source-tagged resources — never silently 'recommended'."
