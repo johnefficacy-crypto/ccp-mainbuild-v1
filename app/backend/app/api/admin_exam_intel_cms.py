@@ -953,6 +953,165 @@ def set_pyq_paper_provenance(
     }
 
 
+# ════════════════════════════════════════════════════════════════════════
+#  Contextual PYQ onboarding — atomic create-source + create-paper + link-doc
+#  (APPROVED gate: PYQ-Source-and-Paper-Onboarding-Gate-2026-06-25.md §B.4/B.5)
+# ════════════════════════════════════════════════════════════════════════
+
+
+class PyqOnboardingSource(BaseModel):
+    """Optional source block. Either reuse an existing source via
+    ``existing_pyq_source_id`` (no creation, no trust mutation — OD-2) or supply
+    a creatable source. ``source_id`` is the canonical FK to ``source_registry``
+    (admitted by ``_PYQ_SOURCE_FIELDS``)."""
+
+    existing_pyq_source_id: str | None = None
+    source_id: str | None = None
+    source_type: str | None = "official"
+    title: str | None = None
+    source_url: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PyqOnboardingPaper(BaseModel):
+    """Required paper block. Always born ``pending``."""
+
+    year: int
+    paper_date: str | None = None
+    shift: str | None = None
+    paper_code: str | None = None
+    source_url: str | None = None
+    source_type: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PyqOnboardingBody(BaseModel):
+    reason: str = Field(..., min_length=8, max_length=500)
+    exam_id: str
+    exam_cycle_id: str | None = None
+    exam_phase_id: str | None = None
+    source: PyqOnboardingSource | None = None
+    paper: PyqOnboardingPaper
+    document_id: str | None = None
+
+
+@router.post("/pyq-onboarding")
+def pyq_onboarding(
+    body: PyqOnboardingBody,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Atomically create an optional PYQ source, a pending PYQ paper, and an
+    optional document link inside a single transactional SECURITY DEFINER RPC.
+
+    All database changes (source insert, paper insert, document link, three
+    audit rows) commit together or roll back together — there is no
+    application-level rollback (OD-6).  Source and paper are always born
+    ``pending``; an existing source's ``trust_status`` is never mutated
+    (OD-1 / OD-2).
+    """
+    supabase = get_supabase_admin()
+
+    src = body.source
+    if src is not None:
+        # Validate the create-path source_type early (the RPC re-validates under
+        # the lock; this gives the operator an immediate, specific 422).
+        if (
+            src.existing_pyq_source_id is None
+            and src.source_type
+            and src.source_type not in _PYQ_SOURCE_TYPES
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=f"source.source_type must be one of {_PYQ_SOURCE_TYPES}",
+            )
+
+    if body.paper.source_type and body.paper.source_type not in _PAPER_SOURCE_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"paper.source_type must be one of {_PAPER_SOURCE_TYPES}",
+        )
+
+    p_source: dict[str, Any] | None = None
+    if src is not None:
+        p_source = {
+            "existing_pyq_source_id": src.existing_pyq_source_id,
+            "source_id": src.source_id,
+            "source_type": src.source_type,
+            "title": src.title,
+            "source_url": src.source_url,
+            "metadata": src.metadata,
+        }
+
+    p_paper = {
+        "year": body.paper.year,
+        "paper_date": body.paper.paper_date,
+        "shift": body.paper.shift,
+        "paper_code": body.paper.paper_code,
+        "source_url": body.paper.source_url,
+        "source_type": body.paper.source_type,
+        "metadata": body.paper.metadata,
+    }
+
+    try:
+        rpc_data = supabase.rpc(
+            "cms_pyq_onboarding",
+            {
+                "p_actor_id": admin.get("id"),
+                "p_actor_email": admin.get("email"),
+                "p_reason": body.reason,
+                "p_exam_id": body.exam_id,
+                "p_exam_cycle_id": body.exam_cycle_id,
+                "p_exam_phase_id": body.exam_phase_id,
+                "p_source": p_source,
+                "p_paper": p_paper,
+                "p_document_id": body.document_id,
+            },
+        ).execute().data
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        msg_lower = msg.lower()
+        if "document_not_linkable" in msg_lower:
+            blocking: list[str] = []
+            if "blocking_fields=" in msg_lower:
+                fields_raw = msg_lower.split("blocking_fields=", 1)[1].split()[0].rstrip(".,")
+                blocking = [f for f in fields_raw.split(",") if f]
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "document_not_linkable", "blocking_fields": blocking},
+            ) from exc
+        if any(
+            tok in msg_lower
+            for tok in (
+                "invalid_reason",
+                "exam_not_found",
+                "exam_cycle_not_found",
+                "exam_cycle_exam_mismatch",
+                "exam_phase_not_found",
+                "exam_phase_exam_mismatch",
+                "pyq_source_not_found",
+                "pyq_source_exam_mismatch",
+                "invalid_source_type",
+                "invalid_paper",
+            )
+        ):
+            raise HTTPException(status_code=422, detail=msg) from exc
+        logger.exception("cms_pyq_onboarding RPC failed; transaction rolled back")
+        raise HTTPException(
+            status_code=500,
+            detail="PYQ onboarding failed; no change was recorded.",
+        ) from exc
+
+    rpc = rpc_data or {}
+    return {
+        "ok": True,
+        "audit_id": rpc.get("audit_id"),
+        "source": rpc.get("source"),
+        "paper": rpc.get("paper"),
+        "document_link": rpc.get("document_link"),
+    }
+
+
 # Allowed trust_status transitions for pyq_papers.
 # Any transition not listed here is rejected with 422.
 _ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {

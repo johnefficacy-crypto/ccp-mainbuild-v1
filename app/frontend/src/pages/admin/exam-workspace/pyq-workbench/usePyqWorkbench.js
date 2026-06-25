@@ -8,11 +8,17 @@ export function usePyqWorkbench(examId, cycleId) {
   const [papers, setPapers] = useState([]);
   const [selectedPaperId, setSelectedPaperId] = useState(null);
   const [loading, setLoading] = useState(false);
+  // `loaded` flips true only after the first fetch settles, so the empty state
+  // never flashes on the initial pre-fetch render (loading inits false, papers
+  // inits []). Without it the empty CTA appears, vanishes during the fetch, and
+  // reappears — a flash for operators and a race for synchronous test queries.
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(null);
 
   const { run: runReviewAction } = useApiAction();
   const { run: runPatchAction } = useApiAction();
   const { run: runProvenanceAction } = useApiAction();
+  const { run: runOnboardAction } = useApiAction();
 
   const fetchPapers = useCallback(async () => {
     if (!examId) return;
@@ -28,6 +34,7 @@ export function usePyqWorkbench(examId, cycleId) {
       setError(e?.message || "Failed to load papers");
     } finally {
       setLoading(false);
+      setLoaded(true);
     }
   }, [examId]);
 
@@ -56,6 +63,19 @@ export function usePyqWorkbench(examId, cycleId) {
     });
     if (!result?.ok && !result?.cancelled) throw result?.error ?? new Error("Provenance save failed");
   }, [runProvenanceAction, fetchPapers]);
+
+  // Contextual paper onboarding. POSTs the LOCKED /pyq-onboarding contract,
+  // refetches the (exam-wide) paper list, and returns the created paper id so
+  // the panel can select it. Surfaces backend {error, blocking_fields} by
+  // re-throwing the structured error for the modal's api helpers.
+  const onboardPaper = useCallback(async (body) => {
+    const result = await runOnboardAction({
+      action: () => api.post(`${CMS_BASE}/pyq-onboarding`, body),
+      onSuccess: fetchPapers,
+    });
+    if (!result?.ok && !result?.cancelled) throw result?.error ?? new Error("Onboarding failed");
+    return result?.data?.paper?.id ?? null;
+  }, [runOnboardAction, fetchPapers]);
 
   const getPaperSignedPdf = useCallback(async (paperId, documentId) => {
     const data = await api.get(`${CMS_BASE}/pyq-papers/${paperId}/signed-pdf?document_id=${encodeURIComponent(documentId)}`);
@@ -86,11 +106,13 @@ export function usePyqWorkbench(examId, cycleId) {
     selectedPaperId,
     setSelectedPaperId,
     loading,
+    loaded,
     error,
     refetch: fetchPapers,
     reviewPaper,
     patchPaper,
     saveProvenance,
+    onboardPaper,
     getPaperSignedPdf,
     fetchPaperQuestions,
     fetchPyqDocuments,
