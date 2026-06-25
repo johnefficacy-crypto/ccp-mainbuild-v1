@@ -8,6 +8,11 @@ export function usePyqWorkbench(examId, cycleId) {
   const [papers, setPapers] = useState([]);
   const [selectedPaperId, setSelectedPaperId] = useState(null);
   const [loading, setLoading] = useState(false);
+  // `loaded` flips true only after the first fetch settles, so the empty state
+  // never flashes on the initial pre-fetch render (loading inits false, papers
+  // inits []). Without it the empty CTA appears, vanishes during the fetch, and
+  // reappears — a flash for operators and a race for synchronous test queries.
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(null);
 
   const { run: runReviewAction } = useApiAction();
@@ -29,6 +34,7 @@ export function usePyqWorkbench(examId, cycleId) {
       setError(e?.message || "Failed to load papers");
     } finally {
       setLoading(false);
+      setLoaded(true);
     }
   }, [examId]);
 
@@ -100,6 +106,7 @@ export function usePyqWorkbench(examId, cycleId) {
     selectedPaperId,
     setSelectedPaperId,
     loading,
+    loaded,
     error,
     refetch: fetchPapers,
     reviewPaper,

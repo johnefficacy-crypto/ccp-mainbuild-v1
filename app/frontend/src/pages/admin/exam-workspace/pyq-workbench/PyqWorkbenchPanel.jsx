@@ -221,7 +221,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
     (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.cms"));
 
   const {
-    papers, selectedPaperId, setSelectedPaperId, loading, error,
+    papers, selectedPaperId, setSelectedPaperId, loading, loaded, error,
     reviewPaper, saveProvenance, onboardPaper, getPaperSignedPdf,
     fetchPyqDocuments, fetchPyqSources, fetchPaperQuestions,
   } = usePyqWorkbench(examId, cycleId);
@@ -345,7 +345,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
             Paper {paperId} was not found in this exam.
           </span>
         )}
-        {!loading && !error && papers.length === 0 && (
+        {loaded && !loading && !error && papers.length === 0 && (
           <div className="text-sm text-gray-500 flex flex-col items-start gap-2" data-testid="pyq-empty-state">
             <span>No PYQ papers for this exam yet.</span>
             {canEdit && (
