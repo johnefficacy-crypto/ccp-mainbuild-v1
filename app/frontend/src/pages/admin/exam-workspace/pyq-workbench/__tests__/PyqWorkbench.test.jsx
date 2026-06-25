@@ -1234,13 +1234,23 @@ describe("PyqWorkbenchPanel — contextual onboarding (J2)", () => {
   test("empty state renders 'Add the first PYQ paper' and does NOT mention CMS; copy is exam-wide", async () => {
     mockApiForOnboarding([]);
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await waitFor(() => expect(screen.getByTestId("pyq-empty-state")).toBeTruthy());
-    const empty = screen.getByTestId("pyq-empty-state");
+    // findBy retries until the empty-state CTA settles. Read the copy off the
+    // CTA's own container (the empty-state div) to avoid a second async gap.
+    const cta = await screen.findByTestId("add-first-pyq-paper-btn");
+    expect(cta.textContent).toContain("Add the first PYQ paper");
+    const empty = cta.closest('[data-testid="pyq-empty-state"]');
+    expect(empty).toBeTruthy();
     expect(empty.textContent).toContain("No PYQ papers for this exam");
     expect(empty.textContent).not.toContain("CMS");
-    expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy();
-    expect(screen.getByTestId("add-first-pyq-paper-btn").textContent).toContain("Add the first PYQ paper");
   });
+
+  // The onboarding modal is opened from the stable header "Add PYQ paper"
+  // action (the empty-state CTA opens the identical modal).
+  async function openAddModal() {
+    const btn = await screen.findByTestId("add-pyq-paper-btn");
+    fireEvent.click(btn);
+    await screen.findByTestId("add-pyq-paper-modal");
+  }
 
   // D: header action beside Bulk import
   test("panel header renders an 'Add PYQ paper' action beside Bulk import", async () => {
@@ -1254,11 +1264,9 @@ describe("PyqWorkbenchPanel — contextual onboarding (J2)", () => {
 
   // D: modal reuses picker + pyq_source selector, no raw-UUID input (OD-4)
   test("the onboarding modal reuses the document picker + pyq_source selector with no raw-UUID input", async () => {
-    mockApiForOnboarding([]);
+    mockApiForOnboarding(PAPERS);
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
-    await waitFor(() => expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy());
+    await openAddModal();
 
     // Reused document picker (a <select>, populated from exam-scoped documents)
     await waitFor(() => {
@@ -1281,10 +1289,9 @@ describe("PyqWorkbenchPanel — contextual onboarding (J2)", () => {
 
   // D: filename clip fix — long filenames carry a full-text title tooltip
   test("long document filenames are truncated in the label but kept in the title tooltip", async () => {
-    mockApiForOnboarding([]);
+    mockApiForOnboarding(PAPERS);
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
+    await openAddModal();
     await waitFor(() => {
       const sel = screen.getByTestId("add-pyq-evidence-document-id");
       if (sel.options.length < 3) throw new Error("docs not loaded");
@@ -1330,7 +1337,7 @@ describe("PyqWorkbenchPanel — contextual onboarding (J2)", () => {
 
   // D: submitting calls POST /pyq-onboarding and selects the returned paper
   test("submitting calls POST /pyq-onboarding and selects the returned paper", async () => {
-    mockApiForOnboarding([]);
+    mockApiForOnboarding(PAPERS);
     api.post.mockResolvedValue({
       ok: true, audit_id: "aud-1",
       source: { id: "src-new", created: true, trust_status: "pending" },
@@ -1338,9 +1345,7 @@ describe("PyqWorkbenchPanel — contextual onboarding (J2)", () => {
       document_link: { document_id: "doc-uuid-1", linked: true },
     });
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
-    await waitFor(() => expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy());
+    await openAddModal();
 
     fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2024" } });
     fireEvent.change(screen.getByTestId("add-pyq-source-source-type"), { target: { value: "official" } });
@@ -1378,12 +1383,10 @@ describe("PyqWorkbenchPanel — contextual onboarding (J2)", () => {
   });
 
   test("onboarding without a source but with valid paper provenance omits the source block (OD-1)", async () => {
-    mockApiForOnboarding([]);
+    mockApiForOnboarding(PAPERS);
     api.post.mockResolvedValue({ ok: true, audit_id: "a", paper: { id: "p-nosrc" } });
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
-    await waitFor(() => expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy());
+    await openAddModal();
 
     fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2024" } });
     // Pick an evidence document instead of a source → paper provenance complete
@@ -1406,11 +1409,9 @@ describe("PyqWorkbenchPanel — contextual onboarding (J2)", () => {
   });
 
   test("client guard: missing year blocks submit without calling api.post", async () => {
-    mockApiForOnboarding([]);
+    mockApiForOnboarding(PAPERS);
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
-    await waitFor(() => expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy());
+    await openAddModal();
 
     fireEvent.change(screen.getByTestId("add-pyq-reason"), {
       target: { value: "trying without a year value here" },
@@ -1421,14 +1422,12 @@ describe("PyqWorkbenchPanel — contextual onboarding (J2)", () => {
   });
 
   test("backend blocking_fields surface in operator-readable form", async () => {
-    mockApiForOnboarding([]);
+    mockApiForOnboarding(PAPERS);
     const err = new Error("onboarding blocked");
     err.blocking_fields = ["document_id"];
     api.post.mockRejectedValue(err);
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await waitFor(() => expect(screen.getByTestId("add-first-pyq-paper-btn")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("add-first-pyq-paper-btn"));
-    await waitFor(() => expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy());
+    await openAddModal();
 
     fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2024" } });
     fireEvent.change(screen.getByTestId("add-pyq-reason"), {
