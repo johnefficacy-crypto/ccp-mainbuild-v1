@@ -450,6 +450,14 @@ def test_state_ready_with_multiple_verified_questions():
     assert result["state"] == "ready"
 
 
+def test_state_review_pending_mixed_rejected_and_pending():
+    """Mix of rejected + pending papers: still review_pending (pending paper exists)."""
+    papers = [PAPER_REJ, PAPER_PEND]
+    result = _call(papers, [], [], cycle=None)
+
+    assert result["state"] == "review_pending"
+
+
 # ===========================================================================
 # BATCH VARIANT CASES
 # ===========================================================================
@@ -662,24 +670,40 @@ def test_selected_cycle_id_echoed_in_output():
 
 
 def test_papers_pending_review_counts_non_terminal_papers():
-    """papers_pending_review counts papers whose trust_status is not 'verified' or 'rejected'."""
-    paper_draft = {
-        "id": "paper-draft",
-        "exam_id": EXAM_ID,
-        "exam_cycle_id": CYCLE_2026,
-        "trust_status": "draft",
-    }
-    paper_under_review = {
-        "id": "paper-ur",
-        "exam_id": EXAM_ID,
-        "exam_cycle_id": CYCLE_2026,
-        "trust_status": "under_review",
-    }
-    papers = [PAPER_VER, PAPER_REJ, paper_draft, paper_under_review, PAPER_PEND]
+    """papers_pending_review counts papers whose trust_status is 'pending' (not verified/rejected).
+
+    Schema: pyq_papers.trust_status IN ('pending', 'verified', 'rejected').
+    Only 'verified' and 'rejected' are terminal; 'pending' is the awaiting-review state.
+    """
+    papers = [PAPER_VER, PAPER_REJ, PAPER_PEND]
     result = _call(papers, [], [], cycle=None)
 
-    # verified and rejected are terminal; draft, under_review, pending are not.
-    assert result["papers_pending_review"] == 3
+    # PAPER_VER (verified) and PAPER_REJ (rejected) are terminal.
+    # Only PAPER_PEND (pending) counts as pending review.
+    assert result["papers_pending_review"] == 1
+
+
+def test_state_missing_when_all_papers_rejected():
+    """All-rejected corpus has no usable evidence → state='missing', not 'review_pending'.
+
+    review_pending requires at least one non-rejected paper that could have its
+    questions/tags reviewed. An all-rejected corpus has no such paper.
+    """
+    papers = [PAPER_REJ]
+    result = _call(papers, [], [], cycle=None)
+
+    assert result["state"] == "missing"
+    assert result["papers_total"] == 1
+    assert result["verified_question_count"] == 0
+
+
+def test_state_review_pending_when_pending_paper_exists():
+    """A pending (non-rejected) paper with no verified questions → state='review_pending'."""
+    papers = [PAPER_PEND]
+    result = _call(papers, [], [], cycle=None)
+
+    assert result["state"] == "review_pending"
+    assert result["papers_total"] == 1
 
 
 def test_questions_eligible_before_tag_gate_reflects_gates_1_and_2():

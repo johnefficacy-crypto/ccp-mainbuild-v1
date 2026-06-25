@@ -31,11 +31,8 @@ _QUESTION_PENDING_STATES: frozenset[str] = frozenset({"pending", "needs_correcti
 # States that indicate a tag is awaiting reviewer action.
 _TAG_PENDING_STATES: frozenset[str] = frozenset({"pending", "needs_correction"})
 
-# Paper trust states that are NOT terminal (i.e. still awaiting review).
-_PAPER_PENDING_TRUST_STATES: frozenset[str] = frozenset(
-    {"pending", "needs_correction", "draft", "under_review"}
-)
-# "verified" and "rejected" are terminal; everything else is pending review.
+# Only "verified" and "rejected" are terminal pyq_papers.trust_status values.
+# Schema: pyq_papers.trust_status IN ('pending', 'verified', 'rejected').
 _PAPER_TERMINAL_STATES: frozenset[str] = frozenset({"verified", "rejected"})
 
 
@@ -86,6 +83,7 @@ def aggregate_pyq_evidence(
     other_cycle_papers = 0
     unscoped_papers = 0
     papers_pending_review = 0
+    non_rejected_papers = 0
 
     # paper id → trust_status for gate 1 look-up.
     verified_paper_ids: set[str] = set()
@@ -106,6 +104,9 @@ def aggregate_pyq_evidence(
         # Paper pending review: not in terminal states (verified / rejected).
         if trust_status not in _PAPER_TERMINAL_STATES:
             papers_pending_review += 1
+
+        if trust_status != "rejected":
+            non_rejected_papers += 1
 
         # Gate 1: paper must be verified.
         if trust_status == "verified" and paper_id:
@@ -165,7 +166,9 @@ def aggregate_pyq_evidence(
     # ── State derivation ─────────────────────────────────────────────────────
     # "failed" is never set here; callers set it externally when appropriate.
 
-    if papers_total == 0:
+    # "missing": no papers at all, or every paper is rejected (no usable corpus).
+    # "review_pending": at least one non-rejected paper exists but no verified question yet.
+    if papers_total == 0 or non_rejected_papers == 0:
         state = "missing"
     elif verified_question_count >= 1:
         state = "ready"

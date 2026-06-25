@@ -367,55 +367,81 @@ def _topic_coverage_snapshot(sb, exam_id: str, cycle_id: str | None) -> dict:
 
 def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
     # D10: fetch ALL papers for exam_id — NO cycle filter whatsoever.
-    papers = _safe(
-        lambda: (
-            sb.table("pyq_papers")
-            .select("id, exam_cycle_id, reviewer_status")
-            .eq("exam_id", exam_id)
-            .limit(500)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
+    # Full pagination + failure tracking (fail-soft: degrade, not crash).
+    _PAGE = 500
+    _read_failed = False
 
-    paper_ids = [p["id"] for p in papers]
+    def _paged(make_query, label):
+        nonlocal _read_failed
+        out: list[dict] = []
+        start = 0
+        while True:
+            try:
+                page = make_query().order("id").range(start, start + _PAGE - 1).execute().data or []
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("pyq_workbench read failed (%s): %s", label, exc)
+                _read_failed = True
+                return out
+            out.extend(page)
+            if len(page) < _PAGE:
+                break
+            start += _PAGE
+        return out
 
-    # Fetch ALL questions for those paper_ids in chunks of 100.
+    papers = _paged(
+        lambda: sb.table("pyq_papers").select("id, exam_cycle_id, trust_status").eq("exam_id", exam_id),
+        "papers",
+    )
+
+    paper_ids = [p["id"] for p in papers if p.get("id")]
+
+    # Fetch all questions in chunks (URL-length safety) with pagination inside each chunk.
     all_questions: list[dict] = []
     for i in range(0, len(paper_ids), 100):
         batch = paper_ids[i : i + 100]
-        qs = _safe(
+        all_questions.extend(_paged(
             lambda b=batch: (
                 sb.table("pyq_questions")
                 .select("id, pyq_paper_id, reviewer_status")
                 .in_("pyq_paper_id", b)
-                .limit(20000)
-                .execute()
-                .data
             ),
-            default=[],
-        ) or []
-        all_questions.extend(qs)
+            "questions",
+        ))
 
     question_ids = [q["id"] for q in all_questions if q.get("id")]
 
-    # Fetch ALL topic_tags for those question_ids in chunks of 100.
+    # Fetch all topic tags in chunks (needed for gate 3).
     all_topic_tags: list[dict] = []
     for i in range(0, len(question_ids), 100):
         batch = question_ids[i : i + 100]
-        tags = _safe(
+        all_topic_tags.extend(_paged(
             lambda b=batch: (
                 sb.table("pyq_question_topic_tags")
-                .select("id, question_id")
+                .select("id, question_id, reviewer_status")
                 .in_("question_id", b)
-                .limit(20000)
-                .execute()
-                .data
             ),
-            default=[],
-        ) or []
-        all_topic_tags.extend(tags)
+            "topic_tags",
+        ))
+
+    # topic_tags_total is available directly from loaded rows.
+    topic_tags_total = len(all_topic_tags)
+
+    # Restore options_total count-only query (fail-soft, not required for trust gates).
+    options_total = 0
+    for i in range(0, len(question_ids), 500):
+        batch = question_ids[i : i + 500]
+        cnt = _safe(
+            lambda b=batch: (
+                sb.table("pyq_options")
+                .select("id", count="exact")
+                .in_("question_id", b)
+                .limit(0)
+                .execute()
+                .count
+            ),
+            default=0,
+        ) or 0
+        options_total += cnt
 
     # Delegate all readiness logic to the D10 canonical aggregator.
     ev = aggregate_pyq_evidence(
@@ -425,26 +451,43 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
         selected_cycle_id=cycle_id,
     )
 
+    # If any required read failed, override state to "failed".
+    if _read_failed:
+        ev = {**ev, "state": "failed"}
+
+    d10_state = ev.get("state", "missing")
+
     # Map D10 state → legacy section vocabulary.
     # D10 does not use "locked"; legacy "locked" remains valid for syllabus/competition.
     _D10_TO_LEGACY = {
         "missing": "empty",
         "review_pending": "partial",
         "ready": "ready",
+        "failed": "empty",    # fail-soft: degrade to empty with blocker
     }
-    legacy_status = _D10_TO_LEGACY.get(ev.get("state", "missing"), "empty")
+    legacy_status = _D10_TO_LEGACY.get(d10_state, "empty")
 
     # Build blockers from D10 evidence fields.
     blockers: list[str] = []
-    if ev.get("papers_total", 0) == 0:
+    if _read_failed:
+        blockers.append("pyq readiness read failed — data may be incomplete")
+    elif ev.get("papers_total", 0) == 0:
         blockers.append("no PYQ papers uploaded")
     else:
         papers_pending_review = ev.get("papers_pending_review", 0)
         if papers_pending_review > 0:
-            blockers.append(f"{papers_pending_review} paper(s) pending review")
+            blockers.append(f"{papers_pending_review} paper{'s' if papers_pending_review != 1 else ''} pending review")
         pending_question_count = ev.get("pending_question_count", 0)
         if pending_question_count > 0:
-            blockers.append(f"{pending_question_count} question(s) pending review")
+            blockers.append(f"{pending_question_count} question{'s' if pending_question_count != 1 else ''} pending review")
+        # Gate-3 blocker: questions cleared gates 1+2 but no verified tag yet.
+        eligible = ev.get("questions_eligible_before_tag_gate", 0)
+        if eligible > 0 and ev.get("verified_question_count", 0) == 0:
+            pending_tags = ev.get("pending_tag_count", 0)
+            if pending_tags > 0:
+                blockers.append(f"{pending_tags} topic tag{'s' if pending_tags != 1 else ''} pending review")
+            else:
+                blockers.append(f"{eligible} question{'s' if eligible != 1 else ''} missing verified topic tag")
 
     return {
         "section": "pyq_workbench",
@@ -461,10 +504,10 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
             "papers": ev.get("papers_total", 0),
             "questions_total": ev.get("questions_total", 0),
             "questions_verified": ev.get("verified_question_count", 0),
-            "questions_locked": 0,      # legacy field; always 0 now (locked not valid in D10)
-            "options_total": 0,         # removed for now (was count-only query)
-            "topic_tags_total": 0,      # removed for now
-            "pyq_readiness": ev,        # full D10 canonical object exposed additively
+            "questions_locked": 0,          # always 0; "locked" is not valid per D10/schema
+            "options_total": options_total,
+            "topic_tags_total": topic_tags_total,
+            "pyq_readiness": ev,            # full D10 canonical object, additive
         },
     }
 
