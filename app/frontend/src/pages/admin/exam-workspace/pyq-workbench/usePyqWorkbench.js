@@ -30,6 +30,7 @@ export function usePyqWorkbench(examId, cycleId) {
   const { run: runProvenanceAction } = useApiAction();
   const { run: runOnboardAction } = useApiAction();
   const { run: runSourceReviewAction } = useApiAction();
+  const { run: runUploadAction } = useApiAction();
 
   const fetchPapers = useCallback(async () => {
     if (!examId) return;
@@ -115,15 +116,15 @@ export function usePyqWorkbench(examId, cycleId) {
   // ── Inline PYQ document upload (OD-5 follow-up) ────────────────────────────
   // Runs the same upload sequence DocumentsPanel uses, scoped to this exam and
   // document_kind=pyq_paper, then polls extraction status until terminal.
-  // Resolves with { id, status, extraction } so the modal can link the new
+  // Resolves with { id, status, extraction, ok } so the modal can link the new
   // document_id during onboarding.
   //
-  // GOVERNANCE: the binary PUT MUST bypass api.post (which JSON-stringifies the
-  // body — AGENTS.md pattern #4); it uses raw `fetch` exactly as DocumentsPanel
-  // does. The upload-url / complete-upload / poll calls are background read/poll
-  // orchestration around an object-storage boundary and are therefore exempt
-  // from the useApiAction mutation rule (governance). The onboarding mutation
-  // itself (onboardPaper) remains on useApiAction.
+  // GOVERNANCE: the two state-changing POSTs (upload-url creates a
+  // document_assets row; complete-upload flips status→processing and enqueues
+  // extraction) run INSIDE useApiAction, as required for user-triggered
+  // mutations (busy/error semantics). The binary PUT bypasses api.post because
+  // the body is raw bytes, not JSON (AGENTS.md pattern #4), and the status poll
+  // is a background read — both are exempt from the mutation rule.
   const uploadPyqDocument = useCallback(async (file, { onProgress } = {}) => {
     if (!examId) throw new Error("No exam selected");
     if (!file) throw new Error("Choose a PDF file.");
@@ -131,58 +132,66 @@ export function usePyqWorkbench(examId, cycleId) {
 
     const report = (phase, extra = {}) => { onProgress?.({ phase, ...extra }); };
 
-    // Step 1 — mint signed URL + create document_assets row
-    report("requesting-url");
-    const signed = await api.post(`${DOC_BASE}/upload-url`, {
-      exam_id: examId,
-      exam_cycle_id: cycleId || null,
-      exam_phase_id: null,
-      document_kind: "pyq_paper",
-      filename: file.name,
-      mime_type: file.type,
-      size_bytes: file.size,
-      exam_identity: null,
-      structural_format: null,
-      source_kind: null,
+    const outcome = await runUploadAction({
+      errorMessage: "PDF upload failed.",
+      action: async () => {
+        // Step 1 — mint signed URL + create document_assets row (mutation)
+        report("requesting-url");
+        const signed = await api.post(`${DOC_BASE}/upload-url`, {
+          exam_id: examId,
+          exam_cycle_id: cycleId || null,
+          exam_phase_id: null,
+          document_kind: "pyq_paper",
+          filename: file.name,
+          mime_type: file.type,
+          size_bytes: file.size,
+          exam_identity: null,
+          structural_format: null,
+          source_kind: null,
+        });
+
+        // Step 2 — PUT bytes directly to storage (raw binary, not JSON; PUT
+        // intentionally uses fetch, not api.post — AGENTS.md pattern #4).
+        report("uploading");
+        const put = await fetch(signed.upload_url, {
+          method: "PUT",
+          headers: { "content-type": file.type },
+          body: file,
+        });
+        if (!put.ok) throw new Error(`Storage upload failed (${put.status})`);
+
+        // Step 3 — complete upload: status → processing, enqueue extraction (mutation)
+        report("completing");
+        await api.post(`${DOC_BASE}/complete-upload`, { document_id: signed.document_id });
+
+        // Step 4 — poll extraction status until terminal (background read).
+        report("extracting", { documentId: signed.document_id });
+        const documentId = signed.document_id;
+        const POLL_MS = 3000;
+        const MAX_POLLS = 100; // ~5 min ceiling so a stuck job never loops forever
+        for (let i = 0; i < MAX_POLLS; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          const r = await api.get(`${DOC_BASE}/${documentId}`).catch(() => null);
+          const docStatus = r?.document?.status;
+          const jobStatus = r?.extraction?.status;
+          if (isTerminalDocStatus(docStatus) || isTerminalJobStatus(jobStatus)) {
+            const ok = docStatus !== "failed" && jobStatus !== "failed";
+            report(ok ? "ready" : "failed", { documentId, status: docStatus, extraction: r?.extraction || {} });
+            return { id: documentId, status: docStatus, extraction: r?.extraction || {}, ok };
+          }
+          report("extracting", { documentId, status: docStatus, extraction: r?.extraction || {} });
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+        }
+        // Polling ceiling hit — the row exists and is linkable; surface as processing.
+        report("ready", { documentId, status: "processing" });
+        return { id: documentId, status: "processing", extraction: {}, ok: true };
+      },
     });
 
-    // Step 2 — PUT bytes directly to storage. Must bypass the api wrapper: the
-    // body is raw binary, not JSON (AGENTS.md pattern #4).
-    report("uploading");
-    const put = await fetch(signed.upload_url, {
-      method: "PUT",
-      headers: { "content-type": file.type },
-      body: file,
-    });
-    if (!put.ok) throw new Error(`Storage upload failed (${put.status})`);
-
-    // Step 3 — complete upload: status → processing, enqueue extraction
-    report("completing");
-    await api.post(`${DOC_BASE}/complete-upload`, { document_id: signed.document_id });
-
-    // Step 4 — poll extraction status until terminal (background read; exempt).
-    report("extracting", { documentId: signed.document_id });
-    const documentId = signed.document_id;
-    const POLL_MS = 3000;
-    const MAX_POLLS = 100; // ~5 min ceiling so a stuck job never loops forever
-    for (let i = 0; i < MAX_POLLS; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      const r = await api.get(`${DOC_BASE}/${documentId}`).catch(() => null);
-      const docStatus = r?.document?.status;
-      const jobStatus = r?.extraction?.status;
-      if (isTerminalDocStatus(docStatus) || isTerminalJobStatus(jobStatus)) {
-        const ok = docStatus !== "failed" && jobStatus !== "failed";
-        report(ok ? "ready" : "failed", { documentId, status: docStatus, extraction: r?.extraction || {} });
-        return { id: documentId, status: docStatus, extraction: r?.extraction || {}, ok };
-      }
-      report("extracting", { documentId, status: docStatus, extraction: r?.extraction || {} });
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-    }
-    // Polling ceiling hit — the row exists and is linkable; surface as processing.
-    report("ready", { documentId, status: "processing" });
-    return { id: documentId, status: "processing", extraction: {}, ok: true };
-  }, [examId, cycleId]);
+    if (!outcome?.ok && !outcome?.cancelled) throw outcome?.error ?? new Error("Upload failed");
+    return outcome?.data ?? null;
+  }, [examId, cycleId, runUploadAction]);
 
   // ── PYQ source trust lifecycle (OD-2 / Finding 7 follow-up) ────────────────
   // POSTs the source review (verify / reject / re-queue) against the backend

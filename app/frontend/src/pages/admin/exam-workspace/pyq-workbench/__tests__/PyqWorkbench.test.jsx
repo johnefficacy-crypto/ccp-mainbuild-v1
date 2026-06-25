@@ -1580,6 +1580,61 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     );
     expect(screen.queryByTestId("add-pyq-upload-linked")).toBeNull();
   });
+
+  test("terminal extraction failure surfaces an error and does NOT link the document", async () => {
+    mockApiForOnboarding(PAPERS);
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 });
+    api.post.mockImplementation((url) => {
+      if (url.includes("/documents/upload-url")) {
+        return Promise.resolve({ upload_url: "https://storage.example/put", document_id: "doc-extract-fail" });
+      }
+      if (url.includes("/documents/complete-upload")) {
+        return Promise.resolve({ ok: true });
+      }
+      if (url.includes("/pyq-onboarding")) {
+        return Promise.resolve({ ok: true, audit_id: "a", paper: { id: "p-x", pyq_source_id: null } });
+      }
+      return Promise.resolve({});
+    });
+    // Poll returns a TERMINAL FAILED extraction → result.ok === false.
+    const baseGet = api.get.getMockImplementation();
+    api.get.mockImplementation((url) => {
+      if (url.match(/\/documents\/doc-extract-fail(\?|$)/)) {
+        return Promise.resolve({ document: { status: "failed" }, extraction: { status: "failed" } });
+      }
+      return baseGet(url);
+    });
+
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await openAddModal();
+    fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2024" } });
+    fireEvent.change(screen.getByTestId("add-pyq-reason"), {
+      target: { value: "attempted upload of a paper that fails extraction" },
+    });
+    fireEvent.click(screen.getByTestId("add-pyq-evidence-mode-upload"));
+    fireEvent.change(screen.getByTestId("add-pyq-upload-file"), { target: { files: [pdfFile()] } });
+    fireEvent.click(screen.getByTestId("add-pyq-upload-submit"));
+
+    // complete-upload IS reached (unlike the PUT-failure path) then extraction fails.
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/documents/complete-upload"),
+        { document_id: "doc-extract-fail" },
+      ),
+    );
+    await waitFor(() => expect(screen.getByTestId("add-pyq-upload-error")).toBeTruthy());
+    expect(screen.getByTestId("add-pyq-upload-error").textContent).toMatch(/Extraction failed/);
+    // The failed asset must NOT be linked / shown as success.
+    expect(screen.queryByTestId("add-pyq-upload-linked")).toBeNull();
+
+    // Submitting onboarding must NOT carry the failed document_id.
+    fireEvent.click(screen.getByTestId("add-pyq-submit"));
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(expect.stringContaining("/pyq-onboarding"), expect.anything()),
+    );
+    const onboardingCall = api.post.mock.calls.find((c) => String(c[0]).includes("/pyq-onboarding"));
+    expect(onboardingCall?.[1]?.document_id || null).toBeNull();
+  });
 });
 
 // ── Follow-up 2 — PYQ source trust lifecycle UI (OD-2 / Finding 7) ───────────

@@ -85,7 +85,11 @@ export default function AddPyqPaperModal({
       });
       if (!result?.id) throw new Error("Upload did not return a document.");
       if (result.ok === false) {
+        // Terminal extraction failure. The backend provenance gate rejects
+        // failed documents, so do NOT link it or present a success state —
+        // surface the error and leave the evidence step unset.
         setUploadErr("Extraction failed for this PDF. Try another file or use the Documents tab.");
+        return;
       }
       // Link the freshly uploaded asset for onboarding.
       setDocumentId(result.id);
