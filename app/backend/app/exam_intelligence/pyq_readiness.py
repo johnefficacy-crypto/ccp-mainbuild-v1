@@ -116,6 +116,7 @@ def aggregate_pyq_evidence(
 
     questions_total = len(questions)
     pending_question_count = 0
+    questions_on_verified_papers = 0
 
     # Questions that cleared gates 1+2 (verified paper + verified question);
     # still need gate 3 (at least one verified tag).
@@ -128,6 +129,10 @@ def aggregate_pyq_evidence(
 
         if reviewer_status in _QUESTION_PENDING_STATES:
             pending_question_count += 1
+
+        # Track how many questions are on verified papers (regardless of their own status).
+        if paper_id in verified_paper_ids:
+            questions_on_verified_papers += 1
 
         # Gates 1+2.
         if (
@@ -186,6 +191,7 @@ def aggregate_pyq_evidence(
         "verified_question_count": verified_question_count,
         "questions_eligible_before_tag_gate": questions_eligible_before_tag_gate,
         "pending_question_count": pending_question_count,
+        "questions_on_verified_papers": questions_on_verified_papers,
         "pending_tag_count": pending_tag_count,
         "papers_pending_review": papers_pending_review,
         "state": state,

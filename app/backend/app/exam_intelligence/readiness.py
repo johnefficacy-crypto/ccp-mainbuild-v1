@@ -488,6 +488,26 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
                 blockers.append(f"{pending_tags} topic tag{'s' if pending_tags != 1 else ''} pending review")
             else:
                 blockers.append(f"{eligible} question{'s' if eligible != 1 else ''} missing verified topic tag")
+        # Catch-all: review_pending with no corrective blocker yet.
+        # Covers: verified paper + zero questions, verified paper + all rejected questions.
+        if not blockers and ev.get("verified_question_count", 0) == 0:
+            q_on_vp = ev.get("questions_on_verified_papers", 0)
+            if q_on_vp == 0:
+                verified_paper_count = sum(
+                    1 for p in papers if p.get("trust_status") == "verified"
+                )
+                if verified_paper_count > 0:
+                    blockers.append(
+                        f"{verified_paper_count} verified paper"
+                        f"{'s' if verified_paper_count != 1 else ''} "
+                        "have no questions uploaded"
+                    )
+            else:
+                blockers.append(
+                    f"{q_on_vp} question"
+                    f"{'s' if q_on_vp != 1 else ''} on verified paper(s) "
+                    "have no valid reviewer status"
+                )
 
     return {
         "section": "pyq_workbench",

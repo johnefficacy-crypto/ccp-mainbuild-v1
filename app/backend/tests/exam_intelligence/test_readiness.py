@@ -64,8 +64,13 @@ class _TableStub:
         self._rows = rows if not callable(rows) else rows
         self._filters: dict = {}
         self._in_filters: dict = {}
+        self._columns: list[str] | None = None
+        self._range_start: int | None = None
+        self._range_end: int | None = None
 
-    def select(self, *a, **kw):
+    def select(self, cols=None, **kw):
+        if cols and isinstance(cols, str):
+            self._columns = [c.strip() for c in cols.split(",") if c.strip()]
         return self
 
     def eq(self, k, v):
@@ -87,7 +92,9 @@ class _TableStub:
     def limit(self, n):
         return self
 
-    def range(self, *a, **kw):
+    def range(self, start, end):
+        self._range_start = start
+        self._range_end = end
         return self
 
     def execute(self):
@@ -107,9 +114,23 @@ class _TableStub:
                         return True
                 return False
             rows = [r for r in rows if _matches_or(r)]
+        # Soft column projection: filter rows to selected columns only.
+        # Columns absent from a row become None (same semantics as a projected DB query).
+        # This catches wrong-column bugs at test time — e.g. selecting 'reviewer_status'
+        # from pyq_papers (which only has 'trust_status') yields None and fails trust gates.
+        if self._columns and isinstance(rows, list):
+            rows = [{c: row.get(c) for c in self._columns} for row in rows]
+
+        total_count = len(rows) if isinstance(rows, list) else 0
         res = MagicMock()
+        res.count = total_count
+
+        # Range slicing enables pagination-boundary correctness tests.
+        if self._range_start is not None and isinstance(rows, list):
+            end_idx = (self._range_end + 1) if self._range_end is not None else None
+            rows = rows[self._range_start:end_idx]
+
         res.data = rows
-        res.count = len(rows) if isinstance(rows, list) else 0
         return res
 
 
@@ -1088,3 +1109,307 @@ class TestPYQWorkbenchD10ExamWide:
             "Legacy status vocab (empty/partial/ready) must be returned — not 'locked' "
             "or raw D10 state names"
         )
+
+
+class TestPYQWorkbenchBlockers:
+    """D10: every review_pending section must have at least one corrective blocker."""
+
+    def test_verified_paper_no_questions_has_blocker(self):
+        """Verified paper + zero questions → partial status WITH corrective blocker."""
+        papers = [_verified_paper("p1", "cycle-2026")]
+        sb = _make_sb(exam=EXAM, pyq_papers=papers, pyq_questions=[], pyq_question_topic_tags=[])
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["status"] == "partial", (
+            "Verified paper with no questions: D10 state=review_pending → legacy partial"
+        )
+        assert pyq["blockers"], (
+            "review_pending section must have at least one corrective blocker"
+        )
+        assert any("no questions" in b.lower() for b in pyq["blockers"]), (
+            f"Expected 'no questions' blocker, got: {pyq['blockers']}"
+        )
+
+    def test_verified_paper_only_rejected_questions_has_blocker(self):
+        """Verified paper + only rejected questions → partial WITH corrective blocker."""
+        papers = [_verified_paper("p1", "cycle-2026")]
+        questions = [{"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "rejected"}]
+        sb = _make_sb(
+            exam=EXAM, pyq_papers=papers, pyq_questions=questions,
+            pyq_question_topic_tags=[],
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["status"] == "partial"
+        assert pyq["blockers"], (
+            "Verified paper with only rejected questions must have a corrective blocker"
+        )
+
+    def test_verified_paper_verified_question_only_rejected_tags_has_blocker(self):
+        """Verified paper + verified question + only rejected tags → partial WITH gate-3 blocker."""
+        papers = [_verified_paper("p1", "cycle-2026")]
+        questions = [_verified_question("q1", "p1")]
+        tags = [{"id": "t1", "question_id": "q1", "reviewer_status": "rejected"}]
+        sb = _make_sb(
+            exam=EXAM, pyq_papers=papers, pyq_questions=questions,
+            pyq_question_topic_tags=tags,
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["status"] == "partial"
+        assert pyq["blockers"], (
+            "Verified paper + verified question with only rejected tags must have a gate-3 blocker"
+        )
+        assert any(
+            "missing verified topic tag" in b.lower() or "tag" in b.lower()
+            for b in pyq["blockers"]
+        )
+
+
+class TestPYQWorkbenchReadFailure:
+    """D10: any required-read failure must set pyq_readiness.state='failed', not fabricate missing."""
+
+    def test_paper_read_failure_gives_failed_state(self):
+        def _raise(f, i):
+            raise RuntimeError("simulated paper read error")
+
+        sb = _SBStub({
+            "exams": [EXAM],
+            "exam_cycles": lambda f, i: [],
+            "exam_phases": [],
+            "document_assets": lambda f, i: [],
+            "document_processing_jobs": lambda f, i: [],
+            "syllabus_topic_mentions": [],
+            "pyq_papers": _raise,
+            "pyq_questions": lambda f, i: [],
+            "pyq_question_topic_tags": lambda f, i: [],
+            "pyq_options": lambda f, i: [],
+            "exam_policy_updates": [],
+            "exam_competition_metrics": lambda f, i: [],
+            "exam_topic_coverage": lambda f, i: [],
+        })
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["metrics"]["pyq_readiness"]["state"] == "failed", (
+            "Paper read failure must set state='failed', not fabricate 'missing'"
+        )
+        assert pyq["status"] == "empty"
+        assert any("read failed" in b.lower() for b in pyq["blockers"])
+
+    def test_question_read_failure_gives_failed_state(self):
+        def _raise(f, i):
+            raise RuntimeError("simulated question read error")
+
+        paper = {"id": "p1", "exam_id": "exam-1", "exam_cycle_id": "cy-26", "trust_status": "pending"}
+
+        sb = _SBStub({
+            "exams": [EXAM],
+            "exam_cycles": lambda f, i: [],
+            "exam_phases": [],
+            "document_assets": lambda f, i: [],
+            "document_processing_jobs": lambda f, i: [],
+            "syllabus_topic_mentions": [],
+            "pyq_papers": lambda f, i: [paper] if f.get("exam_id") == "exam-1" else [],
+            "pyq_questions": _raise,
+            "pyq_question_topic_tags": lambda f, i: [],
+            "pyq_options": lambda f, i: [],
+            "exam_policy_updates": [],
+            "exam_competition_metrics": lambda f, i: [],
+            "exam_topic_coverage": lambda f, i: [],
+        })
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["metrics"]["pyq_readiness"]["state"] == "failed", (
+            "Question read failure must set state='failed', not fabricate 'missing'"
+        )
+        assert pyq["status"] == "empty"
+        assert any("read failed" in b.lower() for b in pyq["blockers"])
+
+    def test_tag_read_failure_gives_failed_state(self):
+        def _raise(f, i):
+            raise RuntimeError("simulated tag read error")
+
+        paper = {"id": "p1", "exam_id": "exam-1", "exam_cycle_id": "cy-26", "trust_status": "verified"}
+        question = {"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"}
+
+        sb = _SBStub({
+            "exams": [EXAM],
+            "exam_cycles": lambda f, i: [],
+            "exam_phases": [],
+            "document_assets": lambda f, i: [],
+            "document_processing_jobs": lambda f, i: [],
+            "syllabus_topic_mentions": [],
+            "pyq_papers": lambda f, i: [paper] if f.get("exam_id") == "exam-1" else [],
+            "pyq_questions": lambda f, i: [question] if "p1" in i.get("pyq_paper_id", []) else [],
+            "pyq_question_topic_tags": _raise,
+            "pyq_options": lambda f, i: [],
+            "exam_policy_updates": [],
+            "exam_competition_metrics": lambda f, i: [],
+            "exam_topic_coverage": lambda f, i: [],
+        })
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["metrics"]["pyq_readiness"]["state"] == "failed", (
+            "Tag read failure must set state='failed', not fabricate 'review_pending'"
+        )
+        assert pyq["status"] == "empty"
+        assert any("read failed" in b.lower() for b in pyq["blockers"])
+
+
+class TestPYQWorkbenchPopulatedTotals:
+    """options_total and topic_tags_total must be populated, not hard-reset to 0."""
+
+    def test_options_total_and_topic_tags_total_populated(self):
+        papers = [_verified_paper("p1", "cycle-2026")]
+        questions = [_verified_question("q1", "p1")]
+        tags = [
+            _verified_tag("t1", "q1"),
+            _verified_tag("t2", "q1"),
+        ]
+        options = [
+            {"id": "o1", "question_id": "q1"},
+            {"id": "o2", "question_id": "q1"},
+            {"id": "o3", "question_id": "q1"},
+        ]
+        sb = _make_sb(
+            exam=EXAM,
+            pyq_papers=papers,
+            pyq_questions=questions,
+            pyq_question_topic_tags=tags,
+            pyq_options=options,
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["metrics"]["topic_tags_total"] == 2, (
+            f"topic_tags_total should be 2 (from 2 loaded tags), got {pyq['metrics']['topic_tags_total']}"
+        )
+        assert pyq["metrics"]["options_total"] == 3, (
+            f"options_total should be 3 (from 3 pyq_options rows), got {pyq['metrics']['options_total']}"
+        )
+
+
+class TestPYQWorkbenchCrossConsumerParity:
+    """True cross-consumer parity: work_queue.aggregate() and compute_exam_workspace_readiness()
+    must agree on verified_question_count for the same exam across all D10 parity scenarios."""
+
+    _EID = "exam-cross"
+    _EXAM_ROW = {
+        "id": "exam-cross", "slug": "exam-cross", "name": "Cross Parity Exam",
+        "exam_type": "recruitment", "is_active": True,
+        "exam_family_id": None, "management_mode": "core",
+        "cadence": "annual", "conducting_organization_id": None,
+    }
+
+    def _wq_count(self, papers, questions, tags):
+        """Run work_queue.aggregate() via SBStub; return verified_pyq_count."""
+        from app.exam_intelligence import work_queue as wq
+        from tests.persona_questions._stub import SBStub as WQStub
+        db = {
+            "exams": [self._EXAM_ROW],
+            "exam_phases": [],
+            "exam_topic_coverage": [],
+            "syllabus_topic_mentions": [],
+            "exam_policy_updates": [],
+            "pyq_papers": papers,
+            "pyq_questions": questions,
+            "pyq_question_topic_tags": tags,
+            "pyq_options": [],
+            "organizations": [],
+        }
+        agg = wq.aggregate(WQStub(db), [self._EXAM_ROW])
+        return agg[self._EID]["verified_pyq_count"]
+
+    def _readiness_count(self, papers, questions, tags, cycle_id=None):
+        """Run compute_exam_workspace_readiness() via _make_sb; return verified_question_count."""
+        exam_row = {
+            "id": self._EID, "slug": "exam-cross", "name": "Cross Parity Exam",
+            "exam_type": "recruitment", "is_active": True,
+        }
+        sb = _make_sb(
+            exam=exam_row,
+            pyq_papers=papers,
+            pyq_questions=questions,
+            pyq_question_topic_tags=tags,
+        )
+        result = compute_exam_workspace_readiness(sb, self._EID, cycle_id)
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        return pyq["metrics"]["pyq_readiness"]["verified_question_count"]
+
+    def _assert_parity(self, papers, questions, tags, expected=None):
+        wq_count = self._wq_count(papers, questions, tags)
+        rd_count = self._readiness_count(papers, questions, tags)
+        assert wq_count == rd_count, (
+            f"Cross-consumer parity violation: "
+            f"work_queue={wq_count} != compute_exam_workspace_readiness={rd_count}"
+        )
+        if expected is not None:
+            assert wq_count == expected, f"Expected {expected}, got {wq_count}"
+        return wq_count
+
+    def test_cross_parity_all_gates_pass(self):
+        """All three gates pass — both consumers return identical count."""
+        papers = [{"id": "pp1", "exam_id": self._EID, "exam_cycle_id": "cy-26", "trust_status": "verified"}]
+        questions = [{"id": "q1", "pyq_paper_id": "pp1", "reviewer_status": "verified", "created_at": "2026-01-01"}]
+        tags = [{"id": "t1", "question_id": "q1", "reviewer_status": "verified", "created_at": "2026-01-01"}]
+        self._assert_parity(papers, questions, tags, expected=1)
+
+    def test_cross_parity_gate3_fails(self):
+        """Gate 3 (no verified tag) fails — both consumers agree on 0."""
+        papers = [{"id": "pp1", "exam_id": self._EID, "exam_cycle_id": "cy-26", "trust_status": "verified"}]
+        questions = [{"id": "q1", "pyq_paper_id": "pp1", "reviewer_status": "verified", "created_at": "2026-01-01"}]
+        tags = []
+        self._assert_parity(papers, questions, tags, expected=0)
+
+    def test_cross_parity_mixed_trust(self):
+        """Verified, pending, rejected papers — both consumers agree on the gated count."""
+        papers = [
+            {"id": "pp-ver", "exam_id": self._EID, "exam_cycle_id": "cy-26", "trust_status": "verified"},
+            {"id": "pp-pend", "exam_id": self._EID, "exam_cycle_id": "cy-26", "trust_status": "pending"},
+            {"id": "pp-rej", "exam_id": self._EID, "exam_cycle_id": "cy-25", "trust_status": "rejected"},
+        ]
+        questions = [
+            {"id": "qv1", "pyq_paper_id": "pp-ver", "reviewer_status": "verified", "created_at": "2026-01-01"},
+            {"id": "qv2", "pyq_paper_id": "pp-pend", "reviewer_status": "verified", "created_at": "2026-01-01"},
+            {"id": "qv3", "pyq_paper_id": "pp-rej", "reviewer_status": "verified", "created_at": "2025-01-01"},
+        ]
+        tags = [
+            {"id": "tv1", "question_id": "qv1", "reviewer_status": "verified", "created_at": "2026-01-01"},
+            {"id": "tv2", "question_id": "qv2", "reviewer_status": "verified", "created_at": "2026-01-01"},
+            {"id": "tv3", "question_id": "qv3", "reviewer_status": "verified", "created_at": "2025-01-01"},
+        ]
+        # Only qv1 on pp-ver passes all three gates.
+        self._assert_parity(papers, questions, tags, expected=1)
+
+    def test_cross_parity_cycle_id_does_not_change_readiness_count(self):
+        """D10 invariant: providing cycle_id to readiness must NOT change verified count."""
+        papers = [
+            {"id": "pp1", "exam_id": self._EID, "exam_cycle_id": "cy-26", "trust_status": "verified"},
+            {"id": "pp2", "exam_id": self._EID, "exam_cycle_id": "cy-25", "trust_status": "verified"},
+        ]
+        questions = [
+            {"id": "q1", "pyq_paper_id": "pp1", "reviewer_status": "verified", "created_at": "2026-01-01"},
+            {"id": "q2", "pyq_paper_id": "pp2", "reviewer_status": "verified", "created_at": "2025-01-01"},
+        ]
+        tags = [
+            {"id": "t1", "question_id": "q1", "reviewer_status": "verified", "created_at": "2026-01-01"},
+            {"id": "t2", "question_id": "q2", "reviewer_status": "verified", "created_at": "2025-01-01"},
+        ]
+        wq_count = self._wq_count(papers, questions, tags)
+        count_no_cycle = self._readiness_count(papers, questions, tags, cycle_id=None)
+        count_with_cycle = self._readiness_count(papers, questions, tags, cycle_id="cy-26")
+
+        assert wq_count == count_no_cycle == count_with_cycle == 2, (
+            f"Cross-consumer + cycle invariant: wq={wq_count}, "
+            f"no_cycle={count_no_cycle}, with_cycle={count_with_cycle}"
+        )
+
+    def test_cross_parity_unscoped_papers_counted_on_both_paths(self):
+        """Papers with exam_cycle_id=None (unscoped) are counted on both consumers."""
+        papers = [{"id": "pp1", "exam_id": self._EID, "exam_cycle_id": None, "trust_status": "verified"}]
+        questions = [{"id": "q1", "pyq_paper_id": "pp1", "reviewer_status": "verified", "created_at": "2026-01-01"}]
+        tags = [{"id": "t1", "question_id": "q1", "reviewer_status": "verified", "created_at": "2026-01-01"}]
+        self._assert_parity(papers, questions, tags, expected=1)
+
+    def test_cross_parity_empty_exam(self):
+        """No papers → both consumers agree on 0."""
+        self._assert_parity([], [], [], expected=0)
