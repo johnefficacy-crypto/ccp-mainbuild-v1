@@ -129,10 +129,16 @@ def test_counts_aggregate_across_two_verified_papers():
                     "question_id": "q2",
                     "topic_id": "topic-A",
                     "reviewer_status": "verified",
-                    "tag_role": "secondary",
+                    # Primary tag on a distinct question/paper. Frequency is
+                    # primary-only (see pyq-intelligence-v2.md), so cross-paper
+                    # aggregation is exercised with two genuine primary tags;
+                    # secondary/trap role exclusion is covered separately in
+                    # tests/exam_intelligence/test_pyq_frequency_semantics.py.
+                    "tag_role": "primary",
                 },
             ],
         }
     )
     counts = verified_pyq_topic_counts(sb, "exam-1")
+    # Two verified papers, each with one verified primary tag on topic-A → 2.
     assert counts == {"topic-A": 2}, counts

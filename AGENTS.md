@@ -7,6 +7,7 @@
 - [Migration discipline](#migration-discipline)
 - [Before adding new modules, verify they don't already exist](#before-adding-new-modules-verify-they-dont-already-exist)
 - [Patterns and Lessons](#patterns-and-lessons)
+- [PYQ Intelligence v2 module contracts](#pyq-intelligence-v2-module-contracts)
 
 ## graphify
 
@@ -340,3 +341,62 @@ When multiple implementation PRs must edit the same navigation/routing files —
 - Template-slug collision in `AddCycleWizard` is guarded before insert;
   clones recompute slugs from the target cycle's bound identifiers.
   Source: PR #635.
+
+## PYQ Intelligence v2 module contracts
+
+Architecture doc: `docs/architecture/pyq-intelligence-v2.md`.
+Delivery tracked in `docs/status/career-copilot-checklist.md` (Lane P rows).
+PR plan: Lane P in `docs/status/career-copilot-pr-plan.md`.
+
+### verified_pyq_topic_counts — primary-only contract
+
+`app/backend/app/exam_intelligence/coverage.py::verified_pyq_topic_counts(sb, exam_id)`
+
+**Contract (locked as of PR #767):** counts only `tag_role='primary'` tags.
+Secondary, trap, and `calculation_layer` tags are excluded at both the DB query
+and the loop guard (defense-in-depth).
+
+Trust gates are conjunctive (ALL three required):
+- `pyq_papers.trust_status = 'verified'`
+- `pyq_questions.reviewer_status = 'verified'`
+- `pyq_question_topic_tags.reviewer_status = 'verified'`
+
+Tests: `tests/exam_intelligence/test_pyq_frequency_semantics.py` and `tests/test_pyq_counts_trust.py`.
+
+**Do not remove the loop guard** — it protects against query refactors that
+accidentally drop `.eq("tag_role", "primary")`.
+
+### exam_topic_score_snapshots writer
+
+`app/backend/app/exam_intelligence/score_snapshots.py` (added PR #767)
+
+| Function | Purpose |
+|---|---|
+| `compute_exam_topic_scores(sb, exam_id, model_version, *, exam_phase_id)` | Writes draft snapshots; idempotent via SHA-256 fingerprint on inputs. Returns `{written, skipped, errors, total_topics, read_error, invalid_scope}`. |
+| `locked_score_snapshots(sb, exam_id, *, exam_phase_id)` | Locked-only reader for planner/user surfaces. Deduplicated to latest per `(exam_id, topic_id)`, filtered to `MODEL_VERSION`. |
+| `list_exam_score_snapshots(sb, exam_id, *, status)` | Admin list helper; fully paginated via `_paginate()`. |
+
+**Status lifecycle:** `draft → reviewed → locked`. Only `locked` rows feed planner/user surfaces.
+
+**Contracts locked in PR #767 second-pass fixes:**
+- **Primary-only + ambiguity exclusion:** questions with ≥2 primary tags to different topics are excluded from all frequency counts in both `compute_exam_topic_scores` and `verified_pyq_topic_counts`. `existing_fps` collects ALL fingerprints per topic — not just the last one — so a stale orphaned draft row cannot cause a duplicate insert.
+- **Exam-wide coverage isolation:** `_coverage_page` adds `.is_("exam_phase_id", None)` when `exam_phase_id` is not supplied, preventing phase-specific coverage rows from entering exam-wide score computation.
+- **Draft fail-closed:** `_paginate()` on `exam_topic_score_snapshots` returns `None` on any page failure → `read_error: True`. A DB error on the draft SELECT must never be treated as "no drafts exist" (which would create unbounded duplicates).
+- **Pagination:** all corpus reads (papers, questions, tags, coverage, drafts, locked) use `_paginate()` with PostgREST `.range(from, to)` to satisfy the architecture acceptance criterion.
+- **`invalid_scope` vs `read_error`:** phase-not-in-exam is a caller validation error → `invalid_scope: True` → HTTP 422. DB read failures → `read_error: True` → HTTP 502. These are mutually exclusive and the endpoint checks `invalid_scope` first.
+- **Model-version authority:** `locked_score_snapshots` filters `.eq("model_version", MODEL_VERSION)` so stale-model rows can never override current-model results.
+- **Audit log:** `review_score_snapshot` performs a best-effort INSERT into `admin_audit_logs` before the conditional UPDATE. Not fully atomic (no dedicated RPC migration) but ensures every successful transition has an audit trail.
+
+**Remaining known gap (slice-1b):** audit log INSERT is not atomic with the UPDATE — a concurrent-modification failure (409) leaves an orphan audit row. A dedicated RPC migration is needed for full atomicity.
+
+Admin endpoints added to `app/backend/app/api/admin_exam_intelligence.py`:
+`GET /exams/{exam_id}/score-snapshots`, `PATCH /score-snapshots/{id}/review`, `POST /exams/{exam_id}/score-snapshots/compute`.
+Tests: `tests/exam_intelligence/test_score_snapshot_admin_api.py`.
+
+### 19. Primary-only frequency is the permanent PYQ contract
+
+`verified_pyq_topic_counts` counts a question once per topic if it has a
+verified primary tag. Multiple secondary/trap/calculation_layer tags on the
+same question do NOT inflate frequency. This is intentional. Do not revert
+to all-role counting without an explicit architectural decision and downstream
+consumer audit.

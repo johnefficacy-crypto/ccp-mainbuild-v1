@@ -34,6 +34,11 @@ from app.exam_intelligence.syllabus_mapper import (
     preview_accept,
     propose_syllabus_mentions,
 )
+from app.exam_intelligence.score_snapshots import (
+    compute_exam_topic_scores,
+    list_exam_score_snapshots,
+    MODEL_VERSION as _SNAPSHOT_MODEL_VERSION,
+)
 from app.study_os.mission_control import invalidate_per_exam_intelligence
 from app.study_os.plan_impact import compute_plan_impact, record_plan_impact_decision
 
@@ -2112,6 +2117,17 @@ class _AcceptCommitBody(BaseModel):
     reason: str
 
 
+class ScoreSnapshotReviewBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: str
+    reviewer_notes: str | None = None
+
+
+class ComputeSnapshotBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    exam_phase_id: str | None = None
+
+
 def _validate_accept_body(proposals: list, *, require_client_key: bool = False) -> None:
     if not proposals:
         raise HTTPException(status_code=422, detail="proposals must not be empty")
@@ -2169,3 +2185,167 @@ def syllabus_accept_commit(
         reason=body.reason,
         actor_id=actor_id,
     )
+
+
+# ─── Score Snapshots ──────────────────────────────────────────────────────
+
+_SNAPSHOT_STATUSES = {"draft", "reviewed", "locked", "rejected"}
+_SNAPSHOT_TRANSITIONS = {
+    "draft": {"reviewed", "rejected"},
+    "reviewed": {"locked", "rejected", "draft"},
+    "locked": {"reviewed"},
+    "rejected": {"draft"},
+}
+_SNAPSHOT_COLUMNS = (
+    "id, exam_id, exam_phase_id, topic_id, model_version, computed_at, "
+    "exam_priority_score, is_high_yield, confidence_score, evidence_count, "
+    "score_components, input_summary, status, reviewed_by, reviewed_at, reviewer_notes"
+)
+
+
+@router.get("/exams/{exam_id}/score-snapshots")
+def list_score_snapshots(
+    exam_id: str,
+    status: str | None = Query(default=None),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """List ``exam_topic_score_snapshots`` rows for an exam, ordered by computed_at DESC.
+
+    Paginated internally — ``total`` reflects the real count, not a capped value.
+    """
+    if status is not None and status not in _SNAPSHOT_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid status {status!r}. Must be one of: {sorted(_SNAPSHOT_STATUSES)}",
+        )
+    sb = get_supabase_admin()
+    rows = list_exam_score_snapshots(sb, exam_id, status=status)
+    return {"snapshots": rows, "total": len(rows), "exam_id": exam_id}
+
+
+@router.patch("/score-snapshots/{snapshot_id}/review")
+def review_score_snapshot(
+    snapshot_id: str,
+    body: ScoreSnapshotReviewBody,
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Move an ``exam_topic_score_snapshots`` row through its review lifecycle.
+
+    Allowed transitions::
+
+        draft     → reviewed | rejected
+        reviewed  → locked | rejected | draft
+        locked    → reviewed  (reversal; reviewer_notes required)
+        rejected  → draft
+    """
+    sb = get_supabase_admin()
+    existing = (
+        _safe(
+            lambda: sb.table("exam_topic_score_snapshots")
+            .select("id, status")
+            .eq("id", snapshot_id)
+            .limit(1)
+            .execute()
+            .data,
+            default=[],
+        )
+        or []
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="snapshot not found")
+    current_status = existing[0].get("status")
+    new_status = body.status
+    allowed = _SNAPSHOT_TRANSITIONS.get(current_status, set())
+    if new_status not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Cannot transition from {current_status!r} to {new_status!r}. Allowed: {sorted(allowed)}",
+        )
+    # Reverting a locked snapshot requires reviewer notes for audit trail.
+    if current_status == "locked" and new_status == "reviewed" and not body.reviewer_notes:
+        raise HTTPException(
+            status_code=422,
+            detail="reviewer_notes required when reverting a locked snapshot",
+        )
+    update: dict[str, Any] = {
+        "status": new_status,
+        "reviewed_by": admin["id"],
+        "reviewed_at": _now_iso(),
+    }
+    if body.reviewer_notes is not None:
+        update["reviewer_notes"] = body.reviewer_notes
+
+    # Best-effort audit log: record every status transition, especially
+    # locked→reviewed reversals. Not fully atomic (no RPC), but ensures
+    # successful transitions always have an audit trail. A concurrent-
+    # modification failure below leaves an orphan row — acceptable until a
+    # dedicated migration adds an atomic RPC (cf. 185_pyq_paper_review_transaction.sql).
+    _safe(
+        lambda: sb.table("admin_audit_logs").insert({
+            "actor_id": admin.get("id"),
+            "actor_email": admin.get("email"),
+            "admin_user_id": admin.get("id"),
+            "action": "snapshot_status_transition",
+            "entity_type": "exam_topic_score_snapshot",
+            "entity_id": snapshot_id,
+            "old_value": {"status": current_status},
+            "new_value": {"status": new_status},
+            "notes": body.reviewer_notes,
+        }).execute().data,
+    )
+
+    # Conditional UPDATE: only succeeds when the row still has the expected
+    # current_status, preventing silent overwrite of a concurrent modification.
+    try:
+        result = (
+            sb.table("exam_topic_score_snapshots")
+            .update(update)
+            .eq("id", snapshot_id)
+            .eq("status", current_status)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "score_snapshot review update failed",
+            extra={"snapshot_id": snapshot_id, "error": str(exc)},
+        )
+        raise HTTPException(status_code=500, detail="snapshot update failed") from exc
+
+    if not result.data:
+        raise HTTPException(
+            status_code=409,
+            detail="snapshot was modified concurrently — refresh and retry",
+        )
+    return {"ok": True, "snapshot_id": snapshot_id, "new_status": new_status}
+
+
+@router.post("/exams/{exam_id}/score-snapshots/compute")
+def compute_score_snapshots(
+    exam_id: str,
+    body: ComputeSnapshotBody = Body(default_factory=ComputeSnapshotBody),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Trigger snapshot computation for all topics in an exam.
+
+    Delegates to ``compute_exam_topic_scores`` from
+    ``app.exam_intelligence.score_snapshots``. Returns a summary of written,
+    skipped, and error counts alongside the model_version used.
+
+    Returns HTTP 502 when a critical input read fails (``read_error=True``),
+    to distinguish a DB-read failure from a genuine "no evidence" result.
+    """
+    sb = get_supabase_admin()
+    result = compute_exam_topic_scores(
+        sb, exam_id, _SNAPSHOT_MODEL_VERSION, exam_phase_id=body.exam_phase_id
+    )
+    if result.get("invalid_scope"):
+        raise HTTPException(
+            status_code=422,
+            detail=f"exam_phase_id does not belong to exam {exam_id}",
+        )
+    if result.get("read_error"):
+        raise HTTPException(
+            status_code=502,
+            detail="one or more input reads failed during score computation — check DB and retry",
+        )
+    return {**result, "exam_id": exam_id, "model_version": _SNAPSHOT_MODEL_VERSION}
