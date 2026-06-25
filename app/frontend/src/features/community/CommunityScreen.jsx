@@ -163,7 +163,10 @@ export default function CommunityScreen() {
   }
 
   const sortedThreads = useMemo(() => sortThreads(threads, sort, users), [threads, sort, users]);
-  const breadcrumbLabel = thread?.title || channel?.name || space?.name || "Community";
+  let breadcrumbLabel = null;
+  if (params.threadId) breadcrumbLabel = thread?.title || null;
+  else if (params.channelId) breadcrumbLabel = channel?.name || null;
+  else if (params.spaceId) breadcrumbLabel = space?.name || null;
   useBreadcrumbLeaf(breadcrumbLabel);
 
   return (
