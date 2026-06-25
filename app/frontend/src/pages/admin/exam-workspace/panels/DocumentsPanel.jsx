@@ -474,7 +474,8 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
       // Rehydrate inFlight: merge backend docs that are still processing,
       // excluding any that have already reached a terminal state, to avoid
       // polling docs the backend has already finalized.
-      const backendDocs = pyqDocResult?.items || pyqDocResult || [];
+      const rawPayload = pyqDocResult?.items ?? pyqDocResult;
+      const backendDocs = Array.isArray(rawPayload) ? rawPayload : [];
       setInFlight((prev) => {
         const backendIds = new Set(backendDocs.map((d) => d.id));
         // Keep local-only entries that haven't appeared in backend yet
