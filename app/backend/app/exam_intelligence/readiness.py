@@ -473,6 +473,13 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
         blockers.append("pyq readiness read failed — data may be incomplete")
     elif ev.get("papers_total", 0) == 0:
         blockers.append("no PYQ papers uploaded")
+    elif d10_state == "missing":
+        # papers exist but all are rejected — no usable corpus remains
+        total = ev.get("papers_total", 0)
+        blockers.append(
+            f"no usable PYQ corpus — all {total} paper"
+            f"{'s are' if total != 1 else ' is'} rejected"
+        )
     else:
         papers_pending_review = ev.get("papers_pending_review", 0)
         if papers_pending_review > 0:
@@ -506,7 +513,7 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
                 blockers.append(
                     f"{q_on_vp} question"
                     f"{'s' if q_on_vp != 1 else ''} on verified paper(s) "
-                    "have no valid reviewer status"
+                    "lack verified reviewer status"
                 )
 
     return {

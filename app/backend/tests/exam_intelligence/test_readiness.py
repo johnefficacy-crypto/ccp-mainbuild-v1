@@ -47,6 +47,16 @@ def _client(sb_factory):
 
 # ── Stub builder ──────────────────────────────────────────────────────────────
 
+# Schema for D10 PYQ tables — only these are validated for unknown projected columns.
+# Other tables served by _SBStub are pass-through (no schema enforcement).
+_PYQ_TABLE_SCHEMAS: dict[str, frozenset] = {
+    "pyq_papers": frozenset({"id", "exam_id", "exam_cycle_id", "trust_status"}),
+    "pyq_questions": frozenset({"id", "pyq_paper_id", "reviewer_status", "created_at"}),
+    "pyq_question_topic_tags": frozenset({"id", "question_id", "reviewer_status", "created_at"}),
+    "pyq_options": frozenset({"id", "question_id"}),
+}
+
+
 class _SBStub:
     """Flexible supabase stub. Configure per-table return data via constructor."""
 
@@ -55,22 +65,33 @@ class _SBStub:
         self._data = table_data
 
     def table(self, name):
-        tbl = _TableStub(self._data.get(name, []))
+        tbl = _TableStub(self._data.get(name, []), table_name=name)
         return tbl
 
 
 class _TableStub:
-    def __init__(self, rows):
+    def __init__(self, rows, table_name=None):
         self._rows = rows if not callable(rows) else rows
         self._filters: dict = {}
         self._in_filters: dict = {}
         self._columns: list[str] | None = None
         self._range_start: int | None = None
         self._range_end: int | None = None
+        self._table_name: str | None = table_name
 
     def select(self, cols=None, **kw):
         if cols and isinstance(cols, str):
-            self._columns = [c.strip() for c in cols.split(",") if c.strip()]
+            parsed = [c.strip() for c in cols.split(",") if c.strip()]
+            # Reject unknown columns for schema-validated D10 PYQ tables.
+            if self._table_name in _PYQ_TABLE_SCHEMAS:
+                schema = _PYQ_TABLE_SCHEMAS[self._table_name]
+                unknown = frozenset(parsed) - schema
+                if unknown:
+                    raise AssertionError(
+                        f"Query projects unknown column(s) from {self._table_name!r}: "
+                        f"{sorted(unknown)!r}. Schema allows: {sorted(schema)!r}"
+                    )
+            self._columns = parsed
         return self
 
     def eq(self, k, v):
@@ -923,7 +944,6 @@ def _verified_paper(paper_id: str, cycle_id: str) -> dict:
         "id": paper_id,
         "exam_id": "exam-1",
         "exam_cycle_id": cycle_id,
-        "reviewer_status": "verified",
         "trust_status": "verified",
     }
 
@@ -1413,3 +1433,141 @@ class TestPYQWorkbenchCrossConsumerParity:
     def test_cross_parity_empty_exam(self):
         """No papers → both consumers agree on 0."""
         self._assert_parity([], [], [], expected=0)
+
+
+class TestPYQWorkbenchAllRejected:
+    """D10: all-rejected corpus → state='missing', legacy 'empty', non-empty blocker."""
+
+    def test_all_rejected_papers_gives_empty_status_with_blocker(self):
+        papers = [
+            {"id": "p1", "exam_id": "exam-1", "exam_cycle_id": "cy-26", "trust_status": "rejected"},
+            {"id": "p2", "exam_id": "exam-1", "exam_cycle_id": "cy-25", "trust_status": "rejected"},
+        ]
+        sb = _make_sb(exam=EXAM, pyq_papers=papers)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        # All papers rejected → D10 state=missing → legacy empty
+        assert pyq["status"] == "empty", (
+            "All-rejected papers: D10 state=missing → legacy empty"
+        )
+        ev = pyq["metrics"]["pyq_readiness"]
+        assert ev["state"] == "missing"
+        assert ev["papers_total"] == 2
+        # Operator must receive an actionable blocker explaining the rejection
+        assert pyq["blockers"], (
+            "All-rejected corpus must carry an operator-readable blocker, got none"
+        )
+        assert any("rejected" in b.lower() for b in pyq["blockers"]), (
+            f"Blocker must mention 'rejected'; got: {pyq['blockers']}"
+        )
+
+    def test_single_rejected_paper_blocker_is_singular(self):
+        papers = [{"id": "p1", "exam_id": "exam-1", "exam_cycle_id": "cy-26", "trust_status": "rejected"}]
+        sb = _make_sb(exam=EXAM, pyq_papers=papers)
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["status"] == "empty"
+        assert pyq["blockers"]
+        blocker = pyq["blockers"][0]
+        assert "1 paper" in blocker and "rejected" in blocker.lower(), (
+            f"Singular paper blocker text wrong: {blocker!r}"
+        )
+
+
+class TestPYQWorkbenchPagination:
+    """D10: verified questions on page 2 (501+ papers) must be counted."""
+
+    def test_page2_paper_contributes_to_verified_count(self):
+        """501 papers where only the 501st (page 2) has a verified chain.
+
+        _PAGE = 500: page 1 fills exactly (all pending), page 2 returns the one
+        verified paper.  If pagination is broken, verified_question_count stays 0.
+        """
+        # 500 pending papers exactly fill page 1
+        page1_papers = [
+            {
+                "id": f"p-{i}", "exam_id": "exam-1",
+                "exam_cycle_id": "cy-26", "trust_status": "pending",
+            }
+            for i in range(500)
+        ]
+        # 1 verified paper on page 2 with the only verified question + tag
+        page2_paper = {
+            "id": "p-500", "exam_id": "exam-1",
+            "exam_cycle_id": "cy-26", "trust_status": "verified",
+        }
+        page2_question = {"id": "q-500", "pyq_paper_id": "p-500", "reviewer_status": "verified"}
+        page2_tag = {"id": "t-500", "question_id": "q-500", "reviewer_status": "verified"}
+
+        papers = page1_papers + [page2_paper]
+        questions = [page2_question]
+        tags = [page2_tag]
+
+        sb = _make_sb(
+            exam=EXAM,
+            pyq_papers=papers,
+            pyq_questions=questions,
+            pyq_question_topic_tags=tags,
+        )
+        result = compute_exam_workspace_readiness(sb, "exam-1")
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        assert pyq["metrics"]["pyq_readiness"]["verified_question_count"] == 1, (
+            "Page 2 paper must be loaded and counted; "
+            "if 0, pagination is truncated at page 1"
+        )
+        assert pyq["metrics"]["pyq_readiness"]["papers_total"] == 501
+        assert pyq["status"] == "ready"
+
+    def test_page2_parity_with_work_queue(self):
+        """Both consumers agree on page-2 verified count at the 501-paper boundary."""
+        from app.exam_intelligence import work_queue as wq
+        from tests.persona_questions._stub import SBStub as WQStub
+
+        _EID = "exam-page2"
+        exam_row = {
+            "id": _EID, "slug": _EID, "name": "Page2 Exam",
+            "exam_type": "recruitment", "is_active": True,
+            "exam_family_id": None, "management_mode": "core",
+            "cadence": "annual", "conducting_organization_id": None,
+        }
+        page1_papers = [
+            {
+                "id": f"p-{i}", "exam_id": _EID,
+                "exam_cycle_id": "cy-26", "trust_status": "pending",
+            }
+            for i in range(500)
+        ]
+        page2_paper = {"id": "p-500", "exam_id": _EID, "exam_cycle_id": "cy-26", "trust_status": "verified"}
+        page2_question = {"id": "q-500", "pyq_paper_id": "p-500", "reviewer_status": "verified", "created_at": "2026-01-01"}
+        page2_tag = {"id": "t-500", "question_id": "q-500", "reviewer_status": "verified", "created_at": "2026-01-01"}
+
+        papers = page1_papers + [page2_paper]
+        questions = [page2_question]
+        tags = [page2_tag]
+
+        # work_queue path (WQStub returns all rows; no pagination boundary)
+        db = {
+            "exams": [exam_row],
+            "exam_phases": [],
+            "exam_topic_coverage": [],
+            "syllabus_topic_mentions": [],
+            "exam_policy_updates": [],
+            "pyq_papers": papers,
+            "pyq_questions": questions,
+            "pyq_question_topic_tags": tags,
+            "pyq_options": [],
+            "organizations": [],
+        }
+        agg = wq.aggregate(WQStub(db), [exam_row])
+        wq_count = agg[_EID]["verified_pyq_count"]
+
+        # readiness path (uses range-aware _TableStub with real pagination)
+        exam_stub_row = {"id": _EID, "slug": _EID, "name": "Page2 Exam", "exam_type": "recruitment", "is_active": True}
+        sb = _make_sb(exam=exam_stub_row, pyq_papers=papers, pyq_questions=questions, pyq_question_topic_tags=tags)
+        result = compute_exam_workspace_readiness(sb, _EID)
+        pyq = next(s for s in result["sections"] if s["section"] == "pyq_workbench")
+        rd_count = pyq["metrics"]["pyq_readiness"]["verified_question_count"]
+
+        assert wq_count == rd_count == 1, (
+            f"501-paper cross-consumer parity: wq={wq_count}, readiness={rd_count}"
+        )
