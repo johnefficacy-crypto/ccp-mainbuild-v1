@@ -65,7 +65,7 @@ function isTerminalJobStatus(s) {
 }
 // document_assets.status values that are terminal.
 function isTerminalDocStatus(s) {
-  return s === "processed" || s === "failed";
+  return s === "processed" || s === "failed" || s === "archived";
 }
 
 // ─── ExtractionBadge ────────────────────────────────────────────────────────
@@ -491,19 +491,22 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     setLoading(true);
     setListError("");
     try {
-      const qs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
-      if (cycle?.id) qs.set("exam_cycle_id", cycle.id);
+      // syllabus-documents and pyq-papers are both exam-wide (D10: cycle is
+      // provenance metadata, not a scope filter). Use separate query strings
+      // because syllabus-documents does not accept exam_cycle_id.
+      const sylQs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
+      const pyqQs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
       const docQs = new URLSearchParams({ exam_id: exam.id, document_kind: "pyq_paper", limit: "200" });
       const [sylResult, pyqResult] = await Promise.all([
-        api.get(`${CMS}/syllabus-documents?${qs}`),
-        api.get(`${CMS}/pyq-papers?${qs}`),
+        api.get(`${CMS}/syllabus-documents?${sylQs}`),
+        api.get(`${CMS}/pyq-papers?${pyqQs}`),
       ]);
       setDocs(sylResult?.items   || sylResult   || []);
       setPapers(pyqResult?.items || pyqResult   || []);
-      // Rehydrate inFlight: keep docs that are unlinked (not yet attached to a
-      // pyq_paper) and not failed. Processed-but-unlinked docs must stay visible
-      // so the operator can still link them. Linked docs are already shown in the
-      // linked-docs table and must not re-appear here.
+      // Rehydrate inFlight: keep docs that are unlinked (not yet attached to any
+      // same-exam pyq_paper) and not failed/archived. linkedDocIds uses the
+      // exam-wide paper set so documents linked to historical-cycle papers are
+      // correctly excluded. Processed-but-unlinked docs stay visible for linking.
       let pyqDocResult = null;
       try {
         pyqDocResult = await api.get(`${DOC_BASE}?${docQs}`);
@@ -518,7 +521,7 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
           .filter(Boolean),
       );
       const rehydrated = backendDocs
-        .filter((d) => d.status !== "failed" && !linkedDocIds.has(d.id))
+        .filter((d) => d.status !== "failed" && d.status !== "archived" && !linkedDocIds.has(d.id))
         .map((d) => ({
           ...d,
           filename: d.filename || d.original_filename || d.title || d.storage_path || d.id,
@@ -535,7 +538,7 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     } finally {
       setLoading(false);
     }
-  }, [exam?.id, cycle?.id, startPoll]);
+  }, [exam?.id, startPoll]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -579,8 +582,9 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     setLinkingId(doc.id);
     if (doc.document_kind === "pyq_paper") {
       try {
+        // D10: always fetch exam-wide so the link picker shows all papers
+        // in this exam, not just those in the currently selected cycle.
         const qs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
-        if (cycle?.id) qs.set("exam_cycle_id", cycle.id);
         const r = await api.get(`${CMS}/pyq-papers?${qs}`);
         setPyqPapers(r?.items || r || []);
       } catch {

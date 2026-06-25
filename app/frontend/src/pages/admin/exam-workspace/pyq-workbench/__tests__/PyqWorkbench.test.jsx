@@ -181,15 +181,23 @@ describe("PyqWorkbenchPanel", () => {
     );
   });
 
-  test("passes exam_cycle_id when workspace has a cycle", async () => {
+  test("D10: never passes exam_cycle_id to pyq-papers, even when a cycle is selected", async () => {
+    // D10 decision: PYQ corpus is always exam-wide. cycle is provenance
+    // metadata, not a default scope filter; passing exam_cycle_id would hide
+    // historical and parallel-cycle papers from the workbench.
     jest.clearAllMocks();
     mockContextApi({ withCycle: true });
     render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith(
-        expect.stringContaining(`exam_cycle_id=${CYCLE_ID}`),
+        expect.stringContaining(`exam_id=${EXAM_ID}`),
       ),
     );
+    const pyqCalls = api.get.mock.calls.filter((c) => c[0].includes("pyq-papers?"));
+    expect(pyqCalls.length).toBeGreaterThan(0);
+    pyqCalls.forEach(([url]) => {
+      expect(url).not.toContain("exam_cycle_id");
+    });
   });
 
   test("shows empty-state when no papers returned", async () => {
@@ -308,6 +316,57 @@ describe("PyqWorkbenchPanel", () => {
 
     // Selection unchanged — still no paper selected
     expect(screen.queryByTestId("pyq-no-paper-selected")).toBeTruthy();
+  });
+
+  // D10 acceptance tests: exam-wide PYQ scope
+  test("D10: paper from another cycle remains visible when a different cycle is selected", async () => {
+    // A 2025-cycle paper must appear in the 2026 workbench view.
+    // The corpus is exam-wide; cycle is provenance, not a scope filter.
+    const PAPER_2025 = {
+      id: "p-2025", exam_id: EXAM_ID, exam_cycle_id: "cy-2025",
+      year: 2025, paper_code: "GS-I", shift: "I",
+    };
+    const PAPER_2026 = {
+      id: "p-2026", exam_id: EXAM_ID, exam_cycle_id: CYCLE_ID,
+      year: 2026, paper_code: "GS-I", shift: "I",
+    };
+    jest.clearAllMocks();
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+      if (url.includes("/context")) return Promise.resolve({
+        exam: { id: EXAM_ID, name: "SSC CGL", exam_type: "recruitment" },
+        cycle: { id: CYCLE_ID }, cycles: [{ id: CYCLE_ID, cycle_name: "2026" }], phases: [],
+      });
+      if (url.includes("/pyq-papers?")) return Promise.resolve({ items: [PAPER_2025, PAPER_2026] });
+      return Promise.resolve({});
+    });
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: [] } });
+    render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    // Both papers — 2025 and 2026 — must be visible.
+    expect(screen.getByTestId("pyq-paper-row-p-2025")).toBeTruthy();
+    expect(screen.getByTestId("pyq-paper-row-p-2026")).toBeTruthy();
+  });
+
+  test("D10: unscoped paper (no exam_cycle_id) remains visible when a cycle is selected", async () => {
+    const UNSCOPED = {
+      id: "p-unscoped", exam_id: EXAM_ID, exam_cycle_id: null,
+      year: 2023, paper_code: "GS-II", shift: "I",
+    };
+    jest.clearAllMocks();
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+      if (url.includes("/context")) return Promise.resolve({
+        exam: { id: EXAM_ID, name: "SSC CGL", exam_type: "recruitment" },
+        cycle: { id: CYCLE_ID }, cycles: [{ id: CYCLE_ID, cycle_name: "2026" }], phases: [],
+      });
+      if (url.includes("/pyq-papers?")) return Promise.resolve({ items: [UNSCOPED] });
+      return Promise.resolve({});
+    });
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: [] } });
+    render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("pyq-paper-row-p-unscoped")).toBeTruthy();
   });
 });
 

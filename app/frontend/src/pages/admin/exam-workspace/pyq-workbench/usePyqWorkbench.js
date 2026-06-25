@@ -19,8 +19,9 @@ export function usePyqWorkbench(examId, cycleId) {
     setLoading(true);
     setError(null);
     try {
+      // D10 decision: PYQ corpus is always exam-wide. cycle_id is provenance
+      // metadata, not a display/scope filter. Never pass exam_cycle_id here.
       const params = new URLSearchParams({ exam_id: examId });
-      if (cycleId) params.set("exam_cycle_id", cycleId);
       const res = await api.get(`${CMS_BASE}/pyq-papers?${params}`);
       setPapers(res.items || []);
     } catch (e) {
@@ -28,7 +29,7 @@ export function usePyqWorkbench(examId, cycleId) {
     } finally {
       setLoading(false);
     }
-  }, [examId, cycleId]);
+  }, [examId]);
 
   useEffect(() => { fetchPapers(); }, [fetchPapers]);
 

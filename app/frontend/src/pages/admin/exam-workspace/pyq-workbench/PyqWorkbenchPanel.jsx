@@ -314,15 +314,14 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
 
   const openProvenanceModal = useCallback(async (paper) => {
     setProvenanceTarget({ paper });
+    setPyqDocuments([]);
+    setPyqSources([]);
     setPyqDocCounts(new Map());
-    try {
-      const [docs, sources, questions] = await Promise.all([
-        fetchPyqDocuments(),
-        fetchPyqSources(),
-        fetchPaperQuestions(paper.id),
-      ]);
-      setPyqDocuments(docs);
-      setPyqSources(sources);
+    // Fetch independently so a failure on one optional list (e.g. pyq-sources)
+    // does not discard the results of the others.
+    fetchPyqDocuments().then(setPyqDocuments).catch(() => {});
+    fetchPyqSources().then(setPyqSources).catch(() => {});
+    fetchPaperQuestions(paper.id).then((questions) => {
       const counts = new Map();
       for (const q of questions) {
         if (q.source_document_id) {
@@ -330,9 +329,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
         }
       }
       setPyqDocCounts(counts);
-    } catch {
-      // non-fatal: modal still opens with empty lists
-    }
+    }).catch(() => {});
   }, [fetchPyqDocuments, fetchPyqSources, fetchPaperQuestions]);
 
   async function handleReviewSubmit(pid, targetStatus, reason) {
@@ -383,12 +380,12 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
         {error && <span className="text-sm text-rose-600" data-testid="pyq-papers-error">{error}</span>}
         {paperNotFound && (
           <span className="text-sm text-rose-600" data-testid="pyq-paper-not-found">
-            Paper {paperId} was not found in this exam/cycle.
+            Paper {paperId} was not found in this exam.
           </span>
         )}
         {!loading && !error && papers.length === 0 && (
           <span className="text-sm text-gray-500" data-testid="pyq-empty-state">
-            No PYQ papers for this exam/cycle. Create one in the CMS.
+            No PYQ papers for this exam. Create one in the CMS.
           </span>
         )}
         {pdfError && (
