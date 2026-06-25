@@ -344,9 +344,10 @@ test("Refresh button re-fetches the linked docs list", async () => {
 // ── 9. Processed-but-unlinked doc rehydration (P1-2 regression) ──────────────
 
 test("processed pyq_paper doc not linked to any paper appears in inFlight after load", async () => {
+  // Use original_filename (real API shape — the backend response does not have filename).
   const PROCESSED_UNLINKED = {
     id: "doc-unlinked-processed",
-    filename: "upsc-2024-gs1.pdf",
+    original_filename: "upsc-2024-gs1.pdf",
     document_kind: "pyq_paper",
     status: "processed",
     page_count: 32,
@@ -363,6 +364,8 @@ test("processed pyq_paper doc not linked to any paper appears in inFlight after 
   renderPanel();
   // Panel reaches docs-populated because inFlight becomes non-empty
   await waitFor(() => screen.getByTestId("inflight-row-doc-unlinked-processed"));
+  // Filename is normalized from original_filename and rendered visibly
+  expect(screen.getByText("upsc-2024-gs1.pdf")).toBeTruthy();
 });
 
 test("processed pyq_paper doc already linked to a paper is excluded from inFlight", async () => {

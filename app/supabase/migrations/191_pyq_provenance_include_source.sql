@@ -30,17 +30,27 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_paper          record;
-    v_doc            record;
-    v_source         record;
-    v_doc_id         uuid;
-    v_source_id      uuid;
-    v_blocking       text[];
-    v_audit_id       uuid;
-    v_was_verified   boolean;
+    v_paper                     record;
+    v_doc                       record;
+    v_source                    record;
+    v_doc_id                    uuid;
+    v_source_id                 uuid;
+    v_blocking                  text[];
+    v_audit_id                  uuid;
+    v_was_verified              boolean;
+    v_previous_provenance       jsonb;
+    v_trust_status_after        text;
+    v_merged_source_type        text;
+    v_merged_source_url         text;
+    v_merged_source_document_id uuid;
 BEGIN
     -- Lock the paper row for the duration of this transaction.
-    SELECT id, exam_id, trust_status INTO v_paper
+    -- Include the four provenance fields so we can build the merged state and
+    -- the previous-provenance snapshot entirely from the locked row, avoiding
+    -- any race with concurrent set-provenance calls.
+    SELECT id, exam_id, trust_status,
+           source_type, source_url, source_document_id, pyq_source_id
+    INTO v_paper
     FROM public.pyq_papers
     WHERE id = p_paper_id::uuid
     FOR UPDATE;
@@ -53,6 +63,17 @@ BEGIN
     -- Derive demotion flag from the locked row, not from the caller-supplied
     -- boolean (which was computed by Python before the lock was acquired).
     v_was_verified := (v_paper.trust_status = 'verified');
+
+    -- Build previous-provenance snapshot from the locked row before any
+    -- modifications.  Using the locked row avoids the race where a concurrent
+    -- set-provenance call changes fields between Python's pre-lock SELECT and
+    -- this lock acquisition.
+    v_previous_provenance := jsonb_build_object(
+        'source_type',        v_paper.source_type,
+        'source_url',         v_paper.source_url,
+        'source_document_id', v_paper.source_document_id,
+        'pyq_source_id',      v_paper.pyq_source_id
+    );
 
     -- When source_document_id is being set to a non-null value, lock and
     -- validate the document_assets row inside this transaction.
@@ -120,6 +141,37 @@ BEGIN
         END IF;
     END IF;
 
+    -- Compute merged provenance (locked current values overridden by patch)
+    -- and enforce the completeness gate under the lock.
+    v_merged_source_type        := CASE WHEN p_patch ? 'source_type'
+                                        THEN p_patch->>'source_type'
+                                        ELSE v_paper.source_type        END;
+    v_merged_source_url         := CASE WHEN p_patch ? 'source_url'
+                                        THEN p_patch->>'source_url'
+                                        ELSE v_paper.source_url         END;
+    v_merged_source_document_id := CASE WHEN p_patch ? 'source_document_id'
+                                        THEN (p_patch->>'source_document_id')::uuid
+                                        ELSE v_paper.source_document_id END;
+
+    -- Gate: source_type must be non-null and not 'unknown'; at least one of
+    -- source_url or source_document_id must be present.
+    IF NOT (
+        v_merged_source_type IS NOT NULL
+        AND v_merged_source_type != 'unknown'
+        AND (v_merged_source_url IS NOT NULL OR v_merged_source_document_id IS NOT NULL)
+    ) THEN
+        v_blocking := ARRAY[]::text[];
+        IF v_merged_source_type IS NULL OR v_merged_source_type = 'unknown' THEN
+            v_blocking := array_append(v_blocking, 'source_type');
+        END IF;
+        IF v_merged_source_url IS NULL AND v_merged_source_document_id IS NULL THEN
+            v_blocking := array_append(v_blocking, 'source_url');
+        END IF;
+        RAISE EXCEPTION 'provenance_incomplete: blocking_fields=%',
+            array_to_string(v_blocking, ',')
+            USING ERRCODE = 'P0422';
+    END IF;
+
     -- Update only the provenance fields present in the patch.
     UPDATE public.pyq_papers
     SET
@@ -144,6 +196,9 @@ BEGIN
             USING ERRCODE = 'P0404';
     END IF;
 
+    -- Trust status after the update: 'pending' if demoted, else unchanged.
+    v_trust_status_after := CASE WHEN v_was_verified THEN 'pending' ELSE v_paper.trust_status END;
+
     -- Audit INSERT is in the same transaction.
     INSERT INTO public.admin_audit_logs (
         actor_id, actor_email, action, entity_type, entity_id, new_value, notes
@@ -157,7 +212,7 @@ BEGIN
         jsonb_build_object(
             'reason',                p_reason,
             'patch',                 p_patch,
-            'previous_provenance',   p_previous_provenance,
+            'previous_provenance',   v_previous_provenance,
             'demoted_from_verified', v_was_verified
         ),
         'admin_exam_intel_cms'
@@ -166,7 +221,9 @@ BEGIN
 
     RETURN jsonb_build_object(
         'audit_id',              v_audit_id,
-        'demoted_from_verified', v_was_verified
+        'demoted_from_verified', v_was_verified,
+        'previous_provenance',   v_previous_provenance,
+        'trust_status_after',    v_trust_status_after
     );
 END;
 $$;

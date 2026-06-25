@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../../../lib/api";
+import useApiAction from "../../../../lib/hooks/useApiAction";
 
 const CMS_BASE = "/api/admin/exam-intelligence-cms";
 
@@ -8,6 +9,10 @@ export function usePyqWorkbench(examId, cycleId) {
   const [selectedPaperId, setSelectedPaperId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const { run: runReviewAction } = useApiAction();
+  const { run: runPatchAction } = useApiAction();
+  const { run: runProvenanceAction } = useApiAction();
 
   const fetchPapers = useCallback(async () => {
     if (!examId) return;
@@ -28,19 +33,28 @@ export function usePyqWorkbench(examId, cycleId) {
   useEffect(() => { fetchPapers(); }, [fetchPapers]);
 
   const reviewPaper = useCallback(async (paperId, status, reason) => {
-    await api.post(`${CMS_BASE}/pyq-papers/${paperId}/review`, { status, reason });
-    await fetchPapers();
-  }, [fetchPapers]);
+    const result = await runReviewAction({
+      action: () => api.post(`${CMS_BASE}/pyq-papers/${paperId}/review`, { status, reason }),
+      onSuccess: fetchPapers,
+    });
+    if (!result?.ok && !result?.cancelled) throw result?.error ?? new Error("Review failed");
+  }, [runReviewAction, fetchPapers]);
 
   const patchPaper = useCallback(async (paperId, payload, reason) => {
-    await api.patch(`${CMS_BASE}/pyq-papers/${paperId}`, { payload, reason });
-    await fetchPapers();
-  }, [fetchPapers]);
+    const result = await runPatchAction({
+      action: () => api.patch(`${CMS_BASE}/pyq-papers/${paperId}`, { payload, reason }),
+      onSuccess: fetchPapers,
+    });
+    if (!result?.ok && !result?.cancelled) throw result?.error ?? new Error("Patch failed");
+  }, [runPatchAction, fetchPapers]);
 
   const saveProvenance = useCallback(async (paperId, payload, reason) => {
-    await api.post(`${CMS_BASE}/pyq-papers/${paperId}/set-provenance`, { payload, reason });
-    await fetchPapers();
-  }, [fetchPapers]);
+    const result = await runProvenanceAction({
+      action: () => api.post(`${CMS_BASE}/pyq-papers/${paperId}/set-provenance`, { payload, reason }),
+      onSuccess: fetchPapers,
+    });
+    if (!result?.ok && !result?.cancelled) throw result?.error ?? new Error("Provenance save failed");
+  }, [runProvenanceAction, fetchPapers]);
 
   const getPaperSignedPdf = useCallback(async (paperId, documentId) => {
     const data = await api.get(`${CMS_BASE}/pyq-papers/${paperId}/signed-pdf?document_id=${encodeURIComponent(documentId)}`);

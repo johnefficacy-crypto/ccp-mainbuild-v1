@@ -66,6 +66,26 @@ jest.mock("../../../../../lib/authContext", () => ({
   useAuth: jest.fn(),
 }));
 
+// useApiAction is used by usePyqWorkbench for mutations. The real hook uses
+// useToast() which requires a ToastProvider; this lightweight mock replicates
+// the run() contract (calls action, invokes onSuccess on success, returns
+// {ok,data} or {ok:false,error}) without needing the toast context.
+jest.mock("../../../../../lib/hooks/useApiAction", () => ({
+  __esModule: true,
+  default: () => ({
+    run: async ({ action, onSuccess }) => {
+      try {
+        const result = await action();
+        if (onSuccess) onSuccess(result);
+        return { ok: true, data: result };
+      } catch (e) {
+        return { ok: false, error: e };
+      }
+    },
+    busy: false,
+  }),
+}));
+
 const { api } = require("../../../../../lib/api");
 const { useAuth } = require("../../../../../lib/authContext");
 const ExamWorkspaceContext = require("../../ExamWorkspaceContext");

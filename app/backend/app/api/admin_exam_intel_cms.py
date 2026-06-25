@@ -904,9 +904,6 @@ def set_pyq_paper_provenance(
         )
 
     was_verified = existing.get("trust_status") == "verified"
-    update: dict[str, Any] = dict(patch)
-    if was_verified:
-        update["trust_status"] = "pending"
 
     try:
         rpc_data = supabase.rpc(
@@ -940,11 +937,12 @@ def set_pyq_paper_provenance(
             status_code=500,
             detail="Provenance update failed; no change was recorded.",
         ) from exc
+    rpc = rpc_data or {}
     return {
         "ok": True,
-        "audit_id": (rpc_data or {}).get("audit_id"),
-        "demoted_from_verified": was_verified,
-        "row": {**existing, **update},
+        "audit_id": rpc.get("audit_id"),
+        "demoted_from_verified": rpc.get("demoted_from_verified", False),
+        "row": {**existing, **patch, "trust_status": rpc.get("trust_status_after", existing.get("trust_status"))},
     }
 
 

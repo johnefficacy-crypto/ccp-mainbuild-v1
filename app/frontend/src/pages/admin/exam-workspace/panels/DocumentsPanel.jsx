@@ -512,9 +512,12 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
           .map((p) => p.source_document_id)
           .filter(Boolean),
       );
-      const rehydrated = backendDocs.filter(
-        (d) => d.status !== "failed" && !linkedDocIds.has(d.id),
-      );
+      const rehydrated = backendDocs
+        .filter((d) => d.status !== "failed" && !linkedDocIds.has(d.id))
+        .map((d) => ({
+          ...d,
+          filename: d.filename || d.original_filename || d.title || d.storage_path || d.id,
+        }));
       setInFlight((prev) => {
         const backendIds = new Set(backendDocs.map((d) => d.id));
         const localOnly = prev.filter((d) => !backendIds.has(d.id));

@@ -264,11 +264,40 @@ class _RpcQuery:
                     f"provenance_incomplete: blocking_fields={','.join(blocking)}"
                 )
 
+        # Capture pre-mutation state from the locked paper (mirrors SQL locked row).
+        was_verified = paper.get("trust_status") == "verified"
+        previous_provenance = {
+            "source_type":        paper.get("source_type"),
+            "source_url":         paper.get("source_url"),
+            "source_document_id": paper.get("source_document_id"),
+            "pyq_source_id":      paper.get("pyq_source_id"),
+        }
+
+        # Compute merged provenance (locked values + patch) and enforce gate.
+        merged_source_type = patch.get("source_type",        paper.get("source_type"))
+        merged_source_url  = patch.get("source_url",         paper.get("source_url"))
+        merged_source_doc  = patch.get("source_document_id", paper.get("source_document_id"))
+        gate_ok = (
+            merged_source_type is not None
+            and merged_source_type != "unknown"
+            and (merged_source_url is not None or merged_source_doc is not None)
+        )
+        if not gate_ok:
+            gate_blocking: list[str] = []
+            if merged_source_type is None or merged_source_type == "unknown":
+                gate_blocking.append("source_type")
+            if merged_source_url is None and merged_source_doc is None:
+                gate_blocking.append("source_url")
+            raise Exception(
+                f"provenance_incomplete: blocking_fields={','.join(gate_blocking)}"
+            )
+
         for field in ("source_url", "source_type", "source_document_id", "pyq_source_id"):
             if field in patch:
                 paper[field] = patch[field]
-        if p.get("p_was_verified"):
+        if was_verified:
             paper["trust_status"] = "pending"
+        trust_status_after = paper["trust_status"]
 
         audit_id = str(_uuid.uuid4())
         self._db.setdefault("admin_audit_logs", []).append({
@@ -281,12 +310,17 @@ class _RpcQuery:
             "new_value": {
                 "reason": p.get("p_reason"),
                 "patch": patch,
-                "previous_provenance": p.get("p_previous_provenance"),
-                "demoted_from_verified": p.get("p_was_verified"),
+                "previous_provenance": previous_provenance,
+                "demoted_from_verified": was_verified,
             },
             "notes": "admin_exam_intel_cms",
         })
-        return _Exec({"audit_id": audit_id, "demoted_from_verified": p.get("p_was_verified")})
+        return _Exec({
+            "audit_id": audit_id,
+            "demoted_from_verified": was_verified,
+            "previous_provenance": previous_provenance,
+            "trust_status_after": trust_status_after,
+        })
 
     def _exec_cms_link_document_to_pyq_paper(self) -> "_Exec":
         """Mirror the atomic UPDATE + audit INSERT of migration 189 Part B.
