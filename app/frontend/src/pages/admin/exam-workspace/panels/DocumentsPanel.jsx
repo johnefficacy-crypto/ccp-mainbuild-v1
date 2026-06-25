@@ -454,6 +454,36 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
   const [linkedAssetLoading, setLinkedAssetLoading] = useState(false);
   const [deepLinkNotFound,   setDeepLinkNotFound]   = useState(false);
 
+  // ── Step 4: poll extraction status for one in-flight doc ─────────────────
+
+  const refreshInFlight = useCallback(async (docId) => {
+    try {
+      const r = await api.get(`${DOC_BASE}/${docId}`);
+      const docStatus = r?.document?.status;
+      const jobStatus = r?.extraction?.status;
+      const pageCount = r?.pages_count ?? null;
+      setInFlight((prev) =>
+        prev.map((d) =>
+          d.id === docId
+            ? { ...d, status: docStatus, extraction: r?.extraction || {}, page_count: pageCount }
+            : d,
+        ),
+      );
+      if (isTerminalDocStatus(docStatus) || isTerminalJobStatus(jobStatus)) {
+        clearInterval(pollRefs.current[docId]);
+        delete pollRefs.current[docId];
+      }
+    } catch {
+      // silent — keep polling
+    }
+  }, []);
+
+  const startPoll = useCallback((docId) => {
+    if (pollRefs.current[docId]) clearInterval(pollRefs.current[docId]);
+    const id = setInterval(() => refreshInFlight(docId), 3000);
+    pollRefs.current[docId] = id;
+  }, [refreshInFlight]);
+
   // ── Load linked docs ──────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
@@ -497,7 +527,7 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     } finally {
       setLoading(false);
     }
-  }, [exam?.id, cycle?.id]);
+  }, [exam?.id, cycle?.id, startPoll]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -526,36 +556,6 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     const refs = pollRefs.current;
     return () => { Object.values(refs).forEach(clearInterval); };
   }, []);
-
-  // ── Step 4: poll extraction status for one in-flight doc ─────────────────
-
-  const refreshInFlight = useCallback(async (docId) => {
-    try {
-      const r = await api.get(`${DOC_BASE}/${docId}`);
-      const docStatus = r?.document?.status;
-      const jobStatus = r?.extraction?.status;
-      const pageCount = r?.pages_count ?? null;
-      setInFlight((prev) =>
-        prev.map((d) =>
-          d.id === docId
-            ? { ...d, status: docStatus, extraction: r?.extraction || {}, page_count: pageCount }
-            : d,
-        ),
-      );
-      if (isTerminalDocStatus(docStatus) || isTerminalJobStatus(jobStatus)) {
-        clearInterval(pollRefs.current[docId]);
-        delete pollRefs.current[docId];
-      }
-    } catch {
-      // silent — keep polling
-    }
-  }, []);
-
-  function startPoll(docId) {
-    if (pollRefs.current[docId]) clearInterval(pollRefs.current[docId]);
-    const id = setInterval(() => refreshInFlight(docId), 3000);
-    pollRefs.current[docId] = id;
-  }
 
   // ── After upload completes (step 3 returned ok) ───────────────────────────
 
