@@ -1,24 +1,14 @@
 """Tests for exam_topic_score_snapshots writer and reader."""
 from __future__ import annotations
 
-import hashlib
-
 from tests.persona_questions._stub import SBStub
 from app.exam_intelligence.score_snapshots import (
     compute_exam_topic_scores,
     locked_score_snapshots,
     list_exam_score_snapshots,
     MODEL_VERSION,
+    _build_fingerprint,
 )
-
-# ── helpers ───────────────────────────────────────────────────────────────────
-
-
-def _make_fingerprint(exam_id: str, paper_ids: list[str], question_ids: list[str]) -> str:
-    return hashlib.sha256(
-        f"{exam_id}:{MODEL_VERSION}:{','.join(sorted(paper_ids))}:{','.join(sorted(question_ids))}".encode()
-    ).hexdigest()[:24]
-
 
 # ── 1. Basic write ────────────────────────────────────────────────────────────
 
@@ -46,6 +36,7 @@ def test_compute_writes_draft_for_covered_topics():
     assert result["skipped"] == 0
     assert result["errors"] == 0
     assert result["total_topics"] == 1
+    assert result["read_error"] is False
 
     snapshots = sb.db.get("exam_topic_score_snapshots", [])
     assert len(snapshots) == 1
@@ -119,14 +110,49 @@ def test_secondary_tag_covered_topic_gets_zero_freq():
     assert snapshots["t2"]["score_components"]["frequency_component"] == 0.0
 
 
-# ── 3. Idempotency ────────────────────────────────────────────────────────────
+# ── 3. Multiple primary tags per question ─────────────────────────────────────
+
+
+def test_multiple_primary_tags_excluded_from_frequency():
+    """q1 with primary→t1 AND primary→t2 is ambiguous and contributes to neither topic's count.
+
+    Both t1 and t2 still get snapshots from their locked coverage, but their
+    frequency_component must be 0 (no unambiguous question contributed).
+    """
+    sb = SBStub({
+        "pyq_papers": [
+            {"id": "p1", "exam_id": "exam-1", "trust_status": "verified"},
+        ],
+        "pyq_questions": [
+            {"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"},
+        ],
+        "pyq_question_topic_tags": [
+            {"question_id": "q1", "topic_id": "t1", "reviewer_status": "verified", "tag_role": "primary"},
+            {"question_id": "q1", "topic_id": "t2", "reviewer_status": "verified", "tag_role": "primary"},
+        ],
+        "exam_topic_coverage": [
+            {"topic_id": "t1", "exam_id": "exam-1", "exam_priority_score": 70, "is_high_yield": True, "reviewer_status": "locked"},
+            {"topic_id": "t2", "exam_id": "exam-1", "exam_priority_score": 60, "is_high_yield": False, "reviewer_status": "locked"},
+        ],
+    })
+
+    result = compute_exam_topic_scores(sb, "exam-1")
+
+    # q1 is ambiguous → excluded from frequency counts
+    # Both topics still get snapshots from locked coverage
+    assert result["total_topics"] == 2
+    snapshots = {s["topic_id"]: s for s in sb.db.get("exam_topic_score_snapshots", [])}
+    assert snapshots["t1"]["score_components"]["frequency_component"] == 0.0
+    assert snapshots["t2"]["score_components"]["frequency_component"] == 0.0
+    assert result["read_error"] is False
+
+
+# ── 4. Idempotency ────────────────────────────────────────────────────────────
 
 
 def test_idempotency_skips_same_fingerprint():
-    """Second call with same state skips (fingerprint already stored)."""
-    fingerprint = _make_fingerprint("exam-1", ["p1"], ["q1"])
-
-    sb = SBStub({
+    """Running compute twice with unchanged data skips on the second run."""
+    seed = {
         "pyq_papers": [
             {"id": "p1", "exam_id": "exam-1", "trust_status": "verified"},
         ],
@@ -139,33 +165,25 @@ def test_idempotency_skips_same_fingerprint():
         "exam_topic_coverage": [
             {"topic_id": "t1", "exam_id": "exam-1", "exam_priority_score": 80, "is_high_yield": True, "reviewer_status": "locked"},
         ],
-        # Pre-seed the draft with the same fingerprint to simulate a prior run
-        "exam_topic_score_snapshots": [
-            {
-                "id": "snap-1",
-                "exam_id": "exam-1",
-                "topic_id": "t1",
-                "model_version": MODEL_VERSION,
-                "status": "draft",
-                "input_summary": {"fingerprint": fingerprint},
-            },
-        ],
-    })
+    }
+    sb = SBStub(seed)
 
-    result = compute_exam_topic_scores(sb, "exam-1")
+    result1 = compute_exam_topic_scores(sb, "exam-1")
+    assert result1["written"] == 1
+    assert result1["skipped"] == 0
 
-    assert result["written"] == 0
-    assert result["skipped"] == 1
-    assert result["errors"] == 0
-    # The pre-seeded snapshot should still be the only one
+    result2 = compute_exam_topic_scores(sb, "exam-1")
+    assert result2["written"] == 0
+    assert result2["skipped"] == 1
+    assert result2["errors"] == 0
     assert len(sb.db.get("exam_topic_score_snapshots", [])) == 1
 
 
-# ── 4. Zero evidence ──────────────────────────────────────────────────────────
+# ── 5. Zero evidence ──────────────────────────────────────────────────────────
 
 
 def test_zero_evidence_returns_empty():
-    """No papers → zero summary, nothing written."""
+    """No papers → zero summary, nothing written, read_error=False."""
     sb = SBStub({
         "pyq_papers": [],
         "exam_topic_coverage": [],
@@ -173,21 +191,37 @@ def test_zero_evidence_returns_empty():
 
     result = compute_exam_topic_scores(sb, "exam-1")
 
-    assert result == {"written": 0, "skipped": 0, "errors": 0, "total_topics": 0}
+    assert result == {"written": 0, "skipped": 0, "errors": 0, "total_topics": 0, "read_error": False}
     assert sb.db.get("exam_topic_score_snapshots", []) == []
 
 
-# ── 5. Empty exam_id ─────────────────────────────────────────────────────────
+# ── 6. Empty exam_id ─────────────────────────────────────────────────────────
 
 
 def test_empty_exam_id():
     """Empty exam_id → immediate zero return, no DB calls."""
     sb = SBStub({})
     result = compute_exam_topic_scores(sb, "")
-    assert result == {"written": 0, "skipped": 0, "errors": 0, "total_topics": 0}
+    assert result == {"written": 0, "skipped": 0, "errors": 0, "total_topics": 0, "read_error": False}
 
 
-# ── 6. locked_score_snapshots filters by status ───────────────────────────────
+# ── 7. Broken table → read_error ─────────────────────────────────────────────
+
+
+def test_broken_table_returns_read_error():
+    """If Supabase raises on first call, read_error=True is returned, no exception propagates."""
+
+    class _Broken:
+        def table(self, name: str):
+            raise RuntimeError(f"table {name!r} not available")
+
+    result = compute_exam_topic_scores(_Broken(), "exam-1")
+    assert result["read_error"] is True
+    assert result["written"] == 0
+    assert result["total_topics"] == 0
+
+
+# ── 8. locked_score_snapshots filters by status ───────────────────────────────
 
 
 def test_locked_snapshots_returns_only_locked():
@@ -208,7 +242,7 @@ def test_locked_snapshots_returns_only_locked():
     assert rows[0]["is_high_yield"] is False
 
 
-# ── 7. locked_score_snapshots sorted by priority ──────────────────────────────
+# ── 9. locked_score_snapshots sorted by priority ──────────────────────────────
 
 
 def test_locked_snapshots_sorted_by_priority():
@@ -227,15 +261,147 @@ def test_locked_snapshots_sorted_by_priority():
     assert rows[1]["exam_priority_score"] == 40
 
 
-# ── 8. Broken table graceful return ───────────────────────────────────────────
+# ── 10. locked_score_snapshots deduplicates to latest per topic ───────────────
 
 
-def test_broken_table_returns_gracefully():
-    """If supabase raises on first call, written=0 is returned, no exception propagates."""
+def test_locked_snapshots_deduplicates_to_latest_per_topic():
+    """Two locked rows for the same topic → only the latest (by computed_at) is returned."""
+    sb = SBStub({
+        "exam_topic_score_snapshots": [
+            {"id": "s1", "exam_id": "e1", "topic_id": "t1", "status": "locked",
+             "exam_priority_score": 60, "is_high_yield": False, "confidence_score": 0.6,
+             "model_version": "v0.9", "score_components": {},
+             "computed_at": "2026-04-01T00:00:00+00:00"},
+            {"id": "s2", "exam_id": "e1", "topic_id": "t1", "status": "locked",
+             "exam_priority_score": 80, "is_high_yield": True, "confidence_score": 0.8,
+             "model_version": MODEL_VERSION, "score_components": {},
+             "computed_at": "2026-06-01T00:00:00+00:00"},
+        ],
+    })
 
-    class _Broken:
-        def table(self, name: str):
-            raise RuntimeError(f"table {name!r} not available")
+    rows = locked_score_snapshots(sb, "e1")
 
-    result = compute_exam_topic_scores(_Broken(), "exam-1")
-    assert result == {"written": 0, "skipped": 0, "errors": 0, "total_topics": 0}
+    assert len(rows) == 1, "must deduplicate to one row per topic"
+    assert rows[0]["exam_priority_score"] == 80, "latest (higher priority) row must win"
+
+
+# ── 11. locked_score_snapshots isolates by phase ─────────────────────────────
+
+
+def test_locked_snapshots_excludes_phase_rows_when_no_phase():
+    """Without exam_phase_id, only exam-wide (null phase) rows are returned."""
+    sb = SBStub({
+        "exam_topic_score_snapshots": [
+            {"id": "s1", "exam_id": "e1", "topic_id": "t1", "status": "locked",
+             "exam_phase_id": None, "exam_priority_score": 80, "is_high_yield": True,
+             "confidence_score": 0.8, "model_version": MODEL_VERSION, "score_components": {},
+             "computed_at": "2026-06-01T00:00:00+00:00"},
+            {"id": "s2", "exam_id": "e1", "topic_id": "t2", "status": "locked",
+             "exam_phase_id": "phase-1", "exam_priority_score": 90, "is_high_yield": True,
+             "confidence_score": 0.9, "model_version": MODEL_VERSION, "score_components": {},
+             "computed_at": "2026-06-01T00:00:00+00:00"},
+        ],
+    })
+
+    rows = locked_score_snapshots(sb, "e1")
+
+    assert len(rows) == 1, "phase-1 row must be excluded when no exam_phase_id is given"
+    assert rows[0]["topic_id"] == "t1"
+
+
+# ── 12. Phase validation: cross-exam phase returns read_error ─────────────────
+
+
+def test_cross_exam_phase_returns_read_error():
+    """exam_phase_id belonging to a different exam → read_error=True."""
+    sb = SBStub({
+        "exam_phases": [
+            {"id": "phase-x", "exam_id": "exam-2"},  # wrong exam
+        ],
+        "pyq_papers": [
+            {"id": "p1", "exam_id": "exam-1", "trust_status": "verified"},
+        ],
+    })
+
+    result = compute_exam_topic_scores(sb, "exam-1", exam_phase_id="phase-x")
+
+    assert result["read_error"] is True
+    assert result["written"] == 0
+
+
+# ── 13. Phase scope: papers filtered by exam_phase_id ────────────────────────
+
+
+def test_phase_scopes_paper_corpus():
+    """With exam_phase_id, only papers in that phase are included; others are excluded."""
+    sb = SBStub({
+        "exam_phases": [
+            {"id": "phase-1", "exam_id": "exam-1"},
+        ],
+        "pyq_papers": [
+            {"id": "p1", "exam_id": "exam-1", "exam_phase_id": "phase-1", "trust_status": "verified"},
+            {"id": "p2", "exam_id": "exam-1", "exam_phase_id": None, "trust_status": "verified"},
+        ],
+        "pyq_questions": [
+            {"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"},
+            {"id": "q2", "pyq_paper_id": "p2", "reviewer_status": "verified"},
+        ],
+        "pyq_question_topic_tags": [
+            {"question_id": "q1", "topic_id": "t1", "reviewer_status": "verified", "tag_role": "primary"},
+            {"question_id": "q2", "topic_id": "t2", "reviewer_status": "verified", "tag_role": "primary"},
+        ],
+        "exam_topic_coverage": [
+            {"topic_id": "t1", "exam_id": "exam-1", "exam_phase_id": "phase-1",
+             "exam_priority_score": 70, "is_high_yield": False, "reviewer_status": "locked"},
+        ],
+    })
+
+    result = compute_exam_topic_scores(sb, "exam-1", exam_phase_id="phase-1")
+
+    assert result["read_error"] is False
+    snapshots = sb.db.get("exam_topic_score_snapshots", [])
+    assert len(snapshots) == 1, "only t1 (from phase-1 paper p1) should be written"
+    assert snapshots[0]["topic_id"] == "t1"
+    assert snapshots[0]["exam_phase_id"] == "phase-1"
+
+
+# ── 14. _build_fingerprint: coverage changes invalidate draft ─────────────────
+
+
+def test_fingerprint_changes_when_coverage_changes():
+    """Changing locked coverage for a topic must produce a new fingerprint."""
+    paper_ids = ["p1"]
+    question_ids = ["q1"]
+    primary_tag_tuples = [("q1", "t1")]
+    locked_cov_v1 = [{"topic_id": "t1", "exam_priority_score": 70, "is_high_yield": False}]
+    locked_cov_v2 = [{"topic_id": "t1", "exam_priority_score": 90, "is_high_yield": True}]
+
+    fp1 = _build_fingerprint("exam-1", MODEL_VERSION, None, paper_ids, question_ids, primary_tag_tuples, locked_cov_v1)
+    fp2 = _build_fingerprint("exam-1", MODEL_VERSION, None, paper_ids, question_ids, primary_tag_tuples, locked_cov_v2)
+
+    assert fp1 != fp2
+
+
+def test_fingerprint_changes_when_tag_topic_reassigned():
+    """Reassigning a primary tag from t1 to t3 must produce a new fingerprint."""
+    paper_ids = ["p1"]
+    question_ids = ["q1"]
+    locked_cov = [{"topic_id": "t1", "exam_priority_score": 80, "is_high_yield": True}]
+
+    fp_before = _build_fingerprint("exam-1", MODEL_VERSION, None, paper_ids, question_ids, [("q1", "t1")], locked_cov)
+    fp_after = _build_fingerprint("exam-1", MODEL_VERSION, None, paper_ids, question_ids, [("q1", "t3")], locked_cov)
+
+    assert fp_before != fp_after
+
+
+def test_fingerprint_changes_when_phase_changes():
+    """Changing exam_phase_id must produce a new fingerprint."""
+    paper_ids = ["p1"]
+    question_ids = ["q1"]
+    primary_tag_tuples = [("q1", "t1")]
+    locked_cov = [{"topic_id": "t1", "exam_priority_score": 80, "is_high_yield": True}]
+
+    fp_none = _build_fingerprint("exam-1", MODEL_VERSION, None, paper_ids, question_ids, primary_tag_tuples, locked_cov)
+    fp_phase = _build_fingerprint("exam-1", MODEL_VERSION, "phase-1", paper_ids, question_ids, primary_tag_tuples, locked_cov)
+
+    assert fp_none != fp_phase

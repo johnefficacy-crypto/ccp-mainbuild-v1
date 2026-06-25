@@ -462,6 +462,66 @@ Gates I9 implementation. Must define, for all 9 activation checklist steps:
 - progress derivation (backend-derived vs frontend-composed)
 - manual-mark-complete rules
 
+## Lane P — PYQ Intelligence v2 delivery
+
+Architecture doc: `docs/architecture/pyq-intelligence-v2.md`.
+These PRs are isolated from all Exam Management IA work and can run in parallel with Lanes H/I/K.
+
+### P-slice-1 — Primary-only frequency semantics + score snapshot foundation — **IN REVIEW (PR #767)**
+
+**Branch:** `claude/jolly-cerf-3lu1pe`
+
+What landed:
+- `coverage.py`: `verified_pyq_topic_counts` now filters `tag_role='primary'` only (DB + loop guard).
+- `score_snapshots.py` (new): `compute_exam_topic_scores` (idempotent draft writer), `locked_score_snapshots` (locked-only reader), `list_exam_score_snapshots` (admin list).
+- `admin_exam_intelligence.py`: three new admin endpoints for list/review/compute of score snapshots.
+- New tests: `test_pyq_frequency_semantics.py` (7), `test_score_snapshots.py` (9), `test_score_snapshot_admin_api.py` (11).
+- Updated `test_pyq_counts_trust.py`: aligned cross-paper aggregation test with primary-only contract.
+- Checklist row added for slice-1.
+
+**P1 review issues blocking merge** (from code review 2026-06-25):
+1. Review mutation is not atomic — SELECT→UPDATE with discarded result; always returns `{ok: true}`.
+2. Fingerprint missing primary tag content, locked coverage, `exam_phase_id`.
+3. Phase scope not validated; PYQ papers leak from entire exam when phase is specified.
+4. Multiple primary tags per question across topics not handled.
+5. `locked_score_snapshots` returns all locked rows — no dedup to latest per `(exam_id, exam_phase_id, topic_id)`.
+6. Read failures silently become empty evidence; admin must distinguish failure from no-evidence.
+
+Fix PR: open as P-slice-1b addressing all six items plus P2 items (model_version server-owned, remove try/except ImportError, fix PR body files table).
+
+**Write scope:**
+- `app/backend/app/exam_intelligence/score_snapshots.py`
+- `app/backend/app/api/admin_exam_intelligence.py`
+- `app/backend/tests/exam_intelligence/test_score_snapshots.py`
+- `app/backend/tests/exam_intelligence/test_score_snapshot_admin_api.py`
+- `docs/status/career-copilot-checklist.md`
+
+### P-slice-2 — Planner consumption of locked snapshots — **BLOCKED on P-slice-1 merge**
+
+Wire `locked_score_snapshots()` into `planner.py` as an additional priority signal.
+Until this lands, snapshots are created and admin-reviewable but do not influence study plan generation.
+
+**Write scope:**
+- `app/backend/app/study_os/planner.py`
+- `app/backend/tests/study_os/test_planner_snapshot_integration.py` (new)
+- `docs/status/career-copilot-checklist.md`
+
+**Do not touch:** `coverage.py`, `score_snapshots.py`, migrations, frontend.
+
+### P-slice-3 — Cognitive demand classification (Bloom's taxonomy) — **DEFERRED**
+
+Per `pyq-intelligence-v2.md` §scoring: add `bloom_level` classification per PYQ question.
+Contract-first: define the taxonomy levels and how they feed `score_components` before implementation.
+Do not dispatch until P-slice-2 is on main.
+
+### P-slice-4 — Unified revision recommendations contract — **DEFERRED**
+
+Revision → relearn/review/practice routing contract. Depends on SM-2 output (already in `services/srs.py`) + snapshot scores. Do not dispatch until P-slice-3 is designed.
+
+### P-slice-5 — Current affairs provenance and linking pipeline — **DEFERRED**
+
+CA provenance links CA items to exam topics. Contract-first; deferred post P-slice-2.
+
 ## Lane K — Mock semantics trust fix (READY — ISOLATED)
 
 Independent of all IA work. Can run in parallel with H2, I7, I5.

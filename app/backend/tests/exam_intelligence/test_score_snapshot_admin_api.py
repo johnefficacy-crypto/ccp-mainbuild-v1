@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 
 from app.exam_intelligence.score_snapshots import MODEL_VERSION
 from tests.exam_intelligence.test_admin_api import _build_app
-from tests.persona_questions._stub import SBStub
+from tests.persona_questions._stub import SBStub, _Exec
 
 
 def _seed_snapshots():
@@ -205,6 +205,73 @@ def test_review_blocked_for_non_admin():
     assert r.status_code == 403
 
 
+# ─── Review: concurrent modification returns 409 ─────────────────────────────
+def test_review_returns_409_on_concurrent_modification():
+    """Conditional UPDATE finds no matching row (status changed between SELECT and UPDATE) → 409."""
+
+    class _ConcurrentModStub(SBStub):
+        """Simulates a race condition: returns empty data from the UPDATE call."""
+
+        def __init__(self, db):
+            super().__init__(db)
+            self._snapshots_call_count = 0
+
+        def table(self, name: str):
+            q = super().table(name)
+            if name != "exam_topic_score_snapshots":
+                return q
+            # Track which call this is (1st = SELECT, 2nd = UPDATE).
+            self._snapshots_call_count += 1
+            call_num = self._snapshots_call_count
+            original_execute = q.execute
+
+            def _intercepted():
+                result = original_execute()
+                if call_num == 2:
+                    # Simulate the row's status having changed between SELECT and UPDATE.
+                    return _Exec([])
+                return result
+
+            q.execute = _intercepted
+            return q
+
+    sb = _ConcurrentModStub(_seed_snapshots())
+    client = TestClient(_build_app(sb))
+    r = client.patch(f"{_REVIEW_BASE}/s-draft/review", json={"status": "reviewed"})
+    assert r.status_code == 409, r.text
+
+
+# ─── Review: DB write failure returns 500 ────────────────────────────────────
+def test_review_returns_500_on_write_failure():
+    """UPDATE raises an exception (DB failure) → 500."""
+
+    class _WriteFailStub(SBStub):
+        def __init__(self, db):
+            super().__init__(db)
+            self._snapshots_call_count = 0
+
+        def table(self, name: str):
+            q = super().table(name)
+            if name != "exam_topic_score_snapshots":
+                return q
+            self._snapshots_call_count += 1
+            call_num = self._snapshots_call_count
+            original_execute = q.execute
+
+            def _intercepted():
+                if call_num == 2:
+                    raise RuntimeError("DB connection lost")
+                return original_execute()
+
+            q.execute = _intercepted
+            return q
+
+    sb = _WriteFailStub(_seed_snapshots())
+    client = TestClient(_build_app(sb))
+    r = client.patch(f"{_REVIEW_BASE}/s-draft/review", json={"status": "reviewed"})
+    assert r.status_code == 500, r.text
+
+
 # ─── Compute ─────────────────────────────────────────────────────────────────
 def test_compute_blocked_for_non_admin():
     sb = SBStub(_compute_seed())
@@ -223,6 +290,7 @@ def test_compute_returns_summary():
     for key in ("written", "skipped", "errors", "total_topics", "exam_id", "model_version"):
         assert key in body, f"missing {key} in compute response: {body}"
     assert body["exam_id"] == "e1"
+    # model_version is server-owned; must always equal the deployed constant.
     assert body["model_version"] == MODEL_VERSION
     assert body["written"] >= 0
     # One topic (t1) has a locked coverage row + a primary verified tag.
@@ -232,3 +300,25 @@ def test_compute_returns_summary():
     assert len(snapshots) == 1
     assert snapshots[0]["topic_id"] == "t1"
     assert snapshots[0]["status"] == "draft"
+
+
+def test_compute_returns_502_on_read_failure():
+    """When the DB raises on a critical input read, the endpoint returns 502."""
+
+    class _BrokenSb:
+        def table(self, name: str):
+            raise RuntimeError(f"table {name!r} not available")
+
+    client = TestClient(_build_app(_BrokenSb()))
+    r = client.post(_COMPUTE_BASE, json={})
+    assert r.status_code == 502, r.text
+
+
+def test_compute_rejects_model_version_in_body():
+    """Passing model_version in the request body is rejected (server-owned field)."""
+    sb = SBStub(_compute_seed())
+    client = TestClient(_build_app(sb))
+    r = client.post(_COMPUTE_BASE, json={"model_version": "v999"})
+    assert r.status_code == 422, (
+        "model_version is server-owned and must be rejected when passed by the client"
+    )

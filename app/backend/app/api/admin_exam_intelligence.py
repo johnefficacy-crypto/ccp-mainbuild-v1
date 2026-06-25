@@ -34,14 +34,10 @@ from app.exam_intelligence.syllabus_mapper import (
     preview_accept,
     propose_syllabus_mentions,
 )
-try:
-    from app.exam_intelligence.score_snapshots import (
-        compute_exam_topic_scores,
-        MODEL_VERSION as _SNAPSHOT_MODEL_VERSION,
-    )
-except ImportError:  # score_snapshots.py created by parallel agent — tolerate missing during build
-    compute_exam_topic_scores = None  # type: ignore[assignment]
-    _SNAPSHOT_MODEL_VERSION = "v1"
+from app.exam_intelligence.score_snapshots import (
+    compute_exam_topic_scores,
+    MODEL_VERSION as _SNAPSHOT_MODEL_VERSION,
+)
 from app.study_os.mission_control import invalidate_per_exam_intelligence
 from app.study_os.plan_impact import compute_plan_impact, record_plan_impact_decision
 
@@ -2128,7 +2124,6 @@ class ScoreSnapshotReviewBody(BaseModel):
 
 class ComputeSnapshotBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    model_version: str | None = None
     exam_phase_id: str | None = None
 
 
@@ -2282,10 +2277,29 @@ def review_score_snapshot(
     }
     if body.reviewer_notes is not None:
         update["reviewer_notes"] = body.reviewer_notes
-    _safe(
-        lambda: sb.table("exam_topic_score_snapshots").update(update).eq("id", snapshot_id).execute(),
-        default=None,
-    )
+
+    # Conditional UPDATE: only succeeds when the row still has the expected
+    # current_status, preventing silent overwrite of a concurrent modification.
+    try:
+        result = (
+            sb.table("exam_topic_score_snapshots")
+            .update(update)
+            .eq("id", snapshot_id)
+            .eq("status", current_status)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "score_snapshot review update failed",
+            extra={"snapshot_id": snapshot_id, "error": str(exc)},
+        )
+        raise HTTPException(status_code=500, detail="snapshot update failed") from exc
+
+    if not result.data:
+        raise HTTPException(
+            status_code=409,
+            detail="snapshot was modified concurrently — refresh and retry",
+        )
     return {"ok": True, "snapshot_id": snapshot_id, "new_status": new_status}
 
 
@@ -2300,13 +2314,17 @@ def compute_score_snapshots(
     Delegates to ``compute_exam_topic_scores`` from
     ``app.exam_intelligence.score_snapshots``. Returns a summary of written,
     skipped, and error counts alongside the model_version used.
+
+    Returns HTTP 502 when a critical input read fails (``read_error=True``),
+    to distinguish a DB-read failure from a genuine "no evidence" result.
     """
-    if compute_exam_topic_scores is None:
-        raise HTTPException(
-            status_code=503,
-            detail="score_snapshots service is not available (module not yet installed)",
-        )
     sb = get_supabase_admin()
-    mv = body.model_version or _SNAPSHOT_MODEL_VERSION
-    result = compute_exam_topic_scores(sb, exam_id, mv, exam_phase_id=body.exam_phase_id)
-    return {**result, "exam_id": exam_id, "model_version": mv}
+    result = compute_exam_topic_scores(
+        sb, exam_id, _SNAPSHOT_MODEL_VERSION, exam_phase_id=body.exam_phase_id
+    )
+    if result.get("read_error"):
+        raise HTTPException(
+            status_code=502,
+            detail="one or more input reads failed during score computation — check DB and retry",
+        )
+    return {**result, "exam_id": exam_id, "model_version": _SNAPSHOT_MODEL_VERSION}
