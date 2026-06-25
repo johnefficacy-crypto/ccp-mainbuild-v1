@@ -246,7 +246,25 @@ class _RpcQuery:
                     f"provenance_incomplete: blocking_fields={','.join(blocking)}"
                 )
 
-        for field in ("source_url", "source_type", "source_document_id"):
+        # Validate pyq_source_id when present in patch.
+        if "pyq_source_id" in patch and patch["pyq_source_id"] is not None:
+            src_id = str(patch["pyq_source_id"])
+            sources = self._db.get("pyq_sources", [])
+            src = next((s for s in sources if str(s.get("id")) == src_id), None)
+            blocking: list[str] = []
+            if src is None:
+                blocking.append("pyq_source_id_not_found")
+            else:
+                paper_exam = str(paper.get("exam_id") or "")
+                src_exam   = str(src.get("exam_id") or "")
+                if src_exam and paper_exam and src_exam != paper_exam:
+                    blocking.append("pyq_source_id_exam_mismatch")
+            if blocking:
+                raise Exception(
+                    f"provenance_incomplete: blocking_fields={','.join(blocking)}"
+                )
+
+        for field in ("source_url", "source_type", "source_document_id", "pyq_source_id"):
             if field in patch:
                 paper[field] = patch[field]
         if p.get("p_was_verified"):

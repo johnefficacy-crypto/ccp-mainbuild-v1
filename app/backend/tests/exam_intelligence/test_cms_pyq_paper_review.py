@@ -892,3 +892,202 @@ def test_set_provenance_audit_failure_returns_500_and_paper_unchanged():
     # Paper must be unchanged — the RPC rolled back both the UPDATE and audit INSERT.
     assert db["pyq_papers"][0]["source_url"] == "https://original.example.com/paper.pdf"
     assert len(db["admin_audit_logs"]) == 0
+
+
+# ── pyq_source_id provenance contract (migration 191) ────────────────────────
+
+_VALID_SOURCE = {
+    "id": "src-1",
+    "exam_id": "e1",
+    "source_type": "official",
+    "source_url": "https://upsc.gov.in/registry/2024",
+    "title": "UPSC Official 2024 Registry",
+    "trust_status": "trusted",
+    "metadata": {},
+}
+
+
+def _seed_with_source(trust_status="pending", source=None, **extra):
+    """Paper with pyq_source_id set but no source_document_id."""
+    src_row = dict(_VALID_SOURCE) if source is None else source
+    paper = {
+        "id": "p1", "exam_id": "e1", "year": 2024,
+        "trust_status": trust_status,
+        "source_url": "https://upsc.gov.in/2024.pdf",
+        "source_type": "official",
+        "source_document_id": None,
+        "pyq_source_id": "src-1",
+        **extra,
+    }
+    return {
+        "pyq_papers": [paper],
+        "admin_audit_logs": [],
+        "pyq_sources": [src_row],
+    }
+
+
+def test_pyq_source_id_alone_does_not_satisfy_provenance_gate():
+    """pyq_source_id without source_url or source_document_id does NOT
+    satisfy the provenance anchor requirement.  Verification is blocked."""
+    db = _seed_with_source("pending", source_url=None)
+    db["pyq_papers"][0]["source_url"] = None
+    sb = TaxSBStub(db)
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    detail = r.json()["detail"]
+    assert detail["error"] == "provenance_incomplete"
+    assert "source_url" in detail["blocking_fields"]
+
+
+def test_pyq_source_id_with_source_type_and_url_passes_gate():
+    """pyq_source_id + valid source_type + source_url satisfies the provenance gate."""
+    sb = TaxSBStub(_seed_with_source("pending"))  # has source_url by default
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 200, r.text
+    assert r.json()["row"]["trust_status"] == "verified"
+
+
+def test_pyq_source_id_with_source_type_and_doc_passes_gate():
+    """pyq_source_id + valid source_type + source_document_id satisfies the gate."""
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": None,
+            "source_type": "official",
+            "source_document_id": "doc-1",
+            "pyq_source_id": "src-1",
+        }],
+        "admin_audit_logs": [],
+        "document_assets": [dict(_VALID_DOC)],
+        "pyq_sources": [dict(_VALID_SOURCE)],
+    }
+    sb = TaxSBStub(db)
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 200, r.text
+    assert r.json()["row"]["trust_status"] == "verified"
+
+
+def test_set_provenance_invalid_pyq_source_id_is_422():
+    """set-provenance with a pyq_source_id that does not exist → 422."""
+    db = _seed_with_source("pending")
+    db["pyq_sources"] = []  # no sources in db
+    sb = TaxSBStub(db)
+    r = _client(sb, _CMS_ONLY).post(
+        f"{_BASE}/pyq-papers/p1/set-provenance",
+        json={"reason": "linking to source registry entry", "payload": {"pyq_source_id": "src-1"}},
+    )
+    assert r.status_code == 422, r.text
+    detail = r.json()["detail"]
+    assert "pyq_source_id_not_found" in detail["blocking_fields"]
+
+
+def test_patch_pyq_source_id_on_verified_paper_is_422():
+    """Changing pyq_source_id via generic PATCH on a verified paper is blocked
+    because pyq_source_id is now in _PROVENANCE_FIELDS (migration 191)."""
+    db = _seed_with_source("verified")
+    sb = TaxSBStub(db)
+    r = _client(sb, _CMS_ONLY).patch(
+        f"{_BASE}/pyq-papers/p1",
+        json={"reason": "switch to different source registry", "payload": {"pyq_source_id": "src-2"}},
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detail"]["error"] == "provenance_locked"
+
+
+def test_set_provenance_pyq_source_id_on_verified_paper_demotes():
+    """set-provenance can change pyq_source_id on a verified paper, which
+    demotes the paper back to pending for re-review."""
+    src2 = {**_VALID_SOURCE, "id": "src-2", "title": "UPSC v2 Registry"}
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "verified",
+            "source_url": "https://upsc.gov.in/2024.pdf",
+            "source_type": "official",
+            "source_document_id": None,
+            "pyq_source_id": "src-1",
+        }],
+        "admin_audit_logs": [],
+        "pyq_sources": [dict(_VALID_SOURCE), src2],
+    }
+    sb = TaxSBStub(db)
+    r = _client(sb, _CMS_ONLY).post(
+        f"{_BASE}/pyq-papers/p1/set-provenance",
+        json={"reason": "switching to updated source registry", "payload": {"pyq_source_id": "src-2"}},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["demoted_from_verified"] is True
+    assert body["row"]["trust_status"] == "pending"
+    assert db["pyq_papers"][0]["pyq_source_id"] == "src-2"
+    assert db["pyq_papers"][0]["trust_status"] == "pending"
+
+
+def test_set_provenance_all_four_fields_updated_atomically():
+    """All four provenance fields (source_type, source_url, source_document_id,
+    pyq_source_id) can be set in a single set-provenance call."""
+    doc = dict(_VALID_DOC)
+    src = dict(_VALID_SOURCE)
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": None, "source_type": None,
+            "source_document_id": None, "pyq_source_id": None,
+        }],
+        "admin_audit_logs": [],
+        "document_assets": [doc],
+        "pyq_sources": [src],
+    }
+    sb = TaxSBStub(db)
+    r = _client(sb, _CMS_ONLY).post(
+        f"{_BASE}/pyq-papers/p1/set-provenance",
+        json={
+            "reason": "setting all four provenance fields together",
+            "payload": {
+                "source_type": "official",
+                "source_url": "https://upsc.gov.in/2024.pdf",
+                "source_document_id": "doc-1",
+                "pyq_source_id": "src-1",
+            },
+        },
+    )
+    assert r.status_code == 200, r.text
+    paper = db["pyq_papers"][0]
+    assert paper["source_type"] == "official"
+    assert paper["source_url"] == "https://upsc.gov.in/2024.pdf"
+    assert paper["source_document_id"] == "doc-1"
+    assert paper["pyq_source_id"] == "src-1"
+
+
+def test_set_provenance_audit_includes_pyq_source_id_in_previous_provenance():
+    """The audit log's previous_provenance snapshot must include pyq_source_id
+    (migration 191 extends p_previous_provenance to cover all four fields)."""
+    src = dict(_VALID_SOURCE)
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": "https://upsc.gov.in/2024.pdf",
+            "source_type": "official",
+            "source_document_id": None,
+            "pyq_source_id": "src-1",
+        }],
+        "admin_audit_logs": [],
+        "pyq_sources": [src],
+    }
+    sb = TaxSBStub(db)
+    r = _client(sb, _CMS_ONLY).post(
+        f"{_BASE}/pyq-papers/p1/set-provenance",
+        json={
+            "reason": "updating source url with registry reference",
+            "payload": {"source_url": "https://upsc.gov.in/v2.pdf"},
+        },
+    )
+    assert r.status_code == 200, r.text
+    logs = db.get("admin_audit_logs", [])
+    assert len(logs) == 1
+    prev = logs[0]["new_value"]["previous_provenance"]
+    assert "pyq_source_id" in prev, "previous_provenance must include pyq_source_id"
+    assert prev["pyq_source_id"] == "src-1"

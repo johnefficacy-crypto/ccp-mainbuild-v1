@@ -32,6 +32,12 @@ function formatApiErrorDetail(detail) {
       .filter(Boolean)
       .join(" ");
   if (detail && typeof detail.msg === "string") return detail.msg;
+  if (detail && typeof detail.message === "string") return detail.message;
+  if (detail && typeof detail.error === "string") {
+    const fields = Array.isArray(detail.blocking_fields) ? detail.blocking_fields : [];
+    if (fields.length > 0) return `${detail.error}: ${fields.join(", ")}`;
+    return detail.error;
+  }
   return String(detail);
 }
 
@@ -58,6 +64,10 @@ export function getApiBlockingIssues(error) {
   return getApiErrorFieldList(error, "blocking_issues");
 }
 
+export function getApiBlockingFields(error) {
+  return getApiErrorFieldList(error, "blocking_fields");
+}
+
 export function getApiUnverifiedFields(error) {
   return getApiErrorFieldList(error, "unverified_fields");
 }
@@ -79,6 +89,7 @@ function buildApiError({ status, data, detail, message }) {
   err.detail = detail;
   err.data = data;
   err.blocking_issues = getApiErrorFieldList({ data, detail }, "blocking_issues");
+  err.blocking_fields = getApiErrorFieldList({ data, detail }, "blocking_fields");
   err.unverified_fields = getApiErrorFieldList({ data, detail }, "unverified_fields");
   err.warnings = getApiErrorFieldList({ data, detail }, "warnings");
   err.code = (detail && typeof detail === "object" ? detail.code : undefined) || data?.code;

@@ -727,7 +727,7 @@ _PAPER_FIELDS = {
 _PAPER_SOURCE_TYPES = ("official", "memory_based", "coaching", "community", "aggregator", "unknown")
 # Provenance fields that require re-validation when a paper is verified.
 # Changes to these fields on a verified paper must go through set-provenance.
-_PROVENANCE_FIELDS = frozenset({"source_url", "source_type", "source_document_id"})
+_PROVENANCE_FIELDS = frozenset({"source_url", "source_type", "source_document_id", "pyq_source_id"})
 
 
 @router.get("/pyq-papers")
@@ -862,6 +862,7 @@ def set_pyq_paper_provenance(
     result_source_type = patch.get("source_type", existing.get("source_type"))
     result_source_url = patch.get("source_url", existing.get("source_url"))
     result_source_doc_id = patch.get("source_document_id", existing.get("source_document_id"))
+    result_pyq_source_id = patch.get("pyq_source_id", existing.get("pyq_source_id"))
 
     # Run the same provenance gate as review_pyq_paper (Python side; SQL RPC
     # re-runs it under DB lock at verification time)
@@ -887,6 +888,14 @@ def set_pyq_paper_provenance(
             doc_exam = (doc.get("metadata") or {}).get("exam_id")
             if doc_exam and doc_exam != existing.get("exam_id"):
                 blocking.append("source_document_id_exam_mismatch")
+
+    # Validate pyq_source_id when present in patch: must exist and belong to the same exam.
+    if "pyq_source_id" in patch and patch["pyq_source_id"] is not None:
+        pyq_src = _safe_select(supabase, "pyq_sources", id=patch["pyq_source_id"])
+        if not pyq_src:
+            blocking.append("pyq_source_id_not_found")
+        elif pyq_src.get("exam_id") != existing.get("exam_id"):
+            blocking.append("pyq_source_id_exam_mismatch")
 
     if blocking:
         raise HTTPException(

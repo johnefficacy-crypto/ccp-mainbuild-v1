@@ -463,12 +463,28 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     try {
       const qs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
       if (cycle?.id) qs.set("cycle_id", cycle.id);
-      const [sylResult, pyqResult] = await Promise.all([
+      const docQs = new URLSearchParams({ exam_id: exam.id, document_kind: "pyq_paper", limit: "200" });
+      const [sylResult, pyqResult, pyqDocResult] = await Promise.all([
         api.get(`${CMS}/syllabus-documents?${qs}`),
         api.get(`${CMS}/pyq-papers?${qs}`),
+        api.get(`${DOC_BASE}?${docQs}`).catch(() => null),
       ]);
       setDocs(sylResult?.items   || sylResult   || []);
       setPapers(pyqResult?.items || pyqResult   || []);
+      // Rehydrate inFlight: merge backend docs that are still processing,
+      // excluding any that have already reached a terminal state, to avoid
+      // polling docs the backend has already finalized.
+      const backendDocs = pyqDocResult?.items || pyqDocResult || [];
+      setInFlight((prev) => {
+        const backendIds = new Set(backendDocs.map((d) => d.id));
+        // Keep local-only entries that haven't appeared in backend yet
+        const localOnly = prev.filter((d) => !backendIds.has(d.id));
+        // Add backend docs that are not yet terminal
+        const nonTerminal = backendDocs.filter(
+          (d) => !isTerminalDocStatus(d.status),
+        );
+        return [...localOnly, ...nonTerminal];
+      });
     } catch (e) {
       setListError(e?.message || "Failed to load documents");
     } finally {

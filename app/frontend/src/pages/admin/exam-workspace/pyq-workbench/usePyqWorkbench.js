@@ -37,7 +37,7 @@ export function usePyqWorkbench(examId, cycleId) {
     await fetchPapers();
   }, [fetchPapers]);
 
-  const setProvenance = useCallback(async (paperId, payload, reason) => {
+  const saveProvenance = useCallback(async (paperId, payload, reason) => {
     await api.post(`${CMS_BASE}/pyq-papers/${paperId}/set-provenance`, { payload, reason });
     await fetchPapers();
   }, [fetchPapers]);
@@ -47,5 +47,38 @@ export function usePyqWorkbench(examId, cycleId) {
     return data.signed_url;
   }, []);
 
-  return { papers, selectedPaperId, setSelectedPaperId, loading, error, refetch: fetchPapers, reviewPaper, patchPaper, setProvenance, getPaperSignedPdf };
+  const fetchPaperQuestions = useCallback(async (paperId) => {
+    const res = await api.get(`${CMS_BASE}/pyq-questions?paper_id=${encodeURIComponent(paperId)}&limit=200`);
+    return res.items || [];
+  }, []);
+
+  const fetchPyqDocuments = useCallback(async () => {
+    if (!examId) return [];
+    const params = new URLSearchParams({ exam_id: examId, document_kind: "pyq_paper", limit: "200" });
+    const res = await api.get(`${CMS_BASE}/documents?${params}`);
+    return res.items || res || [];
+  }, [examId]);
+
+  const fetchPyqSources = useCallback(async () => {
+    if (!examId) return [];
+    const params = new URLSearchParams({ exam_id: examId, limit: "200" });
+    const res = await api.get(`${CMS_BASE}/pyq-sources?${params}`);
+    return res.items || res || [];
+  }, [examId]);
+
+  return {
+    papers,
+    selectedPaperId,
+    setSelectedPaperId,
+    loading,
+    error,
+    refetch: fetchPapers,
+    reviewPaper,
+    patchPaper,
+    saveProvenance,
+    getPaperSignedPdf,
+    fetchPaperQuestions,
+    fetchPyqDocuments,
+    fetchPyqSources,
+  };
 }
