@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/authContext";
 import useApiAction from "../../lib/hooks/useApiAction";
+import { useBreadcrumbLeaf } from "../../shared/navigation/BreadcrumbLeafContext";
+import CommunityModuleHeader from "./CommunityModuleHeader";
 import {
   COMMUNITY_SPACES as SEED_SPACES,
   COMMUNITY_USERS as SEED_USERS,
@@ -161,14 +163,16 @@ export default function CommunityScreen() {
   }
 
   const sortedThreads = useMemo(() => sortThreads(threads, sort, users), [threads, sort, users]);
+  const breadcrumbLabel = thread?.title || channel?.name || space?.name || "Community";
+  useBreadcrumbLeaf(breadcrumbLabel);
 
   return (
-    <div
-      data-testid="community-page"
-      className="flex overflow-hidden bg-field-paper text-field-ink"
-      style={{ height: "calc(100vh - 60px)" }}
-    >
-      <aside className="w-[286px] border-r border-field-line bg-field-canvas flex flex-col shrink-0">
+    <div data-testid="community-page" className="text-field-ink">
+      <CommunityModuleHeader />
+      <div
+        className="flex min-h-[680px] max-h-none flex-col overflow-hidden rounded-2xl border border-border bg-field-paper shadow-sm lg:max-h-[calc(100vh-210px)] lg:flex-row"
+      >
+        <aside className="w-full shrink-0 border-b border-field-line bg-field-canvas lg:w-[286px] lg:border-b-0 lg:border-r">
         <CommunityTopNav spaces={spaces} activeId={space?.id} onPick={pickSpace} />
         <ChannelsRail
           space={space}
@@ -177,9 +181,9 @@ export default function CommunityScreen() {
           isAdmin={isAdmin}
           onCreateChannel={() => setNewChannelOpen(true)}
         />
-      </aside>
+        </aside>
 
-      <section className="flex-1 min-w-0 flex flex-col bg-field-paper">
+        <section className="flex-1 min-w-0 flex flex-col bg-field-paper">
         <ChannelHeader space={space} channel={channel} onCompose={() => setComposerOpen(true)} />
         {channel ? <ChannelRules channel={channel} /> : null}
 
@@ -221,7 +225,7 @@ export default function CommunityScreen() {
             </div>
           </>
         )}
-      </section>
+        </section>
 
       {composerOpen ? (
         <ComposerDrawer
@@ -243,6 +247,7 @@ export default function CommunityScreen() {
           }}
         />
       ) : null}
+      </div>
     </div>
   );
 }

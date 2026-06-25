@@ -52,6 +52,22 @@ const TRAIL_DEFS = [
     ],
     fallbackLabel: "Review",
   },
+
+  {
+    pattern: /^\/app\/community\/[^/]+\/[^/]+\/[^/]+$/,
+    ancestors: [{ label: "Community", to: "/app/community" }],
+    fallbackLabel: "Thread",
+  },
+  {
+    pattern: /^\/app\/community\/[^/]+\/[^/]+$/,
+    ancestors: [{ label: "Community", to: "/app/community" }],
+    fallbackLabel: "Channel",
+  },
+  {
+    pattern: /^\/app\/community\/[^/]+$/,
+    ancestors: [{ label: "Community", to: "/app/community" }],
+    fallbackLabel: "Space",
+  },
   {
     pattern: /^\/app\/marketplace\/[^/]+\/learn$/,
     ancestors: [

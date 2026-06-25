@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import CommunityModuleHeader from "./CommunityModuleHeader";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
 import { ENABLE_DEMO_DATA } from "../../shared/config/env";
@@ -117,6 +118,7 @@ export default function MentorsScreen() {
 
   return (
     <FieldPage testId="mentors-page">
+      <CommunityModuleHeader />
       <FieldHeader
         eyebrow="Mentors · 1:n sessions"
         title="Learn from reviewed mentors, with bookings recorded to your account."
