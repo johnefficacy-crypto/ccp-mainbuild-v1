@@ -220,10 +220,19 @@ def evaluate_promotion_gate(supabase: Client, queue_item: dict[str, Any]) -> Gat
 # official proof; Tier B and C pass unconditionally. PR3 adds the
 # consensus check; PR4 adds the eligibility-complexity check.
 #
-# Both gates run in sequence on the admin promotion path: a queue item
-# must pass :func:`evaluate_promotion_gate` AND
-# :func:`check_gateway_promotion`. They cover orthogonal risks and
-# neither replaces the other.
+# AS-BUILT (2026-06): the two gates do NOT both run on the promote path.
+# The promote endpoints — ``promote_queue_item`` (api/admin_scrape.py) and
+# ``promote_run`` (scraping/runner.py) — call only
+# :func:`evaluate_promotion_gate`. :func:`check_gateway_promotion` and
+# :func:`check_gateway_publish` are currently invoked ONLY by the
+# Verification-Reports preview surface (api/admin_verification_reports.py);
+# they are a parallel evaluator and are NOT part of the live promote /
+# publish flow. The "both gates in sequence" sequencing below is the
+# intended design, not the wired behaviour. The only consensus-conflict
+# block on the promote path is ``_open_conflict_field_keys`` (runner.py),
+# which reads the ``recruitment_verification_conflicts`` table — a table
+# that currently has no production writer. See
+# docs/admin/pipeline-workspace.md ("Known gaps") for the full picture.
 
 @dataclass
 class GatewayGateResult:
