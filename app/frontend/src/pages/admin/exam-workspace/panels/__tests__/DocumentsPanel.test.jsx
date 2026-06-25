@@ -27,15 +27,11 @@ jest.mock("../../../../../lib/api", () => ({
 }));
 
 jest.mock("../../ExamWorkspaceContext", () => ({
-  useExamWorkspace: () => ({
-    exam:   { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" },
-    cycle:  null,
-    cycles: [{ id: "cy-1", exam_id: "exam-1", year: 2026, cycle_name: "2026" }],
-    phases: [],
-  }),
+  useExamWorkspace: jest.fn(),
 }));
 
 const { api } = require("../../../../../lib/api");
+const { useExamWorkspace: mockUseExamWorkspace } = require("../../ExamWorkspaceContext");
 const DocumentsPanel = require("../DocumentsPanel").default;
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -72,6 +68,12 @@ function renderPanel(props = {}) {
 beforeEach(() => {
   jest.resetAllMocks();
   global.fetch = jest.fn(() => Promise.resolve({ ok: true, status: 200 }));
+  mockUseExamWorkspace.mockReturnValue({
+    exam:   { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" },
+    cycle:  null,
+    cycles: [{ id: "cy-1", exam_id: "exam-1", year: 2026, cycle_name: "2026" }],
+    phases: [],
+  });
 });
 
 // ── 1. Loading state ──────────────────────────────────────────────────────────
@@ -339,4 +341,158 @@ test("Refresh button re-fetches the linked docs list", async () => {
       api.get.mock.calls.filter((c) => c[0].includes("syllabus-documents")).length,
     ).toBeGreaterThan(before),
   );
+});
+
+// ── 9. Processed-but-unlinked doc rehydration (P1-2 regression) ──────────────
+
+test("processed pyq_paper doc not linked to any paper appears in inFlight after load", async () => {
+  // Use original_filename (real API shape — the backend response does not have filename).
+  const PROCESSED_UNLINKED = {
+    id: "doc-unlinked-processed",
+    original_filename: "upsc-2024-gs1.pdf",
+    document_kind: "pyq_paper",
+    status: "processed",
+    page_count: 32,
+    extraction: {},
+  };
+
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers")) return Promise.resolve({ items: [] }); // no linked papers
+    if (url.includes("documents?")) return Promise.resolve({ items: [PROCESSED_UNLINKED] });
+    return Promise.resolve({ items: [] });
+  });
+
+  renderPanel();
+  // Panel reaches docs-populated because inFlight becomes non-empty
+  await waitFor(() => screen.getByTestId("inflight-row-doc-unlinked-processed"));
+  // Filename is normalized from original_filename and rendered visibly
+  expect(screen.getByText("upsc-2024-gs1.pdf")).toBeTruthy();
+});
+
+test("processed pyq_paper doc already linked to a paper is excluded from inFlight", async () => {
+  const LINKED_DOC = {
+    id: "doc-already-linked",
+    filename: "upsc-2023.pdf",
+    document_kind: "pyq_paper",
+    status: "processed",
+    extraction: {},
+  };
+  const PAPER_WITH_LINK = {
+    id: "paper-linked", source_document_id: "doc-already-linked",
+  };
+
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers")) return Promise.resolve({ items: [PAPER_WITH_LINK] });
+    if (url.includes("documents?")) return Promise.resolve({ items: [LINKED_DOC] });
+    return Promise.resolve({ items: [] });
+  });
+
+  renderPanel();
+  // No inFlight row for the linked doc; panel shows docs-populated because of the linked paper
+  await waitFor(() => screen.getByTestId("docs-populated"));
+  expect(screen.queryByTestId("inflight-row-doc-already-linked")).toBeNull();
+});
+
+// ── 11. D10: load() is always exam-wide — no cycle filter ────────────────────
+
+test("D10: load() fetches exam-wide without any cycle param even when a cycle is selected", async () => {
+  // D10 decision prohibits filtering PYQ corpus by cycle. The workbench must
+  // always show all same-exam papers regardless of selected cycle.
+  mockUseExamWorkspace.mockReturnValue({
+    exam:   { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" },
+    cycle:  { id: "cy-1" },
+    cycles: [{ id: "cy-1", exam_id: "exam-1", year: 2026, cycle_name: "2026" }],
+    phases: [],
+  });
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers"))         return Promise.resolve({ items: [] });
+    return Promise.resolve({ items: [] });
+  });
+  renderPanel();
+  await waitFor(() => screen.getByTestId("docs-empty"));
+
+  const sylCall = api.get.mock.calls.find((c) => c[0].includes("syllabus-documents"));
+  expect(sylCall[0]).toContain("exam_id=exam-1");
+  // Must NOT send any cycle filter.
+  expect(sylCall[0]).not.toMatch(/[?&]exam_cycle_id=/);
+  expect(sylCall[0]).not.toMatch(/[?&]cycle_id=/);
+
+  const pyqCall = api.get.mock.calls.find((c) => c[0].includes("pyq-papers?"));
+  expect(pyqCall[0]).toContain("exam_id=exam-1");
+  expect(pyqCall[0]).not.toMatch(/[?&]exam_cycle_id=/);
+  expect(pyqCall[0]).not.toMatch(/[?&]cycle_id=/);
+});
+
+// ── 12. Document recovery failure surfaces as list error ──────────────────────
+
+test("document recovery fetch failure is surfaced as list error, not swallowed", async () => {
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers"))         return Promise.resolve({ items: [] });
+    if (url.includes("documents?"))         return Promise.reject(new Error("storage unavailable"));
+    return Promise.resolve({ items: [] });
+  });
+  renderPanel();
+  await waitFor(() => screen.getByTestId("docs-list-error"));
+  expect(screen.getByTestId("docs-list-error").textContent).toMatch(/storage unavailable/i);
+});
+
+// ── 13. D10: document linked to a historical-cycle paper is excluded from inFlight
+
+test("D10: document linked to same-exam paper in another cycle is not shown as pending-link", async () => {
+  // Recovery fetches exam-wide assets. linkedDocIds must also be exam-wide.
+  // A PDF already linked to a 2025-cycle paper must not re-appear as "Uploaded — pending link"
+  // when the operator is currently viewing the 2026 cycle.
+  mockUseExamWorkspace.mockReturnValue({
+    exam:   { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" },
+    cycle:  { id: "cy-2026" },
+    cycles: [{ id: "cy-2026", exam_id: "exam-1", year: 2026, cycle_name: "2026" }],
+    phases: [],
+  });
+
+  const PAPER_2025 = {
+    id: "paper-2025", exam_id: "exam-1", exam_cycle_id: "cy-2025",
+    year: 2025, source_document_id: "doc-historical",
+  };
+  const DOC_HISTORICAL = {
+    id: "doc-historical", original_filename: "upsc-2025-gs1.pdf",
+    document_kind: "pyq_paper", status: "processed", extraction: {},
+  };
+
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    // pyq-papers returns ALL same-exam papers (exam-wide per D10), including 2025 paper
+    if (url.includes("pyq-papers"))         return Promise.resolve({ items: [PAPER_2025] });
+    if (url.includes("documents?"))         return Promise.resolve({ items: [DOC_HISTORICAL] });
+    return Promise.resolve({ items: [] });
+  });
+
+  renderPanel();
+  await waitFor(() => screen.getByTestId("docs-populated"));
+  // The historical document is already linked — must NOT appear in inFlight
+  expect(screen.queryByTestId("inflight-row-doc-historical")).toBeNull();
+});
+
+// ── 14. Archived documents are excluded from inFlight recovery ────────────────
+
+test("archived document is excluded from inFlight and does not appear as pending-link", async () => {
+  const ARCHIVED_DOC = {
+    id: "doc-archived", original_filename: "upsc-2024-archive.pdf",
+    document_kind: "pyq_paper", status: "archived", extraction: {},
+  };
+
+  api.get.mockImplementation((url) => {
+    if (url.includes("syllabus-documents")) return Promise.resolve({ items: [] });
+    if (url.includes("pyq-papers"))         return Promise.resolve({ items: [] });
+    if (url.includes("documents?"))         return Promise.resolve({ items: [ARCHIVED_DOC] });
+    return Promise.resolve({ items: [] });
+  });
+
+  renderPanel();
+  // No inFlight rows → panel stays in docs-empty (archived doc must not add to inFlight)
+  await waitFor(() => screen.getByTestId("docs-empty"));
+  expect(screen.queryByTestId("inflight-row-doc-archived")).toBeNull();
 });

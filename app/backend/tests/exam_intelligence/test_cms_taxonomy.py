@@ -205,10 +205,11 @@ class _RpcQuery:
         return _Exec({"ok": True, "audit_id": audit_id, "row": dict(paper)})
 
     def _exec_cms_set_pyq_paper_provenance(self) -> "_Exec":
-        """Mirror the atomic UPDATE + audit INSERT of migration 189 Part A.
+        """Mirror the atomic UPDATE + audit INSERT of migration 191.
 
-        Includes paper lock + conditional document lock + six invariant checks,
-        mirroring the FOR UPDATE + validation added in migration 189.
+        Mirrors SQL order: compute merged provenance first, then validate the
+        merged source_document_id (patch or locked row), then pyq_source_id
+        (patch only), then the completeness gate with trim semantics.
         """
         import uuid as _uuid
 
@@ -220,9 +221,15 @@ class _RpcQuery:
 
         patch = p.get("p_patch", {})
 
-        # Validate document when source_document_id is being set to a non-null value.
-        if "source_document_id" in patch and patch["source_document_id"] is not None:
-            doc_id = str(patch["source_document_id"])
+        # Compute merged provenance first (matches new SQL order).
+        merged_source_type = patch.get("source_type", paper.get("source_type"))
+        merged_source_url  = patch.get("source_url",  paper.get("source_url"))
+        merged_source_doc  = patch.get("source_document_id", paper.get("source_document_id"))
+
+        # Validate the merged source_document_id regardless of whether it came
+        # from the patch or the locked row.
+        if merged_source_doc is not None:
+            doc_id = str(merged_source_doc)
             docs = self._db.get("document_assets", [])
             doc = next((d for d in docs if str(d.get("id")) == doc_id), None)
             blocking: list[str] = []
@@ -246,11 +253,62 @@ class _RpcQuery:
                     f"provenance_incomplete: blocking_fields={','.join(blocking)}"
                 )
 
-        for field in ("source_url", "source_type", "source_document_id"):
+        # Validate pyq_source_id when present in patch.
+        if "pyq_source_id" in patch and patch["pyq_source_id"] is not None:
+            src_id = str(patch["pyq_source_id"])
+            sources = self._db.get("pyq_sources", [])
+            src = next((s for s in sources if str(s.get("id")) == src_id), None)
+            blocking: list[str] = []
+            if src is None:
+                blocking.append("pyq_source_id_not_found")
+            else:
+                paper_exam = str(paper.get("exam_id") or "")
+                src_exam   = str(src.get("exam_id") or "")
+                if src_exam and paper_exam and src_exam != paper_exam:
+                    blocking.append("pyq_source_id_exam_mismatch")
+            if blocking:
+                raise Exception(
+                    f"provenance_incomplete: blocking_fields={','.join(blocking)}"
+                )
+
+        # Capture pre-mutation state from the locked paper (mirrors SQL locked row).
+        was_verified = paper.get("trust_status") == "verified"
+        previous_provenance = {
+            "source_type":        paper.get("source_type"),
+            "source_url":         paper.get("source_url"),
+            "source_document_id": paper.get("source_document_id"),
+            "pyq_source_id":      paper.get("pyq_source_id"),
+        }
+
+        # Completeness gate with trim semantics matching SQL and Python pre-check:
+        # source_type must be non-null, non-blank (after strip), and not 'unknown';
+        # at least one anchor (source_url with non-blank content, or source_document_id).
+        merged_url_stripped = (merged_source_url or "").strip()
+        merged_type_stripped = (merged_source_type or "").strip()
+        gate_ok = (
+            merged_source_type is not None
+            and merged_type_stripped != ""
+            and merged_source_type != "unknown"
+            and (merged_url_stripped != "" or merged_source_doc is not None)
+        )
+        if not gate_ok:
+            gate_blocking: list[str] = []
+            if (merged_source_type is None
+                    or merged_type_stripped == ""
+                    or merged_source_type == "unknown"):
+                gate_blocking.append("source_type")
+            if merged_url_stripped == "" and merged_source_doc is None:
+                gate_blocking.append("source_url")
+            raise Exception(
+                f"provenance_incomplete: blocking_fields={','.join(gate_blocking)}"
+            )
+
+        for field in ("source_url", "source_type", "source_document_id", "pyq_source_id"):
             if field in patch:
                 paper[field] = patch[field]
-        if p.get("p_was_verified"):
+        if was_verified:
             paper["trust_status"] = "pending"
+        trust_status_after = paper["trust_status"]
 
         audit_id = str(_uuid.uuid4())
         self._db.setdefault("admin_audit_logs", []).append({
@@ -263,12 +321,17 @@ class _RpcQuery:
             "new_value": {
                 "reason": p.get("p_reason"),
                 "patch": patch,
-                "previous_provenance": p.get("p_previous_provenance"),
-                "demoted_from_verified": p.get("p_was_verified"),
+                "previous_provenance": previous_provenance,
+                "demoted_from_verified": was_verified,
             },
             "notes": "admin_exam_intel_cms",
         })
-        return _Exec({"audit_id": audit_id, "demoted_from_verified": p.get("p_was_verified")})
+        return _Exec({
+            "audit_id": audit_id,
+            "demoted_from_verified": was_verified,
+            "previous_provenance": previous_provenance,
+            "trust_status_after": trust_status_after,
+        })
 
     def _exec_cms_link_document_to_pyq_paper(self) -> "_Exec":
         """Mirror the atomic UPDATE + audit INSERT of migration 189 Part B.
@@ -653,6 +716,69 @@ class _SetProvenanceDocRaceRpcQuery(_RpcQuery):
 class _SetProvenanceDocRaceSBStub(TaxSBStub):
     def rpc(self, fn_name: str, params: dict | None = None) -> _RpcQuery:
         return _SetProvenanceDocRaceRpcQuery(fn_name, params or {}, self.db)
+
+
+class _SetProvenanceBlankSourceTypeRaceRpcQuery(_RpcQuery):
+    """Concurrent write blanks source_type between Python pre-check and RPC lock.
+    The gate must reject '' (blank) even when Python's pre-check saw a valid value."""
+
+    def _exec_cms_set_pyq_paper_provenance(self):
+        for p in self._db.get("pyq_papers", []):
+            p["source_type"] = ""
+        return super()._exec_cms_set_pyq_paper_provenance()
+
+
+class _SetProvenanceBlankSourceTypeRaceSBStub(TaxSBStub):
+    def rpc(self, fn_name: str, params: dict | None = None) -> _RpcQuery:
+        return _SetProvenanceBlankSourceTypeRaceRpcQuery(fn_name, params or {}, self.db)
+
+
+class _SetProvenanceWhitespaceSourceUrlRaceRpcQuery(_RpcQuery):
+    """Concurrent write replaces source_url with whitespace-only between Python
+    pre-check and RPC lock.  The gate must reject whitespace-only URLs."""
+
+    def _exec_cms_set_pyq_paper_provenance(self):
+        for p in self._db.get("pyq_papers", []):
+            p["source_url"] = "   "
+        return super()._exec_cms_set_pyq_paper_provenance()
+
+
+class _SetProvenanceWhitespaceSourceUrlRaceSBStub(TaxSBStub):
+    def rpc(self, fn_name: str, params: dict | None = None) -> _RpcQuery:
+        return _SetProvenanceWhitespaceSourceUrlRaceRpcQuery(fn_name, params or {}, self.db)
+
+
+class _SetProvenanceRetainedDocArchiveRaceRpcQuery(_RpcQuery):
+    """Concurrent write archives a retained source_document_id (not in the patch)
+    between Python pre-check and RPC lock.  The RPC must re-validate the merged
+    doc even when it came from the locked row (not the patch)."""
+
+    def _exec_cms_set_pyq_paper_provenance(self):
+        for doc in self._db.get("document_assets", []):
+            doc["status"] = "archived"
+        return super()._exec_cms_set_pyq_paper_provenance()
+
+
+class _SetProvenanceRetainedDocArchiveRaceSBStub(TaxSBStub):
+    def rpc(self, fn_name: str, params: dict | None = None) -> _RpcQuery:
+        return _SetProvenanceRetainedDocArchiveRaceRpcQuery(fn_name, params or {}, self.db)
+
+
+class _SetProvenanceUnpatchedFieldChangeRpcQuery(_RpcQuery):
+    """After the RPC commits, a concurrent write changes an unpatched field
+    (source_type).  Python's re-select after the RPC must return the new value,
+    not the stale pre-lock value."""
+
+    def _exec_cms_set_pyq_paper_provenance(self):
+        result = super()._exec_cms_set_pyq_paper_provenance()
+        for p in self._db.get("pyq_papers", []):
+            p["source_type"] = "unofficial"
+        return result
+
+
+class _SetProvenanceUnpatchedFieldChangeSBStub(TaxSBStub):
+    def rpc(self, fn_name: str, params: dict | None = None) -> _RpcQuery:
+        return _SetProvenanceUnpatchedFieldChangeRpcQuery(fn_name, params or {}, self.db)
 
 
 def _pyq_review_client(sb, user=None):

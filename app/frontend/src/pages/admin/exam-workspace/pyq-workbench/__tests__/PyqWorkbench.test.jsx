@@ -16,10 +16,23 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
-jest.mock("../../../../../lib/api", () => ({
-  __esModule: true,
-  api: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
-}));
+jest.mock("../../../../../lib/api", () => {
+  function _fieldList(error, key) {
+    const detail = error?.detail ?? error?.data?.detail ?? error?.data?.message ?? error?.message;
+    const v =
+      error?.[key] ??
+      (detail && typeof detail === "object" ? detail[key] : undefined) ??
+      error?.data?.[key];
+    return Array.isArray(v) ? v : [];
+  }
+  return {
+    __esModule: true,
+    api: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
+    getApiBlockingFields: (e) => _fieldList(e, "blocking_fields"),
+    getApiBlockingIssues:  (e) => _fieldList(e, "blocking_issues"),
+    getApiErrorMessage:    (e) => e?.message || "Unknown error",
+  };
+});
 
 // Mock BulkImportModal so we can simulate onSuccess without driving the full flow
 jest.mock("../bulk-import/BulkImportModal", () => {
@@ -51,6 +64,26 @@ jest.mock("../bulk-import/BulkImportModal", () => {
 jest.mock("../../../../../lib/authContext", () => ({
   __esModule: true,
   useAuth: jest.fn(),
+}));
+
+// useApiAction is used by usePyqWorkbench for mutations. The real hook uses
+// useToast() which requires a ToastProvider; this lightweight mock replicates
+// the run() contract (calls action, invokes onSuccess on success, returns
+// {ok,data} or {ok:false,error}) without needing the toast context.
+jest.mock("../../../../../lib/hooks/useApiAction", () => ({
+  __esModule: true,
+  default: () => ({
+    run: async ({ action, onSuccess }) => {
+      try {
+        const result = await action();
+        if (onSuccess) onSuccess(result);
+        return { ok: true, data: result };
+      } catch (e) {
+        return { ok: false, error: e };
+      }
+    },
+    busy: false,
+  }),
 }));
 
 const { api } = require("../../../../../lib/api");
@@ -148,15 +181,23 @@ describe("PyqWorkbenchPanel", () => {
     );
   });
 
-  test("passes exam_cycle_id when workspace has a cycle", async () => {
+  test("D10: never passes exam_cycle_id to pyq-papers, even when a cycle is selected", async () => {
+    // D10 decision: PYQ corpus is always exam-wide. cycle is provenance
+    // metadata, not a default scope filter; passing exam_cycle_id would hide
+    // historical and parallel-cycle papers from the workbench.
     jest.clearAllMocks();
     mockContextApi({ withCycle: true });
     render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith(
-        expect.stringContaining(`exam_cycle_id=${CYCLE_ID}`),
+        expect.stringContaining(`exam_id=${EXAM_ID}`),
       ),
     );
+    const pyqCalls = api.get.mock.calls.filter((c) => c[0].includes("pyq-papers?"));
+    expect(pyqCalls.length).toBeGreaterThan(0);
+    pyqCalls.forEach(([url]) => {
+      expect(url).not.toContain("exam_cycle_id");
+    });
   });
 
   test("shows empty-state when no papers returned", async () => {
@@ -275,6 +316,57 @@ describe("PyqWorkbenchPanel", () => {
 
     // Selection unchanged — still no paper selected
     expect(screen.queryByTestId("pyq-no-paper-selected")).toBeTruthy();
+  });
+
+  // D10 acceptance tests: exam-wide PYQ scope
+  test("D10: paper from another cycle remains visible when a different cycle is selected", async () => {
+    // A 2025-cycle paper must appear in the 2026 workbench view.
+    // The corpus is exam-wide; cycle is provenance, not a scope filter.
+    const PAPER_2025 = {
+      id: "p-2025", exam_id: EXAM_ID, exam_cycle_id: "cy-2025",
+      year: 2025, paper_code: "GS-I", shift: "I",
+    };
+    const PAPER_2026 = {
+      id: "p-2026", exam_id: EXAM_ID, exam_cycle_id: CYCLE_ID,
+      year: 2026, paper_code: "GS-I", shift: "I",
+    };
+    jest.clearAllMocks();
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+      if (url.includes("/context")) return Promise.resolve({
+        exam: { id: EXAM_ID, name: "SSC CGL", exam_type: "recruitment" },
+        cycle: { id: CYCLE_ID }, cycles: [{ id: CYCLE_ID, cycle_name: "2026" }], phases: [],
+      });
+      if (url.includes("/pyq-papers?")) return Promise.resolve({ items: [PAPER_2025, PAPER_2026] });
+      return Promise.resolve({});
+    });
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: [] } });
+    render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    // Both papers — 2025 and 2026 — must be visible.
+    expect(screen.getByTestId("pyq-paper-row-p-2025")).toBeTruthy();
+    expect(screen.getByTestId("pyq-paper-row-p-2026")).toBeTruthy();
+  });
+
+  test("D10: unscoped paper (no exam_cycle_id) remains visible when a cycle is selected", async () => {
+    const UNSCOPED = {
+      id: "p-unscoped", exam_id: EXAM_ID, exam_cycle_id: null,
+      year: 2023, paper_code: "GS-II", shift: "I",
+    };
+    jest.clearAllMocks();
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+      if (url.includes("/context")) return Promise.resolve({
+        exam: { id: EXAM_ID, name: "SSC CGL", exam_type: "recruitment" },
+        cycle: { id: CYCLE_ID }, cycles: [{ id: CYCLE_ID, cycle_name: "2026" }], phases: [],
+      });
+      if (url.includes("/pyq-papers?")) return Promise.resolve({ items: [UNSCOPED] });
+      return Promise.resolve({});
+    });
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: [] } });
+    render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("pyq-paper-row-p-unscoped")).toBeTruthy();
   });
 });
 
@@ -535,5 +627,568 @@ describe("PyqWorkbenchPanel — paper lifecycle review", () => {
     expect(submitBtn).toHaveTextContent("Re-queue");
     expect(submitBtn.className).toMatch(/amber/);
     expect(submitBtn.className).not.toMatch(/rose/);
+  });
+});
+
+// ── Provenance gate + PaperProvenanceModal (migration 191) ───────────────────
+
+const { isPaperProvenanceComplete } = require("../PyqWorkbenchPanel");
+
+const INCOMPLETE_PAPERS_NO_TYPE = [
+  {
+    id: "p-no-type", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+    source_url: "https://upsc.gov.in/2024.pdf", source_type: null,
+    source_document_id: null, pyq_source_id: null,
+  },
+];
+
+const INCOMPLETE_PAPERS_UNKNOWN_TYPE = [
+  {
+    id: "p-unknown", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+    source_url: "https://upsc.gov.in/2024.pdf", source_type: "unknown",
+    source_document_id: null, pyq_source_id: null,
+  },
+];
+
+const INCOMPLETE_PAPERS_NO_ANCHOR = [
+  {
+    id: "p-no-anchor", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+    source_url: null, source_type: "official",
+    source_document_id: null, pyq_source_id: null,
+  },
+];
+
+const COMPLETE_PAPERS_URL = [
+  {
+    id: "p-with-url", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+    source_url: "https://upsc.gov.in/2024.pdf", source_type: "official",
+    source_document_id: null, pyq_source_id: null,
+  },
+];
+
+const COMPLETE_PAPERS_DOC = [
+  {
+    id: "p-with-doc", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+    source_url: null, source_type: "official",
+    source_document_id: "doc-uuid-1", pyq_source_id: null,
+  },
+];
+
+const MODAL_DOCS = [
+  { id: "doc-uuid-1", original_filename: "upsc-2024-gs1.pdf", page_count: 32, status: "processed" },
+  { id: "doc-uuid-2", original_filename: "upsc-2024-csat.pdf", page_count: 28, status: "processed" },
+];
+
+const MODAL_SOURCES = [
+  { id: "src-1", title: "UPSC Official 2024", exam_id: EXAM_ID },
+];
+
+function mockApiForProvenance(papers, opts = {}) {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+    if (url.includes("/context")) return Promise.resolve({
+      exam: { id: EXAM_ID, name: "Test" }, cycle: null, cycles: [], phases: [],
+    });
+    if (url.includes("/pyq-papers?")) return Promise.resolve({ items: papers });
+    if (url.includes("/documents?") && url.includes("document_kind=pyq_paper")) {
+      return Promise.resolve({ items: opts.docs || MODAL_DOCS });
+    }
+    if (url.includes("/pyq-sources?")) return Promise.resolve({ items: opts.sources || MODAL_SOURCES });
+    return Promise.resolve({});
+  });
+}
+
+describe("isPaperProvenanceComplete — unit", () => {
+  // Test 1
+  test("returns false when source_type is null", () => {
+    expect(isPaperProvenanceComplete({ source_type: null, source_url: "https://example.com" })).toBe(false);
+  });
+
+  // Test 2
+  test("returns false when source_type is 'unknown'", () => {
+    expect(isPaperProvenanceComplete({ source_type: "unknown", source_url: "https://example.com" })).toBe(false);
+  });
+
+  // Test 3
+  test("returns false when both source_url and source_document_id are absent", () => {
+    expect(isPaperProvenanceComplete({ source_type: "official", source_url: null, source_document_id: null })).toBe(false);
+  });
+
+  // Test 4
+  test("returns true when source_type is valid and source_url is set", () => {
+    expect(isPaperProvenanceComplete({ source_type: "official", source_url: "https://example.com" })).toBe(true);
+  });
+
+  // Test 5
+  test("returns true when source_type is valid and source_document_id is set", () => {
+    expect(isPaperProvenanceComplete({ source_type: "official", source_url: null, source_document_id: "some-uuid" })).toBe(true);
+  });
+});
+
+describe("PyqWorkbenchPanel — provenance gate + PaperProvenanceModal", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+  });
+
+  // Test 6
+  test("pending paper without source_type shows 'Confirm provenance' instead of 'Verify'", async () => {
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.queryByTestId("verify-paper-btn-p-no-type")).toBeNull();
+    expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy();
+  });
+
+  // Test 7
+  test("pending paper with source_type='unknown' shows 'Confirm provenance' not 'Verify'", async () => {
+    mockApiForProvenance(INCOMPLETE_PAPERS_UNKNOWN_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.queryByTestId("verify-paper-btn-p-unknown")).toBeNull();
+    expect(screen.getByTestId("confirm-provenance-btn-p-unknown")).toBeTruthy();
+  });
+
+  // Test 8
+  test("pending paper with no source anchor shows 'Confirm provenance'", async () => {
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_ANCHOR);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.queryByTestId("verify-paper-btn-p-no-anchor")).toBeNull();
+    expect(screen.getByTestId("confirm-provenance-btn-p-no-anchor")).toBeTruthy();
+  });
+
+  // Test 9
+  test("pending paper with valid source_type and source_url shows 'Verify' button", async () => {
+    mockApiForProvenance(COMPLETE_PAPERS_URL);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("verify-paper-btn-p-with-url")).toBeTruthy();
+    expect(screen.queryByTestId("confirm-provenance-btn-p-with-url")).toBeNull();
+  });
+
+  // Test 10
+  test("pending paper with valid source_type and source_document_id shows 'Verify' button", async () => {
+    mockApiForProvenance(COMPLETE_PAPERS_DOC);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("verify-paper-btn-p-with-doc")).toBeTruthy();
+    expect(screen.queryByTestId("confirm-provenance-btn-p-with-doc")).toBeNull();
+  });
+
+  // Test 11
+  test("clicking 'Confirm provenance' opens PaperProvenanceModal", async () => {
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-no-type"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+  });
+
+  // Test 12
+  test("PaperProvenanceModal title contains paper year, code, shift", async () => {
+    const papers = [{
+      id: "p-title", exam_id: EXAM_ID, year: 2024, paper_code: "GS-I", shift: "Morning",
+      trust_status: "pending", source_url: null, source_type: null,
+      source_document_id: null, pyq_source_id: null,
+    }];
+    mockApiForProvenance(papers);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-title")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-title"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+    const title = screen.getByTestId("paper-provenance-modal").querySelector("h2");
+    expect(title.textContent).toContain("2024");
+    expect(title.textContent).toContain("GS-I");
+    expect(title.textContent).toContain("Morning");
+  });
+
+  // Test 13
+  test("PaperProvenanceModal has source_type dropdown", async () => {
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-no-type"));
+    await waitFor(() => expect(screen.getByTestId("provenance-source-type")).toBeTruthy());
+  });
+
+  // Test 14
+  test("PaperProvenanceModal has source_url input", async () => {
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-no-type"));
+    await waitFor(() => expect(screen.getByTestId("provenance-source-url")).toBeTruthy());
+  });
+
+  // Test 15
+  test("PaperProvenanceModal document selector lists filenames not raw UUIDs", async () => {
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE, { docs: MODAL_DOCS });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-no-type"));
+    // Wait until the async fetchPyqDocuments resolves and populates the options
+    await waitFor(() => {
+      const select = screen.getByTestId("provenance-document-id");
+      const texts = Array.from(select.options).map((o) => o.text);
+      if (!texts.some((t) => t.includes("upsc-2024-gs1.pdf"))) throw new Error("options not yet loaded");
+    });
+    const select = screen.getByTestId("provenance-document-id");
+    const optionTexts = Array.from(select.options).map((o) => o.text);
+    expect(optionTexts.some((t) => t.includes("upsc-2024-gs1.pdf"))).toBe(true);
+    expect(optionTexts.some((t) => t === "doc-uuid-1")).toBe(false);
+  });
+
+  // Test 16 — diff-based payload: only changed fields are sent.
+  // Paper starts with source_type=null, source_url=null; user sets both.
+  // Both must appear in the payload because both are genuine changes.
+  test("saving provenance calls POST /set-provenance with changed fields in payload", async () => {
+    const PAPER_NO_TYPE_NO_URL = [{
+      id: "p-no-type-url", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+      source_type: null, source_url: null,
+      source_document_id: null, pyq_source_id: null,
+    }];
+    api.post.mockResolvedValue({ ok: true, audit_id: "a1", demoted_from_verified: false });
+    mockApiForProvenance(PAPER_NO_TYPE_NO_URL);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-no-type-url")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-no-type-url"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("provenance-source-type"), { target: { value: "official" } });
+    fireEvent.change(screen.getByTestId("provenance-source-url"), {
+      target: { value: "https://upsc.gov.in/2024.pdf" },
+    });
+    fireEvent.change(screen.getByTestId("provenance-reason"), {
+      target: { value: "attaching verified source URL from official site" },
+    });
+    fireEvent.click(screen.getByTestId("provenance-submit"));
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/set-provenance"),
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            source_type: "official",
+            source_url: "https://upsc.gov.in/2024.pdf",
+          }),
+        }),
+      ),
+    );
+  });
+
+  // Test 17
+  test("PaperProvenanceModal shows blocking_fields error when API returns structured error", async () => {
+    const err = new Error("provenance_incomplete: source_type, source_url");
+    err.blocking_fields = ["source_type", "source_url"];
+    api.post.mockRejectedValue(err);
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-no-type"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("provenance-source-type"), { target: { value: "official" } });
+    fireEvent.change(screen.getByTestId("provenance-reason"), {
+      target: { value: "attempting to save incomplete provenance" },
+    });
+    fireEvent.click(screen.getByTestId("provenance-submit"));
+
+    await waitFor(() => expect(screen.getByTestId("provenance-error")).toBeTruthy());
+    const errText = screen.getByTestId("provenance-error").textContent;
+    expect(errText).toContain("source_type");
+    expect(errText).toContain("source_url");
+  });
+
+  // Test 18
+  test("successful save closes PaperProvenanceModal", async () => {
+    api.post.mockResolvedValue({ ok: true, audit_id: "a1", demoted_from_verified: false });
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-no-type"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("provenance-source-type"), { target: { value: "official" } });
+    fireEvent.change(screen.getByTestId("provenance-source-url"), {
+      target: { value: "https://upsc.gov.in/2024.pdf" },
+    });
+    fireEvent.change(screen.getByTestId("provenance-reason"), {
+      target: { value: "adding official source url for pyq paper" },
+    });
+    fireEvent.click(screen.getByTestId("provenance-submit"));
+
+    await waitFor(() => expect(screen.queryByTestId("paper-provenance-modal")).toBeNull());
+  });
+
+  test("Cancel closes PaperProvenanceModal without calling api.post", async () => {
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-no-type"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(screen.queryByTestId("paper-provenance-modal")).toBeNull();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  test("'Set Provenance' button is shown when paper has no source_document_id", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("attach-doc-btn-p-no-type")).toBeTruthy();
+    expect(screen.queryByTestId("view-pdf-btn-p-no-type")).toBeNull();
+  });
+
+  test("'Edit Provenance' + PDF button shown when paper has source_document_id", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForProvenance(COMPLETE_PAPERS_DOC);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("view-pdf-btn-p-with-doc")).toBeTruthy();
+    expect(screen.getByTestId("replace-doc-btn-p-with-doc")).toBeTruthy();
+    expect(screen.queryByTestId("attach-doc-btn-p-with-doc")).toBeNull();
+  });
+
+  test("'Set Provenance' button click opens PaperProvenanceModal", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("attach-doc-btn-p-no-type")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("attach-doc-btn-p-no-type"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+  });
+
+  test("'Edit Provenance' button click opens PaperProvenanceModal", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForProvenance(COMPLETE_PAPERS_DOC);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("replace-doc-btn-p-with-doc")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("replace-doc-btn-p-with-doc"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+  });
+
+  // P1-3 regressions: diff-based payload
+  test("no-op save on verified paper shows 'No changes to save.' without calling api.post", async () => {
+    const VERIFIED_COMPLETE = [{
+      id: "p-ver-noop", exam_id: EXAM_ID, year: 2023, trust_status: "verified",
+      source_type: "official", source_url: "https://upsc.gov.in/2023.pdf",
+      source_document_id: null, pyq_source_id: null,
+    }];
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForProvenance(VERIFIED_COMPLETE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("attach-doc-btn-p-ver-noop")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("attach-doc-btn-p-ver-noop"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("provenance-reason"), {
+      target: { value: "no actual changes being made here" },
+    });
+    fireEvent.click(screen.getByTestId("provenance-submit"));
+
+    await waitFor(() => expect(screen.getByTestId("provenance-error")).toBeTruthy());
+    expect(screen.getByTestId("provenance-error").textContent).toContain("No changes to save");
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  test("clearing source_type sends source_type: null in payload", async () => {
+    // Paper has source_type="official" but no anchor → confirm-provenance-btn shows.
+    // User opens modal (source_type initialises to "official"), clears it,
+    // and submits — payload must include source_type: null.
+    const PAPER_WITH_TYPE_INCOMPLETE = [{
+      id: "p-clear-type", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+      source_type: "official",   // pre-populated; user will clear it
+      source_url: null,          // no anchor → incomplete provenance
+      source_document_id: null, pyq_source_id: null,
+    }];
+    api.post.mockResolvedValue({ ok: true, audit_id: "a-clear", demoted_from_verified: false });
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForProvenance(PAPER_WITH_TYPE_INCOMPLETE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("confirm-provenance-btn-p-clear-type")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-clear-type"));
+    await waitFor(() => expect(screen.getByTestId("paper-provenance-modal")).toBeTruthy());
+
+    // source_type is pre-filled with "official"; clear it to ""
+    fireEvent.change(screen.getByTestId("provenance-source-type"), { target: { value: "" } });
+    fireEvent.change(screen.getByTestId("provenance-reason"), {
+      target: { value: "clearing source type explicitly" },
+    });
+    fireEvent.click(screen.getByTestId("provenance-submit"));
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/set-provenance"),
+        expect.objectContaining({
+          payload: expect.objectContaining({ source_type: null }),
+        }),
+      ),
+    );
+  });
+});
+
+// ── Fix 3 — review-only user permission gate ───────────────────────────────────
+
+describe("PyqWorkbenchPanel — review-only user provenance gate", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("review-only user sees 'CMS provenance confirmation required' span, not the button", async () => {
+    useAuth.mockReturnValue({
+      user: { role: "admin", permissions: ["exam_intelligence.review"] },
+    });
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.queryByTestId("confirm-provenance-btn-p-no-type")).toBeNull();
+    expect(screen.getByTestId("provenance-needed-p-no-type")).toBeTruthy();
+    expect(screen.getByTestId("provenance-needed-p-no-type").textContent).toContain(
+      "CMS provenance confirmation required",
+    );
+  });
+
+  test("super_admin still sees 'Confirm provenance' button", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForProvenance(INCOMPLETE_PAPERS_NO_TYPE);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    expect(screen.getByTestId("confirm-provenance-btn-p-no-type")).toBeTruthy();
+    expect(screen.queryByTestId("provenance-needed-p-no-type")).toBeNull();
+  });
+});
+
+// ── Fix 1 — question-derived document inference ────────────────────────────────
+
+const PAPER_NO_DOC = {
+  id: "p-infer", exam_id: EXAM_ID, year: 2024, trust_status: "pending",
+  source_url: null, source_type: null, source_document_id: null, pyq_source_id: null,
+};
+
+function mockApiWithQuestions(papers, questions, opts = {}) {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+    if (url.includes("/context")) return Promise.resolve({
+      exam: { id: EXAM_ID, name: "Test" }, cycle: null, cycles: [], phases: [],
+    });
+    if (url.includes("/pyq-papers?")) return Promise.resolve({ items: papers });
+    if (url.includes("/documents?") && url.includes("document_kind=pyq_paper")) {
+      return Promise.resolve({ items: opts.docs || MODAL_DOCS });
+    }
+    if (url.includes("/pyq-sources?")) return Promise.resolve({ items: opts.sources || [] });
+    if (url.includes("/pyq-questions?")) return Promise.resolve({ items: questions });
+    return Promise.resolve({});
+  });
+}
+
+describe("PyqWorkbenchPanel — question-derived document inference (P1-1)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+  });
+
+  test("fetchPaperQuestions is called with pyq_paper_id param, not paper_id", async () => {
+    mockApiWithQuestions([PAPER_NO_DOC], []);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => screen.getByTestId("confirm-provenance-btn-p-infer"));
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-infer"));
+    await waitFor(() => screen.getByTestId("paper-provenance-modal"));
+
+    const questionsCall = api.get.mock.calls.find((c) => c[0].includes("pyq-questions"));
+    expect(questionsCall).toBeTruthy();
+    expect(questionsCall[0]).toContain("pyq_paper_id=");
+    expect(questionsCall[0]).not.toMatch(/[?&]paper_id=/);
+  });
+
+  test("modal preselects the document most questions reference", async () => {
+    const QUESTIONS = [
+      { id: "q1", source_document_id: "doc-uuid-1" },
+      { id: "q2", source_document_id: "doc-uuid-1" },
+      { id: "q3", source_document_id: "doc-uuid-1" },
+      { id: "q4", source_document_id: "doc-uuid-2" },
+    ];
+    mockApiWithQuestions([PAPER_NO_DOC], QUESTIONS);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => screen.getByTestId("confirm-provenance-btn-p-infer"));
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-infer"));
+    await waitFor(() => screen.getByTestId("paper-provenance-modal"));
+
+    // Wait for async data to load and preselect effect to fire
+    await waitFor(() => {
+      const sel = screen.getByTestId("provenance-document-id");
+      if (sel.value !== "doc-uuid-1") throw new Error("not yet preselected");
+    });
+    expect(screen.getByTestId("provenance-document-id").value).toBe("doc-uuid-1");
+  });
+
+  test("modal does not preselect when two docs are tied", async () => {
+    const QUESTIONS = [
+      { id: "q1", source_document_id: "doc-uuid-1" },
+      { id: "q2", source_document_id: "doc-uuid-2" },
+    ];
+    mockApiWithQuestions([PAPER_NO_DOC], QUESTIONS);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => screen.getByTestId("confirm-provenance-btn-p-infer"));
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-infer"));
+    await waitFor(() => screen.getByTestId("paper-provenance-modal"));
+    // Give async ops time to settle
+    await waitFor(() => {
+      const sel = screen.getByTestId("provenance-document-id");
+      const opts = Array.from(sel.options).map((o) => o.text);
+      return opts.some((t) => t.includes("upsc-2024-gs1.pdf"));
+    });
+    expect(screen.getByTestId("provenance-document-id").value).toBe("");
+  });
+
+  test("document dropdown shows question count next to each doc", async () => {
+    const QUESTIONS = [
+      { id: "q1", source_document_id: "doc-uuid-1" },
+      { id: "q2", source_document_id: "doc-uuid-1" },
+      { id: "q3", source_document_id: "doc-uuid-2" },
+    ];
+    mockApiWithQuestions([PAPER_NO_DOC], QUESTIONS);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => screen.getByTestId("confirm-provenance-btn-p-infer"));
+    fireEvent.click(screen.getByTestId("confirm-provenance-btn-p-infer"));
+    await waitFor(() => screen.getByTestId("paper-provenance-modal"));
+
+    // Wait for counts to appear in options
+    await waitFor(() => {
+      const opts = Array.from(screen.getByTestId("provenance-document-id").options).map((o) => o.text);
+      return opts.some((t) => t.includes("2 questions"));
+    });
+
+    const optionTexts = Array.from(
+      screen.getByTestId("provenance-document-id").options,
+    ).map((o) => o.text);
+    expect(optionTexts.some((t) => t.includes("2 questions"))).toBe(true);
+    expect(optionTexts.some((t) => t.includes("1 question"))).toBe(true);
+  });
+
+  test("modal does not preselect when paper already has source_document_id", async () => {
+    const PAPER_WITH_DOC = {
+      ...PAPER_NO_DOC, id: "p-has-doc", source_document_id: "doc-uuid-2",
+    };
+    const QUESTIONS = [
+      { id: "q1", source_document_id: "doc-uuid-1" },
+      { id: "q2", source_document_id: "doc-uuid-1" },
+    ];
+    mockApiWithQuestions([PAPER_WITH_DOC], QUESTIONS, { docs: MODAL_DOCS });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    // Paper has source_document_id so it shows canEdit buttons
+    await waitFor(() => screen.getByTestId("replace-doc-btn-p-has-doc"));
+    fireEvent.click(screen.getByTestId("replace-doc-btn-p-has-doc"));
+    await waitFor(() => screen.getByTestId("paper-provenance-modal"));
+
+    // Let async ops settle
+    await waitFor(() => {
+      const opts = Array.from(screen.getByTestId("provenance-document-id").options).map((o) => o.text);
+      return opts.some((t) => t.includes("upsc-2024-gs1.pdf"));
+    });
+    // Existing source_document_id (doc-uuid-2) must be preserved, not overwritten by inference
+    expect(screen.getByTestId("provenance-document-id").value).toBe("doc-uuid-2");
   });
 });

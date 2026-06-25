@@ -727,7 +727,7 @@ _PAPER_FIELDS = {
 _PAPER_SOURCE_TYPES = ("official", "memory_based", "coaching", "community", "aggregator", "unknown")
 # Provenance fields that require re-validation when a paper is verified.
 # Changes to these fields on a verified paper must go through set-provenance.
-_PROVENANCE_FIELDS = frozenset({"source_url", "source_type", "source_document_id"})
+_PROVENANCE_FIELDS = frozenset({"source_url", "source_type", "source_document_id", "pyq_source_id"})
 
 
 @router.get("/pyq-papers")
@@ -862,6 +862,7 @@ def set_pyq_paper_provenance(
     result_source_type = patch.get("source_type", existing.get("source_type"))
     result_source_url = patch.get("source_url", existing.get("source_url"))
     result_source_doc_id = patch.get("source_document_id", existing.get("source_document_id"))
+    result_pyq_source_id = patch.get("pyq_source_id", existing.get("pyq_source_id"))
 
     # Run the same provenance gate as review_pyq_paper (Python side; SQL RPC
     # re-runs it under DB lock at verification time)
@@ -888,6 +889,14 @@ def set_pyq_paper_provenance(
             if doc_exam and doc_exam != existing.get("exam_id"):
                 blocking.append("source_document_id_exam_mismatch")
 
+    # Validate pyq_source_id when present in patch: must exist and belong to the same exam.
+    if "pyq_source_id" in patch and patch["pyq_source_id"] is not None:
+        pyq_src = _safe_select(supabase, "pyq_sources", id=patch["pyq_source_id"])
+        if not pyq_src:
+            blocking.append("pyq_source_id_not_found")
+        elif pyq_src.get("exam_id") != existing.get("exam_id"):
+            blocking.append("pyq_source_id_exam_mismatch")
+
     if blocking:
         raise HTTPException(
             status_code=422,
@@ -895,9 +904,6 @@ def set_pyq_paper_provenance(
         )
 
     was_verified = existing.get("trust_status") == "verified"
-    update: dict[str, Any] = dict(patch)
-    if was_verified:
-        update["trust_status"] = "pending"
 
     try:
         rpc_data = supabase.rpc(
@@ -931,11 +937,19 @@ def set_pyq_paper_provenance(
             status_code=500,
             detail="Provenance update failed; no change was recorded.",
         ) from exc
+    rpc = rpc_data or {}
+    # Re-select the paper after the RPC so the response row is always authoritative.
+    # Using the pre-lock `existing` snapshot would expose any concurrent field change
+    # to an unpatched column as stale data in the caller's UI.
+    paper_after = _safe_select(supabase, "pyq_papers", id=paper_id)
     return {
         "ok": True,
-        "audit_id": (rpc_data or {}).get("audit_id"),
-        "demoted_from_verified": was_verified,
-        "row": {**existing, **update},
+        "audit_id": rpc.get("audit_id"),
+        "demoted_from_verified": rpc.get("demoted_from_verified", False),
+        "row": paper_after if paper_after is not None else {
+            **existing, **patch,
+            "trust_status": rpc.get("trust_status_after", existing.get("trust_status")),
+        },
     }
 
 

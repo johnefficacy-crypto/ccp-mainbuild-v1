@@ -65,7 +65,7 @@ function isTerminalJobStatus(s) {
 }
 // document_assets.status values that are terminal.
 function isTerminalDocStatus(s) {
-  return s === "processed" || s === "failed";
+  return s === "processed" || s === "failed" || s === "archived";
 }
 
 // ─── ExtractionBadge ────────────────────────────────────────────────────────
@@ -454,6 +454,36 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
   const [linkedAssetLoading, setLinkedAssetLoading] = useState(false);
   const [deepLinkNotFound,   setDeepLinkNotFound]   = useState(false);
 
+  // ── Step 4: poll extraction status for one in-flight doc ─────────────────
+
+  const refreshInFlight = useCallback(async (docId) => {
+    try {
+      const r = await api.get(`${DOC_BASE}/${docId}`);
+      const docStatus = r?.document?.status;
+      const jobStatus = r?.extraction?.status;
+      const pageCount = r?.pages_count ?? null;
+      setInFlight((prev) =>
+        prev.map((d) =>
+          d.id === docId
+            ? { ...d, status: docStatus, extraction: r?.extraction || {}, page_count: pageCount }
+            : d,
+        ),
+      );
+      if (isTerminalDocStatus(docStatus) || isTerminalJobStatus(jobStatus)) {
+        clearInterval(pollRefs.current[docId]);
+        delete pollRefs.current[docId];
+      }
+    } catch {
+      // silent — keep polling
+    }
+  }, []);
+
+  const startPoll = useCallback((docId) => {
+    if (pollRefs.current[docId]) clearInterval(pollRefs.current[docId]);
+    const id = setInterval(() => refreshInFlight(docId), 3000);
+    pollRefs.current[docId] = id;
+  }, [refreshInFlight]);
+
   // ── Load linked docs ──────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
@@ -461,20 +491,54 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     setLoading(true);
     setListError("");
     try {
-      const qs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
-      if (cycle?.id) qs.set("cycle_id", cycle.id);
+      // syllabus-documents and pyq-papers are both exam-wide (D10: cycle is
+      // provenance metadata, not a scope filter). Use separate query strings
+      // because syllabus-documents does not accept exam_cycle_id.
+      const sylQs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
+      const pyqQs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
+      const docQs = new URLSearchParams({ exam_id: exam.id, document_kind: "pyq_paper", limit: "200" });
       const [sylResult, pyqResult] = await Promise.all([
-        api.get(`${CMS}/syllabus-documents?${qs}`),
-        api.get(`${CMS}/pyq-papers?${qs}`),
+        api.get(`${CMS}/syllabus-documents?${sylQs}`),
+        api.get(`${CMS}/pyq-papers?${pyqQs}`),
       ]);
       setDocs(sylResult?.items   || sylResult   || []);
       setPapers(pyqResult?.items || pyqResult   || []);
+      // Rehydrate inFlight: keep docs that are unlinked (not yet attached to any
+      // same-exam pyq_paper) and not failed/archived. linkedDocIds uses the
+      // exam-wide paper set so documents linked to historical-cycle papers are
+      // correctly excluded. Processed-but-unlinked docs stay visible for linking.
+      let pyqDocResult = null;
+      try {
+        pyqDocResult = await api.get(`${DOC_BASE}?${docQs}`);
+      } catch (docErr) {
+        setListError(docErr?.message || "Failed to load document recovery list");
+      }
+      const rawPayload = pyqDocResult?.items ?? pyqDocResult;
+      const backendDocs = Array.isArray(rawPayload) ? rawPayload : [];
+      const linkedDocIds = new Set(
+        (pyqResult?.items || pyqResult || [])
+          .map((p) => p.source_document_id)
+          .filter(Boolean),
+      );
+      const rehydrated = backendDocs
+        .filter((d) => d.status !== "failed" && d.status !== "archived" && !linkedDocIds.has(d.id))
+        .map((d) => ({
+          ...d,
+          filename: d.filename || d.original_filename || d.title || d.storage_path || d.id,
+        }));
+      setInFlight((prev) => {
+        const backendIds = new Set(backendDocs.map((d) => d.id));
+        const localOnly = prev.filter((d) => !backendIds.has(d.id));
+        return [...localOnly, ...rehydrated];
+      });
+      // Restart polling only for non-terminal rehydrated docs
+      rehydrated.filter((d) => !isTerminalDocStatus(d.status)).forEach((d) => startPoll(d.id));
     } catch (e) {
       setListError(e?.message || "Failed to load documents");
     } finally {
       setLoading(false);
     }
-  }, [exam?.id, cycle?.id]);
+  }, [exam?.id, startPoll]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -504,36 +568,6 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     return () => { Object.values(refs).forEach(clearInterval); };
   }, []);
 
-  // ── Step 4: poll extraction status for one in-flight doc ─────────────────
-
-  const refreshInFlight = useCallback(async (docId) => {
-    try {
-      const r = await api.get(`${DOC_BASE}/${docId}`);
-      const docStatus = r?.document?.status;
-      const jobStatus = r?.extraction?.status;
-      const pageCount = r?.pages_count ?? null;
-      setInFlight((prev) =>
-        prev.map((d) =>
-          d.id === docId
-            ? { ...d, status: docStatus, extraction: r?.extraction || {}, page_count: pageCount }
-            : d,
-        ),
-      );
-      if (isTerminalDocStatus(docStatus) || isTerminalJobStatus(jobStatus)) {
-        clearInterval(pollRefs.current[docId]);
-        delete pollRefs.current[docId];
-      }
-    } catch {
-      // silent — keep polling
-    }
-  }, []);
-
-  function startPoll(docId) {
-    if (pollRefs.current[docId]) clearInterval(pollRefs.current[docId]);
-    const id = setInterval(() => refreshInFlight(docId), 3000);
-    pollRefs.current[docId] = id;
-  }
-
   // ── After upload completes (step 3 returned ok) ───────────────────────────
 
   function handleUploaded(doc) {
@@ -548,8 +582,9 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
     setLinkingId(doc.id);
     if (doc.document_kind === "pyq_paper") {
       try {
+        // D10: always fetch exam-wide so the link picker shows all papers
+        // in this exam, not just those in the currently selected cycle.
         const qs = new URLSearchParams({ exam_id: exam.id, limit: "100" });
-        if (cycle?.id) qs.set("cycle_id", cycle.id);
         const r = await api.get(`${CMS}/pyq-papers?${qs}`);
         setPyqPapers(r?.items || r || []);
       } catch {
