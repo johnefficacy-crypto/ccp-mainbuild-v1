@@ -17,6 +17,12 @@ This wiki should be replaced by the real generated Graphify wiki when `graphify 
 
 ## Notes / Change Log
 
+- [PYQ Intelligence v2 — Code-Verified Architecture and Gap Plan](../../docs/architecture/pyq-intelligence-v2.md) —
+  reconciles the proposed knowledge-graph/agent design with the implemented
+  taxonomy, PYQ review model, analytical snapshots, planner, mastery pipeline,
+  projection bridge, resources, and SRS. Defines score semantics, trust gates,
+  dependency blockers, and the ordered implementation plan without introducing
+  a parallel graph/vector/agent source of truth.
 - [Mock Engine v2 ↔ Study OS — Findings, Decisions & Implementation Plan](../../docs/study_os/mock-engine-v2-study-os-integration.md) —
   how the Track A generated-mock engine connects to the Study OS planner: the
   three verified feedback loops, the wired-vs-open edge map, the MSQ/integer
@@ -96,3 +102,4 @@ sources
 → recruitments/posts/criteria
 → eligibility recompute
 → notifications/alerts
+```
