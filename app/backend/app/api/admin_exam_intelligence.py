@@ -36,6 +36,7 @@ from app.exam_intelligence.syllabus_mapper import (
 )
 from app.exam_intelligence.score_snapshots import (
     compute_exam_topic_scores,
+    list_exam_score_snapshots,
     MODEL_VERSION as _SNAPSHOT_MODEL_VERSION,
 )
 from app.study_os.mission_control import invalidate_per_exam_intelligence
@@ -2208,21 +2209,17 @@ def list_score_snapshots(
     status: str | None = Query(default=None),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
-    """List ``exam_topic_score_snapshots`` rows for an exam, ordered by computed_at DESC."""
+    """List ``exam_topic_score_snapshots`` rows for an exam, ordered by computed_at DESC.
+
+    Paginated internally — ``total`` reflects the real count, not a capped value.
+    """
     if status is not None and status not in _SNAPSHOT_STATUSES:
         raise HTTPException(
             status_code=422,
             detail=f"Invalid status {status!r}. Must be one of: {sorted(_SNAPSHOT_STATUSES)}",
         )
     sb = get_supabase_admin()
-
-    def _builder():
-        q = sb.table("exam_topic_score_snapshots").select(_SNAPSHOT_COLUMNS).eq("exam_id", exam_id)
-        if status is not None:
-            q = q.eq("status", status)
-        return q.order("computed_at", desc=True).limit(500).execute().data
-
-    rows = _safe(_builder, default=[]) or []
+    rows = list_exam_score_snapshots(sb, exam_id, status=status)
     return {"snapshots": rows, "total": len(rows), "exam_id": exam_id}
 
 
@@ -2278,6 +2275,25 @@ def review_score_snapshot(
     if body.reviewer_notes is not None:
         update["reviewer_notes"] = body.reviewer_notes
 
+    # Best-effort audit log: record every status transition, especially
+    # locked→reviewed reversals. Not fully atomic (no RPC), but ensures
+    # successful transitions always have an audit trail. A concurrent-
+    # modification failure below leaves an orphan row — acceptable until a
+    # dedicated migration adds an atomic RPC (cf. 185_pyq_paper_review_transaction.sql).
+    _safe(
+        lambda: sb.table("admin_audit_logs").insert({
+            "actor_id": admin.get("id"),
+            "actor_email": admin.get("email"),
+            "admin_user_id": admin.get("id"),
+            "action": "snapshot_status_transition",
+            "entity_type": "exam_topic_score_snapshot",
+            "entity_id": snapshot_id,
+            "old_value": {"status": current_status},
+            "new_value": {"status": new_status},
+            "notes": body.reviewer_notes,
+        }).execute().data,
+    )
+
     # Conditional UPDATE: only succeeds when the row still has the expected
     # current_status, preventing silent overwrite of a concurrent modification.
     try:
@@ -2322,6 +2338,11 @@ def compute_score_snapshots(
     result = compute_exam_topic_scores(
         sb, exam_id, _SNAPSHOT_MODEL_VERSION, exam_phase_id=body.exam_phase_id
     )
+    if result.get("invalid_scope"):
+        raise HTTPException(
+            status_code=422,
+            detail=f"exam_phase_id does not belong to exam {exam_id}",
+        )
     if result.get("read_error"):
         raise HTTPException(
             status_code=502,

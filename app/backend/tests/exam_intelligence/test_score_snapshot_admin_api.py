@@ -322,3 +322,39 @@ def test_compute_rejects_model_version_in_body():
     assert r.status_code == 422, (
         "model_version is server-owned and must be rejected when passed by the client"
     )
+
+
+def test_compute_returns_422_on_invalid_phase():
+    """exam_phase_id belonging to a different exam → HTTP 422 (not 502 or 200)."""
+    seed = {
+        **_compute_seed(),
+        "exam_phases": [
+            {"id": "phase-x", "exam_id": "exam-other"},  # belongs to the wrong exam
+        ],
+    }
+    sb = SBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.post(_COMPUTE_BASE, json={"exam_phase_id": "phase-x"})
+    assert r.status_code == 422, r.text
+    assert "exam_phase_id" in r.json().get("detail", "").lower()
+
+
+def test_review_writes_audit_log_on_locked_reversal():
+    """locked → reviewed transition must write a row to admin_audit_logs."""
+    sb = SBStub(_seed_snapshots())
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        f"{_REVIEW_BASE}/s-locked/review",
+        json={"status": "reviewed", "reviewer_notes": "Re-checked PYQ counts."},
+    )
+    assert r.status_code == 200
+    logs = sb.db.get("admin_audit_logs", [])
+    assert len(logs) == 1
+    log = logs[0]
+    assert log["action"] == "snapshot_status_transition"
+    assert log["entity_type"] == "exam_topic_score_snapshot"
+    assert log["entity_id"] == "s-locked"
+    assert log["old_value"] == {"status": "locked"}
+    assert log["new_value"] == {"status": "reviewed"}
+    assert log["notes"] == "Re-checked PYQ counts."
+    assert log["actor_id"] == "admin-1"

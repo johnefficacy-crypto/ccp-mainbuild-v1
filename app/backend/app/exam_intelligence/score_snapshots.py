@@ -18,7 +18,8 @@ logger = logging.getLogger("career_copilot.exam_intelligence.score_snapshots")
 
 MODEL_VERSION = "v1.0"  # bump when computation logic changes
 
-_BATCH = 250  # max items per Supabase IN() filter
+_BATCH = 250   # max items per Supabase IN() filter
+_PAGE = 1000   # rows per pagination page
 
 # Postgres SQLSTATEs we want to surface loudly (schema drift / missing table)
 _LOUD_PG_CODES = {"42703", "42P01"}
@@ -54,6 +55,36 @@ def _safe(
             },
         )
         return default
+
+
+def _paginate(
+    build_query: Any,
+    *,
+    table: str | None = None,
+    operation: str | None = None,
+) -> list[dict[str, Any]] | None:
+    """Fetch all rows using range-based pagination.
+
+    *build_query(from_n, to_n)* must return a list of rows for the given
+    inclusive ``[from_n, to_n]`` range. Returns ``None`` if any page read
+    fails (caller should treat this as a read error).
+    """
+    all_rows: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        rows = _safe(
+            lambda o=offset: build_query(o, o + _PAGE - 1),
+            default=None,
+            table=table,
+            operation=operation,
+        )
+        if rows is None:
+            return None
+        all_rows.extend(rows)
+        if len(rows) < _PAGE:
+            break
+        offset += _PAGE
+    return all_rows
 
 
 def _build_fingerprint(
@@ -105,15 +136,20 @@ def compute_exam_topic_scores(
             "skipped": int,
             "errors": int,
             "total_topics": int,
-            "read_error": bool,   # True when a critical DB read failed
+            "read_error": bool,     # True when a critical DB read failed
+            "invalid_scope": bool,  # True when exam_phase_id is not in exam
         }
 
-    Idempotent: topics whose existing draft already has the same fingerprint
-    are skipped without re-writing.  Locked rows are never touched.
+    Idempotent: topics whose existing drafts already contain the same
+    fingerprint are skipped without re-writing.  Locked rows are never
+    touched.
 
     ``read_error=True`` means one or more input reads failed; the caller
-    (admin endpoint) must treat this as a compute failure, not a "no evidence"
-    success.
+    (admin endpoint) must treat this as a compute failure, not a "no
+    evidence" success.
+
+    ``invalid_scope=True`` means *exam_phase_id* does not belong to the
+    given exam; the caller should return HTTP 422, not 502.
     """
     zero: dict[str, Any] = {
         "written": 0,
@@ -149,10 +185,10 @@ def compute_exam_topic_scores(
                 exam_phase_id,
                 exam_id,
             )
-            return {**zero, "read_error": True}
+            return {**zero, "invalid_scope": True}
 
-    # ── 2. Verified papers ────────────────────────────────────────────────
-    def _query_papers() -> list[dict[str, Any]]:
+    # ── 2. Verified papers (paginated) ────────────────────────────────────
+    def _papers_page(from_n: int, to_n: int) -> list[dict[str, Any]]:
         q = (
             sb.table("pyq_papers")
             .select("id")
@@ -161,11 +197,10 @@ def compute_exam_topic_scores(
         )
         if exam_phase_id:
             q = q.eq("exam_phase_id", exam_phase_id)
-        return q.execute().data
+        return q.range(from_n, to_n).execute().data
 
-    paper_rows = _safe(
-        _query_papers,
-        default=None,
+    paper_rows = _paginate(
+        _papers_page,
         table="pyq_papers",
         operation="select_verified_by_exam",
     )
@@ -176,50 +211,56 @@ def compute_exam_topic_scores(
     if not paper_ids:
         return zero
 
-    # ── 3. Verified questions (batched) ───────────────────────────────────
+    # ── 3. Verified questions (batched + paginated) ───────────────────────
     question_ids: list[str] = []
     for chunk in _chunks(paper_ids, _BATCH):
-        rows = _safe(
-            lambda c=chunk: (
+        def _questions_page(from_n: int, to_n: int, c: list[str] = chunk) -> list[dict[str, Any]]:
+            return (
                 sb.table("pyq_questions")
                 .select("id")
                 .in_("pyq_paper_id", c)
                 .eq("reviewer_status", "verified")
+                .range(from_n, to_n)
                 .execute()
                 .data
-            ),
-            default=None,
+            )
+
+        batch_rows = _paginate(
+            _questions_page,
             table="pyq_questions",
             operation="select_verified",
         )
-        if rows is None:
+        if batch_rows is None:
             return {**zero, "read_error": True}
-        question_ids.extend(r["id"] for r in rows if r.get("id"))
+        question_ids.extend(r["id"] for r in batch_rows if r.get("id"))
 
     if not question_ids:
         return zero
 
-    # ── 4. Primary tags (batched) ─────────────────────────────────────────
+    # ── 4. Primary tags (batched + paginated) ─────────────────────────────
     # Map each question to the set of topics it has primary tags for.
     q_to_topics: dict[str, set[str]] = {}
     for chunk in _chunks(question_ids, _BATCH):
-        tag_rows = _safe(
-            lambda c=chunk: (
+        def _tags_page(from_n: int, to_n: int, c: list[str] = chunk) -> list[dict[str, Any]]:
+            return (
                 sb.table("pyq_question_topic_tags")
                 .select("question_id, topic_id")
                 .in_("question_id", c)
                 .eq("reviewer_status", "verified")
                 .eq("tag_role", "primary")
+                .range(from_n, to_n)
                 .execute()
                 .data
-            ),
-            default=None,
+            )
+
+        batch_rows = _paginate(
+            _tags_page,
             table="pyq_question_topic_tags",
             operation="select_primary_verified",
         )
-        if tag_rows is None:
+        if batch_rows is None:
             return {**zero, "read_error": True}
-        for row in tag_rows:
+        for row in batch_rows:
             qid, tid = row.get("question_id"), row.get("topic_id")
             if qid and tid:
                 q_to_topics.setdefault(qid, set()).add(tid)
@@ -241,8 +282,10 @@ def compute_exam_topic_scores(
             primary_counts[tid] = primary_counts.get(tid, 0) + 1
             primary_tag_tuples.append((qid, tid))
 
-    # ── 5. Locked coverage ────────────────────────────────────────────────
-    def _query_coverage() -> list[dict[str, Any]]:
+    # ── 5. Locked coverage (paginated, phase-isolated) ────────────────────
+    # Exam-wide reads use .is_("exam_phase_id", None) to exclude phase-
+    # specific rows — mixing scopes would make the score nondeterministic.
+    def _coverage_page(from_n: int, to_n: int) -> list[dict[str, Any]]:
         q = (
             sb.table("exam_topic_coverage")
             .select("topic_id, exam_priority_score, is_high_yield")
@@ -251,11 +294,12 @@ def compute_exam_topic_scores(
         )
         if exam_phase_id:
             q = q.eq("exam_phase_id", exam_phase_id)
-        return q.execute().data
+        else:
+            q = q.is_("exam_phase_id", None)
+        return q.range(from_n, to_n).execute().data
 
-    locked_cov_rows = _safe(
-        _query_coverage,
-        default=None,
+    locked_cov_rows = _paginate(
+        _coverage_page,
         table="exam_topic_coverage",
         operation="select_locked",
     )
@@ -277,8 +321,8 @@ def compute_exam_topic_scores(
         locked_cov_rows,
     )
 
-    # ── 7. Existing drafts (phase-scoped) ─────────────────────────────────
-    def _query_drafts() -> list[dict[str, Any]]:
+    # ── 7. Existing drafts (phase-scoped, paginated, fail closed) ─────────
+    def _drafts_page(from_n: int, to_n: int) -> list[dict[str, Any]]:
         q = (
             sb.table("exam_topic_score_snapshots")
             .select("topic_id, input_summary")
@@ -290,17 +334,27 @@ def compute_exam_topic_scores(
             q = q.eq("exam_phase_id", exam_phase_id)
         else:
             q = q.is_("exam_phase_id", None)
-        return q.execute().data
+        return q.range(from_n, to_n).execute().data
 
-    existing_rows = _safe(
-        _query_drafts,
-        default=[],
+    existing_rows = _paginate(
+        _drafts_page,
         table="exam_topic_score_snapshots",
         operation="select_drafts",
-    ) or []
-    existing_drafts: dict[str, dict[str, Any]] = {
-        r["topic_id"]: r for r in existing_rows if r.get("topic_id")
-    }
+    )
+    if existing_rows is None:
+        # Fail closed: a DB error here is indistinguishable from "no drafts"
+        # without this guard, causing duplicates on every recompute.
+        return {**zero, "read_error": True}
+
+    # Track ALL fingerprints per topic. If PostgREST row order varies between
+    # runs, a single-row-per-topic dict could select a stale draft and miss
+    # a matching fingerprint inserted by a prior run.
+    existing_fps: dict[str, set[str]] = {}
+    for r in existing_rows:
+        tid = r.get("topic_id")
+        fp = (r.get("input_summary") or {}).get("fingerprint")
+        if tid and fp:
+            existing_fps.setdefault(tid, set()).add(fp)
 
     # ── 8. Score each topic ───────────────────────────────────────────────
     all_topic_ids = set(primary_counts.keys()) | set(locked_cov.keys())
@@ -332,9 +386,9 @@ def compute_exam_topic_scores(
             "corpus_total_primary": total_primary,
         }
 
-        # Idempotency check
-        existing = existing_drafts.get(tid)
-        if existing and existing.get("input_summary", {}).get("fingerprint") == fingerprint:
+        # Idempotency check: skip if current fingerprint is already in
+        # any existing draft for this topic.
+        if fingerprint in existing_fps.get(tid, set()):
             skipped += 1
             continue
 
@@ -386,10 +440,13 @@ def locked_score_snapshots(
 ) -> list[dict[str, Any]]:
     """Return one locked snapshot per topic for planner consumption.
 
-    Returns the latest-computed locked row per topic for the given scope
-    (exam-wide when ``exam_phase_id`` is None; phase-specific otherwise).
-    Mixed-scope reads (both null and phase rows at once) are explicitly
-    prevented — callers must pass a resolved phase or accept exam-wide rows.
+    Returns the latest-computed locked row per topic for the given scope,
+    restricted to ``MODEL_VERSION`` to prevent a stale-model row from
+    overriding a current-model result when multiple model versions exist.
+
+    Scope is exam-wide when ``exam_phase_id`` is None; phase-specific
+    otherwise. Mixed-scope reads are explicitly prevented — callers must
+    pass a resolved phase or accept exam-wide rows.
 
     Result row shape::
 
@@ -405,7 +462,7 @@ def locked_score_snapshots(
     if not exam_id:
         return []
 
-    def _query_locked() -> list[dict[str, Any]]:
+    def _locked_page(from_n: int, to_n: int) -> list[dict[str, Any]]:
         q = (
             sb.table("exam_topic_score_snapshots")
             .select(
@@ -414,16 +471,16 @@ def locked_score_snapshots(
             )
             .eq("exam_id", exam_id)
             .eq("status", "locked")
+            .eq("model_version", MODEL_VERSION)
         )
         if exam_phase_id:
             q = q.eq("exam_phase_id", exam_phase_id)
         else:
             q = q.is_("exam_phase_id", None)
-        return q.order("computed_at", desc=True).execute().data
+        return q.order("computed_at", desc=True).range(from_n, to_n).execute().data
 
-    rows = _safe(
-        _query_locked,
-        default=[],
+    rows = _paginate(
+        _locked_page,
         table="exam_topic_score_snapshots",
         operation="select_locked",
     ) or []
@@ -456,27 +513,26 @@ def list_exam_score_snapshots(
     *,
     status: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Return all snapshots for an admin list view.
+    """Return all snapshots for an admin list view (paginated).
 
-    Optionally filter by *status*. Returns up to 2 000 full rows including
-    review metadata (``reviewed_by``, ``reviewed_at``, ``reviewer_notes``).
+    Optionally filter by *status*. Returns full rows including review
+    metadata (``reviewed_by``, ``reviewed_at``, ``reviewer_notes``).
     """
     if not exam_id:
         return []
 
-    query = (
-        sb.table("exam_topic_score_snapshots")
-        .select("*")
-        .eq("exam_id", exam_id)
-    )
-    if status:
-        query = query.eq("status", status)
+    def _page(from_n: int, to_n: int) -> list[dict[str, Any]]:
+        q = (
+            sb.table("exam_topic_score_snapshots")
+            .select("*")
+            .eq("exam_id", exam_id)
+        )
+        if status:
+            q = q.eq("status", status)
+        return q.order("computed_at", desc=True).range(from_n, to_n).execute().data
 
-    rows = _safe(
-        lambda: query.limit(2000).execute().data,
-        default=[],
+    return _paginate(
+        _page,
         table="exam_topic_score_snapshots",
         operation="select_all",
     ) or []
-
-    return list(rows)

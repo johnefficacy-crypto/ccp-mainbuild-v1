@@ -112,3 +112,30 @@ def test_pending_question_excluded():
     })
     result = verified_pyq_topic_counts(sb, "exam-1")
     assert result == {}
+
+
+def test_ambiguous_question_excluded_from_counts():
+    """A question with two primary tags to different topics is excluded from ALL counts.
+
+    One question must contribute to at most one topic's frequency (primary-only
+    contract). When a question has two or more primary tags pointing to distinct
+    topics it is ambiguous and excluded entirely from all frequency counts.
+    """
+    sb = SBStub({
+        "pyq_papers": [_paper()],
+        "pyq_questions": [
+            _question("q1"),  # unambiguous → t1 only
+            _question("q2"),  # ambiguous → both t2 and t3 (different topics)
+        ],
+        "pyq_question_topic_tags": [
+            _tag("q1", "t1", role="primary"),
+            _tag("q2", "t2", role="primary"),
+            _tag("q2", "t3", role="primary"),
+        ],
+    })
+    result = verified_pyq_topic_counts(sb, "exam-1")
+    # q1 is unambiguous: t1 gets 1
+    assert result.get("t1") == 1
+    # q2 is ambiguous: neither t2 nor t3 gets a count
+    assert result.get("t2", 0) == 0
+    assert result.get("t3", 0) == 0

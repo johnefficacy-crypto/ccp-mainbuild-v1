@@ -19,6 +19,13 @@ logger = logging.getLogger("career_copilot.exam_intelligence.coverage")
 # table) rather than swallow as a warning.
 _LOUD_PG_CODES = {"42703", "42P01"}
 
+_BATCH = 250   # max items per IN() filter
+_PAGE = 1000   # rows per pagination page
+
+
+def _chunks(lst: list[Any], n: int) -> list[list[Any]]:
+    return [lst[i : i + n] for i in range(0, len(lst), n)]
+
 
 def _safe(call: Callable[[], Any], default: Any = None, *, table: str | None = None, operation: str | None = None) -> Any:
     try:
@@ -38,6 +45,36 @@ def _safe(call: Callable[[], Any], default: Any = None, *, table: str | None = N
             },
         )
         return default
+
+
+def _paginate(
+    build_query: Any,
+    *,
+    table: str | None = None,
+    operation: str | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch all rows using range-based pagination.
+
+    Stops at the first page that returns fewer than *_PAGE* rows, or on
+    any read failure (consistent with ``_safe`` graceful-degradation
+    contract — callers get whatever was successfully retrieved).
+    """
+    all_rows: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        rows = _safe(
+            lambda o=offset: build_query(o, o + _PAGE - 1),
+            default=None,
+            table=table,
+            operation=operation,
+        )
+        if rows is None:
+            break
+        all_rows.extend(rows)
+        if len(rows) < _PAGE:
+            break
+        offset += _PAGE
+    return all_rows
 
 
 def locked_topic_coverage_summary(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
@@ -155,78 +192,97 @@ def verified_pyq_topic_counts(supabase: Any, exam_id: str) -> dict[str, int]:
     intentionally excluded — one question must not inflate a topic's frequency
     through multiple roles. This is the primary-only frequency contract.
 
+    Questions with multiple primary tags (ambiguous) are excluded entirely —
+    one question must contribute to at most one topic's count.
+
     Joins: ``pyq_papers`` (trust_status='verified') →
            ``pyq_questions`` (reviewer_status='verified') →
            ``pyq_question_topic_tags`` (reviewer_status='verified', tag_role='primary').
+
+    All reads are range-paginated to avoid silent truncation at PostgREST limits.
     """
     if not exam_id:
         return {}
 
-    # Filter ``trust_status='verified'`` at the paper level. Without this
-    # guard a verified question/tag attached to an unverified paper would
-    # still feed planner counts — the function used to count tags filtered
-    # by question/tag reviewer_status alone, never auditing the parent
-    # paper's trust. Enforce the invariant at the source.
-    paper_rows = _safe(
-        lambda: (
+    # ── 1. Verified papers (paginated) ────────────────────────────────────
+    paper_rows = _paginate(
+        lambda from_n, to_n: (
             supabase.table("pyq_papers")
             .select("id")
             .eq("exam_id", exam_id)
             .eq("trust_status", "verified")
-            .limit(2000)
+            .range(from_n, to_n)
             .execute()
             .data
         ),
-        default=[],
         table="pyq_papers",
         operation="select_verified_by_exam",
-    ) or []
+    )
     paper_ids = [r["id"] for r in paper_rows if r.get("id")]
     if not paper_ids:
         return {}
 
-    question_rows = _safe(
-        lambda: (
-            supabase.table("pyq_questions")
-            .select("id, pyq_paper_id, reviewer_status")
-            .in_("pyq_paper_id", paper_ids)
-            .eq("reviewer_status", "verified")
-            .limit(5000)
-            .execute()
-            .data
-        ),
-        default=[],
-        table="pyq_questions",
-        operation="select_verified",
-    ) or []
-    question_ids = [r["id"] for r in question_rows if r.get("id")]
+    # ── 2. Verified questions (batched + paginated) ───────────────────────
+    question_ids: list[str] = []
+    for chunk in _chunks(paper_ids, _BATCH):
+        batch_rows = _paginate(
+            lambda from_n, to_n, c=chunk: (
+                supabase.table("pyq_questions")
+                .select("id")
+                .in_("pyq_paper_id", c)
+                .eq("reviewer_status", "verified")
+                .range(from_n, to_n)
+                .execute()
+                .data
+            ),
+            table="pyq_questions",
+            operation="select_verified",
+        )
+        question_ids.extend(r["id"] for r in batch_rows if r.get("id"))
+
     if not question_ids:
         return {}
 
-    tag_rows = _safe(
-        lambda: (
-            supabase.table("pyq_question_topic_tags")
-            .select("question_id, topic_id, reviewer_status, tag_role")
-            .in_("question_id", question_ids)
-            .eq("reviewer_status", "verified")
-            .eq("tag_role", "primary")   # ← primary-only frequency contract
-            .limit(10000)
-            .execute()
-            .data
-        ),
-        default=[],
-        table="pyq_question_topic_tags",
-        operation="select_verified_primary",
-    ) or []
+    # ── 3. Primary tags (batched + paginated) ─────────────────────────────
+    # Build question→topics map so ambiguous questions (multiple primary tags
+    # across different topics) can be identified and excluded.
+    q_to_topics: dict[str, set[str]] = {}
+    for chunk in _chunks(question_ids, _BATCH):
+        batch_rows = _paginate(
+            lambda from_n, to_n, c=chunk: (
+                supabase.table("pyq_question_topic_tags")
+                .select("question_id, topic_id, reviewer_status, tag_role")
+                .in_("question_id", c)
+                .eq("reviewer_status", "verified")
+                .eq("tag_role", "primary")
+                .range(from_n, to_n)
+                .execute()
+                .data
+            ),
+            table="pyq_question_topic_tags",
+            operation="select_verified_primary",
+        )
+        for tag in batch_rows:
+            if tag.get("tag_role") != "primary":  # defense-in-depth
+                continue
+            qid = tag.get("question_id")
+            tid = tag.get("topic_id")
+            if qid and tid:
+                q_to_topics.setdefault(qid, set()).add(tid)
+
+    ambiguous = [q for q, topics in q_to_topics.items() if len(topics) > 1]
+    if ambiguous:
+        logger.warning(
+            "coverage: %d questions have multiple primary tags — excluded from frequency counts",
+            len(ambiguous),
+            extra={"exam_id": exam_id, "ambiguous_sample": ambiguous[:5]},
+        )
 
     counts: dict[str, int] = {}
-    for tag in tag_rows:
-        if tag.get("tag_role") != "primary":  # defense-in-depth: primary-only
-            continue
-        topic_id = tag.get("topic_id")
-        if not topic_id:
-            continue
-        counts[topic_id] = counts.get(topic_id, 0) + 1
+    for qid, topics in q_to_topics.items():
+        if len(topics) == 1:
+            tid = next(iter(topics))
+            counts[tid] = counts.get(tid, 0) + 1
     return counts
 
 

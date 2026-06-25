@@ -372,19 +372,22 @@ accidentally drop `.eq("tag_role", "primary")`.
 
 | Function | Purpose |
 |---|---|
-| `compute_exam_topic_scores(sb, exam_id, model_version, *, exam_phase_id)` | Writes draft snapshots; idempotent via SHA-256 fingerprint on inputs. Returns `{written, skipped, errors, total_topics}`. |
-| `locked_score_snapshots(sb, exam_id, *, exam_phase_id)` | Locked-only reader for planner/user surfaces. |
-| `list_exam_score_snapshots(sb, exam_id, *, status)` | Admin list helper (limit 2000). |
+| `compute_exam_topic_scores(sb, exam_id, model_version, *, exam_phase_id)` | Writes draft snapshots; idempotent via SHA-256 fingerprint on inputs. Returns `{written, skipped, errors, total_topics, read_error, invalid_scope}`. |
+| `locked_score_snapshots(sb, exam_id, *, exam_phase_id)` | Locked-only reader for planner/user surfaces. Deduplicated to latest per `(exam_id, topic_id)`, filtered to `MODEL_VERSION`. |
+| `list_exam_score_snapshots(sb, exam_id, *, status)` | Admin list helper; fully paginated via `_paginate()`. |
 
 **Status lifecycle:** `draft → reviewed → locked`. Only `locked` rows feed planner/user surfaces.
 
-**Known gaps as of PR #767** (tracked for P-slice-1b fix):
-- Review mutation is not atomic (SELECT → UPDATE, result discarded) — race-prone.
-- Fingerprint excludes primary tag content, locked coverage values, and `exam_phase_id`.
-- Phase scope not validated — PYQ papers still come from the full exam when `exam_phase_id` is supplied.
-- One-primary-per-question not enforced at query level (schema allows multiple primary tags across topics for one question).
-- `locked_score_snapshots` returns all locked rows without deduplicating to the latest per `(exam_id, exam_phase_id, topic_id)`.
-- Read failures are converted to empty evidence; admin compute must distinguish "no evidence" from "read failed".
+**Contracts locked in PR #767 second-pass fixes:**
+- **Primary-only + ambiguity exclusion:** questions with ≥2 primary tags to different topics are excluded from all frequency counts in both `compute_exam_topic_scores` and `verified_pyq_topic_counts`. `existing_fps` collects ALL fingerprints per topic — not just the last one — so a stale orphaned draft row cannot cause a duplicate insert.
+- **Exam-wide coverage isolation:** `_coverage_page` adds `.is_("exam_phase_id", None)` when `exam_phase_id` is not supplied, preventing phase-specific coverage rows from entering exam-wide score computation.
+- **Draft fail-closed:** `_paginate()` on `exam_topic_score_snapshots` returns `None` on any page failure → `read_error: True`. A DB error on the draft SELECT must never be treated as "no drafts exist" (which would create unbounded duplicates).
+- **Pagination:** all corpus reads (papers, questions, tags, coverage, drafts, locked) use `_paginate()` with PostgREST `.range(from, to)` to satisfy the architecture acceptance criterion.
+- **`invalid_scope` vs `read_error`:** phase-not-in-exam is a caller validation error → `invalid_scope: True` → HTTP 422. DB read failures → `read_error: True` → HTTP 502. These are mutually exclusive and the endpoint checks `invalid_scope` first.
+- **Model-version authority:** `locked_score_snapshots` filters `.eq("model_version", MODEL_VERSION)` so stale-model rows can never override current-model results.
+- **Audit log:** `review_score_snapshot` performs a best-effort INSERT into `admin_audit_logs` before the conditional UPDATE. Not fully atomic (no dedicated RPC migration) but ensures every successful transition has an audit trail.
+
+**Remaining known gap (slice-1b):** audit log INSERT is not atomic with the UPDATE — a concurrent-modification failure (409) leaves an orphan audit row. A dedicated RPC migration is needed for full atomicity.
 
 Admin endpoints added to `app/backend/app/api/admin_exam_intelligence.py`:
 `GET /exams/{exam_id}/score-snapshots`, `PATCH /score-snapshots/{id}/review`, `POST /exams/{exam_id}/score-snapshots/compute`.

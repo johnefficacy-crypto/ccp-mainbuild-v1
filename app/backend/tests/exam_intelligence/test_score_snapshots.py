@@ -312,8 +312,8 @@ def test_locked_snapshots_excludes_phase_rows_when_no_phase():
 # ── 12. Phase validation: cross-exam phase returns read_error ─────────────────
 
 
-def test_cross_exam_phase_returns_read_error():
-    """exam_phase_id belonging to a different exam → read_error=True."""
+def test_cross_exam_phase_returns_invalid_scope():
+    """exam_phase_id belonging to a different exam → invalid_scope=True (not read_error)."""
     sb = SBStub({
         "exam_phases": [
             {"id": "phase-x", "exam_id": "exam-2"},  # wrong exam
@@ -325,7 +325,8 @@ def test_cross_exam_phase_returns_read_error():
 
     result = compute_exam_topic_scores(sb, "exam-1", exam_phase_id="phase-x")
 
-    assert result["read_error"] is True
+    assert result.get("invalid_scope") is True
+    assert result.get("read_error") is not True
     assert result["written"] == 0
 
 
@@ -405,3 +406,138 @@ def test_fingerprint_changes_when_phase_changes():
     fp_phase = _build_fingerprint("exam-1", MODEL_VERSION, "phase-1", paper_ids, question_ids, primary_tag_tuples, locked_cov)
 
     assert fp_none != fp_phase
+
+
+# ── 15. Exam-wide coverage excludes phase-specific rows ───────────────────────
+
+
+def test_exam_wide_coverage_excludes_phase_rows():
+    """Exam-wide compute (no exam_phase_id) filters coverage to exam_phase_id IS NULL.
+
+    A locked coverage row scoped to a specific phase must not appear in the
+    exam-wide all_topic_ids set when no PYQ evidence exists for that topic,
+    preventing phase-scoped coverage from polluting exam-wide scores.
+    """
+    sb = SBStub({
+        "pyq_papers": [
+            {"id": "p1", "exam_id": "exam-1", "trust_status": "verified"},
+        ],
+        "pyq_questions": [
+            {"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"},
+        ],
+        "pyq_question_topic_tags": [
+            {"question_id": "q1", "topic_id": "t1",
+             "reviewer_status": "verified", "tag_role": "primary"},
+        ],
+        "exam_topic_coverage": [
+            # exam-wide coverage for t1 — should be included
+            {"topic_id": "t1", "exam_id": "exam-1", "exam_phase_id": None,
+             "exam_priority_score": 80, "is_high_yield": True, "reviewer_status": "locked"},
+            # phase-specific coverage for t2 — must be EXCLUDED from exam-wide read
+            {"topic_id": "t2", "exam_id": "exam-1", "exam_phase_id": "phase-1",
+             "exam_priority_score": 90, "is_high_yield": True, "reviewer_status": "locked"},
+        ],
+    })
+
+    result = compute_exam_topic_scores(sb, "exam-1")  # exam-wide (no exam_phase_id)
+
+    assert result["read_error"] is False
+    topic_ids = {s["topic_id"] for s in sb.db.get("exam_topic_score_snapshots", [])}
+    assert "t2" not in topic_ids, "phase-specific coverage row must not appear in exam-wide results"
+    assert "t1" in topic_ids, "exam-wide coverage row must be included"
+
+
+# ── 16. Draft read failure: fail-closed ───────────────────────────────────────
+
+
+def test_draft_read_failure_returns_read_error():
+    """If reading existing drafts fails, compute returns read_error=True (fail-closed).
+
+    Without this guard a DB error on the draft SELECT is indistinguishable from
+    'no drafts', so every recompute would insert a duplicate instead of skipping.
+    """
+
+    class _DraftReadFailStub(SBStub):
+        def __init__(self, db):
+            super().__init__(db)
+            self._snapshots_calls = 0
+
+        def table(self, name):
+            q = super().table(name)
+            if name != "exam_topic_score_snapshots":
+                return q
+            self._snapshots_calls += 1
+            if self._snapshots_calls == 1:
+                def _fail():
+                    raise RuntimeError("DB read error on snapshots table")
+                q.execute = _fail
+            return q
+
+    sb = _DraftReadFailStub({
+        "pyq_papers": [{"id": "p1", "exam_id": "exam-1", "trust_status": "verified"}],
+        "pyq_questions": [{"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"}],
+        "pyq_question_topic_tags": [
+            {"question_id": "q1", "topic_id": "t1",
+             "reviewer_status": "verified", "tag_role": "primary"},
+        ],
+        "exam_topic_coverage": [
+            {"topic_id": "t1", "exam_id": "exam-1", "exam_phase_id": None,
+             "exam_priority_score": 80, "is_high_yield": True, "reviewer_status": "locked"},
+        ],
+    })
+
+    result = compute_exam_topic_scores(sb, "exam-1")
+
+    assert result["read_error"] is True
+    assert result["written"] == 0
+    # No INSERT must run when the draft SELECT fails — duplicates are prevented.
+    assert sb.db.get("exam_topic_score_snapshots", []) == []
+
+
+# ── 17. Multi-draft idempotency: all fingerprints per topic checked ───────────
+
+
+def test_multi_draft_per_topic_idempotency():
+    """With multiple draft rows for a topic, skip if ANY has the current fingerprint.
+
+    Previously only one draft per topic was checked (arbitrary dict selection),
+    so a stale draft could cause the current fingerprint to be missed, triggering
+    a duplicate insert. existing_fps collects ALL fingerprints per topic.
+    """
+    seed = {
+        "pyq_papers": [{"id": "p1", "exam_id": "exam-1", "trust_status": "verified"}],
+        "pyq_questions": [{"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"}],
+        "pyq_question_topic_tags": [
+            {"question_id": "q1", "topic_id": "t1",
+             "reviewer_status": "verified", "tag_role": "primary"},
+        ],
+        "exam_topic_coverage": [
+            {"topic_id": "t1", "exam_id": "exam-1", "exam_phase_id": None,
+             "exam_priority_score": 80, "is_high_yield": True, "reviewer_status": "locked"},
+        ],
+    }
+    sb = SBStub(seed)
+
+    # First compute: writes 1 draft with fingerprint F_current.
+    result1 = compute_exam_topic_scores(sb, "exam-1")
+    assert result1["written"] == 1
+    current_fp = sb.db["exam_topic_score_snapshots"][0]["input_summary"]["fingerprint"]
+
+    # Manually inject a STALE draft for the same topic (simulates an orphaned row
+    # from a previous model version or data state).
+    sb.db["exam_topic_score_snapshots"].append({
+        "id": "stale-draft",
+        "exam_id": "exam-1",
+        "topic_id": "t1",
+        "status": "draft",
+        "model_version": MODEL_VERSION,
+        "input_summary": {"fingerprint": "stale-fp-000"},
+        "exam_phase_id": None,
+    })
+
+    # Second compute: existing_fps["t1"] == {current_fp, "stale-fp-000"}.
+    # Current fingerprint matches → must skip, NOT insert a third row.
+    result2 = compute_exam_topic_scores(sb, "exam-1")
+    assert result2["written"] == 0, "should skip when current fingerprint is already present"
+    assert result2["skipped"] == 1
+    assert len(sb.db["exam_topic_score_snapshots"]) == 2  # stale row still there, no new insert
