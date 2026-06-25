@@ -5,12 +5,26 @@ import PyqProvenanceFields from "./PyqProvenanceFields";
 // ─── AddPyqPaperModal ────────────────────────────────────────────────────────
 // Guided "Add PYQ paper" form embedded in the PYQ Workbench (no new route).
 // Composes the shared PyqProvenanceFields for the source step and the evidence
-// (document picker) step. Picker-only (OD-4) and select-only (OD-5): there is
-// NO raw-UUID input and NO inline upload. Exam is prefilled+immutable from
-// context; a selected cycle prefills exam_cycle_id/exam_phase_id provenance.
+// (document picker) step. Picker-only for the raw UUID (OD-4): there is NO
+// raw-UUID input. Exam is prefilled+immutable from context; a selected cycle
+// prefills exam_cycle_id/exam_phase_id provenance.
+//
+// Evidence step (OD-5 follow-up): the default is "Select existing" (the #763
+// exam-scoped picker). An "Upload new PDF" alternative runs the upload sequence
+// inline (via uploadPyqDocument from the hook) and, on completion, sets the
+// selected document_id to the freshly-created asset so submit links it.
 //
 // On submit it builds the LOCKED /pyq-onboarding contract body and calls
 // onboardPaper(body); the returned paper.id is handed to onSuccess.
+
+const UPLOAD_PHASE_LABEL = {
+  "requesting-url": "Requesting upload URL…",
+  uploading: "Uploading PDF…",
+  completing: "Finalizing upload…",
+  extracting: "Extracting…",
+  ready: "Extraction complete",
+  failed: "Extraction failed",
+};
 
 export default function AddPyqPaperModal({
   examId,
@@ -20,6 +34,7 @@ export default function AddPyqPaperModal({
   pyqDocuments,
   pyqSources,
   onboardPaper,
+  uploadPyqDocument,
   onCancel,
   onSuccess,
 }) {
@@ -37,14 +52,65 @@ export default function AddPyqPaperModal({
   const [sourceUrl, setSourceUrl] = useState("");
   const [registrySourceId, setRegistrySourceId] = useState("");
 
-  // ── Evidence step (reuses the document picker) ──
+  // ── Evidence step (reuses the document picker; OD-5 follow-up adds upload) ──
   const [documentId, setDocumentId] = useState("");
+  // "select" (default — existing exam-scoped picker) | "upload" (inline upload)
+  const [evidenceMode, setEvidenceMode] = useState("select");
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadPhase, setUploadPhase] = useState(null);
+  const [uploadErr, setUploadErr] = useState(null);
+  // Docs uploaded inline this session, so the picker label can resolve the new
+  // asset even though the parent's pyqDocuments list has not refetched.
+  const [uploadedDocs, setUploadedDocs] = useState([]);
 
   // ── Audit ──
   const [reason, setReason] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState(null);
+
+  const uploadInputRef = useRef(null);
+
+  async function handleInlineUpload() {
+    setUploadErr(null);
+    if (!uploadFile) { setUploadErr("Choose a PDF file."); return; }
+    if (uploadFile.type !== "application/pdf") { setUploadErr("Only PDF files are accepted."); return; }
+    if (typeof uploadPyqDocument !== "function") { setUploadErr("Upload is unavailable."); return; }
+    setUploading(true);
+    setUploadPhase("requesting-url");
+    try {
+      const result = await uploadPyqDocument(uploadFile, {
+        onProgress: (p) => setUploadPhase(p?.phase ?? null),
+      });
+      if (!result?.id) throw new Error("Upload did not return a document.");
+      if (result.ok === false) {
+        setUploadErr("Extraction failed for this PDF. Try another file or use the Documents tab.");
+      }
+      // Link the freshly uploaded asset for onboarding.
+      setDocumentId(result.id);
+      setUploadedDocs((prev) =>
+        prev.some((d) => d.id === result.id)
+          ? prev
+          : [...prev, {
+              id: result.id,
+              original_filename: uploadFile.name,
+              page_count: null,
+              status: result.status ?? "processing",
+            }],
+      );
+    } catch (ex) {
+      setUploadErr(ex?.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  // Picker options = parent-provided exam docs + any uploaded inline this session.
+  const pickerDocuments = [
+    ...(pyqDocuments || []),
+    ...uploadedDocs.filter((u) => !(pyqDocuments || []).some((d) => d.id === u.id)),
+  ];
 
   const yearRef = useRef(null);
   useEffect(() => { yearRef.current?.focus(); }, []);
@@ -262,19 +328,93 @@ export default function AddPyqPaperModal({
           )}
         </fieldset>
 
-        {/* ── Evidence step (reuses the document picker; select-only) ── */}
+        {/* ── Evidence step (document picker default; inline upload alt — OD-5) ── */}
         <fieldset className="flex flex-col gap-3 border border-gray-200 rounded p-3">
           <legend className="px-1 text-xs font-medium text-gray-500">Evidence (uploaded document)</legend>
-          <PyqProvenanceFields
-            idPrefix="add-pyq-evidence"
-            documentId={documentId}
-            onDocumentIdChange={setDocumentId}
-            pyqDocuments={pyqDocuments}
-            show={{ sourceType: false, sourceUrl: false, pyqSource: false }}
-          />
-          <p className="text-xs text-gray-400">
-            Upload the PDF in the Documents tab first; only existing exam documents appear here.
-          </p>
+
+          {/* Mode toggle: select existing (default) vs upload new PDF */}
+          <div className="flex gap-2" role="radiogroup" aria-label="Evidence source">
+            <button
+              type="button"
+              onClick={() => setEvidenceMode("select")}
+              className={`text-xs px-2.5 py-1 rounded border ${
+                evidenceMode === "select"
+                  ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                  : "border-gray-300 text-gray-600 hover:bg-gray-50"
+              }`}
+              data-testid="add-pyq-evidence-mode-select"
+              aria-pressed={evidenceMode === "select"}
+            >
+              Select existing
+            </button>
+            <button
+              type="button"
+              onClick={() => setEvidenceMode("upload")}
+              className={`text-xs px-2.5 py-1 rounded border ${
+                evidenceMode === "upload"
+                  ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                  : "border-gray-300 text-gray-600 hover:bg-gray-50"
+              }`}
+              data-testid="add-pyq-evidence-mode-upload"
+              aria-pressed={evidenceMode === "upload"}
+            >
+              Upload new PDF
+            </button>
+          </div>
+
+          {evidenceMode === "select" ? (
+            <>
+              <PyqProvenanceFields
+                idPrefix="add-pyq-evidence"
+                documentId={documentId}
+                onDocumentIdChange={setDocumentId}
+                pyqDocuments={pickerDocuments}
+                show={{ sourceType: false, sourceUrl: false, pyqSource: false }}
+              />
+              <p className="text-xs text-gray-400">
+                Existing exam documents appear here. Or choose “Upload new PDF” to add one now.
+              </p>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2" data-testid="add-pyq-upload-panel">
+              <input
+                ref={uploadInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(e) => { setUploadFile(e.target.files?.[0] || null); setUploadErr(null); }}
+                className="text-sm"
+                data-testid="add-pyq-upload-file"
+                disabled={uploading}
+              />
+              {uploadFile && (
+                <div className="text-xs text-gray-500">
+                  {uploadFile.name} · {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleInlineUpload}
+                disabled={uploading || !uploadFile}
+                className="self-start text-xs px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                data-testid="add-pyq-upload-submit"
+              >
+                {uploading ? "Uploading…" : "Upload PDF"}
+              </button>
+              {uploadPhase && (
+                <p className="text-xs text-gray-500" data-testid="add-pyq-upload-status">
+                  {UPLOAD_PHASE_LABEL[uploadPhase] ?? uploadPhase}
+                </p>
+              )}
+              {documentId && uploadedDocs.some((d) => d.id === documentId) && (
+                <p className="text-xs text-emerald-600" data-testid="add-pyq-upload-linked">
+                  Uploaded document linked — it will be attached on submit.
+                </p>
+              )}
+              {uploadErr && (
+                <p className="text-xs text-rose-600" data-testid="add-pyq-upload-error">{uploadErr}</p>
+              )}
+            </div>
+          )}
         </fieldset>
 
         {/* ── Reason ── */}

@@ -85,6 +85,165 @@ function PaperReviewModal({ paper, targetStatus, onCancel, onSubmit }) {
   );
 }
 
+// ─── SourceReviewModal ──────────────────────────────────────────────────────
+// Reason modal for the PYQ source trust lifecycle (OD-2 / Finding 7). Mirrors
+// PaperReviewModal: ≥8-char reason, target-status-styled submit. Calls
+// onSubmit(sourceId, targetStatus, reason).
+function SourceReviewModal({ source, targetStatus, onCancel, onSubmit }) {
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState(null);
+  const textareaRef = useRef(null);
+
+  useEffect(() => { textareaRef.current?.focus(); }, []);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (reason.trim().length < 8) { setErr("Reason must be at least 8 characters."); return; }
+    setSubmitting(true);
+    setErr(null);
+    try {
+      await onSubmit(source.id, targetStatus, reason.trim());
+    } catch (ex) {
+      const fields = getApiBlockingFields(ex);
+      setErr(fields.length > 0 ? `Review blocked — fix: ${fields.join(", ")}` : (ex?.message || "Review failed"));
+      setSubmitting(false);
+    }
+  }
+
+  const REVIEW_ACTION = {
+    verified: { label: "Verify",   btnClass: "px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50" },
+    rejected: { label: "Reject",   btnClass: "px-3 py-1.5 text-sm rounded bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50" },
+    pending:  { label: "Re-queue", btnClass: "px-3 py-1.5 text-sm rounded bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50" },
+  };
+  const { label, btnClass } = REVIEW_ACTION[targetStatus] ?? REVIEW_ACTION.rejected;
+  const sourceLabel = source.title || source.source_url || source.id;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" data-testid="source-review-modal">
+      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 flex flex-col gap-4">
+        <h2 className="text-base font-semibold text-gray-800">
+          {label} source — {sourceLabel}
+        </h2>
+        <label className="flex flex-col gap-1 text-sm text-gray-700">
+          Reason <span className="text-gray-400 font-normal">(required, ≥ 8 chars)</span>
+          <textarea
+            ref={textareaRef}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none resize-none"
+            placeholder="e.g. Confirmed source is the official commission archive"
+            data-testid="source-review-reason"
+          />
+        </label>
+        {err && <p className="text-xs text-rose-600" data-testid="source-review-error">{err}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit" disabled={submitting} className={btnClass} data-testid="source-review-submit">
+            {submitting ? "Saving…" : label}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ─── SourceTrustSummary ─────────────────────────────────────────────────────
+// Shown when the selected paper carries a pyq_source_id (OD-2 / Finding 7).
+// Renders the resolved source's title/type/url + a trust_status chip and, when
+// the operator canReview, permission-gated Verify / Reject / Re-queue actions
+// (legal transitions only). Papers with no source keep the "No reusable source
+// record" advisory elsewhere — this block simply does not render for them.
+function SourceTrustSummary({ source, canReview, onReview }) {
+  const status = source.trust_status || "pending";
+  const chip = {
+    verified: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    rejected: "bg-rose-100 text-rose-700 border-rose-200",
+    pending:  "bg-amber-100 text-amber-700 border-amber-200",
+  }[status] || "bg-slate-100 text-slate-600 border-slate-200";
+  const sourceLabel = source.title || source.source_url || source.id;
+
+  return (
+    <div
+      className="px-4 py-3 border-b border-gray-200 bg-slate-50 flex-shrink-0"
+      data-testid="source-trust-summary"
+    >
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700 truncate" title={sourceLabel}>
+              {sourceLabel}
+            </span>
+            <span
+              className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${chip}`}
+              data-testid="source-trust-chip"
+            >
+              {TRUST_LABEL[status] ?? status}
+            </span>
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5">
+            {source.source_type ? <span data-testid="source-trust-type">{source.source_type}</span> : <span>—</span>}
+            {source.source_url && (
+              <>
+                {" · "}
+                <a
+                  href={source.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 hover:underline break-all"
+                  data-testid="source-trust-url"
+                >
+                  {source.source_url}
+                </a>
+              </>
+            )}
+          </div>
+        </div>
+        {canReview && (
+          <div className="flex items-center gap-1 flex-shrink-0" data-testid="source-trust-actions">
+            {/* pending → verified */}
+            {status === "pending" && (
+              <button
+                type="button"
+                onClick={() => onReview(source, "verified")}
+                className="text-xs px-2 py-0.5 rounded border border-emerald-400 text-emerald-700 hover:bg-emerald-50"
+                data-testid="verify-source-btn"
+              >
+                Verify
+              </button>
+            )}
+            {/* pending → rejected | verified → rejected */}
+            {(status === "pending" || status === "verified") && (
+              <button
+                type="button"
+                onClick={() => onReview(source, "rejected")}
+                className="text-xs px-2 py-0.5 rounded border border-rose-300 text-rose-600 hover:bg-rose-50"
+                data-testid="reject-source-btn"
+              >
+                Reject
+              </button>
+            )}
+            {/* rejected → pending (re-queue) */}
+            {status === "rejected" && (
+              <button
+                type="button"
+                onClick={() => onReview(source, "pending")}
+                className="text-xs px-2 py-0.5 rounded border border-amber-400 text-amber-700 hover:bg-amber-50"
+                data-testid="requeue-source-btn"
+              >
+                Re-queue
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── PaperProvenanceModal ───────────────────────────────────────────────────
 // Replaces the old raw-UUID AttachDocModal.
 // Shows paper identity, infers candidate documents from source_document_id on
@@ -224,6 +383,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
     papers, selectedPaperId, setSelectedPaperId, loading, loaded, error,
     reviewPaper, saveProvenance, onboardPaper, getPaperSignedPdf,
     fetchPyqDocuments, fetchPyqSources, fetchPaperQuestions,
+    uploadPyqDocument, reviewPyqSource,
   } = usePyqWorkbench(examId, cycleId);
 
   const [showBulkImport, setShowBulkImport] = useState(false);
@@ -232,6 +392,9 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const [reviewTarget, setReviewTarget] = useState(null); // { paper, targetStatus }
   const [provenanceTarget, setProvenanceTarget] = useState(null); // { paper }
   const [pdfError, setPdfError] = useState(null);
+  const [sourceReviewTarget, setSourceReviewTarget] = useState(null); // { source, targetStatus }
+  // Sources resolved for the selected paper's trust summary (OD-2 / Finding 7).
+  const [selectedPaperSources, setSelectedPaperSources] = useState([]);
 
   // Lazy-loaded lists for the PaperProvenanceModal
   const [pyqDocuments, setPyqDocuments] = useState([]);
@@ -282,9 +445,35 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
     fetchPyqSources().then(setPyqSources).catch(() => {});
   }, [fetchPyqDocuments, fetchPyqSources]);
 
+  // Resolve the selected paper and, when it carries a pyq_source_id, load the
+  // exam-scoped sources so the trust summary can render the matching record.
+  const selectedPaper = papers.find((p) => p.id === selectedPaperId) || null;
+  const selectedSourceId = selectedPaper?.pyq_source_id || null;
+
+  useEffect(() => {
+    if (!selectedSourceId) { setSelectedPaperSources([]); return; }
+    let cancelled = false;
+    // Background read — fetch the source list to resolve the linked record.
+    fetchPyqSources()
+      .then((list) => { if (!cancelled) setSelectedPaperSources(list || []); })
+      .catch(() => { if (!cancelled) setSelectedPaperSources([]); });
+    return () => { cancelled = true; };
+  }, [selectedSourceId, fetchPyqSources]);
+
+  const selectedSource = selectedSourceId
+    ? selectedPaperSources.find((s) => s.id === selectedSourceId) || null
+    : null;
+
   async function handleReviewSubmit(pid, targetStatus, reason) {
     await reviewPaper(pid, targetStatus, reason);
     setReviewTarget(null);
+  }
+
+  async function handleSourceReviewSubmit(sourceId, targetStatus, reason) {
+    await reviewPyqSource(sourceId, targetStatus, reason);
+    // Refresh the resolved source list so the summary chip reflects the change.
+    fetchPyqSources().then(setSelectedPaperSources).catch(() => {});
+    setSourceReviewTarget(null);
   }
 
   async function handleProvenanceSubmit(pid, payload, reason) {
@@ -515,6 +704,15 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
         )}
       </div>
 
+      {/* Source trust summary — only for a selected paper with a linked source */}
+      {selectedSource && (
+        <SourceTrustSummary
+          source={selectedSource}
+          canReview={canReview}
+          onReview={(source, targetStatus) => setSourceReviewTarget({ source, targetStatus })}
+        />
+      )}
+
       {/* Workspace area */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <div className="flex-1 min-h-0">
@@ -553,6 +751,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           pyqDocuments={pyqDocuments}
           pyqSources={pyqSources}
           onboardPaper={onboardPaper}
+          uploadPyqDocument={uploadPyqDocument}
           onCancel={() => setShowAddPaper(false)}
           onSuccess={(newPaperId) => {
             setShowAddPaper(false);
@@ -576,6 +775,14 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           docCounts={pyqDocCounts}
           onCancel={() => setProvenanceTarget(null)}
           onSubmit={handleProvenanceSubmit}
+        />
+      )}
+      {sourceReviewTarget && (
+        <SourceReviewModal
+          source={sourceReviewTarget.source}
+          targetStatus={sourceReviewTarget.targetStatus}
+          onCancel={() => setSourceReviewTarget(null)}
+          onSubmit={handleSourceReviewSubmit}
         />
       )}
     </div>

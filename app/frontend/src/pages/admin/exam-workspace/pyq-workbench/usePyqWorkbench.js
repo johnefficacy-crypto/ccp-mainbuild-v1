@@ -3,6 +3,16 @@ import { api } from "../../../../lib/api";
 import useApiAction from "../../../../lib/hooks/useApiAction";
 
 const CMS_BASE = "/api/admin/exam-intelligence-cms";
+const DOC_BASE = `${CMS_BASE}/documents`;
+
+// document_assets.status values that are terminal (no more polling needed).
+function isTerminalDocStatus(s) {
+  return s === "processed" || s === "failed" || s === "archived";
+}
+// document_processing_jobs.status values that are terminal.
+function isTerminalJobStatus(s) {
+  return s === "succeeded" || s === "failed" || s === "skipped";
+}
 
 export function usePyqWorkbench(examId, cycleId) {
   const [papers, setPapers] = useState([]);
@@ -19,6 +29,7 @@ export function usePyqWorkbench(examId, cycleId) {
   const { run: runPatchAction } = useApiAction();
   const { run: runProvenanceAction } = useApiAction();
   const { run: runOnboardAction } = useApiAction();
+  const { run: runSourceReviewAction } = useApiAction();
 
   const fetchPapers = useCallback(async () => {
     if (!examId) return;
@@ -101,6 +112,91 @@ export function usePyqWorkbench(examId, cycleId) {
     return res.items || res || [];
   }, [examId]);
 
+  // ── Inline PYQ document upload (OD-5 follow-up) ────────────────────────────
+  // Runs the same upload sequence DocumentsPanel uses, scoped to this exam and
+  // document_kind=pyq_paper, then polls extraction status until terminal.
+  // Resolves with { id, status, extraction } so the modal can link the new
+  // document_id during onboarding.
+  //
+  // GOVERNANCE: the binary PUT MUST bypass api.post (which JSON-stringifies the
+  // body — AGENTS.md pattern #4); it uses raw `fetch` exactly as DocumentsPanel
+  // does. The upload-url / complete-upload / poll calls are background read/poll
+  // orchestration around an object-storage boundary and are therefore exempt
+  // from the useApiAction mutation rule (governance). The onboarding mutation
+  // itself (onboardPaper) remains on useApiAction.
+  const uploadPyqDocument = useCallback(async (file, { onProgress } = {}) => {
+    if (!examId) throw new Error("No exam selected");
+    if (!file) throw new Error("Choose a PDF file.");
+    if (file.type !== "application/pdf") throw new Error("Only PDF files are accepted.");
+
+    const report = (phase, extra = {}) => { onProgress?.({ phase, ...extra }); };
+
+    // Step 1 — mint signed URL + create document_assets row
+    report("requesting-url");
+    const signed = await api.post(`${DOC_BASE}/upload-url`, {
+      exam_id: examId,
+      exam_cycle_id: cycleId || null,
+      exam_phase_id: null,
+      document_kind: "pyq_paper",
+      filename: file.name,
+      mime_type: file.type,
+      size_bytes: file.size,
+      exam_identity: null,
+      structural_format: null,
+      source_kind: null,
+    });
+
+    // Step 2 — PUT bytes directly to storage. Must bypass the api wrapper: the
+    // body is raw binary, not JSON (AGENTS.md pattern #4).
+    report("uploading");
+    const put = await fetch(signed.upload_url, {
+      method: "PUT",
+      headers: { "content-type": file.type },
+      body: file,
+    });
+    if (!put.ok) throw new Error(`Storage upload failed (${put.status})`);
+
+    // Step 3 — complete upload: status → processing, enqueue extraction
+    report("completing");
+    await api.post(`${DOC_BASE}/complete-upload`, { document_id: signed.document_id });
+
+    // Step 4 — poll extraction status until terminal (background read; exempt).
+    report("extracting", { documentId: signed.document_id });
+    const documentId = signed.document_id;
+    const POLL_MS = 3000;
+    const MAX_POLLS = 100; // ~5 min ceiling so a stuck job never loops forever
+    for (let i = 0; i < MAX_POLLS; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      const r = await api.get(`${DOC_BASE}/${documentId}`).catch(() => null);
+      const docStatus = r?.document?.status;
+      const jobStatus = r?.extraction?.status;
+      if (isTerminalDocStatus(docStatus) || isTerminalJobStatus(jobStatus)) {
+        const ok = docStatus !== "failed" && jobStatus !== "failed";
+        report(ok ? "ready" : "failed", { documentId, status: docStatus, extraction: r?.extraction || {} });
+        return { id: documentId, status: docStatus, extraction: r?.extraction || {}, ok };
+      }
+      report("extracting", { documentId, status: docStatus, extraction: r?.extraction || {} });
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+    }
+    // Polling ceiling hit — the row exists and is linkable; surface as processing.
+    report("ready", { documentId, status: "processing" });
+    return { id: documentId, status: "processing", extraction: {}, ok: true };
+  }, [examId, cycleId]);
+
+  // ── PYQ source trust lifecycle (OD-2 / Finding 7 follow-up) ────────────────
+  // POSTs the source review (verify / reject / re-queue) against the backend
+  // contract, then refetches the paper list so any downstream summary reflects
+  // the new trust_status. Mutation goes through useApiAction (governance).
+  const reviewPyqSource = useCallback(async (sourceId, status, reason) => {
+    const result = await runSourceReviewAction({
+      action: () => api.post(`${CMS_BASE}/pyq-sources/${sourceId}/review`, { status, reason }),
+      onSuccess: fetchPapers,
+    });
+    if (!result?.ok && !result?.cancelled) throw result?.error ?? new Error("Source review failed");
+    return result?.data ?? null;
+  }, [runSourceReviewAction, fetchPapers]);
+
   return {
     papers,
     selectedPaperId,
@@ -117,5 +213,7 @@ export function usePyqWorkbench(examId, cycleId) {
     fetchPaperQuestions,
     fetchPyqDocuments,
     fetchPyqSources,
+    uploadPyqDocument,
+    reviewPyqSource,
   };
 }
