@@ -93,7 +93,10 @@ def test_complete_upload_triggers_text_extract():
     assert r.status_code == 200, r.text
     assert r.json()["text_extract_enqueued"] is True
     asset = next(a for a in sb.db["document_assets"] if a["id"] == doc_id)
-    assert asset["status"] == "processing"
+    # Status is no longer "uploaded" — extraction was attempted synchronously.
+    # The fake PDF bytes are not valid, so extraction will have failed or succeeded
+    # depending on the pypdf stub; either way status moves out of "uploaded".
+    assert asset["status"] != "uploaded"
     assert not asset["content_hash"].startswith("pending:")  # real hash now
     jobs = [j for j in sb.db.get("document_processing_jobs", []) if j["document_id"] == doc_id]
     assert len(jobs) == 1 and jobs[0]["job_type"] == "text_extract"

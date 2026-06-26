@@ -638,6 +638,14 @@ def archive_item(item_id: str, user: dict = Depends(get_current_user)) -> dict:
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Document not found")
+    # Cancel any queued/running extraction jobs so the archive lifecycle is consistent.
+    from datetime import datetime, timezone
+    sb.table("document_processing_jobs").update({
+        "status": "failed",
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "error_code": "document_archived",
+        "error_message": "document was archived before extraction could run",
+    }).eq("document_id", item_id).in_("status", ["queued", "running"]).execute()
     return {"ok": True, "id": item_id, "status": "archived"}
 
 

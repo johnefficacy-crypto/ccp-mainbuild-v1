@@ -346,18 +346,41 @@ def complete_document_upload(
     sb.table("document_assets").update(patch).eq("id", row["id"]).execute()
 
     enqueued = False
+    job_id: str | None = None
     try:
         result = _text_extract.enqueue_text_extract_job(sb, row["id"])
         enqueued = bool(result.get("enqueued"))
+        job_id = (result.get("job") or {}).get("id")
     except Exception:  # noqa: BLE001
         logger.exception("admin text-extract enqueue failed for doc=%s", row["id"])
+
+    # Run extraction synchronously. Admin docs have owner_user_id=None;
+    # passing user_id=None satisfies the ownership check (None == None).
+    extraction_result: dict | None = None
+    if job_id:
+        try:
+            extraction_result = _text_extract.run_text_extract_job(sb, job_id, user_id=None)
+        except _text_extract.ExtractConflict:
+            logger.info("admin text-extract job %s already claimed (race)", job_id)
+        except Exception:  # noqa: BLE001
+            logger.exception("admin text-extract run failed for doc=%s job=%s", row["id"], job_id)
 
     _audit(
         sb, admin, "exam_intel.cms.document.complete_upload",
         entity_type="document_asset", entity_id=row["id"],
-        new_value={"content_hash": content_hash, "enqueued": enqueued},
+        new_value={
+            "content_hash": content_hash,
+            "enqueued": enqueued,
+            "extraction_attempted": job_id is not None,
+        },
     )
-    return {"ok": True, "document": _shape({**row, **patch}), "text_extract_enqueued": enqueued}
+    # Return the post-extraction document row if available, else the patched version.
+    raw_doc = (extraction_result or {}).get("document")
+    return {
+        "ok": True,
+        "document": _shape(raw_doc) if raw_doc else _shape({**row, **patch}),
+        "text_extract_enqueued": enqueued,
+    }
 
 
 @router.get("/{document_id}")
@@ -560,6 +583,39 @@ def link_to_pyq_paper(
         "audit_id": (rpc_data or {}).get("audit_id"),
         "pyq_paper": paper | synthetic_patch,
     }
+
+
+@router.post("/{document_id}/archive")
+def archive_document(
+    document_id: str,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Archive an admin exam-intelligence document and cancel any queued extraction jobs."""
+    sb = get_supabase_admin()
+    asset = _load_admin_asset(sb, document_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if asset.get("status") == "archived":
+        raise HTTPException(status_code=409, detail="Document already archived")
+
+    # Cancel queued/running extraction jobs so they don't block or execute.
+    sb.table("document_processing_jobs").update({
+        "status": "failed",
+        "finished_at": _now_iso(),
+        "error_code": "document_archived",
+        "error_message": "document was archived before extraction could run",
+    }).eq("document_id", document_id).in_("status", ["queued", "running"]).execute()
+
+    sb.table("document_assets").update({"status": "archived"}).eq("id", document_id).execute()
+
+    _audit(
+        sb, admin, "exam_intel.cms.document.archive",
+        entity_type="document_asset", entity_id=document_id,
+        old_value={"status": asset.get("status")},
+        new_value={"status": "archived"},
+    )
+    return {"ok": True, "document_id": document_id, "status": "archived"}
 
 
 def _extension(filename: str) -> str:

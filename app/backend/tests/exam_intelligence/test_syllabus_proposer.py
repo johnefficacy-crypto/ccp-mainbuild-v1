@@ -325,10 +325,13 @@ class TestDeduplication:
 
 
 class TestEdgeCases:
-    def test_empty_pages_returns_empty(self):
+    def test_empty_pages_raises_extraction_required(self):
+        from app.exam_intelligence.syllabus_mapper import ProposerError
         sb = _make_sb(pages=[])
-        proposals = propose_syllabus_mentions(sb, exam_id=EXAM_ID, syllabus_document_id=DOC_ID)
-        assert proposals == []
+        with pytest.raises(ProposerError) as exc_info:
+            propose_syllabus_mentions(sb, exam_id=EXAM_ID, syllabus_document_id=DOC_ID)
+        assert exc_info.value.status_code == 422
+        assert "extraction_required" in str(exc_info.value)
 
     def test_unknown_document_raises_404(self):
         sb = _make_sb(docs=[])  # no docs
@@ -365,25 +368,28 @@ class TestEndpointHappyPath:
         assert isinstance(body["proposals"], list)
 
     def test_threshold_returned_in_response(self):
-        sb = _make_sb()
+        pages = [{"page_number": 1, "text_content": "Arithmetic and reasoning topics."}]
+        sb = _make_sb(pages=pages)
         r, _ = _post(sb, {"syllabus_document_id": DOC_ID})
         assert r.status_code == 200
         assert r.json()["threshold"] == SYLLABUS_ALIAS_MATCH_THRESHOLD
 
     def test_custom_threshold_returned(self):
-        sb = _make_sb()
+        pages = [{"page_number": 1, "text_content": "Arithmetic and reasoning topics."}]
+        sb = _make_sb(pages=pages)
         r, _ = _post(sb, {"syllabus_document_id": DOC_ID, "threshold": 0.7})
         assert r.status_code == 200
         assert r.json()["threshold"] == 0.7
 
-    def test_empty_pages_200_empty_proposals(self):
+    def test_empty_pages_422_extraction_required(self):
         sb = _make_sb(pages=[])
         r, _ = _post(sb, {"syllabus_document_id": DOC_ID})
-        assert r.status_code == 200
-        assert r.json()["proposals"] == []
+        assert r.status_code == 422
+        assert "extraction_required" in r.json().get("detail", "")
 
     def test_proposer_version_constant_in_response(self):
-        sb = _make_sb()
+        pages = [{"page_number": 1, "text_content": "Arithmetic and reasoning topics."}]
+        sb = _make_sb(pages=pages)
         r, _ = _post(sb, {"syllabus_document_id": DOC_ID})
         assert r.json()["proposer_version"] == PROPOSER_VERSION
 

@@ -130,7 +130,11 @@ def propose_syllabus_mentions(
     ) or []
 
     if not pages:
-        return []
+        raise ProposerError(
+            "extraction_required: syllabus document has no extracted pages — "
+            "complete text extraction before running the proposer",
+            422,
+        )
 
     # ── 3. Load topic_aliases for the exam's subject scope ────────────────────
     # topics → subject_id → subjects → exam_subject_map → exam_id
