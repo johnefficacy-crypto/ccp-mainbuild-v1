@@ -1,5 +1,12 @@
 # Recruitment Verification Gateway v1 — Final Spec
 
+> **AS-BUILT NOTE (2026-06-25).** This document is a **forward-looking design spec**, not a description of the shipped system. Significant parts were not built as written:
+> - The gateway promotion/publish gates (`check_gateway_promotion` / `check_gateway_publish`) are implemented but **only surfaced via the Verification-Reports preview** (`api/admin_verification_reports.py`). They do **not** run on the live `scrape/items/{id}/promote` path, which enforces only `evaluate_promotion_gate` (high-risk fields + contradictions).
+> - The "two-mode console" (§17 / PR6) was **not built**. The shipped admin UI is a single-page **Pipeline Workspace** (`/admin/operations`, `OperationsConsole.jsx`) with a two-tab left rail (Candidates / Drafts).
+> - Migration paths in this doc read `db/migrations/…`; the repo uses `app/supabase/migrations/…`.
+>
+> For the accurate as-built description and known gaps, see [../admin/pipeline-workspace.md](../admin/pipeline-workspace.md).
+
 Consolidated. All prior fixes folded in.
 
 ---

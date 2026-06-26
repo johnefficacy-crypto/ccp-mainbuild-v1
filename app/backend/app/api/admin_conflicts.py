@@ -282,10 +282,23 @@ def resolve_conflict(
     queue_id = conflict.get("queue_id")
     recruitment_id = conflict.get("recruitment_id")
 
-    # Patch the canonical target with the admin-chosen value.
+    # P1-6: validate the recruitment-field allowlist BEFORE any write so a
+    # 400 can never fire after the queue payload was already mutated (a torn
+    # write). A recruitment-targeted resolve that names a non-editable column
+    # is rejected here, up front, rather than silently dropped mid-sequence.
+    patch_recruitment = bool(recruitment_id)
+    if patch_recruitment and field_key not in _RECRUITMENT_EDITABLE_FIELDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Field '{field_key}' is not admin-editable via conflict resolution",
+        )
+
+    # Patch the canonical target with the admin-chosen value. Both the
+    # allowlist and the scope are already validated, so neither patch can
+    # raise after a sibling write has landed.
     if queue_id:
         _patch_queue_extracted_data(supabase, queue_id, field_key, body.value)
-    if recruitment_id and field_key in _RECRUITMENT_EDITABLE_FIELDS:
+    if patch_recruitment:
         _patch_recruitment_field(supabase, recruitment_id, field_key, body.value)
 
     update_payload = {

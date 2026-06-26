@@ -40,3 +40,13 @@ Aggregator discovery uses `adapter_config.include_patterns`, `exclude_patterns`,
 ## Publishing Warning
 
 Scrape runs and queue promotion do not publish and do not fan out notifications. Promotion creates `publish_status=needs_review`; publishing remains a separate recruitment readiness-gated backend action.
+
+## Promotion gate scope (as-built, important)
+
+The trust gate `evaluate_promotion_gate` runs on _Promote to new draft_ (`POST /api/admin/scrape/items/{id}/promote`), the batch `promote_run`, and (as of PR #770) **_Merge into existing recruitment_** (`merge-into`):
+
+- **Merge into existing recruitment** now runs `evaluate_promotion_gate` and an `is_dry_run` hard block **before** patching the existing `recruitments` row, returning 409 if the gate fails. A non-promotable or dry-run row can no longer write canonical fields.
+- **Mark duplicate**, **Approve**, and **Reject** now act only on actionable rows (`pending`/`needs_review`/`duplicate`) via status-conditional (compare-and-swap) writes, returning 409 on terminal or transient (`promoting`/`merging`) rows; they don't write canonical recruitment data. **Reopen** validates `rejected → pending`.
+- **Finalization is validated and compensated.** Promote (single + batch) and merge claim a non-promotable transient (`promoting`/`merging`), then their terminal write is scoped to that transient and must affect exactly one row; a 0-row or failed finalize reverts the claim (single/merge raise; batch counts the item failed) so the row is never stranded and a retry reaches the slug-duplicate backstop.
+
+Consensus-conflict blocking on the promote path comes from `_open_conflict_field_keys`, which reads the `recruitment_verification_conflicts` table; `verification_reports.write_conflicts` mirrors live consensus conflicts into that table (PR #770) so the block fires. See [../admin/pipeline-workspace.md](../admin/pipeline-workspace.md) ("Known gaps") and the audit in [../audits/2026-06-25-pipeline-workspace-critical-examination.md](../audits/2026-06-25-pipeline-workspace-critical-examination.md).

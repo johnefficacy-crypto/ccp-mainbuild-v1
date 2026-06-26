@@ -1,6 +1,8 @@
 # Recruitment Verification Gateway — PR Plan (Corrected)
 
-Companion to: `docs/engineering/scraping-eligibility/recruitment_verification_gateway_v1.md`
+> **AS-BUILT NOTE (2026-06-25).** This is a **forward-looking PR plan**, not shipped state. PR6's "two-mode console" was not built (the shipped UI is the single-page Pipeline Workspace), and the gateway gates (`check_gateway_promotion` / `check_gateway_publish`) are **not wired into the live promote/publish endpoints** — only into the Verification-Reports preview. For as-built behaviour and known gaps, see [../admin/pipeline-workspace.md](../admin/pipeline-workspace.md).
+
+Companion to: [verification-gateway-spec.md](verification-gateway-spec.md) (the v1 spec; the previously referenced `docs/engineering/scraping-eligibility/recruitment_verification_gateway_v1.md` path does not exist in this repo).
 
 This doc owns PR2–PR7 scoping. All review fixes folded in.
 

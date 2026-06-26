@@ -4,15 +4,29 @@ import pytest
 class R:
     def __init__(self,data=None,count=None): self.data=data; self.count=count
 class Q:
-    def __init__(self,t,s): self.t=t; self.s=s; self.id=None; self.payload=None
+    def __init__(self,t,s):
+        self.t=t; self.s=s; self.id=None; self.payload=None
+        # status predicates so the claim-first compare-and-swap (P0-4) and the
+        # state-machine guards (P0-2) behave like PostgREST: an update whose
+        # status filter doesn't match the current row touches zero rows.
+        self.status_eq=None; self.status_in=None
     def select(self,*a,**k): return self
     def eq(self,k,v):
         if k=='id': self.id=v
+        if k=='status': self.status_eq=v
+        return self
+    def in_(self,k,v):
+        if k=='status': self.status_in=set(v)
         return self
     def is_(self,k,v): return self
     def limit(self,*a,**k): return self
     def update(self,p): self.payload=p; return self
     def insert(self,p): self.payload=p; return self
+    def _status_ok(self,row):
+        st=row.get("status")
+        if self.status_eq is not None and st!=self.status_eq: return False
+        if self.status_in is not None and st not in self.status_in: return False
+        return True
     def execute(self):
         if self.t=='admin_audit_logs': self.s['audits'].append(self.payload); return R([{}])
         if self.t=='scrape_queue':
@@ -20,7 +34,13 @@ class Q:
             if not rows:
                 return R([])
             row=rows[0]
-            if self.payload: row.update(self.payload)
+            # Reads ignore the status predicate (PostgREST would filter, but the
+            # promote path only ever selects a single id then branches in
+            # Python). Writes honour it so CAS / guarded updates can miss.
+            if self.payload is not None:
+                if not self._status_ok(row):
+                    return R([])
+                row.update(self.payload)
             return R([row])
         return R([])
 class SB:
@@ -96,11 +116,15 @@ def test_live_scrape_endpoint_exists_and_passes_safe_review_options(monkeypatch)
 
 def test_approve_updates_status(monkeypatch):
     sb=SB(); monkeypatch.setattr(admin_scrape,'get_supabase_admin',lambda:sb)
+    # Approve is now state-guarded (P0-2): it only acts on a non-terminal row.
+    sb.state['queue'][0]['status']='pending'
     r=admin_scrape.approve_queue_item('q1', {'notes':'ok'}, {'id':'a','email':'e'})
     assert r['status']=='approved' and sb.state['queue'][0]['reviewer_id']=='a'
 
 def test_reject_writes_audit(monkeypatch):
     sb=SB(); monkeypatch.setattr(admin_scrape,'get_supabase_admin',lambda:sb)
+    # Reject is now state-guarded (P0): it only acts on an actionable row.
+    sb.state['queue'][0]['status']='pending'
     admin_scrape.reject_queue_item('q1', {'notes':'bad'}, {'id':'a','email':'e'})
     assert any(a.get('action')=='scrape.queue.reject' for a in sb.state['audits'])
 
@@ -433,3 +457,490 @@ def test_post_scoped_field_evidence_does_not_cross_contaminate(monkeypatch):
     assert len(post0_rows) == 1
     assert post0_rows[0]["reviewer_status"] == "verified"
     assert post1_rows == []  # sibling post is untouched
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# P0-1 / P0-2: merge-into trust gate + state machine
+# ───────────────────────────────────────────────────────────────────────────
+
+
+from fastapi import HTTPException
+
+
+# Fully-verified evidence for the shared "Clerk" single-post queue row, so the
+# promotion gate passes and merge can exercise the canonical-write path.
+_ALL_VERIFIED_EVIDENCE = [
+    {"field_name": "apply_end_date", "reviewer_status": "verified"},
+    {"field_name": "official_notification_url", "reviewer_status": "verified"},
+    {"field_name": "official_apply_url", "reviewer_status": "verified"},
+    {"field_name": "organization_name", "reviewer_status": "verified"},
+    {"field_name": "total_vacancies", "reviewer_status": "verified"},
+    {"field_name": "requires_domicile", "reviewer_status": "verified",
+     "entity_type": "post", "entity_key": "clerk"},
+]
+
+
+class MergeSB(SB):
+    """Adds ``recruitments`` + ``extracted_field_evidence`` so merge-into can run.
+
+    ``evidence`` defaults to fully-verified so the gate PASSES; individual tests
+    override it (or the queue row's ``is_dry_run`` / ``official_source_resolved``
+    / ``status``) to drive the blocked paths.
+    """
+
+    def __init__(self, evidence=None):
+        super().__init__()
+        self.state["recruitments"] = [{"id": "rec-1", "source_id": None}]
+        self.state["evidence"] = list(_ALL_VERIFIED_EVIDENCE if evidence is None else evidence)
+        self.state["recruitment_updates"] = []
+        # The shared queue row defaults to status='approved'; merge acts on
+        # non-terminal rows, so seed it pending unless a test says otherwise.
+        self.state["queue"][0]["status"] = "pending"
+        self.state["queue"][0]["official_source_resolved"] = True
+
+    def table(self, t):
+        if t == "recruitments":
+            outer = self
+
+            class RQ:
+                def __init__(self): self.id = None; self.payload = None
+                def select(self, *a, **k): return self
+                def eq(self, k, v):
+                    if k == "id": self.id = v
+                    return self
+                def limit(self, *a, **k): return self
+                def update(self, p): self.payload = p; return self
+                def execute(self):
+                    rows = [r for r in outer.state["recruitments"] if self.id is None or r.get("id") == self.id]
+                    if self.payload is not None and rows:
+                        rows[0].update(self.payload)
+                        outer.state["recruitment_updates"].append(self.payload)
+                    return R(rows)
+            return RQ()
+        if t == "extracted_field_evidence":
+            outer = self
+
+            class EQ:
+                def select(self, *a, **k): return self
+                def eq(self, *a, **k): return self
+                def order(self, *a, **k): return self
+                def limit(self, *a, **k): return self
+                def execute(self): return R(list(outer.state["evidence"]))
+            return EQ()
+        return super().table(t)
+
+
+def test_merge_blocked_for_dry_run_row(monkeypatch):
+    sb = MergeSB()
+    sb.state["queue"][0]["is_dry_run"] = True
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.merge_queue_item_into_recruitment("q1", "rec-1", {}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert exc.value.detail["reason"] == "dry_run_not_promotable"
+    # No canonical recruitment field was mutated, and the queue row was NOT
+    # flipped to merged.
+    assert sb.state["recruitment_updates"] == []
+    assert sb.state["queue"][0]["status"] == "pending"
+
+
+def test_merge_blocked_when_gate_fails_on_unverified_fields(monkeypatch):
+    # Only one high-risk field verified → gate returns high_risk_fields_unverified.
+    sb = MergeSB(evidence=[{"field_name": "apply_end_date", "reviewer_status": "verified"}])
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.merge_queue_item_into_recruitment("q1", "rec-1", {}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert "unverified_fields" in exc.value.detail
+    assert sb.state["recruitment_updates"] == []
+    assert sb.state["queue"][0]["status"] == "pending"
+
+
+def test_merge_blocked_when_official_source_unresolved(monkeypatch):
+    sb = MergeSB()
+    sb.state["queue"][0]["official_source_resolved"] = False
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.merge_queue_item_into_recruitment("q1", "rec-1", {}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert exc.value.detail["reason"] == "unverified_official_source"
+    assert sb.state["recruitment_updates"] == []
+
+
+def test_merge_rejected_from_terminal_state(monkeypatch):
+    sb = MergeSB()
+    sb.state["queue"][0]["status"] = "rejected"  # terminal
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.merge_queue_item_into_recruitment("q1", "rec-1", {}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    # State guard fires before any canonical write.
+    assert sb.state["recruitment_updates"] == []
+    assert sb.state["queue"][0]["status"] == "rejected"
+
+
+def test_merge_succeeds_when_gate_passes_and_state_actionable(monkeypatch):
+    sb = MergeSB()  # pending + fully verified + official resolved
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    out = admin_scrape.merge_queue_item_into_recruitment(
+        "q1", "rec-1", {}, {"id": "a", "email": "e"}
+    )
+    assert out["status"] == "merged"
+    assert out["recruitment_id"] == "rec-1"
+    # Canonical fields were patched from the (empty-on-existing) recruitment.
+    assert sb.state["recruitment_updates"], "expected the recruitment to be patched"
+    assert sb.state["queue"][0]["status"] == "merged"
+    assert sb.state["queue"][0]["promoted_recruitment_id"] == "rec-1"
+    assert any(a.get("action") == "scrape.queue.merge" for a in sb.state["audits"])
+
+
+class _MergeConflictSB(MergeSB):
+    """``MergeSB`` plus an open ``recruitment_verification_conflicts`` row so the
+    merge open-conflict block (``_open_conflict_field_keys``) fires."""
+
+    def table(self, t):
+        if t == "recruitment_verification_conflicts":
+            class CQ:
+                def select(self, *a, **k): return self
+                def eq(self, *a, **k): return self
+                def execute(self):
+                    return R([{"field_key": "apply_end_date", "status": "open"}])
+            return CQ()
+        return super().table(t)
+
+
+def test_merge_blocked_when_open_consensus_conflicts(monkeypatch):
+    # Gate passes (fully verified + official resolved + pending), but an OPEN
+    # consensus conflict exists → merge must 409 before any canonical write.
+    sb = _MergeConflictSB()
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.merge_queue_item_into_recruitment("q1", "rec-1", {}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert exc.value.detail["reason"] == "open_conflicts_unresolved"
+    assert exc.value.detail["field_keys"] == ["apply_end_date"]
+    # The queue row is UNCHANGED (still actionable) and the recruitment was NOT
+    # patched — the block fires before the claim and before the canonical write.
+    assert sb.state["queue"][0]["status"] == "pending"
+    assert sb.state["recruitment_updates"] == []
+
+
+class _MergeWriteFailsSB(MergeSB):
+    """``MergeSB`` whose ``recruitments.update`` raises, to exercise the
+    claim → write → revert path (torn-write regression)."""
+
+    def __init__(self, evidence=None):
+        super().__init__(evidence=evidence)
+        # Force a non-empty patch by seeding an empty existing recruitment and a
+        # queue source_id that merge will copy over (so the update path runs).
+        self.state["recruitments"] = [{"id": "rec-1", "source_id": None,
+                                       "official_notification_url": None}]
+        self.state["queue"][0]["extracted_data"]["official_notification_url"] = "https://x.gov/n"
+
+    def table(self, t):
+        if t == "recruitments":
+            outer = self
+
+            class RQ:
+                def __init__(self): self.id = None; self.payload = None
+                def select(self, *a, **k): return self
+                def eq(self, k, v):
+                    if k == "id": self.id = v
+                    return self
+                def limit(self, *a, **k): return self
+                def update(self, p): self.payload = p; return self
+                def execute(self):
+                    if self.payload is not None:
+                        raise RuntimeError("recruitments.update boom")
+                    rows = [r for r in outer.state["recruitments"] if self.id is None or r.get("id") == self.id]
+                    return R(rows)
+            return RQ()
+        return super().table(t)
+
+
+def test_merge_reverts_queue_row_when_recruitment_update_raises(monkeypatch):
+    sb = _MergeWriteFailsSB()
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.merge_queue_item_into_recruitment("q1", "rec-1", {}, {"id": "a", "email": "e"})
+    # Error surfaced as a clear 500 (claim succeeded, canonical write failed).
+    assert exc.value.status_code == 500
+    assert exc.value.detail["reason"] == "merge_write_failed"
+    # The queue row was reverted to its original actionable status — NOT left in
+    # the terminal ``merged`` state — and no rec id was stamped.
+    assert sb.state["queue"][0]["status"] == "pending"
+    assert sb.state["queue"][0].get("promoted_recruitment_id") is None
+    # No audit row for a failed merge.
+    assert not any(a.get("action") == "scrape.queue.merge" for a in sb.state["audits"])
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# P0-2: mark-duplicate / approve state machine
+# ───────────────────────────────────────────────────────────────────────────
+
+
+def test_mark_duplicate_rejected_from_terminal_state(monkeypatch):
+    sb = SB()
+    sb.state["queue"][0]["status"] = "approved"  # terminal
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.mark_queue_item_duplicate("q1", {"notes": "dup"}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert sb.state["queue"][0]["status"] == "approved"  # unchanged
+    assert not any(a.get("action") == "scrape.queue.mark_duplicate" for a in sb.state["audits"])
+
+
+def test_mark_duplicate_succeeds_from_pending(monkeypatch):
+    sb = SB()
+    sb.state["queue"][0]["status"] = "pending"
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    out = admin_scrape.mark_queue_item_duplicate("q1", {"notes": "dup"}, {"id": "a", "email": "e"})
+    assert out["status"] == "duplicate"
+    assert sb.state["queue"][0]["status"] == "duplicate"
+
+
+def test_approve_rejected_from_terminal_state(monkeypatch):
+    sb = SB()
+    sb.state["queue"][0]["status"] = "merged"  # terminal
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.approve_queue_item("q1", {"notes": "ok"}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert sb.state["queue"][0]["status"] == "merged"  # unchanged
+
+
+def test_mark_duplicate_missing_row_is_404(monkeypatch):
+    sb = SB()
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.mark_queue_item_duplicate("does-not-exist", {"notes": "x"}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 404
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# P0-3 / P0-4: dry-run hard block + non-idempotent promote (claim-first CAS)
+# ───────────────────────────────────────────────────────────────────────────
+
+
+class _PromoteVerifiedSB(SB):
+    """Shared queue row + fully-verified evidence so the gate passes on promote."""
+
+    def table(self, t):
+        if t == "extracted_field_evidence":
+            class FQ:
+                def select(self, *a, **k): return self
+                def eq(self, *a, **k): return self
+                def order(self, *a, **k): return self
+                def limit(self, *a, **k): return self
+                def execute(self): return R(list(_ALL_VERIFIED_EVIDENCE))
+            return FQ()
+        return super().table(t)
+
+
+def test_promote_hard_blocks_dry_run_row(monkeypatch):
+    """P0-3: even with every field verified, a dry-run row can never promote."""
+    sb = _PromoteVerifiedSB()
+    sb.state["queue"][0]["status"] = "pending"
+    sb.state["queue"][0]["is_dry_run"] = True
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    import app.scraping.runner as runner
+    created = []
+    monkeypatch.setattr(runner, "promote_to_recruitments",
+                        lambda *a, **k: created.append(1) or "r1")
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.promote_queue_item("q1", {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert exc.value.detail["reason"] == "dry_run_not_promotable"
+    assert created == []  # no recruitment was created
+    assert sb.state["queue"][0]["status"] == "pending"  # not flipped
+
+
+def test_double_promote_returns_409_not_a_second_recruitment(monkeypatch):
+    """P0-4: a concurrent/retried promote claims zero rows → 409, no 2nd create."""
+    sb = _PromoteVerifiedSB()
+    sb.state["queue"][0]["status"] = "pending"
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    import app.scraping.runner as runner
+    create_count = {"n": 0}
+    def _promote(*a, **k):
+        create_count["n"] += 1
+        return f"rec-{create_count['n']}"
+    monkeypatch.setattr(runner, "promote_to_recruitments", _promote)
+
+    # First promote succeeds and flips the row to approved (the claim).
+    out1 = admin_scrape.promote_queue_item("q1", {"id": "a", "email": "e"})
+    assert out1["recruitment_id"] == "rec-1"
+    assert sb.state["queue"][0]["status"] == "approved"
+
+    # Second promote sees an already-promoted row → 409 BEFORE the gate/claim,
+    # so promote_to_recruitments is never invoked a second time.
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.promote_queue_item("q1", {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert exc.value.detail["reason"] == "already_promoted"
+    assert create_count["n"] == 1  # promote_to_recruitments ran exactly once
+
+
+def test_promote_blocked_while_another_call_is_mid_flight(monkeypatch):
+    """P0-4 concurrent case: a row already claimed (transient 'promoting') by an
+    in-flight promote is not re-promotable — the second call 409s and creates
+    nothing."""
+    sb = _PromoteVerifiedSB()
+    sb.state["queue"][0]["status"] = "promoting"  # claimed, recruitment not yet stamped
+    sb.state["queue"][0]["promoted_recruitment_id"] = None
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    import app.scraping.runner as runner
+    created = []
+    monkeypatch.setattr(runner, "promote_to_recruitments",
+                        lambda *a, **k: created.append(1) or "r1")
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.promote_queue_item("q1", {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert created == []
+    assert sb.state["queue"][0]["status"] == "promoting"  # untouched
+
+
+class _PromoteFinalizeMissesSB(_PromoteVerifiedSB):
+    """``_PromoteVerifiedSB`` whose scrape_queue claim succeeds (pending→promoting)
+    but whose FINALIZE update (status='approved' WITH promoted_recruitment_id,
+    scoped ``.eq("status","promoting")``) affects ZERO rows — the row was advanced
+    out from under us between claim and finalize. The revert (status→original,
+    scoped ``.eq("status","promoting")``) is honoured so we can assert the row is
+    restored to its original status instead of being stranded ``promoting``."""
+
+    def table(self, t):
+        if t == "scrape_queue":
+            outer = self
+
+            class ZQ(Q):
+                def execute(self):
+                    rows = [r for r in outer.state["queue"] if self.id is None or r.get("id") == self.id]
+                    if not rows:
+                        return R([])
+                    row = rows[0]
+                    if self.payload is not None:
+                        if not self._status_ok(row):
+                            return R([])
+                        # The finalize stamp (carries promoted_recruitment_id) is
+                        # the one we force to miss — simulate a concurrent advance.
+                        if "promoted_recruitment_id" in self.payload and self.payload.get("status") == "approved":
+                            return R([])
+                        row.update(self.payload)
+                    return R([row])
+            return ZQ(t, self.state)
+        return super().table(t)
+
+
+def test_single_promote_finalize_zero_row_reverts_claim_and_500s(monkeypatch):
+    """P0 FIX B: when the final ``promoting → approved`` stamp affects zero rows,
+    promote must NOT leave the row stranded in the non-retriable ``promoting``
+    state. It reverts the claim to the row's ORIGINAL status (so a retry re-runs
+    promotion and trips the duplicate-slug backstop) and surfaces a 500."""
+    sb = _PromoteFinalizeMissesSB()
+    sb.state["queue"][0]["status"] = "pending"  # original status to revert to
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    import app.scraping.runner as runner
+    created = []
+    monkeypatch.setattr(runner, "promote_to_recruitments",
+                        lambda *a, **k: created.append(1) or "rec-orphan")
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.promote_queue_item("q1", {"id": "a", "email": "e"})
+    assert exc.value.status_code == 500
+    assert exc.value.detail == "Promote failed: finalization"
+    assert created == [1]  # the recruitment was created before the finalize missed
+    # Claim reverted to the ORIGINAL status — never left stuck in ``promoting`` or
+    # falsely stamped ``approved`` with the orphaned rec id.
+    assert sb.state["queue"][0]["status"] == "pending"
+    assert sb.state["queue"][0].get("promoted_recruitment_id") is None
+    # A false-success promote audit must NOT be written.
+    assert not any(a.get("action") == "scrape.queue.promote" for a in sb.state["audits"])
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# P0 FIX A: reject obeys the state machine
+# ───────────────────────────────────────────────────────────────────────────
+
+
+def test_reject_succeeds_from_pending(monkeypatch):
+    sb = SB()
+    sb.state["queue"][0]["status"] = "pending"
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    out = admin_scrape.reject_queue_item("q1", {"notes": "bad"}, {"id": "a", "email": "e"})
+    assert out["status"] == "rejected"
+    assert sb.state["queue"][0]["status"] == "rejected"
+
+
+@pytest.mark.parametrize("blocked_status", ["promoting", "merging", "approved", "merged"])
+def test_reject_409s_on_non_actionable_states(monkeypatch, blocked_status):
+    """A concurrent reject must never flip a finalizing/terminal row to rejected:
+    ``promoting`` / ``merging`` (in-flight) and ``approved`` / ``merged``
+    (terminal) all 409 with the status left unchanged."""
+    sb = SB()
+    sb.state["queue"][0]["status"] = blocked_status
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.reject_queue_item("q1", {"notes": "bad"}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert sb.state["queue"][0]["status"] == blocked_status  # unchanged
+    assert not any(a.get("action") == "scrape.queue.reject" for a in sb.state["audits"])
+
+
+def test_reject_missing_row_is_404(monkeypatch):
+    sb = SB()
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.reject_queue_item("does-not-exist", {"notes": "x"}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 404
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# P0 FIX C: merge finalize must inspect its row count
+# ───────────────────────────────────────────────────────────────────────────
+
+
+class _MergeFinalizeMissesSB(MergeSB):
+    """``MergeSB`` whose recruitment patch SUCCEEDS but whose terminal
+    ``merging → merged`` finalize affects ZERO rows (the claim was advanced out
+    from under us). The revert (scoped ``.eq("status","merging")``) is honoured."""
+
+    def table(self, t):
+        if t == "scrape_queue":
+            outer = self
+
+            class ZQ(Q):
+                def execute(self):
+                    rows = [r for r in outer.state["queue"] if self.id is None or r.get("id") == self.id]
+                    if not rows:
+                        return R([])
+                    row = rows[0]
+                    if self.payload is not None:
+                        if not self._status_ok(row):
+                            return R([])
+                        # The merged finalize (carries promoted_recruitment_id) is
+                        # forced to miss; the claim and the revert still apply.
+                        if self.payload.get("status") == "merged":
+                            return R([])
+                        row.update(self.payload)
+                    return R([row])
+            return ZQ(t, self.state)
+        return super().table(t)
+
+
+def test_merge_finalize_zero_row_reverts_and_500s_no_false_success(monkeypatch):
+    """P0 FIX C: a 0-row ``merging → merged`` finalize is a torn write, not a
+    success. The merge must revert the claim, surface a 500, and write NO merge
+    audit (the old bug ignored ``.data`` and returned ``{status:'merged'}``)."""
+    sb = _MergeFinalizeMissesSB()  # pending + fully verified + official resolved
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.merge_queue_item_into_recruitment("q1", "rec-1", {}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 500
+    assert exc.value.detail["reason"] == "merge_finalize_failed"
+    # The canonical recruitment WAS patched (the write succeeded) ...
+    assert sb.state["recruitment_updates"], "expected the recruitment to be patched"
+    # ... but the queue row was reverted to its original actionable status — NOT
+    # left/marked ``merged`` — and no rec id was stamped on the queue row.
+    assert sb.state["queue"][0]["status"] == "pending"
+    assert sb.state["queue"][0].get("promoted_recruitment_id") is None
+    # No false-success merge audit.
+    assert not any(a.get("action") == "scrape.queue.merge" for a in sb.state["audits"])

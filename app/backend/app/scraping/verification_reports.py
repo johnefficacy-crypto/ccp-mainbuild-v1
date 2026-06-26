@@ -28,6 +28,7 @@ loud — the caller sees the exception.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from supabase import Client
@@ -51,6 +52,10 @@ from .verification_report_schemas import (
 
 
 logger = logging.getLogger(__name__)
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 # ── Lifecycle ───────────────────────────────────────────────────────────
@@ -408,9 +413,155 @@ def write_conflicts(
     )[0]
     if not updated:
         raise RuntimeError(f"verification_report {report_id} update returned no row")
+
+    # Mirror the conflicts into the canonical ``recruitment_verification_conflicts``
+    # table that the admin resolve/reject UI and the promote-path gate
+    # (``runner._open_conflict_field_keys``) actually read. The jsonb write
+    # above stays the source of truth for the gateway report; this sync keeps
+    # the queue-scoped store in lockstep so a live consensus conflict both
+    # blocks promotion and surfaces in the Resolve UI. Best-effort and
+    # idempotent — a missing table (deploys that have not run migration 087)
+    # must never break the verification pass, mirroring the gate's
+    # forward-compat stance.
+    _sync_conflicts_table(supabase, updated, conflicts)
+
     if lifecycle_status is not None:
         updated = update_lifecycle_status(supabase, report_id, lifecycle_status)
     return updated
+
+
+# ── PR3: queue-scoped conflict-table mirror ───────────────────────────
+#
+# ``recruitment_verification_conflicts`` (migration 087) is the canonical
+# store the admin UI (``admin_conflicts``) and the promotion gate read.
+# ``write_conflicts`` is the single production writer of consensus
+# conflicts, so it is also the choke point that keeps that table in sync.
+
+CONFLICTS_TABLE = "recruitment_verification_conflicts"
+
+
+def _conflict_candidates(conflict: dict[str, Any]) -> list[dict[str, Any]]:
+    """Project the report-jsonb ``values`` array into UI ``candidates`` rows.
+
+    The consensus engine emits ``values`` as ``{source, value, confidence}``.
+    The resolver UI (``ConflictResolver.jsx``) reads ``source_url``,
+    ``source_kind``, ``value`` and ``extracted_at`` per candidate and uses
+    ``source_kind`` to fence off aggregator values. We carry ``value`` and
+    the source label through verbatim and pass any enriched url/kind/time
+    fields when a future engine supplies them — forward-compatible without
+    inventing data the engine doesn't have.
+    """
+    out: list[dict[str, Any]] = []
+    for v in conflict.get("values") or []:
+        if not isinstance(v, dict):
+            continue
+        cand: dict[str, Any] = {
+            "source": v.get("source"),
+            "value": v.get("value"),
+        }
+        if v.get("confidence") is not None:
+            cand["confidence"] = v.get("confidence")
+        # Pass through the richer descriptors when present (engine may
+        # enrich these later); the UI reads them when available.
+        for key in ("source_url", "source_kind", "extracted_at"):
+            if v.get(key) is not None:
+                cand[key] = v.get(key)
+        out.append(cand)
+    return out
+
+
+def _sync_conflicts_table(
+    supabase: Client,
+    report: dict[str, Any],
+    conflicts: list[dict[str, Any]],
+) -> None:
+    """Upsert consensus conflicts into ``recruitment_verification_conflicts``.
+
+    Keyed by the report's target (``scrape_queue_id`` → ``queue_id``, or
+    ``recruitment_id``) plus ``field_key``. One ``open`` row per field per
+    target:
+
+    * incoming field with an existing ``open`` row → refresh its candidates;
+    * incoming field with no ``open`` row → insert a new ``open`` row;
+    * existing ``open`` row whose field is no longer in the incoming set →
+      flip to ``auto_resolved`` so a consensus that healed itself does not
+      leave a stale row blocking promotion or lingering in the Resolve UI.
+
+    Admin-touched rows (any non-``open`` status) are left untouched.
+
+    Wrapped in a single ``try/except`` and never raises: a missing table or
+    transient read failure degrades to the existing jsonb-only behaviour
+    rather than crashing the verification pass.
+    """
+    try:
+        queue_id = report.get("scrape_queue_id")
+        recruitment_id = report.get("recruitment_id")
+        # Recruitment-scoped reports use recruitment_id; queue reports use
+        # queue_id. The table requires at least one (CHECK target_required).
+        if not queue_id and not recruitment_id:
+            return
+
+        target_col = "queue_id" if queue_id else "recruitment_id"
+        target_val = queue_id or recruitment_id
+
+        existing = (
+            supabase.table(CONFLICTS_TABLE)
+            .select("*")
+            .eq(target_col, target_val)
+            .eq("status", "open")
+            .execute()
+            .data
+            or []
+        )
+        open_by_field: dict[str, dict[str, Any]] = {}
+        for row in existing:
+            fk = row.get("field_key")
+            if fk:
+                open_by_field.setdefault(fk, row)
+
+        incoming_fields: set[str] = set()
+        for conflict in conflicts or []:
+            field_key = conflict.get("field_path") or conflict.get("field_key")
+            if not field_key:
+                continue
+            incoming_fields.add(field_key)
+            candidates = _conflict_candidates(conflict)
+
+            current = open_by_field.get(field_key)
+            if current is not None:
+                # Refresh the candidate set on the live open row (idempotent:
+                # identical candidates write the same value back).
+                supabase.table(CONFLICTS_TABLE).update(
+                    {"candidates": candidates}
+                ).eq("id", current["id"]).execute()
+                continue
+
+            insert_row: dict[str, Any] = {
+                "field_key": field_key,
+                "candidates": candidates,
+                "status": "open",
+            }
+            if queue_id:
+                insert_row["queue_id"] = queue_id
+            if recruitment_id:
+                insert_row["recruitment_id"] = recruitment_id
+            supabase.table(CONFLICTS_TABLE).insert(insert_row).execute()
+
+        # Retire open rows the consensus pass no longer reports. They healed
+        # (sources now agree / dropped out) so the gate must stop blocking on
+        # them; ``auto_resolved`` records that no human acted.
+        for field_key, row in open_by_field.items():
+            if field_key in incoming_fields:
+                continue
+            supabase.table(CONFLICTS_TABLE).update(
+                {"status": "auto_resolved", "resolved_at": _utc_now_iso()}
+            ).eq("id", row["id"]).execute()
+    except Exception:  # noqa: BLE001 — best-effort mirror, never fatal
+        logger.warning(
+            "conflict-table sync skipped for report %s",
+            report.get("id"),
+            exc_info=True,
+        )
 
 
 def write_complexity_signals(

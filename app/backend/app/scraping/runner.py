@@ -3736,6 +3736,29 @@ def compute_promotion_slug(data: VerifiedRecruitmentForPromotion) -> str:
     return f"{slugify(data.title)}-{data.year}"
 
 
+def _revert_promote_run_claim(supabase: Client, queue_id: str, *, should_revert: bool) -> None:
+    """Undo a promote_run claim after the recruitment write failed.
+
+    Only reverts when THIS iteration won the ``pending → promoting`` claim and
+    then failed, so a failed item is left exactly ``pending`` (retriable) rather
+    than stranded mid-create with no recruitment. Scoped to the transient
+    ``status='promoting'`` so we only roll back OUR own in-flight claim and never
+    clobber a rec_id another path has since written. Best-effort: a revert
+    failure is logged, not raised.
+    """
+    if not should_revert:
+        return
+    try:
+        supabase.table("scrape_queue").update(
+            {"status": "pending", "promoted_recruitment_id": None}
+        ).eq("id", queue_id).eq("status", "promoting").execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "[promote_run] claim revert failed queue_id=%s exc=%s: %s",
+            queue_id, type(exc).__name__, exc, exc_info=True,
+        )
+
+
 def promote_run(
     run_id: str,
     supabase: Client,
@@ -3788,30 +3811,81 @@ def promote_run(
             )
             continue
 
+        claimed_here = False
         try:
             # Strict shape: structurally-incomplete rows fail here with a
             # clear ValidationError instead of half-writing a recruitment.
             extracted = VerifiedRecruitmentForPromotion(**d)
+            # P0-4 (TOCTOU): claim-first compare-and-swap. Atomically move the
+            # row ``pending → promoting`` (a NON-promotable transient) BEFORE
+            # creating the recruitment, scoped to ``.eq("status", "pending")``.
+            # ``scrape_queue.status`` is free-text (no DB CHECK), so the
+            # transient flip is safe. Parking in ``promoting`` (not the terminal
+            # ``approved``, which IS a promotable source state) means the admin
+            # single-item promote can't ALSO claim this row mid-create: a
+            # concurrent/retried claim sees ``promoting`` (not in any promotable
+            # allowlist) and claims zero rows, skipping instead of
+            # double-creating. The claim is reverted below if the recruitment
+            # write then fails, so a failed item is left exactly ``pending``.
+            claim_update = {"status": "promoting", "reviewed_at": utc_now_iso()}
+            if reviewer_id:
+                claim_update["reviewer_id"] = reviewer_id
+            claimed_rows = execute_or_raise(
+                "scrape_queue.promote_claim",
+                lambda cu=claim_update, qid=queue_id: supabase.table("scrape_queue").update(cu).eq("id", qid).eq("status", "pending").execute(),
+            ).data or []
+            if not claimed_rows:
+                # Another promote_run (or the admin single-promote) already
+                # claimed this row. Not an error — just nothing left to do.
+                skipped += 1
+                errors.append({
+                    "queue_id": queue_id,
+                    "error": "concurrent_promote",
+                    "reason": "already_claimed",
+                })
+                logger.info("[promote_run] queue_id=%s skipped: already claimed by a concurrent promote", queue_id)
+                continue
+            claimed_here = True
             rec_id = promote_to_recruitments(
                 extracted,
                 supabase,
                 source_id=item.get("source_id"),
                 queue_id=queue_id,
             )
-            rec_ids.append(rec_id)
-            update = {
-                "status": "approved",
-                "reviewed_at": utc_now_iso(),
-                "promoted_recruitment_id": rec_id,
-            }
+            # Terminal write: flip ``promoting → approved`` and stamp the
+            # freshly-minted recruitment id, scoped to our own ``promoting``
+            # claim so we never clobber a row another path advanced. This is the
+            # ONLY place the batch path writes ``approved`` (the claim no longer
+            # does), so a revert can only ever undo a still-``promoting`` row.
+            #
+            # The finalize result MUST be validated: if the stamp raises OR
+            # affects zero rows (our claim was advanced out from under us), the
+            # item is NOT promoted. Revert ``promoting → pending`` and record the
+            # item as failed so a 0-row finalize is never miscounted as promoted.
+            finalize_update = {"status": "approved", "promoted_recruitment_id": rec_id}
             if reviewer_id:
-                update["reviewer_id"] = reviewer_id
-            execute_or_raise(
-                "scrape_queue.promote_status_update",
-                lambda update=update, qid=queue_id: supabase.table("scrape_queue").update(update).eq("id", qid).execute(),
-            )
+                finalize_update["reviewer_id"] = reviewer_id
+            try:
+                finalized = execute_or_raise(
+                    "scrape_queue.promote_status_update",
+                    lambda fu=finalize_update, qid=queue_id: supabase.table("scrape_queue").update(fu).eq("id", qid).eq("status", "promoting").execute(),
+                ).data or []
+            except Exception as exc:  # noqa: BLE001
+                _revert_promote_run_claim(supabase, queue_id, should_revert=claimed_here)
+                failed += 1
+                errors.append({"queue_id": queue_id, "error": "finalize_failed", "detail": str(exc)})
+                logger.warning("[promote_run] queue_id=%s finalize raised: %s", queue_id, exc)
+                continue
+            if not finalized:
+                _revert_promote_run_claim(supabase, queue_id, should_revert=claimed_here)
+                failed += 1
+                errors.append({"queue_id": queue_id, "error": "finalize_failed", "reason": "zero_row_finalize"})
+                logger.warning("[promote_run] queue_id=%s finalize affected zero rows", queue_id)
+                continue
+            rec_ids.append(rec_id)
             promoted += 1
         except OpenConflictPromotionError as exc:
+            _revert_promote_run_claim(supabase, queue_id, should_revert=claimed_here)
             skipped += 1
             errors.append({
                 "queue_id": queue_id,
@@ -3824,6 +3898,7 @@ def promote_run(
                 queue_id, exc.field_keys,
             )
         except Exception as exc:  # noqa: BLE001
+            _revert_promote_run_claim(supabase, queue_id, should_revert=claimed_here)
             failed += 1
             errors.append({"queue_id": queue_id, "error": str(exc)})
             logger.warning("[promote_run] queue_id=%s failed: %s", queue_id, exc)
