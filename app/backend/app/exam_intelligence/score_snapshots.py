@@ -437,7 +437,7 @@ def locked_score_snapshots(
     exam_id: str,
     *,
     exam_phase_id: str | None = None,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, Any]] | None:
     """Return one locked snapshot per topic for planner consumption.
 
     Returns the latest-computed locked row per topic for the given scope,
@@ -448,15 +448,25 @@ def locked_score_snapshots(
     otherwise. Mixed-scope reads are explicitly prevented — callers must
     pass a resolved phase or accept exam-wide rows.
 
+    Snapshots are cycle-independent by design: the writer does not set
+    ``exam_cycle_id`` and the corpus is all-time verified PYQs. No cycle
+    filter is applied here; callers must not expect cycle-scoped rows.
+
+    Returns ``None`` on DB read failure; caller must distinguish from empty
+    list (no locked snapshots yet computed).
+
     Result row shape::
 
         {
+            "snapshot_id": str|None,
             "topic_id": str,
             "exam_priority_score": float|None,
             "is_high_yield": bool,
             "confidence_score": float|None,
             "model_version": str,
             "score_components": dict,
+            "computed_at": str|None,
+            "evidence_count": int|None,
         }
     """
     if not exam_id:
@@ -466,8 +476,8 @@ def locked_score_snapshots(
         q = (
             sb.table("exam_topic_score_snapshots")
             .select(
-                "topic_id, exam_priority_score, is_high_yield, "
-                "confidence_score, model_version, score_components, computed_at"
+                "id, topic_id, exam_priority_score, is_high_yield, "
+                "confidence_score, model_version, score_components, computed_at, evidence_count"
             )
             .eq("exam_id", exam_id)
             .eq("status", "locked")
@@ -483,7 +493,9 @@ def locked_score_snapshots(
         _locked_page,
         table="exam_topic_score_snapshots",
         operation="select_locked",
-    ) or []
+    )
+    if rows is None:
+        return None  # read failure — caller must distinguish from empty list
 
     # Deduplicate to latest locked per topic (rows already sorted by computed_at desc).
     seen: set[str] = set()
@@ -492,16 +504,17 @@ def locked_score_snapshots(
         tid = r.get("topic_id")
         if tid and tid not in seen:
             seen.add(tid)
-            deduped.append(
-                {
-                    "topic_id": tid,
-                    "exam_priority_score": r.get("exam_priority_score"),
-                    "is_high_yield": bool(r.get("is_high_yield")),
-                    "confidence_score": r.get("confidence_score"),
-                    "model_version": r.get("model_version"),
-                    "score_components": r.get("score_components") or {},
-                }
-            )
+            deduped.append({
+                "snapshot_id": r.get("id"),
+                "topic_id": tid,
+                "exam_priority_score": r.get("exam_priority_score"),
+                "is_high_yield": bool(r.get("is_high_yield")),
+                "confidence_score": r.get("confidence_score"),
+                "model_version": r.get("model_version"),
+                "score_components": r.get("score_components") or {},
+                "computed_at": r.get("computed_at"),
+                "evidence_count": r.get("evidence_count"),
+            })
     # Re-sort by priority descending for planner consumption.
     deduped.sort(key=lambda r: (r.get("exam_priority_score") or 0), reverse=True)
     return deduped

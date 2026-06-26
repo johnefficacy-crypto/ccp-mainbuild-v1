@@ -11,6 +11,9 @@ the four Study OS input groups:
   Competition — ``competition_context`` cycle pressure (intensity bias).
   Policy      — ``policy_update_context`` (informational; an official
                 ``affects_syllabus`` change surfaces a flag).
+  Analytical snapshots — locked ``exam_topic_score_snapshots`` (reviewed AI priority
+                          signal; confidence-weighted, max 15 pts additive; read
+                          failure degrades gracefully to zero — plan still generates).
 
 Deterministic and defensive: no AI, no randomness — the same inputs always
 produce the same plan. Persists one active ``study_plan`` per user, a
@@ -391,12 +394,16 @@ def _score_topic(
     When a locked score snapshot is available it contributes up to 15 pts
     as a bounded additive term. Absent snapshots degrade gracefully to zero
     for this component only — the rest of the score is unchanged.
+    Confidence modulates the snapshot component — low-confidence snapshots
+    contribute less; when confidence is absent it defaults to 1.0 (full weight).
     """
     coverage_priority = cov["coverage_priority"]
     mastery_gap = (100.0 - mastery) if mastery is not None else 55.0
     pyq_factor = min(20.0, pyq_count * 5.0)
     snapshot_component = (
-        min(15.0, float(snapshot.get("exam_priority_score") or 0) / 100.0 * 15.0)
+        min(15.0,
+            float(snapshot.get("exam_priority_score") or 0) / 100.0 * 15.0
+            * min(1.0, max(0.0, float(1.0 if snapshot.get("confidence_score") is None else snapshot.get("confidence_score")))))
         if snapshot else 0.0
     )
     high_yield_bonus = weights["high_yield_bonus"] if cov["is_high_yield"] else 0.0
@@ -507,9 +514,12 @@ def _build_tasks(
             "pinned": cov["_pinned"],
             "competition_pressure": pressure_level,
             "priority_score": cov["_priority_score"],
+            "snapshot_id": snap.get("snapshot_id") if snap else None,
             "snapshot_priority_score": snap.get("exam_priority_score") if snap else None,
             "snapshot_confidence": snap.get("confidence_score") if snap else None,
             "snapshot_model_version": snap.get("model_version") if snap else None,
+            "snapshot_computed_at": snap.get("computed_at") if snap else None,
+            "snapshot_evidence_count": snap.get("evidence_count") if snap else None,
             "summary": _why_summary(
                 cov,
                 task_type,
@@ -904,9 +914,12 @@ def _compute_plan(
     # Locked score snapshots provide a reviewed analytical priority signal.
     # Gracefully degrades to an empty dict when none exist (draft-only or
     # not yet computed), leaving the rest of the scoring unchanged.
+    # Returns None on DB read failure — plan still generates with no snapshot component.
+    _snap_result = locked_score_snapshots(supabase, exam_id, exam_phase_id=resolver_phase_id)
+    snapshot_read_failed = _snap_result is None
     score_snapshots_by_topic: dict[str, dict[str, Any]] = {
         s["topic_id"]: s
-        for s in (locked_score_snapshots(supabase, exam_id, exam_phase_id=resolver_phase_id) or [])
+        for s in (_snap_result or [])
     }
 
     # score every locked-coverage topic
@@ -971,6 +984,16 @@ def _compute_plan(
             "pinned_count": len(pinned),
             "muted_count": len(muted),
         },
+        "snapshot_read_failed": snapshot_read_failed,
+        "snapshot_set_summary": [
+            {
+                "topic_id": s["topic_id"],
+                "snapshot_id": s.get("snapshot_id"),
+                "model_version": s.get("model_version"),
+                "computed_at": s.get("computed_at"),
+            }
+            for s in score_snapshots_by_topic.values()
+        ] if not snapshot_read_failed else None,
     }
 
     return {

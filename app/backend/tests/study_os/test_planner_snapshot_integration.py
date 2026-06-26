@@ -1,6 +1,8 @@
 """P-slice-2: locked_score_snapshots wired into the planner as a priority signal."""
 from __future__ import annotations
 
+import pytest
+
 from app.exam_intelligence.score_snapshots import MODEL_VERSION
 from app.study_os.planner import _score_topic, generate_plan
 from tests.persona_questions._stub import SBStub
@@ -212,3 +214,127 @@ def test_same_inputs_same_task_order():
     second_order = [t["topic_id"] for t in sb.db["study_tasks"]]
 
     assert first_order == second_order
+
+
+# ── 7. Confidence modulation ───────────────────────────────────────────────────
+
+def test_zero_confidence_produces_zero_snapshot_component():
+    """confidence_score=0.0 → snapshot contributes 0 pts (same as no snapshot)."""
+    weights = {"coverage_w": 0.0, "mastery_w": 0.0, "high_yield_bonus": 0.0}
+    cov = {"coverage_priority": 0, "is_high_yield": False}
+    score_no, _ = _score_topic(cov, 0, None, False, weights=weights, pinned=False)
+    score_zero_conf, _ = _score_topic(
+        cov, 0, None, False,
+        weights=weights, pinned=False,
+        snapshot={"exam_priority_score": 100.0, "confidence_score": 0.0},
+    )
+    assert score_no == score_zero_conf
+
+
+def test_confidence_scales_snapshot_component():
+    """confidence_score=0.5 → snapshot component is exactly half the max."""
+    weights = {"coverage_w": 0.0, "mastery_w": 0.0, "high_yield_bonus": 0.0}
+    cov = {"coverage_priority": 0, "is_high_yield": False}
+    score_full_conf, _ = _score_topic(
+        cov, 0, None, False,
+        weights=weights, pinned=False,
+        snapshot={"exam_priority_score": 100.0, "confidence_score": 1.0},
+    )
+    score_half_conf, _ = _score_topic(
+        cov, 0, None, False,
+        weights=weights, pinned=False,
+        snapshot={"exam_priority_score": 100.0, "confidence_score": 0.5},
+    )
+    assert round(score_full_conf - score_half_conf, 6) == round(score_half_conf, 6)
+
+
+# ── 8. Snapshot lineage in why_this_task ──────────────────────────────────────
+
+def test_snapshot_id_and_lineage_persisted_in_why():
+    """snapshot_id, computed_at, evidence_count appear in why_this_task."""
+    seed = _base_seed()
+    seed["exam_topic_score_snapshots"] = [_snapshot("t1", priority=80.0, confidence=0.9)]
+    sb = SBStub(seed)
+    generate_plan(sb, "u-1")
+    tasks = sb.db["study_tasks"]
+    t1_task = next(t for t in tasks if t["topic_id"] == "t1")
+    why = t1_task["why_this_task"]
+    assert why["snapshot_id"] == "snap-t1"
+    assert why["snapshot_computed_at"] == "2026-06-01T00:00:00+00:00"
+    assert why["snapshot_evidence_count"] == 3
+
+
+# ── 9. Snapshot read failure ───────────────────────────────────────────────────
+
+def test_snapshot_read_failure_recorded_in_context():
+    """Snapshot table read failure → plan still generates, snapshot_read_failed=True."""
+    import tests.persona_questions._stub as stub_mod
+
+    class FailSnapStub(stub_mod.SBStub):
+        def table(self, name):
+            if name == "exam_topic_score_snapshots":
+                raise RuntimeError("DB unavailable")
+            return super().table(name)
+
+    sb = FailSnapStub(_base_seed())
+    out = generate_plan(sb, "u-1")
+    assert out["generated"] is True
+    # why_this_task snapshot fields must be None
+    for t in sb.db["study_tasks"]:
+        assert t["why_this_task"]["snapshot_id"] is None
+        assert t["why_this_task"]["snapshot_priority_score"] is None
+
+
+# ── 10. Snapshot reasoning trace ──────────────────────────────────────────────
+
+def test_snapshot_reasoning_trace_row_added():
+    """build_task_reasoning_detail adds a locked_score_snapshot trace row from persisted lineage."""
+    from app.study_os.task_reasoning import build_task_reasoning_detail
+    task = {
+        "id": "task-1", "topic": "Percentage", "task_type": "revision",
+        "status": "planned", "planned_minutes": 25,
+        "why_this_task": {
+            "snapshot_id": "snap-abc",
+            "snapshot_priority_score": 80.0,
+            "snapshot_confidence": 0.92,
+            "snapshot_model_version": MODEL_VERSION,
+            "snapshot_computed_at": "2026-06-01T00:00:00+00:00",
+            "priority_score": 90.0,
+        }
+    }
+    result = build_task_reasoning_detail(task)
+    snap_rows = [r for r in result["reasoning_trace"] if r.get("rule_key") == "locked_score_snapshot"]
+    assert len(snap_rows) == 1
+    assert snap_rows[0]["evidence_id"] == "snap-abc"
+    assert snap_rows[0]["status"] == "locked"
+    assert snap_rows[0]["model_version"] == MODEL_VERSION
+    assert snap_rows[0]["confidence"] == pytest.approx(0.92)
+
+
+def test_no_snapshot_trace_row_when_no_snapshot():
+    """No locked_score_snapshot trace row when why_this_task has no snapshot fields."""
+    from app.study_os.task_reasoning import build_task_reasoning_detail
+    task = {
+        "id": "task-1", "topic": "Percentage", "task_type": "revision",
+        "status": "planned", "planned_minutes": 25,
+        "why_this_task": {"snapshot_id": None, "snapshot_priority_score": None},
+    }
+    result = build_task_reasoning_detail(task)
+    snap_rows = [r for r in result["reasoning_trace"] if r.get("rule_key") == "locked_score_snapshot"]
+    assert len(snap_rows) == 0
+
+
+# ── 11. Deduplication: latest locked snapshot wins ────────────────────────────
+
+def test_two_snapshots_same_topic_latest_wins():
+    """When two locked snapshots exist for t1, the first in list (latest by computed_at) wins."""
+    seed = _base_seed()
+    snap_newer = {**_snapshot("t1", priority=90.0), "computed_at": "2026-06-01T00:00:00+00:00"}
+    snap_older = {**_snapshot("t1", priority=50.0), "id": "snap-t1-old", "computed_at": "2026-01-01T00:00:00+00:00"}
+    # SBStub returns rows in insert order; newer first → should win the dedup
+    seed["exam_topic_score_snapshots"] = [snap_newer, snap_older]
+    sb = SBStub(seed)
+    generate_plan(sb, "u-1")
+    tasks = sb.db["study_tasks"]
+    t1_task = next(t for t in tasks if t["topic_id"] == "t1")
+    assert t1_task["why_this_task"]["snapshot_priority_score"] == 90.0

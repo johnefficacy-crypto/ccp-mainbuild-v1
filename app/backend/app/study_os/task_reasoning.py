@@ -341,6 +341,25 @@ def build_task_reasoning_detail(
             }
         )
 
+    snap_id = why.get("snapshot_id")
+    snap_priority = why.get("snapshot_priority_score")
+    snap_confidence = why.get("snapshot_confidence")
+    snap_model = why.get("snapshot_model_version")
+    if snap_id is not None or snap_priority is not None:
+        conf_val = min(1.0, max(0.0, float(snap_confidence or 0.0)))
+        trace.append({
+            "layer": "exam",
+            "rule_key": "locked_score_snapshot",
+            "label": (
+                f"AI analysis score {round(float(snap_priority or 0), 1)} "
+                f"(confidence {round(conf_val * 100)}%) — reviewed and locked."
+            ),
+            "evidence_id": snap_id,
+            "confidence": conf_val,
+            "status": "locked",
+            "model_version": snap_model,
+        })
+
     trace.append(
         {
             "layer": "plan",
