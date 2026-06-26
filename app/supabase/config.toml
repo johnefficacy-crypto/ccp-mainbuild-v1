@@ -168,7 +168,8 @@ refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
-enable_anonymous_sign_ins = false
+# Retained alongside phone-OTP login (guest browsing + Google linking depend on it).
+enable_anonymous_sign_ins = true
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
@@ -200,8 +201,13 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
-enable_signup = true
+# Phone OTP is the login method. Email/password signup is disabled — email is
+# kept only as an OPTIONAL profile field (receipts/notifications), never as a
+# login identity. NOTE: existing users created with a password can still
+# password-sign-in until the operator disables the Email provider's password
+# sign-in in the hosted Supabase dashboard (see docs/status/Phone-OTP-Login-2026-06-26.md
+# §"OPERATOR PENDING"). Admin-API user creation (E2E seeds) is unaffected.
+enable_signup = false
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true

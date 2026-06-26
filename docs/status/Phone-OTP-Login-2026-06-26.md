@@ -28,7 +28,33 @@
 - Frontend: 44 auth tests (Login/Signup OTP flow, authContext requestPhoneOtp/verifyPhoneOtp, removed-method guard, phone normalizer).
 - Backend: `test_auth_phone.py` (serialized `phone` from user object / JWT claim / absent).
 
+## ⛔ DEPLOYMENT GATE (do NOT roll out before all are done)
+Password UI is removed for **every** user including admins. Deploying before the
+steps below locks out all email/password-only accounts. This branch must NOT be
+deployed to production until the operator completes:
+1. **SMS provider provisioned** (below) and a live OTP verified end-to-end.
+2. **Admin + user phone migration** done (below) — at least every admin has a
+   confirmed phone, verified by a real admin phone-OTP login.
+3. **Email/password provider disabled** in hosted Supabase (below).
+A reviewer/operator owns flipping this gate; "merge now, provision later" is unsafe
+for the only admin login path.
+
+## Contract precision (from /checkpost review)
+- Password login is removed from the **first-party UI** and disabled for new
+  signups (`config.toml [auth.email].enable_signup = false`). Existing
+  password accounts can still authenticate directly against Supabase until the
+  operator disables the Email provider's password sign-in in the hosted
+  dashboard (gate step 3). Admin-API user creation (E2E seeds) is intentionally
+  unaffected.
+- Anonymous/guest sign-in is **retained and enabled**
+  (`config.toml [auth].enable_anonymous_sign_ins = true`).
+- Role is backend-authoritative: `mergeUser` no longer reads
+  `user_metadata.role`; `verifyPhoneOtp` returns the backend-hydrated user, so
+  the admin redirect can never be driven by client-writable metadata. (Touches
+  `core/auth.py` — coordinate merge order with PR #775.)
+
 ## OPERATOR PENDING (cannot be done from code)
-1. Provision an SMS provider in Supabase (Twilio): set `SUPABASE_AUTH_SMS_TWILIO_ACCOUNT_SID`, `SUPABASE_AUTH_SMS_TWILIO_MESSAGE_SERVICE_SID`, `SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN`; enable the phone provider in the Supabase dashboard. Until then real codes don't send — use the `test_otp` map for dev.
-2. Existing email/password-only users without a phone (and admins) must be migrated: seed their phone in `auth.users` (Supabase) or have them re-onboard via phone; Google users are unaffected.
-3. Live click-through: signup (phone+name+optional email → OTP), login (phone → OTP), admin login, Google + guest still work.
+1. Provision an SMS provider in Supabase (Twilio): set `SUPABASE_AUTH_SMS_TWILIO_ACCOUNT_SID`, `SUPABASE_AUTH_SMS_TWILIO_MESSAGE_SERVICE_SID`, `SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN`; enable the phone provider in the Supabase dashboard. Until then real codes don't send — use the `test_otp` map for dev/E2E.
+2. Existing email/password-only users without a phone (and **all admins**) must be migrated: seed their phone in `auth.users` (Supabase) or have them re-onboard via phone; Google users are unaffected.
+3. **Disable email/password sign-in** in the hosted Supabase Auth dashboard (Email provider → disable password sign-in) so password auth is gone at the provider, not just the UI.
+4. Live click-through: signup (phone+name+optional email → OTP), login (phone → OTP), admin login, Google + guest still work.

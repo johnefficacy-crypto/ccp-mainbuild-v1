@@ -26,7 +26,11 @@ function mergeUser(supabaseUser, backendUser) {
   if (!supabaseUser && !backendUser) return null;
   const meta = supabaseUser?.user_metadata || {};
   const appMeta = supabaseUser?.app_metadata || {};
-  const role = coerceRole(backendUser?.role || appMeta.role || meta.role);
+  // Role is backend-authoritative. NEVER trust user_metadata.role (client-
+  // writable). app_metadata.role is admin-set and only used as a fallback when
+  // the backend user is unavailable; role-based redirects must use the
+  // backend-hydrated user (see verifyPhoneOtp / hydrate).
+  const role = coerceRole(backendUser?.role || appMeta.role);
   // Supabase sets is_anonymous on the user object after signInAnonymously.
   // The backend also forwards it on /auth/me. Either side is authoritative.
   const isAnonymous = Boolean(
@@ -62,20 +66,26 @@ export function AuthProvider({ children }) {
   // it rotates on TOKEN_REFRESHED, so the ref self-invalidates.
   const lastHydratedTokenRef = useRef(null);
 
+  // Returns the backend-authoritative merged user on success, or null when the
+  // session is absent / the backend rejects the token. Callers that gate on
+  // role (e.g. admin redirect) MUST use this return value, never a client-only
+  // mergeUser(session.user, null).
   const hydrate = useCallback(async (session) => {
     if (!session?.user) {
       lastHydratedTokenRef.current = null;
       setUser(null);
       setStatus("guest");
-      return;
+      return null;
     }
-    if (lastHydratedTokenRef.current === session.access_token) return;
+    if (lastHydratedTokenRef.current === session.access_token) return user;
     lastHydratedTokenRef.current = session.access_token;
 
     try {
       const { user: backendUser } = await authApi.me();
-      setUser(mergeUser(session.user, backendUser));
+      const merged = mergeUser(session.user, backendUser);
+      setUser(merged);
       setStatus("backend_authed");
+      return merged;
     } catch (err) {
       if (err?.status === 401) {
         // Token rejected by the backend — treat as a real auth loss and
@@ -90,7 +100,10 @@ export function AuthProvider({ children }) {
         // next session event retries the backend call.
         lastHydratedTokenRef.current = null;
       }
+      return null;
     }
+  // `user` is only read for the dedup short-circuit return; intentionally not a dep.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -144,8 +157,12 @@ export function AuthProvider({ children }) {
         type: "sms",
       });
       if (error) throw new Error(error.message || "Invalid or expired code");
-      await hydrate(data.session);
-      return mergeUser(data.user, null);
+      // Return the BACKEND-hydrated user so role-based redirects use the
+      // authoritative role, not client-writable session metadata. If the
+      // backend is unreachable, hydrate() returns null → caller treats the
+      // user as non-privileged (no admin redirect).
+      const merged = await hydrate(data.session);
+      return merged ?? { role: ROLES.USER };
     },
     [hydrate]
   );
