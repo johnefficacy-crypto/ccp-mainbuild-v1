@@ -231,3 +231,17 @@ fixes — all fixed in the same PR:
 - **Merge torn write.** Merge set the queue terminal (`merged` + link) before the
   `recruitments` update with no rollback; merge now claims a transient `merging` state,
   validates the canonical write, finalizes on success, and reverts on failure.
+
+A third pass flagged the interaction of the new transient states with `reject` and the
+finalization writes — also fixed in this PR:
+
+- **`reject` could steal a `promoting`/`merging` claim.** It was an unconditional
+  `update().eq("id")`. It now follows the same state machine as merge/duplicate/approve
+  (allowed only from `_ACTIONABLE_QUEUE_STATES`, CAS-scoped), so it can no longer
+  transition `promoting`/`merging`/`approved`/`merged`.
+- **Finalization writes were not validated/compensated.** Single-promote's final stamp
+  is now scoped to `status='promoting'`, requires exactly one row, and reverts the claim
+  on 0-row/failure (so a retry hits the slug `DuplicatePromotionError` backstop instead
+  of stranding the row in `promoting`). Merge's `merging→merged` stamp now inspects its
+  row count and reverts on 0-row (no false success). Batch promote validates its
+  `promoting→approved` stamp and counts a 0-row finalize as failed, not promoted.
