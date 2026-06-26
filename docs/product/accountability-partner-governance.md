@@ -227,22 +227,24 @@ Schema for governance is **already in place**; the gaps are in the user-facing l
 - Admin partner reads/ends (`admin_community_governance.py`): list pairs, end pair, rematch-block.
 - `pairing_goal` enum and nullable `exam_id` (`072_study_os_pairs.sql`) — already supports goal-specific compatibility.
 
-### 8.2 Open gaps (the real work)
+**Lifecycle, consent, and privacy — landed in the partner-consent-lifecycle PR (#776):**
+- **Canonical consent-first lifecycle.** `request_partner` now writes a *pending* `accountability_partner_requests` row; the two divergent paths are reconciled (both `/community/partner/invite` and `/api/accountability/partners/request` create pending requests). The `message=` `TypeError` is fixed.
+- **Accept/decline route + atomic pair creation.** `respond_partner` is implemented; accept goes through SECURITY DEFINER RPC `accept_partner_request` (`193_partner_consent_lifecycle.sql`).
+- **One-active-pair guard** enforced for both users at request time and atomically in the accept RPC.
+- **Sanitized published-partner DTO.** `published_partner` strips `full_name`/`city`; applied in `partner_state` and `list_partner_suggestions`.
+- **Admin invite triage** now reads pending `accountability_partner_requests` (not paused `accountability_pairs`).
+
+### 8.2 Open gaps (remaining)
 
 | Gap | Detail / where to fix |
 |---|---|
-| **Two divergent partner paths must be reconciled** | `/community/partner/invite` (`community_runtime.py`) writes a pending `accountability_partner_requests` row; `/api/accountability/partners/request` (`accountability.py` → `social_sessions.request_partner`) inserts an `active` `accountability_pairs` row directly. Pick one canonical lifecycle. |
-| **`message` argument bug** | `accountability.py:197` calls `request_partner(..., message=body.message)`, but `social_sessions.request_partner` (`:407`) has no `message` parameter → `TypeError` at runtime. |
-| **No accept/decline route** | `respond_partner` is named in the `social_sessions` docstring but **not implemented**. Mutual consent cannot be expressed. Add request → accept/decline → atomic pair creation. |
-| **One-active-pair guard missing** | Enforce at pair-creation, not just the `unique(user_a,user_b,status)` constraint. |
-| **Sanitized published-partner DTO missing** | `partner_state` (`community_runtime.py:646`) and `list_partner_suggestions` (`social_sessions.py:397`) return `full_name`/`city`. Define a projection that exposes only handle/exam/phase/published numbers (§7). |
-| **Partner metrics not returned live** | `community_runtime` returns an empty `thisWeek`; `PartnersScreen.jsx` retains seeded partner metrics after a live fetch. Return the partner's published numbers (post-DTO). |
-| **Admin invite triage reads the wrong source** | `GET /api/admin/community/partners/invites` (`admin_community_governance.py:444`) reads `accountability_pairs` where `status='paused'`, but user invites land in `accountability_partner_requests` (`status='pending'`). Reconcile once the canonical lifecycle is chosen. |
+| **Partner metrics not returned live** | `community_runtime` returns an empty `thisWeek`; `PartnersScreen.jsx` retains seeded partner metrics after a live fetch. Return the partner's published numbers via the sanitized DTO. |
 | **Rematch-block not enforced in matching** | The recommender/invite paths must exclude `partner_rematch_blocks` pairs (schema exists; enforcement does not). |
 | **Recommender is a stub** | `community_runtime.py` echoes pending invites with `match: 0`. Build the goal-specific scoring function (§4). |
 | **Persona-explanation contract** | Add/version `safe_match_explanation[]` in `persona-study-policy-contract.md`, or restrict reasons to non-persona facts (§4.3). |
 | **Gender preference field** | Additive migration on `profiles`; opt-in, not required. |
 | **Minimum-activity gate for pool entry** | Eligibility check at the invite/browse endpoints. |
+| **Frontend accept/decline wiring** | `PartnersScreen.jsx` does not yet call the new `respond` endpoint. |
 
 ---
 
