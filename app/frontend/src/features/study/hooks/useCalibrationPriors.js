@@ -5,7 +5,7 @@ export default function useCalibrationPriors(examId) {
   const [calibrated, setCalibrated] = useState(null); // null=loading, true/false
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
 
   const fetch = useCallback(async () => {
     if (!examId) { setLoading(false); return; }
