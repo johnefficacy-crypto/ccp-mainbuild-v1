@@ -75,7 +75,13 @@ test("mentors detail trail", () => {
   expect(screen.getByText("Detail").closest("[aria-current='page']")).toBeTruthy();
 });
 
-test("renders nothing on unmapped route /app/community/foo", () => {
-  const { container } = renderAt("/app/community/foo");
+test("renders nothing on unmapped route /app/unknown-section/foo", () => {
+  const { container } = renderAt("/app/unknown-section/foo");
   expect(container.firstChild).toBeNull();
+});
+
+test("community space renders Community ancestor and Space leaf", () => {
+  renderAt("/app/community/my-space");
+  expect(screen.getByRole("link", { name: "Community" })).toBeTruthy();
+  expect(screen.getByText("Space").closest("[aria-current='page']")).toBeTruthy();
 });
