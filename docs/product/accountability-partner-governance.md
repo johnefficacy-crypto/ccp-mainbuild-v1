@@ -1,10 +1,11 @@
 # Accountability Partner — Governance & Matching Policy
 
-_Last updated: 2026-06-25 — Design phase, pre-implementation_
+_Last updated: 2026-06-26 — Design phase, pre-implementation. Reconciled against the live code (PR #772 review)._
 
 Related docs:
 - `docs/product/community-platform.md` §Accountability partners (strategy)
 - `docs/engineering/community-governance-spec-v1.md` §4.2 (Admin Partner Console)
+- `docs/engineering/study-os-comparison-spec.md` (goal-specific compatibility, behavior scores)
 - `docs/product/persona-study-policy-contract.md` (persona dimensions — internal use only)
 
 ---
@@ -20,7 +21,7 @@ Related docs:
 - Risk register and mitigations
 - Identity and anonymity policy
 
-Implementation hooks (admin console, schema gaps) are tracked in `docs/engineering/community-governance-spec-v1.md`.
+Schema/admin governance hooks are tracked in `docs/engineering/community-governance-spec-v1.md`. The **current implementation reality** (and where it diverges from this policy) is captured in §8.
 
 ---
 
@@ -30,28 +31,28 @@ Govern the feature across three moments in a pair's lifecycle, not as a single b
 
 ### 2.1 Formation
 
-| Rule | Rationale |
+| Rule | Rationale / current state |
 |---|---|
-| Opt-in pool only; minimum activity threshold to enter | Filters bots, day-one ghosts, and abandoned accounts before they waste a committed user's slot |
-| Both sides must consent — invite is a request, not an auto-pair | `accountability_partner_requests.status='pending'` already enforces this; keep it |
-| One active partner per user, hard enforced | The product contract is *"One person"* (`PartnersScreen.jsx:147`). The schema's `unique(user_a, user_b, status)` blocks duplicate *pair* rows, not a user holding multiple active pairs. Add a one-active-pair-per-user guard at write time. |
-| Same/overlapping target exam required | Hard filter; non-negotiable per `community-platform.md` |
+| Opt-in pool only; minimum activity threshold to enter | Filters bots, day-one ghosts, and abandoned accounts before they waste a committed user's slot. **Not yet implemented.** |
+| Mutual consent before a pair exists | **Not enforced today** (§8). Two divergent paths exist: `/community/partner/invite` writes a *pending* `accountability_partner_requests` row but has **no accept/decline route**, so an invite never becomes a pair; `/api/accountability/partners/request` inserts an `accountability_pairs` row at `status='active'` directly, with **no consent step**. The canonical lifecycle must be: **request → recipient accept/decline → one-active-pair guard → atomic pair creation.** |
+| One active partner per user, hard enforced | The product contract is *"One person"* (`PartnersScreen.jsx:147`). The schema's `unique(user_a, user_b, status)` (`072_study_os_pairs.sql:13`) blocks duplicate *pair* rows between the same two users, **not** a user holding multiple active pairs. Add a one-active-pair-per-user guard at pair-creation time. |
+| Goal-specific exam compatibility (not a universal same-exam filter) | See §4.1. `accountability_pairs.exam_id` is nullable and `pairing_goal` is goal-specific by design. |
 
 ### 2.2 Operation
 
-| Rule | Rationale |
+| Rule | Rationale / current state |
 |---|---|
 | Structured interaction only at launch — check-ins and weekly-review answers; no open DMs | Biggest single abuse-surface reducer; matches current UI scope |
-| "Partner sees what you publish, nothing more" | Literal RLS enforcement; already scoped in `072_study_os_pairs.sql` |
-| Reliability signals derived from the user's own Study OS telemetry, not peer ratings | Prevents retaliation (no rage-quit score-tanking); keeps signals deterministic |
-| Check-ins anchored to observable Study OS data where available | Reduces collusion risk; cross-reference `user_events` (hours, mocks) with the self-reported boolean |
+| Partner sees only a sanitized, published projection — never raw profile facts | **Not implemented (§8).** `072_study_os_pairs.sql` governs access to the *pair row* only. Both partner lookups (`community_runtime.py:646`, `social_sessions.py:397`) currently select and return `full_name` and `city`, contradicting §7. A sanitized published-partner DTO is required. |
+| Reliability signals derived from the user's own Study OS telemetry, not peer ratings | Prevents retaliation (no rage-quit score-tanking); keeps signals deterministic. Behavior/discipline scoring lives in `study-os-comparison-spec.md`. |
+| Check-ins anchored to observable Study OS data where available | Reduces collusion risk; cross-reference `user_events` (hours, mocks) with the self-reported boolean. Today `community_runtime` returns only the caller's check-ins and an empty `thisWeek`, so the UI can retain *seeded* partner metrics after a live fetch (§8). |
 
 ### 2.3 Dissolution
 
-| Rule | Rationale |
+| Rule | Rationale / current state |
 |---|---|
-| Unilateral, no-fault exit; no behavioral penalty | Already: `POST /community/partner/end`; keep the exit cheap |
-| Block + rematch-block so a bad pairing never recurs | `partner_rematch_blocks` table specced in community-governance-spec-v1 §4.2 |
+| Unilateral, no-fault exit; no behavioral penalty | Already: `POST /community/partner/end` (user) and admin `partner_end_pair` |
+| Block + rematch-block so a bad pairing never recurs | **Schema and admin write-path exist:** `partner_rematch_blocks` (`105_community_governance.sql:32`, lexicographic unordered pair, `reason >= 8` chars) + `admin_community_governance.py`. The remaining gap is **enforcement in the user matching/invite paths** — the recommender and invite routes do not yet exclude blocked pairs. |
 | Dispute path → `moderation_items`, admin-attributed, audited | Trust > Speed; Control > Automation |
 | Solo-mode fallback; the active user is never stranded | The "If this partnership ends · Candidates we'd suggest" card (`PartnersScreen.jsx:599`) is the entry point |
 | No "your partner missed N days" shame notification to either party | Off-ramp copy stays blameless |
@@ -83,13 +84,22 @@ Rationale: a self-chosen partner carries intrinsic motivation and consent the al
 
 Keep the recommender **deterministic and replayable**, mirroring how persona snapshots store `evidence[]`. Never use a black-box ML model for this — the "why" string shown to users must be reproducible by an admin.
 
-### 4.1 Hard filters (all must pass before scoring)
+### 4.1 Compatibility is goal-specific, not a universal same-exam filter
 
-- Same or overlapping target exam
-- Same exam phase (Prelims window vs. Mains window — a Prelims-week user and a Mains-week user have nothing to compare)
+The pairing goal (`accountability_pairs.pairing_goal`) drives the exam-compatibility rule. This matches the governing contract in `study-os-comparison-spec.md`:
+
+| `pairing_goal` | Exam compatibility | Notes |
+|---|---|---|
+| `discipline` | **Cross-exam OK** | A time-block / consistency cohort; the comparison is behavioral, not content. `exam_id` may be null. |
+| `same_exam` | Same exam required | Content sync. |
+| `mock_review` | Same exam strongly preferred | Mock content must line up. |
+| `revision` | Same exam | Shared syllabus. |
+
+Other hard filters (apply after goal compatibility):
+
 - Both users opted in to the partner pool
-- Neither user is currently in an active pair
-- No `partner_rematch_blocks` row between them
+- Neither user is currently in an active pair (one-active-pair guard)
+- No `partner_rematch_blocks` row between them (lexicographic unordered pair)
 
 ### 4.2 Soft score (weighted)
 
@@ -109,13 +119,13 @@ The reason string shown on the candidate card must be safe, benign copy. Allowed
 > "Same phase · similar mock cadence · morning person"
 > "Both Prelims window · 35–40h/week intensity · overlapping availability"
 
-Not allowed — these surface internal persona labels (`persona-study-policy-contract.md:161`):
+Not allowed — these surface internal persona labels (`persona-study-policy-contract.md`):
 
 > ❌ "Matched because you're both planner-poor-executors"
 > ❌ "Similar study-risk score"
 > ❌ "Both have high dropoff risk"
 
-Match on the internal signal; surface a benign, behavioral reason.
+**Persona-derived explanations require a contract update first.** `persona-study-policy-contract.md` currently permits **only** `safe_user_explanation[]` and `safe_user_copy` to reach aspirants. Before any persona signal feeds a match reason, either (a) add and version an approved `safe_match_explanation[]` output in that contract, or (b) restrict candidate reasons to non-persona profile facts (exam, phase, declared availability, declared cadence). Until then, use option (b).
 
 ---
 
@@ -131,7 +141,7 @@ The UI is a fair peer-comparison ("Same plan, two columns"). That mechanic only 
 - Is pointless for the stronger user (nothing to learn, emotional labor only)
 - Collapses fast (observed in two-week timescale, per `community-platform.md:133`)
 
-Match within the same exam-phase and within a similar mock-score band.
+Match within a similar mock-score band. For `same_exam` / `mock_review` / `revision` goals also match exam-phase; for `discipline` goals the comparison is behavioral, so phase alignment is optional.
 
 ### 5.2 Conscientiousness — match adjacent, not opposite
 
@@ -162,7 +172,7 @@ Do not make your best users their unpaid coaches.
 |---|---|
 | **Ghosting / abandonment** | Auto-pause after N days of mutual silence; prompt to re-pair or go solo; reliability signals visible to admin; replacement candidates always pre-loaded in the UI |
 | **Collusion / fake check-ins** | Anchor to Study OS telemetry (hours logged, mocks taken) as a corroborating signal; compare published numbers in the side-by-side; avoid gamification that rewards lying |
-| **Harassment / safety** | Structured-only interaction (no DMs at launch); block + report → `moderation_items`; rematch-block; profanity filter on notes; rate limits on invites |
+| **Harassment / safety** | Structured-only interaction (no DMs at launch); block + report → `moderation_items`; `partner_rematch_blocks` (exists); profanity filter on notes; rate limits on invites |
 | **Comparison anxiety** (population includes `deadline_anxious`, `dropoff_risk` persona states) | Similar-level matching; `nudge_style: direct_non_shaming` from the study policy contract; "calm truth" framing in all copy; option to blur the other column |
 | **Retaliation via peer scores** | Reliability is a function of the user's own behavior, not a partner-assigned rating — no star-rating-your-partner system |
 | **Friendship damage** | Blameless exit; no "your friend missed 5 days" notifications; gentle off-ramp copy at dissolution |
@@ -179,6 +189,8 @@ Full anonymity weakens accountability — "I won't let Aman down" is a stronger 
 
 Forced real names is a safety risk, especially material in this market: women aspirants face documented harassment exposure. Never require real names.
 
+> **Implementation note:** today's code contradicts this section — both partner lookups return `full_name` and `city`. A sanitized published-partner DTO (§8) is a prerequisite for shipping this policy.
+
 ### 7.2 Default identity surface
 
 Show at formation and throughout the partnership:
@@ -187,7 +199,7 @@ Show at formation and throughout the partnership:
 - Target exam + preparation phase
 - Avatar (color-seeded, no photo required)
 
-Never expose by default: real full name, phone, email, precise location, social media handles.
+Never expose by default: real full name, phone, email, precise location (city), social media handles.
 
 ### 7.3 Progressive reveal
 
@@ -205,18 +217,32 @@ Add a same-gender matching preference option and make gender disclosure optional
 
 ---
 
-## 8. Open implementation gaps
+## 8. Current implementation reality & gaps
 
-These are not addressed by any existing migration or route:
+Schema for governance is **already in place**; the gaps are in the user-facing lifecycle, consent, privacy projection, and path reconciliation — not schema creation.
 
-| Gap | Where to fix |
+### 8.1 Already implemented
+- `partner_rematch_blocks` table + admin write path (`105_community_governance.sql:32`, `admin_community_governance.py`).
+- `mentor_verification` sidecar (`105_community_governance.sql:53`).
+- Admin partner reads/ends (`admin_community_governance.py`): list pairs, end pair, rematch-block.
+- `pairing_goal` enum and nullable `exam_id` (`072_study_os_pairs.sql`) — already supports goal-specific compatibility.
+
+### 8.2 Open gaps (the real work)
+
+| Gap | Detail / where to fix |
 |---|---|
-| One-active-pair-per-user invariant not enforced in schema | Add check/trigger in migration after `072_study_os_pairs.sql` |
-| Reliability / ghost score not computed anywhere | New derived column or materialized view; feed `admin_community_governance.py` |
-| `partner_rematch_blocks` table not yet created | Schema delta in `community-governance-spec-v1.md` §4.2 |
-| Recommender returns echoed pending invites only (`community_runtime.py:661`) | Build the scoring function in `community_runtime.py` or a new `partner_matcher.py` |
-| Gender preference field missing from `profiles` | Additive migration; opt-in, not required |
-| Minimum-activity gate for pool entry | Eligibility check at `/community/partner/invite` and browse endpoint |
+| **Two divergent partner paths must be reconciled** | `/community/partner/invite` (`community_runtime.py`) writes a pending `accountability_partner_requests` row; `/api/accountability/partners/request` (`accountability.py` → `social_sessions.request_partner`) inserts an `active` `accountability_pairs` row directly. Pick one canonical lifecycle. |
+| **`message` argument bug** | `accountability.py:197` calls `request_partner(..., message=body.message)`, but `social_sessions.request_partner` (`:407`) has no `message` parameter → `TypeError` at runtime. |
+| **No accept/decline route** | `respond_partner` is named in the `social_sessions` docstring but **not implemented**. Mutual consent cannot be expressed. Add request → accept/decline → atomic pair creation. |
+| **One-active-pair guard missing** | Enforce at pair-creation, not just the `unique(user_a,user_b,status)` constraint. |
+| **Sanitized published-partner DTO missing** | `partner_state` (`community_runtime.py:646`) and `list_partner_suggestions` (`social_sessions.py:397`) return `full_name`/`city`. Define a projection that exposes only handle/exam/phase/published numbers (§7). |
+| **Partner metrics not returned live** | `community_runtime` returns an empty `thisWeek`; `PartnersScreen.jsx` retains seeded partner metrics after a live fetch. Return the partner's published numbers (post-DTO). |
+| **Admin invite triage reads the wrong source** | `GET /api/admin/community/partners/invites` (`admin_community_governance.py:444`) reads `accountability_pairs` where `status='paused'`, but user invites land in `accountability_partner_requests` (`status='pending'`). Reconcile once the canonical lifecycle is chosen. |
+| **Rematch-block not enforced in matching** | The recommender/invite paths must exclude `partner_rematch_blocks` pairs (schema exists; enforcement does not). |
+| **Recommender is a stub** | `community_runtime.py` echoes pending invites with `match: 0`. Build the goal-specific scoring function (§4). |
+| **Persona-explanation contract** | Add/version `safe_match_explanation[]` in `persona-study-policy-contract.md`, or restrict reasons to non-persona facts (§4.3). |
+| **Gender preference field** | Additive migration on `profiles`; opt-in, not required. |
+| **Minimum-activity gate for pool entry** | Eligibility check at the invite/browse endpoints. |
 
 ---
 
