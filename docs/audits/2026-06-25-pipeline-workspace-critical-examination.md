@@ -210,7 +210,24 @@ design are well-reasoned, and the field-action contract matches the backend exac
 5. Fix `promotion-preview` post-scoping (P1-2), the re-publish guard (P1-3), and the
    dead `AdminFixPanel` retry wiring (frontend P1).
 
-_Documentation was updated in this change (this audit, the as-built
-`admin/pipeline-workspace.md`, the corrected `promotion_gate.py` comment, the
-`admin-scrape-workflow.md` gate-scope note, and as-built banners on the gateway
-specs). The code-level fixes above are intentionally **not** applied here._
+_The P0 code-level fixes (P0-1..4, conflicts wiring, RLS 193) **were applied** in
+PR #770 — see the "Remediation status" section above. Documentation was updated to
+match (this audit, the as-built `admin/pipeline-workspace.md`, the corrected
+`promotion_gate.py` comment, the `admin-scrape-workflow.md` gate-scope note, and
+as-built banners on the gateway specs). Remaining P1s are tracked there._
+
+### Follow-up review (PR #770, second pass)
+
+A blocking review surfaced three additional P0 concurrency/gate gaps in the first-pass
+fixes — all fixed in the same PR:
+
+- **Merge skipped the open-conflict check.** `merge-into` ran `evaluate_promotion_gate`
+  (which does not query conflicts) but not `_open_conflict_field_keys`; merge now runs
+  the open-conflict check and 409s on any open row.
+- **Cross-path promote race.** `promote_run` claimed `pending → approved` while
+  single-item promote treated `approved` as a promotable source state, so both paths
+  could claim the same row. Both promote paths now claim through the same
+  non-promotable transient `promoting` state.
+- **Merge torn write.** Merge set the queue terminal (`merged` + link) before the
+  `recruitments` update with no rollback; merge now claims a transient `merging` state,
+  validates the canonical write, finalizes on success, and reverts on failure.

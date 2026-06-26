@@ -95,7 +95,8 @@ candidate that sorts off the first page after a write stays selectable.
 
 ### The promotion gate (`evaluate_promotion_gate`)
 
-Runs on the two promote paths only. Blocks (in order) on:
+Runs on all three canonical-write paths — _Promote_ (single), `promote_run` (batch),
+and (as of PR #770) _Merge into existing recruitment_. Blocks (in order) on:
 
 | reason code | meaning |
 |---|---|
@@ -104,9 +105,11 @@ Runs on the two promote paths only. Blocks (in order) on:
 | `high_risk_fields_unverified` | any required high-risk field lacks a `verified`/`corrected` evidence row (recruitment-level: `apply_end_date`, `official_notification_url`, `official_apply_url`, `organization_name`, `total_vacancies`; post-scoped per post: `requires_domicile`) |
 | `data_contradictions` | re-running the normalizer flags `date_order_invalid`, `notification_after_apply_end`, `age_range_invalid`, or `vacancy_sum_mismatch` |
 
-The promote endpoint additionally requires queue `status ∈ {approved, pending,
-needs_review}` and blocks on open rows in `recruitment_verification_conflicts`
-(via `_open_conflict_field_keys`).
+The promote and merge endpoints additionally require an actionable queue `status`
+and block on open rows in `recruitment_verification_conflicts` (via
+`_open_conflict_field_keys`). Both promote paths and merge claim the row through a
+non-promotable transient state (`promoting` / `merging`) before any canonical write,
+so concurrent/cross-path attempts on the same row 409 instead of double-writing.
 
 ## Endpoint inventory
 
@@ -117,7 +120,7 @@ needs_review}` and blocks on open rows in `recruitment_verification_conflicts`
 | `GET /api/admin/scrape/queue` | `admin_scrape.py` | candidate queue (`status`, `limit`, `include_detail`, `include_duplicates`, `item_id`) |
 | `POST /api/admin/scrape/items/{id}/fields/{field}/{verify\|correct\|reject}` | `admin_scrape.py` | per-field review |
 | `POST /api/admin/scrape/items/{id}/promote` | `admin_scrape.py` | gated promote → new recruitment |
-| `POST /api/admin/scrape/items/{id}/merge-into/{rec}` | `admin_scrape.py` | merge fields into existing recruitment (**ungated** — see gaps) |
+| `POST /api/admin/scrape/items/{id}/merge-into/{rec}` | `admin_scrape.py` | merge fields into existing recruitment (gated: promotion gate + open-conflict check + transient-claim rollback) |
 | `POST /api/admin/scrape/items/{id}/{mark-duplicate\|approve\|reject\|reopen}` | `admin_scrape.py` | status transitions |
 | `GET .../promotion-preview`, `GET .../merge-preview/{rec}` | `admin_scrape.py` | read-only previews |
 | `POST .../resolve-official-source`, `POST .../draft-sources` | `admin_scrape.py` | official-source resolution |

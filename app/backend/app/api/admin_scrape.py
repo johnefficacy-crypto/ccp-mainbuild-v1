@@ -2081,6 +2081,23 @@ def merge_queue_item_into_recruitment(
             status_code=409,
             detail={"message": "High-risk fields unverified", "unverified_fields": gate.unverified_fields},
         )
+    # P0: merge is the OTHER canonical-write path, but ``evaluate_promotion_gate``
+    # does NOT query consensus conflicts — only ``promote_to_recruitments`` did,
+    # via ``_open_conflict_field_keys``. Run the SAME open-conflict block here,
+    # AFTER the gate passes and BEFORE any canonical write or queue claim, so a
+    # row with unresolved consensus conflicts can't be merged into a recruitment.
+    # Function-local import avoids a module-level import cycle with the runner.
+    from app.scraping.runner import _open_conflict_field_keys
+    open_conflicts = _open_conflict_field_keys(supabase, queue_id)
+    if open_conflicts:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Open consensus conflicts must be resolved before merge",
+                "reason": "open_conflicts_unresolved",
+                "field_keys": open_conflicts,
+            },
+        )
     rec_rows = supabase.table("recruitments").select("*").eq("id", recruitment_id).limit(1).execute().data or []
     if not rec_rows:
         raise HTTPException(status_code=404, detail="Recruitment not found")
@@ -2104,15 +2121,25 @@ def merge_queue_item_into_recruitment(
     if body.get("review_notes"):
         patch["review_notes"] = body.get("review_notes")
     before = {k: existing.get(k) for k in patch}
-    # P0-2: claim the queue row FIRST, conditional on its still-actionable state,
-    # so a concurrent merge/promote can't double-apply the canonical patch.
+    # P0-2: merge used to be a torn write — it set the TERMINAL ``status='merged'``
+    # + ``promoted_recruitment_id`` BEFORE patching ``recruitments``, with no
+    # rollback, so a failed canonical write left the row permanently ``merged``
+    # against an unpatched recruitment. Restructure to claim → write → finalize:
+    #   1. Claim the row to a TRANSIENT ``'merging'`` (conditional on its still-
+    #      actionable state) so a concurrent merge/promote can't double-apply the
+    #      patch. ``'merging'`` is NOT in ``_ACTIONABLE_QUEUE_STATES`` /
+    #      ``_PROMOTABLE_SOURCE_STATES`` (both explicit allowlists), so a row
+    #      mid-merge can't be claimed by promote/duplicate/approve.
+    #   2. Run the recruitment patch and verify it affected a row.
+    #   3. Only on success finalize ``'merging' → 'merged'`` with the rec id.
+    #   4. On ANY failure revert ``'merging' → original_status`` (clearing
+    #      nothing else) and surface the error.
+    original_status = queue_item["status"]
     claimed = (
         supabase.table("scrape_queue").update({
-            "status": "merged",
-            "promoted_recruitment_id": recruitment_id,
+            "status": "merging",
             "reviewer_id": admin["id"],
             "reviewed_at": datetime.now(timezone.utc).isoformat(),
-            "reviewer_notes": body.get("notes"),
         })
         .eq("id", queue_id)
         .in_("status", sorted(_ACTIONABLE_QUEUE_STATES))
@@ -2125,8 +2152,35 @@ def merge_queue_item_into_recruitment(
             status_code=409,
             detail={"message": "Item is no longer in a mergeable state", "reason": "concurrent_state_change"},
         )
-    if patch:
-        supabase.table("recruitments").update(patch).eq("id", recruitment_id).execute()
+    try:
+        if patch:
+            updated = (
+                supabase.table("recruitments").update(patch).eq("id", recruitment_id).execute().data
+                or []
+            )
+            if not updated:
+                # The recruitment vanished (or the write affected no row) between
+                # the SELECT above and here — do not leave the queue row claimed.
+                raise RuntimeError("recruitment update affected no row")
+        # else: an empty patch is still a valid merge (provenance-only / no-op).
+    except HTTPException:
+        _revert_merge_claim(supabase, queue_id, original_status)
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _revert_merge_claim(supabase, queue_id, original_status)
+        raise HTTPException(
+            status_code=500,
+            detail={"message": "Merge failed while writing the recruitment", "reason": "merge_write_failed"},
+        ) from exc
+    # Canonical write succeeded → finalize the queue row to the terminal state,
+    # scoped to our own ``merging`` claim so a concurrent revert can't clobber it.
+    supabase.table("scrape_queue").update({
+        "status": "merged",
+        "promoted_recruitment_id": recruitment_id,
+        "reviewer_id": admin["id"],
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        "reviewer_notes": body.get("notes"),
+    }).eq("id", queue_id).eq("status", "merging").execute()
     _audit(supabase, admin, "scrape.queue.merge", entity_type="scrape_queue", entity_id=queue_id, new_value={"recruitment_id": recruitment_id, "before": before, "after": patch, "skipped_fields": skipped})
     return {"ok": True, "status": "merged", "recruitment_id": recruitment_id, "updated_fields": sorted(patch.keys()), "skipped_fields": skipped}
 
