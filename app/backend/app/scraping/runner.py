@@ -3852,19 +3852,37 @@ def promote_run(
                 source_id=item.get("source_id"),
                 queue_id=queue_id,
             )
-            rec_ids.append(rec_id)
             # Terminal write: flip ``promoting → approved`` and stamp the
             # freshly-minted recruitment id, scoped to our own ``promoting``
             # claim so we never clobber a row another path advanced. This is the
             # ONLY place the batch path writes ``approved`` (the claim no longer
             # does), so a revert can only ever undo a still-``promoting`` row.
+            #
+            # The finalize result MUST be validated: if the stamp raises OR
+            # affects zero rows (our claim was advanced out from under us), the
+            # item is NOT promoted. Revert ``promoting → pending`` and record the
+            # item as failed so a 0-row finalize is never miscounted as promoted.
             finalize_update = {"status": "approved", "promoted_recruitment_id": rec_id}
             if reviewer_id:
                 finalize_update["reviewer_id"] = reviewer_id
-            execute_or_raise(
-                "scrape_queue.promote_status_update",
-                lambda fu=finalize_update, qid=queue_id: supabase.table("scrape_queue").update(fu).eq("id", qid).eq("status", "promoting").execute(),
-            )
+            try:
+                finalized = execute_or_raise(
+                    "scrape_queue.promote_status_update",
+                    lambda fu=finalize_update, qid=queue_id: supabase.table("scrape_queue").update(fu).eq("id", qid).eq("status", "promoting").execute(),
+                ).data or []
+            except Exception as exc:  # noqa: BLE001
+                _revert_promote_run_claim(supabase, queue_id, should_revert=claimed_here)
+                failed += 1
+                errors.append({"queue_id": queue_id, "error": "finalize_failed", "detail": str(exc)})
+                logger.warning("[promote_run] queue_id=%s finalize raised: %s", queue_id, exc)
+                continue
+            if not finalized:
+                _revert_promote_run_claim(supabase, queue_id, should_revert=claimed_here)
+                failed += 1
+                errors.append({"queue_id": queue_id, "error": "finalize_failed", "reason": "zero_row_finalize"})
+                logger.warning("[promote_run] queue_id=%s finalize affected zero rows", queue_id)
+                continue
+            rec_ids.append(rec_id)
             promoted += 1
         except OpenConflictPromotionError as exc:
             _revert_promote_run_claim(supabase, queue_id, should_revert=claimed_here)

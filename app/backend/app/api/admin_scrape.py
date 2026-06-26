@@ -1706,21 +1706,34 @@ def promote_queue_item(
                               should_revert=claimed_row)
         logger.exception("scrape queue promotion failed queue_id=%s", queue_id)
         raise HTTPException(status_code=500, detail="Promote failed") from PromotionError("promotion write failed")
-    # The row is already claimed as ``approved`` (the concurrency guard above);
-    # this final write only stamps the freshly-minted recruitment id onto it.
-    updated_rows = (
-        supabase.table("scrape_queue").update(
-        {
-            "status": "approved",
-            "reviewer_id": admin["id"],
-            "reviewed_at": datetime.now(timezone.utc).isoformat(),
-            "promoted_recruitment_id": rec_id,
-        }
-    ).eq("id", queue_id).execute().data
-        or []
-    )
-    if not updated_rows:
-        raise HTTPException(status_code=500, detail="Promote failed: queue status update failed")
+    # Finalize: flip our OWN ``promoting`` claim → ``approved`` and stamp the
+    # freshly-minted recruitment id. Scoped ``.eq("status","promoting")`` so this
+    # write can never overwrite a concurrent terminal state. On a 0-row finalize
+    # (the row was advanced out from under us) OR any write exception we revert
+    # the claim to its ORIGINAL status — not the non-retriable ``promoting`` — so
+    # a retry re-runs promotion and trips the ``DuplicatePromotionError`` slug
+    # backstop instead of orphaning this recruitment against a stuck row.
+    try:
+        updated_rows = (
+            supabase.table("scrape_queue").update(
+            {
+                "status": "approved",
+                "reviewer_id": admin["id"],
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+                "promoted_recruitment_id": rec_id,
+            }
+        ).eq("id", queue_id).eq("status", "promoting").execute().data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001
+        _revert_promote_claim(supabase, queue_id, original_status=original_status,
+                              should_revert=True)
+        logger.exception("scrape queue promote finalize failed queue_id=%s", queue_id)
+        raise HTTPException(status_code=500, detail="Promote failed: finalization") from exc
+    if len(updated_rows) != 1:
+        _revert_promote_claim(supabase, queue_id, original_status=original_status,
+                              should_revert=True)
+        raise HTTPException(status_code=500, detail="Promote failed: finalization")
     # Promotion only creates canonical draft/needs_review records; no publish fanout here.
     _audit(supabase, admin, "scrape.queue.promote", entity_type="scrape_queue",
            entity_id=queue_id, new_value={"recruitment_id": rec_id})
@@ -2194,13 +2207,24 @@ def merge_queue_item_into_recruitment(
         ) from exc
     # Canonical write succeeded → finalize the queue row to the terminal state,
     # scoped to our own ``merging`` claim so a concurrent revert can't clobber it.
-    supabase.table("scrape_queue").update({
-        "status": "merged",
-        "promoted_recruitment_id": recruitment_id,
-        "reviewer_id": admin["id"],
-        "reviewed_at": datetime.now(timezone.utc).isoformat(),
-        "reviewer_notes": body.get("notes"),
-    }).eq("id", queue_id).eq("status", "merging").execute()
+    # A 0-row finalize means our claim was advanced out from under us: do NOT
+    # audit or return ``merged`` (that would be a false success). Revert and 500.
+    finalized = (
+        supabase.table("scrape_queue").update({
+            "status": "merged",
+            "promoted_recruitment_id": recruitment_id,
+            "reviewer_id": admin["id"],
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "reviewer_notes": body.get("notes"),
+        }).eq("id", queue_id).eq("status", "merging").execute().data
+        or []
+    )
+    if not finalized:
+        _revert_merge_claim(supabase, queue_id, original_status)
+        raise HTTPException(
+            status_code=500,
+            detail={"message": "Merge failed: finalization", "reason": "merge_finalize_failed"},
+        )
     _audit(supabase, admin, "scrape.queue.merge", entity_type="scrape_queue", entity_id=queue_id, new_value={"recruitment_id": recruitment_id, "before": before, "after": patch, "skipped_fields": skipped})
     return {"ok": True, "status": "merged", "recruitment_id": recruitment_id, "updated_fields": sorted(patch.keys()), "skipped_fields": skipped}
 
@@ -2292,6 +2316,19 @@ def reject_queue_item(
     if not reason:
         raise HTTPException(status_code=422, detail="Rejection reason is required.")
     supabase = get_supabase_admin()
+    # P0: reject must obey the same state machine as mark-duplicate / approve.
+    # Without the guard a concurrent reject could flip a ``promoting`` / ``merging``
+    # / ``approved`` / ``merged`` row to ``rejected`` mid-finalization. Read the
+    # current state to separate 404 (missing) from 409 (non-actionable), then
+    # write CAS-scoped on the actionable allowlist so the flip is atomic.
+    current = supabase.table("scrape_queue").select("status").eq("id", queue_id).limit(1).execute().data or []
+    if not current:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+    if (current[0].get("status") or "") not in _ACTIONABLE_QUEUE_STATES:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Item is {current[0].get('status')!r}; only pending/needs_review/duplicate items can be rejected.",
+        )
     res = (
         supabase.table("scrape_queue")
         .update(
@@ -2303,12 +2340,19 @@ def reject_queue_item(
             }
         )
         .eq("id", queue_id)
+        .in_("status", sorted(_ACTIONABLE_QUEUE_STATES))
         .execute()
         .data
         or []
     )
     if not res:
-        raise HTTPException(status_code=404, detail="Queue item not found")
+        # Lost the race to a concurrent terminal/in-flight write between read and
+        # update — never transition ``promoting`` / ``merging`` / ``approved`` /
+        # ``merged`` to ``rejected``.
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Item is no longer in an actionable state", "reason": "concurrent_state_change"},
+        )
     _audit(supabase, admin, "scrape.queue.reject", entity_type="scrape_queue",
            entity_id=queue_id, new_value=body)
     return {"ok": True, "id": queue_id, "status": "rejected"}

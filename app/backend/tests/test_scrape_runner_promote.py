@@ -896,6 +896,102 @@ def test_promote_run_reverts_promoting_claim_to_pending_on_failure(monkeypatch):
     assert row.get("promoted_recruitment_id") is None
 
 
+def test_promote_run_counts_zero_row_finalize_as_failed_and_reverts(monkeypatch):
+    """P0 batch finalize: the recruitment is created and the claim parks the row
+    in ``promoting``, but the terminal ``promoting → approved`` stamp affects ZERO
+    rows (the row was advanced out from under us between claim and finalize). A
+    0-row finalize must NEVER be counted as promoted: the item is recorded failed,
+    the claim is reverted ``promoting → pending``, and the loop continues.
+
+    Modeled by a mock whose CLAIM CAS succeeds (row really moves to ``promoting``)
+    but whose FINALIZE CAS — scoped ``.eq("status","promoting")`` — is evaluated
+    against an authoritative row that a concurrent winner already flipped to
+    ``approved``, so the pending-finalize matches nothing.
+    """
+    item = {
+        "id": "queue-ZEROFIN",
+        "scrape_run_id": "run-1",
+        "source_id": "src-1",
+        "status": "pending",
+        "official_source_resolved": True,
+        "extracted_data": {
+            "title": "T", "organization_name": "O", "org_type": "central",
+            "year": 2026, "apply_end_date": "2026-12-31",
+            "official_notification_url": "https://x",
+            "posts": [{"post_name": "Officer", "min_age": 18, "max_age": 32}],
+        },
+    }
+    # Authoritative store the claim/finalize CAS run against. The claim flips it to
+    # ``promoting``; a concurrent winner then flips it to ``approved`` BEFORE our
+    # finalize, so the finalize's ``.eq("status","promoting")`` claims zero rows.
+    stored = {**item}
+    # Record every scrape_queue UPDATE attempt as (status_predicate, payload_status)
+    # so we can assert the claim, the (zero-row) finalize, and the revert all fired.
+    update_attempts: list[tuple] = []
+    state = {"claimed": False}
+
+    class _Q:
+        def __init__(self, name):
+            self.name = name; self.filters = {}; self.payload = None
+        def select(self, *a, **k): return self
+        def eq(self, k, v): self.filters[k] = v; return self
+        def in_(self, k, v): self.filters[k] = set(v); return self
+        def order(self, *a, **k): return self
+        def limit(self, *a, **k): return self
+        def update(self, p): self.payload = p; return self
+        def execute(self):
+            if self.name == "scrape_queue":
+                if self.payload is None:
+                    # The pending-batch SELECT — surface the candidate row.
+                    return E([dict(item)])
+                want = self.filters.get("status")
+                update_attempts.append((want, self.payload.get("status")))
+                ok = (stored["status"] == want) if not isinstance(want, set) else (stored["status"] in want)
+                if want is not None and not ok:
+                    # CAS missed (e.g. the revert / finalize scoped to ``promoting``
+                    # once a concurrent winner has advanced the row): zero rows.
+                    return E([])
+                # The pending→promoting CLAIM matches; APPLY it, then immediately
+                # simulate a concurrent winner advancing the row to ``approved`` so
+                # the later promoting→approved FINALIZE can no longer match.
+                if self.payload.get("status") == "promoting":
+                    stored.update(self.payload)
+                    state["claimed"] = True
+                    stored["status"] = "approved"  # concurrent winner stole the row
+                    return E([dict(stored)])
+                stored.update(self.payload)
+                return E([dict(stored)])
+            if self.name == "extracted_field_evidence":
+                return E(list(_RUN_VERIFIED_EVIDENCE))
+            return E([])
+
+    class _SB:
+        def table(self, name): return _Q(name)
+
+    calls = {"n": 0}
+    def _promote(*a, **k):
+        calls["n"] += 1
+        return "rec-orphaned"
+    monkeypatch.setattr("app.scraping.runner.promote_to_recruitments", _promote)
+
+    out = promote_run("run-1", _SB(), reviewer_id="admin-1")
+    # The recruitment WAS created, but the 0-row finalize means it is NOT promoted.
+    assert calls["n"] == 1
+    assert out["promoted"] == 0
+    assert out["failed"] == 1
+    assert out["recruitment_ids"] == []  # zero-row finalize never counts a rec id
+    assert out["errors"][0]["error"] == "finalize_failed"
+    assert state["claimed"] is True  # the claim really happened
+    # The finalize (promoting→approved) and the revert (promoting→pending) both ran,
+    # each scoped to our own ``promoting`` claim.
+    payload_statuses = [p for _w, p in update_attempts]
+    assert "promoting" in payload_statuses  # claim
+    assert payload_statuses.count("approved") == 1  # the single finalize attempt
+    assert "pending" in payload_statuses  # the revert was attempted
+    # The row is never left falsely stamped by US as approved-with-our-rec-id.
+    assert stored.get("promoted_recruitment_id") != "rec-orphaned"
+
+
 def test_promote_writes_requires_domicile_into_posts_when_extractor_set_it():
     sb = SB()
     data = ExtractedRecruitment(
