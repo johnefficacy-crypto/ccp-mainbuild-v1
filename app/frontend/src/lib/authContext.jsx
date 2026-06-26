@@ -40,6 +40,7 @@ function mergeUser(supabaseUser, backendUser) {
   return {
     id: supabaseUser?.id || backendUser?.id || null,
     email: supabaseUser?.email || backendUser?.email || null,
+    phone: backendUser?.phone || supabaseUser?.phone || meta.phone || null,
     name: backendUser?.name || meta.name || meta.full_name || null,
     role,
     permissions: Array.isArray(backendUser?.permissions) ? backendUser.permissions : [],
@@ -118,39 +119,33 @@ export function AuthProvider({ children }) {
     };
   }, [hydrate]);
 
-  const login = useCallback(
-    async (email, password, { captchaToken } = {}) => {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-        options: captchaToken ? { captchaToken } : undefined,
+  // Phone/SMS OTP — step 1: send a one-time code to the phone (E.164).
+  // `data` carries optional signup metadata ({ name, email }) → user_metadata.
+  // shouldCreateUser:true makes this single flow serve both login and signup.
+  const requestPhoneOtp = useCallback(async (phone, { captchaToken, data } = {}) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      phone,
+      options: {
+        shouldCreateUser: true,
+        ...(data ? { data } : {}),
+        ...(captchaToken ? { captchaToken } : {}),
+      },
+    });
+    if (error) throw new Error(error.message || "Unable to send code");
+    return { ok: true };
+  }, []);
+
+  // Phone/SMS OTP — step 2: verify the code, establishing the session.
+  const verifyPhoneOtp = useCallback(
+    async (phone, token) => {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone,
+        token,
+        type: "sms",
       });
-      if (error) throw new Error(error.message || "Unable to sign in");
+      if (error) throw new Error(error.message || "Invalid or expired code");
       await hydrate(data.session);
       return mergeUser(data.user, null);
-    },
-    [hydrate]
-  );
-
-  const register = useCallback(
-    async ({ email, password, name, captchaToken }) => {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name },
-          ...(captchaToken ? { captchaToken } : {}),
-        },
-      });
-      if (error) throw new Error(error.message || "Unable to create account");
-      const merged = mergeUser(data.user, null);
-      if (data.session) {
-        await hydrate(data.session);
-        return { user: merged, needsEmailConfirmation: false };
-      }
-      setUser(null);
-      setStatus("guest");
-      return { user: merged, needsEmailConfirmation: true };
     },
     [hydrate]
   );
@@ -255,19 +250,6 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const sendPasswordReset = useCallback(async (email) => {
-    const redirectTo = `${window.location.origin}/reset-password`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) throw new Error(error.message || "Unable to send reset link");
-    return { ok: true };
-  }, []);
-
-  const updatePassword = useCallback(async (password) => {
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) throw new Error(error.message || "Unable to update password");
-    return { ok: true };
-  }, []);
-
   const value = useMemo(
     () => ({
       user,
@@ -278,29 +260,25 @@ export function AuthProvider({ children }) {
       isAdmin: ADMIN_ROLES.includes(user?.role),
       isSuperAdmin: user?.role === ROLES.SUPER_ADMIN,
       isMentor: Boolean(user?.capabilities?.mentor),
-      login,
-      register,
+      requestPhoneOtp,
+      verifyPhoneOtp,
       logout,
       loginWithGoogle,
       signInAnonymously,
       linkGoogleIdentity,
       refreshUser,
-      sendPasswordReset,
-      updatePassword,
       setUser,
     }),
     [
       user,
       status,
-      login,
-      register,
+      requestPhoneOtp,
+      verifyPhoneOtp,
       logout,
       loginWithGoogle,
       signInAnonymously,
       linkGoogleIdentity,
       refreshUser,
-      sendPasswordReset,
-      updatePassword,
     ]
   );
 

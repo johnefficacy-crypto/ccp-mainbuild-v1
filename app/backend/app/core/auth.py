@@ -184,6 +184,9 @@ def _serialize_user(user: Any, claims: dict | None = None) -> dict:
     return {
         "id": getattr(user, "id", None) or claims.get("sub"),
         "email": getattr(user, "email", None) or claims.get("email"),
+        "phone": getattr(user, "phone", None)
+        or (user.get("phone") if isinstance(user, dict) else None)
+        or claims.get("phone"),
         "name": metadata.get("name") or metadata.get("full_name"),
         "avatar": metadata.get("avatar_url"),
         "role": role,
