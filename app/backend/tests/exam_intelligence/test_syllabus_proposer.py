@@ -512,3 +512,77 @@ class TestRegressionBugEI1:
         proposals = r.json()["proposals"]
         assert len(proposals) >= 1, "Expected at least one proposal for 'Arithmetic'"
         assert proposals[0]["match_method"] == "topic_alias_exact"
+
+
+# ── Regression: BUG-EI-2 ─────────────────────────────────────────────────────
+# syllabus_documents.id != document_assets.id (they are different UUIDs).
+# Before migration 195, propose_syllabus_mentions() looked up document_pages
+# with document_id = syllabus_document_id, which is wrong — pages are keyed
+# by document_assets.id.  Fix: add source_document_id FK to syllabus_documents,
+# populate it during link-to-syllabus, query pages through it.
+
+
+class TestRegressionBugEI2:
+    """Guard against re-introduction of the source_document_id ID-mismatch bug."""
+
+    def test_distinct_ids_pages_found_via_source_document_id(self):
+        """When source_document_id != syllabus_document_id, pages must be found.
+
+        syllabus_documents.id = 'sd-aaa'  (the CMS identifier)
+        document_assets.id    = 'da-bbb'  (the storage/extraction identifier)
+
+        Before the fix, proposer queried document_pages WHERE document_id = 'sd-aaa'
+        → no rows → ProposerError(422 extraction_required).
+
+        After the fix, proposer reads source_document_id='da-bbb' from the doc
+        row and queries WHERE document_id = 'da-bbb' → pages found → proposals.
+        """
+        SYLLABUS_DOC_ID = "sd-aaa"
+        ASSET_ID = "da-bbb"
+        doc_with_source = {
+            "id": SYLLABUS_DOC_ID,
+            "exam_id": EXAM_ID,
+            "exam_cycle_id": None,
+            "source_document_id": ASSET_ID,  # distinct from syllabus doc id
+        }
+        pages = [{"page_number": 1, "text_content": "Arithmetic section.", "document_id": ASSET_ID}]
+        data = {
+            "syllabus_documents": [doc_with_source],
+            "document_pages": pages,
+            "topics": TOPICS,
+            "exam_subject_map": ESM,
+            "topic_aliases": ALIASES,
+            "exams": [EXAM],
+            "exam_cycles": [CYCLE_A],
+            "exam_phases": [PHASE_A],
+            "syllabus_topic_mentions": [],
+        }
+        stub = _SBStub(data)
+        proposals = propose_syllabus_mentions(
+            stub, exam_id=EXAM_ID, syllabus_document_id=SYLLABUS_DOC_ID
+        )
+        assert proposals, (
+            "BUG-EI-2 regression: proposer returned no proposals when "
+            "source_document_id differs from syllabus_document_id. "
+            "Likely querying pages by syllabus_documents.id instead of source_document_id."
+        )
+        assert proposals[0]["syllabus_document_id"] == SYLLABUS_DOC_ID
+
+    def test_missing_source_document_id_falls_back_to_syllabus_id(self):
+        """Legacy rows without source_document_id use syllabus_document_id as fallback."""
+        pages = [{"page_number": 1, "text_content": "Arithmetic topics.", "document_id": DOC_ID}]
+        doc_legacy = {"id": DOC_ID, "exam_id": EXAM_ID, "exam_cycle_id": None}  # no source_document_id
+        data = {
+            "syllabus_documents": [doc_legacy],
+            "document_pages": pages,
+            "topics": TOPICS,
+            "exam_subject_map": ESM,
+            "topic_aliases": ALIASES,
+            "exams": [EXAM],
+            "exam_cycles": [CYCLE_A],
+            "exam_phases": [PHASE_A],
+            "syllabus_topic_mentions": [],
+        }
+        stub = _SBStub(data)
+        proposals = propose_syllabus_mentions(stub, exam_id=EXAM_ID, syllabus_document_id=DOC_ID)
+        assert proposals, "Legacy fallback: pages keyed by syllabus_document_id should still be found"

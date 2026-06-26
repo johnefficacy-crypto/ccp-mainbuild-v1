@@ -323,18 +323,24 @@ def _fail(sb, *, job_id: str, document_id: str, code: str, message: str,
 # ─── Public API ──────────────────────────────────────────────────────────────
 
 
-def run_text_extract_job(sb, job_id: str, *, user_id: str) -> dict[str, Any]:
+def run_text_extract_job(
+    sb, job_id: str, *, user_id: str | None, admin_scope: str | None = None
+) -> dict[str, Any]:
     """Claim and execute a queued/failed text_extract job. Returns the
     final job + document rows. Raises ``ExtractConflict`` if another
-    runner already claimed it."""
+    runner already claimed it.
+
+    Pass ``admin_scope='admin_exam_intelligence'`` for service-owned documents
+    (``owner_user_id IS NULL``). In that case ownership is verified by
+    ``scope`` rather than ``owner_user_id``.
+    """
     claimed = _claim_job(sb, job_id)
     if not claimed:
         raise ExtractConflict("job is already running or not claimable")
 
     document_id = claimed["document_id"]
 
-    # Re-verify ownership at the service layer (defense in depth: the
-    # API already checks, but service callers must not assume that).
+    # Re-verify ownership at the service layer (defense in depth).
     doc_rows = (
         sb.table("document_assets")
         .select("*")
@@ -349,10 +355,18 @@ def run_text_extract_job(sb, job_id: str, *, user_id: str) -> dict[str, Any]:
               code="document_missing", message="document_assets row missing")
         raise _ExtractError("document_missing", "document not found")
     doc = doc_rows[0]
-    if doc.get("owner_user_id") != user_id:
-        _fail(sb, job_id=job_id, document_id=document_id,
-              code="ownership_mismatch", message="document not owned by caller")
-        raise _ExtractError("ownership_mismatch", "ownership check failed")
+    if admin_scope:
+        # Admin-scope execution: validate by scope, not owner.
+        if doc.get("scope") != admin_scope:
+            _fail(sb, job_id=job_id, document_id=document_id,
+                  code="scope_mismatch",
+                  message=f"expected scope={admin_scope!r} but got {doc.get('scope')!r}")
+            raise _ExtractError("scope_mismatch", "scope check failed")
+    else:
+        if doc.get("owner_user_id") != user_id:
+            _fail(sb, job_id=job_id, document_id=document_id,
+                  code="ownership_mismatch", message="document not owned by caller")
+            raise _ExtractError("ownership_mismatch", "ownership check failed")
     if doc.get("mime_type") != "application/pdf":
         _fail(sb, job_id=job_id, document_id=document_id,
               code="unsupported_mime", message=f"mime_type={doc.get('mime_type')}")
@@ -493,7 +507,7 @@ def run_text_extract_job(sb, job_id: str, *, user_id: str) -> dict[str, Any]:
     return {"job": final_job, "document": final_doc}
 
 
-def run_text_extract_for_document(sb, document_id: str, *, user_id: str) -> dict[str, Any]:
+def run_text_extract_for_document(sb, document_id: str, *, user_id: str | None, admin_scope: str | None = None) -> dict[str, Any]:
     """Find the latest queued/failed text_extract job for the document
     (or lazily enqueue one if no active job exists), then delegate to
     ``run_text_extract_job``. This handles PR1-era uploads that never
@@ -516,7 +530,7 @@ def run_text_extract_for_document(sb, document_id: str, *, user_id: str) -> dict
             raise ExtractConflict("a text_extract job is already running")
     else:
         job = enqueue_text_extract_job(sb, document_id)["job"]
-    return run_text_extract_job(sb, job["id"], user_id=user_id)
+    return run_text_extract_job(sb, job["id"], user_id=user_id, admin_scope=admin_scope)
 
 
 # ─── HTTPException translation (used by API layer) ───────────────────────────

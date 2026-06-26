@@ -116,11 +116,15 @@ def propose_syllabus_mentions(
         raise ProposerError("syllabus document does not belong to this exam", 422)
 
     # ── 2. Load document pages ────────────────────────────────────────────────
+    # Pages are stored under the document_assets.id (source_document_id), not
+    # the syllabus_documents.id. Use source_document_id when available; fall
+    # back to syllabus_document_id for legacy rows where it was not set.
+    pages_asset_id = doc.get("source_document_id") or syllabus_document_id
     pages = _safe(
         lambda: (
             sb.table("document_pages")
             .select("page_number, text_content")
-            .eq("document_id", syllabus_document_id)
+            .eq("document_id", pages_asset_id)
             .order("page_number", desc=False)
             .limit(2000)
             .execute()
