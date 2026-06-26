@@ -40,12 +40,14 @@ A reviewer/operator owns flipping this gate; "merge now, provision later" is uns
 for the only admin login path.
 
 ## Contract precision (from /checkpost review)
-- Password login is removed from the **first-party UI** and disabled for new
-  signups (`config.toml [auth.email].enable_signup = false`). Existing
-  password accounts can still authenticate directly against Supabase until the
-  operator disables the Email provider's password sign-in in the hosted
-  dashboard (gate step 3). Admin-API user creation (E2E seeds) is intentionally
-  unaffected.
+- Password login is removed from the **first-party UI**. Email/password remains
+  **enabled in checked-in/local/CI config on purpose** — the E2E suite mints
+  service tokens via `signInWithPassword`, so disabling it there breaks CI
+  ("Email logins are disabled"). Removing password auth at the provider is the
+  operator's production gate: disable the Email provider's password sign-in in
+  the hosted Supabase dashboard (gate step 3). Phone OTP in local/CI uses the
+  `[auth.sms.test_otp]` map with the Twilio provider **disabled**; the operator
+  enables Twilio + creds in hosted (gate step 1).
 - Anonymous/guest sign-in is **retained and enabled**
   (`config.toml [auth].enable_anonymous_sign_ins = true`).
 - Role is backend-authoritative: `mergeUser` no longer reads

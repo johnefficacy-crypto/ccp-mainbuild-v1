@@ -201,13 +201,15 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Phone OTP is the login method. Email/password signup is disabled — email is
-# kept only as an OPTIONAL profile field (receipts/notifications), never as a
-# login identity. NOTE: existing users created with a password can still
-# password-sign-in until the operator disables the Email provider's password
-# sign-in in the hosted Supabase dashboard (see docs/status/Phone-OTP-Login-2026-06-26.md
-# §"OPERATOR PENDING"). Admin-API user creation (E2E seeds) is unaffected.
-enable_signup = false
+# Phone OTP is the login method; email/password is removed from the first-party
+# UI and is kept ONLY as an optional profile field (receipts), never a login
+# identity. This stays ENABLED in checked-in/local/CI config on purpose: the E2E
+# suite mints service tokens via signInWithPassword, and disabling it here breaks
+# token-minting ("Email logins are disabled"). Removing password auth at the
+# PROVIDER is the operator's production gate — disable the Email provider's
+# password sign-in in the hosted Supabase dashboard (see
+# docs/status/Phone-OTP-Login-2026-06-26.md §"OPERATOR PENDING").
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
@@ -279,8 +281,11 @@ max_frequency = "5s"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]
-enabled = true
-# Operator-provisioned via env (never hardcode secrets).
+# Disabled in checked-in/local/CI config so phone OTP resolves via the
+# [auth.sms.test_otp] map (no real SMS, no creds needed) — enabling it here with
+# empty env creds breaks signInWithOtp in CI. The OPERATOR enables this in the
+# hosted Supabase project and supplies the env creds (production gate).
+enabled = false
 account_sid = "env(SUPABASE_AUTH_SMS_TWILIO_ACCOUNT_SID)"
 message_service_sid = "env(SUPABASE_AUTH_SMS_TWILIO_MESSAGE_SERVICE_SID)"
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
