@@ -1,4 +1,4 @@
--- 193_recruitments_public_read_published_only.sql
+-- 194_recruitments_public_read_published_only.sql
 -- Restricts the public catalog read policies on recruitments and posts to
 -- ``publish_status = 'published'`` ONLY, removing the ``needs_review`` exposure
 -- that migration 130 introduced.
