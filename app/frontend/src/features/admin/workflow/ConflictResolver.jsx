@@ -94,7 +94,7 @@ export default function ConflictResolver({
         // Destructive-override confirmation the resolve endpoint requires
         // verbatim (admin_conflicts CONFIRM_OVERRIDE). Surfaced here too so
         // every consumer of this dialog satisfies the contract, not just the
-        // Operations Console handler.
+        // page-level resolve handler.
         confirmation_text: "CONFIRM_OVERRIDE",
       });
     } catch (e) {
