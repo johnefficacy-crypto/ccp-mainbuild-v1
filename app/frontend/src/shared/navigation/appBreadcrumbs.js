@@ -77,11 +77,9 @@ const TRAIL_DEFS = [
     ancestors: [{ label: "Notifications", to: "/app/notifications" }],
     fallbackLabel: "Preferences",
   },
-  {
-    pattern: /^\/app\/community\/[^/]+$/,
-    ancestors: [{ label: "Community", to: "/app/community" }],
-    fallbackLabel: "Space",
-  },
+  // NOTE: community routes (/app/community/:spaceId[/:channelId[/:threadId]]) are
+  // handled by the dedicated communityMatch block in getBreadcrumbs() below — it
+  // intercepts before TRAIL_DEFS, so no static entry belongs here.
 ];
 
 /**
