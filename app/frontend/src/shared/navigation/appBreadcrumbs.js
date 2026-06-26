@@ -89,6 +89,20 @@ const TRAIL_DEFS = [
 export function getBreadcrumbs(pathname, leafOverride = null) {
   if (SHALLOW.has(pathname)) return null;
 
+  const communityMatch = pathname.match(/^\/app\/community\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?$/);
+  if (communityMatch) {
+    const [, spaceId, channelId, threadId] = communityMatch;
+    // A bare space page with no leaf override is a shallow landing — render nothing.
+    if (!channelId && !threadId && !leafOverride) return null;
+    const ancestors = [{ label: "Community", to: "/app/community" }];
+    if (channelId) ancestors.push({ label: "Space", to: `/app/community/${spaceId}` });
+    if (threadId) ancestors.push({ label: "Channel", to: `/app/community/${spaceId}/${channelId}` });
+    return {
+      ancestors,
+      leaf: leafOverride || (threadId ? "Thread" : channelId ? "Channel" : "Space"),
+    };
+  }
+
   for (const def of TRAIL_DEFS) {
     if (!def.pattern.test(pathname)) continue;
 

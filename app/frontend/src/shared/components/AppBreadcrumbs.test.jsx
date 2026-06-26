@@ -75,7 +75,14 @@ test("mentors detail trail", () => {
   expect(screen.getByText("Detail").closest("[aria-current='page']")).toBeTruthy();
 });
 
-test("renders nothing on unmapped route /app/community/foo", () => {
+test("renders nothing on bare community space route with no leaf override", () => {
   const { container } = renderAt("/app/community/foo");
   expect(container.firstChild).toBeNull();
+});
+
+test("community channel trail renders Community and Space ancestors", () => {
+  renderAt("/app/community/upsc/general");
+  expect(screen.getByRole("link", { name: "Community" }).getAttribute("href")).toBe("/app/community");
+  expect(screen.getByRole("link", { name: "Space" }).getAttribute("href")).toBe("/app/community/upsc");
+  expect(screen.getByText("Channel").closest("[aria-current='page']")).toBeTruthy();
 });

@@ -383,6 +383,25 @@ end $$;
 --     back at most one captured booking (anti-replay). (b) Drop mb_owner_update
 --     so owners cannot PATCH payment_status/status/price_inr/payment_id via
 --     PostgREST; all booking mutations go through the service-role backend.
+--
+-- STAGING PREFLIGHT (run before applying to any DB with existing bookings):
+--
+--   razorpay_order_id is a new column — all existing rows are NULL — so the
+--   partial unique index (WHERE razorpay_order_id IS NOT NULL) is safe with no
+--   pre-check required.
+--
+--   payment_id already exists. Before applying, verify no duplicate non-null
+--   values (a unique partial index on an existing column will fail at creation
+--   if any duplicates exist):
+--
+--     SELECT payment_id, COUNT(*)
+--       FROM public.mentor_bookings
+--      WHERE payment_id IS NOT NULL
+--      GROUP BY payment_id
+--     HAVING COUNT(*) > 1;
+--
+--   If that query returns rows, deduplicate or null-out the duplicates before
+--   running this migration. Document any remediation in the ops runbook.
 
 do $$
 begin
