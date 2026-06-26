@@ -247,12 +247,12 @@ template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
-# DEV/TEST ONLY — pre-defined phone→OTP map so local sign-in works without a
-# live SMS provider. These numbers never trigger a real SMS. Remove/secure in
-# production; real delivery uses the Twilio provider below.
+# DEV/TEST ONLY — pre-defined phone→OTP map so local sign-in (and the E2E
+# suite) work without a live SMS provider. These numbers never trigger a real
+# SMS. Remove/secure in production; real delivery uses the Twilio provider below.
 [auth.sms.test_otp]
 919999900001 = "123456"
-15555550100 = "123456"
+919999900002 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]

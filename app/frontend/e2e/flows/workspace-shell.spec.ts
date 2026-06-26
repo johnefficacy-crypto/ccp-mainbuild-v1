@@ -7,7 +7,7 @@ import {
   cleanupSyllabusMapperSeed,
   loginAsAdmin,
 } from "../fixtures/seedWorkspace";
-import { readEnv } from "../fixtures/env";
+import { ensureSeededUser, loginViaUi } from "../fixtures/seedUser";
 
 /**
  * Flow: workspace shell — highest-risk regressions from PR #529 / PR #548.
@@ -83,15 +83,8 @@ test.describe("Flow: workspace shell", () => {
   });
 
   test("non-admin user is redirected away from workspace", async ({ page }) => {
-    const env = readEnv();
-    await page.goto("/login");
-    await expect(page.getByTestId("login-email")).toBeVisible({ timeout: 30_000 });
-    await page.getByTestId("login-email").fill(env.user.email);
-    await page.getByTestId("login-password").fill(env.user.password);
-    await Promise.all([
-      page.waitForURL(/\/app(\/|$)/, { timeout: 90_000 }),
-      page.getByTestId("login-submit").click(),
-    ]);
+    await ensureSeededUser();
+    await loginViaUi(page);
     await expect(page.getByTestId("auth-checking")).toBeHidden({ timeout: 90_000 });
     await expect(page.getByTestId("backend-sync-pending")).toBeHidden({ timeout: 90_000 });
 

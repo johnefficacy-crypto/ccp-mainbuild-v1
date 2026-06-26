@@ -1,6 +1,6 @@
 import { createNodeSupabaseClient } from "./supabaseNodeClient";
 import { expect, type Page } from "@playwright/test";
-import { readEnv } from "./env";
+import { readEnv, E2E_TEST_OTP } from "./env";
 
 /**
  * Seeded aspirant. Created idempotently against the (local) Supabase via the
@@ -16,13 +16,16 @@ export async function ensureSeededUser(): Promise<{ id: string; email: string; p
     email: env.user.email,
     password: env.user.password,
     email_confirm: true,
+    // Phone is the login identifier now; confirm it so phone-OTP sign-in works.
+    phone: env.user.phone,
+    phone_confirm: true,
   });
 
   if (created?.user) {
     return { id: created.user.id, email: env.user.email, password: env.user.password };
   }
 
-  // Already exists → find it and force the password so the credential is known.
+  // Already exists → find it and force the credential + phone so login is known.
   const alreadyExists = error && /already.*registered|exists/i.test(error.message || "");
   if (!alreadyExists) throw error;
 
@@ -32,6 +35,8 @@ export async function ensureSeededUser(): Promise<{ id: string; email: string; p
   await admin.auth.admin.updateUserById(existing.id, {
     password: env.user.password,
     email_confirm: true,
+    phone: env.user.phone,
+    phone_confirm: true,
   });
   return { id: existing.id, email: env.user.email, password: env.user.password };
 }
@@ -48,20 +53,32 @@ export async function getAccessToken(): Promise<string> {
   return data.session.access_token;
 }
 
-/** Log the seeded user in through the actual UI (exercises the real auth path). */
+/**
+ * Log in through the real UI via phone OTP (the live auth path). The phone must
+ * exist in [auth.sms.test_otp] so verifyOtp accepts E2E_TEST_OTP without SMS.
+ */
+export async function loginViaUiWithPhone(
+  page: Page,
+  phone: string,
+  urlPattern: RegExp = /\/app(\/|$)/,
+): Promise<void> {
+  await page.goto("/login");
+  await expect(page.getByTestId("login-phone")).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId("login-phone").fill(phone);
+  await page.getByTestId("login-send-code").click();
+
+  await expect(page.getByTestId("login-otp")).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId("login-otp").fill(E2E_TEST_OTP);
+  await Promise.all([
+    page.waitForURL(urlPattern, { timeout: 90_000 }),
+    page.getByTestId("login-verify").click(),
+  ]);
+}
+
+/** Log the seeded aspirant in through the UI (phone OTP). */
 export async function loginViaUi(page: Page): Promise<void> {
   const env = readEnv();
-
-  await page.goto("/login");
-  await expect(page.getByTestId("login-email")).toBeVisible({ timeout: 30_000 });
-
-  await page.getByTestId("login-email").fill(env.user.email);
-  await page.getByTestId("login-password").fill(env.user.password);
-
-  await Promise.all([
-    page.waitForURL(/\/app(\/|$)/, { timeout: 90_000 }),
-    page.getByTestId("login-submit").click(),
-  ]);
+  await loginViaUiWithPhone(page, env.user.phone);
 }
 
 export async function gotoProtectedPage(

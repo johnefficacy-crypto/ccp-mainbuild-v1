@@ -14,8 +14,11 @@ export type E2EEnv = {
   supabaseAnonKey: string;
   supabaseServiceRoleKey: string;
   templateSlug: string;
-  user: { email: string; password: string };
+  user: { email: string; password: string; phone: string };
 };
+
+// DEV/TEST OTP code matching app/supabase/config.toml [auth.sms.test_otp].
+export const E2E_TEST_OTP = process.env.E2E_TEST_OTP || "123456";
 
 /**
  * Reject URLs whose hostname ends with `.supabase.co` — that is the canonical
@@ -71,6 +74,8 @@ export function readEnv(): E2EEnv {
     user: {
       email: process.env.E2E_USER_EMAIL || "e2e-aspirant@example.com",
       password: process.env.E2E_USER_PASSWORD || "E2e-passw0rd!",
+      // Must be present in [auth.sms.test_otp]; login is phone-OTP now.
+      phone: process.env.E2E_USER_PHONE || "+919999900001",
     },
   };
 }
