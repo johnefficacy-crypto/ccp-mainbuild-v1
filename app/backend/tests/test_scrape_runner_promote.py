@@ -859,6 +859,43 @@ def test_promote_run_skips_row_already_claimed_concurrently(monkeypatch):
     assert out["errors"][0]["error"] == "concurrent_promote"
 
 
+def test_promote_run_reverts_promoting_claim_to_pending_on_failure(monkeypatch):
+    """P0 cross-path: the batch claim now parks the row in the transient
+    ``promoting`` (NOT ``approved``), so a failed recruitment write reverts
+    ``promoting → pending`` — leaving the row retriable and never stranded in a
+    promotable ``approved`` state that the single-item path could also claim."""
+    db = {
+        "scrape_queue": [{
+            "id": "queue-FAIL",
+            "scrape_run_id": "run-1",
+            "source_id": "src-1",
+            "status": "pending",
+            "official_source_resolved": True,
+            "extracted_data": {
+                "title": "T", "organization_name": "O", "org_type": "central",
+                "year": 2026, "apply_end_date": "2026-12-31",
+                "official_notification_url": "https://x",
+                "posts": [{"post_name": "Officer", "min_age": 18, "max_age": 32}],
+            },
+        }],
+    }
+    calls = {"n": 0}
+    def _boom(*a, **k):
+        calls["n"] += 1
+        raise RuntimeError("promotion write failed")
+    monkeypatch.setattr("app.scraping.runner.promote_to_recruitments", _boom)
+
+    sb = _claim_aware_sb(db, evidence=_RUN_VERIFIED_EVIDENCE)
+    out = promote_run("run-1", sb, reviewer_id="admin-1")
+    assert out["promoted"] == 0
+    assert out["failed"] == 1
+    assert calls["n"] == 1  # claim happened, then the write failed
+    row = db["scrape_queue"][0]
+    # Reverted to pending — NOT left in ``promoting`` or flipped to ``approved``.
+    assert row["status"] == "pending"
+    assert row.get("promoted_recruitment_id") is None
+
+
 def test_promote_writes_requires_domicile_into_posts_when_extractor_set_it():
     sb = SB()
     data = ExtractedRecruitment(

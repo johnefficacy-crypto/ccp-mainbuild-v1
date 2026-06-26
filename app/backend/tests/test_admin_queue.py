@@ -592,6 +592,86 @@ def test_merge_succeeds_when_gate_passes_and_state_actionable(monkeypatch):
     assert any(a.get("action") == "scrape.queue.merge" for a in sb.state["audits"])
 
 
+class _MergeConflictSB(MergeSB):
+    """``MergeSB`` plus an open ``recruitment_verification_conflicts`` row so the
+    merge open-conflict block (``_open_conflict_field_keys``) fires."""
+
+    def table(self, t):
+        if t == "recruitment_verification_conflicts":
+            class CQ:
+                def select(self, *a, **k): return self
+                def eq(self, *a, **k): return self
+                def execute(self):
+                    return R([{"field_key": "apply_end_date", "status": "open"}])
+            return CQ()
+        return super().table(t)
+
+
+def test_merge_blocked_when_open_consensus_conflicts(monkeypatch):
+    # Gate passes (fully verified + official resolved + pending), but an OPEN
+    # consensus conflict exists → merge must 409 before any canonical write.
+    sb = _MergeConflictSB()
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.merge_queue_item_into_recruitment("q1", "rec-1", {}, {"id": "a", "email": "e"})
+    assert exc.value.status_code == 409
+    assert exc.value.detail["reason"] == "open_conflicts_unresolved"
+    assert exc.value.detail["field_keys"] == ["apply_end_date"]
+    # The queue row is UNCHANGED (still actionable) and the recruitment was NOT
+    # patched — the block fires before the claim and before the canonical write.
+    assert sb.state["queue"][0]["status"] == "pending"
+    assert sb.state["recruitment_updates"] == []
+
+
+class _MergeWriteFailsSB(MergeSB):
+    """``MergeSB`` whose ``recruitments.update`` raises, to exercise the
+    claim → write → revert path (torn-write regression)."""
+
+    def __init__(self, evidence=None):
+        super().__init__(evidence=evidence)
+        # Force a non-empty patch by seeding an empty existing recruitment and a
+        # queue source_id that merge will copy over (so the update path runs).
+        self.state["recruitments"] = [{"id": "rec-1", "source_id": None,
+                                       "official_notification_url": None}]
+        self.state["queue"][0]["extracted_data"]["official_notification_url"] = "https://x.gov/n"
+
+    def table(self, t):
+        if t == "recruitments":
+            outer = self
+
+            class RQ:
+                def __init__(self): self.id = None; self.payload = None
+                def select(self, *a, **k): return self
+                def eq(self, k, v):
+                    if k == "id": self.id = v
+                    return self
+                def limit(self, *a, **k): return self
+                def update(self, p): self.payload = p; return self
+                def execute(self):
+                    if self.payload is not None:
+                        raise RuntimeError("recruitments.update boom")
+                    rows = [r for r in outer.state["recruitments"] if self.id is None or r.get("id") == self.id]
+                    return R(rows)
+            return RQ()
+        return super().table(t)
+
+
+def test_merge_reverts_queue_row_when_recruitment_update_raises(monkeypatch):
+    sb = _MergeWriteFailsSB()
+    monkeypatch.setattr(admin_scrape, "get_supabase_admin", lambda: sb)
+    with pytest.raises(HTTPException) as exc:
+        admin_scrape.merge_queue_item_into_recruitment("q1", "rec-1", {}, {"id": "a", "email": "e"})
+    # Error surfaced as a clear 500 (claim succeeded, canonical write failed).
+    assert exc.value.status_code == 500
+    assert exc.value.detail["reason"] == "merge_write_failed"
+    # The queue row was reverted to its original actionable status — NOT left in
+    # the terminal ``merged`` state — and no rec id was stamped.
+    assert sb.state["queue"][0]["status"] == "pending"
+    assert sb.state["queue"][0].get("promoted_recruitment_id") is None
+    # No audit row for a failed merge.
+    assert not any(a.get("action") == "scrape.queue.merge" for a in sb.state["audits"])
+
+
 # ───────────────────────────────────────────────────────────────────────────
 # P0-2: mark-duplicate / approve state machine
 # ───────────────────────────────────────────────────────────────────────────

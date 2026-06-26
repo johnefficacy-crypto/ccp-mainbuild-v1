@@ -2028,6 +2028,26 @@ def merge_preview(
     }
 
 
+def _revert_merge_claim(supabase, queue_id: str, original_status: str) -> None:
+    """Undo a claim-first merge claim after the canonical write failed.
+
+    Mirrors ``_revert_promote_claim``: scoped to the transient
+    ``status='merging'`` so we only ever roll back OUR own in-flight claim back
+    to ``original_status`` (clearing nothing else), never a row another path has
+    since advanced. Best-effort — a revert failure is logged, not raised, so the
+    original error surfaces to the caller.
+    """
+    try:
+        supabase.table("scrape_queue").update(
+            {"status": original_status}
+        ).eq("id", queue_id).eq("status", "merging").execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "merge_claim_revert_failed queue_id=%s original_status=%s exc=%s: %s",
+            queue_id, original_status, type(exc).__name__, exc, exc_info=True,
+        )
+
+
 @router.post("/admin/scrape/items/{queue_id}/merge-into/{recruitment_id}")
 def merge_queue_item_into_recruitment(
     queue_id: str,
