@@ -368,6 +368,66 @@ def _load_user_signals(
     return mastery, error_topics
 
 
+def _load_topic_priors(
+    supabase: Any, user_id: str, exam_id: str, coverage_topic_ids: list[str]
+) -> dict[str, dict[str, Any]]:
+    """Return topic_id → {prior_mastery, report_confidence, band} from self-assessment.
+
+    Only fills the cold-start gap — validated mastery always wins at call site.
+    Subject-level rows are expanded to all coverage topic_ids with that subject_id.
+    Returns an empty dict on DB read failure (plan still generates).
+    """
+    rows = _safe(lambda: (
+        supabase.table("user_topic_self_assessment")
+        .select("subject_id, band, prior_mastery, report_confidence")
+        .eq("user_id", user_id)
+        .eq("exam_id", exam_id)
+        .is_("topic_id", None)
+        .not_.is_("subject_id", None)
+        .limit(500)
+        .execute()
+        .data
+    ), default=[]) or []
+
+    if not rows or not coverage_topic_ids:
+        return {}
+
+    # Map subject_id → (prior_mastery, report_confidence, band)
+    subject_priors: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        sid = r.get("subject_id")
+        if not sid:
+            continue
+        pm_raw = r.get("prior_mastery")
+        pm = float(pm_raw) if pm_raw is not None else None
+        rc = float(r.get("report_confidence") or 0.5)
+        band = r.get("band") or "new"
+        subject_priors[sid] = {"prior_mastery": pm, "report_confidence": rc, "band": band}
+
+    if not subject_priors:
+        return {}
+
+    # Expand: find which coverage topic_ids belong to which subject
+    topic_rows = _safe(lambda: (
+        supabase.table("topics")
+        .select("id, subject_id")
+        .in_("id", coverage_topic_ids)
+        .in_("subject_id", list(subject_priors.keys()))
+        .limit(5000)
+        .execute()
+        .data
+    ), default=[]) or []
+
+    priors: dict[str, dict[str, Any]] = {}
+    for t in topic_rows:
+        tid = t.get("id")
+        sid = t.get("subject_id")
+        if tid and sid and sid in subject_priors:
+            priors[tid] = subject_priors[sid]
+
+    return priors
+
+
 # ─── Scoring + task shaping ───────────────────────────────────────────────
 # A pinned topic is boosted hard so it reliably earns a slot in the plan.
 _PIN_BONUS = 30.0
@@ -468,6 +528,7 @@ def _why_summary(
     pressure_level: str,
     pinned: bool,
     snapshot: dict[str, Any] | None = None,
+    mastery_source: str = "none",
 ) -> str:
     topic = cov["topic_name"]
     exam_bits = "a verified high-yield topic" if cov["is_high_yield"] else "a verified topic"
@@ -484,6 +545,8 @@ def _why_summary(
         bits.append("you haven't practised it yet")
     else:
         bits.append(f"your recent accuracy is {round(mastery)}%")
+    if mastery_source == "self_reported":
+        bits.append("based on your self-assessment (not yet validated by practice)")
     if pressure_level == "high":
         bits.append("competition pressure for this cycle is high")
     label = _TASK_LABEL.get(task_type, task_type).lower()
@@ -504,6 +567,8 @@ def _build_tasks(
         task_type = cov["_task_type"]
         label = _TASK_LABEL.get(task_type, "Study")
         snap = cov.get("_snapshot")
+        mastery_source = cov.get("_mastery_source", "none")
+        prior_entry = cov.get("_prior_entry")
         why = {
             "coverage_priority": cov["coverage_priority"],
             "verified_pyq_count": cov["_pyq_count"],
@@ -520,6 +585,7 @@ def _build_tasks(
             "snapshot_model_version": snap.get("model_version") if snap else None,
             "snapshot_computed_at": snap.get("computed_at") if snap else None,
             "snapshot_evidence_count": snap.get("evidence_count") if snap else None,
+            "mastery_source": mastery_source,
             "summary": _why_summary(
                 cov,
                 task_type,
@@ -528,8 +594,13 @@ def _build_tasks(
                 pressure_level,
                 cov["_pinned"],
                 snap,
+                mastery_source=mastery_source,
             ),
         }
+        if mastery_source == "self_reported" and prior_entry:
+            why["self_assessment_band"] = prior_entry.get("band")
+            why["self_assessment_prior_mastery"] = prior_entry.get("prior_mastery")
+            why["self_assessment_confidence"] = prior_entry.get("report_confidence")
         tasks.append(
             {
                 "user_id": None,  # filled in by _persist
@@ -922,11 +993,24 @@ def _compute_plan(
         for s in (_snap_result or [])
     }
 
+    # Self-assessment priors: fill cold-start gap when no validated mastery exists.
+    # A DB failure returns {} and the plan still generates with the standard 55-pt gap.
+    topic_priors = _load_topic_priors(supabase, user_id, exam_id, topic_ids)
+
     # score every locked-coverage topic
     for cov in coverage:
         tid = cov["topic_id"]
         pyq_count = int(pyq_counts.get(tid, 0))
         topic_mastery = mastery.get(tid)
+        mastery_source = "validated" if tid in mastery else "none"
+        prior_entry = topic_priors.get(tid)
+        if topic_mastery is None and prior_entry is not None:
+            pm = prior_entry["prior_mastery"]
+            rc = prior_entry["report_confidence"]
+            if pm is not None:
+                neutral = 45.0
+                topic_mastery = round(rc * pm + (1.0 - rc) * neutral, 1)
+                mastery_source = "self_reported"
         has_errors = tid in error_topics
         is_pinned = tid in pinned
         topic_snapshot = score_snapshots_by_topic.get(tid)
@@ -942,6 +1026,8 @@ def _compute_plan(
         cov["_priority_score"] = score
         cov["_task_type"] = _task_type(topic_mastery, has_errors)
         cov["_snapshot"] = topic_snapshot
+        cov["_mastery_source"] = mastery_source
+        cov["_prior_entry"] = prior_entry
 
     coverage.sort(key=lambda c: c["_priority_score"], reverse=True)
     ordered = _order_topics(coverage, prereqs)
@@ -994,6 +1080,9 @@ def _compute_plan(
             }
             for s in score_snapshots_by_topic.values()
         ] if not snapshot_read_failed else None,
+        "self_assessment_summary": {
+            "topics_with_prior": len(topic_priors),
+        } if topic_priors else None,
     }
 
     return {

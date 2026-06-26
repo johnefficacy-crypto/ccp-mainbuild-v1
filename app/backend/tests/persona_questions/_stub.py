@@ -20,6 +20,10 @@ class _NotProxy:
         self._query.filters.append((key, "not_in", list(vals)))
         return self._query
 
+    def is_(self, key, val):
+        self._query.filters.append((key, "not_is", val))
+        return self._query
+
 
 class _Query:
     def __init__(self, name, db):
@@ -169,6 +173,8 @@ class _Query:
             if op == "neq" and (cell is None or cell == val):
                 return False
             if op == "is" and cell is not (None if val is None else val):
+                return False
+            if op == "not_is" and cell is (None if val is None else val):
                 return False
             if op == "gte" and not (cell is not None and cell >= val):
                 return False

@@ -1141,6 +1141,152 @@ async def report_card_history(
         raise HTTPException(status_code=500, detail="Report card history is temporarily unavailable.")
 
 
+# ─────────────────────────── Self-assessment ─────────────────────────────────
+
+_BAND_TO_PRIOR_MASTERY: dict[str, float | None] = {
+    "strong": 80.0,
+    "decent": 60.0,
+    "weak": 35.0,
+    "new": None,
+}
+
+
+def _report_confidence_from_attempts(attempts_used: int) -> float:
+    if attempts_used == 0:
+        return 0.5
+    if attempts_used == 1:
+        return 0.75
+    return 1.0
+
+
+class BandItem(BaseModel):
+    subject_id: UUID
+    band: str = Field(pattern="^(strong|decent|weak|new)$")
+
+
+class SelfAssessmentBody(BaseModel):
+    bands: list[BandItem]
+    attempts_used: int = Field(ge=0)
+
+
+@router.get("/self-assessment")
+async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Return the user's self-assessment bands for their target exam."""
+    from app.study_os.planner import _resolve_target_exam
+
+    user_id = user.get("id")
+    supabase = get_supabase_admin()
+
+    exam = _resolve_target_exam(supabase, user_id)
+    if not exam or not exam.get("id"):
+        return {"exam_id": None, "calibrated": False, "items": []}
+    exam_id = str(exam["id"])
+
+    rows = (
+        supabase.table("user_topic_self_assessment")
+        .select(
+            "id, subject_id, topic_id, band, prior_mastery, report_confidence, "
+            "attempts_used, assessed_at"
+        )
+        .eq("user_id", user_id)
+        .eq("exam_id", exam_id)
+        .limit(500)
+        .execute()
+        .data
+        or []
+    )
+
+    if not rows:
+        return {"exam_id": exam_id, "calibrated": False, "items": []}
+
+    # Fetch subject names for subject-level rows
+    subject_ids = list({r["subject_id"] for r in rows if r.get("subject_id")})
+    subjects_by_id: dict[str, str] = {}
+    if subject_ids:
+        subj_rows = (
+            supabase.table("subjects")
+            .select("id, name")
+            .in_("id", subject_ids)
+            .limit(500)
+            .execute()
+            .data
+            or []
+        )
+        subjects_by_id = {s["id"]: s.get("name") for s in subj_rows if s.get("id")}
+
+    items = [
+        {
+            "id": r.get("id"),
+            "subject_id": r.get("subject_id"),
+            "subject_name": subjects_by_id.get(r["subject_id"]) if r.get("subject_id") else None,
+            "topic_id": r.get("topic_id"),
+            "band": r.get("band"),
+            "prior_mastery": r.get("prior_mastery"),
+            "report_confidence": r.get("report_confidence"),
+            "attempts_used": r.get("attempts_used"),
+            "assessed_at": r.get("assessed_at"),
+        }
+        for r in rows
+    ]
+
+    return {"exam_id": exam_id, "calibrated": True, "items": items}
+
+
+@router.put("/self-assessment")
+async def put_self_assessment(
+    body: SelfAssessmentBody,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Upsert the user's subject-level self-assessment bands for their target exam."""
+    from app.study_os.planner import _resolve_target_exam
+
+    user_id = user.get("id")
+    supabase = get_supabase_admin()
+
+    exam = _resolve_target_exam(supabase, user_id)
+    if not exam or not exam.get("id"):
+        raise HTTPException(status_code=422, detail="No target exam set.")
+    exam_id = str(exam["id"])
+
+    report_confidence = _report_confidence_from_attempts(body.attempts_used)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    payloads = []
+    for item in body.bands:
+        subject_id = str(item.subject_id)
+        band = item.band
+        prior_mastery = _BAND_TO_PRIOR_MASTERY[band]
+        payloads.append({
+            "user_id": user_id,
+            "exam_id": exam_id,
+            "subject_id": subject_id,
+            "topic_id": None,
+            "band": band,
+            "prior_mastery": prior_mastery,
+            "report_confidence": report_confidence,
+            "attempts_used": body.attempts_used,
+            "source": "onboarding_self_report",
+            "assessed_at": now_iso,
+            "updated_at": now_iso,
+        })
+
+    if not payloads:
+        return {"ok": True, "upserted_count": 0}
+
+    try:
+        result = (
+            supabase.table("user_topic_self_assessment")
+            .upsert(payloads, on_conflict="user_id,exam_id,subject_id")
+            .execute()
+        )
+        upserted_count = len(result.data) if result and result.data else len(payloads)
+    except Exception:
+        logger.exception("self-assessment upsert failed for %s", user_id)
+        raise HTTPException(status_code=500, detail="Could not save self-assessment.")
+
+    return {"ok": True, "upserted_count": upserted_count}
+
+
 # ─────────────────────────────── Mocks ──────────────────────────────────────
 class MockSubjectBreakdownBody(BaseModel):
     subject: str

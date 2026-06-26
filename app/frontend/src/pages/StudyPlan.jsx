@@ -7,6 +7,8 @@ import PlanByTopic from "../features/study/components/PlanByTopic";
 import ExamCycleTimeline from "../features/study/components/ExamCycleTimeline";
 import useApiAction from "../lib/hooks/useApiAction";
 import HowItWorksHeaderButton from "../shared/components/HowItWorksHeaderButton";
+import useCalibrationPriors from "../features/study/hooks/useCalibrationPriors";
+import PrePlanCalibration from "../features/study/components/PrePlanCalibration";
 
 // Lazy so PlanImpactTimeline and its chart deps stay out of the plan page's
 // initial chunk — the timeline only loads when the "Plan changes" tab opens.
@@ -72,6 +74,8 @@ export default function StudyPlan() {
   const [tab, setTab] = useState("plan");
   const { run: runTaskAction } = useApiAction();
   const { run: runApply } = useApiAction();
+  const { calibrated, loading: calibrationLoading, submit: submitCalibration, skip: skipCalibration } = useCalibrationPriors(selectedExamId);
+  const [subjects, setSubjects] = useState([]);
 
   async function refetchPlan() {
     try {
@@ -125,6 +129,35 @@ export default function StudyPlan() {
       .then((d) => setTrackedExams(Array.isArray(d?.items) ? d.items : []))
       .catch(() => setTrackedExams([]));
   }, [reloadKey]);
+
+  useEffect(() => {
+    if (!selectedExamId) return;
+    api
+      .get(`/api/study/topics?exam_id=${selectedExamId}`)
+      .then((d) => {
+        const seen = new Set();
+        const subjs = [];
+        for (const item of (d?.items || [])) {
+          if (item.subject_id && !seen.has(item.subject_id)) {
+            seen.add(item.subject_id);
+            subjs.push({
+              subject_id: item.subject_id,
+              subject_name: item.subject || item.subject_name || "Unknown",
+            });
+          }
+        }
+        setSubjects(subjs);
+      })
+      .catch(() => setSubjects([]));
+  }, [selectedExamId]);
+
+  async function handleCalibrationSubmit(bands, attemptsUsed) {
+    try {
+      await submitCalibration(bands, attemptsUsed);
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") console.error(e);
+    }
+  }
 
   async function refreshTrackedExams() {
     try {
@@ -429,6 +462,18 @@ export default function StudyPlan() {
         </Suspense>
       ) : (
         <>
+      {/* Calibration gate: show before first plan if not yet calibrated */}
+      {selectedExamId && !calibrationLoading && calibrated === false && plan.tasks.length === 0 && (
+        <div className="mt-6">
+          <PrePlanCalibration
+            subjects={subjects}
+            onSubmit={handleCalibrationSubmit}
+            onSkip={skipCalibration}
+            loading={false}
+          />
+        </div>
+      )}
+
       <PageHeader
         eyebrow="Study Plan · timeline &amp; adaptation"
         title={
