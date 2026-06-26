@@ -11,6 +11,9 @@ the four Study OS input groups:
   Competition — ``competition_context`` cycle pressure (intensity bias).
   Policy      — ``policy_update_context`` (informational; an official
                 ``affects_syllabus`` change surfaces a flag).
+  Analytical snapshots — locked ``exam_topic_score_snapshots`` (reviewed AI priority
+                          signal; confidence-weighted, max 15 pts additive; read
+                          failure degrades gracefully to zero — plan still generates).
 
 Deterministic and defensive: no AI, no randomness — the same inputs always
 produce the same plan. Persists one active ``study_plan`` per user, a
@@ -29,6 +32,7 @@ from cachetools import TTLCache
 
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
 from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
+from app.exam_intelligence.score_snapshots import locked_score_snapshots
 from app.study_os.competition_context import competition_context
 from app.study_os.exam_target_window import resolve_exam_target_window
 from app.study_os.plan_preferences import focus_weights, get_plan_preferences
@@ -377,6 +381,7 @@ def _score_topic(
     *,
     weights: dict[str, float],
     pinned: bool,
+    snapshot: dict[str, Any] | None = None,
 ) -> tuple[float, float]:
     """Return ``(priority_score, mastery_gap)`` for one coverage row.
 
@@ -385,10 +390,22 @@ def _score_topic(
     user's chosen weighting ``focus``; a topic with no mastery row is
     treated as a moderate-high gap (55) so never-practised topics still
     earn attention without dominating. Pinned topics get a flat boost.
+
+    When a locked score snapshot is available it contributes up to 15 pts
+    as a bounded additive term. Absent snapshots degrade gracefully to zero
+    for this component only — the rest of the score is unchanged.
+    Confidence modulates the snapshot component — low-confidence snapshots
+    contribute less; when confidence is absent it defaults to 1.0 (full weight).
     """
     coverage_priority = cov["coverage_priority"]
     mastery_gap = (100.0 - mastery) if mastery is not None else 55.0
     pyq_factor = min(20.0, pyq_count * 5.0)
+    snapshot_component = (
+        min(15.0,
+            float(snapshot.get("exam_priority_score") or 0) / 100.0 * 15.0
+            * min(1.0, max(0.0, float(1.0 if snapshot.get("confidence_score") is None else snapshot.get("confidence_score")))))
+        if snapshot else 0.0
+    )
     high_yield_bonus = weights["high_yield_bonus"] if cov["is_high_yield"] else 0.0
     error_signal = 10.0 if has_errors else 0.0
     pin_bonus = _PIN_BONUS if pinned else 0.0
@@ -396,6 +413,7 @@ def _score_topic(
         weights["coverage_w"] * coverage_priority
         + weights["mastery_w"] * mastery_gap
         + pyq_factor
+        + snapshot_component
         + high_yield_bonus
         + error_signal
         + pin_bonus
@@ -449,6 +467,7 @@ def _why_summary(
     mastery: float | None,
     pressure_level: str,
     pinned: bool,
+    snapshot: dict[str, Any] | None = None,
 ) -> str:
     topic = cov["topic_name"]
     exam_bits = "a verified high-yield topic" if cov["is_high_yield"] else "a verified topic"
@@ -457,6 +476,10 @@ def _why_summary(
         bits.append("you pinned it")
     if pyq_count:
         bits.append(f"{pyq_count} verified PYQ appearance(s)")
+    if snapshot:
+        conf = snapshot.get("confidence_score")
+        if conf is not None:
+            bits.append(f"analysis confidence {round(conf * 100)}%")
     if mastery is None:
         bits.append("you haven't practised it yet")
     else:
@@ -480,6 +503,7 @@ def _build_tasks(
     for cov in ordered[:max_tasks]:
         task_type = cov["_task_type"]
         label = _TASK_LABEL.get(task_type, "Study")
+        snap = cov.get("_snapshot")
         why = {
             "coverage_priority": cov["coverage_priority"],
             "verified_pyq_count": cov["_pyq_count"],
@@ -490,6 +514,12 @@ def _build_tasks(
             "pinned": cov["_pinned"],
             "competition_pressure": pressure_level,
             "priority_score": cov["_priority_score"],
+            "snapshot_id": snap.get("snapshot_id") if snap else None,
+            "snapshot_priority_score": snap.get("exam_priority_score") if snap else None,
+            "snapshot_confidence": snap.get("confidence_score") if snap else None,
+            "snapshot_model_version": snap.get("model_version") if snap else None,
+            "snapshot_computed_at": snap.get("computed_at") if snap else None,
+            "snapshot_evidence_count": snap.get("evidence_count") if snap else None,
             "summary": _why_summary(
                 cov,
                 task_type,
@@ -497,6 +527,7 @@ def _build_tasks(
                 cov["_mastery"],
                 pressure_level,
                 cov["_pinned"],
+                snap,
             ),
         }
         tasks.append(
@@ -880,6 +911,17 @@ def _compute_plan(
     )
     minutes = _SIZE_MINUTES.get(size, _SIZE_MINUTES[_DEFAULT_SIZE])
 
+    # Locked score snapshots provide a reviewed analytical priority signal.
+    # Gracefully degrades to an empty dict when none exist (draft-only or
+    # not yet computed), leaving the rest of the scoring unchanged.
+    # Returns None on DB read failure — plan still generates with no snapshot component.
+    _snap_result = locked_score_snapshots(supabase, exam_id, exam_phase_id=resolver_phase_id)
+    snapshot_read_failed = _snap_result is None
+    score_snapshots_by_topic: dict[str, dict[str, Any]] = {
+        s["topic_id"]: s
+        for s in (_snap_result or [])
+    }
+
     # score every locked-coverage topic
     for cov in coverage:
         tid = cov["topic_id"]
@@ -887,9 +929,10 @@ def _compute_plan(
         topic_mastery = mastery.get(tid)
         has_errors = tid in error_topics
         is_pinned = tid in pinned
+        topic_snapshot = score_snapshots_by_topic.get(tid)
         score, gap = _score_topic(
             cov, pyq_count, topic_mastery, has_errors,
-            weights=weights, pinned=is_pinned,
+            weights=weights, pinned=is_pinned, snapshot=topic_snapshot,
         )
         cov["_pyq_count"] = pyq_count
         cov["_mastery"] = topic_mastery
@@ -898,6 +941,7 @@ def _compute_plan(
         cov["_pinned"] = is_pinned
         cov["_priority_score"] = score
         cov["_task_type"] = _task_type(topic_mastery, has_errors)
+        cov["_snapshot"] = topic_snapshot
 
     coverage.sort(key=lambda c: c["_priority_score"], reverse=True)
     ordered = _order_topics(coverage, prereqs)
@@ -940,6 +984,16 @@ def _compute_plan(
             "pinned_count": len(pinned),
             "muted_count": len(muted),
         },
+        "snapshot_read_failed": snapshot_read_failed,
+        "snapshot_set_summary": [
+            {
+                "topic_id": s["topic_id"],
+                "snapshot_id": s.get("snapshot_id"),
+                "model_version": s.get("model_version"),
+                "computed_at": s.get("computed_at"),
+            }
+            for s in score_snapshots_by_topic.values()
+        ] if not snapshot_read_failed else None,
     }
 
     return {

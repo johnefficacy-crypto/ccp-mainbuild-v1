@@ -496,17 +496,23 @@ Fix PR: open as P-slice-1b addressing all six items plus P2 items (model_version
 - `app/backend/tests/exam_intelligence/test_score_snapshot_admin_api.py`
 - `docs/status/career-copilot-checklist.md`
 
-### P-slice-2 — Planner consumption of locked snapshots — **BLOCKED on P-slice-1 merge**
+### P-slice-2 — Planner consumption of locked snapshots — **IN REVIEW (PR #773)**
 
-Wire `locked_score_snapshots()` into `planner.py` as an additional priority signal.
-Until this lands, snapshots are created and admin-reviewable but do not influence study plan generation.
+Wire `locked_score_snapshots()` into `planner.py` as an additional priority signal (up to 15 pts additive, confidence-weighted). Locked snapshots are cycle-independent (all-time verified PYQ corpus; no `exam_cycle_id` set by writer).
+
+**Implementation details:**
+- `locked_score_snapshots()` returns `None` on DB read failure (caller must distinguish from empty list); plan still generates with no snapshot component (`snapshot_read_failed=True` recorded in `input_context`).
+- `confidence_score` modulates the snapshot component — `confidence=0.0` → 0 pts, `confidence=1.0` → full weight; absent `confidence_score` defaults to 1.0.
+- `why_this_task` now carries 6 new nullable snapshot lineage fields (NOT 3): `snapshot_id`, `snapshot_priority_score`, `snapshot_confidence`, `snapshot_model_version`, `snapshot_computed_at`, `snapshot_evidence_count`. Plans without snapshots are NOT byte-identical to pre-P-slice-2 (these null fields are always present).
+- `input_context` includes `snapshot_read_failed` and `snapshot_set_summary` (lineage per topic: `snapshot_id`, `model_version`, `computed_at`).
+- `build_task_reasoning_detail()` adds a `locked_score_snapshot` trace row from persisted `why_this_task` lineage — no re-query.
 
 **Write scope:**
+- `app/backend/app/exam_intelligence/score_snapshots.py`
 - `app/backend/app/study_os/planner.py`
-- `app/backend/tests/study_os/test_planner_snapshot_integration.py` (new)
-- `docs/status/career-copilot-checklist.md`
-
-**Do not touch:** `coverage.py`, `score_snapshots.py`, migrations, frontend.
+- `app/backend/app/study_os/task_reasoning.py`
+- `app/backend/tests/study_os/test_planner_snapshot_integration.py`
+- `docs/status/career-copilot-pr-plan.md`
 
 ### P-slice-3 — Cognitive demand classification (Bloom's taxonomy) — **DEFERRED**
 
