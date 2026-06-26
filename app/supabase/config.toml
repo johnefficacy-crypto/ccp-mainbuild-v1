@@ -255,9 +255,14 @@ template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
-# DEV/TEST ONLY — pre-defined phone→OTP map so local sign-in (and the E2E
-# suite) work without a live SMS provider. These numbers never trigger a real
-# SMS. Remove/secure in production; real delivery uses the Twilio provider below.
+# ⛔ DEPLOYMENT GATE — DEV/TEST ONLY. This is a pre-defined phone→OTP map so
+# local sign-in (and the E2E suite) work without a live SMS provider. These
+# numbers never trigger a real SMS, but if this block reaches a HOSTED project
+# it becomes a fixed-OTP backdoor (anyone who knows the number + "123456" can
+# sign in). It MUST NOT be pushed to production.
+#   • The hosted Supabase project must NOT contain [auth.sms.test_otp].
+#   • CI enforces this via scripts/check-supabase-prod-gate.mjs (run with
+#     SUPABASE_ENV=production), which fails the deploy if this block survives.
 [auth.sms.test_otp]
 919999900001 = "123456"
 919999900002 = "123456"
@@ -281,11 +286,15 @@ max_frequency = "5s"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]
-# Disabled in checked-in/local/CI config so phone OTP resolves via the
-# [auth.sms.test_otp] map (no real SMS, no creds needed) — enabling it here with
-# empty env creds breaks signInWithOtp in CI. The OPERATOR enables this in the
-# hosted Supabase project and supplies the env creds (production gate).
-enabled = false
+# MUST stay enabled = true in checked-in/local/CI config. A provider has to be
+# enabled for Supabase's SMS auth subsystem to accept signInWithOtp at all; with
+# it disabled, even numbers in [auth.sms.test_otp] are rejected ("phone provider
+# not configured") and the whole phone-OTP login path — including the E2E suite —
+# breaks. The env() creds resolve to empty in CI, but that's fine: test_otp
+# numbers short-circuit from the map and NEVER reach Twilio, so no real SMS is
+# sent and no valid creds are needed. The OPERATOR supplies real env creds in the
+# hosted project, where live numbers do hit Twilio (production gate).
+enabled = true
 account_sid = "env(SUPABASE_AUTH_SMS_TWILIO_ACCOUNT_SID)"
 message_service_sid = "env(SUPABASE_AUTH_SMS_TWILIO_MESSAGE_SERVICE_SID)"
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"

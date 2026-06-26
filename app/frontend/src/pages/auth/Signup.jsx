@@ -18,9 +18,11 @@ function humanizeAuthError(err) {
 }
 
 export default function Signup() {
+  const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState(""); // optional
-  const [phone, setPhone] = useState("");
+  // Prefill the phone when Login routes an unknown number here (?phone=).
+  const [phone, setPhone] = useState(() => searchParams.get("phone") || "");
   const [code, setCode] = useState("");
   const [step, setStep] = useState("details"); // details | code
   const [sentTo, setSentTo] = useState(null);
@@ -29,7 +31,6 @@ export default function Signup() {
   const auth = useAuth();
   const nav = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const redirectTo = resolvePostAuthRedirect(location, searchParams, SIGNUP_DEFAULT);
   const {
     Turnstile,
@@ -86,9 +87,11 @@ export default function Signup() {
       setSentTo(e164);
       setStep("code");
     } catch (err) {
-      resetCaptcha();
       setError(humanizeAuthError(err));
     } finally {
+      // Turnstile tokens are single-use — reset after EVERY send so an edit /
+      // retry always mints a fresh token.
+      resetCaptcha();
       setLoading(false);
     }
   }

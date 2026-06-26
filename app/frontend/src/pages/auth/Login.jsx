@@ -16,6 +16,14 @@ function humanizeAuthError(err) {
   return raw;
 }
 
+// With shouldCreateUser:false, Supabase rejects an unknown phone rather than
+// minting an account. Detect that family of messages so we can route the user
+// to signup instead of surfacing a confusing "signups not allowed" error.
+function isUnknownUserError(err) {
+  const raw = (err && (err.message || err.error_description)) || "";
+  return /signups?\s+not\s+allowed|user\s+not\s+found|otp_disabled|not\s+exist/i.test(raw);
+}
+
 export default function Login() {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -80,13 +88,21 @@ export default function Login() {
     }
     try {
       const captchaToken = await getCaptcha();
-      await auth.requestPhoneOtp(e164, { captchaToken });
+      // Login NEVER creates a new account. An unknown phone is rejected by
+      // Supabase (shouldCreateUser:false) and routed to /signup below.
+      await auth.requestPhoneOtp(e164, { captchaToken, shouldCreateUser: false });
       setSentTo(e164);
       setStep("code");
     } catch (err) {
-      resetCaptcha();
+      if (isUnknownUserError(err)) {
+        nav(`/signup?phone=${encodeURIComponent(e164)}`, { replace: false });
+        return;
+      }
       setError(humanizeAuthError(err));
     } finally {
+      // Turnstile tokens are single-use — reset after EVERY send (success or
+      // failure) so a Resend / number edit always mints a fresh token.
+      resetCaptcha();
       setLoading(false);
     }
   }
@@ -114,11 +130,13 @@ export default function Login() {
     setError(null);
     try {
       const captchaToken = await getCaptcha();
-      await auth.requestPhoneOtp(sentTo, { captchaToken });
+      // sentTo already passed shouldCreateUser:false on the first send; the
+      // account exists by now, so a plain resend is correct here.
+      await auth.requestPhoneOtp(sentTo, { captchaToken, shouldCreateUser: false });
     } catch (err) {
-      resetCaptcha();
       setError(humanizeAuthError(err));
     } finally {
+      resetCaptcha();
       setLoading(false);
     }
   }

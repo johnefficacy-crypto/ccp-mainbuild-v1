@@ -21,7 +21,7 @@
 - `routes/publicRoutes.jsx`: removed `/forgot-password`, `/reset-password`; deleted those pages.
 - `lib/phone.js` (+ test): E.164 normalizer.
 - Backend `core/auth.py`: `_serialize_user` exposes `phone`; `/api/auth/me` already spreads it. Role source of truth (`raw_app_meta_data.role`) unchanged.
-- `supabase/config.toml`: `[auth.sms]` enabled + `[auth.sms.twilio] enabled = false` in local/CI (test_otp map resolves OTP without real creds; operator enables Twilio in hosted Supabase — production gate); dev `[auth.sms.test_otp]` map.
+- `supabase/config.toml`: `[auth.sms]` enabled + `[auth.sms.twilio] enabled = true` in local/CI (a provider must be enabled for `signInWithOtp` to work; test_otp numbers short-circuit from the map and never reach Twilio, so empty env creds are fine); operator supplies real Twilio creds in hosted — production gate; dev `[auth.sms.test_otp]` map.
 - No DB migration: `profiles.phone` already exists; Supabase stores phone + confirmation on `auth.users`.
 
 ## Tests
@@ -46,8 +46,12 @@ for the only admin login path.
   ("Email logins are disabled"). Removing password auth at the provider is the
   operator's production gate: disable the Email provider's password sign-in in
   the hosted Supabase dashboard (gate step 3). Phone OTP in local/CI uses the
-  `[auth.sms.test_otp]` map with the Twilio provider **disabled**; the operator
-  enables Twilio + creds in hosted (gate step 1).
+  `[auth.sms.test_otp]` map with the Twilio provider **enabled = true** (a
+  provider must be enabled for Supabase to accept `signInWithOtp` at all — even
+  for test_otp numbers; disabling it breaks the whole phone-OTP path incl. E2E).
+  The env() creds resolve to empty in CI, which is fine: test_otp numbers
+  short-circuit from the map and never reach Twilio. The operator supplies real
+  Twilio creds in hosted, where live numbers do hit Twilio (gate step 1).
 - Anonymous/guest sign-in is **retained and enabled**
   (`config.toml [auth].enable_anonymous_sign_ins = true`).
 - Role is backend-authoritative: `mergeUser` no longer reads

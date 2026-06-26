@@ -91,7 +91,11 @@ test("send-code passes captchaToken + E.164 phone to requestPhoneOtp", async () 
   act(() => cbs.onSuccess("captcha-A"));
 
   await waitFor(() => expect(mockRequestPhoneOtp).toHaveBeenCalled());
-  expect(mockRequestPhoneOtp).toHaveBeenCalledWith("+919999900001", { captchaToken: "captcha-A" });
+  // Login never creates accounts → shouldCreateUser:false is always sent.
+  expect(mockRequestPhoneOtp).toHaveBeenCalledWith("+919999900001", {
+    captchaToken: "captcha-A",
+    shouldCreateUser: false,
+  });
 });
 
 test("bare 10-digit number is normalized to +91 E.164", async () => {
