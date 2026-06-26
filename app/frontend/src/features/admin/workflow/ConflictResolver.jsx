@@ -91,6 +91,11 @@ export default function ConflictResolver({
         scope,
         reason: reason.trim(),
         evidence_url: evidenceUrl.trim(),
+        // Destructive-override confirmation the resolve endpoint requires
+        // verbatim (admin_conflicts CONFIRM_OVERRIDE). Surfaced here too so
+        // every consumer of this dialog satisfies the contract, not just the
+        // page-level resolve handler.
+        confirmation_text: "CONFIRM_OVERRIDE",
       });
     } catch (e) {
       setError(e?.message || "Failed to apply override.");

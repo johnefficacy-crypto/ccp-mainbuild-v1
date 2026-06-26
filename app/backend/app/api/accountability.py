@@ -189,7 +189,7 @@ def book_mentor(
 
     sb = get_supabase_admin()
     # 3. Anti-replay: one captured booking per Razorpay order. Pre-check for a
-    #    deterministic 409, with the UNIQUE index (migration 193) as the atomic
+    #    deterministic 409, with the UNIQUE index (migration 195) as the atomic
     #    backstop against a concurrent double-submit.
     existing = (
         sb.table("mentor_bookings")
@@ -313,6 +313,8 @@ def list_partners(user: dict = Depends(get_current_user)) -> dict:
 
 @router.post("/partners/request")
 def request_partner(body: PartnerReq, user: dict = Depends(get_current_user)) -> dict:
+    """Create a *pending* partner request. Consent-first: the pair is created
+    only when the recipient accepts via ``/partners/requests/{id}/respond``."""
     from app.study_os.social_sessions import request_partner as svc_request
 
     try:
@@ -325,6 +327,26 @@ def request_partner(body: PartnerReq, user: dict = Depends(get_current_user)) ->
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+class PartnerRespondReq(BaseModel):
+    action: str
+
+
+@router.post("/partners/requests/{request_id}/respond")
+def respond_partner_request(request_id: str, body: PartnerRespondReq, user: dict = Depends(get_current_user)) -> dict:
+    """Recipient accepts/declines a pending request. Accept atomically creates
+    the pair with a one-active-pair guard (migration 193)."""
+    from app.study_os.social_sessions import respond_partner as svc_respond
+
+    try:
+        return svc_respond(get_supabase_admin(), user["id"], request_id, body.action)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
 
 
 @router.get("/groups")

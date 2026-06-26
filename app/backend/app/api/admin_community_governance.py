@@ -432,16 +432,18 @@ def list_partner_invites(
     offset: int = Query(default=0, ge=0),
     _admin: dict = Depends(_require_perm(PERM_COMMUNITY)),
 ) -> dict[str, Any]:
-    """List pending partner invites (paused / not-yet-active pairs).
+    """List pending partner invites awaiting a recipient response.
 
-    The pairs table tracks status='paused' for invites that haven't been
-    accepted; an admin needs visibility on stale invites to triage them.
+    Invites live in ``accountability_partner_requests`` (status='pending')
+    until the recipient accepts — which atomically creates an
+    ``accountability_pairs`` row (migration 193) — or declines. Admins triage
+    stale pending invites here.
     """
     supabase = get_supabase_admin()
     res = _safe(
-        lambda: supabase.table("accountability_pairs")
-        .select("id, user_a, user_b, pairing_goal, status, created_at", count="exact")
-        .eq("status", "paused")
+        lambda: supabase.table("accountability_partner_requests")
+        .select("id, requester_id, partner_id, pairing_goal, status, message, created_at", count="exact")
+        .eq("status", "pending")
         .order("created_at", desc=True)
         .range(offset, offset + limit - 1)
         .execute(),

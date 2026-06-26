@@ -81,7 +81,7 @@ making the escalation permanent (it then even survives the authoritative
 `user_metadata.role` and JWT-claim-role fallbacks are removed. (`memory/test_credentials.md`
 guidance that mentioned `user_metadata` for roles was also corrected.)
 
-### 2. RLS self-promotion → full control of exam-intelligence data — 🛠️ in progress (migration 193)
+### 2. RLS self-promotion → full control of exam-intelligence data — 🛠️ in progress (migration 195)
 
 `profiles_update_own` (`004_core_rls_policies.sql`) permits an owner to update
 their own row with **no column restriction and no guarding trigger**, so a direct
@@ -97,7 +97,7 @@ study plans.
 table grants (confirmed via the `174`/`190` migration comments), so the PostgREST
 path is reachable.
 
-**Fix (migration 193):** a `BEFORE UPDATE` trigger on `profiles` forces privileged
+**Fix (migration 195):** a `BEFORE UPDATE` trigger on `profiles` forces privileged
 columns (`is_admin`, `is_mentor`, `admin_role`, `plan_id`) back to their prior
 values for any non-service-role session; the `035/057/060/149` admin policies are
 repointed to `public.is_admin(auth.uid())`.
@@ -117,7 +117,7 @@ signature, confirm order amount == server-derived price and the order's
 `notes.user_id == caller`, and only then mark captured; require a permanent
 (non-anonymous) identity.
 
-### 4. Four mock-question tables are world-writable — 🛠️ in progress (migration 193)
+### 4. Four mock-question tables are world-writable — 🛠️ in progress (migration 195)
 
 `136_mock_question_workflow.sql` creates four policies
 (`mqg_admin_all`, `mqtt_admin_all`, `mqs_admin_all`, `mqrl_admin_all`) as
@@ -128,14 +128,14 @@ signature, confirm order amount == server-derived price and the order's
 `mock_question_bank` right (checks `app_metadata.role`), proving these four are an
 oversight.
 
-**Fix (migration 193):** recreate all four to mirror `mock_question_bank_admin_all`
+**Fix (migration 195):** recreate all four to mirror `mock_question_bank_admin_all`
 (service_role OR `app_metadata.role in ('admin','super_admin')`).
 
 ---
 
 ## High findings
 
-### 5. Audit/PII tables with no RLS — 🛠️ in progress (migration 193)
+### 5. Audit/PII tables with no RLS — 🛠️ in progress (migration 195)
 `support_content_access` (`102`) and `content_access_requests` (`104`) record
 which admin opened which user's private content; added after the auto-RLS trigger
 was removed (`131`), they never got `ENABLE ROW LEVEL SECURITY`. With default
@@ -153,7 +153,12 @@ Handlers use the service-role client and filter only by resource `id`:
   **active** partnership onto a victim without consent.
 
 **Fix:** add `.eq("user_id", caller)` / membership checks to every mutating query
-(404/403 on no match); start partnerships as non-active pending consent.
+(404/403 on no match) — done here for `canonical.py` and `end_session` (a
+participation gate). The forced-partnership half is resolved upstream by the
+partner-consent-lifecycle change (now on `main`: migration 193 +
+`accountability_partner_requests` pending store + recipient-only
+`respond_partner` accept/decline), so this PR no longer carries its own partner
+consent code.
 
 ### 7. CAPTCHA is a client-side suggestion — 📋 follow-up
 Enablement is inferred from a public build var (`REACT_APP_TURNSTILE_SITE_KEY`); on
@@ -259,7 +264,7 @@ cookie-based storage (`@supabase/ssr`) and/or a strict CSP + Trusted Types.
 **This branch (`security/auth-rbac-hardening`)**
 1. ✅ Remove `user_metadata`/claim role fallbacks (#1).
 2. ✅ Scrub committed credential + correct role-source docs (#8).
-3. 🛠️ Migration 193: profiles privileged-column guard trigger; repoint
+3. 🛠️ Migration 195: profiles privileged-column guard trigger; repoint
    `035/057/060/149` to `is_admin()`; fix the four `136` policies; enable RLS on
    the `102/104` tables (#2, #4, #5).
 4. 🛠️ Verify Razorpay payment in `book_mentor` (#3).
@@ -286,19 +291,20 @@ all addressed here:
 - **Replay** — `mentor_bookings` gains a real `razorpay_order_id` column with a
   `UNIQUE` index (and a unique `payment_id` index); `book_mentor` pre-checks for
   an existing booking on the order and treats a unique-violation as `409`, so one
-  paid order backs at most one captured booking (migration 193 §5 + backend).
+  paid order backs at most one captured booking (migration 195 §5 + backend).
 - **Order binding** — confirmation now validates every server-pinned note
   (`kind == "mentor"`, `mentor_slug`, `duration_minutes`) in addition to owner +
   amount + paid state, so an order minted for a different mentor/duration at the
   same price cannot be reused.
 - **Direct PostgREST forge** — the `mb_owner_update` policy (migration 099) let a
   booking owner PATCH `payment_status`/`status`/`price_inr`/`payment_id` directly;
-  migration 193 §5 drops it, so commercial/state fields are service-role-only
+  migration 195 §5 drops it, so commercial/state fields are service-role-only
   (owners keep read; cancellation/notes belong to scoped backend routes).
 - **Broken client** — the mentor-booking CTA (`MentorDetail.jsx`) is gated with
   accurate "temporarily unavailable" copy until the secure order→checkout→confirm
   client lands, so the release ships no always-failing user action.
-- **Migration collision (PR #769)** — #769 also adds migration 193. The CI
-  `migration-numbers` check enforces contiguity from `MAX(main)+1`, so both must
-  use 193 to pass independently; the collision is resolved by **merge order** —
-  whichever PR merges second rebases its migrations to `MAX(main)+1`.
+- **Migration collision (resolved)** — `main` advanced while this PR was open:
+  the partner-consent-lifecycle change merged as `193_partner_consent_lifecycle`
+  and `194_recruitments_public_read_published_only`. This branch merged `main`
+  and rebased its security migration to `195_security_rls_hardening` — contiguous
+  from `MAX(main)+1`, so the `migration-numbers` CI check passes.

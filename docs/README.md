@@ -28,6 +28,7 @@ This directory is the single source of context for the product, engineering stra
 | Admin, RBAC, and automation strategy | [engineering/admin-strategy.md](engineering/admin-strategy.md) |
 | AI governance, personalization, and PYQ strategy | [engineering/ai-strategy.md](engineering/ai-strategy.md) |
 | Source taxonomy and scraper intelligence | [scraping/source-intelligence.md](scraping/source-intelligence.md) |
+| The admin Pipeline Workspace (scrape → review → promote → publish), as-built | [admin/pipeline-workspace.md](admin/pipeline-workspace.md) |
 | Mock Engine v2 ↔ Study OS integration (decisions + plan) | [study_os/mock-engine-v2-study-os-integration.md](study_os/mock-engine-v2-study-os-integration.md) |
 | Current implementation status and gaps | [status/known-gaps.md](status/known-gaps.md) |
 | How to operate the system (runbook) | [operations/runbook.md](operations/runbook.md) |

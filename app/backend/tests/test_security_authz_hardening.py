@@ -5,14 +5,13 @@ Covers the security fixes landed alongside
 
   * #3 — mentor-booking payment forgery (no more free "captured" bookings)
   * #6 — study-task / focus-session IDOR (service-role queries must scope by
-          user_id) and forced partnerships (consent before "active")
+          user_id) and the end_session participation gate
 
 The auth-role-resolution fix (#1) has its own suite in
-``tests/test_auth_role_resolution.py``.
+``tests/test_auth_role_resolution.py``. Partner-request consent moved to the
+partner-consent-lifecycle change (``tests/study_os/test_partner_consent_lifecycle.py``).
 """
 from __future__ import annotations
-
-import uuid
 
 import pytest
 from fastapi import FastAPI
@@ -228,26 +227,10 @@ def test_focus_stop_cannot_end_another_users_session(monkeypatch):
     assert victim["ended_at"] is None and victim.get("notes") != "pwned"
 
 
-# ════════════════════ #6 — social: consent + membership ═════════════════════
-
-
-def test_request_partner_starts_pending_and_requires_target_to_accept():
-    from app.study_os.social_sessions import accept_partner, request_partner
-
-    sb = SBStub({"accountability_pairs": []})
-    partner_b = str(uuid.uuid4())
-    req = request_partner(sb, "user-A", partner_b)
-    assert req["status"] == "pending", "a request must not auto-activate onto the target"
-
-    # A third party (and the requester) cannot accept on the target's behalf.
-    with pytest.raises(LookupError):
-        accept_partner(sb, "user-C", req["id"])
-    with pytest.raises(LookupError):
-        accept_partner(sb, "user-A", req["id"])
-
-    # Only the target activates it.
-    accepted = accept_partner(sb, partner_b, req["id"])
-    assert accepted["status"] == "active"
+# ════════════════════════ #6 — social: membership gate ══════════════════════
+# Partner-request consent (request -> recipient accept/decline) is owned by the
+# partner-consent-lifecycle change (migration 193 + test_partner_consent_lifecycle.py);
+# this suite keeps only the session-membership gate, which is distinct.
 
 
 def test_end_session_requires_participation():

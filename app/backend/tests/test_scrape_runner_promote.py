@@ -701,6 +701,297 @@ def test_promote_run_blocks_when_high_risk_fields_unverified():
     }
 
 
+# ── P0-4: promote_run claim-first compare-and-swap (idempotency) ────────────
+
+
+_RUN_VERIFIED_EVIDENCE = [
+    {"field_name": "apply_end_date", "reviewer_status": "verified"},
+    {"field_name": "official_notification_url", "reviewer_status": "verified"},
+    {"field_name": "official_apply_url", "reviewer_status": "verified"},
+    {"field_name": "organization_name", "reviewer_status": "verified"},
+    {"field_name": "total_vacancies", "reviewer_status": "verified"},
+    # Single post "Officer" → post-scoped requires_domicile must be verified
+    # against that post for the gate to pass.
+    {"field_name": "requires_domicile", "reviewer_status": "verified",
+     "entity_type": "post", "entity_key": "officer"},
+]
+
+
+def _claim_aware_sb(db, *, evidence):
+    """Build a Supabase fake whose scrape_queue.update honours an
+    ``.eq("status", "pending")`` predicate (compare-and-swap), so the
+    claim-first promote_run path can be exercised end to end."""
+
+    class _Q:
+        def __init__(self, name):
+            self.name = name; self.filters = {}; self.payload = None
+        def select(self, *a, **k): return self
+        def eq(self, k, v): self.filters[k] = v; return self
+        def in_(self, k, v): self.filters[k] = set(v); return self
+        def order(self, *a, **k): return self
+        def limit(self, *a, **k): return self
+        def update(self, p): self.payload = p; return self
+        def execute(self):
+            if self.name == "scrape_queue":
+                rows = list(db.get("scrape_queue", []))
+                if "scrape_run_id" in self.filters:
+                    rows = [r for r in rows if r.get("scrape_run_id") == self.filters["scrape_run_id"]]
+                if "id" in self.filters:
+                    rows = [r for r in rows if r.get("id") == self.filters["id"]]
+                if "status" in self.filters:
+                    want = self.filters["status"]
+                    if isinstance(want, set):
+                        rows = [r for r in rows if r.get("status") in want]
+                    else:
+                        rows = [r for r in rows if r.get("status") == want]
+                if self.payload is not None:
+                    for r in rows:
+                        r.update(self.payload)
+                return E(rows)
+            if self.name == "extracted_field_evidence":
+                return E(list(evidence))
+            return E([])
+
+    class _SB:
+        def table(self, name): return _Q(name)
+    return _SB()
+
+
+def test_promote_run_promotes_pending_row_with_claim(monkeypatch):
+    """Happy path: a gate-passing pending row is claimed, promoted once, and
+    stamped with its recruitment id."""
+    db = {
+        "scrape_queue": [{
+            "id": "queue-OK",
+            "scrape_run_id": "run-1",
+            "source_id": "src-1",
+            "status": "pending",
+            "official_source_resolved": True,
+            "extracted_data": {
+                "title": "T", "organization_name": "O", "org_type": "central",
+                "year": 2026, "apply_end_date": "2026-12-31",
+                "official_notification_url": "https://x",
+                "posts": [{"post_name": "Officer", "min_age": 18, "max_age": 32}],
+            },
+        }],
+    }
+    calls = {"n": 0}
+    def _promote(extracted, supabase, **kwargs):
+        calls["n"] += 1
+        return "rec-1"
+    monkeypatch.setattr("app.scraping.runner.promote_to_recruitments", _promote)
+
+    sb = _claim_aware_sb(db, evidence=_RUN_VERIFIED_EVIDENCE)
+    out = promote_run("run-1", sb, reviewer_id="admin-1")
+    assert out["promoted"] == 1
+    assert out["recruitment_ids"] == ["rec-1"]
+    assert calls["n"] == 1
+    row = db["scrape_queue"][0]
+    assert row["status"] == "approved"
+    assert row["promoted_recruitment_id"] == "rec-1"
+
+
+def test_promote_run_skips_row_already_claimed_concurrently(monkeypatch):
+    """P0-4: if the row is no longer ``pending`` when the claim CAS runs (a
+    concurrent promote won the race between the batch SELECT and the claim),
+    promote_run claims zero rows, skips, and never creates a recruitment.
+
+    Modeled by a mock whose pending-batch SELECT yields the candidate item, but
+    whose stored row is already ``approved`` — so the claim's
+    ``.eq("status","pending")`` matches nothing, exactly like losing the race.
+    """
+    item = {
+        "id": "queue-RACED",
+        "scrape_run_id": "run-1",
+        "source_id": "src-1",
+        "status": "pending",
+        "official_source_resolved": True,
+        "extracted_data": {
+            "title": "T", "organization_name": "O", "org_type": "central",
+            "year": 2026, "apply_end_date": "2026-12-31",
+            "official_notification_url": "https://x",
+            "posts": [{"post_name": "Officer", "min_age": 18, "max_age": 32}],
+        },
+    }
+    # The authoritative store already shows the row as approved (claimed by a
+    # concurrent winner); the batch SELECT below still surfaces the candidate.
+    stored = {**item, "status": "approved"}
+    calls = {"n": 0}
+
+    class _Q:
+        def __init__(self, name):
+            self.name = name; self.filters = {}; self.payload = None
+        def select(self, *a, **k): return self
+        def eq(self, k, v): self.filters[k] = v; return self
+        def in_(self, k, v): self.filters[k] = set(v); return self
+        def order(self, *a, **k): return self
+        def limit(self, *a, **k): return self
+        def update(self, p): self.payload = p; return self
+        def execute(self):
+            if self.name == "scrape_queue":
+                if self.payload is None:
+                    # The pending-batch SELECT — surface the candidate row.
+                    return E([dict(item)])
+                # Any UPDATE (the claim CAS) is evaluated against the
+                # authoritative stored status: pending-scoped claim misses.
+                want = self.filters.get("status")
+                ok = (stored["status"] == want) if not isinstance(want, set) else (stored["status"] in want)
+                if want is not None and not ok:
+                    return E([])
+                stored.update(self.payload)
+                return E([stored])
+            if self.name == "extracted_field_evidence":
+                return E(list(_RUN_VERIFIED_EVIDENCE))
+            return E([])
+
+    class _SB:
+        def table(self, name): return _Q(name)
+
+    def _promote(*a, **k):
+        calls["n"] += 1
+        return "rec-should-not-happen"
+    monkeypatch.setattr("app.scraping.runner.promote_to_recruitments", _promote)
+
+    out = promote_run("run-1", _SB(), reviewer_id="admin-1")
+    assert out["promoted"] == 0
+    assert out["skipped"] == 1
+    assert calls["n"] == 0  # never created a recruitment
+    assert out["errors"][0]["error"] == "concurrent_promote"
+
+
+def test_promote_run_reverts_promoting_claim_to_pending_on_failure(monkeypatch):
+    """P0 cross-path: the batch claim now parks the row in the transient
+    ``promoting`` (NOT ``approved``), so a failed recruitment write reverts
+    ``promoting → pending`` — leaving the row retriable and never stranded in a
+    promotable ``approved`` state that the single-item path could also claim."""
+    db = {
+        "scrape_queue": [{
+            "id": "queue-FAIL",
+            "scrape_run_id": "run-1",
+            "source_id": "src-1",
+            "status": "pending",
+            "official_source_resolved": True,
+            "extracted_data": {
+                "title": "T", "organization_name": "O", "org_type": "central",
+                "year": 2026, "apply_end_date": "2026-12-31",
+                "official_notification_url": "https://x",
+                "posts": [{"post_name": "Officer", "min_age": 18, "max_age": 32}],
+            },
+        }],
+    }
+    calls = {"n": 0}
+    def _boom(*a, **k):
+        calls["n"] += 1
+        raise RuntimeError("promotion write failed")
+    monkeypatch.setattr("app.scraping.runner.promote_to_recruitments", _boom)
+
+    sb = _claim_aware_sb(db, evidence=_RUN_VERIFIED_EVIDENCE)
+    out = promote_run("run-1", sb, reviewer_id="admin-1")
+    assert out["promoted"] == 0
+    assert out["failed"] == 1
+    assert calls["n"] == 1  # claim happened, then the write failed
+    row = db["scrape_queue"][0]
+    # Reverted to pending — NOT left in ``promoting`` or flipped to ``approved``.
+    assert row["status"] == "pending"
+    assert row.get("promoted_recruitment_id") is None
+
+
+def test_promote_run_counts_zero_row_finalize_as_failed_and_reverts(monkeypatch):
+    """P0 batch finalize: the recruitment is created and the claim parks the row
+    in ``promoting``, but the terminal ``promoting → approved`` stamp affects ZERO
+    rows (the row was advanced out from under us between claim and finalize). A
+    0-row finalize must NEVER be counted as promoted: the item is recorded failed,
+    the claim is reverted ``promoting → pending``, and the loop continues.
+
+    Modeled by a mock whose CLAIM CAS succeeds (row really moves to ``promoting``)
+    but whose FINALIZE CAS — scoped ``.eq("status","promoting")`` — is evaluated
+    against an authoritative row that a concurrent winner already flipped to
+    ``approved``, so the pending-finalize matches nothing.
+    """
+    item = {
+        "id": "queue-ZEROFIN",
+        "scrape_run_id": "run-1",
+        "source_id": "src-1",
+        "status": "pending",
+        "official_source_resolved": True,
+        "extracted_data": {
+            "title": "T", "organization_name": "O", "org_type": "central",
+            "year": 2026, "apply_end_date": "2026-12-31",
+            "official_notification_url": "https://x",
+            "posts": [{"post_name": "Officer", "min_age": 18, "max_age": 32}],
+        },
+    }
+    # Authoritative store the claim/finalize CAS run against. The claim flips it to
+    # ``promoting``; a concurrent winner then flips it to ``approved`` BEFORE our
+    # finalize, so the finalize's ``.eq("status","promoting")`` claims zero rows.
+    stored = {**item}
+    # Record every scrape_queue UPDATE attempt as (status_predicate, payload_status)
+    # so we can assert the claim, the (zero-row) finalize, and the revert all fired.
+    update_attempts: list[tuple] = []
+    state = {"claimed": False}
+
+    class _Q:
+        def __init__(self, name):
+            self.name = name; self.filters = {}; self.payload = None
+        def select(self, *a, **k): return self
+        def eq(self, k, v): self.filters[k] = v; return self
+        def in_(self, k, v): self.filters[k] = set(v); return self
+        def order(self, *a, **k): return self
+        def limit(self, *a, **k): return self
+        def update(self, p): self.payload = p; return self
+        def execute(self):
+            if self.name == "scrape_queue":
+                if self.payload is None:
+                    # The pending-batch SELECT — surface the candidate row.
+                    return E([dict(item)])
+                want = self.filters.get("status")
+                update_attempts.append((want, self.payload.get("status")))
+                ok = (stored["status"] == want) if not isinstance(want, set) else (stored["status"] in want)
+                if want is not None and not ok:
+                    # CAS missed (e.g. the revert / finalize scoped to ``promoting``
+                    # once a concurrent winner has advanced the row): zero rows.
+                    return E([])
+                # The pending→promoting CLAIM matches; APPLY it, then immediately
+                # simulate a concurrent winner advancing the row to ``approved`` so
+                # the later promoting→approved FINALIZE can no longer match.
+                if self.payload.get("status") == "promoting":
+                    stored.update(self.payload)
+                    state["claimed"] = True
+                    stored["status"] = "approved"  # concurrent winner stole the row
+                    return E([dict(stored)])
+                stored.update(self.payload)
+                return E([dict(stored)])
+            if self.name == "extracted_field_evidence":
+                return E(list(_RUN_VERIFIED_EVIDENCE))
+            return E([])
+
+    class _SB:
+        def table(self, name): return _Q(name)
+
+    calls = {"n": 0}
+    def _promote(*a, **k):
+        calls["n"] += 1
+        return "rec-orphaned"
+    monkeypatch.setattr("app.scraping.runner.promote_to_recruitments", _promote)
+
+    out = promote_run("run-1", _SB(), reviewer_id="admin-1")
+    # The recruitment WAS created, but the 0-row finalize means it is NOT promoted.
+    assert calls["n"] == 1
+    assert out["promoted"] == 0
+    assert out["failed"] == 1
+    assert out["recruitment_ids"] == []  # zero-row finalize never counts a rec id
+    assert out["errors"][0]["error"] == "finalize_failed"
+    assert state["claimed"] is True  # the claim really happened
+    # The finalize (promoting→approved) and the revert (promoting→pending) both ran,
+    # each scoped to our own ``promoting`` claim.
+    payload_statuses = [p for _w, p in update_attempts]
+    assert "promoting" in payload_statuses  # claim
+    assert payload_statuses.count("approved") == 1  # the single finalize attempt
+    assert "pending" in payload_statuses  # the revert was attempted
+    # The row is never left falsely stamped by US as approved-with-our-rec-id.
+    assert stored.get("promoted_recruitment_id") != "rec-orphaned"
+
+
 def test_promote_writes_requires_domicile_into_posts_when_extractor_set_it():
     sb = SB()
     data = ExtractedRecruitment(

@@ -1,5 +1,5 @@
 -- =============================================================================
--- 193_security_rls_hardening.sql
+-- 195_security_rls_hardening.sql
 -- Security: close confirmed RLS authorization vulnerabilities.
 --
 -- Five independent hardening sections, each idempotent and re-runnable:
@@ -136,7 +136,7 @@ begin
 end $$;
 
 comment on function public.fn_profiles_protect_privileged_columns() is
-  'Security (migration 193 §1): pins privileged profiles columns '
+  'Security (migration 195 §1): pins privileged profiles columns '
   '(is_admin, is_mentor, admin_role, plan_id) to their OLD values for any '
   'non-service_role UPDATE, defeating self-escalation via PostgREST PATCH '
   'against the profiles_update_own RLS policy. Does not raise.';

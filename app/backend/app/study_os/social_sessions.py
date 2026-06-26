@@ -411,14 +411,48 @@ def list_partner_suggestions(supabase: Any, user_id: str, limit: int = 10) -> li
     profiles = _safe(
         lambda: (
             supabase.table("profiles")
-            .select("id, full_name, display_name, city, exam_focus")
+            .select("id, display_name, exam_focus")
             .in_("id", peer_ids)
             .limit(limit)
             .execute()
         ),
         default=None,
     )
-    return getattr(profiles, "data", None) or []
+    rows = getattr(profiles, "data", None) or []
+    return [published_partner(r) for r in rows]
+
+
+def published_partner(row: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Sanitized partner projection — pseudonymous, no PII.
+
+    Exposes only the persistent display handle and exam focus. NEVER returns
+    ``full_name``, ``city``, email, or other profile facts. This is the only
+    shape a partner (or a candidate list) may surface about another user — see
+    docs/product/accountability-partner-governance.md §7.
+    """
+    if not row:
+        return None
+    return {
+        "id": row.get("id"),
+        "name": row.get("display_name") or "Aspirant",
+        "exam": row.get("exam_focus"),
+    }
+
+
+def _has_active_pair(supabase: Any, user_id: str | None) -> bool:
+    if not user_id:
+        return False
+    rows = _safe(
+        lambda: (
+            supabase.table("accountability_pairs")
+            .select("id")
+            .eq("status", "active")
+            .or_(f"user_a.eq.{user_id},user_b.eq.{user_id}")
+            .execute()
+        ),
+        default=None,
+    )
+    return bool(getattr(rows, "data", None) or [])
 
 
 def request_partner(
@@ -427,50 +461,126 @@ def request_partner(
     partner_id: str,
     pairing_goal: str = "discipline",
     exam_id: str | None = None,
+    message: str | None = None,
 ) -> dict[str, Any]:
+    """Create a *pending* partner request — consent-first.
+
+    A pair only comes into existence once the recipient accepts (see
+    ``respond_partner``). This never inserts an active pair directly, and it
+    refuses to create a request when the requester already holds an active
+    partnership (one-active-partner rule).
+    """
     if pairing_goal not in {"discipline", "same_exam", "mock_review", "revision"}:
         raise ValueError("invalid pairing_goal")
     if not _is_uuid(partner_id):
         raise ValueError("invalid partner_id")
     if partner_id == user_id:
         raise ValueError("cannot pair with self")
-    # Consent: a request starts 'pending' (user_a = requester, user_b = target)
-    # and only becomes 'active' when the target accepts (see accept_partner).
-    # Inserting 'active' directly would let anyone force a partnership — and the
-    # resulting trust/leaderboard linkage — onto a non-consenting victim.
+    if _has_active_pair(supabase, user_id):
+        raise ValueError("already in an active partnership")
     row = {
-        "user_a": user_id,
-        "user_b": partner_id,
+        "requester_id": user_id,
+        "partner_id": partner_id,
+        "message": message,
         "pairing_goal": pairing_goal,
         "exam_id": exam_id,
         "status": "pending",
     }
-    res = _safe(lambda: supabase.table("accountability_pairs").insert(row).execute(), default=None)  # safe-write-ok: returns local row dict on failure; caller handles absent id gracefully
+    res = _safe(lambda: supabase.table("accountability_partner_requests").insert(row).execute(), default=None)  # safe-write-ok: returns local row dict on failure; caller handles absent id gracefully
     data = getattr(res, "data", None) or []
     return data[0] if data else row
 
 
-def accept_partner(supabase: Any, user_id: str, pair_id: str) -> dict[str, Any]:
-    """Accept a pending partner request. Only the target (user_b) may accept,
-    and only a row still in 'pending' is activated — so a requester cannot
-    self-activate and a third party cannot accept on someone's behalf."""
-    if not _is_uuid(pair_id):
-        raise ValueError("invalid pair_id")
-    res = _safe(
+def _accept_via_rpc(supabase: Any, request_id: str, user_id: str) -> dict[str, Any] | None:
+    """Try the atomic accept RPC (migration 193). Returns the pair, or None
+    when the RPC is unavailable so the caller can fall back."""
+    try:
+        result = supabase.rpc(
+            "accept_partner_request",
+            {"p_request_id": request_id, "p_user_id": user_id},
+        ).execute()
+        value = getattr(result, "data", None)
+        if isinstance(value, list) and value:
+            value = value[0]
+        if isinstance(value, dict) and value:
+            return value
+    except Exception:
+        pass
+    return None
+
+
+def respond_partner(
+    supabase: Any,
+    user_id: str,
+    request_id: str,
+    action: str,
+) -> dict[str, Any]:
+    """Recipient accepts or declines a pending partner request.
+
+    Only the named recipient (``partner_id``) may respond. ``accept`` creates
+    the pair atomically via the SECURITY DEFINER RPC, enforcing the
+    one-active-pair guard for BOTH users; a racy app-level fallback (mirroring
+    ``community_runtime._rpc_inc``) runs only when the RPC is unavailable.
+    """
+    if action not in {"accept", "decline"}:
+        raise ValueError("invalid action")
+    if not _is_uuid(request_id):
+        raise ValueError("invalid request_id")
+    req = _safe(
         lambda: (
-            supabase.table("accountability_pairs")
-            .update({"status": "active"})
-            .eq("id", pair_id)
-            .eq("user_b", user_id)
-            .eq("status", "pending")
+            supabase.table("accountability_partner_requests")
+            .select("*")
+            .eq("id", request_id)
+            .limit(1)
             .execute()
         ),
         default=None,
     )
+    req_rows = getattr(req, "data", None) or []
+    if not req_rows:
+        raise LookupError("request not found")
+    request = req_rows[0]
+    if request.get("partner_id") != user_id:
+        raise PermissionError("only the recipient can respond")
+    if (request.get("status") or "pending") != "pending":
+        raise ValueError("request already resolved")
+
+    if action == "decline":
+        _safe(
+            lambda: supabase.table("accountability_partner_requests")
+            .update({"status": "declined", "responded_at": _now_iso()})
+            .eq("id", request_id)
+            .execute()
+        )
+        return {"request_id": request_id, "status": "declined"}
+
+    # accept → atomic pair creation.
+    pair = _accept_via_rpc(supabase, request_id, user_id)
+    if pair is not None:
+        return {"request_id": request_id, "status": "accepted", "pair": pair}
+
+    # Fallback (racy by construction; exists so accept doesn't 500 on
+    # deployments without migration 193). Re-checks the one-active-pair guard.
+    requester_id = request.get("requester_id")
+    if _has_active_pair(supabase, requester_id) or _has_active_pair(supabase, user_id):
+        raise ValueError("one of the users already has an active partnership")
+    pair_row = {
+        "user_a": requester_id,
+        "user_b": user_id,
+        "pairing_goal": request.get("pairing_goal") or "discipline",
+        "exam_id": request.get("exam_id"),
+        "status": "active",
+    }
+    res = _safe(lambda: supabase.table("accountability_pairs").insert(pair_row).execute(), default=None)  # safe-write-ok: local row dict on failure
     data = getattr(res, "data", None) or []
-    if not data:
-        raise LookupError("pending partner request not found")
-    return data[0]
+    pair = data[0] if data else pair_row
+    _safe(
+        lambda: supabase.table("accountability_partner_requests")
+        .update({"status": "accepted", "responded_at": _now_iso()})
+        .eq("id", request_id)
+        .execute()
+    )
+    return {"request_id": request_id, "status": "accepted", "pair": pair}
 
 
 def list_pairs(supabase: Any, user_id: str) -> list[dict[str, Any]]:

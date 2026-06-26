@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import CommunityModuleHeader from "./CommunityModuleHeader";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
 import { ACCOUNTABILITY, COMMUNITY_USERS } from "./data";
@@ -142,6 +143,7 @@ export default function PartnersScreen() {
 
   return (
     <FieldPage testId="partners-page">
+      <CommunityModuleHeader />
       <FieldHeader
         eyebrow="Accountability partner"
         title="One person. Daily check-in. Weekly truth."

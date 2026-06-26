@@ -75,8 +75,13 @@ test("mentors detail trail", () => {
   expect(screen.getByText("Detail").closest("[aria-current='page']")).toBeTruthy();
 });
 
-test("renders nothing on bare community space route with no leaf override", () => {
-  const { container } = renderAt("/app/community/foo");
+test("renders nothing on unmapped route /app/unknown-section/foo", () => {
+  const { container } = renderAt("/app/unknown-section/foo");
+  expect(container.firstChild).toBeNull();
+});
+
+test("bare community space with no leaf override renders nothing", () => {
+  const { container } = renderAt("/app/community/my-space");
   expect(container.firstChild).toBeNull();
 });
 

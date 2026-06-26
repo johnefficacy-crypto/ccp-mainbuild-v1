@@ -643,7 +643,12 @@ async def partner_state(user: dict = Depends(get_current_user)):
     partner_id = None
     if pair:
         partner_id = pair.get("user_b") if pair.get("user_a") == user["id"] else pair.get("user_a")
-    partner = _first(sb.table("profiles").select("id, full_name, display_name, exam_focus, city").eq("id", partner_id)) if partner_id else None
+    # Sanitized projection only — never expose the partner's full_name / city
+    # (governance doc §7). `published_partner` returns {id, name, exam}.
+    from app.study_os.social_sessions import published_partner
+
+    partner_row = _first(sb.table("profiles").select("id, display_name, exam_focus").eq("id", partner_id)) if partner_id else None
+    partner = published_partner(partner_row)
     requests = _rows(sb.table("accountability_partner_requests").select("*").eq("requester_id", user["id"]).order("created_at", desc=True).limit(10))
     checkins = _rows(
         sb.table("user_events")
@@ -680,6 +685,8 @@ async def post_partner_checkin(payload: PartnerCheckin, user: dict = Depends(get
 class PartnerInvite(BaseModel):
     candidate_id: str = Field(min_length=1, max_length=64)
     message: str | None = Field(default=None, max_length=500)
+    pairing_goal: str = Field(default="discipline")
+    exam_id: str | None = None
 
 
 @router.post("/community/partner/invite")
@@ -687,12 +694,49 @@ async def invite_partner(payload: PartnerInvite, user: dict = Depends(get_curren
     if not _is_uuid(payload.candidate_id) or payload.candidate_id == user["id"]:
         raise HTTPException(status_code=400, detail="Invalid candidate")
     sb = get_supabase_admin()
-    row = _rows(
-        sb.table("accountability_partner_requests")
-        .insert({"requester_id": user["id"], "partner_id": payload.candidate_id, "message": payload.message, "status": "pending"})
-    )
+    # Canonical consent-first path: write a *pending* request. A pair is only
+    # created when the recipient accepts (POST .../requests/{id}/respond).
+    from app.study_os.social_sessions import request_partner as svc_request
+
+    try:
+        request = svc_request(
+            sb,
+            user["id"],
+            payload.candidate_id,
+            pairing_goal=payload.pairing_goal,
+            exam_id=payload.exam_id,
+            message=payload.message,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     _notify(sb, payload.candidate_id, "partner_invite", {"requester_id": user["id"]})
-    return {"invited": True, "candidateId": payload.candidate_id, "request": row[0] if row else None}
+    return {"invited": True, "candidateId": payload.candidate_id, "request": request}
+
+
+class PartnerRespond(BaseModel):
+    action: str = Field(description="accept | decline")
+
+
+@router.post("/community/partner/requests/{request_id}/respond")
+async def respond_partner_request(request_id: str, payload: PartnerRespond, user: dict = Depends(get_current_user)):
+    """Recipient accepts or declines a pending partner invite. Accept atomically
+    creates the pair with a one-active-pair guard (see migration 193)."""
+    sb = get_supabase_admin()
+    from app.study_os.social_sessions import respond_partner as svc_respond
+
+    try:
+        result = svc_respond(sb, user["id"], request_id, payload.action)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    if result.get("status") == "accepted":
+        pair = result.get("pair") or {}
+        _notify(sb, pair.get("user_a"), "partner_accepted", {"partner_id": user["id"]})
+        _audit(sb, user, "partner.accept", "accountability_pairs", pair.get("id"), {"request_id": request_id})
+    return result
 
 
 @router.post("/community/partner/end")
