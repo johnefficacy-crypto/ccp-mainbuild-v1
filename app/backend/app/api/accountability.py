@@ -15,8 +15,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_current_user_required_permanent
 from app.db.supabase_client import get_supabase_admin
+from app.payments import razorpay_client
 
 
 router = APIRouter(prefix="/accountability", tags=["accountability"])
@@ -69,22 +70,112 @@ def _resolve_mentor(mentor_id: str) -> tuple[str | None, str | None, dict | None
     return None, mentor_id, catalogue
 
 
+def _mentor_price_total(catalogue: dict | None, duration_minutes: int) -> int | None:
+    """Server-derived booking price in whole INR (None => not bookable)."""
+    price = (catalogue or {}).get("price_per_hour")
+    if not price:
+        return None
+    duration_h = max(1, round(duration_minutes / 60))
+    return int(price * duration_h)
+
+
+class MentorOrderCreate(BaseModel):
+    mentor_id: str
+    slot: str | None = Field(default=None, description="ISO datetime or human label")
+    duration_minutes: int = Field(default=60, ge=15, le=240)
+    notes: str | None = None
+
+
 class MentorBook(BaseModel):
     mentor_id: str
     slot: str | None = Field(default=None, description="ISO datetime or human label until structured scheduling lands")
     duration_minutes: int = Field(default=60, ge=15, le=240)
     notes: str | None = None
-    payment_id: str | None = None
+    # Razorpay handshake — the booking is only marked paid after the
+    # server verifies these against the order it created (see /mentors/order).
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+
+@router.post("/mentors/order")
+def create_mentor_order(
+    body: MentorOrderCreate, user: dict = Depends(get_current_user_required_permanent)
+) -> dict:
+    """Create a Razorpay order for a mentor booking (amount fixed server-side).
+
+    The amount and owner are pinned into the order's ``notes`` so booking
+    confirmation can verify the client paid the right price as the right user.
+    """
+    _profile_uuid, slug, catalogue = _resolve_mentor(body.mentor_id)
+    if not catalogue:
+        raise HTTPException(status_code=404, detail="Mentor not found")
+    price_total = _mentor_price_total(catalogue, body.duration_minutes)
+    if not price_total:
+        raise HTTPException(status_code=400, detail="Mentor is not bookable")
+    order = razorpay_client.create_order(
+        amount_inr=price_total,
+        receipt=f"mentor_{slug}_{user['id'][:8]}",
+        notes={
+            "user_id": user["id"],
+            "mentor_slug": slug,
+            "kind": "mentor",
+            "duration_minutes": body.duration_minutes,
+            "price_inr": price_total,
+        },
+    )
+    return {
+        "order": {
+            "id": order["id"],
+            "amount": order["amount"],
+            "currency": order.get("currency", "INR"),
+            "key_id": razorpay_client.get_public_key_id(),
+        },
+        "mentor": {"slug": slug, "name": catalogue.get("name"), "price_inr": price_total},
+    }
 
 
 @router.post("/mentors/book")
-def book_mentor(body: MentorBook, user: dict = Depends(get_current_user)) -> dict:
-    profile_uuid, slug, catalogue = _resolve_mentor(body.mentor_id)
-    if not profile_uuid and not catalogue:
+def book_mentor(
+    body: MentorBook, user: dict = Depends(get_current_user_required_permanent)
+) -> dict:
+    """Confirm a mentor booking AFTER verifying the Razorpay payment.
+
+    Previously ``payment_status`` was set to ``captured`` from the mere
+    presence of a client-supplied ``payment_id`` — anyone could forge a free
+    paid booking. We now require the order/payment/signature triple, verify the
+    signature with the Razorpay secret, re-fetch the order from Razorpay
+    (authoritative) and bind amount + owner before crediting the booking. Fails
+    closed: no valid, paid, owner-matched order => no captured booking.
+    """
+    _profile_uuid, slug, catalogue = _resolve_mentor(body.mentor_id)
+    if not catalogue:
         raise HTTPException(status_code=404, detail="Mentor not found")
-    price = (catalogue or {}).get("price_per_hour")
-    duration_h = max(1, round(body.duration_minutes / 60))
-    price_total = int(price * duration_h) if price else None
+    profile_uuid = _profile_uuid
+    price_total = _mentor_price_total(catalogue, body.duration_minutes)
+    if not price_total:
+        raise HTTPException(status_code=400, detail="Mentor is not bookable")
+
+    # 1. Cryptographic proof the (order, payment) pair came from Razorpay.
+    if not razorpay_client.verify_signature(
+        body.razorpay_order_id, body.razorpay_payment_id, body.razorpay_signature
+    ):
+        raise HTTPException(status_code=400, detail="Invalid payment signature")
+
+    # 2. Re-fetch the order (authoritative) and bind amount + owner + paid state.
+    try:
+        order = razorpay_client.get_client().order.fetch(body.razorpay_order_id)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Could not verify order: {exc}")
+    notes = (order or {}).get("notes") or {}
+    if notes.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Order does not belong to this user")
+    if int((order or {}).get("amount") or 0) != price_total * 100:
+        raise HTTPException(status_code=400, detail="Payment amount mismatch")
+    if (order or {}).get("status") != "paid":
+        raise HTTPException(status_code=400, detail="Order is not paid")
 
     sb = get_supabase_admin()
     payload: dict[str, Any] = {
@@ -96,12 +187,13 @@ def book_mentor(body: MentorBook, user: dict = Depends(get_current_user)) -> dic
         "notes": body.notes,
         "duration_minutes": body.duration_minutes,
         "price_inr": price_total,
-        "payment_id": body.payment_id,
-        "payment_status": "captured" if body.payment_id else "unpaid",
-        "status": "pending_payment" if not body.payment_id else "awaiting_mentor",
+        "payment_id": body.razorpay_payment_id,
+        "payment_status": "captured",
+        "status": "awaiting_mentor",
         "metadata": {
-            "mentor_name": (catalogue or {}).get("name"),
+            "mentor_name": catalogue.get("name"),
             "slot_label": body.slot if body.slot and "T" not in body.slot else None,
+            "razorpay_order_id": body.razorpay_order_id,
         },
     }
     row = sb.table("mentor_bookings").insert(payload).execute().data

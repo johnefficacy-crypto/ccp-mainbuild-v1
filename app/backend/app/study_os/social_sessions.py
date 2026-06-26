@@ -297,6 +297,23 @@ def end_session(
     declared_task_completed: bool | None = None,
 ) -> dict[str, Any]:
     now = _now_iso()
+    # Membership gate: only a participant may end the shared session. The
+    # service-role client bypasses RLS, so without this any user could end
+    # (and stamp presence on) an arbitrary session by id. Raise LookupError
+    # (→404) rather than leak that the session exists to non-members.
+    att_rows = _safe(
+        lambda: (
+            supabase.table("social_session_attendance")
+            .select("id")
+            .eq("session_id", session_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        ),
+        default=None,
+    )
+    if not (getattr(att_rows, "data", None) or []):
+        raise LookupError("session not found")
     # Stamp end on the session itself.
     sess_rows = _safe(
         lambda: (
@@ -417,16 +434,43 @@ def request_partner(
         raise ValueError("invalid partner_id")
     if partner_id == user_id:
         raise ValueError("cannot pair with self")
+    # Consent: a request starts 'pending' (user_a = requester, user_b = target)
+    # and only becomes 'active' when the target accepts (see accept_partner).
+    # Inserting 'active' directly would let anyone force a partnership — and the
+    # resulting trust/leaderboard linkage — onto a non-consenting victim.
     row = {
         "user_a": user_id,
         "user_b": partner_id,
         "pairing_goal": pairing_goal,
         "exam_id": exam_id,
-        "status": "active",
+        "status": "pending",
     }
     res = _safe(lambda: supabase.table("accountability_pairs").insert(row).execute(), default=None)  # safe-write-ok: returns local row dict on failure; caller handles absent id gracefully
     data = getattr(res, "data", None) or []
     return data[0] if data else row
+
+
+def accept_partner(supabase: Any, user_id: str, pair_id: str) -> dict[str, Any]:
+    """Accept a pending partner request. Only the target (user_b) may accept,
+    and only a row still in 'pending' is activated — so a requester cannot
+    self-activate and a third party cannot accept on someone's behalf."""
+    if not _is_uuid(pair_id):
+        raise ValueError("invalid pair_id")
+    res = _safe(
+        lambda: (
+            supabase.table("accountability_pairs")
+            .update({"status": "active"})
+            .eq("id", pair_id)
+            .eq("user_b", user_id)
+            .eq("status", "pending")
+            .execute()
+        ),
+        default=None,
+    )
+    data = getattr(res, "data", None) or []
+    if not data:
+        raise LookupError("pending partner request not found")
+    return data[0]
 
 
 def list_pairs(supabase: Any, user_id: str) -> list[dict[str, Any]]:

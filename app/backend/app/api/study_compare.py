@@ -46,6 +46,7 @@ from app.study_os.social_sessions import (
     list_groups,
     list_pairs,
     list_partner_suggestions,
+    accept_partner,
     request_partner,
     start_session,
     write_mentor_feedback,
@@ -293,6 +294,22 @@ async def partner_request(
             body.pairing_goal,
             body.exam_id,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+class PartnerAccept(BaseModel):
+    pair_id: str
+
+
+@router.post("/social/partner/accept")
+async def partner_accept(
+    body: PartnerAccept, user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
+    try:
+        return accept_partner(_supabase(), user["id"], body.pair_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
