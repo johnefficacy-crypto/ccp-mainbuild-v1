@@ -441,6 +441,11 @@ export default function OperationsConsole() {
           scope: payload?.scope,
           reason: payload?.reason,
           evidence_url: payload?.evidence_url,
+          // Destructive-op confirmation the backend requires verbatim
+          // (admin_conflicts.ResolveBody / CONFIRM_OVERRIDE). ConflictResolver
+          // already enforces reason>=10 + a valid evidence URL, so this is the
+          // only remaining required field; without it every resolve 422s.
+          confirmation_text: "CONFIRM_OVERRIDE",
         });
         setConflictTarget(null);
         await refetchConflicts();

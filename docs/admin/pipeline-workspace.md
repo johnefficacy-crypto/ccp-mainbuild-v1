@@ -142,30 +142,32 @@ by the separate Recruitments page, not the workspace.
 
 ## Known gaps
 
-These are documented current behaviours / latent bugs, not aspirational design. Full
-detail (severity, file:line) in
-[../audits/2026-06-25-pipeline-workspace-critical-examination.md](../audits/2026-06-25-pipeline-workspace-critical-examination.md):
+Full detail (severity, file:line, fix approach) in
+[../audits/2026-06-25-pipeline-workspace-critical-examination.md](../audits/2026-06-25-pipeline-workspace-critical-examination.md).
 
-1. **Merge / mark-duplicate / approve bypass the promotion gate.** `merge-into` writes
-   canonical recruitment fields with no gate and no `is_dry_run` check; a rejected or
-   dry-run row can mutate live data.
-2. **State machine unenforced** on merge / mark-duplicate / approve (blind status
-   writes); only `reopen` validates its prior state.
-3. **Conflict subsystem is unwired in production.** The resolve/reject UI and the
-   promote-path conflict gate read `recruitment_verification_conflicts`, which has no
-   production writer; live consensus conflicts go to
-   `recruitment_verification_reports.conflicts`. The resolve endpoint also requires a
-   `confirmation_text = "CONFIRM_OVERRIDE"` the frontend never sends (would 422).
-4. **`promote_queue_item` is non-idempotent** (read → create recruitment → then flip
-   status, with no compare-and-swap) — concurrent/retried promotes risk duplicate or
-   orphaned recruitments.
-5. **The documented "two gates in sequence" is not wired.** `check_gateway_promotion`
-   runs only on the Verification-Reports preview, never on promote.
-6. **`promotion-preview.ok` diverges from the real gate** for post-scoped
+**Fixed (PR #770):**
+
+1. ~~Merge bypasses the promotion gate~~ — `merge-into` now runs `evaluate_promotion_gate`
+   (and an `is_dry_run` block) before any canonical write.
+2. ~~State machine unenforced~~ — merge / mark-duplicate / approve now reject terminal
+   rows (409) and use status-conditional (compare-and-swap) writes.
+3. ~~Conflict subsystem unwired~~ — `verification_reports.write_conflicts` now mirrors
+   live consensus conflicts into `recruitment_verification_conflicts` (the table the UI
+   + promote gate read), and the frontend sends the required
+   `confirmation_text = "CONFIRM_OVERRIDE"`.
+4. ~~`promote_queue_item` non-idempotent~~ — claim-first CAS (transient `promoting`
+   status) on both single and batch promote; concurrent/duplicate promotes return 409.
+5. RLS migration **193** restricts the public catalog to `publish_status = 'published'`
+   only — `needs_review` rows are no longer publicly readable (supersedes 130).
+
+**Still open:**
+
+6. **The documented "two gates in sequence" is not wired.** `check_gateway_promotion`
+   runs only on the Verification-Reports preview, never on promote (the gate comment now
+   says so).
+7. **`promotion-preview.ok` diverges from the real gate** for post-scoped
    `requires_domicile` (flat vs per-post evidence check).
-7. **`publish` has no re-publish guard** (clobbers `published_by/at`, re-fans-out);
-   `verify` is advisory and not enforced server-side. RLS migration 130 exposes
-   `needs_review` recruitments (and posts) to anonymous reads — promotion, not
-   publish, is the de-facto public-visibility boundary today.
-8. **Frontend:** the 503 auto-retry / skip-refresh-on-failure logic in `AdminFixPanel`
+8. **`publish` has no re-publish guard** (clobbers `published_by/at`, re-fans-out) and
+   **`verify` is advisory** (not enforced server-side).
+9. **Frontend:** the 503 auto-retry / skip-refresh-on-failure logic in `AdminFixPanel`
    is dead because `useAdminAction.runAction` swallows errors instead of rethrowing.

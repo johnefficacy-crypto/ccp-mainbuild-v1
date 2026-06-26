@@ -51,6 +51,13 @@ from app.scraping.promotion_gate import (
 # never disagree with ``evaluate_promotion_gate``.
 _ACCEPTED_REVIEW_STATUSES = frozenset({"verified", "corrected"})
 
+# Non-terminal queue states a reviewer may still act on (merge / mark-duplicate
+# / approve). Terminal states (``approved`` / ``merged`` / ``rejected``) are
+# excluded so a row can't be merged-after-reject, duplicated-after-promote, or
+# re-approved (P0-2). ``duplicate`` is intentionally still actionable: an admin
+# may re-classify a duplicate into a merge or approval.
+_ACTIONABLE_QUEUE_STATES = frozenset({"pending", "needs_review", "duplicate"})
+
 logger = logging.getLogger("career_copilot.api.admin_scrape")
 
 
@@ -1496,6 +1503,34 @@ def promotion_preview(
     }
 
 
+def _revert_promote_claim(
+    supabase,
+    queue_id: str,
+    *,
+    original_status: str,
+    should_revert: bool,
+) -> None:
+    """Undo a claim-first promote claim after a downstream failure.
+
+    Only reverts when ``should_revert`` (i.e. THIS request won the claim and
+    then failed before/at recruitment creation). Scoped to the transient
+    ``status='promoting'`` so we only ever roll back OUR own in-flight claim,
+    never a row some other path has since advanced. Best-effort: a revert
+    failure is logged, not raised, so the original error surfaces to the caller.
+    """
+    if not should_revert:
+        return
+    try:
+        supabase.table("scrape_queue").update(
+            {"status": original_status, "promoted_recruitment_id": None}
+        ).eq("id", queue_id).eq("status", "promoting").execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "promote_claim_revert_failed queue_id=%s original_status=%s exc=%s: %s",
+            queue_id, original_status, type(exc).__name__, exc, exc_info=True,
+        )
+
+
 @router.post("/admin/scrape/items/{queue_id}/promote")
 def promote_queue_item(
     queue_id: str,
@@ -1513,7 +1548,11 @@ def promote_queue_item(
     supabase = get_supabase_admin()
     rows = (
         supabase.table("scrape_queue")
-        .select("id, source_id, source_url, extracted_data, status, official_source_resolved, extraction_status")
+        # ``is_dry_run`` / ``official_source_host`` are REQUIRED in this SELECT:
+        # ``evaluate_promotion_gate`` hard-blocks dry-run rows via
+        # ``queue_item.get("is_dry_run")`` (P0-3). Omitting the column made the
+        # block dead on the single-item promote path.
+        .select("id, source_id, source_url, extracted_data, status, official_source_resolved, official_source_host, extraction_status, is_dry_run, promoted_recruitment_id")
         .eq("id", queue_id)
         .limit(1)
         .execute()
@@ -1523,11 +1562,35 @@ def promote_queue_item(
     if not rows:
         raise HTTPException(status_code=404, detail="Queue item not found")
     item = rows[0]
-    if item["status"] not in {"approved", "pending", "needs_review"}:
+    _PROMOTABLE_SOURCE_STATES = {"approved", "pending", "needs_review"}
+    # P0-4 idempotency: a row that already produced a recruitment must never
+    # promote again, even though ``approved`` is a valid promote-FROM state.
+    # ``promoted_recruitment_id`` is the true "already promoted" signal; check it
+    # before the gate so a retried promote is a clean 409, not a 2nd create.
+    if item.get("promoted_recruitment_id"):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Item has already been promoted",
+                "reason": "already_promoted",
+                "recruitment_id": item.get("promoted_recruitment_id"),
+            },
+        )
+    if item["status"] not in _PROMOTABLE_SOURCE_STATES:
         raise HTTPException(status_code=409, detail=f"Item is already {item['status']}")
+    original_status = item["status"]
+    claimed_row = False
     try:
         gate = evaluate_promotion_gate(supabase, item)
         if not gate.ok:
+            if gate.reason == "dry_run_not_promotable":
+                # P0-3: the gate hard-blocks dry-run rows. Surfacing the reason
+                # explicitly (instead of falling through to the generic
+                # high-risk-fields shape) gives the UI an actionable code.
+                raise HTTPException(
+                    status_code=409,
+                    detail={"message": "Dry-run rows cannot be promoted", "reason": gate.reason},
+                )
             if gate.reason == "unverified_official_source":
                 raise HTTPException(
                     status_code=409,
@@ -1564,6 +1627,40 @@ def promote_queue_item(
                     "invalid_fields": missing,
                 },
             ) from exc
+        # P0-4: claim-first compare-and-swap with a TRANSIENT 'promoting' state.
+        # The status flip IS the concurrency guard. We atomically move the row
+        # ``{pending,needs_review,approved} → 'promoting'`` — scoped to
+        # ``.in_("status", <originally-promotable states>)`` — BEFORE creating
+        # the recruitment. Because ``'promoting'`` is NOT in the promotable set,
+        # a second/concurrent promote (even of a row this call already advanced)
+        # claims zero rows and 409s instead of creating a duplicate recruitment.
+        # A transient value is safe here: ``scrape_queue.status`` is free-text
+        # (no DB CHECK constraint — verified against migrations 002/005/020/129).
+        # On success the final write flips ``'promoting' → 'approved'``; on
+        # failure ``_revert_promote_claim`` restores the original status.
+        claimed = (
+            supabase.table("scrape_queue").update(
+                {
+                    "status": "promoting",
+                    "reviewer_id": admin["id"],
+                    "reviewed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            .eq("id", queue_id)
+            .in_("status", sorted(_PROMOTABLE_SOURCE_STATES))
+            .execute()
+            .data
+            or []
+        )
+        if not claimed:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Item is already being promoted or has been promoted",
+                    "reason": "concurrent_promote",
+                },
+            )
+        claimed_row = True
         rec_id = promote_to_recruitments(
             extracted,
             supabase,
@@ -1571,8 +1668,16 @@ def promote_queue_item(
             queue_id=queue_id,
         )
     except HTTPException:
+        # ``status`` checks / 422 / 409 (incl. concurrent_promote) raise before
+        # the claim or AFTER a successful claim with no recruitment created here.
+        # Roll the claim back so the row stays retriable, but never undo another
+        # caller's concurrent_promote claim.
+        _revert_promote_claim(supabase, queue_id, original_status=original_status,
+                              should_revert=claimed_row)
         raise
     except OpenConflictPromotionError as exc:
+        _revert_promote_claim(supabase, queue_id, original_status=original_status,
+                              should_revert=claimed_row)
         raise HTTPException(
             status_code=400,
             detail={
@@ -1582,6 +1687,10 @@ def promote_queue_item(
             },
         ) from exc
     except DuplicatePromotionError as exc:
+        # The duplicate already exists; we created nothing. Revert the claim so
+        # the admin can mark-duplicate / merge instead of a stuck ``approved``.
+        _revert_promote_claim(supabase, queue_id, original_status=original_status,
+                              should_revert=claimed_row)
         raise HTTPException(status_code=409, detail={
             "message": "Recruitment already exists",
             "reason": "duplicate_slug",
@@ -1590,8 +1699,15 @@ def promote_queue_item(
             "next_actions": ["open_existing_recruitment", "merge_reviewed_fields", "mark_duplicate"],
         }) from exc
     except Exception as exc:  # noqa: BLE001
+        # Recruitment write failed after the claim → revert so the queue row is
+        # left exactly as it was (``pending``), never orphaning a half-written
+        # recruitment or stranding the row in ``approved``.
+        _revert_promote_claim(supabase, queue_id, original_status=original_status,
+                              should_revert=claimed_row)
         logger.exception("scrape queue promotion failed queue_id=%s", queue_id)
         raise HTTPException(status_code=500, detail="Promote failed") from PromotionError("promotion write failed")
+    # The row is already claimed as ``approved`` (the concurrency guard above);
+    # this final write only stamps the freshly-minted recruitment id onto it.
     updated_rows = (
         supabase.table("scrape_queue").update(
         {
@@ -1922,9 +2038,49 @@ def merge_queue_item_into_recruitment(
     body = body or {}
     force_fields = set(body.get("force_fields") or [])
     supabase = get_supabase_admin()
-    qrows = supabase.table("scrape_queue").select("id, source_id, extracted_data, status").eq("id", queue_id).limit(1).execute().data or []
+    # ``is_dry_run`` / ``official_source_resolved`` are SELECTed so the same
+    # trust gate that protects the promote path also protects merge-into — this
+    # is the OTHER canonical-write path (P0-1).
+    qrows = supabase.table("scrape_queue").select("id, source_id, extracted_data, status, is_dry_run, official_source_resolved").eq("id", queue_id).limit(1).execute().data or []
     if not qrows:
         raise HTTPException(status_code=404, detail="Queue item not found")
+    queue_item = qrows[0]
+    # P0-2: state-machine precondition. Merge only acts on a non-terminal row;
+    # mirrors how ``reopen`` validates its source state. Raise 409 (not 404) so a
+    # merge-after-reject / merge-after-promote is a clear conflict.
+    if (queue_item.get("status") or "") not in _ACTIONABLE_QUEUE_STATES:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Item is {queue_item.get('status')!r}; only pending/needs_review/duplicate items can be merged.",
+        )
+    # P0-1: run the promotion gate (which also hard-blocks dry-run rows) BEFORE
+    # mutating any canonical recruitment field. Same error shapes the promote
+    # endpoint returns so the frontend's existing blocker UI handles them.
+    gate = evaluate_promotion_gate(supabase, queue_item)
+    if not gate.ok:
+        if gate.reason == "dry_run_not_promotable":
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "Dry-run rows cannot be merged into canonical recruitments", "reason": gate.reason},
+            )
+        if gate.reason == "unverified_official_source":
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "Official source not resolved", "reason": gate.reason},
+            )
+        if gate.reason == "data_contradictions":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Data contradictions must be corrected before promotion",
+                    "reason": gate.reason,
+                    "contradictions": gate.unverified_fields,
+                },
+            )
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "High-risk fields unverified", "unverified_fields": gate.unverified_fields},
+        )
     rec_rows = supabase.table("recruitments").select("*").eq("id", recruitment_id).limit(1).execute().data or []
     if not rec_rows:
         raise HTTPException(status_code=404, detail="Recruitment not found")
@@ -1943,20 +2099,34 @@ def merge_queue_item_into_recruitment(
             patch[field] = value
         else:
             skipped[field] = "existing_value_present"
-    if qrows[0].get("source_id") and (not existing.get("source_id") or "source_id" in force_fields):
-        patch["source_id"] = qrows[0].get("source_id")
+    if queue_item.get("source_id") and (not existing.get("source_id") or "source_id" in force_fields):
+        patch["source_id"] = queue_item.get("source_id")
     if body.get("review_notes"):
         patch["review_notes"] = body.get("review_notes")
     before = {k: existing.get(k) for k in patch}
+    # P0-2: claim the queue row FIRST, conditional on its still-actionable state,
+    # so a concurrent merge/promote can't double-apply the canonical patch.
+    claimed = (
+        supabase.table("scrape_queue").update({
+            "status": "merged",
+            "promoted_recruitment_id": recruitment_id,
+            "reviewer_id": admin["id"],
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "reviewer_notes": body.get("notes"),
+        })
+        .eq("id", queue_id)
+        .in_("status", sorted(_ACTIONABLE_QUEUE_STATES))
+        .execute()
+        .data
+        or []
+    )
+    if not claimed:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Item is no longer in a mergeable state", "reason": "concurrent_state_change"},
+        )
     if patch:
         supabase.table("recruitments").update(patch).eq("id", recruitment_id).execute()
-    supabase.table("scrape_queue").update({
-        "status": "merged",
-        "promoted_recruitment_id": recruitment_id,
-        "reviewer_id": admin["id"],
-        "reviewed_at": datetime.now(timezone.utc).isoformat(),
-        "reviewer_notes": body.get("notes"),
-    }).eq("id", queue_id).execute()
     _audit(supabase, admin, "scrape.queue.merge", entity_type="scrape_queue", entity_id=queue_id, new_value={"recruitment_id": recruitment_id, "before": before, "after": patch, "skipped_fields": skipped})
     return {"ok": True, "status": "merged", "recruitment_id": recruitment_id, "updated_fields": sorted(patch.keys()), "skipped_fields": skipped}
 
@@ -1969,14 +2139,28 @@ def mark_queue_item_duplicate(
 ) -> dict[str, Any]:
     body = body or {}
     supabase = get_supabase_admin()
+    # P0-2: read current state to separate 404 (missing) from 409 (terminal),
+    # then write conditionally so the status flip is atomic.
+    current = supabase.table("scrape_queue").select("status").eq("id", queue_id).limit(1).execute().data or []
+    if not current:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+    if (current[0].get("status") or "") not in _ACTIONABLE_QUEUE_STATES:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Item is {current[0].get('status')!r}; only pending/needs_review/duplicate items can be marked duplicate.",
+        )
     rows = supabase.table("scrape_queue").update({
         "status": "duplicate",
         "reviewer_id": admin["id"],
         "reviewer_notes": body.get("notes"),
         "reviewed_at": datetime.now(timezone.utc).isoformat(),
-    }).eq("id", queue_id).execute().data or []
+    }).eq("id", queue_id).in_("status", sorted(_ACTIONABLE_QUEUE_STATES)).execute().data or []
     if not rows:
-        raise HTTPException(status_code=404, detail="Queue item not found")
+        # Lost the race to a concurrent terminal write between read and update.
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Item is no longer in an actionable state", "reason": "concurrent_state_change"},
+        )
     _audit(supabase, admin, "scrape.queue.mark_duplicate", entity_type="scrape_queue", entity_id=queue_id, new_value=body)
     return {"ok": True, "id": queue_id, "status": "duplicate"}
 
@@ -1989,6 +2173,16 @@ def approve_queue_item(
 ) -> dict[str, Any]:
     body = body or {}
     supabase = get_supabase_admin()
+    # P0-2: separate 404 from 409, then write conditionally on the actionable
+    # state so approve can't fire from a terminal row (approve-from-any-state).
+    current = supabase.table("scrape_queue").select("status").eq("id", queue_id).limit(1).execute().data or []
+    if not current:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+    if (current[0].get("status") or "") not in _ACTIONABLE_QUEUE_STATES:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Item is {current[0].get('status')!r}; only pending/needs_review/duplicate items can be approved.",
+        )
     res = (
         supabase.table("scrape_queue")
         .update(
@@ -2000,12 +2194,16 @@ def approve_queue_item(
             }
         )
         .eq("id", queue_id)
+        .in_("status", sorted(_ACTIONABLE_QUEUE_STATES))
         .execute()
         .data
         or []
     )
     if not res:
-        raise HTTPException(status_code=404, detail="Queue item not found")
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Item is no longer in an actionable state", "reason": "concurrent_state_change"},
+        )
     _audit(supabase, admin, "scrape.queue.approve", entity_type="scrape_queue",
            entity_id=queue_id, new_value=body)
     return {"ok": True, "id": queue_id, "status": "approved"}

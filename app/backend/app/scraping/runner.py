@@ -3736,6 +3736,28 @@ def compute_promotion_slug(data: VerifiedRecruitmentForPromotion) -> str:
     return f"{slugify(data.title)}-{data.year}"
 
 
+def _revert_promote_run_claim(supabase: Client, queue_id: str, *, should_revert: bool) -> None:
+    """Undo a promote_run claim after the recruitment write failed.
+
+    Only reverts when THIS iteration won the ``pending → approved`` claim and
+    then failed, so a failed item is left exactly ``pending`` (retriable) rather
+    than stranded in ``approved`` with no recruitment. Scoped to
+    ``status=approved`` so a successful concurrent promote is never clobbered.
+    Best-effort: a revert failure is logged, not raised.
+    """
+    if not should_revert:
+        return
+    try:
+        supabase.table("scrape_queue").update(
+            {"status": "pending", "promoted_recruitment_id": None}
+        ).eq("id", queue_id).eq("status", "approved").execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "[promote_run] claim revert failed queue_id=%s exc=%s: %s",
+            queue_id, type(exc).__name__, exc, exc_info=True,
+        )
+
+
 def promote_run(
     run_id: str,
     supabase: Client,
@@ -3788,10 +3810,38 @@ def promote_run(
             )
             continue
 
+        claimed_here = False
         try:
             # Strict shape: structurally-incomplete rows fail here with a
             # clear ValidationError instead of half-writing a recruitment.
             extracted = VerifiedRecruitmentForPromotion(**d)
+            # P0-4 (TOCTOU): claim-first compare-and-swap. Atomically move the
+            # row ``pending → approved`` BEFORE creating the recruitment, scoped
+            # to ``.eq("status", "pending")``. ``scrape_queue.status`` is
+            # free-text (no DB CHECK), so flipping straight to the terminal
+            # ``approved`` is safe and means a concurrent/retried promote_run
+            # for the same row claims zero rows and skips instead of
+            # double-creating. The claim is reverted below if the recruitment
+            # write then fails, so a failed item is left exactly ``pending``.
+            claim_update = {"status": "approved", "reviewed_at": utc_now_iso()}
+            if reviewer_id:
+                claim_update["reviewer_id"] = reviewer_id
+            claimed_rows = execute_or_raise(
+                "scrape_queue.promote_claim",
+                lambda cu=claim_update, qid=queue_id: supabase.table("scrape_queue").update(cu).eq("id", qid).eq("status", "pending").execute(),
+            ).data or []
+            if not claimed_rows:
+                # Another promote_run (or the admin single-promote) already
+                # claimed this row. Not an error — just nothing left to do.
+                skipped += 1
+                errors.append({
+                    "queue_id": queue_id,
+                    "error": "concurrent_promote",
+                    "reason": "already_claimed",
+                })
+                logger.info("[promote_run] queue_id=%s skipped: already claimed by a concurrent promote", queue_id)
+                continue
+            claimed_here = True
             rec_id = promote_to_recruitments(
                 extracted,
                 supabase,
@@ -3799,19 +3849,15 @@ def promote_run(
                 queue_id=queue_id,
             )
             rec_ids.append(rec_id)
-            update = {
-                "status": "approved",
-                "reviewed_at": utc_now_iso(),
-                "promoted_recruitment_id": rec_id,
-            }
-            if reviewer_id:
-                update["reviewer_id"] = reviewer_id
+            # Stamp the freshly-minted recruitment id onto the already-claimed
+            # row (the status flip itself was the concurrency guard above).
             execute_or_raise(
                 "scrape_queue.promote_status_update",
-                lambda update=update, qid=queue_id: supabase.table("scrape_queue").update(update).eq("id", qid).execute(),
+                lambda rid=rec_id, qid=queue_id: supabase.table("scrape_queue").update({"promoted_recruitment_id": rid}).eq("id", qid).execute(),
             )
             promoted += 1
         except OpenConflictPromotionError as exc:
+            _revert_promote_run_claim(supabase, queue_id, should_revert=claimed_here)
             skipped += 1
             errors.append({
                 "queue_id": queue_id,
@@ -3824,6 +3870,7 @@ def promote_run(
                 queue_id, exc.field_keys,
             )
         except Exception as exc:  # noqa: BLE001
+            _revert_promote_run_claim(supabase, queue_id, should_revert=claimed_here)
             failed += 1
             errors.append({"queue_id": queue_id, "error": str(exc)})
             logger.warning("[promote_run] queue_id=%s failed: %s", queue_id, exc)

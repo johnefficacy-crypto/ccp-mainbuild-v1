@@ -39,6 +39,21 @@ unwired in production, and (c) a non-idempotent promote. None is an open
 anonymous-write hole — every endpoint requires admin permission — but each
 undermines the "Trust > Speed" invariant the workspace exists to enforce.
 
+## Remediation status (2026-06-25, PR #770)
+
+Fixed in this PR (with tests): **P0-1** merge now runs `evaluate_promotion_gate` +
+`is_dry_run` block before any canonical write; **P0-2** merge/mark-duplicate/approve
+reject terminal states (409) and use status-conditional CAS writes; **P0-3** conflicts
+wired — `write_conflicts` mirrors live consensus conflicts into
+`recruitment_verification_conflicts` and the frontend sends `confirmation_text`;
+**P0-4** claim-first CAS (transient `promoting` status) on single + batch promote;
+**P0-3 dry-run** column now selected so the gate's hard block fires; **RLS** migration
+193 restricts the public catalog to `published` only.
+
+Still open (tracked): **P1-1** `check_gateway_promotion` not wired into promote (comment
+corrected); **P1-2** `promotion-preview` post-scope divergence; **P1-3** `publish`
+re-publish guard; **P1-4** `verify` advisory; frontend dead 503-retry in `AdminFixPanel`.
+
 ## Backend findings
 
 ### P0 — correctness / invariant

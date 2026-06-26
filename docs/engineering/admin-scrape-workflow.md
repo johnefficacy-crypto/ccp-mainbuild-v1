@@ -43,9 +43,9 @@ Scrape runs and queue promotion do not publish and do not fan out notifications.
 
 ## Promotion gate scope (as-built, important)
 
-The trust gate `evaluate_promotion_gate` runs on **only two paths**: _Promote to new draft_ (`POST /api/admin/scrape/items/{id}/promote`) and the batch `promote_run`. The other queue actions write canonical or status changes **without** running that gate:
+The trust gate `evaluate_promotion_gate` runs on _Promote to new draft_ (`POST /api/admin/scrape/items/{id}/promote`), the batch `promote_run`, and (as of PR #770) **_Merge into existing recruitment_** (`merge-into`):
 
-- **Merge into existing recruitment** (`merge-into`) patches selected fields directly onto an existing `recruitments` row. It does **not** call `evaluate_promotion_gate`, does **not** check `official_source_resolved` / unverified fields / open conflicts, and does **not** read `is_dry_run`. Field correctness before merge is the reviewer's responsibility; a non-promotable or dry-run row can still write canonical fields here.
-- **Mark duplicate** and **Approve** are blind status writes with no source-state precondition (only **Reopen** validates its prior state: `rejected → pending`).
+- **Merge into existing recruitment** now runs `evaluate_promotion_gate` and an `is_dry_run` hard block **before** patching the existing `recruitments` row, returning 409 if the gate fails. A non-promotable or dry-run row can no longer write canonical fields.
+- **Mark duplicate** and **Approve** now reject terminal-state rows (409) and use status-conditional (compare-and-swap) writes; they still do not run the field gate (they don't write canonical recruitment data). **Reopen** validates `rejected → pending`.
 
-Consensus-conflict blocking on the promote path comes from `_open_conflict_field_keys`, which reads the `recruitment_verification_conflicts` table — a table with **no production writer today** (live consensus conflicts are persisted to `recruitment_verification_reports.conflicts` instead). See [../admin/pipeline-workspace.md](../admin/pipeline-workspace.md) ("Known gaps") and the audit in [../audits/2026-06-25-pipeline-workspace-critical-examination.md](../audits/2026-06-25-pipeline-workspace-critical-examination.md).
+Consensus-conflict blocking on the promote path comes from `_open_conflict_field_keys`, which reads the `recruitment_verification_conflicts` table; `verification_reports.write_conflicts` mirrors live consensus conflicts into that table (PR #770) so the block fires. See [../admin/pipeline-workspace.md](../admin/pipeline-workspace.md) ("Known gaps") and the audit in [../audits/2026-06-25-pipeline-workspace-critical-examination.md](../audits/2026-06-25-pipeline-workspace-critical-examination.md).

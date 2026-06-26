@@ -230,8 +230,9 @@ def evaluate_promotion_gate(supabase: Client, queue_item: dict[str, Any]) -> Gat
 # publish flow. The "both gates in sequence" sequencing below is the
 # intended design, not the wired behaviour. The only consensus-conflict
 # block on the promote path is ``_open_conflict_field_keys`` (runner.py),
-# which reads the ``recruitment_verification_conflicts`` table — a table
-# that currently has no production writer. See
+# which reads the ``recruitment_verification_conflicts`` table;
+# ``verification_reports.write_conflicts`` mirrors live consensus conflicts
+# into that table so the block actually fires. See
 # docs/admin/pipeline-workspace.md ("Known gaps") for the full picture.
 
 @dataclass
