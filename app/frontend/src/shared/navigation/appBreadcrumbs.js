@@ -93,6 +93,10 @@ export function getBreadcrumbs(pathname, leafOverride = null) {
   const communityMatch = pathname.match(/^\/app\/community\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?$/);
   if (communityMatch) {
     const [, spaceId, channelId, threadId] = communityMatch;
+    // A bare space page (no channel/thread) is a shallow landing — show a trail
+    // only when the space resolved to a real name (leafOverride). An unmapped
+    // /app/community/:spaceId (space never resolves, so no leaf) renders nothing.
+    if (!channelId && !threadId && !leafOverride) return null;
     const ancestors = [{ label: "Community", to: "/app/community" }];
     if (channelId) ancestors.push({ label: "Space", to: `/app/community/${spaceId}` });
     if (threadId) ancestors.push({ label: "Channel", to: `/app/community/${spaceId}/${channelId}` });
