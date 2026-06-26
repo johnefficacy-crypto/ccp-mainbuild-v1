@@ -77,6 +77,11 @@ const TRAIL_DEFS = [
     ancestors: [{ label: "Notifications", to: "/app/notifications" }],
     fallbackLabel: "Preferences",
   },
+  {
+    pattern: /^\/app\/community\/[^/]+$/,
+    ancestors: [{ label: "Community", to: "/app/community" }],
+    fallbackLabel: "Space",
+  },
 ];
 
 /**

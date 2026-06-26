@@ -21,7 +21,7 @@
 - `routes/publicRoutes.jsx`: removed `/forgot-password`, `/reset-password`; deleted those pages.
 - `lib/phone.js` (+ test): E.164 normalizer.
 - Backend `core/auth.py`: `_serialize_user` exposes `phone`; `/api/auth/me` already spreads it. Role source of truth (`raw_app_meta_data.role`) unchanged.
-- `supabase/config.toml`: `[auth.sms]` enabled + `[auth.sms.twilio] enabled = true` (creds via env); dev `[auth.sms.test_otp]` map.
+- `supabase/config.toml`: `[auth.sms]` enabled + `[auth.sms.twilio] enabled = false` in local/CI (test_otp map resolves OTP without real creds; operator enables Twilio in hosted Supabase — production gate); dev `[auth.sms.test_otp]` map.
 - No DB migration: `profiles.phone` already exists; Supabase stores phone + confirmation on `auth.users`.
 
 ## Tests
