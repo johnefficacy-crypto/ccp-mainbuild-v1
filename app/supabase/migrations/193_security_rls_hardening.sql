@@ -2,7 +2,7 @@
 -- 193_security_rls_hardening.sql
 -- Security: close confirmed RLS authorization vulnerabilities.
 --
--- Four independent hardening sections, each idempotent and re-runnable:
+-- Five independent hardening sections, each idempotent and re-runnable:
 --
 --   Section 1 (CRITICAL) — Privileged-column write protection on public.profiles
 --     Vuln: the profiles_update_own policy (migration 004) lets a row owner
@@ -40,6 +40,19 @@
 --     enable RLS and add NO policies, matching the migration 128 claim-tables
 --     contract: RLS on + zero policies => only service_role (which bypasses
 --     RLS) can touch them. The backend reaches them via the service-role client.
+--
+--   Section 5 — Lock down mentor_bookings commercial fields (PR #775 review).
+--     Vuln A (replay): mentor_bookings.payment_id had only a NON-unique index,
+--     so the same paid Razorpay order could be confirmed repeatedly to mint
+--     multiple captured bookings. We add a real razorpay_order_id column and a
+--     UNIQUE index on it (and on payment_id) so a second confirm of the same
+--     order/payment fails atomically at the DB.
+--     Vuln B (PostgREST forge): the mb_owner_update policy (migration 099) let a
+--     booking owner UPDATE their own row with NO column restriction — they could
+--     PATCH payment_status/status/price_inr/payment_id directly via PostgREST,
+--     bypassing the API. We DROP mb_owner_update so all booking mutations go
+--     through the service-role backend (mb_service_role_all). Owners keep read
+--     access (mb_owner_read); cancellation/notes must use scoped backend routes.
 --
 -- service_role detection (Section 1): we use auth.role() = 'service_role'.
 --   Justification: this is the detection idiom used everywhere else in this
@@ -359,6 +372,38 @@ begin
 
   if to_regclass('public.mock_breakdown_recompute_runs') is not null then
     execute 'alter table public.mock_breakdown_recompute_runs enable row level security';
+  end if;
+end $$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Section 5 — Lock down mentor_bookings commercial fields
+-- ─────────────────────────────────────────────────────────────────────────────
+-- (a) Real razorpay_order_id column + UNIQUE indexes => a paid order/payment can
+--     back at most one captured booking (anti-replay). (b) Drop mb_owner_update
+--     so owners cannot PATCH payment_status/status/price_inr/payment_id via
+--     PostgREST; all booking mutations go through the service-role backend.
+
+do $$
+begin
+  if to_regclass('public.mentor_bookings') is not null then
+    alter table public.mentor_bookings
+      add column if not exists razorpay_order_id text;
+
+    -- One booking per Razorpay order (the authoritative anti-replay key).
+    create unique index if not exists uq_mentor_bookings_razorpay_order
+      on public.mentor_bookings(razorpay_order_id)
+      where razorpay_order_id is not null;
+
+    -- And one booking per captured payment id. Replaces the old NON-unique
+    -- idx_mentor_bookings_payment (kept; a unique partial index coexists fine).
+    create unique index if not exists uq_mentor_bookings_payment_id
+      on public.mentor_bookings(payment_id)
+      where payment_id is not null;
+
+    -- Remove owner UPDATE: commercial/state fields are server-owned. Owners keep
+    -- mb_owner_read; mutations flow through mb_service_role_all (the backend).
+    drop policy if exists mb_owner_update on public.mentor_bookings;
   end if;
 end $$;
 

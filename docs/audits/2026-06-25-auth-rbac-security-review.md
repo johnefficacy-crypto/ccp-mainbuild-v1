@@ -275,3 +275,30 @@ cookie-based storage (`@supabase/ssr`) and/or a strict CSP + Trusted Types.
   merge-claim URL + identity binding (#10); anonymous-session ownership proof
   (#11); persist `is_anonymous` + working cleanup (#12); config hardening (#14);
   trust/role integrity (#15); the Low items (#16–#20).
+
+---
+
+## PR #775 review follow-ups (addressed in this branch)
+
+The owner's `/checkpost` review surfaced deeper gaps in the payment fix (#3);
+all addressed here:
+
+- **Replay** — `mentor_bookings` gains a real `razorpay_order_id` column with a
+  `UNIQUE` index (and a unique `payment_id` index); `book_mentor` pre-checks for
+  an existing booking on the order and treats a unique-violation as `409`, so one
+  paid order backs at most one captured booking (migration 193 §5 + backend).
+- **Order binding** — confirmation now validates every server-pinned note
+  (`kind == "mentor"`, `mentor_slug`, `duration_minutes`) in addition to owner +
+  amount + paid state, so an order minted for a different mentor/duration at the
+  same price cannot be reused.
+- **Direct PostgREST forge** — the `mb_owner_update` policy (migration 099) let a
+  booking owner PATCH `payment_status`/`status`/`price_inr`/`payment_id` directly;
+  migration 193 §5 drops it, so commercial/state fields are service-role-only
+  (owners keep read; cancellation/notes belong to scoped backend routes).
+- **Broken client** — the mentor-booking CTA (`MentorDetail.jsx`) is gated with
+  accurate "temporarily unavailable" copy until the secure order→checkout→confirm
+  client lands, so the release ships no always-failing user action.
+- **Migration collision (PR #769)** — #769 also adds migration 193. The CI
+  `migration-numbers` check enforces contiguity from `MAX(main)+1`, so both must
+  use 193 to pass independently; the collision is resolved by **merge order** —
+  whichever PR merges second rebases its migrations to `MAX(main)+1`.

@@ -162,7 +162,10 @@ def book_mentor(
     ):
         raise HTTPException(status_code=400, detail="Invalid payment signature")
 
-    # 2. Re-fetch the order (authoritative) and bind amount + owner + paid state.
+    # 2. Re-fetch the order (authoritative) and bind EVERY server-pinned field
+    #    (owner, amount, paid state, and the kind/mentor/duration in notes) so an
+    #    order minted for a different mentor or duration — even at the same price
+    #    — cannot be reused for this booking.
     try:
         order = razorpay_client.get_client().order.fetch(body.razorpay_order_id)
     except HTTPException:
@@ -176,8 +179,31 @@ def book_mentor(
         raise HTTPException(status_code=400, detail="Payment amount mismatch")
     if (order or {}).get("status") != "paid":
         raise HTTPException(status_code=400, detail="Order is not paid")
+    # Razorpay stores notes as strings — compare stringwise.
+    if notes.get("kind") != "mentor":
+        raise HTTPException(status_code=400, detail="Order is not a mentor order")
+    if notes.get("mentor_slug") != slug:
+        raise HTTPException(status_code=400, detail="Order mentor does not match booking")
+    if str(notes.get("duration_minutes")) != str(body.duration_minutes):
+        raise HTTPException(status_code=400, detail="Order duration does not match booking")
 
     sb = get_supabase_admin()
+    # 3. Anti-replay: one captured booking per Razorpay order. Pre-check for a
+    #    deterministic 409, with the UNIQUE index (migration 193) as the atomic
+    #    backstop against a concurrent double-submit.
+    existing = (
+        sb.table("mentor_bookings")
+        .select("id")
+        .eq("razorpay_order_id", body.razorpay_order_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if existing:
+        raise HTTPException(
+            status_code=409, detail="This payment has already been used for a booking"
+        )
     payload: dict[str, Any] = {
         "user_id": user["id"],
         "mentor_id": profile_uuid,
@@ -188,15 +214,24 @@ def book_mentor(
         "duration_minutes": body.duration_minutes,
         "price_inr": price_total,
         "payment_id": body.razorpay_payment_id,
+        "razorpay_order_id": body.razorpay_order_id,
         "payment_status": "captured",
         "status": "awaiting_mentor",
         "metadata": {
             "mentor_name": catalogue.get("name"),
             "slot_label": body.slot if body.slot and "T" not in body.slot else None,
-            "razorpay_order_id": body.razorpay_order_id,
         },
     }
-    row = sb.table("mentor_bookings").insert(payload).execute().data
+    try:
+        row = sb.table("mentor_bookings").insert(payload).execute().data
+    except Exception as exc:  # noqa: BLE001
+        # Unique-violation on razorpay_order_id / payment_id = replayed confirm.
+        msg = str(exc).lower()
+        if "duplicate" in msg or "unique" in msg or "23505" in msg:
+            raise HTTPException(
+                status_code=409, detail="This payment has already been used for a booking"
+            )
+        raise HTTPException(status_code=500, detail="Failed to create booking")
     if not row:
         raise HTTPException(status_code=500, detail="Failed to create booking")
     return _shape_booking(row[0])

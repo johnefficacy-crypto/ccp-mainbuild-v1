@@ -71,6 +71,22 @@ def _book_body(**over):
     return body
 
 
+def _valid_order(**over):
+    """A paid Razorpay order whose server-pinned notes match _book_body()."""
+    order = {
+        "amount": 2499 * 100,
+        "status": "paid",
+        "notes": {
+            "user_id": "user-A",
+            "kind": "mentor",
+            "mentor_slug": "rohan-iyer",
+            "duration_minutes": "60",  # Razorpay stores notes as strings
+        },
+    }
+    order.update(over)
+    return order
+
+
 def test_forged_payment_signature_does_not_create_captured_booking(monkeypatch):
     sb = SBStub({"mentor_bookings": []})
     client = _booking_app(sb, PERM_A, monkeypatch, signature_ok=False)
@@ -108,12 +124,47 @@ def test_order_owned_by_other_user_is_rejected(monkeypatch):
 
 def test_valid_payment_creates_captured_booking(monkeypatch):
     sb = SBStub({"mentor_bookings": []})
-    order = {"amount": 2499 * 100, "notes": {"user_id": "user-A"}, "status": "paid"}
-    client = _booking_app(sb, PERM_A, monkeypatch, signature_ok=True, order=order)
+    client = _booking_app(sb, PERM_A, monkeypatch, signature_ok=True, order=_valid_order())
     r = client.post("/accountability/mentors/book", json=_book_body())
     assert r.status_code == 200, r.text
     assert r.json()["payment_status"] == "captured"
     assert len(sb.db["mentor_bookings"]) == 1
+
+
+def test_order_for_other_mentor_or_duration_is_rejected(monkeypatch):
+    # Same amount + owner + paid, but the order was minted for a different mentor.
+    sb = SBStub({"mentor_bookings": []})
+    order = _valid_order(notes={
+        "user_id": "user-A", "kind": "mentor",
+        "mentor_slug": "someone-else", "duration_minutes": "60",
+    })
+    client = _booking_app(sb, PERM_A, monkeypatch, signature_ok=True, order=order)
+    r = client.post("/accountability/mentors/book", json=_book_body())
+    assert r.status_code == 400, r.text
+    assert sb.db["mentor_bookings"] == []
+
+
+def test_non_mentor_order_kind_is_rejected(monkeypatch):
+    sb = SBStub({"mentor_bookings": []})
+    order = _valid_order(notes={
+        "user_id": "user-A", "kind": "course",
+        "mentor_slug": "rohan-iyer", "duration_minutes": "60",
+    })
+    client = _booking_app(sb, PERM_A, monkeypatch, signature_ok=True, order=order)
+    r = client.post("/accountability/mentors/book", json=_book_body())
+    assert r.status_code == 400, r.text
+
+
+def test_replayed_order_cannot_create_second_booking(monkeypatch):
+    # First confirm succeeds; a second confirm of the SAME order must 409 and
+    # not mint a second captured booking (anti-replay).
+    sb = SBStub({"mentor_bookings": []})
+    client = _booking_app(sb, PERM_A, monkeypatch, signature_ok=True, order=_valid_order())
+    first = client.post("/accountability/mentors/book", json=_book_body())
+    assert first.status_code == 200, first.text
+    second = client.post("/accountability/mentors/book", json=_book_body())
+    assert second.status_code == 409, second.text
+    assert len(sb.db["mentor_bookings"]) == 1, "replay must not create a second booking"
 
 
 # ════════════════════════ #6 — study-task IDOR ══════════════════════════════
