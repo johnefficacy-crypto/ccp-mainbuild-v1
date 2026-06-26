@@ -83,6 +83,10 @@ class _Q:
         self._filters.append((key, "lt", val))
         return self
 
+    def in_(self, key, vals):
+        self._filters.append((key, "in", set(vals)))
+        return self
+
     def order(self, key, desc=False, **kw):
         self._order_key = key
         self._desc = desc
@@ -100,6 +104,8 @@ class _Q:
             if op == "neq" and cell == v:
                 return False
             if op == "lt" and not (cell is not None and cell < v):
+                return False
+            if op == "in" and cell not in v:
                 return False
         return True
 
