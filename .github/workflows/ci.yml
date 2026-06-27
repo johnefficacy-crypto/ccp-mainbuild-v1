@@ -31,28 +31,89 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Gate blocks config that contains [auth.sms.test_otp] (must exit 1)
+
+      # ── Negative: gate must block the checked-in config (has test_otp + email enabled) ──
+      - name: Gate blocks config with test_otp present (must exit 1)
         env:
           SUPABASE_ENV: production
-        # The checked-in config.toml intentionally has test_otp; the gate must
-        # refuse it. Invert the exit code: success = gate correctly blocked.
+          SUPABASE_OPERATOR_APPROVED: 'yes'
         run: |
-          node scripts/check-supabase-prod-gate.mjs \
-            && echo "FAIL: gate did not block unsafe config" && exit 1 \
-            || echo "OK: gate correctly rejected config with test_otp"
-      - name: Gate allows production-safe config (must exit 0)
+          if node scripts/check-supabase-prod-gate.mjs; then
+            echo "FAIL: gate did not block config containing [auth.sms.test_otp]"
+            exit 1
+          else
+            echo "OK: gate correctly rejected config with test_otp"
+          fi
+
+      # ── Build fixtures for remaining tests ──
+      - name: Build fixture helpers and production-safe fixture
+        run: |
+          node - << 'EOF'
+          const fs = require('fs');
+          const src = fs.readFileSync('app/supabase/config.toml', 'utf8');
+
+          // Patch a key only within a named TOML section (line-by-line; stops at
+          // the next line that opens a new section so inline [ in comments are safe).
+          function setInSection(content, sectionHeader, key, value) {
+            let inTarget = false;
+            return content.split('\n').map(line => {
+              if (line.trim() === sectionHeader) { inTarget = true; return line; }
+              if (inTarget && /^\[/.test(line)) { inTarget = false; }
+              if (inTarget && new RegExp('^\\s*' + key + '\\s*=').test(line)) {
+                return line.replace(/=\s*\S+/, '= ' + value);
+              }
+              return line;
+            }).join('\n');
+          }
+
+          // Production-safe: no test_otp section, email signup disabled, twilio on.
+          const safe = setInSection(
+            src
+              // ^ + m flag targets only the actual section header, not comment mentions.
+              .replace(/^\[auth\.sms\.test_otp\][\s\S]*?(?=\n\[|$)/m, ''),
+            '[auth.email]', 'enable_signup', 'false'
+          );
+          fs.writeFileSync('/tmp/prod-safe.toml', safe);
+
+          // Disabled-provider: same as safe but twilio off (regression for check #2).
+          const noProvider = setInSection(safe, '[auth.sms.twilio]', 'enabled', 'false');
+          fs.writeFileSync('/tmp/no-provider.toml', noProvider);
+          EOF
+
+      # ── Negative: gate must block config with no real SMS provider ──
+      - name: Gate blocks config with disabled SMS provider (must exit 1)
         env:
           SUPABASE_ENV: production
-        # Strip the [auth.sms.test_otp] section into a temp file and point the
-        # gate at it; this simulates the operator-prepared production config.
+          SUPABASE_CONFIG_PATH: /tmp/no-provider.toml
+          SUPABASE_OPERATOR_APPROVED: 'yes'
         run: |
-          node -e "
-            const fs = require('fs');
-            const src = fs.readFileSync('app/supabase/config.toml', 'utf8');
-            fs.writeFileSync('/tmp/prod-safe.toml',
-              src.replace(/\\[auth\\.sms\\.test_otp\\][^\\[]*/g, ''));
-          "
-          SUPABASE_CONFIG_PATH=/tmp/prod-safe.toml node scripts/check-supabase-prod-gate.mjs
+          if node scripts/check-supabase-prod-gate.mjs; then
+            echo "FAIL: gate did not block config with no real SMS provider"
+            exit 1
+          else
+            echo "OK: gate correctly rejected config with disabled SMS provider"
+          fi
+
+      # ── Negative: gate must block without operator approval ──
+      - name: Gate blocks missing operator approval (must exit 1)
+        env:
+          SUPABASE_ENV: production
+          SUPABASE_CONFIG_PATH: /tmp/prod-safe.toml
+        run: |
+          if node scripts/check-supabase-prod-gate.mjs; then
+            echo "FAIL: gate did not block without SUPABASE_OPERATOR_APPROVED=yes"
+            exit 1
+          else
+            echo "OK: gate correctly required operator approval"
+          fi
+
+      # ── Positive: fully safe fixture + approval must pass ──
+      - name: Gate allows production-safe config with approval (must exit 0)
+        env:
+          SUPABASE_ENV: production
+          SUPABASE_CONFIG_PATH: /tmp/prod-safe.toml
+          SUPABASE_OPERATOR_APPROVED: 'yes'
+        run: node scripts/check-supabase-prod-gate.mjs
 
   backend:
     runs-on: ubuntu-latest

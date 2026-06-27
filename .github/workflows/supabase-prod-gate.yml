@@ -5,10 +5,17 @@ name: Supabase production deploy
 # run — even if triggered — unless the gate exits 0. There is no alternate
 # path that bypasses the gate.
 #
-# To apply a production-ready config: remove [auth.sms.test_otp] from
-# app/supabase/config.toml (or supply a stripped artifact), configure the
-# SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF repository secrets, then
-# trigger this workflow manually.
+# Pre-flight (operator must complete before triggering):
+#   1. Remove [auth.sms.test_otp] from app/supabase/config.toml
+#   2. Set [auth.email] enable_signup = false
+#   3. Disable email provider in Supabase dashboard
+#   4. Validate real SMS delivery end-to-end
+#   5. Complete admin/user phone migration
+#   See docs/status/Phone-OTP-Login-2026-06-26.md §"OPERATOR PENDING".
+#
+# Required repository secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF.
+# Required environment variable: SUPABASE_OPERATOR_APPROVED=yes (set in the
+# "production" GitHub environment to enforce the operator approval hard stop).
 
 on:
   workflow_dispatch:
@@ -25,10 +32,14 @@ jobs:
           node-version: '20'
 
       - name: Run Supabase production config gate
-        # Exits 1 if [auth.sms.test_otp] is present or no real SMS provider
-        # is enabled — blocking the dependent deploy job entirely.
+        # Exits 1 if any violation is found:
+        #   • [auth.sms.test_otp] present
+        #   • no real SMS provider enabled (checked within its own section only)
+        #   • [auth.email] enable_signup = true
+        #   • SUPABASE_OPERATOR_APPROVED != "yes"
         env:
           SUPABASE_ENV: production
+          SUPABASE_OPERATOR_APPROVED: ${{ secrets.SUPABASE_OPERATOR_APPROVED }}
         run: node scripts/check-supabase-prod-gate.mjs
 
   deploy:
@@ -38,6 +49,12 @@ jobs:
     # GitHub Actions enforces this; there is no way to skip it.
     needs: gate
     environment: production
+    # All run: steps use app/supabase as their working directory so the config
+    # the gate validated (app/supabase/config.toml) is the same one Supabase CLI
+    # picks up — the two cannot diverge.
+    defaults:
+      run:
+        working-directory: app/supabase
     steps:
       - uses: actions/checkout@v4
 
