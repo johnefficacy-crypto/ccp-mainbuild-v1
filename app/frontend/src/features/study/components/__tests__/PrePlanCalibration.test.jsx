@@ -15,7 +15,7 @@ function renderCalibration(props = {}) {
     <PrePlanCalibration
       requiredSubjects={REQUIRED}
       items={[]}
-      attemptsUsed={0}
+      attemptsUsed={null}
       onSubmit={onSubmit}
       onSkip={onSkip}
       saving={false}
@@ -34,7 +34,7 @@ function bandButton(subjectName, bandLabel) {
   return within(card).getByRole("button", { name: bandLabel });
 }
 
-test("Save & continue is disabled until every required subject has a band", () => {
+test("Save & continue is disabled until every subject is banded AND attempts chosen", () => {
   renderCalibration();
   const saveBtn = screen.getByTestId("calibration-save-btn");
   expect(saveBtn).toBeDisabled();
@@ -46,9 +46,38 @@ test("Save & continue is disabled until every required subject has a band", () =
     /Answer all 2 subjects/i,
   );
 
-  // Answer the second — now complete and enabled.
+  // Answer the second subject — all banded, but attempts still unselected so
+  // Save stays disabled and the helper now asks for the attempt count.
   fireEvent.click(bandButton("Reasoning", "Weak"));
+  expect(saveBtn).toBeDisabled();
+  expect(screen.getByTestId("calibration-helper").textContent).toMatch(
+    /how many times you've attempted/i,
+  );
+
+  // Choose an attempts option — now complete and enabled, helper gone.
+  fireEvent.click(screen.getByRole("button", { name: /First attempt/i }));
   expect(saveBtn).not.toBeDisabled();
+  expect(screen.queryByTestId("calibration-helper")).toBeNull();
+});
+
+test("attempts is required: all subjects banded but no attempts keeps Save disabled", () => {
+  // Prefill bands via items but leave attempts unselected (null).
+  const { onSubmit } = renderCalibration({
+    items: [
+      { subject_id: "s-quant", band: "strong" },
+      { subject_id: "s-reason", band: "weak" },
+    ],
+  });
+  const saveBtn = screen.getByTestId("calibration-save-btn");
+  expect(saveBtn).toBeDisabled();
+
+  // Choosing an attempts option enables Save and onSubmit gets the chosen value.
+  fireEvent.click(screen.getByRole("button", { name: /1 attempt/i }));
+  expect(saveBtn).not.toBeDisabled();
+
+  fireEvent.click(saveBtn);
+  expect(onSubmit).toHaveBeenCalledTimes(1);
+  expect(onSubmit.mock.calls[0][1]).toBe(1);
 });
 
 test("existing items prefill the band selections (saved band renders pressed)", () => {
@@ -57,9 +86,12 @@ test("existing items prefill the band selections (saved band renders pressed)", 
       { subject_id: "s-quant", subject_name: "Quantitative Aptitude", band: "decent" },
       { subject_id: "s-reason", subject_name: "Reasoning", band: "strong" },
     ],
+    // A saved attempts value also prefills (editing flow), so an already
+    // calibrated user sees Save enabled without re-touching anything.
+    attemptsUsed: 2,
   });
 
-  // Both prefilled → save is immediately enabled.
+  // Both bands and attempts prefilled → save is immediately enabled.
   expect(screen.getByTestId("calibration-save-btn")).not.toBeDisabled();
 
   // The saved bands render with aria-pressed=true on the right buttons.

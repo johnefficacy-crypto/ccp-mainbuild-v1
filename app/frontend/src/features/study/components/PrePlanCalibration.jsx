@@ -79,8 +79,12 @@ export default function PrePlanCalibration({
 
   const [selections, setSelections] = useState(seededSelections);
   const [seenSeed, setSeenSeed] = useState(seedKey);
+  // Attempts starts unselected (null) so the question is genuinely required —
+  // the user must pick an option before Save enables. Only a real server-saved
+  // value prefills it (editing flow); the default must NOT preselect "First
+  // attempt".
   const [attempts, setAttempts] = useState(
-    typeof attemptsUsed === "number" ? attemptsUsed : 0,
+    typeof attemptsUsed === "number" ? attemptsUsed : null,
   );
   const [seenAttempts, setSeenAttempts] = useState(attemptsUsed);
 
@@ -90,7 +94,7 @@ export default function PrePlanCalibration({
     setSeenSeed(seedKey);
   }
   if (attemptsUsed !== seenAttempts) {
-    setAttempts(typeof attemptsUsed === "number" ? attemptsUsed : 0);
+    setAttempts(typeof attemptsUsed === "number" ? attemptsUsed : null);
     setSeenAttempts(attemptsUsed);
   }
 
@@ -99,7 +103,11 @@ export default function PrePlanCalibration({
     0,
   );
   const total = rows.length;
-  const complete = total > 0 && answeredCount === total;
+  const allBanded = total > 0 && answeredCount === total;
+  // The attempt count is required: Save stays disabled until an option is
+  // explicitly chosen (attempts !== null) AND every subject has a band.
+  const attemptsChosen = attempts !== null;
+  const complete = allBanded && attemptsChosen;
   const isSaving = Boolean(saving);
   const canSave = complete && !isSaving;
 
@@ -220,7 +228,10 @@ export default function PrePlanCalibration({
       {/* Completeness helper */}
       {total > 0 && !complete ? (
         <p className="text-[12px] text-clay-700" data-testid="calibration-helper">
-          Answer all {total} subjects to continue ({answeredCount}/{total} done).
+          {!allBanded
+            ? `Answer all ${total} subjects (${answeredCount}/${total} done)`
+            : "Select how many times you've attempted this exam"}{" "}
+          to continue.
         </p>
       ) : null}
 
