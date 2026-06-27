@@ -21,12 +21,18 @@ CREATE TABLE public.user_topic_self_assessment (
   CHECK ((subject_id IS NOT NULL) <> (topic_id IS NOT NULL))
 );
 
+-- Non-partial unique indexes so PostgREST upserts can infer the conflict target
+-- (`on_conflict=user_id,exam_id,subject_id`). A partial-index WHERE predicate
+-- cannot be expressed in PostgREST's column-list conflict target, so ON CONFLICT
+-- inference would fail against a real PostgreSQL database even though an in-memory
+-- stub accepts it. The XOR scope CHECK above plus PostgreSQL's distinct-NULL
+-- semantics keep subject-level and topic-level rows separate: a topic-level row
+-- has subject_id NULL (so it never collides on the subject index), and a
+-- subject-level row has topic_id NULL (so it never collides on the topic index).
 CREATE UNIQUE INDEX uq_self_assessment_subject
-  ON public.user_topic_self_assessment(user_id, exam_id, subject_id)
-  WHERE subject_id IS NOT NULL AND topic_id IS NULL;
+  ON public.user_topic_self_assessment(user_id, exam_id, subject_id);
 CREATE UNIQUE INDEX uq_self_assessment_topic
-  ON public.user_topic_self_assessment(user_id, exam_id, topic_id)
-  WHERE topic_id IS NOT NULL;
+  ON public.user_topic_self_assessment(user_id, exam_id, topic_id);
 CREATE INDEX idx_self_assessment_user_exam
   ON public.user_topic_self_assessment(user_id, exam_id);
 
