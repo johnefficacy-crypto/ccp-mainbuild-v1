@@ -302,3 +302,195 @@ def test_upload_url_rejects_non_pdf_mime():
     sb = DocSBStub(_seed())
     r = _client(sb).post(f"{_BASE}/upload-url", json=_upload_body(mime_type="text/plain", filename="x.txt"))
     assert r.status_code == 400, r.text
+
+
+# ── 7. lifecycle / race / archive regression tests ────────────────────────
+
+
+def test_complete_upload_on_archived_document_returns_409():
+    """complete-upload on an archived document must 409 before any mutation."""
+    sb = DocSBStub({
+        **_seed(),
+        "document_assets": [
+            {"id": "d1", "scope": "admin_exam_intelligence", "document_kind": "syllabus",
+             "status": "archived", "mime_type": "application/pdf",
+             "storage_bucket": "b", "storage_path": "p1.pdf", "content_hash": "abc"}
+        ],
+    })
+    r = _client(sb).post(f"{_BASE}/complete-upload", json={"document_id": "d1"})
+    assert r.status_code == 409, r.text
+    detail = r.json().get("detail", {})
+    assert "archived" in str(detail).lower()
+    # Asset must remain archived — not mutated.
+    assert sb.db["document_assets"][0]["status"] == "archived"
+
+
+def test_complete_upload_cas_race_archived_during_processing_transition():
+    """If the document is archived between the status read and the processing
+    update, the CAS update returns 0 rows and the endpoint returns 409."""
+    class _ArchiveDuringCasSBStub(DocSBStub):
+        """Archives the document_asset *before* the CAS update executes,
+        simulating an archive that races past the status pre-check."""
+        def table(self, name):
+            return _ArchiveDuringCasQuery(name, self.db, self.storage)
+
+    class _ArchiveDuringCasQuery(type(DocSBStub({}).table("x"))):
+        def __init__(self, name, db, storage):
+            super().__init__(name, db)
+            self._storage = storage
+        @property
+        def storage(self):
+            return self._storage
+
+        def execute(self):
+            # Intercept the CAS update (update with both id= and status=uploaded filters).
+            if (
+                self._pending_update is not None
+                and self._pending_update != "__delete__"
+                and "status" in (self._pending_update or {})
+                and self._pending_update.get("status") == "processing"
+            ):
+                # Simulate archive winning the race: flip the asset to archived before CAS.
+                for r in self.db.get("document_assets", []):
+                    if r.get("id") == next(
+                        (v for k, op, v in self.filters if k == "id" and op == "eq"), None
+                    ):
+                        r["status"] = "archived"
+                        break
+            return super().execute()
+
+    sb = DocSBStub({
+        **_seed(),
+        "document_assets": [
+            {"id": "d1", "scope": "admin_exam_intelligence", "document_kind": "syllabus",
+             "status": "uploaded", "mime_type": "application/pdf",
+             "storage_bucket": "b", "storage_path": "p1.pdf", "content_hash": "pending:x"}
+        ],
+    })
+    # Manually replace the table method with the race stub.
+    original_table = sb.table
+
+    def racing_table(name):
+        q = original_table(name)
+        if name == "document_assets":
+            class _RacingQ(type(q)):
+                def execute(self_q):
+                    if (
+                        self_q._pending_update is not None
+                        and self_q._pending_update != "__delete__"
+                        and self_q._pending_update.get("status") == "processing"
+                        and any(op == "eq" and k == "status" for k, op, _ in self_q.filters)
+                    ):
+                        # Archive the asset BEFORE the CAS runs — simulates the race.
+                        for row in sb.db.get("document_assets", []):
+                            row["status"] = "archived"
+                    return super(_RacingQ, self_q).execute()
+            q.__class__ = _RacingQ
+        return q
+
+    sb.table = racing_table
+    r = _client(sb).post(f"{_BASE}/complete-upload", json={"document_id": "d1"})
+    assert r.status_code == 409, r.text
+    assert "archived" in str(r.json().get("detail", "")).lower()
+    # Asset must remain archived after the race.
+    assert sb.db["document_assets"][0]["status"] == "archived"
+
+
+def test_archive_document_success_and_audit_written():
+    """archive endpoint returns 200 and writes an audit row."""
+    sb = DocSBStub({
+        **_seed(),
+        "document_assets": [
+            {"id": "d1", "scope": "admin_exam_intelligence", "document_kind": "syllabus",
+             "status": "processed", "mime_type": "application/pdf",
+             "storage_bucket": "b", "storage_path": "p1.pdf", "content_hash": "abc"}
+        ],
+        "pyq_papers": [],
+        "syllabus_documents": [],
+        "document_processing_jobs": [],
+        "admin_audit_logs": [],
+    })
+    r = _client(sb).post(f"{_BASE}/d1/archive", json={"reason": "superseded by new version"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok"] is True
+    assert body["status"] == "archived"
+    # Asset must be archived in DB.
+    assert sb.db["document_assets"][0]["status"] == "archived"
+    # Audit log must have been written.
+    logs = sb.db.get("admin_audit_logs", [])
+    assert len(logs) == 1
+    assert logs[0]["action"] == "exam_intel.cms.document.archive"
+    assert logs[0]["new_value"]["reason"] == "superseded by new version"
+    assert "force" not in logs[0]["new_value"]
+
+
+def test_archive_document_blocked_by_verified_pyq_paper():
+    """Archive must 409 when a verified pyq_paper references the document."""
+    sb = DocSBStub({
+        **_seed(),
+        "document_assets": [
+            {"id": "d1", "scope": "admin_exam_intelligence", "document_kind": "pyq_paper",
+             "status": "processed", "mime_type": "application/pdf",
+             "storage_bucket": "b", "storage_path": "p1.pdf", "content_hash": "abc"}
+        ],
+        "pyq_papers": [
+            {"id": "pp1", "exam_id": "e1", "source_document_id": "d1", "trust_status": "verified"}
+        ],
+        "syllabus_documents": [],
+        "document_processing_jobs": [],
+    })
+    r = _client(sb).post(f"{_BASE}/d1/archive", json={"reason": "superseded by new version"})
+    assert r.status_code == 409, r.text
+    detail = r.json().get("detail", {})
+    assert "trusted_provenance_exists" in str(detail)
+    assert "pp1" in str(detail)
+    # Asset must NOT be archived.
+    assert sb.db["document_assets"][0]["status"] == "processed"
+
+
+def test_archive_document_blocked_by_verified_syllabus_document():
+    """Archive must 409 when a verified syllabus_document references the document."""
+    sb = DocSBStub({
+        **_seed(),
+        "document_assets": [
+            {"id": "d1", "scope": "admin_exam_intelligence", "document_kind": "syllabus",
+             "status": "processed", "mime_type": "application/pdf",
+             "storage_bucket": "b", "storage_path": "p1.pdf", "content_hash": "abc"}
+        ],
+        "pyq_papers": [],
+        "syllabus_documents": [
+            {"id": "sd1", "exam_id": "e1", "source_document_id": "d1", "trust_status": "verified"}
+        ],
+        "document_processing_jobs": [],
+    })
+    r = _client(sb).post(f"{_BASE}/d1/archive", json={"reason": "superseded by new version"})
+    assert r.status_code == 409, r.text
+    detail = r.json().get("detail", {})
+    assert "trusted_provenance_exists" in str(detail)
+    assert "sd1" in str(detail)
+
+
+def test_link_to_syllabus_demotes_verified_trust_status():
+    """Replacing source on a verified syllabus document must demote trust to pending."""
+    sb = DocSBStub({
+        **_seed(),
+        "document_assets": [
+            {"id": "d1", "scope": "admin_exam_intelligence", "document_kind": "syllabus",
+             "status": "processed", "metadata": {"exam_id": "e1"},
+             "storage_bucket": "b", "storage_path": "admin/p2.pdf", "content_hash": "newhash"}
+        ],
+        "syllabus_documents": [
+            {"id": "sd1", "exam_id": "e1", "document_type": "syllabus_pdf",
+             "trust_status": "verified", "storage_path": "old/p1.pdf", "content_hash": "oldhash"}
+        ],
+    })
+    r = _client(sb).post(
+        f"{_BASE}/d1/link-to-syllabus",
+        json={"reason": "replacing with updated syllabus pdf", "syllabus_document_id": "sd1"},
+    )
+    assert r.status_code == 200, r.text
+    sd = sb.db["syllabus_documents"][0]
+    assert sd["trust_status"] == "pending", "verified syllabus_document must be demoted on source replacement"
+    assert sd["source_document_id"] == "d1"
+    assert sd["storage_path"] == "admin/p2.pdf"

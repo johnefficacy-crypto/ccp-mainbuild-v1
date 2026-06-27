@@ -357,7 +357,22 @@ def complete_document_upload(
         raise HTTPException(status_code=400, detail="content_hash unavailable: storage read failed and no client_hash provided")
 
     patch = {"content_hash": content_hash, "file_size_bytes": size, "status": "processing"}
-    sb.table("document_assets").update(patch).eq("id", row["id"]).execute()
+    # CAS: only flip to processing if status is still uploaded (archive race guard).
+    cas_result = (
+        sb.table("document_assets")
+        .update(patch)
+        .eq("id", row["id"])
+        .eq("status", "uploaded")
+        .execute()
+        .data
+        or []
+    )
+    if not cas_result:
+        # Something changed the document after our initial read (e.g. concurrent archive).
+        refreshed = _load_admin_asset(sb, row["id"])
+        if refreshed and refreshed.get("status") == "archived":
+            raise HTTPException(status_code=409, detail={"error": "document_archived", "message": "document was archived before processing could begin"})
+        raise HTTPException(status_code=409, detail={"error": "concurrent_state_change", "message": "document status changed concurrently; reload and retry"})
 
     enqueued = False
     job_id: str | None = None
@@ -369,8 +384,9 @@ def complete_document_upload(
         logger.exception("admin text-extract enqueue failed for doc=%s", row["id"])
         # Enqueue failure must not strand the document in 'processing' — a later
         # call would be rejected as already_processing with no retry path.
-        # Restore to 'uploaded' so the caller can retry complete-upload.
-        sb.table("document_assets").update({"status": "uploaded"}).eq("id", row["id"]).execute()
+        # CAS rollback: only restore to 'uploaded' if we are still in 'processing'
+        # (i.e. the archive endpoint did not race past us while handling the error).
+        sb.table("document_assets").update({"status": "uploaded"}).eq("id", row["id"]).eq("status", "processing").execute()
         raise HTTPException(
             status_code=502,
             detail={"error": "enqueue_failed", "message": "text extraction job could not be queued; document status restored to uploaded — retry complete-upload"},
