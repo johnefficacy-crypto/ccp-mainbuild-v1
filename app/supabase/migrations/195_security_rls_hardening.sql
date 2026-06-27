@@ -47,12 +47,22 @@
 --     multiple captured bookings. We add a real razorpay_order_id column and a
 --     UNIQUE index on it (and on payment_id) so a second confirm of the same
 --     order/payment fails atomically at the DB.
---     Vuln B (PostgREST forge): the mb_owner_update policy (migration 099) let a
---     booking owner UPDATE their own row with NO column restriction — they could
---     PATCH payment_status/status/price_inr/payment_id directly via PostgREST,
---     bypassing the API. We DROP mb_owner_update so all booking mutations go
---     through the service-role backend (mb_service_role_all). Owners keep read
---     access (mb_owner_read); cancellation/notes must use scoped backend routes.
+--     Vuln B (PostgREST forge via UPDATE): the mb_owner_update policy (migration
+--     099) let a booking owner UPDATE their own row with NO column restriction —
+--     they could PATCH payment_status/status/price_inr/payment_id directly via
+--     PostgREST. We DROP mb_owner_update so all booking mutations go through the
+--     service-role backend (mb_service_role_all).
+--     Vuln C (PostgREST forge via INSERT — CRITICAL): migration 099 also grants
+--     mb_owner_insert: INSERT on public.mentor_bookings for authenticated users
+--     with check (auth.uid() = user_id). Any signed-in user could therefore POST
+--     directly to the PostgREST /mentor_bookings endpoint with
+--     payment_status="captured", price_inr=0 (or any value), and NULL for both
+--     payment_id and razorpay_order_id — bypassing all Razorpay verification.
+--     The partial UNIQUE indexes (WHERE col IS NOT NULL) do not block NULL
+--     payment_id / razorpay_order_id, so a row with NULL IDs always inserted.
+--     The hardened backend uses the service-role client (get_supabase_admin()),
+--     so the owner-insert policy is NOT needed for the legitimate flow. We DROP
+--     mb_owner_insert. Owners keep mb_owner_read; all writes go through the API.
 --
 -- service_role detection (Section 1): we use auth.role() = 'service_role'.
 --   Justification: this is the detection idiom used everywhere else in this
@@ -380,9 +390,11 @@ end $$;
 -- Section 5 — Lock down mentor_bookings commercial fields
 -- ─────────────────────────────────────────────────────────────────────────────
 -- (a) Real razorpay_order_id column + UNIQUE indexes => a paid order/payment can
---     back at most one captured booking (anti-replay). (b) Drop mb_owner_update
---     so owners cannot PATCH payment_status/status/price_inr/payment_id via
---     PostgREST; all booking mutations go through the service-role backend.
+--     back at most one captured booking (anti-replay). (b) Drop mb_owner_insert
+--     (Vuln C) so authenticated users cannot POST /mentor_bookings with arbitrary
+--     payment_status/price_inr/NULL payment IDs via PostgREST. (c) Drop
+--     mb_owner_update so owners cannot PATCH commercial fields. All booking
+--     mutations now flow through the service-role backend (mb_service_role_all).
 --
 -- STAGING PREFLIGHT (run before applying to any DB with existing bookings):
 --
@@ -419,6 +431,12 @@ begin
     create unique index if not exists uq_mentor_bookings_payment_id
       on public.mentor_bookings(payment_id)
       where payment_id is not null;
+
+    -- Remove owner INSERT: any authenticated user could directly POST to
+    -- /mentor_bookings with payment_status="captured" and NULL payment IDs,
+    -- bypassing all Razorpay verification. The backend uses the service-role
+    -- client, so this policy is not needed for the legitimate flow.
+    drop policy if exists mb_owner_insert on public.mentor_bookings;
 
     -- Remove owner UPDATE: commercial/state fields are server-owned. Owners keep
     -- mb_owner_read; mutations flow through mb_service_role_all (the backend).
