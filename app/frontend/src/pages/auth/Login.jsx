@@ -176,6 +176,11 @@ export default function Login() {
           or sign in with your phone
         </div>
 
+        {/* Turnstile is rendered once outside both steps so the widget stays
+            mounted when transitioning to the OTP step. This lets handleResend()
+            call waitForCaptchaToken() against a live widget without timing out. */}
+        <Turnstile />
+
         {step === "phone" ? (
           <form onSubmit={handleSendCode} className="space-y-5">
             <div>
@@ -201,7 +206,6 @@ export default function Login() {
                 {error}
               </div>
             )}
-            <Turnstile />
             <button
               type="submit"
               disabled={loading}

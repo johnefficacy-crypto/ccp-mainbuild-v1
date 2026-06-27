@@ -53,7 +53,7 @@ def _sync_profile_from_auth(sb, user_id: str, email: str | None, phone: str | No
     try:
         rows = (
             sb.table("profiles")
-            .select("id, full_name, phone")
+            .select("id, full_name, phone, email")
             .eq("id", user_id)
             .limit(1)
             .execute()
@@ -65,6 +65,8 @@ def _sync_profile_from_auth(sb, user_id: str, email: str | None, phone: str | No
             payload["full_name"] = name or (email or "").split("@")[0] or "Aspirant"
             if phone:
                 payload["phone"] = phone
+            if email:
+                payload["email"] = email
             sb.table("profiles").upsert(payload, on_conflict="id").execute()
         else:
             row = rows[0]
@@ -73,6 +75,8 @@ def _sync_profile_from_auth(sb, user_id: str, email: str | None, phone: str | No
                 updates["phone"] = phone
             if name and not row.get("full_name"):
                 updates["full_name"] = name
+            if email and not row.get("email"):
+                updates["email"] = email
             if updates:
                 sb.table("profiles").update(updates).eq("id", user_id).execute()
     except Exception:  # noqa: BLE001

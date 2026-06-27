@@ -160,3 +160,37 @@ test("Google button passes path-only redirectTo to loginWithGoogle", async () =>
   });
   expect(mockLoginWithGoogle).toHaveBeenCalledWith({ redirectTo: "/app/study/plan" });
 });
+
+test("resend obtains a fresh captcha token after the first token is consumed", async () => {
+  mockRequestPhoneOtp.mockResolvedValue({ ok: true });
+  renderLogin();
+
+  // First send — supply token A.
+  await sendCode("+919999900001");
+  await waitFor(() => expect(mockExecute).toHaveBeenCalledTimes(1));
+  act(() => cbs.onSuccess("captcha-A"));
+  await waitFor(() =>
+    expect(mockRequestPhoneOtp).toHaveBeenCalledWith("+919999900001", {
+      captchaToken: "captcha-A",
+      shouldCreateUser: false,
+    }),
+  );
+
+  // Now on OTP step. Token was reset in finally; widget must still be mounted.
+  await screen.findByTestId("login-resend");
+
+  // Click resend — getCaptcha() calls execute() on the still-mounted widget.
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("login-resend"));
+  });
+  await waitFor(() => expect(mockExecute).toHaveBeenCalledTimes(2));
+
+  // Widget issues a fresh token.
+  act(() => cbs.onSuccess("captcha-B"));
+  await waitFor(() =>
+    expect(mockRequestPhoneOtp).toHaveBeenCalledWith("+919999900001", {
+      captchaToken: "captcha-B",
+      shouldCreateUser: false,
+    }),
+  );
+});

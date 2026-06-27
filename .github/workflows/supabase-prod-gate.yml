@@ -1,0 +1,47 @@
+name: Supabase production deploy gate
+
+# Enforces that dev-only auth config ([auth.sms.test_otp] fixed OTPs) is
+# stripped before any hosted Supabase project push. This workflow represents
+# the production deployment path; the gate script exits 1 while config.toml
+# still contains the test_otp block, blocking the deploy until an operator
+# removes it for the production-bound config.
+#
+# Trigger manually via the GitHub Actions UI or automate from your Supabase
+# CD pipeline. Never runs automatically on every push so normal CI is
+# unaffected by the intentionally-present dev-only config.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (must be "production" to proceed)'
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+
+jobs:
+  gate:
+    name: Check config.toml is production-safe
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Supabase production config gate
+        env:
+          SUPABASE_ENV: production
+        run: node scripts/check-supabase-prod-gate.mjs
+
+      # Wire in your actual Supabase production push here once the gate passes.
+      # Requires SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF repository secrets.
+      #
+      # - name: Push auth config to production Supabase project
+      #   env:
+      #     SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      #   run: npx supabase db push --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
