@@ -19,7 +19,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CONFIG_PATH = join(__dirname, "..", "app", "supabase", "config.toml");
+// Allow tests to supply an alternate config path so CI can verify both the
+// "blocked" (test_otp present) and "allowed" (stripped) code paths.
+const CONFIG_PATH =
+  process.env.SUPABASE_CONFIG_PATH ||
+  join(__dirname, "..", "app", "supabase", "config.toml");
 
 const env = (process.env.SUPABASE_ENV || process.env.NODE_ENV || "").toLowerCase();
 const isProd = env === "production" || env === "prod";

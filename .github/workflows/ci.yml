@@ -23,6 +23,37 @@ jobs:
       - run: npm run build
       - run: npm run check:bundle-budget
 
+  supabase-gate-test:
+    name: Supabase production gate self-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Gate blocks config that contains [auth.sms.test_otp] (must exit 1)
+        env:
+          SUPABASE_ENV: production
+        # The checked-in config.toml intentionally has test_otp; the gate must
+        # refuse it. Invert the exit code: success = gate correctly blocked.
+        run: |
+          node scripts/check-supabase-prod-gate.mjs \
+            && echo "FAIL: gate did not block unsafe config" && exit 1 \
+            || echo "OK: gate correctly rejected config with test_otp"
+      - name: Gate allows production-safe config (must exit 0)
+        env:
+          SUPABASE_ENV: production
+        # Strip the [auth.sms.test_otp] section into a temp file and point the
+        # gate at it; this simulates the operator-prepared production config.
+        run: |
+          node -e "
+            const fs = require('fs');
+            const src = fs.readFileSync('app/supabase/config.toml', 'utf8');
+            fs.writeFileSync('/tmp/prod-safe.toml',
+              src.replace(/\\[auth\\.sms\\.test_otp\\][^\\[]*/g, ''));
+          "
+          SUPABASE_CONFIG_PATH=/tmp/prod-safe.toml node scripts/check-supabase-prod-gate.mjs
+
   backend:
     runs-on: ubuntu-latest
     defaults:
