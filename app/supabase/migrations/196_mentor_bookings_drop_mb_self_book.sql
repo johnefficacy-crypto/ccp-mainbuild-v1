@@ -48,10 +48,12 @@ end $$;
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Step 2 — Fail closed: assert no INSERT policy remains for client roles
 -- ─────────────────────────────────────────────────────────────────────────────
--- After the drops, scan pg_policies. If ANY policy on mentor_bookings
--- permits INSERT for the public, anon, or authenticated roles (regardless
--- of policy name), abort the migration with a descriptive error so the
--- issue is caught immediately on apply rather than silently left open.
+-- After the drops, scan pg_policies. If ANY policy on mentor_bookings permits
+-- INSERT (or ALL) for a non-service_role principal, abort with a descriptive
+-- error so the gap is caught immediately on apply rather than silently left.
+--
+-- pg_policies.roles is name[] — use unnest() to avoid name[]/text[] operator
+-- mismatch and keep comparisons type-safe.
 do $$
 declare
   v_survivors text;
@@ -60,30 +62,36 @@ begin
     return;  -- table absent — nothing to assert
   end if;
 
-  select string_agg(
-    format('  policyname=%L cmd=%L roles=%s', policyname, cmd, roles::text),
-    chr(10)
-  )
-  into v_survivors
-  from pg_policies
-  where schemaname = 'public'
-    and tablename  = 'mentor_bookings'
-    and cmd        in ('INSERT', 'ALL')
-    and (
-      -- policy is unrestricted (roles array empty = applies to all)
-      array_length(roles, 1) is null
-      -- or it explicitly targets a client role
-      or roles && array['public', 'anon', 'authenticated']
-    )
-    -- service_role-only policies are fine
-    and not (roles = array['service_role']::text[]);
+  -- Collect policies whose command allows INSERT and which are not restricted
+  -- exclusively to service_role. A NULL / empty roles array means the policy
+  -- applies to all principals (PostgreSQL PUBLIC).
+  select string_agg(policyname, ', ' order by policyname)
+  into   v_survivors
+  from (
+    select p.policyname,
+           -- Does the policy target any non-service_role principal?
+           -- An empty roles array means "all roles" (PUBLIC), so it is unsafe.
+           (
+             array_length(p.roles, 1) is null  -- empty → PUBLIC
+             or exists (
+               select 1
+               from   unnest(p.roles) as r(role_name)
+               where  r.role_name::text <> 'service_role'
+             )
+           ) as is_client_accessible
+    from   pg_policies p
+    where  p.schemaname = 'public'
+      and  p.tablename  = 'mentor_bookings'
+      and  p.cmd        in ('INSERT', 'ALL')
+  ) sub
+  where is_client_accessible;
 
   if v_survivors is not null then
     raise exception
-      'SECURITY: surviving INSERT-capable client policies found on '
-      'public.mentor_bookings after migration 196 drop step. '
-      'These must be dropped before this migration can complete:%s%',
-      chr(10), v_survivors;
+      'SECURITY: client-accessible INSERT policies remain on '
+      'public.mentor_bookings after migration 196: %. '
+      'Drop them and re-run this migration.',
+      v_survivors;
   end if;
 end $$;
 
