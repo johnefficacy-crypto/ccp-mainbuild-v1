@@ -84,6 +84,22 @@ def _self_assessment_row(
     }
 
 
+def _calibration_row(status: str = "completed") -> dict:
+    """A ``user_exam_calibration`` gate row for (u-1, exam-1).
+
+    Priors are consumed ONLY when this gate is ``completed``; ``skipped`` or a
+    missing row keeps the planner cold-start.
+    """
+    return {
+        "id": f"cal-u-1-exam-1-{status}",
+        "user_id": "u-1",
+        "exam_id": "exam-1",
+        "status": status,
+        "required_subject_set_hash": None,
+        "attempts_used": 0,
+    }
+
+
 # ── 1. First-timer: strong band, 0 attempts — prior is hedged ───────────────
 
 def test_first_timer_strong_subject_hedged():
@@ -92,6 +108,7 @@ def test_first_timer_strong_subject_hedged():
     seed["user_topic_self_assessment"] = [
         _self_assessment_row(band="strong", prior_mastery=80.0, report_confidence=0.5, attempts_used=0)
     ]
+    seed["user_exam_calibration"] = [_calibration_row("completed")]
     sb = SBStub(seed)
     out = generate_plan(sb, "u-1")
     assert out["generated"] is True
@@ -118,6 +135,7 @@ def test_veteran_strong_subject_full_prior():
     seed["user_topic_self_assessment"] = [
         _self_assessment_row(band="strong", prior_mastery=80.0, report_confidence=1.0, attempts_used=2)
     ]
+    seed["user_exam_calibration"] = [_calibration_row("completed")]
     sb = SBStub(seed)
     out = generate_plan(sb, "u-1")
     assert out["generated"] is True
@@ -144,6 +162,7 @@ def test_validated_mastery_wins():
     seed["user_topic_self_assessment"] = [
         _self_assessment_row(band="strong", prior_mastery=80.0, report_confidence=1.0)
     ]
+    seed["user_exam_calibration"] = [_calibration_row("completed")]
     seed["user_topic_mastery"] = [
         {"user_id": "u-1", "topic_id": "t1", "exam_id": "exam-1", "mastery_score": 30.0}
     ]
@@ -172,6 +191,7 @@ def test_subject_prior_propagates_to_topics():
             report_confidence=0.75, attempts_used=1
         )
     ]
+    seed["user_exam_calibration"] = [_calibration_row("completed")]
     sb = SBStub(seed)
     out = generate_plan(sb, "u-1")
     assert out["generated"] is True
@@ -201,6 +221,7 @@ def test_new_band_cold_start_explicit_self_report():
     seed["user_topic_self_assessment"] = [
         _self_assessment_row(band="new", prior_mastery=None, report_confidence=0.5)
     ]
+    seed["user_exam_calibration"] = [_calibration_row("completed")]
     sb = SBStub(seed)
     out = generate_plan(sb, "u-1")
     assert out["generated"] is True
@@ -304,6 +325,9 @@ def test_mastery_read_failure_blocks_priors():
     seed["user_topic_self_assessment"] = [
         _self_assessment_row(band="strong", prior_mastery=80.0, report_confidence=1.0, attempts_used=2)
     ]
+    # Gate is completed — so the ONLY reason priors are withheld here is the
+    # mastery-read failure (fail-closed), not a missing/skipped gate.
+    seed["user_exam_calibration"] = [_calibration_row("completed")]
     sb = FailMasteryStub(seed)
     out = generate_plan(sb, "u-1")
     assert out["generated"] is True
@@ -326,11 +350,15 @@ def test_mastery_read_failure_blocks_priors():
 # ── 10. _why_summary honesty: no fake "recent accuracy" for self-reports ─────
 
 def test_why_summary_self_reported_has_no_recent_accuracy():
-    """Self-reported summary must NOT claim 'recent accuracy'; validated DOES."""
+    """Self-reported summary must NOT claim 'recent accuracy'; validated DOES.
+
+    Also guards FIX 3: the self-reported string's parentheses are balanced
+    (exactly as many ``(`` as ``)``)."""
     seed = _base_seed()
     seed["user_topic_self_assessment"] = [
         _self_assessment_row(band="strong", prior_mastery=80.0, report_confidence=1.0, attempts_used=2)
     ]
+    seed["user_exam_calibration"] = [_calibration_row("completed")]
     sb = SBStub(seed)
     out = generate_plan(sb, "u-1")
     assert out["generated"] is True
@@ -340,6 +368,8 @@ def test_why_summary_self_reported_has_no_recent_accuracy():
     summary = t1_task["why_this_task"]["summary"]
     assert "recent accuracy" not in summary
     assert "not yet validated by practice" in summary
+    # FIX 3: parentheses in the self-report summary must be balanced.
+    assert summary.count("(") == summary.count(")")
 
     # Validated task: 'recent accuracy' IS present.
     vseed = _base_seed()
@@ -365,6 +395,7 @@ def test_self_assessment_summary_audit_payload():
     seed["user_topic_self_assessment"] = [
         _self_assessment_row(band="decent", prior_mastery=60.0, report_confidence=0.75, attempts_used=1)
     ]
+    seed["user_exam_calibration"] = [_calibration_row("completed")]
     sb = SBStub(seed)
     out = generate_plan(sb, "u-1")
     assert out["generated"] is True
@@ -372,10 +403,11 @@ def test_self_assessment_summary_audit_payload():
     gen_ctx = sb.db["study_plans"][0]["generation_context"]
     summary = gen_ctx["self_assessment_summary"]
     assert summary is not None
-    # Both t1 and t2 share subject s1 → both get the 'decent' prior.
+    # Both t1 and t2 share subject s1 → both get the 'decent' prior. topics_with_prior
+    # counts topics (2); by_band counts DISTINCT SUBJECTS (one subject → count 1).
     assert summary["topics_with_prior"] == 2
     assert summary["assessment_level"] == "subject"
-    assert summary["by_band"] == {"decent": 2}
+    assert summary["by_band"] == {"decent": 1}
     assert summary["attempts_used"] == 1
     assert summary["subject_ids"] == ["s1"]
 
@@ -403,7 +435,9 @@ def test_self_assessment_prior_trace_row_from_lineage():
     assert rows[0]["band"] == "new"
     assert rows[0]["prior_mastery"] is None
     assert rows[0]["assessment_level"] == "subject"
-    assert rows[0]["status"] == "not yet validated by practice"
+    # FIX 4: status is a stable trust token (not prose); prose moves to `detail`.
+    assert rows[0]["status"] == "preview"
+    assert rows[0]["detail"] == "not yet validated by practice"
     assert "never studied" in rows[0]["label"]
 
     # Banded estimate: prior_mastery present.
@@ -438,3 +472,116 @@ def test_self_assessment_prior_trace_row_from_lineage():
         if r.get("rule_key") == "self_assessment_prior"
     ]
     assert len(plain_rows) == 0
+
+
+# ── 13. skipped gate → priors NOT consumed even though evidence exists ───────
+
+def test_skipped_gate_blocks_priors():
+    """A 'skipped' calibration gate must keep the planner cold-start: evidence
+    rows exist but are NOT consumed (gap 55, no self_reported provenance)."""
+    seed = _base_seed()
+    seed["user_topic_self_assessment"] = [
+        _self_assessment_row(band="strong", prior_mastery=80.0, report_confidence=1.0, attempts_used=2)
+    ]
+    seed["user_exam_calibration"] = [_calibration_row("skipped")]
+    sb = SBStub(seed)
+    out = generate_plan(sb, "u-1")
+    assert out["generated"] is True
+
+    tasks = sb.db.get("study_tasks", [])
+    assert len(tasks) >= 1
+    for task in tasks:
+        why = task["why_this_task"]
+        assert why["mastery_score"] is None
+        assert why["mastery_gap"] == 55.0
+        assert why["mastery_source"] != "self_reported"
+        assert "self_assessment_band" not in why
+
+    gen_ctx = sb.db["study_plans"][0]["generation_context"]
+    assert gen_ctx["calibration_gate_status"] == "skipped"
+    assert gen_ctx["self_assessment_summary"] is None
+
+
+# ── 14. no gate / none → priors NOT consumed even with evidence rows ─────────
+
+def test_no_gate_blocks_priors():
+    """No ``user_exam_calibration`` row at all → gate status None → cold-start,
+    no priors consumed, even though self-assessment evidence is present."""
+    seed = _base_seed()
+    seed["user_topic_self_assessment"] = [
+        _self_assessment_row(band="strong", prior_mastery=80.0, report_confidence=1.0, attempts_used=2)
+    ]
+    # No user_exam_calibration rows seeded.
+    sb = SBStub(seed)
+    out = generate_plan(sb, "u-1")
+    assert out["generated"] is True
+
+    tasks = sb.db.get("study_tasks", [])
+    assert len(tasks) >= 1
+    for task in tasks:
+        why = task["why_this_task"]
+        assert why["mastery_score"] is None
+        assert why["mastery_gap"] == 55.0
+        assert why["mastery_source"] != "self_reported"
+        assert "self_assessment_band" not in why
+
+    gen_ctx = sb.db["study_plans"][0]["generation_context"]
+    assert gen_ctx["calibration_gate_status"] is None
+    assert gen_ctx["self_assessment_summary"] is None
+
+
+# ── 15. by_band counts SUBJECTS, not expanded topics ─────────────────────────
+
+def test_by_band_counts_subjects_not_topics():
+    """One subject with >=2 locked topics + one subject-level self-report → the
+    band must be counted ONCE (per subject), not once per expanded topic."""
+    seed = _base_seed()  # s1 has two locked topics t1, t2
+    seed["user_topic_self_assessment"] = [
+        _self_assessment_row(subject_id="s1", band="strong", prior_mastery=80.0, report_confidence=1.0, attempts_used=2)
+    ]
+    seed["user_exam_calibration"] = [_calibration_row("completed")]
+    sb = SBStub(seed)
+    out = generate_plan(sb, "u-1")
+    assert out["generated"] is True
+
+    summary = sb.db["study_plans"][0]["generation_context"]["self_assessment_summary"]
+    assert summary is not None
+    # Two topics carry the prior, but they share ONE subject.
+    assert summary["topics_with_prior"] == 2
+    assert summary["by_band"] == {"strong": 1}  # subject counted once, not twice
+    assert summary["subject_ids"] == ["s1"]
+
+
+# ── 16. self_assessment_prior trace row: stable status token + prose detail ──
+
+def test_self_assessment_prior_trace_status_is_stable_token():
+    """The trace row's ``status`` must be a stable lowercase trust token (not the
+    prose), and the prose must be carried in a separate ``detail`` field."""
+    est_task = {
+        "id": "task-est", "topic": "Percentage", "task_type": "retrieval_practice",
+        "status": "planned", "planned_minutes": 25,
+        "why_this_task": {
+            "mastery_source": "self_reported",
+            "self_assessment_band": "strong",
+            "self_assessment_prior_mastery": 80.0,
+            "self_assessment_confidence": 1.0,
+            "self_assessment_level": "subject",
+        },
+    }
+    rows = [
+        r for r in build_task_reasoning_detail(est_task)["reasoning_trace"]
+        if r.get("rule_key") == "self_assessment_prior"
+    ]
+    assert len(rows) == 1
+    row = rows[0]
+    # Stable token from the trust vocabulary — not the prose, not a sentence.
+    assert row["status"] == "preview"
+    assert row["status"] in {"partial", "preview", "locked", "live"}
+    assert " " not in row["status"]
+    # Prose moved off the status field onto detail.
+    assert row["detail"] == "not yet validated by practice"
+    assert row["status"] != "not yet validated by practice"
+    # Other fields preserved.
+    assert row["band"] == "strong"
+    assert row["assessment_level"] == "subject"
+    assert row["prior_mastery"] == 80.0

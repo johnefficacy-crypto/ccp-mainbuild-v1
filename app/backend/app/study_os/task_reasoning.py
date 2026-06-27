@@ -391,7 +391,12 @@ def build_task_reasoning_detail(
             "label": sa_label,
             "evidence_id": None,
             "confidence": sa_conf if sa_conf is not None else 0.0,
-            "status": "not yet validated by practice",
+            # Status is a stable trust token from the same small vocabulary the
+            # sibling rows use (live / locked / partial / preview). A self-report
+            # is unvalidated evidence → `preview`. The human-readable trust note
+            # lives in `detail`, not in the status token.
+            "status": "preview",
+            "detail": "not yet validated by practice",
             "band": sa_band,
             "assessment_level": sa_level,
             "prior_mastery": sa_prior,

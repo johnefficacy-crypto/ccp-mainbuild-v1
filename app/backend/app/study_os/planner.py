@@ -33,6 +33,7 @@ from cachetools import TTLCache
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
 from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
 from app.exam_intelligence.score_snapshots import locked_score_snapshots
+from app.study_os import calibration
 from app.study_os.competition_context import competition_context
 from app.study_os.exam_target_window import resolve_exam_target_window
 from app.study_os.plan_preferences import focus_weights, get_plan_preferences
@@ -478,18 +479,25 @@ def _self_assessment_summary(
     ``None`` when no priors contributed. Otherwise reports how many topics got
     a prior, the granularity, the per-band counts, the shared ``attempts_used``,
     and the distinct subjects that contributed.
+
+    ``by_band`` counts DISTINCT SUBJECTS per band, not expanded topics: priors
+    are reported at subject granularity, so one large subject (many coverage
+    topics) must not dominate the band tally. ``topics_with_prior`` remains a
+    topic count for breadth-of-impact.
     """
     if not topic_priors:
         return None
-    by_band: dict[str, int] = {}
-    subject_ids: set[str] = set()
-    attempts_used: Any = None
+    # Dedupe to one prior entry per subject before tallying bands.
+    by_subject: dict[str, dict[str, Any]] = {}
     for entry in topic_priors.values():
+        sid = entry.get("subject_id")
+        if sid and sid not in by_subject:
+            by_subject[sid] = entry
+    by_band: dict[str, int] = {}
+    attempts_used: Any = None
+    for entry in by_subject.values():
         band = entry.get("band") or "new"
         by_band[band] = by_band.get(band, 0) + 1
-        sid = entry.get("subject_id")
-        if sid:
-            subject_ids.add(sid)
         if attempts_used is None and entry.get("attempts_used") is not None:
             attempts_used = entry.get("attempts_used")
     return {
@@ -497,7 +505,7 @@ def _self_assessment_summary(
         "assessment_level": "subject",
         "by_band": by_band,
         "attempts_used": attempts_used,
-        "subject_ids": sorted(subject_ids),
+        "subject_ids": sorted(by_subject.keys()),
     }
 
 
@@ -627,7 +635,7 @@ def _why_summary(
         else:
             bits.append(
                 f"you rated yourself '{band}' here — a self-assessment estimate "
-                f"(~{round(mastery)}%), not yet validated by practice"
+                f"(~{round(mastery)}%, not yet validated by practice)"
             )
     elif mastery_source == "validated" and mastery is not None:
         bits.append(f"your recent accuracy is {round(mastery)}%")
@@ -1088,11 +1096,21 @@ def _compute_plan(
 
     # Self-assessment priors: fill cold-start gap when no validated mastery exists.
     # A DB failure returns {} and the plan still generates with the standard 55-pt gap.
-    # Fail closed: if the validated-mastery read itself failed (``mastery_ok`` is
-    # False), do NOT consume priors — a transient error must never let a
-    # self-report override real evidence we simply couldn't load this request.
+    # Two independent preconditions, both required before any prior is consumed:
+    #   * ``mastery_ok`` — fail closed: if the validated-mastery read itself failed,
+    #     a transient error must never let a self-report override real evidence we
+    #     simply couldn't load this request.
+    #   * the calibration gate is explicitly ``completed`` — partially-saved evidence
+    #     (no completed gate) or evidence left over after the user SKIPPED must not
+    #     influence scoring. ``skipped`` / ``none`` / partial all → cold-start.
+    # Gate status is read once here and recorded in input_context for audit; plan
+    # generation itself is never blocked in the planner (the API layer owns unlock).
+    calibration_gate_status = calibration.gate_status(supabase, user_id, exam_id)
+    gate_done = calibration_gate_status == "completed"
     topic_priors = (
-        _load_topic_priors(supabase, user_id, exam_id, topic_ids) if mastery_ok else {}
+        _load_topic_priors(supabase, user_id, exam_id, topic_ids)
+        if (mastery_ok and gate_done)
+        else {}
     )
 
     # score every locked-coverage topic
@@ -1185,6 +1203,7 @@ def _compute_plan(
             for s in score_snapshots_by_topic.values()
         ] if not snapshot_read_failed else None,
         "mastery_read_failed": not mastery_ok,
+        "calibration_gate_status": calibration_gate_status,
         "self_assessment_summary": _self_assessment_summary(topic_priors),
     }
 
