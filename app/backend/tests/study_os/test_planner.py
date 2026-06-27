@@ -195,7 +195,14 @@ def _app(sb: SBStub, user_id: str = "u-1"):
 
 
 def test_generate_plan_route_returns_plan():
-    sb = SBStub(_seed())
+    seed = _seed()
+    # Unlock the onboarding-calibration gate (PR #778): the route now short-
+    # circuits with ``calibration_required`` when a first-plan calibration is
+    # still pending. A 'skipped' gate satisfies it without altering planner I/O.
+    seed["user_exam_calibration"] = [
+        {"id": "cal-route", "user_id": "u-1", "exam_id": "exam-1", "status": "skipped"}
+    ]
+    sb = SBStub(seed)
     client = TestClient(_app(sb))
     r = client.post("/api/study/plan/generate")
     assert r.status_code == 200

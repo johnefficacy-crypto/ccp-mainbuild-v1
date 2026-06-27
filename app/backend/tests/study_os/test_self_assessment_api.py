@@ -425,3 +425,106 @@ def test_skip_no_target_exam_returns_422():
     sb = SBStub({"profiles": [{"id": "u-1", "target_exam": None}]})
     r = _client(sb).post("/api/study/self-assessment/skip", json={})
     assert r.status_code == 422
+
+
+# ───────────────── GET grandfather: existing-plan user, no gate ──────────────
+
+def test_get_existing_plan_user_no_gate_is_calibrated():
+    """FIX D: a user who already generated a first plan (existing study_plans
+    row for this exam) but has NO calibration gate must NOT be reported
+    uncalibrated — otherwise the migration retroactively blocks them. The
+    required set is non-empty here; the existing plan grandfathers them."""
+    seed = _seed(locked_subjects=("quant", "eng"))
+    seed["study_plans"] = [
+        {"id": "p-1", "user_id": "u-1", "exam_id": EXAM_ID, "status": "active"}
+    ]
+    sb = SBStub(seed)
+    body = _client(sb).get("/api/study/self-assessment").json()
+    # required set is genuinely non-empty (neither subject has validated mastery)
+    assert [s["subject_id"] for s in body["required_subjects"]] == sorted([S_QUANT, S_ENG])
+    assert body["calibrated"] is True
+    # no explicit gate → status stays "none", needs_update only meaningful w/ a gate
+    assert body["status"] == "none"
+    assert body["needs_update"] is False
+
+
+def test_get_no_plan_no_gate_is_not_calibrated():
+    """Counterpart to the grandfather: without an existing plan AND without a
+    gate, a non-empty required set is still uncalibrated."""
+    sb = SBStub(_seed(locked_subjects=("quant", "eng")))
+    body = _client(sb).get("/api/study/self-assessment").json()
+    assert body["calibrated"] is False
+    assert body["status"] == "none"
+
+
+# ─────────────── PUT normalization across multi-call completion ──────────────
+
+def test_put_normalizes_attempts_and_confidence_across_two_calls():
+    """FIX E: the required set may be answered over several PUTs. The attempts
+    answer is exam-level, so the LATEST submission must apply uniformly — every
+    evidence row for the (user, exam) ends with the final attempts_used and the
+    matching report_confidence, not the per-call value it was first written with.
+    """
+    sb = SBStub(_seed(locked_subjects=("quant", "eng")))
+    client = _client(sb)
+
+    # First call: Quant @ attempts_used=0 → report_confidence 0.5.
+    r1 = client.put(
+        "/api/study/self-assessment",
+        json={"bands": [{"subject_id": S_QUANT, "band": "strong"}], "attempts_used": 0},
+    )
+    assert r1.status_code == 200
+    # Second call: English (disjoint) @ attempts_used=2 → report_confidence 1.0.
+    r2 = client.put(
+        "/api/study/self-assessment",
+        json={"bands": [{"subject_id": S_ENG, "band": "decent"}], "attempts_used": 2},
+    )
+    assert r2.status_code == 200
+    assert r2.json()["calibrated"] is True
+
+    rows = sb.db["user_topic_self_assessment"]
+    assert len(rows) == 2
+    final_conf = _report_confidence_from_attempts(2)
+    # EVERY row — including the Quant row written in the first call — now carries
+    # the latest exam-level attempts answer and its derived confidence.
+    for row in rows:
+        assert row["attempts_used"] == 2
+        assert row["report_confidence"] == final_conf
+    # The completed gate also records the latest attempts answer.
+    cal = sb.db["user_exam_calibration"][0]
+    assert cal["status"] == "completed"
+    assert cal["attempts_used"] == 2
+
+
+def test_put_partial_submission_still_normalizes_existing_rows():
+    """Normalization rewrites the user's prior evidence rows to the latest
+    exam-level attempts answer, even when only a strict subset is submitted now.
+
+    Here a single unanswered required subject (English) is needed, while Quant
+    already has stale evidence; submitting English completes the set and the
+    stale Quant row is normalized to the new attempts answer rather than keeping
+    its old attempts_used=0 / confidence 0.5."""
+    seed = _seed(locked_subjects=("quant", "eng"))
+    # Pre-existing Quant evidence with stale attempts_used=0 / confidence 0.5.
+    seed["user_topic_self_assessment"] = [
+        {
+            "id": "sa-old", "user_id": "u-1", "exam_id": EXAM_ID, "subject_id": S_QUANT,
+            "topic_id": None, "band": "weak", "prior_mastery": 35.0,
+            "report_confidence": 0.5, "attempts_used": 0, "source": "onboarding_self_report",
+        }
+    ]
+    sb = SBStub(seed)
+    # Submit only English @ attempts_used=1; Quant is supplied by the stale row.
+    r = _client(sb).put(
+        "/api/study/self-assessment",
+        json={"bands": [{"subject_id": S_ENG, "band": "decent"}], "attempts_used": 1},
+    )
+    assert r.status_code == 200
+
+    final_conf = _report_confidence_from_attempts(1)
+    rows = {row["subject_id"]: row for row in sb.db["user_topic_self_assessment"]}
+    # The stale Quant row was normalized to the latest attempts answer too.
+    assert rows[S_QUANT]["attempts_used"] == 1
+    assert rows[S_QUANT]["report_confidence"] == final_conf
+    assert rows[S_ENG]["attempts_used"] == 1
+    assert rows[S_ENG]["report_confidence"] == final_conf

@@ -138,7 +138,13 @@ def test_plan_endpoints_skip_enforcement_when_flag_off(_flag_off):
 
 def test_post_plan_apply_succeeds_when_target_is_set(_flag_on):
     # Sanity: enforcement does not regress the happy path.
-    sb = SBStub(_seed())
+    seed = _seed()
+    # Unlock the PR #778 onboarding-calibration gate (a 'skipped' gate leaves
+    # planner I/O unchanged) so this exercises the canonical-target happy path.
+    seed["user_exam_calibration"] = [
+        {"id": "cal-apply", "user_id": "u-1", "exam_id": "exam-1", "status": "skipped"}
+    ]
+    sb = SBStub(seed)
     r = TestClient(_app(sb)).post("/api/study/plan/apply")
     assert r.status_code == 200
     assert r.json()["applied"] is True

@@ -27,6 +27,23 @@ def _app(sb: SBStub, user_id: str = "u-1") -> FastAPI:
     return app
 
 
+def _seed_calibrated() -> dict:
+    """``_seed()`` plus a 'skipped' onboarding-calibration gate.
+
+    PR #778 gates the plan routes with ``calibration_required`` (which fires
+    for ``_seed()``'s English subject — it has no validated mastery). The HTTP
+    route tests below exercise draft/apply *mechanics*, not the gate, so they
+    unlock it with a 'skipped' gate; this leaves the planner's inputs/outputs
+    untouched. Gate enforcement itself is covered in
+    ``test_plan_calibration_gate.py``.
+    """
+    seed = _seed()
+    seed["user_exam_calibration"] = [
+        {"id": "cal-1", "user_id": "u-1", "exam_id": "exam-1", "status": "skipped"}
+    ]
+    return seed
+
+
 # ─── compute_draft_plan ───────────────────────────────────────────────────
 def test_draft_does_not_mutate_active_plan():
     sb = SBStub(_seed())
@@ -96,7 +113,7 @@ def test_apply_is_idempotent_versions_increment():
 
 # ─── HTTP routes ──────────────────────────────────────────────────────────
 def test_plan_draft_route_returns_diff():
-    sb = SBStub(_seed())
+    sb = SBStub(_seed_calibrated())
     client = TestClient(_app(sb))
     r = client.get("/api/study/plan/draft")
     assert r.status_code == 200
@@ -109,7 +126,7 @@ def test_plan_draft_route_returns_diff():
 
 
 def test_plan_apply_route_persists():
-    sb = SBStub(_seed())
+    sb = SBStub(_seed_calibrated())
     client = TestClient(_app(sb))
     r = client.post("/api/study/plan/apply")
     assert r.status_code == 200
@@ -121,7 +138,7 @@ def test_plan_apply_route_persists():
 
 
 def test_plan_changelog_route_returns_events():
-    sb = SBStub(_seed())
+    sb = SBStub(_seed_calibrated())
     client = TestClient(_app(sb))
     client.post("/api/study/plan/apply")
     r = client.get("/api/study/plan/changelog")

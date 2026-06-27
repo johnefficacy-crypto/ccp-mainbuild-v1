@@ -1,0 +1,220 @@
+"""Backend plan-calibration gate (PR #778, FIX B).
+
+The onboarding-calibration gate must NOT be frontend-only: the plan
+entrypoints — ``POST /plan/generate``, ``GET/POST /plan/draft`` and
+``POST /plan/apply`` — must themselves short-circuit with the stable
+``calibration_required`` envelope (HTTP 200, no generation, no mutation) when a
+first-plan calibration is still pending, and must proceed to the planner once
+ANY unlock path holds:
+
+  * a 'completed' gate row,
+  * a 'skipped' gate row,
+  * an existing plan for the exam (grandfathered).
+
+These assertions are kept independent of planner internals by monkeypatching
+``generate_plan`` / ``compute_draft_plan`` / ``apply_plan`` to a sentinel so we
+can assert *whether* the planner was invoked, not what it produced.
+
+Reuses the SBStub + FastAPI TestClient harness from the sibling suites.
+"""
+from __future__ import annotations
+
+import uuid
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from app.api import study_os as study_os_api
+from app.core.auth import get_current_user
+from app.study_os import calibration
+from tests.persona_questions._stub import SBStub
+
+EXAM_ID = "55555555-5555-4555-8555-555555555551"
+S_QUANT = "66666666-6666-4666-8666-666666666661"
+S_ENG = "66666666-6666-4666-8666-666666666662"
+T_QUANT = "77777777-7777-4777-8777-777777777771"
+T_ENG = "77777777-7777-4777-8777-777777777772"
+
+
+@pytest.fixture(autouse=True)
+def _clear_exam_cache():
+    # resolve_exam_by_slug/by_id memoise in a module-level cache; clear it so a
+    # unique-per-test exam row is never shadowed by a sibling test.
+    import app.exam_intelligence.lookup as lookup
+
+    lookup._EXAM_CACHE.clear()
+    yield
+    lookup._EXAM_CACHE.clear()
+
+
+def _app(sb: SBStub, user_id: str = "u-1") -> FastAPI:
+    app = FastAPI()
+    app.include_router(study_os_api.router, prefix="/api")
+    study_os_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    app.dependency_overrides[get_current_user] = lambda: {"id": user_id, "role": "user"}
+    return app
+
+
+def _client(sb: SBStub, user_id: str = "u-1") -> TestClient:
+    return TestClient(_app(sb, user_id))
+
+
+def _seed(*, unique_slug: str | None = None) -> dict:
+    """Exam with two locked subjects and NO validated mastery → both required.
+
+    With no gate row and no existing plan this fixture makes
+    ``calibration_required`` True, i.e. the gate is ENGAGED.
+    """
+    slug = unique_slug or f"exam-{uuid.uuid4().hex[:8]}"
+    return {
+        "profiles": [{"id": "u-1", "target_exam": slug}],
+        "exams": [{"id": EXAM_ID, "slug": slug, "name": "Test Exam", "is_active": True}],
+        "exam_topic_coverage": [
+            {"id": "cov-q", "exam_id": EXAM_ID, "topic_id": T_QUANT, "reviewer_status": "locked"},
+            {"id": "cov-e", "exam_id": EXAM_ID, "topic_id": T_ENG, "reviewer_status": "locked"},
+        ],
+        "topics": [
+            {"id": T_QUANT, "subject_id": S_QUANT, "name": "Quant", "is_active": True},
+            {"id": T_ENG, "subject_id": S_ENG, "name": "English", "is_active": True},
+        ],
+        "subjects": [
+            {"id": S_QUANT, "name": "Quant"},
+            {"id": S_ENG, "name": "English"},
+        ],
+    }
+
+
+_SENTINEL = {"generated": True, "applied": True, "__planner_called__": True, "tasks": []}
+
+
+@pytest.fixture
+def _spy_planner(monkeypatch):
+    """Replace the three planner entrypoints with a call-recording sentinel."""
+    calls: dict[str, int] = {"generate": 0, "draft": 0, "apply": 0}
+
+    def _gen(*_a, **_k):
+        calls["generate"] += 1
+        return dict(_SENTINEL)
+
+    def _draft(*_a, **_k):
+        calls["draft"] += 1
+        return dict(_SENTINEL)
+
+    def _apply(*_a, **_k):
+        calls["apply"] += 1
+        return dict(_SENTINEL)
+
+    monkeypatch.setattr(study_os_api, "generate_plan", _gen)
+    monkeypatch.setattr(study_os_api, "compute_draft_plan", _draft)
+    monkeypatch.setattr(study_os_api, "apply_plan", _apply)
+    return calls
+
+
+# Each plan entrypoint, as (method, path, planner-call-key).
+_ENDPOINTS = [
+    ("post", "/api/study/plan/generate", "generate"),
+    ("get", "/api/study/plan/draft", "draft"),
+    ("post", "/api/study/plan/draft", "draft"),
+    ("post", "/api/study/plan/apply", "apply"),
+]
+
+
+def _call(client: TestClient, method: str, path: str):
+    return client.get(path) if method == "get" else client.post(path)
+
+
+# ───────────────── gate ENGAGED: required set, no gate, no plan ──────────────
+
+@pytest.mark.parametrize("method,path,key", _ENDPOINTS)
+def test_plan_endpoint_blocks_when_calibration_required(_spy_planner, method, path, key):
+    sb = SBStub(_seed())
+    # Precondition sanity: the gate really is engaged for this fixture.
+    assert calibration.calibration_required(sb, "u-1", EXAM_ID) is True
+
+    r = _call(_client(sb), method, path)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["calibration_required"] is True
+    assert body["generated"] is False
+    assert body["reason"] == "calibration_required"
+    assert str(body["exam_id"]) == EXAM_ID
+    # The planner was NOT invoked and nothing was mutated.
+    assert _spy_planner[key] == 0
+    assert sb.db.get("study_plans", []) == []
+    assert sb.db.get("study_tasks", []) == []
+    assert sb.db.get("study_plan_versions", []) == []
+
+
+# ───────────── unlock path 1: a 'completed' gate lets the planner run ────────
+
+@pytest.mark.parametrize("method,path,key", _ENDPOINTS)
+def test_plan_endpoint_proceeds_with_completed_gate(_spy_planner, method, path, key):
+    seed = _seed()
+    seed["user_exam_calibration"] = [
+        {
+            "id": "cal-c", "user_id": "u-1", "exam_id": EXAM_ID, "status": "completed",
+            "required_subject_set_hash": calibration.required_subject_set_hash([S_QUANT, S_ENG]),
+            "attempts_used": 1, "completed_at": "2026-06-01T00:00:00+00:00",
+        }
+    ]
+    sb = SBStub(seed)
+    r = _call(_client(sb), method, path)
+    assert r.status_code == 200
+    assert r.json().get("calibration_required") is not True
+    assert _spy_planner[key] == 1
+
+
+# ───────────── unlock path 2: a 'skipped' gate lets the planner run ──────────
+
+@pytest.mark.parametrize("method,path,key", _ENDPOINTS)
+def test_plan_endpoint_proceeds_with_skipped_gate(_spy_planner, method, path, key):
+    seed = _seed()
+    seed["user_exam_calibration"] = [
+        {"id": "cal-s", "user_id": "u-1", "exam_id": EXAM_ID, "status": "skipped"}
+    ]
+    sb = SBStub(seed)
+    r = _call(_client(sb), method, path)
+    assert r.status_code == 200
+    assert r.json().get("calibration_required") is not True
+    assert _spy_planner[key] == 1
+
+
+# ──────── unlock path 3: an existing plan grandfathers the user through ───────
+
+@pytest.mark.parametrize("method,path,key", _ENDPOINTS)
+def test_plan_endpoint_proceeds_with_existing_plan(_spy_planner, method, path, key):
+    seed = _seed()
+    # Existing plan for THIS exam (matched via the exam_id column) → grandfathered
+    # even though there is no gate row and the required set is non-empty.
+    seed["study_plans"] = [
+        {"id": "p-1", "user_id": "u-1", "exam_id": EXAM_ID, "status": "active"}
+    ]
+    sb = SBStub(seed)
+    # Sanity: the existing plan flips calibration_required off.
+    assert calibration.calibration_required(sb, "u-1", EXAM_ID) is False
+
+    r = _call(_client(sb), method, path)
+    assert r.status_code == 200
+    assert r.json().get("calibration_required") is not True
+    assert _spy_planner[key] == 1
+
+
+# ───────────── empty required set: nothing to calibrate → proceed ────────────
+
+@pytest.mark.parametrize("method,path,key", _ENDPOINTS)
+def test_plan_endpoint_proceeds_when_required_set_empty(_spy_planner, method, path, key):
+    seed = _seed()
+    # Both locked topics already have validated mastery → required set empty →
+    # calibration_required False with no gate and no plan.
+    seed["user_topic_mastery"] = [
+        {"id": "m-q", "user_id": "u-1", "topic_id": T_QUANT, "mastery_score": 70.0},
+        {"id": "m-e", "user_id": "u-1", "topic_id": T_ENG, "mastery_score": 65.0},
+    ]
+    sb = SBStub(seed)
+    assert calibration.calibration_required(sb, "u-1", EXAM_ID) is False
+
+    r = _call(_client(sb), method, path)
+    assert r.status_code == 200
+    assert r.json().get("calibration_required") is not True
+    assert _spy_planner[key] == 1
