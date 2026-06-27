@@ -73,6 +73,61 @@ def _read(call) -> tuple[Any, bool]:
         return None, False
 
 
+def resolve_target_exam_checked(supabase: Any, user_id: str) -> tuple[dict | None, bool]:
+    """Health-aware target-exam resolution → ``(exam_row_or_None, ok)``.
+
+    Mirrors ``planner._resolve_target_exam`` but reports read health so callers
+    can fail closed: a transient ``profiles`` / ``aspirant_preferences`` read
+    failure is NOT mistaken for "the user has no target exam" (which would let the
+    calibration gate return "proceed" and an uncalibrated first plan through).
+    ``ok`` is False only when a read needed to determine the target failed;
+    ``(None, True)`` means the user genuinely has no target exam.
+    """
+    from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
+
+    profile, ok = _read(
+        lambda: (
+            supabase.table("profiles")
+            .select("target_exam")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+            .data
+        )
+    )
+    if not ok:
+        return None, False
+    target = (profile[0] if profile else {}).get("target_exam")
+    if not target:
+        prefs, ok = _read(
+            lambda: (
+                supabase.table("aspirant_preferences")
+                .select("target_exams")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+                .data
+            )
+        )
+        if not ok:
+            return None, False
+        exams = (prefs[0] if prefs else {}).get("target_exams") or []
+        if isinstance(exams, list) and exams:
+            target = exams[0]
+    if not target:
+        return None, True  # genuinely no target exam
+    candidate = str(target)
+    try:
+        if len(candidate) == 36 and candidate.count("-") == 4:
+            exam = resolve_exam_by_id(supabase, candidate)
+            if exam:
+                return exam, True
+        return resolve_exam_by_slug(supabase, candidate), True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("calibration target-exam lookup failed: %s", exc)
+        return None, False
+
+
 def resolve_required_subjects(
     supabase: Any, exam_id: str, user_id: str
 ) -> tuple[list[dict], bool]:
@@ -215,20 +270,6 @@ def has_existing_plan(supabase: Any, user_id: str, exam_id: str) -> tuple[bool, 
     slug like ``"ssc-cgl"`` with a NULL ``exam_id``, so a UUID-only comparison
     would miss them and wrongly gate a real existing user).
     """
-    exam_rows, ok = _read(
-        lambda: (
-            supabase.table("exams")
-            .select("slug")
-            .eq("id", exam_id)
-            .limit(1)
-            .execute()
-            .data
-        )
-    )
-    if not ok:
-        return False, False
-    slug = exam_rows[0].get("slug") if exam_rows else None
-
     plan_rows, ok = _read(
         lambda: (
             supabase.table("study_plans")
@@ -241,12 +282,26 @@ def has_existing_plan(supabase: Any, user_id: str, exam_id: str) -> tuple[bool, 
     )
     if not ok:
         return False, False
-    targets = {str(exam_id)}
-    if slug:
-        targets.add(str(slug))
-    for r in (plan_rows or []):
-        if str(r.get("exam_id") or "") in targets or str(r.get("target_exam") or "") in targets:
+    plan_rows = plan_rows or []
+    target = str(exam_id)
+    # Canonical match FIRST — no ``exams`` lookup needed, so a transient exams
+    # read can never block a plan whose canonical UUID already matches.
+    for r in plan_rows:
+        if str(r.get("exam_id") or "") == target:
             return True, True
+    # Legacy free-text match — resolve the slug only now, and only if needed.
+    exam_rows, ok = _read(
+        lambda: (
+            supabase.table("exams").select("slug").eq("id", exam_id).limit(1).execute().data
+        )
+    )
+    if not ok:
+        return False, False
+    slug = exam_rows[0].get("slug") if exam_rows else None
+    if slug:
+        for r in plan_rows:
+            if str(r.get("target_exam") or "") == str(slug):
+                return True, True
     return False, True
 
 
@@ -264,10 +319,17 @@ def evaluate_calibration(supabase: Any, user_id: str, exam_id: str) -> dict:
           "required_subject_set_hash": str | None,
         }
 
-    ``required`` is False when: the required set is empty (nothing to
-    calibrate), the gate is completed/skipped, OR the user already has a plan
-    for the exam (existing-user grandfather). On ANY read failure ``check_failed``
-    is True and ``required`` is None — never silently unlocked.
+    ``required`` is False when: the gate is completed/skipped, the user already
+    has a plan for the exam (existing-user grandfather), OR the required set is
+    empty (nothing to calibrate). On a read failure that would be needed to make
+    the decision, ``check_failed`` is True and ``required`` is None — never
+    silently unlocked.
+
+    POSITIVE unlock evidence (completed/skipped gate, existing plan) is evaluated
+    FIRST, so an unrelated coverage / topics / mastery / subjects outage can never
+    re-block a user who is already definitively unlocked (the OR contract). Only a
+    user with no positive unlock evidence needs a healthy required-set read.
+    ``attempts_used`` is returned from the gate row so callers need not re-read it.
     """
     unknown = {
         "check_failed": True,
@@ -276,10 +338,58 @@ def evaluate_calibration(supabase: Any, user_id: str, exam_id: str) -> dict:
         "required_subjects": [],
         "needs_update": False,
         "required_subject_set_hash": None,
+        "attempts_used": None,
     }
 
-    subjects, ok = resolve_required_subjects(supabase, exam_id, user_id)
-    if not ok:
+    gate, gate_ok = read_gate(supabase, user_id, exam_id)
+
+    # 1. A completed/skipped gate is sufficient — coverage health is irrelevant.
+    if gate_ok and gate and gate.get("status") in ("completed", "skipped"):
+        subjects, subj_ok = resolve_required_subjects(supabase, exam_id, user_id)
+        cur_hash = (
+            required_subject_set_hash([s["subject_id"] for s in subjects])
+            if subj_ok else None
+        )
+        # needs_update is best-effort: failure to recompute the hash must NOT
+        # revoke plan access for an already-unlocked user.
+        needs_update = bool(
+            subj_ok and cur_hash is not None
+            and gate.get("required_subject_set_hash") != cur_hash
+        )
+        return {
+            "check_failed": False,
+            "required": False,
+            "status": gate.get("status"),
+            "required_subjects": subjects if subj_ok else [],
+            "needs_update": needs_update,
+            "required_subject_set_hash": cur_hash,
+            "attempts_used": gate.get("attempts_used"),
+        }
+
+    # 2. An existing plan (canonical or legacy) grandfathers the user. The
+    #    required set is resolved best-effort (for the edit affordance); a
+    #    coverage outage yields [] but never revokes the unlock.
+    existing, exist_ok = has_existing_plan(supabase, user_id, exam_id)
+    if exist_ok and existing:
+        subjects, subj_ok = resolve_required_subjects(supabase, exam_id, user_id)
+        cur_hash = (
+            required_subject_set_hash([s["subject_id"] for s in subjects])
+            if subj_ok else None
+        )
+        return {
+            "check_failed": False,
+            "required": False,
+            "status": gate.get("status") if gate else None,
+            "required_subjects": subjects if subj_ok else [],
+            "needs_update": False,
+            "required_subject_set_hash": cur_hash,
+            "attempts_used": gate.get("attempts_used") if gate else None,
+        }
+
+    # 3. No positive unlock evidence → a HEALTHY required-set read is required to
+    #    decide; an unhealthy read here fails closed.
+    subjects, subj_ok = resolve_required_subjects(supabase, exam_id, user_id)
+    if not subj_ok:
         return unknown
     cur_hash = required_subject_set_hash([s["subject_id"] for s in subjects])
     if not subjects:
@@ -290,33 +400,20 @@ def evaluate_calibration(supabase: Any, user_id: str, exam_id: str) -> dict:
             "required_subjects": [],
             "needs_update": False,
             "required_subject_set_hash": cur_hash,
+            "attempts_used": None,
         }
-
-    gate, ok = read_gate(supabase, user_id, exam_id)
-    if not ok:
-        return unknown
-    status = gate.get("status") if gate else None
-    if status in ("completed", "skipped"):
-        needs_update = bool(gate and gate.get("required_subject_set_hash") != cur_hash)
-        return {
-            "check_failed": False,
-            "required": False,
-            "status": status,
-            "required_subjects": subjects,
-            "needs_update": needs_update,
-            "required_subject_set_hash": cur_hash,
-        }
-
-    existing, ok = has_existing_plan(supabase, user_id, exam_id)
-    if not ok:
+    # Required set non-empty → to assert required=True we must be SURE there is no
+    # gate and no existing plan; if either read failed we cannot be sure.
+    if not gate_ok or not exist_ok:
         return unknown
     return {
         "check_failed": False,
-        "required": not existing,
-        "status": status,
+        "required": True,
+        "status": gate.get("status") if gate else None,
         "required_subjects": subjects,
         "needs_update": False,
         "required_subject_set_hash": cur_hash,
+        "attempts_used": None,
     }
 
 

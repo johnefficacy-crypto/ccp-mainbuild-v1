@@ -269,6 +269,35 @@ def test_get_self_assessment_reports_check_failed_when_read_fails():
     assert body["calibrated"] is False
 
 
+def test_generate_returns_503_when_target_resolution_fails(_spy_planner):
+    # A transient profiles read failure must fail closed (503), NOT be mistaken
+    # for "no target exam → proceed" and let the planner generate an uncalibrated
+    # first plan on a re-resolve. (POST /plan/generate has no _require_canonical
+    # short-circuit, so the gate's resolution is the first thing to run.)
+    sb = _failing_read_sb(_seed(), "profiles")
+    r = _client(sb).post("/api/study/plan/generate")
+    assert r.status_code == 503
+    assert r.json()["detail"]["reason"] == "calibration_check_failed"
+    assert _spy_planner["generate"] == 0
+
+
+def test_generate_proceeds_for_completed_gate_despite_coverage_outage(_spy_planner):
+    # Positive unlock evidence (completed gate) must win over an unrelated
+    # coverage outage — the user is already definitively unlocked.
+    seed = _seed()
+    seed["user_exam_calibration"] = [
+        {
+            "id": "cal-c", "user_id": "u-1", "exam_id": EXAM_ID, "status": "completed",
+            "required_subject_set_hash": "stale-hash", "attempts_used": 1,
+        }
+    ]
+    sb = _failing_read_sb(seed, "exam_topic_coverage")
+    r = _client(sb).post("/api/study/plan/generate")
+    assert r.status_code == 200
+    assert r.json().get("calibration_required") is not True
+    assert _spy_planner["generate"] == 1
+
+
 # ───────────── empty required set: nothing to calibrate → proceed ────────────
 
 @pytest.mark.parametrize("method,path,key", _ENDPOINTS)

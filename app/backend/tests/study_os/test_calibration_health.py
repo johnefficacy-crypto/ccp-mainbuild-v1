@@ -191,3 +191,70 @@ def test_has_existing_plan_read_failure_reports_unhealthy():
     exists, ok = calibration.has_existing_plan(sb, "u-1", EXAM_ID)
     assert ok is False
     assert exists is False
+
+
+def test_canonical_plan_match_does_not_need_exams_read():
+    # Canonical exam_id match must short-circuit BEFORE the exams slug lookup, so
+    # a transient exams read can never block a plan whose UUID already matches.
+    sb = FakeSB(
+        _healthy_tables(study_plans=[{"id": "p1", "exam_id": EXAM_ID, "target_exam": None}]),
+        fail={"exams"},
+    )
+    exists, ok = calibration.has_existing_plan(sb, "u-1", EXAM_ID)
+    assert ok is True
+    assert exists is True
+
+
+# ── positive unlock evidence wins over an unrelated coverage outage ─────────
+
+
+def test_completed_gate_unlocks_despite_coverage_outage():
+    sb = FakeSB(
+        _healthy_tables(
+            user_exam_calibration=[{"status": "completed", "required_subject_set_hash": "x"}]
+        ),
+        fail={"exam_topic_coverage"},  # unrelated outage must NOT re-block
+    )
+    result = calibration.evaluate_calibration(sb, "u-1", EXAM_ID)
+    assert result["check_failed"] is False
+    assert result["required"] is False
+    assert result["status"] == "completed"
+
+
+def test_skipped_gate_unlocks_despite_mastery_outage():
+    sb = FakeSB(
+        _healthy_tables(user_exam_calibration=[{"status": "skipped"}]),
+        fail={"user_topic_mastery"},
+    )
+    result = calibration.evaluate_calibration(sb, "u-1", EXAM_ID)
+    assert result["check_failed"] is False
+    assert result["required"] is False
+    assert result["status"] == "skipped"
+
+
+def test_existing_plan_unlocks_despite_subjects_outage():
+    sb = FakeSB(
+        _healthy_tables(study_plans=[{"id": "p1", "exam_id": EXAM_ID, "target_exam": None}]),
+        fail={"subjects"},
+    )
+    result = calibration.evaluate_calibration(sb, "u-1", EXAM_ID)
+    assert result["check_failed"] is False
+    assert result["required"] is False
+
+
+# ── health-aware target-exam resolution ────────────────────────────────────
+
+
+def test_resolve_target_exam_checked_unhealthy_on_profiles_failure():
+    # A transient profiles read failure must NOT be mistaken for "no target exam".
+    sb = FakeSB(_healthy_tables(), fail={"profiles"})
+    exam, ok = calibration.resolve_target_exam_checked(sb, "u-1")
+    assert ok is False
+    assert exam is None
+
+
+def test_resolve_target_exam_checked_none_when_genuinely_no_target():
+    sb = FakeSB(_healthy_tables())  # no profiles/preferences rows → no target
+    exam, ok = calibration.resolve_target_exam_checked(sb, "u-1")
+    assert ok is True
+    assert exam is None

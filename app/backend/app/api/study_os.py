@@ -88,9 +88,15 @@ def _calibration_gate_response(supabase: Any, user_id: str) -> dict[str, Any] | 
     for an empty required set, a completed/skipped gate, OR an existing plan
     (grandfathered), so existing and calibrated/skipped users are never blocked.
     """
-    from app.study_os.planner import _resolve_target_exam
-
-    exam = _resolve_target_exam(supabase, user_id)
+    # Resolve the target exam ONCE, health-aware. A transient profile/preference
+    # read failure must NOT look like "no target exam → proceed" (which would let
+    # the planner re-resolve and generate an uncalibrated first plan).
+    exam, exam_ok = calibration.resolve_target_exam_checked(supabase, user_id)
+    if not exam_ok:
+        raise HTTPException(
+            status_code=503,
+            detail={"reason": "calibration_check_failed", "generated": False},
+        )
     exam_id = exam.get("id") if exam else None
     if not exam_id:
         return None
@@ -1227,12 +1233,23 @@ class SkipBody(BaseModel):
 @router.get("/self-assessment")
 async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[str, Any]:
     """Return the user's calibration state + self-assessment bands for prefill."""
-    from app.study_os.planner import _resolve_target_exam
-
     user_id = user.get("id")
     supabase = get_supabase_admin()
 
-    exam = _resolve_target_exam(supabase, user_id)
+    exam, exam_ok = calibration.resolve_target_exam_checked(supabase, user_id)
+    if not exam_ok:
+        # Target resolution failed — fail closed. Do NOT mistake a transient
+        # profile/preference read for "no target exam" and report a bogus state.
+        return {
+            "exam_id": None,
+            "calibrated": False,
+            "calibration_check_failed": True,
+            "status": "unknown",
+            "needs_update": False,
+            "required_subjects": [],
+            "items": [],
+            "attempts_used": None,
+        }
     if not exam or not exam.get("id"):
         return {
             "exam_id": None,
@@ -1247,7 +1264,7 @@ async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[st
 
     ev = calibration.evaluate_calibration(supabase, user_id, exam_id)
     if ev["check_failed"]:
-        # Fail closed: a required-set or gate read failed, so calibration state
+        # Fail closed: a read needed to decide calibration failed, so the state
         # is UNKNOWN. Do NOT report the user as calibrated (that would be a
         # bypass) — return a stable, retryable signal the UI can surface.
         return {
@@ -1264,72 +1281,60 @@ async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[st
     calibrated = not ev["required"]
     status = ev["status"] or ("completed" if not required_subjects else "none")
     needs_update = ev["needs_update"]
+    attempts_used = ev["attempts_used"]  # from the gate row — no second read
 
-    # Slim gate read only for the attempts prefill (state already resolved above).
-    cal_row = (
-        supabase.table("user_exam_calibration")
-        .select("attempts_used")
-        .eq("user_id", user_id)
-        .eq("exam_id", exam_id)
-        .limit(1)
-        .execute()
-        .data
-        or []
-    )
-    cal = cal_row[0] if cal_row else None
-
-    rows = (
-        supabase.table("user_topic_self_assessment")
-        .select(
-            "id, subject_id, topic_id, band, prior_mastery, report_confidence, "
-            "attempts_used, assessed_at"
-        )
-        .eq("user_id", user_id)
-        .eq("exam_id", exam_id)
-        .limit(500)
-        .execute()
-        .data
-        or []
-    )
-
-    subject_ids = list({r["subject_id"] for r in rows if r.get("subject_id")})
-    subjects_by_id: dict[str, str] = {}
-    if subject_ids:
-        subj_rows = (
-            supabase.table("subjects")
-            .select("id, name")
-            .in_("id", subject_ids)
+    # Best-effort prefill: the evidence/subject-name reads are cosmetic. A failure
+    # here must NOT change `calibrated` or revoke access — fall back to empty
+    # items and the gate's attempts_used.
+    items: list[dict[str, Any]] = []
+    try:
+        rows = (
+            supabase.table("user_topic_self_assessment")
+            .select(
+                "id, subject_id, topic_id, band, prior_mastery, report_confidence, "
+                "attempts_used, assessed_at"
+            )
+            .eq("user_id", user_id)
+            .eq("exam_id", exam_id)
             .limit(500)
             .execute()
             .data
             or []
         )
-        subjects_by_id = {s["id"]: s.get("name") for s in subj_rows if s.get("id")}
-
-    items = [
-        {
-            "id": r.get("id"),
-            "subject_id": r.get("subject_id"),
-            "subject_name": subjects_by_id.get(r["subject_id"]) if r.get("subject_id") else None,
-            "topic_id": r.get("topic_id"),
-            "band": r.get("band"),
-            "prior_mastery": r.get("prior_mastery"),
-            "report_confidence": r.get("report_confidence"),
-            "attempts_used": r.get("attempts_used"),
-            "assessed_at": r.get("assessed_at"),
-        }
-        for r in rows
-    ]
-
-    # Prefill the attempts answer: prefer the gate record, else the last/max
-    # attempts seen across evidence rows.
-    attempts_used: int | None = None
-    if cal and cal.get("attempts_used") is not None:
-        attempts_used = cal.get("attempts_used")
-    else:
-        evidence_attempts = [r.get("attempts_used") for r in rows if r.get("attempts_used") is not None]
-        if evidence_attempts:
-            attempts_used = max(evidence_attempts)
+        subject_ids = list({r["subject_id"] for r in rows if r.get("subject_id")})
+        subjects_by_id: dict[str, str] = {}
+        if subject_ids:
+            subj_rows = (
+                supabase.table("subjects")
+                .select("id, name")
+                .in_("id", subject_ids)
+                .limit(500)
+                .execute()
+                .data
+                or []
+            )
+            subjects_by_id = {s["id"]: s.get("name") for s in subj_rows if s.get("id")}
+        items = [
+            {
+                "id": r.get("id"),
+                "subject_id": r.get("subject_id"),
+                "subject_name": subjects_by_id.get(r["subject_id"]) if r.get("subject_id") else None,
+                "topic_id": r.get("topic_id"),
+                "band": r.get("band"),
+                "prior_mastery": r.get("prior_mastery"),
+                "report_confidence": r.get("report_confidence"),
+                "attempts_used": r.get("attempts_used"),
+                "assessed_at": r.get("assessed_at"),
+            }
+            for r in rows
+        ]
+        if attempts_used is None:
+            evidence_attempts = [r.get("attempts_used") for r in rows if r.get("attempts_used") is not None]
+            if evidence_attempts:
+                attempts_used = max(evidence_attempts)
+    except Exception:
+        logger.exception("self-assessment prefill read failed for %s", user_id)
+        items = []
 
     return {
         "exam_id": exam_id,
@@ -1348,12 +1353,12 @@ async def put_self_assessment(
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Upsert subject-level bands and, when the required set is complete, the gate."""
-    from app.study_os.planner import _resolve_target_exam
-
     user_id = user.get("id")
     supabase = get_supabase_admin()
 
-    exam = _resolve_target_exam(supabase, user_id)
+    exam, exam_ok = calibration.resolve_target_exam_checked(supabase, user_id)
+    if not exam_ok:
+        raise HTTPException(status_code=503, detail={"reason": "calibration_check_failed"})
     if not exam or not exam.get("id"):
         raise HTTPException(status_code=422, detail="No target exam set.")
     exam_id = str(exam["id"])
@@ -1470,12 +1475,12 @@ async def skip_self_assessment(
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Explicitly skip onboarding calibration for the target exam."""
-    from app.study_os.planner import _resolve_target_exam
-
     user_id = user.get("id")
     supabase = get_supabase_admin()
 
-    exam = _resolve_target_exam(supabase, user_id)
+    exam, exam_ok = calibration.resolve_target_exam_checked(supabase, user_id)
+    if not exam_ok:
+        raise HTTPException(status_code=503, detail={"reason": "calibration_check_failed"})
     if not exam or not exam.get("id"):
         raise HTTPException(status_code=422, detail="No target exam set.")
     exam_id = str(exam["id"])
