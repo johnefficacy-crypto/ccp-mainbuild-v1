@@ -305,7 +305,11 @@ def _update_job(sb, job_id: str, patch: dict[str, Any]) -> None:
 
 
 def _update_doc(sb, document_id: str, status: str) -> None:
-    sb.table("document_assets").update({"status": status}).eq("id", document_id).execute()
+    # Conditional write: never overwrite 'archived' with a runner terminal state.
+    # An archived document must stay archived even if the runner finishes later.
+    sb.table("document_assets").update({"status": status}).eq(
+        "id", document_id
+    ).neq("status", "archived").execute()
 
 
 def _fail(sb, *, job_id: str, document_id: str, code: str, message: str,

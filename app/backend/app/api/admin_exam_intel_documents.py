@@ -367,6 +367,14 @@ def complete_document_upload(
         job_id = (result.get("job") or {}).get("id")
     except Exception:  # noqa: BLE001
         logger.exception("admin text-extract enqueue failed for doc=%s", row["id"])
+        # Enqueue failure must not strand the document in 'processing' — a later
+        # call would be rejected as already_processing with no retry path.
+        # Restore to 'uploaded' so the caller can retry complete-upload.
+        sb.table("document_assets").update({"status": "uploaded"}).eq("id", row["id"]).execute()
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "enqueue_failed", "message": "text extraction job could not be queued; document status restored to uploaded — retry complete-upload"},
+        )
 
     # Run extraction synchronously. Admin docs have owner_user_id=NULL and
     # scope='admin_exam_intelligence'; the service validates both.
@@ -718,7 +726,7 @@ def archive_document(
         sb, admin, "exam_intel.cms.document.archive",
         entity_type="document_asset", entity_id=document_id,
         old_value={"status": asset.get("status")},
-        new_value={"status": "archived", "reason": body.reason, "force": body.force},
+        new_value={"status": "archived", "reason": body.reason},
     )
     return {"ok": True, "document_id": document_id, "status": "archived"}
 

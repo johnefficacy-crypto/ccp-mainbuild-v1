@@ -629,6 +629,18 @@ def archive_item(item_id: str, user: dict = Depends(get_current_user)) -> dict:
         raise HTTPException(status_code=400, detail="Invalid id")
     from datetime import datetime, timezone
     sb = get_supabase_admin()
+    # Verify ownership FIRST — a non-owner must always get 404, not 409.
+    owned = (
+        sb.table("document_assets")
+        .select("id")
+        .eq("id", item_id)
+        .eq("owner_user_id", user["id"])
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    if not owned:
+        raise HTTPException(status_code=404, detail="Document not found")
     # Block if extraction is actively running — the runner would undo the archive.
     running = (
         sb.table("document_processing_jobs")
