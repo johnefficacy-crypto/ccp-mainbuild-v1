@@ -79,12 +79,14 @@ def _calibration_blocks_regen(
     exam_id = exam.get("id") if exam else None
     if not exam_id:
         return False
-    return bool(
-        _safe(
-            lambda: calibration.calibration_required(supabase, user_id, str(exam_id)),
-            default=False,
-        )
-    )
+    try:
+        return bool(calibration.calibration_required(supabase, user_id, str(exam_id)))
+    except calibration.CalibrationUnavailable:
+        # Unknown gate state → fail closed: skip this regeneration rather than
+        # risk generating an uncalibrated first plan under a transient read error.
+        return True
+    except Exception:  # noqa: BLE001 — defensive tripwire, never raises out
+        return False
 
 
 def regenerate_on_signal(

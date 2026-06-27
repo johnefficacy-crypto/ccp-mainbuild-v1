@@ -200,6 +200,75 @@ def test_plan_endpoint_proceeds_with_existing_plan(_spy_planner, method, path, k
     assert _spy_planner[key] == 1
 
 
+# ──────── unlock path 3b: a legacy slug-only plan grandfathers via HTTP ───────
+
+def test_plan_endpoint_proceeds_with_legacy_slug_plan(_spy_planner):
+    slug = "legacy-grandfather-exam"
+    seed = _seed(unique_slug=slug)
+    # Legacy row: NULL exam_id, slug stored in the free-text target_exam column.
+    seed["study_plans"] = [
+        {"id": "p-legacy", "user_id": "u-1", "exam_id": None, "target_exam": slug, "status": "active"}
+    ]
+    sb = SBStub(seed)
+    assert calibration.calibration_required(sb, "u-1", EXAM_ID) is False
+
+    r = _call(_client(sb), "post", "/api/study/plan/apply")
+    assert r.status_code == 200
+    assert r.json().get("calibration_required") is not True
+    assert _spy_planner["apply"] == 1
+
+
+# ───────────── fail closed: a calibration read failure → 503, no generation ───
+
+def _failing_read_sb(seed: dict, failing_table: str) -> SBStub:
+    """SBStub whose ``<failing_table>`` raises on ``execute()`` (read failure)."""
+    sb = SBStub(seed)
+    original_table = sb.table
+
+    class _FailingQuery:
+        def __init__(self, inner, table_name):
+            self._inner = inner
+            self._table = table_name
+
+        def __getattr__(self, name):
+            attr = getattr(self._inner, name)
+            if name == "execute":
+                def _exec():
+                    if self._table == failing_table:
+                        raise RuntimeError("simulated read failure")
+                    return attr()
+                return _exec
+
+            def _passthrough(*a, **kw):
+                self._inner = attr(*a, **kw)
+                return self
+
+            return _passthrough
+
+    sb.table = lambda name: _FailingQuery(original_table(name), name)  # type: ignore[assignment]
+    return sb
+
+
+@pytest.mark.parametrize("method,path,key", _ENDPOINTS)
+def test_plan_endpoint_returns_503_when_calibration_read_fails(_spy_planner, method, path, key):
+    # A coverage read failure makes calibration UNKNOWN; the gate must fail
+    # closed (503) rather than silently unlock generation.
+    sb = _failing_read_sb(_seed(), "exam_topic_coverage")
+    r = _call(_client(sb), method, path)
+    assert r.status_code == 503
+    assert r.json()["detail"]["reason"] == "calibration_check_failed"
+    assert _spy_planner[key] == 0
+
+
+def test_get_self_assessment_reports_check_failed_when_read_fails():
+    sb = _failing_read_sb(_seed(), "exam_topic_coverage")
+    r = _client(sb).get("/api/study/self-assessment")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["calibration_check_failed"] is True
+    assert body["calibrated"] is False
+
+
 # ───────────── empty required set: nothing to calibrate → proceed ────────────
 
 @pytest.mark.parametrize("method,path,key", _ENDPOINTS)

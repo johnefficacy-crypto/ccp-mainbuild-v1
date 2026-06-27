@@ -92,7 +92,18 @@ def _calibration_gate_response(supabase: Any, user_id: str) -> dict[str, Any] | 
 
     exam = _resolve_target_exam(supabase, user_id)
     exam_id = exam.get("id") if exam else None
-    if exam_id and calibration.calibration_required(supabase, user_id, str(exam_id)):
+    if not exam_id:
+        return None
+    try:
+        required = calibration.calibration_required(supabase, user_id, str(exam_id))
+    except calibration.CalibrationUnavailable:
+        # Fail closed: the gate state is unknown (a read failed), so we must NOT
+        # generate a possibly-uncalibrated first plan. Surface a retryable 503.
+        raise HTTPException(
+            status_code=503,
+            detail={"reason": "calibration_check_failed", "generated": False},
+        )
+    if required:
         return calibration.calibration_required_payload(exam_id)
     return None
 
@@ -1234,12 +1245,30 @@ async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[st
         }
     exam_id = str(exam["id"])
 
-    required_subjects = calibration.resolve_required_subjects(supabase, exam_id, user_id)
-    current_hash = calibration.required_subject_set_hash([s["subject_id"] for s in required_subjects])
+    ev = calibration.evaluate_calibration(supabase, user_id, exam_id)
+    if ev["check_failed"]:
+        # Fail closed: a required-set or gate read failed, so calibration state
+        # is UNKNOWN. Do NOT report the user as calibrated (that would be a
+        # bypass) — return a stable, retryable signal the UI can surface.
+        return {
+            "exam_id": exam_id,
+            "calibrated": False,
+            "calibration_check_failed": True,
+            "status": "unknown",
+            "needs_update": False,
+            "required_subjects": [],
+            "items": [],
+            "attempts_used": None,
+        }
+    required_subjects = ev["required_subjects"]
+    calibrated = not ev["required"]
+    status = ev["status"] or ("completed" if not required_subjects else "none")
+    needs_update = ev["needs_update"]
 
+    # Slim gate read only for the attempts prefill (state already resolved above).
     cal_row = (
         supabase.table("user_exam_calibration")
-        .select("status, required_subject_set_hash, attempts_used")
+        .select("attempts_used")
         .eq("user_id", user_id)
         .eq("exam_id", exam_id)
         .limit(1)
@@ -1248,26 +1277,6 @@ async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[st
         or []
     )
     cal = cal_row[0] if cal_row else None
-
-    if not required_subjects:
-        # Nothing to calibrate → treat as calibrated regardless of gate record.
-        calibrated = True
-        status = (cal.get("status") if cal else None) or "completed"
-        needs_update = False
-    else:
-        # Grandfather: an existing-plan user with no gate record must NOT be
-        # reported uncalibrated (the migration would otherwise retroactively
-        # block users who already generated a first plan). ``calibration_required``
-        # already folds in gate completed/skipped AND the existing-plan check, so
-        # ``calibrated`` is its negation. ``status`` stays the gate row's status
-        # (or "none"); ``needs_update`` is only meaningful when a gate row exists.
-        calibrated = not calibration.calibration_required(supabase, user_id, exam_id)
-        status = (cal.get("status") if cal else None) or "none"
-        needs_update = bool(
-            cal
-            and cal.get("status") in ("completed", "skipped")
-            and cal.get("required_subject_set_hash") != current_hash
-        )
 
     rows = (
         supabase.table("user_topic_self_assessment")
@@ -1349,7 +1358,12 @@ async def put_self_assessment(
         raise HTTPException(status_code=422, detail="No target exam set.")
     exam_id = str(exam["id"])
 
-    required_subjects = calibration.resolve_required_subjects(supabase, exam_id, user_id)
+    required_subjects, required_ok = calibration.resolve_required_subjects(supabase, exam_id, user_id)
+    if not required_ok:
+        # Fail closed: cannot validate the submission against an unknown required
+        # set. Surface a retryable error rather than accept a possibly
+        # out-of-scope or wrongly-completing write.
+        raise HTTPException(status_code=503, detail={"reason": "calibration_check_failed"})
     required_ids = {s["subject_id"] for s in required_subjects}
     current_hash = calibration.required_subject_set_hash(list(required_ids))
 
@@ -1466,7 +1480,9 @@ async def skip_self_assessment(
         raise HTTPException(status_code=422, detail="No target exam set.")
     exam_id = str(exam["id"])
 
-    required_subjects = calibration.resolve_required_subjects(supabase, exam_id, user_id)
+    required_subjects, required_ok = calibration.resolve_required_subjects(supabase, exam_id, user_id)
+    if not required_ok:
+        raise HTTPException(status_code=503, detail={"reason": "calibration_check_failed"})
     current_hash = calibration.required_subject_set_hash([s["subject_id"] for s in required_subjects])
     attempts_used = body.attempts_used if body is not None else None
     now_iso = datetime.now(timezone.utc).isoformat()
