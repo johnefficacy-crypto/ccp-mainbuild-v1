@@ -6,6 +6,7 @@ Kept as a separate router so PR3 doesn't touch the canonical file.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -1159,6 +1160,106 @@ def _report_confidence_from_attempts(attempts_used: int) -> float:
     return 1.0
 
 
+def _required_subject_set_hash(subject_ids: list[str]) -> str:
+    """Stable hash of the required subject set (order/dup-independent)."""
+    return hashlib.sha256(
+        ",".join(sorted({str(s) for s in subject_ids})).encode("utf-8")
+    ).hexdigest()
+
+
+def _resolve_required_subjects(supabase, exam_id, user_id) -> list[dict]:
+    """Subjects whose locked coverage still lacks validated mastery for the user.
+
+    A subject is REQUIRED only when at least one of its locked-coverage topics
+    has no ``user_topic_mastery`` row for this user (i.e. there is no validated
+    mastery to supersede a self-reported prior). Subjects whose every locked
+    topic is already validated are dropped. Returns distinct subjects sorted by
+    ``subject_id`` for deterministic ordering and hashing.
+    """
+    cov_rows = (
+        supabase.table("exam_topic_coverage")
+        .select("topic_id")
+        .eq("exam_id", exam_id)
+        .eq("reviewer_status", "locked")
+        .limit(5000)
+        .execute()
+        .data
+        or []
+    )
+    topic_ids = list({r["topic_id"] for r in cov_rows if r.get("topic_id")})
+    if not topic_ids:
+        return []
+
+    topic_rows = (
+        supabase.table("topics")
+        .select("id, subject_id")
+        .in_("id", topic_ids)
+        .limit(5000)
+        .execute()
+        .data
+        or []
+    )
+    # subject_id -> set of its locked topic_ids
+    subject_topics: dict[str, set[str]] = {}
+    for t in topic_rows:
+        sid = t.get("subject_id")
+        tid = t.get("id")
+        if sid is None or tid is None:
+            continue
+        subject_topics.setdefault(str(sid), set()).add(str(tid))
+    if not subject_topics:
+        return []
+
+    mastery_rows = (
+        supabase.table("user_topic_mastery")
+        .select("topic_id")
+        .eq("user_id", user_id)
+        .limit(5000)
+        .execute()
+        .data
+        or []
+    )
+    validated_topic_ids = {str(m["topic_id"]) for m in mastery_rows if m.get("topic_id")}
+
+    required_ids = [
+        sid
+        for sid, tids in subject_topics.items()
+        if any(tid not in validated_topic_ids for tid in tids)
+    ]
+    if not required_ids:
+        return []
+
+    subj_rows = (
+        supabase.table("subjects")
+        .select("id, name")
+        .in_("id", required_ids)
+        .limit(5000)
+        .execute()
+        .data
+        or []
+    )
+    names_by_id = {str(s["id"]): s.get("name") for s in subj_rows if s.get("id") is not None}
+
+    return [
+        {"subject_id": sid, "subject_name": names_by_id.get(sid)}
+        for sid in sorted(required_ids)
+    ]
+
+
+def _existing_evidence_subject_ids(supabase, user_id, exam_id) -> set[str]:
+    rows = (
+        supabase.table("user_topic_self_assessment")
+        .select("subject_id")
+        .eq("user_id", user_id)
+        .eq("exam_id", exam_id)
+        .limit(5000)
+        .execute()
+        .data
+        or []
+    )
+    return {str(r["subject_id"]) for r in rows if r.get("subject_id")}
+
+
 class BandItem(BaseModel):
     subject_id: UUID
     band: str = Field(pattern="^(strong|decent|weak|new)$")
@@ -1169,9 +1270,13 @@ class SelfAssessmentBody(BaseModel):
     attempts_used: int = Field(ge=0)
 
 
+class SkipBody(BaseModel):
+    attempts_used: int | None = Field(default=None, ge=0)
+
+
 @router.get("/self-assessment")
 async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[str, Any]:
-    """Return the user's self-assessment bands for their target exam."""
+    """Return the user's calibration state + self-assessment bands for prefill."""
     from app.study_os.planner import _resolve_target_exam
 
     user_id = user.get("id")
@@ -1179,8 +1284,43 @@ async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[st
 
     exam = _resolve_target_exam(supabase, user_id)
     if not exam or not exam.get("id"):
-        return {"exam_id": None, "calibrated": False, "items": []}
+        return {
+            "exam_id": None,
+            "calibrated": False,
+            "status": "none",
+            "needs_update": False,
+            "required_subjects": [],
+            "items": [],
+            "attempts_used": None,
+        }
     exam_id = str(exam["id"])
+
+    required_subjects = _resolve_required_subjects(supabase, exam_id, user_id)
+    current_hash = _required_subject_set_hash([s["subject_id"] for s in required_subjects])
+
+    cal_row = (
+        supabase.table("user_exam_calibration")
+        .select("status, required_subject_set_hash, attempts_used")
+        .eq("user_id", user_id)
+        .eq("exam_id", exam_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    cal = cal_row[0] if cal_row else None
+
+    if not required_subjects:
+        # Nothing to calibrate → treat as calibrated regardless of gate record.
+        calibrated = True
+        status = (cal.get("status") if cal else None) or "completed"
+        needs_update = False
+    else:
+        calibrated = bool(cal and cal.get("status") in ("completed", "skipped"))
+        status = (cal.get("status") if cal else None) or "none"
+        needs_update = bool(
+            calibrated and cal and cal.get("required_subject_set_hash") != current_hash
+        )
 
     rows = (
         supabase.table("user_topic_self_assessment")
@@ -1196,10 +1336,6 @@ async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[st
         or []
     )
 
-    if not rows:
-        return {"exam_id": exam_id, "calibrated": False, "items": []}
-
-    # Fetch subject names for subject-level rows
     subject_ids = list({r["subject_id"] for r in rows if r.get("subject_id")})
     subjects_by_id: dict[str, str] = {}
     if subject_ids:
@@ -1229,7 +1365,25 @@ async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[st
         for r in rows
     ]
 
-    return {"exam_id": exam_id, "calibrated": True, "items": items}
+    # Prefill the attempts answer: prefer the gate record, else the last/max
+    # attempts seen across evidence rows.
+    attempts_used: int | None = None
+    if cal and cal.get("attempts_used") is not None:
+        attempts_used = cal.get("attempts_used")
+    else:
+        evidence_attempts = [r.get("attempts_used") for r in rows if r.get("attempts_used") is not None]
+        if evidence_attempts:
+            attempts_used = max(evidence_attempts)
+
+    return {
+        "exam_id": exam_id,
+        "calibrated": calibrated,
+        "status": status,
+        "needs_update": needs_update,
+        "required_subjects": required_subjects,
+        "items": items,
+        "attempts_used": attempts_used,
+    }
 
 
 @router.put("/self-assessment")
@@ -1237,7 +1391,7 @@ async def put_self_assessment(
     body: SelfAssessmentBody,
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Upsert the user's subject-level self-assessment bands for their target exam."""
+    """Upsert subject-level bands and, when the required set is complete, the gate."""
     from app.study_os.planner import _resolve_target_exam
 
     user_id = user.get("id")
@@ -1248,8 +1402,25 @@ async def put_self_assessment(
         raise HTTPException(status_code=422, detail="No target exam set.")
     exam_id = str(exam["id"])
 
-    report_confidence = _report_confidence_from_attempts(body.attempts_used)
+    required_subjects = _resolve_required_subjects(supabase, exam_id, user_id)
+    required_ids = {s["subject_id"] for s in required_subjects}
+    current_hash = _required_subject_set_hash(list(required_ids))
 
+    # ── Validation (raised BEFORE the upsert try/except so 422 is never
+    #    swallowed and remapped to 500). ──────────────────────────────────────
+    submitted_ids = [str(item.subject_id) for item in body.bands]
+    if not submitted_ids:
+        raise HTTPException(status_code=422, detail="No bands submitted.")
+    if len(submitted_ids) != len(set(submitted_ids)):
+        raise HTTPException(status_code=422, detail="Duplicate subject in submission.")
+    for sid in submitted_ids:
+        if sid not in required_ids:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Subject {sid} is not part of this exam's calibration set.",
+            )
+
+    report_confidence = _report_confidence_from_attempts(body.attempts_used)
     now_iso = datetime.now(timezone.utc).isoformat()
     payloads = []
     for item in body.bands:
@@ -1270,9 +1441,6 @@ async def put_self_assessment(
             "updated_at": now_iso,
         })
 
-    if not payloads:
-        return {"ok": True, "upserted_count": 0}
-
     try:
         result = (
             supabase.table("user_topic_self_assessment")
@@ -1280,11 +1448,81 @@ async def put_self_assessment(
             .execute()
         )
         upserted_count = len(result.data) if result and result.data else len(payloads)
+    except HTTPException:
+        raise
     except Exception:
         logger.exception("self-assessment upsert failed for %s", user_id)
         raise HTTPException(status_code=500, detail="Could not save self-assessment.")
 
-    return {"ok": True, "upserted_count": upserted_count}
+    # Determine whether the FULL required set is now answered (existing evidence
+    # ∪ this submission). Only then is the exam-level gate marked completed.
+    answered_ids = _existing_evidence_subject_ids(supabase, user_id, exam_id) | set(submitted_ids)
+    missing = sorted(required_ids - answered_ids)
+
+    if not missing:
+        try:
+            supabase.table("user_exam_calibration").upsert(
+                {
+                    "user_id": user_id,
+                    "exam_id": exam_id,
+                    "status": "completed",
+                    "required_subject_set_hash": current_hash,
+                    "attempts_used": body.attempts_used,
+                    "completed_at": now_iso,
+                    "updated_at": now_iso,
+                },
+                on_conflict="user_id,exam_id",
+            ).execute()
+        except Exception:
+            logger.exception("calibration gate upsert failed for %s", user_id)
+            raise HTTPException(status_code=500, detail="Could not save calibration.")
+
+    return {
+        "ok": True,
+        "upserted_count": upserted_count,
+        "calibrated": not missing,
+        "missing_subject_ids": missing,
+    }
+
+
+@router.post("/self-assessment/skip")
+async def skip_self_assessment(
+    body: SkipBody | None = None,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Explicitly skip onboarding calibration for the target exam."""
+    from app.study_os.planner import _resolve_target_exam
+
+    user_id = user.get("id")
+    supabase = get_supabase_admin()
+
+    exam = _resolve_target_exam(supabase, user_id)
+    if not exam or not exam.get("id"):
+        raise HTTPException(status_code=422, detail="No target exam set.")
+    exam_id = str(exam["id"])
+
+    required_subjects = _resolve_required_subjects(supabase, exam_id, user_id)
+    current_hash = _required_subject_set_hash([s["subject_id"] for s in required_subjects])
+    attempts_used = body.attempts_used if body is not None else None
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    try:
+        supabase.table("user_exam_calibration").upsert(
+            {
+                "user_id": user_id,
+                "exam_id": exam_id,
+                "status": "skipped",
+                "required_subject_set_hash": current_hash,
+                "attempts_used": attempts_used,
+                "updated_at": now_iso,
+            },
+            on_conflict="user_id,exam_id",
+        ).execute()
+    except Exception:
+        logger.exception("calibration skip upsert failed for %s", user_id)
+        raise HTTPException(status_code=500, detail="Could not skip calibration.")
+
+    return {"ok": True, "calibrated": True, "status": "skipped"}
 
 
 # ─────────────────────────────── Mocks ──────────────────────────────────────
