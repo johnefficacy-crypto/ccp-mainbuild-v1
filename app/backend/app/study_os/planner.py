@@ -103,6 +103,12 @@ _TASK_LABEL = {
 # topic_prerequisites relation types that gate ordering.
 _ORDERING_RELATIONS = {"requires", "recommended_before"}
 
+# Sentinel distinguishing a failed read from a legitimately-empty result.
+# Used by ``_load_user_signals`` so a transient ``user_topic_mastery`` read
+# failure does NOT look like "user has no validated mastery" (which would let a
+# self-report wrongly override real evidence). When in doubt, fail closed.
+_READ_FAILED = object()
+
 
 def _safe(call: Callable[[], Any], default: Any = None) -> Any:
     try:
@@ -315,28 +321,37 @@ def _load_prerequisites(
     return prereqs
 
 
-def _load_user_signals(
+def _load_user_signals_ex(
     supabase: Any, user_id: str, exam_id: str
-) -> tuple[dict[str, float], set[str]]:
-    """Return ``(mastery_by_topic, topics_with_error_patterns)``.
+) -> tuple[dict[str, float], set[str], bool]:
+    """Return ``(mastery_by_topic, topics_with_error_patterns, mastery_ok)``.
 
     When a topic has both an exam-scoped and a global mastery row the
     exam-scoped one wins.
+
+    ``mastery_ok`` is ``False`` only when the ``user_topic_mastery`` read
+    itself failed (distinct from an empty result). A failed read is treated as
+    an empty mastery map for scoring, and callers MUST NOT apply self-assessment
+    priors in that case — otherwise a transient DB error would let a user's
+    self-report silently replace their real validated mastery.
+
+    ``_load_user_signals`` is the back-compatible 2-tuple wrapper kept for the
+    several existing callers that don't need the read-health flag.
     """
-    mastery_rows = (
-        _safe(
-            lambda: (
-                supabase.table("user_topic_mastery")
-                .select("topic_id, exam_id, mastery_score")
-                .eq("user_id", user_id)
-                .limit(5000)
-                .execute()
-                .data
-            ),
-            default=[],
-        )
-        or []
+    mastery_rows = _safe(
+        lambda: (
+            supabase.table("user_topic_mastery")
+            .select("topic_id, exam_id, mastery_score")
+            .eq("user_id", user_id)
+            .limit(5000)
+            .execute()
+            .data
+        ),
+        default=_READ_FAILED,
     )
+    mastery_ok = mastery_rows is not _READ_FAILED
+    if not mastery_ok or mastery_rows is None:
+        mastery_rows = []
     mastery: dict[str, float] = {}
     exam_scoped: set[str] = set()
     for r in mastery_rows:
@@ -365,21 +380,36 @@ def _load_user_signals(
         or []
     )
     error_topics = {r.get("topic_id") for r in error_rows if r.get("topic_id")}
+    return mastery, error_topics, mastery_ok
+
+
+def _load_user_signals(
+    supabase: Any, user_id: str, exam_id: str
+) -> tuple[dict[str, float], set[str]]:
+    """Back-compat 2-tuple view of :func:`_load_user_signals_ex`.
+
+    Kept stable for callers (subjects / plan_timeline / report_cards / the
+    topics API) that only need ``(mastery, error_topics)`` and not the
+    mastery-read-health flag the planner consumes for fail-closed priors.
+    """
+    mastery, error_topics, _ = _load_user_signals_ex(supabase, user_id, exam_id)
     return mastery, error_topics
 
 
 def _load_topic_priors(
     supabase: Any, user_id: str, exam_id: str, coverage_topic_ids: list[str]
 ) -> dict[str, dict[str, Any]]:
-    """Return topic_id → {prior_mastery, report_confidence, band} from self-assessment.
+    """Return topic_id → {prior_mastery, report_confidence, band, subject_id,
+    attempts_used} from self-assessment.
 
     Only fills the cold-start gap — validated mastery always wins at call site.
-    Subject-level rows are expanded to all coverage topic_ids with that subject_id.
+    Subject-level rows are expanded to all coverage topic_ids with that subject_id;
+    each entry carries ``"assessment_level": "subject"`` to record granularity.
     Returns an empty dict on DB read failure (plan still generates).
     """
     rows = _safe(lambda: (
         supabase.table("user_topic_self_assessment")
-        .select("subject_id, band, prior_mastery, report_confidence")
+        .select("subject_id, band, prior_mastery, report_confidence, attempts_used")
         .eq("user_id", user_id)
         .eq("exam_id", exam_id)
         .is_("topic_id", None)
@@ -392,7 +422,7 @@ def _load_topic_priors(
     if not rows or not coverage_topic_ids:
         return {}
 
-    # Map subject_id → (prior_mastery, report_confidence, band)
+    # Map subject_id → prior entry (prior_mastery, report_confidence, band, ...)
     subject_priors: dict[str, dict[str, Any]] = {}
     for r in rows:
         sid = r.get("subject_id")
@@ -402,7 +432,19 @@ def _load_topic_priors(
         pm = float(pm_raw) if pm_raw is not None else None
         rc = float(r.get("report_confidence") or 0.5)
         band = r.get("band") or "new"
-        subject_priors[sid] = {"prior_mastery": pm, "report_confidence": rc, "band": band}
+        au_raw = r.get("attempts_used")
+        try:
+            attempts_used = int(au_raw) if au_raw is not None else None
+        except (TypeError, ValueError):
+            attempts_used = None
+        subject_priors[sid] = {
+            "prior_mastery": pm,
+            "report_confidence": rc,
+            "band": band,
+            "subject_id": sid,
+            "attempts_used": attempts_used,
+            "assessment_level": "subject",
+        }
 
     if not subject_priors:
         return {}
@@ -426,6 +468,37 @@ def _load_topic_priors(
             priors[tid] = subject_priors[sid]
 
     return priors
+
+
+def _self_assessment_summary(
+    topic_priors: dict[str, dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Audit rollup of the self-assessment priors that fed this plan.
+
+    ``None`` when no priors contributed. Otherwise reports how many topics got
+    a prior, the granularity, the per-band counts, the shared ``attempts_used``,
+    and the distinct subjects that contributed.
+    """
+    if not topic_priors:
+        return None
+    by_band: dict[str, int] = {}
+    subject_ids: set[str] = set()
+    attempts_used: Any = None
+    for entry in topic_priors.values():
+        band = entry.get("band") or "new"
+        by_band[band] = by_band.get(band, 0) + 1
+        sid = entry.get("subject_id")
+        if sid:
+            subject_ids.add(sid)
+        if attempts_used is None and entry.get("attempts_used") is not None:
+            attempts_used = entry.get("attempts_used")
+    return {
+        "topics_with_prior": len(topic_priors),
+        "assessment_level": "subject",
+        "by_band": by_band,
+        "attempts_used": attempts_used,
+        "subject_ids": sorted(subject_ids),
+    }
 
 
 # ─── Scoring + task shaping ───────────────────────────────────────────────
@@ -529,6 +602,7 @@ def _why_summary(
     pinned: bool,
     snapshot: dict[str, Any] | None = None,
     mastery_source: str = "none",
+    band: str | None = None,
 ) -> str:
     topic = cov["topic_name"]
     exam_bits = "a verified high-yield topic" if cov["is_high_yield"] else "a verified topic"
@@ -541,12 +615,24 @@ def _why_summary(
         conf = snapshot.get("confidence_score")
         if conf is not None:
             bits.append(f"analysis confidence {round(conf * 100)}%")
-    if mastery is None:
-        bits.append("you haven't practised it yet")
-    else:
-        bits.append(f"your recent accuracy is {round(mastery)}%")
+    # Mastery provenance must be honest: only validated evidence may be phrased
+    # as "recent accuracy". Self-reports are flagged as not-yet-validated; a
+    # 'new' self-report (no estimate) reads as "never studied".
     if mastery_source == "self_reported":
-        bits.append("based on your self-assessment (not yet validated by practice)")
+        if mastery is None:
+            bits.append(
+                "you marked this as never studied "
+                "(self-assessment, not yet validated by practice)"
+            )
+        else:
+            bits.append(
+                f"you rated yourself '{band}' here — a self-assessment estimate "
+                f"(~{round(mastery)}%), not yet validated by practice"
+            )
+    elif mastery_source == "validated" and mastery is not None:
+        bits.append(f"your recent accuracy is {round(mastery)}%")
+    else:
+        bits.append("you haven't practised it yet")
     if pressure_level == "high":
         bits.append("competition pressure for this cycle is high")
     label = _TASK_LABEL.get(task_type, task_type).lower()
@@ -569,6 +655,7 @@ def _build_tasks(
         snap = cov.get("_snapshot")
         mastery_source = cov.get("_mastery_source", "none")
         prior_entry = cov.get("_prior_entry")
+        prior_band = prior_entry.get("band") if prior_entry else None
         why = {
             "coverage_priority": cov["coverage_priority"],
             "verified_pyq_count": cov["_pyq_count"],
@@ -595,12 +682,18 @@ def _build_tasks(
                 cov["_pinned"],
                 snap,
                 mastery_source=mastery_source,
+                band=prior_band,
             ),
         }
-        if mastery_source == "self_reported" and prior_entry:
+        # Persist self-assessment provenance whenever a prior contributed —
+        # including band='new' (explicit "never studied"), where prior_mastery
+        # is None but the report is still a real signal distinguishable from a
+        # topic with no self-report at all.
+        if prior_entry:
             why["self_assessment_band"] = prior_entry.get("band")
             why["self_assessment_prior_mastery"] = prior_entry.get("prior_mastery")
             why["self_assessment_confidence"] = prior_entry.get("report_confidence")
+            why["self_assessment_level"] = prior_entry.get("assessment_level") or "subject"
         tasks.append(
             {
                 "user_id": None,  # filled in by _persist
@@ -940,7 +1033,7 @@ def _compute_plan(
     topic_ids = [c["topic_id"] for c in coverage]
     pyq_counts = verified_pyq_topic_counts(supabase, exam_id) or {}
     prereqs = _load_prerequisites(supabase, topic_ids)
-    mastery, error_topics = _load_user_signals(supabase, user_id, exam_id)
+    mastery, error_topics, mastery_ok = _load_user_signals_ex(supabase, user_id, exam_id)
 
     # Resolver is the single target authority — days_remaining may be None
     # (open-ended current phase) and must not be coerced to 0.
@@ -995,7 +1088,12 @@ def _compute_plan(
 
     # Self-assessment priors: fill cold-start gap when no validated mastery exists.
     # A DB failure returns {} and the plan still generates with the standard 55-pt gap.
-    topic_priors = _load_topic_priors(supabase, user_id, exam_id, topic_ids)
+    # Fail closed: if the validated-mastery read itself failed (``mastery_ok`` is
+    # False), do NOT consume priors — a transient error must never let a
+    # self-report override real evidence we simply couldn't load this request.
+    topic_priors = (
+        _load_topic_priors(supabase, user_id, exam_id, topic_ids) if mastery_ok else {}
+    )
 
     # score every locked-coverage topic
     for cov in coverage:
@@ -1008,9 +1106,15 @@ def _compute_plan(
             pm = prior_entry["prior_mastery"]
             rc = prior_entry["report_confidence"]
             if pm is not None:
+                # Bands strong/decent/weak carry an estimate: blend toward a
+                # neutral 45 by the report confidence.
                 neutral = 45.0
                 topic_mastery = round(rc * pm + (1.0 - rc) * neutral, 1)
-                mastery_source = "self_reported"
+            # band 'new' (pm is None): keep cold-start scoring (topic_mastery
+            # stays None → 55-pt gap), but STILL mark the provenance as a
+            # self-report so an explicit "never studied" is distinguishable
+            # from a topic with no self-report at all (which stays 'none').
+            mastery_source = "self_reported"
         has_errors = tid in error_topics
         is_pinned = tid in pinned
         topic_snapshot = score_snapshots_by_topic.get(tid)
@@ -1080,9 +1184,8 @@ def _compute_plan(
             }
             for s in score_snapshots_by_topic.values()
         ] if not snapshot_read_failed else None,
-        "self_assessment_summary": {
-            "topics_with_prior": len(topic_priors),
-        } if topic_priors else None,
+        "mastery_read_failed": not mastery_ok,
+        "self_assessment_summary": _self_assessment_summary(topic_priors),
     }
 
     return {
