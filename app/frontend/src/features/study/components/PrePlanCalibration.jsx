@@ -195,7 +195,9 @@ export default function PrePlanCalibration({
           })}
         </div>
       ) : (
-        <p className="text-sm text-clay-700">Loading subjects…</p>
+        <p className="text-sm text-clay-700" data-testid="calibration-empty">
+          No subjects to calibrate for this exam.
+        </p>
       )}
 
       {/* Attempts question */}

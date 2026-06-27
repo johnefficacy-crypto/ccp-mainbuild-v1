@@ -154,3 +154,20 @@ test("Save shows a saving state and is disabled while saving", () => {
   expect(saveBtn).toBeDisabled();
   expect(saveBtn.textContent).toMatch(/Saving/i);
 });
+
+test("with no required subjects it shows an explicit empty state, not a perpetual loader", () => {
+  const { onSkip } = renderCalibration({ requiredSubjects: [] });
+
+  // The empty state replaces the old indefinite "Loading subjects…" message so
+  // the panel can never hang when the required set is empty.
+  expect(screen.getByTestId("calibration-empty")).toHaveTextContent(
+    /No subjects to calibrate/i,
+  );
+  expect(screen.queryByText(/Loading subjects/i)).toBeNull();
+
+  // Skip stays available so the user can close out of the empty panel, and
+  // Save is disabled (nothing to submit).
+  expect(screen.getByTestId("calibration-save-btn")).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: /Skip for now/i }));
+  expect(onSkip).toHaveBeenCalledTimes(1);
+});

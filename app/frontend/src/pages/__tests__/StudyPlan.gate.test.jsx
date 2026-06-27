@@ -267,3 +267,84 @@ test("a stale self-assessment response for the previous exam does not unlock the
   expect(screen.queryByTestId("regenerate-plan-btn")).toBeNull();
   expect(screen.queryByTestId("plan-controls-checking")).toBeNull();
 });
+
+// FIX 1: a transient read failure comes back as calibration_check_failed:true
+// (calibrated:false, empty required set). The UI must show a non-blocking retry
+// state — NOT the interstitial (which would render with no subjects) and NOT
+// the plan controls — and Retry must re-issue the self-assessment GET.
+test("calibration_check_failed shows a retry state with no interstitial and no controls", async () => {
+  primeApi({
+    selfAssessment: () =>
+      Promise.resolve({
+        exam_id: EXAM_ID,
+        calibrated: false,
+        calibration_check_failed: true,
+        status: "unknown",
+        needs_update: false,
+        required_subjects: [],
+        items: [],
+        attempts_used: null,
+      }),
+  });
+
+  await act(async () => {
+    render(<StudyPlan />);
+  });
+
+  await waitFor(() => {
+    expect(screen.getByTestId("plan-controls-check-failed")).toBeTruthy();
+  });
+
+  // Neither the interstitial nor the plan controls nor the gated/checking notes.
+  expect(screen.queryByTestId("preplan-calibration")).toBeNull();
+  expect(screen.queryByTestId("regenerate-plan-btn")).toBeNull();
+  expect(screen.queryByTestId("suggest-changes-btn")).toBeNull();
+  expect(screen.queryByTestId("plan-controls-gated")).toBeNull();
+  expect(screen.queryByTestId("plan-controls-checking")).toBeNull();
+
+  // Retry re-issues the self-assessment GET.
+  const before = mockGet.mock.calls.filter(
+    ([p]) => p === "/api/study/self-assessment",
+  ).length;
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("calibration-retry-btn"));
+  });
+  await waitFor(() => {
+    const after = mockGet.mock.calls.filter(
+      ([p]) => p === "/api/study/self-assessment",
+    ).length;
+    expect(after).toBeGreaterThan(before);
+  });
+});
+
+// FIX 2: when the required set is empty the user is auto-calibrated
+// (calibrated:true, required_subjects:[]). The "Update your starting point"
+// edit affordance must NOT render — opening it would show an empty interstitial
+// that hangs.
+test("calibrated with an empty required set hides the update-starting-point affordance", async () => {
+  primeApi({
+    selfAssessment: () =>
+      Promise.resolve({
+        exam_id: EXAM_ID,
+        calibrated: true,
+        status: "completed",
+        // needs_update would normally surface the banner, but with no editable
+        // subjects there is nothing to update so it must stay hidden too.
+        needs_update: true,
+        required_subjects: [],
+        items: [],
+        attempts_used: 0,
+      }),
+  });
+
+  await act(async () => {
+    render(<StudyPlan />);
+  });
+
+  // Plan controls render (user is calibrated)…
+  expect(await screen.findByTestId("regenerate-plan-btn")).toBeTruthy();
+  // …but no edit affordance / update banner since there are no editable subjects.
+  expect(screen.queryByTestId("calibration-edit-link")).toBeNull();
+  expect(screen.queryByTestId("calibration-update-banner")).toBeNull();
+  expect(screen.queryByTestId("calibration-update-btn")).toBeNull();
+});

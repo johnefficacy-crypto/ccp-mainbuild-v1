@@ -11,6 +11,7 @@ import { api } from "../../../lib/api";
 // instead of being treated as permanently uncalibrated with no feedback.
 export default function useCalibrationPriors(examId) {
   const [calibrated, setCalibrated] = useState(null); // null=loading, true/false
+  const [checkFailed, setCheckFailed] = useState(false); // transient read failure
   const [status, setStatus] = useState("none"); // "completed" | "skipped" | "none"
   const [needsUpdate, setNeedsUpdate] = useState(false);
   const [requiredSubjects, setRequiredSubjects] = useState([]);
@@ -48,6 +49,10 @@ export default function useCalibrationPriors(examId) {
       // Drop a response that no longer belongs to the current exam request.
       if (isStale(d)) return;
       setCalibrated(Boolean(d?.calibrated));
+      // Fail-closed flag: the server sets this on a transient read error instead
+      // of returning a bogus `calibrated`. The page must surface a retry state,
+      // not the interstitial (no subjects) and not the plan controls.
+      setCheckFailed(Boolean(d?.calibration_check_failed));
       setStatus(typeof d?.status === "string" ? d.status : "none");
       setNeedsUpdate(Boolean(d?.needs_update));
       setRequiredSubjects(Array.isArray(d?.required_subjects) ? d.required_subjects : []);
@@ -63,6 +68,7 @@ export default function useCalibrationPriors(examId) {
       // UI isn't wedged on a spinner, but do not silently treat the user as
       // uncalibrated forever — `error` is set and `retry` is exposed.
       setError(e?.message || "Couldn't load your calibration. Try again.");
+      setCheckFailed(false);
       setCalibrated((prev) => (prev === null ? false : prev));
     } finally {
       // Only the latest request owns the loading flag; a superseded request
@@ -81,6 +87,7 @@ export default function useCalibrationPriors(examId) {
   useEffect(() => {
     requestGenRef.current += 1;
     setCalibrated(null);
+    setCheckFailed(false);
     setStatus("none");
     setNeedsUpdate(false);
     setRequiredSubjects([]);
@@ -136,6 +143,7 @@ export default function useCalibrationPriors(examId) {
 
   return {
     calibrated,
+    checkFailed,
     status,
     needsUpdate,
     requiredSubjects,

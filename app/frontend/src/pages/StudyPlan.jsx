@@ -76,6 +76,7 @@ export default function StudyPlan() {
   const { run: runApply } = useApiAction();
   const {
     calibrated,
+    checkFailed,
     needsUpdate,
     requiredSubjects,
     items: calibrationItems,
@@ -85,6 +86,7 @@ export default function StudyPlan() {
     error: calibrationError,
     submit: submitCalibration,
     skip: skipCalibration,
+    refetch: refetchCalibration,
   } = useCalibrationPriors(selectedExamId);
   // Edit affordance for already-calibrated users ("update anytime").
   const [showEditCalibration, setShowEditCalibration] = useState(false);
@@ -403,18 +405,30 @@ export default function StudyPlan() {
   //   chose to edit; the same interstitial renders prefilled without blocking.
   const hasExam = Boolean(selectedExamId);
   const calibrationReady = hasExam && !calibrationLoading;
+  // Fail-closed read error: the server couldn't determine the gate. Surface a
+  // retry state INSTEAD of the interstitial (which would render with no
+  // subjects) and INSTEAD of the plan controls. Takes priority over every
+  // calibrated/uncalibrated branch below.
+  const calibrationCheckFailed = calibrationReady && checkFailed;
   // Unresolved = exam chosen but we don't yet have a definitive boolean.
   const calibrationUnresolved = hasExam && (calibrationLoading || calibrated === null);
   // Plan action controls (Suggest changes / Regenerate / Apply) may render ONLY
-  // once calibration has resolved to true. Everything else hides them.
-  const planControlsReady = calibrationReady && calibrated === true;
-  const planControlsBlocked = calibrationReady && calibrated === false;
+  // once calibration has resolved to true and the check did not fail. Everything
+  // else hides them.
+  const planControlsReady =
+    calibrationReady && !calibrationCheckFailed && calibrated === true;
+  const planControlsBlocked =
+    calibrationReady && !calibrationCheckFailed && calibrated === false;
+  // Only offer the edit affordance when there are subjects to edit. With an
+  // empty required set the user is auto-calibrated and opening the interstitial
+  // would hang on an empty "no subjects" state.
+  const hasEditableSubjects = requiredSubjects.length > 0;
   const showEditPanel =
-    calibrationReady && calibrated === true && showEditCalibration;
+    planControlsReady && hasEditableSubjects && showEditCalibration;
   const showCalibrationGate = planControlsBlocked || showEditPanel;
   const showUpdateBanner =
-    calibrationReady &&
-    calibrated === true &&
+    planControlsReady &&
+    hasEditableSubjects &&
     needsUpdate &&
     !showEditCalibration;
 
@@ -596,20 +610,42 @@ export default function StudyPlan() {
               <p className="text-[12px] text-clay-700" data-testid="plan-controls-checking">
                 Checking your setup…
               </p>
+            ) : calibrationCheckFailed ? (
+              // Fail-closed read error — non-blocking retry, no controls, no
+              // interstitial. Plan generation handlers stay gated on
+              // calibrated === true so they no-op here regardless.
+              <div
+                className="flex items-center justify-end gap-2"
+                data-testid="plan-controls-check-failed"
+              >
+                <span className="text-[12px] text-clay-700">
+                  Couldn't check your study setup.
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={refetchCalibration}
+                  data-testid="calibration-retry-btn"
+                >
+                  Retry
+                </button>
+              </div>
             ) : planControlsBlocked ? (
               <p className="text-[12px] text-clay-700" data-testid="plan-controls-gated">
                 Calibrate your starting point to generate a plan.
               </p>
             ) : planControlsReady ? (
               <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="text-[12px] link-under text-clay-700"
-                  onClick={() => setShowEditCalibration(true)}
-                  data-testid="calibration-edit-link"
-                >
-                  Update starting point
-                </button>
+                {hasEditableSubjects ? (
+                  <button
+                    type="button"
+                    className="text-[12px] link-under text-clay-700"
+                    onClick={() => setShowEditCalibration(true)}
+                    data-testid="calibration-edit-link"
+                  >
+                    Update starting point
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="btn btn-secondary"
