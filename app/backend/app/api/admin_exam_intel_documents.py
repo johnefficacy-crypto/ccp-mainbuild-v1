@@ -741,7 +741,6 @@ def archive_document(
     _audit(
         sb, admin, "exam_intel.cms.document.archive",
         entity_type="document_asset", entity_id=document_id,
-        old_value={"status": asset.get("status")},
         new_value={"status": "archived", "reason": body.reason},
     )
     return {"ok": True, "document_id": document_id, "status": "archived"}
