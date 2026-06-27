@@ -416,6 +416,28 @@ def run_text_extract_job(
     )
     timed_out = parse_timed_out or build_timed_out
 
+    # CAS guard: if the document was archived while this job was running
+    # (TOCTOU window), do not write pages or flip to processed/failed.
+    # Fail the job cleanly so the archive status is preserved.
+    asset_check = (
+        sb.table("document_assets")
+        .select("status")
+        .eq("id", document_id)
+        .limit(1)
+        .execute()
+        .data
+        or [{}]
+    )[0]
+    if asset_check.get("status") == "archived":
+        _update_job(sb, job_id, {
+            "status": "failed",
+            "finished_at": _now_iso(),
+            "error_code": "document_archived",
+            "error_message": "document was archived while extraction was running",
+            "metrics": {"duration_ms": int((time.monotonic() - t0) * 1000)},
+        })
+        raise _ExtractError("document_archived", "document was archived while extraction was running")
+
     # Even on timeout we persist what we got so the user sees partial pages.
     try:
         _write_pages(sb, document_id, rows)

@@ -661,6 +661,23 @@ def archive_item(item_id: str, user: dict = Depends(get_current_user)) -> dict:
         "error_code": "document_archived",
         "error_message": "document was archived",
     }).eq("document_id", item_id).eq("status", "queued").execute()
+    # Re-check: a queued job may have been claimed between the first running check
+    # and the cancel step. If so, the CAS in run_text_extract_job will preserve
+    # the archived status, but alert the caller so they know to wait.
+    running_after = (
+        sb.table("document_processing_jobs")
+        .select("id")
+        .eq("document_id", item_id)
+        .eq("status", "running")
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    if running_after:
+        raise HTTPException(
+            status_code=409,
+            detail="extraction job was claimed during archive; asset is archived but runner may still be writing pages — retry to confirm",
+        )
     return {"ok": True, "id": item_id, "status": "archived"}
 
 

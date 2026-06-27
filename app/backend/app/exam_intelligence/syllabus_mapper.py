@@ -101,7 +101,7 @@ def propose_syllabus_mentions(
     doc_rows = _safe(
         lambda: (
             sb.table("syllabus_documents")
-            .select("id, exam_id, exam_cycle_id")
+            .select("id, exam_id, exam_cycle_id, source_document_id")
             .eq("id", syllabus_document_id)
             .limit(1)
             .execute()

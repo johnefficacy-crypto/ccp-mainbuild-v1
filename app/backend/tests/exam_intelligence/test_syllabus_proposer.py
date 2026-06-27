@@ -84,8 +84,13 @@ class _TableStub:
         self._in_filters: dict = {}
         self._order_col = None
         self._limit_n = None
+        self._selected_cols = None
 
-    def select(self, *a, **kw):
+    def select(self, cols="*", **kw):
+        if cols.strip() == "*":
+            self._selected_cols = None
+        else:
+            self._selected_cols = {c.strip() for c in cols.split(",")}
         return self
 
     def eq(self, k, v):
@@ -129,6 +134,9 @@ class _TableStub:
                     break
             if match:
                 result.append(r)
+        # Apply column projection (mimics PostgREST SELECT behaviour).
+        if self._selected_cols:
+            result = [{k: v for k, v in r.items() if k in self._selected_cols} for r in result]
         # Apply order if page_number
         if self._order_col:
             result.sort(key=lambda x: x.get(self._order_col, 0))
