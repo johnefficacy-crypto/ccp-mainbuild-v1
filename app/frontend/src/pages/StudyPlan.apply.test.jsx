@@ -71,6 +71,19 @@ function primeGet() {
         primary_exam_id: EXAM_ID,
       });
     }
+    if (path === "/api/study/self-assessment") {
+      // Calibrated so the plan action controls render and applyDraft runs
+      // (the calibration gate hides/short-circuits them otherwise).
+      return Promise.resolve({
+        exam_id: EXAM_ID,
+        calibrated: true,
+        status: "completed",
+        needs_update: false,
+        required_subjects: [],
+        items: [],
+        attempts_used: 0,
+      });
+    }
     if (path === "/api/study/plan/draft") {
       return Promise.resolve({
         generated: true,

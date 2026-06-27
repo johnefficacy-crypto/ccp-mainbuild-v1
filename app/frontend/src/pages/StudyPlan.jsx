@@ -74,8 +74,20 @@ export default function StudyPlan() {
   const [tab, setTab] = useState("plan");
   const { run: runTaskAction } = useApiAction();
   const { run: runApply } = useApiAction();
-  const { calibrated, loading: calibrationLoading, submit: submitCalibration, skip: skipCalibration } = useCalibrationPriors(selectedExamId);
-  const [subjects, setSubjects] = useState([]);
+  const {
+    calibrated,
+    needsUpdate,
+    requiredSubjects,
+    items: calibrationItems,
+    attemptsUsed: calibrationAttempts,
+    loading: calibrationLoading,
+    saving: calibrationSaving,
+    error: calibrationError,
+    submit: submitCalibration,
+    skip: skipCalibration,
+  } = useCalibrationPriors(selectedExamId);
+  // Edit affordance for already-calibrated users ("update anytime").
+  const [showEditCalibration, setShowEditCalibration] = useState(false);
 
   async function refetchPlan() {
     try {
@@ -130,30 +142,38 @@ export default function StudyPlan() {
       .catch(() => setTrackedExams([]));
   }, [reloadKey]);
 
+  // Exam-switch reset: clear the previous exam's plan/tasks so stale tasks
+  // from a prior selection can't suppress the calibration gate for a freshly
+  // selected exam. The hook independently refetches calibration for the new
+  // exam, so switching from a calibrated exam to an uncalibrated one re-shows
+  // the interstitial. Skip the very first run (selectedExamId still "") so we
+  // don't clobber the initial /api/study/plan hydration.
+  const didMountExamReset = React.useRef(false);
   useEffect(() => {
-    if (!selectedExamId) return;
-    api
-      .get(`/api/study/topics?exam_id=${selectedExamId}`)
-      .then((d) => {
-        const seen = new Set();
-        const subjs = [];
-        for (const item of (d?.items || [])) {
-          if (item.subject_id && !seen.has(item.subject_id)) {
-            seen.add(item.subject_id);
-            subjs.push({
-              subject_id: item.subject_id,
-              subject_name: item.subject || item.subject_name || "Unknown",
-            });
-          }
-        }
-        setSubjects(subjs);
-      })
-      .catch(() => setSubjects([]));
+    if (!didMountExamReset.current) {
+      didMountExamReset.current = true;
+      return;
+    }
+    setPlan({ tasks: [], plan: null });
+    setShowEditCalibration(false);
   }, [selectedExamId]);
 
   async function handleCalibrationSubmit(bands, attemptsUsed) {
     try {
-      await submitCalibration(bands, attemptsUsed);
+      const result = await submitCalibration(bands, attemptsUsed);
+      // Close the edit panel only once the save fully succeeds and the
+      // required set is covered (calibrated stays true / becomes true).
+      setShowEditCalibration(false);
+      return result;
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") console.error(e);
+    }
+  }
+
+  async function handleCalibrationSkip() {
+    try {
+      await skipCalibration();
+      setShowEditCalibration(false);
     } catch (e) {
       if (process.env.NODE_ENV !== "production") console.error(e);
     }
@@ -204,6 +224,9 @@ export default function StudyPlan() {
 
   async function previewRegenerate() {
     if (!selectedExamId) return;
+    // Defense-in-depth: never let plan generation proceed while the user is
+    // ungated. The UI also hides these controls when calibrated === false.
+    if (calibrated === false) return;
     setDraftLoading(true);
     setDraftOpen(true);
     setApplyError("");
@@ -219,6 +242,7 @@ export default function StudyPlan() {
 
   async function applyDraft() {
     if (!selectedExamId) return;
+    if (calibrated === false) return;
     setApplying(true);
     setApplyError("");
     const result = await runApply({
@@ -355,6 +379,22 @@ export default function StudyPlan() {
   const done = tasks.filter((t) => t.done || t.status === "completed").length;
   const selectedExam = examItems.find((e) => e.id === selectedExamId);
 
+  // Calibration gating, derived from the authoritative hook state.
+  // - Blocking gate: an exam is selected, calibration resolved, and the user is
+  //   NOT calibrated. While blocked, the plan action controls are hidden.
+  // - Edit (non-blocking): a calibrated user who needs an update or explicitly
+  //   chose to edit; the same interstitial renders prefilled without blocking.
+  const calibrationReady = Boolean(selectedExamId) && !calibrationLoading;
+  const planControlsBlocked = calibrationReady && calibrated === false;
+  const showEditPanel =
+    calibrationReady && calibrated === true && showEditCalibration;
+  const showCalibrationGate = planControlsBlocked || showEditPanel;
+  const showUpdateBanner =
+    calibrationReady &&
+    calibrated === true &&
+    needsUpdate &&
+    !showEditCalibration;
+
   return (
     <div className="space-y-6" data-testid="study-plan-page">
       {err && <div className="rounded-xl bg-clay-50 text-clay-800 text-xs px-3 py-2">{err}</div>}
@@ -462,15 +502,47 @@ export default function StudyPlan() {
         </Suspense>
       ) : (
         <>
-      {/* Calibration gate: show before first plan if not yet calibrated */}
-      {selectedExamId && !calibrationLoading && calibrated === false && plan.tasks.length === 0 && (
+      {/* Calibration gate: a not-yet-calibrated user must calibrate before any
+          plan generation. The interstitial replaces the plan action controls
+          (no plan.tasks.length escape hatch — stale tasks must not bypass it).
+          A calibrated user who needs an update (or clicked the edit link) gets
+          the same component prefilled, NON-blocking. */}
+      {showCalibrationGate && (
         <div className="mt-6">
           <PrePlanCalibration
-            subjects={subjects}
+            requiredSubjects={requiredSubjects}
+            items={calibrationItems}
+            attemptsUsed={calibrationAttempts}
             onSubmit={handleCalibrationSubmit}
-            onSkip={skipCalibration}
-            loading={false}
+            onSkip={handleCalibrationSkip}
+            saving={calibrationSaving}
+            error={calibrationError}
           />
+        </div>
+      )}
+
+      {/* Non-blocking "needs update" banner for calibrated users. */}
+      {showUpdateBanner && (
+        <div
+          className="mt-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3"
+          data-testid="calibration-update-banner"
+        >
+          <div>
+            <div className="text-[13px] font-medium text-amber-900">
+              Update your starting point
+            </div>
+            <p className="text-[12px] text-amber-800 mt-0.5">
+              Your subjects changed. Recalibrate so your plan stays accurate.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary shrink-0"
+            onClick={() => setShowEditCalibration(true)}
+            data-testid="calibration-update-btn"
+          >
+            Update
+          </button>
         </div>
       )}
 
@@ -495,27 +567,43 @@ export default function StudyPlan() {
                 pageName="Study Plan"
               />
             </div>
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={previewRegenerate}
-                disabled={!selectedExamId}
-                data-testid="suggest-changes-btn"
-                title="Show planner-suggested changes for review"
-              >
-                Suggest changes
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={previewRegenerate}
-                disabled={!selectedExamId}
-                data-testid="regenerate-plan-btn"
-              >
-                <Sparkles className="h-3.5 w-3.5" /> Regenerate plan
-              </button>
-            </div>
+            {planControlsBlocked ? (
+              <p className="text-[12px] text-clay-700" data-testid="plan-controls-gated">
+                Calibrate your starting point to generate a plan.
+              </p>
+            ) : (
+              <div className="flex items-center justify-end gap-2">
+                {calibrated === true && (
+                  <button
+                    type="button"
+                    className="text-[12px] link-under text-clay-700"
+                    onClick={() => setShowEditCalibration(true)}
+                    data-testid="calibration-edit-link"
+                  >
+                    Update starting point
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={previewRegenerate}
+                  disabled={!selectedExamId}
+                  data-testid="suggest-changes-btn"
+                  title="Show planner-suggested changes for review"
+                >
+                  Suggest changes
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={previewRegenerate}
+                  disabled={!selectedExamId}
+                  data-testid="regenerate-plan-btn"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Regenerate plan
+                </button>
+              </div>
+            )}
           </div>
         }
       />
