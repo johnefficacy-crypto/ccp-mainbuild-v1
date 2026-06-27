@@ -5,18 +5,21 @@ Covers the security fixes landed alongside
 
   * #3 — mentor-booking payment forgery (no more free "captured" bookings)
     - API layer: all tests below under "#3 — Payment forgery"
-    - DB layer (mb_owner_insert / mb_owner_update): migration 195 §5 drops both
-      policies so authenticated users cannot bypass the API via direct PostgREST
-      INSERT/UPDATE. The attack vector:
+    - DB layer: two INSERT policies needed dropping across two migrations:
+        * mb_owner_insert (migration 099) + mb_owner_update (migration 099)
+          → dropped by migration 195 §5
+        * mb_self_book (migration 070, independently added the same INSERT
+          capability) → dropped by migration 196, which also asserts via
+          pg_policies that no INSERT-capable client policy remains
+      Attack vector (either policy):
         POST /rest/v1/mentor_bookings
         Authorization: Bearer <user-jwt>
         {"user_id":"<self>","payment_status":"captured","price_inr":0}
-      Previously mb_owner_insert (migration 099) allowed this; NULL payment_id
-      and razorpay_order_id evaded the partial UNIQUE indexes (IS NOT NULL).
-      Migration 195 drops both policies; the only remaining insert path is
+      NULL payment_id and razorpay_order_id evade the partial UNIQUE indexes
+      (IS NOT NULL). After migrations 195+196, the only INSERT path is
       mb_service_role_all (the hardened backend). Full DB-level verification
-      (SET LOCAL role authenticated + insert attempt + expect RLS deny) requires
-      a live Postgres instance; it belongs in a Supabase staging test, not here.
+      (SET LOCAL role authenticated + direct insert attempt → expect RLS deny)
+      requires a live Postgres instance; it belongs in Supabase staging.
   * #6 — study-task / focus-session IDOR (service-role queries must scope by
           user_id) and the end_session participation gate
 

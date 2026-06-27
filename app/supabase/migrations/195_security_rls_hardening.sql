@@ -74,6 +74,10 @@
 --   role inside a SECURITY DEFINER function. We also accept the explicit
 --   request.jwt.claims->>'role' = 'service_role' as a belt-and-braces fallback.
 --
+-- NOTE: migration 196 is a forward fix that drops mb_self_book, an INSERT
+-- policy created by migration 070 that was not covered by this migration.
+-- Apply 196 immediately after 195 on any database.
+--
 -- Does NOT weaken anything and grants NOTHING new to anon/authenticated.
 -- Idempotent: safe on a fresh DB and re-runnable on an existing one.
 -- =============================================================================
