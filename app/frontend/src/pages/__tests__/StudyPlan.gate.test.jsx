@@ -317,6 +317,53 @@ test("calibration_check_failed shows a retry state with no interstitial and no c
   });
 });
 
+// FIX (4th review): the self-assessment GET REJECTS (network error, or a
+// failure in the backend's post-evaluate prefill reads). The hook's catch path
+// has no authoritative gate state, so it must set checkFailed:true. The page
+// must then render the retry state — NOT the blocking interstitial (which would
+// render with an empty required set) and NOT the plan controls — and Retry must
+// re-issue the self-assessment GET. This is the thrown-error sibling of the
+// calibration_check_failed:true 200-response case above; both lead to retry.
+test("a rejected self-assessment GET shows the retry state, no interstitial, no controls", async () => {
+  primeApi({
+    selfAssessment: () => Promise.reject(new Error("network down")),
+  });
+
+  await act(async () => {
+    render(<StudyPlan />);
+  });
+
+  await waitFor(() => {
+    expect(screen.getByTestId("plan-controls-check-failed")).toBeTruthy();
+  });
+
+  // Never the interstitial (it would render with no authoritative subjects),
+  // never the plan controls, never the gated/checking notes.
+  expect(screen.queryByTestId("preplan-calibration")).toBeNull();
+  expect(screen.queryByTestId("regenerate-plan-btn")).toBeNull();
+  expect(screen.queryByTestId("suggest-changes-btn")).toBeNull();
+  expect(screen.queryByTestId("plan-controls-gated")).toBeNull();
+  expect(screen.queryByTestId("plan-controls-checking")).toBeNull();
+  // The draft endpoint was never reachable (handlers stay gated on calibrated).
+  expect(
+    mockGet.mock.calls.some(([p]) => p === "/api/study/plan/draft"),
+  ).toBe(false);
+
+  // Retry re-issues the self-assessment GET.
+  const before = mockGet.mock.calls.filter(
+    ([p]) => p === "/api/study/self-assessment",
+  ).length;
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("calibration-retry-btn"));
+  });
+  await waitFor(() => {
+    const after = mockGet.mock.calls.filter(
+      ([p]) => p === "/api/study/self-assessment",
+    ).length;
+    expect(after).toBeGreaterThan(before);
+  });
+});
+
 // FIX 2: when the required set is empty the user is auto-calibrated
 // (calibrated:true, required_subjects:[]). The "Update your starting point"
 // edit affordance must NOT render — opening it would show an empty interstitial

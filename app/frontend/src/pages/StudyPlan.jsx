@@ -425,7 +425,14 @@ export default function StudyPlan() {
   const hasEditableSubjects = requiredSubjects.length > 0;
   const showEditPanel =
     planControlsReady && hasEditableSubjects && showEditCalibration;
-  const showCalibrationGate = planControlsBlocked || showEditPanel;
+  // The blocking interstitial must NEVER render when the read failed: a failed
+  // GET has no authoritative required set, so the interstitial would show with
+  // no subjects. `calibrationCheckFailed` takes priority and the retry state is
+  // shown instead. (planControlsBlocked / showEditPanel already exclude the
+  // check-failed case; the explicit `!calibrationCheckFailed` guard here makes
+  // that invariant load-bearing and robust against future refactors.)
+  const showCalibrationGate =
+    !calibrationCheckFailed && (planControlsBlocked || showEditPanel);
   const showUpdateBanner =
     planControlsReady &&
     hasEditableSubjects &&

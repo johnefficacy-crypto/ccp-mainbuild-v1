@@ -44,6 +44,11 @@ export default function useCalibrationPriors(examId) {
       (d && d.exam_id != null && d.exam_id !== reqExamId);
     setLoading(true);
     setError(null);
+    // Clear the prior read-failure flag at the start of every attempt so a
+    // retry is not permanently stuck in the failed state if it now succeeds.
+    // The catch path re-sets it (guarded by the same stale check) if THIS
+    // attempt also fails.
+    setCheckFailed(false);
     try {
       const d = await api.get("/api/study/self-assessment");
       // Drop a response that no longer belongs to the current exam request.
@@ -64,11 +69,15 @@ export default function useCalibrationPriors(examId) {
       // Ignore errors from a superseded request too — otherwise a stale failure
       // would surface an error / flip calibrated for the exam now in view.
       if (isStale(null)) return;
-      // Surface the error and allow retry; resolve calibrated to false so the
-      // UI isn't wedged on a spinner, but do not silently treat the user as
-      // uncalibrated forever — `error` is set and `retry` is exposed.
+      // Surface the error and allow retry. A failed GET means we have NO
+      // authoritative gate state, so `checkFailed` is the authoritative signal:
+      // the page must render the retry state, never the blocking interstitial
+      // (which would show with an empty required set) and never the plan
+      // controls. We resolve `calibrated` away from `null` only so the page is
+      // not wedged on a spinner; `checkFailed` (which the page gates on) keeps
+      // the interstitial/controls suppressed regardless of that value.
       setError(e?.message || "Couldn't load your calibration. Try again.");
-      setCheckFailed(false);
+      setCheckFailed(true);
       setCalibrated((prev) => (prev === null ? false : prev));
     } finally {
       // Only the latest request owns the loading flag; a superseded request
