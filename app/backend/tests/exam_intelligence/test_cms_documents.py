@@ -558,3 +558,64 @@ def test_complete_upload_enqueue_failure_archive_wins_returns_409():
     assert detail.get("error") == "document_archived"
     # Asset must remain archived — rollback must not have overwritten it.
     assert sb.db["document_assets"][0]["status"] == "archived"
+
+
+def test_complete_upload_enqueue_failure_non_archive_state_change_returns_409():
+    """If the rollback CAS returns 0 rows and the asset is in a non-archived
+    terminal state (e.g. 'processed' via another concurrent path), the endpoint
+    must return 409 concurrent_state_change — not 502 enqueue_failed."""
+    import app.library.text_extract as _te
+
+    class _ProcessedWinsOnRollbackSBStub(DocSBStub):
+        """On the CAS rollback, flip the asset to 'processed' so 0 rows match,
+        simulating any non-archive concurrent state transition."""
+
+        def table(self, name):
+            q = super().table(name)
+            if name == "document_assets":
+                outer = self
+
+                class _RollbackRaceQ(type(q)):
+                    def execute(self_q):
+                        patch = self_q._pending_update
+                        filters = {k: v for k, op, v in self_q.filters if op == "eq"}
+                        if (
+                            patch not in (None, "__delete__")
+                            and patch.get("status") == "uploaded"
+                            and filters.get("status") == "processing"
+                        ):
+                            for row in outer.db.get("document_assets", []):
+                                if row.get("id") == filters.get("id"):
+                                    row["status"] = "processed"
+                        return super(_RollbackRaceQ, self_q).execute()
+
+                q.__class__ = _RollbackRaceQ
+            return q
+
+    sb = _ProcessedWinsOnRollbackSBStub({
+        **_seed(),
+        "document_assets": [
+            {"id": "d1", "scope": "admin_exam_intelligence", "document_kind": "syllabus",
+             "status": "uploaded", "mime_type": "application/pdf",
+             "storage_bucket": "b", "storage_path": "p1.pdf", "content_hash": "pending:x"}
+        ],
+        "document_processing_jobs": [],
+    })
+
+    original_enqueue = _te.enqueue_text_extract_job
+
+    def _fail_enqueue(*_a, **_kw):
+        raise RuntimeError("simulated enqueue failure")
+
+    _te.enqueue_text_extract_job = _fail_enqueue
+    try:
+        r = _client(sb).post(f"{_BASE}/complete-upload", json={"document_id": "d1"})
+    finally:
+        _te.enqueue_text_extract_job = original_enqueue
+
+    assert r.status_code == 409, r.text
+    detail = r.json().get("detail", {})
+    assert detail.get("error") == "concurrent_state_change"
+    assert "processed" in detail.get("message", "")
+    # Asset must remain in the concurrent state — rollback must not have overwritten it.
+    assert sb.db["document_assets"][0]["status"] == "processed"

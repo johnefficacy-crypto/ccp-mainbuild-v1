@@ -396,13 +396,26 @@ def complete_document_upload(
             .data or []
         )
         if not rollback_rows:
-            # Archive won — caller must not retry complete-upload.
+            # CAS rollback matched 0 rows — something changed status out from under
+            # us while we were handling the enqueue error.  Re-read and respond with
+            # the actual terminal state so the caller is never told to retry
+            # complete-upload on a document that can no longer be processed.
             refreshed = _load_admin_asset(sb, row["id"])
-            if refreshed and refreshed.get("status") == "archived":
+            if not refreshed:
+                raise HTTPException(
+                    status_code=409,
+                    detail={"error": "concurrent_state_change", "message": "document no longer exists; it may have been deleted concurrently"},
+                )
+            actual_status = refreshed.get("status")
+            if actual_status == "archived":
                 raise HTTPException(
                     status_code=409,
                     detail={"error": "document_archived", "message": "document was archived before extraction could begin"},
                 )
+            raise HTTPException(
+                status_code=409,
+                detail={"error": "concurrent_state_change", "message": f"document status changed to {actual_status!r} concurrently; reload and retry"},
+            )
         raise HTTPException(
             status_code=502,
             detail={"error": "enqueue_failed", "message": "text extraction job could not be queued; document status restored to uploaded — retry complete-upload"},
