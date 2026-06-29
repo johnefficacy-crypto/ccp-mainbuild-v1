@@ -34,6 +34,7 @@ app/backend/.env.*
 # local Supabase CLI state / generated temp files
 supabase/.temp/
 app/supabase/.temp/
+app/backend/supabase/.temp/
 
 # credentials
 credentials.json
