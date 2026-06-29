@@ -101,7 +101,7 @@ def propose_syllabus_mentions(
     doc_rows = _safe(
         lambda: (
             sb.table("syllabus_documents")
-            .select("id, exam_id, exam_cycle_id")
+            .select("id, exam_id, exam_cycle_id, source_document_id")
             .eq("id", syllabus_document_id)
             .limit(1)
             .execute()
@@ -116,11 +116,15 @@ def propose_syllabus_mentions(
         raise ProposerError("syllabus document does not belong to this exam", 422)
 
     # ── 2. Load document pages ────────────────────────────────────────────────
+    # Pages are stored under the document_assets.id (source_document_id), not
+    # the syllabus_documents.id. Use source_document_id when available; fall
+    # back to syllabus_document_id for legacy rows where it was not set.
+    pages_asset_id = doc.get("source_document_id") or syllabus_document_id
     pages = _safe(
         lambda: (
             sb.table("document_pages")
             .select("page_number, text_content")
-            .eq("document_id", syllabus_document_id)
+            .eq("document_id", pages_asset_id)
             .order("page_number", desc=False)
             .limit(2000)
             .execute()
@@ -130,7 +134,11 @@ def propose_syllabus_mentions(
     ) or []
 
     if not pages:
-        return []
+        raise ProposerError(
+            "extraction_required: syllabus document has no extracted pages — "
+            "complete text extraction before running the proposer",
+            422,
+        )
 
     # ── 3. Load topic_aliases for the exam's subject scope ────────────────────
     # topics → subject_id → subjects → exam_subject_map → exam_id

@@ -331,6 +331,20 @@ def complete_document_upload(
         raise HTTPException(status_code=404, detail="Document not found")
     if row.get("mime_type") != _PDF_MIME:
         raise HTTPException(status_code=400, detail="Only application/pdf documents can be processed")
+    # Only allow completion from the initial 'uploaded' state.
+    current_status = row.get("status")
+    if current_status != "uploaded":
+        if current_status == "archived":
+            detail = {"error": "document_archived", "message": "document is archived; archive is terminal"}
+        elif current_status == "processed":
+            detail = {"error": "already_processed", "message": "document extraction already completed"}
+        elif current_status == "processing":
+            detail = {"error": "already_processing", "message": "extraction is already in progress"}
+        elif current_status == "failed":
+            detail = {"error": "previous_extraction_failed", "message": "use the retry endpoint to re-attempt extraction"}
+        else:
+            detail = {"error": "invalid_transition", "message": f"cannot complete from status={current_status!r}"}
+        raise HTTPException(status_code=409, detail=detail)
 
     object_bytes = _try_download_bytes(sb, row["storage_bucket"], row["storage_path"])
     if object_bytes is not None:
@@ -343,21 +357,99 @@ def complete_document_upload(
         raise HTTPException(status_code=400, detail="content_hash unavailable: storage read failed and no client_hash provided")
 
     patch = {"content_hash": content_hash, "file_size_bytes": size, "status": "processing"}
-    sb.table("document_assets").update(patch).eq("id", row["id"]).execute()
+    # CAS: only flip to processing if status is still uploaded (archive race guard).
+    cas_result = (
+        sb.table("document_assets")
+        .update(patch)
+        .eq("id", row["id"])
+        .eq("status", "uploaded")
+        .execute()
+        .data
+        or []
+    )
+    if not cas_result:
+        # Something changed the document after our initial read (e.g. concurrent archive).
+        refreshed = _load_admin_asset(sb, row["id"])
+        if refreshed and refreshed.get("status") == "archived":
+            raise HTTPException(status_code=409, detail={"error": "document_archived", "message": "document was archived before processing could begin"})
+        raise HTTPException(status_code=409, detail={"error": "concurrent_state_change", "message": "document status changed concurrently; reload and retry"})
 
     enqueued = False
+    job_id: str | None = None
     try:
         result = _text_extract.enqueue_text_extract_job(sb, row["id"])
         enqueued = bool(result.get("enqueued"))
+        job_id = (result.get("job") or {}).get("id")
     except Exception:  # noqa: BLE001
         logger.exception("admin text-extract enqueue failed for doc=%s", row["id"])
+        # Enqueue failure must not strand the document in 'processing' — a later
+        # call would be rejected as already_processing with no retry path.
+        # CAS rollback: only restore to 'uploaded' if we are still in 'processing'.
+        # If archive won the race the row is already 'archived'; inspect the result
+        # before deciding what to tell the caller.
+        rollback_rows = (
+            sb.table("document_assets")
+            .update({"status": "uploaded"})
+            .eq("id", row["id"])
+            .eq("status", "processing")
+            .execute()
+            .data or []
+        )
+        if not rollback_rows:
+            # CAS rollback matched 0 rows — something changed status out from under
+            # us while we were handling the enqueue error.  Re-read and respond with
+            # the actual terminal state so the caller is never told to retry
+            # complete-upload on a document that can no longer be processed.
+            refreshed = _load_admin_asset(sb, row["id"])
+            if not refreshed:
+                raise HTTPException(
+                    status_code=409,
+                    detail={"error": "concurrent_state_change", "message": "document no longer exists; it may have been deleted concurrently"},
+                )
+            actual_status = refreshed.get("status")
+            if actual_status == "archived":
+                raise HTTPException(
+                    status_code=409,
+                    detail={"error": "document_archived", "message": "document was archived before extraction could begin"},
+                )
+            raise HTTPException(
+                status_code=409,
+                detail={"error": "concurrent_state_change", "message": f"document status changed to {actual_status!r} concurrently; reload and retry"},
+            )
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "enqueue_failed", "message": "text extraction job could not be queued; document status restored to uploaded — retry complete-upload"},
+        )
+
+    # Run extraction synchronously. Admin docs have owner_user_id=NULL and
+    # scope='admin_exam_intelligence'; the service validates both.
+    extraction_result: dict | None = None
+    if job_id:
+        try:
+            extraction_result = _text_extract.run_text_extract_job(
+                sb, job_id, user_id=None, admin_scope="admin_exam_intelligence"
+            )
+        except _text_extract.ExtractConflict:
+            logger.info("admin text-extract job %s already claimed (race)", job_id)
+        except Exception:  # noqa: BLE001
+            logger.exception("admin text-extract run failed for doc=%s job=%s", row["id"], job_id)
 
     _audit(
         sb, admin, "exam_intel.cms.document.complete_upload",
         entity_type="document_asset", entity_id=row["id"],
-        new_value={"content_hash": content_hash, "enqueued": enqueued},
+        new_value={
+            "content_hash": content_hash,
+            "enqueued": enqueued,
+            "extraction_attempted": job_id is not None,
+        },
     )
-    return {"ok": True, "document": _shape({**row, **patch}), "text_extract_enqueued": enqueued}
+    # Re-read from DB to return accurate post-extraction state.
+    final_row = _load_admin_asset(sb, row["id"]) or {**row, **patch}
+    return {
+        "ok": True,
+        "document": _shape(final_row),
+        "text_extract_enqueued": enqueued,
+    }
 
 
 @router.get("/{document_id}")
@@ -447,13 +539,18 @@ def link_to_syllabus(
         existing = _safe_select(sb, "syllabus_documents", id=body.syllabus_document_id)
         if not existing:
             raise HTTPException(status_code=404, detail="syllabus_document not found")
-        # Wire storage in; never touch trust_status — it stays in the review
-        # pipeline.
+        # Wire storage in. source_document_id links the asset so the proposer
+        # can find extracted document_pages via the correct asset ID.
+        # Replacing the source on a verified syllabus document demotes it to
+        # pending — the new PDF must be re-reviewed (mirrors PYQ link behaviour).
         patch = {
             "storage_path": asset["storage_path"],
             "content_hash": asset.get("content_hash"),
+            "source_document_id": document_id,
             "updated_at": _now_iso(),
         }
+        if existing.get("trust_status") == "verified":
+            patch["trust_status"] = "pending"
         updated = sb.table("syllabus_documents").update(patch).eq("id", body.syllabus_document_id).execute().data or []
         result = updated[0] if updated else existing | patch
         action = "exam_intel.cms.document.link_syllabus_update"
@@ -465,6 +562,7 @@ def link_to_syllabus(
             "title": asset.get("title") or asset.get("original_filename"),
             "storage_path": asset["storage_path"],
             "content_hash": asset.get("content_hash"),
+            "source_document_id": document_id,
             "trust_status": "pending",
         }
         if not new_row["exam_id"]:
@@ -560,6 +658,121 @@ def link_to_pyq_paper(
         "audit_id": (rpc_data or {}).get("audit_id"),
         "pyq_paper": paper | synthetic_patch,
     }
+
+
+class ArchiveDocumentRequest(BaseModel):
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+@router.post("/{document_id}/archive")
+def archive_document(
+    document_id: str,
+    body: ArchiveDocumentRequest,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Archive an admin exam-intelligence document.
+
+    Blocked if a job is actively running (to avoid the runner undoing the
+    archive). Blocked if verified pyq_papers or syllabus_documents reference
+    this asset as their source (demote them first).
+    """
+    sb = get_supabase_admin()
+    asset = _load_admin_asset(sb, document_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if asset.get("status") == "archived":
+        raise HTTPException(status_code=409, detail="Document already archived")
+
+    # Block if a job is actively running — the runner would undo the archive.
+    running_jobs = (
+        sb.table("document_processing_jobs")
+        .select("id")
+        .eq("document_id", document_id)
+        .eq("status", "running")
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    if running_jobs:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "extraction_running", "message": "wait for running extraction to finish before archiving"},
+        )
+
+    # Block if verified pyq_papers reference this asset as source.
+    trusted_papers = (
+        sb.table("pyq_papers")
+        .select("id")
+        .eq("source_document_id", document_id)
+        .eq("trust_status", "verified")
+        .limit(50)
+        .execute()
+        .data or []
+    )
+    if trusted_papers:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "trusted_provenance_exists",
+                "message": "verified pyq_papers reference this document; demote them first",
+                "blocking_paper_ids": [p["id"] for p in trusted_papers],
+            },
+        )
+
+    # Block if verified syllabus_documents reference this asset via source_document_id.
+    trusted_syllabus = (
+        sb.table("syllabus_documents")
+        .select("id")
+        .eq("source_document_id", document_id)
+        .eq("trust_status", "verified")
+        .limit(50)
+        .execute()
+        .data or []
+    )
+    if trusted_syllabus:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "trusted_provenance_exists",
+                "message": "verified syllabus_documents reference this document; demote them first",
+                "blocking_syllabus_ids": [s["id"] for s in trusted_syllabus],
+            },
+        )
+
+    # Cancel queued jobs (running was already blocked above).
+    sb.table("document_processing_jobs").update({
+        "status": "failed",
+        "finished_at": _now_iso(),
+        "error_code": "document_archived",
+        "error_message": "document was archived before extraction could run",
+    }).eq("document_id", document_id).eq("status", "queued").execute()
+
+    # Re-check for running jobs after cancelling queued ones — narrow the TOCTOU
+    # window where a queued job was claimed between the first check and the cancel.
+    running_after = (
+        sb.table("document_processing_jobs")
+        .select("id")
+        .eq("document_id", document_id)
+        .eq("status", "running")
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    if running_after:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "extraction_running", "message": "extraction job was claimed during archive; retry after it finishes"},
+        )
+
+    sb.table("document_assets").update({"status": "archived"}).eq("id", document_id).execute()
+
+    _audit(
+        sb, admin, "exam_intel.cms.document.archive",
+        entity_type="document_asset", entity_id=document_id,
+        new_value={"status": "archived", "reason": body.reason},
+    )
+    return {"ok": True, "document_id": document_id, "status": "archived"}
 
 
 def _extension(filename: str) -> str:

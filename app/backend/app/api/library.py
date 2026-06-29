@@ -627,7 +627,35 @@ def list_pages(
 def archive_item(item_id: str, user: dict = Depends(get_current_user)) -> dict:
     if not _is_uuid(item_id):
         raise HTTPException(status_code=400, detail="Invalid id")
+    from datetime import datetime, timezone
     sb = get_supabase_admin()
+    # Verify ownership FIRST — a non-owner must always get 404, not 409.
+    owned = (
+        sb.table("document_assets")
+        .select("id")
+        .eq("id", item_id)
+        .eq("owner_user_id", user["id"])
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    if not owned:
+        raise HTTPException(status_code=404, detail="Document not found")
+    # Block if extraction is actively running — the runner would undo the archive.
+    running = (
+        sb.table("document_processing_jobs")
+        .select("id")
+        .eq("document_id", item_id)
+        .eq("status", "running")
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    if running:
+        raise HTTPException(
+            status_code=409,
+            detail="extraction is running; wait for it to finish before deleting",
+        )
     updated = (
         sb.table("document_assets")
         .update({"status": "archived"})
@@ -638,6 +666,30 @@ def archive_item(item_id: str, user: dict = Depends(get_current_user)) -> dict:
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Document not found")
+    # Cancel queued jobs (running was already blocked above).
+    sb.table("document_processing_jobs").update({
+        "status": "failed",
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "error_code": "document_archived",
+        "error_message": "document was archived",
+    }).eq("document_id", item_id).eq("status", "queued").execute()
+    # Re-check: a queued job may have been claimed between the first running check
+    # and the cancel step. If so, the CAS in run_text_extract_job will preserve
+    # the archived status, but alert the caller so they know to wait.
+    running_after = (
+        sb.table("document_processing_jobs")
+        .select("id")
+        .eq("document_id", item_id)
+        .eq("status", "running")
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    if running_after:
+        raise HTTPException(
+            status_code=409,
+            detail="extraction job was claimed during archive; asset is archived but runner may still be writing pages — retry to confirm",
+        )
     return {"ok": True, "id": item_id, "status": "archived"}
 
 

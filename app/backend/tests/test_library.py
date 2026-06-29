@@ -83,6 +83,10 @@ class _Q:
         self._filters.append((key, "lt", val))
         return self
 
+    def in_(self, key, vals):
+        self._filters.append((key, "in", set(vals)))
+        return self
+
     def order(self, key, desc=False, **kw):
         self._order_key = key
         self._desc = desc
@@ -100,6 +104,8 @@ class _Q:
             if op == "neq" and cell == v:
                 return False
             if op == "lt" and not (cell is not None and cell < v):
+                return False
+            if op == "in" and cell not in v:
                 return False
         return True
 
@@ -443,3 +449,33 @@ def test_download_url_owner_only(sb):
 
     deny = _app(sb, USER_B).get(f"/api/library/items/{doc_id}/download-url")
     assert deny.status_code == 404
+
+
+def test_archive_non_owner_with_running_job_returns_404_not_409(sb):
+    """Non-owner must get 404 even when a running job exists for the document.
+
+    Previously archive_item() checked running jobs before ownership, so a
+    non-owner could infer document existence from a 409 response.
+    """
+    doc_id = "66666666-6666-6666-6666-666666666666"
+    sb.db["document_assets"] = [
+        {
+            "id": doc_id, "owner_user_id": USER_A["id"], "scope": "personal_library",
+            "document_kind": "note_pdf", "original_filename": "x.pdf",
+            "mime_type": "application/pdf", "storage_bucket": "library",
+            "storage_path": "users/a/x.pdf", "content_hash": "h",
+            "status": "processing", "metadata": {}, "created_at": "2026-05-18T10:00:00Z",
+            "updated_at": "2026-05-18T10:00:00Z", "processing_policy": "store_only",
+            "visibility": "private", "file_size_bytes": 10,
+        }
+    ]
+    sb.db["document_processing_jobs"] = [
+        {
+            "id": "job-run", "document_id": doc_id, "job_type": "text_extract",
+            "status": "running", "attempt_count": 1, "metrics": {},
+            "created_at": "2026-05-18T10:01:00Z",
+        }
+    ]
+    # USER_B is not the owner — must always get 404, not 409.
+    r = _app(sb, USER_B).delete(f"/api/library/items/{doc_id}")
+    assert r.status_code == 404, f"expected 404 for non-owner, got {r.status_code}: {r.text}"

@@ -84,8 +84,13 @@ class _TableStub:
         self._in_filters: dict = {}
         self._order_col = None
         self._limit_n = None
+        self._selected_cols = None
 
-    def select(self, *a, **kw):
+    def select(self, cols="*", **kw):
+        if cols.strip() == "*":
+            self._selected_cols = None
+        else:
+            self._selected_cols = {c.strip() for c in cols.split(",")}
         return self
 
     def eq(self, k, v):
@@ -129,6 +134,9 @@ class _TableStub:
                     break
             if match:
                 result.append(r)
+        # Apply column projection (mimics PostgREST SELECT behaviour).
+        if self._selected_cols:
+            result = [{k: v for k, v in r.items() if k in self._selected_cols} for r in result]
         # Apply order if page_number
         if self._order_col:
             result.sort(key=lambda x: x.get(self._order_col, 0))
@@ -325,10 +333,13 @@ class TestDeduplication:
 
 
 class TestEdgeCases:
-    def test_empty_pages_returns_empty(self):
+    def test_empty_pages_raises_extraction_required(self):
+        from app.exam_intelligence.syllabus_mapper import ProposerError
         sb = _make_sb(pages=[])
-        proposals = propose_syllabus_mentions(sb, exam_id=EXAM_ID, syllabus_document_id=DOC_ID)
-        assert proposals == []
+        with pytest.raises(ProposerError) as exc_info:
+            propose_syllabus_mentions(sb, exam_id=EXAM_ID, syllabus_document_id=DOC_ID)
+        assert exc_info.value.status_code == 422
+        assert "extraction_required" in str(exc_info.value)
 
     def test_unknown_document_raises_404(self):
         sb = _make_sb(docs=[])  # no docs
@@ -365,25 +376,28 @@ class TestEndpointHappyPath:
         assert isinstance(body["proposals"], list)
 
     def test_threshold_returned_in_response(self):
-        sb = _make_sb()
+        pages = [{"page_number": 1, "text_content": "Arithmetic and reasoning topics."}]
+        sb = _make_sb(pages=pages)
         r, _ = _post(sb, {"syllabus_document_id": DOC_ID})
         assert r.status_code == 200
         assert r.json()["threshold"] == SYLLABUS_ALIAS_MATCH_THRESHOLD
 
     def test_custom_threshold_returned(self):
-        sb = _make_sb()
+        pages = [{"page_number": 1, "text_content": "Arithmetic and reasoning topics."}]
+        sb = _make_sb(pages=pages)
         r, _ = _post(sb, {"syllabus_document_id": DOC_ID, "threshold": 0.7})
         assert r.status_code == 200
         assert r.json()["threshold"] == 0.7
 
-    def test_empty_pages_200_empty_proposals(self):
+    def test_empty_pages_422_extraction_required(self):
         sb = _make_sb(pages=[])
         r, _ = _post(sb, {"syllabus_document_id": DOC_ID})
-        assert r.status_code == 200
-        assert r.json()["proposals"] == []
+        assert r.status_code == 422
+        assert "extraction_required" in r.json().get("detail", "")
 
     def test_proposer_version_constant_in_response(self):
-        sb = _make_sb()
+        pages = [{"page_number": 1, "text_content": "Arithmetic and reasoning topics."}]
+        sb = _make_sb(pages=pages)
         r, _ = _post(sb, {"syllabus_document_id": DOC_ID})
         assert r.json()["proposer_version"] == PROPOSER_VERSION
 
@@ -506,3 +520,77 @@ class TestRegressionBugEI1:
         proposals = r.json()["proposals"]
         assert len(proposals) >= 1, "Expected at least one proposal for 'Arithmetic'"
         assert proposals[0]["match_method"] == "topic_alias_exact"
+
+
+# ── Regression: BUG-EI-2 ─────────────────────────────────────────────────────
+# syllabus_documents.id != document_assets.id (they are different UUIDs).
+# Before migration 198, propose_syllabus_mentions() looked up document_pages
+# with document_id = syllabus_document_id, which is wrong — pages are keyed
+# by document_assets.id.  Fix: add source_document_id FK to syllabus_documents,
+# populate it during link-to-syllabus, query pages through it.
+
+
+class TestRegressionBugEI2:
+    """Guard against re-introduction of the source_document_id ID-mismatch bug."""
+
+    def test_distinct_ids_pages_found_via_source_document_id(self):
+        """When source_document_id != syllabus_document_id, pages must be found.
+
+        syllabus_documents.id = 'sd-aaa'  (the CMS identifier)
+        document_assets.id    = 'da-bbb'  (the storage/extraction identifier)
+
+        Before the fix, proposer queried document_pages WHERE document_id = 'sd-aaa'
+        → no rows → ProposerError(422 extraction_required).
+
+        After the fix, proposer reads source_document_id='da-bbb' from the doc
+        row and queries WHERE document_id = 'da-bbb' → pages found → proposals.
+        """
+        SYLLABUS_DOC_ID = "sd-aaa"
+        ASSET_ID = "da-bbb"
+        doc_with_source = {
+            "id": SYLLABUS_DOC_ID,
+            "exam_id": EXAM_ID,
+            "exam_cycle_id": None,
+            "source_document_id": ASSET_ID,  # distinct from syllabus doc id
+        }
+        pages = [{"page_number": 1, "text_content": "Arithmetic section.", "document_id": ASSET_ID}]
+        data = {
+            "syllabus_documents": [doc_with_source],
+            "document_pages": pages,
+            "topics": TOPICS,
+            "exam_subject_map": ESM,
+            "topic_aliases": ALIASES,
+            "exams": [EXAM],
+            "exam_cycles": [CYCLE_A],
+            "exam_phases": [PHASE_A],
+            "syllabus_topic_mentions": [],
+        }
+        stub = _SBStub(data)
+        proposals = propose_syllabus_mentions(
+            stub, exam_id=EXAM_ID, syllabus_document_id=SYLLABUS_DOC_ID
+        )
+        assert proposals, (
+            "BUG-EI-2 regression: proposer returned no proposals when "
+            "source_document_id differs from syllabus_document_id. "
+            "Likely querying pages by syllabus_documents.id instead of source_document_id."
+        )
+        assert proposals[0]["syllabus_document_id"] == SYLLABUS_DOC_ID
+
+    def test_missing_source_document_id_falls_back_to_syllabus_id(self):
+        """Legacy rows without source_document_id use syllabus_document_id as fallback."""
+        pages = [{"page_number": 1, "text_content": "Arithmetic topics.", "document_id": DOC_ID}]
+        doc_legacy = {"id": DOC_ID, "exam_id": EXAM_ID, "exam_cycle_id": None}  # no source_document_id
+        data = {
+            "syllabus_documents": [doc_legacy],
+            "document_pages": pages,
+            "topics": TOPICS,
+            "exam_subject_map": ESM,
+            "topic_aliases": ALIASES,
+            "exams": [EXAM],
+            "exam_cycles": [CYCLE_A],
+            "exam_phases": [PHASE_A],
+            "syllabus_topic_mentions": [],
+        }
+        stub = _SBStub(data)
+        proposals = propose_syllabus_mentions(stub, exam_id=EXAM_ID, syllabus_document_id=DOC_ID)
+        assert proposals, "Legacy fallback: pages keyed by syllabus_document_id should still be found"
