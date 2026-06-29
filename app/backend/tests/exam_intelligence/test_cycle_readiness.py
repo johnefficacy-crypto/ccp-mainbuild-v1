@@ -220,12 +220,19 @@ def test_a1_no_cycle_steps_2_to_9_not_applicable():
 # D06: extraction (step 4) — latest-per-doc semantics
 # ---------------------------------------------------------------------------
 
-def _add_doc(s: _Seed, doc_id: str, exam_id: str, job_statuses: list):
-    """Add a document_asset for exam_id and jobs with given statuses (in order)."""
+def _add_doc(s: _Seed, doc_id: str, exam_id: str, job_statuses: list, *, cycle_id: str | None = None):
+    """Add a document_asset for exam_id and jobs with given statuses (in order).
+
+    D05 fail-closed: when testing with a selected cycle, pass cycle_id so the doc
+    gets tagged to that cycle in metadata; unscoped docs are excluded from step 3/4.
+    """
+    meta: dict = {"exam_id": exam_id}
+    if cycle_id is not None:
+        meta["exam_cycle_id"] = cycle_id
     s.db["document_assets"].append({
         "id": doc_id,
         "scope": "admin_exam_intelligence",
-        "metadata": {"exam_id": exam_id},
+        "metadata": meta,
         "status": "uploaded",
     })
     for i, job_status in enumerate(job_statuses):
@@ -245,10 +252,10 @@ def test_d06_one_success_among_latest_jobs_ready():
     s.exam("e1", name="Exam1", locked=1)
     s.cycle("cy1", "e1")
     s.phase("ph1", "e1", "cy1")
-    # doc1: only job = succeeded
-    _add_doc(s, "doc1", "e1", ["succeeded"])
-    # doc2: only job = failed
-    _add_doc(s, "doc2", "e1", ["failed"])
+    # doc1: only job = succeeded (tagged to cy1 — D05 fail-closed)
+    _add_doc(s, "doc1", "e1", ["succeeded"], cycle_id="cy1")
+    # doc2: only job = failed (tagged to cy1)
+    _add_doc(s, "doc2", "e1", ["failed"], cycle_id="cy1")
     r = _detail(_client_from_seed(s), "e1", cycle_id="cy1")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
@@ -264,8 +271,8 @@ def test_d06_all_latest_failed_step_is_failed():
     s.exam("e1", name="Exam1", locked=1)
     s.cycle("cy1", "e1")
     s.phase("ph1", "e1", "cy1")
-    _add_doc(s, "doc1", "e1", ["failed"])
-    _add_doc(s, "doc2", "e1", ["failed"])
+    _add_doc(s, "doc1", "e1", ["failed"], cycle_id="cy1")
+    _add_doc(s, "doc2", "e1", ["failed"], cycle_id="cy1")
     r = _detail(_client_from_seed(s), "e1", cycle_id="cy1")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
@@ -282,13 +289,13 @@ def test_d06_mixed_failed_unstarted_not_failed():
     s.exam("e1", name="Exam1", locked=1)
     s.cycle("cy1", "e1")
     s.phase("ph1", "e1", "cy1")
-    # doc1: failed job
-    _add_doc(s, "doc1", "e1", ["failed"])
-    # doc2: no jobs at all
+    # doc1: failed job (tagged to cy1 — D05 fail-closed)
+    _add_doc(s, "doc1", "e1", ["failed"], cycle_id="cy1")
+    # doc2: no jobs at all (tagged to cy1)
     s.db["document_assets"].append({
         "id": "doc2",
         "scope": "admin_exam_intelligence",
-        "metadata": {"exam_id": "e1"},
+        "metadata": {"exam_id": "e1", "exam_cycle_id": "cy1"},
         "status": "uploaded",
     })
     r = _detail(_client_from_seed(s), "e1", cycle_id="cy1")
@@ -543,18 +550,19 @@ def test_cycle_isolation_other_cycle_doc_not_counted():
     assert step4["status"] == "missing", f"step4 expected missing, got {step4['status']}"
 
 
-def test_cycle_isolation_exam_wide_doc_still_counts():
-    """D05/D06 Cycle isolation: exam-wide docs (no exam_cycle_id in metadata) still
-    count toward the selected cycle's steps — only tagged-to-other-cycle docs are excluded."""
+def test_cycle_isolation_unscoped_doc_not_counted():
+    """D05 fail-closed: an unscoped doc (no exam_cycle_id in metadata) must NOT
+    satisfy the selected cycle's step 4.  The upload API makes exam_cycle_id optional
+    so a cycle-specific doc uploaded without metadata cannot inherit into any cycle."""
     s = _Seed()
     s.exam("e1", name="Exam1", locked=1)
     s.cycle("cy-a", "e1")
     s.phase("ph1", "e1", "cy-a")
-    # Exam-wide doc (no exam_cycle_id metadata) with a succeeded job.
+    # Unscoped doc (no exam_cycle_id) with a succeeded extraction job.
     s.db["document_assets"].append({
         "id": "doc-wide",
         "scope": "admin_exam_intelligence",
-        "metadata": {"exam_id": "e1"},  # no exam_cycle_id
+        "metadata": {"exam_id": "e1"},  # no exam_cycle_id -> must NOT count
         "status": "processed",
     })
     s.db["document_processing_jobs"].append({
@@ -568,5 +576,5 @@ def test_cycle_isolation_exam_wide_doc_still_counts():
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step4 = next(st for st in cr["steps"] if st["step"] == 4)
-    # Exam-wide doc succeeded -> extraction step should be ready.
-    assert step4["status"] == "ready", f"step4 expected ready, got {step4['status']}"
+    # Fail-closed: unscoped doc must not satisfy cycle-A's extraction step.
+    assert step4["status"] == "missing", f"step4 expected missing (fail-closed), got {step4['status']}"

@@ -134,8 +134,13 @@ def _get_exam_doc_ids(sb, exam_id: str, cycle_id: str | None = None) -> list[str
             continue
         if cycle_id is not None:
             doc_cycle = meta.get("exam_cycle_id")
-            # Exclude docs tagged to a different cycle (allow untagged exam-wide docs).
-            if doc_cycle is not None and doc_cycle != cycle_id:
+            # D05 fail-closed: when a cycle is selected, only count documents
+            # explicitly tagged to that cycle.  Unscoped documents (doc_cycle is
+            # None) are NOT inherited — the upload API makes exam_cycle_id optional
+            # and a cycle-specific document uploaded without cycle metadata must not
+            # satisfy a different cycle's readiness.  Canonical exam-wide evidence
+            # roles are a future D05 registration concern.
+            if doc_cycle != cycle_id:
                 continue
         result.append(r["id"])
     return result
