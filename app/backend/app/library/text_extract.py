@@ -420,42 +420,6 @@ def run_text_extract_job(
     )
     timed_out = parse_timed_out or build_timed_out
 
-    # CAS guard: if the document was archived while this job was running
-    # (TOCTOU window), do not write pages or flip to processed/failed.
-    # Fail the job cleanly so the archive status is preserved.
-    asset_check = (
-        sb.table("document_assets")
-        .select("status")
-        .eq("id", document_id)
-        .limit(1)
-        .execute()
-        .data
-        or [{}]
-    )[0]
-    if asset_check.get("status") == "archived":
-        _update_job(sb, job_id, {
-            "status": "failed",
-            "finished_at": _now_iso(),
-            "error_code": "document_archived",
-            "error_message": "document was archived while extraction was running",
-            "metrics": {"duration_ms": int((time.monotonic() - t0) * 1000)},
-        })
-        raise _ExtractError("document_archived", "document was archived while extraction was running")
-
-    # Even on timeout we persist what we got so the user sees partial pages.
-    try:
-        _write_pages(sb, document_id, rows)
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("text-extract page write failed")
-        _fail(sb, job_id=job_id, document_id=document_id,
-              code="page_write_failed", message=str(exc),
-              metrics={
-                  "duration_ms": int((time.monotonic() - t0) * 1000),
-                  "bytes_processed": bytes_processed,
-                  "page_count": page_count,
-              })
-        raise _ExtractError("page_write_failed", str(exc)) from exc
-
     stored_page_count = len(rows)
     extracted_page_count = sum(1 for r in rows if r["extraction_status"] == "extracted")
     empty_page_count = max(page_count - extracted_page_count, 0) if page_count else (
@@ -479,38 +443,58 @@ def run_text_extract_job(
         "timed_out": timed_out,
     }
 
-    if timed_out:
-        # Partial success: pages stored, but the job is marked failed so
-        # the caller can decide to retry. Doc goes to failed too.
-        _update_job(sb, job_id, {
-            "status": "failed",
-            "finished_at": _now_iso(),
-            "error_code": "extract_timeout",
-            "error_message": f"exceeded {EXTRACT_TIMEOUT_SECONDS}s wall-clock cap",
-            "metrics": metrics,
-        })
-        _update_doc(sb, document_id, "failed")
-    else:
-        _update_job(sb, job_id, {
-            "status": "succeeded",
-            "finished_at": _now_iso(),
-            "metrics": metrics,
-        })
-        _update_doc(sb, document_id, "processed")
-        # PR3: if pypdf produced mostly-empty pages, hand the item off to
-        # the OCR control surface. Best-effort: a failure here must never
-        # rewrite the text-extract outcome above. The OCR module's
-        # `auto_enqueue_from_text_extract` swallows ocr-side errors and
-        # returns ``None``; we still wrap in a try/except for paranoia.
-        if likely_needs_ocr and user_id is not None:
-            try:
-                from app.library.ocr import auto_enqueue_from_text_extract
+    terminal_status = "failed" if timed_out else "succeeded"
+    error_code = "extract_timeout" if timed_out else None
+    error_message = f"exceeded {EXTRACT_TIMEOUT_SECONDS}s wall-clock cap" if timed_out else None
 
-                auto_enqueue_from_text_extract(sb, item_id=document_id, user_id=user_id)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "ocr auto-enqueue raised after text-extract success: %s", exc
-                )
+    # Atomic finalization via migration-202 RPC: page swap + job update +
+    # document status flip all share one transaction, closing the TOCTOU
+    # race where the document could be archived between extraction and write.
+    try:
+        result = sb.rpc(
+            "finalize_document_extraction",
+            {
+                "p_job_id": job_id,
+                "p_document_id": document_id,
+                "p_pages": rows,
+                "p_status": terminal_status,
+                "p_error_code": error_code,
+                "p_error_message": error_message,
+                "p_metrics": metrics,
+                "p_parser_engine": PARSER_ENGINE,
+                "p_parser_version": PARSER_VERSION,
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("text-extract finalize RPC failed")
+        _fail(sb, job_id=job_id, document_id=document_id,
+              code="page_write_failed", message=str(exc),
+              metrics={"duration_ms": duration_ms, "bytes_processed": bytes_processed,
+                       "page_count": page_count})
+        raise _ExtractError("page_write_failed", str(exc)) from exc
+
+    rpc_data = result.data or {}
+    if not rpc_data.get("ok"):
+        reason = rpc_data.get("reason", "unknown")
+        if reason == "document_archived":
+            raise _ExtractError("document_archived",
+                                 "document was archived while extraction was running")
+        raise _ExtractError("finalize_failed", f"finalize_document_extraction returned: {rpc_data}")
+
+    # PR3: if pypdf produced mostly-empty pages, hand the item off to
+    # the OCR control surface. Best-effort: a failure here must never
+    # rewrite the text-extract outcome above. The OCR module's
+    # `auto_enqueue_from_text_extract` swallows ocr-side errors and
+    # returns ``None``; we still wrap in a try/except for paranoia.
+    if likely_needs_ocr and user_id is not None:
+        try:
+            from app.library.ocr import auto_enqueue_from_text_extract
+
+            auto_enqueue_from_text_extract(sb, item_id=document_id, user_id=user_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "ocr auto-enqueue raised after text-extract success: %s", exc
+            )
 
     final_job = (
         sb.table("document_processing_jobs")
