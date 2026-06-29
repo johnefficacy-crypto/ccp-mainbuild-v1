@@ -102,11 +102,12 @@ _PAGE = 500
 def _get_exam_doc_ids(sb, exam_id: str, cycle_id: str | None = None) -> list[str]:
     """Return document_asset ids owned by this exam (via metadata.exam_id).
 
-    Cycle isolation (D05/D06): when cycle_id is provided, only include docs that
-    are tagged to that specific cycle (metadata.exam_cycle_id == cycle_id) OR are
-    exam-wide (metadata.exam_cycle_id absent/None).  Docs tagged to a DIFFERENT
-    cycle are excluded to prevent Cycle A satisfying Cycle B's step readiness.
-    Uses paged queries (500 at a time).
+    Cycle isolation (D05 fail-closed): when cycle_id is provided, only include
+    docs explicitly tagged to that cycle (metadata.exam_cycle_id == cycle_id).
+    Unscoped docs (exam_cycle_id absent/None) are excluded — the upload API
+    makes exam_cycle_id optional and an unscoped doc must not satisfy a
+    different cycle's readiness.  Docs tagged to a different cycle are also
+    excluded.  Uses paged queries (500 at a time).
     """
     all_rows: list[dict] = []
     offset = 0

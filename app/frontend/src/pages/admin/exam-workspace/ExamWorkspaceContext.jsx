@@ -96,7 +96,11 @@ export function ExamWorkspaceProvider({ children }) {
     setMgmtLoading(true);
     setMgmtError("");
     setMgmtVersionError(false);
-    setReadiness(null); // clear stale readiness for this new request generation
+    // D04: clear both stale readiness AND stale mgmt so semantic consumers
+    // (SmartHeader, action console) do not render the previous cycle's verdict
+    // until the new response validates and commits.
+    setReadiness(null);
+    setMgmt(null);
     try {
       const params = new URLSearchParams();
       if (cycleId) params.set("cycle_id", cycleId);
@@ -129,9 +133,11 @@ export function ExamWorkspaceProvider({ children }) {
   // fetchReadiness is triggered by fetchMgmt — no independent effect.
   useEffect(() => { fetchMgmt(); }, [fetchMgmt]);
 
-  // refetchReadiness exposed for consumers that need to manually refresh, but
-  // callers must pass the current generation (or call refetchMgmt which sequences it).
-  const refetchReadiness = useCallback(() => fetchReadiness(mgmtGenRef.current), [fetchReadiness]);
+  // D04/P1: refetchReadiness routes through fetchMgmt so every readiness refresh
+  // is preceded by a fresh management-contract validation.  Direct readiness
+  // calls (e.g. from ReviewActivatePanel after a row lock) would bypass the
+  // version guard and contradict the sequencing invariant.
+  const refetchReadiness = useCallback(() => fetchMgmt(), [fetchMgmt]);
 
   return (
     <ExamWorkspaceContext.Provider
