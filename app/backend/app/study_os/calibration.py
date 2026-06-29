@@ -82,8 +82,14 @@ def resolve_target_exam_checked(supabase: Any, user_id: str) -> tuple[dict | Non
     calibration gate return "proceed" and an uncalibrated first plan through).
     ``ok`` is False only when a read needed to determine the target failed;
     ``(None, True)`` means the user genuinely has no target exam.
+
+    The final ``exams`` lookup is done with a STRICT, non-swallowing read here
+    rather than via ``resolve_exam_by_id`` / ``resolve_exam_by_slug`` — those
+    helpers catch their own DB errors (``_safe``) and negative-cache ``_MISSING``
+    for the cache TTL, so an ``exams`` outage would be reported as "missing" and
+    fail OPEN (and stick for minutes). This path must fail closed instead.
     """
-    from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
+    from app.exam_intelligence.lookup import _EXAM_COLS
 
     profile, ok = _read(
         lambda: (
@@ -117,15 +123,32 @@ def resolve_target_exam_checked(supabase: Any, user_id: str) -> tuple[dict | Non
     if not target:
         return None, True  # genuinely no target exam
     candidate = str(target)
-    try:
-        if len(candidate) == 36 and candidate.count("-") == 4:
-            exam = resolve_exam_by_id(supabase, candidate)
-            if exam:
-                return exam, True
-        return resolve_exam_by_slug(supabase, candidate), True
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("calibration target-exam lookup failed: %s", exc)
+
+    def _strict_exam_lookup(column: str, value: str) -> tuple[dict | None, bool]:
+        rows, ok = _read(
+            lambda: (
+                supabase.table("exams")
+                .select(_EXAM_COLS)
+                .eq(column, value)
+                .limit(1)
+                .execute()
+                .data
+            )
+        )
+        if not ok:
+            return None, False
+        return ((rows[0] if rows else None), True)
+
+    if len(candidate) == 36 and candidate.count("-") == 4:
+        exam, ok = _strict_exam_lookup("id", candidate)
+        if not ok:
+            return None, False
+        if exam:
+            return exam, True
+    exam, ok = _strict_exam_lookup("slug", candidate)
+    if not ok:
         return None, False
+    return exam, True
 
 
 def resolve_required_subjects(

@@ -281,6 +281,37 @@ def test_generate_returns_503_when_target_resolution_fails(_spy_planner):
     assert _spy_planner["generate"] == 0
 
 
+def test_planner_rejects_mismatched_expected_exam_id():
+    # TOCTOU guard: the gate validated calibration for expected_exam_id, but the
+    # planner resolves a DIFFERENT target (the user switched exams concurrently).
+    # The planner must refuse to generate/persist for the unchecked exam.
+    from app.study_os.planner import generate_plan
+
+    sb = SBStub(_seed())  # resolves to EXAM_ID
+    other_exam = "99999999-9999-4999-8999-999999999999"
+    result = generate_plan(sb, "u-1", expected_exam_id=other_exam)
+    assert result["generated"] is False
+    assert result["reason"] == "target_changed"
+    # nothing was generated/persisted for the switched-to exam
+    assert sb.db.get("study_plans", []) == []
+    assert sb.db.get("study_tasks", []) == []
+
+
+def test_get_grandfathered_status_is_none_during_coverage_outage():
+    # An existing-plan user with NO gate row is grandfathered (calibrated), but a
+    # best-effort coverage outage must NOT mislabel them status='completed' — they
+    # never completed calibration. status must stay 'none'.
+    seed = _seed()
+    seed["study_plans"] = [
+        {"id": "p1", "user_id": "u-1", "exam_id": EXAM_ID, "status": "active"}
+    ]
+    sb = _failing_read_sb(seed, "exam_topic_coverage")
+    body = _client(sb).get("/api/study/self-assessment").json()
+    assert body["calibrated"] is True
+    assert body.get("calibration_check_failed") is not True
+    assert body["status"] == "none"
+
+
 def test_generate_proceeds_for_completed_gate_despite_coverage_outage(_spy_planner):
     # Positive unlock evidence (completed gate) must win over an unrelated
     # coverage outage — the user is already definitively unlocked.

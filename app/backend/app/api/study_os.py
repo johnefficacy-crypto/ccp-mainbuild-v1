@@ -77,16 +77,22 @@ def _raise_for_plan_failure(result: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def _calibration_gate_response(supabase: Any, user_id: str) -> dict[str, Any] | None:
+def _calibration_gate_response(
+    supabase: Any, user_id: str
+) -> tuple[dict[str, Any] | None, str | None]:
     """Backend half of the onboarding-calibration gate (must not be UI-only).
 
-    Resolves the user's target exam and, when calibration is still required for
-    it, returns the stable ``calibration_required`` envelope so the caller can
-    short-circuit BEFORE invoking the planner (no generation, no mutation, HTTP
-    200). Returns ``None`` — meaning "proceed" — when there is no target exam or
-    calibration is not required. ``calibration_required`` already returns False
-    for an empty required set, a completed/skipped gate, OR an existing plan
-    (grandfathered), so existing and calibrated/skipped users are never blocked.
+    Returns ``(early_response_or_None, resolved_exam_id)``. The target exam is
+    resolved ONCE here (health-aware); the caller passes ``resolved_exam_id`` into
+    the planner as ``expected_exam_id`` so the planner does not independently
+    re-resolve — closing the gate→planner TOCTOU where the target could change to
+    an unchecked exam between the two resolutions.
+
+    The early response is the stable ``calibration_required`` envelope so the
+    caller can short-circuit BEFORE the planner (no generation, HTTP 200). It is
+    ``None`` — meaning "proceed" — when there is no target exam or calibration is
+    not required. ``calibration_required`` already returns False for an empty
+    required set, a completed/skipped gate, OR an existing plan (grandfathered).
     """
     # Resolve the target exam ONCE, health-aware. A transient profile/preference
     # read failure must NOT look like "no target exam → proceed" (which would let
@@ -99,7 +105,7 @@ def _calibration_gate_response(supabase: Any, user_id: str) -> dict[str, Any] | 
         )
     exam_id = exam.get("id") if exam else None
     if not exam_id:
-        return None
+        return None, None
     try:
         required = calibration.calibration_required(supabase, user_id, str(exam_id))
     except calibration.CalibrationUnavailable:
@@ -110,8 +116,8 @@ def _calibration_gate_response(supabase: Any, user_id: str) -> dict[str, Any] | 
             detail={"reason": "calibration_check_failed", "generated": False},
         )
     if required:
-        return calibration.calibration_required_payload(exam_id)
-    return None
+        return calibration.calibration_required_payload(exam_id), str(exam_id)
+    return None, str(exam_id)
 
 
 def _require_canonical_target(supabase: Any, user_id: str) -> str | None:
@@ -647,11 +653,11 @@ async def generate_study_plan(user: dict = Depends(get_current_user)) -> dict[st
     """
     user_id = user.get("id")
     supabase = get_supabase_admin()
-    gate = _calibration_gate_response(supabase, user_id)
+    gate, exam_id = _calibration_gate_response(supabase, user_id)
     if gate is not None:
         return gate
     try:
-        result = generate_plan(supabase, user_id)
+        result = generate_plan(supabase, user_id, expected_exam_id=exam_id)
     except Exception:  # noqa: BLE001
         logger.exception("plan generation failed for %s", user_id)
         raise HTTPException(
@@ -667,10 +673,10 @@ async def get_plan_draft(user: dict = Depends(get_current_user)) -> dict[str, An
     supabase = get_supabase_admin()
     user_id = user.get("id")
     _require_canonical_target(supabase, user_id)
-    gate = _calibration_gate_response(supabase, user_id)
+    gate, exam_id = _calibration_gate_response(supabase, user_id)
     if gate is not None:
         return gate
-    out = compute_draft_plan(supabase, user_id)
+    out = compute_draft_plan(supabase, user_id, expected_exam_id=exam_id)
     try:
         from app.study_os.planner import _resolve_target_exam
         ex = _resolve_target_exam(supabase, user_id)
@@ -688,10 +694,10 @@ async def post_plan_draft(user: dict = Depends(get_current_user)) -> dict[str, A
     supabase = get_supabase_admin()
     user_id = user.get("id")
     _require_canonical_target(supabase, user_id)
-    gate = _calibration_gate_response(supabase, user_id)
+    gate, exam_id = _calibration_gate_response(supabase, user_id)
     if gate is not None:
         return gate
-    return compute_draft_plan(supabase, user_id)
+    return compute_draft_plan(supabase, user_id, expected_exam_id=exam_id)
 
 
 @router.post("/plan/apply")
@@ -700,11 +706,11 @@ async def post_plan_apply(user: dict = Depends(get_current_user)) -> dict[str, A
     user_id = user.get("id")
     supabase = get_supabase_admin()
     _require_canonical_target(supabase, user_id)
-    gate = _calibration_gate_response(supabase, user_id)
+    gate, exam_id = _calibration_gate_response(supabase, user_id)
     if gate is not None:
         return gate
     try:
-        result = apply_plan(supabase, user_id)
+        result = apply_plan(supabase, user_id, expected_exam_id=exam_id)
     except HTTPException:
         raise
     except Exception:  # noqa: BLE001
@@ -1279,7 +1285,12 @@ async def get_self_assessment(user: dict = Depends(get_current_user)) -> dict[st
         }
     required_subjects = ev["required_subjects"]
     calibrated = not ev["required"]
-    status = ev["status"] or ("completed" if not required_subjects else "none")
+    # Trust the evaluator's authoritative status: it already distinguishes an
+    # empty required set ("completed") from a grandfathered/no-gate user (None →
+    # "none"). Do NOT re-derive from required_subjects — a best-effort subjects
+    # outage leaves required_subjects=[] for a grandfathered user, which would
+    # otherwise be mislabelled "completed".
+    status = ev["status"] or "none"
     needs_update = ev["needs_update"]
     attempts_used = ev["attempts_used"]  # from the gate row — no second read
 

@@ -988,6 +988,7 @@ def _compute_plan(
     user_id: str,
     *,
     reason: str,
+    expected_exam_id: str | None = None,
 ) -> dict[str, Any]:
     """Compute (but do not persist) today's plan candidate.
 
@@ -1005,6 +1006,12 @@ def _compute_plan(
     if not exam or not exam.get("id"):
         return {"generated": False, "reason": "no_target_exam"}
     exam_id = exam["id"]
+
+    if expected_exam_id is not None and str(exam_id) != str(expected_exam_id):
+        # TOCTOU guard: the target exam changed between the calibration gate
+        # check (performed for ``expected_exam_id``) and this resolution. Refuse
+        # to generate/persist for a different exam whose gate was never checked.
+        return {"generated": False, "reason": "target_changed", "exam": exam.get("slug")}
 
     today = datetime.now(timezone.utc).date()
     resolver_result = resolve_exam_target_window(supabase, exam_id=exam_id, today=today)
@@ -1357,7 +1364,9 @@ def _risk_level(diff: dict[str, Any], before_count: int) -> str:
     return "low"
 
 
-def compute_draft_plan(supabase: Any, user_id: str) -> dict[str, Any]:
+def compute_draft_plan(
+    supabase: Any, user_id: str, *, expected_exam_id: str | None = None
+) -> dict[str, Any]:
     """Compute today's plan candidate without mutating any persisted plan.
 
     Returns the same envelope as ``apply_plan`` but with ``applied=False``,
@@ -1365,7 +1374,9 @@ def compute_draft_plan(supabase: Any, user_id: str) -> dict[str, Any]:
     tasks for today as ``before_tasks``. Safe to call repeatedly.
     """
     try:
-        computed = _compute_plan(supabase, user_id, reason="plan_draft")
+        computed = _compute_plan(
+            supabase, user_id, reason="plan_draft", expected_exam_id=expected_exam_id
+        )
         if not computed.get("generated"):
             return computed
 
@@ -1417,6 +1428,7 @@ def apply_plan(
     *,
     reason: str = "manual_apply",
     event_type: str = "manual_regeneration",
+    expected_exam_id: str | None = None,
 ) -> dict[str, Any]:
     """Apply today's computed plan. Always persists when ``generated=True``.
 
@@ -1447,7 +1459,9 @@ def apply_plan(
             for b in before
         ]
 
-        computed = _compute_plan(supabase, user_id, reason=reason)
+        computed = _compute_plan(
+            supabase, user_id, reason=reason, expected_exam_id=expected_exam_id
+        )
         if not computed.get("generated"):
             return computed
 
@@ -1497,6 +1511,7 @@ def generate_plan(
     *,
     reason: str = "manual_generation",
     event_type: str = "manual_regeneration",
+    expected_exam_id: str | None = None,
 ) -> dict[str, Any]:
     """Generate and persist today's study plan for ``user_id``.
 
@@ -1504,7 +1519,10 @@ def generate_plan(
     ``/api/study/plan/generate`` route and for scheduled / signal-driven
     regenerations (``regen.regenerate_on_signal``).
     """
-    return apply_plan(supabase, user_id, reason=reason, event_type=event_type)
+    return apply_plan(
+        supabase, user_id, reason=reason, event_type=event_type,
+        expected_exam_id=expected_exam_id,
+    )
 
 
 # ───────────────────────── regen-trigger surfacing ─────────────────────────

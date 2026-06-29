@@ -258,3 +258,16 @@ def test_resolve_target_exam_checked_none_when_genuinely_no_target():
     exam, ok = calibration.resolve_target_exam_checked(sb, "u-1")
     assert ok is True
     assert exam is None
+
+
+def test_resolve_target_exam_checked_unhealthy_on_exams_failure():
+    # The exams lookup must ALSO fail closed — it must not delegate to the shared
+    # resolve_exam_by_* helpers, which swallow DB errors and negative-cache the
+    # miss (that would report a real configured target as absent and fail OPEN).
+    sb = FakeSB(
+        _healthy_tables(profiles=[{"id": "u-1", "target_exam": SLUG}]),
+        fail={"exams"},
+    )
+    exam, ok = calibration.resolve_target_exam_checked(sb, "u-1")
+    assert ok is False
+    assert exam is None
