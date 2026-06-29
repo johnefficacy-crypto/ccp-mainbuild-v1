@@ -66,15 +66,15 @@ backend-only (service-role callers), so revoking the public roles is a no-op for
 | `enqueue_eligibility_recompute(uuid,uuid,text,jsonb)` | 041 | DEFINER | grant service_role; **default PUBLIC kept** | revoke public/anon/authenticated |
 | `upsert_field_review(uuid,text,text,text,text,uuid,text,jsonb,jsonb,text,uuid)` | 127 | DEFINER | grant service_role; **default PUBLIC kept** | revoke public/anon/authenticated |
 | `consume_profile_merge_claim(text,uuid)` | 128 | DEFINER | grant service_role; **default PUBLIC kept** | revoke public/anon/authenticated |
-| `update_pyq_question_review_atomic(uuid,text,uuid,timestamptz)` | 162 | DEFINER | revoke PUBLIC only | revoke anon/authenticated |
-| `start_attempt_from_blueprint(uuid,uuid,uuid,jsonb,jsonb,jsonb,timestamptz)` | 179 | DEFINER | revoke PUBLIC only | revoke anon/authenticated |
-| `fn_invalidate_projection_for_question(uuid)` | 184 | DEFINER | revoke PUBLIC only | revoke anon/authenticated |
-| `fn_block_projection_for_question(uuid,text)` | 184 | DEFINER | revoke PUBLIC only | revoke anon/authenticated |
+| `update_pyq_question_review_atomic(uuid,text,uuid,timestamptz)` | 162 | DEFINER | revoke PUBLIC only | revoke public/anon/authenticated |
+| `start_attempt_from_blueprint(uuid,uuid,uuid,jsonb,jsonb,jsonb,timestamptz)` | 179 | DEFINER | revoke PUBLIC only | revoke public/anon/authenticated |
+| `fn_invalidate_projection_for_question(uuid)` | 184 | DEFINER | revoke PUBLIC only | revoke public/anon/authenticated |
+| `fn_block_projection_for_question(uuid,text)` | 184 | DEFINER | revoke PUBLIC only | revoke public/anon/authenticated |
 
 None of the sixteen is called with a user JWT. The Group A four were explicitly granted to
-`authenticated` (verified **no later migration** revoked them). Migration 202 now revokes
-`PUBLIC`/`anon`/`authenticated` (Groups A–C) or `anon`/`authenticated` (Group D, where
-`PUBLIC` was already revoked) and grants only `service_role` for all sixteen.
+`authenticated` (verified **no later migration** revoked them). Migration 202 now revokes `PUBLIC`/`anon`/`authenticated` and grants only
+`service_role` for all sixteen (Group D's `PUBLIC` revoke is a no-op on a clean DB but
+makes the migration self-contained).
 
 ---
 

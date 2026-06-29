@@ -51,23 +51,26 @@
 --   remove those explicit per-role grants"). REVOKE of a privilege that was never
 --   held is a no-op in PostgreSQL, so this is safe and idempotent.
 --
--- BACKEND IMPACT: none. All eight (4 explicit + 3 mastery + 1 legacy) targets — the seven live call sites all use the service-role client:
+-- BACKEND IMPACT: none. All 16 targets are backend-only; every live call site uses
+-- the service-role client (fn_fanout_alert_event is legacy/dead, trigger-invoked):
 --   • promote_recruitment            -> api/admin_scrape.py, scraping/runner.py
 --   • create/supersede verification  -> scraping/verification_reports.py, verification_gateway.py
 --   • claim_source_for_scrape        -> scraping/runner.py
 --   • apply_mock_mastery_delta       -> study_os/mastery_writer.py
 --   • claim/complete_mock_mastery_retry -> study_os/mock_engine.py
+--   • claim_eligibility_queue / enqueue_eligibility_recompute -> eligibility worker/endpoints
+--   • upsert_field_review            -> api/admin_scrape.py
+--   • consume_profile_merge_claim    -> profile/merge_claim.py
+--   • update_pyq_question_review_atomic / start_attempt_from_blueprint / fn_invalidate_projection_for_question / fn_block_projection_for_question -> exam-intelligence + study_os (service_role)
 --
 -- ROLLBACK
---   To restore the prior (insecure) state:
---     grant execute on function public.promote_recruitment(jsonb) to authenticated;
---     grant execute on function public.create_verification_report(jsonb) to authenticated;
---     grant execute on function public.supersede_and_create_verification_report(uuid, jsonb) to authenticated;
---     grant execute on function public.claim_source_for_scrape(uuid, integer) to authenticated;
---   The three mastery RPCs previously held the default PUBLIC grant:
---     grant execute on function public.apply_mock_mastery_delta(uuid, uuid, uuid, numeric, text) to public;
---     grant execute on function public.claim_mock_mastery_retry(uuid, text, timestamptz) to public;
---     grant execute on function public.complete_mock_mastery_retry(uuid) to public;
+--   Rollback is intentionally NOT provided as an exact prior-state restore: the
+--   "prior state" for these 16 functions is precisely the insecure posture this
+--   migration closes (default PUBLIC for Groups B/C, explicit authenticated for
+--   Group A, PUBLIC-only revoke for Group D), so reverting would re-open the
+--   exposure. If a function must be re-exposed, do it deliberately and narrowly,
+--   e.g. `grant execute on function public.<fn>(<args>) to authenticated;` for the
+--   single function in question — never a blanket revert of this migration.
 
 begin;
 
@@ -150,21 +153,25 @@ grant  execute on function public.consume_profile_merge_claim(text, uuid) to ser
 -- ── Group D: SECURITY DEFINER backend RPCs that revoke only PUBLIC (insufficient —
 --    migration 190 proved Supabase also holds explicit anon/authenticated grants) ──
 -- update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) — def 162
+revoke execute on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) from public;
 revoke execute on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) from anon;
 revoke execute on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) from authenticated;
 grant  execute on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) to service_role;
 
 -- start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz) — def 179
+revoke execute on function public.start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz) from public;
 revoke execute on function public.start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz) from anon;
 revoke execute on function public.start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz) from authenticated;
 grant  execute on function public.start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz) to service_role;
 
 -- fn_invalidate_projection_for_question(uuid) — def 184
+revoke execute on function public.fn_invalidate_projection_for_question(uuid) from public;
 revoke execute on function public.fn_invalidate_projection_for_question(uuid) from anon;
 revoke execute on function public.fn_invalidate_projection_for_question(uuid) from authenticated;
 grant  execute on function public.fn_invalidate_projection_for_question(uuid) to service_role;
 
 -- fn_block_projection_for_question(uuid, text) — def 184
+revoke execute on function public.fn_block_projection_for_question(uuid, text) from public;
 revoke execute on function public.fn_block_projection_for_question(uuid, text) from anon;
 revoke execute on function public.fn_block_projection_for_question(uuid, text) from authenticated;
 grant  execute on function public.fn_block_projection_for_question(uuid, text) to service_role;
