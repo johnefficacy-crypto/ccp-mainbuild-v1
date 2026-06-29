@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { api } from "../../../lib/api";
 
@@ -33,6 +33,9 @@ export function ExamWorkspaceProvider({ children }) {
   const [mgmtLoading, setMgmtLoading] = useState(false);
   const [mgmtError, setMgmtError] = useState("");
   const [mgmtVersionError, setMgmtVersionError] = useState(false);
+  // D04: ref tracks version error so fetchReadiness can check it even when the
+  // two fetches race and readiness resolves after mgmt clears it.
+  const mgmtVersionErrorRef = useRef(false);
 
   const fetchContext = useCallback(async () => {
     if (!exam_id) return;
@@ -67,6 +70,9 @@ export function ExamWorkspaceProvider({ children }) {
       const qs = params.toString();
       const url = `${REVIEW_BASE}/workspace/${encodeURIComponent(exam_id)}/readiness${qs ? `?${qs}` : ""}`;
       const d = await api.get(url);
+      // D04: if mgmt resolved with an unsupported version while this fetch was
+      // in-flight, discard the result rather than restoring suppressed readiness.
+      if (mgmtVersionErrorRef.current) return;
       setReadiness(d);
     } catch (e) {
       setReadinessError(e?.message || "Failed to load readiness");
@@ -80,6 +86,7 @@ export function ExamWorkspaceProvider({ children }) {
     setMgmtLoading(true);
     setMgmtError("");
     setMgmtVersionError(false);
+    mgmtVersionErrorRef.current = false;
     try {
       const params = new URLSearchParams();
       if (cycleId) params.set("cycle_id", cycleId);
@@ -88,6 +95,8 @@ export function ExamWorkspaceProvider({ children }) {
       const d = await api.get(url);
       if (!SUPPORTED_CONTRACT_VERSIONS.includes(d?.contract_version)) {
         // D04: fail-closed — null out mgmt AND legacy readiness to suppress all semantic consumers.
+        // Also set the ref so a concurrent fetchReadiness that resolves after this point discards its result.
+        mgmtVersionErrorRef.current = true;
         setMgmtVersionError(true);
         setMgmtError("unsupported_contract_version");
         setMgmt(null);

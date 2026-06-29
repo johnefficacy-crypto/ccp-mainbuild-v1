@@ -503,3 +503,70 @@ def test_a2_no_phases_steps_3_to_9_not_applicable():
             f"step {step_num} expected 'no_phases_in_cycle' reason, "
             f"got {step['not_applicable_reason']}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Cycle A/B isolation: docs tagged to a different cycle must NOT satisfy the
+# selected cycle's extraction/source readiness (D05/D06 containment).
+# ---------------------------------------------------------------------------
+
+def test_cycle_isolation_other_cycle_doc_not_counted():
+    """D05/D06 Cycle A/B isolation: a doc tagged to cycle-B must not count toward
+    cycle-A's step 3 (source_documents) or step 4 (extraction) readiness."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", locked=1)
+    s.cycle("cy-a", "e1")
+    s.cycle("cy-b", "e1")
+    s.phase("ph1", "e1", "cy-a")
+    # Doc tagged to cycle-B with a succeeded extraction job.
+    s.db["document_assets"].append({
+        "id": "doc-b",
+        "scope": "admin_exam_intelligence",
+        "metadata": {"exam_id": "e1", "exam_cycle_id": "cy-b"},
+        "status": "processed",
+    })
+    s.db["document_processing_jobs"].append({
+        "id": "doc-b-job0",
+        "document_id": "doc-b",
+        "job_type": "text_extract",
+        "status": "succeeded",
+        "created_at": _RECENT,
+    })
+    # Query for cycle-A — doc-B must be excluded.
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cy-a")
+    assert r.status_code == 200
+    cr = r.json()["cycle_readiness"]
+    step3 = next(st for st in cr["steps"] if st["step"] == 3)
+    step4 = next(st for st in cr["steps"] if st["step"] == 4)
+    # No docs for cycle-A -> both steps should be missing, not ready.
+    assert step3["status"] == "missing", f"step3 expected missing, got {step3['status']}"
+    assert step4["status"] == "missing", f"step4 expected missing, got {step4['status']}"
+
+
+def test_cycle_isolation_exam_wide_doc_still_counts():
+    """D05/D06 Cycle isolation: exam-wide docs (no exam_cycle_id in metadata) still
+    count toward the selected cycle's steps — only tagged-to-other-cycle docs are excluded."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", locked=1)
+    s.cycle("cy-a", "e1")
+    s.phase("ph1", "e1", "cy-a")
+    # Exam-wide doc (no exam_cycle_id metadata) with a succeeded job.
+    s.db["document_assets"].append({
+        "id": "doc-wide",
+        "scope": "admin_exam_intelligence",
+        "metadata": {"exam_id": "e1"},  # no exam_cycle_id
+        "status": "processed",
+    })
+    s.db["document_processing_jobs"].append({
+        "id": "doc-wide-job0",
+        "document_id": "doc-wide",
+        "job_type": "text_extract",
+        "status": "succeeded",
+        "created_at": _RECENT,
+    })
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cy-a")
+    assert r.status_code == 200
+    cr = r.json()["cycle_readiness"]
+    step4 = next(st for st in cr["steps"] if st["step"] == 4)
+    # Exam-wide doc succeeded -> extraction step should be ready.
+    assert step4["status"] == "ready", f"step4 expected ready, got {step4['status']}"
