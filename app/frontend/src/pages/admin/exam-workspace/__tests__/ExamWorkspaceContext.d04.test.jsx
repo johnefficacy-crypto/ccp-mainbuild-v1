@@ -186,31 +186,37 @@ describe("D04: readiness gated on management contract validation", () => {
     expect(screen.getByTestId("readiness").textContent).toBe("readiness-null");
   });
 
-  test("P0: cycle change — stale mgmt is cleared immediately, not restored by stale response", async () => {
-    // First fetch returns supported mgmt; second fetch is held in-flight.
-    // Verifies mgmt is null between requests (not showing stale cycle data).
+  test("P0: cycle change — stale mgmt cleared immediately; older request resolving last cannot restore it", async () => {
+    // Two overlapping management requests. gen1 (first/older) is held.
+    // gen2 (second/newer) resolves first with unsupported version.
+    // gen1 then resolves last with supported version — generation guard must discard it.
+    let resolveGen1Mgmt;
+    const gen1MgmtHeld = new Promise((res) => { resolveGen1Mgmt = res; });
     let mgmtCallCount = 0;
-    let resolveSecondMgmt;
-    const secondMgmtHeld = new Promise((res) => { resolveSecondMgmt = res; });
 
     let capturedRefetch;
     const mgmtValues = [];
     function ProbePlus() {
       const ctx = useExamWorkspace();
       capturedRefetch = ctx.refetchMgmt;
-      // Record every distinct mgmt value during the test.
       const val = ctx.mgmt ? "mgmt-ok" : "mgmt-null";
       if (!mgmtValues.length || mgmtValues[mgmtValues.length - 1] !== val) {
         mgmtValues.push(val);
       }
-      return <span data-testid="mgmt">{val}</span>;
+      return (
+        <div>
+          <span data-testid="mgmt">{val}</span>
+          <span data-testid="mgmtVersionError">{String(ctx.mgmtVersionError)}</span>
+        </div>
+      );
     }
 
     api.get.mockImplementation((url) => {
       if (url.includes("/context")) return Promise.resolve(CONTEXT_DATA);
       if (url.includes("/management/")) {
         mgmtCallCount++;
-        return mgmtCallCount === 1 ? Promise.resolve(SUPPORTED_MGMT) : secondMgmtHeld;
+        // gen1 (call 1) is held; gen2 (call 2) returns unsupported immediately.
+        return mgmtCallCount === 1 ? gen1MgmtHeld : Promise.resolve(UNSUPPORTED_MGMT);
       }
       if (url.includes("/readiness")) return Promise.resolve(READINESS_DATA);
       return Promise.resolve({});
@@ -227,22 +233,76 @@ describe("D04: readiness gated on management contract validation", () => {
       </MemoryRouter>
     );
 
-    // First load settles with mgmt-ok.
-    await waitFor(() => expect(screen.getByTestId("mgmt").textContent).toBe("mgmt-ok"));
-
-    // Trigger second fetch (cycle change simulation). mgmt must clear immediately.
+    // gen2 fires immediately (triggered by cycle change) and resolves with unsupported.
     act(() => { capturedRefetch(); });
-    await waitFor(() => expect(screen.getByTestId("mgmt").textContent).toBe("mgmt-null"));
+    await waitFor(() => expect(screen.getByTestId("mgmtVersionError").textContent).toBe("true"));
+    expect(screen.getByTestId("mgmt").textContent).toBe("mgmt-null");
 
-    // Resolve the held second response — a stale response for the FIRST gen
-    // must not restore mgmt (generation guard ensures this; second fetch is gen 2,
-    // a synthetic stale gen 1 attempt is already discarded).
-    await act(async () => { resolveSecondMgmt(SUPPORTED_MGMT); });
+    // Now resolve gen1 (older, stale) with supported mgmt — must be discarded.
+    await act(async () => { resolveGen1Mgmt(SUPPORTED_MGMT); });
 
-    // After second fetch resolves with supported mgmt, mgmt should be ok again.
-    expect(screen.getByTestId("mgmt").textContent).toBe("mgmt-ok");
-    // Crucially, mgmt-null was observed between the two requests (not a jump from ok→ok).
-    expect(mgmtValues).toContain("mgmt-null");
+    // Generation guard must prevent gen1's result from overwriting gen2's committed state.
+    expect(screen.getByTestId("mgmtVersionError").textContent).toBe("true");
+    expect(screen.getByTestId("mgmt").textContent).toBe("mgmt-null");
+  });
+
+  test("P0: readiness_loading does not stay stuck when a newer mgmt generation invalidates an in-flight readiness request", async () => {
+    // gen1 management is supported; gen1 readiness remains in flight.
+    // gen2 management starts and returns unsupported (no gen2 readiness launched).
+    // gen1 readiness settles stale — its finally block refuses to clear loading.
+    // fetchMgmt must reset readiness_loading at the start of each generation
+    // so the operator is not left on a permanent loading skeleton.
+    let resolveGen1Readiness;
+    const gen1ReadinessHeld = new Promise((res) => { resolveGen1Readiness = res; });
+    let mgmtCallCount = 0;
+
+    let capturedRefetch;
+    function ProbePlus() {
+      const ctx = useExamWorkspace();
+      capturedRefetch = ctx.refetchMgmt;
+      return (
+        <div>
+          <span data-testid="readiness">{ctx.readiness ? "readiness-ok" : "readiness-null"}</span>
+          <span data-testid="readiness_loading">{String(ctx.readiness_loading)}</span>
+          <span data-testid="mgmtVersionError">{String(ctx.mgmtVersionError)}</span>
+        </div>
+      );
+    }
+
+    api.get.mockImplementation((url) => {
+      if (url.includes("/context")) return Promise.resolve(CONTEXT_DATA);
+      if (url.includes("/management/")) {
+        mgmtCallCount++;
+        return Promise.resolve(mgmtCallCount === 1 ? SUPPORTED_MGMT : UNSUPPORTED_MGMT);
+      }
+      if (url.includes("/readiness")) return gen1ReadinessHeld;
+      return Promise.resolve({});
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/exam-intelligence/exams/exam1"]}>
+        <Routes>
+          <Route
+            path="/admin/exam-intelligence/exams/:exam_id"
+            element={<ExamWorkspaceProvider><ProbePlus /></ExamWorkspaceProvider>}
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // gen1 management succeeded and launched gen1 readiness (still in flight).
+    // We don't wait for readiness — it is held.
+
+    // gen2 fires (cycle change), returns unsupported — no gen2 readiness.
+    await act(async () => { await capturedRefetch(); });
+    expect(screen.getByTestId("mgmtVersionError").textContent).toBe("true");
+
+    // Now gen1 readiness settles stale.
+    await act(async () => { resolveGen1Readiness(READINESS_DATA); });
+
+    // readiness must stay null and readiness_loading must be false (not stuck).
+    expect(screen.getByTestId("readiness").textContent).toBe("readiness-null");
+    expect(screen.getByTestId("readiness_loading").textContent).toBe("false");
   });
 
   test("P1: refetchReadiness routes through fetchMgmt — management contract revalidated", async () => {

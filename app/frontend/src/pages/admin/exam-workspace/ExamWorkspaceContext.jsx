@@ -96,11 +96,15 @@ export function ExamWorkspaceProvider({ children }) {
     setMgmtLoading(true);
     setMgmtError("");
     setMgmtVersionError(false);
-    // D04: clear both stale readiness AND stale mgmt so semantic consumers
-    // (SmartHeader, action console) do not render the previous cycle's verdict
-    // until the new response validates and commits.
+    // D04: clear all stale state so semantic consumers (SmartHeader, action
+    // console) cannot render the previous cycle's data while a new request is
+    // in flight, and so readiness_loading cannot get stuck if a prior
+    // generation's readiness request settles stale (its finally block refuses
+    // to clear loading when mgmtGenRef.current !== expectedGen).
     setReadiness(null);
     setMgmt(null);
+    setReadinessLoading(false);
+    setReadinessError("");
     try {
       const params = new URLSearchParams();
       if (cycleId) params.set("cycle_id", cycleId);
