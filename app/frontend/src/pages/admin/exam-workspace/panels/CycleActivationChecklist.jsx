@@ -25,7 +25,8 @@ export default function CycleActivationChecklist() {
     );
   }
 
-  if (mgmtError) {
+  // Show generic network/fetch error — but not the version sentinel (handled below after mgmt check)
+  if (mgmtError && mgmtError !== "unsupported_contract_version") {
     return (
       <div data-testid="cycle-checklist-error" className="card">
         <p className="err-row">Error loading checklist: {mgmtError}</p>
@@ -57,7 +58,14 @@ export default function CycleActivationChecklist() {
   }
 
   const checklist = mgmt.cycle_readiness;
-  if (!checklist) return null;
+  // A7: cycle_readiness_error is null but cycle_readiness is also null — computation failed silently
+  if (!checklist) {
+    return (
+      <div data-testid="cycle-checklist-unavailable" className="card">
+        <p className="err-row">Cycle activation checklist is temporarily unavailable. Try refreshing.</p>
+      </div>
+    );
+  }
 
   return (
     <div data-testid="cycle-checklist" className="card">

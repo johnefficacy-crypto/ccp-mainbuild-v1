@@ -6,6 +6,9 @@ const ExamWorkspaceContext = createContext(null);
 
 const REVIEW_BASE = "/api/admin/exam-intelligence";
 
+// D04: contract versions this client knows how to interpret
+const SUPPORTED_CONTRACT_VERSIONS = [1];
+
 export function ExamWorkspaceProvider({ children }) {
   const { exam_id } = useParams();
   const [searchParams] = useSearchParams();
@@ -81,6 +84,11 @@ export function ExamWorkspaceProvider({ children }) {
       const qs = params.toString();
       const url = `${REVIEW_BASE}/management/exams/${encodeURIComponent(exam_id)}${qs ? `?${qs}` : ""}`;
       const d = await api.get(url);
+      // D04: fail-closed version guard — set mgmtError if version is unsupported,
+      // but still set mgmt so the component can render the version-error UI.
+      if (!SUPPORTED_CONTRACT_VERSIONS.includes(d?.contract_version)) {
+        setMgmtError("unsupported_contract_version");
+      }
       setMgmt(d);
     } catch (e) {
       setMgmtError(e?.message || "Failed to load management data");

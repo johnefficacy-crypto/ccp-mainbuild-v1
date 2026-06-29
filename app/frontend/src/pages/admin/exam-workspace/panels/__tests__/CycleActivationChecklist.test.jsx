@@ -108,14 +108,14 @@ test("shows cycle_not_found message when error code is set", () => {
   expect(screen.getByTestId("cycle-checklist-cycle-not-found")).toBeInTheDocument();
 });
 
-test("renders nothing when mgmt has no cycle_readiness and no error", () => {
+test("shows unavailable state when mgmt has no cycle_readiness and no error (A7)", () => {
   mockContextValue = {
     mgmt: { contract_version: 1, cycle_readiness: null, cycle_readiness_error: null },
     mgmtLoading: false,
     mgmtError: "",
   };
-  const { container } = render(<CycleActivationChecklist />);
-  expect(container.firstChild).toBeNull();
+  render(<CycleActivationChecklist />);
+  expect(screen.getByTestId("cycle-checklist-unavailable")).toBeInTheDocument();
 });
 
 test("renders all steps when checklist is available", () => {
