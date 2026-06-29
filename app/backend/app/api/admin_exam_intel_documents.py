@@ -384,9 +384,25 @@ def complete_document_upload(
         logger.exception("admin text-extract enqueue failed for doc=%s", row["id"])
         # Enqueue failure must not strand the document in 'processing' — a later
         # call would be rejected as already_processing with no retry path.
-        # CAS rollback: only restore to 'uploaded' if we are still in 'processing'
-        # (i.e. the archive endpoint did not race past us while handling the error).
-        sb.table("document_assets").update({"status": "uploaded"}).eq("id", row["id"]).eq("status", "processing").execute()
+        # CAS rollback: only restore to 'uploaded' if we are still in 'processing'.
+        # If archive won the race the row is already 'archived'; inspect the result
+        # before deciding what to tell the caller.
+        rollback_rows = (
+            sb.table("document_assets")
+            .update({"status": "uploaded"})
+            .eq("id", row["id"])
+            .eq("status", "processing")
+            .execute()
+            .data or []
+        )
+        if not rollback_rows:
+            # Archive won — caller must not retry complete-upload.
+            refreshed = _load_admin_asset(sb, row["id"])
+            if refreshed and refreshed.get("status") == "archived":
+                raise HTTPException(
+                    status_code=409,
+                    detail={"error": "document_archived", "message": "document was archived before extraction could begin"},
+                )
         raise HTTPException(
             status_code=502,
             detail={"error": "enqueue_failed", "message": "text extraction job could not be queued; document status restored to uploaded — retry complete-upload"},
