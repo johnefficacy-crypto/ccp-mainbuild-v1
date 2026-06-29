@@ -25,14 +25,30 @@ jobs:
           RENAMED=$(git diff --name-only --diff-filter=R "$BASE"...HEAD -- 'app/supabase/migrations/*.sql' || true)
 
           if [[ -n "$DELETED" || -n "$RENAMED" ]]; then
-            echo "ERROR: applied migrations must not be deleted or renamed."
-            echo "Deleted: $DELETED"
-            echo "Renamed: $RENAMED"
-            echo ""
-            echo "If you need to undo an applied migration, write a NEW forward"
-            echo "migration that reverses the change. Never modify a migration"
-            echo "that exists on main."
-            exit 1
+            # Exception: allow renaming a migration whose version number is a
+            # duplicate on main (two files share the same number). The rename
+            # resolves the Supabase schema_migrations unique-key violation; it
+            # is the only valid forward path when a duplicate slips through.
+            ALL_EXEMPT=true
+            for f in $DELETED $RENAMED; do
+              num=$(echo "$f" | sed -E 's|.*/([0-9]+)_.*|\1|')
+              count=$(echo "$ON_MAIN" | grep -cx "$num" || true)
+              if [[ "$count" -lt 2 ]]; then
+                ALL_EXEMPT=false
+                break
+              fi
+            done
+            if [[ "$ALL_EXEMPT" == "false" ]]; then
+              echo "ERROR: applied migrations must not be deleted or renamed."
+              echo "Deleted: $DELETED"
+              echo "Renamed: $RENAMED"
+              echo ""
+              echo "If you need to undo an applied migration, write a NEW forward"
+              echo "migration that reverses the change. Never modify a migration"
+              echo "that exists on main."
+              exit 1
+            fi
+            echo "OK: rename/delete is a duplicate-version hotfix — exempted."
           fi
 
           if [[ -z "$ADDED" ]]; then
