@@ -1,0 +1,43 @@
+# Mastery Shadow Gate — Validation Fingerprint Manifest v2
+#
+# Supersedes the informal 18-file set used in the PR-6 inspection.
+# Added migration 180 (shadow idempotency) and migration 182 (correction
+# draft atomic RPCs) which were absent from v1 and are safety-critical.
+#
+# Frozen: 2026-06-29
+# Frozen at main SHA: c9c44a9e8cb993de3ddfec50803649a3ec461bd0
+# All Lane A blocking PRs merged before this manifest was frozen:
+#   PR #745  fix/mastery-error-pattern-persistence  (error_patterns schema)
+#   PR #746  fix/a4-mastery-live-allowlist-pinned-mode  (allowlist + effective mode)
+#   PR #753  fix/a4-sync-submit-allowlist-bypass  (pinned-mode + A4 sync fix)
+#
+# To compute the combined fingerprint at any SHA, run from repo root:
+#   sha256sum $(cat docs/ops/mastery_validation_fingerprint_manifest_v2.txt \
+#               | grep -v '^#' | grep -v '^$') | sha256sum
+#
+# The combined fingerprint must be identical at window_start and window_end.
+# Any change to a file in this manifest resets the shadow observation clock.
+#
+# DO NOT add files to this manifest without operator approval.
+# DO NOT remove files from this manifest without operator approval.
+
+app/backend/app/study_os/mastery_writer.py
+app/backend/app/study_os/attempt_classification_readiness.py
+app/backend/app/study_os/attempt_derivation.py
+app/backend/app/study_os/mastery_engine/__init__.py
+app/backend/app/study_os/mastery_engine/correction_tasks.py
+app/backend/app/study_os/mastery_engine/error_patterns.py
+app/backend/app/study_os/mastery_engine/mastery_delta.py
+app/backend/app/study_os/mastery_engine/schemas.py
+app/backend/app/study_os/mastery_engine/service.py
+app/backend/app/study_os/correction_policy.py
+app/backend/app/study_os/mock_engine.py
+app/backend/app/study_os/mocks.py
+app/backend/app/api/mock_engine.py
+app/backend/app/api/canonical.py
+app/backend/app/api/study_os.py
+app/backend/app/api/admin_study_os.py
+tools/mastery_shadow_analysis/shadow_analysis.py
+app/supabase/migrations/180_mock_mastery_shadow_idempotency.sql
+app/supabase/migrations/181_mock_correction_tasks_uniqueness.sql
+app/supabase/migrations/182_mock_correction_draft_atomic_rpcs.sql

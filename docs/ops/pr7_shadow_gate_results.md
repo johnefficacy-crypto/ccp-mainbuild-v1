@@ -31,23 +31,27 @@ has not started. No threshold evaluation has occurred.
 
 ## Candidate Change Since PR-6 Inspection
 
-Two code-level PRs merged after the PR-6 inspection baseline SHA
-(`ba3ea3516f10d07d4708a12942e03162d2f2da50`). Both modified files in the
-validation fingerprint set:
+Five code-level PRs merged after the PR-6 inspection baseline SHA
+(`ba3ea3516f10d07d4708a12942e03162d2f2da50`), all modifying files in the
+v2 validation fingerprint set:
 
 | PR | Files changed in fingerprinted set | Merge time (UTC) |
 |----|-----------------------------------|-----------------|
 | #723 shadow analysis redesign | `tools/mastery_shadow_analysis/shadow_analysis.py` | 2026-06-20T07:41:05Z |
-| #726 correction atomicity fix | `app/backend/app/study_os/mastery_writer.py`, `app/backend/app/study_os/mocks.py` | 2026-06-20T07:48:11Z |
+| #726 correction atomicity fix + migration 182 | `mastery_writer.py`, `mocks.py`, `migrations/182_mock_correction_draft_atomic_rpcs.sql` | 2026-06-20T07:48:11Z |
+| #745 error-pattern schema fix | `mastery_engine/error_patterns.py`, `mastery_engine/schemas.py`, `mastery_writer.py` | 2026-06-21T15:36:02Z |
+| #746 per-user allowlist + effective-mode resolver | `study_os/mock_engine.py`, `mastery_writer.py` | 2026-06-21T15:36:31Z |
+| #753 pinned-mode + A4 sync-submit fix | `api/mock_engine.py`, `study_os/mock_engine.py` | 2026-06-21T19:14:59Z |
 
-This means the PR-6 inspection fingerprint
+The PR-6 inspection fingerprint
 (`6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`) is
-superseded. No new baseline fingerprint will be established until
-`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` is created and
-frozen (see Prerequisites below). Once all prerequisites are met, the
-operator must compute a new baseline fingerprint using the files listed in
-that manifest at the approved candidate SHA and record it here before
-starting the clock.
+superseded. The v2 fingerprint manifest is now frozen at
+`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (20 files;
+combined fingerprint at `main @ c9c44a9e`:
+`c37094cc620051bb781434e0c766114b28e9a4ea5cf52e964c996bb6b4b4feb0`).
+Once the remaining prerequisites are met, the operator must compute a new
+baseline fingerprint using the manifest at the approved candidate SHA and
+record it here before starting the clock.
 
 ---
 
@@ -55,32 +59,34 @@ starting the clock.
 
 Complete in order — each step depends on those above it.
 
-1. **Lane A code merges (blocking):** The user allowlist /
-   effective-mode implementation PR and the error-pattern writer /
-   schema remediation PR must both merge to `main` before any
-   fingerprint manifest is frozen.
-2. **Migration 182 deployment:** Dry-run migration 182 with
-   `BEGIN` / `ROLLBACK`; confirm anon / authenticated roles cannot
-   `EXECUTE` the three RPCs; apply to the target environment.
-3. **Freeze the v2 fingerprint manifest:** Create
-   `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` listing
-   all safety-critical runtime and migration files, including the
-   allowlist, error-pattern, and migration 182 files added in steps 1–2.
-   This manifest must be approved before any baseline fingerprint is
-   computed.
-4. **PR-6 clean operator run:** Run the full 12-gate PR-6 operator
-   session on one pinned SHA; confirm Gate 9 passes (allowlist deployed
-   and verified) and `FF_MOCK_MASTERY_WRITES=shadow` for the run.
+1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
+   effective-mode (PR #746, PR #753) and error-pattern writer / schema
+   remediation (PR #745) merged to `main`.
+2. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
+   `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
+   confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
+   (`ensure_mock_correction_drafts`, `ensure_mock_correction_draft`,
+   `replace_manual_mock_correction_drafts`); apply to the target
+   environment.
+3. ✅ **Freeze the v2 fingerprint manifest (DONE — 2026-06-29):**
+   `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` created
+   (20 files). Combined fingerprint at `main @ c9c44a9e`:
+   `c37094cc620051bb781434e0c766114b28e9a4ea5cf52e964c996bb6b4b4feb0`.
+4. **PR-6 clean operator run (OPERATOR RERUN PENDING):** Run the full
+   12-gate PR-6 operator session on one pinned SHA; confirm Gate 9
+   passes (allowlist deployed with named user(s) in
+   `FF_MOCK_MASTERY_LIVE_USER_IDS`) and `FF_MOCK_MASTERY_WRITES=shadow`
+   for the run.
 5. **Render SHA confirmation:** Operator confirms Render deployed SHA
    (B) matches the approved candidate main SHA (A).
 6. **FF confirmation:** Confirm `FF_MOCK_MASTERY_WRITES=shadow`
    continuously from deploy time.
 7. **Establish window_start:** Record exact UTC deploy timestamp as
-   `window_start`. Only after the above is complete.
-8. **Compute baseline fingerprint:** Using the files listed in
-   `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` at the
-   confirmed `window_start` SHA; record hash here and in the window
-   record below.
+   `window_start`. Only after steps 2–6 are complete.
+8. **Compute baseline fingerprint:** Run `sha256sum $(grep -v '^#'
+   docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v
+   '^$') | sha256sum` at the confirmed `window_start` SHA; record hash
+   here and in the window record below.
 
 ---
 
