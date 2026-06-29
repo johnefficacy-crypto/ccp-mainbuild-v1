@@ -57,7 +57,14 @@ function AffectsCell({ row }) {
   return (
     <div className="flex flex-wrap gap-1">
       {active.map(([, label]) => (
-        <span key={label} className="pill pill-amber text-[10px]"><span>{label}</span></span>
+        <span
+          key={label}
+          className="pill pill-amber text-[10px]"
+          title="Set at row creation; contact admin to correct"
+          aria-label={`${label} — Set at row creation; contact admin to correct`}
+        >
+          <span>{label}</span>
+        </span>
       ))}
     </div>
   );

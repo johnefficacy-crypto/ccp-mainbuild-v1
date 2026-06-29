@@ -58,8 +58,8 @@ export default function CompetitionMetricsTable({ items, onReview, busyRowId }) 
     <div className="soft-card grain relative overflow-hidden rounded-[18px]" data-testid="competition-metrics-table">
       <table className="tbl">
         <thead>
+          {/* D4: "Exam" column removed — table is always pre-filtered by exam.id in CompetitionPanel */}
           <tr>
-            <th>Exam</th>
             <th className="right">Vacancy</th>
             <th className="right">Applicants</th>
             <th className="right">Selection ratio</th>
@@ -76,7 +76,6 @@ export default function CompetitionMetricsTable({ items, onReview, busyRowId }) 
             const busy = busyRowId === c.id;
             return (
               <tr key={c.id} className="border-t border-clay-100 align-top">
-                <td className="px-4 py-2 text-xs">{humanizeToken(c.exam || c.exam_slug) || "—"}</td>
                 <td className="px-4 py-2 text-right tabular-nums">
                   {c.vacancy_total ?? "—"}
                 </td>

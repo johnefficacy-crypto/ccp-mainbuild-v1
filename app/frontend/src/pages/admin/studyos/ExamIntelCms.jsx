@@ -345,6 +345,10 @@ const ENTITY_CONFIG = {
   },
   subjects: {
     label: "Subjects",
+    // M4: subject_id (the row's own UUID) is included in the table columns so operators can
+    // reference it when setting up topic scoping fields. renderCellValue truncates UUIDs via
+    // humanizeToken — raw UUIDs never appear verbatim. Exam-family filtering is not yet
+    // implemented for the subjects entity; filter by subject_group or slug instead.
     fields: [
       { key: "slug", label: "slug", required: true },
       { key: "name", label: "name", required: true },
@@ -1103,6 +1107,10 @@ export default function AdminExamIntelCms() {
           coverage, and policy updates. Per spec §12 #4: CMS <strong>feeds</strong> the review queue —
           rows with a review_status / trust_status land at <code>pending</code>; promote them via the
           existing review queue, not here.
+        </p>
+        {/* E5: CMS = direct entity form for repair/power-users only; use the guided wizard at Exam Management → More → Create exam for normal exam creation. */}
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2 max-w-2xl" data-testid="cms-wizard-distinction-note">
+          For new exam creation, prefer the guided wizard (Exam Management &rarr; More &rarr; Create exam); this CMS form is for direct entity repair by power-users only.
         </p>
       </div>
 

@@ -121,6 +121,8 @@ function MoreMenu() {
             onClick={() => setOpen(false)}
           >
             Create exam
+            {/* E5: wizard = multi-step validated creation with mandatory field checks at each step */}
+            <span className="block text-xs text-gray-400 mt-0.5">Guided wizard — validates each step before advancing.</span>
           </Link>
         </div>
       )}
