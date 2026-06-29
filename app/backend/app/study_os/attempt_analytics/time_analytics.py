@@ -22,11 +22,11 @@ def compute_dwell_times(
 
     sorted_events = []
     for e in events:
-        if not e.get("created_at"):
+        if not e.get("occurred_at"):
             malformed_events += 1
             continue
         sorted_events.append(e)
-    sorted_events.sort(key=lambda e: _parse(e["created_at"]))
+    sorted_events.sort(key=lambda e: _parse(e["occurred_at"]))
     for i, evt in enumerate(sorted_events):
         # PR2b compatibility alias. TODO(PR-integrate follow-up): once PR2b
         # locks a single event naming contract, deprecate + remove this alias.
@@ -36,12 +36,12 @@ def compute_dwell_times(
         if not qid:
             malformed_events += 1
             continue
-        t0 = _parse(evt["created_at"])
+        t0 = _parse(evt["occurred_at"])
         events_used += 1
         end = _parse(submitted_at) if submitted_at else t0
         for nxt in sorted_events[i + 1 :]:
             if nxt.get("event_type") in {"question.visited", "question_visited"}:
-                end = _parse(nxt["created_at"])
+                end = _parse(nxt["occurred_at"])
                 break
         by_q[qid] = max(0, int((end - t0).total_seconds()))
 
