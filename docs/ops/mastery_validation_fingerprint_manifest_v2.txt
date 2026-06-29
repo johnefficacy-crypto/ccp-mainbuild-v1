@@ -17,18 +17,17 @@
 # Changes to either file alter event data reaching the backend ingest
 # path without changing the backend fingerprint.
 #
-# STATUS: FREEZE PENDING
-# Manifest boundary is final. Hash is NOT yet the freeze hash:
-#   - time_analytics.py has a known bug (reads created_at; DB writes
-#     occurred_at) — all production events are currently skipped and
-#     analytics falls back to time_spent_sec. Fix PR pending.
-#   - MockAttemptShell.jsx does not emit question.visited for question 1
-#     on initial load. Fix PR pending.
-# Freeze hash must be recomputed at the post-fix main SHA after both PRs
-# merge. Do NOT use the pre-fix hash below as the window_start hash.
+# STATUS: FROZEN
+# Both runtime bugs fixed (PR #795: time_analytics.py occurred_at fix;
+# PR #793: MockAttemptShell.jsx first-visit Q1 fix). Freeze hash computed
+# at post-fix main SHA 1679adb8 (2026-06-29) after both PRs merged.
+#
+# FREEZE HASH (main @ 1679adb8, 32 files, post-fix):
+#   b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b
 #
 # Pre-fix reference hash (main @ c9c44a9e, 32 files, BUGS PRESENT):
 #   96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b
+# (DO NOT use pre-fix hash as window_start hash — bugs present.)
 #
 # To compute the combined fingerprint at any SHA, run from repo root:
 #
