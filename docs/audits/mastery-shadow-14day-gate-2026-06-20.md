@@ -127,8 +127,14 @@ merged. Once all prerequisites in `docs/ops/pr7_shadow_gate_results.md`
 are satisfied, the operator must compute a new baseline fingerprint using
 that manifest at the confirmed candidate SHA before starting the clock.
 
-**Required action:** complete all Lane A prerequisites; freeze the v2
-manifest; then establish new baseline fingerprint after PR-6 PASS.
+**Status (2026-06-29):** All telemetry P0/P1 defects fixed (PR #800); manifest
+boundary expanded to 34 files — `core/auth.py` + `lib/supabase.js` added
+(operator-approved). Candidate freeze hash (34 files):
+`57e1ea1ead57c32c820cf73c1e9fda636f7dfe00b3c11ceae984f527ce37ef7d`.
+Migration 182 operator-validated. Manifest remains FREEZE PENDING until
+boundary-expansion PR merges and operator verifies hash at deployed SHA.
+14-day clock must not start until freeze hash is confirmed and PR-6 reruns.
+See `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` for authoritative state.
 
 ---
 

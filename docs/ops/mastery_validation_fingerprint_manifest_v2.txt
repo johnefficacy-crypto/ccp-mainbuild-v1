@@ -17,50 +17,64 @@
 # Changes to either file alter event data reaching the backend ingest
 # path without changing the backend fingerprint.
 #
-# STATUS: FREEZE PENDING — boundary NOT closed; telemetry-validity defects open
-# The two runtime fixes that ORIGINALLY blocked the freeze are merged to main:
-#   - time_analytics.py created_at->occurred_at + payload.question_id fix
-#     (PR #795, fix/time-analytics-v2).
-#   - MockAttemptShell.jsx emits question.visited for question 1 on initial
-#     load (PR #793, fix/mock-attempt-first-visit).
-# However, the v2 boundary CANNOT be declared FROZEN yet (PR #796 review):
-#   [P0] attemptEventBus beacon flush sends no Authorization header; the
-#        events endpoint requires get_current_user (401), so visibility-
-#        hidden/unmount batches (incl. question.visited anchors) are dropped
-#        after splice(0). _flush() also never checks response.ok and discards
-#        the batch on 401/409/5xx. Event delivery/retry must be fixed + tested.
-#   [P0] compute_dwell_times() setdefaults the time_spent_sec fallback BEFORE
-#        the len(by_q) < len(responses) check, so partial event coverage never
-#        emits the documented "partial event coverage; fallback applied"
-#        warning. Needs an explicit event_covered_qids/fallback_question_count
-#        signal + a gate criterion rejecting unexpected fallback.
-#   [P1] Boundary not closed over event-acceptance deps: core/auth.py (accepts
-#        every client event batch) and frontend lib/supabase.js (token source)
-#        can change ingestion without changing this fingerprint. Expand the
-#        approved boundary (operator approval) and recompute, or document +
-#        enforce immutability during the window.
+# STATUS: FREEZE PENDING — boundary expansion in progress (operator-approved)
 #
-# The hash below is therefore a REFERENCE fingerprint at this SHA, NOT the
-# window_start hash. The freeze hash must be recomputed at a new post-fix main
-# SHA after the boundary is closed and the telemetry defects above clear.
+# Telemetry-validity P0 fixes merged (PR #800, 2026-06-29):
+#   - attemptEventBus authenticated delivery fixed (Authorization header now
+#     sent; response.ok checked; retry on failure).
+#   - compute_dwell_times() partial-fallback reporting fixed (coverage check
+#     before setdefault; fallback_question_count emitted).
 #
-# Reference fingerprint (main @ 1679adb8, current 32-file boundary):
-#   b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b
+# Boundary expanded (operator-approved, this PR): 32 → 34 files.
+#   Added event-acceptance dependencies missing from v2 boundary:
+#   + app/backend/app/core/auth.py  (accepts/rejects every client event batch)
+#   + app/frontend/src/lib/supabase.js  (token source for Authorization header)
+#   Either file changing ingestion without appearing in this manifest was the
+#   [P1] gap identified in PR #796 review. Now closed.
 #
-# Pre-fix reference hash (main @ c9c44a9e, 32 files, BUGS PRESENT):
-#   96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b
+# TELEMETRY-QUALITY GATE (required for FROZEN; must pass at window_start):
+#   The fail-closed command below produces a per-file SHA-256 attestation.
+#   In addition, the shadow_analysis CLI must report ALL of the following
+#   at window_start before the 14-day clock may start:
+#     events_used            > 0  (events are reaching the backend)
+#     event/visit coverage   100% per attempt (no fallback_question_count > 0
+#                                 in the first week unless documented)
+#     fallback_question_count = 0 (no per-question time_spent_sec fallback)
+#     ingest_rejection_count  = 0 (no 401/409/5xx on the events endpoint)
+#     event_delivery_success  = true (flush ACK rate 100% in rehearsal window)
 #
-# To compute the combined fingerprint at any SHA, run from repo root:
+# CANDIDATE FREEZE HASH (34 files, computed at this PR's HEAD):
+#   57e1ea1ead57c32c820cf73c1e9fda636f7dfe00b3c11ceae984f527ce37ef7d
+# (combined sha256 of the per-file sha256sum list — see command below)
+#
+# REMAINING BEFORE FROZEN:
+#   (i)  Merge this boundary-expansion PR to main.
+#   (ii) Operator recomputes the 34-file hash at the confirmed deployed SHA
+#        (step 8) and confirms it equals the candidate above. If it differs,
+#        a manifest file changed between this PR and deployment — stop and
+#        re-review. Do NOT copy the candidate value blindly into the window
+#        record without running the fail-closed command at the deployed SHA.
+#
+# Reference fingerprints (NOT the freeze hash):
+#   main @ b7ca717f, 32-file boundary (pre-expansion, PR #800):
+#     b1f9626471237ca223e5ee45af23e4c44eb2d3e9a7705bd1fa1834e3474df054
+#   main @ 1679adb8, 32-file boundary (bugs fixed, pre-PR#800):
+#     b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b
+#   main @ c9c44a9e, 32 files, BUGS PRESENT — DO NOT USE:
+#     96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b
+#
+# To compute the combined fingerprint (fail-closed, produces per-file list):
 #
 #   set -euo pipefail
 #   readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-#   _expected=32
+#   _expected=34
 #   _actual=${#_files[@]}
 #   [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
 #   for _f in "${_files[@]}"; do
 #     [[ -f "$_f" ]] || { echo "ERROR: missing $_f" >&2; exit 1; }
 #   done
-#   sha256sum "${_files[@]}" | sha256sum
+#   sha256sum "${_files[@]}" | tee mastery-fingerprint-files.sha256
+#   sha256sum mastery-fingerprint-files.sha256
 #
 # The combined fingerprint must be identical at window_start and window_end.
 # Any change to a file in this manifest resets the shadow observation clock.
@@ -100,3 +114,5 @@ app/supabase/migrations/181_mock_correction_tasks_uniqueness.sql
 app/supabase/migrations/182_mock_correction_draft_atomic_rpcs.sql
 app/frontend/src/pages/study/mocks/MockAttemptShell.jsx
 app/frontend/src/pages/study/mocks/attemptEventBus.js
+app/backend/app/core/auth.py
+app/frontend/src/lib/supabase.js

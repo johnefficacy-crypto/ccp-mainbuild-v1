@@ -64,28 +64,27 @@ yet closed (PR #796 review found open telemetry-validity defects):**
   on initial load (visit effect ran before `attempt` populated
   `questions_ref`). Fixed and merged: PR #793 (`fix/mock-attempt-first-visit`).
 
-Still-open blockers before the boundary may be FROZEN (see the
-telemetry-quality gate below and prerequisite step 2):
-- **[P0]** `attemptEventBus._flushBeacon()` posts via `navigator.sendBeacon`
-  with no `Authorization` header; the events endpoint requires
-  `get_current_user` (401), so visibility-hidden/unmount batches — including
-  `question.visited` anchors — are dropped after `splice(0)`. `_flush()` also
-  never checks `response.ok` and discards on 401/409/5xx.
-- **[P0]** `compute_dwell_times()` applies the `time_spent_sec` fallback via
-  `setdefault` BEFORE the `len(by_q) < len(responses)` check, so partial event
-  coverage never emits the documented `partial event coverage; fallback
-  applied` warning required by `docs/mock_engine/attempt_analytics.md`.
-- **[P1]** Manifest boundary is not closed over `core/auth.py` (event-batch
-  acceptance) or frontend `lib/supabase.js` (token source); either can change
-  ingestion without changing the fingerprint.
+All P0/P1 blockers now resolved:
+- **[P0] FIXED (PR #800)** `attemptEventBus` authenticated delivery fixed —
+  `Authorization` header now sent; `response.ok` checked; retry on failure.
+- **[P0] FIXED (PR #800)** `compute_dwell_times()` partial-fallback reporting
+  fixed — coverage check runs before `setdefault`; `fallback_question_count`
+  emitted when partial.
+- **[P1] FIXED (this PR)** Boundary expanded to include `core/auth.py` and
+  `lib/supabase.js` (32 → 34 files, operator-approved).
 
-Pre-fix reference hash at `main @ c9c44a9e` (32 files; bugs present):
-`96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b`
+Reference fingerprints (NOT the freeze hash):
+- `main @ b7ca717f`, 32-file boundary (PR #800, pre-expansion):
+  `b1f9626471237ca223e5ee45af23e4c44eb2d3e9a7705bd1fa1834e3474df054`
+- `main @ 1679adb8`, 32-file boundary (pre-PR#800):
+  `b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`
+- `main @ c9c44a9e`, 32 files, BUGS PRESENT — DO NOT USE:
+  `96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b`
 
-Reference fingerprint at `main @ 1679adb8` (current 32-file boundary) — this
-is NOT the window_start hash; the freeze hash must be recomputed at a new
-post-fix SHA after the boundary is closed and the P0/P1 defects clear:
-`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`
+**CANDIDATE FREEZE HASH (34 files, computed at this PR's HEAD):**
+`57e1ea1ead57c32c820cf73c1e9fda636f7dfe00b3c11ceae984f527ce37ef7d`
+Operator must recompute at the confirmed deployed SHA (step 8) and confirm
+equality. Do not use as window_start hash without that verification.
 
 ---
 
@@ -97,20 +96,16 @@ Steps 3–8 are sequential and each depends on those above it.
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — boundary not yet
-   closed):** Current boundary is 32 files (20 original + `attempt_analytics`
-   7 + event-backend 3 + frontend event producers 2: `MockAttemptShell.jsx`,
-   `attemptEventBus.js`). The two originally-blocking bug fixes are merged
-   (PR #795 `time_analytics`; PR #793 `MockAttemptShell` first-visit), and a
-   reference fingerprint was computed at `main @ 1679adb8`
-   (`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`).
-   This is NOT yet the freeze hash. Before FROZEN (PR #796 review): (i) fix or
-   explicitly gate the P0 event-delivery (beacon auth/retry) and P0 partial-
-   fallback reporting defects; (ii) close the boundary over `core/auth.py` and
-   frontend `lib/supabase.js` (operator-approved manifest expansion) and
-   recompute; (iii) commit a per-file SHA-256 attestation (or a CI check that
-   recomputes the digest at the pinned SHA). Then recompute the freeze hash at
-   the new post-fix `main` SHA and record it here.
+2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — merge + verify
+   remaining):** Boundary expanded to 34 files (32 original + `core/auth.py`
+   + `lib/supabase.js`, operator-approved). P0 telemetry fixes merged PR
+   #800. P0 fallback-reporting fixed PR #800. Candidate freeze hash computed
+   at this PR's HEAD (34 files):
+   `57e1ea1ead57c32c820cf73c1e9fda636f7dfe00b3c11ceae984f527ce37ef7d`
+   Remaining: (i) merge this PR to main; (ii) operator recomputes at deployed
+   SHA (step 8) and confirms equality; (iii) telemetry-quality gate must pass
+   at window_start (events_used > 0, visit coverage 100%, fallback_count = 0,
+   ingest_rejection = 0, delivery_success = true).
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
    confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
@@ -134,16 +129,18 @@ Steps 3–8 are sequential and each depends on those above it.
    ```bash
    set -euo pipefail
    readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-   _expected=32
+   _expected=34
    _actual=${#_files[@]}
    [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
    for _f in "${_files[@]}"; do
      [[ -f "$_f" ]] || { echo "ERROR: missing $_f" >&2; exit 1; }
    done
-   sha256sum "${_files[@]}" | sha256sum
+   sha256sum "${_files[@]}" | tee mastery-fingerprint-files.sha256
+   sha256sum mastery-fingerprint-files.sha256
    ```
 
-   Record hash here and in the window record below.
+   Record the combined hash here and in the window record below.
+   Confirm it equals candidate: `57e1ea1ead57c32c820cf73c1e9fda636f7dfe00b3c11ceae984f527ce37ef7d`
 
 ---
 
