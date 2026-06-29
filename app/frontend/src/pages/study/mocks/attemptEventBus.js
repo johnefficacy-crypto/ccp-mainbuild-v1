@@ -256,6 +256,23 @@ export class AttemptEventBus {
     return cur;
   }
 
+  /** A response is a valid ACK only if every submitted event is accounted for
+   *  exactly once: accepted + duplicates + rejected.length === chunk.length,
+   *  with non-negative integer counts and every rejected seq belonging to the
+   *  chunk. A malformed/empty/incomplete 200 is treated as NO ack. */
+  _isValidAck(body, chunk) {
+    if (!body || typeof body !== "object") return false;
+    const { accepted, duplicates, rejected } = body;
+    if (!Number.isInteger(accepted) || accepted < 0) return false;
+    if (!Number.isInteger(duplicates) || duplicates < 0) return false;
+    if (!Array.isArray(rejected)) return false;
+    const chunkSeqs = new Set(chunk.map((e) => e.sequence_no));
+    for (const r of rejected) {
+      if (!r || !chunkSeqs.has(r.seq)) return false;  // every rejected seq must belong to the chunk
+    }
+    return accepted + duplicates + rejected.length === chunk.length;
+  }
+
   /** Build the next chunk: <= MAX_BATCH events and <= MAX_FLUSH_BYTES serialized
    *  (always at least one event so a single large event still makes progress). */
   _buildChunk(events) {
@@ -329,19 +346,35 @@ export class AttemptEventBus {
         }
 
         if (!resp || !resp.ok) {
-          // 401/409/5xx (and an unexpected 413 — but chunks are bounded): retain
-          // and retry on the next tick rather than dropping events.
+          if (resp && resp.status === 409) {
+            // Terminal: the attempt is past its submit grace and will NEVER
+            // accept events again. Retrying forever would pin the durable queue
+            // and sessionStorage, so quarantine (discard) this attempt's queue.
+            console.warn(`[EventBus] attempt terminal (409); discarding ${chunk.length}+ un-ingestable events for ${attemptId}`);
+            if (this._epoch === epoch && this._attemptId === attemptId) this._ring = [];
+            this._saveQueue(attemptId, []);
+            break;
+          }
+          // 401/5xx (and an unexpected 413 — but chunks are bounded): retain and
+          // retry on the next tick rather than dropping events.
           console.warn(`[EventBus] flush rejected (status ${resp && resp.status}); ${chunk.length} events retained`);
           break;
         }
 
-        // HTTP 200 — parse the per-event ACK contract. Retain only retryable
-        // (db_error) sequences; accepted / duplicate / permanently-rejected
-        // (validation) sequences are removed.
+        // HTTP 200 — parse and VALIDATE the per-event ACK contract. A truncated,
+        // empty, non-JSON, or incomplete-accounting 200 is NOT a valid ACK and
+        // must not clear events (otherwise a partial-response edge silently loses
+        // telemetry). Only on a fully-accounted ACK do we remove sequences.
         let body = null;
         try { body = await resp.json(); } catch (e) { body = null; }
+        if (!this._isValidAck(body, chunk)) {
+          console.warn(`[EventBus] 200 with invalid/incomplete ACK; ${chunk.length} events retained`);
+          break;
+        }
+        // Retain only retryable (db_error) sequences; accepted / duplicate /
+        // permanently-rejected (validation) sequences are removed.
         const retrySeqs = new Set(
-          ((body && body.rejected) || [])
+          body.rejected
             .filter((r) => typeof r.reason === "string" && r.reason.includes("db_error"))
             .map((r) => r.seq),
         );

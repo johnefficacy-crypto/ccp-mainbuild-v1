@@ -120,6 +120,64 @@ describe("_flush ack contract", () => {
   });
 });
 
+describe("_flush ACK integrity (200 is not a blanket ACK)", () => {
+  test("retains the batch when a 200 body is non-JSON / unparseable", async () => {
+    global.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => { throw new Error("Unexpected end of JSON input"); } }));
+    const bus = makeBus();
+    seedRing(bus, evs(2));
+
+    await bus._flush();
+
+    expect(bus._ring).toHaveLength(2);
+    expect(bus._loadQueue("att1")).toHaveLength(2);
+  });
+
+  test("retains the batch on an incomplete-accounting 200 (counts < chunk length)", async () => {
+    // 2-event chunk but the server accounted for nothing.
+    global.fetch = jest.fn(async () => ok({ accepted: 0, duplicates: 0, rejected: [] }));
+    const bus = makeBus();
+    seedRing(bus, evs(2));
+
+    await bus._flush();
+
+    expect(bus._ring).toHaveLength(2);
+  });
+
+  test("retains the batch when a rejected seq does not belong to the chunk", async () => {
+    global.fetch = jest.fn(async () => ok({ accepted: 1, duplicates: 0, rejected: [{ seq: 999, reason: "db_error" }] }));
+    const bus = makeBus();
+    seedRing(bus, evs(2));
+
+    await bus._flush();
+
+    expect(bus._ring).toHaveLength(2);
+  });
+
+  test("clears the batch on a fully-accounted ACK (accepted + duplicates + rejected === chunk)", async () => {
+    global.fetch = jest.fn(async () => ok({ accepted: 1, duplicates: 1, rejected: [] }));
+    const bus = makeBus();
+    seedRing(bus, evs(2));
+
+    await bus._flush();
+
+    expect(bus._ring).toHaveLength(0);
+  });
+});
+
+describe("_flush terminal 409 quarantine", () => {
+  test("discards the attempt's durable queue on a 409 instead of retrying forever", async () => {
+    global.fetch = jest.fn(async () => ({ ok: false, status: 409 }));
+    const bus = makeBus();
+    seedRing(bus, evs(3));
+
+    await bus._flush();
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);     // no hot-retry loop
+    expect(bus._ring).toHaveLength(0);                 // quarantined
+    expect(bus._loadQueue("att1")).toHaveLength(0);
+  });
+});
+
 describe("_flush chunking (HTTP 413 avoidance)", () => {
   test("a >100-event backlog is sent in bounded chunks of <= 100 and fully drains", async () => {
     const sizes = [];
