@@ -1,4 +1,4 @@
--- Migration 196: user_exam_calibration — onboarding calibration gate state (per user, per exam)
+-- Migration 200: user_exam_calibration — onboarding calibration gate state (per user, per exam)
 --
 -- This row is the explicit exam-level gate that controls onboarding calibration.
 -- The per-subject user_topic_self_assessment rows remain the underlying evidence;
