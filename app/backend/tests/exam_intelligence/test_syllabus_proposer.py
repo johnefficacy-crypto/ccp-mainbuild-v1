@@ -524,7 +524,7 @@ class TestRegressionBugEI1:
 
 # ── Regression: BUG-EI-2 ─────────────────────────────────────────────────────
 # syllabus_documents.id != document_assets.id (they are different UUIDs).
-# Before migration 195, propose_syllabus_mentions() looked up document_pages
+# Before migration 198, propose_syllabus_mentions() looked up document_pages
 # with document_id = syllabus_document_id, which is wrong — pages are keyed
 # by document_assets.id.  Fix: add source_document_id FK to syllabus_documents,
 # populate it during link-to-syllabus, query pages through it.

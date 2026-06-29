@@ -1,4 +1,4 @@
--- Migration 195: add source_document_id to syllabus_documents
+-- Migration 198: add source_document_id to syllabus_documents
 --
 -- Stores the document_assets.id that backed a syllabus_documents row so that
 -- propose_syllabus_mentions() can look up extracted document_pages via the
