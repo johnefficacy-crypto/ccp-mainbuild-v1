@@ -5,6 +5,7 @@ from decimal import Decimal
 from fastapi import HTTPException
 
 from app.study_os.attempt_analytics.service import derive_attempt_analytics, compute_and_persist
+from app.study_os.attempt_analytics.time_analytics import compute_dwell_times
 
 
 def _q(i: int, **overrides):
