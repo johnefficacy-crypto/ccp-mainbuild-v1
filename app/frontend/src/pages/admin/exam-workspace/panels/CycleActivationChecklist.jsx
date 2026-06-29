@@ -1,8 +1,6 @@
 import React from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 
-const SUPPORTED_CONTRACT_VERSIONS = new Set([1]);
-
 const STATUS_ICON = {
   ready: "✓",
   failed: "✗",
@@ -15,7 +13,7 @@ const STATUS_ICON = {
 };
 
 export default function CycleActivationChecklist() {
-  const { mgmt, mgmtLoading, mgmtError } = useExamWorkspace();
+  const { mgmt, mgmtLoading, mgmtError, mgmtVersionError } = useExamWorkspace();
 
   if (mgmtLoading) {
     return (
@@ -25,7 +23,8 @@ export default function CycleActivationChecklist() {
     );
   }
 
-  if (mgmtError) {
+  // Show generic network/fetch error — but not the version sentinel (handled below)
+  if (mgmtError && mgmtError !== "unsupported_contract_version") {
     return (
       <div data-testid="cycle-checklist-error" className="card">
         <p className="err-row">Error loading checklist: {mgmtError}</p>
@@ -33,19 +32,18 @@ export default function CycleActivationChecklist() {
     );
   }
 
-  if (!mgmt) return null;
-
-  // D04: fail-closed version handling — suppress readiness interpretation for unsupported versions
-  if (!SUPPORTED_CONTRACT_VERSIONS.has(mgmt.contract_version)) {
+  // D04: fail-closed version handling — mgmt is null when version is unsupported
+  if (mgmtVersionError) {
     return (
       <div data-testid="cycle-checklist-version-error" className="card">
         <p className="err-row">
-          Checklist format version {mgmt.contract_version ?? "(missing)"} is not supported by
-          this client. Reload or contact support.
+          Checklist format version is not supported by this client. Reload or contact support.
         </p>
       </div>
     );
   }
+
+  if (!mgmt) return null;
 
   const cycleError = mgmt.cycle_readiness_error;
   if (cycleError && cycleError.code === "cycle_not_found") {
@@ -57,7 +55,14 @@ export default function CycleActivationChecklist() {
   }
 
   const checklist = mgmt.cycle_readiness;
-  if (!checklist) return null;
+  // A7: cycle_readiness_error is null but cycle_readiness is also null — computation failed silently
+  if (!checklist) {
+    return (
+      <div data-testid="cycle-checklist-unavailable" className="card">
+        <p className="err-row">Cycle activation checklist is temporarily unavailable. Try refreshing.</p>
+      </div>
+    );
+  }
 
   return (
     <div data-testid="cycle-checklist" className="card">

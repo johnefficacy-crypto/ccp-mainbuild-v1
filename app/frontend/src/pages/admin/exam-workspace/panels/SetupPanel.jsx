@@ -6,6 +6,7 @@ import { formatDDMMYYYY } from "../../../../shared/forms/dateFormat";
 import useApiAction from "../../../../lib/hooks/useApiAction";
 import CycleForm from "../../../../features/admin/exam-intelligence/forms/CycleForm";
 import PhaseForm from "../../../../features/admin/exam-intelligence/forms/PhaseForm";
+import CycleActivationChecklist from "./CycleActivationChecklist";
 
 function TrustBadge({ status }) {
   const map = {
@@ -493,6 +494,9 @@ export default function SetupPanel({ action = null }) {
           </div>
         )}
       </div>
+
+      {/* Cycle Activation Checklist — always mounted; handles its own empty/error/loading states */}
+      <CycleActivationChecklist />
 
       {/* Phases */}
       <div className="card">

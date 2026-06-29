@@ -292,7 +292,10 @@ def get_management_exam_detail(
         _cycle_readiness = None
     else:
         _cycle_readiness = _safe(
-            lambda: compute_cycle_readiness(sb, exam_id, selected_cycle_id, exam)
+            lambda: compute_cycle_readiness(
+                sb, exam_id, selected_cycle_id, exam,
+                activation_verdict=classified,   # D12: pass authoritative verdict
+            )
         )
 
     # D02: section_readiness is the temporary alias for cycle_readiness (same computed object).
