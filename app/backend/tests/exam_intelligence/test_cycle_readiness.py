@@ -151,18 +151,18 @@ def test_unknown_cycle_id_returns_200_with_error():
 
 def test_index_only_source_docs_not_applicable():
     """D05 (updated): index_only still requires source provenance; no phases
-    means steps 3+ are not_applicable with no_selected_cycle (not mode-based).
-    With phases present, step 3 is missing (no docs), not not_applicable."""
+    means steps 3+ are not_applicable via A2 cascade (not mode-based).
+    not_applicable_reason is null when cascading from no_phases."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="index_only", locked=1)
     s.cycle("cy1", "e1")
-    # No phases -> steps 3+ should be not_applicable (no_selected_cycle gate)
+    # No phases -> steps 3+ should be not_applicable via A2 cascade (reason=None)
     r = _detail(_client_from_seed(s), "e1", cycle_id="cy1")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step3 = next(st for st in cr["steps"] if st["step"] == 3)
     assert step3["status"] == "not_applicable"
-    assert step3["not_applicable_reason"] == "no_selected_cycle"
+    assert step3["not_applicable_reason"] is None
 
 
 def test_step1_ready_when_name_and_year():
@@ -275,6 +275,34 @@ def test_d06_all_latest_failed_step_is_failed():
     )
 
 
+def test_d06_mixed_failed_unstarted_not_failed():
+    """One doc has a failed job, another doc has NO job at all.
+    Step 4 should NOT be 'failed' — the unstarted doc makes it 'uploaded'."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", locked=1)
+    s.cycle("cy1", "e1")
+    s.phase("ph1", "e1", "cy1")
+    # doc1: failed job
+    _add_doc(s, "doc1", "e1", ["failed"])
+    # doc2: no jobs at all
+    s.db["document_assets"].append({
+        "id": "doc2",
+        "scope": "admin_exam_intelligence",
+        "metadata": {"exam_id": "e1"},
+        "status": "uploaded",
+    })
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cy1")
+    assert r.status_code == 200
+    cr = r.json()["cycle_readiness"]
+    step4 = next(st for st in cr["steps"] if st["step"] == 4)
+    assert step4["status"] != "failed", (
+        f"Expected non-failed (one doc unstarted), got {step4['status']}"
+    )
+    assert step4["status"] == "uploaded", (
+        f"Expected uploaded (one doc unstarted), got {step4['status']}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # D08: syllabus_mapping (step 5) — cycle-scoped vs exam-wide rows
 # ---------------------------------------------------------------------------
@@ -312,7 +340,7 @@ def test_d08_cycle_scoped_takes_precedence():
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step5 = next(st for st in cr["steps"] if st["step"] == 5)
-    # Cycle-scoped locked row should count: locked_coverage >= 1 → not missing
+    # Cycle-scoped locked row should count: locked_coverage >= 1 -> not missing
     assert step5["status"] != "missing", (
         f"Expected non-missing (cycle-scoped locked row exists), got {step5['status']}"
     )
@@ -350,8 +378,7 @@ def test_d08_exam_wide_counts_when_no_cycle_row():
 
 def test_d10_one_verified_chain_ready():
     """One pyq_paper verified, one question in it verified, one tag verified.
-    Step 6 is not missing (verified chain exists). Pending questions in same
-    paper may make it review_pending — that is acceptable."""
+    Step 6 must be exactly 'ready' (full verified chain exists)."""
     s = _Seed()
     s.exam("e1", name="Exam1", locked=1)
     s.cycle("cy1", "e1")
@@ -373,17 +400,15 @@ def test_d10_one_verified_chain_ready():
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step6 = next(st for st in cr["steps"] if st["step"] == 6)
-    # Verified chain exists → not missing
-    assert step6["status"] != "missing", (
-        f"Expected non-missing (verified chain exists), got {step6['status']}"
-    )
-    assert step6["status"] in ("ready", "review_pending"), (
-        f"Expected ready or review_pending, got {step6['status']}"
+    # Full verified chain exists -> exactly ready
+    assert step6["status"] == "ready", (
+        f"Expected ready (full verified chain exists), got {step6['status']}"
     )
 
 
 def test_d10_no_verified_chain_missing():
-    """Papers exist and are verified but no verified questions. Step 6 = missing."""
+    """Papers verified but questions are only pending (no verified chain).
+    Step 6 = review_pending because papers are verified but questions need review."""
     s = _Seed()
     s.exam("e1", name="Exam1", locked=1)
     s.cycle("cy1", "e1")
@@ -392,7 +417,7 @@ def test_d10_no_verified_chain_missing():
     s.db["pyq_papers"].append({
         "id": "pp1", "exam_id": "e1", "trust_status": "verified",
     })
-    # Questions exist but none verified
+    # Questions exist but none verified — pending
     s.db["pyq_questions"].append({
         "id": "q1", "pyq_paper_id": "pp1",
         "reviewer_status": "pending", "created_at": _RECENT,
@@ -401,13 +426,14 @@ def test_d10_no_verified_chain_missing():
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step6 = next(st for st in cr["steps"] if st["step"] == 6)
-    assert step6["status"] == "missing", (
-        f"Expected missing (no verified questions), got {step6['status']}"
+    # Verified paper but no verified questions -> review_pending (questions pending review)
+    assert step6["status"] == "review_pending", (
+        f"Expected review_pending (no verified questions, but paper verified + q pending), got {step6['status']}"
     )
 
 
 # ---------------------------------------------------------------------------
-# D12: review_activate (step 9) — index_only → not_applicable
+# D12: review_activate (step 9) — index_only -> not_applicable
 # ---------------------------------------------------------------------------
 
 def test_d12_index_only_review_activate_not_applicable():
@@ -430,7 +456,7 @@ def test_d12_index_only_review_activate_not_applicable():
 # ---------------------------------------------------------------------------
 
 def test_d05_index_only_source_docs_not_missing_not_na():
-    """management_mode='index_only', no documents uploaded.
+    """management_mode='index_only', no documents uploaded, but cycle+phase present.
     Step 3 should be 'missing' — index_only still requires source provenance
     per D05. NOT not_applicable."""
     s = _Seed()
@@ -448,12 +474,13 @@ def test_d05_index_only_source_docs_not_missing_not_na():
 
 
 # ---------------------------------------------------------------------------
-# A2: cycle provided but no phases → steps 3-9 not_applicable
+# A2: cycle provided but no phases -> steps 3-9 not_applicable
 # ---------------------------------------------------------------------------
 
 def test_a2_no_phases_steps_3_to_9_not_applicable():
     """cycle_id provided, but no phases in exam_phases.
-    Steps 3-9 should be not_applicable (depend on phases being configured)."""
+    Steps 3-9 should be not_applicable (depend on phases being configured).
+    not_applicable_reason should be null (not 'no_selected_cycle') since cycle IS selected."""
     s = _Seed()
     s.exam("e1", name="Exam1", locked=1)
     s.cycle("cy1", "e1", name="Cycle 2026", year=2026)
@@ -470,4 +497,9 @@ def test_a2_no_phases_steps_3_to_9_not_applicable():
         assert step is not None, f"step {step_num} missing from response"
         assert step["status"] == "not_applicable", (
             f"step {step_num} expected not_applicable when no phases, got {step['status']}"
+        )
+        # A2: reason is null when cycle IS selected but no phases (not no_selected_cycle)
+        assert step["not_applicable_reason"] is None, (
+            f"step {step_num} expected null reason (cycle selected, no phases), "
+            f"got {step['not_applicable_reason']}"
         )

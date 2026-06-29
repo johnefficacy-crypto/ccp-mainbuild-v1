@@ -32,6 +32,7 @@ export function ExamWorkspaceProvider({ children }) {
   const [mgmt, setMgmt] = useState(null);
   const [mgmtLoading, setMgmtLoading] = useState(false);
   const [mgmtError, setMgmtError] = useState("");
+  const [mgmtVersionError, setMgmtVersionError] = useState(false);
 
   const fetchContext = useCallback(async () => {
     if (!exam_id) return;
@@ -78,18 +79,21 @@ export function ExamWorkspaceProvider({ children }) {
     if (!exam_id) return;
     setMgmtLoading(true);
     setMgmtError("");
+    setMgmtVersionError(false);
     try {
       const params = new URLSearchParams();
       if (cycleId) params.set("cycle_id", cycleId);
       const qs = params.toString();
       const url = `${REVIEW_BASE}/management/exams/${encodeURIComponent(exam_id)}${qs ? `?${qs}` : ""}`;
       const d = await api.get(url);
-      // D04: fail-closed version guard — set mgmtError if version is unsupported,
-      // but still set mgmt so the component can render the version-error UI.
       if (!SUPPORTED_CONTRACT_VERSIONS.includes(d?.contract_version)) {
+        // D04: fail-closed — null out mgmt to suppress all semantic consumers (SmartHeader, etc.)
+        setMgmtVersionError(true);
         setMgmtError("unsupported_contract_version");
+        setMgmt(null);
+      } else {
+        setMgmt(d);
       }
-      setMgmt(d);
     } catch (e) {
       setMgmtError(e?.message || "Failed to load management data");
     } finally {
@@ -106,7 +110,7 @@ export function ExamWorkspaceProvider({ children }) {
       value={{
         exam, cycle, cycles, phases, organization, family, loading, error, refetch: fetchContext,
         readiness, readiness_loading, readiness_error, refetchReadiness: fetchReadiness,
-        mgmt, mgmtLoading, mgmtError, refetchMgmt: fetchMgmt,
+        mgmt, mgmtLoading, mgmtError, mgmtVersionError, refetchMgmt: fetchMgmt,
       }}
     >
       {children}

@@ -52,7 +52,7 @@ const MGMT_WITH_READINESS = {
 };
 
 beforeEach(() => {
-  mockContextValue = { mgmt: null, mgmtLoading: false, mgmtError: "" };
+  mockContextValue = { mgmt: null, mgmtLoading: false, mgmtError: "", mgmtVersionError: false };
 });
 
 test("shows loading state when mgmtLoading", () => {
@@ -76,9 +76,10 @@ test("renders nothing when mgmt is null", () => {
 
 test("shows version-error when contract_version is unsupported", () => {
   mockContextValue = {
-    mgmt: { contract_version: 99, cycle_readiness: null, cycle_readiness_error: null },
+    mgmt: null,
     mgmtLoading: false,
-    mgmtError: "",
+    mgmtError: "unsupported_contract_version",
+    mgmtVersionError: true,
   };
   render(<CycleActivationChecklist />);
   expect(screen.getByTestId("cycle-checklist-version-error")).toBeInTheDocument();
@@ -86,9 +87,10 @@ test("shows version-error when contract_version is unsupported", () => {
 
 test("shows version-error when contract_version is absent", () => {
   mockContextValue = {
-    mgmt: { cycle_readiness: null, cycle_readiness_error: null },
+    mgmt: null,
     mgmtLoading: false,
-    mgmtError: "",
+    mgmtError: "unsupported_contract_version",
+    mgmtVersionError: true,
   };
   render(<CycleActivationChecklist />);
   expect(screen.getByTestId("cycle-checklist-version-error")).toBeInTheDocument();
@@ -113,6 +115,7 @@ test("shows unavailable state when mgmt has no cycle_readiness and no error (A7)
     mgmt: { contract_version: 1, cycle_readiness: null, cycle_readiness_error: null },
     mgmtLoading: false,
     mgmtError: "",
+    mgmtVersionError: false,
   };
   render(<CycleActivationChecklist />);
   expect(screen.getByTestId("cycle-checklist-unavailable")).toBeInTheDocument();
