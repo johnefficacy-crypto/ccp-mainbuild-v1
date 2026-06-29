@@ -297,6 +297,36 @@ def test_planner_rejects_mismatched_expected_exam_id():
     assert sb.db.get("study_tasks", []) == []
 
 
+def test_planner_rejects_resolved_exam_when_gate_saw_no_target():
+    # No-target → exam B race: the gate checked and found NO target exam (so it
+    # hands the planner the NO_TARGET_SENTINEL), but a target appeared before the
+    # planner resolved. The planner must reject the newly-resolved exam as
+    # target_changed and persist nothing — not generate an unchecked first plan.
+    from app.study_os.planner import generate_plan
+
+    sb = SBStub(_seed())  # resolves to EXAM_ID — the "exam B" that appeared
+    result = generate_plan(sb, "u-1", expected_exam_id=calibration.NO_TARGET_SENTINEL)
+    assert result["generated"] is False
+    assert result["reason"] == "target_changed"
+    assert sb.db.get("study_plans", []) == []
+    assert sb.db.get("study_tasks", []) == []
+    assert sb.db.get("study_plan_versions", []) == []
+    assert sb.db.get("study_adaptation_events", []) == []
+
+
+def test_generate_no_target_user_returns_422_not_a_plan():
+    # A genuinely no-target user must still get a clean no_target_exam (422), not a
+    # 500 and not a generated plan. Uses the REAL planner (no spy).
+    seed = _seed()
+    seed["profiles"] = [{"id": "u-1", "target_exam": None}]
+    seed.pop("exams", None)
+    sb = SBStub(seed)
+    r = _client(sb).post("/api/study/plan/generate")
+    assert r.status_code == 422
+    assert r.json()["detail"]["reason"] == "no_target_exam"
+    assert sb.db.get("study_plans", []) == []
+
+
 def test_get_grandfathered_status_is_none_during_coverage_outage():
     # An existing-plan user with NO gate row is grandfathered (calibrated), but a
     # best-effort coverage outage must NOT mislabel them status='completed' — they

@@ -39,6 +39,14 @@ class CalibrationUnavailable(Exception):
     """
 
 
+# Sentinel ``expected_exam_id`` meaning "the gate checked and found NO target
+# exam". Passed to the planner so that if a target APPEARS between the gate check
+# and the planner's own resolution (the no-target → exam B race), the planner
+# rejects it as ``target_changed`` rather than generating an unchecked first plan.
+# A real exam id is a UUID or slug, so the NUL byte makes this uncollidable.
+NO_TARGET_SENTINEL = "\x00calibration-no-target"
+
+
 # Server-owned band → prior_mastery and attempts → confidence maps. The client
 # only ever submits a band; these live here so the API is the sole writer.
 BAND_TO_PRIOR_MASTERY: dict[str, float | None] = {

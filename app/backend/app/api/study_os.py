@@ -59,6 +59,7 @@ _PLAN_UNPROCESSABLE_REASONS = {
     "no_target_exam",
     "no_locked_coverage",
     "all_topics_muted",
+    "target_changed",
 }
 
 
@@ -105,7 +106,11 @@ def _calibration_gate_response(
         )
     exam_id = exam.get("id") if exam else None
     if not exam_id:
-        return None, None
+        # Checked, reads healthy, genuinely NO target exam. Hand the planner a
+        # sentinel rather than None so that if a target appears before the planner
+        # resolves (no-target → exam B race), the planner's expected_exam_id guard
+        # rejects B as target_changed instead of generating an unchecked plan.
+        return None, calibration.NO_TARGET_SENTINEL
     try:
         required = calibration.calibration_required(supabase, user_id, str(exam_id))
     except calibration.CalibrationUnavailable:
