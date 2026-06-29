@@ -15,7 +15,7 @@
 import React from "react";
 import { act, render, fireEvent } from "@testing-library/react";
 
-// ── mock eventBus ────────────────────────────────────────────────────────────
+// ── mock eventBus ─────────────────────────────────────────────
 const mockEnqueue = jest.fn();
 const mockSetCurrentQuestionId = jest.fn();
 const mockInit = jest.fn();
@@ -31,11 +31,12 @@ jest.mock("../attemptEventBus", () => ({
   },
 }));
 
-// ── mock api ─────────────────────────────────────────────────────────────────
+// ── mock api ─────────────────────────────────────────────────
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 
-jest.mock("../../../lib/api", () => ({
+// NOTE: path is relative to THIS file (in __tests__/), not to MockAttemptShell.jsx
+jest.mock("../../../../lib/api", () => ({
   __esModule: true,
   api: {
     get: (...args) => mockGet(...args),
@@ -43,8 +44,8 @@ jest.mock("../../../lib/api", () => ({
   },
 }));
 
-// ── mock supabase ─────────────────────────────────────────────────────────────
-jest.mock("../../../lib/supabase", () => ({
+// ── mock supabase ────────────────────────────────────────────────
+jest.mock("../../../../lib/supabase", () => ({
   __esModule: true,
   supabase: {
     auth: {
@@ -53,7 +54,7 @@ jest.mock("../../../lib/supabase", () => ({
   },
 }));
 
-// ── mock react-router-dom ────────────────────────────────────────────────────
+// ── mock react-router-dom ─────────────────────────────────────────
 const mockNavigate = jest.fn();
 jest.mock("react-router-dom", () => ({
   __esModule: true,
@@ -61,7 +62,7 @@ jest.mock("react-router-dom", () => ({
   useParams: () => ({ attemptId: "attempt-123" }),
 }));
 
-// ── mock useAnswerSync ────────────────────────────────────────────────────────
+// ── mock useAnswerSync ─────────────────────────────────────────────
 jest.mock("../useAnswerSync", () => ({
   __esModule: true,
   SYNC: { UNSAVED: "unsaved", SAVING: "saving", SAVED: "saved", RETRYING: "retrying", FAILED: "failed" },
@@ -77,7 +78,7 @@ jest.mock("../useAnswerSync", () => ({
   }),
 }));
 
-// ── mock AnswerSyncIndicator (simple stub) ────────────────────────────────────
+// ── mock AnswerSyncIndicator (simple stub) ──────────────────────────────────
 jest.mock("../AnswerSyncIndicator", () => ({
   __esModule: true,
   default: () => null,
@@ -85,7 +86,7 @@ jest.mock("../AnswerSyncIndicator", () => ({
 
 import MockAttemptShell from "../MockAttemptShell";
 
-// ── shared attempt fixture ────────────────────────────────────────────────────
+// ── shared attempt fixture ────────────────────────────────────────────
 const ATTEMPT = {
   id: "attempt-123",
   status: "in_progress",
@@ -140,7 +141,7 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-// ── tests ─────────────────────────────────────────────────────────────────────
+// ── tests ─────────────────────────────────────────────────────────────────────────
 
 test("question.visited is emitted for question 1 (index 0) when attempt loads", async () => {
   primeApi();
@@ -191,9 +192,7 @@ test("question.visited for question 1 is not emitted before attempt loads (pre-f
   });
 
   // At this point the attempt hasn't resolved — check there's no "question.visited"
-  // with a valid question_id (the old buggy code would fire with qid=null, which
-  // also means no event since the guard `if (qid)` prevents it — but let's confirm
-  // there's no spurious visit for q1 before data arrives)
+  // with a valid question_id
   const preLoadVisits = mockEnqueue.mock.calls.filter(
     ([type, payload]) => type === "question.visited" && payload?.question_id === "q1"
   );
