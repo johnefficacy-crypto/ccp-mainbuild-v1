@@ -1,10 +1,12 @@
 # Mastery Shadow Gate — v2 Validation Fingerprint Attestation
 #
-# Per-file SHA-256 attestation for the 34-file v2 manifest, so the
-# combined freeze digest below is not opaque in review. Generated from a
-# clean checkout at the pinned main SHA. Regenerate (and re-record the
-# combined hash in the manifest / pr7_shadow_gate_results.md / checklist)
-# whenever any listed file changes — that resets the shadow clock.
+# Per-file SHA-256 attestation for the 34-file v2 manifest, so the combined
+# digest below is not opaque in review. Generated from a clean checkout at the
+# pinned main SHA. NOTE: the manifest STATUS is currently FREEZE PENDING — this
+# is a REFERENCE digest, not yet the window_start/freeze hash (see the manifest
+# header for the open PR #803 blockers). Regenerate (and re-record the combined
+# hash in the manifest / pr7_shadow_gate_results.md / checklist) whenever any
+# listed file changes.
 #
 # Pinned main SHA : b7ca717fc156a3c988197673b3a6a1b291616b43
 # File count      : 34

@@ -22,34 +22,49 @@
 # lib/supabase.js (the bearer-token source the bus authenticates with). Either
 # can alter which events reach the DB without changing any other listed file.
 #
-# STATUS: FROZEN — boundary closed (34 files); freeze hash recorded
-# All telemetry-validity defects from the PR #796 / #800 reviews are resolved
-# and merged to main:
-#   - time_analytics.py created_at->occurred_at + payload.question_id fix
-#     (PR #795, fix/time-analytics-v2).
-#   - MockAttemptShell.jsx emits question.visited for question 1 on initial
-#     load (PR #793, fix/mock-attempt-first-visit).
-#   - compute_dwell_times() reports partial event/fallback coverage
-#     (event_covered_questions / fallback_question_count) — PR #800.
-#   - attemptEventBus.js: authenticated keepalive delivery, durable per-attempt
-#     queue cleared only on a fully-accounted ACK, <=100 chunking, attempt/epoch
-#     isolation, terminal-409 quarantine — PR #800.
-# Boundary closed: core/auth.py and frontend lib/supabase.js (event-acceptance
-# dependencies) are now in the manifest (operator-approved expansion, 32 -> 34).
+# STATUS: FREEZE PENDING — boundary expanded but NOT yet closeable (PR #803 review)
+# The PR #795/#793/#800 code fixes are merged, and the boundary was expanded to
+# include the two event-acceptance dependencies (core/auth.py, lib/supabase.js,
+# 32 -> 34). However the v2 boundary CANNOT be declared FROZEN yet — the PR #803
+# checkpost identified further open blockers:
+#   [P0] Submit-time telemetry race: MockAttemptShell.doSubmit() posts /submit
+#        and navigates WITHOUT awaiting a full event flush; submit_attempt()
+#        synchronously runs compute_and_persist() before the final buffered
+#        question.visited/timing events are delivered (fire-and-forget beacon on
+#        teardown). /events ingests late events but does NOT recompute analytics,
+#        so the frozen classifications/fallback metrics can omit delivered
+#        events. Needs an awaited pre-submit ACKed flush OR late-event analytics
+#        invalidation + idempotent recompute, with a regression test.
+#   [P1] Boundary still incomplete: useAnswerSync.js controls answer writes
+#        (selected_option_id, is_visited, time_spent_sec) — scoring/classification
+#        inputs AND the fallback source — so it can change the validation outcome
+#        without changing this fingerprint. Add it (recompute/attest) or define +
+#        enforce a documented transitive-dependency inclusion rule.
+#   [P1] Telemetry-quality gate is documentation-only: shadow_analysis.py does
+#        not emit events_used / visit-coverage / fallback_question_count / ingest-
+#        rejection / delivery-success, and "100% visit coverage" lacks a valid
+#        denominator (generated attempts have legitimate untouched questions;
+#        is_visited is set by answer-save, not by a visit). Define the expected-
+#        visit population and implement + test the metrics before calling it
+#        executable.
+#   [P1] Status claims unsupported: PR #800 remains CODE-FIXED / VALIDATION
+#        PENDING (operator staging checks unchecked); no operator approval is
+#        attached. Per AGENTS.md this stays FREEZE PENDING until operator
+#        approval + the defects above close. (The 32 -> 34 expansion is PROPOSED,
+#        operator-approval pending — not yet operator-approved.)
+#   [P2] verify_mastery_fingerprint.sh must also assert the recorded freeze
+#        digest in this manifest / pr7_shadow_gate_results.md / the checklist
+#        matches the attestation, and that the checkout matches the pinned SHA.
 #
-# FREEZE HASH (main @ b7ca717f, 34 files) — the window_start / window_end
-# fingerprint:
+# The hash below is therefore a REFERENCE fingerprint at this SHA, NOT the
+# window_start hash. The freeze hash must be recomputed (with the final boundary)
+# at a new SHA once the blockers above clear and operator approval is captured.
+#
+# Reference fingerprint (main @ b7ca717f, current 34-file boundary):
 #   57e1ea1ead57c32c820cf73c1e9fda636f7dfe00b3c11ceae984f527ce37ef7d
 # A per-file SHA-256 attestation is committed alongside this manifest:
 #   docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt
 # Verify (fail-closed) with: bash scripts/verify_mastery_fingerprint.sh
-#
-# NOTE: FROZEN records the fingerprint; it does NOT open the observation window.
-# The clock starts only after the operator prerequisites clear (migration 182
-# applied + privilege-checked; PR-6 clean rerun with FF_MOCK_MASTERY_LIVE_USER_IDS
-# populated). Re-verify this hash at the confirmed window_start SHA before
-# starting the clock; any change to a listed file resets it and requires the
-# attestation to be regenerated and the freeze hash re-approved.
 #
 # Superseded reference hashes (NOT window_start hashes):
 #   b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b  (main @ 1679adb8, 32 files, pre-#800)
