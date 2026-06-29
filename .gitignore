@@ -54,3 +54,6 @@ yarn-error.log*
 graphify-out/
 e2e-auth-check.cjs
 test-results/
+
+# runtime agent worktrees (created by Claude Code agent runs)
+.claude/worktrees/agent-*/
