@@ -1,4 +1,4 @@
--- Migration 202: RPC EXECUTE grant hardening (v1 least-privilege)
+-- Migration 203: RPC EXECUTE grant hardening (v1 least-privilege)
 --
 -- Applied version must be reconciled against the deployed schema_migrations
 -- state at apply time (operator step); 202 = MAX filesystem migration + 1.
