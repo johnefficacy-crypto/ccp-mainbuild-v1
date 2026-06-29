@@ -77,6 +77,8 @@ class _RpcQuery:
     def execute(self) -> "_Exec":
         if self._fn_name == "review_pyq_paper":
             return self._exec_review_pyq_paper()
+        if self._fn_name == "cms_review_pyq_source":
+            return self._exec_cms_review_pyq_source()
         if self._fn_name == "cms_set_pyq_paper_provenance":
             return self._exec_cms_set_pyq_paper_provenance()
         if self._fn_name == "cms_link_document_to_pyq_paper":
@@ -203,6 +205,82 @@ class _RpcQuery:
         paper["trust_status"] = p["p_target_status"]
         paper["updated_at"]   = "now"
         return _Exec({"ok": True, "audit_id": audit_id, "row": dict(paper)})
+
+    def _exec_cms_review_pyq_source(self) -> "_Exec":
+        """Mirror every check in migration 193's cms_review_pyq_source() function.
+
+        Order mirrors the SQL: reason → target_status → lock/not_found →
+        concurrent_modification → transition → atomic audit INSERT + UPDATE.
+        Unlike pyq_papers there is no provenance gate and no updated_at column.
+        """
+        import uuid as _uuid
+
+        p = self._params
+
+        # 1. Reason validation.
+        reason = p.get("p_reason")
+        if reason is None:
+            raise Exception("invalid_reason: reason must not be null")
+        reason_trimmed = reason.strip()
+        if not (8 <= len(reason_trimmed) <= 500):
+            raise Exception(
+                f"invalid_reason: reason must be 8-500 characters (got {len(reason_trimmed)})"
+            )
+
+        # 2. Target status must be a known value.
+        if p.get("p_target_status") not in ("verified", "rejected", "pending"):
+            raise Exception(
+                f"invalid_target_status: {p.get('p_target_status')!r} is not a recognised trust_status"
+            )
+
+        sources = self._db.setdefault("pyq_sources", [])
+        source = next((r for r in sources if r.get("id") == p["p_source_id"]), None)
+
+        # 3. Not found.
+        if source is None:
+            raise Exception(f"not_found: source {p['p_source_id']} does not exist")
+
+        # 4. Concurrent-modification guard (FOR UPDATE equivalent).
+        if source.get("trust_status") != p["p_expected_status"]:
+            raise Exception(
+                f"concurrent_modification: expected trust_status={p['p_expected_status']!r}"
+                f" but found {source.get('trust_status')!r}. Re-fetch and retry."
+            )
+
+        # 5. Transition validation on the locked row's actual status.
+        _allowed: dict[str, tuple[str, ...]] = {
+            "pending":  ("verified", "rejected"),
+            "verified": ("rejected",),
+            "rejected": ("pending",),
+        }
+        current = source.get("trust_status")
+        target  = p["p_target_status"]
+        if target not in _allowed.get(current, ()):
+            raise Exception(
+                f"transition_not_allowed: {current} -> {target} is not a permitted transition"
+            )
+
+        # 6+7. Atomic: audit row INSERT + source UPDATE (both or neither).
+        #       No updated_at column on pyq_sources (migration 032).
+        audit_id = str(_uuid.uuid4())
+        self._db.setdefault("admin_audit_logs", []).append({
+            "id":          audit_id,
+            "actor_id":    p["p_actor_id"],
+            "actor_email": p["p_actor_email"],
+            "action":      "exam_intel.cms.pyq_source.review",
+            "entity_type": "pyq_source",
+            "entity_id":   p["p_source_id"],
+            "new_value": {
+                "from_status":  p["p_expected_status"],
+                "to_status":    p["p_target_status"],
+                "reason":       reason_trimmed,
+                "reviewed_by":  p["p_actor_email"],
+                "reviewed_at":  "now",
+            },
+            "notes": "admin_exam_intel_cms",
+        })
+        source["trust_status"] = p["p_target_status"]
+        return _Exec({"ok": True, "audit_id": audit_id, "row": dict(source)})
 
     def _exec_cms_set_pyq_paper_provenance(self) -> "_Exec":
         """Mirror the atomic UPDATE + audit INSERT of migration 191.

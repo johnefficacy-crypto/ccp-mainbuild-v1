@@ -2829,6 +2829,112 @@ def update_pyq_source(
     return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
 
 
+# Allowed trust_status transitions for pyq_sources. Mirrors review_pyq_paper's
+# matrix exactly (migration 185). Any transition not listed here → 422.
+_PYQ_SOURCE_ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "pending":  ("verified", "rejected"),
+    "verified": ("rejected",),
+    "rejected": ("pending",),
+}
+_PYQ_SOURCE_ALL_TARGET_STATUSES = frozenset(
+    s for targets in _PYQ_SOURCE_ALLOWED_TRANSITIONS.values() for s in targets
+)
+
+
+class PyqSourceReviewBody(BaseModel):
+    status: str = Field(..., description="Target trust_status: 'verified', 'rejected', or 'pending'")
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+@router.post("/pyq-sources/{source_id}/review")
+def review_pyq_source(
+    source_id: str,
+    body: PyqSourceReviewBody,
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Transition a PYQ source's trust_status (the deferred OD-2 follow-up).
+
+    Mirrors ``review_pyq_paper``: a dedicated review action backed by a single
+    atomic SECURITY DEFINER RPC (``cms_review_pyq_source``) that writes the audit
+    row and the status UPDATE in one DB transaction.
+
+    Allowed transitions::
+
+        pending  → verified | rejected
+        verified → rejected
+        rejected → pending  (re-queue)
+
+    Unlike papers, sources have no provenance gate.  The audit log is written
+    inside the same transaction as the UPDATE; a concurrent trust_status change
+    between the SELECT below and the RPC is detected via SELECT FOR UPDATE and
+    rolled back (no false audit rows).
+    """
+    if body.status not in _PYQ_SOURCE_ALL_TARGET_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"status must be one of {sorted(_PYQ_SOURCE_ALL_TARGET_STATUSES)}",
+        )
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_sources", id=source_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="pyq_source not found")
+
+    from_status = existing.get("trust_status", "pending")
+    allowed = _PYQ_SOURCE_ALLOWED_TRANSITIONS.get(from_status, ())
+    if body.status not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Transition '{from_status}' → '{body.status}' is not allowed. "
+                f"Allowed targets from '{from_status}': {list(allowed)}"
+            ),
+        )
+
+    # Single atomic RPC: audit INSERT + source UPDATE in one DB transaction.
+    # If a concurrent writer changed trust_status between the SELECT above and
+    # the RPC, the function detects it via SELECT FOR UPDATE + expected-status
+    # guard and raises "concurrent_modification" → both writes are rolled back.
+    try:
+        result = supabase.rpc(
+            "cms_review_pyq_source",
+            {
+                "p_source_id":       source_id,
+                "p_expected_status": from_status,
+                "p_target_status":   body.status,
+                "p_reason":          body.reason,
+                "p_actor_id":        admin.get("id"),
+                "p_actor_email":     admin.get("email"),
+            },
+        ).execute()
+    except Exception as exc:
+        msg = str(exc)
+        msg_lower = msg.lower()
+        # concurrent_modification → 409
+        if "concurrent_modification" in msg_lower:
+            raise HTTPException(
+                status_code=409,
+                detail="Concurrent modification: source trust_status changed since read. Re-fetch and retry.",
+            ) from exc
+        # other RPC contract failures → 422
+        if any(tok in msg_lower for tok in (
+            "transition_not_allowed", "invalid_reason",
+            "invalid_target_status", "not_allowed",
+        )):
+            raise HTTPException(status_code=422, detail=msg) from exc
+        # source deleted between SELECT and RPC → 404
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
+        logger.exception("cms_review_pyq_source RPC failed; no status change recorded")
+        raise HTTPException(
+            status_code=500,
+            detail="Review transaction failed; no status change recorded.",
+        ) from exc
+
+    data = result.data
+    return {"ok": True, "audit_id": data["audit_id"], "row": data["row"]}
+
+
 # ════════════════════════════════════════════════════════════════════════
 #  PYQ question topic tags — created at reviewer_status='pending'
 # ════════════════════════════════════════════════════════════════════════

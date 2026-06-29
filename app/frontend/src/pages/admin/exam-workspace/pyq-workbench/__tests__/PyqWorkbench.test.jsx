@@ -1441,3 +1441,346 @@ describe("PyqWorkbenchPanel — contextual onboarding (J2)", () => {
     expect(screen.getByTestId("add-pyq-paper-modal")).toBeTruthy();
   });
 });
+
+// ── Follow-up 1 — inline PDF upload in AddPyqPaperModal (OD-5) ────────────────
+
+describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    originalFetch = global.fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  async function openAddModal() {
+    const btn = await screen.findByTestId("add-pyq-paper-btn");
+    fireEvent.click(btn);
+    await screen.findByTestId("add-pyq-paper-modal");
+  }
+
+  function pdfFile(name = "new-2024.pdf") {
+    return new File([new Uint8Array([1, 2, 3])], name, { type: "application/pdf" });
+  }
+
+  test("inline upload option appears in the evidence step", async () => {
+    mockApiForOnboarding(PAPERS);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await openAddModal();
+    expect(screen.getByTestId("add-pyq-evidence-mode-select")).toBeTruthy();
+    expect(screen.getByTestId("add-pyq-evidence-mode-upload")).toBeTruthy();
+    // Default mode is "select existing" — the picker is visible, no upload input.
+    expect(screen.getByTestId("add-pyq-evidence-document-id")).toBeTruthy();
+    expect(screen.queryByTestId("add-pyq-upload-file")).toBeNull();
+  });
+
+  test("upload sequence sets document_id and submits onboarding with the new id", async () => {
+    mockApiForOnboarding(PAPERS);
+
+    // Binary PUT to storage — must bypass the api wrapper (raw fetch).
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 });
+
+    // upload-url → complete-upload via api.post; onboarding via api.post too.
+    api.post.mockImplementation((url) => {
+      if (url.includes("/documents/upload-url")) {
+        return Promise.resolve({ upload_url: "https://storage.example/put", document_id: "doc-new-1" });
+      }
+      if (url.includes("/documents/complete-upload")) {
+        return Promise.resolve({ ok: true });
+      }
+      if (url.includes("/pyq-onboarding")) {
+        return Promise.resolve({ ok: true, audit_id: "a", paper: { id: "p-new", pyq_source_id: null } });
+      }
+      return Promise.resolve({});
+    });
+
+    // Poll: document GET returns a terminal (processed) status immediately.
+    const baseGet = api.get.getMockImplementation();
+    api.get.mockImplementation((url) => {
+      if (url.match(/\/documents\/doc-new-1(\?|$)/)) {
+        return Promise.resolve({ document: { status: "processed" }, extraction: { status: "succeeded" } });
+      }
+      return baseGet(url);
+    });
+
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await openAddModal();
+
+    fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2024" } });
+    fireEvent.change(screen.getByTestId("add-pyq-reason"), {
+      target: { value: "uploaded official 2024 paper inline" },
+    });
+
+    // Switch to upload mode and run the inline upload.
+    fireEvent.click(screen.getByTestId("add-pyq-evidence-mode-upload"));
+    fireEvent.change(screen.getByTestId("add-pyq-upload-file"), {
+      target: { files: [pdfFile()] },
+    });
+    fireEvent.click(screen.getByTestId("add-pyq-upload-submit"));
+
+    // upload-url minted, raw PUT performed, complete-upload called.
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/documents/upload-url"),
+        expect.objectContaining({ document_kind: "pyq_paper", exam_id: EXAM_ID }),
+      ),
+    );
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://storage.example/put",
+      expect.objectContaining({ method: "PUT" }),
+    );
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/documents/complete-upload"),
+        { document_id: "doc-new-1" },
+      ),
+    );
+
+    // The new document is linked and surfaced.
+    await waitFor(() => expect(screen.getByTestId("add-pyq-upload-linked")).toBeTruthy());
+
+    // Submitting onboarding carries the freshly-uploaded document_id.
+    fireEvent.click(screen.getByTestId("add-pyq-submit"));
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/pyq-onboarding"),
+        expect.objectContaining({ document_id: "doc-new-1" }),
+      ),
+    );
+  });
+
+  test("binary PUT failure surfaces an upload error and does not set document_id", async () => {
+    mockApiForOnboarding(PAPERS);
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 });
+    api.post.mockImplementation((url) => {
+      if (url.includes("/documents/upload-url")) {
+        return Promise.resolve({ upload_url: "https://storage.example/put", document_id: "doc-fail" });
+      }
+      return Promise.resolve({});
+    });
+
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await openAddModal();
+    fireEvent.click(screen.getByTestId("add-pyq-evidence-mode-upload"));
+    fireEvent.change(screen.getByTestId("add-pyq-upload-file"), {
+      target: { files: [pdfFile()] },
+    });
+    fireEvent.click(screen.getByTestId("add-pyq-upload-submit"));
+
+    await waitFor(() => expect(screen.getByTestId("add-pyq-upload-error")).toBeTruthy());
+    expect(screen.getByTestId("add-pyq-upload-error").textContent).toMatch(/Storage upload failed/);
+    // complete-upload never called; no linked confirmation.
+    expect(api.post).not.toHaveBeenCalledWith(
+      expect.stringContaining("/documents/complete-upload"),
+      expect.anything(),
+    );
+    expect(screen.queryByTestId("add-pyq-upload-linked")).toBeNull();
+  });
+
+  test("terminal extraction failure surfaces an error and does NOT link the document", async () => {
+    mockApiForOnboarding(PAPERS);
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 });
+    api.post.mockImplementation((url) => {
+      if (url.includes("/documents/upload-url")) {
+        return Promise.resolve({ upload_url: "https://storage.example/put", document_id: "doc-extract-fail" });
+      }
+      if (url.includes("/documents/complete-upload")) {
+        return Promise.resolve({ ok: true });
+      }
+      if (url.includes("/pyq-onboarding")) {
+        return Promise.resolve({ ok: true, audit_id: "a", paper: { id: "p-x", pyq_source_id: null } });
+      }
+      return Promise.resolve({});
+    });
+    // Poll returns a TERMINAL FAILED extraction → result.ok === false.
+    const baseGet = api.get.getMockImplementation();
+    api.get.mockImplementation((url) => {
+      if (url.match(/\/documents\/doc-extract-fail(\?|$)/)) {
+        return Promise.resolve({ document: { status: "failed" }, extraction: { status: "failed" } });
+      }
+      return baseGet(url);
+    });
+
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await openAddModal();
+    fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2024" } });
+    fireEvent.change(screen.getByTestId("add-pyq-reason"), {
+      target: { value: "attempted upload of a paper that fails extraction" },
+    });
+    fireEvent.click(screen.getByTestId("add-pyq-evidence-mode-upload"));
+    fireEvent.change(screen.getByTestId("add-pyq-upload-file"), { target: { files: [pdfFile()] } });
+    fireEvent.click(screen.getByTestId("add-pyq-upload-submit"));
+
+    // complete-upload IS reached (unlike the PUT-failure path) then extraction fails.
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/documents/complete-upload"),
+        { document_id: "doc-extract-fail" },
+      ),
+    );
+    await waitFor(() => expect(screen.getByTestId("add-pyq-upload-error")).toBeTruthy());
+    expect(screen.getByTestId("add-pyq-upload-error").textContent).toMatch(/Extraction failed/);
+    // The failed asset must NOT be linked / shown as success.
+    expect(screen.queryByTestId("add-pyq-upload-linked")).toBeNull();
+
+    // Submitting onboarding must NOT carry the failed document_id.
+    fireEvent.click(screen.getByTestId("add-pyq-submit"));
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(expect.stringContaining("/pyq-onboarding"), expect.anything()),
+    );
+    const onboardingCall = api.post.mock.calls.find((c) => String(c[0]).includes("/pyq-onboarding"));
+    expect(onboardingCall?.[1]?.document_id || null).toBeNull();
+  });
+});
+
+// ── Follow-up 2 — PYQ source trust lifecycle UI (OD-2 / Finding 7) ───────────
+
+const SRC_PENDING = {
+  id: "src-trust-1", exam_id: EXAM_ID, title: "UPSC Official Archive",
+  source_type: "official", source_url: "https://upsc.gov.in/archive",
+  trust_status: "pending",
+};
+
+const PAPER_WITH_SOURCE = {
+  id: "p-src", exam_id: EXAM_ID, year: 2024, paper_code: "GS-I", trust_status: "pending",
+  source_type: "official", source_url: "https://upsc.gov.in/2024.pdf",
+  source_document_id: null, pyq_source_id: "src-trust-1",
+};
+
+function mockApiForSourceTrust(papers, sources, opts = {}) {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+    if (url.includes("/context")) return Promise.resolve({
+      exam: { id: EXAM_ID, name: "SSC CGL" }, cycle: null, cycles: [], phases: [],
+    });
+    if (url.includes("/pyq-papers/p-src") && !url.includes("pyq-papers?")) {
+      return Promise.resolve(papers.find((p) => p.id === "p-src") || {});
+    }
+    if (url.includes("/pyq-papers?")) return Promise.resolve({ items: papers });
+    if (url.includes("/pyq-sources?")) return Promise.resolve({ items: sources });
+    if (url.includes("/pyq-questions?")) return Promise.resolve({ items: [] });
+    if (url.includes("/progress")) return Promise.resolve({ total_expected: 0, present: 0, missing: [], by_status: {} });
+    if (url.includes("/documents?")) return Promise.resolve({ items: opts.docs || [] });
+    return Promise.resolve({});
+  });
+}
+
+describe("PyqWorkbenchPanel — source trust summary (OD-2 / Finding 7)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("selecting a paper with a source renders the trust summary + chip", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForSourceTrust([PAPER_WITH_SOURCE], [SRC_PENDING]);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("pyq-paper-row-p-src"));
+
+    await waitFor(() => expect(screen.getByTestId("source-trust-summary")).toBeTruthy());
+    expect(screen.getByTestId("source-trust-summary").textContent).toContain("UPSC Official Archive");
+    expect(screen.getByTestId("source-trust-type").textContent).toContain("official");
+    expect(screen.getByTestId("source-trust-chip").textContent).toContain("Pending");
+  });
+
+  test("paper without a source shows no trust summary (advisory case unaffected)", async () => {
+    const PAPER_NO_SOURCE = { ...PAPER_WITH_SOURCE, id: "p-src", pyq_source_id: null };
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForSourceTrust([PAPER_NO_SOURCE], [SRC_PENDING]);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("pyq-paper-row-p-src"));
+    // Give the (non-)fetch a tick; no summary should ever appear.
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-row-p-src")).toBeTruthy());
+    expect(screen.queryByTestId("source-trust-summary")).toBeNull();
+  });
+
+  test("Verify/Reject/Re-queue actions are gated by canReview", async () => {
+    // review-only false: a CMS-only editor sees the summary but no actions.
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.cms"] } });
+    mockApiForSourceTrust([PAPER_WITH_SOURCE], [SRC_PENDING]);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("pyq-paper-row-p-src"));
+    await waitFor(() => expect(screen.getByTestId("source-trust-summary")).toBeTruthy());
+    expect(screen.queryByTestId("source-trust-actions")).toBeNull();
+    expect(screen.queryByTestId("verify-source-btn")).toBeNull();
+  });
+
+  test("pending source shows Verify + Reject; reviewer can act", async () => {
+    useAuth.mockReturnValue({ user: { role: "admin", permissions: ["exam_intelligence.review"] } });
+    mockApiForSourceTrust([PAPER_WITH_SOURCE], [SRC_PENDING]);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("pyq-paper-row-p-src"));
+    await waitFor(() => expect(screen.getByTestId("source-trust-actions")).toBeTruthy());
+    expect(screen.getByTestId("verify-source-btn")).toBeTruthy();
+    expect(screen.getByTestId("reject-source-btn")).toBeTruthy();
+    expect(screen.queryByTestId("requeue-source-btn")).toBeNull();
+  });
+
+  test("rejected source shows only Re-queue (legal transitions)", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    const REJECTED = { ...SRC_PENDING, trust_status: "rejected" };
+    mockApiForSourceTrust([PAPER_WITH_SOURCE], [REJECTED]);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("pyq-paper-row-p-src"));
+    await waitFor(() => expect(screen.getByTestId("source-trust-actions")).toBeTruthy());
+    expect(screen.getByTestId("requeue-source-btn")).toBeTruthy();
+    expect(screen.queryByTestId("verify-source-btn")).toBeNull();
+    expect(screen.queryByTestId("reject-source-btn")).toBeNull();
+  });
+
+  test("reviewPyqSource posts status+reason to the review endpoint and refetches", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForSourceTrust([PAPER_WITH_SOURCE], [SRC_PENDING]);
+    api.post.mockResolvedValue({ ok: true, audit_id: "aud-src", row: { id: "src-trust-1", trust_status: "verified" } });
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("pyq-paper-row-p-src"));
+    await waitFor(() => expect(screen.getByTestId("verify-source-btn")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("verify-source-btn"));
+    await waitFor(() => expect(screen.getByTestId("source-review-modal")).toBeTruthy());
+    fireEvent.change(screen.getByTestId("source-review-reason"), {
+      target: { value: "confirmed source is the official commission archive" },
+    });
+    fireEvent.click(screen.getByTestId("source-review-submit"));
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/pyq-sources/src-trust-1/review"),
+        { status: "verified", reason: "confirmed source is the official commission archive" },
+      ),
+    );
+    // Refetch happens (onSuccess → fetchPapers) and the modal closes.
+    await waitFor(() => expect(screen.queryByTestId("source-review-modal")).toBeNull());
+    const pyqPaperCalls = api.get.mock.calls.filter((c) => c[0].includes("/pyq-papers?"));
+    expect(pyqPaperCalls.length).toBeGreaterThan(1);
+  });
+
+  test("client guard: reason under 8 chars blocks the source review POST", async () => {
+    useAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] } });
+    mockApiForSourceTrust([PAPER_WITH_SOURCE], [SRC_PENDING]);
+    render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await waitFor(() => expect(screen.getByTestId("pyq-paper-table")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("pyq-paper-row-p-src"));
+    await waitFor(() => expect(screen.getByTestId("reject-source-btn")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("reject-source-btn"));
+    await waitFor(() => expect(screen.getByTestId("source-review-modal")).toBeTruthy());
+    fireEvent.change(screen.getByTestId("source-review-reason"), { target: { value: "short" } });
+    fireEvent.click(screen.getByTestId("source-review-submit"));
+
+    expect(screen.getByTestId("source-review-error").textContent).toContain("8 characters");
+    expect(api.post).not.toHaveBeenCalledWith(
+      expect.stringContaining("/review"),
+      expect.objectContaining({ status: "rejected" }),
+    );
+  });
+});

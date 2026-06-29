@@ -496,3 +496,45 @@ test("archived document is excluded from inFlight and does not appear as pending
   await waitFor(() => screen.getByTestId("docs-empty"));
   expect(screen.queryByTestId("inflight-row-doc-archived")).toBeNull();
 });
+
+// ── Cycle/phase selectors render readable labels, never raw UUIDs ─────────────
+
+test("upload form cycle/phase options use readable labels, not raw UUIDs", async () => {
+  const CYCLE_UUID = "787b0067-b7c4-4311-a1c0-d488395927b6";
+  const NAMELESS_CYCLE_UUID = "881832c8-4b70-4b58-adc1-b9584ede75fe";
+  const PHASE_UUID = "6566d50e-7f1c-4410-aa36-8142dfe9a79b";
+  const NAMELESS_PHASE_UUID = "1111aaaa-2222-3333-4444-555566667777";
+
+  mockEmptyLists();
+  mockUseExamWorkspace.mockReturnValue({
+    exam:   { id: "exam-1", name: "UPSC CSE", exam_type: "recruitment" },
+    cycle:  null,
+    cycles: [
+      { id: CYCLE_UUID, exam_id: "exam-1", year: 2026, cycle_name: "Prelims" },
+      { id: "cy-2025", exam_id: "exam-1", year: 2025, cycle_name: "2025" },
+      { id: NAMELESS_CYCLE_UUID, exam_id: "exam-1" },
+    ],
+    phases: [
+      { id: PHASE_UUID, phase_name: "Prelims (CSAT)" },
+      { id: NAMELESS_PHASE_UUID, phase_slug: "mains" },
+    ],
+  });
+
+  renderPanel();
+  const cycleSel = await screen.findByTestId("doc-cycle-select");
+  const phaseSel = screen.getByTestId("doc-phase-select");
+
+  // Readable labels present
+  expect(cycleSel.textContent).toContain("2026 · Prelims");
+  expect(cycleSel.textContent).toContain("2025");           // not "2025 · 2025"
+  expect(cycleSel.textContent).not.toContain("2025 · 2025");
+  expect(cycleSel.textContent).toContain("…de75fe");        // nameless → short id
+  expect(phaseSel.textContent).toContain("Prelims (CSAT)");
+  expect(phaseSel.textContent).toContain("mains");          // phase_slug fallback
+
+  // No full UUID ever rendered
+  expect(cycleSel.textContent).not.toContain(CYCLE_UUID);
+  expect(cycleSel.textContent).not.toContain(NAMELESS_CYCLE_UUID);
+  expect(phaseSel.textContent).not.toContain(PHASE_UUID);
+  expect(phaseSel.textContent).not.toContain(NAMELESS_PHASE_UUID);
+});
