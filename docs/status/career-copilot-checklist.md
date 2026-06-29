@@ -225,6 +225,57 @@ Full decision record: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisi
 |---|---|---|
 | pip-audit dependency versions | PARTIALLY UPDATED | `litellm==1.84.0` and `pypdf==6.13.3` are pinned in `app/backend/requirements.txt`. |
 | pip-audit before pytest sequencing | STILL OPEN | `.github/workflows/ci.yml` still runs `pip-audit` before `pytest`; if audit exits nonzero, backend tests will not execute. |
+| **Duplicate migration slot 193** | **BLOCKED — e2e broken on all PRs** | `193_partner_consent_lifecycle.sql` (PR #776) and `193_pyq_source_review_transaction.sql` (PR #769) both landed on `main` with the same version number. The e2e migration runner fails with `schema_migrations_pkey 23505` on every fresh apply. The migration-discipline validate check prevents renaming either file from a PR (both are "applied" on main = immutable). Fix options: (a) patch `e2e.yml` to deduplicate migration files by version before applying — CI config change, not a migration change, so validate won't block it; (b) operator direct push to `main` renaming the latecomer (`193_partner_consent_lifecycle.sql` → `201_partner_consent_lifecycle.sql`). Option (a) is the recommended path. Do not merge any PR as "green" on e2e until this is resolved. |
+
+## Implementation sequencing plan — concurrent sub-agents
+
+Last assessed: 2026-06-29 at `main @ 3f19726`. Review before dispatch.
+
+### Serial prerequisite (must land before any wave)
+
+**Fix migration 193 collision** — unblocks e2e on all PRs. See row above.
+
+### Wave 0 — CI hardening (1 agent, fast, fully independent)
+
+| Agent | Scope | Constraint |
+|---|---|---|
+| **ci-fix** | (1) Reorder `ci.yml`: run `pytest` before `pip-audit` or make audit non-blocking. (2) Patch `e2e.yml` to deduplicate migration files by version number before `supabase db push`. | No shared file conflicts with any other wave. |
+
+### Wave 1 — Parallel independent code work (dispatch after Wave 0 merges)
+
+These touch fully disjoint modules. All can run simultaneously.
+
+| Agent | Scope | Key files | Constraint |
+|---|---|---|---|
+| **doc-extraction-race** | Issue #780: wrap `replace_document_pages` + job terminal update in a DB-side transactional RPC. New migration (MAX+1 after 193 collision resolves). | `run_text_extract_job.py`, new migration | None — isolated to extraction pipeline. |
+| **i9-cycle-checklist** | Implement the 9-step cycle activation checklist: cycle-readiness endpoint + section/check vocabulary per D01–D16 (gate doc approved PR #761). Separate D13 admin waiver PR. | `management_read_model.py`, new endpoint, new migration, new checklist frontend component | I6 gate CLEARED (PR #761 merged). Do NOT touch `AdminShell.jsx` or `adminRoutes.jsx` in this agent. |
+| **cleanup-isolated-ui** | Address isolated CLEANUP PENDING items: D4 (CompetitionPanel redundant exam column), E4 (PyqPaperWorkspace dual-entry-point note/link), E5 (exam creation surface differentiation copy), M2 (standalone topic alias management), M4 (subjects CMS exam-family filter), F5 (policy `affects_*` flags — add immutability notice). | `CompetitionMetricsTable.jsx`, `ExamIntelCms.jsx`, `TopicAliasesEditor.jsx`, `PolicyUpdatesTable.jsx` | No routing files. Each item is independent. |
+
+### Wave 2 — Operator-gated code (start alongside Wave 1; gate on operator deploy)
+
+Write the code; operator sign-off required before merge.
+
+| Agent | Scope | Gate |
+|---|---|---|
+| **otp-auth** | Complete phone/SMS OTP PR: Twilio client wiring, user migration script, browser OTP flow, E2E test suite. Draft PR only. | Twilio provisioning by operator before merge. |
+| **j1-advanced-repair** | Scope Advanced Repair to selected exam + cycle: search, filters, pagination, `exam_intelligence.cms` permission gate. Contract-first doc required before implementation. | I8-C CLEARED (PR #759). Contract must be operator-approved before code. |
+| **j2-manage-exam-editors** | Move topic/microtopic management, alias management, historical paper creation, policy flag correction into Manage Exam tabs. Contract-first doc required. **All sub-steps serial within one agent** — shared write scope includes `ExamWorkspace.jsx`. | I8-B CLEARED (PR #757). Contract must be operator-approved before code. Do NOT fan out sub-steps. |
+
+### Wave 3 — Contract-first / deferred (cannot start until product decisions locked)
+
+| Item | Blocking decision needed |
+|---|---|
+| J3 competition metrics structure | Domain contract: JSONB schema for `cutoff_trend`/`vacancy_by_category`, phase/category breakdown, evidence model, reviewer lifecycle. |
+| Mixed-format PDF support | Extraction architecture: page-level layout classification OR explicit rejection + documented workaround. |
+| M1 topic prerequisites | Schema design decision: data model for strength values between topics before any UI. |
+| Management mode / cadence / coverage governance | Product contract: deterministic rule vs admin judgement vs model suggestion for `management_mode`, `cadence`, coverage depth. |
+| KG rename ("Knowledge Governance" → "Policy & Trust") | Separate PR; touches sidebar labels, masthead/page titles, breadcrumbs, tests. Do not fold into any Wave 1–2 work. |
+
+### Parallelism constraints (enforced by repo rules)
+
+- **Never fan out to parallel agents** any work that shares `AdminShell.jsx`, `adminRoutes.jsx`, `ExamWorkspace.jsx`, `ExamIntelligence.jsx`, or route/title test files simultaneously. Serial delivery only (I8 lesson, AGENTS.md §19).
+- **J2 sub-steps are serial** within a single agent — all Manage Exam tab work is a shared write scope.
+- **No new top-level surface** unless it removes ≥ 2 existing peers (no-new-surface rule, locked 2026-06-21).
 
 ## Prior arcs / live-DB-only tails
 
