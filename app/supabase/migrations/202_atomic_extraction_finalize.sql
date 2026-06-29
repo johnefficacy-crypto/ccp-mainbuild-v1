@@ -39,8 +39,10 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_doc    document_assets%ROWTYPE;
-    v_now    timestamptz := now();
+    v_doc      document_assets%ROWTYPE;
+    v_job_id   uuid;
+    v_now      timestamptz := now();
+    v_updated  int;
 BEGIN
     -- 1. Lock the document row.  FOR UPDATE serialises concurrent archive /
     --    extraction-finalize calls on the same document.
@@ -54,11 +56,27 @@ BEGIN
     END IF;
 
     -- 2. Abort if the document has been archived — preserve the archived state.
+    --    Canonical reason token: 'document_archived' (matches Python caller).
     IF v_doc.status = 'archived' THEN
-        RETURN jsonb_build_object('ok', false, 'reason', 'archived');
+        RETURN jsonb_build_object('ok', false, 'reason', 'document_archived');
     END IF;
 
-    -- 3. Inline replace_document_pages logic: delete existing rows then insert
+    -- 3. Lock the job row and validate the relationship before any write.
+    --    Enforces: job belongs to this document, is a text_extract job, and is
+    --    currently running (prevents double-finalize or wrong-job scenarios).
+    SELECT id INTO v_job_id
+      FROM public.document_processing_jobs
+     WHERE id             = p_job_id
+       AND document_id    = p_document_id
+       AND job_type       = 'text_extract'
+       AND status         = 'running'
+       FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('ok', false, 'reason', 'job_not_found_or_not_running');
+    END IF;
+
+    -- 4. Inline replace_document_pages logic: delete existing rows then insert
     --    the new page set.  Shares this transaction so both writes are atomic.
     DELETE FROM public.document_pages WHERE document_id = p_document_id;
 
@@ -78,7 +96,7 @@ BEGIN
         FROM jsonb_array_elements(p_pages) AS p;
     END IF;
 
-    -- 4. Update the job terminal state.
+    -- 5. Update the job terminal state (exactly one row: verified by step 3).
     UPDATE public.document_processing_jobs
        SET status        = p_status,
            finished_at   = v_now,
@@ -87,7 +105,12 @@ BEGIN
            metrics       = coalesce(p_metrics, '{}'::jsonb)
      WHERE id = p_job_id;
 
-    -- 5. Update the document status (never overwrite 'archived').
+    GET DIAGNOSTICS v_updated = ROW_COUNT;
+    IF v_updated != 1 THEN
+        RAISE EXCEPTION 'finalize_document_extraction: expected 1 job update, got %', v_updated;
+    END IF;
+
+    -- 6. Update the document status (never overwrite 'archived').
     UPDATE public.document_assets
        SET status = CASE WHEN p_status = 'succeeded' THEN 'processed' ELSE 'failed' END
      WHERE id = p_document_id
