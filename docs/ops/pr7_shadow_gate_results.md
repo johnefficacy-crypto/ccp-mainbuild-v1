@@ -54,21 +54,26 @@ superseded. The v2 fingerprint manifest boundary is defined at
 `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (32 files;
 30 previous + `MockAttemptShell.jsx` + `attemptEventBus.js`).
 
-**FREEZE PENDING — two runtime bugs must merge before the freeze hash is
-valid:**
-- `time_analytics.py` reads `created_at` but DB writes `occurred_at`
-  — all production events are skipped; dwell falls back to
-  `time_spent_sec`. Fix PR: `fix/time-analytics-occurred-at`.
-- `MockAttemptShell.jsx` does not emit `question.visited` for question 1
-  on initial load (visit effect runs before `attempt` populates
-  `questions_ref`). Fix PR: `fix/mock-attempt-first-visit`.
+**FROZEN — both runtime bugs are fixed and merged; freeze hash recomputed:**
+- `time_analytics.py` read `created_at` but DB writes `occurred_at` (and
+  read `question_id` top-level instead of from `payload` JSONB) — all
+  production events were skipped; dwell fell back to `time_spent_sec`.
+  Fixed and merged: PR #795 (`fix/time-analytics-v2`).
+- `MockAttemptShell.jsx` did not emit `question.visited` for question 1
+  on initial load (visit effect ran before `attempt` populated
+  `questions_ref`). Fixed and merged: PR #793 (`fix/mock-attempt-first-visit`).
 
 Pre-fix reference hash at `main @ c9c44a9e` (32 files; do NOT use as
 window_start hash — bugs present):
 `96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b`
 
-Once both fix PRs merge to `main`, recompute the hash at the new SHA
-and record it in prerequisite step 2 below before starting the clock.
+**Post-fix freeze hash at `main @ 1679adb8` (32 files; bugs fixed) — use
+this as the window_start / window_end fingerprint:**
+`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`
+
+Computing the freeze hash does NOT open the observation window. Re-verify
+this hash at the confirmed `window_start` SHA before starting the clock;
+any change to a listed file resets it.
 
 ---
 
@@ -80,17 +85,19 @@ Steps 3–8 are sequential and each depends on those above it.
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — blocked on
-   runtime bug fixes):** Manifest boundary final: 32 files (20 original +
-   `attempt_analytics` 7 + event-backend 3 + frontend event producers 2:
-   `MockAttemptShell.jsx`, `attemptEventBus.js`).
-   Two bugs must merge before the freeze hash is valid:
-   (a) `time_analytics.py` `created_at`→`occurred_at` fix
-   (`fix/time-analytics-occurred-at`);
+2. ✅ **Freeze the v2 fingerprint manifest (DONE):** Manifest boundary
+   final: 32 files (20 original + `attempt_analytics` 7 + event-backend 3 +
+   frontend event producers 2: `MockAttemptShell.jsx`, `attemptEventBus.js`).
+   Both blocking runtime bug fixes merged to `main`:
+   (a) `time_analytics.py` `occurred_at` + `payload.question_id` fix
+   (PR #795, `fix/time-analytics-v2`);
    (b) `MockAttemptShell.jsx` first-visit fix
-   (`fix/mock-attempt-first-visit`).
-   After both merge: run fail-closed command at new main SHA; record hash
-   here. _Code-only step; independent of deployment order._
+   (PR #793, `fix/mock-attempt-first-visit`).
+   Fail-closed command run at post-fix `main @ 1679adb8`; freeze hash
+   recorded above and below:
+   `b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`.
+   _Code-only step complete; independent of deployment order. Re-verify at
+   the confirmed window_start SHA before starting the clock._
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
    confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
