@@ -31,12 +31,17 @@ has not started. No threshold evaluation has occurred.
 
 ## Candidate Change Since PR-6 Inspection
 
-Five code-level PRs merged after the PR-6 inspection baseline SHA
-(`ba3ea3516f10d07d4708a12942e03162d2f2da50`), all modifying files in the
-v2 validation fingerprint set:
+The table below lists selected Lane-A PRs (mastery validation path) that
+merged after the PR-6 inspection baseline SHA
+(`ba3ea3516f10d07d4708a12942e03162d2f2da50`) and modified files now in the
+v2 fingerprint set. **This is not an exhaustive diff of every manifest
+path:** other PRs in this range also touched manifest files for unrelated
+reasons (e.g. PR #778 onboarding-priors modified `api/study_os.py`; a
+security hardening commit modified `api/canonical.py`). The authoritative
+record of what changed is `git diff ba3ea35..c9c44a9e -- <manifest-path>`.
 
-| PR | Files changed in fingerprinted set | Merge time (UTC) |
-|----|-----------------------------------|-----------------|
+| PR | Files changed in fingerprinted set (mastery path) | Merge time (UTC) |
+|----|---------------------------------------------------|-----------------|
 | #723 shadow analysis redesign | `tools/mastery_shadow_analysis/shadow_analysis.py` | 2026-06-20T07:41:05Z |
 | #726 correction atomicity fix + migration 182 | `mastery_writer.py`, `mocks.py`, `migrations/182_mock_correction_draft_atomic_rpcs.sql` | 2026-06-20T07:48:11Z |
 | #745 error-pattern schema fix | `mastery_engine/error_patterns.py`, `mastery_engine/schemas.py`, `mastery_writer.py` | 2026-06-21T15:36:02Z |
@@ -45,17 +50,13 @@ v2 validation fingerprint set:
 
 The PR-6 inspection fingerprint
 (`6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`) is
-superseded. The v2 fingerprint manifest is now frozen at
-`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (20 files;
+superseded. The v2 fingerprint manifest is frozen at
+`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (30 files;
 combined fingerprint at `main @ c9c44a9e`:
-`c37094cc620051bb781434e0c766114b28e9a4ea5cf52e964c996bb6b4b4feb0`).
+`04463b8c5b8b33052c35b6d666f1a93d57872741fd3b4cbd0f8a61ef63c170d5`).
 Once the remaining prerequisites are met, the operator must compute a new
 baseline fingerprint using the manifest at the approved candidate SHA and
 record it here before starting the clock.
-
-**Manifest updated (this PR):** `attempt_analytics` package (7 files) added;
-combined fingerprint at `main @ c9c44a9e` updated to
-`a6c8cee8a1d69cc4e27abf59c8baddd4550d37622da50931be4a2d3d3cf4a885` (27 files).
 
 ---
 
@@ -69,9 +70,9 @@ Steps 3–8 are sequential and each depends on those above it.
    remediation (PR #745) merged to `main`.
 2. ✅ **Freeze the v2 fingerprint manifest (DONE — 2026-06-29):**
    `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` created and
-   frozen (27 files: original 20 + `attempt_analytics` package 7 files).
-   Combined fingerprint at `main @ c9c44a9e`:
-   `a6c8cee8a1d69cc4e27abf59c8baddd4550d37622da50931be4a2d3d3cf4a885`.
+   frozen (30 files: original 20 + `attempt_analytics` package 7 files +
+   event-input path 3 files). Combined fingerprint at `main @ c9c44a9e`:
+   `04463b8c5b8b33052c35b6d666f1a93d57872741fd3b4cbd0f8a61ef63c170d5`.
    _Code-only step; independent of deployment order._
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
@@ -96,7 +97,7 @@ Steps 3–8 are sequential and each depends on those above it.
    ```bash
    set -euo pipefail
    readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-   _expected=27
+   _expected=30
    _actual=${#_files[@]}
    [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
    for _f in "${_files[@]}"; do

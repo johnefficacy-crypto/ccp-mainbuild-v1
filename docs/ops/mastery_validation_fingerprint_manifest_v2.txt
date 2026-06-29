@@ -3,10 +3,16 @@
 # Supersedes the informal 18-file set used in the PR-6 inspection.
 # Added migration 180 (shadow idempotency) and migration 182 (correction
 # draft atomic RPCs) which were absent from v1 and are safety-critical.
-# Added complete attempt_analytics package (7 files) which produces
-# mock_attempt_response_classification rows that MasteryWriter gates on;
-# a classifier/dwell-time/service change would otherwise leave the
-# fingerprint unchanged while changing the data under validation.
+# Added complete attempt_analytics package (7 files): mock_engine.py calls
+# compute_and_persist() which persists mock_attempt_response_classification
+# rows that MasteryWriter gates on; classifier/service changes would
+# otherwise leave the fingerprint unchanged while changing data under
+# validation.
+# Added event-input path (3 files): attempt_analytics/service.py reads
+# mock_attempt_events; time_analytics.py derives dwell time from
+# question-visit events; classifier.py uses that timing. Changes to event
+# validation, naming, or ingestion can alter mastery inputs without
+# changing other fingerprinted files.
 #
 # Frozen: 2026-06-29
 # Frozen at main SHA: c9c44a9e8cb993de3ddfec50803649a3ec461bd0
@@ -19,7 +25,7 @@
 #
 #   set -euo pipefail
 #   readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-#   _expected=27
+#   _expected=30
 #   _actual=${#_files[@]}
 #   [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
 #   for _f in "${_files[@]}"; do
@@ -52,10 +58,13 @@ app/backend/app/study_os/attempt_analytics/topic_breakdown.py
 app/backend/app/study_os/attempt_analytics/time_analytics.py
 app/backend/app/study_os/attempt_analytics/scoring.py
 app/backend/app/study_os/attempt_analytics/classifier.py
+app/backend/app/study_os/attempt_events.py
+app/backend/app/study_os/attempt_event_types.py
 app/backend/app/api/mock_engine.py
 app/backend/app/api/canonical.py
 app/backend/app/api/study_os.py
 app/backend/app/api/admin_study_os.py
+app/backend/app/api/mock_attempt_events.py
 tools/mastery_shadow_analysis/shadow_analysis.py
 app/supabase/migrations/180_mock_mastery_shadow_idempotency.sql
 app/supabase/migrations/181_mock_correction_tasks_uniqueness.sql
