@@ -129,12 +129,15 @@ export default function MockAttemptShell() {
   }, [timeRemaining === null ? "null" : "ready"]);
 
   // ── track current question in event bus ──────────────────────────────────
+  // IMPORTANT: these two concerns are merged into one effect so that when the
+  // attempt first loads (currentIdx=0, attempt goes from null→object) we both
+  // populate questions_ref AND emit question.visited for index 0.  With two
+  // separate effects the visit effect fired on mount when questions_ref was
+  // still empty, and never re-fired once the attempt loaded because currentIdx
+  // hadn't changed.
   const questions_ref = useRef([]);
   useEffect(() => {
     if (attempt) questions_ref.current = attempt.questions || [];
-  }, [attempt]);
-
-  useEffect(() => {
     try {
       const qid = questions_ref.current[currentIdx]?.question_id || null;
       eventBus.setCurrentQuestionId(qid);
@@ -143,7 +146,7 @@ export default function MockAttemptShell() {
       console.warn("[Shell] question visit enqueue error:", e);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIdx]);
+  }, [currentIdx, attempt]);
 
   // ── warn (don't block) on leave while answers are not yet saved ───────────
   useEffect(() => {

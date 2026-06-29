@@ -94,6 +94,9 @@ const MANAGEMENT_RESPONSE = {
   stages: [],
   evidence_refs: [],
   generated_at: "2026-01-01T00:00:00Z",
+  contract_version: 1,
+  cycle_readiness: null,
+  cycle_readiness_error: null,
 };
 
 // ── Mock helper ───────────────────────────────────────────────────────────────
@@ -580,8 +583,8 @@ describe("ExamWorkspace standalone layout regression (B2)", () => {
 describe("ExamWorkspace standalone fetch regression (B2)", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test("fetches context, readiness, and management once on initial mount (no current_cycle = no extra fetch)", async () => {
-    // MANAGEMENT_RESPONSE has current_cycle: null → no cycle normalization → 1 fetch each
+  test("fetches context, readiness, and management exactly once on initial mount", async () => {
+    // CycleActivationChecklist reads from context mgmt — no extra management fetch
     mockAllEndpoints({ readinessResponse: STANDALONE_READINESS });
     render(
       <MemoryRouter initialEntries={["/admin/exam-intelligence/exams/exam-1"]}>

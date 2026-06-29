@@ -5,6 +5,7 @@ from decimal import Decimal
 from fastapi import HTTPException
 
 from app.study_os.attempt_analytics.service import derive_attempt_analytics, compute_and_persist
+from app.study_os.attempt_analytics.time_analytics import compute_dwell_times
 
 
 def _q(i: int, **overrides):
@@ -81,3 +82,55 @@ def test_unsubmitted_422():
         assert e.status_code == 422
     else:
         raise AssertionError("expected 422")
+
+
+def test_dwell_times_from_occurred_at_events():
+    """DB-shaped event rows (payload.question_id + occurred_at) drive dwell time computation."""
+    responses = [
+        {"question_id": "q1", "time_spent_sec": 999},
+        {"question_id": "q2", "time_spent_sec": 999},
+    ]
+    events = [
+        {
+            "event_type": "question.visited",
+            "payload": {"question_id": "q1"},
+            "occurred_at": "2026-01-01T00:00:00+00:00",
+            "source": "client",
+        },
+        {
+            "event_type": "question.visited",
+            "payload": {"question_id": "q2"},
+            "occurred_at": "2026-01-01T00:01:30+00:00",
+            "source": "client",
+        },
+    ]
+    submitted_at = "2026-01-01T00:03:00+00:00"
+    by_q, warnings, stats = compute_dwell_times(responses, events, submitted_at)
+
+    assert "mock_attempt_events missing; fallback to responses.time_spent_sec" not in warnings
+    assert stats["events_used"] == 2
+    assert stats["events_malformed"] == 0
+    assert by_q["q1"] == 90
+    assert by_q["q2"] == 90
+
+
+def test_dwell_times_created_at_is_malformed():
+    """DB-shaped rows with created_at (wrong timestamp field) are malformed and skipped."""
+    responses = [
+        {"question_id": "q1", "time_spent_sec": 42},
+    ]
+    events = [
+        {
+            "event_type": "question.visited",
+            "payload": {"question_id": "q1"},
+            # Wrong timestamp field — DB column is occurred_at, not created_at
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "source": "client",
+        },
+    ]
+    submitted_at = "2026-01-01T00:01:00+00:00"
+    by_q, warnings, stats = compute_dwell_times(responses, events, submitted_at)
+
+    assert stats["events_malformed"] >= 1
+    assert stats["events_used"] == 0
+    assert by_q["q1"] == 42

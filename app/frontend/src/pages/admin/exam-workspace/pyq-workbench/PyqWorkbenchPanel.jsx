@@ -718,6 +718,18 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
         <div className="flex-1 min-h-0">
           {selectedPaperId ? (
             <Suspense fallback={<div className="p-8 text-gray-400">Loading…</div>}>
+              {/*
+               * E4 — Dual entry points for PyqPaperWorkspace:
+               *
+               * 1. EMBEDDED (here, embedded prop = true): rendered inside ExamWorkspace via this
+               *    panel. Receives full exam context from ExamWorkspaceContext (exam, cycle, phase).
+               *    The paper list and review actions above operate within that exam scope.
+               *
+               * 2. STANDALONE ROUTE (/admin/exam-intelligence/pyq-papers/:id/workspace): rendered
+               *    directly via adminRoutes. Has NO ExamWorkspaceContext — exam context must be
+               *    derived solely from the paper's own exam_id field. Use this path for deep-links
+               *    or when navigating to a specific paper outside of ExamWorkspace.
+               */}
               <PyqPaperWorkspace paperId={selectedPaperId} embedded rowId={rowId} status={status} />
             </Suspense>
           ) : (

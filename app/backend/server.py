@@ -393,7 +393,13 @@ api.include_router(blogs_router)  # /blogs public list/detail
 api.include_router(admin_blogs_router)  # /admin/blogs CRUD
 api.include_router(copyright_public_router)  # /copyright/submit (public DMCA intake)
 api.include_router(admin_copyright_router)  # /admin/copyright/...
-api.include_router(placeholders_router)
+# Placeholder/demo-only endpoints (3 admin `*-static` routes + a notifications
+# toggle stub) are NOT part of the production surface and are deferred to v2.
+# They are off by default; set FF_ENABLE_PLACEHOLDER_ENDPOINTS=1 to expose them
+# (e.g. for local/demo). The module is still imported above because real routers
+# (accountability) consume its MENTORS catalogue constant.
+if (os.getenv("FF_ENABLE_PLACEHOLDER_ENDPOINTS") or "").strip().lower() in ("1", "true", "yes", "on"):
+    api.include_router(placeholders_router)
 app.include_router(api)
 
 

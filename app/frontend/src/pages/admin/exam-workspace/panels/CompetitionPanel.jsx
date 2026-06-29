@@ -221,6 +221,14 @@ export default function CompetitionPanel() {
         </div>
       )}
 
+      {/* D4: Competition metrics are always pre-filtered to this exam (exam_id set in query).
+           The "Exam" column is not shown — all rows belong to the current exam context.
+           This table is display-only for the exam column; use the Exam selector above to switch exams. */}
+      {metrics.length > 0 && (
+        <p className="text-[11px] text-clay-500" data-testid="competition-exam-filter-note">
+          Showing metrics for this exam only. The exam column is not displayed — all rows are pre-filtered by exam context and cannot be filtered further here.
+        </p>
+      )}
       {metrics.length > 0 && (
         <div className="card">
           <table className="t">

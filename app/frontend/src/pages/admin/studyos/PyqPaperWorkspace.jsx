@@ -1458,6 +1458,16 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
             </Link>
           </div>
         )}
+        {/* E4: dual-entry note — this workspace is reachable both as a standalone route
+             (/admin/exam-intelligence/pyq-papers/:id/workspace) and as an embedded tab inside
+             Exam Workspace. The standalone route has no exam context in the URL; the embedded
+             version inherits exam context from ExamWorkspaceContext. If you reached this page
+             directly (not from an exam workspace), exam-scoped actions and context are unavailable. */}
+        {!embedded && (
+          <p className="text-[11px] text-clay-500" data-testid="pyq-workspace-dual-entry-note">
+            Viewing as standalone paper workspace — no exam context. To review this paper with full exam context, open it from the PYQ tab inside Exam Workspace.
+          </p>
+        )}
         <div className="flex items-center gap-3">
           {!embedded && (
             <button
