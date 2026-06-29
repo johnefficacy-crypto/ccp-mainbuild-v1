@@ -6,6 +6,7 @@ import { formatDDMMYYYY } from "../../../../shared/forms/dateFormat";
 import useApiAction from "../../../../lib/hooks/useApiAction";
 import CycleForm from "../../../../features/admin/exam-intelligence/forms/CycleForm";
 import PhaseForm from "../../../../features/admin/exam-intelligence/forms/PhaseForm";
+import CycleActivationChecklist from "./CycleActivationChecklist";
 
 function TrustBadge({ status }) {
   const map = {
@@ -915,6 +916,21 @@ export default function SetupPanel({ action = null }) {
           )}
         </div>
       )}
+
+
+      {cycles.length > 0 && (() => {
+        const _bestCycle =
+          cycles.find((c) => c.status === "active") ||
+          cycles.find((c) => c.status === "open") ||
+          cycles.find((c) => c.status === "expected") ||
+          cycles[0];
+        return (
+          <CycleActivationChecklist
+            examId={exam.id}
+            cycleId={_bestCycle?.id || null}
+          />
+        );
+      })()}
 
     </div>
   );

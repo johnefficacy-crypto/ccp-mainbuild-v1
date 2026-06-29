@@ -350,9 +350,13 @@ def test_management_detail_explicit_cycle_id():
 
 
 def test_management_detail_404_for_unknown_cycle():
+    # D16: unknown cycle_id returns 200 with cycle_readiness=null and error flag
     client, _ = _client()
     r = _detail(client, "rdy", cycle_id="ghost-cycle")
-    assert r.status_code == 404
+    assert r.status_code == 200
+    body = r.json()
+    assert body["cycle_readiness"] is None
+    assert body["cycle_readiness_error"] == "cycle_not_found"
 
 
 def test_management_detail_action_queue_has_tab_deep_links():
