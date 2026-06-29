@@ -14,11 +14,17 @@ def compute_dwell_times(
     by_q: dict[str, int] = {}
     malformed_events = 0
     events_used = 0
+    response_qids = [r["question_id"] for r in responses]
     if not events:
         warnings.append("mock_attempt_events missing; fallback to responses.time_spent_sec")
         for r in responses:
             by_q[r["question_id"]] = int(r.get("time_spent_sec") or 0)
-        return by_q, warnings, {"events_malformed": 0, "events_used": 0}
+        return by_q, warnings, {
+            "events_malformed": 0,
+            "events_used": 0,
+            "event_covered_questions": 0,
+            "fallback_question_count": len(response_qids),
+        }
 
     sorted_events = []
     for e in events:
@@ -27,6 +33,10 @@ def compute_dwell_times(
             continue
         sorted_events.append(e)
     sorted_events.sort(key=lambda e: _parse(e["occurred_at"]))
+    # Track which questions actually received a visit-event-derived dwell time,
+    # so per-question fallback can be detected and reported (it cannot be
+    # inferred from len(by_q) once every response qid is setdefault-ed below).
+    event_covered_qids: set[str] = set()
     for i, evt in enumerate(sorted_events):
         # PR2b compatibility alias. TODO(PR-integrate follow-up): once PR2b
         # locks a single event naming contract, deprecate + remove this alias.
@@ -44,11 +54,23 @@ def compute_dwell_times(
                 end = _parse(nxt["occurred_at"])
                 break
         by_q[qid] = max(0, int((end - t0).total_seconds()))
+        event_covered_qids.add(qid)
 
+    # Per-question fallback for any response not covered by a visit event.
+    # Compute the fallback set BEFORE setdefault so it is not masked by the
+    # fill-in below (the prior len(by_q) < len(responses) check could never
+    # trip once every response qid was setdefault-ed, silently hiding fallback).
+    fallback_qids = [q for q in response_qids if q not in event_covered_qids]
     for r in responses:
         by_q.setdefault(r["question_id"], int(r.get("time_spent_sec") or 0))
-    if len(by_q) < len(responses):
+
+    if fallback_qids:
         warnings.append("partial event coverage; fallback applied per-question")
     if malformed_events:
         warnings.append(f"malformed events dropped: {malformed_events}")
-    return by_q, warnings, {"events_malformed": malformed_events, "events_used": events_used}
+    return by_q, warnings, {
+        "events_malformed": malformed_events,
+        "events_used": events_used,
+        "event_covered_questions": len(event_covered_qids & set(response_qids)),
+        "fallback_question_count": len(fallback_qids),
+    }
