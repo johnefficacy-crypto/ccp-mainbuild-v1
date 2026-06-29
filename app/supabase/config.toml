@@ -168,7 +168,8 @@ refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
-enable_anonymous_sign_ins = false
+# Retained alongside phone-OTP login (guest browsing + Google linking depend on it).
+enable_anonymous_sign_ins = true
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
@@ -200,7 +201,14 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
+# Phone OTP is the login method; email/password is removed from the first-party
+# UI and is kept ONLY as an optional profile field (receipts), never a login
+# identity. This stays ENABLED in checked-in/local/CI config on purpose: the E2E
+# suite mints service tokens via signInWithPassword, and disabling it here breaks
+# token-minting ("Email logins are disabled"). Removing password auth at the
+# PROVIDER is the operator's production gate — disable the Email provider's
+# password sign-in in the hosted Supabase dashboard (see
+# docs/status/Phone-OTP-Login-2026-06-26.md §"OPERATOR PENDING").
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
@@ -238,18 +246,26 @@ otp_expiry = 3600
 # content_path = "./templates/password_changed_notification.html"
 
 [auth.sms]
-# Allow/disallow new user signups via SMS to your project.
-enable_signup = false
-# If enabled, users need to confirm their phone number before signing in.
-enable_confirmations = false
+# Phone/SMS OTP is the primary login method (replaces email+password).
+enable_signup = true
+# Phone must be confirmed via OTP before signing in.
+enable_confirmations = true
 # Template for sending OTP to users
 template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
-# Use pre-defined map of phone number to OTP for testing.
-# [auth.sms.test_otp]
-# 4152127777 = "123456"
+# ⛔ DEPLOYMENT GATE — DEV/TEST ONLY. This is a pre-defined phone→OTP map so
+# local sign-in (and the E2E suite) work without a live SMS provider. These
+# numbers never trigger a real SMS, but if this block reaches a HOSTED project
+# it becomes a fixed-OTP backdoor (anyone who knows the number + "123456" can
+# sign in). It MUST NOT be pushed to production.
+#   • The hosted Supabase project must NOT contain [auth.sms.test_otp].
+#   • CI enforces this via scripts/check-supabase-prod-gate.mjs (run with
+#     SUPABASE_ENV=production), which fails the deploy if this block survives.
+[auth.sms.test_otp]
+919999900001 = "123456"
+919999900002 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
@@ -270,10 +286,17 @@ max_frequency = "5s"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]
-enabled = false
-account_sid = ""
-message_service_sid = ""
-# DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
+# MUST stay enabled = true in checked-in/local/CI config. A provider has to be
+# enabled for Supabase's SMS auth subsystem to accept signInWithOtp at all; with
+# it disabled, even numbers in [auth.sms.test_otp] are rejected ("phone provider
+# not configured") and the whole phone-OTP login path — including the E2E suite —
+# breaks. The env() creds resolve to empty in CI, but that's fine: test_otp
+# numbers short-circuit from the map and NEVER reach Twilio, so no real SMS is
+# sent and no valid creds are needed. The OPERATOR supplies real env creds in the
+# hosted project, where live numbers do hit Twilio (production gate).
+enabled = true
+account_sid = "env(SUPABASE_AUTH_SMS_TWILIO_ACCOUNT_SID)"
+message_service_sid = "env(SUPABASE_AUTH_SMS_TWILIO_MESSAGE_SERVICE_SID)"
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 
 # Multi-factor-authentication is available to Supabase Pro plan.

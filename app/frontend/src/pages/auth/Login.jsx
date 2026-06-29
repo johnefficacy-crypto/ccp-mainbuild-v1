@@ -6,6 +6,7 @@ import { useAuth } from "../../lib/authContext";
 import { resolvePostAuthRedirect } from "../../lib/resolvePostAuthRedirect";
 import { useTurnstileChallenge } from "../../lib/useTurnstileChallenge";
 import { stashMergeClaim } from "../../features/onboarding-chat/mergeClaim";
+import { normalizePhoneE164 } from "../../lib/phone";
 
 function humanizeAuthError(err) {
   const raw = (err && (err.message || err.error_description)) || "Unable to sign in";
@@ -15,9 +16,19 @@ function humanizeAuthError(err) {
   return raw;
 }
 
+// With shouldCreateUser:false, Supabase rejects an unknown phone rather than
+// minting an account. Detect that family of messages so we can route the user
+// to signup instead of surfacing a confusing "signups not allowed" error.
+function isUnknownUserError(err) {
+  const raw = (err && (err.message || err.error_description)) || "";
+  return /signups?\s+not\s+allowed|user\s+not\s+found|otp_disabled|not\s+exist/i.test(raw);
+}
+
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState("phone"); // phone | code
+  const [sentTo, setSentTo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const auth = useAuth();
@@ -33,13 +44,9 @@ export default function Login() {
     reset: resetCaptcha,
   } = useTurnstileChallenge();
 
-  // Surface OAuth provider errors that AuthCallback bounced back here.
   const urlError = useMemo(() => searchParams.get("error"), [searchParams]);
   const [bannerError, setBannerError] = useState(urlError);
 
-  // A merge_claim token rides in on the URL when an anonymous user hit the
-  // "email already exists" conflict. Stash it before the Google OAuth redirect
-  // wipes the query string; AuthCallback consumes it once we're permanent.
   useEffect(() => {
     stashMergeClaim(searchParams.get("merge_claim"));
   }, [searchParams]);
@@ -56,38 +63,80 @@ export default function Login() {
     }
   }
 
-  async function handleSubmit(e) {
+  async function getCaptcha() {
+    if (!captchaRequired) return undefined;
+    try {
+      return await waitForCaptchaToken({ timeoutMs: 15000 });
+    } catch (capErr) {
+      if (widgetFailed || capErr?.message === "captcha_widget_failed") {
+        throw new Error("CAPTCHA failed to load. Disable ad-blockers or try another browser.");
+      }
+      return undefined; // widget alive — let Supabase reject cleanly
+    }
+  }
+
+  async function handleSendCode(e) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setBannerError(null);
-    let captchaToken;
-    if (captchaRequired) {
-      try {
-        captchaToken = await waitForCaptchaToken({ timeoutMs: 15000 });
-      } catch (capErr) {
-        if (widgetFailed || capErr?.message === "captcha_widget_failed") {
-          setError(
-            "CAPTCHA failed to load. Disable ad-blockers or try another browser."
-          );
-          setLoading(false);
-          return;
-        }
-        // Timeout but widget alive — fall through, Supabase will reject with a
-        // clean captcha_failed which the catch below handles + resets.
-      }
+    const e164 = normalizePhoneE164(phone);
+    if (!e164) {
+      setError("Enter a valid phone number with country code.");
+      setLoading(false);
+      return;
     }
     try {
-      const user = await auth.login(email.trim(), password, { captchaToken });
+      const captchaToken = await getCaptcha();
+      // Login NEVER creates a new account. An unknown phone is rejected by
+      // Supabase (shouldCreateUser:false) and routed to /signup below.
+      await auth.requestPhoneOtp(e164, { captchaToken, shouldCreateUser: false });
+      setSentTo(e164);
+      setStep("code");
+    } catch (err) {
+      if (isUnknownUserError(err)) {
+        nav(`/signup?phone=${encodeURIComponent(e164)}`, { replace: false });
+        return;
+      }
+      setError(humanizeAuthError(err));
+    } finally {
+      // Turnstile tokens are single-use — reset after EVERY send (success or
+      // failure) so a Resend / number edit always mints a fresh token.
+      resetCaptcha();
+      setLoading(false);
+    }
+  }
+
+  async function handleVerify(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const user = await auth.verifyPhoneOtp(sentTo, code.trim());
       if (user.role === "admin" || user.role === "super_admin") {
         nav("/admin", { replace: true });
       } else {
         nav(redirectTo, { replace: true });
       }
     } catch (err) {
-      resetCaptcha();
       setError(humanizeAuthError(err));
     } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setLoading(true);
+    setError(null);
+    try {
+      const captchaToken = await getCaptcha();
+      // sentTo already passed shouldCreateUser:false on the first send; the
+      // account exists by now, so a plain resend is correct here.
+      await auth.requestPhoneOtp(sentTo, { captchaToken, shouldCreateUser: false });
+    } catch (err) {
+      setError(humanizeAuthError(err));
+    } finally {
+      resetCaptcha();
       setLoading(false);
     }
   }
@@ -105,7 +154,7 @@ export default function Login() {
         </span>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-5" data-testid="login-form">
+      <div className="space-y-5" data-testid="login-form">
         {bannerError && (
           <div
             className="rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm px-3 py-2"
@@ -123,51 +172,104 @@ export default function Login() {
         >
           Continue with Google
         </button>
-        <div className="text-[11px] uppercase tracking-widest text-muted-foreground text-center">or sign in with email</div>
-        <div>
-          <label className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Email</label>
-          <input
-            data-testid="login-email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm"
-          />
+        <div className="text-[11px] uppercase tracking-widest text-muted-foreground text-center">
+          or sign in with your phone
         </div>
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-[11px] uppercase tracking-widest text-muted-foreground">Password</label>
-            <Link to="/forgot-password" className="text-[11px] link-under">Forgot?</Link>
-          </div>
-          <input
-            data-testid="login-password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm"
-          />
-        </div>
-        {error && (
-          <div className="rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm px-3 py-2" data-testid="login-error">
-            {error}
-          </div>
-        )}
+
+        {/* Turnstile is rendered once outside both steps so the widget stays
+            mounted when transitioning to the OTP step. This lets handleResend()
+            call waitForCaptchaToken() against a live widget without timing out. */}
         <Turnstile />
-        <button
-          type="submit"
-          disabled={loading}
-          data-testid="login-submit"
-          className="btn btn-primary w-full disabled:opacity-60"
-        >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />} Sign in
-        </button>
+
+        {step === "phone" ? (
+          <form onSubmit={handleSendCode} className="space-y-5">
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">
+                Phone number
+              </label>
+              <input
+                data-testid="login-phone"
+                type="tel"
+                required
+                autoComplete="tel"
+                placeholder="+91 98765 43210"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Include your country code (e.g. +91 for India).
+              </p>
+            </div>
+            {error && (
+              <div className="rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm px-3 py-2" data-testid="login-error">
+                {error}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={loading}
+              data-testid="login-send-code"
+              className="btn btn-primary w-full disabled:opacity-60"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />} Send code
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerify} className="space-y-5">
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">
+                Enter the 6-digit code
+              </label>
+              <input
+                data-testid="login-otp"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={6}
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm tracking-[0.4em] text-center"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground" data-testid="login-otp-sentto">
+                Sent to {sentTo}.{" "}
+                <button type="button" onClick={() => { setStep("phone"); setCode(""); }} className="link-under">
+                  Change number
+                </button>
+              </p>
+            </div>
+            {error && (
+              <div className="rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm px-3 py-2" data-testid="login-error">
+                {error}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={loading}
+              data-testid="login-verify"
+              className="btn btn-primary w-full disabled:opacity-60"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />} Verify & sign in
+            </button>
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={loading}
+              data-testid="login-resend"
+              className="btn btn-ghost w-full text-xs disabled:opacity-60"
+            >
+              Resend code
+            </button>
+          </form>
+        )}
+
         <div className="text-[11px] text-muted-foreground text-center">
           Auth powered by Supabase. New here?{" "}
           <Link to="/signup" className="link-under">Create an account</Link>.
         </div>
-      </form>
+      </div>
     </AuthLayout>
   );
 }

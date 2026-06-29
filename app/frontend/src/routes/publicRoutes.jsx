@@ -5,8 +5,6 @@ import FunnelLandingRouter from "../features/funnel/FunnelLandingRouter";
 import { GuestOnly } from "../lib/ProtectedRoute";
 const Login = lazy(() => import("../pages/auth/Login"));
 const Signup = lazy(() => import("../pages/auth/Signup"));
-const ForgotPassword = lazy(() => import("../pages/auth/ForgotPassword"));
-const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
 const AuthCallback = lazy(() => import("../pages/auth/AuthCallback"));
 const OnboardingChat = lazy(() => import("../pages/OnboardingChat"));
 const CopyrightSubmit = lazy(() => import("../pages/CopyrightSubmit"));
@@ -22,8 +20,6 @@ export const publicRouteElements = (
     <Route path="/" element={<Landing />} />
     <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
     <Route path="/signup" element={<GuestOnly><Signup /></GuestOnly>} />
-    <Route path="/forgot-password" element={<ForgotPassword />} />
-    <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/auth/callback" element={<AuthCallback />} />
     <Route path="/copyright" element={<CopyrightSubmit />} />
     <Route path="/dmca" element={<CopyrightSubmit />} />

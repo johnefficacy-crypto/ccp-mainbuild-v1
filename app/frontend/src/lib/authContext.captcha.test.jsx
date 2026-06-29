@@ -2,8 +2,8 @@ import React from "react";
 import { render, act, waitFor } from "@testing-library/react";
 
 const mockGetSession = jest.fn();
-const mockSignInWithPassword = jest.fn();
-const mockSignUp = jest.fn();
+const mockSignInWithOtp = jest.fn();
+const mockVerifyOtp = jest.fn();
 const mockSignInWithOAuth = jest.fn();
 const mockOnAuthStateChange = jest.fn();
 const mockAuthMe = jest.fn();
@@ -14,8 +14,8 @@ jest.mock("./supabase", () => ({
   supabase: {
     auth: {
       getSession: (...args) => mockGetSession(...args),
-      signInWithPassword: (...args) => mockSignInWithPassword(...args),
-      signUp: (...args) => mockSignUp(...args),
+      signInWithOtp: (...args) => mockSignInWithOtp(...args),
+      verifyOtp: (...args) => mockVerifyOtp(...args),
       signInWithOAuth: (...args) => mockSignInWithOAuth(...args),
       onAuthStateChange: (cb) => {
         authStateCallback = cb;
@@ -24,8 +24,6 @@ jest.mock("./supabase", () => ({
       signInAnonymously: jest.fn(),
       signOut: jest.fn(),
       linkIdentity: jest.fn(),
-      updateUser: jest.fn(),
-      resetPasswordForEmail: jest.fn(),
     },
   },
 }));
@@ -37,8 +35,8 @@ jest.mock("./api", () => ({
 
 beforeEach(() => {
   mockGetSession.mockReset();
-  mockSignInWithPassword.mockReset();
-  mockSignUp.mockReset();
+  mockSignInWithOtp.mockReset();
+  mockVerifyOtp.mockReset();
   mockSignInWithOAuth.mockReset();
   mockOnAuthStateChange.mockReset();
   mockAuthMe.mockReset();
@@ -75,59 +73,46 @@ function mount() {
   return () => captured;
 }
 
-test("login passes captchaToken under options.captchaToken", async () => {
-  mockSignInWithPassword.mockResolvedValue({
-    data: { session: null, user: { id: "u1", user_metadata: {}, app_metadata: {} } },
-    error: null,
-  });
+test("requestPhoneOtp passes captchaToken + shouldCreateUser + data in options", async () => {
+  mockSignInWithOtp.mockResolvedValue({ data: {}, error: null });
   const get = mount();
-  await waitFor(() => expect(typeof get()?.login).toBe("function"));
+  await waitFor(() => expect(typeof get()?.requestPhoneOtp).toBe("function"));
   await act(async () => {
-    await get().login("e@x.com", "pw", { captchaToken: "T1" });
+    await get().requestPhoneOtp("+919999900001", { captchaToken: "T1", data: { name: "Alice" } });
   });
-  expect(mockSignInWithPassword).toHaveBeenCalledWith({
-    email: "e@x.com",
-    password: "pw",
-    options: { captchaToken: "T1" },
+  expect(mockSignInWithOtp).toHaveBeenCalledWith({
+    phone: "+919999900001",
+    options: { shouldCreateUser: true, data: { name: "Alice" }, captchaToken: "T1" },
   });
 });
 
-test("login passes options=undefined when no captchaToken", async () => {
-  mockSignInWithPassword.mockResolvedValue({
-    data: { session: null, user: { id: "u1", user_metadata: {}, app_metadata: {} } },
-    error: null,
-  });
+test("requestPhoneOtp omits captcha/data keys when not provided", async () => {
+  mockSignInWithOtp.mockResolvedValue({ data: {}, error: null });
   const get = mount();
-  await waitFor(() => expect(typeof get()?.login).toBe("function"));
+  await waitFor(() => expect(typeof get()?.requestPhoneOtp).toBe("function"));
   await act(async () => {
-    await get().login("e@x.com", "pw");
+    await get().requestPhoneOtp("+919999900001");
   });
-  expect(mockSignInWithPassword).toHaveBeenCalledWith({
-    email: "e@x.com",
-    password: "pw",
-    options: undefined,
+  expect(mockSignInWithOtp).toHaveBeenCalledWith({
+    phone: "+919999900001",
+    options: { shouldCreateUser: true },
   });
 });
 
-test("register passes captchaToken alongside data.name in options", async () => {
-  mockSignUp.mockResolvedValue({
+test("verifyPhoneOtp calls verifyOtp with type sms", async () => {
+  mockVerifyOtp.mockResolvedValue({
     data: { session: null, user: { id: "u2", user_metadata: {}, app_metadata: {} } },
     error: null,
   });
   const get = mount();
-  await waitFor(() => expect(typeof get()?.register).toBe("function"));
+  await waitFor(() => expect(typeof get()?.verifyPhoneOtp).toBe("function"));
   await act(async () => {
-    await get().register({
-      email: "e@x.com",
-      password: "pw",
-      name: "Alice",
-      captchaToken: "T2",
-    });
+    await get().verifyPhoneOtp("+919999900001", "123456");
   });
-  expect(mockSignUp).toHaveBeenCalledWith({
-    email: "e@x.com",
-    password: "pw",
-    options: { data: { name: "Alice" }, captchaToken: "T2" },
+  expect(mockVerifyOtp).toHaveBeenCalledWith({
+    phone: "+919999900001",
+    token: "123456",
+    type: "sms",
   });
 });
 

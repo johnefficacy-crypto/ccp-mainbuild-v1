@@ -42,6 +42,47 @@ def _authoritative_role(sb, user_id: str, fallback: str) -> str:
     return fallback
 
 
+def _sync_profile_from_auth(sb, user_id: str, email: str | None, phone: str | None, name: str | None) -> None:
+    """Ensure profiles row exists; backfill phone/full_name if not yet set.
+
+    Called on every /auth/me so that phone-OTP signup users (whose profile was
+    never created via the canonical profile flow) get a valid profile row with
+    at minimum their phone and signup name.  Fields are only written when the
+    existing column is NULL — we never overwrite user-edited data.
+    """
+    try:
+        rows = (
+            sb.table("profiles")
+            .select("id, full_name, phone, email")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            payload: dict = {"id": user_id}
+            payload["full_name"] = name or (email or "").split("@")[0] or "Aspirant"
+            if phone:
+                payload["phone"] = phone
+            if email:
+                payload["email"] = email
+            sb.table("profiles").upsert(payload, on_conflict="id").execute()
+        else:
+            row = rows[0]
+            updates: dict = {}
+            if phone and not row.get("phone"):
+                updates["phone"] = phone
+            if name and not row.get("full_name"):
+                updates["full_name"] = name
+            if email and not row.get("email"):
+                updates["email"] = email
+            if updates:
+                sb.table("profiles").update(updates).eq("id", user_id).execute()
+    except Exception:  # noqa: BLE001
+        logger.warning("auth.sync_profile.failed user_id=%s", user_id)
+
+
 def _mentor_capability(sb, user_id: str) -> bool:
     """Source ``capabilities.mentor`` from profiles.is_mentor (never role)."""
     try:
@@ -73,4 +114,11 @@ async def me(current_user: dict = Depends(get_current_user)):
         if sb is not None:
             role = _authoritative_role(sb, user_id, role)
             capabilities["mentor"] = _mentor_capability(sb, user_id)
+            _sync_profile_from_auth(
+                sb,
+                user_id,
+                email=current_user.get("email"),
+                phone=current_user.get("phone"),
+                name=current_user.get("name"),
+            )
     return {"user": {**current_user, "role": role, "capabilities": capabilities}}

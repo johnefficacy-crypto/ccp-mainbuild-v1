@@ -2,14 +2,16 @@ import React from "react";
 import { render, screen, act, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-const mockRegister = jest.fn();
+const mockRequestPhoneOtp = jest.fn();
+const mockVerifyPhoneOtp = jest.fn();
 const mockLoginWithGoogle = jest.fn();
 const mockNavigate = jest.fn();
 
 jest.mock("../../lib/authContext", () => ({
   __esModule: true,
   useAuth: () => ({
-    register: mockRegister,
+    requestPhoneOtp: mockRequestPhoneOtp,
+    verifyPhoneOtp: mockVerifyPhoneOtp,
     loginWithGoogle: mockLoginWithGoogle,
   }),
 }));
@@ -43,7 +45,8 @@ jest.mock("../../components/TurnstileWidget", () => {
 const ORIGINAL_KEY = process.env.REACT_APP_TURNSTILE_SITE_KEY;
 
 beforeEach(() => {
-  mockRegister.mockReset();
+  mockRequestPhoneOtp.mockReset();
+  mockVerifyPhoneOtp.mockReset();
   mockLoginWithGoogle.mockReset();
   mockNavigate.mockReset();
   mockExecute.mockReset();
@@ -72,61 +75,70 @@ function renderSignup(path = "/signup") {
   );
 }
 
-async function fillAndSubmit() {
-  fireEvent.change(screen.getByTestId("signup-name"), {
-    target: { value: "Alice" },
-  });
-  fireEvent.change(screen.getByTestId("signup-email"), {
-    target: { value: "a@x.com" },
-  });
-  fireEvent.change(screen.getByTestId("signup-password"), {
-    target: { value: "pw12345" },
-  });
+async function fillAndSend({ email = "a@x.com" } = {}) {
+  fireEvent.change(screen.getByTestId("signup-name"), { target: { value: "Alice" } });
+  fireEvent.change(screen.getByTestId("signup-phone"), { target: { value: "+919999900001" } });
+  if (email !== null) {
+    fireEvent.change(screen.getByTestId("signup-email"), { target: { value: email } });
+  }
   await act(async () => {
-    fireEvent.click(screen.getByTestId("signup-submit"));
+    fireEvent.click(screen.getByTestId("signup-send-code"));
   });
 }
 
-test("submits captchaToken via auth.register", async () => {
-  mockRegister.mockResolvedValue({
-    user: { id: "u1" },
-    needsEmailConfirmation: false,
-  });
+test("send-code passes captcha + phone + name/email metadata to requestPhoneOtp", async () => {
+  mockRequestPhoneOtp.mockResolvedValue({ ok: true });
   renderSignup();
 
-  await fillAndSubmit();
+  await fillAndSend();
   await waitFor(() => expect(mockExecute).toHaveBeenCalled());
-  act(() => {
-    cbs.onSuccess("cap-tok");
-  });
+  act(() => cbs.onSuccess("cap-tok"));
 
-  await waitFor(() => expect(mockRegister).toHaveBeenCalled());
-  expect(mockRegister).toHaveBeenCalledWith({
-    email: "a@x.com",
-    password: "pw12345",
-    name: "Alice",
+  await waitFor(() => expect(mockRequestPhoneOtp).toHaveBeenCalled());
+  expect(mockRequestPhoneOtp).toHaveBeenCalledWith("+919999900001", {
     captchaToken: "cap-tok",
+    data: { name: "Alice", email: "a@x.com" },
   });
 });
 
-test("resets Turnstile after register failure", async () => {
-  mockRegister.mockRejectedValue(new Error("user exists"));
+test("email is optional — omitted from metadata when blank", async () => {
+  mockRequestPhoneOtp.mockResolvedValue({ ok: true });
   renderSignup();
-
-  await fillAndSubmit();
+  await fillAndSend({ email: null });
   await waitFor(() => expect(mockExecute).toHaveBeenCalled());
-  act(() => {
-    cbs.onSuccess("cap-tok-2");
-  });
+  act(() => cbs.onSuccess("cap"));
+  await waitFor(() => expect(mockRequestPhoneOtp).toHaveBeenCalled());
+  expect(mockRequestPhoneOtp.mock.calls[0][1].data).toEqual({ name: "Alice" });
+});
+
+test("verify creates the account and navigates to signup default", async () => {
+  mockRequestPhoneOtp.mockResolvedValue({ ok: true });
+  mockVerifyPhoneOtp.mockResolvedValue({ id: "u1", role: "user" });
+  renderSignup();
+  await fillAndSend();
+  await waitFor(() => expect(mockExecute).toHaveBeenCalled());
+  act(() => cbs.onSuccess("cap"));
+
+  await screen.findByTestId("signup-otp");
+  fireEvent.change(screen.getByTestId("signup-otp"), { target: { value: "123456" } });
+  await act(async () => fireEvent.click(screen.getByTestId("signup-verify")));
+  await waitFor(() => expect(mockVerifyPhoneOtp).toHaveBeenCalledWith("+919999900001", "123456"));
+  expect(mockNavigate).toHaveBeenCalledWith("/app/onboarding/chat?mode=discovery", { replace: true });
+});
+
+test("resets Turnstile after send-code failure", async () => {
+  mockRequestPhoneOtp.mockRejectedValue(new Error("rate limited"));
+  renderSignup();
+  await fillAndSend();
+  await waitFor(() => expect(mockExecute).toHaveBeenCalled());
+  act(() => cbs.onSuccess("cap-tok-2"));
   await screen.findByTestId("signup-error");
   expect(mockReset).toHaveBeenCalled();
 });
 
 test("renders ?error= banner from URL on mount", () => {
   renderSignup("/signup?error=signup_failed");
-  expect(screen.getByTestId("signup-banner-error").textContent).toMatch(
-    /signup_failed/,
-  );
+  expect(screen.getByTestId("signup-banner-error").textContent).toMatch(/signup_failed/);
 });
 
 test("Google button uses path-only redirectTo", async () => {
@@ -135,22 +147,5 @@ test("Google button uses path-only redirectTo", async () => {
   await act(async () => {
     fireEvent.click(screen.getByTestId("signup-google"));
   });
-  expect(mockLoginWithGoogle).toHaveBeenCalledWith({
-    redirectTo: "/app/study/plan",
-  });
-});
-
-test("shows check-email panel when register reports needsEmailConfirmation", async () => {
-  mockRegister.mockResolvedValue({
-    user: { id: "u9" },
-    needsEmailConfirmation: true,
-  });
-  renderSignup();
-  await fillAndSubmit();
-  await waitFor(() => expect(mockExecute).toHaveBeenCalled());
-  act(() => {
-    cbs.onSuccess("cap-tok");
-  });
-  await screen.findByTestId("signup-check-email");
-  expect(mockNavigate).not.toHaveBeenCalled();
+  expect(mockLoginWithGoogle).toHaveBeenCalledWith({ redirectTo: "/app/study/plan" });
 });

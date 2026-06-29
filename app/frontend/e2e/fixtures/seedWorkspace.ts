@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import { createNodeSupabaseClient } from "./supabaseNodeClient";
 import { readEnv } from "./env";
+import { loginViaUiWithPhone } from "./seedUser";
 
 /**
  * Fixed UUIDs for workspace E2E rows. These are stable across runs so specs
@@ -19,6 +20,8 @@ export const WORKSPACE = {
 const FAMILY_ID = "e2e0e2e0-0000-4000-8000-000000000001";
 const DEFAULT_ADMIN_EMAIL = "e2e-admin@example.com";
 const DEFAULT_ADMIN_PASSWORD = "E2e-admin-passw0rd!";
+// Must be present in app/supabase/config.toml [auth.sms.test_otp]; login is phone-OTP.
+const DEFAULT_ADMIN_PHONE = "+919999900002";
 
 /**
  * Ensure FK-backed admin audit tables can reference the seeded auth user.
@@ -128,10 +131,13 @@ export async function ensureAdminUser(): Promise<{ id: string; email: string; pa
 
   const client = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
 
+  const phone = process.env.E2E_ADMIN_PHONE || DEFAULT_ADMIN_PHONE;
   const { data: created } = await client.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
+    phone,
+    phone_confirm: true,
     app_metadata: { role: "super_admin" },
   });
 
@@ -148,6 +154,8 @@ export async function ensureAdminUser(): Promise<{ id: string; email: string; pa
   await client.auth.admin.updateUserById(existing.id, {
     password,
     email_confirm: true,
+    phone,
+    phone_confirm: true,
     app_metadata: { role: "super_admin" },
   });
   await ensureAdminProfileRow({ id: existing.id, email });
@@ -156,17 +164,8 @@ export async function ensureAdminUser(): Promise<{ id: string; email: string; pa
 
 /** Sign in through the UI as the seeded admin and wait for auth sync to settle. */
 export async function loginAsAdmin(page: Page): Promise<void> {
-  const email    = process.env.E2E_ADMIN_EMAIL    || DEFAULT_ADMIN_EMAIL;
-  const password = process.env.E2E_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
-
-  await page.goto("/login");
-  await expect(page.getByTestId("login-email")).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId("login-email").fill(email);
-  await page.getByTestId("login-password").fill(password);
-  await Promise.all([
-    page.waitForURL(/\/(?:app|admin)(\/|$)/, { timeout: 90_000 }),
-    page.getByTestId("login-submit").click(),
-  ]);
+  const phone = process.env.E2E_ADMIN_PHONE || DEFAULT_ADMIN_PHONE;
+  await loginViaUiWithPhone(page, phone, /\/(?:app|admin)(\/|$)/);
   await expect(page.getByTestId("auth-checking")).toBeHidden({ timeout: 90_000 });
   await expect(page.getByTestId("backend-sync-pending")).toBeHidden({ timeout: 90_000 });
 }

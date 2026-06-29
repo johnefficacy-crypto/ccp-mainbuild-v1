@@ -26,7 +26,11 @@ function mergeUser(supabaseUser, backendUser) {
   if (!supabaseUser && !backendUser) return null;
   const meta = supabaseUser?.user_metadata || {};
   const appMeta = supabaseUser?.app_metadata || {};
-  const role = coerceRole(backendUser?.role || appMeta.role || meta.role);
+  // Role is backend-authoritative. NEVER trust user_metadata.role (client-
+  // writable). app_metadata.role is admin-set and only used as a fallback when
+  // the backend user is unavailable; role-based redirects must use the
+  // backend-hydrated user (see verifyPhoneOtp / hydrate).
+  const role = coerceRole(backendUser?.role || appMeta.role);
   // Supabase sets is_anonymous on the user object after signInAnonymously.
   // The backend also forwards it on /auth/me. Either side is authoritative.
   const isAnonymous = Boolean(
@@ -40,6 +44,7 @@ function mergeUser(supabaseUser, backendUser) {
   return {
     id: supabaseUser?.id || backendUser?.id || null,
     email: supabaseUser?.email || backendUser?.email || null,
+    phone: backendUser?.phone || supabaseUser?.phone || meta.phone || null,
     name: backendUser?.name || meta.name || meta.full_name || null,
     role,
     permissions: Array.isArray(backendUser?.permissions) ? backendUser.permissions : [],
@@ -56,40 +61,77 @@ function mergeUser(supabaseUser, backendUser) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [status, setStatus] = useState("checking"); // checking | guest | session_authed | backend_authed
-  // Dedupe hydrate() across rapid getSession()/onAuthStateChange fires.
-  // Supabase Session has no stable `id`, so we key off access_token —
-  // it rotates on TOKEN_REFRESHED, so the ref self-invalidates.
+  // Dedup concurrent hydrate() calls (e.g. onAuthStateChange + verifyPhoneOtp).
+  // Three refs collaborate:
+  //   lastHydratedTokenRef  — token of the last *completed* successful hydration
+  //   lastHydratedUserRef   — result of that hydration (avoids stale closure)
+  //   hydrateInFlightRef    — in-progress {token, promise} so a second caller
+  //                           with the same token piggybacks instead of racing
   const lastHydratedTokenRef = useRef(null);
+  const lastHydratedUserRef = useRef(null);
+  const hydrateInFlightRef = useRef(null);
 
+  // Returns the backend-authoritative merged user on success, or null when the
+  // session is absent / the backend rejects the token. Callers that gate on
+  // role (e.g. admin redirect) MUST use this return value, never a client-only
+  // mergeUser(session.user, null).
   const hydrate = useCallback(async (session) => {
     if (!session?.user) {
       lastHydratedTokenRef.current = null;
+      lastHydratedUserRef.current = null;
+      hydrateInFlightRef.current = null;
       setUser(null);
       setStatus("guest");
-      return;
+      return null;
     }
-    if (lastHydratedTokenRef.current === session.access_token) return;
-    lastHydratedTokenRef.current = session.access_token;
+    const token = session.access_token;
 
-    try {
-      const { user: backendUser } = await authApi.me();
-      setUser(mergeUser(session.user, backendUser));
-      setStatus("backend_authed");
-    } catch (err) {
-      if (err?.status === 401) {
-        // Token rejected by the backend — treat as a real auth loss and
-        // clear state so the user gets a clean login prompt.
-        lastHydratedTokenRef.current = null;
-        setUser(null);
-        setStatus("guest");
-      } else {
-        // Network error or 5xx — backend is temporarily unreachable.
-        // Retain the previous user/status rather than fabricating a role
-        // from unverified session metadata. Reset the dedup ref so the
-        // next session event retries the backend call.
-        lastHydratedTokenRef.current = null;
-      }
+    // Concurrent-call dedup: if a hydration is already in flight for this
+    // token (e.g. onAuthStateChange fired before verifyPhoneOtp called us),
+    // piggyback on that promise instead of issuing a second backend call.
+    // This is the fix for the SIGNED_IN race: returning a shared promise means
+    // both callers get the real backend-hydrated user, not a stale null.
+    if (hydrateInFlightRef.current?.token === token) {
+      return hydrateInFlightRef.current.promise;
     }
+
+    // Cache hit: already completed a successful hydration for this token.
+    // Return the stored result (not a stale closure variable).
+    if (lastHydratedTokenRef.current === token) {
+      return lastHydratedUserRef.current;
+    }
+
+    const promise = (async () => {
+      try {
+        const { user: backendUser } = await authApi.me();
+        const merged = mergeUser(session.user, backendUser);
+        lastHydratedTokenRef.current = token;
+        lastHydratedUserRef.current = merged;
+        hydrateInFlightRef.current = null;
+        setUser(merged);
+        setStatus("backend_authed");
+        return merged;
+      } catch (err) {
+        hydrateInFlightRef.current = null;
+        if (err?.status === 401) {
+          // Token rejected by the backend — treat as a real auth loss and
+          // clear state so the user gets a clean login prompt.
+          lastHydratedTokenRef.current = null;
+          lastHydratedUserRef.current = null;
+          setUser(null);
+          setStatus("guest");
+        } else {
+          // Network error or 5xx — backend is temporarily unreachable.
+          // Reset the dedup refs so the next session event retries.
+          lastHydratedTokenRef.current = null;
+          lastHydratedUserRef.current = null;
+        }
+        return null;
+      }
+    })();
+
+    hydrateInFlightRef.current = { token, promise };
+    return promise;
   }, []);
 
   useEffect(() => {
@@ -109,6 +151,8 @@ export function AuthProvider({ children }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
         lastHydratedTokenRef.current = null;
+        lastHydratedUserRef.current = null;
+        hydrateInFlightRef.current = null;
       }
       hydrate(session);
     });
@@ -118,39 +162,43 @@ export function AuthProvider({ children }) {
     };
   }, [hydrate]);
 
-  const login = useCallback(
-    async (email, password, { captchaToken } = {}) => {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-        options: captchaToken ? { captchaToken } : undefined,
-      });
-      if (error) throw new Error(error.message || "Unable to sign in");
-      await hydrate(data.session);
-      return mergeUser(data.user, null);
-    },
-    [hydrate]
-  );
-
-  const register = useCallback(
-    async ({ email, password, name, captchaToken }) => {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+  // Phone/SMS OTP — step 1: send a one-time code to the phone (E.164).
+  // `data` carries optional signup metadata ({ name, email }) → user_metadata.
+  // shouldCreateUser controls whether an unknown phone silently creates an
+  // account: Signup passes true, Login passes false so an unknown number is
+  // rejected (the caller routes the user to /signup) instead of minting a
+  // brand-new account on a typo'd login.
+  const requestPhoneOtp = useCallback(
+    async (phone, { captchaToken, data, shouldCreateUser = true } = {}) => {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone,
         options: {
-          data: { name },
+          shouldCreateUser,
+          ...(data ? { data } : {}),
           ...(captchaToken ? { captchaToken } : {}),
         },
       });
-      if (error) throw new Error(error.message || "Unable to create account");
-      const merged = mergeUser(data.user, null);
-      if (data.session) {
-        await hydrate(data.session);
-        return { user: merged, needsEmailConfirmation: false };
-      }
-      setUser(null);
-      setStatus("guest");
-      return { user: merged, needsEmailConfirmation: true };
+      if (error) throw new Error(error.message || "Unable to send code");
+      return { ok: true };
+    },
+    []
+  );
+
+  // Phone/SMS OTP — step 2: verify the code, establishing the session.
+  const verifyPhoneOtp = useCallback(
+    async (phone, token) => {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone,
+        token,
+        type: "sms",
+      });
+      if (error) throw new Error(error.message || "Invalid or expired code");
+      // Return the BACKEND-hydrated user so role-based redirects use the
+      // authoritative role, not client-writable session metadata. If the
+      // backend is unreachable, hydrate() returns null → caller treats the
+      // user as non-privileged (no admin redirect).
+      const merged = await hydrate(data.session);
+      return merged ?? { role: ROLES.USER };
     },
     [hydrate]
   );
@@ -255,19 +303,6 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const sendPasswordReset = useCallback(async (email) => {
-    const redirectTo = `${window.location.origin}/reset-password`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) throw new Error(error.message || "Unable to send reset link");
-    return { ok: true };
-  }, []);
-
-  const updatePassword = useCallback(async (password) => {
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) throw new Error(error.message || "Unable to update password");
-    return { ok: true };
-  }, []);
-
   const value = useMemo(
     () => ({
       user,
@@ -278,29 +313,25 @@ export function AuthProvider({ children }) {
       isAdmin: ADMIN_ROLES.includes(user?.role),
       isSuperAdmin: user?.role === ROLES.SUPER_ADMIN,
       isMentor: Boolean(user?.capabilities?.mentor),
-      login,
-      register,
+      requestPhoneOtp,
+      verifyPhoneOtp,
       logout,
       loginWithGoogle,
       signInAnonymously,
       linkGoogleIdentity,
       refreshUser,
-      sendPasswordReset,
-      updatePassword,
       setUser,
     }),
     [
       user,
       status,
-      login,
-      register,
+      requestPhoneOtp,
+      verifyPhoneOtp,
       logout,
       loginWithGoogle,
       signInAnonymously,
       linkGoogleIdentity,
       refreshUser,
-      sendPasswordReset,
-      updatePassword,
     ]
   );
 

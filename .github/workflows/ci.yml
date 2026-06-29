@@ -23,6 +23,105 @@ jobs:
       - run: npm run build
       - run: npm run check:bundle-budget
 
+  supabase-gate-test:
+    name: Supabase production gate self-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Gate blocks checked-in development config
+        env:
+          SUPABASE_ENV: production
+        run: |
+          if node scripts/check-supabase-prod-gate.mjs; then
+            echo "FAIL: gate accepted the checked-in config with test OTPs"
+            exit 1
+          else
+            echo "OK: gate rejected the checked-in development config"
+          fi
+
+      - name: Build production config artifact
+        env:
+          SUPABASE_PROD_CONFIG_PATH: /tmp/supabase-production/config.toml
+        run: node scripts/build-supabase-prod-config.mjs
+
+      - name: Builder leaves checked-in config unchanged
+        run: git diff --exit-code -- app/supabase/config.toml
+
+      - name: Build unsafe regression fixtures
+        run: |
+          node - << 'EOF'
+          const fs = require('fs');
+          const safe = fs.readFileSync('/tmp/supabase-production/config.toml', 'utf8');
+
+          function setInSection(content, sectionHeader, key, value) {
+            let inTarget = false;
+            let changes = 0;
+            const updated = content.split('\n').map((line) => {
+              if (line.trim() === sectionHeader) {
+                inTarget = true;
+                return line;
+              }
+              if (inTarget && /^\s*\[/.test(line)) inTarget = false;
+              if (inTarget && new RegExp('^\\s*' + key + '\\s*=').test(line)) {
+                changes += 1;
+                const indentation = line.match(/^\s*/)[0];
+                return indentation + key + ' = ' + value;
+              }
+              return line;
+            }).join('\n');
+
+            if (changes !== 1) {
+              throw new Error(
+                'Expected one ' + key + ' key in ' + sectionHeader + ', found ' + changes
+              );
+            }
+            return updated;
+          }
+
+          fs.writeFileSync(
+            '/tmp/no-provider.toml',
+            setInSection(safe, '[auth.sms.twilio]', 'enabled', 'false')
+          );
+          fs.writeFileSync(
+            '/tmp/email-enabled.toml',
+            setInSection(safe, '[auth.email]', 'enable_signup', 'true')
+          );
+          EOF
+
+      - name: Gate blocks config with disabled SMS provider
+        env:
+          SUPABASE_ENV: production
+          SUPABASE_CONFIG_PATH: /tmp/no-provider.toml
+        run: |
+          if node scripts/check-supabase-prod-gate.mjs; then
+            echo "FAIL: gate accepted config with no enabled SMS provider"
+            exit 1
+          else
+            echo "OK: gate rejected config with disabled SMS provider"
+          fi
+
+      - name: Gate blocks config with email signup enabled
+        env:
+          SUPABASE_ENV: production
+          SUPABASE_CONFIG_PATH: /tmp/email-enabled.toml
+        run: |
+          if node scripts/check-supabase-prod-gate.mjs; then
+            echo "FAIL: gate accepted config with email signup enabled"
+            exit 1
+          else
+            echo "OK: gate rejected config with email signup enabled"
+          fi
+
+      - name: Gate allows generated production config
+        env:
+          SUPABASE_ENV: production
+          SUPABASE_CONFIG_PATH: /tmp/supabase-production/config.toml
+        run: node scripts/check-supabase-prod-gate.mjs
+
   backend:
     runs-on: ubuntu-latest
     defaults:

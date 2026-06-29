@@ -5,6 +5,7 @@ import AuthLayout from "./AuthLayout";
 import { useAuth } from "../../lib/authContext";
 import { resolvePostAuthRedirect } from "../../lib/resolvePostAuthRedirect";
 import { useTurnstileChallenge } from "../../lib/useTurnstileChallenge";
+import { normalizePhoneE164 } from "../../lib/phone";
 
 const SIGNUP_DEFAULT = "/app/onboarding/chat?mode=discovery";
 
@@ -17,16 +18,19 @@ function humanizeAuthError(err) {
 }
 
 export default function Signup() {
+  const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(""); // optional
+  // Prefill the phone when Login routes an unknown number here (?phone=).
+  const [phone, setPhone] = useState(() => searchParams.get("phone") || "");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState("details"); // details | code
+  const [sentTo, setSentTo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [checkEmail, setCheckEmail] = useState(false);
   const auth = useAuth();
   const nav = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const redirectTo = resolvePostAuthRedirect(location, searchParams, SIGNUP_DEFAULT);
   const {
     Turnstile,
@@ -51,66 +55,59 @@ export default function Signup() {
     }
   }
 
-  async function onSubmit(e) {
+  async function getCaptcha() {
+    if (!captchaRequired) return undefined;
+    try {
+      return await waitForCaptchaToken({ timeoutMs: 15000 });
+    } catch (capErr) {
+      if (widgetFailed || capErr?.message === "captcha_widget_failed") {
+        throw new Error("CAPTCHA failed to load. Disable ad-blockers or try another browser.");
+      }
+      return undefined;
+    }
+  }
+
+  async function handleSendCode(e) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setBannerError(null);
-    let captchaToken;
-    if (captchaRequired) {
-      try {
-        captchaToken = await waitForCaptchaToken({ timeoutMs: 15000 });
-      } catch (capErr) {
-        if (widgetFailed || capErr?.message === "captcha_widget_failed") {
-          setError(
-            "CAPTCHA failed to load. Disable ad-blockers or try another browser."
-          );
-          setLoading(false);
-          return;
-        }
-      }
+    const e164 = normalizePhoneE164(phone);
+    if (!e164) {
+      setError("Enter a valid phone number with country code.");
+      setLoading(false);
+      return;
     }
     try {
-      const result = await auth.register({
-        email: email.trim(),
-        password,
-        name: name.trim(),
+      const captchaToken = await getCaptcha();
+      await auth.requestPhoneOtp(e164, {
         captchaToken,
+        data: { name: name.trim(), ...(email.trim() ? { email: email.trim() } : {}) },
       });
-      // When email confirmation is on, signUp returns no session and register
-      // returns needsEmailConfirmation=true — show a "check your email" panel
-      // instead of navigating into a route the user can't yet access.
-      if (result?.needsEmailConfirmation) {
-        setCheckEmail(true);
-      } else {
-        nav(redirectTo, { replace: true });
-      }
+      setSentTo(e164);
+      setStep("code");
     } catch (err) {
-      resetCaptcha();
       setError(humanizeAuthError(err));
     } finally {
+      // Turnstile tokens are single-use — reset after EVERY send so an edit /
+      // retry always mints a fresh token.
+      resetCaptcha();
       setLoading(false);
     }
   }
 
-  if (checkEmail) {
-    return (
-      <AuthLayout
-        title="Check your email."
-        subtitle="We sent a confirmation link to finish creating your account."
-        footer={
-          <span>
-            Already confirmed?{" "}
-            <Link to="/login" className="link-under font-semibold">Sign in</Link>
-          </span>
-        }
-      >
-        <p className="text-sm text-muted-foreground" data-testid="signup-check-email">
-          Click the link in the email we just sent to {email || "your inbox"} to
-          finish setting up your account.
-        </p>
-      </AuthLayout>
-    );
+  async function handleVerify(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await auth.verifyPhoneOtp(sentTo, code.trim());
+      nav(redirectTo, { replace: true });
+    } catch (err) {
+      setError(humanizeAuthError(err));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -124,7 +121,7 @@ export default function Signup() {
         </span>
       }
     >
-      <form onSubmit={onSubmit} className="space-y-5" data-testid="signup-form">
+      <div className="space-y-5" data-testid="signup-form">
         {bannerError && (
           <div
             className="rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm px-3 py-2"
@@ -142,59 +139,108 @@ export default function Signup() {
         >
           Continue with Google
         </button>
-        <div className="text-[11px] uppercase tracking-widest text-muted-foreground text-center">or create with email</div>
-        <div>
-          <label className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Full name</label>
-          <input
-            data-testid="signup-name"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm"
-          />
+        <div className="text-[11px] uppercase tracking-widest text-muted-foreground text-center">
+          or sign up with your phone
         </div>
-        <div>
-          <label className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Email</label>
-          <input
-            data-testid="signup-email"
-            required
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Password</label>
-          <input
-            data-testid="signup-password"
-            required
-            type="password"
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm"
-          />
-          <div className="text-[11px] text-muted-foreground mt-1.5">Minimum 8 characters.</div>
-        </div>
-        {error && (
-          <div className="rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm px-3 py-2" data-testid="signup-error">
-            {error}
-          </div>
+
+        {step === "details" ? (
+          <form onSubmit={handleSendCode} className="space-y-5">
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Full name</label>
+              <input
+                data-testid="signup-name"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Phone number</label>
+              <input
+                data-testid="signup-phone"
+                required
+                type="tel"
+                autoComplete="tel"
+                placeholder="+91 98765 43210"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">Include your country code (e.g. +91 for India).</p>
+            </div>
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">
+                Email <span className="normal-case tracking-normal text-muted-foreground/70">(optional)</span>
+              </label>
+              <input
+                data-testid="signup-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm"
+              />
+              <div className="text-[11px] text-muted-foreground mt-1.5">For receipts and updates. You sign in with your phone.</div>
+            </div>
+            {error && (
+              <div className="rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm px-3 py-2" data-testid="signup-error">
+                {error}
+              </div>
+            )}
+            <Turnstile />
+            <button
+              type="submit"
+              disabled={loading}
+              data-testid="signup-send-code"
+              className="btn btn-primary w-full disabled:opacity-60"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />} Send code
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerify} className="space-y-5">
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">
+                Enter the 6-digit code
+              </label>
+              <input
+                data-testid="signup-otp"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={6}
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                className="w-full px-4 py-3 rounded-xl bg-white/80 border border-border focus:border-clay-400 outline-none text-sm tracking-[0.4em] text-center"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground" data-testid="signup-otp-sentto">
+                Sent to {sentTo}.{" "}
+                <button type="button" onClick={() => { setStep("details"); setCode(""); }} className="link-under">
+                  Edit details
+                </button>
+              </p>
+            </div>
+            {error && (
+              <div className="rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm px-3 py-2" data-testid="signup-error">
+                {error}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={loading}
+              data-testid="signup-verify"
+              className="btn btn-primary w-full disabled:opacity-60"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />} Verify & create account
+            </button>
+          </form>
         )}
-        <Turnstile />
-        <button
-          type="submit"
-          disabled={loading}
-          data-testid="signup-submit"
-          className="btn btn-primary w-full disabled:opacity-60"
-        >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />} Create my account
-        </button>
         <p className="text-[11px] text-muted-foreground text-center">
           By continuing you agree to our quiet principles: no spam, no rumors, no sale of your data.
         </p>
-      </form>
+      </div>
     </AuthLayout>
   );
 }

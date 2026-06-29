@@ -2,14 +2,16 @@ import React from "react";
 import { render, screen, act, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-const mockLogin = jest.fn();
+const mockRequestPhoneOtp = jest.fn();
+const mockVerifyPhoneOtp = jest.fn();
 const mockLoginWithGoogle = jest.fn();
 const mockNavigate = jest.fn();
 
 jest.mock("../../lib/authContext", () => ({
   __esModule: true,
   useAuth: () => ({
-    login: mockLogin,
+    requestPhoneOtp: mockRequestPhoneOtp,
+    verifyPhoneOtp: mockVerifyPhoneOtp,
     loginWithGoogle: mockLoginWithGoogle,
   }),
 }));
@@ -19,7 +21,6 @@ jest.mock("react-router-dom", () => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-// Capture Turnstile callbacks like StartFreeButton.test does.
 const mockExecute = jest.fn();
 const mockReset = jest.fn();
 const cbs = { onSuccess: null, onError: null, onExpire: null };
@@ -44,7 +45,8 @@ jest.mock("../../components/TurnstileWidget", () => {
 const ORIGINAL_KEY = process.env.REACT_APP_TURNSTILE_SITE_KEY;
 
 beforeEach(() => {
-  mockLogin.mockReset();
+  mockRequestPhoneOtp.mockReset();
+  mockVerifyPhoneOtp.mockReset();
   mockLoginWithGoogle.mockReset();
   mockNavigate.mockReset();
   mockExecute.mockReset();
@@ -73,62 +75,76 @@ function renderLogin(path = "/login") {
   );
 }
 
-async function fillAndSubmit() {
-  fireEvent.change(screen.getByTestId("login-email"), {
-    target: { value: "u@x.com" },
-  });
-  fireEvent.change(screen.getByTestId("login-password"), {
-    target: { value: "pw12345" },
-  });
+async function sendCode(phone = "+919999900001") {
+  fireEvent.change(screen.getByTestId("login-phone"), { target: { value: phone } });
   await act(async () => {
-    fireEvent.click(screen.getByTestId("login-submit"));
+    fireEvent.click(screen.getByTestId("login-send-code"));
   });
 }
 
-test("submits captchaToken via auth.login", async () => {
-  mockLogin.mockResolvedValue({ role: "user" });
+test("send-code passes captchaToken + E.164 phone to requestPhoneOtp", async () => {
+  mockRequestPhoneOtp.mockResolvedValue({ ok: true });
   renderLogin();
 
-  await fillAndSubmit();
+  await sendCode("+919999900001");
   await waitFor(() => expect(mockExecute).toHaveBeenCalled());
+  act(() => cbs.onSuccess("captcha-A"));
 
-  act(() => {
-    cbs.onSuccess("captcha-A");
-  });
-
-  await waitFor(() => expect(mockLogin).toHaveBeenCalled());
-  expect(mockLogin).toHaveBeenCalledWith("u@x.com", "pw12345", {
+  await waitFor(() => expect(mockRequestPhoneOtp).toHaveBeenCalled());
+  // Login never creates accounts → shouldCreateUser:false is always sent.
+  expect(mockRequestPhoneOtp).toHaveBeenCalledWith("+919999900001", {
     captchaToken: "captcha-A",
+    shouldCreateUser: false,
   });
 });
 
-test("resets Turnstile after failed login", async () => {
-  mockLogin.mockRejectedValue(new Error("wrong password"));
+test("bare 10-digit number is normalized to +91 E.164", async () => {
+  mockRequestPhoneOtp.mockResolvedValue({ ok: true });
   renderLogin();
-
-  await fillAndSubmit();
+  await sendCode("9999900001");
   await waitFor(() => expect(mockExecute).toHaveBeenCalled());
-  act(() => {
-    cbs.onSuccess("captcha-B");
-  });
-  await waitFor(() => expect(mockLogin).toHaveBeenCalled());
-  await screen.findByTestId("login-error");
-  expect(mockReset).toHaveBeenCalled();
+  act(() => cbs.onSuccess("cap"));
+  await waitFor(() => expect(mockRequestPhoneOtp).toHaveBeenCalled());
+  expect(mockRequestPhoneOtp.mock.calls[0][0]).toBe("+919999900001");
 });
 
-test("widget load failure shows a user-facing message and does not hang", async () => {
+test("verify step calls verifyPhoneOtp and role-redirects", async () => {
+  mockRequestPhoneOtp.mockResolvedValue({ ok: true });
+  mockVerifyPhoneOtp.mockResolvedValue({ role: "user" });
   renderLogin();
-  await fillAndSubmit();
+
+  await sendCode();
   await waitFor(() => expect(mockExecute).toHaveBeenCalled());
+  act(() => cbs.onSuccess("cap"));
+  await waitFor(() => expect(mockRequestPhoneOtp).toHaveBeenCalled());
 
-  // Simulate Cloudflare error-callback firing before any token resolution.
-  act(() => {
-    cbs.onError("network");
+  await screen.findByTestId("login-otp");
+  fireEvent.change(screen.getByTestId("login-otp"), { target: { value: "123456" } });
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("login-verify"));
   });
+  await waitFor(() => expect(mockVerifyPhoneOtp).toHaveBeenCalledWith("+919999900001", "123456"));
+  expect(mockNavigate).toHaveBeenCalledWith("/app", { replace: true });
+});
 
-  // We should see the user-facing CAPTCHA failure copy.
+test("admin role redirects to /admin after verify", async () => {
+  mockRequestPhoneOtp.mockResolvedValue({ ok: true });
+  mockVerifyPhoneOtp.mockResolvedValue({ role: "super_admin" });
+  renderLogin();
+  await sendCode();
+  await waitFor(() => expect(mockExecute).toHaveBeenCalled());
+  act(() => cbs.onSuccess("cap"));
+  await screen.findByTestId("login-otp");
+  fireEvent.change(screen.getByTestId("login-otp"), { target: { value: "123456" } });
+  await act(async () => fireEvent.click(screen.getByTestId("login-verify")));
+  await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/admin", { replace: true }));
+});
+
+test("invalid phone shows an error and does not call requestPhoneOtp", async () => {
+  renderLogin();
+  await sendCode("123");
   await screen.findByTestId("login-error");
-  expect(mockLogin).not.toHaveBeenCalled();
+  expect(mockRequestPhoneOtp).not.toHaveBeenCalled();
 });
 
 test("renders ?error= banner from URL on mount", () => {
@@ -142,7 +158,39 @@ test("Google button passes path-only redirectTo to loginWithGoogle", async () =>
   await act(async () => {
     fireEvent.click(screen.getByTestId("login-google"));
   });
-  expect(mockLoginWithGoogle).toHaveBeenCalledWith({
-    redirectTo: "/app/study/plan",
+  expect(mockLoginWithGoogle).toHaveBeenCalledWith({ redirectTo: "/app/study/plan" });
+});
+
+test("resend obtains a fresh captcha token after the first token is consumed", async () => {
+  mockRequestPhoneOtp.mockResolvedValue({ ok: true });
+  renderLogin();
+
+  // First send — supply token A.
+  await sendCode("+919999900001");
+  await waitFor(() => expect(mockExecute).toHaveBeenCalledTimes(1));
+  act(() => cbs.onSuccess("captcha-A"));
+  await waitFor(() =>
+    expect(mockRequestPhoneOtp).toHaveBeenCalledWith("+919999900001", {
+      captchaToken: "captcha-A",
+      shouldCreateUser: false,
+    }),
+  );
+
+  // Now on OTP step. Token was reset in finally; widget must still be mounted.
+  await screen.findByTestId("login-resend");
+
+  // Click resend — getCaptcha() calls execute() on the still-mounted widget.
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("login-resend"));
   });
+  await waitFor(() => expect(mockExecute).toHaveBeenCalledTimes(2));
+
+  // Widget issues a fresh token.
+  act(() => cbs.onSuccess("captcha-B"));
+  await waitFor(() =>
+    expect(mockRequestPhoneOtp).toHaveBeenCalledWith("+919999900001", {
+      captchaToken: "captcha-B",
+      shouldCreateUser: false,
+    }),
+  );
 });
