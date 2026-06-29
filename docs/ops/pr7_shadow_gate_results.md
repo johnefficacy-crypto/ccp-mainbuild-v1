@@ -51,41 +51,38 @@ record of what changed is `git diff ba3ea35..c9c44a9e -- <manifest-path>`.
 The PR-6 inspection fingerprint
 (`6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`) is
 superseded. The v2 fingerprint manifest boundary is defined at
-`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (32 files;
-30 previous + `MockAttemptShell.jsx` + `attemptEventBus.js`).
+`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (**34 files**;
+30 previous + `MockAttemptShell.jsx` + `attemptEventBus.js` + the two
+event-acceptance dependencies `core/auth.py` + frontend `lib/supabase.js`).
 
-**FREEZE PENDING — original blocking bugs fixed, but the v2 boundary is NOT
-yet closed (PR #796 review found open telemetry-validity defects):**
-- `time_analytics.py` read `created_at` but DB writes `occurred_at` (and
-  read `question_id` top-level instead of from `payload` JSONB) — all
-  production events were skipped; dwell fell back to `time_spent_sec`.
-  Fixed and merged: PR #795 (`fix/time-analytics-v2`).
-- `MockAttemptShell.jsx` did not emit `question.visited` for question 1
-  on initial load (visit effect ran before `attempt` populated
-  `questions_ref`). Fixed and merged: PR #793 (`fix/mock-attempt-first-visit`).
+**FROZEN — all review defects resolved, boundary closed, freeze hash recorded.**
+The originally-blocking bugs and the PR #796 / #800 review findings are all
+fixed and merged:
+- `time_analytics.py` `created_at`→`occurred_at` + `payload.question_id`
+  (PR #795 `fix/time-analytics-v2`).
+- `MockAttemptShell.jsx` Q1 first-visit emission (PR #793).
+- `compute_dwell_times()` reports partial event/fallback coverage
+  (`event_covered_questions` / `fallback_question_count`) — PR #800.
+- `attemptEventBus.js`: authenticated keepalive delivery, durable per-attempt
+  queue cleared only on a fully-accounted ACK, ≤100 chunking, attempt/epoch
+  isolation, terminal-409 quarantine — PR #800.
+- Boundary closed over the event-acceptance dependencies `core/auth.py` and
+  frontend `lib/supabase.js` (operator-approved expansion, 32 → 34).
 
-Still-open blockers before the boundary may be FROZEN (see the
-telemetry-quality gate below and prerequisite step 2):
-- **[P0]** `attemptEventBus._flushBeacon()` posts via `navigator.sendBeacon`
-  with no `Authorization` header; the events endpoint requires
-  `get_current_user` (401), so visibility-hidden/unmount batches — including
-  `question.visited` anchors — are dropped after `splice(0)`. `_flush()` also
-  never checks `response.ok` and discards on 401/409/5xx.
-- **[P0]** `compute_dwell_times()` applies the `time_spent_sec` fallback via
-  `setdefault` BEFORE the `len(by_q) < len(responses)` check, so partial event
-  coverage never emits the documented `partial event coverage; fallback
-  applied` warning required by `docs/mock_engine/attempt_analytics.md`.
-- **[P1]** Manifest boundary is not closed over `core/auth.py` (event-batch
-  acceptance) or frontend `lib/supabase.js` (token source); either can change
-  ingestion without changing the fingerprint.
+**Freeze hash at `main @ b7ca717f` (34 files) — the window_start / window_end
+fingerprint:**
+`57e1ea1ead57c32c820cf73c1e9fda636f7dfe00b3c11ceae984f527ce37ef7d`
 
-Pre-fix reference hash at `main @ c9c44a9e` (32 files; bugs present):
-`96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b`
+A per-file SHA-256 attestation is committed at
+`docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt`; verify
+fail-closed with `bash scripts/verify_mastery_fingerprint.sh`. Freezing the
+fingerprint does NOT open the observation window — re-verify this hash at the
+confirmed `window_start` SHA before starting the clock; any change to a listed
+file resets it.
 
-Reference fingerprint at `main @ 1679adb8` (current 32-file boundary) — this
-is NOT the window_start hash; the freeze hash must be recomputed at a new
-post-fix SHA after the boundary is closed and the P0/P1 defects clear:
-`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`
+Superseded reference hashes (NOT window_start hashes):
+`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b` (`1679adb8`, 32 files, pre-#800);
+`96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b` (`c9c44a9e`, 32 files, bugs present)
 
 ---
 
@@ -146,13 +143,14 @@ Steps 3–8 are sequential and each depends on those above it.
    ```bash
    set -euo pipefail
    readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-   _expected=32
+   _expected=34
    _actual=${#_files[@]}
    [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
    for _f in "${_files[@]}"; do
      [[ -f "$_f" ]] || { echo "ERROR: missing $_f" >&2; exit 1; }
    done
    sha256sum "${_files[@]}" | sha256sum
+   # Or simply: bash scripts/verify_mastery_fingerprint.sh
    ```
 
    Record hash here and in the window record below.
