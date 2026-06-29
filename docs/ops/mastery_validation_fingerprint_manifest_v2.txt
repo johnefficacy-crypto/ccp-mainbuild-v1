@@ -17,28 +17,38 @@
 # Changes to either file alter event data reaching the backend ingest
 # path without changing the backend fingerprint.
 #
-# STATUS: FROZEN — freeze hash computed at post-fix main SHA
-# Manifest boundary is final (32 files). Both runtime fixes that blocked the
-# freeze are now merged to main:
+# STATUS: FREEZE PENDING — boundary NOT closed; telemetry-validity defects open
+# The two runtime fixes that ORIGINALLY blocked the freeze are merged to main:
 #   - time_analytics.py created_at->occurred_at + payload.question_id fix
 #     (PR #795, fix/time-analytics-v2).
 #   - MockAttemptShell.jsx emits question.visited for question 1 on initial
 #     load (PR #793, fix/mock-attempt-first-visit).
-# Freeze hash recomputed at the post-fix main SHA per the procedure below.
+# However, the v2 boundary CANNOT be declared FROZEN yet (PR #796 review):
+#   [P0] attemptEventBus beacon flush sends no Authorization header; the
+#        events endpoint requires get_current_user (401), so visibility-
+#        hidden/unmount batches (incl. question.visited anchors) are dropped
+#        after splice(0). _flush() also never checks response.ok and discards
+#        the batch on 401/409/5xx. Event delivery/retry must be fixed + tested.
+#   [P0] compute_dwell_times() setdefaults the time_spent_sec fallback BEFORE
+#        the len(by_q) < len(responses) check, so partial event coverage never
+#        emits the documented "partial event coverage; fallback applied"
+#        warning. Needs an explicit event_covered_qids/fallback_question_count
+#        signal + a gate criterion rejecting unexpected fallback.
+#   [P1] Boundary not closed over event-acceptance deps: core/auth.py (accepts
+#        every client event batch) and frontend lib/supabase.js (token source)
+#        can change ingestion without changing this fingerprint. Expand the
+#        approved boundary (operator approval) and recompute, or document +
+#        enforce immutability during the window.
 #
-# FREEZE HASH (main @ 1679adb8, 32 files, BUGS FIXED) — use this as the
-# window_start / window_end fingerprint:
+# The hash below is therefore a REFERENCE fingerprint at this SHA, NOT the
+# window_start hash. The freeze hash must be recomputed at a new post-fix main
+# SHA after the boundary is closed and the telemetry defects above clear.
+#
+# Reference fingerprint (main @ 1679adb8, current 32-file boundary):
 #   b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b
 #
-# Pre-fix reference hash (main @ c9c44a9e, 32 files, BUGS PRESENT — DO NOT
-# use as the window_start hash):
+# Pre-fix reference hash (main @ c9c44a9e, 32 files, BUGS PRESENT):
 #   96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b
-#
-# NOTE: computing the freeze hash does NOT open the observation window. The
-# window_start clock starts only after the operator prerequisites clear
-# (migration 182 applied + privilege-checked; PR-6 clean rerun with
-# FF_MOCK_MASTERY_LIVE_USER_IDS populated). Re-verify this hash at that SHA
-# before establishing window_start; any change to a listed file resets it.
 #
 # To compute the combined fingerprint at any SHA, run from repo root:
 #
