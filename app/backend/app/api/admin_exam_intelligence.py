@@ -2349,3 +2349,43 @@ def compute_score_snapshots(
             detail="one or more input reads failed during score computation — check DB and retry",
         )
     return {**result, "exam_id": exam_id, "model_version": _SNAPSHOT_MODEL_VERSION}
+
+
+@router.get("/management/exams/{exam_id}/cycles/{cycle_id}/activation-checklist")
+def cycle_activation_checklist(
+    exam_id: str,
+    cycle_id: str,
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """9-step cycle activation checklist (I9). Returns backend-derived step statuses.
+    Unknown exam → 404. Unknown cycle → 200 with cycle_readiness_error='cycle_not_found'.
+    """
+    from app.exam_intelligence.cycle_checklist import (
+        compute_cycle_activation_checklist,
+        CONTRACT_VERSION,
+    )
+    from app.exam_intelligence.management_read_model import _require_exam
+
+    sb = get_supabase_admin()
+    _require_exam(sb, exam_id)
+
+    cycle_readiness = compute_cycle_activation_checklist(sb, exam_id, cycle_id)
+
+    now = _now_iso()
+    if cycle_readiness is None:
+        return {
+            "contract_version": CONTRACT_VERSION,
+            "exam_id": exam_id,
+            "cycle_id": cycle_id,
+            "computed_at": now,
+            "cycle_readiness": None,
+            "cycle_readiness_error": "cycle_not_found",
+        }
+
+    return {
+        "contract_version": CONTRACT_VERSION,
+        "exam_id": exam_id,
+        "cycle_id": cycle_id,
+        "computed_at": now,
+        "cycle_readiness": cycle_readiness,
+    }
