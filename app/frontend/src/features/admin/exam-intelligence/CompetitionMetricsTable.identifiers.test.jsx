@@ -1,9 +1,11 @@
 /**
  * I6 — identifier hygiene regression for CompetitionMetricsTable.
  *
- * Guards: raw exam_slug must not appear verbatim in rendered output.
- * humanizeToken is applied, so slug text is transformed (underscores →
- * spaces, leading uppercase) before display.
+ * Guards: raw exam_slug / exam UUID must not appear verbatim in rendered output.
+ *
+ * D4 note: The "Exam" column was removed (table is always pre-filtered by
+ * exam.id in CompetitionPanel). Tests that previously asserted humanized exam
+ * name / slug text appears in the table are updated to assert they are absent.
  */
 import React from "react";
 import { render, screen } from "@testing-library/react";
@@ -47,20 +49,19 @@ test("raw exam_slug UUID is not rendered verbatim — humanizeToken applied", ()
   expect(document.body.textContent).not.toContain(UUID_EXAM);
 });
 
-test("snake_case exam_slug is transformed — raw slug not shown verbatim", () => {
+test("snake_case exam_slug is not shown — Exam column removed (D4)", () => {
   render(<CompetitionMetricsTable items={[ROW_WITH_SLUG]} />);
   // Raw slug with underscores must not appear verbatim.
   expect(document.body.textContent).not.toContain(SLUG);
-  // Humanized form (underscores → spaces) should be present.
-  expect(screen.getByText("Upsc cse 2026")).toBeTruthy();
+  // D4: Exam column removed — humanized slug text no longer in table.
+  expect(document.body.textContent).not.toContain("Upsc cse 2026");
 });
 
-test("when exam name is present it takes priority over slug and is rendered via humanizeToken", () => {
+test("exam name not shown — Exam column removed (D4)", () => {
   render(<CompetitionMetricsTable items={[ROW_WITH_EXAM_NAME]} />);
-  // exam name is passed through humanizeToken — no underscores in name here
-  // so it renders as-is (leading cap already present).
-  expect(screen.getByText("UPSC Civil Services")).toBeTruthy();
-  // Raw slug must still not appear.
+  // D4: Exam column removed — exam name no longer rendered in table.
+  expect(document.body.textContent).not.toContain("UPSC Civil Services");
+  // Raw slug must also not appear.
   expect(document.body.textContent).not.toContain(SLUG);
 });
 
