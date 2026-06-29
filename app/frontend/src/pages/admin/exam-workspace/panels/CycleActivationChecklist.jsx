@@ -31,8 +31,12 @@ export default function CycleActivationChecklist({ examId, cycleId }) {
     const url = cycleId
       ? `/api/admin/exam-intelligence/management/exams/${examId}?cycle_id=${cycleId}`
       : `/api/admin/exam-intelligence/management/exams/${examId}`;
-    api
-      .get(url)
+    const req = api.get(url);
+    if (!req || typeof req.then !== "function") {
+      setLoading(false);
+      return;
+    }
+    req
       .then((data) => {
         setCycleError(data.cycle_readiness_error || null);
         setChecklist(data.cycle_readiness || null);
