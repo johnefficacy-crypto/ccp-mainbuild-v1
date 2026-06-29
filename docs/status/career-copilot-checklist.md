@@ -224,22 +224,18 @@ Full decision record: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisi
 | Item | Current status | Notes |
 |---|---|---|
 | pip-audit dependency versions | PARTIALLY UPDATED | `litellm==1.84.0` and `pypdf==6.13.3` are pinned in `app/backend/requirements.txt`. |
-| pip-audit before pytest sequencing | STILL OPEN | `.github/workflows/ci.yml` still runs `pip-audit` before `pytest`; if audit exits nonzero, backend tests will not execute. |
-| **Duplicate migration slot 193** | **BLOCKED — e2e broken on all PRs** | `193_partner_consent_lifecycle.sql` (PR #776) and `193_pyq_source_review_transaction.sql` (PR #769) both landed on `main` with the same version number. PR #776 merged first, so any deployed DB already has version 193 recorded as the partner-consent migration. PR #769's `193_pyq_source_review_transaction.sql` is the latecomer that was never applied to the DB. The e2e migration runner fails with `schema_migrations_pkey 23505` on every fresh apply. Fix: rename `193_pyq_source_review_transaction.sql` → `201_pyq_source_review_transaction.sql` via operator direct push to `main` (the validate gate blocks doing this from a PR since both files now exist on main). The rename must NOT skip the file — both migrations must apply under distinct version slots so neither migration's DDL is omitted. Do not merge any PR as "green" on e2e until this is resolved. |
+| pip-audit before pytest sequencing | RESOLVED | `pip-audit` step now has `continue-on-error: true` and runs before `pytest` — audit failures are non-blocking. Backend tests always execute. |
+| Duplicate migration slot 193 | RESOLVED | `193_pyq_source_review_transaction.sql` has been renamed to `201_pyq_source_review_transaction.sql` on `main`. Both migrations now apply under distinct version slots. e2e migration apply unblocked. |
 
 ## Implementation sequencing plan — concurrent sub-agents
 
 Last assessed: 2026-06-29 at `main @ 3f19726`. Review before dispatch.
 
-### Serial prerequisite (must land before any wave)
+### Wave 0 — CI hardening — COMPLETE (2026-06-29)
 
-**Fix migration 193 collision** — unblocks e2e on all PRs. See row above.
-
-### Wave 0 — CI hardening (1 agent, fast, fully independent)
-
-| Agent | Scope | Constraint |
-|---|---|---|
-| **ci-fix** | (1) Reorder `ci.yml`: run `pytest` before `pip-audit` or make audit non-blocking. (2) The migration 193 collision must be resolved by an operator direct push renaming `193_pyq_source_review_transaction.sql` → `201_pyq_source_review_transaction.sql` on `main` (the validate gate blocks this from a PR). Both migration files must continue to exist under distinct version slots — do NOT skip or drop either file. | No shared file conflicts with any other wave. The 193 rename is operator-only. |
+Both items resolved on `main` before Wave 1 dispatch:
+- `pip-audit` runs with `continue-on-error: true` — tests always execute.
+- `193_pyq_source_review_transaction.sql` → `201_pyq_source_review_transaction.sql` on `main` — e2e migration apply unblocked.
 
 ### Wave 1 — Parallel independent code work (dispatch after Wave 0 merges)
 
