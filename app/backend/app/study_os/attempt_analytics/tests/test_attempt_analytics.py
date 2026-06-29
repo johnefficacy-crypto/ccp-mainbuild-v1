@@ -85,7 +85,7 @@ def test_unsubmitted_422():
 
 
 def test_dwell_times_from_occurred_at_events():
-    """DB-shaped event rows using occurred_at should be used for dwell time computation."""
+    """DB-shaped event rows (payload.question_id + occurred_at) drive dwell time computation."""
     responses = [
         {"question_id": "q1", "time_spent_sec": 999},
         {"question_id": "q2", "time_spent_sec": 999},
@@ -93,13 +93,13 @@ def test_dwell_times_from_occurred_at_events():
     events = [
         {
             "event_type": "question.visited",
-            "question_id": "q1",
+            "payload": {"question_id": "q1"},
             "occurred_at": "2026-01-01T00:00:00+00:00",
             "source": "client",
         },
         {
             "event_type": "question.visited",
-            "question_id": "q2",
+            "payload": {"question_id": "q2"},
             "occurred_at": "2026-01-01T00:01:30+00:00",
             "source": "client",
         },
@@ -117,15 +117,15 @@ def test_dwell_times_from_occurred_at_events():
 
 
 def test_dwell_times_created_at_is_malformed():
-    """Event rows with created_at (wrong field) must be counted as malformed and skipped."""
+    """DB-shaped rows with created_at (wrong timestamp field) are malformed and skipped."""
     responses = [
         {"question_id": "q1", "time_spent_sec": 42},
     ]
     events = [
         {
             "event_type": "question.visited",
-            "question_id": "q1",
-            # Wrong field name — the DB column is occurred_at, not created_at
+            "payload": {"question_id": "q1"},
+            # Wrong timestamp field — DB column is occurred_at, not created_at
             "created_at": "2026-01-01T00:00:00+00:00",
             "source": "client",
         },

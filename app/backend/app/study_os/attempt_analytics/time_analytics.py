@@ -32,7 +32,7 @@ def compute_dwell_times(
         # locks a single event naming contract, deprecate + remove this alias.
         if evt.get("event_type") not in {"question.visited", "question_visited"}:
             continue
-        qid = evt.get("question_id")
+        qid = (evt.get("payload") or {}).get("question_id") or evt.get("question_id")
         if not qid:
             malformed_events += 1
             continue
