@@ -146,7 +146,7 @@ def test_unknown_cycle_id_returns_200_with_error():
     assert r.status_code == 200
     body = r.json()
     assert body["cycle_readiness"] is None
-    assert body["cycle_readiness_error"] == "cycle_not_found"
+    assert body["cycle_readiness_error"] == {"code": "cycle_not_found", "requested_cycle_id": "ghost-cycle"}
 
 
 def test_index_only_source_docs_not_applicable():
@@ -158,7 +158,7 @@ def test_index_only_source_docs_not_applicable():
     cr = r.json()["cycle_readiness"]
     step3 = next(st for st in cr["steps"] if st["step"] == 3)
     assert step3["status"] == "not_applicable"
-    assert step3["not_applicable_reason"] == "management_mode"
+    assert step3["not_applicable_reason"] == "optional_for_management_mode"
 
 
 def test_step1_ready_when_name_and_year():
@@ -172,12 +172,15 @@ def test_step1_ready_when_name_and_year():
     assert step1["status"] == "ready"
 
 
-def test_overall_blocked_when_hard_gate_missing():
-    """No phases -> step2 missing (hard gate) -> overall=blocked."""
+def test_hard_gate_missing_when_no_phases():
+    """No phases -> step2 missing (hard gate). D03: no overall field on cycle_readiness."""
     s = _Seed()
     s.exam("e1", name="Exam1", locked=1)
     s.cycle("cy1", "e1")
     r = _detail(_client_from_seed(s), "e1", cycle_id="cy1")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
-    assert cr["overall"] == "blocked"
+    assert "overall" not in cr  # D03: overall verdict comes only from work_queue.classify_exam
+    step2 = next(st for st in cr["steps"] if st["step"] == 2)
+    assert step2["status"] == "missing"
+    assert step2["gate_class"] == "hard"

@@ -257,14 +257,14 @@ def get_management_exam_detail(
     # All cycles for this exam (correctness-critical)
     all_cycles = _load_cycles_for_exams(sb, [exam_id])
 
-    # Resolve selected cycle (D16: unknown cycle_id → 200 + cycle_readiness_error)
-    _cycle_readiness_error: str | None = None
+    # Resolve selected cycle (D16: unknown cycle_id → 200 + typed cycle_readiness_error)
+    _cycle_readiness_error: dict | None = None
     selected_cycle: dict[str, Any] | None
     if cycle_id:
         matched = [c for c in all_cycles if c.get("id") == cycle_id]
         if not matched:
             selected_cycle = None
-            _cycle_readiness_error = "cycle_not_found"
+            _cycle_readiness_error = {"code": "cycle_not_found", "requested_cycle_id": cycle_id}
         else:
             selected_cycle = matched[0]
     else:
@@ -286,19 +286,18 @@ def get_management_exam_detail(
         if selected_cycle else None
     )
 
-    # Per-section readiness (advisory, fail-soft — null on failure is acceptable)
-    section_readiness = _safe(
-        lambda: compute_exam_workspace_readiness(sb, exam_id, selected_cycle_id)
-    )
-
     # I9: cycle activation checklist (advisory, fail-soft)
-    # Skip when cycle_id was supplied but not found (D16: return null + error)
+    # Skip when cycle_id was supplied but not found (D16: return null + typed error)
     if _cycle_readiness_error:
         _cycle_readiness = None
     else:
         _cycle_readiness = _safe(
             lambda: compute_cycle_readiness(sb, exam_id, selected_cycle_id, exam)
         )
+
+    # D02: section_readiness is the temporary alias for cycle_readiness (same computed object).
+    # Both must originate from one computation path during the migration period.
+    section_readiness = _cycle_readiness
 
     # Console detail: action queue + verdict (correctness-critical, fail-hard → 5xx)
     console = build_console_detail(sb, exam_id, selected_cycle_id)

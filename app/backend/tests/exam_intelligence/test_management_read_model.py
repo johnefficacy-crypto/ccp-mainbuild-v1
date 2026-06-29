@@ -356,7 +356,7 @@ def test_management_detail_404_for_unknown_cycle():
     assert r.status_code == 200
     body = r.json()
     assert body["cycle_readiness"] is None
-    assert body["cycle_readiness_error"] == "cycle_not_found"
+    assert body["cycle_readiness_error"] == {"code": "cycle_not_found", "requested_cycle_id": "ghost-cycle"}
 
 
 def test_management_detail_action_queue_has_tab_deep_links():
@@ -377,24 +377,24 @@ def test_management_detail_action_queue_no_generic_label():
 
 
 def test_management_detail_section_readiness_advisory_null_on_failure():
-    """section_readiness is advisory: a read failure yields null, not 5xx."""
-    from app.exam_intelligence import management_read_model as _mrm
-
-    # Patch compute_exam_workspace_readiness to raise
+    """section_readiness is advisory: a read failure yields null, not 5xx.
+    D02: section_readiness is an alias for cycle_readiness; patch compute_cycle_activation_checklist."""
     import app.exam_intelligence.management_read_model as _mrm_module
 
     def _fail(*args, **kwargs):
         raise RuntimeError("simulated advisory failure")
 
-    original = _mrm_module.compute_exam_workspace_readiness
-    _mrm_module.compute_exam_workspace_readiness = _fail
+    original = _mrm_module.compute_cycle_readiness
+    _mrm_module.compute_cycle_readiness = _fail
     try:
         client, _ = _client()
         r = _detail(client, "rdy")
         assert r.status_code == 200
-        assert r.json()["section_readiness"] is None
+        body = r.json()
+        assert body["cycle_readiness"] is None
+        assert body["section_readiness"] is None  # D02 alias
     finally:
-        _mrm_module.compute_exam_workspace_readiness = original
+        _mrm_module.compute_cycle_readiness = original
 
 
 def test_management_detail_fail_closed_on_exam_read_failure():

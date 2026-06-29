@@ -1,23 +1,24 @@
 /**
  * CycleActivationChecklist — unit tests
  *
- * Tests: loading state, error state, cycle_not_found error, steps render, CTA links.
+ * Component reads from ExamWorkspaceContext (mgmt/mgmtLoading/mgmtError).
+ * No direct api.get calls — context is mocked.
  */
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
-jest.mock("../../../../../lib/api", () => ({
+// Mock context — tests inject values via mockContextValue
+let mockContextValue = {};
+jest.mock("../../ExamWorkspaceContext", () => ({
   __esModule: true,
-  api: { get: jest.fn() },
+  useExamWorkspace: () => mockContextValue,
 }));
 
-const { api } = require("../../../../../lib/api");
 const CycleActivationChecklist = require("../CycleActivationChecklist").default;
 
 const MOCK_READINESS = {
   cycle_id: "cy1",
   computed_at: "2026-06-29T00:00:00+00:00",
-  overall: "ready",
   steps: [
     {
       step: 1,
@@ -44,81 +45,98 @@ const MOCK_READINESS = {
   ],
 };
 
+const MGMT_WITH_READINESS = {
+  contract_version: 1,
+  cycle_readiness: MOCK_READINESS,
+  cycle_readiness_error: null,
+};
+
 beforeEach(() => {
-  api.get.mockReset();
+  mockContextValue = { mgmt: null, mgmtLoading: false, mgmtError: "" };
 });
 
-test("shows loading state initially", () => {
-  api.get.mockReturnValue(new Promise(() => {})); // never resolves
-  render(<CycleActivationChecklist examId="e1" cycleId="cy1" />);
+test("shows loading state when mgmtLoading", () => {
+  mockContextValue = { mgmt: null, mgmtLoading: true, mgmtError: "" };
+  render(<CycleActivationChecklist />);
   expect(screen.getByTestId("cycle-checklist-loading")).toBeInTheDocument();
 });
 
-test("shows error state on fetch failure", async () => {
-  api.get.mockRejectedValue(new Error("Network error"));
-  render(<CycleActivationChecklist examId="e1" cycleId="cy1" />);
-  await waitFor(() => {
-    expect(screen.getByTestId("cycle-checklist-error")).toBeInTheDocument();
-  });
+test("shows error state when mgmtError", () => {
+  mockContextValue = { mgmt: null, mgmtLoading: false, mgmtError: "Network error" };
+  render(<CycleActivationChecklist />);
+  expect(screen.getByTestId("cycle-checklist-error")).toBeInTheDocument();
   expect(screen.getByText(/Network error/)).toBeInTheDocument();
 });
 
-test("shows cycle_not_found message when error is set", async () => {
-  api.get.mockResolvedValue({
-    cycle_readiness: null,
-    cycle_readiness_error: "cycle_not_found",
-  });
-  render(<CycleActivationChecklist examId="e1" cycleId="ghost" />);
-  await waitFor(() => {
-    expect(screen.getByTestId("cycle-checklist-cycle-not-found")).toBeInTheDocument();
-  });
+test("renders nothing when mgmt is null", () => {
+  mockContextValue = { mgmt: null, mgmtLoading: false, mgmtError: "" };
+  const { container } = render(<CycleActivationChecklist />);
+  expect(container.firstChild).toBeNull();
 });
 
-test("renders all steps when checklist loaded", async () => {
-  api.get.mockResolvedValue({
-    cycle_readiness: MOCK_READINESS,
-    cycle_readiness_error: null,
-  });
-  render(<CycleActivationChecklist examId="e1" cycleId="cy1" />);
-  await waitFor(() => {
-    expect(screen.getByTestId("cycle-checklist")).toBeInTheDocument();
-  });
+test("shows version-error when contract_version is unsupported", () => {
+  mockContextValue = {
+    mgmt: { contract_version: 99, cycle_readiness: null, cycle_readiness_error: null },
+    mgmtLoading: false,
+    mgmtError: "",
+  };
+  render(<CycleActivationChecklist />);
+  expect(screen.getByTestId("cycle-checklist-version-error")).toBeInTheDocument();
+});
+
+test("shows version-error when contract_version is absent", () => {
+  mockContextValue = {
+    mgmt: { cycle_readiness: null, cycle_readiness_error: null },
+    mgmtLoading: false,
+    mgmtError: "",
+  };
+  render(<CycleActivationChecklist />);
+  expect(screen.getByTestId("cycle-checklist-version-error")).toBeInTheDocument();
+});
+
+test("shows cycle_not_found message when error code is set", () => {
+  mockContextValue = {
+    mgmt: {
+      contract_version: 1,
+      cycle_readiness: null,
+      cycle_readiness_error: { code: "cycle_not_found", requested_cycle_id: "ghost" },
+    },
+    mgmtLoading: false,
+    mgmtError: "",
+  };
+  render(<CycleActivationChecklist />);
+  expect(screen.getByTestId("cycle-checklist-cycle-not-found")).toBeInTheDocument();
+});
+
+test("renders nothing when mgmt has no cycle_readiness and no error", () => {
+  mockContextValue = {
+    mgmt: { contract_version: 1, cycle_readiness: null, cycle_readiness_error: null },
+    mgmtLoading: false,
+    mgmtError: "",
+  };
+  const { container } = render(<CycleActivationChecklist />);
+  expect(container.firstChild).toBeNull();
+});
+
+test("renders all steps when checklist is available", () => {
+  mockContextValue = { mgmt: MGMT_WITH_READINESS, mgmtLoading: false, mgmtError: "" };
+  render(<CycleActivationChecklist />);
+  expect(screen.getByTestId("cycle-checklist")).toBeInTheDocument();
   expect(screen.getByTestId("checklist-step-1")).toBeInTheDocument();
   expect(screen.getByTestId("checklist-step-2")).toBeInTheDocument();
   expect(screen.getByTestId("checklist-step-1-status")).toHaveTextContent("ready");
   expect(screen.getByTestId("checklist-step-2-status")).toHaveTextContent("missing");
 });
 
-test("shows deep-link CTA button for steps with action_cta", async () => {
-  api.get.mockResolvedValue({
-    cycle_readiness: MOCK_READINESS,
-    cycle_readiness_error: null,
-  });
-  render(<CycleActivationChecklist examId="e1" cycleId="cy1" />);
-  await waitFor(() => {
-    expect(screen.getByTestId("checklist-step-2-cta")).toBeInTheDocument();
-  });
+test("shows CTA link for steps with action_cta", () => {
+  mockContextValue = { mgmt: MGMT_WITH_READINESS, mgmtLoading: false, mgmtError: "" };
+  render(<CycleActivationChecklist />);
   const link = screen.getByTestId("checklist-step-2-cta");
   expect(link).toHaveAttribute("href", "/admin/exam-intelligence/exams/e1?tab=setup");
 });
 
-test("shows overall verdict badge", async () => {
-  api.get.mockResolvedValue({
-    cycle_readiness: MOCK_READINESS,
-    cycle_readiness_error: null,
-  });
-  render(<CycleActivationChecklist examId="e1" cycleId="cy1" />);
-  await waitFor(() => {
-    expect(screen.getByTestId("cycle-checklist-overall")).toBeInTheDocument();
-  });
-  expect(screen.getByTestId("cycle-checklist-overall")).toHaveTextContent("Ready to activate");
-});
-
-test("fetches with cycle_id in query when cycleId provided", async () => {
-  api.get.mockResolvedValue({ cycle_readiness: MOCK_READINESS, cycle_readiness_error: null });
-  render(<CycleActivationChecklist examId="e1" cycleId="cy1" />);
-  await waitFor(() => expect(api.get).toHaveBeenCalled());
-  expect(api.get).toHaveBeenCalledWith(
-    expect.stringContaining("cycle_id=cy1")
-  );
+test("does not render an overall activation verdict badge (D03)", () => {
+  mockContextValue = { mgmt: MGMT_WITH_READINESS, mgmtLoading: false, mgmtError: "" };
+  render(<CycleActivationChecklist />);
+  expect(screen.queryByTestId("cycle-checklist-overall")).not.toBeInTheDocument();
 });
