@@ -225,7 +225,7 @@ Full decision record: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisi
 |---|---|---|
 | pip-audit dependency versions | PARTIALLY UPDATED | `litellm==1.84.0` and `pypdf==6.13.3` are pinned in `app/backend/requirements.txt`. |
 | pip-audit before pytest sequencing | STILL OPEN | `.github/workflows/ci.yml` still runs `pip-audit` before `pytest`; if audit exits nonzero, backend tests will not execute. |
-| **Duplicate migration slot 193** | **BLOCKED — e2e broken on all PRs** | `193_partner_consent_lifecycle.sql` (PR #776) and `193_pyq_source_review_transaction.sql` (PR #769) both landed on `main` with the same version number. The e2e migration runner fails with `schema_migrations_pkey 23505` on every fresh apply. The migration-discipline validate check prevents renaming either file from a PR (both are "applied" on main = immutable). Fix options: (a) patch `e2e.yml` to deduplicate migration files by version before applying — CI config change, not a migration change, so validate won't block it; (b) operator direct push to `main` renaming the latecomer (`193_partner_consent_lifecycle.sql` → `201_partner_consent_lifecycle.sql`). Option (a) is the recommended path. Do not merge any PR as "green" on e2e until this is resolved. |
+| **Duplicate migration slot 193** | **BLOCKED — e2e broken on all PRs** | `193_partner_consent_lifecycle.sql` (PR #776) and `193_pyq_source_review_transaction.sql` (PR #769) both landed on `main` with the same version number. PR #776 merged first, so any deployed DB already has version 193 recorded as the partner-consent migration. PR #769's `193_pyq_source_review_transaction.sql` is the latecomer that was never applied to the DB. The e2e migration runner fails with `schema_migrations_pkey 23505` on every fresh apply. Fix: rename `193_pyq_source_review_transaction.sql` → `201_pyq_source_review_transaction.sql` via operator direct push to `main` (the validate gate blocks doing this from a PR since both files now exist on main). The rename must NOT skip the file — both migrations must apply under distinct version slots so neither migration's DDL is omitted. Do not merge any PR as "green" on e2e until this is resolved. |
 
 ## Implementation sequencing plan — concurrent sub-agents
 
@@ -239,7 +239,7 @@ Last assessed: 2026-06-29 at `main @ 3f19726`. Review before dispatch.
 
 | Agent | Scope | Constraint |
 |---|---|---|
-| **ci-fix** | (1) Reorder `ci.yml`: run `pytest` before `pip-audit` or make audit non-blocking. (2) Patch `e2e.yml` to deduplicate migration files by version number before `supabase db push`. | No shared file conflicts with any other wave. |
+| **ci-fix** | (1) Reorder `ci.yml`: run `pytest` before `pip-audit` or make audit non-blocking. (2) The migration 193 collision must be resolved by an operator direct push renaming `193_pyq_source_review_transaction.sql` → `201_pyq_source_review_transaction.sql` on `main` (the validate gate blocks this from a PR). Both migration files must continue to exist under distinct version slots — do NOT skip or drop either file. | No shared file conflicts with any other wave. The 193 rename is operator-only. |
 
 ### Wave 1 — Parallel independent code work (dispatch after Wave 0 merges)
 
