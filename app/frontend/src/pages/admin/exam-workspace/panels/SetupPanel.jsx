@@ -64,7 +64,7 @@ const CYCLE_STATUSES = ["expected", "open", "active", "closed", "completed", "ca
 const PHASE_STATUSES = ["expected", "active", "completed", "cancelled"];
 
 export default function SetupPanel({ action = null }) {
-  const { exam, cycles, phases, refetch } = useExamWorkspace();
+  const { exam, cycle, cycles, phases, refetch } = useExamWorkspace();
 
   // ── add-phase form ──────────────────────────────────────────────────────
   const EMPTY_PHASE = {
@@ -918,19 +918,7 @@ export default function SetupPanel({ action = null }) {
       )}
 
 
-      {cycles.length > 0 && (() => {
-        const _bestCycle =
-          cycles.find((c) => c.status === "active") ||
-          cycles.find((c) => c.status === "open") ||
-          cycles.find((c) => c.status === "expected") ||
-          cycles[0];
-        return (
-          <CycleActivationChecklist
-            examId={exam.id}
-            cycleId={_bestCycle?.id || null}
-          />
-        );
-      })()}
+      {cycle && <CycleActivationChecklist />}
 
     </div>
   );

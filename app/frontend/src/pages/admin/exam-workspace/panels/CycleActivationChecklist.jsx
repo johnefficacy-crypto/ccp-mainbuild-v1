@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { api } from "../../../../lib/api";
+import React from "react";
+import { useExamWorkspace } from "../ExamWorkspaceContext";
+
+const SUPPORTED_CONTRACT_VERSIONS = new Set([1]);
 
 const STATUS_ICON = {
   ready: "✓",
@@ -12,43 +14,10 @@ const STATUS_ICON = {
   stale: "…",
 };
 
-const OVERALL_LABEL = {
-  ready: "Ready to activate",
-  blocked: "Blocked — hard gates unmet",
-  needs_action: "Needs action",
-};
+export default function CycleActivationChecklist() {
+  const { mgmt, mgmtLoading, mgmtError } = useExamWorkspace();
 
-export default function CycleActivationChecklist({ examId, cycleId }) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [checklist, setChecklist] = useState(null);
-  const [cycleError, setCycleError] = useState(null);
-
-  useEffect(() => {
-    if (!examId) return;
-    setLoading(true);
-    setError(null);
-    const url = cycleId
-      ? `/api/admin/exam-intelligence/management/exams/${examId}?cycle_id=${cycleId}`
-      : `/api/admin/exam-intelligence/management/exams/${examId}`;
-    const req = api.get(url);
-    if (!req || typeof req.then !== "function") {
-      setLoading(false);
-      return;
-    }
-    req
-      .then((data) => {
-        setCycleError(data.cycle_readiness_error || null);
-        setChecklist(data.cycle_readiness || null);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err?.message || "Failed to load checklist");
-        setLoading(false);
-      });
-  }, [examId, cycleId]);
-
-  if (loading) {
+  if (mgmtLoading) {
     return (
       <div data-testid="cycle-checklist-loading" className="card">
         <p>Loading cycle activation checklist…</p>
@@ -56,15 +25,30 @@ export default function CycleActivationChecklist({ examId, cycleId }) {
     );
   }
 
-  if (error) {
+  if (mgmtError) {
     return (
       <div data-testid="cycle-checklist-error" className="card">
-        <p className="err-row">Error loading checklist: {error}</p>
+        <p className="err-row">Error loading checklist: {mgmtError}</p>
       </div>
     );
   }
 
-  if (cycleError === "cycle_not_found") {
+  if (!mgmt) return null;
+
+  // D04: fail-closed version handling — suppress readiness interpretation for unsupported versions
+  if (!SUPPORTED_CONTRACT_VERSIONS.has(mgmt.contract_version)) {
+    return (
+      <div data-testid="cycle-checklist-version-error" className="card">
+        <p className="err-row">
+          Checklist format version {mgmt.contract_version ?? "(missing)"} is not supported by
+          this client. Reload or contact support.
+        </p>
+      </div>
+    );
+  }
+
+  const cycleError = mgmt.cycle_readiness_error;
+  if (cycleError && cycleError.code === "cycle_not_found") {
     return (
       <div data-testid="cycle-checklist-cycle-not-found" className="card">
         <p className="err-row">Cycle not found. Please select a valid cycle.</p>
@@ -72,28 +56,15 @@ export default function CycleActivationChecklist({ examId, cycleId }) {
     );
   }
 
-  if (!checklist) {
-    return null;
-  }
-
-  const overallClass =
-    checklist.overall === "ready"
-      ? "badge ink"
-      : checklist.overall === "blocked"
-      ? "badge blocker"
-      : "badge pending";
+  const checklist = mgmt.cycle_readiness;
+  if (!checklist) return null;
 
   return (
     <div data-testid="cycle-checklist" className="card">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <h3 style={{ margin: 0 }}>Cycle Activation Checklist</h3>
-        <span className={overallClass} data-testid="cycle-checklist-overall">
-          {OVERALL_LABEL[checklist.overall] || checklist.overall}
-        </span>
-      </div>
+      <h3 style={{ margin: "0 0 12px" }}>Cycle Activation Checklist</h3>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <tbody>
-          {checklist.steps.map((step) => (
+          {(checklist.steps || []).map((step) => (
             <tr
               key={step.step}
               data-testid={`checklist-step-${step.step}`}

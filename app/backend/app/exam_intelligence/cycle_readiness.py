@@ -56,24 +56,6 @@ def _step(
     }
 
 
-def _classify_overall(steps: list[dict[str, Any]]) -> str:
-    hard_steps = {1, 2, 5, 9}
-    blocked = False
-    needs_action = False
-    for s in steps:
-        st = s["status"]
-        if st in (_READY, _NA):
-            continue
-        if s["step"] in hard_steps:
-            blocked = True
-        else:
-            needs_action = True
-    if blocked:
-        return "blocked"
-    if needs_action:
-        return "needs_action"
-    return "ready"
-
 
 def compute_cycle_readiness(
     sb,
@@ -142,11 +124,14 @@ def compute_cycle_readiness(
         if management_mode in _MGMT_MODES_NO_DOCS:
             s3 = _step(3, "source_documents", "Source documents", _NA,
                        gate_class="advisory", evidence_scope="exam_wide",
-                       not_applicable_reason="management_mode")
+                       not_applicable_reason="optional_for_management_mode")
         else:
-            doc_rows = (sb.table("document_assets")
-                        .select("id, status")
-                        .eq("exam_id", exam_id).execute().data or [])
+            # document_assets has no exam_id column; filter via scope + metadata in Python
+            all_asset_rows = (sb.table("document_assets")
+                              .select("id, metadata, status")
+                              .eq("scope", "admin_exam_intelligence")
+                              .limit(500).execute().data or [])
+            doc_rows = [r for r in all_asset_rows if (r.get("metadata") or {}).get("exam_id") == exam_id]
             if not doc_rows:
                 s3 = _step(3, "source_documents", "Source documents", _MISSING,
                            gate_class="advisory", evidence_scope="exam_wide")
@@ -158,7 +143,7 @@ def compute_cycle_readiness(
                     if doc_ids:
                         job_rows = (sb.table("document_processing_jobs")
                                     .select("id, status")
-                                    .in_("document_asset_id", doc_ids).execute().data or [])
+                                    .in_("document_id", doc_ids).execute().data or [])
                     processed = any(j.get("status") == "succeeded" for j in job_rows)
                 if processed:
                     s3 = _step(3, "source_documents", "Source documents", _READY,
@@ -177,12 +162,15 @@ def compute_cycle_readiness(
         if management_mode in _MGMT_MODES_NO_DOCS:
             s4 = _step(4, "extraction", "Text extraction", _NA,
                        gate_class="advisory", evidence_scope="exam_wide",
-                       not_applicable_reason="management_mode")
+                       not_applicable_reason="optional_for_management_mode")
         else:
-            doc_id_rows = (sb.table("document_assets")
-                           .select("id")
-                           .eq("exam_id", exam_id).execute().data or [])
-            doc_ids = [d["id"] for d in doc_id_rows if d.get("id")]
+            # document_assets has no exam_id column; filter via scope + metadata
+            all_asset_rows4 = (sb.table("document_assets")
+                               .select("id, metadata")
+                               .eq("scope", "admin_exam_intelligence")
+                               .limit(500).execute().data or [])
+            doc_ids = [r["id"] for r in all_asset_rows4
+                       if (r.get("metadata") or {}).get("exam_id") == exam_id and r.get("id")]
             if not doc_ids:
                 s4 = _step(4, "extraction", "Text extraction", _MISSING,
                            gate_class="advisory", evidence_scope="exam_wide")
@@ -190,7 +178,7 @@ def compute_cycle_readiness(
                 job_rows = (sb.table("document_processing_jobs")
                             .select("id, status")
                             .eq("job_type", "text_extract")
-                            .in_("document_asset_id", doc_ids).execute().data or [])
+                            .in_("document_id", doc_ids).execute().data or [])
                 statuses = [j.get("status") for j in job_rows]
                 if not statuses:
                     s4 = _step(4, "extraction", "Text extraction", _MISSING,
@@ -222,7 +210,7 @@ def compute_cycle_readiness(
         if management_mode in _MGMT_MODES_NO_DOCS:
             s5 = _step(5, "syllabus_mapping", "Syllabus mapping", _NA,
                        gate_class="hard", evidence_scope="mixed",
-                       not_applicable_reason="management_mode")
+                       not_applicable_reason="optional_for_management_mode")
         else:
             cov_rows = (sb.table("exam_topic_coverage")
                         .select("id")
@@ -257,7 +245,7 @@ def compute_cycle_readiness(
         if management_mode in _MGMT_MODES_NO_DOCS:
             s6 = _step(6, "pyq_readiness", "PYQ readiness", _NA,
                        gate_class="advisory", evidence_scope="exam_wide",
-                       not_applicable_reason="management_mode")
+                       not_applicable_reason="optional_for_management_mode")
         else:
             paper_rows = (sb.table("pyq_papers")
                           .select("id")
@@ -322,7 +310,7 @@ def compute_cycle_readiness(
                        gate_class="advisory", evidence_scope="mixed")
     except Exception as exc:
         logger.warning("cycle_readiness step7 error: %s", exc)
-        s7 = _step(7, "policy_updates", "Policy updates", _READY,
+        s7 = _step(7, "policy_updates", "Policy updates", _MISSING,
                    gate_class="advisory", evidence_scope="mixed")
     steps.append(s7)
 
@@ -338,7 +326,7 @@ def compute_cycle_readiness(
         elif management_mode in _MGMT_MODES_LIGHT and not comp_rows:
             s8 = _step(8, "competition_context", "Competition context", _NA,
                        gate_class="advisory", evidence_scope="exam_wide",
-                       not_applicable_reason="management_mode")
+                       not_applicable_reason="optional_for_management_mode")
         else:
             s8 = _step(8, "competition_context", "Competition context", _MISSING,
                        gate_class="advisory", evidence_scope="exam_wide")
@@ -353,7 +341,7 @@ def compute_cycle_readiness(
         if management_mode in _MGMT_MODES_NO_DOCS:
             s9 = _step(9, "review_activate", "Review & activate", _NA,
                        gate_class="hard", evidence_scope="exam_wide",
-                       not_applicable_reason="management_mode")
+                       not_applicable_reason="optional_for_management_mode")
         else:
             step1_ready = s1["status"] == _READY
             step2_ready = s2["status"] == _READY
@@ -375,11 +363,8 @@ def compute_cycle_readiness(
                    gate_class="hard", evidence_scope="exam_wide")
     steps.append(s9)
 
-    overall = _classify_overall(steps)
-
     return {
         "cycle_id": cycle_id,
         "computed_at": computed_at,
         "steps": steps,
-        "overall": overall,
     }
