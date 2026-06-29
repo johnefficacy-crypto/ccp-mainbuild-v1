@@ -1,28 +1,33 @@
 name: Supabase production deploy
 
-# The production Supabase Auth configuration deployment pipeline.
-# Structure: gate job runs first; deploy job has `needs: gate` so it cannot
-# run — even if triggered — unless the gate exits 0. There is no alternate
-# path that bypasses the gate.
+# Builds a production-only config from the checked-in local/E2E config, validates
+# it, and passes that exact immutable artifact to the protected deployment job.
+# The deploy job cannot run unless the gate succeeds.
 #
-# Pre-flight (operator must complete before triggering):
-#   1. Remove [auth.sms.test_otp] from app/supabase/config.toml
-#   2. Set [auth.email] enable_signup = false
-#   3. Disable email provider in Supabase dashboard
-#   4. Validate real SMS delivery end-to-end
-#   5. Complete admin/user phone migration
+# Operator pre-flight before triggering:
+#   1. Configure the production GitHub environment and its secrets.
+#   2. Provision the Twilio Messaging Service and sender.
+#   3. Disable email/password sign-in in hosted Supabase.
+#   4. Complete admin/user phone migration.
+#   5. Validate real SMS delivery and admin phone-OTP login.
 #   See docs/status/Phone-OTP-Login-2026-06-26.md §"OPERATOR PENDING".
 #
-# Required repository secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF.
-# Required environment variable: SUPABASE_OPERATOR_APPROVED=yes (set in the
-# "production" GitHub environment to enforce the operator approval hard stop).
+# Required production environment secrets:
+#   SUPABASE_ACCESS_TOKEN
+#   SUPABASE_PROJECT_REF
+#   SUPABASE_AUTH_SMS_TWILIO_ACCOUNT_SID
+#   SUPABASE_AUTH_SMS_TWILIO_MESSAGE_SERVICE_SID
+#   SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   gate:
-    name: Check config.toml is production-safe
+    name: Build and validate production config
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,40 +36,83 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run Supabase production config gate
-        # Exits 1 if any violation is found:
-        #   • [auth.sms.test_otp] present
-        #   • no real SMS provider enabled (checked within its own section only)
-        #   • [auth.email] enable_signup = true
-        #   • SUPABASE_OPERATOR_APPROVED != "yes"
+      - name: Build sanitized production config
+        env:
+          SUPABASE_PROD_CONFIG_PATH: ${{ runner.temp }}/supabase-production/config.toml
+        run: node scripts/build-supabase-prod-config.mjs
+
+      - name: Validate sanitized production config
         env:
           SUPABASE_ENV: production
-          SUPABASE_OPERATOR_APPROVED: ${{ secrets.SUPABASE_OPERATOR_APPROVED }}
+          SUPABASE_CONFIG_PATH: ${{ runner.temp }}/supabase-production/config.toml
         run: node scripts/check-supabase-prod-gate.mjs
+
+      - name: Upload validated production config
+        uses: actions/upload-artifact@v7
+        with:
+          name: supabase-production-config
+          path: ${{ runner.temp }}/supabase-production/config.toml
+          if-no-files-found: error
+          retention-days: 1
 
   deploy:
     name: Push auth config to Supabase production
     runs-on: ubuntu-latest
-    # REQUIRED dependency: gate must succeed before any hosted config mutation.
-    # GitHub Actions enforces this; there is no way to skip it.
     needs: gate
     environment: production
-    # All run: steps use app/supabase as their working directory so the config
-    # the gate validated (app/supabase/config.toml) is the same one Supabase CLI
-    # picks up — the two cannot diverge.
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_AUTH_SMS_TWILIO_ACCOUNT_SID: ${{ secrets.SUPABASE_AUTH_SMS_TWILIO_ACCOUNT_SID }}
+      SUPABASE_AUTH_SMS_TWILIO_MESSAGE_SERVICE_SID: ${{ secrets.SUPABASE_AUTH_SMS_TWILIO_MESSAGE_SERVICE_SID }}
+      SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN: ${{ secrets.SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN }}
     defaults:
       run:
         working-directory: app/supabase
     steps:
       - uses: actions/checkout@v4
 
+      - name: Remove checked-in development config
+        run: rm -f config.toml
+
+      - name: Download the validated production config
+        uses: actions/download-artifact@v8
+        with:
+          name: supabase-production-config
+          path: app/supabase
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Revalidate downloaded production config
+        env:
+          SUPABASE_ENV: production
+          SUPABASE_CONFIG_PATH: ${{ github.workspace }}/app/supabase/config.toml
+        run: node ../../scripts/check-supabase-prod-gate.mjs
+
       - uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Apply auth configuration to production Supabase project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Verify required production secrets
         run: |
-          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          missing=0
+          for name in \
+            SUPABASE_ACCESS_TOKEN \
+            SUPABASE_PROJECT_REF \
+            SUPABASE_AUTH_SMS_TWILIO_ACCOUNT_SID \
+            SUPABASE_AUTH_SMS_TWILIO_MESSAGE_SERVICE_SID \
+            SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN
+          do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not configured in the production environment"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Apply auth configuration to production Supabase project
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
           supabase config push
