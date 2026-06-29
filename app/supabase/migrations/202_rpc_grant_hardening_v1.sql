@@ -29,9 +29,18 @@
 --     • claim_mock_mastery_retry(uuid,text,timestamptz)       -- def 180, DEFINER, mock_engine.py
 --     • complete_mock_mastery_retry(uuid)                     -- def 180, DEFINER, mock_engine.py
 --
---   NOTE: `is_admin(uuid)` is intentionally left executable by `authenticated`
---   because RLS policies evaluate it; `refresh_course_stats` / `refresh_enrollment_count`
---   are trigger helpers, not /rpc/-callable, and are out of scope here.
+--   C. SECURITY DEFINER backend RPCs that only `GRANT ... TO service_role` and never
+--      revoke the default PUBLIC (a GRANT does not remove it): claim_eligibility_queue
+--      (010), enqueue_eligibility_recompute (041), upsert_field_review (127),
+--      consume_profile_merge_claim (128).
+--
+--   D. SECURITY DEFINER backend RPCs that revoke only PUBLIC (insufficient per migration
+--      190): update_pyq_question_review_atomic (162), start_attempt_from_blueprint (179),
+--      fn_invalidate_projection_for_question (184), fn_block_projection_for_question (184).
+--
+--   16 functions total. NOTE: `is_admin(uuid)` is intentionally left executable by
+--   `authenticated` because RLS policies evaluate it; `refresh_course_stats` /
+--   `refresh_enrollment_count` are trigger helpers, not /rpc/-callable, and are out of scope.
 --
 -- FIX
 --   Revoke EXECUTE from PUBLIC, anon AND authenticated, then re-assert the
@@ -111,5 +120,53 @@ revoke execute on function public.fn_fanout_alert_event(uuid) from public;
 revoke execute on function public.fn_fanout_alert_event(uuid) from anon;
 revoke execute on function public.fn_fanout_alert_event(uuid) from authenticated;
 grant  execute on function public.fn_fanout_alert_event(uuid) to service_role;
+
+-- ── Group C: SECURITY DEFINER backend RPCs that only GRANT service_role and never
+--    revoke the default PUBLIC (a GRANT does not remove the default PUBLIC EXECUTE) ──
+-- claim_eligibility_queue(integer) — def 010
+revoke execute on function public.claim_eligibility_queue(integer) from public;
+revoke execute on function public.claim_eligibility_queue(integer) from anon;
+revoke execute on function public.claim_eligibility_queue(integer) from authenticated;
+grant  execute on function public.claim_eligibility_queue(integer) to service_role;
+
+-- enqueue_eligibility_recompute(uuid, uuid, text, jsonb) — def 041
+revoke execute on function public.enqueue_eligibility_recompute(uuid, uuid, text, jsonb) from public;
+revoke execute on function public.enqueue_eligibility_recompute(uuid, uuid, text, jsonb) from anon;
+revoke execute on function public.enqueue_eligibility_recompute(uuid, uuid, text, jsonb) from authenticated;
+grant  execute on function public.enqueue_eligibility_recompute(uuid, uuid, text, jsonb) to service_role;
+
+-- upsert_field_review(uuid,text,text,text,text,uuid,text,jsonb,jsonb,text,uuid) — def 127
+revoke execute on function public.upsert_field_review(uuid, text, text, text, text, uuid, text, jsonb, jsonb, text, uuid) from public;
+revoke execute on function public.upsert_field_review(uuid, text, text, text, text, uuid, text, jsonb, jsonb, text, uuid) from anon;
+revoke execute on function public.upsert_field_review(uuid, text, text, text, text, uuid, text, jsonb, jsonb, text, uuid) from authenticated;
+grant  execute on function public.upsert_field_review(uuid, text, text, text, text, uuid, text, jsonb, jsonb, text, uuid) to service_role;
+
+-- consume_profile_merge_claim(text, uuid) — def 128
+revoke execute on function public.consume_profile_merge_claim(text, uuid) from public;
+revoke execute on function public.consume_profile_merge_claim(text, uuid) from anon;
+revoke execute on function public.consume_profile_merge_claim(text, uuid) from authenticated;
+grant  execute on function public.consume_profile_merge_claim(text, uuid) to service_role;
+
+-- ── Group D: SECURITY DEFINER backend RPCs that revoke only PUBLIC (insufficient —
+--    migration 190 proved Supabase also holds explicit anon/authenticated grants) ──
+-- update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) — def 162
+revoke execute on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) from anon;
+revoke execute on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) from authenticated;
+grant  execute on function public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz) to service_role;
+
+-- start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz) — def 179
+revoke execute on function public.start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz) from anon;
+revoke execute on function public.start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz) from authenticated;
+grant  execute on function public.start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz) to service_role;
+
+-- fn_invalidate_projection_for_question(uuid) — def 184
+revoke execute on function public.fn_invalidate_projection_for_question(uuid) from anon;
+revoke execute on function public.fn_invalidate_projection_for_question(uuid) from authenticated;
+grant  execute on function public.fn_invalidate_projection_for_question(uuid) to service_role;
+
+-- fn_block_projection_for_question(uuid, text) — def 184
+revoke execute on function public.fn_block_projection_for_question(uuid, text) from anon;
+revoke execute on function public.fn_block_projection_for_question(uuid, text) from authenticated;
+grant  execute on function public.fn_block_projection_for_question(uuid, text) to service_role;
 
 commit;

@@ -1,12 +1,15 @@
 # RPC EXECUTE Grant Audit — v1 Release
 
-**Status:** 8 grant gaps found and fixed in migration `202_rpc_grant_hardening_v1.sql` —
-4 RPCs explicitly granted to `authenticated`, plus 4 backend-only RPCs that held the
-PostgreSQL **default `PUBLIC`** grant (the repo has no `ALTER DEFAULT PRIVILEGES`, so the
-default applies; 3 of the 4 are SECURITY DEFINER): the 3 mastery RPCs + the legacy
-`fn_fanout_alert_event`. `is_admin` (intentionally authenticated, used by RLS policies) and
-the `refresh_*` trigger helpers are the only remaining no-explicit-grant functions and are
-out of scope by design.
+**Status:** 16 grant gaps found and fixed in migration `202_rpc_grant_hardening_v1.sql`:
+- **A (4)** SECURITY INVOKER RPCs explicitly granted to `authenticated`.
+- **B (4)** backend RPCs with no explicit grant → held the default `PUBLIC` (3 DEFINER + the legacy `fn_fanout_alert_event`).
+- **C (4)** SECURITY DEFINER RPCs that only `GRANT ... TO service_role` and never revoked the default `PUBLIC` (a GRANT does not remove it).
+- **D (4)** SECURITY DEFINER RPCs that revoked only `PUBLIC` — insufficient, since migration 190 proved Supabase also holds explicit `anon`/`authenticated` grants.
+
+The repo has no `ALTER DEFAULT PRIVILEGES` (only a comment in migration 174), so any
+function without an explicit revoke retains PostgreSQL's default `PUBLIC` EXECUTE.
+`is_admin` (intentionally authenticated, used by RLS policies) and the `refresh_*` trigger
+helpers are the only remaining no-explicit-grant functions and are out of scope by design.
 **Scope:** All callable RPCs defined across `app/supabase/migrations/` are enumerated below
 (security-sensitive / mutating functions in full detail; triggers and internal helpers
 listed for completeness). Each is checked for (a) SECURITY DEFINER vs INVOKER, (b) which
@@ -50,15 +53,28 @@ are granted EXECUTE *only* when a feature deliberately calls the RPC with a user
 | `complete_mock_mastery_retry(uuid)` | 180 | **DEFINER** | **default PUBLIC** (no explicit grant) | `study_os/mock_engine.py` (service_role) | revoke public/anon/authenticated |
 | `fn_fanout_alert_event(uuid)` | 007 | **DEFINER** | **default PUBLIC** (no explicit grant) | none (legacy/dead; trigger-invoked) | revoke public/anon/authenticated |
 
-None of the eight is called anywhere with a user JWT, so revoking the public/anon/authenticated
-grants is a no-op for application behaviour. The first four were explicitly granted to
-`authenticated` (verified **no later migration** revoked them: 059 is the latest
-`promote_recruitment` redefinition and still grants `authenticated`; 076 and 054 are the sole
-definitions of the others). The three mastery RPCs have **no** grant/revoke statement in any
-migration; with no `ALTER DEFAULT PRIVILEGES` in the repo (only a comment in migration 174),
-PostgreSQL's default grants them EXECUTE to `PUBLIC` — an unsafe default posture, and the two
-SECURITY DEFINER members are in the highest-risk class. Migration 202 now revokes all three
-roles and grants only `service_role` for all eight.
+### Groups C & D — DEFINER RPCs left exposed by incomplete grant hygiene (fixed in 202)
+
+These were previously (incorrectly) listed as "✓ backend-only" because they grant
+`service_role`. But a `GRANT` does not remove the default `PUBLIC`, and a `REVOKE FROM
+PUBLIC` does not remove explicit `anon`/`authenticated` grants (migration 190). All are
+backend-only (service-role callers), so revoking the public roles is a no-op for behaviour.
+
+| Function | Def | Security | Prior grant state | Fix |
+|----------|-----|----------|-------------------|-----|
+| `claim_eligibility_queue(integer)` | 010 | DEFINER | grant service_role; **default PUBLIC kept** | revoke public/anon/authenticated |
+| `enqueue_eligibility_recompute(uuid,uuid,text,jsonb)` | 041 | DEFINER | grant service_role; **default PUBLIC kept** | revoke public/anon/authenticated |
+| `upsert_field_review(uuid,text,text,text,text,uuid,text,jsonb,jsonb,text,uuid)` | 127 | DEFINER | grant service_role; **default PUBLIC kept** | revoke public/anon/authenticated |
+| `consume_profile_merge_claim(text,uuid)` | 128 | DEFINER | grant service_role; **default PUBLIC kept** | revoke public/anon/authenticated |
+| `update_pyq_question_review_atomic(uuid,text,uuid,timestamptz)` | 162 | DEFINER | revoke PUBLIC only | revoke anon/authenticated |
+| `start_attempt_from_blueprint(uuid,uuid,uuid,jsonb,jsonb,jsonb,timestamptz)` | 179 | DEFINER | revoke PUBLIC only | revoke anon/authenticated |
+| `fn_invalidate_projection_for_question(uuid)` | 184 | DEFINER | revoke PUBLIC only | revoke anon/authenticated |
+| `fn_block_projection_for_question(uuid,text)` | 184 | DEFINER | revoke PUBLIC only | revoke anon/authenticated |
+
+None of the sixteen is called with a user JWT. The Group A four were explicitly granted to
+`authenticated` (verified **no later migration** revoked them). Migration 202 now revokes
+`PUBLIC`/`anon`/`authenticated` (Groups A–C) or `anon`/`authenticated` (Group D, where
+`PUBLIC` was already revoked) and grants only `service_role` for all sixteen.
 
 ---
 
@@ -66,8 +82,6 @@ roles and grants only `service_role` for all eight.
 
 | Function | Def | Security | Grants | Verdict |
 |----------|-----|----------|--------|---------|
-| `claim_eligibility_queue(integer)` | 010 | DEFINER | service_role | ✓ backend-only |
-| `enqueue_eligibility_recompute(uuid,uuid,text,jsonb)` | 041 | DEFINER | service_role | ✓ backend-only |
 | `fn_enqueue_eligibility_for_new_recruitment()` | 007 | DEFINER | (trigger) | ✓ trigger-only |
 | `community_inc_thread_reply_count(uuid,integer)` | 089 | DEFINER | authenticated, service_role | ✓ called with user JWT (community runtime) |
 | `community_inc_thread_vote_count(uuid,integer)` | 089 | DEFINER | authenticated, service_role | ✓ called with user JWT |
@@ -75,17 +89,11 @@ roles and grants only `service_role` for all eight.
 | `community_inc_resource_upvote_count(uuid,integer)` | 089 | DEFINER | authenticated, service_role | ✓ called with user JWT |
 | `community_inc_resource_report_count(uuid,integer)` | 089 | DEFINER | authenticated, service_role | ✓ called with user JWT |
 | `replace_document_pages(uuid,text,text,jsonb)` | 113 | DEFINER | service_role | ✓ backend-only |
-| `upsert_field_review(...)` | 127 | DEFINER | service_role | ✓ backend-only |
-| `consume_profile_merge_claim(text,uuid)` | 128 | DEFINER | service_role | ✓ backend-only |
-| `update_pyq_question_review_atomic(uuid,text,uuid,timestamptz)` | 162 | DEFINER | service_role | ✓ backend-only |
-| `start_attempt_from_blueprint(...)` | 179 | DEFINER | service_role | ✓ backend-only |
 | `ensure_mock_correction_draft(...)` | 182 | DEFINER | service_role | ✓ backend-only |
 | `ensure_mock_correction_drafts(...)` | 182 | DEFINER | service_role | ✓ backend-only |
 | `replace_manual_mock_correction_drafts(...)` | 182 | DEFINER | service_role | ✓ backend-only |
 | `project_pyq_question_to_mock_bank(uuid,uuid,text)` | 184 → redefined 186/187 (**187 effective**) | DEFINER | service_role | ✓ backend-only |
 | `fn_invalidate_pyq_projection()` | 184 | DEFINER | service_role | ✓ trigger/backend |
-| `fn_invalidate_projection_for_question(uuid)` | 184 | DEFINER | service_role | ✓ trigger/backend |
-| `fn_block_projection_for_question(uuid,text)` | 184 | DEFINER | service_role | ✓ backend-only |
 | `accept_partner_request(uuid,uuid)` | 193 | DEFINER | service_role | ✓ backend-only |
 | `review_pyq_paper(text×6)` | 185 → redefined 186/187 (**187 effective**) | DEFINER | revoked PUBLIC+anon+authenticated; service_role | ✓ admin, hardened |
 | `cms_set_pyq_paper_provenance(text,text,text,jsonb,text,jsonb,boolean)` | 188 / hardened 190 | DEFINER | revoked PUBLIC+anon+authenticated; service_role | ✓ admin, hardened |
@@ -150,35 +158,43 @@ require EXECUTE grants.
 
 After migration 202 applies on staging/prod, confirm the grants resolved as intended:
 
+**Enumerate EVERY non-trigger function in `public`** (not a curated name list) and flag any
+that leaves `PUBLIC`/`anon`/`authenticated` with EXECUTE — this catches functions added or
+redefined after this audit so the same omission cannot recur:
+
 ```sql
+-- Every non-trigger function in `public` that is reachable by PUBLIC/anon/authenticated.
+-- Includes the NULL-acl (default-PUBLIC) case. Empty result = clean.
 select p.proname,
        pg_get_function_identity_arguments(p.oid) as args,
-       -- aclexplode renders a PUBLIC grant with grantee OID 0, which has no
-       -- pg_roles row; coalesce it to 'PUBLIC' so a leaked PUBLIC grant is never
-       -- silently dropped from the result.
-       coalesce(r.rolname, case when a.grantee = 0 then 'PUBLIC' else null end) as grantee,
-       a.privilege_type
+       case when p.prosecdef then 'DEFINER' else 'INVOKER' end as security,
+       case
+         when p.proacl is null then 'DEFAULT (PUBLIC)'   -- no explicit ACL ⇒ PUBLIC EXECUTE
+         else coalesce(r.rolname, case when a.grantee = 0 then 'PUBLIC' else null end)
+       end as grantee
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 left join lateral aclexplode(p.proacl) a on true
 left join pg_roles r on r.oid = a.grantee
 where n.nspname = 'public'
-  and p.proname in (
-    'promote_recruitment',
-    'create_verification_report',
-    'supersede_and_create_verification_report',
-    'claim_source_for_scrape',
-    'apply_mock_mastery_delta',
-    'claim_mock_mastery_retry',
-    'complete_mock_mastery_retry',
-    'fn_fanout_alert_event'
-  )
-order by p.proname, grantee;
+  and p.prorettype <> 'pg_catalog.trigger'::regtype          -- exclude trigger helpers
+  and (
+        p.proacl is null                                     -- default PUBLIC
+     or exists (                                             -- explicit PUBLIC/anon/authenticated
+          select 1 from aclexplode(p.proacl) x
+          left join pg_roles xr on xr.oid = x.grantee
+          where x.privilege_type = 'EXECUTE'
+            and (x.grantee = 0 or xr.rolname in ('anon','authenticated'))
+        )
+      )
+order by p.proname;
 ```
 
-**Expected:** each of the eight functions lists `service_role` (and the function owner) only
-— **no `PUBLIC`, no `authenticated`, no `anon`**. Note: when `proacl` is NULL the function
-uses default privileges (which in Supabase grant EXECUTE to PUBLIC) — that case shows as a
-NULL acl and MUST be treated as a finding, not a pass. Then smoke-test the backend flows
-(recruitment promotion, verification report create/supersede, scrape claim, mock mastery
-writeback + retry) to confirm the service-role paths still work.
+**Expected:** the only rows should be the **intentional** exceptions — `is_admin`
+(authenticated, RLS helper) and the `community_inc_*` counters (089, called with a user
+JWT). **Any other function in the result is a finding** and needs a follow-up hardening
+migration. In particular, all sixteen RPCs fixed in migration 202 must be ABSENT from this
+result. Then smoke-test the backend flows (recruitment promotion, verification create/
+supersede, scrape claim, mastery writeback + retry, eligibility recompute, field review,
+profile-merge claim, PYQ review, attempt-from-blueprint, projection invalidate/block) to
+confirm the service-role paths still work.
