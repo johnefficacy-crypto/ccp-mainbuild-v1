@@ -43,7 +43,11 @@ ascending number order against the deployed `schema_migrations` state.
   see only `reviewed`/`locked` rows.
 - ⛔ **Migration `182`** (mock correction RPCs) — **dry-run with `BEGIN; … ROLLBACK;` first**,
   then apply. Pass: the three RPCs exist and `anon`/`authenticated` cannot EXECUTE them.
-- ⛔ **Migration `202_rpc_grant_hardening_v1.sql`** (RPC least-privilege, 16 RPCs). Apply, then
+- ☐ **Migration `202_atomic_extraction_finalize.sql`** (#780 extraction transaction-safety) —
+  apply. Pass: text-extract page-write + job-terminal update are atomic; no job stranded in
+  `running` after a crash/archive race.
+- ⛔ **Migration `203_rpc_grant_hardening_v1.sql`** (RPC least-privilege, 16 RPCs; renumbered
+  from 202 on merge). Apply, then
   run the **grantee verification query** in `docs/schema/rpc-grant-audit-v1.md`. Pass:
   every one of the 16 functions lists `service_role` (and owner) only — **no PUBLIC/anon/
   authenticated**, and NULL-acl (default-PUBLIC) treated as a finding. Then smoke-test the
