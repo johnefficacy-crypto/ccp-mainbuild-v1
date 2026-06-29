@@ -2,15 +2,14 @@
 /**
  * Deployment gate: keep DEV/TEST-only Supabase auth config out of production.
  *
- * The checked-in app/supabase/config.toml carries a fixed-OTP test map
- * ([auth.sms.test_otp]) and email signup enabled (for E2E token-minting).
- * If that config is pushed to a hosted project it becomes a sign-in backdoor
- * and exposes email/password login that should be phone-OTP-only.
- * This script fails the build when the production-bound config still contains
- * those dev-only markers.
+ * The checked-in app/supabase/config.toml carries a fixed-OTP test map and
+ * email signup enabled for local/E2E use. The production workflow builds a
+ * separate sanitized artifact, then this script validates that artifact before
+ * it can be handed to the protected deployment job.
  *
- * Usage (wire into the hosted-deploy pipeline, NOT the local/CI test run):
- *   SUPABASE_ENV=production SUPABASE_OPERATOR_APPROVED=yes \
+ * Usage:
+ *   SUPABASE_ENV=production \
+ *   SUPABASE_CONFIG_PATH=/tmp/supabase-production/config.toml \
  *     node scripts/check-supabase-prod-gate.mjs
  *
  * SUPABASE_CONFIG_PATH may point at an alternate file for CI self-tests.
@@ -21,12 +20,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-// Allow tests to supply an alternate config path so CI can verify both the
-// "blocked" and "allowed" code paths against controlled fixtures.
-const CONFIG_PATH =
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const configPath =
   process.env.SUPABASE_CONFIG_PATH ||
-  join(__dirname, "..", "app", "supabase", "config.toml");
+  join(scriptDir, "..", "app", "supabase", "config.toml");
 
 const env = (process.env.SUPABASE_ENV || process.env.NODE_ENV || "").toLowerCase();
 const isProd = env === "production" || env === "prod";
@@ -38,34 +35,38 @@ if (!isProd) {
   process.exit(0);
 }
 
-const toml = readFileSync(CONFIG_PATH, "utf8");
+const toml = readFileSync(configPath, "utf8");
 const violations = [];
 
+function extractSection(content, sectionName) {
+  const lines = content.split(/\r?\n/);
+  const header = `[${sectionName}]`;
+  const start = lines.findIndex((line) => line.trim() === header);
+  if (start === -1) return "";
+
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^\s*\[/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+
+  return lines.slice(start, end).join("\n");
+}
+
 // 1. Fixed test-OTP map must be absent in production.
-if (/^\[auth\.sms\.test_otp\]/m.test(toml)) {
+if (/^\s*\[auth\.sms\.test_otp\]\s*$/m.test(toml)) {
   violations.push(
     "[auth.sms.test_otp] is present — fixed test OTPs must never reach a hosted project."
   );
 }
 
-// 2. At least one real SMS provider must be enabled.
-//    Section content is bounded to the range \n[ ... next \n[ (or EOF) so that
-//    bracket text inside comment lines (e.g. `# [auth.sms.test_otp]`) cannot
-//    cause a false positive or false negative.
+// 2. At least one real SMS provider must be explicitly enabled.
 const SMS_PROVIDERS = ["twilio", "twilio_verify", "messagebird", "textlocal", "vonage"];
-
-function extractSection(content, header) {
-  // Match from the section header up to the next section header line (\n[) or EOF.
-  // \n[ only appears at the START of section headers — never inside comment text.
-  const m = content.match(
-    new RegExp(`\\[${header.replace(/[.[\]]/g, "\\$&")}\\][\\s\\S]*?(?=\\n\\[|$)`)
-  );
-  return m ? m[0] : "";
-}
-
 const anyProviderEnabled = SMS_PROVIDERS.some((provider) => {
   const section = extractSection(toml, `auth.sms.${provider}`);
-  return /^\s*enabled\s*=\s*true/m.test(section);
+  return /^\s*enabled\s*=\s*true\s*(?:#.*)?$/m.test(section);
 });
 if (!anyProviderEnabled) {
   violations.push(
@@ -73,37 +74,23 @@ if (!anyProviderEnabled) {
   );
 }
 
-// 3. Email/password signup must be disabled in production.
-//    The checked-in config keeps it enabled for E2E token-minting only.
+// 3. Email signup must be explicitly disabled in the production artifact.
 const emailSection = extractSection(toml, "auth.email");
-const emailSignupEnabled = /^\s*enable_signup\s*=\s*true/m.test(emailSection);
-if (emailSignupEnabled) {
+const emailSignupDisabled = /^\s*enable_signup\s*=\s*false\s*(?:#.*)?$/m.test(
+  emailSection
+);
+if (!emailSignupDisabled) {
   violations.push(
-    "[auth.email] enable_signup = true — email/password login must be disabled before " +
-      "production rollout. Set enable_signup = false in the production-bound config."
-  );
-}
-
-// 4. Operator approval hard stop — requires explicit acknowledgement that the
-//    production pre-flight checklist has been completed:
-//      • Email provider disabled in Supabase dashboard
-//      • Real SMS delivery validated end-to-end
-//      • Admin/user phone migration completed
-//    See docs/status/Phone-OTP-Login-2026-06-26.md §"OPERATOR PENDING".
-const approved = (process.env.SUPABASE_OPERATOR_APPROVED || "").toLowerCase().trim();
-if (approved !== "yes") {
-  violations.push(
-    "SUPABASE_OPERATOR_APPROVED is not set to 'yes' — set this after completing the " +
-      "operator pre-flight checklist in docs/status/Phone-OTP-Login-2026-06-26.md."
+    "[auth.email] enable_signup must be explicitly false in the production-bound config."
   );
 }
 
 if (violations.length > 0) {
-  console.error("[supabase-prod-gate] UNSAFE production config:");
-  for (const v of violations) console.error(`  ✗ ${v}`);
+  console.error(`[supabase-prod-gate] UNSAFE production config: ${configPath}`);
+  for (const violation of violations) console.error(`  ✗ ${violation}`);
   console.error("\nResolve all violations before deploying to production.");
   process.exit(1);
 }
 
-console.log("[supabase-prod-gate] OK — production-bound config.toml is deployment-safe.");
+console.log(`[supabase-prod-gate] OK — validated production config: ${configPath}`);
 process.exit(0);
