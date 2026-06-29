@@ -5,7 +5,9 @@
  *   - In-memory ring buffer (max 200 events)
  *   - Monotonic sequence_no, persisted to sessionStorage per attempt
  *   - Flush triggers: every 5 s OR buffer >= 25 events
- *   - Flush on visibilitychange→hidden via navigator.sendBeacon (fire-and-forget)
+ *   - Flush on visibilitychange→hidden via fetch({keepalive}) (authenticated,
+ *     fire-and-forget) — sendBeacon cannot attach the required Authorization
+ *     header, so beacon batches would be rejected (401) and lost
  *   - Heartbeat every 15 s
  *   - DOM listeners: visibilitychange, focus/blur, copy, paste
  *
@@ -19,11 +21,13 @@ const FLUSH_THRESHOLD = 25;      // events
 const HEARTBEAT_MS    = 15_000;  // ms
 const SEQ_KEY_PREFIX  = "mae_seq_";
 
-class AttemptEventBus {
+export class AttemptEventBus {
   constructor() {
     this._attemptId      = null;
     this._apiBase        = null;
     this._getAuthToken   = null;
+    this._cachedToken    = null;   // last known bearer token — used by the unload-safe beacon path
+    this._inFlight       = false;  // guards against overlapping _flush() calls
     this._ring           = [];
     this._seq            = 0;
     this._flushTimer     = null;
@@ -69,6 +73,10 @@ class AttemptEventBus {
 
       this._flushTimer     = setInterval(() => this._flush(),     FLUSH_INTERVAL);
       this._heartbeatTimer = setInterval(() => this._heartbeat(), HEARTBEAT_MS);
+
+      // Prime the token cache so the unload-safe beacon path has an
+      // Authorization token available before the first scheduled flush.
+      this._refreshToken();
     } catch (e) {
       console.warn("[EventBus] init error:", e);
     }
@@ -179,40 +187,91 @@ class AttemptEventBus {
 
   // ── flush ───────────────────────────────────────────────────────────────────
 
+  /**
+   * Resolve the current bearer token and cache it for the unload-safe beacon
+   * path (which cannot await). Never throws.
+   */
+  async _refreshToken() {
+    try {
+      if (!this._getAuthToken) return this._cachedToken;
+      const t = await this._getAuthToken();
+      if (t) this._cachedToken = t;
+      return t || this._cachedToken;
+    } catch (e) {
+      console.warn("[EventBus] token refresh error:", e);
+      return this._cachedToken;
+    }
+  }
+
   async _flush() {
+    if (this._inFlight) return;  // do not send overlapping batches
     try {
       if (!this._ring.length || !this._attemptId) return;
-      const batch = this._ring.splice(0);
-      const token = this._getAuthToken ? await this._getAuthToken() : null;
+      this._inFlight = true;
+
+      // Snapshot the batch but RETAIN it until the server acknowledges — a
+      // 401/409/5xx or network error must not silently drop events.
+      const batch = this._ring.slice(0);
+      const token = await this._refreshToken();
 
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      await fetch(`${this._apiBase}/${this._attemptId}/events`, {
+      const resp = await fetch(`${this._apiBase}/${this._attemptId}/events`, {
         method:  "POST",
         headers,
         body:    JSON.stringify({ events: batch }),
         keepalive: true,
       });
+
+      if (resp && resp.ok) {
+        // Remove only the acknowledged events by sequence_no (robust against
+        // concurrent enqueues/drops during the await).
+        const sent = new Set(batch.map((e) => e.sequence_no));
+        this._ring = this._ring.filter((e) => !sent.has(e.sequence_no));
+      } else {
+        console.warn(
+          `[EventBus] flush rejected (status ${resp && resp.status}); ` +
+          `${batch.length} events retained for retry`,
+        );
+      }
     } catch (e) {
-      console.warn("[EventBus] flush error:", e);
+      console.warn("[EventBus] flush error (events retained):", e);
+    } finally {
+      this._inFlight = false;
     }
   }
 
   /**
-   * Synchronous beacon flush — used on visibilitychange→hidden and destroy().
-   * navigator.sendBeacon is fire-and-forget and survives page unload.
+   * Unload-safe flush — used on visibilitychange→hidden and destroy().
+   * Uses fetch({keepalive:true}) rather than navigator.sendBeacon: the events
+   * endpoint requires an Authorization header (get_current_user → 401), which
+   * sendBeacon cannot attach. Fire-and-forget; survives page unload.
    */
   _flushBeacon() {
     try {
       if (!this._ring.length || !this._attemptId) return;
-      const batch = this._ring.splice(0);
-      const url   = `${this._apiBase}/${this._attemptId}/events`;
-      const blob  = new Blob(
-        [JSON.stringify({ events: batch })],
-        { type: "application/json" },
-      );
-      navigator.sendBeacon(url, blob);
+      const token = this._cachedToken;
+      if (!token) {
+        // An unauthenticated beacon would be rejected (401) and the batch
+        // lost; retain it for the next authenticated flush instead.
+        console.warn("[EventBus] beacon flush deferred: no cached auth token");
+        return;
+      }
+      const batch = this._ring.slice(0);
+      fetch(`${this._apiBase}/${this._attemptId}/events`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ events: batch }),
+        keepalive: true,
+      })
+        .then((r) => {
+          if (!r || !r.ok) console.warn(`[EventBus] beacon flush rejected (status ${r && r.status})`);
+        })
+        .catch((e) => console.warn("[EventBus] beacon flush error:", e));
+
+      const sent = new Set(batch.map((e) => e.sequence_no));
+      this._ring = this._ring.filter((e) => !sent.has(e.sequence_no));
     } catch (e) {
       console.warn("[EventBus] beacon error:", e);
     }

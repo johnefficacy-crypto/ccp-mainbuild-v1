@@ -114,6 +114,67 @@ def test_dwell_times_from_occurred_at_events():
     assert by_q["q2"] == 90
 
 
+def test_dwell_times_partial_coverage_reports_fallback():
+    """When only some responses have visit events, the remainder fall back to
+    time_spent_sec AND the partial-coverage warning + quality counts are emitted."""
+    responses = [
+        {"question_id": "q1", "time_spent_sec": 11},
+        {"question_id": "q2", "time_spent_sec": 22},  # no event -> fallback
+        {"question_id": "q3", "time_spent_sec": 33},  # no event -> fallback
+    ]
+    events = [
+        {
+            "event_type": "question.visited",
+            "payload": {"question_id": "q1"},
+            "occurred_at": "2026-01-01T00:00:00+00:00",
+            "source": "client",
+        },
+    ]
+    submitted_at = "2026-01-01T00:00:40+00:00"
+    by_q, warnings, stats = compute_dwell_times(responses, events, submitted_at)
+
+    # q1 derived from the event (40s to submit); q2/q3 fall back to time_spent_sec.
+    assert by_q["q1"] == 40
+    assert by_q["q2"] == 22
+    assert by_q["q3"] == 33
+    assert "partial event coverage; fallback applied per-question" in warnings
+    assert stats["events_used"] == 1
+    assert stats["event_covered_questions"] == 1
+    assert stats["fallback_question_count"] == 2
+
+
+def test_dwell_times_full_coverage_reports_no_fallback():
+    """Full visit-event coverage must NOT emit the partial-coverage warning and
+    must report zero fallback questions."""
+    responses = [
+        {"question_id": "q1", "time_spent_sec": 999},
+        {"question_id": "q2", "time_spent_sec": 999},
+    ]
+    events = [
+        {"event_type": "question.visited", "payload": {"question_id": "q1"}, "occurred_at": "2026-01-01T00:00:00+00:00"},
+        {"event_type": "question.visited", "payload": {"question_id": "q2"}, "occurred_at": "2026-01-01T00:01:30+00:00"},
+    ]
+    by_q, warnings, stats = compute_dwell_times(responses, events, "2026-01-01T00:03:00+00:00")
+
+    assert "partial event coverage; fallback applied per-question" not in warnings
+    assert stats["event_covered_questions"] == 2
+    assert stats["fallback_question_count"] == 0
+
+
+def test_dwell_times_no_events_reports_full_fallback():
+    """The no-events path must report every response as a fallback question."""
+    responses = [
+        {"question_id": "q1", "time_spent_sec": 5},
+        {"question_id": "q2", "time_spent_sec": 6},
+    ]
+    by_q, warnings, stats = compute_dwell_times(responses, [], "2026-01-01T00:03:00+00:00")
+
+    assert "mock_attempt_events missing; fallback to responses.time_spent_sec" in warnings
+    assert stats["events_used"] == 0
+    assert stats["event_covered_questions"] == 0
+    assert stats["fallback_question_count"] == 2
+
+
 def test_dwell_times_created_at_is_malformed():
     """DB-shaped rows with created_at (wrong timestamp field) are malformed and skipped."""
     responses = [
