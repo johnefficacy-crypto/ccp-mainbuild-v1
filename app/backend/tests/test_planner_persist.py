@@ -244,7 +244,15 @@ def test_apply_route_returns_500_with_reason_on_persist_failure():
     from app.api import study_os as study_os_api
     from app.core.auth import get_current_user
 
-    sb = _failing_sb("study_plans.insert")
+    # Unlock the onboarding-calibration gate (PR #778): the /apply route now
+    # short-circuits with ``calibration_required`` when a first-plan calibration
+    # is still pending. A 'skipped' gate lets the request reach the persist path
+    # under test without altering planner I/O.
+    seed = _seed()
+    seed["user_exam_calibration"] = [
+        {"id": "cal-route", "user_id": "u-1", "exam_id": "exam-1", "status": "skipped"}
+    ]
+    sb = _failing_sb("study_plans.insert", base_seed=seed)
     app = FastAPI()
     app.include_router(study_os_api.router, prefix="/api")
     study_os_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]

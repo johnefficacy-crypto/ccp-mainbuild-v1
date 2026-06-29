@@ -360,6 +360,49 @@ def build_task_reasoning_detail(
             "model_version": snap_model,
         })
 
+    # Self-assessment prior — emitted from persisted lineage only (no re-query),
+    # mirroring the locked_score_snapshot row. Surfaced when the persisted why
+    # shows the mastery came from a self-report (or carries a band). Always
+    # marked as not-yet-validated so the UI never trusts it like real practice.
+    sa_band = why.get("self_assessment_band")
+    if why.get("mastery_source") == "self_reported" or sa_band is not None:
+        sa_level = why.get("self_assessment_level") or "subject"
+        sa_prior = why.get("self_assessment_prior_mastery")
+        sa_conf_raw = why.get("self_assessment_confidence")
+        try:
+            sa_conf = (
+                min(1.0, max(0.0, float(sa_conf_raw))) if sa_conf_raw is not None else None
+            )
+        except (TypeError, ValueError):
+            sa_conf = None
+        if sa_prior is None:
+            sa_label = (
+                f"You marked this {sa_level} as never studied "
+                "(self-assessment, not yet validated by practice)."
+            )
+        else:
+            sa_label = (
+                f"You rated yourself '{sa_band}' at the {sa_level} level "
+                f"(~{round(float(sa_prior))}%) — self-assessment, not yet validated by practice."
+            )
+        trace.append({
+            "layer": "user",
+            "rule_key": "self_assessment_prior",
+            "label": sa_label,
+            "evidence_id": None,
+            "confidence": sa_conf if sa_conf is not None else 0.0,
+            # Status is a stable trust token from the same small vocabulary the
+            # sibling rows use (live / locked / partial / preview). A self-report
+            # is unvalidated evidence → `preview`. The human-readable trust note
+            # lives in `detail`, not in the status token.
+            "status": "preview",
+            "detail": "not yet validated by practice",
+            "band": sa_band,
+            "assessment_level": sa_level,
+            "prior_mastery": sa_prior,
+            "report_confidence": sa_conf_raw,
+        })
+
     trace.append(
         {
             "layer": "plan",

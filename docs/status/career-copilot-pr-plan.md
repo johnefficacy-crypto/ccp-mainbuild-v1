@@ -514,11 +514,11 @@ Wire `locked_score_snapshots()` into `planner.py` as an additional priority sign
 - `app/backend/tests/study_os/test_planner_snapshot_integration.py`
 - `docs/status/career-copilot-pr-plan.md`
 
-### P-slice-3 — Cognitive demand classification (Bloom's taxonomy) — **DEFERRED**
+### P-slice-3 — Cognitive demand classification (Bloom's taxonomy) — **UNBLOCKED (P-slice-2 merged, PR #773), contract pending**
 
 Per `pyq-intelligence-v2.md` §scoring: add `bloom_level` classification per PYQ question.
 Contract-first: define the taxonomy levels and how they feed `score_components` before implementation.
-Do not dispatch until P-slice-2 is on main.
+Gate cleared — P-slice-2 is on main. Next step is the taxonomy + scoring contract (no code until agreed).
 
 ### P-slice-4 — Unified revision recommendations contract — **DEFERRED**
 
@@ -527,6 +527,16 @@ Revision → relearn/review/practice routing contract. Depends on SM-2 output (a
 ### P-slice-5 — Current affairs provenance and linking pipeline — **DEFERRED**
 
 CA provenance links CA items to exam topics. Contract-first; deferred post P-slice-2.
+
+## Lane O — Onboarding knowledge calibration (SPEC — off PYQ roadmap)
+
+Plan-personalization track addressing first-timer vs experienced-aspirant cold-start. Full spec: `docs/architecture/onboarding-knowledge-calibration.md`. Self-assessment is a subordinate planner prior in its own table — never touches `user_topic_mastery` or the gated `MasteryWriter`. Validated mastery always wins; the prior only fills the gap.
+
+- **O-slice-1 — data + capture:** migration 198 (`user_topic_self_assessment`); `PUT/GET /api/study/self-assessment` (server owns band→prior + confidence); snapshot `attempts_used`. ✅ DONE
+- **O-slice-2 — planner consumption:** `_load_topic_priors()` expands subject→topic_ids, blends `effective = rc * prior_mastery + (1-rc) * 45.0`; `mastery_source` in `why_this_task`; `self_assessment_summary` in `input_context`; graceful degradation on DB failure. ✅ DONE
+- **O-slice-3 — frontend:** `PrePlanCalibration` interstitial on Study Plan page (post exam-select, pre first-generate); `useCalibrationPriors` hook; attempts capture. ✅ DONE
+
+**PR #778** (`claude/onboarding-priors-spec`) — IN REVIEW. D1/D2/D3 all approved. 24 backend tests passing. OPERATOR PENDING: migrations 198/199 to staging, RLS confirm, E2E validate.
 
 ## Lane K — Mock semantics trust fix (READY — ISOLATED)
 

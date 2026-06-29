@@ -33,6 +33,7 @@ from cachetools import TTLCache
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
 from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
 from app.exam_intelligence.score_snapshots import locked_score_snapshots
+from app.study_os import calibration
 from app.study_os.competition_context import competition_context
 from app.study_os.exam_target_window import resolve_exam_target_window
 from app.study_os.plan_preferences import focus_weights, get_plan_preferences
@@ -102,6 +103,12 @@ _TASK_LABEL = {
 
 # topic_prerequisites relation types that gate ordering.
 _ORDERING_RELATIONS = {"requires", "recommended_before"}
+
+# Sentinel distinguishing a failed read from a legitimately-empty result.
+# Used by ``_load_user_signals`` so a transient ``user_topic_mastery`` read
+# failure does NOT look like "user has no validated mastery" (which would let a
+# self-report wrongly override real evidence). When in doubt, fail closed.
+_READ_FAILED = object()
 
 
 def _safe(call: Callable[[], Any], default: Any = None) -> Any:
@@ -315,28 +322,37 @@ def _load_prerequisites(
     return prereqs
 
 
-def _load_user_signals(
+def _load_user_signals_ex(
     supabase: Any, user_id: str, exam_id: str
-) -> tuple[dict[str, float], set[str]]:
-    """Return ``(mastery_by_topic, topics_with_error_patterns)``.
+) -> tuple[dict[str, float], set[str], bool]:
+    """Return ``(mastery_by_topic, topics_with_error_patterns, mastery_ok)``.
 
     When a topic has both an exam-scoped and a global mastery row the
     exam-scoped one wins.
+
+    ``mastery_ok`` is ``False`` only when the ``user_topic_mastery`` read
+    itself failed (distinct from an empty result). A failed read is treated as
+    an empty mastery map for scoring, and callers MUST NOT apply self-assessment
+    priors in that case — otherwise a transient DB error would let a user's
+    self-report silently replace their real validated mastery.
+
+    ``_load_user_signals`` is the back-compatible 2-tuple wrapper kept for the
+    several existing callers that don't need the read-health flag.
     """
-    mastery_rows = (
-        _safe(
-            lambda: (
-                supabase.table("user_topic_mastery")
-                .select("topic_id, exam_id, mastery_score")
-                .eq("user_id", user_id)
-                .limit(5000)
-                .execute()
-                .data
-            ),
-            default=[],
-        )
-        or []
+    mastery_rows = _safe(
+        lambda: (
+            supabase.table("user_topic_mastery")
+            .select("topic_id, exam_id, mastery_score")
+            .eq("user_id", user_id)
+            .limit(5000)
+            .execute()
+            .data
+        ),
+        default=_READ_FAILED,
     )
+    mastery_ok = mastery_rows is not _READ_FAILED
+    if not mastery_ok or mastery_rows is None:
+        mastery_rows = []
     mastery: dict[str, float] = {}
     exam_scoped: set[str] = set()
     for r in mastery_rows:
@@ -365,7 +381,132 @@ def _load_user_signals(
         or []
     )
     error_topics = {r.get("topic_id") for r in error_rows if r.get("topic_id")}
+    return mastery, error_topics, mastery_ok
+
+
+def _load_user_signals(
+    supabase: Any, user_id: str, exam_id: str
+) -> tuple[dict[str, float], set[str]]:
+    """Back-compat 2-tuple view of :func:`_load_user_signals_ex`.
+
+    Kept stable for callers (subjects / plan_timeline / report_cards / the
+    topics API) that only need ``(mastery, error_topics)`` and not the
+    mastery-read-health flag the planner consumes for fail-closed priors.
+    """
+    mastery, error_topics, _ = _load_user_signals_ex(supabase, user_id, exam_id)
     return mastery, error_topics
+
+
+def _load_topic_priors(
+    supabase: Any, user_id: str, exam_id: str, coverage_topic_ids: list[str]
+) -> dict[str, dict[str, Any]]:
+    """Return topic_id → {prior_mastery, report_confidence, band, subject_id,
+    attempts_used} from self-assessment.
+
+    Only fills the cold-start gap — validated mastery always wins at call site.
+    Subject-level rows are expanded to all coverage topic_ids with that subject_id;
+    each entry carries ``"assessment_level": "subject"`` to record granularity.
+    Returns an empty dict on DB read failure (plan still generates).
+    """
+    rows = _safe(lambda: (
+        supabase.table("user_topic_self_assessment")
+        .select("subject_id, band, prior_mastery, report_confidence, attempts_used")
+        .eq("user_id", user_id)
+        .eq("exam_id", exam_id)
+        .is_("topic_id", None)
+        .not_.is_("subject_id", None)
+        .limit(500)
+        .execute()
+        .data
+    ), default=[]) or []
+
+    if not rows or not coverage_topic_ids:
+        return {}
+
+    # Map subject_id → prior entry (prior_mastery, report_confidence, band, ...)
+    subject_priors: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        sid = r.get("subject_id")
+        if not sid:
+            continue
+        pm_raw = r.get("prior_mastery")
+        pm = float(pm_raw) if pm_raw is not None else None
+        rc = float(r.get("report_confidence") or 0.5)
+        band = r.get("band") or "new"
+        au_raw = r.get("attempts_used")
+        try:
+            attempts_used = int(au_raw) if au_raw is not None else None
+        except (TypeError, ValueError):
+            attempts_used = None
+        subject_priors[sid] = {
+            "prior_mastery": pm,
+            "report_confidence": rc,
+            "band": band,
+            "subject_id": sid,
+            "attempts_used": attempts_used,
+            "assessment_level": "subject",
+        }
+
+    if not subject_priors:
+        return {}
+
+    # Expand: find which coverage topic_ids belong to which subject
+    topic_rows = _safe(lambda: (
+        supabase.table("topics")
+        .select("id, subject_id")
+        .in_("id", coverage_topic_ids)
+        .in_("subject_id", list(subject_priors.keys()))
+        .limit(5000)
+        .execute()
+        .data
+    ), default=[]) or []
+
+    priors: dict[str, dict[str, Any]] = {}
+    for t in topic_rows:
+        tid = t.get("id")
+        sid = t.get("subject_id")
+        if tid and sid and sid in subject_priors:
+            priors[tid] = subject_priors[sid]
+
+    return priors
+
+
+def _self_assessment_summary(
+    topic_priors: dict[str, dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Audit rollup of the self-assessment priors that fed this plan.
+
+    ``None`` when no priors contributed. Otherwise reports how many topics got
+    a prior, the granularity, the per-band counts, the shared ``attempts_used``,
+    and the distinct subjects that contributed.
+
+    ``by_band`` counts DISTINCT SUBJECTS per band, not expanded topics: priors
+    are reported at subject granularity, so one large subject (many coverage
+    topics) must not dominate the band tally. ``topics_with_prior`` remains a
+    topic count for breadth-of-impact.
+    """
+    if not topic_priors:
+        return None
+    # Dedupe to one prior entry per subject before tallying bands.
+    by_subject: dict[str, dict[str, Any]] = {}
+    for entry in topic_priors.values():
+        sid = entry.get("subject_id")
+        if sid and sid not in by_subject:
+            by_subject[sid] = entry
+    by_band: dict[str, int] = {}
+    attempts_used: Any = None
+    for entry in by_subject.values():
+        band = entry.get("band") or "new"
+        by_band[band] = by_band.get(band, 0) + 1
+        if attempts_used is None and entry.get("attempts_used") is not None:
+            attempts_used = entry.get("attempts_used")
+    return {
+        "topics_with_prior": len(topic_priors),
+        "assessment_level": "subject",
+        "by_band": by_band,
+        "attempts_used": attempts_used,
+        "subject_ids": sorted(by_subject.keys()),
+    }
 
 
 # ─── Scoring + task shaping ───────────────────────────────────────────────
@@ -468,6 +609,8 @@ def _why_summary(
     pressure_level: str,
     pinned: bool,
     snapshot: dict[str, Any] | None = None,
+    mastery_source: str = "none",
+    band: str | None = None,
 ) -> str:
     topic = cov["topic_name"]
     exam_bits = "a verified high-yield topic" if cov["is_high_yield"] else "a verified topic"
@@ -480,10 +623,24 @@ def _why_summary(
         conf = snapshot.get("confidence_score")
         if conf is not None:
             bits.append(f"analysis confidence {round(conf * 100)}%")
-    if mastery is None:
-        bits.append("you haven't practised it yet")
-    else:
+    # Mastery provenance must be honest: only validated evidence may be phrased
+    # as "recent accuracy". Self-reports are flagged as not-yet-validated; a
+    # 'new' self-report (no estimate) reads as "never studied".
+    if mastery_source == "self_reported":
+        if mastery is None:
+            bits.append(
+                "you marked this as never studied "
+                "(self-assessment, not yet validated by practice)"
+            )
+        else:
+            bits.append(
+                f"you rated yourself '{band}' here — a self-assessment estimate "
+                f"(~{round(mastery)}%, not yet validated by practice)"
+            )
+    elif mastery_source == "validated" and mastery is not None:
         bits.append(f"your recent accuracy is {round(mastery)}%")
+    else:
+        bits.append("you haven't practised it yet")
     if pressure_level == "high":
         bits.append("competition pressure for this cycle is high")
     label = _TASK_LABEL.get(task_type, task_type).lower()
@@ -504,6 +661,9 @@ def _build_tasks(
         task_type = cov["_task_type"]
         label = _TASK_LABEL.get(task_type, "Study")
         snap = cov.get("_snapshot")
+        mastery_source = cov.get("_mastery_source", "none")
+        prior_entry = cov.get("_prior_entry")
+        prior_band = prior_entry.get("band") if prior_entry else None
         why = {
             "coverage_priority": cov["coverage_priority"],
             "verified_pyq_count": cov["_pyq_count"],
@@ -520,6 +680,7 @@ def _build_tasks(
             "snapshot_model_version": snap.get("model_version") if snap else None,
             "snapshot_computed_at": snap.get("computed_at") if snap else None,
             "snapshot_evidence_count": snap.get("evidence_count") if snap else None,
+            "mastery_source": mastery_source,
             "summary": _why_summary(
                 cov,
                 task_type,
@@ -528,8 +689,19 @@ def _build_tasks(
                 pressure_level,
                 cov["_pinned"],
                 snap,
+                mastery_source=mastery_source,
+                band=prior_band,
             ),
         }
+        # Persist self-assessment provenance whenever a prior contributed —
+        # including band='new' (explicit "never studied"), where prior_mastery
+        # is None but the report is still a real signal distinguishable from a
+        # topic with no self-report at all.
+        if prior_entry:
+            why["self_assessment_band"] = prior_entry.get("band")
+            why["self_assessment_prior_mastery"] = prior_entry.get("prior_mastery")
+            why["self_assessment_confidence"] = prior_entry.get("report_confidence")
+            why["self_assessment_level"] = prior_entry.get("assessment_level") or "subject"
         tasks.append(
             {
                 "user_id": None,  # filled in by _persist
@@ -816,6 +988,7 @@ def _compute_plan(
     user_id: str,
     *,
     reason: str,
+    expected_exam_id: str | None = None,
 ) -> dict[str, Any]:
     """Compute (but do not persist) today's plan candidate.
 
@@ -833,6 +1006,12 @@ def _compute_plan(
     if not exam or not exam.get("id"):
         return {"generated": False, "reason": "no_target_exam"}
     exam_id = exam["id"]
+
+    if expected_exam_id is not None and str(exam_id) != str(expected_exam_id):
+        # TOCTOU guard: the target exam changed between the calibration gate
+        # check (performed for ``expected_exam_id``) and this resolution. Refuse
+        # to generate/persist for a different exam whose gate was never checked.
+        return {"generated": False, "reason": "target_changed", "exam": exam.get("slug")}
 
     today = datetime.now(timezone.utc).date()
     resolver_result = resolve_exam_target_window(supabase, exam_id=exam_id, today=today)
@@ -869,7 +1048,7 @@ def _compute_plan(
     topic_ids = [c["topic_id"] for c in coverage]
     pyq_counts = verified_pyq_topic_counts(supabase, exam_id) or {}
     prereqs = _load_prerequisites(supabase, topic_ids)
-    mastery, error_topics = _load_user_signals(supabase, user_id, exam_id)
+    mastery, error_topics, mastery_ok = _load_user_signals_ex(supabase, user_id, exam_id)
 
     # Resolver is the single target authority — days_remaining may be None
     # (open-ended current phase) and must not be coerced to 0.
@@ -922,11 +1101,45 @@ def _compute_plan(
         for s in (_snap_result or [])
     }
 
+    # Self-assessment priors: fill cold-start gap when no validated mastery exists.
+    # A DB failure returns {} and the plan still generates with the standard 55-pt gap.
+    # Two independent preconditions, both required before any prior is consumed:
+    #   * ``mastery_ok`` — fail closed: if the validated-mastery read itself failed,
+    #     a transient error must never let a self-report override real evidence we
+    #     simply couldn't load this request.
+    #   * the calibration gate is explicitly ``completed`` — partially-saved evidence
+    #     (no completed gate) or evidence left over after the user SKIPPED must not
+    #     influence scoring. ``skipped`` / ``none`` / partial all → cold-start.
+    # Gate status is read once here and recorded in input_context for audit; plan
+    # generation itself is never blocked in the planner (the API layer owns unlock).
+    calibration_gate_status = calibration.gate_status(supabase, user_id, exam_id)
+    gate_done = calibration_gate_status == "completed"
+    topic_priors = (
+        _load_topic_priors(supabase, user_id, exam_id, topic_ids)
+        if (mastery_ok and gate_done)
+        else {}
+    )
+
     # score every locked-coverage topic
     for cov in coverage:
         tid = cov["topic_id"]
         pyq_count = int(pyq_counts.get(tid, 0))
         topic_mastery = mastery.get(tid)
+        mastery_source = "validated" if tid in mastery else "none"
+        prior_entry = topic_priors.get(tid)
+        if topic_mastery is None and prior_entry is not None:
+            pm = prior_entry["prior_mastery"]
+            rc = prior_entry["report_confidence"]
+            if pm is not None:
+                # Bands strong/decent/weak carry an estimate: blend toward a
+                # neutral 45 by the report confidence.
+                neutral = 45.0
+                topic_mastery = round(rc * pm + (1.0 - rc) * neutral, 1)
+            # band 'new' (pm is None): keep cold-start scoring (topic_mastery
+            # stays None → 55-pt gap), but STILL mark the provenance as a
+            # self-report so an explicit "never studied" is distinguishable
+            # from a topic with no self-report at all (which stays 'none').
+            mastery_source = "self_reported"
         has_errors = tid in error_topics
         is_pinned = tid in pinned
         topic_snapshot = score_snapshots_by_topic.get(tid)
@@ -942,6 +1155,8 @@ def _compute_plan(
         cov["_priority_score"] = score
         cov["_task_type"] = _task_type(topic_mastery, has_errors)
         cov["_snapshot"] = topic_snapshot
+        cov["_mastery_source"] = mastery_source
+        cov["_prior_entry"] = prior_entry
 
     coverage.sort(key=lambda c: c["_priority_score"], reverse=True)
     ordered = _order_topics(coverage, prereqs)
@@ -994,6 +1209,9 @@ def _compute_plan(
             }
             for s in score_snapshots_by_topic.values()
         ] if not snapshot_read_failed else None,
+        "mastery_read_failed": not mastery_ok,
+        "calibration_gate_status": calibration_gate_status,
+        "self_assessment_summary": _self_assessment_summary(topic_priors),
     }
 
     return {
@@ -1146,7 +1364,9 @@ def _risk_level(diff: dict[str, Any], before_count: int) -> str:
     return "low"
 
 
-def compute_draft_plan(supabase: Any, user_id: str) -> dict[str, Any]:
+def compute_draft_plan(
+    supabase: Any, user_id: str, *, expected_exam_id: str | None = None
+) -> dict[str, Any]:
     """Compute today's plan candidate without mutating any persisted plan.
 
     Returns the same envelope as ``apply_plan`` but with ``applied=False``,
@@ -1154,7 +1374,9 @@ def compute_draft_plan(supabase: Any, user_id: str) -> dict[str, Any]:
     tasks for today as ``before_tasks``. Safe to call repeatedly.
     """
     try:
-        computed = _compute_plan(supabase, user_id, reason="plan_draft")
+        computed = _compute_plan(
+            supabase, user_id, reason="plan_draft", expected_exam_id=expected_exam_id
+        )
         if not computed.get("generated"):
             return computed
 
@@ -1206,6 +1428,7 @@ def apply_plan(
     *,
     reason: str = "manual_apply",
     event_type: str = "manual_regeneration",
+    expected_exam_id: str | None = None,
 ) -> dict[str, Any]:
     """Apply today's computed plan. Always persists when ``generated=True``.
 
@@ -1236,7 +1459,9 @@ def apply_plan(
             for b in before
         ]
 
-        computed = _compute_plan(supabase, user_id, reason=reason)
+        computed = _compute_plan(
+            supabase, user_id, reason=reason, expected_exam_id=expected_exam_id
+        )
         if not computed.get("generated"):
             return computed
 
@@ -1286,6 +1511,7 @@ def generate_plan(
     *,
     reason: str = "manual_generation",
     event_type: str = "manual_regeneration",
+    expected_exam_id: str | None = None,
 ) -> dict[str, Any]:
     """Generate and persist today's study plan for ``user_id``.
 
@@ -1293,7 +1519,10 @@ def generate_plan(
     ``/api/study/plan/generate`` route and for scheduled / signal-driven
     regenerations (``regen.regenerate_on_signal``).
     """
-    return apply_plan(supabase, user_id, reason=reason, event_type=event_type)
+    return apply_plan(
+        supabase, user_id, reason=reason, event_type=event_type,
+        expected_exam_id=expected_exam_id,
+    )
 
 
 # ───────────────────────── regen-trigger surfacing ─────────────────────────

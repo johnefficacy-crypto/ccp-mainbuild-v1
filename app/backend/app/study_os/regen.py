@@ -19,8 +19,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from app.study_os import calibration
 from app.study_os.plan_preferences import get_plan_preferences
-from app.study_os.planner import generate_plan
+from app.study_os.planner import _resolve_target_exam, generate_plan
 
 logger = logging.getLogger("career_copilot.study_os.regen")
 
@@ -56,6 +57,38 @@ def _active_plan(supabase: Any, user_id: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
+def _calibration_blocks_regen(
+    supabase: Any, user_id: str, *, has_active_plan: bool
+) -> bool:
+    """Safety-net onboarding-calibration guard for scheduled/signal regen.
+
+    The calibration gate is a *pre-first-plan* interstitial. Both regen entry
+    points only ever act on users who already have an active plan, so they are
+    grandfathered by construction: when ``has_active_plan`` is True this returns
+    False and behavior is unchanged for every existing-plan user (the guard then
+    only matters as a tripwire, never blocking the population regen serves).
+
+    For completeness it still consults the shared
+    ``calibration.calibration_required`` for the user's resolved target exam; if
+    the exam cannot be resolved it returns False (no block) rather than guessing.
+    Fully defensive — never raises out to the caller.
+    """
+    if has_active_plan:
+        return False
+    exam = _safe(lambda: _resolve_target_exam(supabase, user_id), default=None)
+    exam_id = exam.get("id") if exam else None
+    if not exam_id:
+        return False
+    try:
+        return bool(calibration.calibration_required(supabase, user_id, str(exam_id)))
+    except calibration.CalibrationUnavailable:
+        # Unknown gate state → fail closed: skip this regeneration rather than
+        # risk generating an uncalibrated first plan under a transient read error.
+        return True
+    except Exception:  # noqa: BLE001 — defensive tripwire, never raises out
+        return False
+
+
 def regenerate_on_signal(
     supabase: Any, user_id: str, *, event_type: str, reason: str
 ) -> dict[str, Any]:
@@ -73,6 +106,14 @@ def regenerate_on_signal(
 
     if not _active_plan(supabase, user_id):
         return {"regenerated": False, "reason": "no_active_plan"}
+
+    # Safety net only: the user provably has an active plan here, so the
+    # pre-first-plan calibration gate never blocks this path (grandfathered).
+    if _calibration_blocks_regen(supabase, user_id, has_active_plan=True):
+        logger.info(
+            "regen skipped for %s: onboarding calibration required", user_id
+        )
+        return {"regenerated": False, "reason": "calibration_required"}
 
     result = _safe(
         lambda: generate_plan(
@@ -131,6 +172,14 @@ def regenerate_stale_plans(supabase: Any, *, limit: int = 200) -> dict[str, Any]
         prefs = get_plan_preferences(supabase, user_id)
         if not prefs.get("auto_regenerate", True):
             skipped_opt_out += 1
+            continue
+        # Each iterated plan is already status='active', so this guard is a
+        # tripwire only and never blocks an existing-plan user (grandfathered).
+        if _calibration_blocks_regen(supabase, user_id, has_active_plan=True):
+            logger.info(
+                "stale-regen skipped for %s: onboarding calibration required",
+                user_id,
+            )
             continue
         result = _safe(
             lambda uid=user_id: generate_plan(
