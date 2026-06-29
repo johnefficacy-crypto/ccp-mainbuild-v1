@@ -123,26 +123,18 @@ def _resolve_coverage(sb, exam_id: str, cycle_id: str) -> int:
     selected-cycle row takes precedence over exam-wide row.  Count only rows
     with reviewer_status = 'locked' after precedence resolution.
     """
-    # Fetch cycle-scoped rows.
-    cycle_rows = (
+    # Fetch all rows for this exam; split cycle-scoped vs exam-wide in Python
+    # to avoid relying on IS NULL PostgREST syntax in test stubs.
+    all_rows = (
         sb.table("exam_topic_coverage")
-        .select("exam_phase_id, topic_id, reviewer_status")
+        .select("exam_cycle_id, exam_phase_id, topic_id, reviewer_status")
         .eq("exam_id", exam_id)
-        .eq("exam_cycle_id", cycle_id)
         .execute()
         .data
         or []
     )
-    # Fetch exam-wide rows (exam_cycle_id IS NULL).
-    wide_rows = (
-        sb.table("exam_topic_coverage")
-        .select("exam_phase_id, topic_id, reviewer_status")
-        .eq("exam_id", exam_id)
-        .is_("exam_cycle_id", "null")
-        .execute()
-        .data
-        or []
-    )
+    cycle_rows = [r for r in all_rows if r.get("exam_cycle_id") == cycle_id]
+    wide_rows = [r for r in all_rows if r.get("exam_cycle_id") is None]
 
     # Build precedence map: cycle-scoped takes priority over exam-wide.
     resolved: dict[tuple, str] = {}
