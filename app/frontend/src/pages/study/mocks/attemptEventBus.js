@@ -306,6 +306,35 @@ export class AttemptEventBus {
     }
   }
 
+  /**
+   * Public: drain the durable queue and RESOLVE once it is empty (all events
+   * ACKed), the bounded deadline passes, or a transient failure stalls progress.
+   * Used by the submit path so final buffered events (the last question.visited /
+   * answered) are delivered and persisted BEFORE the server computes analytics.
+   * Best-effort and time-bounded — never blocks the user's submit indefinitely.
+   * Returns true iff the queue is fully drained.
+   */
+  async flushAndWait({ timeoutMs = 4000 } = {}) {
+    try {
+      if (!this._attemptId) return true;
+      const start = Date.now();
+      // Let any in-flight flush settle first.
+      while (this._inFlight && Date.now() - start < timeoutMs) {
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      // Drain chunk batches until empty, stalled (no progress), or timed out.
+      while (this._ring.length && Date.now() - start < timeoutMs) {
+        const before = this._ring.length;
+        await this._flush();
+        if (this._ring.length >= before) break;  // transient failure — stop, do not spin
+      }
+      return this._ring.length === 0;
+    } catch (e) {
+      console.warn("[EventBus] flushAndWait error:", e);
+      return false;
+    }
+  }
+
   async _flush() {
     if (this._inFlight) return;  // do not send overlapping batches
     if (!this._ring.length || !this._attemptId) return;

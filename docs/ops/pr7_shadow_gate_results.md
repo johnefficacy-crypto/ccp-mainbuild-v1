@@ -51,40 +51,38 @@ record of what changed is `git diff ba3ea35..c9c44a9e -- <manifest-path>`.
 The PR-6 inspection fingerprint
 (`6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`) is
 superseded. The v2 fingerprint manifest boundary is defined at
-`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (**34 files**;
+`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (**35 files**;
 30 previous + `MockAttemptShell.jsx` + `attemptEventBus.js` + the two
-event-acceptance dependencies `core/auth.py` + frontend `lib/supabase.js`).
+event-acceptance dependencies `core/auth.py` + `lib/supabase.js` + the
+answer-write dependency `useAnswerSync.js`).
 
-**FREEZE PENDING — boundary expanded (32 → 34) but NOT yet closeable (PR #803
-review).** The merged code fixes (PR #795 `time_analytics`; PR #793 first-visit;
-PR #800 partial-fallback reporting + delivery contract) hold, and the two
-event-acceptance dependencies (`core/auth.py`, frontend `lib/supabase.js`) were
-added to the boundary. Still-open blockers before FROZEN:
-- **[P0]** Submit-time telemetry race — `MockAttemptShell.doSubmit()` posts
-  `/submit` and navigates without awaiting an event flush; `submit_attempt()`
-  runs `compute_and_persist()` before the final buffered `question.visited`/
-  timing events are delivered, and `/events` ingests late events but does not
-  recompute analytics. Final delivered events can be absent from the persisted
-  classifications/fallback metrics. Needs an awaited pre-submit ACKed flush OR
-  late-event analytics invalidation + idempotent recompute, with a regression.
-- **[P1]** Boundary still incomplete — `useAnswerSync.js` controls
-  `selected_option_id` / `is_visited` / `time_spent_sec` (scoring + fallback
-  inputs); add it or define + enforce a transitive-dependency inclusion rule.
-- **[P1]** Telemetry-quality gate is documentation-only — `shadow_analysis.py`
-  does not emit the five metrics and `100%` visit coverage has no valid
-  denominator (generated attempts have legitimate untouched questions;
-  `is_visited` is set by answer-save). Define the expected-visit population and
-  implement + test the metrics.
-- **[P1]** PR #800 remains `CODE-FIXED / VALIDATION PENDING` (operator staging
-  checks unchecked); no operator approval attached. Per AGENTS.md this stays
-  FREEZE PENDING (the 32 → 34 expansion is PROPOSED, operator-approval pending).
-- **[P2]** `verify_mastery_fingerprint.sh` must also cross-check the recorded
-  digest in the manifest / pr7 / checklist against the attestation and assert
-  the checkout matches the pinned SHA.
+**FREEZE PENDING — all code/tooling blockers resolved; OPERATOR APPROVAL the
+only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
+- **[P0 RESOLVED]** Submit-time telemetry race — `MockAttemptShell.doSubmit()`
+  now `await`s `eventBus.flushAndWait()` (a time-bounded, ACK-gated full flush)
+  BEFORE POSTing `/submit`, so the final buffered `question.visited`/`answered`
+  events are delivered before `submit_attempt()` runs `compute_and_persist()`.
+  Regression: `MockAttemptShell.submitFlush.test.jsx` + `flushAndWait` unit
+  tests. (Residual: a flush that exceeds its bound relies on the durable-queue
+  replay path; the telemetry-quality gate below catches any resulting fallback.)
+- **[P1 RESOLVED]** Boundary closed over `useAnswerSync.js` (added; 34 → 35) and
+  a transitive-dependency inclusion rule is documented in the manifest header.
+- **[P1 RESOLVED]** Telemetry-quality gate is now executable —
+  `shadow-analysis telemetry-quality` emits `events_used` / `visit_coverage_pct`
+  / `fallback_question_count` / `delivery_gap_count` over submitted attempts with
+  a defined expected-visit population (touched questions only), fail-closed
+  thresholds, and unit tests (see the gate section below).
+- **[P2 RESOLVED]** `verify_mastery_fingerprint.sh` now cross-checks the recorded
+  digest across the manifest / pr7 / checklist and asserts `EXPECTED_SHA` when
+  the operator supplies it.
+- **[OPEN — OPERATOR ONLY]** PR #800 remains `CODE-FIXED / VALIDATION PENDING`
+  (its three staging checks unchecked) and the 34 → 35 manifest expansion is
+  PROPOSED pending operator approval. Per AGENTS.md the gate stays FREEZE PENDING
+  until the operator validates #800 on staging and approves the boundary.
 
-**Reference fingerprint at `main @ b7ca717f` (34 files) — NOT the freeze /
-window_start hash:**
-`57e1ea1ead57c32c820cf73c1e9fda636f7dfe00b3c11ceae984f527ce37ef7d`
+**Reference fingerprint (PR #803 branch, 35 files) — NOT the freeze /
+window_start hash; re-pin to the post-merge main SHA at window_start:**
+`599792f28153c5e378ac1dc88ce40c4fd5f2c15984b7f1c74cdec702137d04f4`
 
 A per-file SHA-256 attestation is committed at
 `docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt`; verify
@@ -106,23 +104,19 @@ Steps 3–8 are sequential and each depends on those above it.
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — PR #803 merge +
-   operator validation remaining):** The event-delivery and partial-fallback
-   code defects identified before PR #800 are code-fixed, but staging validation
-   remains pending. PR #805 (34-file boundary) is **closed — superseded** by
-   PR #803 (`claude/pr7-manifest-boundary-freeze`). Current `main` still
-   contains the 32-file manifest. PR #803 proposes the final 36-file boundary
-   by adding `app/backend/app/core/auth.py`, `app/frontend/src/lib/supabase.js`,
-   `app/frontend/src/pages/study/mocks/useAnswerSync.js`, and
-   `app/frontend/src/lib/api.js`; it also closes the submit/late-event race,
-   adds the executable `telemetry-quality` command, and hardens fingerprint
-   verification with digest and SHA binding. PR #803 must rebase after PR #804
-   merges. No digest currently recorded on the PR #803 branch is authoritative:
-   the attestation and combined digest must be regenerated after rebase and then
-   pinned again at the exact deployed `window_start` SHA. Remaining before
-   FROZEN: (i) merge the rebased PR #803; (ii) complete PR #800 staging checks;
-   (iii) operator approves the proposed 36-file boundary; (iv) the verifier and
-   telemetry-quality gate pass against the exact deployed SHA.
+2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — code/tooling closed;
+   OPERATOR APPROVAL is the only remaining gate):** Boundary closed at 35 files
+   (added event-acceptance deps `core/auth.py` + `lib/supabase.js` and answer-
+   write dep `useAnswerSync.js`); reference fingerprint + per-file attestation
+   regenerated (`599792f28153c5e378ac1dc88ce40c4fd5f2c15984b7f1c74cdec702137d04f4`).
+   This is NOT yet the freeze hash. PR #803 review disposition: (i) ✅ submit/
+   late-event race fixed via an awaited pre-submit ACKed flush + regression;
+   (ii) ✅ boundary closed over `useAnswerSync.js` + a transitive-dependency rule;
+   (iii) ✅ telemetry-quality gate implemented + tested in `shadow_analysis.py`
+   with a valid expected-visit population; (v) ✅ `verify_mastery_fingerprint.sh`
+   hardened (cross-document digest + `EXPECTED_SHA`). (iv) ⛔ OPERATOR PENDING —
+   PR #800 staging validation + boundary approval. After approval: re-pin the
+   fingerprint to the post-merge main SHA and record it here.
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
    confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
@@ -155,7 +149,7 @@ Steps 3–8 are sequential and each depends on those above it.
    ```bash
    set -euo pipefail
    readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-   _expected=34
+   _expected=35
    _actual=${#_files[@]}
    [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
    for _f in "${_files[@]}"; do
@@ -202,15 +196,25 @@ invalid and were removed by PR-5A.
 The replay gates above prove deterministic replay, NOT that classifications
 were derived from the documented primary event source. Without these, the
 window can PASS while validating dwell/classification inputs that silently
-fell back to `mock_attempt_responses.time_spent_sec`. All must hold:
+fell back to `mock_attempt_responses.time_spent_sec`. All must hold.
 
-| Metric | Required | Actual |
-|--------|----------|--------|
-| events_used (per attempt) | > 0 | _____ |
-| visit-event coverage (questions with a `question.visited` anchor) | 100.0% | _____ |
-| fallback_question_count (dwell from `time_spent_sec`) | 0 | _____ |
-| event ingest rejection count (401/409/5xx on `/events`) | 0 | _____ |
-| beacon/fetch delivery-success rate | 100.0% | _____ |
+**Implemented and executable** via `shadow-analysis telemetry-quality`
+(`--from-utc … --to-utc …` or `--days N`, `--min-attempts 20` for the real
+window). The command computes these over submitted attempts against a defined
+**expected-visit population** — questions the user actually engaged with
+(`selected_option_id` set OR `is_marked_for_review` OR `is_visited`);
+legitimately untouched questions in generated attempts are excluded, so `100%`
+coverage has a valid denominator. Ingest-rejection / delivery loss is observed
+as `delivery_gap_count` = `max(client sequence_no) − distinct client sequence
+count` (the client assigns monotonic per-attempt seqs, so a gap = events
+enqueued but never accepted). PASS requires:
+
+| Metric (`telemetry-quality`) | Required |
+|--------|----------|
+| `attempts_without_events` | 0 (every evaluated attempt produced usable events) |
+| `visit_coverage_pct` (touched questions with a `question.visited` anchor) | 100.0 |
+| `fallback_question_count` (touched question dwell from `time_spent_sec`) | 0 |
+| `delivery_gap_count` (missing client sequence numbers) | 0 |
 
 ### Additional PASS criteria (all must hold)
 

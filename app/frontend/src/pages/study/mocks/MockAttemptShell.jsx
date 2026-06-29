@@ -260,6 +260,15 @@ export default function MockAttemptShell() {
       const answeredCount = Object.entries(syncStates).filter(
         ([, e]) => e?.state === "saved" && responses[e?.question_id]?.selected_option_id != null
       ).length;
+      // Deliver buffered telemetry (the final question.visited / answered events)
+      // and wait for the server ACK BEFORE /submit triggers compute_and_persist(),
+      // so the persisted classifications/dwell reflect them. Time-bounded
+      // best-effort — telemetry must never block the user's submit.
+      try {
+        await eventBus.flushAndWait({ timeoutMs: 4000 });
+      } catch (e) {
+        console.warn("[Shell] pre-submit event flush error:", e);
+      }
       await api.post(`/api/study/mocks/attempts/${attemptId}/submit`, {
         claimed_answered_count: answeredCount || null,
       });

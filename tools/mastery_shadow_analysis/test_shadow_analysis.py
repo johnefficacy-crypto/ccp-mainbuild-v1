@@ -1302,3 +1302,84 @@ def test_lac_days_zero_exits_2(monkeypatch: Any, capsys: Any) -> None:
     )
     assert code == 2
     assert data.get("error") == "INVALID_FLAGS"
+
+
+# ─── telemetry-quality gate (PR #803 review P1) ───────────────────────────────
+
+
+def _resp(qid: str, **kw: Any) -> dict:
+    base = {"question_id": qid, "selected_option_id": None,
+            "is_visited": False, "is_marked_for_review": False, "time_spent_sec": 0}
+    base.update(kw)
+    return base
+
+
+def _visit(qid: str, seq: int, occurred_at: str = "2026-01-01T00:00:00+00:00") -> dict:
+    return {"event_type": "question.visited", "payload": {"question_id": qid},
+            "sequence_no": seq, "occurred_at": occurred_at, "source": "client"}
+
+
+def test_tq_full_coverage_passes() -> None:
+    responses = {"a1": [_resp("q1", selected_option_id="o"), _resp("q2", is_visited=True)]}
+    events = {"a1": [_visit("q1", 1), _visit("q2", 2)]}
+    m = sa.compute_telemetry_quality(["a1"], responses, events)
+    assert m["visit_coverage_pct"] == 100.0
+    assert m["fallback_question_count"] == 0
+    assert m["delivery_gap_count"] == 0
+    assert m["attempts_without_events"] == 0
+    assert m["events_used"] == 2
+
+
+def test_tq_touched_question_without_visit_is_fallback() -> None:
+    # q2 was answered (touched) but has no visit event -> coverage < 100, fallback 1.
+    responses = {"a1": [_resp("q1", selected_option_id="o"), _resp("q2", selected_option_id="o")]}
+    events = {"a1": [_visit("q1", 1)]}
+    m = sa.compute_telemetry_quality(["a1"], responses, events)
+    assert m["expected_visit_questions"] == 2
+    assert m["covered_questions"] == 1
+    assert m["fallback_question_count"] == 1
+    assert m["visit_coverage_pct"] == 50.0
+    assert m["per_attempt"][0]["missing_visit_qids"] == ["q2"]
+
+
+def test_tq_untouched_question_excluded_from_population() -> None:
+    # q2 is legitimately untouched (no answer/mark/visit) -> NOT expected, no penalty.
+    responses = {"a1": [_resp("q1", selected_option_id="o"), _resp("q2")]}
+    events = {"a1": [_visit("q1", 1)]}
+    m = sa.compute_telemetry_quality(["a1"], responses, events)
+    assert m["expected_visit_questions"] == 1
+    assert m["fallback_question_count"] == 0
+    assert m["visit_coverage_pct"] == 100.0
+
+
+def test_tq_sequence_gap_is_delivery_gap() -> None:
+    # max client seq is 3 but only 2 distinct seqs present -> one undelivered event.
+    responses = {"a1": [_resp("q1", selected_option_id="o")]}
+    events = {"a1": [_visit("q1", 1), {"event_type": "attempt.heartbeat", "payload": {},
+                                       "sequence_no": 3, "occurred_at": "2026-01-01T00:00:05+00:00",
+                                       "source": "client"}]}
+    m = sa.compute_telemetry_quality(["a1"], responses, events)
+    assert m["per_attempt"][0]["max_client_sequence_no"] == 3
+    assert m["per_attempt"][0]["distinct_client_sequences"] == 2
+    assert m["delivery_gap_count"] == 1
+
+
+def test_tq_attempt_with_no_events_counted() -> None:
+    responses = {"a1": [_resp("q1", selected_option_id="o")], "a2": [_resp("q1", selected_option_id="o")]}
+    events = {"a1": [_visit("q1", 1)]}  # a2 has zero events
+    m = sa.compute_telemetry_quality(["a1", "a2"], responses, events)
+    assert m["attempts_without_events"] == 1
+    # a2's touched question falls back (no visit event)
+    assert m["fallback_question_count"] == 1
+
+
+def test_tq_malformed_visit_event_not_counted() -> None:
+    # missing occurred_at and missing question_id -> not usable visit events.
+    responses = {"a1": [_resp("q1", selected_option_id="o")]}
+    events = {"a1": [
+        {"event_type": "question.visited", "payload": {"question_id": "q1"}, "sequence_no": 1, "source": "client"},  # no occurred_at
+        {"event_type": "question.visited", "payload": {}, "sequence_no": 2, "occurred_at": "2026-01-01T00:00:00+00:00", "source": "client"},  # no qid
+    ]}
+    m = sa.compute_telemetry_quality(["a1"], responses, events)
+    assert m["events_used"] == 0
+    assert m["fallback_question_count"] == 1  # q1 falls back
