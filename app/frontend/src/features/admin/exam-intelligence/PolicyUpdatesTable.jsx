@@ -85,6 +85,13 @@ export default function PolicyUpdatesTable({ items, onReview, busyRowId }) {
   }
 
   return (
+    <div className="space-y-3">
+      {/* F5: The affects_* flags (plan, deadline, eligibility, documents, syllabus, vacancy) are
+           set at row creation and enforced by a DB check constraint. They cannot be changed via
+           this surface. If a flag is incorrect, contact an admin to correct the row at the DB level. */}
+      <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-1.5" data-testid="affects-immutability-notice">
+        The <strong>Affects</strong> flags (plan, deadline, eligibility, documents, syllabus, vacancy) are set at row creation and are immutable — this surface only moves reviewer status. To correct an incorrect flag, contact an admin.
+      </p>
     <div className="soft-card grain relative overflow-hidden rounded-[18px]" data-testid="policy-updates-table">
       <table className="tbl">
         <thead>
@@ -158,6 +165,7 @@ export default function PolicyUpdatesTable({ items, onReview, busyRowId }) {
           })}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

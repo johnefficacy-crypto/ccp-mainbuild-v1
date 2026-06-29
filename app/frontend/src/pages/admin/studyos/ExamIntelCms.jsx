@@ -1184,6 +1184,15 @@ export default function AdminExamIntelCms() {
         </div>
       )}
 
+      {/* M4: subjects entity note — subject_id UUIDs are truncated to first-8 chars in the table
+           (via humanizeToken / renderCellValue). Exam-family filtering is not implemented for this
+           entity; use subject_group or slug filters instead. */}
+      {entity === "subjects" && (
+        <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-1.5" data-testid="subjects-display-note">
+          <strong>subject_id</strong> values are truncated for display (first 8 chars). Exam-family filtering is not available for subjects — filter by <code>subject_group</code> or <code>slug</code> instead.
+        </p>
+      )}
+
       {status ? (
         <div className={`text-sm ${status.ok ? "text-emerald-700" : "text-red-700"}`} role="status" aria-live="polite">
           {status.message}
