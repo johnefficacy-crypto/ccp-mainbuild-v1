@@ -3,6 +3,10 @@
 # Supersedes the informal 18-file set used in the PR-6 inspection.
 # Added migration 180 (shadow idempotency) and migration 182 (correction
 # draft atomic RPCs) which were absent from v1 and are safety-critical.
+# Added complete attempt_analytics package (7 files) which produces
+# mock_attempt_response_classification rows that MasteryWriter gates on;
+# a classifier/dwell-time/service change would otherwise leave the
+# fingerprint unchanged while changing the data under validation.
 #
 # Frozen: 2026-06-29
 # Frozen at main SHA: c9c44a9e8cb993de3ddfec50803649a3ec461bd0
@@ -12,8 +16,16 @@
 #   PR #753  fix/a4-sync-submit-allowlist-bypass  (pinned-mode + A4 sync fix)
 #
 # To compute the combined fingerprint at any SHA, run from repo root:
-#   sha256sum $(cat docs/ops/mastery_validation_fingerprint_manifest_v2.txt \
-#               | grep -v '^#' | grep -v '^$') | sha256sum
+#
+#   set -euo pipefail
+#   readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
+#   _expected=27
+#   _actual=${#_files[@]}
+#   [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
+#   for _f in "${_files[@]}"; do
+#     [[ -f "$_f" ]] || { echo "ERROR: missing $_f" >&2; exit 1; }
+#   done
+#   sha256sum "${_files[@]}" | sha256sum
 #
 # The combined fingerprint must be identical at window_start and window_end.
 # Any change to a file in this manifest resets the shadow observation clock.
@@ -33,6 +45,13 @@ app/backend/app/study_os/mastery_engine/service.py
 app/backend/app/study_os/correction_policy.py
 app/backend/app/study_os/mock_engine.py
 app/backend/app/study_os/mocks.py
+app/backend/app/study_os/attempt_analytics/__init__.py
+app/backend/app/study_os/attempt_analytics/service.py
+app/backend/app/study_os/attempt_analytics/schemas.py
+app/backend/app/study_os/attempt_analytics/topic_breakdown.py
+app/backend/app/study_os/attempt_analytics/time_analytics.py
+app/backend/app/study_os/attempt_analytics/scoring.py
+app/backend/app/study_os/attempt_analytics/classifier.py
 app/backend/app/api/mock_engine.py
 app/backend/app/api/canonical.py
 app/backend/app/api/study_os.py

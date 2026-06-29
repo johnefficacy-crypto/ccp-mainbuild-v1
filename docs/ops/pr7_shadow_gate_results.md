@@ -53,25 +53,32 @@ Once the remaining prerequisites are met, the operator must compute a new
 baseline fingerprint using the manifest at the approved candidate SHA and
 record it here before starting the clock.
 
+**Manifest updated (this PR):** `attempt_analytics` package (7 files) added;
+combined fingerprint at `main @ c9c44a9e` updated to
+`a6c8cee8a1d69cc4e27abf59c8baddd4550d37622da50931be4a2d3d3cf4a885` (27 files).
+
 ---
 
 ## Prerequisites (all required before window opens)
 
-Complete in order — each step depends on those above it.
+Steps 1–2 are code-level and can be completed independently of deployment.
+Steps 3–8 are sequential and each depends on those above it.
 
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
+2. ✅ **Freeze the v2 fingerprint manifest (DONE — 2026-06-29):**
+   `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` created and
+   frozen (27 files: original 20 + `attempt_analytics` package 7 files).
+   Combined fingerprint at `main @ c9c44a9e`:
+   `a6c8cee8a1d69cc4e27abf59c8baddd4550d37622da50931be4a2d3d3cf4a885`.
+   _Code-only step; independent of deployment order._
+3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
    confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
    (`ensure_mock_correction_drafts`, `ensure_mock_correction_draft`,
    `replace_manual_mock_correction_drafts`); apply to the target
    environment.
-3. ✅ **Freeze the v2 fingerprint manifest (DONE — 2026-06-29):**
-   `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` created
-   (20 files). Combined fingerprint at `main @ c9c44a9e`:
-   `c37094cc620051bb781434e0c766114b28e9a4ea5cf52e964c996bb6b4b4feb0`.
 4. **PR-6 clean operator run (OPERATOR RERUN PENDING):** Run the full
    12-gate PR-6 operator session on one pinned SHA; confirm Gate 9
    passes (allowlist deployed with named user(s) in
@@ -82,11 +89,23 @@ Complete in order — each step depends on those above it.
 6. **FF confirmation:** Confirm `FF_MOCK_MASTERY_WRITES=shadow`
    continuously from deploy time.
 7. **Establish window_start:** Record exact UTC deploy timestamp as
-   `window_start`. Only after steps 2–6 are complete.
-8. **Compute baseline fingerprint:** Run `sha256sum $(grep -v '^#'
-   docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v
-   '^$') | sha256sum` at the confirmed `window_start` SHA; record hash
-   here and in the window record below.
+   `window_start`. Only after steps 3–6 are complete.
+8. **Compute baseline fingerprint (fail-closed):** From repo root at
+   the confirmed `window_start` SHA, run:
+
+   ```bash
+   set -euo pipefail
+   readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
+   _expected=27
+   _actual=${#_files[@]}
+   [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
+   for _f in "${_files[@]}"; do
+     [[ -f "$_f" ]] || { echo "ERROR: missing $_f" >&2; exit 1; }
+   done
+   sha256sum "${_files[@]}" | sha256sum
+   ```
+
+   Record hash here and in the window record below.
 
 ---
 
