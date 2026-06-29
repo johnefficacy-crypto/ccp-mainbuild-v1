@@ -1,4 +1,4 @@
--- Migration 199: user_topic_self_assessment — onboarding knowledge priors
+-- Migration 198: user_topic_self_assessment — onboarding knowledge priors
 
 CREATE TABLE public.user_topic_self_assessment (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

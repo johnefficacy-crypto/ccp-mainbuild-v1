@@ -532,11 +532,11 @@ CA provenance links CA items to exam topics. Contract-first; deferred post P-sli
 
 Plan-personalization track addressing first-timer vs experienced-aspirant cold-start. Full spec: `docs/architecture/onboarding-knowledge-calibration.md`. Self-assessment is a subordinate planner prior in its own table — never touches `user_topic_mastery` or the gated `MasteryWriter`. Validated mastery always wins; the prior only fills the gap.
 
-- **O-slice-1 — data + capture:** migration 195 (`user_topic_self_assessment`); `PUT/GET /api/study/self-assessment` (server owns band→prior + confidence); snapshot `attempts_used`. ✅ DONE
+- **O-slice-1 — data + capture:** migration 198 (`user_topic_self_assessment`); `PUT/GET /api/study/self-assessment` (server owns band→prior + confidence); snapshot `attempts_used`. ✅ DONE
 - **O-slice-2 — planner consumption:** `_load_topic_priors()` expands subject→topic_ids, blends `effective = rc * prior_mastery + (1-rc) * 45.0`; `mastery_source` in `why_this_task`; `self_assessment_summary` in `input_context`; graceful degradation on DB failure. ✅ DONE
 - **O-slice-3 — frontend:** `PrePlanCalibration` interstitial on Study Plan page (post exam-select, pre first-generate); `useCalibrationPriors` hook; attempts capture. ✅ DONE
 
-**PR #778** (`claude/onboarding-priors-spec`) — IN REVIEW. D1/D2/D3 all approved. 24 backend tests passing. OPERATOR PENDING: migration 195 to staging, RLS confirm, E2E validate.
+**PR #778** (`claude/onboarding-priors-spec`) — IN REVIEW. D1/D2/D3 all approved. 24 backend tests passing. OPERATOR PENDING: migrations 198/199 to staging, RLS confirm, E2E validate.
 
 ## Lane K — Mock semantics trust fix (READY — ISOLATED)
 

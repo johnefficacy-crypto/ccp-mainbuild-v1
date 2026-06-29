@@ -39,7 +39,7 @@ The trust boundary is enforced at the database, not just in the API:
 
 ## 3. Data model
 
-Two tables (migrations `195_user_topic_self_assessment.sql`, `196_user_exam_calibration.sql`).
+Two tables (migrations `198_user_topic_self_assessment.sql`, `199_user_exam_calibration.sql`).
 
 ### Evidence table — `user_topic_self_assessment`
 
