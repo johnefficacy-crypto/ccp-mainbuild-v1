@@ -54,21 +54,38 @@ superseded. The v2 fingerprint manifest boundary is defined at
 `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (32 files;
 30 previous + `MockAttemptShell.jsx` + `attemptEventBus.js`).
 
-**FREEZE PENDING — two runtime bugs must merge before the freeze hash is
-valid:**
-- `time_analytics.py` reads `created_at` but DB writes `occurred_at`
-  — all production events are skipped; dwell falls back to
-  `time_spent_sec`. Fix PR: `fix/time-analytics-occurred-at`.
-- `MockAttemptShell.jsx` does not emit `question.visited` for question 1
-  on initial load (visit effect runs before `attempt` populates
-  `questions_ref`). Fix PR: `fix/mock-attempt-first-visit`.
+**FREEZE PENDING — original blocking bugs fixed, but the v2 boundary is NOT
+yet closed (PR #796 review found open telemetry-validity defects):**
+- `time_analytics.py` read `created_at` but DB writes `occurred_at` (and
+  read `question_id` top-level instead of from `payload` JSONB) — all
+  production events were skipped; dwell fell back to `time_spent_sec`.
+  Fixed and merged: PR #795 (`fix/time-analytics-v2`).
+- `MockAttemptShell.jsx` did not emit `question.visited` for question 1
+  on initial load (visit effect ran before `attempt` populated
+  `questions_ref`). Fixed and merged: PR #793 (`fix/mock-attempt-first-visit`).
 
-Pre-fix reference hash at `main @ c9c44a9e` (32 files; do NOT use as
-window_start hash — bugs present):
+Still-open blockers before the boundary may be FROZEN (see the
+telemetry-quality gate below and prerequisite step 2):
+- **[P0]** `attemptEventBus._flushBeacon()` posts via `navigator.sendBeacon`
+  with no `Authorization` header; the events endpoint requires
+  `get_current_user` (401), so visibility-hidden/unmount batches — including
+  `question.visited` anchors — are dropped after `splice(0)`. `_flush()` also
+  never checks `response.ok` and discards on 401/409/5xx.
+- **[P0]** `compute_dwell_times()` applies the `time_spent_sec` fallback via
+  `setdefault` BEFORE the `len(by_q) < len(responses)` check, so partial event
+  coverage never emits the documented `partial event coverage; fallback
+  applied` warning required by `docs/mock_engine/attempt_analytics.md`.
+- **[P1]** Manifest boundary is not closed over `core/auth.py` (event-batch
+  acceptance) or frontend `lib/supabase.js` (token source); either can change
+  ingestion without changing the fingerprint.
+
+Pre-fix reference hash at `main @ c9c44a9e` (32 files; bugs present):
 `96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b`
 
-Once both fix PRs merge to `main`, recompute the hash at the new SHA
-and record it in prerequisite step 2 below before starting the clock.
+Reference fingerprint at `main @ 1679adb8` (current 32-file boundary) — this
+is NOT the window_start hash; the freeze hash must be recomputed at a new
+post-fix SHA after the boundary is closed and the P0/P1 defects clear:
+`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`
 
 ---
 
@@ -80,17 +97,20 @@ Steps 3–8 are sequential and each depends on those above it.
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — blocked on
-   runtime bug fixes):** Manifest boundary final: 32 files (20 original +
-   `attempt_analytics` 7 + event-backend 3 + frontend event producers 2:
-   `MockAttemptShell.jsx`, `attemptEventBus.js`).
-   Two bugs must merge before the freeze hash is valid:
-   (a) `time_analytics.py` `created_at`→`occurred_at` fix
-   (`fix/time-analytics-occurred-at`);
-   (b) `MockAttemptShell.jsx` first-visit fix
-   (`fix/mock-attempt-first-visit`).
-   After both merge: run fail-closed command at new main SHA; record hash
-   here. _Code-only step; independent of deployment order._
+2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — boundary not yet
+   closed):** Current boundary is 32 files (20 original + `attempt_analytics`
+   7 + event-backend 3 + frontend event producers 2: `MockAttemptShell.jsx`,
+   `attemptEventBus.js`). The two originally-blocking bug fixes are merged
+   (PR #795 `time_analytics`; PR #793 `MockAttemptShell` first-visit), and a
+   reference fingerprint was computed at `main @ 1679adb8`
+   (`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`).
+   This is NOT yet the freeze hash. Before FROZEN (PR #796 review): (i) fix or
+   explicitly gate the P0 event-delivery (beacon auth/retry) and P0 partial-
+   fallback reporting defects; (ii) close the boundary over `core/auth.py` and
+   frontend `lib/supabase.js` (operator-approved manifest expansion) and
+   recompute; (iii) commit a per-file SHA-256 attestation (or a CI check that
+   recomputes the digest at the pinned SHA). Then recompute the freeze hash at
+   the new post-fix `main` SHA and record it here.
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
    confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
@@ -154,6 +174,21 @@ invalid and were removed by PR-5A.
 |--------|----------|--------|
 | decision_count | ≥ 10 | _____ |
 | exact_parity_pct | 100.0 | _____ |
+
+### telemetry-quality gate (fail-closed — PR #796 review)
+
+The replay gates above prove deterministic replay, NOT that classifications
+were derived from the documented primary event source. Without these, the
+window can PASS while validating dwell/classification inputs that silently
+fell back to `mock_attempt_responses.time_spent_sec`. All must hold:
+
+| Metric | Required | Actual |
+|--------|----------|--------|
+| events_used (per attempt) | > 0 | _____ |
+| visit-event coverage (questions with a `question.visited` anchor) | 100.0% | _____ |
+| fallback_question_count (dwell from `time_spent_sec`) | 0 | _____ |
+| event ingest rejection count (401/409/5xx on `/events`) | 0 | _____ |
+| beacon/fetch delivery-success rate | 100.0% | _____ |
 
 ### Additional PASS criteria (all must hold)
 
