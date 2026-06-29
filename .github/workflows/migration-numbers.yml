@@ -32,6 +32,12 @@ jobs:
             ALL_EXEMPT=true
             for f in $DELETED $RENAMED; do
               num=$(echo "$f" | sed -E 's|.*/([0-9]+)_.*|\1|')
+              # --name-only with --diff-filter=R emits both the old (source) and
+              # new (destination) path. The destination number won't exist on
+              # main at all — skip it. Only the source number must be a duplicate.
+              if ! echo "$ON_MAIN" | grep -qx "$num"; then
+                continue
+              fi
               count=$(echo "$ON_MAIN" | grep -cx "$num" || true)
               if [[ "$count" -lt 2 ]]; then
                 ALL_EXEMPT=false
