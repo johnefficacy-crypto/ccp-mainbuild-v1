@@ -111,12 +111,11 @@ Steps 3–8 are sequential and each depends on those above it.
    recompute; (iii) commit a per-file SHA-256 attestation (or a CI check that
    recomputes the digest at the pinned SHA). Then recompute the freeze hash at
    the new post-fix `main` SHA and record it here.
-3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
-   `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
-   confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
+3. ✅ **Migration 182 deployment (DONE — 2026-06-29):** RPC presence and
+   privilege matrix: PASS (operator validated). Three RPCs
    (`ensure_mock_correction_drafts`, `ensure_mock_correction_draft`,
-   `replace_manual_mock_correction_drafts`); apply to the target
-   environment.
+   `replace_manual_mock_correction_drafts`) confirmed SECURITY DEFINER,
+   service_role-only; anon / authenticated cannot EXECUTE.
 4. **PR-6 clean operator run (OPERATOR RERUN PENDING):** Run the full
    12-gate PR-6 operator session on one pinned SHA; confirm Gate 9
    passes (allowlist deployed with named user(s) in
