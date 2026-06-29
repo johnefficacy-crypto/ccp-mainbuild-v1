@@ -1,26 +1,59 @@
-# RLS Coverage Reconciliation — v1 Release Sign-off
+# RLS Coverage Reconciliation — v1 Release Gate
 
-**Status:** GREEN — no RLS bugs block v1. One operator verification step remains.
-**Source of truth:** `docs/schema/rls-policy-drift-audit.md` (live introspection refreshed 2026-05-21).
-**Scope:** Reconciles the ~100 tables flagged "RLS enabled, zero policies" into a
-release decision: which are intentional, which are deferred, which (if any) are bugs.
+**Status:** CODE-FIXED, VALIDATION PENDING — **OPERATOR PENDING** for the authoritative
+live inventory. This document is a *classification framework*, **not** a signed-off GREEN
+gate. The gate cannot be marked GREEN until the post-migration staging/production
+introspection query (below) is run and recorded.
+**Source of truth:** the **live introspection query**, run against the current deployed
+schema — **not** any file snapshot. `docs/schema/rls-policy-drift-audit.md` states this
+explicitly: the set changes as tables are added, so the file is only a point-in-time aid.
+The numbers below derive from the **2026-05-21 snapshot and are already known to be stale**
+(see "Known staleness" — migrations after that date, e.g. 195/197, added at least one new
+zero-policy table). Treat the counts as provisional pending the live re-run.
+**Scope:** Provides a classification rule for each table flagged "RLS enabled, zero
+policies" so that, once the live inventory is regenerated, every returned row can be sorted
+into intentional / deferred / bug without re-litigating each table.
 
 ---
 
 ## TL;DR
 
-- **0 tables** are misconfigured in a way that breaks a user-facing read path.
-- **81 tables** are correctly RLS-on / no-policy because they are **service-role only**
-  (backend reads with the service key, which bypasses RLS; anon/authenticated access is
-  correctly denied).
-- **13 tables** (blog / community / forum content) are **product-deferred** — they need a
-  public-vs-member-vs-draft gating decision *before* policies are written. Not a security
-  bug today because the backend reads them via the service role and the frontend has no
-  direct PostgREST path to them.
+- **No user-facing read path is known to be broken** — but this is provisional until the
+  live inventory is regenerated and every returned row re-classified.
+- Against the (stale) 2026-05-21 snapshot of **100** zero-policy tables, the classification is:
+  - **56 SERVICE_ROLE_ONLY** = 20 public_catalog_read + 30 service_role_only + 6 admin_only.
+    Correctly RLS-on / no-policy: the backend reads with the service key (bypasses RLS) and
+    anon/authenticated access is correctly denied.
+  - **31 DEFERRED (safe today)** = per-user owner-scoped tables. Safe only because all reads
+    are service-role-mediated today; owner-column policies become *required* if a direct
+    PostgREST read path is ever added.
+  - **13 PRODUCT_DEFERRED** = blog / community / forum content needing a
+    public-vs-member-vs-draft gating decision before policies are written.
+  - 56 + 31 + 13 = **100**.
 - The earlier "100 tables RLS-locked" drift was caused by an **untracked `ensure_rls` DDL
   trigger** that auto-enabled RLS on every `CREATE TABLE`. Migration `131` removed it;
   migration `130` repaired the three catalog tables (`recruitments`, `posts`,
   `organizations`) that genuinely needed public-read policies.
+
+## Known staleness (why this is not yet a sign-off)
+
+The 2026-05-21 snapshot predates later RLS changes, so the live set will differ:
+
+- **`support_content_access`** — migration `195_security_rls_hardening.sql` (and re-asserted
+  by `197_support_content_access_schema_repair.sql`) enables RLS with **no policy**. It is
+  **absent from the snapshot below** and must be classified at verification time. Backend
+  usage is admin-only (`app/backend/app/api/admin_study_os.py`, service-role) → expected
+  classification **SERVICE_ROLE_ONLY**, to be confirmed live.
+- Migration `195` also re-enables RLS on `content_access_requests` and
+  `mock_breakdown_recompute_runs` (already in the lists below) and adds *policies* to a
+  separate set of governance tables (`exam_topic_coverage`, `exam_topic_score_snapshots`,
+  `exam_competition_metrics`, `exam_policy_updates`, `plan_impact_decisions`,
+  `extraction_runs`, the `mock_question_*` tables) — those have policies and are NOT
+  zero-policy.
+
+The operator must regenerate the live inventory, diff the exact table-name set against the
+snapshot (auditing every addition/removal), and classify each new row before this gate flips
+to GREEN.
 
 **Why this is safe:** the backend reads through `get_supabase_admin()` (service role) in
 `app/backend/app/db/supabase_client.py`, and the frontend client
@@ -32,22 +65,25 @@ that is only ever touched by the service role.
 
 ## Classification of the flagged tables
 
+Counts below are the corrected list lengths from the 2026-05-21 snapshot (sum = 100);
+they remain provisional until the live re-run.
+
 | Class | Count | v1 classification | Rationale |
 |-------|-------|-------------------|-----------|
-| public_catalog_read | 19 | **SERVICE_ROLE_ONLY** | Non-PII catalog/criteria data; read only via service role. No direct anon/auth path. |
-| service_role_only | 31 | **SERVICE_ROLE_ONLY** | Pipeline / AI / analytics / verification system tables. No user-facing read path. Deny-all is intended. |
+| public_catalog_read | 20 | **SERVICE_ROLE_ONLY** | Non-PII catalog/criteria data; read only via service role. No direct anon/auth path. |
+| service_role_only | 30 | **SERVICE_ROLE_ONLY** | Pipeline / AI / analytics / verification system tables. No user-facing read path. Deny-all is intended. |
 | authenticated_owner_only | 31 | **DEFERRED (safe today)** | Per-user tables (`aspirant_*`, `study_*`, `chat_sessions`, …). All reads are service-role mediated today. Owner-column policies become *required* only if a direct PostgREST read path is added later. |
 | admin_only | 6 | **SERVICE_ROLE_ONLY** | Trust / moderation / verification tables. Admin ops run via service role; would need `is_admin()` policies only if admins ever use a non-service client. |
 | needs product decision | 13 | **PRODUCT_DEFERRED** | Blog / community / forum content. Gating choice (public vs member vs draft) must precede any policy. |
 
-### public_catalog_read (19)
+### public_catalog_read (20)
 age_criteria, age_relaxation_rules, attempt_limits, certification_criteria, certifications,
 disability_types, education_criteria, exam_eligibility_rules, exam_patterns,
 knowledge_base_university_thresholds, persona_question_bank, physical_requirement_types,
 post_disability_requirements, post_fees, post_selection_stages, recruitment_units,
 salary_details, skill_tests, vacancies, vacancy_reservations
 
-### service_role_only (31)
+### service_role_only (30)
 aggregator_listings, ai_action_policies, ai_jobs, ai_prompt_versions, ai_review_queue,
 alert_events, anonymous_profile_merge_claims, candidate_field_registry,
 candidate_observations, external_api_usage, form_submissions, funnel_events,
@@ -90,11 +126,15 @@ forum_categories, forum_comments, forum_posts
 
 ---
 
-## Operator verification (the one remaining step)
+## Operator verification (REQUIRED before this gate is GREEN)
 
-Run this against **staging and production** and confirm the result matches the
-2026-05-21 audit snapshot (≈100 tables). Any *decrease* means policies were added or RLS
-disabled somewhere outside migration history — audit that drift before release.
+Run this against **staging and production**, then diff the exact table-name set against the
+2026-05-21 snapshot (≈100 tables) and **classify every difference**:
+- An *increase* (expected — at minimum `support_content_access` from migration 195/197, plus
+  any table added since the snapshot) → classify each new row using the rules above.
+- A *decrease* → policies were added or RLS disabled somewhere outside migration history;
+  audit that drift before release.
+Record the resulting list and per-row classifications here; only then mark the gate GREEN.
 
 ```sql
 -- Every public table with RLS enabled and zero policies.

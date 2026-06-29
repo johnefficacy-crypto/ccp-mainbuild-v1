@@ -21,9 +21,13 @@
 --   exploit, but it must be closed before v1.
 --
 -- FIX
---   Revoke EXECUTE from authenticated (and anon, defensively) and re-assert the
---   intended service_role grant. REVOKE of a privilege that was never held is a
---   no-op in PostgreSQL, so this is safe and idempotent.
+--   Revoke EXECUTE from PUBLIC, anon AND authenticated, then re-assert the
+--   intended service_role grant. All three are revoked explicitly because
+--   `REVOKE FROM PUBLIC` does NOT remove explicit per-role grants held by anon /
+--   authenticated — see migration 190, which records exactly this on staging
+--   ("Migrations 188/189 only revoked from PUBLIC ... REVOKE FROM PUBLIC does not
+--   remove those explicit per-role grants"). REVOKE of a privilege that was never
+--   held is a no-op in PostgreSQL, so this is safe and idempotent.
 --
 -- BACKEND IMPACT: none. All four call sites use the service-role client:
 --   • promote_recruitment            -> api/admin_scrape.py, scraping/runner.py
@@ -40,19 +44,27 @@
 begin;
 
 -- promote_recruitment(jsonb)
-revoke execute on function public.promote_recruitment(jsonb) from authenticated, anon;
+revoke execute on function public.promote_recruitment(jsonb) from public;
+revoke execute on function public.promote_recruitment(jsonb) from anon;
+revoke execute on function public.promote_recruitment(jsonb) from authenticated;
 grant  execute on function public.promote_recruitment(jsonb) to service_role;
 
 -- create_verification_report(jsonb)
-revoke execute on function public.create_verification_report(jsonb) from authenticated, anon;
+revoke execute on function public.create_verification_report(jsonb) from public;
+revoke execute on function public.create_verification_report(jsonb) from anon;
+revoke execute on function public.create_verification_report(jsonb) from authenticated;
 grant  execute on function public.create_verification_report(jsonb) to service_role;
 
 -- supersede_and_create_verification_report(uuid, jsonb)
-revoke execute on function public.supersede_and_create_verification_report(uuid, jsonb) from authenticated, anon;
+revoke execute on function public.supersede_and_create_verification_report(uuid, jsonb) from public;
+revoke execute on function public.supersede_and_create_verification_report(uuid, jsonb) from anon;
+revoke execute on function public.supersede_and_create_verification_report(uuid, jsonb) from authenticated;
 grant  execute on function public.supersede_and_create_verification_report(uuid, jsonb) to service_role;
 
 -- claim_source_for_scrape(uuid, integer)
-revoke execute on function public.claim_source_for_scrape(uuid, integer) from authenticated, anon;
+revoke execute on function public.claim_source_for_scrape(uuid, integer) from public;
+revoke execute on function public.claim_source_for_scrape(uuid, integer) from anon;
+revoke execute on function public.claim_source_for_scrape(uuid, integer) from authenticated;
 grant  execute on function public.claim_source_for_scrape(uuid, integer) to service_role;
 
 commit;

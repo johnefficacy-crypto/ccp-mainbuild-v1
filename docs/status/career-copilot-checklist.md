@@ -56,6 +56,15 @@ Current verdict: **DO NOT PROCEED TO LIVE**. `FF_MOCK_MASTERY_WRITES=live` remai
 
 The repository can prove code remediation only. It cannot prove live scheduler behavior, token reachability in another agent harness, Render state, or Supabase row-drain evidence. Do not mark the operator gates complete from code inspection alone.
 
+## Schema & RPC permissions — v1 release gates (PR #790)
+
+Two v1 release-readiness gates introduced by PR #790. Both are deliberately **not** signed off in-repo: the live verification is operator-only.
+
+| Item | Current status | Repo evidence / notes |
+|---|---|---|
+| RPC EXECUTE grant hardening (migration 202) | CODE-FIXED, VALIDATION PENDING | `202_rpc_grant_hardening_v1.sql` revokes EXECUTE from **PUBLIC, anon, AND authenticated** (per the migration-190 lesson that `REVOKE FROM PUBLIC` alone leaves explicit per-role grants) and re-grants only `service_role` for four SECURITY INVOKER, backend-only RPCs that were exposed to `authenticated` on the PostgREST `/rpc/` surface: `promote_recruitment(jsonb)` (def 043→059), `create_verification_report(jsonb)` + `supersede_and_create_verification_report(uuid,jsonb)` (def 076), `claim_source_for_scrape(uuid,integer)` (def 054). No application impact — all callers use the service-role client. Full audit in `docs/schema/rpc-grant-audit-v1.md` (PYQ/CMS admin RPCs 185–201 verified already-hardened; `apply_mock_mastery_delta`/`claim_mock_mastery_retry`/`complete_mock_mastery_retry`/`is_admin`/`refresh_course_stats`/`refresh_enrollment_count` have no explicit grant and must be checked live). **OPERATOR PENDING:** apply migration 202 to staging→prod; run the grantee query (renders PUBLIC) and confirm only `service_role` holds EXECUTE on the four RPCs and that no mutating ungranted RPC holds anon/authenticated EXECUTE; smoke-test the four service-role flows. |
+| RLS zero-policy coverage reconciliation | CODE-FIXED, VALIDATION PENDING — OPERATOR PENDING | `docs/schema/rls-coverage-reconciliation-v1.md` classifies the (stale 2026-05-21) snapshot of ~100 RLS-on/zero-policy tables: 56 SERVICE_ROLE_ONLY (20 catalog + 30 service-role + 6 admin), 31 DEFERRED owner-scoped (safe only while reads are service-role-mediated), 13 PRODUCT_DEFERRED (blog/community/forum gating). Source of truth is the **live introspection query, not the file** — the snapshot is known stale (e.g. `support_content_access`, RLS-enabled zero-policy by migration 195/197, is absent from it). **NOT a GREEN sign-off.** **OPERATOR PENDING:** regenerate the live inventory on staging→prod, diff the exact table-name set against the snapshot, classify every addition/removal, then mark GREEN. Product decision still owed on the 13 blog/community/forum tables (v1.x). |
+
 ## Exam Governance Console — wave 4.6
 
 Current verdict: **core arc complete; cleanup tier remains**.
