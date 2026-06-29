@@ -1,0 +1,82 @@
+# Mastery Shadow Gate — Validation Fingerprint Manifest v2
+#
+# Supersedes the informal 18-file set used in the PR-6 inspection.
+# Added migration 180 (shadow idempotency) and migration 182 (correction
+# draft atomic RPCs) which were absent from v1 and are safety-critical.
+# Added complete attempt_analytics package (7 files): mock_engine.py calls
+# compute_and_persist() which persists mock_attempt_response_classification
+# rows that MasteryWriter gates on; classifier/service changes would
+# otherwise leave the fingerprint unchanged while changing data under
+# validation.
+# Added event-input path — backend (3 files): attempt_analytics/service.py
+# reads mock_attempt_events; time_analytics.py derives dwell time from
+# question-visit events; classifier.py uses that timing.
+# Added event-input path — frontend (2 files): MockAttemptShell.jsx
+# decides when question.visited is emitted; attemptEventBus.js controls
+# timestamps, buffering, flush cadence, loss behavior, and POST payloads.
+# Changes to either file alter event data reaching the backend ingest
+# path without changing the backend fingerprint.
+#
+# STATUS: FREEZE PENDING
+# Manifest boundary is final. Hash is NOT yet the freeze hash:
+#   - time_analytics.py has a known bug (reads created_at; DB writes
+#     occurred_at) — all production events are currently skipped and
+#     analytics falls back to time_spent_sec. Fix PR pending.
+#   - MockAttemptShell.jsx does not emit question.visited for question 1
+#     on initial load. Fix PR pending.
+# Freeze hash must be recomputed at the post-fix main SHA after both PRs
+# merge. Do NOT use the pre-fix hash below as the window_start hash.
+#
+# Pre-fix reference hash (main @ c9c44a9e, 32 files, BUGS PRESENT):
+#   96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b
+#
+# To compute the combined fingerprint at any SHA, run from repo root:
+#
+#   set -euo pipefail
+#   readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
+#   _expected=32
+#   _actual=${#_files[@]}
+#   [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
+#   for _f in "${_files[@]}"; do
+#     [[ -f "$_f" ]] || { echo "ERROR: missing $_f" >&2; exit 1; }
+#   done
+#   sha256sum "${_files[@]}" | sha256sum
+#
+# The combined fingerprint must be identical at window_start and window_end.
+# Any change to a file in this manifest resets the shadow observation clock.
+#
+# DO NOT add files to this manifest without operator approval.
+# DO NOT remove files from this manifest without operator approval.
+
+app/backend/app/study_os/mastery_writer.py
+app/backend/app/study_os/attempt_classification_readiness.py
+app/backend/app/study_os/attempt_derivation.py
+app/backend/app/study_os/mastery_engine/__init__.py
+app/backend/app/study_os/mastery_engine/correction_tasks.py
+app/backend/app/study_os/mastery_engine/error_patterns.py
+app/backend/app/study_os/mastery_engine/mastery_delta.py
+app/backend/app/study_os/mastery_engine/schemas.py
+app/backend/app/study_os/mastery_engine/service.py
+app/backend/app/study_os/correction_policy.py
+app/backend/app/study_os/mock_engine.py
+app/backend/app/study_os/mocks.py
+app/backend/app/study_os/attempt_analytics/__init__.py
+app/backend/app/study_os/attempt_analytics/service.py
+app/backend/app/study_os/attempt_analytics/schemas.py
+app/backend/app/study_os/attempt_analytics/topic_breakdown.py
+app/backend/app/study_os/attempt_analytics/time_analytics.py
+app/backend/app/study_os/attempt_analytics/scoring.py
+app/backend/app/study_os/attempt_analytics/classifier.py
+app/backend/app/study_os/attempt_events.py
+app/backend/app/study_os/attempt_event_types.py
+app/backend/app/api/mock_engine.py
+app/backend/app/api/canonical.py
+app/backend/app/api/study_os.py
+app/backend/app/api/admin_study_os.py
+app/backend/app/api/mock_attempt_events.py
+tools/mastery_shadow_analysis/shadow_analysis.py
+app/supabase/migrations/180_mock_mastery_shadow_idempotency.sql
+app/supabase/migrations/181_mock_correction_tasks_uniqueness.sql
+app/supabase/migrations/182_mock_correction_draft_atomic_rpcs.sql
+app/frontend/src/pages/study/mocks/MockAttemptShell.jsx
+app/frontend/src/pages/study/mocks/attemptEventBus.js
