@@ -1,6 +1,6 @@
 # Career Copilot checklist — repo source of record
 
-Last repo verification: 2026-06-24 at `main @ e098a2ea` (post I6 PR #761 + PR #756 operator validation + I8-A/B/C merged — PRs #755, #757, #759, #761 all merged; I8 and I6 complete). Prior snapshot: 2026-06-21 at `main @ 2308b31` + PR #753.
+Last repo verification: 2026-06-29 at `main @ 3f19726` (post PR #769 PYQ onboarding follow-ups + PR #778 onboarding priors + PR #779 admin doc extraction fix). Prior snapshot: 2026-06-24 at `main @ e098a2ea` (post I6 PR #761 + PR #756 operator validation + I8-A/B/C merged).
 
 This checklist replaces chat-only / UI-only status snippets. Keep it current in the same PR as any code change or decision that changes one of these statuses.
 
