@@ -520,8 +520,10 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
         api.get(`${CMS}/syllabus-documents?${sylQs}`),
         api.get(`${CMS}/pyq-papers?${pyqQs}`),
       ]);
-      setDocs(sylResult?.items   || sylResult   || []);
-      setPapers(pyqResult?.items || pyqResult   || []);
+      const sylPayload = sylResult?.items ?? sylResult;
+      setDocs(Array.isArray(sylPayload) ? sylPayload : []);
+      const pyqPayload = pyqResult?.items ?? pyqResult;
+      setPapers(Array.isArray(pyqPayload) ? pyqPayload : []);
       // Rehydrate inFlight: keep docs that are unlinked (not yet attached to any
       // same-exam pyq_paper) and not failed/archived. linkedDocIds uses the
       // exam-wide paper set so documents linked to historical-cycle papers are
