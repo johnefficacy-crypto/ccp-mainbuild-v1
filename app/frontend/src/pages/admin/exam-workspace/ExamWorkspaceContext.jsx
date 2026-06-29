@@ -87,10 +87,11 @@ export function ExamWorkspaceProvider({ children }) {
       const url = `${REVIEW_BASE}/management/exams/${encodeURIComponent(exam_id)}${qs ? `?${qs}` : ""}`;
       const d = await api.get(url);
       if (!SUPPORTED_CONTRACT_VERSIONS.includes(d?.contract_version)) {
-        // D04: fail-closed — null out mgmt to suppress all semantic consumers (SmartHeader, etc.)
+        // D04: fail-closed — null out mgmt AND legacy readiness to suppress all semantic consumers.
         setMgmtVersionError(true);
         setMgmtError("unsupported_contract_version");
         setMgmt(null);
+        setReadiness(null);
       } else {
         setMgmt(d);
       }

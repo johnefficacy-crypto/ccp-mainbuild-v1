@@ -152,17 +152,17 @@ def test_unknown_cycle_id_returns_200_with_error():
 def test_index_only_source_docs_not_applicable():
     """D05 (updated): index_only still requires source provenance; no phases
     means steps 3+ are not_applicable via A2 cascade (not mode-based).
-    not_applicable_reason is null when cascading from no_phases."""
+    D15: not_applicable_reason must be 'no_phases_in_cycle' (typed reason required)."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="index_only", locked=1)
     s.cycle("cy1", "e1")
-    # No phases -> steps 3+ should be not_applicable via A2 cascade (reason=None)
+    # No phases -> steps 3+ should be not_applicable via A2 cascade
     r = _detail(_client_from_seed(s), "e1", cycle_id="cy1")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step3 = next(st for st in cr["steps"] if st["step"] == 3)
     assert step3["status"] == "not_applicable"
-    assert step3["not_applicable_reason"] is None
+    assert step3["not_applicable_reason"] == "no_phases_in_cycle"
 
 
 def test_step1_ready_when_name_and_year():
@@ -480,7 +480,7 @@ def test_d05_index_only_source_docs_not_missing_not_na():
 def test_a2_no_phases_steps_3_to_9_not_applicable():
     """cycle_id provided, but no phases in exam_phases.
     Steps 3-9 should be not_applicable (depend on phases being configured).
-    not_applicable_reason should be null (not 'no_selected_cycle') since cycle IS selected."""
+    D15: not_applicable_reason must be 'no_phases_in_cycle' (not 'no_selected_cycle')."""
     s = _Seed()
     s.exam("e1", name="Exam1", locked=1)
     s.cycle("cy1", "e1", name="Cycle 2026", year=2026)
@@ -498,8 +498,8 @@ def test_a2_no_phases_steps_3_to_9_not_applicable():
         assert step["status"] == "not_applicable", (
             f"step {step_num} expected not_applicable when no phases, got {step['status']}"
         )
-        # A2: reason is null when cycle IS selected but no phases (not no_selected_cycle)
-        assert step["not_applicable_reason"] is None, (
-            f"step {step_num} expected null reason (cycle selected, no phases), "
+        # A2/D15: typed reason required; must be 'no_phases_in_cycle' (not null, not 'no_selected_cycle')
+        assert step["not_applicable_reason"] == "no_phases_in_cycle", (
+            f"step {step_num} expected 'no_phases_in_cycle' reason, "
             f"got {step['not_applicable_reason']}"
         )

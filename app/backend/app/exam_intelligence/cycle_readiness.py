@@ -54,9 +54,12 @@ def _step(
     action_cta: dict | None = None,
     note: str | None = None,
     checks=None,
-    applicability: str = "applicable",
+    applicability: str | None = None,
     metrics=None,
 ) -> dict[str, Any]:
+    # D14: derive applicability from gate_class when not explicitly provided.
+    if applicability is None:
+        applicability = "required" if gate_class == "hard" else "conditional"
     return {
         "step": n,
         "step_id": key,       # canonical name per contract
@@ -297,8 +300,8 @@ def compute_cycle_readiness(
             if no_cycle:
                 return _na_step(n, key, label, "no_selected_cycle",
                                 gate_class=gate_class, evidence_scope=ev_scope)
-            else:  # no_phases
-                return _na_step(n, key, label, None,
+            else:  # no_phases — D15: must have typed reason
+                return _na_step(n, key, label, "no_phases_in_cycle",
                                 gate_class=gate_class, evidence_scope=ev_scope,
                                 note="No phases defined for selected cycle")
 
@@ -392,6 +395,12 @@ def compute_cycle_readiness(
                     4, "extraction", "Text extraction", _READY,
                     gate_class="advisory", evidence_scope="exam_wide",
                 )
+            elif any(s == "needs_review" for s in latest_statuses):
+                # D06: review_pending > extracting > uploaded > missing
+                s4 = _step(
+                    4, "extraction", "Text extraction", _REVIEW_PENDING,
+                    gate_class="advisory", evidence_scope="exam_wide",
+                )
             elif any(s in ("queued", "running") for s in latest_statuses):
                 s4 = _step(
                     4, "extraction", "Text extraction", _EXTRACTING,
@@ -401,11 +410,6 @@ def compute_cycle_readiness(
                 # Some docs have no jobs -> not started yet (not failed)
                 s4 = _step(
                     4, "extraction", "Text extraction", _UPLOADED,
-                    gate_class="advisory", evidence_scope="exam_wide",
-                )
-            elif any(s == "needs_review" for s in latest_statuses):
-                s4 = _step(
-                    4, "extraction", "Text extraction", _REVIEW_PENDING,
                     gate_class="advisory", evidence_scope="exam_wide",
                 )
             elif latest_statuses and all(s == "failed" for s in latest_statuses):
@@ -564,19 +568,14 @@ def compute_cycle_readiness(
     #      core: cycle-scoped check only.
     # A1/A2: handled above via cascade.
     # -------------------------------------------------------------------------
-    if management_mode in _MGMT_MODES_COMPETITION_NA:
-        s8 = _na_step(
-            8, "competition_context", "Competition context", "optional_for_management_mode",
-            gate_class="advisory", evidence_scope="exam_wide",
-        )
-    elif not management_mode:
+    if not management_mode:
         s8 = _step(
             8, "competition_context", "Competition context", _MISSING,
-            gate_class="advisory", evidence_scope="exam_wide",
+            gate_class="advisory", evidence_scope="selected_cycle",
             note="Management mode classification required",
         )
     else:
-        # core: cycle-scoped check per D11
+        # D11: query selected-cycle rows first — evidence must never be hidden.
         comp_rows = (
             sb.table("exam_competition_metrics")
             .select("id, reviewer_status")
@@ -588,14 +587,21 @@ def compute_cycle_readiness(
         )
         reviewed = [r for r in comp_rows if r.get("reviewer_status") in ("reviewed", "locked")]
         if reviewed:
+            # Valid evidence exists — must become ready regardless of mode.
             s8 = _step(
                 8, "competition_context", "Competition context", _READY,
-                gate_class="advisory", evidence_scope="exam_wide",
+                gate_class="advisory", evidence_scope="selected_cycle",
+            )
+        elif management_mode in _MGMT_MODES_COMPETITION_NA:
+            # D11: only N/A when no valid evidence AND mode makes it optional.
+            s8 = _na_step(
+                8, "competition_context", "Competition context", "optional_for_management_mode",
+                gate_class="advisory", evidence_scope="selected_cycle",
             )
         else:
             s8 = _step(
                 8, "competition_context", "Competition context", _MISSING,
-                gate_class="advisory", evidence_scope="exam_wide",
+                gate_class="advisory", evidence_scope="selected_cycle",
             )
     steps.append(s8)
 
@@ -618,8 +624,8 @@ def compute_cycle_readiness(
             gate_class="hard", evidence_scope="exam_wide",
             note="Management mode classification required",
         )
-    elif activation_verdict:
-        # D12: authoritative source
+    elif activation_verdict is not None:
+        # D12: bind to work_queue.classify_exam authority — no local fallback.
         verdict_status = activation_verdict.get("status", "blocked")
         step9_status = _READY if verdict_status == "ready" else (
             _REVIEW_PENDING if verdict_status == "needs_action" else _MISSING
@@ -630,25 +636,12 @@ def compute_cycle_readiness(
             note=activation_verdict.get("first_blocker_text"),
         )
     else:
-        # Fallback D12 minimum (no verdict provided)
-        locked_rows = coverage_metrics.get("locked_rows", 0) if coverage_metrics else 0
-        if s1["status"] == _READY and s2["status"] == _READY and locked_rows >= 1:
-            s9 = _step(
-                9, "review_activate", "Review & activate", _READY,
-                gate_class="hard", evidence_scope="exam_wide",
-            )
-        elif s1["status"] != _READY or s2["status"] != _READY:
-            s9 = _step(
-                9, "review_activate", "Review & activate", _MISSING,
-                gate_class="hard", evidence_scope="exam_wide",
-                note="Hard gates (cycle details, phases) must be ready first",
-            )
-        else:
-            s9 = _step(
-                9, "review_activate", "Review & activate", _REVIEW_PENDING,
-                gate_class="hard", evidence_scope="exam_wide",
-                note="Syllabus coverage must be locked",
-            )
+        # D12: verdict unavailable — fail unavailable rather than derive locally.
+        s9 = _step(
+            9, "review_activate", "Review & activate", _MISSING,
+            gate_class="hard", evidence_scope="exam_wide",
+            note="Activation verdict unavailable — classification pending",
+        )
     steps.append(s9)
 
     return {
