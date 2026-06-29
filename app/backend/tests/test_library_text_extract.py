@@ -195,10 +195,19 @@ class _SB:
         return _Q(name, self.db)
 
     def rpc(self, name: str, params: dict) -> _RpcCall:
-        if name == "replace_document_pages":
+        if name == "finalize_document_extraction":
             def _run():
                 doc_id = params["p_document_id"]
-                pages = params["p_pages"] or []
+                job_id = params["p_job_id"]
+                pages = params.get("p_pages") or []
+                terminal_status = params.get("p_status", "succeeded")
+
+                # Simulate archived-document guard
+                doc_rows = [r for r in self.db.get("document_assets", []) if r.get("id") == doc_id]
+                if doc_rows and doc_rows[0].get("status") == "archived":
+                    return {"ok": False, "reason": "document_archived"}
+
+                # Swap pages
                 self.db["document_pages"] = [
                     r for r in self.db.get("document_pages", [])
                     if r.get("document_id") != doc_id
@@ -211,11 +220,26 @@ class _SB:
                         "text_content": p.get("text_content", ""),
                         "char_count": p.get("char_count", 0),
                         "extraction_status": p.get("extraction_status", "extracted"),
-                        "parser_engine": params["p_parser_engine"],
-                        "parser_version": params["p_parser_version"],
+                        "parser_engine": params.get("p_parser_engine"),
+                        "parser_version": params.get("p_parser_version"),
                         "metadata": p.get("metadata") or {},
                     })
-                return len(pages)
+
+                # Update job
+                for job in self.db.get("document_processing_jobs", []):
+                    if job.get("id") == job_id:
+                        job["status"] = terminal_status
+                        job["error_code"] = params.get("p_error_code")
+                        job["error_message"] = params.get("p_error_message")
+                        job["metrics"] = params.get("p_metrics") or {}
+
+                # Update document status (never overwrite archived)
+                doc_status = "processed" if terminal_status == "succeeded" else "failed"
+                for doc in self.db.get("document_assets", []):
+                    if doc.get("id") == doc_id and doc.get("status") != "archived":
+                        doc["status"] = doc_status
+
+                return {"ok": True}
             return _RpcCall(_run)
         return _RpcCall(lambda: None)
 
@@ -607,3 +631,56 @@ def test_timeout_marks_timed_out_and_failed(sb, monkeypatch):
     assert body["job"]["status"] == "failed"
     assert body["job"]["metrics"]["timed_out"] is True
     assert body["document"]["status"] == "failed"
+
+
+def test_finalize_rpc_called_with_correct_args(sb, monkeypatch):
+    """Verify that run_text_extract_job calls finalize_document_extraction with
+    the expected keyword arguments (Issue #780 — atomic finalization RPC)."""
+    doc_id = "44444444-dddd-dddd-dddd-444444444444"
+    _seed_doc(sb, doc_id=doc_id)
+    _patch_parser(monkeypatch, ["page one text", "page two text"], page_count=2)
+
+    captured: list[dict] = []
+    original_rpc = sb.rpc
+
+    def _capturing_rpc(name: str, params: dict):
+        if name == "finalize_document_extraction":
+            captured.append({"name": name, "params": dict(params)})
+        return original_rpc(name, params)
+
+    monkeypatch.setattr(sb, "rpc", _capturing_rpc)
+
+    r = _app(sb, USER_A).post(f"/api/library/items/{doc_id}/process-text")
+    assert r.status_code == 200, r.text
+
+    # Exactly one call to the atomic finalization RPC
+    assert len(captured) == 1
+    call = captured[0]
+    assert call["name"] == "finalize_document_extraction"
+
+    params = call["params"]
+    # Required UUID fields are populated
+    assert params["p_document_id"] == doc_id
+    assert params["p_job_id"] is not None
+
+    # Successful extraction → status = 'succeeded', no error fields
+    assert params["p_status"] == "succeeded"
+    assert params["p_error_code"] is None
+    assert params["p_error_message"] is None
+
+    # Page rows are passed correctly
+    pages = params["p_pages"]
+    assert isinstance(pages, list)
+    assert len(pages) == 2
+    assert {p["page_number"] for p in pages} == {1, 2}
+    assert all(p["extraction_status"] == "extracted" for p in pages)
+
+    # Parser engine/version are passed
+    assert params["p_parser_engine"] == text_extract_svc.PARSER_ENGINE
+    assert params["p_parser_version"] == text_extract_svc.PARSER_VERSION
+
+    # Metrics dict is populated with expected keys
+    metrics = params["p_metrics"]
+    assert isinstance(metrics, dict)
+    assert metrics["extracted_page_count"] == 2
+    assert metrics["timed_out"] is False
