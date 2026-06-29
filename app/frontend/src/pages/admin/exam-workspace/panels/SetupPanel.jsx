@@ -6,7 +6,6 @@ import { formatDDMMYYYY } from "../../../../shared/forms/dateFormat";
 import useApiAction from "../../../../lib/hooks/useApiAction";
 import CycleForm from "../../../../features/admin/exam-intelligence/forms/CycleForm";
 import PhaseForm from "../../../../features/admin/exam-intelligence/forms/PhaseForm";
-import CycleActivationChecklist from "./CycleActivationChecklist";
 
 function TrustBadge({ status }) {
   const map = {
@@ -64,7 +63,7 @@ const CYCLE_STATUSES = ["expected", "open", "active", "closed", "completed", "ca
 const PHASE_STATUSES = ["expected", "active", "completed", "cancelled"];
 
 export default function SetupPanel({ action = null }) {
-  const { exam, cycle, cycles, phases, refetch } = useExamWorkspace();
+  const { exam, cycles, phases, refetch } = useExamWorkspace();
 
   // ── add-phase form ──────────────────────────────────────────────────────
   const EMPTY_PHASE = {
@@ -917,8 +916,6 @@ export default function SetupPanel({ action = null }) {
         </div>
       )}
 
-
-      {cycle && <CycleActivationChecklist />}
 
     </div>
   );
