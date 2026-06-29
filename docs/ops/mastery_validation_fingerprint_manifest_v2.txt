@@ -8,24 +8,33 @@
 # rows that MasteryWriter gates on; classifier/service changes would
 # otherwise leave the fingerprint unchanged while changing data under
 # validation.
-# Added event-input path (3 files): attempt_analytics/service.py reads
-# mock_attempt_events; time_analytics.py derives dwell time from
-# question-visit events; classifier.py uses that timing. Changes to event
-# validation, naming, or ingestion can alter mastery inputs without
-# changing other fingerprinted files.
+# Added event-input path — backend (3 files): attempt_analytics/service.py
+# reads mock_attempt_events; time_analytics.py derives dwell time from
+# question-visit events; classifier.py uses that timing.
+# Added event-input path — frontend (2 files): MockAttemptShell.jsx
+# decides when question.visited is emitted; attemptEventBus.js controls
+# timestamps, buffering, flush cadence, loss behavior, and POST payloads.
+# Changes to either file alter event data reaching the backend ingest
+# path without changing the backend fingerprint.
 #
-# Frozen: 2026-06-29
-# Frozen at main SHA: c9c44a9e8cb993de3ddfec50803649a3ec461bd0
-# All Lane A blocking PRs merged before this manifest was frozen:
-#   PR #745  fix/mastery-error-pattern-persistence  (error_patterns schema)
-#   PR #746  fix/a4-mastery-live-allowlist-pinned-mode  (allowlist + effective mode)
-#   PR #753  fix/a4-sync-submit-allowlist-bypass  (pinned-mode + A4 sync fix)
+# STATUS: FREEZE PENDING
+# Manifest boundary is final. Hash is NOT yet the freeze hash:
+#   - time_analytics.py has a known bug (reads created_at; DB writes
+#     occurred_at) — all production events are currently skipped and
+#     analytics falls back to time_spent_sec. Fix PR pending.
+#   - MockAttemptShell.jsx does not emit question.visited for question 1
+#     on initial load. Fix PR pending.
+# Freeze hash must be recomputed at the post-fix main SHA after both PRs
+# merge. Do NOT use the pre-fix hash below as the window_start hash.
+#
+# Pre-fix reference hash (main @ c9c44a9e, 32 files, BUGS PRESENT):
+#   96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b
 #
 # To compute the combined fingerprint at any SHA, run from repo root:
 #
 #   set -euo pipefail
 #   readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-#   _expected=30
+#   _expected=32
 #   _actual=${#_files[@]}
 #   [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
 #   for _f in "${_files[@]}"; do
@@ -69,3 +78,5 @@ tools/mastery_shadow_analysis/shadow_analysis.py
 app/supabase/migrations/180_mock_mastery_shadow_idempotency.sql
 app/supabase/migrations/181_mock_correction_tasks_uniqueness.sql
 app/supabase/migrations/182_mock_correction_draft_atomic_rpcs.sql
+app/frontend/src/pages/study/mocks/MockAttemptShell.jsx
+app/frontend/src/pages/study/mocks/attemptEventBus.js

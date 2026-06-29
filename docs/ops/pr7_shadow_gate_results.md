@@ -50,13 +50,25 @@ record of what changed is `git diff ba3ea35..c9c44a9e -- <manifest-path>`.
 
 The PR-6 inspection fingerprint
 (`6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`) is
-superseded. The v2 fingerprint manifest is frozen at
-`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (30 files;
-combined fingerprint at `main @ c9c44a9e`:
-`04463b8c5b8b33052c35b6d666f1a93d57872741fd3b4cbd0f8a61ef63c170d5`).
-Once the remaining prerequisites are met, the operator must compute a new
-baseline fingerprint using the manifest at the approved candidate SHA and
-record it here before starting the clock.
+superseded. The v2 fingerprint manifest boundary is defined at
+`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (32 files;
+30 previous + `MockAttemptShell.jsx` + `attemptEventBus.js`).
+
+**FREEZE PENDING — two runtime bugs must merge before the freeze hash is
+valid:**
+- `time_analytics.py` reads `created_at` but DB writes `occurred_at`
+  — all production events are skipped; dwell falls back to
+  `time_spent_sec`. Fix PR: `fix/time-analytics-occurred-at`.
+- `MockAttemptShell.jsx` does not emit `question.visited` for question 1
+  on initial load (visit effect runs before `attempt` populates
+  `questions_ref`). Fix PR: `fix/mock-attempt-first-visit`.
+
+Pre-fix reference hash at `main @ c9c44a9e` (32 files; do NOT use as
+window_start hash — bugs present):
+`96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b`
+
+Once both fix PRs merge to `main`, recompute the hash at the new SHA
+and record it in prerequisite step 2 below before starting the clock.
 
 ---
 
@@ -68,12 +80,17 @@ Steps 3–8 are sequential and each depends on those above it.
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. ✅ **Freeze the v2 fingerprint manifest (DONE — 2026-06-29):**
-   `docs/ops/mastery_validation_fingerprint_manifest_v2.txt` created and
-   frozen (30 files: original 20 + `attempt_analytics` package 7 files +
-   event-input path 3 files). Combined fingerprint at `main @ c9c44a9e`:
-   `04463b8c5b8b33052c35b6d666f1a93d57872741fd3b4cbd0f8a61ef63c170d5`.
-   _Code-only step; independent of deployment order._
+2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — blocked on
+   runtime bug fixes):** Manifest boundary final: 32 files (20 original +
+   `attempt_analytics` 7 + event-backend 3 + frontend event producers 2:
+   `MockAttemptShell.jsx`, `attemptEventBus.js`).
+   Two bugs must merge before the freeze hash is valid:
+   (a) `time_analytics.py` `created_at`→`occurred_at` fix
+   (`fix/time-analytics-occurred-at`);
+   (b) `MockAttemptShell.jsx` first-visit fix
+   (`fix/mock-attempt-first-visit`).
+   After both merge: run fail-closed command at new main SHA; record hash
+   here. _Code-only step; independent of deployment order._
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
    confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
@@ -97,7 +114,7 @@ Steps 3–8 are sequential and each depends on those above it.
    ```bash
    set -euo pipefail
    readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-   _expected=30
+   _expected=32
    _actual=${#_files[@]}
    [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
    for _f in "${_files[@]}"; do
