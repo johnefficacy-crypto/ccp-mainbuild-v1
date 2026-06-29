@@ -500,7 +500,7 @@ def test_complete_upload_enqueue_failure_archive_wins_returns_409():
     """If archive wins the race during the enqueue-failure CAS rollback (rollback
     returns 0 rows because the asset is already archived), the endpoint must return
     409 document_archived rather than 502 enqueue_failed."""
-    import app.backend.app.library.text_extract as _te
+    import app.library.text_extract as _te
 
     class _ArchiveWinsOnRollbackSBStub(DocSBStub):
         """On the CAS rollback (update status=uploaded where status=processing),
