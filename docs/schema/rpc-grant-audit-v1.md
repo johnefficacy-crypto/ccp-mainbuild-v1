@@ -1,8 +1,12 @@
 # RPC EXECUTE Grant Audit — v1 Release
 
-**Status:** 4 grant gaps found and fixed in migration `202_rpc_grant_hardening_v1.sql`.
-4 functions have no explicit grant statement in any migration and must be verified against
-live grants at apply time (see "Functions with no explicit grant" below).
+**Status:** 8 grant gaps found and fixed in migration `202_rpc_grant_hardening_v1.sql` —
+4 RPCs explicitly granted to `authenticated`, plus 4 backend-only RPCs that held the
+PostgreSQL **default `PUBLIC`** grant (the repo has no `ALTER DEFAULT PRIVILEGES`, so the
+default applies; 3 of the 4 are SECURITY DEFINER): the 3 mastery RPCs + the legacy
+`fn_fanout_alert_event`. `is_admin` (intentionally authenticated, used by RLS policies) and
+the `refresh_*` trigger helpers are the only remaining no-explicit-grant functions and are
+out of scope by design.
 **Scope:** All callable RPCs defined across `app/supabase/migrations/` are enumerated below
 (security-sensitive / mutating functions in full detail; triggers and internal helpers
 listed for completeness). Each is checked for (a) SECURITY DEFINER vs INVOKER, (b) which
@@ -22,7 +26,7 @@ current call sites. Granting EXECUTE to **`authenticated`** additionally lets an
 logged-in end user invoke the function directly via the public PostgREST endpoint:
 
 - For a **SECURITY DEFINER** function this is the most dangerous (runs as the owner).
-- For a **SECURITY INVOKER** function (the four below) it runs as the caller, so the
+- For a **SECURITY INVOKER** function (4 of the 8 below) it runs as the caller, so the
   blast radius is bounded by table RLS/grants — but these functions encode admin/worker
   business logic with **no in-function authorization check**, so the only thing standing
   between an `authenticated` caller and a privileged write is RLS on the underlying
@@ -40,12 +44,21 @@ are granted EXECUTE *only* when a feature deliberately calls the RPC with a user
 | `promote_recruitment(jsonb)` | 043→059 (latest 059) | INVOKER | authenticated, service_role | `api/admin_scrape.py`, `scraping/runner.py` (service_role) | revoke authenticated/anon |
 | `create_verification_report(jsonb)` | 076 | INVOKER | authenticated, service_role | `scraping/verification_reports.py`, `verification_gateway.py` (service_role) | revoke authenticated/anon |
 | `supersede_and_create_verification_report(uuid, jsonb)` | 076 | INVOKER | authenticated, service_role | `scraping/verification_gateway.py` (service_role) | revoke authenticated/anon |
-| `claim_source_for_scrape(uuid, integer)` | 054 | INVOKER | authenticated, service_role | `scraping/runner.py` (service_role) | revoke authenticated/anon |
+| `claim_source_for_scrape(uuid, integer)` | 054 | INVOKER | authenticated, service_role | `scraping/runner.py` (service_role) | revoke public/anon/authenticated |
+| `apply_mock_mastery_delta(uuid,uuid,uuid,numeric,text)` | 145 | INVOKER | **default PUBLIC** (no explicit grant) | `study_os/mastery_writer.py` (service_role) | revoke public/anon/authenticated |
+| `claim_mock_mastery_retry(uuid,text,timestamptz)` | 180 | **DEFINER** | **default PUBLIC** (no explicit grant) | `study_os/mock_engine.py` (service_role) | revoke public/anon/authenticated |
+| `complete_mock_mastery_retry(uuid)` | 180 | **DEFINER** | **default PUBLIC** (no explicit grant) | `study_os/mock_engine.py` (service_role) | revoke public/anon/authenticated |
+| `fn_fanout_alert_event(uuid)` | 007 | **DEFINER** | **default PUBLIC** (no explicit grant) | none (legacy/dead; trigger-invoked) | revoke public/anon/authenticated |
 
-None of the four is called anywhere with a user JWT, so revoking `authenticated` is a
-no-op for application behaviour. Verified that **no later migration** already revoked these
-grants (059 is the latest `promote_recruitment` redefinition and still grants
-`authenticated`; 076 and 054 are the sole definitions of the others).
+None of the eight is called anywhere with a user JWT, so revoking the public/anon/authenticated
+grants is a no-op for application behaviour. The first four were explicitly granted to
+`authenticated` (verified **no later migration** revoked them: 059 is the latest
+`promote_recruitment` redefinition and still grants `authenticated`; 076 and 054 are the sole
+definitions of the others). The three mastery RPCs have **no** grant/revoke statement in any
+migration; with no `ALTER DEFAULT PRIVILEGES` in the repo (only a comment in migration 174),
+PostgreSQL's default grants them EXECUTE to `PUBLIC` — an unsafe default posture, and the two
+SECURITY DEFINER members are in the highest-risk class. Migration 202 now revokes all three
+roles and grants only `service_role` for all eight.
 
 ---
 
@@ -56,7 +69,6 @@ grants (059 is the latest `promote_recruitment` redefinition and still grants
 | `claim_eligibility_queue(integer)` | 010 | DEFINER | service_role | ✓ backend-only |
 | `enqueue_eligibility_recompute(uuid,uuid,text,jsonb)` | 041 | DEFINER | service_role | ✓ backend-only |
 | `fn_enqueue_eligibility_for_new_recruitment()` | 007 | DEFINER | (trigger) | ✓ trigger-only |
-| `fn_fanout_alert_event(uuid)` | 007 | DEFINER | (trigger) | ✓ trigger-only |
 | `community_inc_thread_reply_count(uuid,integer)` | 089 | DEFINER | authenticated, service_role | ✓ called with user JWT (community runtime) |
 | `community_inc_thread_vote_count(uuid,integer)` | 089 | DEFINER | authenticated, service_role | ✓ called with user JWT |
 | `community_inc_reply_vote_count(uuid,integer)` | 089 | DEFINER | authenticated, service_role | ✓ called with user JWT |
@@ -70,12 +82,12 @@ grants (059 is the latest `promote_recruitment` redefinition and still grants
 | `ensure_mock_correction_draft(...)` | 182 | DEFINER | service_role | ✓ backend-only |
 | `ensure_mock_correction_drafts(...)` | 182 | DEFINER | service_role | ✓ backend-only |
 | `replace_manual_mock_correction_drafts(...)` | 182 | DEFINER | service_role | ✓ backend-only |
-| `project_pyq_question_to_mock_bank(uuid,uuid,text)` | 184 | DEFINER | service_role | ✓ backend-only |
+| `project_pyq_question_to_mock_bank(uuid,uuid,text)` | 184 → redefined 186/187 (**187 effective**) | DEFINER | service_role | ✓ backend-only |
 | `fn_invalidate_pyq_projection()` | 184 | DEFINER | service_role | ✓ trigger/backend |
 | `fn_invalidate_projection_for_question(uuid)` | 184 | DEFINER | service_role | ✓ trigger/backend |
 | `fn_block_projection_for_question(uuid,text)` | 184 | DEFINER | service_role | ✓ backend-only |
 | `accept_partner_request(uuid,uuid)` | 193 | DEFINER | service_role | ✓ backend-only |
-| `review_pyq_paper(text×6)` | 185 | DEFINER | revoked PUBLIC+anon+authenticated; service_role | ✓ admin, hardened |
+| `review_pyq_paper(text×6)` | 185 → redefined 186/187 (**187 effective**) | DEFINER | revoked PUBLIC+anon+authenticated; service_role | ✓ admin, hardened |
 | `cms_set_pyq_paper_provenance(text,text,text,jsonb,text,jsonb,boolean)` | 188 / hardened 190 | DEFINER | revoked PUBLIC+anon+authenticated; service_role | ✓ admin, hardened |
 | `cms_link_document_to_pyq_paper(text,text,text,text,text,boolean)` | 188 / hardened 190 | DEFINER | revoked PUBLIC+anon+authenticated; service_role | ✓ admin, hardened |
 | `cms_set_pyq_paper_provenance(...)+pyq_source_id` | 191 | DEFINER | revoked PUBLIC+anon+authenticated; service_role | ✓ admin, hardened |
@@ -92,22 +104,17 @@ Migration **190** is the documented cause — it records on staging that migrati
 revoked only PUBLIC at creation time, which left explicit `anon`/`authenticated` grants in
 place, so those had to be revoked separately. This is the precedent migration 202 follows.
 
-## Functions with no explicit grant (verify against live grants)
+## Functions with no explicit grant
 
-The following callable functions have **no `grant`/`revoke` statement in any migration**, so
-their effective grants depend on PostgreSQL/Supabase defaults (which can include `PUBLIC` →
-`anon`/`authenticated`). These are **not** asserted correct — the operator query below must
-confirm their grantees at apply time, and any holding `anon`/`authenticated` EXECUTE on a
-mutating function need a follow-up hardening migration:
+The three backend-only **mastery** RPCs that previously sat here (`apply_mock_mastery_delta`,
+`claim_mock_mastery_retry`, `complete_mock_mastery_retry`) held the PostgreSQL default
+`PUBLIC` grant and are now **fixed in migration 202** (see the Gaps table). The only
+remaining no-explicit-grant functions are intentional / out of scope:
 
-| Function | Likely intent | Action |
-|----------|---------------|--------|
-| `apply_mock_mastery_delta(...)` | service-role (mastery writeback) | verify live; harden if anon/authenticated present |
-| `claim_mock_mastery_retry(...)` | service-role (scheduler) | verify live; harden if anon/authenticated present |
-| `complete_mock_mastery_retry(...)` | service-role (scheduler) | verify live; harden if anon/authenticated present |
-| `refresh_course_stats(...)` | service-role / trigger | verify live |
-| `refresh_enrollment_count(...)` | service-role / trigger | verify live |
-| `is_admin(uuid)` | SECURITY DEFINER helper called *inside* RLS policies | `authenticated` EXECUTE is expected/required here (policies evaluate it); confirm it is not additionally exploitable |
+| Function | Disposition |
+|----------|-------------|
+| `is_admin(uuid)` | SECURITY DEFINER helper evaluated *inside* RLS policies; `authenticated` EXECUTE is required here. Left as-is by design. |
+| `refresh_course_stats(...)`, `refresh_enrollment_count(...)` | trigger helpers, not `/rpc/`-callable; no EXECUTE grant needed. |
 
 Trigger functions (`tg_set_updated_at`, `fn_set_updated_at`, `touch_verification_report_updated_at`,
 `fn_mock_question_fingerprint`, `fn_profiles_protect_privileged_columns`, `content_access_requests_check_*`,
@@ -160,18 +167,18 @@ where n.nspname = 'public'
     'promote_recruitment',
     'create_verification_report',
     'supersede_and_create_verification_report',
-    'claim_source_for_scrape'
+    'claim_source_for_scrape',
+    'apply_mock_mastery_delta',
+    'claim_mock_mastery_retry',
+    'complete_mock_mastery_retry',
+    'fn_fanout_alert_event'
   )
 order by p.proname, grantee;
 ```
 
-**Expected:** each function lists `service_role` (and the function owner) only — **no
-`PUBLIC`, no `authenticated`, no `anon`**. Note: when `proacl` is NULL the function uses
-default privileges (which in Supabase grant EXECUTE to PUBLIC) — that case shows as a NULL
-acl and MUST be treated as a finding, not a pass. Then smoke-test the four backend flows
-(recruitment promotion, verification report create/supersede, scrape claim) to confirm the
-service-role paths still work.
-
-Run the same query (widening the `proname in (...)` list) against the functions in
-"Functions with no explicit grant" above to confirm none of them holds `anon`/`authenticated`
-EXECUTE on a mutating RPC.
+**Expected:** each of the eight functions lists `service_role` (and the function owner) only
+— **no `PUBLIC`, no `authenticated`, no `anon`**. Note: when `proacl` is NULL the function
+uses default privileges (which in Supabase grant EXECUTE to PUBLIC) — that case shows as a
+NULL acl and MUST be treated as a finding, not a pass. Then smoke-test the backend flows
+(recruitment promotion, verification report create/supersede, scrape claim, mock mastery
+writeback + retry) to confirm the service-role paths still work.
