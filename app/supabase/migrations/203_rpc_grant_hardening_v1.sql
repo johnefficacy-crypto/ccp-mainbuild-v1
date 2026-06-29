@@ -1,7 +1,7 @@
--- Migration 202: RPC EXECUTE grant hardening (v1 least-privilege)
+-- Migration 203: RPC EXECUTE grant hardening (v1 least-privilege)
 --
 -- Applied version must be reconciled against the deployed schema_migrations
--- state at apply time (operator step); 202 = MAX filesystem migration + 1.
+-- state at apply time (operator step); 203 = MAX filesystem migration + 1.
 --
 -- FINDING (v1 RPC grant audit — docs/schema/rpc-grant-audit-v1.md)
 --   Four SECURITY INVOKER functions were granted EXECUTE to `authenticated`:

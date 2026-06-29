@@ -17,13 +17,23 @@
 # Changes to either file alter event data reaching the backend ingest
 # path without changing the backend fingerprint.
 #
-# STATUS: FROZEN
-# Both runtime bugs fixed (PR #795: time_analytics.py occurred_at fix;
-# PR #793: MockAttemptShell.jsx first-visit Q1 fix). Freeze hash computed
-# at post-fix main SHA 1679adb8 (2026-06-29) after both PRs merged.
+# STATUS: FROZEN (candidate — operator must verify at deployed SHA before use)
 #
-# FREEZE HASH (main @ 1679adb8, 32 files, post-fix):
+# Both runtime bugs fixed (PR #795: time_analytics.py occurred_at fix;
+# PR #793: MockAttemptShell.jsx first-visit Q1 fix). Migration 202 version
+# collision resolved (202_rpc_grant_hardening_v1.sql → 203) in this PR.
+# Candidate freeze hash computed from working tree at this PR's HEAD and
+# confirmed unchanged by renaming (neither 202_* nor 203_* file is in the
+# 32-file manifest set).
+#
+# CANDIDATE FREEZE HASH (32 files):
 #   b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b
+#
+# Operator MUST recompute at the confirmed deployed SHA (window_start step 8)
+# and verify the result equals this value. If it differs, the manifest
+# changed between this PR and deployment — do NOT proceed; re-review.
+# Do NOT copy this value into the window record without running the
+# fail-closed command at the deployed SHA and confirming the match.
 #
 # Pre-fix reference hash (main @ c9c44a9e, 32 files, BUGS PRESENT):
 #   96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b

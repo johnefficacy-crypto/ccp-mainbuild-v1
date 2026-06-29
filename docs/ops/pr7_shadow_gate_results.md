@@ -59,9 +59,18 @@ Both runtime bugs fixed and merged to `main` (2026-06-29):
   `fix/time-analytics-v2`).
 - `MockAttemptShell.jsx` first-visit Q1 fix (PR #793, merged
   `fix/mock-attempt-first-visit`).
+- Migration 202 version collision (two `202_*.sql` files) resolved by
+  renaming `202_rpc_grant_hardening_v1.sql` → `203_rpc_grant_hardening_v1.sql`
+  (PR #797). Neither file is in the 32-file manifest; hash unchanged.
 
-**FREEZE HASH (main @ 1679adb8, 32 files, post-fix — use as window_start hash):**
+**CANDIDATE FREEZE HASH (32 files, post-fix):**
 `b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`
+
+**This is a candidate value only.** The operator MUST recompute at the
+confirmed deployed SHA (prerequisite step 8) and verify the result equals
+this value before recording it in the window record. Do not copy this value
+blindly — if the hash differs at deploy time, the manifest changed and the
+candidate must be re-reviewed and re-frozen.
 
 Pre-fix reference hash at `main @ c9c44a9e` (32 files; do NOT use as
 window_start hash — bugs present):
@@ -80,10 +89,14 @@ Steps 3–8 are sequential and each depends on those above it.
 2. ✅ **Freeze the v2 fingerprint manifest (DONE — 2026-06-29):** Manifest
    boundary final: 32 files (20 original + `attempt_analytics` 7 +
    event-backend 3 + frontend event producers 2: `MockAttemptShell.jsx`,
-   `attemptEventBus.js`). Both runtime bugs merged (PR #795, PR #793).
-   Freeze hash at main @ 1679adb8:
+   `attemptEventBus.js`). Both runtime bugs merged (PR #795, PR #793);
+   migration 202 collision resolved (PR #797). Candidate freeze hash
+   confirmed by fail-closed command (see Candidate Change Since PR-6
+   Inspection section above):
    `b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`
-   _Code-only step; independent of deployment order._
+   Operator must recompute at deployed SHA (step 8) and confirm equality
+   before using as window_start hash. _Code-only step; independent of
+   deployment order._
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
    confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
