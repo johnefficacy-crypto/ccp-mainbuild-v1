@@ -29,7 +29,7 @@ current call sites. Granting EXECUTE to **`authenticated`** additionally lets an
 logged-in end user invoke the function directly via the public PostgREST endpoint:
 
 - For a **SECURITY DEFINER** function this is the most dangerous (runs as the owner).
-- For a **SECURITY INVOKER** function (4 of the 8 below) it runs as the caller, so the
+- For a **SECURITY INVOKER** function (4 of the 16 below) it runs as the caller, so the
   blast radius is bounded by table RLS/grants — but these functions encode admin/worker
   business logic with **no in-function authorization check**, so the only thing standing
   between an `authenticated` caller and a privileged write is RLS on the underlying
@@ -88,13 +88,13 @@ None of the sixteen is called with a user JWT. The Group A four were explicitly 
 | `community_inc_reply_vote_count(uuid,integer)` | 089 | DEFINER | authenticated, service_role | ✓ called with user JWT |
 | `community_inc_resource_upvote_count(uuid,integer)` | 089 | DEFINER | authenticated, service_role | ✓ called with user JWT |
 | `community_inc_resource_report_count(uuid,integer)` | 089 | DEFINER | authenticated, service_role | ✓ called with user JWT |
-| `replace_document_pages(uuid,text,text,jsonb)` | 113 | DEFINER | service_role | ✓ backend-only |
-| `ensure_mock_correction_draft(...)` | 182 | DEFINER | service_role | ✓ backend-only |
-| `ensure_mock_correction_drafts(...)` | 182 | DEFINER | service_role | ✓ backend-only |
-| `replace_manual_mock_correction_drafts(...)` | 182 | DEFINER | service_role | ✓ backend-only |
-| `project_pyq_question_to_mock_bank(uuid,uuid,text)` | 184 → redefined 186/187 (**187 effective**) | DEFINER | service_role | ✓ backend-only |
+| `replace_document_pages(uuid,text,text,jsonb)` | 113 | DEFINER | revoke public/anon/authenticated; service_role | ✓ backend-only |
+| `ensure_mock_correction_draft(...)` | 182 | DEFINER | revoke public/anon/authenticated; service_role | ✓ backend-only |
+| `ensure_mock_correction_drafts(...)` | 182 | DEFINER | revoke public/anon/authenticated; service_role | ✓ backend-only |
+| `replace_manual_mock_correction_drafts(...)` | 182 | DEFINER | revoke public/anon/authenticated; service_role | ✓ backend-only |
+| `project_pyq_question_to_mock_bank(uuid,uuid,text)` | 184 → redefined 186/187 (**187 effective**) | DEFINER | revoke public/anon/authenticated; service_role | ✓ backend-only |
 | `fn_invalidate_pyq_projection()` | 184 | DEFINER | service_role | ✓ trigger/backend |
-| `accept_partner_request(uuid,uuid)` | 193 | DEFINER | service_role | ✓ backend-only |
+| `accept_partner_request(uuid,uuid)` | 193 | DEFINER | revoke public/anon/authenticated; service_role | ✓ backend-only |
 | `review_pyq_paper(text×6)` | 185 → redefined 186/187 (**187 effective**) | DEFINER | revoked PUBLIC+anon+authenticated; service_role | ✓ admin, hardened |
 | `cms_set_pyq_paper_provenance(text,text,text,jsonb,text,jsonb,boolean)` | 188 / hardened 190 | DEFINER | revoked PUBLIC+anon+authenticated; service_role | ✓ admin, hardened |
 | `cms_link_document_to_pyq_paper(text,text,text,text,text,boolean)` | 188 / hardened 190 | DEFINER | revoked PUBLIC+anon+authenticated; service_role | ✓ admin, hardened |
