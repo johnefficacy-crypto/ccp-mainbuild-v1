@@ -84,3 +84,10 @@ test("bare community space with no leaf override renders nothing", () => {
   const { container } = renderAt("/app/community/my-space");
   expect(container.firstChild).toBeNull();
 });
+
+test("community channel trail renders Community and Space ancestors", () => {
+  renderAt("/app/community/upsc/general");
+  expect(screen.getByRole("link", { name: "Community" }).getAttribute("href")).toBe("/app/community");
+  expect(screen.getByRole("link", { name: "Space" }).getAttribute("href")).toBe("/app/community/upsc");
+  expect(screen.getByText("Channel").closest("[aria-current='page']")).toBeTruthy();
+});

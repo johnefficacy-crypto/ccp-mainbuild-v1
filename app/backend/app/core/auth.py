@@ -151,24 +151,24 @@ def _serialize_user(user: Any, claims: dict | None = None) -> dict:
         or getattr(user, "raw_app_meta_data", None)
         or {}
     )
-    # Role resolution order (canonical first; legacy sources log a warning):
-    #   1. Supabase app_metadata.role  ← canonical
-    #   2. user_metadata.role          ← legacy
-    #   3. JWT claim role              ← legacy
-    #   4. fallback "user"
+    # Role resolution — ONLY ``app_metadata.role`` is trusted.
+    #   * app_metadata (raw_app_meta_data) is service-role-only: a user
+    #     cannot write it. This is the canonical source per migration
+    #     134/151 and this module's docstring.
+    #   * user_metadata (raw_user_meta_data) and the JWT ``role`` claim
+    #     (which merely reflects user_metadata) are CLIENT-WRITABLE via
+    #     ``supabase.auth.updateUser({ data: { role: ... } })``. Consulting
+    #     them as a fallback let any user self-assign ``super_admin`` and
+    #     pass require_admin/require_super_admin — a full privilege
+    #     escalation. They are therefore deliberately NOT consulted.
+    # Absent/unexpected app_metadata.role coerces to "user".
     role = app_metadata.get("role")
-    if not role and metadata.get("role"):
-        role = metadata.get("role")
-        logger.warning("auth.role_from_legacy_user_metadata role=%s", role)
-    if not role and claims.get("role"):
-        role = claims.get("role")
-        logger.warning("auth.role_from_legacy_jwt_claim role=%s", role)
-    if not role:
-        role = "user"
     # Mentor is no longer an auth role; anything outside the canonical set
-    # coerces to "user" so a stale/unexpected role can never grant access.
+    # (including a missing role) coerces to "user" so a stale/unexpected
+    # role can never grant access.
     if role not in AUTH_ROLES:
-        logger.warning("auth.role_coerced_to_user original_role=%s", role)
+        if role is not None:
+            logger.warning("auth.role_coerced_to_user original_role=%s", role)
         role = "user"
     permissions = app_metadata.get("permissions") or []
     if isinstance(permissions, str):

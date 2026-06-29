@@ -297,6 +297,23 @@ def end_session(
     declared_task_completed: bool | None = None,
 ) -> dict[str, Any]:
     now = _now_iso()
+    # Membership gate: only a participant may end the shared session. The
+    # service-role client bypasses RLS, so without this any user could end
+    # (and stamp presence on) an arbitrary session by id. Raise LookupError
+    # (→404) rather than leak that the session exists to non-members.
+    att_rows = _safe(
+        lambda: (
+            supabase.table("social_session_attendance")
+            .select("id")
+            .eq("session_id", session_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        ),
+        default=None,
+    )
+    if not (getattr(att_rows, "data", None) or []):
+        raise LookupError("session not found")
     # Stamp end on the session itself.
     sess_rows = _safe(
         lambda: (

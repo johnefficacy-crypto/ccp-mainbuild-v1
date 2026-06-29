@@ -8,26 +8,15 @@ export default function MentorDetail() {
   const [m, setM] = useState(null);
   const [agenda, setAgenda] = useState("");
   const [slot, setSlot] = useState("");
-  const [status, setStatus] = useState(null);
 
   useEffect(() => {
     api.get(`/api/marketplace/mentors/${id}`).then(setM).catch(() => {});
   }, [id]);
 
-  async function book() {
-    if (!slot) return;
-    try {
-      const b = await api.post("/api/accountability/mentors/book", {
-        mentor_id: id,
-        slot,
-        notes: agenda || null,
-      });
-      const bookingId = (b.id || "").slice(0, 8);
-      setStatus(`Requested · ${bookingId}. Status: ${b.status}. Confirmation will follow once the mentor accepts.`);
-    } catch (e) {
-      setStatus(e.message);
-    }
-  }
+  // Online booking is intentionally gated: the backend now requires a verified
+  // Razorpay order/payment/signature (anti-forgery), and the secure two-step
+  // checkout client is a follow-up. Until it lands, we do not expose a booking
+  // action that would always fail. See docs/audits/2026-06-25-auth-rbac-security-review.md.
 
   if (!m) return <div>Loading…</div>;
 
@@ -98,10 +87,13 @@ export default function MentorDetail() {
             <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">Agenda (optional)</div>
             <textarea rows={3} value={agenda} onChange={(e) => setAgenda(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border bg-white/80 text-sm" data-testid="mentor-agenda" />
           </label>
-          <button disabled={!slot} onClick={book} className="btn btn-primary w-full disabled:opacity-50" data-testid="mentor-book">
-            <CalendarClock className="h-4 w-4" /> Request session
+          <button disabled aria-disabled="true" className="btn btn-primary w-full disabled:opacity-50 cursor-not-allowed" data-testid="mentor-book">
+            <CalendarClock className="h-4 w-4" /> Booking temporarily unavailable
           </button>
-          {status && <div className="text-xs text-muted-foreground">{status}</div>}
+          <div className="text-xs text-muted-foreground" data-testid="mentor-book-unavailable">
+            Online mentor booking is being upgraded to a secure checkout and is
+            temporarily unavailable. Please check back soon.
+          </div>
         </aside>
       </div>
     </div>

@@ -1891,15 +1891,17 @@ TASK_STATES = {"planned", "in_progress", "completed", "skipped", "missed", "resc
 @router_study.post("/plan/toggle")
 async def toggle_task(body: PlanToggle, user: dict = Depends(get_current_user)):
     supabase = get_supabase_admin()
+    # Scope by user_id: the service-role client bypasses RLS, so ownership
+    # MUST be enforced here or any user could toggle another user's task by id.
     rows = _safe(
-        lambda: supabase.table("study_tasks").select("status").eq("id", body.task_id).limit(1).execute().data,
+        lambda: supabase.table("study_tasks").select("status").eq("id", body.task_id).eq("user_id", user["id"]).limit(1).execute().data,
         default=[],
     ) or []
     if not rows:
         raise HTTPException(status_code=404, detail="Task not found")
     new_status = "completed" if rows[0].get("status") != "completed" else "pending"
     patch = {"status": new_status, "completed_at": _now_iso() if new_status == "completed" else None}
-    supabase.table("study_tasks").update(patch).eq("id", body.task_id).execute()
+    supabase.table("study_tasks").update(patch).eq("id", body.task_id).eq("user_id", user["id"]).execute()
     return {"id": body.task_id, "done": new_status == "completed"}
 
 
@@ -1918,7 +1920,9 @@ async def update_task(task_id: str, body: TaskPatch, user: dict = Depends(get_cu
     if patch.get("status") == "completed":
         patch["completed_at"] = _now_iso()
     patch["updated_at"] = _now_iso()
-    rows = supabase.table("study_tasks").update(patch).eq("id", task_id).execute().data or []
+    # Scope by user_id (service-role bypasses RLS) so a user can only mutate
+    # their own task; a non-owner id matches no row and 404s.
+    rows = supabase.table("study_tasks").update(patch).eq("id", task_id).eq("user_id", user["id"]).execute().data or []
     if not rows:
         raise HTTPException(status_code=404, detail="Task not found")
     return rows[0]
@@ -2012,14 +2016,20 @@ async def focus_stop(body: FocusStop = FocusStop(), user: dict = Depends(get_cur
         if not rows:
             raise HTTPException(status_code=400, detail="No active focus session")
         sid = rows[0]["id"]
+    # Scope by user_id (service-role bypasses RLS): a client-supplied
+    # session_id must belong to the caller, else any user could end another
+    # user's focus session and overwrite its notes.
     res = (
         supabase.table("study_sessions")
         .update({"ended_at": _now_iso(), "notes": body.notes})
         .eq("id", sid)
+        .eq("user_id", user["id"])
         .execute()
         .data
         or []
     )
+    if not res and body.session_id:
+        raise HTTPException(status_code=404, detail="Focus session not found")
     return res[0] if res else {"id": sid, "ended_at": _now_iso()}
 
 

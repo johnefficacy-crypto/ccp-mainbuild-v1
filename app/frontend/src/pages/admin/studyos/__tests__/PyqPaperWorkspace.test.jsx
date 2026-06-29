@@ -134,9 +134,9 @@ test("selecting a question populates center pane", async () => {
   renderWorkspace();
   await waitFor(() => screen.getByTestId("question-list-item-q1"));
   fireEvent.click(screen.getByTestId("question-list-item-q1"));
-  await waitFor(() => screen.getByTestId("editor-question-text"));
-  const textarea = screen.getByTestId("editor-question-text");
-  expect(textarea.value).toContain("capital of India");
+  await waitFor(() =>
+    expect(screen.getByTestId("editor-question-text").value).toContain("capital of India"),
+  );
 });
 
 test("question_text is visible and editable in center pane", async () => {
@@ -327,8 +327,9 @@ describe("PyqPaperWorkspace deep-link (I8-B)", () => {
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith(expect.stringContaining("/pyq-questions/q-page2")),
     );
-    await waitFor(() => screen.getByTestId("editor-question-text"));
-    expect(screen.getByTestId("editor-question-text").value).toContain("Page-2 question");
+    await waitFor(() =>
+      expect(screen.getByTestId("editor-question-text").value).toContain("Page-2 question"),
+    );
   });
 
   test("status prop initializes statusFilter and is sent to API", async () => {
@@ -340,8 +341,9 @@ describe("PyqPaperWorkspace deep-link (I8-B)", () => {
 
   test("rowId change without remount re-applies deep link to new question", async () => {
     const { rerender } = renderEmbedded({ rowId: "q1" });
-    await waitFor(() => screen.getByTestId("editor-question-text"));
-    expect(screen.getByTestId("editor-question-text").value).toContain("capital of India");
+    await waitFor(() =>
+      expect(screen.getByTestId("editor-question-text").value).toContain("capital of India"),
+    );
 
     rerender(
       <MemoryRouter initialEntries={["/"]}>
@@ -364,8 +366,9 @@ describe("PyqPaperWorkspace deep-link (I8-B)", () => {
 
   test("paper change without remount clears stale question selection", async () => {
     const { rerender } = renderEmbedded({ rowId: "q1" });
-    await waitFor(() => screen.getByTestId("editor-question-text"));
-    expect(screen.getByTestId("editor-question-text").value).toContain("capital of India");
+    await waitFor(() =>
+      expect(screen.getByTestId("editor-question-text").value).toContain("capital of India"),
+    );
 
     // Switch to a different paper (paper B returns no questions)
     rerender(

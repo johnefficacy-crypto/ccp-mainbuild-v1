@@ -6,18 +6,22 @@ Auth user.
 
 ## Test admin / payments user
 
-Created during Razorpay end-to-end tests. Already promoted to
-`super_admin` and has at least one paid subscription on file.
+> **SECURITY:** A real `super_admin` password used to live here in
+> plaintext. It has been removed from the repo. **Rotate that Supabase
+> account's password (or delete the account) if it still exists** — a
+> committed credential must be treated as compromised. Never commit a
+> working password for any account, least of all a privileged one.
+
+Provision a fresh test admin via the Supabase admin API instead of
+sharing a static credential (see the snippets below). Keep the password
+in your local `backend/.env` / a secret manager, not in version control.
 
 ```
-email:    razortest+1778018301@inbox.testreal.dev
-password: RazorPass@2026
+email:    <provision-your-own>@example.com
+password: <store-in-.env-or-secret-manager>
 role:     super_admin
-user_id:  9ea717da-6b10-408e-a1fd-04a633a16b88
+user_id:  <returned-by-admin-api>
 ```
-
-> If this user has been deleted, the test scripts in this repo can
-> recreate it via the Supabase admin API (see snippets below).
 
 ## How to sign in for testing
 
@@ -46,8 +50,11 @@ curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \
 
 ## Granting admin role
 
-Admin/super_admin routes require `role` in the user's
-`app_metadata` (or `user_metadata`):
+Admin/super_admin routes resolve `role` **only** from `app_metadata.role`,
+which is writable solely via the service-role admin API (below). It is
+**never** read from `user_metadata` — `user_metadata` is client-writable
+(`supabase.auth.updateUser({ data: ... })`), so trusting it for role would
+let any user self-promote. Set roles only through this admin call:
 
 ```bash
 curl -X PUT "$SUPABASE_URL/auth/v1/admin/users/<user_id>" \
@@ -57,7 +64,8 @@ curl -X PUT "$SUPABASE_URL/auth/v1/admin/users/<user_id>" \
   -d '{"app_metadata": {"role": "super_admin"}}'
 ```
 
-Allowed values: `user` (default), `mentor`, `admin`, `super_admin`.
+Allowed auth roles: `user` (default), `admin`, `super_admin`. `mentor` is
+a domain capability (`profiles.is_mentor`), **not** an auth role.
 
 ## Razorpay test cards (Razorpay Checkout)
 
