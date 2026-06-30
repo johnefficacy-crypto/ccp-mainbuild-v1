@@ -91,6 +91,10 @@ class _Query:
         self.filters.append((k, "lte", v))
         return self
 
+    def lt(self, k: str, v: Any) -> "_Query":
+        self.filters.append((k, "lt", v))
+        return self
+
     def in_(self, k: str, vals: list) -> "_Query":
         self.filters.append((k, "in", list(vals)))
         return self
@@ -120,6 +124,8 @@ class _Query:
             if op == "gte" and (cell is None or cell < v):
                 return False
             if op == "lte" and (cell is None or cell > v):
+                return False
+            if op == "lt" and (cell is None or cell >= v):
                 return False
             if op == "in" and cell not in v:
                 return False
@@ -1298,6 +1304,421 @@ def test_lac_days_zero_exits_2(monkeypatch: Any, capsys: Any) -> None:
     """live-audit-compare --days 0 → exit 2."""
     code, data = _run_main(
         ["--json", "live-audit-compare", "--days", "0"],
+        monkeypatch, capsys,
+    )
+    assert code == 2
+    assert data.get("error") == "INVALID_FLAGS"
+
+
+# ─── telemetry-quality gate (PR #803 #4: ledger-based population) ───────────────
+#
+# Population is SUBMITTED mock_attempts (never realized shadow rows). Shadow
+# intent is read from the mock_attempt_jobs ledger (mastery_flag_state). Shadow
+# output (mock_mastery_shadow) is validated, never used as the population source —
+# so an attempt whose writer/job failed cannot disappear and produce a false PASS.
+
+
+def _clean_events(final_seq: int) -> list[dict]:
+    """Clean client delivery: every seq 1..final_seq present, with the submit_flush
+    marker delivered AS seq == final_seq (the real client contract)."""
+    evs = [
+        {"event_type": "question.visited", "payload": {"question_id": "q"},
+         "sequence_no": s, "source": "client"}
+        for s in range(1, final_seq)
+    ]
+    evs.append({"event_type": "attempt.submit_flush",
+                "payload": {"final_sequence_no": final_seq},
+                "sequence_no": final_seq, "source": "client"})
+    return evs
+
+
+def _tq(aids: list[str], **over: Any) -> dict:
+    """Call compute_telemetry_quality with sensible per-test overrides."""
+    return sa.compute_telemetry_quality(aids, **over)
+
+
+# ── 1. submitted + shadow job + rows → PASS ────────────────────────────────────
+def test_tq_submitted_shadow_job_and_rows_passes() -> None:
+    m = _tq(
+        ["a1"],
+        shadow_jobs_by_attempt={"a1": {"done"}},
+        answered_count_by_attempt={"a1": 3},
+        shadow_output_count_by_attempt={"a1": 2},
+        snapshot_by_attempt={"a1": {"events_used": 3}},
+        submit_origin_by_attempt={"a1": "client"},
+        events_by_attempt={"a1": _clean_events(4)},
+    )
+    assert m["failures"] == []
+    assert m["submitted_attempt_count"] == 1
+    assert m["shadow_intent_attempt_count"] == 1
+    assert m["shadow_output_attempt_count"] == 1
+    assert m["per_attempt"][0]["shadow_job_state"] == "done"
+
+
+# ── 2. submitted + shadow job + writer failure / no rows → FAIL ────────────────
+def test_tq_writer_failure_no_rows_fails() -> None:
+    m = _tq(
+        ["a1"],
+        shadow_jobs_by_attempt={"a1": {"done"}},   # job claims done...
+        answered_count_by_attempt={"a1": 3},        # ...but the attempt engaged questions...
+        shadow_output_count_by_attempt={},          # ...and NO shadow rows were written.
+        snapshot_by_attempt={"a1": {"events_used": 3}},
+        submit_origin_by_attempt={"a1": "client"},
+        events_by_attempt={"a1": _clean_events(4)},
+    )
+    assert m["missing_shadow_output_attempt_ids"] == ["a1"]
+    assert "missing_shadow_output_attempt_ids" in m["failures"]
+
+
+# ── 3. submitted + no job → FAIL ───────────────────────────────────────────────
+def test_tq_no_mastery_job_fails() -> None:
+    m = _tq(
+        ["a1"],
+        answered_count_by_attempt={"a1": 3},
+        shadow_output_count_by_attempt={"a1": 1},
+        snapshot_by_attempt={"a1": {"events_used": 3}},
+        submit_origin_by_attempt={"a1": "client"},
+        events_by_attempt={"a1": _clean_events(4)},
+    )
+    assert m["missing_mastery_job_attempt_ids"] == ["a1"]
+    assert "missing_mastery_job_attempt_ids" in m["failures"]
+
+
+# ── 4. live job during the shadow window → FAIL ────────────────────────────────
+def test_tq_live_only_intent_fails() -> None:
+    m = _tq(
+        ["a1"],
+        live_attempt_ids={"a1"},
+        answered_count_by_attempt={"a1": 2},
+        shadow_output_count_by_attempt={},
+        snapshot_by_attempt={"a1": {"events_used": 3}},
+        submit_origin_by_attempt={"a1": "client"},
+        events_by_attempt={"a1": _clean_events(4)},
+    )
+    assert m["live_intent_attempt_ids"] == ["a1"]
+    assert "live_intent_attempt_ids" in m["failures"]
+    # live-only is NOT shadow intent, so the answered attempt is not double-flagged
+    # for missing shadow output.
+    assert m["missing_shadow_output_attempt_ids"] == []
+
+
+# ── 5. conflicting live + shadow jobs → FAIL ───────────────────────────────────
+def test_tq_conflicting_live_and_shadow_fails() -> None:
+    m = _tq(
+        ["a1"],
+        shadow_jobs_by_attempt={"a1": {"done"}},
+        live_attempt_ids={"a1"},
+        answered_count_by_attempt={"a1": 2},
+        shadow_output_count_by_attempt={"a1": 1},
+        snapshot_by_attempt={"a1": {"events_used": 3}},
+        submit_origin_by_attempt={"a1": "client"},
+        events_by_attempt={"a1": _clean_events(4)},
+    )
+    assert m["conflicting_mode_attempt_ids"] == ["a1"]
+    assert m["live_intent_attempt_ids"] == []  # conflict, not live-only
+    assert "conflicting_mode_attempt_ids" in m["failures"]
+
+
+# ── 6. failed / pending shadow job → FAIL ──────────────────────────────────────
+def test_tq_failed_and_pending_shadow_jobs_fail() -> None:
+    m = _tq(
+        ["f", "p"],
+        shadow_jobs_by_attempt={"f": {"failed"}, "p": {"pending"}},
+        answered_count_by_attempt={"f": 1, "p": 1},
+        shadow_output_count_by_attempt={},
+        snapshot_by_attempt={"f": {}, "p": {}},
+        submit_origin_by_attempt={"f": "client", "p": "client"},
+        events_by_attempt={"f": _clean_events(2), "p": _clean_events(2)},
+    )
+    assert m["failed_shadow_job_attempt_ids"] == ["f"]
+    assert m["unfinished_shadow_job_attempt_ids"] == ["p"]
+    assert "failed_shadow_job_attempt_ids" in m["failures"]
+    assert "unfinished_shadow_job_attempt_ids" in m["failures"]
+
+
+def test_tq_done_wins_over_earlier_failed_retry() -> None:
+    # An attempt that failed once then succeeded (done) is resolved, not failed.
+    m = _tq(
+        ["a1"],
+        shadow_jobs_by_attempt={"a1": {"failed", "done"}},
+        answered_count_by_attempt={"a1": 1},
+        shadow_output_count_by_attempt={"a1": 1},
+        snapshot_by_attempt={"a1": {}},
+        submit_origin_by_attempt={"a1": "client"},
+        events_by_attempt={"a1": _clean_events(2)},
+    )
+    assert m["failures"] == []
+    assert m["per_attempt"][0]["shadow_job_state"] == "done"
+
+
+# ── 7. zero-answer attempt without shadow rows → allowed and reported ──────────
+def test_tq_zero_answer_without_rows_is_allowed_and_reported() -> None:
+    m = _tq(
+        ["z"],
+        shadow_jobs_by_attempt={"z": {"done"}},
+        answered_count_by_attempt={"z": 0},
+        shadow_output_count_by_attempt={},
+        snapshot_by_attempt={"z": {}},
+        submit_origin_by_attempt={"z": "client"},
+        events_by_attempt={"z": _clean_events(2)},
+    )
+    assert m["zero_answer_attempt_ids"] == ["z"]
+    assert m["missing_shadow_output_attempt_ids"] == []  # no output expected
+    assert m["failures"] == []
+
+
+# ── 8. auto-submit without a client marker → NOT a marker failure ──────────────
+def test_tq_auto_submit_without_marker_is_not_a_failure() -> None:
+    m = _tq(
+        ["au"],
+        shadow_jobs_by_attempt={"au": {"done"}},
+        answered_count_by_attempt={"au": 1},
+        shadow_output_count_by_attempt={"au": 1},
+        snapshot_by_attempt={"au": {}},
+        submit_origin_by_attempt={"au": "auto"},
+        events_by_attempt={"au": []},  # no client marker
+    )
+    assert m["auto_submit_attempt_ids"] == ["au"]
+    assert m["missing_marker_attempt_ids"] == []
+    assert m["failures"] == []
+
+
+def test_tq_auto_submit_still_requires_snapshot_and_output() -> None:
+    # Auto-submits are exempt from the marker check ONLY — snapshot, shadow job,
+    # and shadow output are still required.
+    m = _tq(
+        ["au"],
+        shadow_jobs_by_attempt={"au": {"done"}},
+        answered_count_by_attempt={"au": 1},
+        shadow_output_count_by_attempt={},   # missing output
+        snapshot_by_attempt={},              # missing snapshot
+        submit_origin_by_attempt={"au": "auto"},
+        events_by_attempt={"au": []},
+    )
+    assert m["missing_snapshot_attempt_ids"] == ["au"]
+    assert m["missing_shadow_output_attempt_ids"] == ["au"]
+
+
+# ── 9. manual submit without a marker → FAIL ───────────────────────────────────
+def test_tq_manual_submit_without_marker_fails() -> None:
+    m = _tq(
+        ["mn"],
+        shadow_jobs_by_attempt={"mn": {"done"}},
+        answered_count_by_attempt={"mn": 1},
+        shadow_output_count_by_attempt={"mn": 1},
+        snapshot_by_attempt={"mn": {}},
+        submit_origin_by_attempt={"mn": "client"},
+        events_by_attempt={"mn": []},  # no submit_flush marker
+    )
+    assert m["missing_marker_attempt_ids"] == ["mn"]
+    assert "missing_marker_attempt_ids" in m["failures"]
+
+
+def test_tq_manual_submit_trailing_gap_fails() -> None:
+    # Marker declares final=10 delivered at seq 10, but seqs 8,9 never arrived.
+    events = [
+        {"event_type": "question.visited", "payload": {"q": 1}, "sequence_no": s, "source": "client"}
+        for s in range(1, 8)
+    ] + [
+        {"event_type": "attempt.submit_flush", "payload": {"final_sequence_no": 10},
+         "sequence_no": 10, "source": "client"},
+    ]
+    m = _tq(
+        ["a1"],
+        shadow_jobs_by_attempt={"a1": {"done"}},
+        answered_count_by_attempt={"a1": 1},
+        shadow_output_count_by_attempt={"a1": 1},
+        snapshot_by_attempt={"a1": {}},
+        submit_origin_by_attempt={"a1": "client"},
+        events_by_attempt={"a1": events},
+    )
+    assert m["trailing_gap_attempt_ids"] == ["a1"]
+    assert m["per_attempt"][0]["distinct_sequences_through_boundary"] == 8  # 1..7 + 10
+    assert m["per_attempt"][0]["trailing_gap_count"] == 2                   # 8, 9 missing
+
+
+# ── 10. shadow output for an attempt outside the candidate population → FAIL ────
+def test_tq_shadow_output_outside_population_fails() -> None:
+    m = _tq(
+        ["in"],
+        shadow_jobs_by_attempt={"in": {"done"}},
+        answered_count_by_attempt={"in": 1},
+        shadow_output_count_by_attempt={"in": 1, "OUT": 1},  # OUT not submitted
+        snapshot_by_attempt={"in": {}},
+        submit_origin_by_attempt={"in": "client"},
+        events_by_attempt={"in": _clean_events(2)},
+    )
+    assert m["unexpected_shadow_output_attempt_ids"] == ["OUT"]
+    assert "unexpected_shadow_output_attempt_ids" in m["failures"]
+
+
+def test_tq_missing_snapshot_fails() -> None:
+    m = _tq(
+        ["a1"],
+        shadow_jobs_by_attempt={"a1": {"done"}},
+        answered_count_by_attempt={"a1": 1},
+        shadow_output_count_by_attempt={"a1": 1},
+        snapshot_by_attempt={},  # no persisted analytics snapshot
+        submit_origin_by_attempt={"a1": "client"},
+        events_by_attempt={"a1": _clean_events(2)},
+    )
+    assert m["missing_snapshot_attempt_ids"] == ["a1"]
+    assert "missing_snapshot_attempt_ids" in m["failures"]
+
+
+# ── DB-level integration: population is the SUBMITTED set, via the ledger ───────
+
+
+def _tq_db(attempts: list[dict]) -> dict:
+    """Build an SBStub DB for telemetry_quality from per-attempt fixtures.
+
+    Each attempt dict supports: id, status, submitted_at, jobs [(mode,status)],
+    answered (int), unanswered (int), snapshot (bool), analytics_quality (dict),
+    shadow_rows (int), shadow_decided_at, origin ('client'|'auto'|None),
+    client_events (list).
+    """
+    db: dict[str, list[dict]] = {
+        "mock_attempts": [], "mock_attempt_jobs": [], "mock_attempt_responses": [],
+        "mock_attempt_summary": [], "mock_attempt_events": [], "mock_mastery_shadow": [],
+    }
+    for a in attempts:
+        aid = a["id"]
+        db["mock_attempts"].append({
+            "id": aid, "status": a.get("status", "submitted"),
+            "submitted_at": a.get("submitted_at", _recent_iso()),
+        })
+        for mode, status in a.get("jobs", []):
+            db["mock_attempt_jobs"].append({
+                "id": f"{aid}-job-{mode}-{status}", "attempt_id": aid,
+                "job_kind": "mastery_retry", "mastery_flag_state": mode, "status": status,
+            })
+        for i in range(a.get("answered", 0)):
+            db["mock_attempt_responses"].append({
+                "id": f"{aid}-r{i}", "attempt_id": aid, "selected_option_id": f"opt{i}"})
+        for i in range(a.get("unanswered", 0)):
+            db["mock_attempt_responses"].append({
+                "id": f"{aid}-u{i}", "attempt_id": aid, "selected_option_id": None})
+        if a.get("snapshot", True):
+            db["mock_attempt_summary"].append({
+                "id": f"{aid}-sum", "attempt_id": aid,
+                "analytics_quality": a.get("analytics_quality", {"events_used": 3})})
+        for i in range(a.get("shadow_rows", 0)):
+            db["mock_mastery_shadow"].append(_shadow_row(
+                aid, f"t{i}", 1.0, 50.0, 51.0,
+                decided_at=a.get("shadow_decided_at")))
+        origin = a.get("origin", "client")
+        if origin == "client":
+            db["mock_attempt_events"].append({
+                "id": f"{aid}-life", "attempt_id": aid,
+                "event_type": "attempt.submitted", "source": "server", "payload": {}})
+        elif origin == "auto":
+            db["mock_attempt_events"].append({
+                "id": f"{aid}-life", "attempt_id": aid,
+                "event_type": "attempt.auto_submitted", "source": "server", "payload": {}})
+        for e in a.get("client_events", []):
+            db["mock_attempt_events"].append({
+                **e, "id": e.get("id", f"{aid}-e{e['sequence_no']}"), "attempt_id": aid})
+    return db
+
+
+def _run_tq(db: dict, argv: list[str], monkeypatch: Any, capsys: Any) -> tuple[int, dict]:
+    monkeypatch.setattr(sa, "_get_supabase", lambda: SBStub(db))
+    return _run_main(["--json", "telemetry-quality", *argv], monkeypatch, capsys)
+
+
+def test_tq_db_writer_failure_is_caught_not_hidden(monkeypatch: Any, capsys: Any) -> None:
+    """THE false-PASS killer: an attempt whose shadow writer wrote nothing has NO
+    shadow rows, so the old shadow-row population would never see it. The ledger
+    (a shadow mastery_retry job exists) keeps it in scope, and the gate FAILS."""
+    db = _tq_db([{
+        "id": "a1", "jobs": [("shadow", "done")], "answered": 3,
+        "shadow_rows": 0, "client_events": _clean_events(4),
+    }])
+    code, data = _run_tq(db, ["--min-attempts", "1"], monkeypatch, capsys)
+    assert code == 1
+    assert data["status"] == "FAIL"
+    assert data["submitted_attempt_count"] == 1
+    assert data["shadow_intent_attempt_count"] == 1
+    assert "a1" in data["missing_shadow_output_attempt_ids"]
+
+
+def test_tq_db_clean_population_passes(monkeypatch: Any, capsys: Any) -> None:
+    db = _tq_db([
+        {"id": "a1", "jobs": [("shadow", "done")], "answered": 3, "shadow_rows": 2,
+         "client_events": _clean_events(4)},
+        {"id": "a2", "jobs": [("shadow", "done")], "answered": 1, "shadow_rows": 1,
+         "origin": "auto", "client_events": []},  # auto-submit, no marker — fine
+    ])
+    code, data = _run_tq(db, ["--min-attempts", "1"], monkeypatch, capsys)
+    assert code == 0, data
+    assert data["status"] == "PASS"
+    assert data["submitted_attempt_count"] == 2
+    assert data["auto_submit_attempt_ids"] == ["a2"]
+    assert data["client_submit_attempt_ids"] == ["a1"]
+
+
+def test_tq_db_in_progress_attempt_excluded_from_population(monkeypatch: Any, capsys: Any) -> None:
+    db = _tq_db([
+        {"id": "done1", "jobs": [("shadow", "done")], "answered": 1, "shadow_rows": 1,
+         "client_events": _clean_events(2)},
+        {"id": "live1", "status": "in_progress"},  # not submitted → excluded
+    ])
+    code, data = _run_tq(db, ["--min-attempts", "1"], monkeypatch, capsys)
+    assert code == 0, data
+    assert data["submitted_attempt_count"] == 1
+    assert [p["attempt_id"] for p in data["per_attempt"]] == ["done1"]
+
+
+def test_tq_db_submitted_at_window_is_half_open(monkeypatch: Any, capsys: Any) -> None:
+    # to_utc is EXCLUSIVE: an attempt submitted exactly at to_utc is not in scope.
+    db = _tq_db([
+        {"id": "inwin", "submitted_at": "2026-06-05T00:00:00+00:00",
+         "jobs": [("shadow", "done")], "answered": 1, "shadow_rows": 1,
+         "shadow_decided_at": "2026-06-05T01:00:00+00:00", "client_events": _clean_events(2)},
+        {"id": "atend", "submitted_at": "2026-06-20T00:00:00+00:00"},  # == to_utc → excluded
+    ])
+    code, data = _run_tq(
+        db,
+        ["--from-utc", "2026-06-01T00:00:00+00:00", "--to-utc", "2026-06-20T00:00:00+00:00",
+         "--min-attempts", "1"],
+        monkeypatch, capsys,
+    )
+    assert code == 0, data
+    assert data["submitted_attempt_count"] == 1
+    assert [p["attempt_id"] for p in data["per_attempt"]] == ["inwin"]
+
+
+def test_tq_db_stray_shadow_output_in_window_flagged(monkeypatch: Any, capsys: Any) -> None:
+    db = _tq_db([
+        {"id": "a1", "submitted_at": "2026-06-05T00:00:00+00:00",
+         "jobs": [("shadow", "done")], "answered": 1, "shadow_rows": 1,
+         "shadow_decided_at": "2026-06-05T01:00:00+00:00", "client_events": _clean_events(2)},
+    ])
+    # A shadow row for "ghost", decided inside the window, with NO submitted attempt.
+    db["mock_mastery_shadow"].append(
+        _shadow_row("ghost", "t0", 1.0, 50.0, 51.0, decided_at="2026-06-10T00:00:00+00:00"))
+    code, data = _run_tq(
+        db,
+        ["--from-utc", "2026-06-01T00:00:00+00:00", "--to-utc", "2026-06-20T00:00:00+00:00",
+         "--min-attempts", "1"],
+        monkeypatch, capsys,
+    )
+    assert code == 1
+    assert data["unexpected_shadow_output_attempt_ids"] == ["ghost"]
+
+
+def test_tq_db_insufficient_population(monkeypatch: Any, capsys: Any) -> None:
+    db = _tq_db([{"id": "a1", "jobs": [("shadow", "done")], "answered": 1, "shadow_rows": 1}])
+    code, data = _run_tq(db, ["--min-attempts", "20"], monkeypatch, capsys)
+    assert code == 3
+    assert data["status"] == "INSUFFICIENT_DATA"
+    assert data["submitted_attempt_count"] == 1
+
+
+def test_tq_min_attempts_below_one_rejected(monkeypatch: Any, capsys: Any) -> None:
+    """telemetry-quality --min-attempts 0 → INVALID_FLAGS, exit 2."""
+    code, data = _run_main(
+        ["--json", "telemetry-quality", "--min-attempts", "0"],
         monkeypatch, capsys,
     )
     assert code == 2

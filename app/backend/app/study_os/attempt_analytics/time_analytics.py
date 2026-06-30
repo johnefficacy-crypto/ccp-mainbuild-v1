@@ -7,6 +7,21 @@ def _parse(ts: str) -> datetime:
     return datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
 
+def _engaged_qids(responses: list[dict]) -> set[str]:
+    """Questions the user DEMONSTRABLY interacted with — answered or marked for
+    review. These are observable from the response row and must carry a
+    `question.visited` anchor; a fallback among them is a real telemetry gap.
+    (`is_visited` is excluded: it is set by answer-save, so it is redundant with
+    `selected_option_id` and cannot evidence a visit on its own.)
+    """
+    return {
+        r["question_id"]
+        for r in responses
+        if r.get("question_id")
+        and (r.get("selected_option_id") is not None or r.get("is_marked_for_review"))
+    }
+
+
 def compute_dwell_times(
     responses: list[dict], events: list[dict], submitted_at: str | None
 ) -> tuple[dict[str, int], list[str], dict[str, int]]:
@@ -15,6 +30,7 @@ def compute_dwell_times(
     malformed_events = 0
     events_used = 0
     response_qids = [r["question_id"] for r in responses]
+    engaged_qids = _engaged_qids(responses)
     if not events:
         warnings.append("mock_attempt_events missing; fallback to responses.time_spent_sec")
         for r in responses:
@@ -24,6 +40,9 @@ def compute_dwell_times(
             "events_used": 0,
             "event_covered_questions": 0,
             "fallback_question_count": len(response_qids),
+            # Engaged (answered/marked) questions that fell back — the telemetry
+            # gap that matters for the shadow gate (untouched questions excluded).
+            "fallback_engaged_question_count": len(engaged_qids),
         }
 
     sorted_events = []
@@ -64,8 +83,14 @@ def compute_dwell_times(
     for r in responses:
         by_q.setdefault(r["question_id"], int(r.get("time_spent_sec") or 0))
 
+    fallback_engaged_qids = [q for q in engaged_qids if q not in event_covered_qids]
     if fallback_qids:
         warnings.append("partial event coverage; fallback applied per-question")
+    if fallback_engaged_qids:
+        warnings.append(
+            f"engaged-question fallback: {len(fallback_engaged_qids)} answered/marked "
+            "question(s) had no visit event"
+        )
     if malformed_events:
         warnings.append(f"malformed events dropped: {malformed_events}")
     return by_q, warnings, {
@@ -73,4 +98,5 @@ def compute_dwell_times(
         "events_used": events_used,
         "event_covered_questions": len(event_covered_qids & set(response_qids)),
         "fallback_question_count": len(fallback_qids),
+        "fallback_engaged_question_count": len(fallback_engaged_qids),
     }

@@ -16,45 +16,105 @@
 # timestamps, buffering, flush cadence, loss behavior, and POST payloads.
 # Changes to either file alter event data reaching the backend ingest
 # path without changing the backend fingerprint.
+# Added event-acceptance dependencies (PR #800 review): core/auth.py
+# (get_current_user gates whether every client event batch is accepted — a
+# change here can silently drop or admit ingestion) and frontend
+# lib/supabase.js (the bearer-token source the bus authenticates with). Either
+# can alter which events reach the DB without changing any other listed file.
+# Added answer-write dependencies (PR #803 review): useAnswerSync.js controls
+# debounce/retry/client_seq/flushMany and whether the response row receives
+# selected_option_id, is_visited, and time_spent_sec — the scoring/classification
+# inputs AND the fallback source when event coverage is incomplete; and
+# lib/api.js is the HTTP client MockAttemptShell uses for the answer and submit
+# writes (bearer auth, timeout/abort, request construction, error semantics), so
+# it too can change whether response/scoring inputs persist. A change to either
+# can alter the validation outcome without changing any other listed file.
 #
-# STATUS: FREEZE PENDING — boundary NOT closed; telemetry-validity defects open
-# The two runtime fixes that ORIGINALLY blocked the freeze are merged to main:
-#   - time_analytics.py created_at->occurred_at + payload.question_id fix
-#     (PR #795, fix/time-analytics-v2).
-#   - MockAttemptShell.jsx emits question.visited for question 1 on initial
-#     load (PR #793, fix/mock-attempt-first-visit).
-# However, the v2 boundary CANNOT be declared FROZEN yet (PR #796 review):
-#   [P0] attemptEventBus beacon flush sends no Authorization header; the
-#        events endpoint requires get_current_user (401), so visibility-
-#        hidden/unmount batches (incl. question.visited anchors) are dropped
-#        after splice(0). _flush() also never checks response.ok and discards
-#        the batch on 401/409/5xx. Event delivery/retry must be fixed + tested.
-#   [P0] compute_dwell_times() setdefaults the time_spent_sec fallback BEFORE
-#        the len(by_q) < len(responses) check, so partial event coverage never
-#        emits the documented "partial event coverage; fallback applied"
-#        warning. Needs an explicit event_covered_qids/fallback_question_count
-#        signal + a gate criterion rejecting unexpected fallback.
-#   [P1] Boundary not closed over event-acceptance deps: core/auth.py (accepts
-#        every client event batch) and frontend lib/supabase.js (token source)
-#        can change ingestion without changing this fingerprint. Expand the
-#        approved boundary (operator approval) and recompute, or document +
-#        enforce immutability during the window.
+# TRANSITIVE-DEPENDENCY INCLUSION RULE: this manifest is the transitive closure
+# of every file that can change the mastery-validation data under observation.
+# A file is IN-SCOPE if it can alter, without changing any other listed file,
+# any of: (1) which telemetry events are emitted or their timing/payloads;
+# (2) whether a client event batch is accepted/ingested (auth, endpoint, schema);
+# (3) the scoring / classification / dwell inputs, or the fallback source
+# (mock_attempt_responses.* writers). Pure presentation, routing, or styling is
+# OUT-OF-SCOPE. Adding/removing a file requires operator approval (below) and a
+# recomputed hash + regenerated attestation.
 #
-# The hash below is therefore a REFERENCE fingerprint at this SHA, NOT the
-# window_start hash. The freeze hash must be recomputed at a new post-fix main
-# SHA after the boundary is closed and the telemetry defects above clear.
+# STATUS: FREEZE PENDING — all code/tooling blockers closed; OPERATOR APPROVAL
+# the only remaining gate (PR #803 review). The PR #803 checkpost blockers are
+# now resolved:
+#   [P0 RESOLVED] Submit-time telemetry race — (a) MockAttemptShell.doSubmit()
+#        awaits eventBus.flushAndWait() (time-bounded, ACK-gated) BEFORE POSTing
+#        /submit; (b) the backend idempotently recomputes analytics on late
+#        /events accepted within the grace window (mock_attempt_events.py ->
+#        compute_and_persist), and on recompute FAILURE durably schedules the
+#        existing analytics_retry job (a duplicate replay is accepted=0 and would
+#        not retrigger, so the events being ACKed cannot strand a stale snapshot).
+#        The race is fully closed, not merely mitigated. Regression:
+#        MockAttemptShell.submitFlush.test.jsx, flushAndWait unit tests, and
+#        test_attempt_events recompute + recompute-failure + duplicate-replay tests.
+#   [P1 RESOLVED] Boundary closed over the answer-write dependency
+#        useAnswerSync.js + lib/api.js (added; 34 -> 36) and a transitive-dependency inclusion
+#        rule is documented above.
+#   [P1 RESOLVED] Telemetry-quality gate is executable, authoritative, and
+#        LEDGER-scoped: `shadow-analysis telemetry-quality` derives its population
+#        from SUBMITTED mock_attempts (status='submitted', filtered on submitted_at)
+#        and reads shadow INTENT from the mock_attempt_jobs ledger
+#        (job_kind='mastery_retry', mastery_flag_state, every non-cancelled status).
+#        mock_mastery_shadow is validated as OUTPUT only, never the population
+#        source. Fail-closed lists (any non-empty -> FAIL, exit 1):
+#        missing_mastery_job, live_intent, conflicting_mode, unfinished_shadow_job,
+#        failed_shadow_job, missing_shadow_output (answered questions but no rows),
+#        unexpected_shadow_output (rows for a non-population attempt),
+#        missing_snapshot, and — for client submits (attempt.submitted) only —
+#        missing_marker / trailing_gap (distinct-sequence loss through the
+#        attempt.submit_flush boundary; the marker is itself seq == declared_final,
+#        so the old `declared_final - max(seq)` was always 0 — corrected to count
+#        MISSING DISTINCT sequences in [1, declared_final]). Auto-submits
+#        (attempt.auto_submitted) are reported separately and exempt from the marker
+#        check but still require a snapshot, a shadow job, and valid output. Rejects
+#        --min-attempts < 1.
+#   [PR #803 #4 RESOLVED] The former KNOWN LIMITATION (population = realized
+#        mock_mastery_shadow, so an attempt whose writer/job failed before writing a
+#        shadow row VANISHED from validation and could yield a FALSE PASS) is closed.
+#        mock_attempt_jobs.mastery_flag_state is the authoritative shadow-intent
+#        ledger: the submit route pins the effective mode and CLAIMS the mastery_retry
+#        job BEFORE invoking MasteryWriter, and the job row survives after completion
+#        for audit, so a writer failure still leaves the intended shadow job visible.
+#        The gate now FLAGS such an attempt (missing_shadow_output and/or
+#        failed_/unfinished_shadow_job) instead of dropping it. Manual vs auto submit
+#        is distinguished by the server lifecycle event, not inferred. Regression:
+#        test_shadow_analysis telemetry-quality suite (pure + DB-level, incl. the
+#        writer-failure false-PASS case).
+#   [P2 RESOLVED] verify_mastery_fingerprint.sh cross-checks the recorded digest
+#        across manifest / pr7 / checklist AND requires a pinned SHA (EXPECTED_SHA,
+#        or SKIP_SHA=1 for a content-only check).
+#   [OPEN — OPERATOR ONLY] PR #800 remains CODE-FIXED / VALIDATION PENDING with
+#        its three staging checks unchecked, and the 34 -> 36 manifest expansion
+#        is PROPOSED pending operator approval. Per AGENTS.md the gate stays
+#        FREEZE PENDING until the operator validates #800 on staging and approves
+#        the boundary. NO operator approval is asserted in-repo.
 #
-# Reference fingerprint (main @ 1679adb8, current 32-file boundary):
-#   b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b
+# The hash below is therefore a REFERENCE fingerprint at this branch state, NOT
+# the window_start hash. The freeze hash must be recomputed (re-pinned to the
+# post-merge main SHA) once the operator captures approval.
 #
-# Pre-fix reference hash (main @ c9c44a9e, 32 files, BUGS PRESENT):
-#   96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b
+# Reference fingerprint (PR #803 branch, current 36-file boundary):
+#   f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c
+# A per-file SHA-256 attestation is committed alongside this manifest:
+#   docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt
+# Verify (fail-closed) with: bash scripts/verify_mastery_fingerprint.sh
+#
+# Superseded reference hashes (NOT window_start hashes):
+#   9633b8eb58dc957ef0800857b6d3b4f599471bbd4861a7bb5f685c079efe7b3c  (PR #803 branch, 36 files, shadow-row-scoped telemetry gate)
+#   b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b  (main @ 1679adb8, 32 files, pre-#800)
+#   96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b  (main @ c9c44a9e, 32 files, bugs present)
 #
 # To compute the combined fingerprint at any SHA, run from repo root:
 #
 #   set -euo pipefail
 #   readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-#   _expected=32
+#   _expected=36
 #   _actual=${#_files[@]}
 #   [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
 #   for _f in "${_files[@]}"; do
@@ -100,3 +160,7 @@ app/supabase/migrations/181_mock_correction_tasks_uniqueness.sql
 app/supabase/migrations/182_mock_correction_draft_atomic_rpcs.sql
 app/frontend/src/pages/study/mocks/MockAttemptShell.jsx
 app/frontend/src/pages/study/mocks/attemptEventBus.js
+app/backend/app/core/auth.py
+app/frontend/src/lib/supabase.js
+app/frontend/src/pages/study/mocks/useAnswerSync.js
+app/frontend/src/lib/api.js

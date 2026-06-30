@@ -175,6 +175,33 @@ def test_dwell_times_no_events_reports_full_fallback():
     assert stats["fallback_question_count"] == 2
 
 
+def test_dwell_times_engaged_fallback_excludes_untouched():
+    """fallback_engaged_question_count counts only answered/marked questions with
+    no visit event; legitimately untouched questions are NOT counted."""
+    responses = [
+        {"question_id": "q1", "selected_option_id": "o", "time_spent_sec": 5},   # answered, has visit
+        {"question_id": "q2", "selected_option_id": "o", "time_spent_sec": 5},   # answered, NO visit -> engaged fallback
+        {"question_id": "q3", "is_marked_for_review": True, "time_spent_sec": 5}, # marked, NO visit -> engaged fallback
+        {"question_id": "q4", "time_spent_sec": 5},                               # untouched, NO visit -> excluded
+    ]
+    events = [{"event_type": "question.visited", "payload": {"question_id": "q1"}, "occurred_at": "2026-01-01T00:00:00+00:00"}]
+    by_q, warnings, stats = compute_dwell_times(responses, events, "2026-01-01T00:01:00+00:00")
+
+    assert stats["fallback_question_count"] == 3       # q2, q3, q4 all lack a visit event
+    assert stats["fallback_engaged_question_count"] == 2  # only q2 + q3 (engaged); q4 excluded
+    assert any("engaged-question fallback: 2" in w for w in warnings)
+
+
+def test_dwell_times_no_events_engaged_fallback():
+    responses = [
+        {"question_id": "q1", "selected_option_id": "o", "time_spent_sec": 5},  # engaged
+        {"question_id": "q2", "time_spent_sec": 5},                             # untouched
+    ]
+    by_q, warnings, stats = compute_dwell_times(responses, [], "2026-01-01T00:01:00+00:00")
+    assert stats["fallback_question_count"] == 2
+    assert stats["fallback_engaged_question_count"] == 1
+
+
 def test_dwell_times_created_at_is_malformed():
     """DB-shaped rows with created_at (wrong timestamp field) are malformed and skipped."""
     responses = [

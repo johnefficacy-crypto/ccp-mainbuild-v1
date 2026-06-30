@@ -335,6 +335,52 @@ describe("stale-token 401 → refresh → retry", () => {
   });
 });
 
+describe("markSubmitFlush", () => {
+  test("enqueues an attempt.submit_flush marker carrying the final sequence number", () => {
+    const bus = makeBus();
+    bus._seq = 7;
+    bus.markSubmitFlush();
+    const marker = bus._ring.find((e) => e.event_type === "attempt.submit_flush");
+    expect(marker).toBeTruthy();
+    expect(marker.sequence_no).toBe(8);               // took the next seq
+    expect(marker.payload.final_sequence_no).toBe(8); // declared final == its own seq
+  });
+});
+
+describe("flushAndWait (pre-submit drain)", () => {
+  test("resolves true after fully draining the queue", async () => {
+    global.fetch = jest.fn(async (_url, opts) => {
+      const { events } = JSON.parse(opts.body);
+      return ok({ accepted: events.length, duplicates: 0, rejected: [] });
+    });
+    const bus = makeBus();
+    seedRing(bus, evs(120)); // two chunks
+
+    const drained = await bus.flushAndWait({ timeoutMs: 2000 });
+
+    expect(drained).toBe(true);
+    expect(bus._ring).toHaveLength(0);
+  });
+
+  test("resolves false (bounded, no hang) when delivery keeps failing", async () => {
+    global.fetch = jest.fn(async () => ({ ok: false, status: 503 }));
+    const bus = makeBus();
+    seedRing(bus, evs(2));
+
+    const drained = await bus.flushAndWait({ timeoutMs: 300 });
+
+    expect(drained).toBe(false);
+    expect(bus._ring).toHaveLength(2); // retained for the durable-replay path
+  });
+
+  test("returns true immediately when there is nothing to flush", async () => {
+    global.fetch = jest.fn();
+    const bus = makeBus();
+    expect(await bus.flushAndWait({ timeoutMs: 200 })).toBe(true);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
 describe("_refreshToken caching", () => {
   test("caches the resolved token for the beacon path", async () => {
     const bus = makeBus({ token: "fresh-token" });
