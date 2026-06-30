@@ -369,11 +369,9 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const { exam, cycle } = useExamWorkspace();
   const examId = exam?.id;
   const cycleId = cycle?.id ?? null;
-  // exam_cycles has no exam_phase_id column; phase selection is out of scope
-  // for this bounded remediation. Phase provenance is always null here.
-  const phaseId = null;
-  // Human-readable label for the modal context row.
+  // exam_cycles has no exam_phase_id column; phase is always null for this panel.
   const cycleLabel = cycle?.cycle_name ?? null;
+  const cycleYear = cycle?.year ?? null;
 
   const { user } = useAuth();
   const canReview = user?.role === "super_admin" ||
@@ -761,8 +759,8 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           examId={examId}
           examName={exam?.name}
           cycleId={cycleId}
-          phaseId={phaseId}
           cycleLabel={cycleLabel}
+          cycleYear={cycleYear}
           pyqDocuments={pyqDocuments}
           pyqSources={pyqSources}
           onboardPaper={onboardPaper}

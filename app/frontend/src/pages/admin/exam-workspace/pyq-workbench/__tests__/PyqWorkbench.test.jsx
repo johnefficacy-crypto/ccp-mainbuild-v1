@@ -1647,13 +1647,13 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     expect(screen.getByTestId("add-pyq-phase-label").textContent).toContain("No phase selected");
   });
 
-  test("modal shows readable cycle name when a cycle is selected", async () => {
+  test("modal shows readable cycle name and year when a cycle is selected", async () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
       if (url.includes("/context")) return Promise.resolve({
         exam: { id: EXAM_ID, name: "SSC CGL" },
-        cycle: { id: CYCLE_ID, cycle_name: "AILET 2026" },
-        cycles: [{ id: CYCLE_ID, cycle_name: "AILET 2026" }],
+        cycle: { id: CYCLE_ID, cycle_name: "AILET 2026", year: 2026 },
+        cycles: [{ id: CYCLE_ID, cycle_name: "AILET 2026", year: 2026 }],
         phases: [],
       });
       if (url.includes("/pyq-papers?")) return Promise.resolve({ items: PAPERS });
@@ -1663,18 +1663,20 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     });
     render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
     await openAddModal();
-    expect(screen.getByTestId("add-pyq-cycle-label").textContent).toContain("AILET 2026");
-    expect(screen.getByTestId("add-pyq-cycle-label").textContent).not.toContain("No cycle selected");
+    const label = screen.getByTestId("add-pyq-cycle-label").textContent;
+    expect(label).toContain("AILET 2026");
+    expect(label).toContain("2026");
+    expect(label).not.toContain("No cycle selected");
   });
 
-  test("labels are display-only: submitted body carries cycleId; phase is always null", async () => {
-    // exam_cycles has no exam_phase_id column — phase is always null in this panel
+  test("submitted body carries cycleId; phase is always null; years matching means no mismatch warning", async () => {
+    // Real context shape: cycle has year; paper year matches cycle year — normal happy path
     api.get.mockImplementation((url) => {
       if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
       if (url.includes("/context")) return Promise.resolve({
         exam: { id: EXAM_ID, name: "SSC CGL" },
-        cycle: { id: CYCLE_ID, cycle_name: "AILET 2026" },
-        cycles: [{ id: CYCLE_ID, cycle_name: "AILET 2026" }],
+        cycle: { id: CYCLE_ID, cycle_name: "AILET 2026", year: 2025 },
+        cycles: [{ id: CYCLE_ID, cycle_name: "AILET 2026", year: 2025 }],
         phases: [],
       });
       if (url.includes("/pyq-papers?")) return Promise.resolve({ items: PAPERS });
@@ -1691,6 +1693,8 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     expect(screen.getByTestId("add-pyq-cycle-label").textContent).toContain("AILET 2026");
     expect(screen.getByTestId("add-pyq-phase-label").textContent).toContain("No phase selected");
     fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2025" } });
+    // years match — no warning
+    expect(screen.queryByTestId("add-pyq-year-mismatch-warning")).toBeNull();
     fireEvent.change(screen.getByTestId("add-pyq-reason"), { target: { value: "browser gate verification" } });
     fireEvent.click(screen.getByTestId("add-pyq-submit"));
     await waitFor(() =>
@@ -1702,13 +1706,39 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     expect(body?.exam_phase_id ?? null).toBeNull();
   });
 
-  test("submit is blocked and error shown when cycleId is set but cycleLabel cannot be resolved", async () => {
+  test("year mismatch warning shown when paper year differs from cycle year; submit not blocked", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+      if (url.includes("/context")) return Promise.resolve({
+        exam: { id: EXAM_ID, name: "SSC CGL" },
+        cycle: { id: CYCLE_ID, cycle_name: "AILET 2026", year: 2026 },
+        cycles: [{ id: CYCLE_ID, cycle_name: "AILET 2026", year: 2026 }],
+        phases: [],
+      });
+      if (url.includes("/pyq-papers?")) return Promise.resolve({ items: PAPERS });
+      if (url.includes("/documents?") && url.includes("document_kind=pyq_paper")) return Promise.resolve({ items: ONBOARD_DOCS });
+      if (url.includes("/pyq-sources?")) return Promise.resolve({ items: ONBOARD_SOURCES });
+      return Promise.resolve({});
+    });
+    render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await openAddModal();
+    // Enter a paper year that differs from cycle year (2026)
+    fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2025" } });
+    // Mismatch warning must appear
+    const warning = screen.getByTestId("add-pyq-year-mismatch-warning");
+    expect(warning.textContent).toContain("2025");
+    expect(warning.textContent).toContain("2026");
+    // Submit must NOT be disabled (warning only, not a hard block)
+    expect(screen.getByTestId("add-pyq-submit")).not.toBeDisabled();
+  });
+
+  test("submit and upload are both blocked when cycleId is set but cycleLabel cannot be resolved", async () => {
     // Simulates a stale/bad context: cycleId present but cycle row missing cycle_name
     api.get.mockImplementation((url) => {
       if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
       if (url.includes("/context")) return Promise.resolve({
         exam: { id: EXAM_ID, name: "SSC CGL" },
-        cycle: { id: CYCLE_ID },  // no cycle_name field — mismatch condition
+        cycle: { id: CYCLE_ID },  // no cycle_name — mismatch condition
         cycles: [],
         phases: [],
       });
@@ -1723,15 +1753,18 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     });
     render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
     await openAddModal();
-    // Error banner must be visible
+    // Error banner must be visible; cycle-label span absent
     expect(screen.getByTestId("add-pyq-cycle-label-error")).toBeTruthy();
     expect(screen.queryByTestId("add-pyq-cycle-label")).toBeNull();
     // Submit button must be disabled
     const submitBtn = screen.getByTestId("add-pyq-submit");
     expect(submitBtn).toBeDisabled();
-    // Clicking disabled submit must NOT call api.post
     fireEvent.click(submitBtn);
     expect(api.post).not.toHaveBeenCalled();
+    // Upload button must also be disabled (cycle guard applies to the upload path too)
+    fireEvent.click(screen.getByTestId("add-pyq-evidence-mode-upload"));
+    const uploadBtn = screen.getByTestId("add-pyq-upload-submit");
+    expect(uploadBtn).toBeDisabled();
   });
 });
 

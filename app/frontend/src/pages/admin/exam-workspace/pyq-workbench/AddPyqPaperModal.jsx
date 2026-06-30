@@ -30,8 +30,8 @@ export default function AddPyqPaperModal({
   examId,
   examName,
   cycleId = null,
-  phaseId = null,
   cycleLabel = null,
+  cycleYear = null,
   pyqDocuments,
   pyqSources,
   onboardPaper,
@@ -169,7 +169,7 @@ export default function AddPyqPaperModal({
       reason: reason.trim(),
       exam_id: examId,
       exam_cycle_id: cycleId || null,
-      exam_phase_id: phaseId || null,
+      exam_phase_id: null,
       source,
       paper: {
         year: yearInt,
@@ -216,19 +216,29 @@ export default function AddPyqPaperModal({
         <p className="text-xs text-gray-500" data-testid="add-pyq-exam-immutable">
           Exam is set from this workspace and cannot be changed here.
         </p>
-        <div className="text-xs flex flex-wrap gap-x-4 gap-y-1" data-testid="add-pyq-cycle-context">
-          {cycleId && !cycleLabel ? (
-            <span className="text-red-600 font-medium" data-testid="add-pyq-cycle-label-error">
-              Cycle context unresolved — cannot confirm provenance. Reload the workspace and try again.
+        <div className="text-xs flex flex-col gap-y-1" data-testid="add-pyq-cycle-context">
+          <div className="flex flex-wrap gap-x-4">
+            {cycleId && !cycleLabel ? (
+              <span className="text-red-600 font-medium" data-testid="add-pyq-cycle-label-error">
+                Cycle context unresolved — cannot confirm provenance. Reload the workspace and try again.
+              </span>
+            ) : (
+              <span className="text-gray-500" data-testid="add-pyq-cycle-label">
+                Cycle:{" "}
+                {cycleLabel
+                  ? `${cycleLabel}${cycleYear != null ? ` · ${cycleYear}` : ""}`
+                  : "No cycle selected (exam-wide paper)"}
+              </span>
+            )}
+            <span className="text-gray-500" data-testid="add-pyq-phase-label">
+              Phase: No phase selected
             </span>
-          ) : (
-            <span className="text-gray-500" data-testid="add-pyq-cycle-label">
-              Cycle: {cycleLabel ?? "No cycle selected (exam-wide paper)"}
+          </div>
+          {cycleYear != null && year && parseInt(year, 10) !== cycleYear && (
+            <span className="text-amber-600" data-testid="add-pyq-year-mismatch-warning">
+              Paper year ({year}) differs from cycle year ({cycleYear}) — confirm this paper belongs to this cycle.
             </span>
           )}
-          <span className="text-gray-500" data-testid="add-pyq-phase-label">
-            Phase: No phase selected
-          </span>
         </div>
 
         {/* ── Paper identity ── */}
@@ -413,7 +423,7 @@ export default function AddPyqPaperModal({
               <button
                 type="button"
                 onClick={handleInlineUpload}
-                disabled={uploading || !uploadFile}
+                disabled={uploading || !uploadFile || Boolean(cycleId && !cycleLabel)}
                 className="self-start text-xs px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
                 data-testid="add-pyq-upload-submit"
               >
