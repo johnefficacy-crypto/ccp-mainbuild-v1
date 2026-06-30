@@ -15,7 +15,7 @@ The parent gate deliberately deferred two decisions to keep v1 small:
 - **OD-2** — "no source-trust promotion in v1; `pyq_sources` is an optional reusable grouping record; source lifecycle is a separate future contract."
 - **OD-5** — "select-existing document only in v1; inline upload is a separately bounded follow-up."
 
-The implementation was directed and has merged via PR #769. Under the repo's contract-first discipline, implementing a decision the parent gate locked as "out of scope" requires an approved contract first. This draft records the bounded scope, acceptance criteria, permissions, failure handling, and operator validation for each follow-up. It does not constitute that approval — a durable approval record (approver, date, approved scope, any conditions) is still required before this document's status can advance from DRAFT.
+The implementation merged via PR #769 before a formal approval record was captured. Under the repo's contract-first discipline, implementing a decision the parent gate locked as "out of scope" requires an approved contract first. This draft records the bounded scope, acceptance criteria, permissions, failure handling, and operator validation for each follow-up as implemented. It does not constitute that approval — a durable approval record (approver, date, approved scope, any conditions) is still required before this document's status can advance from DRAFT.
 
 ---
 

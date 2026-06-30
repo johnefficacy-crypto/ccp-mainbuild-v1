@@ -32,7 +32,7 @@
 
 | Priority | Item | Gate |
 |---|---|---|
-| **Immediate** | Score Snapshot lock-authority correctness | Unblocked — needs checklist row + issue; see note below |
+| **Immediate** | Score Snapshot lock-authority correctness | PLANNED — scoped issue/contract required; see note below |
 | **Immediate** | Operator validation wave: PYQ onboarding (#812), Score Snapshots (#810), text extraction (#811) | Deploy exact main SHA first |
 | High | J1 Advanced Repair scoping contract | `docs/status/Advanced-Repair-Scoping-Gate-2026-06-29.md` DRAFT — OPERATOR APPROVAL PENDING |
 | High | J1 Advanced Repair scoping implementation | J1 contract operator approval |
@@ -43,7 +43,7 @@
 | Blocked | A-PR4/A-PR5/Track C | Lane A clean gate (FF_MOCK_MASTERY_WRITES=live) |
 | Blocked | J3 schema/domain redesign | Contract-first; I8 gates cleared |
 
-**Score Snapshot lock-authority note:** The planner consumes only the current model / latest locked row, but the review RPC does not enforce that stale-model or superseded locked rows cannot be approved. A checker must verify the row is the current model revision before allowing the `pending→reviewed` or `reviewed→locked` transition. This needs: (1) a checklist row in `career-copilot-checklist.md` under the snapshot section, (2) a linked issue or contract scoping the backend enforcement requirement and test expectations, and (3) a PR targeting only this correctness gap before snapshot-based planner work advances.
+**Score Snapshot lock-authority note:** The planner consumes only locked rows, but the review RPC does not enforce that a stale-model or superseded snapshot cannot be locked while a newer locked row already exists for the same `(exam_id, exam_phase_id, topic_id, model_version)` scope. The authority boundary is the `reviewed→locked` transition: once a current-model row is locked, re-locking an older row for the same scope produces misleading planner input. A scoped issue/contract must define: (1) the exact comparison set and scope key; (2) the model-version rule; (3) whether the guard applies only to `reviewed→locked` or also to `locked→reviewed` reversal; (4) whether historical review (`draft→reviewed`) of older model-version rows remains allowed; (5) error token on violation; (6) test expectations. The checklist row is present (PLANNED); implementation is blocked until a linked issue/contract is approved. Note: the snapshot lifecycle is `draft→reviewed|rejected`, `reviewed→locked|rejected|draft`, `locked→reviewed`, `rejected→draft` — there is no `pending` status.
 
 **P2 classification gate note:** Reviewed metadata-only classification (cognitive demand per PYQ question, no mock-selection weighting) is independent of Track C. It may proceed once its own contract is approved. However, no classification output may feed mock-selection, weighting, or personalization before Lane A clears the text-MCQ feedback-loop gate (`FF_MOCK_MASTERY_WRITES=live`).
 

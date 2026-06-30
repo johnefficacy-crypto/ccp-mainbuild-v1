@@ -2,7 +2,7 @@
 
 Generated from `D:\GovtExamAgent\ccp-mainbuild-v1` on 2026-05-11. **This file is stale relative to current main.**
 
-The newer graphify artifact (`graphify-out/GRAPH_REPORT.md`) was regenerated at `01f593c2` on 2026-07-01 and is current as of `main @ b9bd9d7b`. This hand-written map (generated 2026-05-11) is still stale; regenerate it from a local checkout with `graphify update .`.
+The newer graphify artifact (`graphify-out/GRAPH_REPORT.md`) was regenerated at `01f593c2` on 2026-07-01 and is current as of `main @ b9bd9d7b`; run `graphify update .` from a local checkout to refresh it again after future merges. This hand-written Mermaid map (generated 2026-05-11) is still stale and was not updated by the July 1 graphify run — it must be manually refreshed or replaced via a verified export path that outputs to this file.
 
 ## Top-Level Runtime Map
 

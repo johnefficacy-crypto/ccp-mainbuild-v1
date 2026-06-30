@@ -379,20 +379,22 @@ Only after multiple complete exam corpora exist:
 8. **Enable mock personalization in shadow.** Only after live mastery gates pass.
 9. **Evaluate appearance forecasting.** Ship only if it beats baselines and is calibrated.
 
-## Acceptance criteria for the next implementation PR
+## Historical acceptance criteria — P-slice-1 / P-slice-3 (reference only)
 
-The first implementation PR should be limited to frequency semantics and score snapshots. It is complete only when:
+These criteria were written before implementation began. P-slice-1 (PR #767) and P-slice-3 (PR #810) are now MERGED. Annotations show what was met and what was deferred.
 
-- all reads are paper/question/tag trust-gated and paginated;
-- a question cannot inflate frequency through multiple non-primary tags unless the documented weighting explicitly permits it;
-- computation is deterministic and idempotent;
-- snapshots include model version, input fingerprint, evidence count, component breakdown, and confidence;
-- no draft/reviewed snapshot reaches user-facing APIs or the planner;
-- operator can review, lock, reject, and inspect evidence;
-- old locked snapshots remain auditable;
-- tests cover incomplete corpus, duplicate/multi-role tags, status reversal, zero evidence, pagination, and retry/idempotency;
-- no new top-level admin route is added; controls are embedded in the existing Exam Workspace/Intelligence surfaces;
-- the repo checklist is updated in the same PR when implementation status changes.
+- ~~all reads are paper/question/tag trust-gated~~ — **MET** (conjunctive trust gates in `coverage.py` and all admin endpoints); ~~paginated~~ — **DEFERRED**: the admin snapshot list performs a full DB read/enrichment and slices in Python (`all_rows[offset: offset + limit]`); true DB-level pagination is a bounded scalability follow-up (no current open issue);
+- ~~a question cannot inflate frequency through multiple non-primary tags~~ — **MET** (primary-only filter at DB query + loop, PR #767);
+- ~~computation is deterministic and idempotent~~ — **MET** (SHA-256 input fingerprint; re-run with same corpus skips unchanged topics);
+- ~~snapshots include model version, input fingerprint, evidence count, component breakdown, and confidence~~ — **MET**;
+- ~~no draft/reviewed snapshot reaches user-facing APIs or the planner~~ — **MET** (`locked_score_snapshots()` returns only `status='locked'` rows);
+- ~~operator can review, lock, reject, and inspect evidence~~ — **MET** (workbench UI + atomic RPC, PR #810/migration 204);
+- ~~old locked snapshots remain auditable~~ — **MET** (insert-only; no UPDATE/DELETE on locked rows);
+- ~~tests cover incomplete corpus, duplicate/multi-role tags, status reversal, zero evidence, pagination, and retry/idempotency~~ — **MET** (54 tests across `ScoreSnapshotPanel.test.jsx` and `test_score_snapshot_admin_api.py`; Python-side pagination tested);
+- ~~no new top-level admin route is added~~ — **MET** (controls embedded in existing Exam Workspace / PYQ Workbench `?view=snapshots`);
+- ~~the repo checklist is updated in the same PR when implementation status changes~~ — **MET**.
+
+The next implementation milestone is P2 cognitive-demand classification; acceptance criteria will be defined in its own contract.
 
 ## Explicit non-goals
 
