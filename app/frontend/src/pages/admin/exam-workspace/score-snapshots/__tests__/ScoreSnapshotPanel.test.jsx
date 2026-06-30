@@ -5,11 +5,12 @@
  * - Renders scope selector with exam-wide default
  * - Renders phases from context in scope selector
  * - Sends exam_phase_id query param when phase selected
- * - Compute button triggers POST with correct scope
+ * - Compute button triggers POST with correct scope (body, not query string)
  * - Modal stays open on API failure (preserves notes + shows error)
  * - Modal closes on success
  * - Evidence drawer shows scope, corpus, score_components
  * - Two-phase regression: Phase A list does NOT include Phase B rows
+ * - Invalid phase param shows error banner
  */
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -57,16 +58,30 @@ jest.mock("../../ExamWorkspaceContext", () => ({
 
 import ScoreSnapshotPanel from "../ScoreSnapshotPanel";
 
+// Fixtures use the real backend field names from score_snapshots.py:
+//   input_summary:    fingerprint, paper_count, question_count, topic_primary_count, corpus_total_primary
+//   score_components: frequency_component, coverage_component, evidence_quality
 const SNAP_DRAFT = {
   id: "snap-1",
   exam_id: "exam-1",
   exam_phase_id: null,
   topic_id: "t-1",
   topic_name: "Polity",
+  topic_path: "Indian Constitution",
   status: "draft",
   computed_at: "2026-01-01T00:00:00Z",
-  input_summary: { paper_count: 3, question_count: 120, primary_tag_count: 5 },
-  score_components: { frequency: 0.72, recency: 0.55 },
+  input_summary: {
+    fingerprint: "abc123fingerprint",
+    paper_count: 3,
+    question_count: 120,
+    topic_primary_count: 5,
+    corpus_total_primary: 200,
+  },
+  score_components: {
+    frequency_component: 0.72,
+    coverage_component: 0.55,
+    evidence_quality: 0.40,
+  },
   model_version: "v2",
   model_fingerprint: "abc123",
 };
@@ -120,6 +135,12 @@ describe("ScoreSnapshotPanel — scope selector", () => {
     await waitFor(() => expect(mockGet).toHaveBeenCalled());
     expect(screen.getByTestId("scope-ph-1").className).toMatch(/active/);
   });
+
+  it("shows invalid-scope-error banner for unknown phase param", async () => {
+    renderPanel("&phase=unknown-phase-id");
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    expect(screen.getByTestId("invalid-scope-error")).toBeInTheDocument();
+  });
 });
 
 describe("ScoreSnapshotPanel — API scope isolation", () => {
@@ -141,9 +162,8 @@ describe("ScoreSnapshotPanel — API scope isolation", () => {
     // First render: Phase A scope
     mockGet.mockResolvedValue(makeListResponse([SNAP_LOCKED_PHASE_A]));
     renderPanel("&phase=ph-1");
-    await waitFor(() => expect(mockGet).toHaveBeenCalled());
-    // Only snap-2 (ph-1) should appear
-    expect(screen.getAllByTestId(/snapshot-row/)).toHaveLength(1);
+    // Wait for row to appear, not just for mockGet to be called
+    await waitFor(() => expect(screen.getAllByTestId(/snapshot-row/)).toHaveLength(1));
     // No exam-wide row
     expect(screen.queryByText("Polity")).not.toBeInTheDocument();
     expect(screen.getByText("Economy")).toBeInTheDocument();
@@ -158,14 +178,17 @@ describe("ScoreSnapshotPanel — compute button", () => {
     expect(mockActionRun).toHaveBeenCalledTimes(1);
     const call = mockActionRun.mock.calls[0][0];
     expect(call.action).toBeDefined();
-    // Call action to inspect URL
+    // Call action to inspect POST body — exam_phase_id must NOT be in the URL
     mockPost.mockResolvedValue({});
     await call.action();
     const url = mockPost.mock.calls[0][0];
     expect(url).not.toContain("exam_phase_id");
+    // Body must not contain exam_phase_id for exam-wide scope
+    const body = mockPost.mock.calls[0][1];
+    expect(body).not.toHaveProperty("exam_phase_id");
   });
 
-  it("includes exam_phase_id in compute POST when phase selected", async () => {
+  it("includes exam_phase_id in compute POST body (not URL) when phase selected", async () => {
     renderPanel("&phase=ph-2");
     await waitFor(() => expect(mockGet).toHaveBeenCalled());
     fireEvent.click(screen.getByTestId("compute-btn"));
@@ -173,7 +196,11 @@ describe("ScoreSnapshotPanel — compute button", () => {
     mockPost.mockResolvedValue({});
     await call.action();
     const url = mockPost.mock.calls[0][0];
-    expect(url).toContain("exam_phase_id=ph-2");
+    // exam_phase_id must NOT be in the URL
+    expect(url).not.toContain("exam_phase_id");
+    // exam_phase_id must be in the request body
+    const body = mockPost.mock.calls[0][1];
+    expect(body).toHaveProperty("exam_phase_id", "ph-2");
   });
 });
 
@@ -227,23 +254,25 @@ describe("ScoreSnapshotPanel — evidence drawer", () => {
     mockGet.mockResolvedValue(makeListResponse([SNAP_DRAFT]));
   });
 
-  it("shows evidence drawer on row click with scope, corpus, score_components", async () => {
+  it("shows evidence drawer via expand button with scope, corpus, score_components", async () => {
     renderPanel();
     await waitFor(() => screen.getAllByTestId(/snapshot-row/));
 
-    fireEvent.click(screen.getByTestId(`snapshot-row-${SNAP_DRAFT.id}`));
+    // Expansion is via the disclosure button, not a row click
+    fireEvent.click(screen.getByTestId(`expand-btn-${SNAP_DRAFT.id}`));
 
     const drawer = await screen.findByTestId(`evidence-drawer-${SNAP_DRAFT.id}`);
     expect(drawer).toBeInTheDocument();
 
     // Scope
     expect(drawer).toHaveTextContent("Exam-wide");
-    // Corpus
+    // Corpus — real field names from score_snapshots.py
     expect(drawer).toHaveTextContent("3 papers");
     expect(drawer).toHaveTextContent("120 questions");
-    expect(drawer).toHaveTextContent("5 primary tags");
-    // Score components
-    expect(drawer).toHaveTextContent("frequency");
-    expect(drawer).toHaveTextContent("recency");
+    expect(drawer).toHaveTextContent("5");   // topic_primary_count
+    // Score components — real field names
+    expect(drawer).toHaveTextContent("frequency_component");
+    expect(drawer).toHaveTextContent("coverage_component");
+    expect(drawer).toHaveTextContent("evidence_quality");
   });
 });

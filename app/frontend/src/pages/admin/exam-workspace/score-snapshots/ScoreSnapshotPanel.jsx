@@ -8,9 +8,9 @@
  *   ?phase=<phase_id>   explicit phase scope; absent = exam-wide
  *
  * Workflow:
- *   POST   .../score-snapshots/compute[?exam_phase_id=]     → draft snapshots
- *   GET    .../score-snapshots[?status=&exam_phase_id=]     → list (one scope)
- *   PATCH  .../score-snapshots/{id}/review                  → status transition
+ *   POST   .../score-snapshots/compute   body: { exam_phase_id? } → draft snapshots
+ *   GET    .../score-snapshots[?status=&exam_phase_id=]            → list (one scope)
+ *   PATCH  .../score-snapshots/{id}/review                         → status transition
  *
  * Transition matrix:
  *   draft     → reviewed | rejected
@@ -21,6 +21,12 @@
  * Scope rule (list and compute must always be identical):
  *   phase selected → exam_phase_id=<id>  (phase rows only)
  *   exam-wide      → exam_phase_id absent (null rows only)
+ *
+ * input_summary keys (written by score_snapshots.py):
+ *   fingerprint, paper_count, question_count, topic_primary_count, corpus_total_primary
+ *
+ * score_components keys:
+ *   frequency_component, coverage_component, evidence_quality
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -56,7 +62,12 @@ function ReviewerNotesModal({ open, onCancel, onConfirm, busy, error, invokerRef
       setNotes("");
       setTimeout(() => textareaRef.current?.focus(), 50);
     } else {
-      invokerRef?.current?.focus();
+      // Only restore focus to invoker if it is still mounted in the document.
+      // After a successful reload the Revert button is removed; the caller
+      // focuses a stable panel element instead.
+      if (invokerRef?.current && document.contains(invokerRef.current)) {
+        invokerRef.current.focus();
+      }
     }
   }, [open, invokerRef]);
 
@@ -164,7 +175,8 @@ function EvidenceDrawer({ snap, phases }) {
               <div style={{ color: "var(--ink-mute)" }}>
                 {is.paper_count != null && <span>{is.paper_count} paper{is.paper_count !== 1 ? "s" : ""}</span>}
                 {is.question_count != null && <span> · {is.question_count} questions</span>}
-                {is.primary_tag_count != null && <span> · {is.primary_tag_count} primary tags</span>}
+                {is.topic_primary_count != null && <span> · {is.topic_primary_count} primary tags (topic)</span>}
+                {is.corpus_total_primary != null && <span> / {is.corpus_total_primary} corpus total</span>}
               </div>
             </div>
           )}
@@ -175,7 +187,7 @@ function EvidenceDrawer({ snap, phases }) {
                 {Object.entries(sc).map(([k, v], i) => (
                   <span key={k}>
                     {i > 0 && " · "}
-                    {k}: {typeof v === "number" ? v.toFixed(2) : String(v)}
+                    {k}: {typeof v === "number" ? v.toFixed(4) : String(v)}
                   </span>
                 ))}
               </div>
@@ -188,6 +200,14 @@ function EvidenceDrawer({ snap, phases }) {
               {snap.computed_at && ` · ${new Date(snap.computed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`}
             </div>
           </div>
+          {is?.fingerprint && (
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>Fingerprint</div>
+              <div className="mono" style={{ color: "var(--ink-mute)", fontSize: 10, wordBreak: "break-all" }} data-testid="evidence-fingerprint">
+                {is.fingerprint}
+              </div>
+            </div>
+          )}
         </div>
       </td>
     </tr>
@@ -217,8 +237,13 @@ export default function ScoreSnapshotPanel() {
   const { exam, phases } = useExamWorkspace();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Scope: ?phase=<id> → phase-scoped; absent → exam-wide (IS NULL rows only)
+  // Scope: ?phase=<id> → phase-scoped; absent → exam-wide (IS NULL rows only).
+  // Validate the URL value against available phases to prevent silent empty results.
   const phaseParam = searchParams.get("phase") || "";
+  const validPhase = phases.find((p) => p.id === phaseParam);
+  const invalidPhase = phaseParam !== "" && !validPhase;
+  // Use validated scope for all API calls; fall back to exam-wide on invalid URL value.
+  const effectivePhase = invalidPhase ? "" : phaseParam;
 
   const [snapshots, setSnapshots]       = useState([]);
   const [loading, setLoading]           = useState(false);
@@ -231,27 +256,40 @@ export default function ScoreSnapshotPanel() {
   const [notesError, setNotesError]   = useState("");
   const invokerRef = useRef(null);
 
+  // Stable heading ref — used as focus fallback after successful locked reversal
+  // (the Revert button is removed after reload so invokerRef becomes detached).
+  const panelHeadingRef = useRef(null);
+
+  // Generation counter — prevents stale out-of-order responses from committing
+  // data for the wrong scope/status combination.
+  const loadGenRef = useRef(0);
+
   const computeAction = useApiAction();
   const reviewAction  = useApiAction();
 
   const load = useCallback(async () => {
     if (!exam?.id) return;
+    const gen = ++loadGenRef.current;
     setLoading(true);
     setError("");
+    setSnapshots([]); // clear stale data immediately on new load
     try {
       const qs = new URLSearchParams();
       if (statusFilter) qs.set("status", statusFilter);
-      if (phaseParam) qs.set("exam_phase_id", phaseParam);
+      if (effectivePhase) qs.set("exam_phase_id", effectivePhase);
       const d = await api.get(
         `${EI_BASE}/exams/${encodeURIComponent(exam.id)}/score-snapshots?${qs}`,
       );
+      if (gen !== loadGenRef.current) return; // stale — a newer load is in flight
       setSnapshots(d?.snapshots || []);
     } catch (e) {
+      if (gen !== loadGenRef.current) return;
       setError(e?.message || "Failed to load snapshots");
+      setSnapshots([]); // do not render prior-scope data on failure
     } finally {
-      setLoading(false);
+      if (gen === loadGenRef.current) setLoading(false);
     }
-  }, [exam?.id, statusFilter, phaseParam]);
+  }, [exam?.id, statusFilter, effectivePhase]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -267,12 +305,14 @@ export default function ScoreSnapshotPanel() {
     });
   }
 
+  // Compute sends scope via JSON body matching ComputeSnapshotBody.exam_phase_id.
+  // Never send scope via query string — the endpoint does not read it there.
   async function compute() {
-    const qs = phaseParam ? `?exam_phase_id=${encodeURIComponent(phaseParam)}` : "";
+    const body = effectivePhase ? { exam_phase_id: effectivePhase } : {};
     const result = await computeAction.run({
       action: () => api.post(
-        `${EI_BASE}/exams/${encodeURIComponent(exam.id)}/score-snapshots/compute${qs}`,
-        {},
+        `${EI_BASE}/exams/${encodeURIComponent(exam.id)}/score-snapshots/compute`,
+        body,
       ),
       successMessage: "Compute finished.",
       errorMessage: "Compute failed.",
@@ -298,8 +338,10 @@ export default function ScoreSnapshotPanel() {
     if (result?.ok) {
       setNotesModal(null);
       await load();
+      // Revert button is gone after reload; focus the panel heading as stable fallback.
+      setTimeout(() => panelHeadingRef.current?.focus(), 50);
     } else {
-      // Keep modal open — preserve typed notes so operator can retry
+      // Keep modal open — preserve typed notes so operator can retry.
       setNotesError(result?.error?.message || "Could not revert snapshot. Please try again.");
     }
   }
@@ -314,11 +356,14 @@ export default function ScoreSnapshotPanel() {
 
     function btn(label, status, variant = "small") {
       const isLockedReversal = snap.status === "locked" && status === "reviewed";
+      // Lock requires resolved topic identity so the operator knows what is being approved.
+      const isLockWithoutIdentity = status === "locked" && !snap.topic_name;
       return (
         <button
           key={`${snap.id}-${status}`}
           className={`btn ${variant} small`}
-          disabled={busy}
+          disabled={busy || isLockWithoutIdentity}
+          title={isLockWithoutIdentity ? "Topic identity not resolved — cannot lock" : undefined}
           onClick={(e) => {
             if (isLockedReversal) {
               invokerRef.current = e.currentTarget;
@@ -343,7 +388,7 @@ export default function ScoreSnapshotPanel() {
     return map[snap.status] || null;
   }
 
-  // Scope selector options: exam-wide + each phase from context
+  // Scope selector options: exam-wide + each phase from context.
   const scopeOptions = [
     { id: "", label: "Exam-wide" },
     ...phases.map((ph) => ({ id: ph.id, label: ph.phase_name || ph.id })),
@@ -364,7 +409,12 @@ export default function ScoreSnapshotPanel() {
       <div className="scrn-head">
         <div>
           <div className="scrn-tag">PYQ Intelligence · score snapshots</div>
-          <h2 className="oc-title disp" style={{ fontSize: 20, marginTop: 3 }}>
+          <h2
+            ref={panelHeadingRef}
+            tabIndex={-1}
+            className="oc-title disp"
+            style={{ fontSize: 20, marginTop: 3 }}
+          >
             Score Snapshots
           </h2>
         </div>
@@ -390,13 +440,23 @@ export default function ScoreSnapshotPanel() {
         use the same scope — select it below before running compute.
       </div>
 
+      {/* Invalid scope warning */}
+      {invalidPhase && (
+        <div className="err-row" data-testid="invalid-scope-error">
+          Unknown scope &ldquo;{phaseParam}&rdquo; — defaulting to exam-wide.{" "}
+          <button className="btn ghost small" onClick={() => setScope("")} style={{ marginLeft: 6 }}>
+            Clear
+          </button>
+        </div>
+      )}
+
       {/* Scope selector */}
       <div className="row" style={{ gap: 6, alignItems: "center" }}>
         <span style={{ fontSize: 12, color: "var(--ink-mute)", marginRight: 2 }}>Scope:</span>
         {scopeOptions.map((opt) => (
           <button
             key={opt.id}
-            className={"btn small" + (phaseParam === opt.id ? " active" : "")}
+            className={"btn small" + (effectivePhase === opt.id ? " active" : "")}
             onClick={() => setScope(opt.id)}
             data-testid={`scope-${opt.id || "exam"}`}
           >
@@ -465,22 +525,34 @@ export default function ScoreSnapshotPanel() {
                       <tr
                         key={snap.id}
                         data-testid={`snapshot-row-${snap.id}`}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => setExpandedId(expanded ? null : snap.id)}
                       >
                         <td>
-                          <div
-                            className="row-ttl"
-                            style={{ fontSize: 12 }}
-                            title={snap.topic_id}
-                          >
-                            {snap.topic_name || snap.topic?.name || snap.topic_id || "—"}
-                          </div>
-                          {snap.topic_path && (
-                            <div className="row-sub" style={{ fontSize: 10, color: "var(--ink-mute)" }}>
-                              {snap.topic_path}
+                          <div className="row" style={{ gap: 4, alignItems: "flex-start" }}>
+                            <button
+                              aria-expanded={expanded}
+                              aria-label={expanded ? "Hide evidence" : "Show evidence"}
+                              className="btn ghost small"
+                              onClick={() => setExpandedId(expanded ? null : snap.id)}
+                              data-testid={`expand-btn-${snap.id}`}
+                              style={{ flexShrink: 0, padding: "0 4px", fontSize: 10 }}
+                            >
+                              {expanded ? "▲" : "▼"}
+                            </button>
+                            <div>
+                              <div
+                                className="row-ttl"
+                                style={{ fontSize: 12 }}
+                                title={snap.topic_id}
+                              >
+                                {snap.topic_name || snap.topic_id || "—"}
+                              </div>
+                              {snap.topic_path && (
+                                <div className="row-sub" style={{ fontSize: 10, color: "var(--ink-mute)" }}>
+                                  {snap.topic_path}
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </td>
                         <td>
                           <StatusBadge status={snap.status} />
@@ -512,7 +584,7 @@ export default function ScoreSnapshotPanel() {
                         >
                           {snap.reviewer_notes || "—"}
                         </td>
-                        <td onClick={(e) => e.stopPropagation()}>
+                        <td>
                           <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
                             {actions(snap)}
                           </div>

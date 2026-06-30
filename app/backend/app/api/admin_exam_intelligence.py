@@ -2203,6 +2203,55 @@ _SNAPSHOT_COLUMNS = (
 )
 
 
+def _enrich_snapshot_topics(sb, rows: list) -> list:
+    """Attach topic_name and topic_path to each snapshot row.
+
+    Batch-fetches from the topics table so the list endpoint returns
+    human-readable names without an N+1 query per row.
+    topic_path is the parent topic's name (one level up).
+    """
+    if not rows:
+        return rows
+    topic_ids = [r["topic_id"] for r in rows if r.get("topic_id")]
+    if not topic_ids:
+        return rows
+    try:
+        topics_data = (
+            sb.table("topics")
+            .select("id, name, parent_topic_id")
+            .in_("id", topic_ids)
+            .execute()
+            .data or []
+        )
+    except Exception:
+        return rows
+    topic_by_id: dict = {t["id"]: t for t in topics_data}
+    parent_ids = [
+        t["parent_topic_id"]
+        for t in topics_data
+        if t.get("parent_topic_id") and t["parent_topic_id"] not in topic_by_id
+    ]
+    if parent_ids:
+        try:
+            parents = (
+                sb.table("topics")
+                .select("id, name")
+                .in_("id", parent_ids)
+                .execute()
+                .data or []
+            )
+            for p in parents:
+                topic_by_id[p["id"]] = p
+        except Exception:
+            pass
+    for r in rows:
+        t = topic_by_id.get(r.get("topic_id") or "", {})
+        r["topic_name"] = t.get("name")
+        parent = topic_by_id.get(t.get("parent_topic_id") or "", {})
+        r["topic_path"] = parent.get("name") if parent else None
+    return rows
+
+
 @router.get("/exams/{exam_id}/score-snapshots")
 def list_score_snapshots(
     exam_id: str,
@@ -2226,6 +2275,7 @@ def list_score_snapshots(
         )
     sb = get_supabase_admin()
     rows = list_exam_score_snapshots(sb, exam_id, status=status, exam_phase_id=exam_phase_id)
+    rows = _enrich_snapshot_topics(sb, rows)
     return {"snapshots": rows, "total": len(rows), "exam_id": exam_id}
 
 
