@@ -17,51 +17,46 @@
 
 \echo ''
 \echo '================================================================'
-\echo 'CHECK 1 (BLOCKING) — the 16 migration-203 RPCs, matched by EXACT'
-\echo 'signature: each must exist, DENY PUBLIC/anon/authenticated EXECUTE,'
-\echo 'and STILL GRANT service_role. Fails closed on any violation.'
+\echo 'CHECK 1 (BLOCKING) — the 16 migration-203 RPCs, resolved by canonical'
+\echo 'signature via to_regprocedure(): each must exist, DENY PUBLIC/anon/'
+\echo 'authenticated EXECUTE, and STILL GRANT service_role.'
 \echo '================================================================'
 do $$
 declare
-  r record;
-  v_oid oid;
+  v_sig  text;
+  v_oid  oid;
 begin
-  for r in select * from (values
-      ('promote_recruitment',                       'jsonb'),
-      ('create_verification_report',                'jsonb'),
-      ('supersede_and_create_verification_report',  'uuid, jsonb'),
-      ('claim_source_for_scrape',                   'uuid, integer'),
-      ('apply_mock_mastery_delta',                  'uuid, uuid, uuid, numeric, text'),
-      ('claim_mock_mastery_retry',                  'uuid, text, timestamp with time zone'),
-      ('complete_mock_mastery_retry',               'uuid'),
-      ('fn_fanout_alert_event',                     'uuid'),
-      ('claim_eligibility_queue',                   'integer'),
-      ('enqueue_eligibility_recompute',             'uuid, uuid, text, jsonb'),
-      ('upsert_field_review',                       'uuid, text, text, text, text, uuid, text, jsonb, jsonb, text, uuid'),
-      ('consume_profile_merge_claim',               'text, uuid'),
-      ('update_pyq_question_review_atomic',         'uuid, text, uuid, timestamp with time zone'),
-      ('start_attempt_from_blueprint',              'uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamp with time zone'),
-      ('fn_invalidate_projection_for_question',     'uuid'),
-      ('fn_block_projection_for_question',          'uuid, text')
-    ) as t(name, args)
+  foreach v_sig in array array[
+      'public.promote_recruitment(jsonb)',
+      'public.create_verification_report(jsonb)',
+      'public.supersede_and_create_verification_report(uuid, jsonb)',
+      'public.claim_source_for_scrape(uuid, integer)',
+      'public.apply_mock_mastery_delta(uuid, uuid, uuid, numeric, text)',
+      'public.claim_mock_mastery_retry(uuid, text, timestamptz)',
+      'public.complete_mock_mastery_retry(uuid)',
+      'public.fn_fanout_alert_event(uuid)',
+      'public.claim_eligibility_queue(integer)',
+      'public.enqueue_eligibility_recompute(uuid, uuid, text, jsonb)',
+      'public.upsert_field_review(uuid, text, text, text, text, uuid, text, jsonb, jsonb, text, uuid)',
+      'public.consume_profile_merge_claim(text, uuid)',
+      'public.update_pyq_question_review_atomic(uuid, text, uuid, timestamptz)',
+      'public.start_attempt_from_blueprint(uuid, uuid, uuid, jsonb, jsonb, jsonb, timestamptz)',
+      'public.fn_invalidate_projection_for_question(uuid)',
+      'public.fn_block_projection_for_question(uuid, text)'
+    ]
   loop
-    select p.oid into v_oid
-    from pg_proc p
-    join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
-    where p.proname = r.name
-      and pg_get_function_identity_arguments(p.oid) = r.args;
-
+    v_oid := to_regprocedure(v_sig);
     if v_oid is null then
-      raise exception 'CHECK 1 FAIL: public.%(%) not found (signature mismatch or missing)', r.name, r.args;
+      raise exception 'CHECK 1 FAIL: % not found (missing or signature drift)', v_sig;
     end if;
     if has_function_privilege('anon', v_oid, 'EXECUTE') then
-      raise exception 'CHECK 1 FAIL: public.%(%) is EXECUTE-able by anon', r.name, r.args;
+      raise exception 'CHECK 1 FAIL: % is EXECUTE-able by anon', v_sig;
     end if;
     if has_function_privilege('authenticated', v_oid, 'EXECUTE') then
-      raise exception 'CHECK 1 FAIL: public.%(%) is EXECUTE-able by authenticated', r.name, r.args;
+      raise exception 'CHECK 1 FAIL: % is EXECUTE-able by authenticated', v_sig;
     end if;
     if not has_function_privilege('service_role', v_oid, 'EXECUTE') then
-      raise exception 'CHECK 1 FAIL: public.%(%) is NOT EXECUTE-able by service_role (over-revoked)', r.name, r.args;
+      raise exception 'CHECK 1 FAIL: % is NOT EXECUTE-able by service_role (over-revoked)', v_sig;
     end if;
   end loop;
   raise notice 'CHECK 1 PASS: all 16 hardened RPCs deny PUBLIC/anon/authenticated and allow service_role';
@@ -69,16 +64,26 @@ end $$;
 
 \echo ''
 \echo '================================================================'
-\echo 'CHECK 1c (BLOCKING) — authoritative sweep: NO non-trigger function'
-\echo 'in schema public may be EXECUTE-able by anon/authenticated except the'
-\echo 'documented exceptions (is_admin + community_inc_*). A newly exposed'
-\echo 'backend RPC fails this. Keep the exception list in sync with'
-\echo 'docs/schema/rpc-grant-audit-v1.md.'
+\echo 'CHECK 1c (BLOCKING) — authoritative sweep: NO non-trigger function in'
+\echo 'schema public may be EXECUTE-able by anon/authenticated except the'
+\echo 'documented exceptions, matched by EXACT signature so a newly added/'
+\echo 'redefined overload (e.g. is_admin(text)) is NOT silently allowed:'
+\echo '  is_admin(uuid) and community_inc_*(uuid, integer).'
+\echo 'Keep this list in sync with docs/schema/rpc-grant-audit-v1.md.'
 \echo '================================================================'
 do $$
 declare
   v_bad text;
 begin
+  with allowed(name, args) as (
+    values
+      ('is_admin',                          'uuid'),
+      ('community_inc_thread_reply_count',  'uuid, integer'),
+      ('community_inc_thread_vote_count',   'uuid, integer'),
+      ('community_inc_reply_vote_count',    'uuid, integer'),
+      ('community_inc_resource_upvote_count','uuid, integer'),
+      ('community_inc_resource_report_count','uuid, integer')
+  )
   select string_agg(format('%s(%s)', p.proname, pg_get_function_identity_arguments(p.oid)), ', ' order by p.proname)
     into v_bad
   from pg_proc p
@@ -87,27 +92,28 @@ begin
     and p.prorettype <> 'trigger'::regtype
     and (has_function_privilege('anon', p.oid, 'EXECUTE')
          or has_function_privilege('authenticated', p.oid, 'EXECUTE'))
-    and p.proname not in (
-      'is_admin',
-      'community_inc_thread_reply_count',
-      'community_inc_thread_vote_count',
-      'community_inc_reply_vote_count',
-      'community_inc_resource_upvote_count',
-      'community_inc_resource_report_count'
+    and not exists (
+      select 1 from allowed a
+      where a.name = p.proname
+        and a.args = pg_get_function_identity_arguments(p.oid)
     );
   if v_bad is not null then
     raise exception 'CHECK 1c FAIL: undocumented public function(s) reachable by anon/authenticated: %', v_bad;
   end if;
-  raise notice 'CHECK 1c PASS: no undocumented public function is EXECUTE-able by anon/authenticated';
+  -- positive assertion: the documented exceptions must actually be reachable as intended
+  if not has_function_privilege('authenticated', 'public.is_admin(uuid)'::regprocedure, 'EXECUTE') then
+    raise exception 'CHECK 1c FAIL: public.is_admin(uuid) is NOT EXECUTE-able by authenticated (RLS policies need it)';
+  end if;
+  raise notice 'CHECK 1c PASS: only the documented exact-signature exceptions are anon/authenticated-reachable';
 end $$;
 
 \echo ''
 \echo '================================================================'
 \echo 'CHECK 2 (INFO — manual classification required, NOT auto-pass):'
-\echo 'public tables with RLS enabled and ZERO policies. Diff the list +'
-\echo 'count against docs/schema/rls-coverage-reconciliation-v1.md and'
-\echo 'classify every addition/removal. A FAIL is any returned table the'
-\echo 'frontend reads directly with the anon/authenticated key (judgement).'
+\echo 'public tables with RLS enabled and ZERO policies. Diff list + count'
+\echo 'against docs/schema/rls-coverage-reconciliation-v1.md and classify'
+\echo 'every addition/removal. A FAIL is any returned table the frontend'
+\echo 'reads directly with the anon/authenticated key (judgement).'
 \echo '================================================================'
 select count(*) as zero_policy_table_count
 from pg_class c
@@ -129,8 +135,7 @@ order by c.relname;
 \echo 'CHECK 3 (OBSERVATION ONLY — NOT a pass/fail gate): text_extract jobs'
 \echo 'stranded in `running`. The extraction archive-race gate stays BLOCKED'
 \echo 'until the finalize RPC/caller terminalizes the document_archived path'
-\echo 'AND a mid-flight regression test exists — a zero result here does NOT'
-\echo 'close that gate. Investigate any rows; do not treat empty as PASS.'
+\echo 'AND a mid-flight regression test exists — empty here does NOT pass.'
 \echo '================================================================'
 select id, document_id, status, created_at, updated_at
 from document_processing_jobs
@@ -142,52 +147,83 @@ order by updated_at;
 \echo ''
 \echo '================================================================'
 \echo 'CHECK 4 (BLOCKING) — admin authorization hardening:'
-\echo '  a. canonical public.is_admin(uuid) exists;'
-\echo '  b. >=1 policy uses the canonical is_admin() predicate (mig 195);'
+\echo '  a. canonical public.is_admin(uuid): SECURITY DEFINER, reads'
+\echo '     auth.users.raw_app_meta_data (migration 151), not profiles.is_admin;'
+\echo '  b. every EXISTING migration-195 target table has its named policy;'
 \echo '  c. NO policy references the deprecated profiles.is_admin predicate;'
-\echo '  d. mb_self_book policy removed from mentor_bookings (mig 196).'
+\echo '  d. mentor_bookings has NO client-writable INSERT/ALL policy reachable'
+\echo '     by PUBLIC/anon/authenticated (migration 196 role-survivor scan).'
 \echo '================================================================'
 do $$
 declare
-  v_canonical_policy_count int;
-  v_deprecated text;
-  v_mb text;
+  r          record;
+  v_secdef   boolean;
+  v_src      text;
+  v_canon    int;
+  v_dep      text;
+  v_mb       text;
 begin
-  if not exists (
-    select 1 from pg_proc p
-    join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
-    where p.proname = 'is_admin'
-      and pg_get_function_identity_arguments(p.oid) = 'uuid'
-  ) then
+  -- a. canonical is_admin(uuid) definition
+  select p.prosecdef, p.prosrc into v_secdef, v_src
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+  where p.proname = 'is_admin' and pg_get_function_identity_arguments(p.oid) = 'uuid';
+  if not found then
     raise exception 'CHECK 4 FAIL: canonical public.is_admin(uuid) not found';
   end if;
-
-  select count(*) into v_canonical_policy_count
-  from pg_policies
-  where schemaname = 'public'
-    and (coalesce(qual,'') ilike '%is_admin(%' or coalesce(with_check,'') ilike '%is_admin(%')
-    and coalesce(qual,'')       not ilike '%profiles%is_admin%'
-    and coalesce(with_check,'') not ilike '%profiles%is_admin%';
-  if v_canonical_policy_count = 0 then
-    raise exception 'CHECK 4 FAIL: no policy uses the canonical is_admin() predicate (migration 195 not in force?)';
+  if not v_secdef then
+    raise exception 'CHECK 4 FAIL: public.is_admin(uuid) is not SECURITY DEFINER';
+  end if;
+  if v_src not ilike '%raw_app_meta_data%' then
+    raise exception 'CHECK 4 FAIL: public.is_admin(uuid) body does not read auth.users.raw_app_meta_data (stale/non-canonical body)';
+  end if;
+  if v_src ilike '%profiles%is_admin%' then
+    raise exception 'CHECK 4 FAIL: public.is_admin(uuid) still consults deprecated profiles.is_admin';
   end if;
 
-  select string_agg(format('%s.%s', tablename, policyname), ', ') into v_deprecated
+  -- b. migration-195 named policies present for every EXISTING target table
+  for r in select * from (values
+      ('exam_topic_coverage_read_reviewed',        'exam_topic_coverage'),
+      ('exam_topic_score_snapshots_read_reviewed', 'exam_topic_score_snapshots'),
+      ('exam_competition_metrics_read_reviewed',   'exam_competition_metrics'),
+      ('exam_policy_updates_read_trusted',         'exam_policy_updates'),
+      ('plan_impact_decisions_admin_all',          'plan_impact_decisions'),
+      ('extraction_runs_admin_all',                'extraction_runs'),
+      ('mqg_admin_all',                            'mock_question_groups'),
+      ('mqtt_admin_all',                           'mock_question_topic_tags'),
+      ('mqs_admin_all',                            'mock_question_sources'),
+      ('mqrl_admin_all',                           'mock_question_review_log')
+    ) as t(pol, tbl)
+  loop
+    if to_regclass('public.' || r.tbl) is not null
+       and not exists (
+         select 1 from pg_policies
+         where schemaname = 'public' and tablename = r.tbl and policyname = r.pol
+       ) then
+      raise exception 'CHECK 4 FAIL: migration-195 policy % missing on existing table public.%', r.pol, r.tbl;
+    end if;
+  end loop;
+
+  -- c. no deprecated predicate anywhere
+  select string_agg(format('%s.%s', tablename, policyname), ', ') into v_dep
   from pg_policies
   where schemaname = 'public'
     and (coalesce(qual,'') ilike '%profiles%is_admin%' or coalesce(with_check,'') ilike '%profiles%is_admin%');
-  if v_deprecated is not null then
-    raise exception 'CHECK 4 FAIL: policies still reference deprecated profiles.is_admin: %', v_deprecated;
+  if v_dep is not null then
+    raise exception 'CHECK 4 FAIL: policies still reference deprecated profiles.is_admin: %', v_dep;
   end if;
 
-  select string_agg(policyname, ', ') into v_mb
+  -- d. migration-196 role-survivor scan on mentor_bookings (name-agnostic)
+  select string_agg(format('%s [%s, roles=%s]', policyname, cmd, array_to_string(roles, '/')), ', ') into v_mb
   from pg_policies
-  where schemaname = 'public' and tablename = 'mentor_bookings' and policyname = 'mb_self_book';
+  where schemaname = 'public' and tablename = 'mentor_bookings'
+    and cmd in ('INSERT', 'ALL')
+    and roles && array['public','anon','authenticated']::name[];
   if v_mb is not null then
-    raise exception 'CHECK 4 FAIL: mb_self_book still present on mentor_bookings (migration 196 not applied)';
+    raise exception 'CHECK 4 FAIL: mentor_bookings has a client-writable INSERT/ALL policy: %', v_mb;
   end if;
 
-  raise notice 'CHECK 4 PASS: canonical is_admin in force, no deprecated predicate, mb_self_book removed';
+  raise notice 'CHECK 4 PASS: canonical is_admin in force, migration-195 policies present, no deprecated predicate, mentor_bookings not client-writable';
 end $$;
 
 \echo ''
