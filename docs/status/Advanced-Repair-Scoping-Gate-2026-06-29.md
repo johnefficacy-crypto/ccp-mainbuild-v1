@@ -1,12 +1,13 @@
 # Advanced Repair Scoping Gate — J1 Contract
 
 - Document type: J1 implementation contract — Advanced Repair scoping
-- Status: **DRAFT — AWAITING OPERATOR APPROVAL**
+- Status: **OPERATOR APPROVED — IMPLEMENTATION COMPLETE (PR #820)**
 - Date: 2026-06-29
+- Approval date: 2026-06-30 (operator johnefficacy-crypto, verbal "J1" selection)
 - Parent track: `J1 — Advanced Repair scoping` (`docs/status/career-copilot-checklist.md` row "J1 — Advanced Repair scoping")
 - Authority: `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` §9 (Advanced Repair access model)
 - Gates cleared: I8-C merged (PR #759 `f4378097`); I6 merged (PR #761 `d69602f8`)
-- Repository scope of the PR introducing this document: **documentation and checklist only**. No runtime, route, component, API, migration, or test change is authorized by this file.
+- Implementation PR: #820 (`claude/j1-advanced-repair-scoping`)
 
 ---
 
