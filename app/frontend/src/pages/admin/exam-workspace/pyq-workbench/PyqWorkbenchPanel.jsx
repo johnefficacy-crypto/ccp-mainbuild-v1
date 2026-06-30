@@ -532,7 +532,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           </button>
         </div>
         <Suspense fallback={<div className="p-6 text-sm text-gray-400">Loading…</div>}>
-          <ScoreSnapshotPanel />
+          <ScoreSnapshotPanel canReview={canReview} />
         </Suspense>
       </div>
     );

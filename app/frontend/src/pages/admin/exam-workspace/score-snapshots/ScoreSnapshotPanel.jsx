@@ -37,6 +37,15 @@
  *   loadRef always points to the latest load() so post-mutation reloads use
  *   the current scope even if scope changed while the mutation was in flight.
  *   isMutating disables scope/status controls while either action is busy.
+ *
+ * Context loading guard:
+ *   Phase param validation and all mutations are blocked until useExamWorkspace()
+ *   reports loading=false and error="". This ensures we never classify an unknown
+ *   phase as invalid while context data is still in flight.
+ *
+ * Permission gate:
+ *   The panel accepts a canReview prop from PyqWorkbenchPanel. When false the
+ *   Compute button and all status-transition actions are hidden.
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -169,12 +178,9 @@ function ReviewerNotesModal({ open, onCancel, onConfirm, busy, error, invokerRef
 
 // ─── Evidence drawer ──────────────────────────────────────────────────────────
 
-function EvidenceDrawer({ snap, phases }) {
+function EvidenceDrawer({ snap, scopeLabel }) {
   const sc = snap.score_components;
   const is = snap.input_summary;
-  const phaseName = snap.exam_phase_id
-    ? (phases.find((p) => p.id === snap.exam_phase_id)?.phase_name || snap.exam_phase_id)
-    : "Exam-wide";
 
   return (
     <tr data-testid={`evidence-drawer-${snap.id}`}>
@@ -185,7 +191,7 @@ function EvidenceDrawer({ snap, phases }) {
         <div className="row" style={{ gap: 24, alignItems: "flex-start", flexWrap: "wrap", fontSize: 12 }}>
           <div>
             <div style={{ fontWeight: 600, marginBottom: 2 }}>Scope</div>
-            <div style={{ color: "var(--ink-mute)" }}>{phaseName}</div>
+            <div style={{ color: "var(--ink-mute)" }}>{scopeLabel}</div>
           </div>
           {is && (
             <div>
@@ -249,23 +255,35 @@ function fmt(ts) {
   });
 }
 
+const PAGE_SIZE = 50;
+
 // ─── Panel ────────────────────────────────────────────────────────────────────
 
-export default function ScoreSnapshotPanel() {
-  const { exam, phases } = useExamWorkspace();
+export default function ScoreSnapshotPanel({ canReview = false }) {
+  const {
+    exam, phases, cycles,
+    loading: contextLoading,
+    error: contextError,
+  } = useExamWorkspace();
+
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Scope: ?phase=<id> → phase-scoped; absent → exam-wide (IS NULL rows only).
+  // Phase validation is deferred until context has finished loading. While context
+  // is still loading, treat all phase params as "pending" to avoid false invalids.
   const phaseParam = searchParams.get("phase") || "";
-  const validPhase = phases.find((p) => p.id === phaseParam);
-  const invalidPhase = phaseParam !== "" && !validPhase;
+  const contextReady = !contextLoading && !contextError;
+  const validPhase = contextReady ? phases.find((p) => p.id === phaseParam) : undefined;
+  const invalidPhase = contextReady && phaseParam !== "" && !validPhase;
   const effectivePhase = invalidPhase ? "" : phaseParam;
 
   const [snapshots, setSnapshots]       = useState([]);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState("");
+  const [loadingSnaps, setLoadingSnaps] = useState(false);
+  const [loadError, setLoadError]       = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [expandedId, setExpandedId]     = useState(null);
+  const [page, setPage]                 = useState(0);
+  const [total, setTotal]               = useState(0);
 
   const [notesModal, setNotesModal]   = useState(null);
   const [notesError, setNotesError]   = useState("");
@@ -279,29 +297,35 @@ export default function ScoreSnapshotPanel() {
   // True while any mutation is in flight — scope/status changes are disabled.
   const isMutating = computeAction.busy || reviewAction.busy;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (pageOverride) => {
     if (!exam?.id) return;
+    // Do not issue list requests while context is still loading or errored.
+    if (!contextReady) return;
+    const targetPage = pageOverride ?? page;
     const gen = ++loadGenRef.current;
-    setLoading(true);
-    setError("");
+    setLoadingSnaps(true);
+    setLoadError("");
     setSnapshots([]);
     try {
       const qs = new URLSearchParams();
       if (statusFilter) qs.set("status", statusFilter);
       if (effectivePhase) qs.set("exam_phase_id", effectivePhase);
+      qs.set("limit", String(PAGE_SIZE));
+      qs.set("offset", String(targetPage * PAGE_SIZE));
       const d = await api.get(
         `${EI_BASE}/exams/${encodeURIComponent(exam.id)}/score-snapshots?${qs}`,
       );
       if (gen !== loadGenRef.current) return;
       setSnapshots(d?.snapshots || []);
+      setTotal(d?.total ?? 0);
     } catch (e) {
       if (gen !== loadGenRef.current) return;
-      setError(e?.message || "Failed to load snapshots");
+      setLoadError(e?.message || "Failed to load snapshots");
       setSnapshots([]);
     } finally {
-      if (gen === loadGenRef.current) setLoading(false);
+      if (gen === loadGenRef.current) setLoadingSnaps(false);
     }
-  }, [exam?.id, statusFilter, effectivePhase]);
+  }, [exam?.id, statusFilter, effectivePhase, contextReady, page]);
 
   // loadRef always points to the latest load closure so post-mutation reloads
   // use the current scope even if scope changed during the mutation.
@@ -309,6 +333,9 @@ export default function ScoreSnapshotPanel() {
   useEffect(() => { loadRef.current = load; }, [load]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Reset to page 0 when scope or filter changes.
+  useEffect(() => { setPage(0); }, [effectivePhase, statusFilter]);
 
   function setScope(phaseId) {
     setSearchParams((prev) => {
@@ -402,8 +429,17 @@ export default function ScoreSnapshotPanel() {
     return map[snap.status] || null;
   }
 
+  // Build a lookup from exam_cycle_id → human label using cycles[] from context.
+  // Falls back to raw exam_cycle_id if the cycle isn't in context (shouldn't happen).
+  const cycleLabel = (examCycleId) => {
+    if (!examCycleId) return null;
+    const c = (cycles || []).find((cy) => cy.id === examCycleId);
+    if (!c) return examCycleId;
+    return c.cycle_name || c.year || examCycleId;
+  };
+
   // Detect duplicate phase_name values (across different exam cycles).
-  // When duplicates exist, append cycle ID to disambiguate.
+  // When duplicates exist, append the human cycle label to disambiguate.
   const phaseNameCount = phases.reduce((acc, ph) => {
     acc[ph.phase_name] = (acc[ph.phase_name] || 0) + 1;
     return acc;
@@ -414,10 +450,40 @@ export default function ScoreSnapshotPanel() {
     ...phases.map((ph) => ({
       id: ph.id,
       label: phaseNameCount[ph.phase_name] > 1
-        ? `${ph.phase_name} · ${ph.exam_cycle_id}`
+        ? `${ph.phase_name} · ${cycleLabel(ph.exam_cycle_id)}`
         : (ph.phase_name || ph.id),
     })),
   ];
+
+  // Scope label for evidence drawer — uses the same disambiguated label.
+  function snapScopeLabel(snap) {
+    if (!snap.exam_phase_id) return "Exam-wide";
+    const opt = scopeOptions.find((o) => o.id === snap.exam_phase_id);
+    return opt?.label || snap.exam_phase_id;
+  }
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  // ── Context loading / error states ────────────────────────────────────────
+  if (contextLoading) {
+    return (
+      <div className="stack" role="status" aria-live="polite" data-testid="context-loading">
+        <div style={{ padding: 24, color: "var(--ink-mute)", fontSize: 14 }}>
+          Loading workspace…
+        </div>
+      </div>
+    );
+  }
+
+  if (contextError) {
+    return (
+      <div className="stack" data-testid="context-error">
+        <div className="err-row">
+          Workspace failed to load: {contextError}. Refresh the page to try again.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="stack">
@@ -444,17 +510,19 @@ export default function ScoreSnapshotPanel() {
           </h2>
         </div>
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <button className="btn small" onClick={load} disabled={loading || isMutating}>
-            {loading ? "Loading…" : "Refresh"}
+          <button className="btn small" onClick={() => load()} disabled={loadingSnaps || isMutating}>
+            {loadingSnaps ? "Loading…" : "Refresh"}
           </button>
-          <button
-            className="btn primary small"
-            onClick={compute}
-            disabled={computeAction.busy}
-            data-testid="compute-btn"
-          >
-            {computeAction.busy ? "Computing…" : "Compute snapshots"}
-          </button>
+          {canReview && (
+            <button
+              className="btn primary small"
+              onClick={compute}
+              disabled={computeAction.busy}
+              data-testid="compute-btn"
+            >
+              {computeAction.busy ? "Computing…" : "Compute snapshots"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -463,9 +531,14 @@ export default function ScoreSnapshotPanel() {
         Only <strong>locked</strong> snapshots are consumed by the planner. Approve
         and lock snapshots after verifying PYQ evidence counts. Compute and list always
         use the same scope — select it below before running compute.
+        {!canReview && (
+          <span style={{ marginLeft: 8, color: "var(--ink-mute)" }}>
+            (read-only — you need the <code>exam_intelligence.review</code> permission to make changes)
+          </span>
+        )}
       </div>
 
-      {/* Invalid scope warning */}
+      {/* Invalid scope warning — only shown after context is ready */}
       {invalidPhase && (
         <div className="err-row" data-testid="invalid-scope-error">
           Unknown scope &ldquo;{phaseParam}&rdquo; — defaulting to exam-wide.{" "}
@@ -507,11 +580,11 @@ export default function ScoreSnapshotPanel() {
       </div>
 
       {/* Load error */}
-      {error && <div className="err-row" data-testid="load-error">{error}</div>}
+      {loadError && <div className="err-row" data-testid="load-error">{loadError}</div>}
 
       {/* Table */}
       <div className="card">
-        {snapshots.length === 0 && !loading ? (
+        {snapshots.length === 0 && !loadingSnaps ? (
           <div className="empty">
             <div className="empty-title">No snapshots</div>
             <div>
@@ -536,7 +609,7 @@ export default function ScoreSnapshotPanel() {
               </tr>
             </thead>
             <tbody>
-              {loading
+              {loadingSnaps
                 ? Array.from({ length: 3 }).map((_, i) => (
                     <tr key={i}>
                       {Array.from({ length: 9 }).map((__, j) => (
@@ -613,14 +686,18 @@ export default function ScoreSnapshotPanel() {
                         </td>
                         <td>
                           <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
-                            {actions(snap)}
+                            {canReview && actions(snap)}
                           </div>
                         </td>
                       </tr>,
                     ];
                     if (expanded) {
                       rows.push(
-                        <EvidenceDrawer key={`${snap.id}-drawer`} snap={snap} phases={phases} />,
+                        <EvidenceDrawer
+                          key={`${snap.id}-drawer`}
+                          snap={snap}
+                          scopeLabel={snapScopeLabel(snap)}
+                        />,
                       );
                     }
                     return rows;
@@ -629,6 +706,31 @@ export default function ScoreSnapshotPanel() {
           </table>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="row" style={{ gap: 6, justifyContent: "flex-end", alignItems: "center", fontSize: 12 }}>
+          <span style={{ color: "var(--ink-mute)" }}>
+            Page {page + 1} of {totalPages} ({total} total)
+          </span>
+          <button
+            className="btn small"
+            onClick={() => { const p = page - 1; setPage(p); load(p); }}
+            disabled={page === 0 || loadingSnaps}
+            data-testid="page-prev-btn"
+          >
+            ← Prev
+          </button>
+          <button
+            className="btn small"
+            onClick={() => { const p = page + 1; setPage(p); load(p); }}
+            disabled={page >= totalPages - 1 || loadingSnaps}
+            data-testid="page-next-btn"
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

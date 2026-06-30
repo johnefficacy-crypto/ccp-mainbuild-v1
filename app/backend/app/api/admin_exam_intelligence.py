@@ -2270,6 +2270,8 @@ def list_score_snapshots(
     exam_id: str,
     status: str | None = Query(default=None),
     exam_phase_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     """List ``exam_topic_score_snapshots`` rows for an exam, ordered by computed_at DESC.
@@ -2279,7 +2281,10 @@ def list_score_snapshots(
     exam-wide rows (``exam_phase_id IS NULL``) are returned.  This prevents
     mixed exam-wide and phase-scoped rows appearing in the same review table.
 
-    Paginated internally — ``total`` reflects the real count, not a capped value.
+    Supports cursor-style pagination via ``limit`` (1–200, default 50) and
+    ``offset``.  ``total`` always reflects the full unfiltered count for the
+    scope so the UI can render a page-count without issuing a separate COUNT
+    request.
     """
     if status is not None and status not in _SNAPSHOT_STATUSES:
         raise HTTPException(
@@ -2287,9 +2292,11 @@ def list_score_snapshots(
             detail=f"Invalid status {status!r}. Must be one of: {sorted(_SNAPSHOT_STATUSES)}",
         )
     sb = get_supabase_admin()
-    rows = list_exam_score_snapshots(sb, exam_id, status=status, exam_phase_id=exam_phase_id)
-    rows = _enrich_snapshot_topics(sb, rows)
-    return {"snapshots": rows, "total": len(rows), "exam_id": exam_id}
+    all_rows = list_exam_score_snapshots(sb, exam_id, status=status, exam_phase_id=exam_phase_id)
+    all_rows = _enrich_snapshot_topics(sb, all_rows)
+    total = len(all_rows)
+    page_rows = all_rows[offset: offset + limit]
+    return {"snapshots": page_rows, "total": total, "exam_id": exam_id}
 
 
 @router.patch("/score-snapshots/{snapshot_id}/review")

@@ -10,10 +10,17 @@
  * - Modal closes on success
  * - Evidence drawer shows scope, corpus, score_components
  * - Two-phase regression: Phase A list does NOT include Phase B rows
- * - Invalid phase param shows error banner
+ * - Invalid phase param shows error banner (only after context is ready)
+ * - Context loading state: shows loading UI, defers phase validation
+ * - Context error state: shows error UI, blocks all mutations
+ * - canReview=false: hides Compute button and action buttons
+ * - canReview=true: shows Compute button and action buttons
+ * - Duplicate phase names: uses human cycle label from cycles[]
+ * - Modal dismissal guard: Escape does not close while busy
+ * - Pagination: shows prev/next when total > PAGE_SIZE
  */
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 // ─── api mock ────────────────────────────────────────────────────────────────
@@ -31,27 +38,47 @@ jest.mock("../../../../../lib/api", () => ({
 }));
 
 // ─── useApiAction mock ────────────────────────────────────────────────────────
-// The component calls useApiAction() twice (compute + review).
-// We expose a single mockActionRun that both instances share.
+// Supports controllable busy state. setBusy() updates the shared action
+// handle and lets tests simulate an in-flight mutation.
 const mockActionRun = jest.fn();
+
+// A mutable handle exposed as a module-level const so jest.mock() can see it.
+// Must be prefixed with "mock" to satisfy jest.mock() out-of-scope variable rule.
+const mockActionHandle = { run: null, busy: false };
+
+function setBusy(val) {
+  mockActionHandle.busy = val;
+}
 
 jest.mock("../../../../../lib/hooks/useApiAction", () => ({
   __esModule: true,
-  default: () => ({ run: mockActionRun, busy: false }),
+  // Return the same mutable handle every call so tests can control .busy.
+  default: () => mockActionHandle,
 }));
 
 // ─── ExamWorkspaceContext mock ────────────────────────────────────────────────
-const EXAM  = { id: "exam-1", name: "UPSC CSE" };
+const EXAM    = { id: "exam-1", name: "UPSC CSE" };
 const PHASE_A = { id: "ph-1", exam_id: "exam-1", exam_cycle_id: "cycle-2026", phase_name: "Tier I",  phase_order: 1 };
 const PHASE_B = { id: "ph-2", exam_id: "exam-1", exam_cycle_id: "cycle-2026", phase_name: "Tier II", phase_order: 2 };
+const CYCLES  = [{ id: "cycle-2026", cycle_name: "2026 Cycle", year: 2026 }];
+
+// Mutable context state for tests that need to override loading/error.
+// Must be prefixed with "mock" to be accessible inside jest.mock() factories.
+let mockCtxOverride = null;
 
 jest.mock("../../ExamWorkspaceContext", () => ({
   __esModule: true,
-  useExamWorkspace: () => ({
-    exam:   EXAM,
-    phases: [PHASE_A, PHASE_B],
-    cycle:  { id: "cycle-2026" },
-  }),
+  useExamWorkspace: () => {
+    if (mockCtxOverride) return mockCtxOverride;
+    return {
+      exam:    EXAM,
+      phases:  [PHASE_A, PHASE_B],
+      cycles:  CYCLES,
+      cycle:   { id: "cycle-2026" },
+      loading: false,
+      error:   "",
+    };
+  },
 }));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -94,20 +121,23 @@ const SNAP_LOCKED_PHASE_A = {
   topic_name: "Economy",
 };
 
-function makeListResponse(snaps) {
-  return { snapshots: snaps, total: snaps.length, exam_id: "exam-1" };
+function makeListResponse(snaps, total) {
+  return { snapshots: snaps, total: total ?? snaps.length, exam_id: "exam-1" };
 }
 
-function renderPanel(initialSearch = "") {
+function renderPanel(initialSearch = "", props = {}) {
   return render(
     <MemoryRouter initialEntries={[`/admin/exams/exam-1/manage?tab=pyq&view=snapshots${initialSearch}`]}>
-      <ScoreSnapshotPanel />
+      <ScoreSnapshotPanel canReview={true} {...props} />
     </MemoryRouter>,
   );
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockActionHandle.busy = false;
+  mockActionHandle.run = mockActionRun;
+  mockCtxOverride = null;
   mockGet.mockResolvedValue(makeListResponse([]));
   mockActionRun.mockResolvedValue({ ok: true, data: {} });
 });
@@ -136,10 +166,87 @@ describe("ScoreSnapshotPanel — scope selector", () => {
     expect(screen.getByTestId("scope-ph-1").className).toMatch(/active/);
   });
 
-  it("shows invalid-scope-error banner for unknown phase param", async () => {
+  it("shows invalid-scope-error banner for unknown phase param (after context ready)", async () => {
     renderPanel("&phase=unknown-phase-id");
     await waitFor(() => expect(mockGet).toHaveBeenCalled());
     expect(screen.getByTestId("invalid-scope-error")).toBeInTheDocument();
+  });
+});
+
+describe("ScoreSnapshotPanel — context loading/error guard", () => {
+  it("shows loading UI and does NOT emit GET while context is loading", async () => {
+    mockCtxOverride = { exam: EXAM, phases: [], cycles: [], loading: true, error: "" };
+    renderPanel();
+    expect(screen.getByTestId("context-loading")).toBeInTheDocument();
+    // No list call — panel must wait for context.
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  it("does NOT show invalid-scope-error while context is loading", () => {
+    mockCtxOverride = { exam: EXAM, phases: [], cycles: [], loading: true, error: "" };
+    renderPanel("&phase=ph-1");
+    expect(screen.queryByTestId("invalid-scope-error")).not.toBeInTheDocument();
+  });
+
+  it("shows context error UI and does NOT emit GET when context errored", async () => {
+    mockCtxOverride = { exam: EXAM, phases: [], cycles: [], loading: false, error: "Network error" };
+    renderPanel();
+    expect(screen.getByTestId("context-error")).toBeInTheDocument();
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+});
+
+describe("ScoreSnapshotPanel — canReview permission gate", () => {
+  it("hides Compute button when canReview=false", async () => {
+    renderPanel("", { canReview: false });
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    expect(screen.queryByTestId("compute-btn")).not.toBeInTheDocument();
+  });
+
+  it("shows Compute button when canReview=true", async () => {
+    renderPanel();
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    expect(screen.getByTestId("compute-btn")).toBeInTheDocument();
+  });
+
+  it("hides action buttons when canReview=false", async () => {
+    mockGet.mockResolvedValue(makeListResponse([SNAP_DRAFT]));
+    renderPanel("", { canReview: false });
+    await waitFor(() => screen.getAllByTestId(/snapshot-row/));
+    expect(screen.queryByTestId(`action-${SNAP_DRAFT.id}-reviewed`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`action-${SNAP_DRAFT.id}-rejected`)).not.toBeInTheDocument();
+  });
+});
+
+describe("ScoreSnapshotPanel — duplicate phase names", () => {
+  it("uses human cycle label from cycles[] when two phases share the same phase_name", async () => {
+    mockCtxOverride = {
+      exam: EXAM,
+      phases: [
+        { id: "ph-1", exam_id: "exam-1", exam_cycle_id: "cycle-2025", phase_name: "Tier I", phase_order: 1 },
+        { id: "ph-2", exam_id: "exam-1", exam_cycle_id: "cycle-2026", phase_name: "Tier I", phase_order: 2 },
+      ],
+      cycles: [
+        { id: "cycle-2025", cycle_name: "2025 Cycle", year: 2025 },
+        { id: "cycle-2026", cycle_name: "2026 Cycle", year: 2026 },
+      ],
+      loading: false,
+      error: "",
+    };
+    renderPanel();
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    // Both buttons should show human cycle label, not raw UUID
+    expect(screen.getByText("Tier I · 2025 Cycle")).toBeInTheDocument();
+    expect(screen.getByText("Tier I · 2026 Cycle")).toBeInTheDocument();
+    expect(screen.queryByText(/cycle-2025/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cycle-2026/)).not.toBeInTheDocument();
+  });
+
+  it("with distinct names, labels are plain (no cycle suffix)", async () => {
+    renderPanel();
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    expect(screen.getByText("Tier I")).toBeInTheDocument();
+    expect(screen.getByText("Tier II")).toBeInTheDocument();
   });
 });
 
@@ -167,6 +274,14 @@ describe("ScoreSnapshotPanel — API scope isolation", () => {
     // No exam-wide row
     expect(screen.queryByText("Polity")).not.toBeInTheDocument();
     expect(screen.getByText("Economy")).toBeInTheDocument();
+  });
+
+  it("sends limit and offset query params", async () => {
+    renderPanel();
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    const url = mockGet.mock.calls[0][0];
+    expect(url).toContain("limit=50");
+    expect(url).toContain("offset=0");
   });
 });
 
@@ -249,46 +364,17 @@ describe("ScoreSnapshotPanel — reviewer notes modal", () => {
   });
 });
 
-describe("ScoreSnapshotPanel — duplicate phase names", () => {
-  it("appends cycle ID when two phases share the same phase_name", async () => {
-    // The context mock already returns PHASE_A and PHASE_B with distinct names.
-    // Override to simulate two phases both called "Tier I" but from different cycles.
-    jest.resetModules();
-    const PHASE_A2 = { id: "ph-1", exam_id: "exam-1", exam_cycle_id: "cycle-2025", phase_name: "Tier I", phase_order: 1 };
-    const PHASE_B2 = { id: "ph-2", exam_id: "exam-1", exam_cycle_id: "cycle-2026", phase_name: "Tier I", phase_order: 2 };
-
-    // Re-render with a custom context that has duplicate names
-    const { useExamWorkspace: _orig } = jest.requireMock("../../ExamWorkspaceContext");
-    const origImpl = _orig;
-
-    // Temporarily override
-    const mockUseExamWorkspace = jest.fn(() => ({
-      exam: EXAM,
-      phases: [PHASE_A2, PHASE_B2],
-      cycle: { id: "cycle-2026" },
-    }));
-    jest.mocked(origImpl).mockImplementation?.(() => mockUseExamWorkspace());
-
-    // Simpler: just verify the deduplication logic by checking button text
-    // We render with the original mock but check the label logic is present in code.
-    // The integration proof is that both buttons show cycle disambiguation.
-    renderPanel();
-    await waitFor(() => expect(mockGet).toHaveBeenCalled());
-    // With the standard fixture (Tier I / Tier II — no duplicates), labels are plain.
-    expect(screen.getByText("Tier I")).toBeInTheDocument();
-    expect(screen.getByText("Tier II")).toBeInTheDocument();
-  });
-});
-
 describe("ScoreSnapshotPanel — modal dismissal guard", () => {
   beforeEach(() => {
     mockGet.mockResolvedValue(makeListResponse([SNAP_LOCKED_PHASE_A]));
   });
 
   it("does not close modal on Escape while mutation is in flight", async () => {
-    // Simulate a pending (never-resolving) mutation
+    // Simulate a pending (never-resolving) mutation while busy=true
     let resolveMutation;
-    mockActionRun.mockImplementation(() => new Promise((res) => { resolveMutation = res; }));
+    mockActionRun.mockImplementation(() => {
+      return new Promise((res) => { resolveMutation = res; });
+    });
 
     renderPanel("&phase=ph-1");
     await waitFor(() => screen.getAllByTestId(/snapshot-row/));
@@ -296,18 +382,20 @@ describe("ScoreSnapshotPanel — modal dismissal guard", () => {
     fireEvent.click(screen.getByTestId(`action-${SNAP_LOCKED_PHASE_A.id}-reviewed`));
     expect(screen.getByTestId("reviewer-notes-input")).toBeInTheDocument();
 
-    // Start the mutation (submit)
+    // Set busy BEFORE submit so the modal sees busy=true when Escape fires.
+    setBusy(true);
+
     fireEvent.change(screen.getByTestId("reviewer-notes-input"), { target: { value: "reason" } });
     fireEvent.click(screen.getByTestId("reviewer-notes-submit"));
 
-    // While in-flight (busy=true), Escape must NOT close the modal.
-    // The component is in busy state; fire Escape on the dialog container.
-    fireEvent.keyDown(document.activeElement || document.body, { key: "Escape" });
+    // Escape on the modal — should NOT close while busy.
+    fireEvent.keyDown(document.body, { key: "Escape" });
 
     // Modal must still be open — notes input still present.
     expect(screen.getByTestId("reviewer-notes-input")).toBeInTheDocument();
 
     // Resolve the mutation so the test can finish cleanly
+    setBusy(false);
     resolveMutation({ ok: false, error: { message: "server error" } });
     await waitFor(() => expect(screen.getByTestId("notes-modal-error")).toBeInTheDocument());
   });
@@ -328,7 +416,7 @@ describe("ScoreSnapshotPanel — evidence drawer", () => {
     const drawer = await screen.findByTestId(`evidence-drawer-${SNAP_DRAFT.id}`);
     expect(drawer).toBeInTheDocument();
 
-    // Scope
+    // Scope — exam-wide because snap.exam_phase_id is null
     expect(drawer).toHaveTextContent("Exam-wide");
     // Corpus — real field names from score_snapshots.py
     expect(drawer).toHaveTextContent("3 papers");
@@ -338,5 +426,37 @@ describe("ScoreSnapshotPanel — evidence drawer", () => {
     expect(drawer).toHaveTextContent("frequency_component");
     expect(drawer).toHaveTextContent("coverage_component");
     expect(drawer).toHaveTextContent("evidence_quality");
+  });
+
+  it("shows phase scope label in evidence drawer for a phase-scoped snapshot", async () => {
+    const phaseSnap = { ...SNAP_DRAFT, id: "snap-ph", exam_phase_id: "ph-1" };
+    mockGet.mockResolvedValue(makeListResponse([phaseSnap]));
+    renderPanel("&phase=ph-1");
+    await waitFor(() => screen.getAllByTestId(/snapshot-row/));
+    fireEvent.click(screen.getByTestId(`expand-btn-snap-ph`));
+    const drawer = await screen.findByTestId(`evidence-drawer-snap-ph`);
+    // The scope label should resolve to the phase name, not a UUID
+    expect(drawer).toHaveTextContent("Tier I");
+  });
+});
+
+describe("ScoreSnapshotPanel — pagination", () => {
+  it("shows pagination controls when total > PAGE_SIZE", async () => {
+    mockGet.mockResolvedValue(makeListResponse(
+      Array.from({ length: 50 }, (_, i) => ({ ...SNAP_DRAFT, id: `snap-${i}` })),
+      120,
+    ));
+    renderPanel();
+    // Wait for actual rows to appear (state update complete)
+    await waitFor(() => expect(screen.getAllByTestId(/snapshot-row/)).toHaveLength(50));
+    expect(screen.getByTestId("page-next-btn")).toBeInTheDocument();
+    expect(screen.getByTestId("page-prev-btn")).toBeInTheDocument();
+  });
+
+  it("does not show pagination when total <= PAGE_SIZE", async () => {
+    mockGet.mockResolvedValue(makeListResponse([SNAP_DRAFT], 1));
+    renderPanel();
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    expect(screen.queryByTestId("page-next-btn")).not.toBeInTheDocument();
   });
 });
