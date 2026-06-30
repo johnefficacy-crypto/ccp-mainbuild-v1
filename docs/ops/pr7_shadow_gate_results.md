@@ -97,7 +97,22 @@ Steps 3–8 are sequential and each depends on those above it.
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — merge + operator
+2. 2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — PR #803 merge +
+   operator validation remaining):** The event-delivery and partial-fallback
+   code defects identified before PR #800 are code-fixed, but staging validation
+   remains pending. Current `main` still contains the 32-file manifest. PR #803
+   proposes the final 36-file boundary by adding `app/backend/app/core/auth.py`,
+   `app/frontend/src/lib/supabase.js`,
+   `app/frontend/src/pages/study/mocks/useAnswerSync.js`, and
+   `app/frontend/src/lib/api.js`; it also closes the submit/late-event race,
+   adds the executable `telemetry-quality` command, and hardens fingerprint
+   verification with digest and SHA binding. PR #803 must rebase after PR #804
+   merges. No digest currently recorded on the PR #803 branch is authoritative:
+   the attestation and combined digest must be regenerated after rebase and then
+   pinned again at the exact deployed `window_start` SHA. Remaining before
+   FROZEN: (i) merge the rebased PR #803; (ii) complete PR #800 staging checks;
+   (iii) operator approves the proposed 36-file boundary; (iv) the verifier and
+   telemetry-quality gate pass against the exact deployed SHA.
    verify remaining):** All P0/P1 code defects are fixed and merged:
    PR #795 (`time_analytics` `occurred_at` + `payload.question_id`);
    PR #793 (`MockAttemptShell` Q1 first-visit); PR #800 (`attemptEventBus`
