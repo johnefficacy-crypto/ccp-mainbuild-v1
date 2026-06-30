@@ -73,13 +73,21 @@ for _doc in "$MANIFEST" "$PR7" "$CHECKLIST"; do
   fi
 done
 
-# 7) Optional pinned-SHA assertion (operator supplies the window_start SHA).
-if [[ -n "${EXPECTED_SHA:-}" ]]; then
+# 7) Pinned-SHA assertion — REQUIRED (not optional). The operator pins the exact
+#    window_start / window_end SHA via EXPECTED_SHA. SKIP_SHA=1 is an explicit
+#    opt-out for content-only checks during development.
+if [[ -n "${SKIP_SHA:-}" ]]; then
+  :  # explicit content-only verification
+elif [[ -n "${EXPECTED_SHA:-}" ]]; then
   _head=$(git rev-parse HEAD 2>/dev/null || echo "")
   if [[ "$_head" != "$EXPECTED_SHA" ]]; then
     echo "ERROR: checkout SHA $_head does not match EXPECTED_SHA $EXPECTED_SHA" >&2
     exit 1
   fi
+else
+  echo "ERROR: pass EXPECTED_SHA=<40-hex> to pin the checkout (window_start SHA)," >&2
+  echo "       or SKIP_SHA=1 for a content-only check." >&2
+  exit 1
 fi
 
 echo "OK: ${_actual} files, combined freeze hash ${_combined}${EXPECTED_SHA:+ @ }${EXPECTED_SHA:-}"

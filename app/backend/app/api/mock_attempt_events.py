@@ -100,6 +100,21 @@ async def post_events(
 
     raw_events = [e.model_dump() for e in body.events]
     result = svc.ingest_client_events(supabase, attempt_id, user["id"], raw_events)
+
+    # If client events were accepted AFTER submission (late delivery within the
+    # grace window), idempotently recompute the persisted analytics so the frozen
+    # classifications / dwell reflect them. This closes the submit/late-event
+    # race: even if a pre-submit flush did not fully drain, the analytics snapshot
+    # the shadow gate validates is brought up to date. Best-effort — a recompute
+    # failure never breaks ingest.
+    if attempt.get("status") == "submitted" and result.get("accepted"):
+        try:
+            from app.study_os.attempt_analytics.service import compute_and_persist
+            compute_and_persist(supabase, attempt_id)
+            result["analytics_recomputed"] = True
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("late-event analytics recompute failed for %s: %s", attempt_id, exc)
+            result["analytics_recomputed"] = False
     return result
 
 

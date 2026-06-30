@@ -1304,82 +1304,92 @@ def test_lac_days_zero_exits_2(monkeypatch: Any, capsys: Any) -> None:
     assert data.get("error") == "INVALID_FLAGS"
 
 
-# ─── telemetry-quality gate (PR #803 review P1) ───────────────────────────────
+# ─── telemetry-quality gate (PR #803 re-checkpost: snapshot-based, shadow-scoped) ──
 
 
-def _resp(qid: str, **kw: Any) -> dict:
-    base = {"question_id": qid, "selected_option_id": None,
-            "is_visited": False, "is_marked_for_review": False, "time_spent_sec": 0}
-    base.update(kw)
-    return base
+def _aq(events_used: int, fallback_engaged: int | None = 0) -> dict:
+    """A persisted mock_attempt_summary.analytics_quality snapshot."""
+    q = {"events_used": events_used, "events_malformed": 0}
+    if fallback_engaged is not None:
+        q["fallback_engaged_question_count"] = fallback_engaged
+    return q
 
 
-def _visit(qid: str, seq: int, occurred_at: str = "2026-01-01T00:00:00+00:00") -> dict:
-    return {"event_type": "question.visited", "payload": {"question_id": qid},
-            "sequence_no": seq, "occurred_at": occurred_at, "source": "client"}
+def _marker(final_seq: int, observed_max: int) -> list[dict]:
+    """Client events: a visit at `observed_max` + a submit_flush declaring `final_seq`."""
+    return [
+        {"event_type": "question.visited", "payload": {"question_id": "q1"},
+         "sequence_no": observed_max, "source": "client"},
+        {"event_type": "attempt.submit_flush", "payload": {"final_sequence_no": final_seq},
+         "sequence_no": min(final_seq, observed_max), "source": "client"},
+    ]
 
 
-def test_tq_full_coverage_passes() -> None:
-    responses = {"a1": [_resp("q1", selected_option_id="o"), _resp("q2", is_visited=True)]}
-    events = {"a1": [_visit("q1", 1), _visit("q2", 2)]}
-    m = sa.compute_telemetry_quality(["a1"], responses, events)
-    assert m["visit_coverage_pct"] == 100.0
-    assert m["fallback_question_count"] == 0
-    assert m["delivery_gap_count"] == 0
+def test_tq_clean_attempt_passes() -> None:
+    # Snapshot: events used, no engaged fallback. Marker declares final == max observed.
+    quality = {"a1": _aq(events_used=5, fallback_engaged=0)}
+    events = {"a1": _marker(final_seq=9, observed_max=9)}
+    m = sa.compute_telemetry_quality(["a1"], quality, events)
+    assert m["attempts_missing_snapshot"] == 0
     assert m["attempts_without_events"] == 0
-    assert m["events_used"] == 2
+    assert m["fallback_engaged_question_count"] == 0
+    assert m["attempts_missing_marker"] == 0
+    assert m["trailing_gap_count"] == 0
+    assert all(metrics == 0 for metrics in (
+        m["attempts_missing_snapshot"], m["snapshots_missing_field"],
+        m["attempts_without_events"], m["fallback_engaged_question_count"],
+        m["attempts_missing_marker"], m["trailing_gap_count"]))
 
 
-def test_tq_touched_question_without_visit_is_fallback() -> None:
-    # q2 was answered (touched) but has no visit event -> coverage < 100, fallback 1.
-    responses = {"a1": [_resp("q1", selected_option_id="o"), _resp("q2", selected_option_id="o")]}
-    events = {"a1": [_visit("q1", 1)]}
-    m = sa.compute_telemetry_quality(["a1"], responses, events)
-    assert m["expected_visit_questions"] == 2
-    assert m["covered_questions"] == 1
-    assert m["fallback_question_count"] == 1
-    assert m["visit_coverage_pct"] == 50.0
-    assert m["per_attempt"][0]["missing_visit_qids"] == ["q2"]
+def test_tq_persisted_fallback_is_counted_even_if_events_now_present() -> None:
+    # The snapshot records engaged fallback at submit time; current event rows do
+    # NOT override it (late events can't hide the fallback that was used).
+    quality = {"a1": _aq(events_used=3, fallback_engaged=2)}
+    events = {"a1": _marker(final_seq=9, observed_max=9)}
+    m = sa.compute_telemetry_quality(["a1"], quality, events)
+    assert m["fallback_engaged_question_count"] == 2
 
 
-def test_tq_untouched_question_excluded_from_population() -> None:
-    # q2 is legitimately untouched (no answer/mark/visit) -> NOT expected, no penalty.
-    responses = {"a1": [_resp("q1", selected_option_id="o"), _resp("q2")]}
-    events = {"a1": [_visit("q1", 1)]}
-    m = sa.compute_telemetry_quality(["a1"], responses, events)
-    assert m["expected_visit_questions"] == 1
-    assert m["fallback_question_count"] == 0
-    assert m["visit_coverage_pct"] == 100.0
+def test_tq_missing_snapshot_counted() -> None:
+    quality: dict = {}  # a1 has no persisted summary
+    events = {"a1": _marker(final_seq=4, observed_max=4)}
+    m = sa.compute_telemetry_quality(["a1"], quality, events)
+    assert m["attempts_missing_snapshot"] == 1
+    assert m["per_attempt"][0]["has_snapshot"] is False
 
 
-def test_tq_sequence_gap_is_delivery_gap() -> None:
-    # max client seq is 3 but only 2 distinct seqs present -> one undelivered event.
-    responses = {"a1": [_resp("q1", selected_option_id="o")]}
-    events = {"a1": [_visit("q1", 1), {"event_type": "attempt.heartbeat", "payload": {},
-                                       "sequence_no": 3, "occurred_at": "2026-01-01T00:00:05+00:00",
-                                       "source": "client"}]}
-    m = sa.compute_telemetry_quality(["a1"], responses, events)
-    assert m["per_attempt"][0]["max_client_sequence_no"] == 3
-    assert m["per_attempt"][0]["distinct_client_sequences"] == 2
-    assert m["delivery_gap_count"] == 1
+def test_tq_snapshot_missing_field_counted() -> None:
+    # Pre-#803 snapshot without fallback_engaged_question_count.
+    quality = {"a1": _aq(events_used=3, fallback_engaged=None)}
+    events = {"a1": _marker(final_seq=4, observed_max=4)}
+    m = sa.compute_telemetry_quality(["a1"], quality, events)
+    assert m["snapshots_missing_field"] == 1
 
 
-def test_tq_attempt_with_no_events_counted() -> None:
-    responses = {"a1": [_resp("q1", selected_option_id="o")], "a2": [_resp("q1", selected_option_id="o")]}
-    events = {"a1": [_visit("q1", 1)]}  # a2 has zero events
-    m = sa.compute_telemetry_quality(["a1", "a2"], responses, events)
+def test_tq_zero_events_used_counted() -> None:
+    quality = {"a1": _aq(events_used=0, fallback_engaged=0)}
+    events = {"a1": _marker(final_seq=4, observed_max=4)}
+    m = sa.compute_telemetry_quality(["a1"], quality, events)
     assert m["attempts_without_events"] == 1
-    # a2's touched question falls back (no visit event)
-    assert m["fallback_question_count"] == 1
 
 
-def test_tq_malformed_visit_event_not_counted() -> None:
-    # missing occurred_at and missing question_id -> not usable visit events.
-    responses = {"a1": [_resp("q1", selected_option_id="o")]}
+def test_tq_missing_submit_flush_marker_counted() -> None:
+    quality = {"a1": _aq(events_used=3, fallback_engaged=0)}
+    events = {"a1": [{"event_type": "question.visited", "payload": {"question_id": "q1"},
+                      "sequence_no": 4, "source": "client"}]}  # no submit_flush marker
+    m = sa.compute_telemetry_quality(["a1"], quality, events)
+    assert m["attempts_missing_marker"] == 1
+    assert m["per_attempt"][0]["has_submit_flush_marker"] is False
+
+
+def test_tq_trailing_loss_detected_via_marker() -> None:
+    # Declared final seq 10 but only seq 7 observed -> 3 trailing events lost.
+    quality = {"a1": _aq(events_used=3, fallback_engaged=0)}
     events = {"a1": [
-        {"event_type": "question.visited", "payload": {"question_id": "q1"}, "sequence_no": 1, "source": "client"},  # no occurred_at
-        {"event_type": "question.visited", "payload": {}, "sequence_no": 2, "occurred_at": "2026-01-01T00:00:00+00:00", "source": "client"},  # no qid
+        {"event_type": "question.visited", "payload": {"question_id": "q1"}, "sequence_no": 7, "source": "client"},
+        {"event_type": "attempt.submit_flush", "payload": {"final_sequence_no": 10}, "sequence_no": 7, "source": "client"},
     ]}
-    m = sa.compute_telemetry_quality(["a1"], responses, events)
-    assert m["events_used"] == 0
-    assert m["fallback_question_count"] == 1  # q1 falls back
+    m = sa.compute_telemetry_quality(["a1"], quality, events)
+    assert m["trailing_gap_count"] == 3
+    assert m["per_attempt"][0]["declared_final_sequence_no"] == 10
+    assert m["per_attempt"][0]["max_client_sequence_no"] == 7

@@ -40,25 +40,28 @@
 # STATUS: FREEZE PENDING — all code/tooling blockers closed; OPERATOR APPROVAL
 # the only remaining gate (PR #803 review). The PR #803 checkpost blockers are
 # now resolved:
-#   [P0 RESOLVED] Submit-time telemetry race — MockAttemptShell.doSubmit() now
-#        awaits eventBus.flushAndWait() (a time-bounded, ACK-gated full flush)
-#        BEFORE POSTing /submit, so the final buffered question.visited/answered
-#        events are delivered before submit_attempt() runs compute_and_persist().
-#        Regression: MockAttemptShell.submitFlush.test.jsx + flushAndWait unit
-#        tests. (Residual: a flush that fails its bound still relies on the
-#        durable-queue replay path; the telemetry-quality gate below catches any
-#        resulting fallback.)
+#   [P0 RESOLVED] Submit-time telemetry race — (a) MockAttemptShell.doSubmit()
+#        awaits eventBus.flushAndWait() (time-bounded, ACK-gated) BEFORE POSTing
+#        /submit; (b) the backend idempotently recomputes analytics on late
+#        /events accepted within the grace window (mock_attempt_events.py ->
+#        compute_and_persist), so a flush that does not fully drain is still
+#        reconciled. The race is fully closed, not merely mitigated. Regression:
+#        MockAttemptShell.submitFlush.test.jsx, flushAndWait unit tests, and
+#        test_attempt_events recompute tests.
 #   [P1 RESOLVED] Boundary closed over the answer-write dependency
 #        useAnswerSync.js (added; 34 -> 35) and a transitive-dependency inclusion
 #        rule is documented above.
-#   [P1 RESOLVED] Telemetry-quality gate is now executable: `shadow-analysis
-#        telemetry-quality` emits events_used / visit_coverage_pct /
-#        fallback_question_count / delivery_gap_count over submitted attempts with
-#        a defined expected-visit population (touched questions only; untouched
-#        questions excluded), fail-closed thresholds, and unit tests.
-#   [P2 RESOLVED] verify_mastery_fingerprint.sh now cross-checks the recorded
-#        digest across manifest / pr7 / checklist and asserts an expected SHA
-#        when provided.
+#   [P1 RESOLVED] Telemetry-quality gate is executable and authoritative:
+#        `shadow-analysis telemetry-quality` validates the PERSISTED
+#        mock_attempt_summary.analytics_quality snapshot (so late events cannot
+#        mask the fallback used at submit), scoped to the EXACT mock_mastery_shadow
+#        population. Metrics: fallback_engaged_question_count (answered/marked
+#        questions that fell back — untouched excluded), events_used,
+#        attempts_missing_snapshot, and trailing_gap_count via the
+#        attempt.submit_flush final-sequence marker. Fail-closed; unit-tested.
+#   [P2 RESOLVED] verify_mastery_fingerprint.sh cross-checks the recorded digest
+#        across manifest / pr7 / checklist AND requires a pinned SHA (EXPECTED_SHA,
+#        or SKIP_SHA=1 for a content-only check).
 #   [OPEN — OPERATOR ONLY] PR #800 remains CODE-FIXED / VALIDATION PENDING with
 #        its three staging checks unchecked, and the 34 -> 35 manifest expansion
 #        is PROPOSED pending operator approval. Per AGENTS.md the gate stays
@@ -70,7 +73,7 @@
 # post-merge main SHA) once the operator captures approval.
 #
 # Reference fingerprint (PR #803 branch, current 35-file boundary):
-#   599792f28153c5e378ac1dc88ce40c4fd5f2c15984b7f1c74cdec702137d04f4
+#   52791ea8689be1e2bb8ad5b520f3c11642678da1b9edf52c573e27d572da0c45
 # A per-file SHA-256 attestation is committed alongside this manifest:
 #   docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt
 # Verify (fail-closed) with: bash scripts/verify_mastery_fingerprint.sh

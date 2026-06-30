@@ -461,6 +461,44 @@ def test_api_post_events_submitted_within_grace_window_accepted():
     assert r.status_code == 200
 
 
+def test_late_event_to_submitted_attempt_triggers_recompute(monkeypatch):
+    """Accepted client events on a submitted attempt (within grace) idempotently
+    recompute the persisted analytics (closes the submit/late-event race)."""
+    sb, _, _ = _seeded_db()
+    attempt_id = "attempt-recompute-1"
+    recent_submit = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
+    sb.db.setdefault("mock_attempts", []).append({
+        "id": attempt_id, "user_id": "user-1", "status": "submitted",
+        "submitted_at": recent_submit, "expires_at": _past_iso(10), "template_snapshot": {},
+    })
+    calls = []
+    import app.study_os.attempt_analytics.service as analytics_svc
+    monkeypatch.setattr(analytics_svc, "compute_and_persist", lambda _sb, aid: calls.append(aid))
+    client = _client(sb, "user-1")
+    body = {"events": [{"event_type": "question.visited", "sequence_no": 1,
+                        "occurred_at": _now_iso(), "payload": {"question_id": "q-1"}}]}
+    r = client.post(f"/api/study/mocks/attempts/{attempt_id}/events", json=body)
+    assert r.status_code == 200
+    assert calls == [attempt_id]
+    assert r.json().get("analytics_recomputed") is True
+
+
+def test_in_progress_event_does_not_trigger_recompute(monkeypatch):
+    """Events on an in_progress attempt must NOT trigger a post-submit recompute."""
+    sb, _, _ = _seeded_db()
+    attempt_id = "attempt-recompute-2"
+    _plant_attempt(sb, attempt_id, "user-1", status="in_progress")
+    calls = []
+    import app.study_os.attempt_analytics.service as analytics_svc
+    monkeypatch.setattr(analytics_svc, "compute_and_persist", lambda _sb, aid: calls.append(aid))
+    client = _client(sb, "user-1")
+    body = {"events": [{"event_type": "question.visited", "sequence_no": 1,
+                        "occurred_at": _now_iso(), "payload": {"question_id": "q-1"}}]}
+    r = client.post(f"/api/study/mocks/attempts/{attempt_id}/events", json=body)
+    assert r.status_code == 200
+    assert calls == []
+
+
 def test_heartbeat_with_large_drift_accepted_no_state_change():
     """Heartbeat with client_remaining_sec >> server_remaining_sec is recorded, not enforced (AC9)."""
     sb, _, _ = _seeded_db()

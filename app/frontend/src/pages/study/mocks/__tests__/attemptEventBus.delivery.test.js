@@ -335,6 +335,18 @@ describe("stale-token 401 → refresh → retry", () => {
   });
 });
 
+describe("markSubmitFlush", () => {
+  test("enqueues an attempt.submit_flush marker carrying the final sequence number", () => {
+    const bus = makeBus();
+    bus._seq = 7;
+    bus.markSubmitFlush();
+    const marker = bus._ring.find((e) => e.event_type === "attempt.submit_flush");
+    expect(marker).toBeTruthy();
+    expect(marker.sequence_no).toBe(8);               // took the next seq
+    expect(marker.payload.final_sequence_no).toBe(8); // declared final == its own seq
+  });
+});
+
 describe("flushAndWait (pre-submit drain)", () => {
   test("resolves true after fully draining the queue", async () => {
     global.fetch = jest.fn(async (_url, opts) => {

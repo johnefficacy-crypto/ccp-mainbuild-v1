@@ -263,9 +263,15 @@ export default function MockAttemptShell() {
       // Deliver buffered telemetry (the final question.visited / answered events)
       // and wait for the server ACK BEFORE /submit triggers compute_and_persist(),
       // so the persisted classifications/dwell reflect them. Time-bounded
-      // best-effort — telemetry must never block the user's submit.
+      // best-effort — telemetry must never block the user's submit; if the flush
+      // does not fully drain, the durable queue replays and the server recomputes
+      // analytics on the late /events, so the snapshot still converges.
       try {
-        await eventBus.flushAndWait({ timeoutMs: 4000 });
+        eventBus.markSubmitFlush();  // final-sequence marker for trailing-loss detection
+        const flushed = await eventBus.flushAndWait({ timeoutMs: 4000 });
+        if (!flushed) {
+          console.warn("[Shell] pre-submit flush incomplete; relying on durable replay + server recompute");
+        }
       } catch (e) {
         console.warn("[Shell] pre-submit event flush error:", e);
       }

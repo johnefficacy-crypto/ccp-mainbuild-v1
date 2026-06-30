@@ -1507,127 +1507,114 @@ def multi_exam_coverage(
 
 # ─── telemetry-quality gate ───────────────────────────────────────────────────
 
-_VISIT_EVENT_TYPES: frozenset[str] = frozenset({"question.visited", "question_visited"})
+_SUBMIT_FLUSH_EVENT = "attempt.submit_flush"
 
-# Fail-closed telemetry-quality thresholds for the 14-day shadow gate. Any
-# touched question without a visit event, any client-sequence gap, or any
-# evaluated attempt with zero usable events fails the gate — proving the frozen
-# classifications/dwell were derived from the documented primary event source
-# rather than silently falling back to mock_attempt_responses.time_spent_sec.
+# Fail-closed telemetry-quality thresholds for the 14-day shadow gate. The gate
+# validates the PERSISTED analytics-quality snapshot (mock_attempt_summary)
+# produced by compute_dwell_times at submit/recompute — NOT a fresh re-derivation
+# from current event rows — so late events that arrived after analytics was
+# computed cannot mask the fallback actually used. Any engaged question that fell
+# back, any attempt with zero usable events, any missing snapshot or submit-flush
+# marker, or any trailing-event gap fails the gate.
 _TQ_THRESHOLDS: dict[str, Any] = {
-    "visit_coverage_pct": 100.0,    # every EXPECTED-VISIT question has a visit event
-    "fallback_question_count": 0,   # no touched question fell back to time_spent_sec
-    "delivery_gap_count": 0,        # no missing client sequence numbers (ingest/delivery loss)
-    "attempts_without_events": 0,   # every evaluated attempt produced usable events
+    "attempts_missing_snapshot": 0,           # every attempt has a persisted analytics snapshot
+    "snapshots_missing_field": 0,             # snapshot carries fallback_engaged_question_count
+    "attempts_without_events": 0,             # snapshot events_used > 0 for every attempt
+    "fallback_engaged_question_count": 0,     # no answered/marked question fell back to time_spent_sec
+    "attempts_missing_marker": 0,             # every attempt emitted attempt.submit_flush
+    "trailing_gap_count": 0,                  # declared final seq == max observed seq (no trailing loss)
 }
 
-
-def _is_touched(resp: dict) -> bool:
-    """Expected-visit population membership.
-
-    Generated attempts legitimately contain UNTOUCHED questions (the user never
-    navigated to them); those are NOT expected to carry a visit event and must
-    not count against coverage. `mock_attempt_responses.is_visited` is set by
-    answer-save (not by a mere visit), so we treat a question as *touched* — and
-    therefore expected to have a client `question.visited` anchor — if it was
-    answered, marked for review, or flagged visited.
-    """
-    return bool(
-        resp.get("selected_option_id") is not None
-        or resp.get("is_marked_for_review")
-        or resp.get("is_visited")
-    )
+_TQ_POPULATION_DEFINITION = (
+    "Population = the exact shadow-validation set (distinct attempt_ids in "
+    "mock_mastery_shadow with flag_state='shadow' over the window). Metrics are "
+    "read from the PERSISTED mock_attempt_summary.analytics_quality snapshot, so "
+    "late events cannot hide fallback used at submit time. The engaged population "
+    "(answered or marked questions; untouched questions excluded) is defined by "
+    "the backend at submit via fallback_engaged_question_count. Trailing loss is "
+    "detected from the attempt.submit_flush marker: trailing_gap = declared "
+    "final_sequence_no - max observed client sequence_no."
+)
 
 
 def compute_telemetry_quality(
     attempt_ids: list[str],
-    responses_by_attempt: dict[str, list[dict]],
+    quality_by_attempt: dict[str, dict],
     events_by_attempt: dict[str, list[dict]],
 ) -> dict[str, Any]:
     """Pure metric computation (no DB, no thresholds) so it is unit-testable.
 
     Per attempt:
-      - expected_visit population = touched questions (see _is_touched)
-      - covered = touched questions that have a client `question.visited` event
-      - missing/fallback = touched questions with no visit event (dwell falls back)
-      - events_used = usable client visit events (valid occurred_at + question_id)
-      - delivery_gap = max(client sequence_no) − distinct client sequence count.
-        The client assigns monotonic per-attempt sequence numbers, so a gap means
-        events that were enqueued but never accepted — a delivery / ingest-
-        rejection proxy observable purely from persisted rows.
+      - reads the persisted analytics_quality snapshot (events_used,
+        fallback_engaged_question_count) — the authoritative record of what the
+        frozen classifications/dwell actually used at submit time
+      - trailing-loss from the attempt.submit_flush marker: trailing_gap =
+        declared final_sequence_no - max observed client sequence_no
     """
     per_attempt: list[dict] = []
-    agg_expected = agg_covered = agg_fallback = 0
-    agg_events_used = agg_delivery_gap = 0
+    attempts_missing_snapshot = 0
+    snapshots_missing_field = 0
     attempts_without_events = 0
+    attempts_missing_marker = 0
+    total_fallback_engaged = 0
+    total_trailing_gap = 0
+    total_events_used = 0
 
     for aid in attempt_ids:
-        responses = responses_by_attempt.get(aid, [])
+        aq = quality_by_attempt.get(aid)
         events = events_by_attempt.get(aid, [])
+        has_snapshot = isinstance(aq, dict)
 
-        expected_qids = {
-            r["question_id"]
-            for r in responses
-            if r.get("question_id") and _is_touched(r)
-        }
+        events_used = int(aq.get("events_used", 0)) if has_snapshot else 0
+        fe_raw = aq.get("fallback_engaged_question_count") if has_snapshot else None
+        has_fe = isinstance(fe_raw, int)
+        fallback_engaged = fe_raw if has_fe else 0
 
-        visit_qids: set[str] = set()
-        events_used = 0
-        seqs: set[int] = set()
+        declared_final: int | None = None
         max_seq = 0
         for e in events:
             seq = e.get("sequence_no")
-            if isinstance(seq, int):
-                seqs.add(seq)
-                if seq > max_seq:
-                    max_seq = seq
-            if e.get("event_type") not in _VISIT_EVENT_TYPES:
-                continue
-            if not e.get("occurred_at"):
-                continue
-            qid = (e.get("payload") or {}).get("question_id") or e.get("question_id")
-            if not qid:
-                continue
-            visit_qids.add(qid)
-            events_used += 1
+            if isinstance(seq, int) and seq > max_seq:
+                max_seq = seq
+            if e.get("event_type") == _SUBMIT_FLUSH_EVENT:
+                d = (e.get("payload") or {}).get("final_sequence_no")
+                if isinstance(d, int):
+                    declared_final = d if declared_final is None else max(declared_final, d)
+        has_marker = declared_final is not None
+        trailing_gap = max(0, declared_final - max_seq) if has_marker else 0
 
-        covered = expected_qids & visit_qids
-        missing = sorted(expected_qids - visit_qids)
-        delivery_gap = max(0, max_seq - len(seqs))
-        if events_used == 0:
+        if not has_snapshot:
+            attempts_missing_snapshot += 1
+        elif not has_fe:
+            snapshots_missing_field += 1
+        if has_snapshot and events_used == 0:
             attempts_without_events += 1
+        if not has_marker:
+            attempts_missing_marker += 1
+        total_fallback_engaged += fallback_engaged
+        total_trailing_gap += trailing_gap
+        total_events_used += events_used
 
         per_attempt.append({
             "attempt_id": aid,
-            "expected_visit_questions": len(expected_qids),
-            "covered_questions": len(covered),
-            "missing_visit_questions": len(missing),
-            "missing_visit_qids": missing,
+            "has_snapshot": has_snapshot,
             "events_used": events_used,
-            "delivery_gap_count": delivery_gap,
+            "fallback_engaged_question_count": fallback_engaged if has_fe else None,
+            "has_submit_flush_marker": has_marker,
+            "declared_final_sequence_no": declared_final,
             "max_client_sequence_no": max_seq,
-            "distinct_client_sequences": len(seqs),
+            "trailing_gap_count": trailing_gap,
         })
-
-        agg_expected += len(expected_qids)
-        agg_covered += len(covered)
-        agg_fallback += len(missing)
-        agg_events_used += events_used
-        agg_delivery_gap += delivery_gap
-
-    visit_coverage_pct = (
-        round(100.0 * agg_covered / agg_expected, 4) if agg_expected else None
-    )
 
     return {
         "attempts_evaluated": len(attempt_ids),
+        "attempts_missing_snapshot": attempts_missing_snapshot,
+        "snapshots_missing_field": snapshots_missing_field,
         "attempts_without_events": attempts_without_events,
-        "expected_visit_questions": agg_expected,
-        "covered_questions": agg_covered,
-        "fallback_question_count": agg_fallback,
-        "visit_coverage_pct": visit_coverage_pct,
-        "events_used": agg_events_used,
-        "delivery_gap_count": agg_delivery_gap,
+        "attempts_missing_marker": attempts_missing_marker,
+        "fallback_engaged_question_count": total_fallback_engaged,
+        "trailing_gap_count": total_trailing_gap,
+        "events_used": total_events_used,
         "per_attempt": per_attempt,
     }
 
@@ -1655,15 +1642,6 @@ def _fetch_by_attempt_ids(
     return rows
 
 
-_TQ_POPULATION_DEFINITION = (
-    "expected-visit population = questions the user engaged with "
-    "(selected_option_id set OR is_marked_for_review OR is_visited); "
-    "legitimately untouched questions are excluded. visit_coverage_pct = "
-    "covered / expected. delivery_gap_count = max(client sequence_no) - distinct "
-    "client sequence count (events enqueued but never accepted)."
-)
-
-
 def telemetry_quality(
     days: int = 14,
     attempt_id: str | None = None,
@@ -1676,40 +1654,35 @@ def telemetry_quality(
     sb = _get_supabase()
     now_iso = datetime.now(timezone.utc).isoformat()
 
+    # Scope to the EXACT shadow-validation population: distinct attempt_ids that
+    # produced shadow rows (mock_mastery_shadow, flag_state='shadow'), not all
+    # submitted attempts.
     if attempt_id:
         window_start = window_end = None
 
-        def attempts_q(q: Any) -> Any:
-            return (
-                q.select("id,user_id,submitted_at,status")
-                .eq("status", "submitted")
-                .eq("id", attempt_id)
-            )
+        def shadow_q(q: Any) -> Any:
+            return q.select("attempt_id,flag_state,decided_at").eq("flag_state", "shadow").eq("attempt_id", attempt_id)
     elif from_utc or to_utc:
         window_start, window_end = from_utc, to_utc
 
-        def attempts_q(q: Any) -> Any:  # type: ignore[misc]
-            q = q.select("id,user_id,submitted_at,status").eq("status", "submitted")
+        def shadow_q(q: Any) -> Any:  # type: ignore[misc]
+            q = q.select("attempt_id,flag_state,decided_at").eq("flag_state", "shadow")
             if from_utc:
-                q = q.gte("submitted_at", from_utc)
+                q = q.gte("decided_at", from_utc)
             if to_utc:
-                q = q.lte("submitted_at", to_utc)
+                q = q.lte("decided_at", to_utc)
             return q
     else:
         since = _since_iso(days)
         window_start, window_end = since, now_iso
 
-        def attempts_q(q: Any) -> Any:  # type: ignore[misc]
-            return (
-                q.select("id,user_id,submitted_at,status")
-                .eq("status", "submitted")
-                .gte("submitted_at", since)
-            )
+        def shadow_q(q: Any) -> Any:  # type: ignore[misc]
+            return q.select("attempt_id,flag_state,decided_at").eq("flag_state", "shadow").gte("decided_at", since)
 
     thresholds = {**_TQ_THRESHOLDS, "min_attempts": min_attempts}
 
     try:
-        attempts = _fetch_paginated(sb, "mock_attempts", attempts_q, batch_size=1000, order_by="id")
+        shadow_rows = _fetch_paginated(sb, "mock_mastery_shadow", shadow_q, batch_size=1000, order_by="id")
     except Exception as exc:  # noqa: BLE001
         _emit_result(
             {"schema_version": 1, "command": cmd, "status": "ERROR",
@@ -1718,7 +1691,7 @@ def telemetry_quality(
         )
         sys.exit(_EXIT_ERROR)
 
-    attempt_ids = [a["id"] for a in attempts if a.get("id")]
+    attempt_ids = sorted({r["attempt_id"] for r in shadow_rows if r.get("attempt_id")})
     if len(attempt_ids) < min_attempts:
         _emit_result(
             {"schema_version": 1, "command": cmd, "window_start": window_start,
@@ -1730,14 +1703,12 @@ def telemetry_quality(
         sys.exit(_EXIT_INSUFFICIENT)
 
     try:
-        resp_rows = _fetch_by_attempt_ids(
-            sb, "mock_attempt_responses",
-            "id,attempt_id,question_id,selected_option_id,is_visited,is_marked_for_review,time_spent_sec",
-            attempt_ids,
+        summary_rows = _fetch_by_attempt_ids(
+            sb, "mock_attempt_summary", "id,attempt_id,analytics_quality", attempt_ids,
         )
         event_rows = _fetch_by_attempt_ids(
             sb, "mock_attempt_events",
-            "id,attempt_id,event_type,payload,sequence_no,occurred_at,source",
+            "id,attempt_id,event_type,payload,sequence_no,source",
             attempt_ids, source="client",
         )
     except Exception as exc:  # noqa: BLE001
@@ -1748,35 +1719,18 @@ def telemetry_quality(
         )
         sys.exit(_EXIT_ERROR)
 
-    responses_by_attempt: dict[str, list[dict]] = defaultdict(list)
-    for r in resp_rows:
-        responses_by_attempt[r["attempt_id"]].append(r)
+    quality_by_attempt: dict[str, dict] = {}
+    for s in summary_rows:
+        aq = s.get("analytics_quality")
+        if isinstance(aq, dict):
+            quality_by_attempt[s["attempt_id"]] = aq
     events_by_attempt: dict[str, list[dict]] = defaultdict(list)
     for e in event_rows:
         events_by_attempt[e["attempt_id"]].append(e)
 
-    metrics = compute_telemetry_quality(attempt_ids, responses_by_attempt, events_by_attempt)
+    metrics = compute_telemetry_quality(attempt_ids, quality_by_attempt, events_by_attempt)
 
-    if metrics["expected_visit_questions"] == 0:
-        _emit_result(
-            {"schema_version": 1, "command": cmd, "window_start": window_start,
-             "window_end": window_end, "status": "INSUFFICIENT_DATA",
-             "thresholds": thresholds, "population_definition": _TQ_POPULATION_DEFINITION,
-             "detail": "no expected-visit (touched) questions across evaluated attempts",
-             **metrics},
-            output_json,
-        )
-        sys.exit(_EXIT_INSUFFICIENT)
-
-    failures: list[str] = []
-    if metrics["visit_coverage_pct"] != 100.0:
-        failures.append("visit_coverage_pct")
-    if metrics["fallback_question_count"] != 0:
-        failures.append("fallback_question_count")
-    if metrics["delivery_gap_count"] != 0:
-        failures.append("delivery_gap_count")
-    if metrics["attempts_without_events"] != 0:
-        failures.append("attempts_without_events")
+    failures = [k for k in _TQ_THRESHOLDS if metrics.get(k, 0) != 0]
     status = "PASS" if not failures else "FAIL"
 
     _emit_result(

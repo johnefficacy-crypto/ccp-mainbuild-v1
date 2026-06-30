@@ -58,23 +58,26 @@ answer-write dependency `useAnswerSync.js`).
 
 **FREEZE PENDING — all code/tooling blockers resolved; OPERATOR APPROVAL the
 only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
-- **[P0 RESOLVED]** Submit-time telemetry race — `MockAttemptShell.doSubmit()`
-  now `await`s `eventBus.flushAndWait()` (a time-bounded, ACK-gated full flush)
-  BEFORE POSTing `/submit`, so the final buffered `question.visited`/`answered`
-  events are delivered before `submit_attempt()` runs `compute_and_persist()`.
-  Regression: `MockAttemptShell.submitFlush.test.jsx` + `flushAndWait` unit
-  tests. (Residual: a flush that exceeds its bound relies on the durable-queue
-  replay path; the telemetry-quality gate below catches any resulting fallback.)
+- **[P0 RESOLVED]** Submit-time telemetry race — (a) `MockAttemptShell.doSubmit()`
+  `await`s `eventBus.flushAndWait()` (time-bounded, ACK-gated) BEFORE POSTing
+  `/submit`; (b) the backend idempotently recomputes analytics on late `/events`
+  accepted within the grace window (`mock_attempt_events.py` →
+  `compute_and_persist`), so a flush that does not fully drain is still
+  reconciled. Fully closed, not merely mitigated. Regression:
+  `MockAttemptShell.submitFlush.test.jsx`, `flushAndWait` unit tests, and
+  `test_attempt_events` recompute tests.
 - **[P1 RESOLVED]** Boundary closed over `useAnswerSync.js` (added; 34 → 35) and
   a transitive-dependency inclusion rule is documented in the manifest header.
-- **[P1 RESOLVED]** Telemetry-quality gate is now executable —
-  `shadow-analysis telemetry-quality` emits `events_used` / `visit_coverage_pct`
-  / `fallback_question_count` / `delivery_gap_count` over submitted attempts with
-  a defined expected-visit population (touched questions only), fail-closed
-  thresholds, and unit tests (see the gate section below).
-- **[P2 RESOLVED]** `verify_mastery_fingerprint.sh` now cross-checks the recorded
-  digest across the manifest / pr7 / checklist and asserts `EXPECTED_SHA` when
-  the operator supplies it.
+- **[P1 RESOLVED]** Telemetry-quality gate is executable and authoritative —
+  `shadow-analysis telemetry-quality` validates the PERSISTED
+  `mock_attempt_summary.analytics_quality` snapshot (late events cannot mask the
+  fallback used at submit), scoped to the exact `mock_mastery_shadow` population;
+  metrics `fallback_engaged_question_count` (answered/marked fallback; untouched
+  excluded), `events_used`, `attempts_missing_snapshot`, and `trailing_gap_count`
+  (via the `attempt.submit_flush` final-sequence marker). Fail-closed; unit-tested.
+- **[P2 RESOLVED]** `verify_mastery_fingerprint.sh` cross-checks the recorded
+  digest across the manifest / pr7 / checklist AND requires a pinned SHA
+  (`EXPECTED_SHA`, or `SKIP_SHA=1` for a content-only check).
 - **[OPEN — OPERATOR ONLY]** PR #800 remains `CODE-FIXED / VALIDATION PENDING`
   (its three staging checks unchecked) and the 34 → 35 manifest expansion is
   PROPOSED pending operator approval. Per AGENTS.md the gate stays FREEZE PENDING
@@ -82,7 +85,7 @@ only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
 
 **Reference fingerprint (PR #803 branch, 35 files) — NOT the freeze /
 window_start hash; re-pin to the post-merge main SHA at window_start:**
-`599792f28153c5e378ac1dc88ce40c4fd5f2c15984b7f1c74cdec702137d04f4`
+`52791ea8689be1e2bb8ad5b520f3c11642678da1b9edf52c573e27d572da0c45`
 
 A per-file SHA-256 attestation is committed at
 `docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt`; verify
@@ -108,13 +111,14 @@ Steps 3–8 are sequential and each depends on those above it.
    OPERATOR APPROVAL is the only remaining gate):** Boundary closed at 35 files
    (added event-acceptance deps `core/auth.py` + `lib/supabase.js` and answer-
    write dep `useAnswerSync.js`); reference fingerprint + per-file attestation
-   regenerated (`599792f28153c5e378ac1dc88ce40c4fd5f2c15984b7f1c74cdec702137d04f4`).
+   regenerated (`52791ea8689be1e2bb8ad5b520f3c11642678da1b9edf52c573e27d572da0c45`).
    This is NOT yet the freeze hash. PR #803 review disposition: (i) ✅ submit/
-   late-event race fixed via an awaited pre-submit ACKed flush + regression;
-   (ii) ✅ boundary closed over `useAnswerSync.js` + a transitive-dependency rule;
-   (iii) ✅ telemetry-quality gate implemented + tested in `shadow_analysis.py`
-   with a valid expected-visit population; (v) ✅ `verify_mastery_fingerprint.sh`
-   hardened (cross-document digest + `EXPECTED_SHA`). (iv) ⛔ OPERATOR PENDING —
+   late-event race fixed via an awaited pre-submit ACKed flush AND backend
+   idempotent recompute on late `/events`; (ii) ✅ boundary closed over
+   `useAnswerSync.js` + a transitive-dependency rule; (iii) ✅ telemetry-quality
+   gate is snapshot-based + shadow-scoped with engaged-fallback population and a
+   trailing-loss marker, tested; (v) ✅ `verify_mastery_fingerprint.sh` hardened
+   (cross-document digest + required `EXPECTED_SHA`). (iv) ⛔ OPERATOR PENDING —
    PR #800 staging validation + boundary approval. After approval: re-pin the
    fingerprint to the post-merge main SHA and record it here.
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
@@ -200,21 +204,24 @@ fell back to `mock_attempt_responses.time_spent_sec`. All must hold.
 
 **Implemented and executable** via `shadow-analysis telemetry-quality`
 (`--from-utc … --to-utc …` or `--days N`, `--min-attempts 20` for the real
-window). The command computes these over submitted attempts against a defined
-**expected-visit population** — questions the user actually engaged with
-(`selected_option_id` set OR `is_marked_for_review` OR `is_visited`);
-legitimately untouched questions in generated attempts are excluded, so `100%`
-coverage has a valid denominator. Ingest-rejection / delivery loss is observed
-as `delivery_gap_count` = `max(client sequence_no) − distinct client sequence
-count` (the client assigns monotonic per-attempt seqs, so a gap = events
-enqueued but never accepted). PASS requires:
+window). It validates the **persisted `mock_attempt_summary.analytics_quality`
+snapshot** (what the frozen classifications/dwell actually used at submit, so
+late events cannot hide submit-time fallback), scoped to the **exact
+`mock_mastery_shadow` population** (not all submitted attempts). The engaged
+population (answered or marked questions; untouched excluded) is defined by the
+backend at submit via `fallback_engaged_question_count`. Trailing loss is
+detected from the `attempt.submit_flush` marker: `trailing_gap` = declared
+`final_sequence_no` − max observed client `sequence_no`. PASS requires every one
+of these aggregate metrics to be 0:
 
 | Metric (`telemetry-quality`) | Required |
 |--------|----------|
-| `attempts_without_events` | 0 (every evaluated attempt produced usable events) |
-| `visit_coverage_pct` (touched questions with a `question.visited` anchor) | 100.0 |
-| `fallback_question_count` (touched question dwell from `time_spent_sec`) | 0 |
-| `delivery_gap_count` (missing client sequence numbers) | 0 |
+| `attempts_missing_snapshot` (every shadow attempt has a persisted snapshot) | 0 |
+| `snapshots_missing_field` (snapshot carries `fallback_engaged_question_count`) | 0 |
+| `attempts_without_events` (snapshot `events_used` > 0) | 0 |
+| `fallback_engaged_question_count` (answered/marked question fell back) | 0 |
+| `attempts_missing_marker` (every attempt emitted `attempt.submit_flush`) | 0 |
+| `trailing_gap_count` (declared final seq − max observed seq) | 0 |
 
 ### Additional PASS criteria (all must hold)
 

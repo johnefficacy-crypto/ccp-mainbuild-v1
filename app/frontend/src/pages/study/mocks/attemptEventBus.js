@@ -150,6 +150,21 @@ export class AttemptEventBus {
     }
   }
 
+  /**
+   * Emit the submit-boundary marker carrying the final monotonic sequence_no, so
+   * the telemetry-quality gate can detect trailing event loss (a declared final
+   * seq greater than the max observed seq). Call immediately before the
+   * pre-submit flush.
+   */
+  markSubmitFlush() {
+    try {
+      // The marker takes the next sequence number; declare it as the final seq.
+      this.enqueue("attempt.submit_flush", { final_sequence_no: this._seq + 1 });
+    } catch (e) {
+      console.warn("[EventBus] submit_flush mark error:", e);
+    }
+  }
+
   // ── DOM listeners ───────────────────────────────────────────────────────────
 
   _onVisibility() {

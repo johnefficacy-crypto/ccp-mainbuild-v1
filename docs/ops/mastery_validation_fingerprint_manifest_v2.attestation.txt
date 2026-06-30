@@ -7,11 +7,12 @@
 # Regenerate (and re-record the combined hash in the manifest /
 # pr7_shadow_gate_results.md / checklist) whenever any listed file changes.
 #
-# Pinned SHA      : PR #803 branch (pre-merge) — re-pin to the post-merge main SHA at window_start
+# Pinned SHA      : PR #803 branch (pre-merge) — operator pins the window_start SHA via EXPECTED_SHA
 # File count      : 35
-# Combined digest : 599792f28153c5e378ac1dc88ce40c4fd5f2c15984b7f1c74cdec702137d04f4
+# Combined digest : 52791ea8689be1e2bb8ad5b520f3c11642678da1b9edf52c573e27d572da0c45
 #
-# Verify: bash scripts/verify_mastery_fingerprint.sh   (operator: EXPECTED_SHA=<sha> ...)
+# Verify (content-only): SKIP_SHA=1 bash scripts/verify_mastery_fingerprint.sh
+# Verify (operator)    : EXPECTED_SHA=<sha> bash scripts/verify_mastery_fingerprint.sh
 #
 # <sha256>  <path>
 15a43831d6d6c675d41f30f1cb1923f2d97dd6df722cf3e0f4fdaac4ca5a73e2  app/backend/app/study_os/mastery_writer.py
@@ -30,22 +31,22 @@ fbd3cb9b060aba2bcad738dfe2cc37aa3cac6fb3c010479f7b298a7cb2365cf2  app/backend/ap
 8c12fea0d0cab35357cc1487727085c8efaaab150f708dac978b703f4b4da99c  app/backend/app/study_os/attempt_analytics/service.py
 cd6e5167b6c749c1a55b3de00bc5c42b7fccdf38eec2d9b384b21cc59206956a  app/backend/app/study_os/attempt_analytics/schemas.py
 73bdd0e4bd9116d0d2b5f733d53ac79299b594924459e00cbb00e1a9ed1f5bc7  app/backend/app/study_os/attempt_analytics/topic_breakdown.py
-aa39cf56001575e81c2c6fd7dd303a6cd2363f2b19996a71325873900b073c74  app/backend/app/study_os/attempt_analytics/time_analytics.py
+7e38205b5b565c18acc58247f67e26e5a1fb9f6aa8ba59188fb58d9b5af8bb4a  app/backend/app/study_os/attempt_analytics/time_analytics.py
 81e04e90ee81583a6ba6ecb2517c63ed2bbe82ea6589eb34d8f640524452c3ce  app/backend/app/study_os/attempt_analytics/scoring.py
 5a6515574e9d9b95b9933b0c4405add70ef962010a3e0d6f8b2b1ea7a2d4ffc3  app/backend/app/study_os/attempt_analytics/classifier.py
 618b85882a4de545ba95fd975098f7d79e1abba9c36fc8c178745fffdf379be1  app/backend/app/study_os/attempt_events.py
-04624f0aa9d3c2f2d9082ed6e68f7475eeafaf4b45268e5290010bc8edd96228  app/backend/app/study_os/attempt_event_types.py
+d8abadac6a911112e251404a95b2871c322c8e6023205827db1d510ec5d13e66  app/backend/app/study_os/attempt_event_types.py
 1b6cf897a52b1a440492d1818a65dc1696e252cc9e5cd671d2a992fedeac90bc  app/backend/app/api/mock_engine.py
 568dfa69f0660033e53e740ccce261a3b50c538087e95cc63bfb09204c89e7ff  app/backend/app/api/canonical.py
 28d507be9706bae72d348b12ce4b59926fd530c570ec14a3d3e7cae034cf4b5d  app/backend/app/api/study_os.py
 038f0b586fa5528ef5e7e6b78dd9fba2fc96c325cbb22068d0c476f93dea5033  app/backend/app/api/admin_study_os.py
-43d651aa31f9642a557369a3f2f89c45dcbca277183c81e9823febbaa688273f  app/backend/app/api/mock_attempt_events.py
-57149328519bc74b4e35c2c51f0c7e242c306ccb1a667791641f276ea0a3f99e  tools/mastery_shadow_analysis/shadow_analysis.py
+185bba40ea5b84152b79f4890d59f3311a69ac67eae19026509e41134cf8e467  app/backend/app/api/mock_attempt_events.py
+da2b38518a3ba232da309aee2432491a333a401e3aab2d83ba51cdd3c0811979  tools/mastery_shadow_analysis/shadow_analysis.py
 ddb4fa861e7e3c167ba621c9ce69922f82dd1e5d1505dd80ebc2c526092126b6  app/supabase/migrations/180_mock_mastery_shadow_idempotency.sql
 755aab31df2799088420f39615607cdbdac74314fde055bae9c52d225a164748  app/supabase/migrations/181_mock_correction_tasks_uniqueness.sql
 39e7c12c1bec50cb634cb39c2449ddf9bfa113f97e83d4a52d8c6923f7c18819  app/supabase/migrations/182_mock_correction_draft_atomic_rpcs.sql
-4a4f5cc866f2ab7ddae4020673538bfffa0bb77e05f96fb8833786b3641d7288  app/frontend/src/pages/study/mocks/MockAttemptShell.jsx
-ff653b02cc5032fe098f146aadc676062b209bfbdac10757b7290eaf3930032c  app/frontend/src/pages/study/mocks/attemptEventBus.js
+a6f0702f9c0c7721f6b8af843bf9e5471f4fb1141befc5c0afe007e41b1cb459  app/frontend/src/pages/study/mocks/MockAttemptShell.jsx
+534c11bbddf01283cc1ad40cbbc834c92e211799a76455fced65badc782dae6e  app/frontend/src/pages/study/mocks/attemptEventBus.js
 80aeab11f49637d2e48c1c18cf28d6ce9f7723c243d61e7537fdbe609bcf84bb  app/backend/app/core/auth.py
 279f9a1cc60ded5304b64942f3689d7ed28e8e59d784ac63877f2709a95f7013  app/frontend/src/lib/supabase.js
 a57d8596506e6dad57ede2010e252d7a043f0b8fca84294c1f43d59d67c26cbf  app/frontend/src/pages/study/mocks/useAnswerSync.js

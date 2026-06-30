@@ -20,6 +20,7 @@ jest.mock("../attemptEventBus", () => ({
     destroy: jest.fn(),
     enqueue: jest.fn(),
     setCurrentQuestionId: jest.fn(),
+    markSubmitFlush: jest.fn(),
     flushAndWait: (...args) => mockFlushAndWait(...args),
   },
 }));
