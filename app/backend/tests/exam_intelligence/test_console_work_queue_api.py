@@ -7,8 +7,9 @@ pages), required-read failure propagation, and bounded (no per-exam) reads.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
-from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -17,6 +18,19 @@ from app.core.auth import get_current_user
 from app.core.errors import DatabaseError
 from app.exam_intelligence import work_queue as wq
 from tests.persona_questions._stub import SBStub, _Query
+
+
+# ── Time pinning ─────────────────────────────────────────────────────────────
+# Anchors work_queue._now() to 2026-06-23 UTC so staleness calculations are
+# deterministic.  stale_cutoff = 2026-06-09; _RECENT (2026-06-16) is not
+# stale; _STALE (2026-01-01) is stale.  Without this, _RECENT sits on the
+# 14-day boundary and tests fail depending on the time of day tests run.
+_FIXED_NOW = datetime(2026, 6, 23, 0, 0, 0, tzinfo=timezone.utc)
+
+
+@pytest.fixture(autouse=True)
+def _pin_now(monkeypatch):
+    monkeypatch.setattr(wq, "_now", lambda: _FIXED_NOW)
 
 
 # ── Harness ─────────────────────────────────────────────────────────────────
@@ -92,9 +106,12 @@ def _build_app(sb, role="super_admin"):
     return app
 
 
-# Dynamic so the date never ages into the 14-day stale window (STALE_REVIEW_DAYS=14).
-_RECENT = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-_STALE = "2026-01-01T00:00:00+00:00"
+# Relative to "now" so the fixtures never rot: a hardcoded _RECENT crosses the
+# 14-day STALE_REVIEW_DAYS boundary as wall-clock time advances (it did on
+# 2026-06-30), flipping "fresh" rows to "stale" and breaking these tests.
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz  # noqa: E402
+_RECENT = (_dt.now(_tz.utc) - _td(days=2)).isoformat()    # well within the 14-day window
+_STALE = (_dt.now(_tz.utc) - _td(days=90)).isoformat()    # well past it
 
 
 class _Seed:

@@ -27,7 +27,7 @@ The operator directed that both be implemented. Under the repo's contract-first 
 - Endpoint `POST /api/admin/exam-intelligence-cms/pyq-sources/{source_id}/review`, body `{ status: "verified"|"rejected"|"pending", reason: ">=8 chars" }`.
 - Permission: **`exam_intelligence.review`** (same gate as `review_pyq_paper`; super_admin bypass). NOT `exam_intelligence.cms`.
 - Transition matrix (identical to paper review): `pending→verified`, `pending→rejected`, `verified→rejected`, `rejected→pending`. All other transitions (incl. no-ops) → 422.
-- Backed by a transactional `SECURITY DEFINER` RPC (`cms_review_pyq_source`, migration 193): `SET search_path=public`, `SELECT … FOR UPDATE` lock, expected-status concurrency guard, atomic audit INSERT + `trust_status` UPDATE, full REVOKE-from-PUBLIC/anon/authenticated + GRANT-to-service_role. `pyq_sources` has no `updated_at` (migration 032) — not set.
+- Backed by a transactional `SECURITY DEFINER` RPC (`cms_review_pyq_source`, migration 201 — renumbered from 193 due to duplicate migration conflict resolved via PR #782): `SET search_path=public`, `SELECT … FOR UPDATE` lock, expected-status concurrency guard, atomic audit INSERT + `trust_status` UPDATE, full REVOKE-from-PUBLIC/anon/authenticated + GRANT-to-service_role. `pyq_sources` has no `updated_at` (migration 032) — not set.
 - Response `{ ok, audit_id, row }`. Errors: 404 missing / 422 invalid transition or reason / 409 concurrent modification.
 
 **Frontend contract:** when a selected paper has a `pyq_source_id`, render a read-only source-trust summary (title/type/url + status chip) with `canReview`-gated Verify/Reject/Re-queue actions opening a reason modal (≥8 chars), calling the endpoint via `useApiAction`, then refetching. The "No reusable source record" advisory for source-less papers is unchanged.
@@ -58,7 +58,7 @@ The operator directed that both be implemented. Under the repo's contract-first 
 
 Same discipline as migration 191/192:
 
-1. Apply migration **193** to staging (reconcile number vs deployed `schema_migrations`).
+1. Apply migration **201** to staging (reconcile number vs deployed `schema_migrations`; renumbered from 193 via PR #782 duplicate migration hotfix).
 2. Confirm `cms_review_pyq_source` exists; grant matrix (`anon`/`authenticated` denied, `service_role` allowed).
 3. Behavioral: each transition; disallowed transition; concurrent-modification guard; audit + rollback.
 4. Browser click-through: source Verify/Reject/Re-queue; inline upload happy path + a deliberately failing extraction (confirm it is NOT linked); cycle/phase labels readable.

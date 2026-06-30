@@ -1,0 +1,53 @@
+# Mastery Shadow Gate — v2 Validation Fingerprint Attestation
+#
+# Per-file SHA-256 attestation for the 36-file v2 manifest, so the combined
+# digest below is not opaque in review. NOTE: the manifest STATUS is FREEZE
+# PENDING (operator approval is the only remaining gate) — this is a REFERENCE
+# digest computed on the PR #803 branch, not yet the window_start/freeze hash.
+# Regenerate (and re-record the combined hash in the manifest /
+# pr7_shadow_gate_results.md / checklist) whenever any listed file changes.
+#
+# Pinned SHA      : PR #803 branch (pre-merge) — operator pins the window_start SHA via EXPECTED_SHA
+# File count      : 36
+# Combined digest : f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c
+#
+# Verify (content-only): SKIP_SHA=1 bash scripts/verify_mastery_fingerprint.sh
+# Verify (operator)    : EXPECTED_SHA=<sha> bash scripts/verify_mastery_fingerprint.sh
+#
+# <sha256>  <path>
+15a43831d6d6c675d41f30f1cb1923f2d97dd6df722cf3e0f4fdaac4ca5a73e2  app/backend/app/study_os/mastery_writer.py
+631b3ac55680ca8ef038e975e60ba549c176075ba4f0bb68a99138b73f0c85cf  app/backend/app/study_os/attempt_classification_readiness.py
+cb759ea3ec68cbd33ac61a1abc44f7044ac74917741d90f8d9a82a8cc4590055  app/backend/app/study_os/attempt_derivation.py
+c2eb460d66ff272f2c3f5a99b2d281f3a478bb12642003c4a122e04fe45087c0  app/backend/app/study_os/mastery_engine/__init__.py
+61684c1c0ff22d937e23b2fc44788c18dfe72ab41cec1a8b1d38940b39a70ff2  app/backend/app/study_os/mastery_engine/correction_tasks.py
+29b0f8d07c0bec5848c5935a2288ed0a92dc272b6d31ef172978ef9b4f58d8da  app/backend/app/study_os/mastery_engine/error_patterns.py
+fbd3cb9b060aba2bcad738dfe2cc37aa3cac6fb3c010479f7b298a7cb2365cf2  app/backend/app/study_os/mastery_engine/mastery_delta.py
+6fd611d02c8c56b499713801349334e3b53451cf97e05b0ef7fc79a34b9cd075  app/backend/app/study_os/mastery_engine/schemas.py
+8a073d5d1d59239c20343c7f38f47fabd60aaae95f3343c35442621c434a1bb1  app/backend/app/study_os/mastery_engine/service.py
+48a0ef6b7ed29d1a3484d9e46b9c73c47faa9f6664ad95e0deef762ee1e113d8  app/backend/app/study_os/correction_policy.py
+44a7dbfb6999a8c0ad3e6cbb13ae410447f03395b9f9b0454c5dc2eec3552459  app/backend/app/study_os/mock_engine.py
+7f52c5d951fbdc0b66e289ae5de0e27237512046b49cb947e71d7a0c5b18360e  app/backend/app/study_os/mocks.py
+47fa14c2fa6d71d524ff116d6150e23c1ac2bb79ef5aa277c898bb1aee6eee29  app/backend/app/study_os/attempt_analytics/__init__.py
+8c12fea0d0cab35357cc1487727085c8efaaab150f708dac978b703f4b4da99c  app/backend/app/study_os/attempt_analytics/service.py
+cd6e5167b6c749c1a55b3de00bc5c42b7fccdf38eec2d9b384b21cc59206956a  app/backend/app/study_os/attempt_analytics/schemas.py
+73bdd0e4bd9116d0d2b5f733d53ac79299b594924459e00cbb00e1a9ed1f5bc7  app/backend/app/study_os/attempt_analytics/topic_breakdown.py
+7e38205b5b565c18acc58247f67e26e5a1fb9f6aa8ba59188fb58d9b5af8bb4a  app/backend/app/study_os/attempt_analytics/time_analytics.py
+81e04e90ee81583a6ba6ecb2517c63ed2bbe82ea6589eb34d8f640524452c3ce  app/backend/app/study_os/attempt_analytics/scoring.py
+5a6515574e9d9b95b9933b0c4405add70ef962010a3e0d6f8b2b1ea7a2d4ffc3  app/backend/app/study_os/attempt_analytics/classifier.py
+618b85882a4de545ba95fd975098f7d79e1abba9c36fc8c178745fffdf379be1  app/backend/app/study_os/attempt_events.py
+d8abadac6a911112e251404a95b2871c322c8e6023205827db1d510ec5d13e66  app/backend/app/study_os/attempt_event_types.py
+1b6cf897a52b1a440492d1818a65dc1696e252cc9e5cd671d2a992fedeac90bc  app/backend/app/api/mock_engine.py
+568dfa69f0660033e53e740ccce261a3b50c538087e95cc63bfb09204c89e7ff  app/backend/app/api/canonical.py
+28d507be9706bae72d348b12ce4b59926fd530c570ec14a3d3e7cae034cf4b5d  app/backend/app/api/study_os.py
+038f0b586fa5528ef5e7e6b78dd9fba2fc96c325cbb22068d0c476f93dea5033  app/backend/app/api/admin_study_os.py
+4399d3beabbe4acfaf08ad8cb9f28831892ee27d52a2e118f17418dee7ccff95  app/backend/app/api/mock_attempt_events.py
+087db986721f52d70d06b1ac1210b7b3abdf4ef39fc6558d29e439f04df26dbc  tools/mastery_shadow_analysis/shadow_analysis.py
+ddb4fa861e7e3c167ba621c9ce69922f82dd1e5d1505dd80ebc2c526092126b6  app/supabase/migrations/180_mock_mastery_shadow_idempotency.sql
+755aab31df2799088420f39615607cdbdac74314fde055bae9c52d225a164748  app/supabase/migrations/181_mock_correction_tasks_uniqueness.sql
+39e7c12c1bec50cb634cb39c2449ddf9bfa113f97e83d4a52d8c6923f7c18819  app/supabase/migrations/182_mock_correction_draft_atomic_rpcs.sql
+a6f0702f9c0c7721f6b8af843bf9e5471f4fb1141befc5c0afe007e41b1cb459  app/frontend/src/pages/study/mocks/MockAttemptShell.jsx
+534c11bbddf01283cc1ad40cbbc834c92e211799a76455fced65badc782dae6e  app/frontend/src/pages/study/mocks/attemptEventBus.js
+80aeab11f49637d2e48c1c18cf28d6ce9f7723c243d61e7537fdbe609bcf84bb  app/backend/app/core/auth.py
+279f9a1cc60ded5304b64942f3689d7ed28e8e59d784ac63877f2709a95f7013  app/frontend/src/lib/supabase.js
+a57d8596506e6dad57ede2010e252d7a043f0b8fca84294c1f43d59d67c26cbf  app/frontend/src/pages/study/mocks/useAnswerSync.js
+3e819b5f435b01960a63ea5bbca6be946bc5cd675ea3533935702b281aa48acd  app/frontend/src/lib/api.js

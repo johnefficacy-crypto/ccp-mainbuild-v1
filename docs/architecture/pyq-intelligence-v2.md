@@ -1,18 +1,20 @@
 ---
 owner: exam-intelligence
 status: architecture decision + phased implementation plan
-last_verified_against_code: 2026-06-25
-verified_against: main @ fe1c54eaa08c44ed1391729f8263eb69a2b83df8
+last_verified_against_code: 2026-06-30
+verified_against: main @ 3d99e6b3
 source_of_truth: code
 related_code:
   - app/backend/app/exam_intelligence/coverage.py
   - app/backend/app/exam_intelligence/pyq_papers.py
+  - app/backend/app/exam_intelligence/score_snapshots.py
   - app/backend/app/study_os/planner.py
   - app/backend/app/study_os/mastery.py
   - app/backend/app/study_os/mastery_writer.py
   - app/backend/app/study_os/mastery_engine/
   - app/backend/app/study_os/mock_blueprint_selection.py
   - app/backend/app/admin/pyq_mock_projection.py
+  - app/backend/app/api/admin_exam_intelligence.py
   - app/backend/app/api/flashcards.py
 related_migrations:
   - app/supabase/migrations/029_exam_intelligence_taxonomy.sql
@@ -23,6 +25,8 @@ related_migrations:
   - app/supabase/migrations/135_mock_engine_core.sql
   - app/supabase/migrations/156_resource_extension.sql
   - app/supabase/migrations/183_pyq_mock_projection_bridge.sql
+  - app/supabase/migrations/198_syllabus_documents_source_document_id.sql
+  - app/supabase/migrations/201_pyq_source_review_transaction.sql
 review_cadence: per-sprint
 ---
 
@@ -41,13 +45,13 @@ Do not introduce Neo4j, Pinecone/Weaviate, or a stateful multi-agent runtime as 
 | Proposed capability | Repository state | Actual authority |
 |---|---|---|
 | Subject → topic → microtopic hierarchy | Present | `subjects`, hierarchical `topics.parent_topic_id`, and `topics.level in ('topic','microtopic','concept')` in `029_exam_intelligence_taxonomy.sql` |
-| Syllabus-to-topic mapping | Present | `syllabus_documents`, `syllabus_topic_mentions`, syllabus mapper/review workflow |
+| Syllabus-to-topic mapping | Present | `syllabus_documents`, `syllabus_topic_mentions`, syllabus mapper/review workflow; `syllabus_documents.source_document_id FK → document_assets` added in migration 198 (mirrors PYQ document linkage) |
 | PYQ papers, questions, options | Present | `pyq_sources`, `pyq_papers`, `pyq_questions`, `pyq_options` in `032_pyq_question_intelligence.sql` |
 | PYQ topic/microtopic tagging | Present | `pyq_question_topic_tags` with role, source, confidence, and review status |
 | Distractor/trap intelligence | Schema present | `pyq_option_patterns`, including chronology, concept-confusion, formula-confusion, elimination, and common-trap patterns |
 | Near-duplicate and concept relations | Schema present | `question_relation_edges` and `topic_relation_edges` |
 | Exam priority/high-yield overlay | Present | locked `exam_topic_coverage.exam_priority_score`, `is_high_yield`, confidence, evidence source |
-| Versioned analytical score output | Schema present, writer missing | `exam_topic_score_snapshots` exists but no application writer/publisher was found |
+| Versioned analytical score output | Schema present, draft writer implemented | `exam_topic_score_snapshots` exists; `score_snapshots.py::compute_exam_topic_scores` writes SHA-256-idempotent draft rows; admin `GET/PATCH/POST compute` surface on the existing exam-intelligence router enforces `draft→reviewed→locked` transitions (PR #767, MERGED). `locked_score_snapshots()` wired into `planner.py` as a 0–15 pt confidence-weighted additive signal (PR #773, MERGED). No AI writes into locked rows. |
 | Basic exam DNA visualisation | Partial | verified PYQ counts and `difficulty_heatmap()` exist; no governed recency/trend/recurrence score |
 | Learner competency | Present at topic level | `user_topic_mastery`, `user_topic_error_patterns`, generated-attempt mastery pipeline |
 | Adaptive planner | Present | deterministic `planner.py` consumes locked coverage, verified PYQ counts, mastery, errors, prerequisites, competition, and policy updates |

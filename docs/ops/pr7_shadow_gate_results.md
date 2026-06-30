@@ -51,41 +51,65 @@ record of what changed is `git diff ba3ea35..c9c44a9e -- <manifest-path>`.
 The PR-6 inspection fingerprint
 (`6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`) is
 superseded. The v2 fingerprint manifest boundary is defined at
-`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (32 files;
-30 previous + `MockAttemptShell.jsx` + `attemptEventBus.js`).
+`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (**36 files**;
+30 previous + `MockAttemptShell.jsx` + `attemptEventBus.js` + the two
+event-acceptance dependencies `core/auth.py` + `lib/supabase.js` + the
+answer-write dependency `useAnswerSync.js`).
 
-**FREEZE PENDING — original blocking bugs fixed, but the v2 boundary is NOT
-yet closed (PR #796 review found open telemetry-validity defects):**
-- `time_analytics.py` read `created_at` but DB writes `occurred_at` (and
-  read `question_id` top-level instead of from `payload` JSONB) — all
-  production events were skipped; dwell fell back to `time_spent_sec`.
-  Fixed and merged: PR #795 (`fix/time-analytics-v2`).
-- `MockAttemptShell.jsx` did not emit `question.visited` for question 1
-  on initial load (visit effect ran before `attempt` populated
-  `questions_ref`). Fixed and merged: PR #793 (`fix/mock-attempt-first-visit`).
+**FREEZE PENDING — all code/tooling blockers resolved; OPERATOR APPROVAL the
+only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
+- **[P0 RESOLVED]** Submit-time telemetry race — (a) `MockAttemptShell.doSubmit()`
+  `await`s `eventBus.flushAndWait()` (time-bounded, ACK-gated) BEFORE POSTing
+  `/submit`; (b) the backend idempotently recomputes analytics on late `/events`
+  accepted within the grace window (`mock_attempt_events.py` →
+  `compute_and_persist`), so a flush that does not fully drain is still
+  reconciled. Fully closed, not merely mitigated. Regression:
+  `MockAttemptShell.submitFlush.test.jsx`, `flushAndWait` unit tests, and
+  `test_attempt_events` recompute tests.
+- **[P1 RESOLVED]** Boundary closed over `useAnswerSync.js` (added; 34 → 36) and
+  a transitive-dependency inclusion rule is documented in the manifest header.
+- **[P1 RESOLVED]** Telemetry-quality gate is executable, authoritative, and
+  LEDGER-scoped — `shadow-analysis telemetry-quality` derives its population from
+  SUBMITTED `mock_attempts` (`status='submitted'`, filtered on `submitted_at`) and
+  reads shadow INTENT from the `mock_attempt_jobs` ledger (`job_kind='mastery_retry'`,
+  `mastery_flag_state`, every non-cancelled status). `mock_mastery_shadow` is
+  validated as OUTPUT only, never the population source. Fail-closed lists (any
+  non-empty → FAIL, exit 1): `missing_mastery_job`, `live_intent`, `conflicting_mode`,
+  `unfinished_shadow_job`, `failed_shadow_job`, `missing_shadow_output`,
+  `unexpected_shadow_output`, `missing_snapshot`, and — for client submits
+  (`attempt.submitted`) only — `missing_marker` / `trailing_gap`. Auto-submits
+  (`attempt.auto_submitted`) are reported separately and exempt from the marker
+  check but still require a snapshot, a shadow job, and valid output. Pure + DB-level
+  tested.
+- **[PR #803 #4 RESOLVED]** The former KNOWN LIMITATION — population derived from
+  realized `mock_mastery_shadow`, so an attempt whose writer/job failed before
+  writing a shadow row vanished from validation and could yield a FALSE PASS — is
+  closed. `mock_attempt_jobs.mastery_flag_state` is the authoritative shadow-intent
+  ledger: the submit route pins the effective mode and claims the `mastery_retry`
+  job BEFORE invoking `MasteryWriter`, and the job row survives for audit, so a
+  failed writer still leaves the intended shadow job visible — the gate now flags it
+  (`missing_shadow_output` / `failed_`/`unfinished_shadow_job`) instead of dropping it.
+- **[P2 RESOLVED]** `verify_mastery_fingerprint.sh` cross-checks the recorded
+  digest across the manifest / pr7 / checklist AND requires a pinned SHA
+  (`EXPECTED_SHA`, or `SKIP_SHA=1` for a content-only check).
+- **[OPEN — OPERATOR ONLY]** PR #800 remains `CODE-FIXED / VALIDATION PENDING`
+  (its three staging checks unchecked) and the 34 → 36 manifest expansion is
+  PROPOSED pending operator approval. Per AGENTS.md the gate stays FREEZE PENDING
+  until the operator validates #800 on staging and approves the boundary.
 
-Still-open blockers before the boundary may be FROZEN (see the
-telemetry-quality gate below and prerequisite step 2):
-- **[P0]** `attemptEventBus._flushBeacon()` posts via `navigator.sendBeacon`
-  with no `Authorization` header; the events endpoint requires
-  `get_current_user` (401), so visibility-hidden/unmount batches — including
-  `question.visited` anchors — are dropped after `splice(0)`. `_flush()` also
-  never checks `response.ok` and discards on 401/409/5xx.
-- **[P0]** `compute_dwell_times()` applies the `time_spent_sec` fallback via
-  `setdefault` BEFORE the `len(by_q) < len(responses)` check, so partial event
-  coverage never emits the documented `partial event coverage; fallback
-  applied` warning required by `docs/mock_engine/attempt_analytics.md`.
-- **[P1]** Manifest boundary is not closed over `core/auth.py` (event-batch
-  acceptance) or frontend `lib/supabase.js` (token source); either can change
-  ingestion without changing the fingerprint.
+**Reference fingerprint (PR #803 branch, 36 files) — NOT the freeze /
+window_start hash; re-pin to the post-merge main SHA at window_start:**
+`f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c`
 
-Pre-fix reference hash at `main @ c9c44a9e` (32 files; bugs present):
-`96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b`
+A per-file SHA-256 attestation is committed at
+`docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt`; verify
+fail-closed with `bash scripts/verify_mastery_fingerprint.sh`. The freeze hash
+must be recomputed (with the final boundary) once the blockers above clear and
+operator approval is captured.
 
-Reference fingerprint at `main @ 1679adb8` (current 32-file boundary) — this
-is NOT the window_start hash; the freeze hash must be recomputed at a new
-post-fix SHA after the boundary is closed and the P0/P1 defects clear:
-`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`
+Superseded reference hashes (NOT window_start hashes):
+`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b` (`1679adb8`, 32 files, pre-#800);
+`96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b` (`c9c44a9e`, 32 files, bugs present)
 
 ---
 
@@ -97,26 +121,37 @@ Steps 3–8 are sequential and each depends on those above it.
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — boundary not yet
-   closed):** Current boundary is 32 files (20 original + `attempt_analytics`
-   7 + event-backend 3 + frontend event producers 2: `MockAttemptShell.jsx`,
-   `attemptEventBus.js`). The two originally-blocking bug fixes are merged
-   (PR #795 `time_analytics`; PR #793 `MockAttemptShell` first-visit), and a
-   reference fingerprint was computed at `main @ 1679adb8`
-   (`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`).
-   This is NOT yet the freeze hash. Before FROZEN (PR #796 review): (i) fix or
-   explicitly gate the P0 event-delivery (beacon auth/retry) and P0 partial-
-   fallback reporting defects; (ii) close the boundary over `core/auth.py` and
-   frontend `lib/supabase.js` (operator-approved manifest expansion) and
-   recompute; (iii) commit a per-file SHA-256 attestation (or a CI check that
-   recomputes the digest at the pinned SHA). Then recompute the freeze hash at
-   the new post-fix `main` SHA and record it here.
+2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — code/tooling closed;
+   OPERATOR APPROVAL is the only remaining gate):** Boundary closed at 36 files
+   (added event-acceptance deps `core/auth.py` + `lib/supabase.js` and answer-
+   write deps `useAnswerSync.js` + `lib/api.js`); reference fingerprint + per-file
+   attestation regenerated (`f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c`).
+   This is NOT yet the freeze hash. PR #803 review disposition: (i) ✅ submit/
+   late-event race fixed via an awaited pre-submit ACKed flush AND backend
+   idempotent recompute on late `/events`; (ii) ✅ boundary closed over
+   `useAnswerSync.js` + a transitive-dependency rule; (iii) ✅ telemetry-quality
+   gate is LEDGER-scoped — population = submitted `mock_attempts`, shadow intent
+   from the `mock_attempt_jobs` ledger, `mock_mastery_shadow` validated as output
+   only (PR #803 #4 closed: a failed writer can no longer vanish into a false PASS);
+   (v) ✅ `verify_mastery_fingerprint.sh` hardened
+   (cross-document digest + required `EXPECTED_SHA`). (iv) ⛔ OPERATOR PENDING —
+   PR #800 staging validation + boundary approval. After approval: re-pin the
+   fingerprint to the post-merge main SHA and record it here.
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
    confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
    (`ensure_mock_correction_drafts`, `ensure_mock_correction_draft`,
-   `replace_manual_mock_correction_drafts`); apply to the target
-   environment.
+   `replace_manual_mock_correction_drafts`); apply to the target environment.
+   **Durable evidence required before marking DONE** (all fields must be
+   recorded in a dated audit document):
+   - Target environment (staging / prod)
+   - Reviewed/deployed SHA at time of apply
+   - UTC run time
+   - `schema_migrations` history result confirming 182 applied (e.g. `SELECT * FROM schema_migrations WHERE version = '182'`)
+   - Exact RPC signatures returned by `pg_proc` / `\df` for all three functions
+   - SECURITY DEFINER owner and `search_path` for each function
+   - Effective EXECUTE privileges (grantee query output — not a prose assertion)
+   - Dry-run `BEGIN` / `ROLLBACK` output OR rollback-safe smoke-test confirming no data mutation
 4. **PR-6 clean operator run (OPERATOR RERUN PENDING):** Run the full
    12-gate PR-6 operator session on one pinned SHA; confirm Gate 9
    passes (allowlist deployed with named user(s) in
@@ -134,13 +169,14 @@ Steps 3–8 are sequential and each depends on those above it.
    ```bash
    set -euo pipefail
    readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-   _expected=32
+   _expected=35
    _actual=${#_files[@]}
    [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
    for _f in "${_files[@]}"; do
      [[ -f "$_f" ]] || { echo "ERROR: missing $_f" >&2; exit 1; }
    done
    sha256sum "${_files[@]}" | sha256sum
+   # Or simply: bash scripts/verify_mastery_fingerprint.sh
    ```
 
    Record hash here and in the window record below.
@@ -175,20 +211,45 @@ invalid and were removed by PR-5A.
 | decision_count | ≥ 10 | _____ |
 | exact_parity_pct | 100.0 | _____ |
 
-### telemetry-quality gate (fail-closed — PR #796 review)
+### telemetry-quality gate (fail-closed — PR #796 review; ledger-based per PR #803 #4)
 
-The replay gates above prove deterministic replay, NOT that classifications
-were derived from the documented primary event source. Without these, the
-window can PASS while validating dwell/classification inputs that silently
-fell back to `mock_attempt_responses.time_spent_sec`. All must hold:
+The replay gates above prove deterministic replay of REALIZED shadow rows, NOT
+that every submitted attempt that was SUPPOSED to write shadow output actually
+did. An attempt whose mastery writer/job failed writes no shadow row and so
+disappears from any shadow-row-scoped check — a FALSE PASS. This gate closes
+that hole.
 
-| Metric | Required | Actual |
-|--------|----------|--------|
-| events_used (per attempt) | > 0 | _____ |
-| visit-event coverage (questions with a `question.visited` anchor) | 100.0% | _____ |
-| fallback_question_count (dwell from `time_spent_sec`) | 0 | _____ |
-| event ingest rejection count (401/409/5xx on `/events`) | 0 | _____ |
-| beacon/fetch delivery-success rate | 100.0% | _____ |
+**Implemented and executable** via `shadow-analysis telemetry-quality`
+(`--from-utc … --to-utc …` or `--days N`, `--min-attempts 20` for the real
+window). **Population = SUBMITTED `mock_attempts`** (`status='submitted'`,
+filtered on `submitted_at` — half-open `[from, to)`), NEVER realized shadow rows.
+**Shadow intent** is read from the `mock_attempt_jobs` ledger
+(`job_kind='mastery_retry'`, `mastery_flag_state`, every non-cancelled status):
+the submit route pins the effective mode and claims the mastery job before
+invoking `MasteryWriter`, so the intent is durable even when the writer fails.
+`mock_mastery_shadow` is validated as **output only**. Manual vs auto submit is
+read from the server lifecycle event (`attempt.submitted` vs
+`attempt.auto_submitted`); the submit-flush-marker / trailing-sequence checks
+apply to client submits only. PASS requires every one of these failure lists to
+be empty (any non-empty → FAIL, exit 1):
+
+| Failure list (`telemetry-quality`) | Condition |
+|--------|----------|
+| `missing_mastery_job_attempt_ids` | submitted attempt has no mastery_retry job |
+| `live_intent_attempt_ids` | submitted attempt has only a live job in the shadow window |
+| `conflicting_mode_attempt_ids` | both live and shadow jobs exist |
+| `unfinished_shadow_job_attempt_ids` | shadow job still pending/running at window end |
+| `failed_shadow_job_attempt_ids` | shadow job failed / failed_permanent |
+| `missing_shadow_output_attempt_ids` | answered questions but no shadow rows written |
+| `unexpected_shadow_output_attempt_ids` | shadow rows for an attempt outside the population |
+| `missing_snapshot_attempt_ids` | no persisted `mock_attempt_summary` analytics snapshot |
+| `missing_marker_attempt_ids` | client submit emitted no `attempt.submit_flush` |
+| `trailing_gap_attempt_ids` | client submit lost sequences through the declared boundary |
+
+Reported (informational, never fail the gate): `zero_answer_attempt_ids`,
+`auto_submit_attempt_ids`, `client_submit_attempt_ids`,
+`unknown_submit_origin_attempt_ids`, plus counts `submitted_attempt_count`,
+`shadow_intent_attempt_count`, `shadow_output_attempt_count`.
 
 ### Additional PASS criteria (all must hold)
 

@@ -150,6 +150,21 @@ export class AttemptEventBus {
     }
   }
 
+  /**
+   * Emit the submit-boundary marker carrying the final monotonic sequence_no, so
+   * the telemetry-quality gate can detect trailing event loss (a declared final
+   * seq greater than the max observed seq). Call immediately before the
+   * pre-submit flush.
+   */
+  markSubmitFlush() {
+    try {
+      // The marker takes the next sequence number; declare it as the final seq.
+      this.enqueue("attempt.submit_flush", { final_sequence_no: this._seq + 1 });
+    } catch (e) {
+      console.warn("[EventBus] submit_flush mark error:", e);
+    }
+  }
+
   // ── DOM listeners ───────────────────────────────────────────────────────────
 
   _onVisibility() {
@@ -303,6 +318,35 @@ export class AttemptEventBus {
     } catch (e) {
       console.warn("[EventBus] token refresh error:", e);
       return this._cachedToken;
+    }
+  }
+
+  /**
+   * Public: drain the durable queue and RESOLVE once it is empty (all events
+   * ACKed), the bounded deadline passes, or a transient failure stalls progress.
+   * Used by the submit path so final buffered events (the last question.visited /
+   * answered) are delivered and persisted BEFORE the server computes analytics.
+   * Best-effort and time-bounded — never blocks the user's submit indefinitely.
+   * Returns true iff the queue is fully drained.
+   */
+  async flushAndWait({ timeoutMs = 4000 } = {}) {
+    try {
+      if (!this._attemptId) return true;
+      const start = Date.now();
+      // Let any in-flight flush settle first.
+      while (this._inFlight && Date.now() - start < timeoutMs) {
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      // Drain chunk batches until empty, stalled (no progress), or timed out.
+      while (this._ring.length && Date.now() - start < timeoutMs) {
+        const before = this._ring.length;
+        await this._flush();
+        if (this._ring.length >= before) break;  // transient failure — stop, do not spin
+      }
+      return this._ring.length === 0;
+    } catch (e) {
+      console.warn("[EventBus] flushAndWait error:", e);
+      return false;
     }
   }
 

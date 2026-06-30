@@ -32,6 +32,12 @@ ATTEMPT_HEARTBEAT = "attempt.heartbeat"
 ANSWER_SAVE_FAILED  = "answer.save_failed"
 ANSWER_SAVE_RETRIED = "answer.save_retried"
 
+# ── Submit boundary marker (PR-7 telemetry gate) — client-emitted ──────────────
+# Emitted by the client immediately before the pre-submit flush, carrying the
+# final monotonic sequence_no so the telemetry-quality gate can detect trailing
+# event loss (a declared final seq greater than the max observed seq).
+ATTEMPT_SUBMIT_FLUSH = "attempt.submit_flush"
+
 KNOWN_CLIENT_EVENTS: frozenset[str] = frozenset({
     QUESTION_VISITED,
     QUESTION_ANSWERED,
@@ -45,6 +51,7 @@ KNOWN_CLIENT_EVENTS: frozenset[str] = frozenset({
     ATTEMPT_HEARTBEAT,
     ANSWER_SAVE_FAILED,
     ANSWER_SAVE_RETRIED,
+    ATTEMPT_SUBMIT_FLUSH,
 })
 
 KNOWN_SERVER_EVENTS: frozenset[str] = frozenset({
