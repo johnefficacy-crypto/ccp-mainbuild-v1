@@ -600,3 +600,68 @@ def test_compute_returns_summary():
     assert body["model_version"] == MODEL_VERSION
     assert body["written"] >= 0
     # One topic (t1) has a locked coverage row + a primary verified tag.
+
+
+# ─── Phase scope isolation ────────────────────────────────────────────────────
+
+def _seed_with_phases():
+    """Seed with both exam-wide (null) and phase-scoped snapshot rows."""
+    base = _seed_snapshots()
+    snapshots = base["exam_topic_score_snapshots"]
+    # Add a Phase A row and a Phase B row alongside the existing null-scope rows.
+    snapshots.append({
+        "id": "s-phase-a", "exam_id": "e1", "topic_id": "t5", "status": "draft",
+        "exam_phase_id": "ph-a",
+        "model_version": MODEL_VERSION, "exam_priority_score": 50,
+        "is_high_yield": False, "confidence_score": 0.5, "evidence_count": 1,
+        "score_components": {}, "input_summary": {},
+        "computed_at": "2026-06-01T00:00:00+00:00",
+        "reviewer_notes": None,
+    })
+    snapshots.append({
+        "id": "s-phase-b", "exam_id": "e1", "topic_id": "t6", "status": "draft",
+        "exam_phase_id": "ph-b",
+        "model_version": MODEL_VERSION, "exam_priority_score": 45,
+        "is_high_yield": False, "confidence_score": 0.45, "evidence_count": 1,
+        "score_components": {}, "input_summary": {},
+        "computed_at": "2026-06-01T00:00:00+00:00",
+        "reviewer_notes": None,
+    })
+    return base
+
+
+def test_list_phase_scope_returns_only_that_phase():
+    """exam_phase_id filter returns only rows for the requested phase."""
+    sb = _SnapshotSBStub(_seed_with_phases())
+    client = TestClient(_build_app(sb))
+    r = client.get(f"{_LIST_BASE}?exam_phase_id=ph-a")
+    assert r.status_code == 200
+    body = r.json()
+    ids = {s["id"] for s in body["snapshots"]}
+    assert ids == {"s-phase-a"}, f"expected only phase-a row, got {ids}"
+    assert body["total"] == 1
+
+
+def test_list_exam_wide_excludes_phase_rows():
+    """Without exam_phase_id param, list returns only null-scope rows."""
+    sb = _SnapshotSBStub(_seed_with_phases())
+    client = TestClient(_build_app(sb))
+    r = client.get(_LIST_BASE)
+    assert r.status_code == 200
+    body = r.json()
+    ids = {s["id"] for s in body["snapshots"]}
+    # 4 null-scope rows from _seed_snapshots; phase rows must not appear.
+    assert "s-phase-a" not in ids
+    assert "s-phase-b" not in ids
+    assert body["total"] == 4
+
+
+def test_list_phase_a_does_not_include_phase_b_rows():
+    """Two-phase regression: Phase A scope cannot see Phase B rows."""
+    sb = _SnapshotSBStub(_seed_with_phases())
+    client = TestClient(_build_app(sb))
+    r = client.get(f"{_LIST_BASE}?exam_phase_id=ph-a")
+    assert r.status_code == 200
+    body = r.json()
+    ids = {s["id"] for s in body["snapshots"]}
+    assert "s-phase-b" not in ids, f"Phase B row leaked into Phase A list: {ids}"

@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { useAuth } from "../../../../lib/authContext";
 import { usePyqWorkbench } from "./usePyqWorkbench";
@@ -9,6 +10,7 @@ import PyqProvenanceFields from "./PyqProvenanceFields";
 import AddPyqPaperModal from "./AddPyqPaperModal";
 
 const PyqPaperWorkspace = lazy(() => import("../../studyos/PyqPaperWorkspace"));
+const ScoreSnapshotPanel = lazy(() => import("../score-snapshots/ScoreSnapshotPanel"));
 
 const TRUST_LABEL = {
   verified: "Verified",
@@ -366,6 +368,13 @@ function PaperProvenanceModal({ paper, onCancel, onSubmit, pyqDocuments, pyqSour
 }
 
 export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status = null }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = searchParams.get("view") || "papers";
+
+  function setView(v) {
+    setSearchParams((prev) => { prev.set("view", v); return prev; }, { replace: true });
+  }
+
   const { exam, cycle } = useExamWorkspace();
   const examId = exam?.id;
   const cycleId = cycle?.id ?? null;
@@ -500,8 +509,57 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
     }
   }
 
+  if (view === "snapshots") {
+    return (
+      <div className="flex flex-col h-full" data-testid="pyq-workbench-panel">
+        <div className="px-4 py-2 border-b border-gray-200 bg-white flex-shrink-0 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setView("papers")}
+            className="px-3 py-1 text-sm rounded text-gray-600 hover:bg-gray-100"
+            data-testid="view-papers-btn"
+          >
+            Papers
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("snapshots")}
+            className="px-3 py-1 text-sm rounded bg-indigo-100 text-indigo-700 font-medium"
+            data-testid="view-snapshots-btn"
+            aria-current="true"
+          >
+            Score Snapshots
+          </button>
+        </div>
+        <Suspense fallback={<div className="p-6 text-sm text-gray-400">Loading…</div>}>
+          <ScoreSnapshotPanel />
+        </Suspense>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full" data-testid="pyq-workbench-panel">
+      {/* View switcher */}
+      <div className="px-4 py-2 border-b border-gray-200 bg-white flex-shrink-0 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setView("papers")}
+          className="px-3 py-1 text-sm rounded bg-indigo-100 text-indigo-700 font-medium"
+          data-testid="view-papers-btn"
+          aria-current="true"
+        >
+          Papers
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("snapshots")}
+          className="px-3 py-1 text-sm rounded text-gray-600 hover:bg-gray-100"
+          data-testid="view-snapshots-btn"
+        >
+          Score Snapshots
+        </button>
+      </div>
       {/* Paper overview table */}
       <div className="px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
         <div className="flex items-center justify-between mb-2">

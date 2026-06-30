@@ -2207,9 +2207,15 @@ _SNAPSHOT_COLUMNS = (
 def list_score_snapshots(
     exam_id: str,
     status: str | None = Query(default=None),
+    exam_phase_id: str | None = Query(default=None),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     """List ``exam_topic_score_snapshots`` rows for an exam, ordered by computed_at DESC.
+
+    Accepts an optional ``exam_phase_id`` scope filter.  When ``exam_phase_id``
+    is supplied only rows for that phase are returned; when omitted only
+    exam-wide rows (``exam_phase_id IS NULL``) are returned.  This prevents
+    mixed exam-wide and phase-scoped rows appearing in the same review table.
 
     Paginated internally — ``total`` reflects the real count, not a capped value.
     """
@@ -2219,7 +2225,7 @@ def list_score_snapshots(
             detail=f"Invalid status {status!r}. Must be one of: {sorted(_SNAPSHOT_STATUSES)}",
         )
     sb = get_supabase_admin()
-    rows = list_exam_score_snapshots(sb, exam_id, status=status)
+    rows = list_exam_score_snapshots(sb, exam_id, status=status, exam_phase_id=exam_phase_id)
     return {"snapshots": rows, "total": len(rows), "exam_id": exam_id}
 
 
