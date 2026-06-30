@@ -51,7 +51,7 @@ record of what changed is `git diff ba3ea35..c9c44a9e -- <manifest-path>`.
 The PR-6 inspection fingerprint
 (`6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`) is
 superseded. The v2 fingerprint manifest boundary is defined at
-`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (**35 files**;
+`docs/ops/mastery_validation_fingerprint_manifest_v2.txt` (**36 files**;
 30 previous + `MockAttemptShell.jsx` + `attemptEventBus.js` + the two
 event-acceptance dependencies `core/auth.py` + `lib/supabase.js` + the
 answer-write dependency `useAnswerSync.js`).
@@ -66,7 +66,7 @@ only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
   reconciled. Fully closed, not merely mitigated. Regression:
   `MockAttemptShell.submitFlush.test.jsx`, `flushAndWait` unit tests, and
   `test_attempt_events` recompute tests.
-- **[P1 RESOLVED]** Boundary closed over `useAnswerSync.js` (added; 34 → 35) and
+- **[P1 RESOLVED]** Boundary closed over `useAnswerSync.js` (added; 34 → 36) and
   a transitive-dependency inclusion rule is documented in the manifest header.
 - **[P1 RESOLVED]** Telemetry-quality gate is executable and authoritative —
   `shadow-analysis telemetry-quality` validates the PERSISTED
@@ -79,13 +79,13 @@ only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
   digest across the manifest / pr7 / checklist AND requires a pinned SHA
   (`EXPECTED_SHA`, or `SKIP_SHA=1` for a content-only check).
 - **[OPEN — OPERATOR ONLY]** PR #800 remains `CODE-FIXED / VALIDATION PENDING`
-  (its three staging checks unchecked) and the 34 → 35 manifest expansion is
+  (its three staging checks unchecked) and the 34 → 36 manifest expansion is
   PROPOSED pending operator approval. Per AGENTS.md the gate stays FREEZE PENDING
   until the operator validates #800 on staging and approves the boundary.
 
-**Reference fingerprint (PR #803 branch, 35 files) — NOT the freeze /
+**Reference fingerprint (PR #803 branch, 36 files) — NOT the freeze /
 window_start hash; re-pin to the post-merge main SHA at window_start:**
-`52791ea8689be1e2bb8ad5b520f3c11642678da1b9edf52c573e27d572da0c45`
+`9633b8eb58dc957ef0800857b6d3b4f599471bbd4861a7bb5f685c079efe7b3c`
 
 A per-file SHA-256 attestation is committed at
 `docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt`; verify
@@ -108,10 +108,10 @@ Steps 3–8 are sequential and each depends on those above it.
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
 2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — code/tooling closed;
-   OPERATOR APPROVAL is the only remaining gate):** Boundary closed at 35 files
+   OPERATOR APPROVAL is the only remaining gate):** Boundary closed at 36 files
    (added event-acceptance deps `core/auth.py` + `lib/supabase.js` and answer-
    write dep `useAnswerSync.js`); reference fingerprint + per-file attestation
-   regenerated (`52791ea8689be1e2bb8ad5b520f3c11642678da1b9edf52c573e27d572da0c45`).
+   regenerated (`9633b8eb58dc957ef0800857b6d3b4f599471bbd4861a7bb5f685c079efe7b3c`).
    This is NOT yet the freeze hash. PR #803 review disposition: (i) ✅ submit/
    late-event race fixed via an awaited pre-submit ACKed flush AND backend
    idempotent recompute on late `/events`; (ii) ✅ boundary closed over

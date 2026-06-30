@@ -483,6 +483,62 @@ def test_late_event_to_submitted_attempt_triggers_recompute(monkeypatch):
     assert r.json().get("analytics_recomputed") is True
 
 
+def test_recompute_failure_schedules_analytics_retry(monkeypatch):
+    """If the in-line recompute fails, the analytics_retry job is scheduled so the
+    stale snapshot is reconciled durably (the events are already ACKed)."""
+    sb, _, _ = _seeded_db()
+    attempt_id = "attempt-recompute-fail"
+    recent_submit = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
+    sb.db.setdefault("mock_attempts", []).append({
+        "id": attempt_id, "user_id": "user-1", "status": "submitted",
+        "submitted_at": recent_submit, "expires_at": _past_iso(10), "template_snapshot": {},
+    })
+    import app.study_os.attempt_analytics.service as analytics_svc
+    import app.study_os.mock_engine as engine_mod
+
+    def _boom(_sb, _aid):
+        raise RuntimeError("db down")
+
+    scheduled = []
+    monkeypatch.setattr(analytics_svc, "compute_and_persist", _boom)
+    monkeypatch.setattr(engine_mod, "schedule_job",
+                        lambda _sb, kind, aid, **kw: scheduled.append((kind, aid)))
+
+    client = _client(sb, "user-1")
+    body = {"events": [{"event_type": "question.visited", "sequence_no": 1,
+                        "occurred_at": _now_iso(), "payload": {"question_id": "q-1"}}]}
+    r = client.post(f"/api/study/mocks/attempts/{attempt_id}/events", json=body)
+    assert r.status_code == 200
+    assert r.json().get("analytics_recomputed") is False
+    assert r.json().get("analytics_retry_scheduled") is True
+    assert scheduled == [(engine_mod.JOB_ANALYTICS_RETRY, attempt_id)]
+
+
+def test_duplicate_replay_accepts_zero_and_skips_recompute(monkeypatch):
+    """A duplicate replay (accepted=0) must NOT retrigger recompute — the first
+    accepted delivery already did (or scheduled the retry)."""
+    sb, _, _ = _seeded_db()
+    attempt_id = "attempt-dup-replay"
+    recent_submit = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
+    sb.db.setdefault("mock_attempts", []).append({
+        "id": attempt_id, "user_id": "user-1", "status": "submitted",
+        "submitted_at": recent_submit, "expires_at": _past_iso(10), "template_snapshot": {},
+    })
+    calls = []
+    import app.study_os.attempt_analytics.service as analytics_svc
+    monkeypatch.setattr(analytics_svc, "compute_and_persist", lambda _sb, aid: calls.append(aid))
+    client = _client(sb, "user-1")
+    body = {"events": [{"event_type": "question.visited", "sequence_no": 1,
+                        "occurred_at": _now_iso(), "payload": {"question_id": "q-1"}}]}
+
+    r1 = client.post(f"/api/study/mocks/attempts/{attempt_id}/events", json=body)
+    assert r1.json()["accepted"] == 1 and r1.json().get("analytics_recomputed") is True
+    r2 = client.post(f"/api/study/mocks/attempts/{attempt_id}/events", json=body)
+    assert r2.json()["accepted"] == 0 and r2.json()["duplicates"] == 1
+    assert "analytics_recomputed" not in r2.json()  # no recompute on a 0-accept replay
+    assert calls == [attempt_id]  # recompute ran exactly once (first delivery)
+
+
 def test_in_progress_event_does_not_trigger_recompute(monkeypatch):
     """Events on an in_progress attempt must NOT trigger a post-submit recompute."""
     sb, _, _ = _seeded_db()

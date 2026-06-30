@@ -34,7 +34,8 @@ _RECOGNIZED_TRUST_LEVELS: frozenset[str] = frozenset(_TRUST_WEIGHTS)
 _CAP_DB = Decimal("15")  # ±0.15 unit × 100 = ±15 db
 
 # Formalized exit codes.
-_EXIT_OK = 0           # PASS or FAIL — run completed, data was sufficient
+_EXIT_OK = 0           # PASS — run completed, gate satisfied
+_EXIT_GATE_FAIL = 1    # FAIL — run completed but a gate threshold was violated
 _EXIT_ERROR = 2        # config / credential / query error  (ERROR status)
 _EXIT_INSUFFICIENT = 3 # insufficient data                  (INSUFFICIENT_DATA status)
 _EXIT_CORRUPT = 4      # corrupt / invariant-invalid data
@@ -1571,17 +1572,27 @@ def compute_telemetry_quality(
         fallback_engaged = fe_raw if has_fe else 0
 
         declared_final: int | None = None
-        max_seq = 0
+        seqs: set[int] = set()
         for e in events:
             seq = e.get("sequence_no")
-            if isinstance(seq, int) and seq > max_seq:
-                max_seq = seq
+            if isinstance(seq, int):
+                seqs.add(seq)
             if e.get("event_type") == _SUBMIT_FLUSH_EVENT:
                 d = (e.get("payload") or {}).get("final_sequence_no")
                 if isinstance(d, int):
                     declared_final = d if declared_final is None else max(declared_final, d)
         has_marker = declared_final is not None
-        trailing_gap = max(0, declared_final - max_seq) if has_marker else 0
+        max_seq = max(seqs) if seqs else 0
+        # Count DISTINCT delivered sequences through the declared boundary. The
+        # marker is itself seq == declared_final, so comparing to max(seq) would
+        # always be zero; we must detect any missing seq in [1, declared_final]
+        # (trailing OR interior loss).
+        if has_marker:
+            present_through_boundary = sum(1 for s in seqs if 1 <= s <= declared_final)
+            trailing_gap = max(0, declared_final - present_through_boundary)
+        else:
+            present_through_boundary = 0
+            trailing_gap = 0
 
         if not has_snapshot:
             attempts_missing_snapshot += 1
@@ -1603,6 +1614,7 @@ def compute_telemetry_quality(
             "has_submit_flush_marker": has_marker,
             "declared_final_sequence_no": declared_final,
             "max_client_sequence_no": max_seq,
+            "distinct_sequences_through_boundary": present_through_boundary,
             "trailing_gap_count": trailing_gap,
         })
 
@@ -1740,7 +1752,9 @@ def telemetry_quality(
          **metrics},
         output_json,
     )
-    sys.exit(_EXIT_OK)
+    # Fail-closed: a violated threshold exits non-zero so the gate cannot be
+    # mistaken for a pass by a caller that only checks the exit code.
+    sys.exit(_EXIT_OK if status == "PASS" else _EXIT_GATE_FAIL)
 
 
 def main() -> None:
@@ -1972,6 +1986,18 @@ def main() -> None:
                 output_json,
             )
             sys.exit(_EXIT_ERROR)
+
+        # telemetry-quality: a data-sufficiency floor of < 1 would let an empty
+        # population reach PASS — reject it (the real runbook uses >= 20).
+        if a.cmd == "telemetry-quality":
+            min_attempts_val = getattr(a, "min_attempts", 1)
+            if not isinstance(min_attempts_val, int) or min_attempts_val < 1:
+                _emit_result(
+                    {"schema_version": 1, "command": cmd_name, "status": "ERROR",
+                     "error": "INVALID_FLAGS", "detail": "--min-attempts must be >= 1"},
+                    output_json,
+                )
+                sys.exit(_EXIT_ERROR)
 
         if a.cmd == "shadow-replay":
             shadow_replay(

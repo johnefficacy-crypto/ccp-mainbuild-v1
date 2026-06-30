@@ -115,6 +115,21 @@ async def post_events(
         except Exception as exc:  # noqa: BLE001
             logger.warning("late-event analytics recompute failed for %s: %s", attempt_id, exc)
             result["analytics_recomputed"] = False
+            # Durable recovery: the events are already ACKed (the client will drop
+            # them from its queue, and a duplicate replay returns accepted=0 and
+            # won't retrigger), so an in-line failure would permanently strand a
+            # stale snapshot. Schedule the existing analytics_retry job to
+            # reconcile it out-of-band.
+            try:
+                from app.study_os.mock_engine import JOB_ANALYTICS_RETRY, schedule_job
+                schedule_job(
+                    supabase, JOB_ANALYTICS_RETRY, attempt_id,
+                    last_error=f"late-event recompute failed: {exc}",
+                )
+                result["analytics_retry_scheduled"] = True
+            except Exception as exc2:  # noqa: BLE001
+                logger.error("failed to schedule analytics_retry for %s: %s", attempt_id, exc2)
+                result["analytics_retry_scheduled"] = False
     return result
 
 

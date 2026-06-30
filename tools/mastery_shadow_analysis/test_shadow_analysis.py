@@ -1315,20 +1315,24 @@ def _aq(events_used: int, fallback_engaged: int | None = 0) -> dict:
     return q
 
 
-def _marker(final_seq: int, observed_max: int) -> list[dict]:
-    """Client events: a visit at `observed_max` + a submit_flush declaring `final_seq`."""
-    return [
-        {"event_type": "question.visited", "payload": {"question_id": "q1"},
-         "sequence_no": observed_max, "source": "client"},
-        {"event_type": "attempt.submit_flush", "payload": {"final_sequence_no": final_seq},
-         "sequence_no": min(final_seq, observed_max), "source": "client"},
+def _clean_events(final_seq: int) -> list[dict]:
+    """Clean delivery: every seq 1..final_seq present, with the submit_flush
+    marker delivered AS seq == final_seq (the real client contract)."""
+    evs = [
+        {"event_type": "question.visited", "payload": {"question_id": "q"},
+         "sequence_no": s, "source": "client"}
+        for s in range(1, final_seq)
     ]
+    evs.append({"event_type": "attempt.submit_flush",
+                "payload": {"final_sequence_no": final_seq},
+                "sequence_no": final_seq, "source": "client"})
+    return evs
 
 
 def test_tq_clean_attempt_passes() -> None:
     # Snapshot: events used, no engaged fallback. Marker declares final == max observed.
     quality = {"a1": _aq(events_used=5, fallback_engaged=0)}
-    events = {"a1": _marker(final_seq=9, observed_max=9)}
+    events = {"a1": _clean_events(9)}
     m = sa.compute_telemetry_quality(["a1"], quality, events)
     assert m["attempts_missing_snapshot"] == 0
     assert m["attempts_without_events"] == 0
@@ -1345,14 +1349,14 @@ def test_tq_persisted_fallback_is_counted_even_if_events_now_present() -> None:
     # The snapshot records engaged fallback at submit time; current event rows do
     # NOT override it (late events can't hide the fallback that was used).
     quality = {"a1": _aq(events_used=3, fallback_engaged=2)}
-    events = {"a1": _marker(final_seq=9, observed_max=9)}
+    events = {"a1": _clean_events(9)}
     m = sa.compute_telemetry_quality(["a1"], quality, events)
     assert m["fallback_engaged_question_count"] == 2
 
 
 def test_tq_missing_snapshot_counted() -> None:
     quality: dict = {}  # a1 has no persisted summary
-    events = {"a1": _marker(final_seq=4, observed_max=4)}
+    events = {"a1": _clean_events(4)}
     m = sa.compute_telemetry_quality(["a1"], quality, events)
     assert m["attempts_missing_snapshot"] == 1
     assert m["per_attempt"][0]["has_snapshot"] is False
@@ -1361,14 +1365,14 @@ def test_tq_missing_snapshot_counted() -> None:
 def test_tq_snapshot_missing_field_counted() -> None:
     # Pre-#803 snapshot without fallback_engaged_question_count.
     quality = {"a1": _aq(events_used=3, fallback_engaged=None)}
-    events = {"a1": _marker(final_seq=4, observed_max=4)}
+    events = {"a1": _clean_events(4)}
     m = sa.compute_telemetry_quality(["a1"], quality, events)
     assert m["snapshots_missing_field"] == 1
 
 
 def test_tq_zero_events_used_counted() -> None:
     quality = {"a1": _aq(events_used=0, fallback_engaged=0)}
-    events = {"a1": _marker(final_seq=4, observed_max=4)}
+    events = {"a1": _clean_events(4)}
     m = sa.compute_telemetry_quality(["a1"], quality, events)
     assert m["attempts_without_events"] == 1
 
@@ -1382,14 +1386,40 @@ def test_tq_missing_submit_flush_marker_counted() -> None:
     assert m["per_attempt"][0]["has_submit_flush_marker"] is False
 
 
-def test_tq_trailing_loss_detected_via_marker() -> None:
-    # Declared final seq 10 but only seq 7 observed -> 3 trailing events lost.
+def test_tq_clean_full_sequence_has_no_gap() -> None:
+    # Marker delivered as seq == final; all 1..final present -> gap 0 even though
+    # the marker's own seq equals the max (the old N - max formula would also be 0,
+    # but here it is CORRECT because nothing is missing).
+    quality = {"a1": _aq(events_used=5, fallback_engaged=0)}
+    m = sa.compute_telemetry_quality(["a1"], quality, {"a1": _clean_events(5)})
+    assert m["trailing_gap_count"] == 0
+    assert m["per_attempt"][0]["distinct_sequences_through_boundary"] == 5
+
+
+def test_tq_missing_interior_or_trailing_sequence_detected() -> None:
+    # Marker declares final=10 and is delivered AS seq 10 (so max==10), but seqs
+    # 8 and 9 never arrived. The old `final - max` formula would report 0; the
+    # correct distinct-count-through-boundary reports 2.
     quality = {"a1": _aq(events_used=3, fallback_engaged=0)}
+    present = list(range(1, 8))  # 1..7
     events = {"a1": [
-        {"event_type": "question.visited", "payload": {"question_id": "q1"}, "sequence_no": 7, "source": "client"},
-        {"event_type": "attempt.submit_flush", "payload": {"final_sequence_no": 10}, "sequence_no": 7, "source": "client"},
+        {"event_type": "question.visited", "payload": {"question_id": "q"}, "sequence_no": s, "source": "client"}
+        for s in present
+    ] + [
+        {"event_type": "attempt.submit_flush", "payload": {"final_sequence_no": 10}, "sequence_no": 10, "source": "client"},
     ]}
     m = sa.compute_telemetry_quality(["a1"], quality, events)
-    assert m["trailing_gap_count"] == 3
     assert m["per_attempt"][0]["declared_final_sequence_no"] == 10
-    assert m["per_attempt"][0]["max_client_sequence_no"] == 7
+    assert m["per_attempt"][0]["max_client_sequence_no"] == 10        # marker delivered at 10
+    assert m["per_attempt"][0]["distinct_sequences_through_boundary"] == 8  # 1..7 + 10
+    assert m["trailing_gap_count"] == 2                               # 8, 9 missing
+
+
+def test_tq_min_attempts_below_one_rejected(monkeypatch: Any, capsys: Any) -> None:
+    """telemetry-quality --min-attempts 0 → INVALID_FLAGS, exit 2."""
+    code, data = _run_main(
+        ["--json", "telemetry-quality", "--min-attempts", "0"],
+        monkeypatch, capsys,
+    )
+    assert code == 2
+    assert data.get("error") == "INVALID_FLAGS"
