@@ -1,7 +1,8 @@
--- Migration 193: Atomic PYQ-source review transaction (authoritative validation)
+-- Migration 201: Atomic PYQ-source review transaction (authoritative validation)
+-- (Renumbered from 193 via PR #782 — duplicate migration hotfix.)
 --
 -- Applied version must be reconciled against the deployed schema_migrations
--- state at apply time (operator step); 193 = MAX(main)+1 on the filesystem.
+-- state at apply time (operator step); 201 = renumbered from 193 to resolve duplicate.
 --
 -- pyq_sources previously had NO dedicated review action: trust_status was only
 -- PATCH-editable via /pyq-sources/{id}, and sources created through PYQ
