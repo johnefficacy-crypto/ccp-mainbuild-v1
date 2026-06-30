@@ -29,9 +29,14 @@
 --   • SELECT ... FOR UPDATE the snapshot row (concurrent-modification guard).
 --   • Return a distinguishable not_found error (P0404).
 --   • Enforce the full transition matrix inside PostgreSQL.
+--   • Enforce the locked→reviewed reviewer_notes requirement in PostgreSQL so
+--     that direct service-role RPC calls cannot bypass the business rule.
 --   • audit INSERT + snapshot UPDATE in one transaction — any failure rolls
 --     back both; no orphan rows; no silent status changes without audit.
---   • Persist reviewer identity (UUID + email), notes, and reviewed_at.
+--   • Preserve existing reviewer_notes when p_reviewer_notes is NULL so that
+--     non-reversal transitions cannot silently erase an earlier review rationale.
+--   • Preserve the existing audit-row contract (action, admin_user_id, notes).
+--   • Fail closed on a missing actor_id — NULL p_actor_user_id raises P0422.
 --   • Return prev_status and new_status for the caller.
 --   • SECURITY DEFINER with fixed search_path.
 --   • EXECUTE revoked from PUBLIC, anon, and authenticated; granted only to
@@ -47,13 +52,14 @@
 -- Error ERRCODE tokens the Python endpoint maps to HTTP status codes:
 --   P0404 → 404  (not_found)
 --   P0409 → 409  (concurrent_modification)
---   P0422 → 422  (transition_not_allowed | invalid_target_status)
+--   P0422 → 422  (transition_not_allowed | invalid_target_status |
+--                  invalid_reviewer_notes | missing_actor_id)
 
 CREATE OR REPLACE FUNCTION cms_review_exam_topic_snapshot(
     p_snapshot_id     uuid,
     p_expected_status text,
     p_new_status      text,
-    p_reviewer_notes  text,   -- nullable; required by caller for locked→reviewed
+    p_reviewer_notes  text,   -- nullable; required for locked→reviewed; NULL preserves existing
     p_actor_user_id   uuid,
     p_actor_email     text
 )
@@ -63,10 +69,18 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_snap     exam_topic_score_snapshots%ROWTYPE;
-    v_audit_id uuid;
-    v_updated  exam_topic_score_snapshots%ROWTYPE;
+    v_snap              exam_topic_score_snapshots%ROWTYPE;
+    v_audit_id          uuid;
+    v_updated           exam_topic_score_snapshots%ROWTYPE;
+    v_effective_notes   text;
 BEGIN
+    -- 0. Fail closed on missing actor identity — an unaudited actor must not
+    --    be able to perform a review even via a direct service-role RPC call.
+    IF p_actor_user_id IS NULL THEN
+        RAISE EXCEPTION 'missing_actor_id: p_actor_user_id must not be NULL'
+            USING ERRCODE = 'P0422';
+    END IF;
+
     -- 1. Validate target status before touching any row.
     IF p_new_status NOT IN ('draft', 'reviewed', 'locked', 'rejected') THEN
         RAISE EXCEPTION 'invalid_target_status: % is not a recognised snapshot status',
@@ -108,37 +122,50 @@ BEGIN
             USING ERRCODE = 'P0422';
     END IF;
 
-    -- 5. Insert audit row within the same transaction.
+    -- 5. locked→reviewed requires reviewer_notes — enforce in DB so that a
+    --    direct service-role RPC call cannot bypass the Python fast path.
+    IF v_snap.status = 'locked' AND p_new_status = 'reviewed'
+       AND nullif(trim(coalesce(p_reviewer_notes, '')), '') IS NULL
+    THEN
+        RAISE EXCEPTION 'invalid_reviewer_notes: reviewer_notes required when reverting a locked snapshot'
+            USING ERRCODE = 'P0422';
+    END IF;
+
+    -- 6. Resolve effective reviewer_notes: NULL means "keep existing"; an empty
+    --    string or a real value replaces whatever was stored.
+    v_effective_notes := CASE
+        WHEN p_reviewer_notes IS NULL THEN v_snap.reviewer_notes
+        ELSE p_reviewer_notes
+    END;
+
+    -- 7. Insert audit row within the same transaction, preserving the
+    --    pre-existing audit contract (action, admin_user_id, notes fields).
     --    If this fails the UPDATE below is also rolled back — no orphan rows.
     INSERT INTO public.admin_audit_logs (
-        actor_id, actor_email, action, entity_type, entity_id,
+        actor_id, actor_email, admin_user_id,
+        action, entity_type, entity_id,
         old_value, new_value, notes
     )
     VALUES (
         p_actor_user_id,
         p_actor_email,
-        'exam_intel.score_snapshot.review',
+        p_actor_user_id,
+        'snapshot_status_transition',
         'exam_topic_score_snapshot',
         p_snapshot_id::text,
         jsonb_build_object('status', p_expected_status),
-        jsonb_build_object(
-            'from_status',     p_expected_status,
-            'to_status',       p_new_status,
-            'reviewer_notes',  p_reviewer_notes,
-            'reviewed_by',     p_actor_email,
-            'reviewed_at',     now()::text
-        ),
-        'admin_exam_intel'
+        jsonb_build_object('status', p_new_status),
+        p_reviewer_notes
     )
     RETURNING id INTO v_audit_id;
 
-    -- 6. Update snapshot (belt-and-suspenders WHERE given the FOR UPDATE lock).
+    -- 8. Update snapshot (belt-and-suspenders WHERE given the FOR UPDATE lock).
     UPDATE public.exam_topic_score_snapshots
     SET
         status         = p_new_status,
         reviewed_by    = p_actor_user_id,
         reviewed_at    = now(),
-        reviewer_notes = p_reviewer_notes
+        reviewer_notes = v_effective_notes
     WHERE id     = p_snapshot_id
     AND   status = p_expected_status
     RETURNING * INTO v_updated;

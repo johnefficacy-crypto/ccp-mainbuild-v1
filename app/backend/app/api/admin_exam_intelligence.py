@@ -2296,7 +2296,10 @@ def review_score_snapshot(
                 status_code=409,
                 detail="snapshot was modified concurrently — refresh and retry",
             ) from exc
-        if any(tok in msg_lower for tok in ("transition_not_allowed", "invalid_target_status")):
+        if any(tok in msg_lower for tok in (
+            "transition_not_allowed", "invalid_target_status",
+            "invalid_reviewer_notes", "missing_actor_id",
+        )):
             raise HTTPException(status_code=422, detail=msg) from exc
         if "not_found" in msg_lower:
             raise HTTPException(status_code=404, detail=msg) from exc

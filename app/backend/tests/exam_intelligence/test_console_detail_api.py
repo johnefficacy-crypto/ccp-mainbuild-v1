@@ -6,6 +6,8 @@ confidence, no-percentage guards, and fail-closed reads.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -14,7 +16,18 @@ from app.api import admin_exam_intelligence as admin_api
 from app.core.auth import get_current_user
 from app.core.errors import DatabaseError
 from app.exam_intelligence import console_detail as cd
+from app.exam_intelligence import work_queue as wq
 from tests.persona_questions._stub import SBStub
+
+
+# Pin work_queue._now() so staleness calculations are deterministic.
+# stale_cutoff = 2026-06-09; _RECENT (2026-06-16) is not stale.
+_FIXED_NOW = datetime(2026, 6, 23, 0, 0, 0, tzinfo=timezone.utc)
+
+
+@pytest.fixture(autouse=True)
+def _pin_now(monkeypatch):
+    monkeypatch.setattr(wq, "_now", lambda: _FIXED_NOW)
 
 # After the deep-link fix (design-lock Section 7.2), all action CTAs must use the
 # canonical /exams/:exam_id route with a per-area ?tab= parameter.

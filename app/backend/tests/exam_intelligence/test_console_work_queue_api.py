@@ -7,6 +7,8 @@ pages), required-read failure propagation, and bounded (no per-exam) reads.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -16,6 +18,19 @@ from app.core.auth import get_current_user
 from app.core.errors import DatabaseError
 from app.exam_intelligence import work_queue as wq
 from tests.persona_questions._stub import SBStub, _Query
+
+
+# ── Time pinning ─────────────────────────────────────────────────────────────
+# Anchors work_queue._now() to 2026-06-23 UTC so staleness calculations are
+# deterministic.  stale_cutoff = 2026-06-09; _RECENT (2026-06-16) is not
+# stale; _STALE (2026-01-01) is stale.  Without this, _RECENT sits on the
+# 14-day boundary and tests fail depending on the time of day tests run.
+_FIXED_NOW = datetime(2026, 6, 23, 0, 0, 0, tzinfo=timezone.utc)
+
+
+@pytest.fixture(autouse=True)
+def _pin_now(monkeypatch):
+    monkeypatch.setattr(wq, "_now", lambda: _FIXED_NOW)
 
 
 # ── Harness ─────────────────────────────────────────────────────────────────

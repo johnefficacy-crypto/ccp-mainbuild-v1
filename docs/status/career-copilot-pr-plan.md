@@ -533,15 +533,16 @@ What changed:
 
 **OPERATOR PENDING:** apply migration 204 to staging; verify EXECUTE grant matrix; confirm atomic audit trail in a live compute → review → lock cycle.
 
-### P-slice-3 — Cognitive demand classification (Bloom's taxonomy) — **UNBLOCKED (P-slice-2 merged, PR #773), contract pending**
+### P2 — Cognitive demand classification (Bloom's taxonomy) — **UNBLOCKED (P-slice-2 merged, PR #773), contract pending**
 
-Per `pyq-intelligence-v2.md` §scoring: add `bloom_level` classification per PYQ question.
+Per `pyq-intelligence-v2.md` §P2 (governed cognitive and distractor classification): add `cognitive_demand` classification per PYQ question.
 Contract-first: define the taxonomy levels and how they feed `score_components` before implementation.
 Gate cleared — P-slice-2 is on main. Next step is the taxonomy + scoring contract (no code until agreed).
 
-### P-slice-4 — Unified revision recommendations contract — **DEFERRED**
+### P3 — Unified revision recommendations contract — **DEFERRED**
 
-Revision → relearn/review/practice routing contract. Depends on SM-2 output (already in `services/srs.py`) + snapshot scores. Do not dispatch until P-slice-3 is designed.
+Per `pyq-intelligence-v2.md` §P3 (learner evidence and revision unification).
+Revision → relearn/review/practice routing contract. Depends on SM-2 output (already in `services/srs.py`) + snapshot scores. Do not dispatch until P2 is designed.
 
 ### P-slice-5 — Current affairs provenance and linking pipeline — **DEFERRED**
 
