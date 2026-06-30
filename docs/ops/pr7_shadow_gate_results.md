@@ -97,20 +97,20 @@ Steps 3–8 are sequential and each depends on those above it.
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — boundary not yet
-   closed):** Current boundary is 32 files (20 original + `attempt_analytics`
-   7 + event-backend 3 + frontend event producers 2: `MockAttemptShell.jsx`,
-   `attemptEventBus.js`). The two originally-blocking bug fixes are merged
-   (PR #795 `time_analytics`; PR #793 `MockAttemptShell` first-visit), and a
-   reference fingerprint was computed at `main @ 1679adb8`
-   (`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`).
-   This is NOT yet the freeze hash. Before FROZEN (PR #796 review): (i) fix or
-   explicitly gate the P0 event-delivery (beacon auth/retry) and P0 partial-
-   fallback reporting defects; (ii) close the boundary over `core/auth.py` and
-   frontend `lib/supabase.js` (operator-approved manifest expansion) and
-   recompute; (iii) commit a per-file SHA-256 attestation (or a CI check that
-   recomputes the digest at the pinned SHA). Then recompute the freeze hash at
-   the new post-fix `main` SHA and record it here.
+2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — merge + operator
+   verify remaining):** All P0/P1 code defects are fixed and merged:
+   PR #795 (`time_analytics` `occurred_at` + `payload.question_id`);
+   PR #793 (`MockAttemptShell` Q1 first-visit); PR #800 (`attemptEventBus`
+   authenticated delivery + `response.ok` check; `compute_dwell_times()`
+   partial-fallback reporting). Boundary expanded to 34 files (32 original +
+   `core/auth.py` + `lib/supabase.js`, operator-approved) in PR #805.
+   Candidate freeze hash (34 files, computed at this PR's HEAD):
+   `57e1ea1ead57c32c820cf73c1e9fda636f7dfe00b3c11ceae984f527ce37ef7d`.
+   Remaining before FROZEN: (i) merge PR #805 to main; (ii) operator
+   recomputes the 34-file hash at the confirmed deployed SHA (step 8) and
+   confirms equality; (iii) telemetry-quality gate must pass at
+   `window_start` (events_used > 0, visit coverage 100%, fallback_count = 0,
+   ingest_rejection = 0, delivery_success = true).
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
    confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
