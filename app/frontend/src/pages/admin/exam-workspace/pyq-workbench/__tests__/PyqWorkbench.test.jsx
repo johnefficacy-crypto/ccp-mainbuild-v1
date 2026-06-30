@@ -1638,12 +1638,12 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
 
   // ── Cycle/phase label fix — browser gate remediation ─────────────────────────
 
-  test("modal shows 'All cycles' and 'No phase selected' when no cycle context is active", async () => {
+  test("modal shows 'No cycle selected (exam-wide paper)' and 'No phase selected' when no cycle context is active", async () => {
     // mockApiForOnboarding returns cycle: null by default
     mockApiForOnboarding(PAPERS);
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
     await openAddModal();
-    expect(screen.getByTestId("add-pyq-cycle-label").textContent).toContain("All cycles");
+    expect(screen.getByTestId("add-pyq-cycle-label").textContent).toContain("No cycle selected (exam-wide paper)");
     expect(screen.getByTestId("add-pyq-phase-label").textContent).toContain("No phase selected");
   });
 
@@ -1664,39 +1664,18 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
     await openAddModal();
     expect(screen.getByTestId("add-pyq-cycle-label").textContent).toContain("AILET 2026");
-    expect(screen.getByTestId("add-pyq-cycle-label").textContent).not.toContain("All cycles");
+    expect(screen.getByTestId("add-pyq-cycle-label").textContent).not.toContain("No cycle selected");
   });
 
-  test("modal shows readable phase name when a phase is linked to the cycle", async () => {
-    const PHASE_ID = "phase-1";
+  test("labels are display-only: submitted body carries cycleId; phase is always null", async () => {
+    // exam_cycles has no exam_phase_id column — phase is always null in this panel
     api.get.mockImplementation((url) => {
       if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
       if (url.includes("/context")) return Promise.resolve({
         exam: { id: EXAM_ID, name: "SSC CGL" },
-        cycle: { id: CYCLE_ID, cycle_name: "AILET 2026", exam_phase_id: PHASE_ID },
+        cycle: { id: CYCLE_ID, cycle_name: "AILET 2026" },
         cycles: [{ id: CYCLE_ID, cycle_name: "AILET 2026" }],
-        phases: [{ id: PHASE_ID, phase_name: "Written examination", phase_slug: "written" }],
-      });
-      if (url.includes("/pyq-papers?")) return Promise.resolve({ items: PAPERS });
-      if (url.includes("/documents?") && url.includes("document_kind=pyq_paper")) return Promise.resolve({ items: ONBOARD_DOCS });
-      if (url.includes("/pyq-sources?")) return Promise.resolve({ items: ONBOARD_SOURCES });
-      return Promise.resolve({});
-    });
-    render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
-    await openAddModal();
-    expect(screen.getByTestId("add-pyq-phase-label").textContent).toContain("Written examination");
-    expect(screen.getByTestId("add-pyq-phase-label").textContent).not.toContain("No phase selected");
-  });
-
-  test("labels are display-only: submitted body still carries cycleId and phaseId", async () => {
-    const PHASE_ID = "phase-submit-1";
-    api.get.mockImplementation((url) => {
-      if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
-      if (url.includes("/context")) return Promise.resolve({
-        exam: { id: EXAM_ID, name: "SSC CGL" },
-        cycle: { id: CYCLE_ID, cycle_name: "AILET 2026", exam_phase_id: PHASE_ID },
-        cycles: [{ id: CYCLE_ID, cycle_name: "AILET 2026" }],
-        phases: [{ id: PHASE_ID, phase_name: "Written examination", phase_slug: "written" }],
+        phases: [],
       });
       if (url.includes("/pyq-papers?")) return Promise.resolve({ items: PAPERS });
       if (url.includes("/documents?") && url.includes("document_kind=pyq_paper")) return Promise.resolve({ items: ONBOARD_DOCS });
@@ -1709,10 +1688,8 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     });
     render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
     await openAddModal();
-    // Labels rendered correctly
     expect(screen.getByTestId("add-pyq-cycle-label").textContent).toContain("AILET 2026");
-    expect(screen.getByTestId("add-pyq-phase-label").textContent).toContain("Written examination");
-    // Submit with minimal fields
+    expect(screen.getByTestId("add-pyq-phase-label").textContent).toContain("No phase selected");
     fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2025" } });
     fireEvent.change(screen.getByTestId("add-pyq-reason"), { target: { value: "browser gate verification" } });
     fireEvent.click(screen.getByTestId("add-pyq-submit"));
@@ -1721,7 +1698,40 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     );
     const body = api.post.mock.calls.find((c) => String(c[0]).includes("/pyq-onboarding"))?.[1];
     expect(body?.exam_cycle_id).toBe(CYCLE_ID);
-    expect(body?.exam_phase_id).toBe(PHASE_ID);
+    // phase is always null from this panel — exam_cycles has no exam_phase_id column
+    expect(body?.exam_phase_id ?? null).toBeNull();
+  });
+
+  test("submit is blocked and error shown when cycleId is set but cycleLabel cannot be resolved", async () => {
+    // Simulates a stale/bad context: cycleId present but cycle row missing cycle_name
+    api.get.mockImplementation((url) => {
+      if (url.includes("/readiness")) return Promise.resolve({ sections: [] });
+      if (url.includes("/context")) return Promise.resolve({
+        exam: { id: EXAM_ID, name: "SSC CGL" },
+        cycle: { id: CYCLE_ID },  // no cycle_name field — mismatch condition
+        cycles: [],
+        phases: [],
+      });
+      if (url.includes("/pyq-papers?")) return Promise.resolve({ items: PAPERS });
+      if (url.includes("/documents?") && url.includes("document_kind=pyq_paper")) return Promise.resolve({ items: ONBOARD_DOCS });
+      if (url.includes("/pyq-sources?")) return Promise.resolve({ items: ONBOARD_SOURCES });
+      return Promise.resolve({});
+    });
+    api.post.mockImplementation((url) => {
+      if (url.includes("/pyq-onboarding")) return Promise.resolve({ ok: true, paper: { id: "p-new" } });
+      return Promise.resolve({});
+    });
+    render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
+    await openAddModal();
+    // Error banner must be visible
+    expect(screen.getByTestId("add-pyq-cycle-label-error")).toBeTruthy();
+    expect(screen.queryByTestId("add-pyq-cycle-label")).toBeNull();
+    // Submit button must be disabled
+    const submitBtn = screen.getByTestId("add-pyq-submit");
+    expect(submitBtn).toBeDisabled();
+    // Clicking disabled submit must NOT call api.post
+    fireEvent.click(submitBtn);
+    expect(api.post).not.toHaveBeenCalled();
   });
 });
 
