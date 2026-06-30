@@ -449,15 +449,23 @@ If version number is stale → preserve the evaluation row with
 (unit state, resolution events, mastery evidence). Do not conflate the two
 checks or drop either one.
 
-### EWP-5. `finalize_writing_session` is the single state-transition owner
+### EWP-5. `finalize_writing_session` owns rollup-derived state transitions
 
-All session and unit state transitions (unit `ready → completed`,
-`evaluation_pending → rewrite_required`, session `active → completed`, etc.)
-are owned exclusively by `finalize_writing_session`. It is idempotent and
-must be called after every terminal event: session submission, deterministic
-eval complete, language eval complete, permanent job failure, recovery
-complete, session-check complete. No other path may write session or unit
-state.
+All **rollup-derived** session and unit state transitions (unit
+`evaluation_pending → rewrite_required`, `evaluation_pending → ready`,
+`ready → completed`; session `active → evaluation_pending`,
+`evaluation_pending → rewrite_required`, `evaluation_pending → completed`,
+etc.) are owned exclusively by `finalize_writing_session`. It is idempotent
+and must be called after every terminal event: session submission,
+deterministic eval complete, language eval complete, permanent job failure,
+recovery complete, session-check complete.
+
+**Explicitly permitted outside the finalizer:** the unit reopen command
+(`ready → draft`) is a command-driven transition issued by the reopen
+endpoint before calling the finalizer to recompute session state. This is
+not a rollup transition — it is a deliberate user-directed state override.
+All other paths that write session or unit state must route through the
+finalizer.
 
 ### EWP-6. Mastery evidence is POST-COMMIT and feature-flag gated
 
@@ -491,5 +499,5 @@ frontend path in the database.
 
 The next migration number for any EWP schema work must be read from:
 `select max(version)::int + 1 from schema_migrations`
-Never guess or hardcode a migration number. At architecture doc creation
-(2026-06-30) the highest was 204; the first EWP migration is 205.
+Never guess or hardcode a migration number. The correct value must be
+VERIFIED against the live database before writing any migration file.

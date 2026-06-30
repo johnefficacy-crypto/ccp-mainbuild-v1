@@ -296,11 +296,11 @@ PR plan: `docs/status/career-copilot-pr-plan.md` § Lane H
 
 Current verdict: **ARCHITECTURE LOCKED. EWP-1 ready to implement. EWP-5 mastery live writes blocked on Lane A gate.**
 
-Migration number for EWP-1 must come from `select max(version)::int + 1 from schema_migrations`. Current highest migration in repo: 204. Do not guess or derive from filenames.
+Migration number for EWP-1 must come from `select max(version)::int + 1 from schema_migrations`. VERIFY DB before writing the migration file — do not guess or derive from filenames.
 
 | Item | Current status | Repo evidence / notes |
 |---|---|---|
-| Architecture contract | MERGED / CODE PRESENT | `docs/architecture/english-writing-practice.md` — 24 locked implementation rules, full schema, state machines, evaluation stages, RLS contract, projection policy. |
+| Architecture contract | REVIEW PENDING — PR #819 (draft) | `docs/architecture/english-writing-practice.md` — 24 locked implementation rules, full schema, state machines, evaluation stages, RLS contract, projection policy. |
 | English taxonomy seed | PLANNED | Microtopics for Grammar (7), Sentence Construction (4), Vocabulary (4), Paragraph Writing (4), Précis/Essay/Letter/Comprehension subjects. Must be seeded in EWP-1 migration using stable UUID constants, not auto-generated. |
 | EWP-1 — Schema, constraints, RLS | PLANNED | Tables: `writing_rubrics`, `writing_prompts`, `exam_descriptive_requirements`, `writing_sessions`, `writing_session_units`, `writing_unit_versions`, `writing_evaluations`, `writing_session_checks`, `writing_issue_events`, `writing_issue_resolution_events`, `writing_issue_projections`, `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_evaluation_jobs`. Additive columns on `study_tasks`: `launch_type`, `launch_entity_id`, `launch_context`. Must include `version_set_hash` fixed-input test vector and unit state machine tests. |
 | EWP-2 — Deterministic practice API | PLANNED — blocked on EWP-1 merged | Practice runtime API: session create/read, unit submit (Stage 1 synchronous), reopen, evaluation poll, error summary. `finalize_writing_session` single-owner rollup. Mission-control `action_url` computation from `launch_type`. Shadow mastery only (`FF_WRITING_MASTERY_WRITES=shadow`). |

@@ -2,7 +2,7 @@
 
 **Status:** Design-locked. Do not implement without reading this document in full.
 **Checklist:** `docs/status/career-copilot-checklist.md` § English Writing Practice
-**PR plan:** `docs/status/career-copilot-pr-plan.md` § English Writing Practice PRs (EWP-1 … EWP-5)
+**PR plan:** `docs/status/career-copilot-pr-plan.md` § English Writing Practice PRs (EWP-1 … EWP-7)
 
 ---
 
@@ -84,7 +84,9 @@ English Language  (subject)
 └── Comprehension and Summary
 ```
 
-Each microtopic is a standard `microtopic_id`. Every `writing_issue_events` row references a `microtopic_id`. The planner reads `user_topic_error_patterns` at microtopic granularity and can generate "Articles drill" tasks rather than a generic "English weak" signal.
+Each leaf node is a row in the `topics` table with `level = 'microtopic'`. Every `writing_issue_events` row references a `topic_id` at microtopic level (`topics.level = 'microtopic'`). The planner reads `user_topic_error_patterns` at microtopic granularity and can generate "Articles drill" tasks rather than a generic "English weak" signal.
+
+The repo has no separate `microtopics` table. All subject/topic/microtopic rows live in `public.topics` distinguished by `topics.level` and `parent_topic_id` (migration 029).
 
 ---
 
@@ -101,7 +103,7 @@ exam_cycle_id           uuid references exam_cycles(id)
 exam_phase_id           uuid references exam_phases(id)
 subject_id              uuid not null references subjects(id)
 topic_id                uuid not null references topics(id)
-microtopic_id           uuid references microtopics(id)
+microtopic_id           uuid references topics(id)      -- level='microtopic'
 exercise_type           text not null   -- see §4.1a
 prompt_text             text not null
 source_text             text            -- for précis/comprehension
@@ -293,14 +295,14 @@ One independently evaluated response within a session. For the five-sentence exe
 id                   uuid primary key
 session_id           uuid not null references writing_sessions(id)
 unit_number          int not null         -- 1-indexed
-practice_microtopic_id uuid references microtopics(id)  -- intended exercise skill
+practice_microtopic_id uuid references topics(id)        -- intended exercise skill; level='microtopic'
 unit_constraints     jsonb not null default '{}'         -- see §4.4a
 status               text not null default 'not_started'
 
 unique (session_id, unit_number)
 ```
 
-`practice_microtopic_id` identifies the intended exercise skill. It is not the detected error microtopic. Detected errors go in `writing_issue_events` and carry their own `microtopic_id`.
+`practice_microtopic_id` identifies the intended exercise skill. It is not the detected error topic. Both reference `topics(id)` at `level='microtopic'`. Detected errors go in `writing_issue_events` and carry their own `microtopic_id`.
 
 #### 4.4a `unit_constraints` schema
 
@@ -375,7 +377,9 @@ submitted_at      timestamptz not null default now()
 unique (unit_id, version_number)
 ```
 
-**`content_hash`** is computed as `SHA-256(answer_text).hexdigest()` (lowercase hex). It cannot change after version insertion. No UPDATE or DELETE is permitted on this table from any client or service role except the backend evaluation pipeline (for setting `server_word_count`).
+**`content_hash`** is computed as `SHA-256(answer_text).hexdigest()` (lowercase hex). It cannot change after version insertion.
+
+**`server_word_count`** is computed synchronously by the submission handler (Stage 1 deterministic checks) and included in the initial INSERT. It is not updated after insert. No UPDATE or DELETE is permitted on this table from any client or service role.
 
 **Blank exam versions** are created server-side for unanswered exam units at session submission:
 
@@ -554,7 +558,7 @@ Raw language findings. Append-only. Never mutated after insert.
 id                         uuid primary key
 evaluation_id              uuid not null references writing_evaluations(id)
 issue_type                 text not null   -- see §5.1
-microtopic_id              uuid references microtopics(id)
+microtopic_id              uuid references topics(id)    -- level='microtopic'
 lineage_id                 uuid not null   -- see §4.8a
 predecessor_issue_event_id uuid references writing_issue_events(id)
 span_start_utf16           int
@@ -694,7 +698,12 @@ Consumers read the projection pinned to the session's `projection_revision`. The
 
 Re-evaluation under new projection logic inserts a new row at a higher `projection_revision`. Old rows are immutable and auditable.
 
-**Projection computation** is transactional: the `prior_occurrence_count` is read within the same transaction that inserts the projection row, preventing race conditions.
+**Projection computation is race-safe.** A plain read-then-insert in a default-isolation transaction does not prevent two concurrent evaluations for the same user and microtopic from observing the same `prior_occurrence_count`. The implementation must use one of:
+
+- A PostgreSQL advisory transaction lock keyed on `hashtext(user_id || microtopic_id || issue_type)` acquired before reading the count, OR
+- `ISOLATION LEVEL SERIALIZABLE` for the projection insert transaction.
+
+The lock/isolation must be acquired before reading `prior_occurrence_count` and held until the INSERT commits.
 
 ---
 
@@ -708,7 +717,7 @@ user_id               uuid not null references auth.users(id)
 exam_id               uuid references exams(id)
 exam_phase_id         uuid references exam_phases(id)
 topic_id              uuid not null references topics(id)
-microtopic_id         uuid references microtopics(id)
+microtopic_id         uuid references topics(id)    -- level='microtopic'
 source_type           text not null   -- see §4.12a
 source_entity_id      uuid not null
 evidence_tier         text not null   -- 'recognition' | 'correction' | 'production' | 'retention'
@@ -964,21 +973,29 @@ Evaluations belong to immutable versions. An evaluation of version 1 remains val
 4.  Lock the parent writing_session_units row.
 5.  Read the unit's current latest version.
 6.  Persist the evaluation against the requested version (always).
-7.  If requested version != latest version:
-      mark evaluation: affects_current_state = false on all its issue events
-      skip steps 8–11
-8.  Insert writing_issue_events for this version.
+7.  Insert writing_issue_events for this version.
+      Set affects_current_state = (requested_version_id == latest_version_id).
+      Issue events are always inserted — they are the permanent record of what the
+      evaluator found. The staleness flag is stored on the row itself.
+8.  If requested version != latest version (stale path):
+      skip steps 9–12 and go to step 13 (commit only evaluation + issue events).
 9.  Insert writing_issue_resolution_events for every prior active issue.
 10. Insert writing_issue_projections.
-11. Insert eligible user_topic_mastery_evidence (post-commit, see §8.2).
+11. Commit a writing_mastery_outbox job row (see §8.2).
+      The outbox job is committed atomically with steps 9–10 so it cannot be lost.
 12. Recompute unit and session state via finalize_writing_session.
 13. Commit.
+14. (Post-commit) Process mastery outbox job from step 11 — derive and write
+      user_topic_mastery_evidence. If this step fails it is retried via the outbox
+      job; the evaluation transaction is not affected.
 ```
 
 **Insertion order within the transaction:**
-- Issue events (step 8) are inserted before resolution events (step 9).
-- `successor_issue_event_id` on resolution events references rows inserted in step 8.
+- Issue events (step 7) are inserted before resolution events (step 9).
+- `successor_issue_event_id` on resolution events references rows inserted in step 7.
 - No deferred FK verification needed when inserts are sequenced correctly.
+
+**Stale path summary:** evaluation row + issue events are always persisted (steps 6–7). Resolution events, projections, outbox jobs, and finalizer are skipped for stale versions. The `affects_current_state = false` flag on issue events gates downstream consumers (Error Lab, mastery, planner).
 
 **Rewrite submission** must lock the same unit row before creating the next version. This removes the race between rewrite creation and evaluator completion.
 
@@ -988,11 +1005,32 @@ Evaluations belong to immutable versions. An evaluation of version 1 remains val
 unique (unit_version_id, evaluation_revision)
 ```
 
-### 8.2 Mastery evidence emission (post-commit)
+### 8.2 Mastery evidence emission (durable outbox, post-commit processing)
 
-Mastery evidence emission (step 11) must not be inside the main evaluation transaction. Lock contention or flag-read failures on mastery tables must not roll back the evaluation, issue, or resolution inserts.
+`user_topic_mastery_evidence` inserts must not be inside the main evaluation transaction. Lock contention or flag-read failures on mastery tables must not roll back the evaluation, issue, or resolution inserts.
 
-Emit as a post-commit step: either queued as a follow-on job, or invoked after the main transaction commits. If the mastery write fails, it must be retryable without re-running steps 1–10.
+**Required pattern — transactional outbox:**
+
+A `writing_mastery_outbox` job row is inserted inside the evaluation transaction (step 11). The job row is committed atomically with the evaluation; it cannot be lost even if the post-commit processing step fails. After commit, a worker reads the outbox, derives mastery evidence, and writes `user_topic_mastery_evidence`. If evidence writing fails, the outbox job retries without re-running evaluation steps 1–10.
+
+An optional "invoke-after-commit" callback without a committed outbox record is not permitted — it loses evidence on process crash between commit and callback execution.
+
+**`writing_mastery_outbox` table (added in EWP-1 migration):**
+
+```sql
+id                uuid primary key
+evaluation_id     uuid not null references writing_evaluations(id)
+user_id           uuid not null references auth.users(id)
+idempotency_key   text not null  -- SHA-256(evaluation_id || user_id || projection_revision)
+status            text not null default 'pending'  -- 'pending' | 'processing' | 'done' | 'failed'
+attempts          int not null default 0
+max_attempts      int not null default 5
+last_error        text
+created_at        timestamptz not null default now()
+processed_at      timestamptz
+
+unique (idempotency_key)
+```
 
 ### 8.3 Job claiming
 
@@ -1093,7 +1131,7 @@ live + user absent from allowlist → shadow
 
 ```
 off:
-  Persist writing_attempts, issue events, evaluations, and session checks only.
+  Persist writing_sessions, issue events, evaluations, and session checks only.
   No mastery evidence written.
 
 shadow:
@@ -1106,6 +1144,32 @@ live:
   Apply canonical mastery update.
   Only for allowlisted users.
 ```
+
+### 10.1a `writing_mastery_shadow` table
+
+Shadow rows record the mastery deltas that would be applied in `live` mode without touching `user_topic_mastery`. They must be idempotent — reprocessing the same evidence must not insert duplicate rows.
+
+```sql
+id                    uuid primary key
+user_id               uuid not null references auth.users(id)
+exam_id               uuid references exams(id)
+topic_id              uuid not null references topics(id)
+microtopic_id         uuid references topics(id)    -- level='microtopic'
+source_type           text not null
+source_entity_id      uuid not null
+evaluation_id         uuid not null references writing_evaluations(id)
+issue_projection_id   uuid references writing_issue_projections(id)
+evidence_tier         text not null
+score                 numeric
+confidence            numeric
+delta_json            jsonb not null default '{}'
+idempotency_key       text not null   -- SHA-256(user_id || evaluation_id || topic_id || source_type)
+processed_at          timestamptz not null default now()
+
+unique (idempotency_key)
+```
+
+Insert uses `ON CONFLICT (idempotency_key) DO NOTHING` to guarantee at-most-once shadow rows for a given evidence event. No UPDATE or DELETE is permitted on this table.
 
 ### 10.2 Blocking constraint
 
@@ -1234,7 +1298,10 @@ writing_issue_review_events
 user_topic_mastery_evidence
 writing_evaluation_jobs
 writing_mastery_shadow
+writing_mastery_outbox
 ```
+
+These tables intentionally have **no client allow policy**. An RLS policy of `USING (false)` or no policy at all is correct — there is no authenticated-user read path. A reviewer or implementer must not add a SELECT policy to any of these tables without an explicit architecture decision.
 
 ### 12.3 No-write from client rule
 

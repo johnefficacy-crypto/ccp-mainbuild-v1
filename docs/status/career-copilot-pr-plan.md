@@ -62,7 +62,7 @@ app/backend/tests/study_os/test_version_set_hash.py
 
 **Migration must include:**
 
-1. Seed English Language subject → topic → microtopic hierarchy (§3 of architecture doc). Each microtopic gets a stable UUID seeded via a deterministic `gen_random_uuid()` call or explicit UUID constant — not auto-generated on each migration run.
+1. Seed English Language subject → topic → microtopic hierarchy (§3 of architecture doc). Each `topics` row (level='microtopic') must use an explicit hardcoded UUID constant or a UUIDv5 value derived from a fixed namespace + deterministic slug. `gen_random_uuid()` is not permitted — it is non-deterministic and will produce different values on each migration run, breaking idempotency and re-run safety.
 2. `writing_rubrics`
 3. `writing_prompts` with reviewer lifecycle constraint
 4. `exam_descriptive_requirements` with typed `feedback_release_policy` columns and constraints
