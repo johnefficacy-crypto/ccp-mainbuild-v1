@@ -514,15 +514,35 @@ Wire `locked_score_snapshots()` into `planner.py` as an additional priority sign
 - `app/backend/tests/study_os/test_planner_snapshot_integration.py`
 - `docs/status/career-copilot-pr-plan.md`
 
-### P-slice-3 — Cognitive demand classification (Bloom's taxonomy) — **UNBLOCKED (P-slice-2 merged, PR #773), contract pending**
+### P-slice-1c — Snapshot review atomicity (migration 204) — **IN PROGRESS (`claude/pyq-v2-finalization-jhptq9`)**
 
-Per `pyq-intelligence-v2.md` §scoring: add `bloom_level` classification per PYQ question.
+Closes the known atomicity gap recorded in checklist and acknowledged in the deferred comment at `admin_exam_intelligence.py` (cf. `185_pyq_paper_review_transaction.sql`).
+
+What changed:
+- `app/supabase/migrations/204_atomic_snapshot_review_transition.sql` — `cms_review_exam_topic_snapshot` SECURITY DEFINER RPC; SELECT FOR UPDATE + transition matrix + audit INSERT + status UPDATE in one transaction; REVOKE/GRANT pattern from migration 203.
+- `app/backend/app/api/admin_exam_intelligence.py` — `review_score_snapshot` replaces the best-effort two-step writes with a single RPC call; error tokens mapped to 409/422/404/500.
+- `app/backend/tests/exam_intelligence/test_score_snapshot_admin_api.py` — `_SnapshotSBStub` mirrors RPC contract; new tests for atomicity, actor forwarding, no-fallback-on-failure, concurrent modification.
+- `docs/status/career-copilot-checklist.md` — new row recording migration 204 code fix + operator validation gates.
+
+**Write scope:**
+- `app/supabase/migrations/204_atomic_snapshot_review_transition.sql`
+- `app/backend/app/api/admin_exam_intelligence.py`
+- `app/backend/tests/exam_intelligence/test_score_snapshot_admin_api.py`
+- `docs/status/career-copilot-checklist.md`
+- `docs/status/career-copilot-pr-plan.md`
+
+**OPERATOR PENDING:** apply migration 204 to staging; verify EXECUTE grant matrix; confirm atomic audit trail in a live compute → review → lock cycle.
+
+### P2 — Cognitive demand classification (Bloom's taxonomy) — **UNBLOCKED (P-slice-2 merged, PR #773), contract pending**
+
+Per `pyq-intelligence-v2.md` §P2 (governed cognitive and distractor classification): add `cognitive_demand` classification per PYQ question.
 Contract-first: define the taxonomy levels and how they feed `score_components` before implementation.
 Gate cleared — P-slice-2 is on main. Next step is the taxonomy + scoring contract (no code until agreed).
 
-### P-slice-4 — Unified revision recommendations contract — **DEFERRED**
+### P3 — Unified revision recommendations contract — **DEFERRED**
 
-Revision → relearn/review/practice routing contract. Depends on SM-2 output (already in `services/srs.py`) + snapshot scores. Do not dispatch until P-slice-3 is designed.
+Per `pyq-intelligence-v2.md` §P3 (learner evidence and revision unification).
+Revision → relearn/review/practice routing contract. Depends on SM-2 output (already in `services/srs.py`) + snapshot scores. Do not dispatch until P2 is designed.
 
 ### P-slice-5 — Current affairs provenance and linking pipeline — **DEFERRED**
 
