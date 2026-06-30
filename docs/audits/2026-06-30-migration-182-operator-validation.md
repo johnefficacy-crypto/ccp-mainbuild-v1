@@ -53,7 +53,7 @@ The test block was fail-closed: any forbidden accepted call, unexpected guard re
 | Target database context | PASS | Database, role, version, and UTC start captured. |
 | Target project identity | PENDING | Project ref, project URL, region, and staging/production label not supplied. |
 | Operator identity | PENDING | Name or accountable operator identity not supplied. |
-| Deployed application SHA | PENDING | Must be copied from the deployment record for this environment. |
+| Deployed application SHA | NOT APPLICABLE TO MIGRATION 182 DB VALIDATION | Migration 182 is a database migration whose live state is proven by the ledger row, stored migration statement, function metadata, privileges, and functional checks. Application deploy SHA is not required to prove this already-applied database state. |
 | Migration file SHA | PASS | Full SHA-256 recorded above. |
 | Migration ledger | PASS | Exactly one version-182 row. |
 | RPC metadata and privileges | PASS | Signatures, ownership, configuration, overload count, and privilege comparisons passed. |
@@ -61,11 +61,12 @@ The test block was fail-closed: any forbidden accepted call, unexpected guard re
 
 ## Final status rule
 
-Do not change the shared checklist to `OPERATOR VALIDATED` until the following are recorded:
+The remaining fields required before changing the shared checklist to `OPERATOR VALIDATED` are:
 
-1. Supabase project ref, URL, region, and environment label.
+1. Supabase project ref, project URL, region, and environment label.
 2. Operator identity.
-3. Exact deployed application SHA.
-4. Operator signature and UTC sign-off time.
+3. Operator signature and UTC sign-off time.
 
-After those fields are supplied, migration 182 may be removed from the unresolved live blockers. Scheduler, repeat validation, shadow-window, staging, and canary gates remain independently open.
+A deployed application SHA is tracked separately for application/staging validation and is not a blocker for migration 182 database validation.
+
+After the remaining target/operator fields are recorded, migration 182 may be removed from the unresolved live blockers. Scheduler, repeat validation, shadow-window, staging, and canary gates remain independently open.
