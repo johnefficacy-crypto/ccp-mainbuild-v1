@@ -14,7 +14,7 @@ related_code:
   - app/backend/app/study_os/mastery_engine/
   - app/backend/app/study_os/mock_blueprint_selection.py
   - app/backend/app/admin/pyq_mock_projection.py
-  - app/backend/app/admin/score_snapshots.py
+  - app/backend/app/api/admin_exam_intelligence.py
   - app/backend/app/api/flashcards.py
 related_migrations:
   - app/supabase/migrations/029_exam_intelligence_taxonomy.sql
@@ -25,7 +25,7 @@ related_migrations:
   - app/supabase/migrations/135_mock_engine_core.sql
   - app/supabase/migrations/156_resource_extension.sql
   - app/supabase/migrations/183_pyq_mock_projection_bridge.sql
-  - app/supabase/migrations/198_syllabus_document_source_link.sql
+  - app/supabase/migrations/198_syllabus_documents_source_document_id.sql
   - app/supabase/migrations/201_pyq_source_review_transaction.sql
 review_cadence: per-sprint
 ---
