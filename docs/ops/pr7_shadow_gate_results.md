@@ -68,13 +68,27 @@ only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
   `test_attempt_events` recompute tests.
 - **[P1 RESOLVED]** Boundary closed over `useAnswerSync.js` (added; 34 → 36) and
   a transitive-dependency inclusion rule is documented in the manifest header.
-- **[P1 RESOLVED]** Telemetry-quality gate is executable and authoritative —
-  `shadow-analysis telemetry-quality` validates the PERSISTED
-  `mock_attempt_summary.analytics_quality` snapshot (late events cannot mask the
-  fallback used at submit), scoped to the exact `mock_mastery_shadow` population;
-  metrics `fallback_engaged_question_count` (answered/marked fallback; untouched
-  excluded), `events_used`, `attempts_missing_snapshot`, and `trailing_gap_count`
-  (via the `attempt.submit_flush` final-sequence marker). Fail-closed; unit-tested.
+- **[P1 RESOLVED]** Telemetry-quality gate is executable, authoritative, and
+  LEDGER-scoped — `shadow-analysis telemetry-quality` derives its population from
+  SUBMITTED `mock_attempts` (`status='submitted'`, filtered on `submitted_at`) and
+  reads shadow INTENT from the `mock_attempt_jobs` ledger (`job_kind='mastery_retry'`,
+  `mastery_flag_state`, every non-cancelled status). `mock_mastery_shadow` is
+  validated as OUTPUT only, never the population source. Fail-closed lists (any
+  non-empty → FAIL, exit 1): `missing_mastery_job`, `live_intent`, `conflicting_mode`,
+  `unfinished_shadow_job`, `failed_shadow_job`, `missing_shadow_output`,
+  `unexpected_shadow_output`, `missing_snapshot`, and — for client submits
+  (`attempt.submitted`) only — `missing_marker` / `trailing_gap`. Auto-submits
+  (`attempt.auto_submitted`) are reported separately and exempt from the marker
+  check but still require a snapshot, a shadow job, and valid output. Pure + DB-level
+  tested.
+- **[PR #803 #4 RESOLVED]** The former KNOWN LIMITATION — population derived from
+  realized `mock_mastery_shadow`, so an attempt whose writer/job failed before
+  writing a shadow row vanished from validation and could yield a FALSE PASS — is
+  closed. `mock_attempt_jobs.mastery_flag_state` is the authoritative shadow-intent
+  ledger: the submit route pins the effective mode and claims the `mastery_retry`
+  job BEFORE invoking `MasteryWriter`, and the job row survives for audit, so a
+  failed writer still leaves the intended shadow job visible — the gate now flags it
+  (`missing_shadow_output` / `failed_`/`unfinished_shadow_job`) instead of dropping it.
 - **[P2 RESOLVED]** `verify_mastery_fingerprint.sh` cross-checks the recorded
   digest across the manifest / pr7 / checklist AND requires a pinned SHA
   (`EXPECTED_SHA`, or `SKIP_SHA=1` for a content-only check).
@@ -85,7 +99,7 @@ only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
 
 **Reference fingerprint (PR #803 branch, 36 files) — NOT the freeze /
 window_start hash; re-pin to the post-merge main SHA at window_start:**
-`9633b8eb58dc957ef0800857b6d3b4f599471bbd4861a7bb5f685c079efe7b3c`
+`f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c`
 
 A per-file SHA-256 attestation is committed at
 `docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt`; verify
@@ -110,14 +124,16 @@ Steps 3–8 are sequential and each depends on those above it.
 2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — code/tooling closed;
    OPERATOR APPROVAL is the only remaining gate):** Boundary closed at 36 files
    (added event-acceptance deps `core/auth.py` + `lib/supabase.js` and answer-
-   write dep `useAnswerSync.js`); reference fingerprint + per-file attestation
-   regenerated (`9633b8eb58dc957ef0800857b6d3b4f599471bbd4861a7bb5f685c079efe7b3c`).
+   write deps `useAnswerSync.js` + `lib/api.js`); reference fingerprint + per-file
+   attestation regenerated (`f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c`).
    This is NOT yet the freeze hash. PR #803 review disposition: (i) ✅ submit/
    late-event race fixed via an awaited pre-submit ACKed flush AND backend
    idempotent recompute on late `/events`; (ii) ✅ boundary closed over
    `useAnswerSync.js` + a transitive-dependency rule; (iii) ✅ telemetry-quality
-   gate is snapshot-based + shadow-scoped with engaged-fallback population and a
-   trailing-loss marker, tested; (v) ✅ `verify_mastery_fingerprint.sh` hardened
+   gate is LEDGER-scoped — population = submitted `mock_attempts`, shadow intent
+   from the `mock_attempt_jobs` ledger, `mock_mastery_shadow` validated as output
+   only (PR #803 #4 closed: a failed writer can no longer vanish into a false PASS);
+   (v) ✅ `verify_mastery_fingerprint.sh` hardened
    (cross-document digest + required `EXPECTED_SHA`). (iv) ⛔ OPERATOR PENDING —
    PR #800 staging validation + boundary approval. After approval: re-pin the
    fingerprint to the post-merge main SHA and record it here.
@@ -195,33 +211,45 @@ invalid and were removed by PR-5A.
 | decision_count | ≥ 10 | _____ |
 | exact_parity_pct | 100.0 | _____ |
 
-### telemetry-quality gate (fail-closed — PR #796 review)
+### telemetry-quality gate (fail-closed — PR #796 review; ledger-based per PR #803 #4)
 
-The replay gates above prove deterministic replay, NOT that classifications
-were derived from the documented primary event source. Without these, the
-window can PASS while validating dwell/classification inputs that silently
-fell back to `mock_attempt_responses.time_spent_sec`. All must hold.
+The replay gates above prove deterministic replay of REALIZED shadow rows, NOT
+that every submitted attempt that was SUPPOSED to write shadow output actually
+did. An attempt whose mastery writer/job failed writes no shadow row and so
+disappears from any shadow-row-scoped check — a FALSE PASS. This gate closes
+that hole.
 
 **Implemented and executable** via `shadow-analysis telemetry-quality`
 (`--from-utc … --to-utc …` or `--days N`, `--min-attempts 20` for the real
-window). It validates the **persisted `mock_attempt_summary.analytics_quality`
-snapshot** (what the frozen classifications/dwell actually used at submit, so
-late events cannot hide submit-time fallback), scoped to the **exact
-`mock_mastery_shadow` population** (not all submitted attempts). The engaged
-population (answered or marked questions; untouched excluded) is defined by the
-backend at submit via `fallback_engaged_question_count`. Trailing loss is
-detected from the `attempt.submit_flush` marker: `trailing_gap` = declared
-`final_sequence_no` − max observed client `sequence_no`. PASS requires every one
-of these aggregate metrics to be 0:
+window). **Population = SUBMITTED `mock_attempts`** (`status='submitted'`,
+filtered on `submitted_at` — half-open `[from, to)`), NEVER realized shadow rows.
+**Shadow intent** is read from the `mock_attempt_jobs` ledger
+(`job_kind='mastery_retry'`, `mastery_flag_state`, every non-cancelled status):
+the submit route pins the effective mode and claims the mastery job before
+invoking `MasteryWriter`, so the intent is durable even when the writer fails.
+`mock_mastery_shadow` is validated as **output only**. Manual vs auto submit is
+read from the server lifecycle event (`attempt.submitted` vs
+`attempt.auto_submitted`); the submit-flush-marker / trailing-sequence checks
+apply to client submits only. PASS requires every one of these failure lists to
+be empty (any non-empty → FAIL, exit 1):
 
-| Metric (`telemetry-quality`) | Required |
+| Failure list (`telemetry-quality`) | Condition |
 |--------|----------|
-| `attempts_missing_snapshot` (every shadow attempt has a persisted snapshot) | 0 |
-| `snapshots_missing_field` (snapshot carries `fallback_engaged_question_count`) | 0 |
-| `attempts_without_events` (snapshot `events_used` > 0) | 0 |
-| `fallback_engaged_question_count` (answered/marked question fell back) | 0 |
-| `attempts_missing_marker` (every attempt emitted `attempt.submit_flush`) | 0 |
-| `trailing_gap_count` (declared final seq − max observed seq) | 0 |
+| `missing_mastery_job_attempt_ids` | submitted attempt has no mastery_retry job |
+| `live_intent_attempt_ids` | submitted attempt has only a live job in the shadow window |
+| `conflicting_mode_attempt_ids` | both live and shadow jobs exist |
+| `unfinished_shadow_job_attempt_ids` | shadow job still pending/running at window end |
+| `failed_shadow_job_attempt_ids` | shadow job failed / failed_permanent |
+| `missing_shadow_output_attempt_ids` | answered questions but no shadow rows written |
+| `unexpected_shadow_output_attempt_ids` | shadow rows for an attempt outside the population |
+| `missing_snapshot_attempt_ids` | no persisted `mock_attempt_summary` analytics snapshot |
+| `missing_marker_attempt_ids` | client submit emitted no `attempt.submit_flush` |
+| `trailing_gap_attempt_ids` | client submit lost sequences through the declared boundary |
+
+Reported (informational, never fail the gate): `zero_answer_attempt_ids`,
+`auto_submit_attempt_ids`, `client_submit_attempt_ids`,
+`unknown_submit_origin_attempt_ids`, plus counts `submitted_attempt_count`,
+`shadow_intent_attempt_count`, `shadow_output_attempt_count`.
 
 ### Additional PASS criteria (all must hold)
 

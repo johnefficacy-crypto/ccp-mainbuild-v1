@@ -1508,127 +1508,222 @@ def multi_exam_coverage(
 
 # ─── telemetry-quality gate ───────────────────────────────────────────────────
 
+# Server-emitted lifecycle events distinguish a user submit from a sweeper
+# auto-submit; the submit-flush marker is the client's last-sequence declaration.
+_EVENT_SUBMITTED = "attempt.submitted"
+_EVENT_AUTO_SUBMITTED = "attempt.auto_submitted"
 _SUBMIT_FLUSH_EVENT = "attempt.submit_flush"
 
-# Fail-closed telemetry-quality thresholds for the 14-day shadow gate. The gate
-# validates the PERSISTED analytics-quality snapshot (mock_attempt_summary)
-# produced by compute_dwell_times at submit/recompute — NOT a fresh re-derivation
-# from current event rows — so late events that arrived after analytics was
-# computed cannot mask the fallback actually used. Any engaged question that fell
-# back, any attempt with zero usable events, any missing snapshot or submit-flush
-# marker, or any trailing-event gap fails the gate.
-_TQ_THRESHOLDS: dict[str, Any] = {
-    "attempts_missing_snapshot": 0,           # every attempt has a persisted analytics snapshot
-    "snapshots_missing_field": 0,             # snapshot carries fallback_engaged_question_count
-    "attempts_without_events": 0,             # snapshot events_used > 0 for every attempt
-    "fallback_engaged_question_count": 0,     # no answered/marked question fell back to time_spent_sec
-    "attempts_missing_marker": 0,             # every attempt emitted attempt.submit_flush
-    "trailing_gap_count": 0,                  # declared final seq == max observed seq (no trailing loss)
-}
+# DESIGN DECISION (PR #803 #4 — resolved): mock_attempt_jobs.mastery_flag_state is
+# the AUTHORITATIVE shadow-intent ledger. The submit route resolves and pins the
+# effective mastery mode, then claims the mastery_retry job BEFORE invoking
+# MasteryWriter, so a writer that fails still leaves the intended shadow job
+# visible; the job row retains the pinned mode and survives after completion for
+# audit. mock_mastery_shadow is the OUTPUT under validation, NEVER the population
+# source — deriving the population from realized shadow rows would let an attempt
+# whose writer/job failed silently disappear and produce a FALSE PASS.
+_MASTERY_JOB_KIND = "mastery_retry"
+_SHADOW_DONE = "done"                                  # sole successful terminal state
+_SHADOW_UNFINISHED = frozenset({"pending", "running"})
+_SHADOW_FAILED = frozenset({"failed", "failed_permanent"})
+_JOB_CANCELLED = "cancelled"                           # the only status that withdraws intent
 
 _TQ_POPULATION_DEFINITION = (
-    "Population = the exact shadow-validation set (distinct attempt_ids in "
-    "mock_mastery_shadow with flag_state='shadow' over the window). Metrics are "
-    "read from the PERSISTED mock_attempt_summary.analytics_quality snapshot, so "
-    "late events cannot hide fallback used at submit time. The engaged population "
-    "(answered or marked questions; untouched questions excluded) is defined by "
-    "the backend at submit via fallback_engaged_question_count. Trailing loss is "
-    "detected from the attempt.submit_flush marker: trailing_gap = declared "
-    "final_sequence_no - max observed client sequence_no."
+    "Population = submitted attempts (mock_attempts.status='submitted') filtered by "
+    "submitted_at — NOT realized mock_mastery_shadow rows, so a failed writer/job "
+    "cannot vanish from validation. Shadow intent is read from the mock_attempt_jobs "
+    "ledger (job_kind='mastery_retry', mastery_flag_state, every non-cancelled "
+    "status). mock_mastery_shadow is validated as OUTPUT only. Submit-flush-marker / "
+    "trailing-sequence checks apply only to client submissions (attempt.submitted); "
+    "auto-submits (attempt.auto_submitted) are reported separately but still require "
+    "an analytics snapshot, a shadow job, and valid shadow-output behavior."
 )
 
 
+def _parse_submit_flush(events: list[dict]) -> tuple[int, set[int], bool]:
+    """From an attempt's client events, return (declared_final, delivered_seqs,
+    has_marker). declared_final is 0 when no submit-flush marker is present."""
+    declared_final: int | None = None
+    seqs: set[int] = set()
+    for e in events:
+        if (e.get("source") or "client") != "client":
+            continue
+        seq = e.get("sequence_no")
+        if isinstance(seq, int):
+            seqs.add(seq)
+        if e.get("event_type") == _SUBMIT_FLUSH_EVENT:
+            d = (e.get("payload") or {}).get("final_sequence_no")
+            if isinstance(d, int):
+                declared_final = d if declared_final is None else max(declared_final, d)
+    return (declared_final if declared_final is not None else 0), seqs, declared_final is not None
+
+
 def compute_telemetry_quality(
-    attempt_ids: list[str],
-    quality_by_attempt: dict[str, dict],
-    events_by_attempt: dict[str, list[dict]],
+    candidate_attempt_ids: list[str],
+    *,
+    shadow_jobs_by_attempt: dict[str, Any] | None = None,
+    live_attempt_ids: Any = None,
+    answered_count_by_attempt: dict[str, int] | None = None,
+    shadow_output_count_by_attempt: dict[str, int] | None = None,
+    snapshot_by_attempt: dict[str, dict] | None = None,
+    submit_origin_by_attempt: dict[str, str] | None = None,
+    events_by_attempt: dict[str, list[dict]] | None = None,
 ) -> dict[str, Any]:
-    """Pure metric computation (no DB, no thresholds) so it is unit-testable.
+    """Pure, DB-free, unit-testable evaluation of the ledger-based telemetry gate.
 
-    Per attempt:
-      - reads the persisted analytics_quality snapshot (events_used,
-        fallback_engaged_question_count) — the authoritative record of what the
-        frozen classifications/dwell actually used at submit time
-      - trailing-loss from the attempt.submit_flush marker: trailing_gap =
-        declared final_sequence_no - max observed client sequence_no
+    For every SUBMITTED attempt in ``candidate_attempt_ids`` (the population is
+    derived from mock_attempts, not from shadow rows), cross-check the
+    mock_attempt_jobs shadow-intent ledger, the persisted analytics snapshot, the
+    realized mock_mastery_shadow OUTPUT, and (for client submits only) the
+    submit-flush marker / trailing-sequence coverage. Any non-empty failure list
+    fails the gate.
     """
+    shadow_jobs_by_attempt = shadow_jobs_by_attempt or {}
+    live_set = set(live_attempt_ids or ())
+    answered_count_by_attempt = answered_count_by_attempt or {}
+    shadow_output_count_by_attempt = shadow_output_count_by_attempt or {}
+    snapshot_by_attempt = snapshot_by_attempt or {}
+    submit_origin_by_attempt = submit_origin_by_attempt or {}
+    events_by_attempt = events_by_attempt or {}
+
+    population = list(dict.fromkeys(candidate_attempt_ids))  # unique, order-preserving
+    pop_set = set(population)
+
+    missing_mastery_job: list[str] = []
+    live_intent: list[str] = []
+    conflicting_mode: list[str] = []
+    unfinished_shadow_job: list[str] = []
+    failed_shadow_job: list[str] = []
+    missing_shadow_output: list[str] = []
+    missing_snapshot: list[str] = []
+    missing_marker: list[str] = []
+    trailing_gap: list[str] = []
+    zero_answer: list[str] = []
+    auto_submit: list[str] = []
+    client_submit: list[str] = []
+    unknown_origin: list[str] = []
     per_attempt: list[dict] = []
-    attempts_missing_snapshot = 0
-    snapshots_missing_field = 0
-    attempts_without_events = 0
-    attempts_missing_marker = 0
-    total_fallback_engaged = 0
-    total_trailing_gap = 0
-    total_events_used = 0
 
-    for aid in attempt_ids:
-        aq = quality_by_attempt.get(aid)
-        events = events_by_attempt.get(aid, [])
-        has_snapshot = isinstance(aq, dict)
+    shadow_intent_count = 0
+    shadow_output_count = 0
 
-        events_used = int(aq.get("events_used", 0)) if has_snapshot else 0
-        fe_raw = aq.get("fallback_engaged_question_count") if has_snapshot else None
-        has_fe = isinstance(fe_raw, int)
-        fallback_engaged = fe_raw if has_fe else 0
+    for aid in population:
+        statuses = set(shadow_jobs_by_attempt.get(aid) or ())
+        has_shadow = bool(statuses)
+        has_live = aid in live_set
+        if has_shadow:
+            shadow_intent_count += 1
 
-        declared_final: int | None = None
-        seqs: set[int] = set()
-        for e in events:
-            seq = e.get("sequence_no")
-            if isinstance(seq, int):
-                seqs.add(seq)
-            if e.get("event_type") == _SUBMIT_FLUSH_EVENT:
-                d = (e.get("payload") or {}).get("final_sequence_no")
-                if isinstance(d, int):
-                    declared_final = d if declared_final is None else max(declared_final, d)
-        has_marker = declared_final is not None
-        max_seq = max(seqs) if seqs else 0
-        # Count DISTINCT delivered sequences through the declared boundary. The
-        # marker is itself seq == declared_final, so comparing to max(seq) would
-        # always be zero; we must detect any missing seq in [1, declared_final]
-        # (trailing OR interior loss).
-        if has_marker:
-            present_through_boundary = sum(1 for s in seqs if 1 <= s <= declared_final)
-            trailing_gap = max(0, declared_final - present_through_boundary)
-        else:
-            present_through_boundary = 0
-            trailing_gap = 0
+        # ── ledger / mode integrity ──
+        if not has_shadow and not has_live:
+            missing_mastery_job.append(aid)
+        if has_shadow and has_live:
+            conflicting_mode.append(aid)
+        elif has_live and not has_shadow:
+            live_intent.append(aid)
 
+        # ── shadow-job terminal state (done wins over an earlier failed retry) ──
+        shadow_state: str | None = None
+        if has_shadow:
+            if _SHADOW_DONE in statuses:
+                shadow_state = "done"
+            elif statuses & _SHADOW_UNFINISHED:
+                shadow_state = "unfinished"
+                unfinished_shadow_job.append(aid)
+            elif statuses & _SHADOW_FAILED:
+                shadow_state = "failed"
+                failed_shadow_job.append(aid)
+            else:
+                # An unrecognized, non-done status counts as not-finished (fail-closed).
+                shadow_state = "unfinished"
+                unfinished_shadow_job.append(aid)
+
+        # ── output expectations ──
+        answered = int(answered_count_by_attempt.get(aid, 0) or 0)
+        output = int(shadow_output_count_by_attempt.get(aid, 0) or 0)
+        if output > 0:
+            shadow_output_count += 1
+        if answered == 0:
+            zero_answer.append(aid)
+        # A shadow-intent attempt that engaged questions must leave shadow output;
+        # a zero-answer attempt legitimately has none (reported, not failed).
+        if has_shadow and answered > 0 and output == 0:
+            missing_shadow_output.append(aid)
+
+        # ── analytics snapshot (required for every submitted attempt, incl. auto) ──
+        snap = snapshot_by_attempt.get(aid)
+        has_snapshot = isinstance(snap, dict)
         if not has_snapshot:
-            attempts_missing_snapshot += 1
-        elif not has_fe:
-            snapshots_missing_field += 1
-        if has_snapshot and events_used == 0:
-            attempts_without_events += 1
-        if not has_marker:
-            attempts_missing_marker += 1
-        total_fallback_engaged += fallback_engaged
-        total_trailing_gap += trailing_gap
-        total_events_used += events_used
+            missing_snapshot.append(aid)
+
+        # ── submit origin + marker (marker/trailing checks: client submits only) ──
+        origin = submit_origin_by_attempt.get(aid, "unknown")
+        declared_final, seqs, has_marker = _parse_submit_flush(events_by_attempt.get(aid, []))
+        through_boundary = sum(1 for s in seqs if 1 <= s <= declared_final) if has_marker else 0
+        attempt_gap = max(0, declared_final - through_boundary) if has_marker else 0
+
+        if origin == "client":
+            client_submit.append(aid)
+            if not has_marker:
+                missing_marker.append(aid)
+            elif attempt_gap > 0:
+                trailing_gap.append(aid)
+        elif origin == "auto":
+            auto_submit.append(aid)
+        else:
+            unknown_origin.append(aid)
 
         per_attempt.append({
             "attempt_id": aid,
+            "has_shadow_job": has_shadow,
+            "has_live_job": has_live,
+            "shadow_job_state": shadow_state,
+            "answered_count": answered,
+            "shadow_output_count": output,
             "has_snapshot": has_snapshot,
-            "events_used": events_used,
-            "fallback_engaged_question_count": fallback_engaged if has_fe else None,
+            "submit_origin": origin,
             "has_submit_flush_marker": has_marker,
-            "declared_final_sequence_no": declared_final,
-            "max_client_sequence_no": max_seq,
-            "distinct_sequences_through_boundary": present_through_boundary,
-            "trailing_gap_count": trailing_gap,
+            "declared_final_sequence_no": declared_final if has_marker else None,
+            "max_client_sequence_no": max(seqs) if seqs else 0,
+            "distinct_sequences_through_boundary": through_boundary,
+            "trailing_gap_count": attempt_gap,
         })
 
-    return {
-        "attempts_evaluated": len(attempt_ids),
-        "attempts_missing_snapshot": attempts_missing_snapshot,
-        "snapshots_missing_field": snapshots_missing_field,
-        "attempts_without_events": attempts_without_events,
-        "attempts_missing_marker": attempts_missing_marker,
-        "fallback_engaged_question_count": total_fallback_engaged,
-        "trailing_gap_count": total_trailing_gap,
-        "events_used": total_events_used,
+    # ── output rows whose attempt is NOT in the candidate population ──
+    unexpected_shadow_output = [
+        aid for aid, cnt in shadow_output_count_by_attempt.items()
+        if (cnt or 0) > 0 and aid not in pop_set
+    ]
+
+    failure_lists: dict[str, list[str]] = {
+        "missing_mastery_job_attempt_ids": missing_mastery_job,
+        "live_intent_attempt_ids": live_intent,
+        "conflicting_mode_attempt_ids": conflicting_mode,
+        "unfinished_shadow_job_attempt_ids": unfinished_shadow_job,
+        "failed_shadow_job_attempt_ids": failed_shadow_job,
+        "missing_shadow_output_attempt_ids": missing_shadow_output,
+        "unexpected_shadow_output_attempt_ids": unexpected_shadow_output,
+        "missing_snapshot_attempt_ids": missing_snapshot,
+        "missing_marker_attempt_ids": missing_marker,
+        "trailing_gap_attempt_ids": trailing_gap,
+    }
+    failures = [name for name, lst in failure_lists.items() if lst]
+
+    result: dict[str, Any] = {
+        "submitted_attempt_count": len(population),
+        "shadow_intent_attempt_count": shadow_intent_count,
+        "shadow_output_attempt_count": shadow_output_count,
+        # informational (never fail the gate)
+        "zero_answer_attempt_ids": sorted(zero_answer),
+        "auto_submit_attempt_ids": sorted(auto_submit),
+        "client_submit_attempt_ids": sorted(client_submit),
+        "unknown_submit_origin_attempt_ids": sorted(unknown_origin),
+        "failures": failures,
         "per_attempt": per_attempt,
     }
+    for name, lst in failure_lists.items():
+        result[name] = sorted(lst)
+    return result
 
 
 def _fetch_by_attempt_ids(
@@ -1636,22 +1731,40 @@ def _fetch_by_attempt_ids(
     table: str,
     select: str,
     attempt_ids: list[str],
-    source: str | None = None,
+    eqs: dict[str, Any] | None = None,
     chunk: int = 100,
 ) -> list[dict]:
-    """Fetch rows for a set of attempt IDs in chunked `.in_()` queries."""
+    """Fetch rows for a set of attempt IDs in chunked `.in_()` queries, with
+    optional equality filters applied to every batch."""
     rows: list[dict] = []
     for i in range(0, len(attempt_ids), chunk):
         batch = attempt_ids[i : i + chunk]
 
         def query_fn(q: Any, _batch: list[str] = batch) -> Any:
             q = q.select(select).in_("attempt_id", _batch)
-            if source is not None:
-                q = q.eq("source", source)
+            for k, v in (eqs or {}).items():
+                q = q.eq(k, v)
             return q
 
         rows.extend(_fetch_paginated(sb, table, query_fn, batch_size=1000, order_by="id"))
     return rows
+
+
+def _fetch_shadow_output_in_window(
+    sb: Any, from_utc: str | None, to_utc: str | None
+) -> list[dict]:
+    """Fetch shadow OUTPUT rows decided within the window, to detect rows for
+    attempts outside the submitted candidate population (decided_at is used ONLY
+    for stray detection here — never to define the population)."""
+    def query_fn(q: Any) -> Any:
+        q = q.select("id,attempt_id,flag_state,decided_at").eq("flag_state", "shadow")
+        if from_utc:
+            q = q.gte("decided_at", from_utc)
+        if to_utc:
+            q = q.lt("decided_at", to_utc)
+        return q
+
+    return _fetch_paginated(sb, "mock_mastery_shadow", query_fn, batch_size=1000, order_by="id")
 
 
 def telemetry_quality(
@@ -1666,35 +1779,40 @@ def telemetry_quality(
     sb = _get_supabase()
     now_iso = datetime.now(timezone.utc).isoformat()
 
-    # Scope to the EXACT shadow-validation population: distinct attempt_ids that
-    # produced shadow rows (mock_mastery_shadow, flag_state='shadow'), not all
-    # submitted attempts.
+    # ── 1. Candidate population: SUBMITTED mock_attempts in the submit window. ──
+    # The population is the submitted set, never the realized shadow rows, so an
+    # attempt whose mastery writer/job failed still appears for validation.
+    stray_from: str | None
+    stray_to: str | None
     if attempt_id:
         window_start = window_end = None
+        stray_from = stray_to = None  # single-attempt scope: no cross-population strays
 
-        def shadow_q(q: Any) -> Any:
-            return q.select("attempt_id,flag_state,decided_at").eq("flag_state", "shadow").eq("attempt_id", attempt_id)
+        def pop_q(q: Any) -> Any:
+            return q.select("id,status,submitted_at").eq("id", attempt_id).eq("status", "submitted")
     elif from_utc or to_utc:
         window_start, window_end = from_utc, to_utc
+        stray_from, stray_to = from_utc, to_utc
 
-        def shadow_q(q: Any) -> Any:  # type: ignore[misc]
-            q = q.select("attempt_id,flag_state,decided_at").eq("flag_state", "shadow")
+        def pop_q(q: Any) -> Any:  # type: ignore[misc]
+            q = q.select("id,status,submitted_at").eq("status", "submitted")
             if from_utc:
-                q = q.gte("decided_at", from_utc)
+                q = q.gte("submitted_at", from_utc)
             if to_utc:
-                q = q.lte("decided_at", to_utc)
+                q = q.lt("submitted_at", to_utc)  # half-open [from, to)
             return q
     else:
         since = _since_iso(days)
         window_start, window_end = since, now_iso
+        stray_from, stray_to = since, None
 
-        def shadow_q(q: Any) -> Any:  # type: ignore[misc]
-            return q.select("attempt_id,flag_state,decided_at").eq("flag_state", "shadow").gte("decided_at", since)
+        def pop_q(q: Any) -> Any:  # type: ignore[misc]
+            return q.select("id,status,submitted_at").eq("status", "submitted").gte("submitted_at", since)
 
-    thresholds = {**_TQ_THRESHOLDS, "min_attempts": min_attempts}
+    thresholds = {"min_attempts": min_attempts}
 
     try:
-        shadow_rows = _fetch_paginated(sb, "mock_mastery_shadow", shadow_q, batch_size=1000, order_by="id")
+        attempt_rows = _fetch_paginated(sb, "mock_attempts", pop_q, batch_size=1000, order_by="id")
     except Exception as exc:  # noqa: BLE001
         _emit_result(
             {"schema_version": 1, "command": cmd, "status": "ERROR",
@@ -1703,25 +1821,40 @@ def telemetry_quality(
         )
         sys.exit(_EXIT_ERROR)
 
-    attempt_ids = sorted({r["attempt_id"] for r in shadow_rows if r.get("attempt_id")})
+    attempt_ids = sorted({r["id"] for r in attempt_rows if r.get("id")})
     if len(attempt_ids) < min_attempts:
         _emit_result(
             {"schema_version": 1, "command": cmd, "window_start": window_start,
              "window_end": window_end, "status": "INSUFFICIENT_DATA",
              "thresholds": thresholds, "population_definition": _TQ_POPULATION_DEFINITION,
-             "attempts_evaluated": len(attempt_ids)},
+             "submitted_attempt_count": len(attempt_ids)},
             output_json,
         )
         sys.exit(_EXIT_INSUFFICIENT)
 
+    # ── 2. Pull the ledger, snapshots, responses, events, and shadow output. ──
     try:
+        job_rows = _fetch_by_attempt_ids(
+            sb, "mock_attempt_jobs", "id,attempt_id,job_kind,mastery_flag_state,status",
+            attempt_ids, eqs={"job_kind": _MASTERY_JOB_KIND},
+        )
+        resp_rows = _fetch_by_attempt_ids(
+            sb, "mock_attempt_responses", "id,attempt_id,selected_option_id", attempt_ids,
+        )
         summary_rows = _fetch_by_attempt_ids(
             sb, "mock_attempt_summary", "id,attempt_id,analytics_quality", attempt_ids,
         )
         event_rows = _fetch_by_attempt_ids(
             sb, "mock_attempt_events",
-            "id,attempt_id,event_type,payload,sequence_no,source",
-            attempt_ids, source="client",
+            "id,attempt_id,event_type,payload,sequence_no,source", attempt_ids,
+        )
+        shadow_cand_rows = _fetch_by_attempt_ids(
+            sb, "mock_mastery_shadow", "id,attempt_id,flag_state", attempt_ids,
+            eqs={"flag_state": "shadow"},
+        )
+        stray_rows = (
+            _fetch_shadow_output_in_window(sb, stray_from, stray_to)
+            if attempt_id is None else []
         )
     except Exception as exc:  # noqa: BLE001
         _emit_result(
@@ -1731,28 +1864,76 @@ def telemetry_quality(
         )
         sys.exit(_EXIT_ERROR)
 
-    quality_by_attempt: dict[str, dict] = {}
+    # Shadow-intent ledger: every non-cancelled mastery_retry job is intent.
+    shadow_jobs_by_attempt: dict[str, set[str]] = defaultdict(set)
+    live_attempt_ids: set[str] = set()
+    for j in job_rows:
+        if j.get("status") == _JOB_CANCELLED:
+            continue
+        aid = j.get("attempt_id")
+        mode = j.get("mastery_flag_state")
+        if not aid:
+            continue
+        if mode == "shadow":
+            shadow_jobs_by_attempt[aid].add(j.get("status"))
+        elif mode == "live":
+            live_attempt_ids.add(aid)
+
+    answered_count_by_attempt: dict[str, int] = defaultdict(int)
+    for r in resp_rows:
+        if r.get("selected_option_id") is not None:
+            answered_count_by_attempt[r["attempt_id"]] += 1
+
+    snapshot_by_attempt: dict[str, dict] = {}
     for s in summary_rows:
         aq = s.get("analytics_quality")
         if isinstance(aq, dict):
-            quality_by_attempt[s["attempt_id"]] = aq
+            snapshot_by_attempt[s["attempt_id"]] = aq
+
     events_by_attempt: dict[str, list[dict]] = defaultdict(list)
+    submit_origin_by_attempt: dict[str, str] = {}
     for e in event_rows:
-        events_by_attempt[e["attempt_id"]].append(e)
+        aid = e["attempt_id"]
+        src = e.get("source")
+        etype = e.get("event_type")
+        if src == "client":
+            events_by_attempt[aid].append(e)
+        elif src == "server":
+            # auto-submit is authoritative over a stray attempt.submitted event.
+            if etype == _EVENT_AUTO_SUBMITTED:
+                submit_origin_by_attempt[aid] = "auto"
+            elif etype == _EVENT_SUBMITTED and submit_origin_by_attempt.get(aid) != "auto":
+                submit_origin_by_attempt[aid] = "client"
 
-    metrics = compute_telemetry_quality(attempt_ids, quality_by_attempt, events_by_attempt)
+    shadow_output_count_by_attempt: dict[str, int] = defaultdict(int)
+    for r in shadow_cand_rows:
+        shadow_output_count_by_attempt[r["attempt_id"]] += 1
+    pop_set = set(attempt_ids)
+    for r in stray_rows:
+        aid = r.get("attempt_id")
+        if aid and aid not in pop_set:
+            shadow_output_count_by_attempt[aid] += 1
 
-    failures = [k for k in _TQ_THRESHOLDS if metrics.get(k, 0) != 0]
-    status = "PASS" if not failures else "FAIL"
+    metrics = compute_telemetry_quality(
+        attempt_ids,
+        shadow_jobs_by_attempt=shadow_jobs_by_attempt,
+        live_attempt_ids=live_attempt_ids,
+        answered_count_by_attempt=answered_count_by_attempt,
+        shadow_output_count_by_attempt=shadow_output_count_by_attempt,
+        snapshot_by_attempt=snapshot_by_attempt,
+        submit_origin_by_attempt=submit_origin_by_attempt,
+        events_by_attempt=events_by_attempt,
+    )
+
+    status = "PASS" if not metrics["failures"] else "FAIL"
 
     _emit_result(
         {"schema_version": 1, "command": cmd, "window_start": window_start,
          "window_end": window_end, "status": status, "thresholds": thresholds,
-         "population_definition": _TQ_POPULATION_DEFINITION, "failures": failures,
-         **metrics},
+         "population_definition": _TQ_POPULATION_DEFINITION, **metrics},
         output_json,
     )
-    # Fail-closed: a violated threshold exits non-zero so the gate cannot be
+    # Fail-closed: any non-empty failure list exits non-zero so the gate cannot be
     # mistaken for a pass by a caller that only checks the exit code.
     sys.exit(_EXIT_OK if status == "PASS" else _EXIT_GATE_FAIL)
 
@@ -1866,8 +2047,8 @@ def main() -> None:
 
     tq = sp.add_parser(
         "telemetry-quality",
-        help="Fail-closed telemetry-quality gate: visit coverage / fallback / "
-             "delivery-gap over submitted attempts (PR-7 freeze prerequisite)",
+        help="Fail-closed telemetry-quality gate: shadow-intent ledger / output / "
+             "snapshot / submit-marker over SUBMITTED attempts (PR-7 freeze prerequisite)",
     )
     _add_json(tq)
     _add_window_flags(tq)

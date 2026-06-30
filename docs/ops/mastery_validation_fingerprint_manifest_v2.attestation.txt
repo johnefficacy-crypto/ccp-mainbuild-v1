@@ -9,7 +9,7 @@
 #
 # Pinned SHA      : PR #803 branch (pre-merge) — operator pins the window_start SHA via EXPECTED_SHA
 # File count      : 36
-# Combined digest : 9633b8eb58dc957ef0800857b6d3b4f599471bbd4861a7bb5f685c079efe7b3c
+# Combined digest : f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c
 #
 # Verify (content-only): SKIP_SHA=1 bash scripts/verify_mastery_fingerprint.sh
 # Verify (operator)    : EXPECTED_SHA=<sha> bash scripts/verify_mastery_fingerprint.sh
@@ -41,7 +41,7 @@ d8abadac6a911112e251404a95b2871c322c8e6023205827db1d510ec5d13e66  app/backend/ap
 28d507be9706bae72d348b12ce4b59926fd530c570ec14a3d3e7cae034cf4b5d  app/backend/app/api/study_os.py
 038f0b586fa5528ef5e7e6b78dd9fba2fc96c325cbb22068d0c476f93dea5033  app/backend/app/api/admin_study_os.py
 4399d3beabbe4acfaf08ad8cb9f28831892ee27d52a2e118f17418dee7ccff95  app/backend/app/api/mock_attempt_events.py
-63213f670539dcd6380dec573cb50c9afa8a91ef28a18bbb52580c689f48f937  tools/mastery_shadow_analysis/shadow_analysis.py
+087db986721f52d70d06b1ac1210b7b3abdf4ef39fc6558d29e439f04df26dbc  tools/mastery_shadow_analysis/shadow_analysis.py
 ddb4fa861e7e3c167ba621c9ce69922f82dd1e5d1505dd80ebc2c526092126b6  app/supabase/migrations/180_mock_mastery_shadow_idempotency.sql
 755aab31df2799088420f39615607cdbdac74314fde055bae9c52d225a164748  app/supabase/migrations/181_mock_correction_tasks_uniqueness.sql
 39e7c12c1bec50cb634cb39c2449ddf9bfa113f97e83d4a52d8c6923f7c18819  app/supabase/migrations/182_mock_correction_draft_atomic_rpcs.sql

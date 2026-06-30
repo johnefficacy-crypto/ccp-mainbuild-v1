@@ -56,22 +56,36 @@
 #   [P1 RESOLVED] Boundary closed over the answer-write dependency
 #        useAnswerSync.js + lib/api.js (added; 34 -> 36) and a transitive-dependency inclusion
 #        rule is documented above.
-#   [P1 RESOLVED] Telemetry-quality gate is executable and authoritative:
-#        `shadow-analysis telemetry-quality` validates the PERSISTED
-#        mock_attempt_summary.analytics_quality snapshot (so late events cannot
-#        mask the fallback used at submit), scoped to the EXACT mock_mastery_shadow
-#        population. Metrics: fallback_engaged_question_count (answered/marked
-#        questions that fell back — untouched excluded), events_used,
-#        attempts_missing_snapshot, and trailing_gap_count. Fail-closed: exits
-#        non-zero on FAIL and rejects --min-attempts < 1. trailing_gap_count
-#        counts MISSING DISTINCT sequences through the declared boundary (the
-#        attempt.submit_flush marker is itself seq == declared_final, so the old
-#        `declared_final - max(seq)` was always 0; corrected). KNOWN LIMITATION
-#        (PR #803 #4): the population is the REALIZED mock_mastery_shadow set, so
-#        an attempt that failed before writing any shadow row is invisible to
-#        THIS gate — that writer-failure mode is covered by the shadow-replay /
-#        readiness gates. Deriving an expected-from-submitted population needs the
-#        authoritative effective-mode record (FF/pinned), an operator decision.
+#   [P1 RESOLVED] Telemetry-quality gate is executable, authoritative, and
+#        LEDGER-scoped: `shadow-analysis telemetry-quality` derives its population
+#        from SUBMITTED mock_attempts (status='submitted', filtered on submitted_at)
+#        and reads shadow INTENT from the mock_attempt_jobs ledger
+#        (job_kind='mastery_retry', mastery_flag_state, every non-cancelled status).
+#        mock_mastery_shadow is validated as OUTPUT only, never the population
+#        source. Fail-closed lists (any non-empty -> FAIL, exit 1):
+#        missing_mastery_job, live_intent, conflicting_mode, unfinished_shadow_job,
+#        failed_shadow_job, missing_shadow_output (answered questions but no rows),
+#        unexpected_shadow_output (rows for a non-population attempt),
+#        missing_snapshot, and — for client submits (attempt.submitted) only —
+#        missing_marker / trailing_gap (distinct-sequence loss through the
+#        attempt.submit_flush boundary; the marker is itself seq == declared_final,
+#        so the old `declared_final - max(seq)` was always 0 — corrected to count
+#        MISSING DISTINCT sequences in [1, declared_final]). Auto-submits
+#        (attempt.auto_submitted) are reported separately and exempt from the marker
+#        check but still require a snapshot, a shadow job, and valid output. Rejects
+#        --min-attempts < 1.
+#   [PR #803 #4 RESOLVED] The former KNOWN LIMITATION (population = realized
+#        mock_mastery_shadow, so an attempt whose writer/job failed before writing a
+#        shadow row VANISHED from validation and could yield a FALSE PASS) is closed.
+#        mock_attempt_jobs.mastery_flag_state is the authoritative shadow-intent
+#        ledger: the submit route pins the effective mode and CLAIMS the mastery_retry
+#        job BEFORE invoking MasteryWriter, and the job row survives after completion
+#        for audit, so a writer failure still leaves the intended shadow job visible.
+#        The gate now FLAGS such an attempt (missing_shadow_output and/or
+#        failed_/unfinished_shadow_job) instead of dropping it. Manual vs auto submit
+#        is distinguished by the server lifecycle event, not inferred. Regression:
+#        test_shadow_analysis telemetry-quality suite (pure + DB-level, incl. the
+#        writer-failure false-PASS case).
 #   [P2 RESOLVED] verify_mastery_fingerprint.sh cross-checks the recorded digest
 #        across manifest / pr7 / checklist AND requires a pinned SHA (EXPECTED_SHA,
 #        or SKIP_SHA=1 for a content-only check).
@@ -86,12 +100,13 @@
 # post-merge main SHA) once the operator captures approval.
 #
 # Reference fingerprint (PR #803 branch, current 36-file boundary):
-#   9633b8eb58dc957ef0800857b6d3b4f599471bbd4861a7bb5f685c079efe7b3c
+#   f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c
 # A per-file SHA-256 attestation is committed alongside this manifest:
 #   docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt
 # Verify (fail-closed) with: bash scripts/verify_mastery_fingerprint.sh
 #
 # Superseded reference hashes (NOT window_start hashes):
+#   9633b8eb58dc957ef0800857b6d3b4f599471bbd4861a7bb5f685c079efe7b3c  (PR #803 branch, 36 files, shadow-row-scoped telemetry gate)
 #   b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b  (main @ 1679adb8, 32 files, pre-#800)
 #   96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b  (main @ c9c44a9e, 32 files, bugs present)
 #
