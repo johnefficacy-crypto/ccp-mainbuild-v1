@@ -2,7 +2,7 @@
 owner: exam-intelligence
 status: architecture decision + phased implementation plan
 last_targeted_reconciliation: 2026-06-30
-reconciliation_scope: frequency-semantics section + delivery-order steps 2-3 only; full cross-examination of all source paths, gap entries, and delivery dependencies not performed in this pass
+reconciliation_scope: frequency-semantics section + delivery-order steps 2-4 (including P2/Track-C gate boundary); full cross-examination of all source paths, gap entries, and delivery dependencies not performed in this pass
 source_of_truth: code
 related_code:
   - app/backend/app/exam_intelligence/coverage.py

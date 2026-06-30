@@ -2,7 +2,7 @@
 
 Generated from `D:\GovtExamAgent\ccp-mainbuild-v1` on 2026-05-11. **This file is stale relative to current main.**
 
-The newer graphify artifact (`graphify-out/GRAPH_REPORT.md`) was built at `a730dc70` on 2026-06-29 and is also stale relative to current main (PRs #810/#811/#812 merged after that run). Regenerate both from a local checkout of `main @ f0d84f8` or later with `graphify update .`.
+The newer graphify artifact (`graphify-out/GRAPH_REPORT.md`) was regenerated at `01f593c2` on 2026-07-01 and is current as of `main @ b9bd9d7b`. This hand-written map (generated 2026-05-11) is still stale; regenerate it from a local checkout with `graphify update .`.
 
 ## Top-Level Runtime Map
 

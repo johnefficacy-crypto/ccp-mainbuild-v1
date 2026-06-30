@@ -8,7 +8,7 @@
 
 ---
 
-## Current Execution Plan — as of 2026-06-30 (`main @ f0d84f8`)
+## Current Execution Plan — as of 2026-06-30 (`main @ b9bd9d7b`)
 
 ### Merged and closed (do not dispatch)
 
@@ -27,21 +27,23 @@
 | IA design-lock document | PR #752 | MERGED |
 | Backend management read model | Phase 0 PR | MERGED |
 | Lane B Exam Governance cleanup (all) | PRs #755-#759 + earlier | MERGED |
-| J1 Advanced Repair scoping contract | `docs/status/Advanced-Repair-Scoping-Gate-2026-06-29.md` | DRAFT — OPERATOR APPROVAL PENDING |
 
 ### Open / next (as of 2026-06-30)
 
 | Priority | Item | Gate |
 |---|---|---|
-| **Immediate** | Score Snapshot lock-authority correctness | Unblocked — see checklist |
+| **Immediate** | Score Snapshot lock-authority correctness | Unblocked — needs checklist row + issue; see note below |
 | **Immediate** | Operator validation wave: PYQ onboarding (#812), Score Snapshots (#810), text extraction (#811) | Deploy exact main SHA first |
-| High | J1 Advanced Repair scoping implementation | `Advanced-Repair-Scoping-Gate-2026-06-29.md` operator approval |
+| High | J1 Advanced Repair scoping contract | `docs/status/Advanced-Repair-Scoping-Gate-2026-06-29.md` DRAFT — OPERATOR APPROVAL PENDING |
+| High | J1 Advanced Repair scoping implementation | J1 contract operator approval |
 | High | J2 Manage Exam operational editors | Contract-first; I8-B and I6 gates cleared |
 | High | Transient retry/backoff for text-extract worker | Issue #813 |
 | High | Stuck-processing diagnostics and reset | Issue #542 |
 | Medium | P2 cognitive-demand classification (metadata-only) | Contract-first; independent of Track C — see note |
 | Blocked | A-PR4/A-PR5/Track C | Lane A clean gate (FF_MOCK_MASTERY_WRITES=live) |
 | Blocked | J3 schema/domain redesign | Contract-first; I8 gates cleared |
+
+**Score Snapshot lock-authority note:** The planner consumes only the current model / latest locked row, but the review RPC does not enforce that stale-model or superseded locked rows cannot be approved. A checker must verify the row is the current model revision before allowing the `pending→reviewed` or `reviewed→locked` transition. This needs: (1) a checklist row in `career-copilot-checklist.md` under the snapshot section, (2) a linked issue or contract scoping the backend enforcement requirement and test expectations, and (3) a PR targeting only this correctness gap before snapshot-based planner work advances.
 
 **P2 classification gate note:** Reviewed metadata-only classification (cognitive demand per PYQ question, no mock-selection weighting) is independent of Track C. It may proceed once its own contract is approved. However, no classification output may feed mock-selection, weighting, or personalization before Lane A clears the text-MCQ feedback-loop gate (`FF_MOCK_MASTERY_WRITES=live`).
 
