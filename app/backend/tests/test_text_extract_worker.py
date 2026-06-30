@@ -2,11 +2,16 @@
 
 Covers:
 - claim_next_text_extract_job: empty queue, FIFO ordering, non-queued rows
-  ignored, non-admin scopes excluded
+  ignored, non-admin scopes excluded — scope resolved via document_assets join
 - run_worker_pass: idle, success, conflict race, failure with fallback recovery
-- Admin-scope routing: admin_exam_intelligence → admin_scope= param
-- Fallback failure recovery: stranded 'running' job flipped to 'failed'
+- Admin-scope routing: admin_exam_intelligence → admin_scope= param forwarded
+  from embedded document_assets row (not hard-coded)
+- Fallback failure recovery: stranded 'running' job AND parent document_assets
+  row both flipped to 'failed'
 - _ADMIN_SCOPES constant
+
+Schema alignment: document_processing_jobs has NO scope column; scope lives on
+document_assets and is resolved via the inner-join embed.
 """
 from __future__ import annotations
 
@@ -33,19 +38,24 @@ class _R:
 
 
 class _Q:
-    """Chainable query stub. Stores filters, executes against an in-memory list."""
+    """Chainable query stub. Supports PostgREST embedded resource filters
+    (e.g. 'document_assets.scope') and inner-join embedding."""
 
-    def __init__(self, rows: list[dict]):
+    def __init__(self, rows: list[dict], docs: list[dict] | None = None):
         self._rows = rows
+        self._docs = docs or []
         self._filters: list[tuple] = []
         self._order_key: str | None = None
         self._desc = False
         self._limit_n: int | None = None
         self._update_payload: dict | None = None
         self._op = "select"
+        self._embed_docs = False
 
     def select(self, *_a, **_kw):
         self._op = "select"
+        if _a and "document_assets" in str(_a[0]):
+            self._embed_docs = True
         return self
 
     def update(self, payload: dict):
@@ -55,6 +65,10 @@ class _Q:
 
     def eq(self, col, val):
         self._filters.append(("eq", col, val))
+        return self
+
+    def neq(self, col, val):
+        self._filters.append(("neq", col, val))
         return self
 
     def in_(self, col, vals):
@@ -72,11 +86,34 @@ class _Q:
 
     def execute(self):
         rows = list(self._rows)
+
+        # Inner-join embed: attach the matching document_assets row.
+        # !inner semantics: rows with no matching doc are excluded.
+        if self._embed_docs:
+            doc_by_id = {d["id"]: d for d in self._docs}
+            rows = [
+                {**r, "document_assets": doc_by_id[r["document_id"]]}
+                for r in rows
+                if r.get("document_id") in doc_by_id
+            ]
+
         for op, col, val in self._filters:
-            if op == "eq":
+            if "." in col:
+                # Embedded resource filter: "resource.field"
+                resource, field = col.split(".", 1)
+                if op == "eq":
+                    rows = [r for r in rows if (r.get(resource) or {}).get(field) == val]
+                elif op == "in":
+                    rows = [r for r in rows if (r.get(resource) or {}).get(field) in val]
+                elif op == "neq":
+                    rows = [r for r in rows if (r.get(resource) or {}).get(field) != val]
+            elif op == "eq":
                 rows = [r for r in rows if r.get(col) == val]
             elif op == "in":
                 rows = [r for r in rows if r.get(col) in val]
+            elif op == "neq":
+                rows = [r for r in rows if r.get(col) != val]
+
         if self._op == "update" and self._update_payload:
             for r in rows:
                 r.update(self._update_payload)
@@ -94,7 +131,7 @@ class _Sb:
 
     def table(self, name: str):
         if name == "document_processing_jobs":
-            return _Q(self._jobs)
+            return _Q(self._jobs, self._docs)
         if name == "document_assets":
             return _Q(self._docs)
         raise KeyError(name)
@@ -107,15 +144,15 @@ def _job(
     job_id=None,
     document_id=None,
     status="queued",
-    scope="admin_exam_intelligence",
     created_at="2026-01-01T00:00:00Z",
 ):
+    """Build a document_processing_jobs row. No scope field — scope lives on
+    document_assets and is resolved via the inner-join embed."""
     return {
         "id": job_id or str(uuid4()),
         "document_id": document_id or str(uuid4()),
         "job_type": "text_extract",
         "status": status,
-        "scope": scope,
         "created_at": created_at,
     }
 
@@ -124,6 +161,7 @@ def _doc(doc_id=None, scope="admin_exam_intelligence", owner_user_id=None):
     return {
         "id": doc_id or str(uuid4()),
         "scope": scope,
+        "status": "processing",
         "owner_user_id": owner_user_id,
     }
 
@@ -138,37 +176,63 @@ def test_claim_empty_queue():
 
 def test_claim_returns_oldest_admin_queued():
     doc_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
     j_old = _job(document_id=doc_id, status="queued", created_at="2026-01-01T00:00:00Z")
     j_new = _job(document_id=doc_id, status="queued", created_at="2026-01-02T00:00:00Z")
-    sb = _Sb(jobs=[j_new, j_old])
+    sb = _Sb(jobs=[j_new, j_old], docs=[doc])
     result = claim_next_text_extract_job(sb)
     assert result["id"] == j_old["id"]
 
 
 def test_claim_ignores_non_queued():
-    j_running = _job(status="running")
-    j_failed = _job(status="failed")
-    j_succeeded = _job(status="succeeded")
-    sb = _Sb(jobs=[j_running, j_failed, j_succeeded])
+    doc_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+    j_running = _job(document_id=doc_id, status="running")
+    j_failed = _job(document_id=doc_id, status="failed")
+    j_succeeded = _job(document_id=doc_id, status="succeeded")
+    sb = _Sb(jobs=[j_running, j_failed, j_succeeded], docs=[doc])
     assert claim_next_text_extract_job(sb) is None
 
 
 def test_claim_excludes_personal_library_scope():
-    """Personal-library jobs must never be claimed by the admin worker."""
-    j_personal = _job(status="queued", scope="personal_library")
-    j_admin = _job(status="queued", scope="admin_exam_intelligence",
+    """Jobs whose parent document has scope='personal_library' must never be
+    claimed — scope is resolved through document_assets, not the job row."""
+    doc_personal = _doc(scope="personal_library")
+    doc_admin = _doc(scope="admin_exam_intelligence")
+    j_personal = _job(document_id=doc_personal["id"], status="queued",
+                       created_at="2026-01-01T00:00:00Z")
+    j_admin = _job(document_id=doc_admin["id"], status="queued",
                    created_at="2026-01-02T00:00:00Z")
-    sb = _Sb(jobs=[j_personal, j_admin])
+    sb = _Sb(jobs=[j_personal, j_admin], docs=[doc_personal, doc_admin])
     result = claim_next_text_extract_job(sb)
-    # Only the admin-scoped job is returned
     assert result is not None
     assert result["id"] == j_admin["id"]
 
 
 def test_claim_excludes_unknown_scope():
-    j = _job(status="queued", scope="some_other_scope")
-    sb = _Sb(jobs=[j])
+    """Jobs whose parent document has an unrecognised scope are excluded."""
+    doc = _doc(scope="some_other_scope")
+    j = _job(document_id=doc["id"], status="queued")
+    sb = _Sb(jobs=[j], docs=[doc])
     assert claim_next_text_extract_job(sb) is None
+
+
+def test_claim_excludes_job_with_no_matching_document():
+    """!inner semantics: a job with no document_assets row is excluded."""
+    j = _job(status="queued")  # document_id points nowhere
+    sb = _Sb(jobs=[j], docs=[])
+    assert claim_next_text_extract_job(sb) is None
+
+
+def test_claim_result_contains_embedded_scope():
+    """The returned row includes the embedded document_assets so run_worker_pass
+    can forward the correct admin_scope without a second query."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(document_id=doc["id"], status="queued")
+    sb = _Sb(jobs=[j], docs=[doc])
+    result = claim_next_text_extract_job(sb)
+    assert result is not None
+    assert result["document_assets"]["scope"] == "admin_exam_intelligence"
 
 
 # ── run_worker_pass ──────────────────────────────────────────────────────────
@@ -185,9 +249,9 @@ def test_run_worker_pass_idle():
 def test_run_worker_pass_success():
     doc_id = str(uuid4())
     job_id = str(uuid4())
-    j = _job(job_id=job_id, document_id=doc_id, status="queued",
-             scope="admin_exam_intelligence")
-    sb = _Sb(jobs=[j])
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+    j = _job(job_id=job_id, document_id=doc_id, status="queued")
+    sb = _Sb(jobs=[j], docs=[doc])
 
     fake_result = {"job": {"id": job_id, "status": "succeeded"}, "document": {}}
     with patch(
@@ -200,7 +264,7 @@ def test_run_worker_pass_success():
     assert result["status"] == "succeeded"
     assert result["job_id"] == job_id
     assert result["error"] is None
-    # Admin scope is always passed for admin worker
+    # admin_scope must come from the embedded document_assets row, not hard-coded.
     mock_run.assert_called_once_with(
         sb, job_id, user_id=None, admin_scope="admin_exam_intelligence"
     )
@@ -211,8 +275,9 @@ def test_run_worker_pass_conflict():
 
     doc_id = str(uuid4())
     job_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
     j = _job(job_id=job_id, document_id=doc_id, status="queued")
-    sb = _Sb(jobs=[j])
+    sb = _Sb(jobs=[j], docs=[doc])
 
     with patch(
         "app.library.text_extract_worker.run_text_extract_job",
@@ -220,7 +285,6 @@ def test_run_worker_pass_conflict():
     ):
         result = run_worker_pass(sb)
 
-    # Conflict: race loss, job not attempted by this worker
     assert result["processed"] == 0
     assert result["status"] == "conflict"
     assert result["job_id"] == job_id
@@ -232,8 +296,9 @@ def test_run_worker_pass_extract_error_sets_failed():
 
     doc_id = str(uuid4())
     job_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
     j = _job(job_id=job_id, document_id=doc_id, status="queued")
-    sb = _Sb(jobs=[j])
+    sb = _Sb(jobs=[j], docs=[doc])
 
     with patch(
         "app.library.text_extract_worker.run_text_extract_job",
@@ -247,14 +312,19 @@ def test_run_worker_pass_extract_error_sets_failed():
 
 
 def test_run_worker_pass_unhandled_error_fallback_recovery():
-    """An unexpected exception triggers the fallback UPDATE to prevent a stranded 'running' job.
+    """An unexpected exception triggers the fallback UPDATE to prevent both
+    a stranded 'running' job and a stuck 'processing' document_assets row.
 
-    claim_next_text_extract_job is mocked to bypass the SELECT so we can test
-    the exception path regardless of job status in the DB.
+    claim_next_text_extract_job is mocked to bypass the SELECT so we can
+    test the exception path regardless of job status in the DB.
     """
     doc_id = str(uuid4())
     job_id = str(uuid4())
-    candidate = {"id": job_id, "document_id": doc_id}
+    candidate = {
+        "id": job_id,
+        "document_id": doc_id,
+        "document_assets": {"scope": "admin_exam_intelligence"},
+    }
     sb = _Sb(jobs=[])  # empty — claim is mocked below
 
     with patch(
@@ -268,24 +338,56 @@ def test_run_worker_pass_unhandled_error_fallback_recovery():
     ) as mock_fallback:
         result = run_worker_pass(sb)
 
-    # Fallback was called to flip the stranded 'running' job to 'failed'
-    mock_fallback.assert_called_once_with(sb, job_id, "unexpected transport error")
+    # Fallback must receive document_id so it can update both rows.
+    mock_fallback.assert_called_once_with(sb, job_id, doc_id, "unexpected transport error")
     assert result["processed"] == 1
     assert result["status"] == "failed"
 
 
-def test_fallback_fail_job_writes_failed_only_if_running():
-    """_fallback_fail_job uses a conditional UPDATE (status='running') to avoid
-    clobbering jobs that were already recovered by another path."""
+# ── _fallback_fail_job ───────────────────────────────────────────────────────
+
+
+def test_fallback_fail_job_writes_failed_to_job_and_document():
+    """_fallback_fail_job flips both the job row (WHERE status='running') and
+    the parent document_assets row (WHERE status != 'archived') to 'failed'."""
+    doc_id = str(uuid4())
     job_id = str(uuid4())
     job_row = {"id": job_id, "status": "running"}
-    sb = _Sb(jobs=[job_row])
+    doc_row = {"id": doc_id, "status": "processing"}
+    sb = _Sb(jobs=[job_row], docs=[doc_row])
 
-    _fallback_fail_job(sb, job_id, "transport error")
+    _fallback_fail_job(sb, job_id, doc_id, "transport error")
 
-    # The stub applies the update in-place; verify status was flipped
     assert job_row["status"] == "failed"
     assert job_row["error_code"] == "worker_unhandled_error"
+    assert doc_row["status"] == "failed"
+
+
+def test_fallback_fail_job_does_not_clobber_archived_document():
+    """An archived document must stay archived even when the job fails."""
+    doc_id = str(uuid4())
+    job_id = str(uuid4())
+    job_row = {"id": job_id, "status": "running"}
+    doc_row = {"id": doc_id, "status": "archived"}
+    sb = _Sb(jobs=[job_row], docs=[doc_row])
+
+    _fallback_fail_job(sb, job_id, doc_id, "transport error")
+
+    assert job_row["status"] == "failed"
+    assert doc_row["status"] == "archived"  # not touched
+
+
+def test_fallback_fail_job_does_not_update_job_unless_running():
+    """Scoped to status='running': a job that already terminal is not clobbered."""
+    doc_id = str(uuid4())
+    job_id = str(uuid4())
+    job_row = {"id": job_id, "status": "succeeded"}
+    doc_row = {"id": doc_id, "status": "processed"}
+    sb = _Sb(jobs=[job_row], docs=[doc_row])
+
+    _fallback_fail_job(sb, job_id, doc_id, "late error")
+
+    assert job_row["status"] == "succeeded"  # unchanged
 
 
 def test_fallback_fail_job_does_not_crash_on_sb_error():
@@ -294,8 +396,7 @@ def test_fallback_fail_job_does_not_crash_on_sb_error():
         def table(self, _):
             raise RuntimeError("DB unavailable")
 
-    # Should not raise
-    _fallback_fail_job(_BadSb(), str(uuid4()), "some error")
+    _fallback_fail_job(_BadSb(), str(uuid4()), str(uuid4()), "some error")
 
 
 # ── _ADMIN_SCOPES constant ───────────────────────────────────────────────────
