@@ -127,12 +127,37 @@ function RowLockButton({ entity, rowId, onLocked }) {
 }
 
 export default function ReviewActivatePanel({ onGotoTab }) {
-  const { readiness, readiness_loading, refetchReadiness } = useExamWorkspace();
+  const { readiness, readiness_loading, refetchReadiness, mgmtVersionError, refetchMgmt } = useExamWorkspace();
   const { user } = useAuth();
 
   const canReview = Array.isArray(user?.permissions)
     ? user.permissions.includes("exam_intelligence.review")
     : false;
+
+  // D04: unsupported contract version — show inline compat error, not a skeleton.
+  // The workspace-level banner is already visible; this ensures the panel itself
+  // does not render an indefinite loading state when readiness is suppressed.
+  if (mgmtVersionError) {
+    return (
+      <div className="stack" data-testid="review-panel-compat-error">
+        <div className="scrn-head">
+          <div className="scrn-tag">Terminal · readiness &amp; activation</div>
+          <h2 className="oc-title disp" style={{ fontSize: 20, marginTop: 3 }}>
+            Readiness &amp; Activation
+          </h2>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <p className="err-row" style={{ marginBottom: 10 }}>
+              Readiness data is unavailable because the workspace version is not supported by this
+              client. Reload or contact support.
+            </p>
+            <button className="btn" onClick={refetchMgmt}>Retry</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (readiness_loading || !readiness) {
     return (
