@@ -112,15 +112,14 @@
 #
 # To compute the combined fingerprint at any SHA, run from repo root:
 #
-#   set -euo pipefail
-#   readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-#   _expected=36
-#   _actual=${#_files[@]}
-#   [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
-#   for _f in "${_files[@]}"; do
-#     [[ -f "$_f" ]] || { echo "ERROR: missing $_f" >&2; exit 1; }
-#   done
-#   sha256sum "${_files[@]}" | sha256sum
+#   EXPECTED_SHA="$(git rev-parse HEAD)" \
+#     bash scripts/verify_mastery_fingerprint.sh
+#
+# The verifier hashes canonical Git blobs (always LF, cross-platform) and
+# validates file count, per-file attestation, cross-document digest
+# consistency, and pinned SHA. Do NOT use the manual sha256sum recipe —
+# it hashes working-tree bytes and produces a different digest on CRLF
+# checkouts (Windows). See PR #814 for the portability fix.
 #
 # The combined fingerprint must be identical at window_start and window_end.
 # Any change to a file in this manifest resets the shadow observation clock.
