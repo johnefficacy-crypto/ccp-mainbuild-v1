@@ -97,26 +97,38 @@ Steps 3–8 are sequential and each depends on those above it.
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — boundary not yet
-   closed):** Current boundary is 32 files (20 original + `attempt_analytics`
-   7 + event-backend 3 + frontend event producers 2: `MockAttemptShell.jsx`,
-   `attemptEventBus.js`). The two originally-blocking bug fixes are merged
-   (PR #795 `time_analytics`; PR #793 `MockAttemptShell` first-visit), and a
-   reference fingerprint was computed at `main @ 1679adb8`
-   (`b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b`).
-   This is NOT yet the freeze hash. Before FROZEN (PR #796 review): (i) fix or
-   explicitly gate the P0 event-delivery (beacon auth/retry) and P0 partial-
-   fallback reporting defects; (ii) close the boundary over `core/auth.py` and
-   frontend `lib/supabase.js` (operator-approved manifest expansion) and
-   recompute; (iii) commit a per-file SHA-256 attestation (or a CI check that
-   recomputes the digest at the pinned SHA). Then recompute the freeze hash at
-   the new post-fix `main` SHA and record it here.
+2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — PR #803 merge +
+   operator validation remaining):** The event-delivery and partial-fallback
+   code defects identified before PR #800 are code-fixed, but staging validation
+   remains pending. PR #805 (34-file boundary) is **closed — superseded** by
+   PR #803 (`claude/pr7-manifest-boundary-freeze`). Current `main` still
+   contains the 32-file manifest. PR #803 proposes the final 36-file boundary
+   by adding `app/backend/app/core/auth.py`, `app/frontend/src/lib/supabase.js`,
+   `app/frontend/src/pages/study/mocks/useAnswerSync.js`, and
+   `app/frontend/src/lib/api.js`; it also closes the submit/late-event race,
+   adds the executable `telemetry-quality` command, and hardens fingerprint
+   verification with digest and SHA binding. PR #803 must rebase after PR #804
+   merges. No digest currently recorded on the PR #803 branch is authoritative:
+   the attestation and combined digest must be regenerated after rebase and then
+   pinned again at the exact deployed `window_start` SHA. Remaining before
+   FROZEN: (i) merge the rebased PR #803; (ii) complete PR #800 staging checks;
+   (iii) operator approves the proposed 36-file boundary; (iv) the verifier and
+   telemetry-quality gate pass against the exact deployed SHA.
 3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
    `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
    confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
    (`ensure_mock_correction_drafts`, `ensure_mock_correction_draft`,
-   `replace_manual_mock_correction_drafts`); apply to the target
-   environment.
+   `replace_manual_mock_correction_drafts`); apply to the target environment.
+   **Durable evidence required before marking DONE** (all fields must be
+   recorded in a dated audit document):
+   - Target environment (staging / prod)
+   - Reviewed/deployed SHA at time of apply
+   - UTC run time
+   - `schema_migrations` history result confirming 182 applied (e.g. `SELECT * FROM schema_migrations WHERE version = '182'`)
+   - Exact RPC signatures returned by `pg_proc` / `\df` for all three functions
+   - SECURITY DEFINER owner and `search_path` for each function
+   - Effective EXECUTE privileges (grantee query output — not a prose assertion)
+   - Dry-run `BEGIN` / `ROLLBACK` output OR rollback-safe smoke-test confirming no data mutation
 4. **PR-6 clean operator run (OPERATOR RERUN PENDING):** Run the full
    12-gate PR-6 operator session on one pinned SHA; confirm Gate 9
    passes (allowlist deployed with named user(s) in
