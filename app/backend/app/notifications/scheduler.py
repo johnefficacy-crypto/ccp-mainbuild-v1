@@ -67,15 +67,35 @@ def _is_noop_result(name: str, result: Any) -> bool:
     return False
 
 
+def _is_failure_result(name: str, result: Any) -> bool:
+    """True when a job returned a result that represents an operational failure.
+
+    Distinguishes from _is_noop_result (nothing to do) and exceptions
+    (unhandled crash). Failure results are logged as ERROR and stored with
+    ok=False so /api/admin/jobs reflects the failure without raising.
+    """
+    if not isinstance(result, dict):
+        return False
+    if name == "doc:text_extract":
+        # processed=1 + status='failed' means extraction was attempted and failed.
+        # processed=0 + status='conflict' is a race, not a failure.
+        return result.get("processed", 0) == 1 and result.get("status") == "failed"
+    return False
+
+
 def _wrap(name: str, func) -> Any:
     def runner() -> None:
         started = datetime.now(timezone.utc).isoformat()
         try:
             result = func()
-            _last_run[name] = {"at": started, "ok": True, "result": result}
-            if _is_noop_result(name, result):
+            if _is_failure_result(name, result):
+                _last_run[name] = {"at": started, "ok": False, "result": result}
+                logger.error("[%s] operational failure: %s", name, result)
+            elif _is_noop_result(name, result):
+                _last_run[name] = {"at": started, "ok": True, "result": result}
                 logger.debug("[%s] %s", name, result)
             else:
+                _last_run[name] = {"at": started, "ok": True, "result": result}
                 logger.info("[%s] %s", name, result)
         except Exception as exc:  # noqa: BLE001
             _last_run[name] = {"at": started, "ok": False, "error": str(exc)}
@@ -143,6 +163,35 @@ JOBS: dict[str, callable] = {  # type: ignore[type-arg]
 # ─── Lifecycle ──────────────────────────────────────────────────────────────
 
 
+_TEXT_EXTRACT_INTERVAL_DEFAULT = 60
+_TEXT_EXTRACT_INTERVAL_MIN = 10
+_TEXT_EXTRACT_INTERVAL_MAX = 3600
+
+
+def _parse_text_extract_interval() -> int:
+    """Parse TEXT_EXTRACT_WORKER_INTERVAL_SECONDS from the environment.
+
+    Accepts integers in [10, 3600]. Any invalid value (non-integer, zero,
+    negative, out of range) is silently replaced by the default (60s) so
+    a misconfigured env var never crashes start_scheduler and takes down
+    all other scheduled jobs.
+    """
+    raw = os.environ.get("TEXT_EXTRACT_WORKER_INTERVAL_SECONDS", str(_TEXT_EXTRACT_INTERVAL_DEFAULT))
+    try:
+        value = int(raw)
+        if not (_TEXT_EXTRACT_INTERVAL_MIN <= value <= _TEXT_EXTRACT_INTERVAL_MAX):
+            raise ValueError(
+                f"out of range [{_TEXT_EXTRACT_INTERVAL_MIN}, {_TEXT_EXTRACT_INTERVAL_MAX}]"
+            )
+        return value
+    except (ValueError, TypeError) as exc:
+        logger.warning(
+            "TEXT_EXTRACT_WORKER_INTERVAL_SECONDS=%r invalid (%s); defaulting to %ds",
+            raw, exc, _TEXT_EXTRACT_INTERVAL_DEFAULT,
+        )
+        return _TEXT_EXTRACT_INTERVAL_DEFAULT
+
+
 def start_scheduler() -> BackgroundScheduler | None:
     global _scheduler
     if _scheduler is not None:
@@ -207,9 +256,7 @@ def start_scheduler() -> BackgroundScheduler | None:
     # Every 60s — claim and run one queued text_extract job. Single-instance
     # (max_instances=1 + coalesce=True) so a slow extraction doesn't queue
     # a second pass on top of itself. Configurable via TEXT_EXTRACT_WORKER_INTERVAL_SECONDS.
-    _text_extract_interval = int(
-        os.environ.get("TEXT_EXTRACT_WORKER_INTERVAL_SECONDS", "60")
-    )
+    _text_extract_interval = _parse_text_extract_interval()
     sched.add_job(
         _wrap("doc:text_extract", _job_text_extract_worker),
         IntervalTrigger(seconds=_text_extract_interval),
