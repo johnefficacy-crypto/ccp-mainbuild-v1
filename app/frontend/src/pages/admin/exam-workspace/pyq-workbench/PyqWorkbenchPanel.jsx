@@ -378,9 +378,9 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const { exam, cycle } = useExamWorkspace();
   const examId = exam?.id;
   const cycleId = cycle?.id ?? null;
-  // A selected cycle may carry a single active phase as provenance; the context
-  // exposes phases as a list, not a single selection, so default to null.
-  const phaseId = cycle?.exam_phase_id ?? null;
+  // exam_cycles has no exam_phase_id column; phase is always null for this panel.
+  const cycleLabel = cycle?.cycle_name ?? null;
+  const cycleYear = cycle?.year ?? null;
 
   const { user } = useAuth();
   const canReview = user?.role === "super_admin" ||
@@ -817,7 +817,8 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           examId={examId}
           examName={exam?.name}
           cycleId={cycleId}
-          phaseId={phaseId}
+          cycleLabel={cycleLabel}
+          cycleYear={cycleYear}
           pyqDocuments={pyqDocuments}
           pyqSources={pyqSources}
           onboardPaper={onboardPaper}
