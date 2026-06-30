@@ -29,7 +29,7 @@ from app.notifications.dispatcher import (
     set_kill_switch,
 )
 from app.notifications.next_actions import generate_next_actions_for_user
-from app.notifications.scheduler import JOBS, list_jobs, run_job_now
+from app.notifications.scheduler import JOB_PERMISSIONS, JOBS, list_jobs, run_job_now
 from app.scraping.alerts import (
     get_unread_alert_count,
     get_user_alerts,
@@ -244,9 +244,15 @@ def admin_jobs(_admin: dict = Depends(require_admin)) -> dict[str, Any]:
 
 
 @router.post("/admin/jobs/run/{job_id}")
-def admin_run_job(job_id: str, admin: dict = Depends(require_permission("notifications.manage"))) -> dict[str, Any]:
+def admin_run_job(job_id: str, admin: dict = Depends(require_admin)) -> dict[str, Any]:
     if job_id not in JOBS:
         raise HTTPException(status_code=404, detail=f"Unknown job: {job_id}")
+    required_perm = JOB_PERMISSIONS.get(job_id)
+    if required_perm:
+        # Enforce the job-specific permission on top of the base require_admin check.
+        perms = set(admin.get("permissions") or [])
+        if required_perm not in perms:
+            raise HTTPException(status_code=403, detail=f"Permission required: {required_perm}")
     result = run_job_now(job_id)
     sb = get_supabase_admin()
     try:

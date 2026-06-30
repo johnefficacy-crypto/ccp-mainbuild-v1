@@ -1,9 +1,10 @@
 """APScheduler in-process job runner.
 
-Three jobs:
+Jobs:
     notif:dispatch        every 2 min   — dispatch_pending_alerts
     notif:deadline_sweep  daily 06:00   — send_deadline_alerts (3-day + 1-day)
     elig:recompute        every 5 min   — drain_recompute_queue
+    doc:text_extract      every 60s     — run_worker_pass (text_extract_worker)
 
 Lifecycle is wired into the FastAPI ``lifespan`` in ``server.py``.
 The scheduler is a singleton; calls to ``start_scheduler`` are idempotent.
@@ -61,6 +62,24 @@ def _is_noop_result(name: str, result: Any) -> bool:
             (result.get(k) or 0)
             for k in ("enqueued", "auto_submitted", "derivations", "failed", "errors")
         )
+    if name == "doc:text_extract":
+        return result.get("processed", 0) == 0 and result.get("status") == "idle"
+    return False
+
+
+def _is_failure_result(name: str, result: Any) -> bool:
+    """True when a job returned a result that represents an operational failure.
+
+    Distinguishes from _is_noop_result (nothing to do) and exceptions
+    (unhandled crash). Failure results are logged as ERROR and stored with
+    ok=False so /api/admin/jobs reflects the failure without raising.
+    """
+    if not isinstance(result, dict):
+        return False
+    if name == "doc:text_extract":
+        # processed=1 + status='failed' means extraction was attempted and failed.
+        # processed=0 + status='conflict' is a race, not a failure.
+        return result.get("processed", 0) == 1 and result.get("status") == "failed"
     return False
 
 
@@ -69,10 +88,14 @@ def _wrap(name: str, func) -> Any:
         started = datetime.now(timezone.utc).isoformat()
         try:
             result = func()
-            _last_run[name] = {"at": started, "ok": True, "result": result}
-            if _is_noop_result(name, result):
+            if _is_failure_result(name, result):
+                _last_run[name] = {"at": started, "ok": False, "result": result}
+                logger.error("[%s] operational failure: %s", name, result)
+            elif _is_noop_result(name, result):
+                _last_run[name] = {"at": started, "ok": True, "result": result}
                 logger.debug("[%s] %s", name, result)
             else:
+                _last_run[name] = {"at": started, "ok": True, "result": result}
                 logger.info("[%s] %s", name, result)
         except Exception as exc:  # noqa: BLE001
             _last_run[name] = {"at": started, "ok": False, "error": str(exc)}
@@ -119,6 +142,19 @@ def _job_mock_sweeper() -> dict[str, Any]:
     return run_sweeper(get_supabase_admin())
 
 
+def _job_text_extract_worker() -> dict[str, Any]:
+    from app.library.text_extract_worker import run_worker_pass
+
+    return run_worker_pass(get_supabase_admin())
+
+
+# Per-job permission overrides for the manual-trigger admin endpoint.
+# Jobs not listed here fall back to the endpoint's default (require_admin).
+# The value is the permission string checked by require_permission().
+JOB_PERMISSIONS: dict[str, str] = {
+    "doc:text_extract": "exam_intelligence.cms",
+}
+
 # Public registry — also used by the manual-trigger admin endpoint.
 JOBS: dict[str, callable] = {  # type: ignore[type-arg]
     "notif:dispatch": _job_dispatch,
@@ -127,10 +163,40 @@ JOBS: dict[str, callable] = {  # type: ignore[type-arg]
     "study:plan_regen": _job_plan_regen,
     "anon:cleanup": _job_cleanup_anonymous_users,
     "mock:sweeper": _job_mock_sweeper,
+    "doc:text_extract": _job_text_extract_worker,
 }
 
 
 # ─── Lifecycle ──────────────────────────────────────────────────────────────
+
+
+_TEXT_EXTRACT_INTERVAL_DEFAULT = 60
+_TEXT_EXTRACT_INTERVAL_MIN = 10
+_TEXT_EXTRACT_INTERVAL_MAX = 3600
+
+
+def _parse_text_extract_interval() -> int:
+    """Parse TEXT_EXTRACT_WORKER_INTERVAL_SECONDS from the environment.
+
+    Accepts integers in [10, 3600]. Any invalid value (non-integer, zero,
+    negative, out of range) is silently replaced by the default (60s) so
+    a misconfigured env var never crashes start_scheduler and takes down
+    all other scheduled jobs.
+    """
+    raw = os.environ.get("TEXT_EXTRACT_WORKER_INTERVAL_SECONDS", str(_TEXT_EXTRACT_INTERVAL_DEFAULT))
+    try:
+        value = int(raw)
+        if not (_TEXT_EXTRACT_INTERVAL_MIN <= value <= _TEXT_EXTRACT_INTERVAL_MAX):
+            raise ValueError(
+                f"out of range [{_TEXT_EXTRACT_INTERVAL_MIN}, {_TEXT_EXTRACT_INTERVAL_MAX}]"
+            )
+        return value
+    except (ValueError, TypeError) as exc:
+        logger.warning(
+            "TEXT_EXTRACT_WORKER_INTERVAL_SECONDS=%r invalid (%s); defaulting to %ds",
+            raw, exc, _TEXT_EXTRACT_INTERVAL_DEFAULT,
+        )
+        return _TEXT_EXTRACT_INTERVAL_DEFAULT
 
 
 def start_scheduler() -> BackgroundScheduler | None:
@@ -194,6 +260,18 @@ def start_scheduler() -> BackgroundScheduler | None:
         max_instances=1,
         coalesce=True,
     )
+    # Every 60s — claim and run one queued text_extract job. Single-instance
+    # (max_instances=1 + coalesce=True) so a slow extraction doesn't queue
+    # a second pass on top of itself. Configurable via TEXT_EXTRACT_WORKER_INTERVAL_SECONDS.
+    _text_extract_interval = _parse_text_extract_interval()
+    sched.add_job(
+        _wrap("doc:text_extract", _job_text_extract_worker),
+        IntervalTrigger(seconds=_text_extract_interval),
+        id="doc:text_extract",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
 
     sched.start()
     _scheduler = sched
@@ -237,8 +315,9 @@ def run_job_now(job_id: str) -> dict[str, Any]:
     started = datetime.now(timezone.utc).isoformat()
     try:
         result = fn()
-        _last_run[job_id] = {"at": started, "ok": True, "result": result, "manual": True}
-        return {"ok": True, "result": result}
+        ok = not _is_failure_result(job_id, result)
+        _last_run[job_id] = {"at": started, "ok": ok, "result": result, "manual": True}
+        return {"ok": ok, "result": result}
     except Exception as exc:  # noqa: BLE001
         _last_run[job_id] = {"at": started, "ok": False, "error": str(exc), "manual": True}
         return {"ok": False, "error": str(exc)}
