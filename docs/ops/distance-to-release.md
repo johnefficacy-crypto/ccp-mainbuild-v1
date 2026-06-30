@@ -29,7 +29,7 @@
 | P4 | Migration 204 snapshot-review RPC validated on staging | OPS | 🟡 CODE-READY | needs P1; grant matrix + review→lock cycle | checklist (mig 204) |
 | P5 | PR-7 36-file fingerprint boundary approved + re-pinned at deployed SHA | OPS | 🟡 OPERATOR-APPROVAL ONLY | verifier code/tooling closed (#803/#814, ref digest `f2ee2c40…`); needs **PR #800 staging delivery validation + boundary sign-off**; fingerprint is reference-only until re-pinned at `window_start` | `pr7_shadow_gate_results.md` |
 | P6 | Scheduler verification (jobs/manual-run/drain) | OPS | 🟡 PARTIAL PASS | startup + sweeper registration + repeat sweeps ✅ at staging `daaddaae`; **remaining:** `/api/admin/jobs` payload, manual sweeper invocation, named pending-job drain | `audits/2026-06-30-mastery-staging-preflight.md` |
-| P7 | **PR-6** final-candidate revalidation rerun (clear Gate 9) | OPS | ⛔ `gate_failed` | needs P6 scheduler evidence first; deploy allowlist build; rerun 12 gates with `FF=shadow` | `pr6_final_candidate_revalidation.md` |
+| P7 | **PR-6** final-candidate revalidation rerun (clear Gate 9) | OPS | ⛔ `gate_failed` | needs P6 scheduler evidence first; deploy current main (`3484a923`, post-PR-814) to staging; rerun 12 gates with `FF=shadow` on the pinned deployed SHA | `pr6_final_candidate_revalidation.md` |
 | P8 | **PR-7 14-day shadow window** | OPS | ⏳ NOT STARTED — **THE FLOOR** | full prerequisite chain below; **any threshold miss restarts the 14 days** | `pr7_shadow_gate_results.md` |
 | P9 | PR-8 bounded live canary | OPS | ⏳ NOT STARTED | after P8 passes | `pr8_live_canary_plan.md` |
 | P10 | PR-9 approval → flip `FF_MOCK_MASTERY_WRITES=live` | OPS | ⛔ BLOCKED | after P9 + sign-offs | `pr9_live_approval.md` |
@@ -81,5 +81,5 @@ quote a calendar date until T0 is set.
 ## What reaches T0 fastest (next actions)
 1. **ENG:** fix **F3** terminalization; record the **F2** (D11/D12/**D14**/D06/D15) v1-vs-v2 decision.
 2. **OPS:** **P1** apply migrations → **P2** run the verification script (+RLS JWT proof) → **P4** validate mig 204.
-3. **OPS:** finish **P6** scheduler drain → **P5** PR #800 validation + boundary approval → **P7** PR-6 rerun.
+3. **OPS:** finish **P6** scheduler drain (`/api/admin/jobs` payload + manual sweeper invocation + named pending-job drain proof) → deploy current main (`3484a923`) to staging → **P5** PR #800 validation + boundary approval → **P7** PR-6 rerun on the pinned deployed SHA.
 4. When the 7 prerequisites hold → re-pin the fingerprint, set **`window_start`** (T0), start **P8**.
