@@ -376,8 +376,8 @@
     "hash": "5f0fbbbfaca5ef229f528ee0258652c1"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\cycle_readiness.py": {
-    "mtime": 1782746364.945475,
-    "hash": "fb4caaa3d0d26c26298fdcb090fdca5b"
+    "mtime": 1782758084.8759203,
+    "hash": "e28d338cdb942f9797b4194e16a7e543"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\diagnostics.py": {
     "mtime": 1782328836.1692307,
@@ -388,8 +388,8 @@
     "hash": "340391d6c8e3c0b6926899b39731b258"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\management_read_model.py": {
-    "mtime": 1782746364.9474752,
-    "hash": "4bc3185a7978a67f91c56cb37b6023f1"
+    "mtime": 1782758084.885918,
+    "hash": "51a30ccd01ac9f9955dfaf097a1d2686"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\exam_intelligence\\mock_readiness_cli.py": {
     "mtime": 1781521566.0960526,
@@ -936,8 +936,8 @@
     "hash": "f732dcbbe5e3d7850a6b25eb1ee81b48"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\attempt_analytics\\time_analytics.py": {
-    "mtime": 1782745028.20683,
-    "hash": "5215a6fbf48eb9050557ea1ea5efadf4"
+    "mtime": 1782758084.8899183,
+    "hash": "c34eaf68ac7d4aeacf88fc482a7eb09f"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\attempt_analytics\\topic_breakdown.py": {
     "mtime": 1779868904.3891704,
@@ -948,8 +948,8 @@
     "hash": "5d2e0ee824a24653e72b83505fed1618"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\attempt_analytics\\tests\\test_attempt_analytics.py": {
-    "mtime": 1782745028.204836,
-    "hash": "eb657e966e98b14fd5983d516af1cc87"
+    "mtime": 1782758084.8879187,
+    "hash": "d2ad1c87d10f538708425a7aaccabb8e"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\mastery_engine\\correction_tasks.py": {
     "mtime": 1781702557.62611,
@@ -1532,8 +1532,8 @@
     "hash": "40e547f7ac08f022929fc498ca9796b3"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\test_cycle_readiness.py": {
-    "mtime": 1782746364.9654696,
-    "hash": "cdf388b708d36832e25b125c1173f25a"
+    "mtime": 1782758084.8919146,
+    "hash": "24a31ceb2e7c67abf5412749771b8055"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\exam_intelligence\\test_diagnostics.py": {
     "mtime": 1780271084.680394,
@@ -3564,16 +3564,16 @@
     "hash": "2d844788afd4001c5fe13751120b1b70"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\ExamWorkspaceContext.jsx": {
-    "mtime": 1782209318.3916585,
-    "hash": "d4cb1df7831bc84b4f85fb68a63cebe5"
+    "mtime": 1782758084.8929193,
+    "hash": "524034e34fd0579e1fba2e70ac0df1d7"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\CompetitionPanel.jsx": {
     "mtime": 1782747035.4852462,
     "hash": "66ca1bd6a8bba56ccf462d2538cea76b"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\CycleActivationChecklist.jsx": {
-    "mtime": 1782746364.9814649,
-    "hash": "8d8a69a43def52ef4178b04cbbb9b40d"
+    "mtime": 1782758084.8949196,
+    "hash": "157bc84abbbc32d6b2978ca0e162ce4e"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\DocumentsPanel.jsx": {
     "mtime": 1782742197.6465447,
@@ -3592,16 +3592,16 @@
     "hash": "5c45343a8af7c6ef4477f75c735ee293"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\SetupPanel.jsx": {
-    "mtime": 1782746364.984467,
-    "hash": "b0efcb2400b081ea141f42196bdb65b2"
+    "mtime": 1782758084.9029224,
+    "hash": "6eb92ba2e823660a596918263cd76ea6"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\UpdatesPanel.jsx": {
     "mtime": 1782209318.4118128,
     "hash": "b68109929474596ae4a23012c75aabae"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\__tests__\\CycleActivationChecklist.test.jsx": {
-    "mtime": 1782746364.9864933,
-    "hash": "4735cc92a29bdaccb1ac354de8622bf7"
+    "mtime": 1782758084.9059074,
+    "hash": "c61dfe35bf36e4eca0e98e9c9e795b51"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\admin\\exam-workspace\\panels\\__tests__\\DocumentsPanel.test.jsx": {
     "mtime": 1782735551.2918313,
@@ -4196,8 +4196,8 @@
     "hash": "e2217e464ed31a654070fd435bf00e33"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\study\\mocks\\attemptEventBus.js": {
-    "mtime": 1779868904.4871817,
-    "hash": "68a42926ddde7df61c829f000708f56b"
+    "mtime": 1782758084.930918,
+    "hash": "cce40306dde72f060b0f6bd766f26a84"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\study\\mocks\\AttemptShellRouter.jsx": {
     "mtime": 1779879886.2884724,
@@ -4350,6 +4350,10 @@
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\study\\mocks\\components\\shell\\hooks\\useVisibility.js": {
     "mtime": 1779868904.5281606,
     "hash": "f1a4c0d7b95e4e9cdd110b6e920bb9e4"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\study\\mocks\\__tests__\\attemptEventBus.delivery.test.js": {
+    "mtime": 1782758084.9079075,
+    "hash": "79696cd09009737eaf79bc5315b4db18"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\frontend\\src\\pages\\study\\mocks\\__tests__\\MockAttemptShell.firstVisit.test.jsx": {
     "mtime": 1782747035.5102508,
