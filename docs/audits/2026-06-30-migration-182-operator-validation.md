@@ -9,6 +9,23 @@ Do NOT mark migration 182 complete from code inspection alone. Each item below r
 
 ## 1. Target Supabase environment
 
+Run in the Supabase SQL editor or psql to capture the execution context:
+
+```sql
+select
+  current_database() as database_name,
+  current_user as executing_role,
+  now() at time zone 'utc' as validation_utc;
+```
+
+Paste output:
+
+```
+<FILL IN: raw query output>
+```
+
+Also record:
+
 ```
 Project ref:   <FILL IN: e.g. abcdefghij>
 Project URL:   <FILL IN: e.g. https://abcdefghij.supabase.co>
@@ -32,7 +49,7 @@ Migration file SHA256 (repo side — verify matches deployed file):
 sha256sum app/supabase/migrations/182_mock_correction_draft_atomic_rpcs.sql
 ```
 
-Expected output will differ if the file was modified after the original commit. Record actual output:
+Record actual output:
 
 ```
 <FILL IN: actual sha256sum output>
@@ -54,11 +71,9 @@ Validation completed (UTC): <FILL IN>
 Run in the Supabase SQL editor or psql:
 
 ```sql
-SELECT version, name, statements, execution_time
-FROM supabase_migrations.schema_migrations
-WHERE version = '182'
-   OR name ILIKE '%182%'
-ORDER BY version;
+select *
+from supabase_migrations.schema_migrations
+where version::text = '182';
 ```
 
 Paste output:
@@ -67,7 +82,7 @@ Paste output:
 <FILL IN: raw query output>
 ```
 
-Pass condition: a single row with `version = '182'` (or equivalent slot), `name` matching `182_mock_correction_draft_atomic_rpcs`, and a non-null `execution_time`.
+Pass condition: exactly one row exists for version 182.
 
 ---
 
@@ -84,63 +99,47 @@ Expected signatures from the migration source:
 Run against the live DB to confirm:
 
 ```sql
-SELECT
-    p.proname                                    AS function_name,
-    pg_catalog.pg_get_function_arguments(p.oid)  AS argument_types,
-    pg_catalog.pg_get_function_result(p.oid)     AS return_type,
-    p.prosecdef                                  AS security_definer,
-    p.proowner::regrole::text                    AS owner,
-    p.proconfig                                  AS config_overrides
-FROM pg_catalog.pg_proc p
-JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
-WHERE n.nspname = 'public'
-  AND p.proname IN (
-      'ensure_mock_correction_draft',
-      'ensure_mock_correction_drafts',
-      'replace_manual_mock_correction_drafts'
-  )
-ORDER BY p.proname;
+with targets(signature) as (
+  values
+    ('public.ensure_mock_correction_draft(uuid,uuid,text,text,text,jsonb)'),
+    ('public.ensure_mock_correction_drafts(uuid,uuid,jsonb)'),
+    ('public.replace_manual_mock_correction_drafts(uuid,uuid,jsonb)')
+)
+select
+  t.signature,
+  p.oid::regprocedure as resolved_function,
+  pg_get_userbyid(p.proowner) as owner,
+  p.prosecdef as security_definer,
+  p.proconfig as function_config,
+  pg_get_function_result(p.oid) as return_type
+from targets t
+left join pg_proc p
+  on p.oid = to_regprocedure(t.signature)
+order by t.signature;
 ```
 
 Paste output:
 
 ```
-<FILL IN: raw query output — must show all three rows>
+<FILL IN: raw query output — must show all three rows with non-null resolved_function>
 ```
 
-Pass condition: all three functions present with the exact argument types listed above.
+Pass condition: all three functions resolve (`resolved_function` is not null) with the exact argument types listed above.
 
 ---
 
 ## 6. Owner, SECURITY DEFINER, and search_path
 
-Expected (from migration source):
-- Owner: `postgres` (migration runner; Supabase default)
-- `prosecdef = true` for all three functions
-- `search_path = public, pg_temp` for all three functions
-
-The query in §5 above (`proowner`, `prosecdef`, `proconfig`) covers this. Additionally confirm `search_path` is pinned:
-
-```sql
-SELECT proname, proconfig
-FROM pg_proc
-WHERE proname IN (
-    'ensure_mock_correction_draft',
-    'ensure_mock_correction_drafts',
-    'replace_manual_mock_correction_drafts'
-)
-AND pronamespace = 'public'::regnamespace;
-```
-
-Paste output:
+The above query in §5 covers `owner`, `security_definer`, and `function_config`. Record the owner here:
 
 ```
-<FILL IN: raw query output>
+owner (all three functions): <FILL IN: record the actual owner; must be a trusted migration/runtime role>
 ```
 
-Pass condition:
-- `prosecdef = true` for all three (confirmed in §5 output)
-- `proconfig` contains `search_path=public, pg_temp` for all three
+Pass conditions (all enforced by the migration source):
+- `security_definer = true` for all three functions
+- `function_config` contains `search_path=public, pg_temp` for all three functions
+- Owner is a trusted migration/runtime role (not anon, authenticated, or an untrusted role)
 
 ---
 
@@ -149,24 +148,22 @@ Pass condition:
 Run the grantee query:
 
 ```sql
-SELECT
-    p.proname                                               AS function_name,
-    pg_catalog.pg_get_function_arguments(p.oid)            AS args,
-    r.rolname                                              AS grantee,
-    has_function_privilege(r.oid, p.oid, 'EXECUTE')        AS can_execute
-FROM pg_catalog.pg_proc p
-JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
-CROSS JOIN (
-    SELECT oid, rolname FROM pg_roles
-    WHERE rolname IN ('anon', 'authenticated', 'service_role')
-) r
-WHERE n.nspname = 'public'
-  AND p.proname IN (
-      'ensure_mock_correction_draft',
-      'ensure_mock_correction_drafts',
-      'replace_manual_mock_correction_drafts'
-  )
-ORDER BY p.proname, r.rolname;
+with targets(signature) as (
+  values
+    ('public.ensure_mock_correction_draft(uuid,uuid,text,text,text,jsonb)'),
+    ('public.ensure_mock_correction_drafts(uuid,uuid,jsonb)'),
+    ('public.replace_manual_mock_correction_drafts(uuid,uuid,jsonb)')
+),
+roles(role_name) as (
+  values ('anon'), ('authenticated'), ('service_role')
+)
+select
+  t.signature,
+  r.role_name,
+  has_function_privilege(r.role_name, t.signature, 'EXECUTE') as can_execute
+from targets t
+cross join roles r
+order by t.signature, r.role_name;
 ```
 
 Paste output:
@@ -189,60 +186,120 @@ Pass condition: `can_execute = false` for `anon` and `authenticated` on all thre
 
 ## 8. Rollback-safe smoke-test — no mutation
 
-Run a `BEGIN` / `ROLLBACK` dry-run to confirm the migration SQL executes without error and leaves no permanent change. Use a read-only call wrapped in a transaction that you roll back.
+Migration 182 was applied previously. Do NOT re-execute the migration file. Perform only post-apply metadata and rollback-safe functional checks.
 
-### 8a. BEGIN / ROLLBACK dry-run of the migration block (if not yet applied)
-
-If the migration has not yet been applied to this environment, run:
+### 8a. Find a disposable platform_attempt mock for smoke-testing
 
 ```sql
-BEGIN;
-
--- Paste the full contents of 182_mock_correction_draft_atomic_rpcs.sql here,
--- or run: \i app/supabase/migrations/182_mock_correction_draft_atomic_rpcs.sql
-
-ROLLBACK;
+select id, user_id, source_type
+from public.mock_tests
+where source_type = 'platform_attempt'
+order by created_at desc
+limit 5;
 ```
 
-Expected output: `ROLLBACK` with no errors. Paste:
+Paste output (choose one `id` as `<DISPOSABLE_PLATFORM_MOCK_UUID>` below):
 
 ```
-<FILL IN: psql output — should end with "ROLLBACK">
+<FILL IN: raw query output>
 ```
 
-### 8b. Ownership / source-type guard smoke-test (post-apply, read-only safe)
+### 8b. Ownership / source-type guard smoke-test
 
-After the migration is applied, verify the ownership guard rejects an invalid call without mutating any data:
+Replace `<DISPOSABLE_PLATFORM_MOCK_UUID>` with the `id` selected above, then run the entire block:
 
 ```sql
--- This SHOULD raise 'platform_attempt mock not found for user' and change nothing.
-SELECT public.ensure_mock_correction_drafts(
-    '00000000-0000-0000-0000-000000000000'::uuid,   -- nonexistent mock_test_id
-    '00000000-0000-0000-0000-000000000000'::uuid,   -- nonexistent user_id
-    '[{"category":"conceptual","title":"test","source_questions":[]}]'::jsonb
-);
+begin;
+
+do $audit$
+declare
+  v_mock_id    uuid := '<DISPOSABLE_PLATFORM_MOCK_UUID>';
+  v_wrong_user uuid := gen_random_uuid();
+  v_before     bigint;
+  v_after      bigint;
+begin
+  select count(*)
+  into v_before
+  from public.mock_correction_tasks
+  where mock_test_id = v_mock_id;
+
+  -- Test 1: singular RPC rejects wrong user (D2 ownership guard)
+  begin
+    perform public.ensure_mock_correction_draft(
+      v_mock_id,
+      v_wrong_user,
+      'operator_test',
+      null,
+      'Operator validation',
+      '[]'::jsonb
+    );
+    raise exception 'AUDIT FAIL: singular RPC accepted wrong user';
+  exception
+    when no_data_found then
+      raise notice 'AUDIT PASS: singular RPC rejected wrong user';
+  end;
+
+  -- Test 2: plural RPC rejects wrong user (D2 ownership guard)
+  begin
+    perform public.ensure_mock_correction_drafts(
+      v_mock_id,
+      v_wrong_user,
+      '[]'::jsonb
+    );
+    raise exception 'AUDIT FAIL: plural RPC accepted wrong user';
+  exception
+    when no_data_found then
+      raise notice 'AUDIT PASS: plural RPC rejected wrong user';
+  end;
+
+  -- Test 3: manual replacement rejects platform_attempt source_type
+  begin
+    perform public.replace_manual_mock_correction_drafts(
+      v_mock_id,
+      (select user_id from public.mock_tests where id = v_mock_id),
+      '[]'::jsonb
+    );
+    raise exception 'AUDIT FAIL: manual replacement accepted platform_attempt';
+  exception
+    when raise_exception then
+      raise notice 'AUDIT PASS: manual replacement rejected platform_attempt';
+  end;
+
+  -- Confirm no rows were inserted or deleted
+  select count(*)
+  into v_after
+  from public.mock_correction_tasks
+  where mock_test_id = v_mock_id;
+
+  if v_before <> v_after then
+    raise exception
+      'AUDIT FAIL: row count changed from % to %',
+      v_before,
+      v_after;
+  end if;
+
+  raise notice
+    'AUDIT PASS: no mutation; before=%, after=%',
+    v_before,
+    v_after;
+end
+$audit$;
+
+rollback;
 ```
 
-Expected: raises `no_data_found` error. Paste actual output:
+Paste the complete output (notices + final statement):
 
 ```
-<FILL IN: error output — must show "platform_attempt mock not found for user" or equivalent>
+<FILL IN: must show three AUDIT PASS notices and end with "ROLLBACK">
 ```
 
-Pass condition: the call raises an error (guard fired); no rows inserted into `mock_correction_tasks` for those UUIDs.
-
-Confirm no mutation:
-
-```sql
-SELECT COUNT(*) FROM mock_correction_tasks
-WHERE mock_test_id = '00000000-0000-0000-0000-000000000000'::uuid;
-```
-
-Expected: `0`. Paste:
-
-```
-<FILL IN: count output — must be 0>
-```
+Pass conditions:
+- `AUDIT PASS: singular RPC rejected wrong user`
+- `AUDIT PASS: plural RPC rejected wrong user`
+- `AUDIT PASS: manual replacement rejected platform_attempt`
+- `AUDIT PASS: no mutation; before=N, after=N`
+- Final statement: `ROLLBACK`
 
 ---
 
@@ -259,7 +316,7 @@ All 8 items above must be completed with real DB output before this record count
 | 5. Three RPC signatures confirmed | ☐ | |
 | 6. SECURITY DEFINER + search_path confirmed | ☐ | |
 | 7. Privilege matrix: anon/authenticated=false, service_role=true | ☐ | |
-| 8. Smoke-test: no mutation, guard fires | ☐ | |
+| 8. Smoke-test: three guards fire, no mutation, ROLLBACK | ☐ | |
 
 Operator sign-off:
 
@@ -268,4 +325,6 @@ Signed:    <FILL IN: operator identity>
 Date/time: <FILL IN: UTC>
 ```
 
-Once all items are ☑ and signed, update `docs/status/career-copilot-checklist.md` row "Correction idempotency guard (23505) / atomic persistence" from `CODE-FIXED, MIGRATION VALIDATION PENDING` to `OPERATOR VALIDATED (YYYY-MM-DD)` and update the `FF_MOCK_MASTERY_WRITES=live` blocked-gate item (b) from `OPERATOR PENDING — durable audit required` to `OPERATOR VALIDATED`.
+Once all items are ☑ and signed, update `docs/status/career-copilot-checklist.md`:
+- Row "Correction idempotency guard (23505) / atomic persistence": `CODE-FIXED, MIGRATION VALIDATION PENDING` → `OPERATOR VALIDATED — 2026-06-30`
+- `FF_MOCK_MASTERY_WRITES=live` blocked-gate item (b): remove migration 182 from unresolved blockers (scheduler, PR-6, PR-7, and canary blockers remain)
