@@ -12,6 +12,11 @@
  *   GET    .../score-snapshots[?status=&exam_phase_id=]            → list (one scope)
  *   PATCH  .../score-snapshots/{id}/review                         → status transition
  *
+ * GET scope contract (breaking change from pre-PR-B):
+ *   exam_phase_id absent → IS NULL rows only (exam-wide).  All-scope reads are
+ *   not supported — operators review one scope at a time to prevent comparing
+ *   incomparable evidence sets.
+ *
  * Transition matrix:
  *   draft     → reviewed | rejected
  *   reviewed  → locked | rejected | draft
@@ -27,6 +32,11 @@
  *
  * score_components keys:
  *   frequency_component, coverage_component, evidence_quality
+ *
+ * Race safety:
+ *   loadRef always points to the latest load() so post-mutation reloads use
+ *   the current scope even if scope changed while the mutation was in flight.
+ *   isMutating disables scope/status controls while either action is busy.
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -62,9 +72,6 @@ function ReviewerNotesModal({ open, onCancel, onConfirm, busy, error, invokerRef
       setNotes("");
       setTimeout(() => textareaRef.current?.focus(), 50);
     } else {
-      // Only restore focus to invoker if it is still mounted in the document.
-      // After a successful reload the Revert button is removed; the caller
-      // focuses a stable panel element instead.
       if (invokerRef?.current && document.contains(invokerRef.current)) {
         invokerRef.current.focus();
       }
@@ -72,7 +79,9 @@ function ReviewerNotesModal({ open, onCancel, onConfirm, busy, error, invokerRef
   }, [open, invokerRef]);
 
   function handleKeyDown(e) {
-    if (e.key === "Escape") { onCancel(); return; }
+    // Ignore all dismissal paths while a mutation is in flight to prevent
+    // losing operator-typed rationale if the PATCH then fails.
+    if (e.key === "Escape") { if (!busy) onCancel(); return; }
     if (e.key !== "Tab") return;
     const focusable = dialogRef.current?.querySelectorAll(
       'button:not([disabled]), textarea, [tabindex]:not([tabindex="-1"])',
@@ -96,7 +105,11 @@ function ReviewerNotesModal({ open, onCancel, onConfirm, busy, error, invokerRef
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onKeyDown={handleKeyDown}
     >
-      <div className="absolute inset-0 bg-black/30" onClick={onCancel} />
+      {/* Backdrop — ignored while mutation is in flight */}
+      <div
+        className="absolute inset-0 bg-black/30"
+        onClick={() => { if (!busy) onCancel(); }}
+      />
       <div
         ref={dialogRef}
         role="dialog"
@@ -127,7 +140,12 @@ function ReviewerNotesModal({ open, onCancel, onConfirm, busy, error, invokerRef
           aria-label="Reversal rationale (required)"
         />
         {error && (
-          <div className="err-row" style={{ fontSize: 12 }} data-testid="notes-modal-error">
+          <div
+            className="err-row"
+            style={{ fontSize: 12 }}
+            data-testid="notes-modal-error"
+            role="alert"
+          >
             {error}
           </div>
         )}
@@ -238,11 +256,9 @@ export default function ScoreSnapshotPanel() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Scope: ?phase=<id> → phase-scoped; absent → exam-wide (IS NULL rows only).
-  // Validate the URL value against available phases to prevent silent empty results.
   const phaseParam = searchParams.get("phase") || "";
   const validPhase = phases.find((p) => p.id === phaseParam);
   const invalidPhase = phaseParam !== "" && !validPhase;
-  // Use validated scope for all API calls; fall back to exam-wide on invalid URL value.
   const effectivePhase = invalidPhase ? "" : phaseParam;
 
   const [snapshots, setSnapshots]       = useState([]);
@@ -251,28 +267,24 @@ export default function ScoreSnapshotPanel() {
   const [statusFilter, setStatusFilter] = useState("");
   const [expandedId, setExpandedId]     = useState(null);
 
-  // locked → reviewed modal state
-  const [notesModal, setNotesModal]   = useState(null); // { snapshotId } | null
+  const [notesModal, setNotesModal]   = useState(null);
   const [notesError, setNotesError]   = useState("");
   const invokerRef = useRef(null);
-
-  // Stable heading ref — used as focus fallback after successful locked reversal
-  // (the Revert button is removed after reload so invokerRef becomes detached).
   const panelHeadingRef = useRef(null);
-
-  // Generation counter — prevents stale out-of-order responses from committing
-  // data for the wrong scope/status combination.
   const loadGenRef = useRef(0);
 
   const computeAction = useApiAction();
   const reviewAction  = useApiAction();
+
+  // True while any mutation is in flight — scope/status changes are disabled.
+  const isMutating = computeAction.busy || reviewAction.busy;
 
   const load = useCallback(async () => {
     if (!exam?.id) return;
     const gen = ++loadGenRef.current;
     setLoading(true);
     setError("");
-    setSnapshots([]); // clear stale data immediately on new load
+    setSnapshots([]);
     try {
       const qs = new URLSearchParams();
       if (statusFilter) qs.set("status", statusFilter);
@@ -280,16 +292,21 @@ export default function ScoreSnapshotPanel() {
       const d = await api.get(
         `${EI_BASE}/exams/${encodeURIComponent(exam.id)}/score-snapshots?${qs}`,
       );
-      if (gen !== loadGenRef.current) return; // stale — a newer load is in flight
+      if (gen !== loadGenRef.current) return;
       setSnapshots(d?.snapshots || []);
     } catch (e) {
       if (gen !== loadGenRef.current) return;
       setError(e?.message || "Failed to load snapshots");
-      setSnapshots([]); // do not render prior-scope data on failure
+      setSnapshots([]);
     } finally {
       if (gen === loadGenRef.current) setLoading(false);
     }
   }, [exam?.id, statusFilter, effectivePhase]);
+
+  // loadRef always points to the latest load closure so post-mutation reloads
+  // use the current scope even if scope changed during the mutation.
+  const loadRef = useRef(load);
+  useEffect(() => { loadRef.current = load; }, [load]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -305,8 +322,6 @@ export default function ScoreSnapshotPanel() {
     });
   }
 
-  // Compute sends scope via JSON body matching ComputeSnapshotBody.exam_phase_id.
-  // Never send scope via query string — the endpoint does not read it there.
   async function compute() {
     const body = effectivePhase ? { exam_phase_id: effectivePhase } : {};
     const result = await computeAction.run({
@@ -317,7 +332,8 @@ export default function ScoreSnapshotPanel() {
       successMessage: "Compute finished.",
       errorMessage: "Compute failed.",
     });
-    if (result?.ok) await load();
+    // Use loadRef so reload uses current scope even if it changed during compute.
+    if (result?.ok) await loadRef.current();
   }
 
   async function review(snapshotId, newStatus, reviewerNotes) {
@@ -337,18 +353,17 @@ export default function ScoreSnapshotPanel() {
     const result = await review(notesModal.snapshotId, "reviewed", notes);
     if (result?.ok) {
       setNotesModal(null);
-      await load();
-      // Revert button is gone after reload; focus the panel heading as stable fallback.
+      await loadRef.current();
       setTimeout(() => panelHeadingRef.current?.focus(), 50);
     } else {
-      // Keep modal open — preserve typed notes so operator can retry.
       setNotesError(result?.error?.message || "Could not revert snapshot. Please try again.");
     }
   }
 
   async function handleReview(snap, status) {
     const result = await review(snap.id, status);
-    if (result?.ok) await load();
+    // Use loadRef so reload uses current scope even if it changed during review.
+    if (result?.ok) await loadRef.current();
   }
 
   function actions(snap) {
@@ -356,7 +371,6 @@ export default function ScoreSnapshotPanel() {
 
     function btn(label, status, variant = "small") {
       const isLockedReversal = snap.status === "locked" && status === "reviewed";
-      // Lock requires resolved topic identity so the operator knows what is being approved.
       const isLockWithoutIdentity = status === "locked" && !snap.topic_name;
       return (
         <button
@@ -388,10 +402,21 @@ export default function ScoreSnapshotPanel() {
     return map[snap.status] || null;
   }
 
-  // Scope selector options: exam-wide + each phase from context.
+  // Detect duplicate phase_name values (across different exam cycles).
+  // When duplicates exist, append cycle ID to disambiguate.
+  const phaseNameCount = phases.reduce((acc, ph) => {
+    acc[ph.phase_name] = (acc[ph.phase_name] || 0) + 1;
+    return acc;
+  }, {});
+
   const scopeOptions = [
     { id: "", label: "Exam-wide" },
-    ...phases.map((ph) => ({ id: ph.id, label: ph.phase_name || ph.id })),
+    ...phases.map((ph) => ({
+      id: ph.id,
+      label: phaseNameCount[ph.phase_name] > 1
+        ? `${ph.phase_name} · ${ph.exam_cycle_id}`
+        : (ph.phase_name || ph.id),
+    })),
   ];
 
   return (
@@ -419,7 +444,7 @@ export default function ScoreSnapshotPanel() {
           </h2>
         </div>
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <button className="btn small" onClick={load} disabled={loading}>
+          <button className="btn small" onClick={load} disabled={loading || isMutating}>
             {loading ? "Loading…" : "Refresh"}
           </button>
           <button
@@ -450,7 +475,7 @@ export default function ScoreSnapshotPanel() {
         </div>
       )}
 
-      {/* Scope selector */}
+      {/* Scope selector — disabled while a mutation is in flight */}
       <div className="row" style={{ gap: 6, alignItems: "center" }}>
         <span style={{ fontSize: 12, color: "var(--ink-mute)", marginRight: 2 }}>Scope:</span>
         {scopeOptions.map((opt) => (
@@ -458,6 +483,7 @@ export default function ScoreSnapshotPanel() {
             key={opt.id}
             className={"btn small" + (effectivePhase === opt.id ? " active" : "")}
             onClick={() => setScope(opt.id)}
+            disabled={isMutating}
             data-testid={`scope-${opt.id || "exam"}`}
           >
             {opt.label}
@@ -465,13 +491,14 @@ export default function ScoreSnapshotPanel() {
         ))}
       </div>
 
-      {/* Status filter */}
+      {/* Status filter — disabled while a mutation is in flight */}
       <div className="row" style={{ gap: 6 }}>
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
             className={"btn small" + (statusFilter === f.value ? " active" : "")}
             onClick={() => setStatusFilter(f.value)}
+            disabled={isMutating}
             data-testid={`filter-${f.value || "all"}`}
           >
             {f.label}

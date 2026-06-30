@@ -2203,47 +2203,60 @@ _SNAPSHOT_COLUMNS = (
 )
 
 
+_ENRICH_BATCH = 250  # matches score_snapshots.py _BATCH convention
+
+
 def _enrich_snapshot_topics(sb, rows: list) -> list:
     """Attach topic_name and topic_path to each snapshot row.
 
-    Batch-fetches from the topics table so the list endpoint returns
-    human-readable names without an N+1 query per row.
-    topic_path is the parent topic's name (one level up).
+    Batches topic lookups in chunks of _ENRICH_BATCH IDs to stay within
+    PostgREST/URL query limits — snapshot history is append-only and can
+    accumulate thousands of rows.  topic_path is the parent topic name
+    (one level up from the tagged topic).
     """
     if not rows:
         return rows
-    topic_ids = [r["topic_id"] for r in rows if r.get("topic_id")]
-    if not topic_ids:
+    unique_ids = list({r["topic_id"] for r in rows if r.get("topic_id")})
+    if not unique_ids:
         return rows
-    try:
-        topics_data = (
-            sb.table("topics")
-            .select("id, name, parent_topic_id")
-            .in_("id", topic_ids)
-            .execute()
-            .data or []
-        )
-    except Exception:
-        return rows
-    topic_by_id: dict = {t["id"]: t for t in topics_data}
-    parent_ids = [
-        t["parent_topic_id"]
-        for t in topics_data
-        if t.get("parent_topic_id") and t["parent_topic_id"] not in topic_by_id
-    ]
-    if parent_ids:
+
+    topic_by_id: dict = {}
+    chunks = [unique_ids[i : i + _ENRICH_BATCH] for i in range(0, len(unique_ids), _ENRICH_BATCH)]
+    for chunk in chunks:
         try:
-            parents = (
+            batch = (
                 sb.table("topics")
-                .select("id, name")
-                .in_("id", parent_ids)
+                .select("id, name, parent_topic_id")
+                .in_("id", chunk)
                 .execute()
                 .data or []
             )
-            for p in parents:
+            for t in batch:
+                topic_by_id[t["id"]] = t
+        except Exception:
+            # On any batch failure return rows unresolved rather than partial names.
+            return rows
+
+    parent_ids = list({
+        t["parent_topic_id"]
+        for t in topic_by_id.values()
+        if t.get("parent_topic_id") and t["parent_topic_id"] not in topic_by_id
+    })
+    parent_chunks = [parent_ids[i : i + _ENRICH_BATCH] for i in range(0, len(parent_ids), _ENRICH_BATCH)]
+    for chunk in parent_chunks:
+        try:
+            batch = (
+                sb.table("topics")
+                .select("id, name")
+                .in_("id", chunk)
+                .execute()
+                .data or []
+            )
+            for p in batch:
                 topic_by_id[p["id"]] = p
         except Exception:
             pass
+
     for r in rows:
         t = topic_by_id.get(r.get("topic_id") or "", {})
         r["topic_name"] = t.get("name")

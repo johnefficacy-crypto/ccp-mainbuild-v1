@@ -718,20 +718,66 @@ def test_list_snapshots_enrichment_is_graceful_on_missing_topics():
 # ─── Compute: body scope contract ────────────────────────────────────────────
 
 def test_compute_scope_body_persists_exam_phase_id():
-    """exam_phase_id from the request body is forwarded to compute_exam_topic_scores.
+    """exam_phase_id in the POST body is written to every inserted snapshot row.
 
-    This tests the contract: the frontend sends exam_phase_id in the POST body
-    (not as a query param), and the backend must honour it.
+    Regression: a backend that ignores body.exam_phase_id would still return
+    HTTP 200 and exam_id=='e1', so this test also inspects the written rows.
+    No null-scope row and no Phase-B row must appear in the result.
     """
-    seed = _compute_seed()
-    # Seed a valid exam phase so the phase-validation in score_snapshots.py passes.
-    seed["exam_phases"] = [
-        {"id": "ph-a", "exam_id": "e1", "phase_name": "Tier I", "phase_order": 1},
-    ]
+    # Phase-scoped seed: paper and question carry exam_phase_id='ph-a'.
+    seed = {
+        "exams": [
+            {"id": "e1", "slug": "ssc-cgl", "name": "SSC CGL",
+             "exam_type": "recruitment", "is_active": True},
+        ],
+        "exam_phases": [
+            {"id": "ph-a", "exam_id": "e1", "phase_name": "Tier I", "phase_order": 1},
+        ],
+        "pyq_papers": [
+            # exam_phase_id on the paper causes the phase-scoped paper query to match.
+            {"id": "p1", "exam_id": "e1", "trust_status": "verified", "exam_phase_id": "ph-a"},
+        ],
+        "pyq_questions": [
+            {"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"},
+        ],
+        "pyq_question_topic_tags": [
+            {"question_id": "q1", "topic_id": "t1",
+             "reviewer_status": "verified", "tag_role": "primary"},
+        ],
+        "exam_topic_coverage": [
+            # Coverage row carries exam_phase_id so the phase-scoped coverage query matches.
+            {"topic_id": "t1", "exam_id": "e1", "exam_priority_score": 80,
+             "is_high_yield": True, "reviewer_status": "locked", "exam_phase_id": "ph-a"},
+        ],
+    }
     sb = _SnapshotSBStub(seed)
     client = TestClient(_build_app(sb))
-    # Send exam_phase_id in the body — must not raise 422
     r = client.post(_COMPUTE_BASE, json={"exam_phase_id": "ph-a"})
     assert r.status_code == 200
     body = r.json()
     assert body["exam_id"] == "e1"
+
+    # Every newly written snapshot row must carry exam_phase_id='ph-a'.
+    written = sb.db.get("exam_topic_score_snapshots", [])
+    assert written, "compute must have written at least one snapshot row"
+    for row in written:
+        assert row.get("exam_phase_id") == "ph-a", (
+            f"row {row.get('id')} has exam_phase_id={row.get('exam_phase_id')!r},"
+            " expected 'ph-a'"
+        )
+        # No null-scope or Phase-B leakage.
+        assert row.get("exam_phase_id") is not None, "null-scope row created for a phase compute"
+
+
+def test_compute_exam_wide_does_not_set_exam_phase_id():
+    """Exam-wide compute (no body.exam_phase_id) writes null-scope rows only."""
+    seed = _compute_seed()
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.post(_COMPUTE_BASE, json={})
+    assert r.status_code == 200
+    written = sb.db.get("exam_topic_score_snapshots", [])
+    for row in written:
+        assert row.get("exam_phase_id") is None, (
+            f"exam-wide compute wrote a phase-scoped row: {row}"
+        )
