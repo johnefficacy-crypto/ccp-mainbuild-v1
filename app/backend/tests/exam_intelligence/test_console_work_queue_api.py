@@ -8,6 +8,7 @@ pages), required-read failure propagation, and bounded (no per-exam) reads.
 from __future__ import annotations
 
 import pytest
+from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -91,7 +92,8 @@ def _build_app(sb, role="super_admin"):
     return app
 
 
-_RECENT = "2026-06-16T00:00:00+00:00"
+# Dynamic so the date never ages into the 14-day stale window (STALE_REVIEW_DAYS=14).
+_RECENT = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
 _STALE = "2026-01-01T00:00:00+00:00"
 
 
