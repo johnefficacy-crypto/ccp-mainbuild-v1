@@ -311,7 +311,7 @@ Migration number for EWP-1 must come from `select max(version)::int + 1 from sch
 | EWP-6 — Paragraph Builder | PLANNED — blocked on EWP-3 merged + release gates §16 of architecture doc | Evidence-gated scaffolding (via `tier_rank`), outline scratchpad as `outline_json`. |
 | EWP-7 — Descriptive mock runtime | PLANNED — blocked on EWP-6 stable + release gates §16 of architecture doc | Extends mock `AnswerBody`. Adds `descriptive` interface mode to `AttemptShellRouter`. Wires M176/M177 columns. |
 | `FF_WRITING_MASTERY_WRITES` | BLOCKED — live prohibited until Lane A gate clears | Defaults to `off`. Shadow mode is permitted at any time. Live mode blocked on Lane A gate + §10.3 promotion gates + operator approval; `live` publishes to the unified aggregator, never writes `user_topic_mastery` directly. |
-| `version_set_hash` test vector | PLANNED — required in EWP-1 | Fixed input → expected SHA-256 hex. Both Python helper and integration test must use the same vector. See AGENTS.md §3 hash-parity tests. |
+| `version_set_hash` test vector | PLANNED — required in EWP-1 | Backend fixed-input → pinned SHA-256 hex vector, plus an API integration assertion that the value returned to clients matches. Clients consume the hash and never compute it (AGENTS.md EWP-3), so there is no client-side parity test. |
 | UTF-16 span offset contract | PLANNED — required in EWP-2 | `span_start_utf16 + span_end_utf16 + quoted_text` verification in both Python evaluator and React frontend. |
 | Prompt bank seed | PLANNED — pre-aspirant launch | 50 sentence-construction + 50 sentence-correction + 100 grammar + 50 vocabulary + 20 paragraph prompts. All must pass reviewer lifecycle (`reviewer_status = 'verified'`, `is_active = true`) before aspirant launch. Authored in Exam Workspace CMS; no new admin surface. |
 | Release gates for paragraphs/essays | PLANNED | 10 quality gates in §16 of architecture doc. Not time-based. Operator approval required before EWP-6 begins. |
@@ -321,8 +321,9 @@ Migration number for EWP-1 must come from `select max(version)::int + 1 from sch
 | Item | Gate |
 |---|---|
 | EWP-1 migration applied | OPERATOR PENDING — apply to staging, verify RLS, confirm no authenticated/anon write access to issue/projection/mastery tables |
-| `version_set_hash` cross-side parity | OPERATOR PENDING — confirm Python helper and React consumer produce identical digests for same input |
-| Shadow mastery output | OPERATOR PENDING — after EWP-2 deploys, verify shadow rows appear and no `user_topic_mastery` mutations occur |
+| `version_set_hash` backend vector | OPERATOR PENDING — confirm the backend helper output matches the pinned fixed-input vector and the API returns that exact value (clients consume only) |
+| Append-only immutability triggers | OPERATOR PENDING — confirm service-role UPDATE and DELETE fail on every immutable table (§12.4) on staging |
+| Shadow mastery output | OPERATOR PENDING — after EWP-2B deploys, verify source-neutral evidence + shadow rows appear and no `user_topic_mastery` mutations occur |
 | Prompt bank reviewed | OPERATOR PENDING — 270 prompts through CMS review lifecycle before aspirant launch |
 | Release gates §16 | OPERATOR PENDING — 10 gates must be documented in this checklist before EWP-6 begins |
 

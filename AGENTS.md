@@ -424,6 +424,14 @@ updated or deleted after insert. Reopen creates a new version row; an issue
 outcome change appends a new resolution event. The immutable history is
 required for lineage tracking and stale-evaluation audit.
 
+This is enforced at the DATABASE, not just by convention: EWP-1 installs
+`BEFORE UPDATE OR DELETE` raise-exception triggers on the append-only tables
+(`writing_unit_versions`, `writing_issue_events`,
+`writing_issue_resolution_events`, `writing_issue_projections`,
+`writing_issue_review_events`, `user_topic_mastery_evidence`,
+`writing_mastery_shadow`). RLS does not constrain `service_role`; the
+triggers do. Tests must prove service-role UPDATE and DELETE fail.
+
 ### EWP-3. `version_set_hash` — one backend helper, clients consume only
 
 `version_set_hash` is a SHA-256 over a domain-separated binary payload
@@ -454,6 +462,27 @@ either one.
 
 The external/LLM evaluation must run with NO database transaction open; the
 short locking/write transaction begins only after the evaluator returns.
+
+**Canonical lock order (deadlock-free):** every multi-row path locks
+`writing_sessions` → `writing_session_units` (ascending `unit_number`) →
+`writing_evaluations`/`writing_session_checks` →
+`writing_evaluation_jobs`/`writing_mastery_outbox`. Never hold a unit lock
+and then acquire the session lock. The evaluator locks session-before-unit
+because it later calls `finalize_writing_session`, which also locks
+session-then-units. Reopen follows the same order.
+
+**Atomic job acknowledgement:** the claimed `writing_evaluation_jobs` row is
+set `status='done'` in the SAME transaction as all evaluation side effects.
+There is no window where side effects are durable but the job is still
+claimable. A replay guard additionally checks for an already-terminal
+evaluation before re-processing. A crash-after-commit/before-ack test is
+required.
+
+**Evaluator returns `issue_type` only — never taxonomy IDs.** The backend
+maps `issue_type` to the canonical English microtopic via
+`writing_issue_type_microtopic_map` and validates subject + `level` + active
+state before insert. The model must not choose repository taxonomy UUIDs;
+JSON-schema validation proves shape only.
 
 ### EWP-5. `finalize_writing_session` owns rollup-derived state transitions
 
@@ -490,10 +519,18 @@ outbox row.
 
 **End-to-end idempotency:** `user_topic_mastery_evidence` and
 `writing_mastery_shadow` carry a deterministic `evidence_key`
-(`sha256(user_id, evaluation_id, issue_projection_id, microtopic_id,
-evidence_tier, source_type)`) with a unique constraint. The evidence insert
-(`ON CONFLICT DO NOTHING`) and the outbox-completion UPDATE run in one
-transaction. A crash-after-insert/before-ack retry inserts no duplicate.
+(`sha256(evidence_op, user_id, evaluation_id, issue_projection_id,
+microtopic_id, evidence_tier, source_type, review_event_id)`) with a unique
+constraint. The evidence insert (`ON CONFLICT DO NOTHING`) and the
+outbox-completion UPDATE run in one transaction. A crash-after-insert/
+before-ack retry inserts no duplicate.
+
+**Shadow writes evidence (locked contract):** in `shadow`, source-neutral
+`user_topic_mastery_evidence` IS written, plus `writing_mastery_shadow`
+delta rows — only canonical aggregation into `user_topic_mastery` is
+disabled. This is deliberate so the EWP-5 planner can read writing evidence
+during the shadow period. `off` writes neither. Do not "skip evidence in
+shadow."
 
 The `FF_WRITING_MASTERY_WRITES` flag (`off | shadow | live`) defaults to
 `off`. `live` publishes validated evidence to the unified aggregator — it
@@ -506,10 +543,15 @@ value → `off`.
 production(3) < retention(4)` via a rank helper — never `evidence_tier <
 'production'` string comparison.
 
-**Post-emission invalidation is append-only:** an `invalidated` or
-`reclassified` review event after evidence exists emits a retraction /
-replacement evidence row; the aggregator nets it out. Existing evidence rows
-are never mutated.
+**Post-emission corrections are append-only and key-distinct:** an
+`invalidated` (`retract`) or `reclassified` (`replace`) review event after
+evidence exists emits a NEW evidence row with `evidence_op` + causing
+`review_event_id` in its `evidence_key` (so it does not collide with the
+original `assert` row) and a `writing_mastery_outbox` row sourced by
+`review_event_id`. The aggregator nets it out. Existing rows are never
+mutated. A `reclassified` event uses a review-override projection identity —
+it does NOT advance the session's pinned `projection_revision` (that is the
+global code ruleset, not a per-issue human correction).
 
 ### EWP-7. Only verified, active prompts reach aspirant surfaces
 

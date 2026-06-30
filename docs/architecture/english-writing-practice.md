@@ -692,6 +692,16 @@ If invalidated after feedback release: return `withdrawn` marker without reviewe
 
 Aspirants have no SELECT access to this table.
 
+#### 4.10a Effective decision and supersession
+
+Multiple review events may target one `issue_event_id` (e.g. `invalidated` then later `confirmed`). The **effective decision** is the latest event by `(created_at, id)` ordering. Derivation:
+
+- Effective `confirmed` (or no review event) → issue is `active`.
+- Effective `invalidated` → issue is `withdrawn`; excluded from `active_prior_issues`, `resolved_prior_lineages`, mastery, and planner queries.
+- Effective `reclassified` → issue uses the corrected classification via a review-override projection (§4.11a).
+
+Each review event that **changes** the effective decision emits exactly one correction evidence row keyed on that `review_event_id` (§4.12c). A review event that does not change the effective decision (e.g. a redundant `confirmed`) emits nothing. Superseded events remain in the append-only history but do not drive current state.
+
 ---
 
 ### 4.11 `writing_issue_projections`
@@ -722,6 +732,12 @@ Re-evaluation under new projection logic inserts a new row at a higher `projecti
 
 The lock/isolation must be acquired before reading `prior_occurrence_count` and held until the INSERT commits.
 
+#### 4.11a Review-override projections vs revision bumps
+
+`projection_revision` represents the **global code-defined projection ruleset**. It is bumped only when the projection logic is redeployed — never as a side effect of a single human review correction.
+
+A `reclassified` review event (§4.10a) produces a **review-override projection**: a new `writing_issue_projections` row carrying the corrected `canonical_error_type`, tagged in `rationale`/metadata with `override_review_event_id`, inserted at the **same** `projection_revision` the session is pinned to (or a dedicated override marker), not a higher revision. This keeps a human correction distinct from a global ruleset deployment. Consumers that read "the projection for this issue at the session's revision" must prefer a review-override row over the original when an effective `reclassified` decision exists.
+
 ---
 
 ### 4.12 `user_topic_mastery_evidence`
@@ -741,6 +757,9 @@ evidence_tier         text not null   -- 'recognition' | 'correction' | 'product
 score                 numeric
 confidence            numeric
 issue_projection_id   uuid references writing_issue_projections(id)
+evidence_op           text not null default 'assert'  -- 'assert' | 'retract' | 'replace'
+review_event_id       uuid references writing_issue_review_events(id)  -- cause for retract/replace
+supersedes_evidence_key text          -- the evidence_key this row corrects (retract/replace)
 evidence_key          text not null   -- see §4.12b
 observed_at           timestamptz not null
 metadata              jsonb not null default '{}'
@@ -781,29 +800,37 @@ Implemented as a `tier_rank(tier text) returns int` SQL helper or a fixed lookup
 
 ```
 evidence_key = SHA-256(
+  evidence_op || '\x00' ||              -- 'assert' | 'retract' | 'replace'
   user_id || '\x00' ||
   evaluation_id || '\x00' ||
   coalesce(issue_projection_id::text, 'no_projection') || '\x00' ||
   coalesce(microtopic_id::text, 'no_microtopic') || '\x00' ||
   evidence_tier || '\x00' ||
-  source_type
+  source_type || '\x00' ||
+  coalesce(review_event_id::text, 'no_review')   -- causal identity for retract/replace
 )
 ```
 
+`evidence_op` and `review_event_id` are part of the key so a retraction or replacement for the same `(evaluation, projection, tier, source)` produces a **distinct** key from the original `assert` row — it is not rejected by `unique (evidence_key)`. The original `assert` row keys with `evidence_op='assert'` and `review_event_id=null`; a `retract`/`replace` keys with the new op and the causing `review_event_id`, so each review event contributes exactly one correction row and re-running the same review event is idempotent.
+
 The `unique (evidence_key)` constraint means a worker that inserts evidence, crashes before marking the outbox done, then retries, produces `ON CONFLICT (evidence_key) DO NOTHING` — no duplicate. The evidence insert and the outbox-completion UPDATE must occur in **one transaction** so completion is only recorded when evidence is durably written.
 
-The shadow idempotency key (§10.1a) uses the same identity components — it must not collapse multiple projections, microtopics, or tiers produced by one evaluation.
+The shadow idempotency key (§10.1a) uses the same identity components (including `evidence_op` and `review_event_id`) — it must not collapse multiple projections, microtopics, tiers, or corrections produced for one evaluation.
 
 **Mastery aggregator:** a separate process reads `user_topic_mastery_evidence` and computes `user_topic_mastery`. Evidence must not directly mutate `user_topic_mastery`. The existing mastery recomputation from `mock_topic_breakdowns` must not be overwritten by a parallel writing update.
 
 #### 4.12c Invalidation correction path (post-emission)
 
-When a `writing_issue_review_events` row invalidates or reclassifies an issue **after** mastery evidence or shadow rows already exist, the existing rows are never mutated or deleted (append-only). The correction is append-only:
+When a `writing_issue_review_events` row invalidates or reclassifies an issue **after** mastery evidence or shadow rows already exist, the existing rows are never mutated or deleted (append-only). The correction is itself append-only and uses the `evidence_op` / `review_event_id` / `supersedes_evidence_key` columns:
 
-- **`invalidated`:** emit a retraction evidence row referencing the original via `metadata.retracts_evidence_key`, with a `source_type` retained and a negative/zeroing `score` semantics defined by the aggregator. The unified aggregator excludes invalidated projections and reverses their prior canonical effect on recompute.
-- **`reclassified`:** emit a new projection at a higher `projection_revision` and a replacement evidence row keyed on the new projection identity. The original evidence is retracted as above.
+- **`invalidated`:** emit a `retract` evidence row. `evidence_op='retract'`, `review_event_id` = the invalidating review event, `supersedes_evidence_key` = the original `assert` row's `evidence_key`. The aggregator nets the retraction against the asserted effect on recompute.
+- **`reclassified`:** emit a `replace` evidence row carrying the corrected classification. `evidence_op='replace'`, `review_event_id` = the reclassifying review event, `supersedes_evidence_key` = the original. The replacement uses a **review-override projection identity** (see §4.11a) — it does NOT advance the session's pinned `projection_revision`, which represents the global code-defined ruleset, not a per-issue human correction.
 
-The aggregator is the single point that nets retractions against prior effects. No writing-side code mutates `user_topic_mastery` directly.
+**Outbox for corrections:** a correction is enqueued by a `writing_mastery_outbox` row sourced by `review_event_id` (not `evaluation_id`). The outbox `idempotency_key` includes the `review_event_id` and `evidence_op`, so a later invalidation/reclassification for the same evaluation enqueues a distinct correction job. See §8.2.
+
+**Effective review-event ordering:** when multiple review events exist for one issue, the effective decision is the latest by `(created_at, id)`. Each review event that changes the effective decision emits exactly one correction row keyed on that `review_event_id`; superseded review events do not re-emit. See §4.10a.
+
+The aggregator is the single point that nets retractions/replacements against prior effects. No writing-side code mutates `user_topic_mastery` directly.
 
 ---
 
@@ -916,10 +943,18 @@ Issue span format:
   "quoted_text": "The schemes is useful",
   "suggested_text": "The schemes are useful",
   "explanation": "Plural subject requires plural verb.",
-  "severity": "must_fix",
-  "microtopic_id": "<uuid>"
+  "severity": "must_fix"
 }
 ```
+
+**The evaluator does NOT supply taxonomy IDs.** The model returns only `issue_type` (from the §5.1 enum). The backend owns the mapping from `issue_type` to the canonical `topics(id)` microtopic. JSON-schema validation only proves UUID *shape* — it cannot prove a model-supplied ID belongs to English, is `level='microtopic'`, is active, or matches the issue type. Letting the model choose arbitrary repository taxonomy IDs is forbidden.
+
+Backend resolution before any `writing_issue_events` insert:
+- map `issue_type` → canonical microtopic via a backend-owned lookup table seeded in EWP-1,
+- assert the resolved `topics` row is in the English subject tree, `level='microtopic'`, and active,
+- reject the issue (or fall back to topic-level with `microtopic_id=null`) if no valid mapping exists.
+
+Any future schema field that carries a taxonomy ID from the model is validated against subject + level + active state + allowed issue-type mapping before insert.
 
 ### 5.4 Stage 3 — Rubric evaluation
 
@@ -1002,9 +1037,11 @@ The failed-check precondition is evaluated before the `ready → draft` transiti
 
 ### 7.3 Transaction
 
+Follows the canonical lock order (§8.0): session row first, then unit row.
+
 ```
-lock session row
-lock unit row
+lock session row          (canonical order step 1)
+lock unit row             (canonical order step 2)
 validate expected_latest_version_id
 transition unit: ready → draft
 recompute session state via finalize_writing_session
@@ -1019,6 +1056,19 @@ Multiple units may be reopened in separate requests. A failed required-word chec
 
 Evaluations belong to immutable versions. An evaluation of version 1 remains valid historical evidence even after version 2 exists.
 
+### 8.0 Canonical lock order (global, deadlock-free)
+
+Every path that locks more than one row acquires locks in exactly this order:
+
+```
+1. writing_sessions (the session row)
+2. writing_session_units (required units, ascending unit_number)
+3. writing_evaluations / writing_session_checks
+4. writing_evaluation_jobs / writing_mastery_outbox
+```
+
+No path may hold a unit lock and then acquire the session lock — that inversion is forbidden. The evaluator therefore locks the **session first, then the unit**, before doing any work that will later call `finalize_writing_session` (which also locks session-then-units). The reopen transaction (§7.3) follows the same order. This single order eliminates the session→unit vs unit→session deadlock.
+
 ### 8.1 Worker transaction sequence
 
 ```
@@ -1031,9 +1081,10 @@ Evaluations belong to immutable versions. An evaluation of version 1 remains val
       If they differ → abort as corrupt; do not evaluate.
 3.  Evaluate the version (LLM call or deterministic computation).
       NO database transaction is open during the external/LLM call.
-      The locking/write transaction (steps 4–13) begins only after the
+      The locking/write transaction (steps 4–14) begins only after the
       evaluator returns.
-4.  Lock the parent writing_session_units row.
+4.  Lock rows in canonical order (§8.0): writing_sessions row FIRST,
+      then the parent writing_session_units row. (Never unit-before-session.)
 5.  Read the unit's current latest version.
 6.  Persist the evaluation against the requested version (always).
 7.  Insert writing_issue_events for this version.
@@ -1044,21 +1095,28 @@ Evaluations belong to immutable versions. An evaluation of version 1 remains val
       skip steps 9–12 and go to step 13 (commit only evaluation + issue events).
 9.  Insert writing_issue_resolution_events for every prior active issue.
 10. Insert writing_issue_projections.
-11. Commit a writing_mastery_outbox job row (see §8.2).
-      The outbox job is committed atomically with steps 9–10 so it cannot be lost.
+11. Insert a writing_mastery_outbox job row (see §8.2).
+      Committed atomically with steps 6–10 so it cannot be lost.
 12. Recompute unit and session state via finalize_writing_session.
-13. Commit.
-14. (Post-commit) Process mastery outbox job from step 11 — derive and write
+13. Set the claimed writing_evaluation_jobs row status = 'done' (SAME transaction).
+14. Commit. — steps 4–13 are ONE transaction. Job acknowledgement and all
+      side effects commit together; there is no window where side effects are
+      durable but the job is still claimable.
+15. (Post-commit) Process mastery outbox job from step 11 — derive and write
       user_topic_mastery_evidence. If this step fails it is retried via the outbox
       job; the evaluation transaction is not affected.
 ```
+
+**Atomic job acknowledgement (no replay duplication):** the claimed job's `status='done'` UPDATE is part of the same transaction as steps 6–13. A crash after side effects commit but before acknowledgement is impossible — both commit together. If the worker crashes *before* the commit, the whole transaction rolls back and the job is re-claimable with no partial side effects.
+
+**Replay guard (defense in depth):** before re-running, the worker checks whether the evaluation envelope (`unique(unit_version_id, evaluation_revision)`) is already in a terminal `overall_status`. An already-terminal evaluation is not re-processed; the job is acknowledged. This protects against any path that re-delivers a job whose side effects already landed. A crash-after-commit/before-ack regression test is required in EWP-2B.
 
 **Insertion order within the transaction:**
 - Issue events (step 7) are inserted before resolution events (step 9).
 - `successor_issue_event_id` on resolution events references rows inserted in step 7.
 - No deferred FK verification needed when inserts are sequenced correctly.
 
-**Stale path summary:** evaluation row + issue events are always persisted (steps 6–7). Resolution events, projections, outbox jobs, and finalizer are skipped for stale versions. The `affects_current_state = false` flag on issue events gates downstream consumers (Error Lab, mastery, planner).
+**Stale path summary:** evaluation row + issue events are always persisted (steps 6–7), and the job is still acknowledged (step 13). Resolution events, projections, outbox jobs, and finalizer are skipped for stale versions. The `affects_current_state = false` flag on issue events gates downstream consumers (Error Lab, mastery, planner).
 
 **Rewrite submission** must lock the same unit row before creating the next version. This removes the race between rewrite creation and evaluator completion.
 
@@ -1082,29 +1140,46 @@ An optional "invoke-after-commit" callback without a committed outbox record is 
 
 ```sql
 id                  uuid primary key
-evaluation_id       uuid not null references writing_evaluations(id)
+source_kind         text not null  -- 'evaluation' | 'review_correction'
+evaluation_id       uuid references writing_evaluations(id)            -- set when source_kind='evaluation'
+review_event_id     uuid references writing_issue_review_events(id)    -- set when source_kind='review_correction'
+evidence_op         text not null default 'assert'  -- 'assert' | 'retract' | 'replace'
 user_id             uuid not null references auth.users(id)
 mastery_flag_state  text not null  -- pinned 'shadow' | 'live' at row creation; see below
-idempotency_key     text not null  -- SHA-256(evaluation_id || user_id || projection_revision)
+idempotency_key     text not null  -- see below
 status              text not null default 'pending'  -- 'pending' | 'processing' | 'done' | 'failed'
 attempts            int not null default 0
 max_attempts        int not null default 5
+locked_at           timestamptz
 last_error          text
 created_at          timestamptz not null default now()
 processed_at        timestamptz
 
+check (
+  (source_kind = 'evaluation' and evaluation_id is not null and review_event_id is null)
+  or
+  (source_kind = 'review_correction' and review_event_id is not null)
+)
 unique (idempotency_key)
 ```
+
+**Idempotency key:**
+- `evaluation` source: `SHA-256('eval' || evaluation_id || user_id || projection_revision)`
+- `review_correction` source: `SHA-256('review' || review_event_id || evidence_op || user_id)`
+
+A later invalidation/reclassification therefore enqueues a **distinct** correction job for the same evaluation — the original evaluation-sourced row does not block it.
 
 **Mode pinning (mirrors the mock pinned-mode regression contract):** the effective `off|shadow|live` mode — including the per-user allowlist resolution — is resolved **once**, when the outbox row is created (inside the evaluation transaction), and stored in `mastery_flag_state`. The worker reads `mastery_flag_state` from the row and never re-reads the environment or allowlist. Retries and recovery reuse the pinned mode. This prevents an in-flight job from being processed under a later environment/allowlist value.
 
 - `off`: **no outbox row is created.** No mastery side effects exist to track.
-- `shadow`: outbox row with `mastery_flag_state = 'shadow'`; worker writes `writing_mastery_shadow` only.
-- `live`: outbox row with `mastery_flag_state = 'live'`; worker publishes validated evidence to the unified aggregator (see §10.2). `live` is prohibited until Lane A clears (§10.2).
+- `shadow`: outbox row with `mastery_flag_state = 'shadow'`; worker writes source-neutral `user_topic_mastery_evidence` + `writing_mastery_shadow` delta rows; canonical aggregation stays disabled.
+- `live`: outbox row with `mastery_flag_state = 'live'`; worker writes evidence + shadow row and publishes to the unified aggregator (see §10.2). `live` is prohibited until Lane A clears (§10.2).
 
-### 8.3 Job claiming
+### 8.3 Job claiming and recovery
 
-Evaluation jobs use row-level locking (`SELECT ... FOR UPDATE SKIP LOCKED`) before transitioning to `running`. This prevents two workers from processing the same job.
+**Evaluation jobs** (`writing_evaluation_jobs`) use row-level locking (`SELECT ... FOR UPDATE SKIP LOCKED`) before transitioning to `running`. This prevents two workers from processing the same job.
+
+**Mastery outbox jobs** (`writing_mastery_outbox`) use the same claiming protocol: a worker claims a `pending` row with `SELECT ... FOR UPDATE SKIP LOCKED`, sets `status='processing'` and stamps `locked_at`, then performs the evidence write + completion in one transaction (§4.12b). A `processing` row whose `locked_at` is older than a configured lease (stuck/crashed worker) is reclaimable: a sweeper resets `processing` rows past the lease back to `pending` and increments `attempts`. Because the evidence write is keyed on `evidence_key` with `ON CONFLICT DO NOTHING`, reclaiming a row that already wrote its evidence is safe — the re-run inserts nothing and simply marks the row `done`. A row reaching `max_attempts` is set `failed` and surfaced for operator attention; it never silently drops.
 
 ---
 
@@ -1130,7 +1205,24 @@ Single owner of session/unit state rollup. Executes transactionally or via atomi
 
 **The finalizer is idempotent.** Running it twice with the same inputs produces the same result.
 
-**`evaluation_outcome` update:** conditional write to ensure monotonic improvement:
+#### 9.1a Session-level outcome aggregation (deterministic)
+
+Per-evaluation outcome is mapped in §4.6a-1. A session has many units with possibly mixed outcomes. The finalizer computes the session `evaluation_outcome` by this fixed rule over the latest evaluation of each **required** unit (first match wins):
+
+```
+1. any required unit's latest evaluation is non-terminal
+     → session outcome not yet computed (stay pending/active)
+2. any required unit deterministic failure (overall_status = 'failed' / unscored)
+     → session: unscored
+3. else any required unit terminal language failure (overall_status = 'terminal_partial' / deterministic_only)
+     → session: deterministic_only
+4. else all required units fully_evaluated
+     → session: fully_evaluated
+```
+
+Blank exam units (`submission_kind='blank'`) are required units and participate in this rule.
+
+**`evaluation_outcome` update:** conditional write to ensure monotonic improvement. The aggregate from §9.1a is the `$new_outcome`:
 
 ```sql
 UPDATE writing_sessions
@@ -1144,6 +1236,8 @@ WHERE id = $session_id
     )
   )
 ```
+
+**Monotonic recovery on a completed session:** if a previously language-failed unit is later recovered (new `generation`) and reaches `fully_evaluated`, the finalizer recomputes §9.1a and the conditional UPDATE upgrades `deterministic_only → fully_evaluated`. This improves the recorded outcome **without** reopening interaction state: `completed` units stay `completed`, no version is created, no unit returns to `draft`. Recovery only ever upgrades the outcome; it never downgrades and never reopens the session.
 
 ### 9.2 Exam-mode session flow
 
@@ -1202,21 +1296,27 @@ live + user absent from allowlist → shadow
 ```
 off:
   Persist writing_sessions, issue events, evaluations, and session checks only.
-  No mastery evidence written.
+  No user_topic_mastery_evidence and no shadow rows written.
 
 shadow:
-  Derive mastery deltas.
-  Persist writing_mastery_shadow rows.
-  Do not update user_topic_mastery.
+  Write source-neutral user_topic_mastery_evidence (raw evidence).
+  Derive and persist writing_mastery_shadow delta rows.
+  Do NOT run canonical aggregation into user_topic_mastery.
 
 live:
-  Persist shadow row.
-  Publish validated evidence to the unified mastery aggregator.
+  Write source-neutral user_topic_mastery_evidence.
+  Persist shadow delta row.
+  Publish validated evidence to the unified mastery aggregator
+    (which is then enabled to update user_topic_mastery).
   Never write user_topic_mastery directly (see locked rule 19).
   Only for allowlisted users.
 ```
 
-`live` does **not** apply a direct canonical mastery update from writing code. Per locked rule 19, the unified aggregator is the single writer of `user_topic_mastery`. `live` publishes validated evidence to that aggregator. Until the aggregator exists and Lane A clears (§10.2), `live` is prohibited.
+**Locked contract (resolves the shadow/planner question):** `shadow` **does** write source-neutral `user_topic_mastery_evidence`. Only canonical aggregation into `user_topic_mastery` is disabled in shadow. This is deliberate so the EWP-5 planner can read writing evidence at microtopic granularity throughout the shadow period and generate drills — without any canonical mastery mutation. `writing_mastery_shadow` records the *delta decision* the aggregator would apply; the evidence table records the *raw observation*.
+
+`live` does **not** apply a direct canonical mastery update from writing code. Per locked rule 19, the unified aggregator is the single writer of `user_topic_mastery`. `live` publishes validated evidence to that aggregator and enables aggregation. Until the aggregator exists and Lane A clears (§10.2), `live` is prohibited.
+
+**Planner safety in shadow:** because evidence exists but canonical mastery is not mutated, the planner personalizes from `user_topic_mastery_evidence` directly during shadow. It must not read `user_topic_mastery` deltas attributable to writing until `live`.
 
 ### 10.1a `writing_mastery_shadow` table
 
@@ -1343,6 +1443,24 @@ All schema writes are backend/service-role controlled. Aspirants receive only ow
 
 ### 12.1 Tables with owner-select RLS
 
+Every owner-readable table gets an explicit SELECT policy. The exact policy per table:
+
+| Table | Owner SELECT policy (`USING`) |
+|---|---|
+| `writing_sessions` | `user_id = auth.uid()` |
+| `writing_session_units` | owner via join: `exists (select 1 from writing_sessions s where s.id = session_id and s.user_id = auth.uid())` |
+| `writing_unit_versions` | owner via join through `writing_session_units` → `writing_sessions` to `auth.uid()` |
+| `writing_session_checks` | owner via join: `exists (select 1 from writing_sessions s where s.id = session_id and s.user_id = auth.uid())` — required so the learning UI can render failed-coverage feedback |
+| `writing_prompts` | `reviewer_status = 'verified' AND is_active = true` (catalog read; not user-scoped) |
+| `exam_descriptive_requirements` | `reviewer_status = 'verified' AND is_active = true` |
+| `writing_rubrics` | readable (referenced by verified prompts) |
+| `writing_evaluations` | owner via join + feedback gate (below) |
+| `writing_issue_events` | owner via join + feedback gate; invalidated issues filtered (§4.10) |
+| `writing_issue_resolution_events` | owner via join + feedback gate |
+| `writing_issue_projections` | owner via join + feedback gate |
+
+The feedback-gated owner policy (evaluations and the issue tables):
+
 ```sql
 -- writing_evaluations: owner-select gated by feedback_released_at
 exists (
@@ -1362,7 +1480,7 @@ exists (
 )
 ```
 
-Equivalent join-based policies apply to `writing_issue_events`, `writing_issue_resolution_events`, `writing_issue_projections`.
+Equivalent join-based feedback-gated policies apply to `writing_issue_events`, `writing_issue_resolution_events`, `writing_issue_projections`. `writing_sessions`, `writing_session_units`, `writing_unit_versions`, and `writing_session_checks` use the plain owner policies above (no feedback gate — they carry no released-feedback content, and the UI needs session/coverage state to render progress).
 
 ### 12.2 Service-role-only tables (no client access)
 
@@ -1387,6 +1505,24 @@ writing_issue_projections
 writing_issue_review_events
 user_topic_mastery_evidence
 ```
+
+### 12.4 Append-only enforced at the database, not just by convention
+
+RLS does not constrain the `service_role` — it bypasses row policies. Append-only tables therefore need **database-level immutability triggers** (or equivalent privilege fencing) so that even backend/service-role code cannot UPDATE or DELETE history rows. EWP-1 must install a `BEFORE UPDATE OR DELETE` trigger that raises an exception on:
+
+```
+writing_unit_versions          (entire row immutable after insert)
+writing_issue_events
+writing_issue_resolution_events
+writing_issue_projections
+writing_issue_review_events
+user_topic_mastery_evidence
+writing_mastery_shadow
+```
+
+Tables that legitimately mutate (`writing_sessions`, `writing_session_units`, `writing_evaluations`, `writing_evaluation_jobs`, `writing_mastery_outbox`) are excluded — their state columns are designed to change.
+
+EWP-1 tests must prove a `service_role` UPDATE and a `service_role` DELETE both fail on each immutable table.
 
 ---
 

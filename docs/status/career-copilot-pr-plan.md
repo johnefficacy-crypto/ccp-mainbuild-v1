@@ -75,23 +75,26 @@ app/backend/tests/study_os/test_version_set_hash.py
 11. `writing_issue_resolution_events` with `successor_issue_event_id`, `unique(issue_event_id, resolving_version_id, evaluator_version)`
 12. `writing_issue_projections` with `unique(issue_event_id, projection_revision)`
 13. `writing_issue_review_events`
-14. `user_topic_mastery_evidence` with `evidence_tier`, `issue_projection_id`, `evidence_key` + `unique(evidence_key)` (§4.12b)
+14. `user_topic_mastery_evidence` with `evidence_tier`, `issue_projection_id`, `evidence_op`, `review_event_id`, `supersedes_evidence_key`, `evidence_key` + `unique(evidence_key)` (§4.12b)
 15. `writing_evaluation_jobs` with `generation`, `unique(evaluation_id, job_kind, generation)`, active partial unique index
 16. `writing_mastery_shadow` with `evidence_key` + `unique(evidence_key)` (§10.1a)
-17. `writing_mastery_outbox` with `mastery_flag_state`, `idempotency_key` + `unique(idempotency_key)` (§8.2)
-18. `study_tasks` additive columns: `launch_type text`, `launch_entity_id uuid`, `launch_context jsonb`
-19. `tier_rank(text) returns int` SQL helper: `recognition→1, correction→2, production→3, retention→4` (§4.12 — never lexical comparison)
-20. RLS on all tables (see §12 of architecture doc): owner-select for session/unit/version/evaluation/issue tables; service-role-only (no client allow policy) for `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_evaluation_jobs`, `writing_mastery_shadow`, `writing_mastery_outbox`
-21. RLS verification: every new table must have RLS enabled and a deliberate policy decision recorded. Owner-select tables get an explicit owner policy. Service-role-only tables (§12.2) intentionally have NO client allow policy (`USING (false)` or no policy) — this is the correct, documented state for them, not the zero-policy defect. The zero-policy defect applies only to tables that should be owner-readable but lack a policy.
+17. `writing_mastery_outbox` with `source_kind` (`evaluation`|`review_correction`), `evaluation_id`/`review_event_id`, `evidence_op`, `mastery_flag_state`, `locked_at`, `idempotency_key` + `unique(idempotency_key)` + the source-kind check constraint (§8.2)
+18. `writing_issue_type_microtopic_map` (backend-owned `issue_type` → canonical English microtopic `topics.id`), seeded with stable UUIDs (§5.3) — the evaluator never supplies taxonomy IDs
+19. `study_tasks` additive columns: `launch_type text`, `launch_entity_id uuid`, `launch_context jsonb`
+20. `tier_rank(text) returns int` SQL helper: `recognition→1, correction→2, production→3, retention→4` (§4.12 — never lexical comparison)
+21. Immutability triggers (§12.4): `BEFORE UPDATE OR DELETE` raise-exception triggers on `writing_unit_versions`, `writing_issue_events`, `writing_issue_resolution_events`, `writing_issue_projections`, `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_mastery_shadow` — enforced against `service_role`, not just RLS
+22. RLS on all tables (see §12 of architecture doc): explicit owner-select policy per owner-readable table (`writing_sessions`, `writing_session_units`, `writing_unit_versions`, `writing_session_checks`, evaluations + issue tables); service-role-only (no client allow policy) for `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_evaluation_jobs`, `writing_mastery_shadow`, `writing_mastery_outbox`
+23. RLS verification: every new table must have RLS enabled and a deliberate policy decision recorded. Owner-select tables get an explicit owner policy (see §12.1 table). Service-role-only tables (§12.2) intentionally have NO client allow policy (`USING (false)` or no policy) — this is the correct, documented state for them, not the zero-policy defect. The zero-policy defect applies only to tables that should be owner-readable but lack a policy.
 
 **Tests must include:**
 
-- Fixed-input `version_set_hash` fixture with expected SHA-256 digest (architecture §4.5a). Pin the exact hex output. This is the cross-side identity anchor (see AGENTS.md §3 hash-parity tests).
+- Fixed-input `version_set_hash` fixture with expected SHA-256 digest (architecture §4.5a). Pin the exact hex output. Backend fixed-vector test + API integration assertion (clients consume, never compute — see AGENTS.md EWP-3).
 - Unit state machine: assert every allowed and forbidden transition for both learning and exam modes
-- Session rollup: assert priority ordering of rollup rules
+- Session rollup: assert priority ordering of rollup rules; session-level outcome aggregation (§9.1a)
 - `unit_constraints` Pydantic validation: valid schema accepted, unknown key rejected, `max_words < min_words` rejected
 - `content_hash` for blank version: assert `SHA-256('') = e3b0c44...`
 - RLS: every new table must have a wrapped-transaction test (see AGENTS.md § RLS verification protocol)
+- **Immutability triggers:** assert `service_role` UPDATE and `service_role` DELETE both fail on every immutable table (§12.4)
 
 **Does not include:** API endpoints, frontend, mastery writes, evaluator integration.
 
@@ -200,6 +203,12 @@ docs/status/career-copilot-checklist.md
 - Mastery outbox row with pinned `mastery_flag_state` (§8.2); `off` creates no row
 - Permanent-failure handling: `terminal_partial` mapping (§4.6a-1), `deterministic_only` outcome, recovery via `generation + 1`
 - Retry accounting owned by `writing_evaluation_jobs`, not the evaluation row
+- Atomic job acknowledgement: claimed job `status='done'` set in the SAME transaction as all evaluation side effects (§8.1 step 13); replay guard checks already-terminal evaluation before re-processing
+- Canonical lock order (§8.0): session-before-unit everywhere; evaluator never enters the finalizer holding a unit lock acquired before the session lock
+- Evaluator returns `issue_type` only; backend resolves canonical microtopic via `writing_issue_type_microtopic_map` and validates subject/level/active before insert (§5.3)
+- Mastery outbox claiming + lease-based recovery for stuck `processing` rows (§8.3)
+
+**Tests must include:** crash-after-commit/before-ack regression (job not double-applied), lock-order/no-deadlock test, malformed-evaluator-response rejection, projection race-safety, mastery-mode pinning, taxonomy-mapping rejection of invalid issue types.
 
 **Stage 3 (rubric)** is included here for the dimensions used by sentence/paragraph drills. Descriptive-exam rubric extensions are scoped with EWP-7.
 
@@ -270,7 +279,7 @@ docs/status/career-copilot-checklist.md
 
 **Error Lab:** reads `writing_issue_events` via API. Displays recurring issues grouped by `microtopic_id`. Each issue card links to the relevant Grammar Lab topic. Invalidated issues are omitted or shown with `withdrawn` marker.
 
-**Shadow evidence:** grammar drill completions emit `user_topic_mastery_evidence` in shadow mode only.
+**Shadow evidence:** grammar drill completions emit source-neutral `user_topic_mastery_evidence` (raw evidence) + `writing_mastery_shadow` delta rows. Canonical aggregation into `user_topic_mastery` stays disabled in shadow (§10.1 locked contract). Evidence IS written in shadow so the EWP-5 planner can read it.
 
 ---
 
@@ -298,7 +307,7 @@ docs/status/career-copilot-checklist.md
 2. Shadow-to-live promotion gates in §10.3 pass
 3. Operator records approval in checklist
 
-**Planner integration:** reads `user_topic_mastery_evidence` at microtopic granularity. Generates `sentence_construction`, `grammar_correction`, `vocabulary_in_context` task types with `launch_type = 'english_writing_session'`. Schedules retention retests using `user_topic_mastery.next_revision_at`.
+**Planner integration:** reads source-neutral `user_topic_mastery_evidence` at microtopic granularity (written in shadow per §10.1 locked contract). Generates `sentence_construction`, `grammar_correction`, `vocabulary_in_context` task types with `launch_type = 'english_writing_session'`. During shadow the planner personalizes from evidence directly; it must NOT read writing-attributable `user_topic_mastery` deltas until `live`. Schedules retention retests using `user_topic_mastery.next_revision_at`.
 
 ---
 
