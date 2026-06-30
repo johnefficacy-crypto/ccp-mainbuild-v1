@@ -942,3 +942,97 @@ describe("ExamWorkspace More menu (I8-C)", () => {
     expect(document.activeElement).toBe(screen.getByTestId("workspace-advanced-repair-link"));
   });
 });
+
+// ── D04: workspace-level compatibility banner tests ───────────────────────────
+
+describe("D04: workspace-level compatibility banner", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuthUser = { role: "admin", permissions: [] };
+  });
+
+  function mockUnsupportedMgmt(contractVersion) {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/management/exams/")) {
+        return Promise.resolve({ ...MANAGEMENT_RESPONSE, contract_version: contractVersion });
+      }
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+  }
+
+  test("unsupported contract version — workspace compat banner is shown on tab=setup", async () => {
+    mockUnsupportedMgmt(99);
+    renderWorkspace("exam-1", null, "tab=setup");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("workspace-compat-error")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("workspace-compat-error").textContent).toMatch(/newer client version/i);
+  });
+
+  test("unsupported contract version — review tab shows inline compat error, not skeleton", async () => {
+    mockUnsupportedMgmt(99);
+    renderWorkspace("exam-1", null, "tab=review");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("review-panel-compat-error")).toBeInTheDocument();
+    });
+    // No skeleton divs — the compat error renders instead.
+    const skels = document.querySelectorAll(".skel");
+    // The only skels still present should be from the shell loading skeleton,
+    // which disappears once context resolves. After resolving, none inside the panel.
+    expect(screen.getByTestId("review-panel-compat-error").textContent).toMatch(/not supported/i);
+  });
+
+  test("unsupported contract version — retry button visible and calls refetchMgmt", async () => {
+    let mgmtCallCount = 0;
+    api.get.mockImplementation((url) => {
+      if (url.includes("/management/exams/")) {
+        mgmtCallCount++;
+        return Promise.resolve({ ...MANAGEMENT_RESPONSE, contract_version: 99 });
+      }
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+
+    renderWorkspace("exam-1", null, "tab=setup");
+    await waitFor(() => screen.getByTestId("workspace-compat-error"));
+    const countBefore = mgmtCallCount;
+
+    fireEvent.click(screen.getByTestId("workspace-compat-error").querySelector("button"));
+    await waitFor(() => expect(mgmtCallCount).toBeGreaterThan(countBefore));
+  });
+
+  test("missing contract_version field — treated as unsupported, compat banner shown", async () => {
+    // contract_version absent (undefined) is not in SUPPORTED_CONTRACT_VERSIONS
+    api.get.mockImplementation((url) => {
+      if (url.includes("/management/exams/")) {
+        const { contract_version: _omit, ...rest } = MANAGEMENT_RESPONSE;
+        return Promise.resolve(rest);
+      }
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+
+    renderWorkspace();
+    await waitFor(() => {
+      expect(screen.getByTestId("workspace-compat-error")).toBeInTheDocument();
+    });
+  });
+
+  test("malformed contract_version (string) — treated as unsupported, compat banner shown", async () => {
+    mockUnsupportedMgmt("v1");
+    renderWorkspace();
+    await waitFor(() => {
+      expect(screen.getByTestId("workspace-compat-error")).toBeInTheDocument();
+    });
+  });
+
+  test("supported contract version — no compat banner", async () => {
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByText("SSC CGL"));
+    expect(screen.queryByTestId("workspace-compat-error")).not.toBeInTheDocument();
+  });
+});

@@ -428,7 +428,7 @@ function TabStrip({ active, onChange, readiness }) {
 // ─── Main shell ───────────────────────────────────────────────────────────────
 
 function WorkspaceShell() {
-  const { loading, error, refetch, readiness, mgmt, mgmtLoading, mgmtError, refetchMgmt } = useExamWorkspace();
+  const { loading, error, refetch, readiness, mgmt, mgmtLoading, mgmtError, mgmtVersionError, refetchMgmt } = useExamWorkspace();
   const { exam_id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -514,15 +514,37 @@ function WorkspaceShell() {
     </>
   );
 
+  // D04: workspace-level compatibility gate — shown on all tabs when the
+  // management contract version is unsupported.  Suppresses semantic consumers
+  // (SmartHeader verdict strip, action console, readiness tab content) and
+  // keeps identity/navigation intact so the operator can still navigate away.
+  const compatError = mgmtVersionError && !mgmtLoading;
+
   return (
     <div className="oc">
       <SmartHeader onGotoTab={gotoTab} />
+      {compatError && (
+        <div
+          data-testid="workspace-compat-error"
+          className="card"
+          style={{ margin: "12px 16px 0", borderLeft: "3px solid var(--err, #c00)" }}
+        >
+          <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span className="err-row" style={{ flex: 1, margin: 0 }}>
+              This workspace requires a newer client version. Reload the page or contact support.
+            </span>
+            <button className="btn" onClick={refetchMgmt} style={{ whiteSpace: "nowrap" }}>
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
       {/* Pass management data so ExamActionConsole skips its own fetch */}
       <ExamActionConsole
         examId={exam_id}
         embedded
         data={mgmt}
-        dataStatus={mgmtLoading ? "loading" : mgmtError ? "error" : "ready"}
+        dataStatus={mgmtLoading ? "loading" : (mgmtError || compatError) ? "error" : "ready"}
         onRetry={refetchMgmt}
       />
       <TabStrip active={activeTab} onChange={gotoTab} readiness={readiness} />

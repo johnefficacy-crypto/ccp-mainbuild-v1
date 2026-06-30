@@ -102,8 +102,12 @@ _PAGE = 500
 def _get_exam_doc_ids(sb, exam_id: str, cycle_id: str | None = None) -> list[str]:
     """Return document_asset ids owned by this exam (via metadata.exam_id).
 
-    Optionally filter by metadata.exam_cycle_id if cycle_id is provided.
-    Uses paged queries (500 at a time).
+    Cycle isolation (D05 fail-closed): when cycle_id is provided, only include
+    docs explicitly tagged to that cycle (metadata.exam_cycle_id == cycle_id).
+    Unscoped docs (exam_cycle_id absent/None) are excluded — the upload API
+    makes exam_cycle_id optional and an unscoped doc must not satisfy a
+    different cycle's readiness.  Docs tagged to a different cycle are also
+    excluded.  Uses paged queries (500 at a time).
     """
     all_rows: list[dict] = []
     offset = 0
@@ -129,6 +133,16 @@ def _get_exam_doc_ids(sb, exam_id: str, cycle_id: str | None = None) -> list[str
         meta = r.get("metadata") or {}
         if meta.get("exam_id") != exam_id:
             continue
+        if cycle_id is not None:
+            doc_cycle = meta.get("exam_cycle_id")
+            # D05 fail-closed: when a cycle is selected, only count documents
+            # explicitly tagged to that cycle.  Unscoped documents (doc_cycle is
+            # None) are NOT inherited — the upload API makes exam_cycle_id optional
+            # and a cycle-specific document uploaded without cycle metadata must not
+            # satisfy a different cycle's readiness.  Canonical exam-wide evidence
+            # roles are a future D05 registration concern.
+            if doc_cycle != cycle_id:
+                continue
         result.append(r["id"])
     return result
 
