@@ -2237,6 +2237,10 @@ def review_score_snapshot(
         reviewed  → locked | rejected | draft
         locked    → reviewed  (reversal; reviewer_notes required)
         rejected  → draft
+
+    The audit INSERT and status UPDATE are performed atomically by the
+    ``cms_review_exam_topic_snapshot`` RPC (migration 204), so there are no
+    orphan audit rows and no silent status changes without an audit trail.
     """
     sb = get_supabase_admin()
     existing = (
@@ -2267,56 +2271,52 @@ def review_score_snapshot(
             status_code=422,
             detail="reviewer_notes required when reverting a locked snapshot",
         )
-    update: dict[str, Any] = {
-        "status": new_status,
-        "reviewed_by": admin["id"],
-        "reviewed_at": _now_iso(),
-    }
-    if body.reviewer_notes is not None:
-        update["reviewer_notes"] = body.reviewer_notes
 
-    # Best-effort audit log: record every status transition, especially
-    # locked→reviewed reversals. Not fully atomic (no RPC), but ensures
-    # successful transitions always have an audit trail. A concurrent-
-    # modification failure below leaves an orphan row — acceptable until a
-    # dedicated migration adds an atomic RPC (cf. 185_pyq_paper_review_transaction.sql).
-    _safe(
-        lambda: sb.table("admin_audit_logs").insert({
-            "actor_id": admin.get("id"),
-            "actor_email": admin.get("email"),
-            "admin_user_id": admin.get("id"),
-            "action": "snapshot_status_transition",
-            "entity_type": "exam_topic_score_snapshot",
-            "entity_id": snapshot_id,
-            "old_value": {"status": current_status},
-            "new_value": {"status": new_status},
-            "notes": body.reviewer_notes,
-        }).execute().data,
-    )
-
-    # Conditional UPDATE: only succeeds when the row still has the expected
-    # current_status, preventing silent overwrite of a concurrent modification.
+    # Single atomic RPC: audit INSERT + snapshot UPDATE in one DB transaction.
+    # If a concurrent writer changed status between the SELECT above and the RPC,
+    # the function detects it via SELECT FOR UPDATE + p_expected_status guard and
+    # raises "concurrent_modification" → both writes are rolled back (no orphan rows).
     try:
-        result = (
-            sb.table("exam_topic_score_snapshots")
-            .update(update)
-            .eq("id", snapshot_id)
-            .eq("status", current_status)
-            .execute()
-        )
+        result = sb.rpc(
+            "cms_review_exam_topic_snapshot",
+            {
+                "p_snapshot_id":     snapshot_id,
+                "p_expected_status": current_status,
+                "p_new_status":      new_status,
+                "p_reviewer_notes":  body.reviewer_notes,
+                "p_actor_user_id":   admin.get("id"),
+                "p_actor_email":     admin.get("email"),
+            },
+        ).execute()
     except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        msg_lower = msg.lower()
+        if "concurrent_modification" in msg_lower:
+            raise HTTPException(
+                status_code=409,
+                detail="snapshot was modified concurrently — refresh and retry",
+            ) from exc
+        if any(tok in msg_lower for tok in ("transition_not_allowed", "invalid_target_status")):
+            raise HTTPException(status_code=422, detail=msg) from exc
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
         logger.error(
-            "score_snapshot review update failed",
-            extra={"snapshot_id": snapshot_id, "error": str(exc)},
+            "cms_review_exam_topic_snapshot RPC failed; no status change recorded",
+            extra={"snapshot_id": snapshot_id, "error": msg},
         )
-        raise HTTPException(status_code=500, detail="snapshot update failed") from exc
-
-    if not result.data:
         raise HTTPException(
-            status_code=409,
-            detail="snapshot was modified concurrently — refresh and retry",
-        )
-    return {"ok": True, "snapshot_id": snapshot_id, "new_status": new_status}
+            status_code=500,
+            detail="Review transaction failed; no status change recorded.",
+        ) from exc
+
+    data = result.data or {}
+    return {
+        "ok": True,
+        "snapshot_id": snapshot_id,
+        "prev_status": current_status,
+        "new_status": new_status,
+        "audit_id": data.get("audit_id"),
+    }
 
 
 @router.post("/exams/{exam_id}/score-snapshots/compute")

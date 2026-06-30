@@ -514,6 +514,25 @@ Wire `locked_score_snapshots()` into `planner.py` as an additional priority sign
 - `app/backend/tests/study_os/test_planner_snapshot_integration.py`
 - `docs/status/career-copilot-pr-plan.md`
 
+### P-slice-1c — Snapshot review atomicity (migration 204) — **IN PROGRESS (`claude/pyq-v2-finalization-jhptq9`)**
+
+Closes the known atomicity gap recorded in checklist and acknowledged in the deferred comment at `admin_exam_intelligence.py` (cf. `185_pyq_paper_review_transaction.sql`).
+
+What changed:
+- `app/supabase/migrations/204_atomic_snapshot_review_transition.sql` — `cms_review_exam_topic_snapshot` SECURITY DEFINER RPC; SELECT FOR UPDATE + transition matrix + audit INSERT + status UPDATE in one transaction; REVOKE/GRANT pattern from migration 203.
+- `app/backend/app/api/admin_exam_intelligence.py` — `review_score_snapshot` replaces the best-effort two-step writes with a single RPC call; error tokens mapped to 409/422/404/500.
+- `app/backend/tests/exam_intelligence/test_score_snapshot_admin_api.py` — `_SnapshotSBStub` mirrors RPC contract; new tests for atomicity, actor forwarding, no-fallback-on-failure, concurrent modification.
+- `docs/status/career-copilot-checklist.md` — new row recording migration 204 code fix + operator validation gates.
+
+**Write scope:**
+- `app/supabase/migrations/204_atomic_snapshot_review_transition.sql`
+- `app/backend/app/api/admin_exam_intelligence.py`
+- `app/backend/tests/exam_intelligence/test_score_snapshot_admin_api.py`
+- `docs/status/career-copilot-checklist.md`
+- `docs/status/career-copilot-pr-plan.md`
+
+**OPERATOR PENDING:** apply migration 204 to staging; verify EXECUTE grant matrix; confirm atomic audit trail in a live compute → review → lock cycle.
+
 ### P-slice-3 — Cognitive demand classification (Bloom's taxonomy) — **UNBLOCKED (P-slice-2 merged, PR #773), contract pending**
 
 Per `pyq-intelligence-v2.md` §scoring: add `bloom_level` classification per PYQ question.
