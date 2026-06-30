@@ -1,69 +1,85 @@
-# Distance to Release — v1 tracker
+# Distance to Release — v1 tracker (READ-ONLY derived view)
 
-**One-page status of the remaining v1 gates.** Companion to `docs/ops/v1-go-live-runbook.md`
-(the *how*) and `scripts/v1_release_verification.sql` (the *evidence*). Update the Status /
-ETA cells as gates clear; this file is the at-a-glance "are we there yet?".
+> **This file is a derived, read-only summary. Do NOT mutate status here.**
+> The shared source of record is **`docs/status/career-copilot-checklist.md`** (per `AGENTS.md`);
+> live evidence lives in the gate docs / `docs/audits/`. When a gate changes, update the
+> checklist + its audit, then regenerate this view. Each row links its authoritative source.
 
+**as_of:** `main @ 3484a92` · 2026-06-30
+**Companion:** `docs/ops/v1-go-live-runbook.md` (the *how*) · `scripts/v1_release_verification.sql` (the *evidence*)
 **Position:** late-stage beta — feature-complete-approaching, **not** production-ready.
-**Floor to GA:** **~3 weeks of operator calendar time**, dominated by the 14-day shadow window
-— and that clock **has not started**. Code/tooling merges do not shorten it; only the operator
-sequence does.
 
-**Legend:** ✅ CLEAR · 🟡 CODE-READY (operator validation pending) · ⛔ BLOCKED · ⏳ NOT STARTED
+**Legend:** ✅ CLEAR · 🟡 PARTIAL / validation-pending · ⛔ BLOCKED/open · ⏳ NOT STARTED
 **Owner:** OPS = operator (staging/prod/Render/Supabase) · ENG = code change still needed
 
 ---
 
 ## Gate table
 
-| # | Gate | Owner | Status | Blocking on / clears when | ETA contribution |
-|---|------|-------|--------|----------------------------|------------------|
+| # | Gate | Owner | Status | Blocking on / clears when | Source |
+|---|------|-------|--------|----------------------------|--------|
 | **Feature-complete (Condition 1)** |
-| F1 | Core features merged (RPC/RLS hardening, snapshot RPC, I9 containment, placeholder isolation) | ENG | ✅ CLEAR | merged to `main` | — |
-| F2 | I9 deferred defects (D11/D12/D06/D15) frozen as v1 or v2 | ENG | ⛔ OPEN | product decision + (if v1) code | 1–3 d |
-| F3 | Extraction archive-race (#780) terminalizes the job | ENG | ⛔ OPEN | fix RPC/caller + regression; branch unmerged | 1–2 d |
+| F1 | Core features merged (RPC/RLS hardening, snapshot RPC, I9 containment, placeholder isolation) | ENG | ✅ CLEAR | on `main` | checklist |
+| F2 | I9 deferred noncompliance frozen as v1/v2 — **D11, D12, D14, D06, D15** | ENG | ⛔ OPEN | product decision + (if v1) code; **D14** = applicability-from-`gate_class` approximation | checklist "I9 implementation" |
+| F3 | Extraction archive-race terminalization | ENG | ⛔ OPEN (partial merged) | #788/#780 + mig `202` merged; **residual:** `finalize_document_extraction` → `document_archived` makes the caller raise **without terminalizing**, so the claimed job can stay `running`. Fix caller + add mid-flight regression | runbook CHECK 3 / extraction caller |
 | **Production-ready (Condition 2)** |
-| P1 | Apply full migration chain to staging→prod (head `204`) | OPS | ⏳ NOT STARTED | run via approved migration runner | 0.5 d |
-| P2 | RPC/RLS live verification (run `scripts/v1_release_verification.sql`) | OPS | 🟡 CODE-READY | script merged; needs a live run + RLS real-JWT proof | 0.5 d |
-| P3 | Mig 182 durable operator-validation record filled | OPS | 🟡 CODE-READY | template merged (#809); fill with live output | 0.5 d |
-| P4 | Mig 204 snapshot-review RPC validated on staging | OPS | 🟡 CODE-READY | apply + grant matrix + review→lock cycle | 0.5 d |
-| P5 | PR-7 fingerprint boundary (36-file) approved + re-pinned | OPS | 🟡 CODE-READY | verifier hardened (#803/#814, digest `f2ee2c40…`); operator boundary sign-off | 1 d |
-| P6 | Scheduler verification (startup, sweeper, drain) | OPS | ⏳ NOT STARTED | `ENABLE_SCHEDULER=true`; capture evidence | 0.5 d |
-| P7 | **PR-6** final-candidate revalidation rerun (clear Gate 9) | OPS | ⛔ `gate_failed` | deploy allowlist build; rerun 12 gates | 1 d |
-| P8 | **PR-7 14-day shadow window** | OPS | ⏳ NOT STARTED — **THE FLOOR** | starts only after P5+P7; **a single failure restarts the 14 days** | **14 d** |
-| P9 | PR-8 bounded live canary | OPS | ⏳ NOT STARTED | after P8 passes | 1 d |
-| P10 | PR-9 approval → flip `FF_MOCK_MASTERY_WRITES=live` | OPS | ⛔ BLOCKED | after P9 + sign-offs | 0.5 d |
+| P1 | Apply full migration chain to staging→prod (head `204`) via the approved runner | OPS | ⏳ NOT STARTED | **precedes P2/P4** | runbook Phase 1 |
+| P2 | RPC/RLS live verification (`scripts/v1_release_verification.sql`) + RLS real-JWT proof | OPS | 🟡 CODE-READY | needs P1, then a live run | verification script |
+| P3 | Migration 182 operator validation | OPS | ✅ CLEAR | OPERATOR VALIDATED | `audits/2026-06-30-migration-182-operator-validation.md` |
+| P4 | Migration 204 snapshot-review RPC validated on staging | OPS | 🟡 CODE-READY | needs P1; grant matrix + review→lock cycle | checklist (mig 204) |
+| P5 | PR-7 36-file fingerprint boundary approved + re-pinned at deployed SHA | OPS | 🟡 OPERATOR-APPROVAL ONLY | verifier code/tooling closed (#803/#814, ref digest `f2ee2c40…`); needs **PR #800 staging delivery validation + boundary sign-off**; fingerprint is reference-only until re-pinned at `window_start` | `pr7_shadow_gate_results.md` |
+| P6 | Scheduler verification (jobs/manual-run/drain) | OPS | 🟡 PARTIAL PASS | startup + sweeper registration + repeat sweeps ✅ at staging `daaddaae`; **remaining:** `/api/admin/jobs` payload, manual sweeper invocation, named pending-job drain | `audits/2026-06-30-mastery-staging-preflight.md` |
+| P7 | **PR-6** final-candidate revalidation rerun (clear Gate 9) | OPS | ⛔ `gate_failed` | needs P6 scheduler evidence first; deploy allowlist build; rerun 12 gates with `FF=shadow` | `pr6_final_candidate_revalidation.md` |
+| P8 | **PR-7 14-day shadow window** | OPS | ⏳ NOT STARTED — **THE FLOOR** | full prerequisite chain below; **any threshold miss restarts the 14 days** | `pr7_shadow_gate_results.md` |
+| P9 | PR-8 bounded live canary | OPS | ⏳ NOT STARTED | after P8 passes | `pr8_live_canary_plan.md` |
+| P10 | PR-9 approval → flip `FF_MOCK_MASTERY_WRITES=live` | OPS | ⛔ BLOCKED | after P9 + sign-offs | `pr9_live_approval.md` |
 | **Release-validated (Condition 3)** |
-| R1 | Deployed-env E2E green (main user + admin journeys) | OPS | ⏳ NOT STARTED | run Playwright against deployed env | 0.5 d |
-| R2 | Staging pilot (primary journey, no manual DB intervention) | OPS | ⏳ NOT STARTED | representative exam content + real users | parallel w/ P8 |
-| R3 | Production canary + no open P0/P1 + perf/error targets | OPS | ⏳ NOT STARTED | after R1/R2 + P10 | 1–2 d |
-| R4 | Support / privacy / terms / operational ownership ready | OPS | ⏳ NOT STARTED | non-eng readiness | parallel |
+| R1 | Deployed-env E2E green (main user + admin journeys) | OPS | ⏳ NOT STARTED | Playwright vs deployed env | runbook Phase 5 |
+| R2 | Staging pilot (primary journey, no manual DB intervention) | OPS | ⏳ NOT STARTED | content + real users; **can overlap P8** | runbook Phase 5 |
+| R3 | Prod canary + no open P0/P1 + perf/error targets | OPS | ⏳ NOT STARTED | after R1/R2 + P10 | runbook Phase 5 |
+| R4 | Support / privacy / terms / operational ownership | OPS | ⏳ NOT STARTED | non-eng readiness; **parallel** | runbook Phase 5 |
 
 ---
 
-## Critical path (what actually sets the date)
+## P8 (PR-7) start prerequisites — the exact chain
+
+The 14-day clock may start **only** when ALL hold (do not start on P5+P7 alone):
+1. **F3** extraction terminalization fixed (no jobs can strand `running`).
+2. **P6** scheduler evidence complete (jobs/manual-run/**drain**) — required *before* the PR-6 rerun.
+3. **P7** PR-6 PASS (Gate 9 cleared) on the deployed candidate SHA.
+4. **P5** PR #800 staging delivery validation + explicit 36-file boundary approval.
+5. Deployed SHA **matches the approved candidate**, with **continuous `FF_MOCK_MASTERY_WRITES=shadow`**.
+6. A **freshly computed + attested fingerprint at that deployed SHA** (re-pin from the `f2ee2c40…` reference).
+7. An exact UTC **`window_start`** recorded.
+
+Call the moment all 7 hold **T0**. T0 has not occurred.
+
+## Dependency edges (for an honest ETA, not a single number)
 
 ```
- [P5 boundary approve + P7 PR-6 rerun + P1/P2/P3/P4 + F3 fix]   ~3–4 days, parallelizable
+Serial spine to T0:
+  F3 ─┐
+  P1 ─┴─► P2, P4          (P1 must precede the live P2/P4 verification)
+  P6(drain) ─► P7(PR-6)   (scheduler evidence before the rerun)
+  P5(boundary+#800) ──────┐
+  P7(PR-6 PASS) ──────────┴─► [re-pin fingerprint + set window_start] = T0
         │
         ▼
- [P8  PR-7 14-day shadow window]                                14 days   ← THE FLOOR
-        │   (any threshold miss → restart 14 days)
+  P8  PR-7 14-day shadow   = 14 days HARD (restart on any miss)   ← only fixed number
+        │
         ▼
- [P9 canary → P10 live flip → R1 E2E → R3 prod canary]          ~3 days
-        ▼
-                         GA
+  P9 canary ─► P10 flip ─► R1 E2E ─► R3 prod canary
+Parallelizable: F2 decision, R2 pilot (overlaps P8), R4 readiness.
 ```
 
-**Earliest defensible GA ≈ T0 + ~3 weeks**, where **T0 = the day the operator starts the
-deploy → PR-6 → window_start sequence**. T0 has not happened. Everything left of P8 is a few
-days of operator work that can run in parallel; P8 is the immovable 14-day pole; R2 (pilot) can
-overlap P8.
+**ETA:** the only hard duration is **P8 = 14 days**. Pre-T0 work (F3 + P1→P4 + P5 + P6 drain +
+P7) is operator-paced — realistically a **handful of days** but not reproducibly fixed here, so
+it is expressed as a range, not a promise. Post-window (P9→R3) is a **few days**. **Floor ≈ 3
+weeks from T0**, *longer* if the shadow window restarts or PR-6 needs multiple reruns. Do not
+quote a calendar date until T0 is set.
 
-## What clears the most distance next (do these to reach T0)
-1. **Fix F3** (extraction archive-race) and **freeze F2** (I9 v1/v2 decision) — the last ENG items.
-2. Operator: **P1 apply migrations** → **P2 run the verification script** → **P3/P4** validate.
-3. Operator: **P5 approve the fingerprint boundary** + **P6 scheduler proof** + **P7 PR-6 rerun**.
-4. The moment P5+P7 are green → **start P8** (record `window_start`). That is T0; the 14-day clock begins.
-
-> Nothing in the repo shortens P8. Track this file against the 14-day window once it opens.
+## What reaches T0 fastest (next actions)
+1. **ENG:** fix **F3** terminalization; record the **F2** (D11/D12/**D14**/D06/D15) v1-vs-v2 decision.
+2. **OPS:** **P1** apply migrations → **P2** run the verification script (+RLS JWT proof) → **P4** validate mig 204.
+3. **OPS:** finish **P6** scheduler drain → **P5** PR #800 validation + boundary approval → **P7** PR-6 rerun.
+4. When the 7 prerequisites hold → re-pin the fingerprint, set **`window_start`** (T0), start **P8**.
