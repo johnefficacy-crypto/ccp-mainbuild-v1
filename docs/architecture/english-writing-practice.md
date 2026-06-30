@@ -461,7 +461,7 @@ unique (unit_version_id, evaluation_revision)
 
 ```
 overall_status:
-  pending | partial | completed | failed
+  pending | partial | terminal_partial | completed | failed
 
 deterministic_status:
   pending | completed | failed
@@ -475,6 +475,21 @@ human_review_status:
 
 A re-evaluation under new evaluator logic requires `evaluation_revision = previous + 1`. That is a new evaluation envelope, not a retry.
 
+#### 4.6a-1 Terminality vs completeness (deterministic mapping)
+
+An evaluation is **terminal** when no further automatic stage will run; it is **complete** when all requested stages succeeded. These are separate properties. The finalizer maps stage statuses to `overall_status` deterministically:
+
+| deterministic_status | language_status | overall_status | terminal? | maps to outcome |
+|---|---|---|---|---|
+| pending | * | `pending` | no | — |
+| completed | not_requested / queued / running | `partial` | no | — |
+| completed | completed | `completed` | yes | `fully_evaluated` |
+| completed | failed (retries exhausted) | `terminal_partial` | yes | `deterministic_only` |
+| completed | needs_review | `partial` | no | — |
+| failed | * | `failed` | yes | `unscored` |
+
+`terminal_partial` is the explicit terminal state for "deterministic succeeded, language permanently failed." A unit may become `ready` on `terminal_partial` with a `deterministic_only` session outcome. The finalizer has exactly one mapping for the language-failed/deterministic-complete case — there is no ambiguity between `partial`, `completed`, and `failed`.
+
 #### 4.6b Typical learning-mode flow
 
 ```
@@ -485,14 +500,16 @@ submission
 → language_status=completed, overall_status=completed
 ```
 
-A failed async stage can be retried without rerunning deterministic checks.
+A failed async stage can be retried without rerunning deterministic checks. If language fails after retry exhaustion: `overall_status=terminal_partial` (see §4.6a-1).
 
 #### 4.6c Session completion conditions (learning mode)
 
 A unit is `ready` when:
-- latest evaluation `overall_status` is terminal (not pending/partial)
+- latest evaluation `overall_status` is terminal (`completed`, `terminal_partial`, or `failed` per §4.6a-1) — never `pending` or `partial`
 - no latest active issue has `severity = 'must_fix'` without a resolution event with `outcome = 'resolved'`
 - unit-level deterministic requirements pass
+
+A `failed` (`unscored`) evaluation does not make a unit `ready` in learning mode — deterministic requirements have not passed. In exam mode a unit still moves to `ready` so feedback is not withheld permanently (§4.4b).
 
 A session is `completed` when:
 - all units are `ready`
@@ -724,8 +741,11 @@ evidence_tier         text not null   -- 'recognition' | 'correction' | 'product
 score                 numeric
 confidence            numeric
 issue_projection_id   uuid references writing_issue_projections(id)
+evidence_key          text not null   -- see §4.12b
 observed_at           timestamptz not null
 metadata              jsonb not null default '{}'
+
+unique (evidence_key)
 ```
 
 #### 4.12a Source types
@@ -747,7 +767,43 @@ mentor_review
 
 `production` evidence carries the highest mastery weight. A successful rewrite advances tier from `correction` toward `production`, not the first draft.
 
+**Tier ordering is explicit, never lexical.** The rank is:
+
+```
+recognition (1) < correction (2) < production (3) < retention (4)
+```
+
+Implemented as a `tier_rank(tier text) returns int` SQL helper or a fixed lookup. Any "highest tier achieved" or "tier below production" comparison uses this rank — never `evidence_tier < 'production'` string comparison, which is lexically wrong (`'correction' < 'production'` is true but `'recognition' < 'production'` is also true while `'retention' > 'production'` lexically yet retention outranks production).
+
+#### 4.12b `evidence_key` — end-to-end idempotency
+
+`evidence_key` is the deterministic dedup key that makes outbox delivery idempotent end to end. It identifies the exact evidence unit produced by one evaluation:
+
+```
+evidence_key = SHA-256(
+  user_id || '\x00' ||
+  evaluation_id || '\x00' ||
+  coalesce(issue_projection_id::text, 'no_projection') || '\x00' ||
+  coalesce(microtopic_id::text, 'no_microtopic') || '\x00' ||
+  evidence_tier || '\x00' ||
+  source_type
+)
+```
+
+The `unique (evidence_key)` constraint means a worker that inserts evidence, crashes before marking the outbox done, then retries, produces `ON CONFLICT (evidence_key) DO NOTHING` — no duplicate. The evidence insert and the outbox-completion UPDATE must occur in **one transaction** so completion is only recorded when evidence is durably written.
+
+The shadow idempotency key (§10.1a) uses the same identity components — it must not collapse multiple projections, microtopics, or tiers produced by one evaluation.
+
 **Mastery aggregator:** a separate process reads `user_topic_mastery_evidence` and computes `user_topic_mastery`. Evidence must not directly mutate `user_topic_mastery`. The existing mastery recomputation from `mock_topic_breakdowns` must not be overwritten by a parallel writing update.
+
+#### 4.12c Invalidation correction path (post-emission)
+
+When a `writing_issue_review_events` row invalidates or reclassifies an issue **after** mastery evidence or shadow rows already exist, the existing rows are never mutated or deleted (append-only). The correction is append-only:
+
+- **`invalidated`:** emit a retraction evidence row referencing the original via `metadata.retracts_evidence_key`, with a `source_type` retained and a negative/zeroing `score` semantics defined by the aggregator. The unified aggregator excludes invalidated projections and reverses their prior canonical effect on recompute.
+- **`reclassified`:** emit a new projection at a higher `projection_revision` and a replacement evidence row keyed on the new projection identity. The original evidence is retracted as above.
+
+The aggregator is the single point that nets retractions against prior effects. No writing-side code mutates `user_topic_mastery` directly.
 
 ---
 
@@ -966,10 +1022,17 @@ Evaluations belong to immutable versions. An evaluation of version 1 remains val
 ### 8.1 Worker transaction sequence
 
 ```
-1.  Load the requested unit version.
-2.  Verify content hash:
-      requested_content_hash = writing_unit_versions.content_hash
+1.  Load the requested unit version (answer_text + stored content_hash).
+2.  Verify content hash by RECOMPUTING from the stored text:
+      sha256(stored_answer_text) == stored_content_hash == requested_content_hash
+      All three must be equal. Recomputation (not field equality) is what
+      detects corrupted or mutated text; the requested_content_hash check
+      only proves the caller carried the stored value.
+      If they differ → abort as corrupt; do not evaluate.
 3.  Evaluate the version (LLM call or deterministic computation).
+      NO database transaction is open during the external/LLM call.
+      The locking/write transaction (steps 4–13) begins only after the
+      evaluator returns.
 4.  Lock the parent writing_session_units row.
 5.  Read the unit's current latest version.
 6.  Persist the evaluation against the requested version (always).
@@ -1018,19 +1081,26 @@ An optional "invoke-after-commit" callback without a committed outbox record is 
 **`writing_mastery_outbox` table (added in EWP-1 migration):**
 
 ```sql
-id                uuid primary key
-evaluation_id     uuid not null references writing_evaluations(id)
-user_id           uuid not null references auth.users(id)
-idempotency_key   text not null  -- SHA-256(evaluation_id || user_id || projection_revision)
-status            text not null default 'pending'  -- 'pending' | 'processing' | 'done' | 'failed'
-attempts          int not null default 0
-max_attempts      int not null default 5
-last_error        text
-created_at        timestamptz not null default now()
-processed_at      timestamptz
+id                  uuid primary key
+evaluation_id       uuid not null references writing_evaluations(id)
+user_id             uuid not null references auth.users(id)
+mastery_flag_state  text not null  -- pinned 'shadow' | 'live' at row creation; see below
+idempotency_key     text not null  -- SHA-256(evaluation_id || user_id || projection_revision)
+status              text not null default 'pending'  -- 'pending' | 'processing' | 'done' | 'failed'
+attempts            int not null default 0
+max_attempts        int not null default 5
+last_error          text
+created_at          timestamptz not null default now()
+processed_at        timestamptz
 
 unique (idempotency_key)
 ```
+
+**Mode pinning (mirrors the mock pinned-mode regression contract):** the effective `off|shadow|live` mode — including the per-user allowlist resolution — is resolved **once**, when the outbox row is created (inside the evaluation transaction), and stored in `mastery_flag_state`. The worker reads `mastery_flag_state` from the row and never re-reads the environment or allowlist. Retries and recovery reuse the pinned mode. This prevents an in-flight job from being processed under a later environment/allowlist value.
+
+- `off`: **no outbox row is created.** No mastery side effects exist to track.
+- `shadow`: outbox row with `mastery_flag_state = 'shadow'`; worker writes `writing_mastery_shadow` only.
+- `live`: outbox row with `mastery_flag_state = 'live'`; worker publishes validated evidence to the unified aggregator (see §10.2). `live` is prohibited until Lane A clears (§10.2).
 
 ### 8.3 Job claiming
 
@@ -1141,9 +1211,12 @@ shadow:
 
 live:
   Persist shadow row.
-  Apply canonical mastery update.
+  Publish validated evidence to the unified mastery aggregator.
+  Never write user_topic_mastery directly (see locked rule 19).
   Only for allowlisted users.
 ```
+
+`live` does **not** apply a direct canonical mastery update from writing code. Per locked rule 19, the unified aggregator is the single writer of `user_topic_mastery`. `live` publishes validated evidence to that aggregator. Until the aggregator exists and Lane A clears (§10.2), `live` is prohibited.
 
 ### 10.1a `writing_mastery_shadow` table
 
@@ -1163,13 +1236,13 @@ evidence_tier         text not null
 score                 numeric
 confidence            numeric
 delta_json            jsonb not null default '{}'
-idempotency_key       text not null   -- SHA-256(user_id || evaluation_id || topic_id || source_type)
+evidence_key          text not null   -- same identity as user_topic_mastery_evidence.evidence_key (§4.12b)
 processed_at          timestamptz not null default now()
 
-unique (idempotency_key)
+unique (evidence_key)
 ```
 
-Insert uses `ON CONFLICT (idempotency_key) DO NOTHING` to guarantee at-most-once shadow rows for a given evidence event. No UPDATE or DELETE is permitted on this table.
+The shadow key is the same `evidence_key` defined in §4.12b: it includes `issue_projection_id`, `microtopic_id`, and `evidence_tier`, so multiple projections/microtopics/tiers from one evaluation produce distinct rows and are not collapsed. Insert uses `ON CONFLICT (evidence_key) DO NOTHING` to guarantee at-most-once shadow rows. No UPDATE or DELETE is permitted on this table.
 
 ### 10.2 Blocking constraint
 

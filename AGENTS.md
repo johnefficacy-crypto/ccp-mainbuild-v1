@@ -437,17 +437,23 @@ hash; they never compute it. Do not add client-side hash generation.
 
 An in-flight evaluator must perform BOTH checks before applying
 state-change side effects:
-1. **Content hash check** — confirms the `writing_unit_version` content
-   the evaluator read matches the stored `content_hash`. Guards against
-   bit-rot or inadvertent mutation.
+1. **Content hash check** — RECOMPUTE `sha256(stored_answer_text)` and
+   require it equal both the stored `content_hash` and the
+   `requested_content_hash`. Field equality alone does not detect mutated
+   text; recomputation does. Guards against bit-rot or inadvertent mutation.
 2. **Version-number check** — confirms the version being evaluated is still
    the latest version for the unit. Guards against fast-rewrite races.
 
 If content hash fails → abort the evaluation as corrupt.
-If version number is stale → preserve the evaluation row with
-`affects_current_state = false`; skip all state-change side effects
-(unit state, resolution events, mastery evidence). Do not conflate the two
-checks or drop either one.
+If version number is stale → still persist the evaluation row and its issue
+events, with `affects_current_state = false` on the issue events (that column
+lives on `writing_issue_events`, not `writing_evaluations`); skip the
+remaining state-change side effects (resolution events, projections, mastery
+outbox, unit/session finalization). Do not conflate the two checks or drop
+either one.
+
+The external/LLM evaluation must run with NO database transaction open; the
+short locking/write transaction begins only after the evaluator returns.
 
 ### EWP-5. `finalize_writing_session` owns rollup-derived state transitions
 
@@ -467,21 +473,47 @@ not a rollup transition — it is a deliberate user-directed state override.
 All other paths that write session or unit state must route through the
 finalizer.
 
-### EWP-6. Mastery evidence is POST-COMMIT and feature-flag gated
+### EWP-6. Mastery evidence is durable-outbox, mode-pinned, idempotent
 
-`user_topic_mastery_evidence` inserts from writing evaluations must happen
-after the evaluation transaction commits, in a separate database call.
-Writing them inside the evaluation transaction risks lock contention that
-rolls back issue/resolution inserts.
+`user_topic_mastery_evidence` inserts from writing evaluations must NOT be
+inside the evaluation transaction (lock contention would roll back
+issue/resolution inserts). Use a transactional outbox: insert a
+`writing_mastery_outbox` job inside the evaluation transaction, then a worker
+processes it post-commit. An optional after-commit callback without a
+committed outbox row is not permitted — it loses evidence on crash.
 
-The `FF_WRITING_MASTERY_WRITES` flag (`off | shadow | live`) must default
-to `off`. Live writes are blocked until the Lane A unified aggregator gate
-clears and `FF_MOCK_MASTERY_WRITES` is proven stable. Shadow mode is safe
-at any time. Fails closed: any unrecognised flag value → treat as `off`.
+**Mode pinning:** the effective `off|shadow|live` mode (with per-user
+allowlist) is resolved ONCE when the outbox row is created and stored in
+`writing_mastery_outbox.mastery_flag_state`. The worker reads the pinned
+state and never re-reads the environment; retries reuse it. `off` creates no
+outbox row.
+
+**End-to-end idempotency:** `user_topic_mastery_evidence` and
+`writing_mastery_shadow` carry a deterministic `evidence_key`
+(`sha256(user_id, evaluation_id, issue_projection_id, microtopic_id,
+evidence_tier, source_type)`) with a unique constraint. The evidence insert
+(`ON CONFLICT DO NOTHING`) and the outbox-completion UPDATE run in one
+transaction. A crash-after-insert/before-ack retry inserts no duplicate.
+
+The `FF_WRITING_MASTERY_WRITES` flag (`off | shadow | live`) defaults to
+`off`. `live` publishes validated evidence to the unified aggregator — it
+NEVER writes `user_topic_mastery` directly (locked rule 19). `live` is
+blocked until the Lane A aggregator gate clears and `FF_MOCK_MASTERY_WRITES`
+is proven stable. Shadow is safe at any time. Fails closed: any unrecognised
+value → `off`.
+
+**Tier rank is explicit, never lexical:** `recognition(1) < correction(2) <
+production(3) < retention(4)` via a rank helper — never `evidence_tier <
+'production'` string comparison.
+
+**Post-emission invalidation is append-only:** an `invalidated` or
+`reclassified` review event after evidence exists emits a retraction /
+replacement evidence row; the aggregator nets it out. Existing evidence rows
+are never mutated.
 
 ### EWP-7. Only verified, active prompts reach aspirant surfaces
 
-`writing_prompts` rows must have `review_status = 'verified'` and
+`writing_prompts` rows must have `reviewer_status = 'verified'` and
 `is_active = true` before the planner or any aspirant-facing API may use
 them. `exam_descriptive_requirements` rows must similarly be verified and
 active. The prompt reviewer lifecycle is

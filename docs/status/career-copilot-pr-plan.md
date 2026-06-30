@@ -30,7 +30,7 @@ terms come from `docs/status/career-copilot-checklist.md`.
 | E. Backend CI audit sequencing | Yes | Independent infrastructure PR | CI/backend infra agent |
 | F. Live-DB tails | Yes, operator-led | Does not block code cleanup unless evidence changes status | Operator |
 | G. Track C / personalization expansion | No | Waits on Lane A clean gate | Backend+frontend feature agents later |
-| H. English Writing Practice | EWP-1 can start now; EWP-5 mastery live blocked on Lane A gate | EWP-5 mastery live blocked on Lane A gate | Backend + frontend agents |
+| H. English Writing Practice | EWP-1 starts after architecture lock (#819 merge); EWP-5 mastery live blocked on Lane A gate | Architecture lock (#819) gates EWP-1; EWP-5 mastery live blocked on Lane A gate | Backend + frontend agents |
 
 ## Lane H — English Writing Practice
 
@@ -39,13 +39,13 @@ Checklist: `docs/status/career-copilot-checklist.md` § English Writing Practice
 
 ### Parallelization within Lane H
 
-EWP-1 and EWP-2 must land before EWP-3, EWP-4, EWP-5. Within EWP-3 onward, backend and frontend work can be parallelised across separate agents as long as the API contract from EWP-2 is respected. EWP-5 mastery live writes remain blocked on the Lane A gate.
+EWP-1 must land first. EWP-2 (deterministic API) and EWP-2B (evaluator worker) may be developed concurrently after EWP-1; both must land before EWP-3, EWP-4, EWP-5. Within EWP-3 onward, backend and frontend work can be parallelised across separate agents as long as the API contract from EWP-2 is respected. EWP-5 mastery live writes remain blocked on the Lane A gate.
 
 ---
 
 ### EWP-1 — Architecture contract, schema, constraints, RLS
 
-**Status:** PLANNED
+**Status:** PLANNED — blocked on architecture lock (PR #819 merge)
 
 **Goal:** Land the full schema with RLS, constraints, state-machine tests, and hash test vectors. No aspirant-facing UI. No mastery live writes. Migration number must come from `select max(version)::int + 1 from schema_migrations`.
 
@@ -75,11 +75,14 @@ app/backend/tests/study_os/test_version_set_hash.py
 11. `writing_issue_resolution_events` with `successor_issue_event_id`, `unique(issue_event_id, resolving_version_id, evaluator_version)`
 12. `writing_issue_projections` with `unique(issue_event_id, projection_revision)`
 13. `writing_issue_review_events`
-14. `user_topic_mastery_evidence` with `evidence_tier`, `issue_projection_id`
+14. `user_topic_mastery_evidence` with `evidence_tier`, `issue_projection_id`, `evidence_key` + `unique(evidence_key)` (§4.12b)
 15. `writing_evaluation_jobs` with `generation`, `unique(evaluation_id, job_kind, generation)`, active partial unique index
-16. `study_tasks` additive columns: `launch_type text`, `launch_entity_id uuid`, `launch_context jsonb`
-17. RLS on all tables (see §12 of architecture doc): owner-select for session/unit/version/evaluation/issue tables; service-role-only for review/projection/mastery/job tables
-18. RLS verification: all new tables must have explicit policies — zero-policy RLS tables are a known repo defect (see checklist § Schema & RPC permissions)
+16. `writing_mastery_shadow` with `evidence_key` + `unique(evidence_key)` (§10.1a)
+17. `writing_mastery_outbox` with `mastery_flag_state`, `idempotency_key` + `unique(idempotency_key)` (§8.2)
+18. `study_tasks` additive columns: `launch_type text`, `launch_entity_id uuid`, `launch_context jsonb`
+19. `tier_rank(text) returns int` SQL helper: `recognition→1, correction→2, production→3, retention→4` (§4.12 — never lexical comparison)
+20. RLS on all tables (see §12 of architecture doc): owner-select for session/unit/version/evaluation/issue tables; service-role-only (no client allow policy) for `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_evaluation_jobs`, `writing_mastery_shadow`, `writing_mastery_outbox`
+21. RLS verification: every new table must have RLS enabled and a deliberate policy decision recorded. Owner-select tables get an explicit owner policy. Service-role-only tables (§12.2) intentionally have NO client allow policy (`USING (false)` or no policy) — this is the correct, documented state for them, not the zero-policy defect. The zero-policy defect applies only to tables that should be owner-readable but lack a policy.
 
 **Tests must include:**
 
@@ -132,8 +135,13 @@ GET  /api/study/practice/english/sessions/{id}
 POST /api/study/practice/english/sessions/{id}/units/{unit_number}/submit
   body: { answer_text, client_word_count, version_number? }
   runs Stage 1 deterministic checks immediately
-  queues Stage 2 job (returns job_id)
+  enqueues writing_evaluation_jobs row for Stage 2 (consumed by EWP-2B worker)
   returns: evaluation stub with deterministic_result
+```
+
+The submit endpoint only *enqueues* the Stage 2 job. The worker that consumes it is delivered in **EWP-2B** (below). EWP-2 and EWP-2B may be developed concurrently but EWP-2B must merge before EWP-3 (issue cards) and EWP-4 (Error Lab), which depend on populated issue/projection data.
+
+```
 
 POST /api/study/practice/english/sessions/{id}/units/{unit_id}/reopen
   body: { expected_latest_version_id, reason }
@@ -153,13 +161,55 @@ GET  /api/study/practice/english/error-summary
 
 **Mission-control:** extend the mission-control response to compute `action_url` and `action_label` from `study_tasks.launch_type + launch_entity_id`.
 
-**Does not include:** LLM evaluation, frontend shell, Grammar Lab, Error Lab.
+**Does not include:** LLM evaluation worker (EWP-2B), frontend shell, Grammar Lab, Error Lab.
+
+---
+
+### EWP-2B — Stage 2/Stage 3 evaluator runtime
+
+**Status:** PLANNED — blocked on EWP-1 merged (concurrent with EWP-2; must merge before EWP-3/EWP-4)
+
+**Goal:** the asynchronous language (Stage 2) and rubric (Stage 3) evaluator pipeline that consumes `writing_evaluation_jobs` and produces issue events, lineage, resolution events, and projections. Without this PR the jobs EWP-2 enqueues have no consumer and EWP-3/EWP-4 have no data.
+
+**Write scope:**
+
+```
+app/backend/app/study_os/writing_practice/
+  evaluator_worker.py    (job sweeper + SELECT ... FOR UPDATE SKIP LOCKED claiming)
+  language_evaluator.py  (Stage 2 LLM call, structured-output schema + validation)
+  rubric_evaluator.py    (Stage 3 dimension scoring; confidence gating)
+  issue_pipeline.py      (issue event insert, lineage assignment, resolution events)
+  projection.py          (writing_issue_projections insert, race-safe count §6)
+  mastery_outbox.py      (outbox row creation with pinned mastery_flag_state §8.2)
+  recovery.py            (generation+1 recovery, language_status compare-and-set)
+app/backend/tests/study_os/test_evaluator_worker.py
+app/backend/tests/study_os/test_language_evaluator_validation.py
+app/backend/tests/study_os/test_issue_lineage.py
+app/backend/tests/study_os/test_projection_race.py
+app/backend/tests/study_os/test_mastery_outbox.py
+docs/status/career-copilot-checklist.md
+```
+
+**Must implement (architecture references):**
+
+- Job claiming with `SELECT ... FOR UPDATE SKIP LOCKED` (§8.3); no two workers claim one job
+- Structured evaluator output validation against the Stage 2 schema (§5.3); reject and retry malformed responses
+- Stale evaluation contract (§8.1): recompute `sha256(stored_text)`, version-number check, LLM call outside any open DB transaction, then short locking/write transaction
+- Issue lineage + resolution event creation (§4.8a, §4.9); evaluator-referenced IDs validated against `active_prior_issues` / `resolved_prior_lineages`
+- Projection insertion with race-safe counting (§6): advisory lock or SERIALIZABLE
+- Mastery outbox row with pinned `mastery_flag_state` (§8.2); `off` creates no row
+- Permanent-failure handling: `terminal_partial` mapping (§4.6a-1), `deterministic_only` outcome, recovery via `generation + 1`
+- Retry accounting owned by `writing_evaluation_jobs`, not the evaluation row
+
+**Stage 3 (rubric)** is included here for the dimensions used by sentence/paragraph drills. Descriptive-exam rubric extensions are scoped with EWP-7.
+
+**Does not include:** frontend, planner task generation, live mastery writes.
 
 ---
 
 ### EWP-3 — Sentence Builder and rewrite UI
 
-**Status:** PLANNED — blocked on EWP-2 merged
+**Status:** PLANNED — blocked on EWP-2 + EWP-2B merged
 
 **Goal:** five-sentence construction interface with word chips, per-sentence issue cards, mandatory rewrite, before/after diff, and session resume.
 
@@ -197,7 +247,7 @@ docs/status/career-copilot-checklist.md
 
 ### EWP-4 — Grammar Lab and Error Lab
 
-**Status:** PLANNED — blocked on EWP-2 merged (can parallelize with EWP-3)
+**Status:** PLANNED — blocked on EWP-2 + EWP-2B merged (can parallelize with EWP-3)
 
 **Goal:** topic-specific grammar drills and Error Lab showing recurring issues linked to Grammar Lab.
 
@@ -256,7 +306,7 @@ docs/status/career-copilot-checklist.md
 
 **Status:** PLANNED — blocked on EWP-3 merged and release gates §16 passed
 
-Five-sentence paragraph editor. Scaffolded slots when `evidence_tier < 'production'` for paragraph topics; single textarea after `production` evidence exists for ≥3 topics. Outline scratchpad stored as `outline_json` on `writing_sessions`. Not included in EWP-3 to keep the sentence pipeline clean before adding paragraph complexity.
+Five-sentence paragraph editor. Scaffolded slots when `tier_rank(evidence_tier) < tier_rank('production')` for paragraph topics; single textarea after `production` evidence exists for ≥3 topics. (Use `tier_rank`, never lexical string comparison — §4.12.) Outline scratchpad stored as `outline_json` on `writing_sessions`. Not included in EWP-3 to keep the sentence pipeline clean before adding paragraph complexity.
 
 ---
 
