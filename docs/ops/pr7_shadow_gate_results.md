@@ -137,21 +137,14 @@ Steps 3–8 are sequential and each depends on those above it.
    (cross-document digest + required `EXPECTED_SHA`). (iv) ⛔ OPERATOR PENDING —
    PR #800 staging validation + boundary approval. After approval: re-pin the
    fingerprint to the post-merge main SHA and record it here.
-3. **Migration 182 deployment (OPERATOR PENDING):** Dry-run migration
-   `182_mock_correction_draft_atomic_rpcs.sql` with `BEGIN` / `ROLLBACK`;
-   confirm anon / authenticated roles cannot `EXECUTE` the three RPCs
-   (`ensure_mock_correction_drafts`, `ensure_mock_correction_draft`,
-   `replace_manual_mock_correction_drafts`); apply to the target environment.
-   **Durable evidence required before marking DONE** (all fields must be
-   recorded in a dated audit document):
-   - Target environment (staging / prod)
-   - Reviewed/deployed SHA at time of apply
-   - UTC run time
-   - `schema_migrations` history result confirming 182 applied (e.g. `SELECT * FROM schema_migrations WHERE version = '182'`)
-   - Exact RPC signatures returned by `pg_proc` / `\df` for all three functions
-   - SECURITY DEFINER owner and `search_path` for each function
-   - Effective EXECUTE privileges (grantee query output — not a prose assertion)
-   - Dry-run `BEGIN` / `ROLLBACK` output OR rollback-safe smoke-test confirming no data mutation
+3. **Migration 182 deployment: OPERATOR VALIDATED (2026-06-30).** All
+   eight durable evidence items — target environment, deployed SHA, UTC
+   validation time, `schema_migrations` history row, exact RPC signatures,
+   SECURITY DEFINER + `search_path` confirmation, EXECUTE privilege matrix
+   (anon/authenticated=false, service_role=true), and rollback-safe
+   three-guard smoke test — recorded in
+   `docs/audits/2026-06-30-migration-182-operator-validation.md`. No
+   further action required for this item.
 4. **PR-6 clean operator run (OPERATOR RERUN PENDING):** Run the full
    12-gate PR-6 operator session on one pinned SHA; confirm Gate 9
    passes (allowlist deployed with named user(s) in
@@ -167,17 +160,16 @@ Steps 3–8 are sequential and each depends on those above it.
    the confirmed `window_start` SHA, run:
 
    ```bash
-   set -euo pipefail
-   readarray -t _files < <(grep -v '^#' docs/ops/mastery_validation_fingerprint_manifest_v2.txt | grep -v '^$')
-   _expected=35
-   _actual=${#_files[@]}
-   [[ $_actual -eq $_expected ]] || { echo "ERROR: expected $_expected files, got $_actual" >&2; exit 1; }
-   for _f in "${_files[@]}"; do
-     [[ -f "$_f" ]] || { echo "ERROR: missing $_f" >&2; exit 1; }
-   done
-   sha256sum "${_files[@]}" | sha256sum
-   # Or simply: bash scripts/verify_mastery_fingerprint.sh
+   EXPECTED_SHA="$(git rev-parse HEAD)" \
+     bash scripts/verify_mastery_fingerprint.sh
    ```
+
+   The verifier hashes canonical Git blobs (always LF, regardless of
+   checkout line endings), validates file count and per-file attestation,
+   cross-checks the combined digest across control documents, and confirms
+   the pinned SHA matches `HEAD`. Do not substitute the manual
+   `sha256sum "${_files[@]}"` recipe — it hashes working-tree bytes and
+   will produce a different digest on CRLF checkouts.
 
    Record hash here and in the window record below.
 
