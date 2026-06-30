@@ -1,9 +1,10 @@
 """APScheduler in-process job runner.
 
-Three jobs:
+Jobs:
     notif:dispatch        every 2 min   — dispatch_pending_alerts
     notif:deadline_sweep  daily 06:00   — send_deadline_alerts (3-day + 1-day)
     elig:recompute        every 5 min   — drain_recompute_queue
+    doc:text_extract      every 60s     — run_worker_pass (text_extract_worker)
 
 Lifecycle is wired into the FastAPI ``lifespan`` in ``server.py``.
 The scheduler is a singleton; calls to ``start_scheduler`` are idempotent.
@@ -61,6 +62,8 @@ def _is_noop_result(name: str, result: Any) -> bool:
             (result.get(k) or 0)
             for k in ("enqueued", "auto_submitted", "derivations", "failed", "errors")
         )
+    if name == "doc:text_extract":
+        return result.get("processed", 0) == 0 and result.get("status") == "idle"
     return False
 
 
@@ -119,6 +122,12 @@ def _job_mock_sweeper() -> dict[str, Any]:
     return run_sweeper(get_supabase_admin())
 
 
+def _job_text_extract_worker() -> dict[str, Any]:
+    from app.library.text_extract_worker import run_worker_pass
+
+    return run_worker_pass(get_supabase_admin())
+
+
 # Public registry — also used by the manual-trigger admin endpoint.
 JOBS: dict[str, callable] = {  # type: ignore[type-arg]
     "notif:dispatch": _job_dispatch,
@@ -127,6 +136,7 @@ JOBS: dict[str, callable] = {  # type: ignore[type-arg]
     "study:plan_regen": _job_plan_regen,
     "anon:cleanup": _job_cleanup_anonymous_users,
     "mock:sweeper": _job_mock_sweeper,
+    "doc:text_extract": _job_text_extract_worker,
 }
 
 
@@ -190,6 +200,20 @@ def start_scheduler() -> BackgroundScheduler | None:
         _wrap("mock:sweeper", _job_mock_sweeper),
         IntervalTrigger(seconds=30),
         id="mock:sweeper",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    # Every 60s — claim and run one queued text_extract job. Single-instance
+    # (max_instances=1 + coalesce=True) so a slow extraction doesn't queue
+    # a second pass on top of itself. Configurable via TEXT_EXTRACT_WORKER_INTERVAL_SECONDS.
+    _text_extract_interval = int(
+        os.environ.get("TEXT_EXTRACT_WORKER_INTERVAL_SECONDS", "60")
+    )
+    sched.add_job(
+        _wrap("doc:text_extract", _job_text_extract_worker),
+        IntervalTrigger(seconds=_text_extract_interval),
+        id="doc:text_extract",
         replace_existing=True,
         max_instances=1,
         coalesce=True,
