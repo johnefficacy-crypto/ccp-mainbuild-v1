@@ -87,3 +87,58 @@ def test_default_when_env_unset(monkeypatch):
     monkeypatch.delenv("TEXT_EXTRACT_WORKER_INTERVAL_SECONDS", raising=False)
     from app.notifications.scheduler import _parse_text_extract_interval, _TEXT_EXTRACT_INTERVAL_DEFAULT
     assert _parse_text_extract_interval() == _TEXT_EXTRACT_INTERVAL_DEFAULT
+
+
+# ── run_job_now failure classification ───────────────────────────────────────
+
+
+def test_run_job_now_failed_extraction_returns_ok_false():
+    """run_job_now must honour _is_failure_result: a failed doc:text_extract
+    job returns ok=False rather than the old always-True behaviour."""
+    from unittest.mock import patch
+    from app.notifications.scheduler import run_job_now
+
+    failed_result = {"processed": 1, "status": "failed", "job_id": "xyz", "error": "crash"}
+    with patch("app.notifications.scheduler.JOBS", {"doc:text_extract": lambda: failed_result}):
+        out = run_job_now("doc:text_extract")
+
+    assert out["ok"] is False
+    assert out["result"] == failed_result
+
+
+def test_run_job_now_succeeded_extraction_returns_ok_true():
+    """A successful doc:text_extract job must still return ok=True."""
+    from unittest.mock import patch
+    from app.notifications.scheduler import run_job_now
+
+    success_result = {"processed": 1, "status": "succeeded", "job_id": "xyz", "error": None}
+    with patch("app.notifications.scheduler.JOBS", {"doc:text_extract": lambda: success_result}):
+        out = run_job_now("doc:text_extract")
+
+    assert out["ok"] is True
+
+
+def test_run_job_now_idle_returns_ok_true():
+    """An idle pass (nothing queued) is not a failure."""
+    from unittest.mock import patch
+    from app.notifications.scheduler import run_job_now
+
+    idle_result = {"processed": 0, "status": "idle", "job_id": None, "error": None}
+    with patch("app.notifications.scheduler.JOBS", {"doc:text_extract": lambda: idle_result}):
+        out = run_job_now("doc:text_extract")
+
+    assert out["ok"] is True
+
+
+# ── JOB_PERMISSIONS ──────────────────────────────────────────────────────────
+
+
+def test_job_permissions_doc_text_extract():
+    from app.notifications.scheduler import JOB_PERMISSIONS
+    assert JOB_PERMISSIONS.get("doc:text_extract") == "exam_intelligence.cms"
+
+
+def test_job_permissions_notif_dispatch_not_restricted():
+    """Standard notification jobs must not be in the restricted map."""
+    from app.notifications.scheduler import JOB_PERMISSIONS
+    assert "notif:dispatch" not in JOB_PERMISSIONS

@@ -74,15 +74,19 @@ def _fallback_fail_job(sb, job_id: str, document_id: str, error: str) -> None:
     rows for the same reason.
     """
     try:
-        sb.table("document_processing_jobs").update({
+        updated = sb.table("document_processing_jobs").update({
             "status": "failed",
             "finished_at": _now_iso(),
             "error_code": "worker_unhandled_error",
             "error_message": error[:500],
-        }).eq("id", job_id).eq("status", "running").execute()
-        sb.table("document_assets").update({
-            "status": "failed",
-        }).eq("id", document_id).neq("status", "archived").execute()
+        }).eq("id", job_id).eq("status", "running").execute().data or []
+        # Only flip the document if we actually claimed the terminal update on
+        # the job row.  If updated is empty the job was already terminal (e.g.
+        # a concurrent recovery path beat us here), so we must not clobber it.
+        if updated:
+            sb.table("document_assets").update({
+                "status": "failed",
+            }).eq("id", document_id).neq("status", "archived").execute()
     except Exception as fb_exc:  # noqa: BLE001
         logger.warning(
             "text-extract worker: fallback fail for job_id=%s also failed: %s",
@@ -157,7 +161,9 @@ def run_worker_pass(sb) -> dict[str, Any]:
             user_id=None,
             admin_scope=admin_scope,
         )
-        final_status = (result.get("job") or {}).get("status", "succeeded")
+        final_status = (result.get("job") or {}).get("status") or "failed"
+        if final_status not in ("succeeded", "failed", "queued", "running"):
+            final_status = "failed"
         logger.info(
             "text-extract worker: job_id=%s doc=%s → %s",
             job_id, document_id, final_status,

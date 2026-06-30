@@ -378,7 +378,8 @@ def test_fallback_fail_job_does_not_clobber_archived_document():
 
 
 def test_fallback_fail_job_does_not_update_job_unless_running():
-    """Scoped to status='running': a job that already terminal is not clobbered."""
+    """Scoped to status='running': a job that is already terminal is not clobbered,
+    and critically the document is also left untouched (conditional guard)."""
     doc_id = str(uuid4())
     job_id = str(uuid4())
     job_row = {"id": job_id, "status": "succeeded"}
@@ -388,6 +389,7 @@ def test_fallback_fail_job_does_not_update_job_unless_running():
     _fallback_fail_job(sb, job_id, doc_id, "late error")
 
     assert job_row["status"] == "succeeded"  # unchanged
+    assert doc_row["status"] == "processed"  # not clobbered when job CAS missed
 
 
 def test_fallback_fail_job_does_not_crash_on_sb_error():
@@ -397,6 +399,46 @@ def test_fallback_fail_job_does_not_crash_on_sb_error():
             raise RuntimeError("DB unavailable")
 
     _fallback_fail_job(_BadSb(), str(uuid4()), str(uuid4()), "some error")
+
+
+# ── fail-closed final_status ────────────────────────────────────────────────
+
+
+def test_run_worker_pass_missing_job_row_returns_failed():
+    """If run_text_extract_job returns a result with no 'job' key, the worker
+    must fail-closed (status='failed') rather than assuming success."""
+    doc_id = str(uuid4())
+    job_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+    j = _job(job_id=job_id, document_id=doc_id, status="queued")
+    sb = _Sb(jobs=[j], docs=[doc])
+
+    with patch(
+        "app.library.text_extract_worker.run_text_extract_job",
+        return_value={},  # no 'job' key
+    ):
+        result = run_worker_pass(sb)
+
+    assert result["processed"] == 1
+    assert result["status"] == "failed"
+
+
+def test_run_worker_pass_unexpected_final_status_returns_failed():
+    """An unrecognised status string must be normalised to 'failed'."""
+    doc_id = str(uuid4())
+    job_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+    j = _job(job_id=job_id, document_id=doc_id, status="queued")
+    sb = _Sb(jobs=[j], docs=[doc])
+
+    with patch(
+        "app.library.text_extract_worker.run_text_extract_job",
+        return_value={"job": {"id": job_id, "status": "unknown_state"}},
+    ):
+        result = run_worker_pass(sb)
+
+    assert result["processed"] == 1
+    assert result["status"] == "failed"
 
 
 # ── _ADMIN_SCOPES constant ───────────────────────────────────────────────────

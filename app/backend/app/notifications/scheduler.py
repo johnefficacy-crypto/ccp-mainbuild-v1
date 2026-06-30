@@ -148,6 +148,13 @@ def _job_text_extract_worker() -> dict[str, Any]:
     return run_worker_pass(get_supabase_admin())
 
 
+# Per-job permission overrides for the manual-trigger admin endpoint.
+# Jobs not listed here fall back to the endpoint's default (require_admin).
+# The value is the permission string checked by require_permission().
+JOB_PERMISSIONS: dict[str, str] = {
+    "doc:text_extract": "exam_intelligence.cms",
+}
+
 # Public registry — also used by the manual-trigger admin endpoint.
 JOBS: dict[str, callable] = {  # type: ignore[type-arg]
     "notif:dispatch": _job_dispatch,
@@ -308,8 +315,9 @@ def run_job_now(job_id: str) -> dict[str, Any]:
     started = datetime.now(timezone.utc).isoformat()
     try:
         result = fn()
-        _last_run[job_id] = {"at": started, "ok": True, "result": result, "manual": True}
-        return {"ok": True, "result": result}
+        ok = not _is_failure_result(job_id, result)
+        _last_run[job_id] = {"at": started, "ok": ok, "result": result, "manual": True}
+        return {"ok": ok, "result": result}
     except Exception as exc:  # noqa: BLE001
         _last_run[job_id] = {"at": started, "ok": False, "error": str(exc), "manual": True}
         return {"ok": False, "error": str(exc)}
