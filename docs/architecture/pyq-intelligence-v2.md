@@ -1,8 +1,8 @@
 ---
 owner: exam-intelligence
 status: architecture decision + phased implementation plan
-last_verified_against_code: 2026-06-30
-verified_against: main @ f0d84f8
+last_targeted_reconciliation: 2026-06-30
+reconciliation_scope: frequency-semantics section + delivery-order steps 2-3 only; full cross-examination of all source paths, gap entries, and delivery dependencies not performed in this pass
 source_of_truth: code
 related_code:
   - app/backend/app/exam_intelligence/coverage.py
@@ -372,7 +372,7 @@ Only after multiple complete exam corpora exist:
 1. **Close current runtime gates.** Complete scheduler, shadow, allowlist, migration, and canary validation already tracked for Mock Engine v2. *(In progress — see `career-copilot-checklist.md`.)*
 2. ~~**Define frequency semantics.**~~ **DONE (PR #767, merged).** Primary-only semantics implemented in `coverage.py`; 7 regression tests; primary-only is the current default.
 3. ~~**Activate `exam_topic_score_snapshots`.**~~ **DONE (PRs #767/#773/#810, all merged).** Deterministic idempotent writer, draft→reviewed→locked transition matrix, atomic review RPC (migration 204), operator workbench embedded in PYQ Workbench tab, locked-only reader wired into planner as 0–15 pt confidence-weighted additive signal. Operator/browser validation still pending before full sign-off.
-4. **Add cognitive-demand classification.** Pending AI proposals + admin review. *(Unblocked — P2 contract needed before implementation.)*
+4. **Add cognitive-demand classification.** Pending AI proposals + admin review. *(Metadata-only classification — reviewed per-question cognitive-demand records with no mock-selection or weighting output — is independent of Track C and may proceed once its contract is approved. However, no classification output may feed mock-selection weighting or personalization until Lane A clears the live mastery gate (`FF_MOCK_MASTERY_WRITES=live`). P2 contract must be defined before implementation.)*
 5. **Unify revision recommendations.** Topic mastery due/relearn/practice contract using existing SRS where appropriate.
 6. **Rank reviewed resources.** No AI-generated resource claims.
 7. **Build CA provenance and linking.** Separate from policy updates.

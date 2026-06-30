@@ -1,6 +1,61 @@
 # Career Copilot remaining-work PR plan
 
-Last planned from repo state: 2026-06-30 at `main @ f0d84f8`. IA decisions locked: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`. PRs #810 (Score Snapshot Workbench), #811 (text-extract worker), #812 (cycle/phase label fix) merged 2026-06-30.
+> **ARCHIVED DISPATCH PLAN — 2026-06-21 origin. Do not use as a live execution guide.**
+>
+> This document was last planned against `main @ 2308b31` (2026-06-21). The dispatch instructions below are stale: I3/I4/I5/I7/I8-A/B/C/I9/P-slice-1/P-slice-2/P-slice-1c and many other items described as "in review", "gated", or "ready to dispatch" are already merged. Following the lane instructions in this file risks re-opening work that is complete or dispatching stale preconditions.
+>
+> For the current open-work picture, see the **Current Execution Plan** section immediately below, then `docs/status/career-copilot-checklist.md` as the authoritative source of record. The historical dispatch details are preserved beneath for reference.
+
+---
+
+## Current Execution Plan — as of 2026-06-30 (`main @ f0d84f8`)
+
+### Merged and closed (do not dispatch)
+
+| Arc | Merged via | Status |
+|---|---|---|
+| I8-A/B/C Exam Management consolidation | PRs #755/#757/#759 | MERGED |
+| I9 Cycle activation checklist | PRs #791/#794/#798/#801 | MERGED |
+| I6 Cycle-setup gate document | PR #761 | MERGED |
+| I7 KG exam lane removal | PR #747 | MERGED |
+| I5 PYQ question pagination | PR #751 | MERGED |
+| P-slice-1 frequency semantics + snapshot foundation | PR #767 | MERGED |
+| P-slice-2 planner consumption of locked snapshots | PR #773 | MERGED |
+| P-slice-1c / P-slice-3 snapshot review atomicity + workbench UI | PR #810 | MERGED |
+| EI-worker text-extract background worker | PR #811 | MERGED |
+| PYQ cycle/phase label fix | PR #812 | MERGED |
+| IA design-lock document | PR #752 | MERGED |
+| Backend management read model | Phase 0 PR | MERGED |
+| Lane B Exam Governance cleanup (all) | PRs #755-#759 + earlier | MERGED |
+| J1 Advanced Repair scoping contract | `docs/status/Advanced-Repair-Scoping-Gate-2026-06-29.md` | DRAFT — OPERATOR APPROVAL PENDING |
+
+### Open / next (as of 2026-06-30)
+
+| Priority | Item | Gate |
+|---|---|---|
+| **Immediate** | Score Snapshot lock-authority correctness | Unblocked — see checklist |
+| **Immediate** | Operator validation wave: PYQ onboarding (#812), Score Snapshots (#810), text extraction (#811) | Deploy exact main SHA first |
+| High | J1 Advanced Repair scoping implementation | `Advanced-Repair-Scoping-Gate-2026-06-29.md` operator approval |
+| High | J2 Manage Exam operational editors | Contract-first; I8-B and I6 gates cleared |
+| High | Transient retry/backoff for text-extract worker | Issue #813 |
+| High | Stuck-processing diagnostics and reset | Issue #542 |
+| Medium | P2 cognitive-demand classification (metadata-only) | Contract-first; independent of Track C — see note |
+| Blocked | A-PR4/A-PR5/Track C | Lane A clean gate (FF_MOCK_MASTERY_WRITES=live) |
+| Blocked | J3 schema/domain redesign | Contract-first; I8 gates cleared |
+
+**P2 classification gate note:** Reviewed metadata-only classification (cognitive demand per PYQ question, no mock-selection weighting) is independent of Track C. It may proceed once its own contract is approved. However, no classification output may feed mock-selection, weighting, or personalization before Lane A clears the text-MCQ feedback-loop gate (`FF_MOCK_MASTERY_WRITES=live`).
+
+### Parallelism constraints (unchanged)
+
+- Never fan out to parallel agents work touching `AdminShell.jsx`, `adminRoutes.jsx`, `ExamWorkspace.jsx`, `ExamIntelligence.jsx`, or route/title tests simultaneously.
+- J2 sub-steps are serial within a single agent.
+- No new top-level surface unless it removes ≥ 2 existing peers.
+
+---
+
+## Historical dispatch plan (2026-06-21 origin — reference only)
+
+The following lanes were written against `main @ 2308b31`. They are preserved for context and decision-record only.
 
 This plan decomposes the remaining Career Copilot work into small PRs that can
 be assigned to simultaneous agents without overlapping write scopes. Status
