@@ -32,7 +32,6 @@ export default function AddPyqPaperModal({
   cycleId = null,
   phaseId = null,
   cycleLabel = null,
-  phaseLabel = null,
   pyqDocuments,
   pyqSources,
   onboardPaper,
@@ -217,12 +216,18 @@ export default function AddPyqPaperModal({
         <p className="text-xs text-gray-500" data-testid="add-pyq-exam-immutable">
           Exam is set from this workspace and cannot be changed here.
         </p>
-        <div className="text-xs text-gray-500 flex gap-4" data-testid="add-pyq-cycle-context">
-          <span data-testid="add-pyq-cycle-label">
-            Cycle: {cycleLabel ?? "All cycles"}
-          </span>
-          <span data-testid="add-pyq-phase-label">
-            Phase: {phaseLabel ?? "No phase selected"}
+        <div className="text-xs flex flex-wrap gap-x-4 gap-y-1" data-testid="add-pyq-cycle-context">
+          {cycleId && !cycleLabel ? (
+            <span className="text-red-600 font-medium" data-testid="add-pyq-cycle-label-error">
+              Cycle context unresolved — cannot confirm provenance. Reload the workspace and try again.
+            </span>
+          ) : (
+            <span className="text-gray-500" data-testid="add-pyq-cycle-label">
+              Cycle: {cycleLabel ?? "No cycle selected (exam-wide paper)"}
+            </span>
+          )}
+          <span className="text-gray-500" data-testid="add-pyq-phase-label">
+            Phase: No phase selected
           </span>
         </div>
 
@@ -452,7 +457,7 @@ export default function AddPyqPaperModal({
           </button>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || Boolean(cycleId && !cycleLabel)}
             className="px-3 py-1.5 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
             data-testid="add-pyq-submit"
           >
