@@ -30,6 +30,243 @@ terms come from `docs/status/career-copilot-checklist.md`.
 | E. Backend CI audit sequencing | Yes | Independent infrastructure PR | CI/backend infra agent |
 | F. Live-DB tails | Yes, operator-led | Does not block code cleanup unless evidence changes status | Operator |
 | G. Track C / personalization expansion | No | Waits on Lane A clean gate | Backend+frontend feature agents later |
+| H. English Writing Practice | EWP-1 can start now; EWP-5 mastery live blocked on Lane A gate | EWP-5 mastery live blocked on Lane A gate | Backend + frontend agents |
+
+## Lane H — English Writing Practice
+
+Architecture contract: `docs/architecture/english-writing-practice.md`
+Checklist: `docs/status/career-copilot-checklist.md` § English Writing Practice
+
+### Parallelization within Lane H
+
+EWP-1 and EWP-2 must land before EWP-3, EWP-4, EWP-5. Within EWP-3 onward, backend and frontend work can be parallelised across separate agents as long as the API contract from EWP-2 is respected. EWP-5 mastery live writes remain blocked on the Lane A gate.
+
+---
+
+### EWP-1 — Architecture contract, schema, constraints, RLS
+
+**Status:** PLANNED
+
+**Goal:** Land the full schema with RLS, constraints, state-machine tests, and hash test vectors. No aspirant-facing UI. No mastery live writes. Migration number must come from `select max(version)::int + 1 from schema_migrations`.
+
+**Write scope:**
+
+```
+docs/architecture/english-writing-practice.md        (already present — no further edits in this PR)
+docs/status/career-copilot-checklist.md              (update EWP-1 row)
+docs/status/career-copilot-pr-plan.md                (update EWP-1 row)
+app/supabase/migrations/<next>_english_writing_practice_schema.sql
+app/backend/tests/study_os/test_writing_schema.py
+app/backend/tests/study_os/test_version_set_hash.py
+```
+
+**Migration must include:**
+
+1. Seed English Language subject → topic → microtopic hierarchy (§3 of architecture doc). Each microtopic gets a stable UUID seeded via a deterministic `gen_random_uuid()` call or explicit UUID constant — not auto-generated on each migration run.
+2. `writing_rubrics`
+3. `writing_prompts` with reviewer lifecycle constraint
+4. `exam_descriptive_requirements` with typed `feedback_release_policy` columns and constraints
+5. `writing_sessions` with `projection_revision`, `feedback_released_at`, `evaluation_outcome`, `feedback_release_policy` columns
+6. `writing_session_units` with `unique(session_id, unit_number)`, `unit_constraints` JSONB
+7. `writing_unit_versions` with `content_hash`, `submission_kind`, `unique(unit_id, version_number)`
+8. `writing_evaluations` with `evaluation_revision` envelope model, stage-specific status columns, `unique(unit_version_id, evaluation_revision)`
+9. `writing_session_checks` with `version_set_hash`
+10. `writing_issue_events` with `lineage_id`, `predecessor_issue_event_id`, `affects_current_state`, UTF-16 span columns
+11. `writing_issue_resolution_events` with `successor_issue_event_id`, `unique(issue_event_id, resolving_version_id, evaluator_version)`
+12. `writing_issue_projections` with `unique(issue_event_id, projection_revision)`
+13. `writing_issue_review_events`
+14. `user_topic_mastery_evidence` with `evidence_tier`, `issue_projection_id`
+15. `writing_evaluation_jobs` with `generation`, `unique(evaluation_id, job_kind, generation)`, active partial unique index
+16. `study_tasks` additive columns: `launch_type text`, `launch_entity_id uuid`, `launch_context jsonb`
+17. RLS on all tables (see §12 of architecture doc): owner-select for session/unit/version/evaluation/issue tables; service-role-only for review/projection/mastery/job tables
+18. RLS verification: all new tables must have explicit policies — zero-policy RLS tables are a known repo defect (see checklist § Schema & RPC permissions)
+
+**Tests must include:**
+
+- Fixed-input `version_set_hash` fixture with expected SHA-256 digest (architecture §4.5a). Pin the exact hex output. This is the cross-side identity anchor (see AGENTS.md §3 hash-parity tests).
+- Unit state machine: assert every allowed and forbidden transition for both learning and exam modes
+- Session rollup: assert priority ordering of rollup rules
+- `unit_constraints` Pydantic validation: valid schema accepted, unknown key rejected, `max_words < min_words` rejected
+- `content_hash` for blank version: assert `SHA-256('') = e3b0c44...`
+- RLS: every new table must have a wrapped-transaction test (see AGENTS.md § RLS verification protocol)
+
+**Does not include:** API endpoints, frontend, mastery writes, evaluator integration.
+
+---
+
+### EWP-2 — Deterministic practice API
+
+**Status:** PLANNED — blocked on EWP-1 merged
+
+**Goal:** implement the practice runtime API with deterministic (Stage 1) evaluation only. No LLM calls. Returns immediate feedback on word count, required-word presence, sentence count, duplicates, and empty submissions.
+
+**Write scope:**
+
+```
+app/backend/app/study_os/writing_practice/
+  __init__.py
+  sessions.py          (session create/read/resume)
+  units.py             (unit submit, rewrite submit)
+  evaluation.py        (Stage 1 deterministic checks)
+  version_set_hash.py  (shared hash helper — used by evaluator, planner, API)
+  session_finalizer.py (finalize_writing_session — single owner of rollup)
+  coverage_checker.py  (required-word coverage session check)
+  mastery_shadow.py    (shadow-only mastery evidence emission, FF-gated)
+app/backend/app/api/writing_practice.py
+app/backend/tests/study_os/test_writing_practice_api.py
+app/backend/tests/study_os/test_session_finalizer.py
+app/backend/tests/study_os/test_coverage_checker.py
+docs/status/career-copilot-checklist.md
+```
+
+**API endpoints:**
+
+```
+POST /api/study/practice/english/sessions
+  body: { prompt_id, study_task_id? }
+  returns: session with units, prompt, constraints
+
+GET  /api/study/practice/english/sessions/{id}
+  returns: full session state for resume
+
+POST /api/study/practice/english/sessions/{id}/units/{unit_number}/submit
+  body: { answer_text, client_word_count, version_number? }
+  runs Stage 1 deterministic checks immediately
+  queues Stage 2 job (returns job_id)
+  returns: evaluation stub with deterministic_result
+
+POST /api/study/practice/english/sessions/{id}/units/{unit_id}/reopen
+  body: { expected_latest_version_id, reason }
+  preconditions: §7.2 of architecture doc
+  returns: updated unit state
+
+GET  /api/study/practice/english/sessions/{id}/evaluations/{evaluation_id}
+  returns: current evaluation state (poll or SSE)
+
+GET  /api/study/practice/english/error-summary
+  returns: user's recurring issues from writing_issue_events, grouped by microtopic
+```
+
+**Stale evaluation contract:** implement §8 of architecture doc exactly. Worker transaction must lock unit row, verify hash, check latest version, and conditionally apply side effects.
+
+**Mastery evidence:** shadow mode only, behind `FF_WRITING_MASTERY_WRITES`. Does not touch `user_topic_mastery`.
+
+**Mission-control:** extend the mission-control response to compute `action_url` and `action_label` from `study_tasks.launch_type + launch_entity_id`.
+
+**Does not include:** LLM evaluation, frontend shell, Grammar Lab, Error Lab.
+
+---
+
+### EWP-3 — Sentence Builder and rewrite UI
+
+**Status:** PLANNED — blocked on EWP-2 merged
+
+**Goal:** five-sentence construction interface with word chips, per-sentence issue cards, mandatory rewrite, before/after diff, and session resume.
+
+**Write scope:**
+
+```
+app/frontend/src/pages/study/practice/english/
+  EnglishPracticeShell.jsx
+  SentenceBuilder.jsx
+  SentenceIssueCard.jsx
+  RewriteEditor.jsx
+  WordChips.jsx
+  BeforeAfterDiff.jsx
+app/frontend/src/routes/appRoutes.jsx              (add /app/study/practice/english/:sessionId)
+app/frontend/src/pages/study/StudyHome.jsx         (wire action_url from mission-control)
+app/frontend/src/__tests__/SentenceBuilder.test.jsx
+docs/status/career-copilot-checklist.md
+```
+
+**UI contract:**
+
+- Five independent sentence inputs, not a single textarea
+- Word chips show required words; used words are visually distinguished
+- `words_used: N/5` counter derived from client-side tokenisation (server validates on submit)
+- Session autosave: answer text preserved in sessionStorage keyed by `sessionId + unitNumber`
+- Issue cards display: original text, highlighted span, rule explanation, suggested correction, rewrite input
+- Rewrite input guards against submitting unchanged span text (client-side warning; server validates)
+- Before/after diff after successful rewrite: word-level diff, additions in green, deletions in strikethrough
+- Loading, empty, and error states required (four-state `useApiCollection` contract)
+- Exam mode: no issue display until `feedback_released_at` is reached
+
+**Route:** mounted under `StudyShell`, inside `RouteErrorBoundary`. Not through `AttemptShellRouter`.
+
+---
+
+### EWP-4 — Grammar Lab and Error Lab
+
+**Status:** PLANNED — blocked on EWP-2 merged (can parallelize with EWP-3)
+
+**Goal:** topic-specific grammar drills and Error Lab showing recurring issues linked to Grammar Lab.
+
+**Write scope:**
+
+```
+app/frontend/src/pages/study/practice/english/
+  GrammarDrill.jsx
+  GrammarTopicNav.jsx
+  ErrorLab.jsx
+  ErrorLabIssueCard.jsx
+  GrammarExerciseRenderer.jsx
+app/backend/app/study_os/writing_practice/grammar_drill.py
+app/backend/app/api/writing_practice.py            (add Grammar Lab endpoints)
+app/backend/tests/study_os/test_grammar_drill.py
+docs/status/career-copilot-checklist.md
+```
+
+**Grammar drill exercise types:** identify error / choose corrected sentence / rewrite / construct / reconstruct (scrambled sentence). Each type maps to a distinct `exercise_type` value in `writing_prompts`.
+
+**Error Lab:** reads `writing_issue_events` via API. Displays recurring issues grouped by `microtopic_id`. Each issue card links to the relevant Grammar Lab topic. Invalidated issues are omitted or shown with `withdrawn` marker.
+
+**Shadow evidence:** grammar drill completions emit `user_topic_mastery_evidence` in shadow mode only.
+
+---
+
+### EWP-5 — Planner integration and mastery projection
+
+**Status:** PLANNED — blocked on EWP-2 merged; mastery live writes blocked on Lane A gate
+
+**Goal:** planner generates writing tasks; mission-control routes to sessions; shadow-to-live promotion path validated.
+
+**Write scope:**
+
+```
+app/backend/app/study_os/planner.py                (add writing task types, level gating)
+app/backend/app/study_os/mission_control.py        (compute action_url from launch_type)
+app/backend/app/study_os/writing_practice/
+  mastery_shadow.py                                (shadow projection writer)
+  mastery_aggregator.py                            (unified aggregator stub, off-by-default)
+app/backend/tests/study_os/test_writing_planner.py
+app/backend/tests/study_os/test_mastery_shadow.py
+docs/status/career-copilot-checklist.md
+```
+
+**Mastery safety:** `FF_WRITING_MASTERY_WRITES` follows §10 of architecture doc exactly. Live writes remain blocked until:
+1. Lane A mock mastery gate clears
+2. Shadow-to-live promotion gates in §10.3 pass
+3. Operator records approval in checklist
+
+**Planner integration:** reads `user_topic_mastery_evidence` at microtopic granularity. Generates `sentence_construction`, `grammar_correction`, `vocabulary_in_context` task types with `launch_type = 'english_writing_session'`. Schedules retention retests using `user_topic_mastery.next_revision_at`.
+
+---
+
+### EWP-6 — Paragraph Builder (after EWP-3 evidence pipeline stable)
+
+**Status:** PLANNED — blocked on EWP-3 merged and release gates §16 passed
+
+Five-sentence paragraph editor. Scaffolded slots when `evidence_tier < 'production'` for paragraph topics; single textarea after `production` evidence exists for ≥3 topics. Outline scratchpad stored as `outline_json` on `writing_sessions`. Not included in EWP-3 to keep the sentence pipeline clean before adding paragraph complexity.
+
+---
+
+### EWP-7 (later track) — Descriptive mock runtime
+
+**Status:** PLANNED — blocked on EWP-6 stable and release gates §16 passed
+
+Extend mock `AnswerBody` with `answer_text`. Add `descriptive` interface mode to `AttemptShellRouter`. Wire existing `answer_text`, `word_count`, autosave, `evaluation_status`, and `rubric_score` columns from M176/M177. Add essay, précis, letter and report configurations in `exam_descriptive_requirements`.
+
+---
 
 ## Lane A — Mock Engine validation gate
 

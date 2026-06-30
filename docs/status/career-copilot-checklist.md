@@ -289,6 +289,42 @@ Write the code; operator sign-off required before merge.
 - **J2 sub-steps are serial** within a single agent — all Manage Exam tab work is a shared write scope.
 - **No new top-level surface** unless it removes ≥ 2 existing peers (no-new-surface rule, locked 2026-06-21).
 
+## English Writing Practice — Lane H
+
+Architecture contract: `docs/architecture/english-writing-practice.md`
+PR plan: `docs/status/career-copilot-pr-plan.md` § Lane H
+
+Current verdict: **ARCHITECTURE LOCKED. EWP-1 ready to implement. EWP-5 mastery live writes blocked on Lane A gate.**
+
+Migration number for EWP-1 must come from `select max(version)::int + 1 from schema_migrations`. Current highest migration in repo: 204. Do not guess or derive from filenames.
+
+| Item | Current status | Repo evidence / notes |
+|---|---|---|
+| Architecture contract | MERGED / CODE PRESENT | `docs/architecture/english-writing-practice.md` — 24 locked implementation rules, full schema, state machines, evaluation stages, RLS contract, projection policy. |
+| English taxonomy seed | PLANNED | Microtopics for Grammar (7), Sentence Construction (4), Vocabulary (4), Paragraph Writing (4), Précis/Essay/Letter/Comprehension subjects. Must be seeded in EWP-1 migration using stable UUID constants, not auto-generated. |
+| EWP-1 — Schema, constraints, RLS | PLANNED | Tables: `writing_rubrics`, `writing_prompts`, `exam_descriptive_requirements`, `writing_sessions`, `writing_session_units`, `writing_unit_versions`, `writing_evaluations`, `writing_session_checks`, `writing_issue_events`, `writing_issue_resolution_events`, `writing_issue_projections`, `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_evaluation_jobs`. Additive columns on `study_tasks`: `launch_type`, `launch_entity_id`, `launch_context`. Must include `version_set_hash` fixed-input test vector and unit state machine tests. |
+| EWP-2 — Deterministic practice API | PLANNED — blocked on EWP-1 merged | Practice runtime API: session create/read, unit submit (Stage 1 synchronous), reopen, evaluation poll, error summary. `finalize_writing_session` single-owner rollup. Mission-control `action_url` computation from `launch_type`. Shadow mastery only (`FF_WRITING_MASTERY_WRITES=shadow`). |
+| EWP-3 — Sentence Builder UI | PLANNED — blocked on EWP-2 merged | `EnglishPracticeShell`, `SentenceBuilder`, `SentenceIssueCard`, `RewriteEditor`, `BeforeAfterDiff`. Route `/app/study/practice/english/:sessionId` under `StudyShell`. Not through `AttemptShellRouter`. |
+| EWP-4 — Grammar Lab and Error Lab | PLANNED — blocked on EWP-2 merged (can parallelize with EWP-3) | Grammar drill exercises (identify/correct/rewrite/construct/reconstruct). Error Lab grouped by microtopic with Grammar Lab cross-links. Shadow evidence. |
+| EWP-5 — Planner integration | PLANNED — blocked on EWP-2 merged; mastery live writes blocked on Lane A gate | Writing task generation (sentence_construction, grammar_correction, vocabulary_in_context). Mission-control launch URL. Shadow-to-live promotion requires §10.3 of architecture doc gates + operator approval. |
+| EWP-6 — Paragraph Builder | PLANNED — blocked on EWP-3 merged + release gates §16 of architecture doc | Evidence-gated scaffolding, outline scratchpad as `outline_json`. |
+| EWP-7 — Descriptive mock runtime | PLANNED — blocked on EWP-6 stable + release gates §16 of architecture doc | Extends mock `AnswerBody`. Adds `descriptive` interface mode to `AttemptShellRouter`. Wires M176/M177 columns. |
+| `FF_WRITING_MASTERY_WRITES` | BLOCKED — off only until Lane A gate clears | Must not become a second writer racing mock mastery pipeline. Shadow mode allowed; live mode blocked on Lane A gate + §10.3 promotion gates + operator approval. |
+| `version_set_hash` test vector | PLANNED — required in EWP-1 | Fixed input → expected SHA-256 hex. Both Python helper and integration test must use the same vector. See AGENTS.md §3 hash-parity tests. |
+| UTF-16 span offset contract | PLANNED — required in EWP-2 | `span_start_utf16 + span_end_utf16 + quoted_text` verification in both Python evaluator and React frontend. |
+| Prompt bank seed | PLANNED — pre-aspirant launch | 50 sentence-construction + 50 sentence-correction + 100 grammar + 50 vocabulary + 20 paragraph prompts. All must pass reviewer lifecycle (`reviewer_status = 'verified'`, `is_active = true`) before aspirant launch. Authored in Exam Workspace CMS; no new admin surface. |
+| Release gates for paragraphs/essays | PLANNED | 10 quality gates in §16 of architecture doc. Not time-based. Operator approval required before EWP-6 begins. |
+
+### Operator validation still required (EWP)
+
+| Item | Gate |
+|---|---|
+| EWP-1 migration applied | OPERATOR PENDING — apply to staging, verify RLS, confirm no authenticated/anon write access to issue/projection/mastery tables |
+| `version_set_hash` cross-side parity | OPERATOR PENDING — confirm Python helper and React consumer produce identical digests for same input |
+| Shadow mastery output | OPERATOR PENDING — after EWP-2 deploys, verify shadow rows appear and no `user_topic_mastery` mutations occur |
+| Prompt bank reviewed | OPERATOR PENDING — 270 prompts through CMS review lifecycle before aspirant launch |
+| Release gates §16 | OPERATOR PENDING — 10 gates must be documented in this checklist before EWP-6 begins |
+
 ## Prior arcs / live-DB-only tails
 
 Keep these separated from code-verifiable status.
@@ -309,5 +345,6 @@ Every PR that changes any of the following must update this checklist in the sam
 3. Exam intelligence setup/workspace UX, Advanced Import / Repair, Guided/Add Cycle flows, document readiness, PYQ, topic coverage, competition, or publish gates.
 4. Backend CI ordering, dependency audit policy, or known flaky checks.
 5. Any operator decision that changes a `BLOCKED`, `OPERATOR PENDING`, `PLANNED`, or `CLEANUP PENDING` status.
+6. English Writing Practice schema, API, frontend, mastery flag, evaluation pipeline, or prompt bank.
 
 When a task is live-DB or deployment-only, write **OPERATOR PENDING** or **VERIFY DB**; never mark it complete from code inspection alone.

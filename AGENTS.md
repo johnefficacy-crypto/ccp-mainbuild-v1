@@ -400,3 +400,96 @@ verified primary tag. Multiple secondary/trap/calculation_layer tags on the
 same question do NOT inflate frequency. This is intentional. Do not revert
 to all-role counting without an explicit architectural decision and downstream
 consumer audit.
+
+## English Writing Practice module contracts
+
+Architecture doc: `docs/architecture/english-writing-practice.md`.
+Delivery tracked in `docs/status/career-copilot-checklist.md` (Lane H rows).
+PR plan: Lane H in `docs/status/career-copilot-pr-plan.md`.
+
+### EWP-1. Practice sessions are not mock attempts
+
+`writing_sessions` / `writing_session_units` / `writing_unit_versions` are
+the practice data model. Do not insert into `mock_attempts`, do not route
+through `AttemptShellRouter`, and do not reuse any mock-attempt foreign keys.
+The descriptive mock runtime (EWP-7) also does NOT use these tables — it
+writes to `mock_attempt_responses` columns M176/M177 on the existing mock
+attempt row. The two runtimes share taxonomy, rubrics, and mastery plumbing
+only.
+
+### EWP-2. Submitted writing and raw issue events are append-only
+
+`writing_unit_versions` rows and `writing_issue_events` rows are never
+updated or deleted after insert. Reopen creates a new version row; an issue
+outcome change appends a new resolution event. The immutable history is
+required for lineage tracking and stale-evaluation audit.
+
+### EWP-3. `version_set_hash` — one backend helper, clients consume only
+
+`version_set_hash` is a SHA-256 over a domain-separated binary payload
+(`WPS_VERSION_SET_V1\x00` + uint32 BE count + per-unit uint32 BE
+`unit_number` + 16-byte RFC4122 UUID (unit id) + 16-byte RFC4122 UUID
+(version id) + 32-byte content hash bytes, units sorted by `unit_number`).
+The algorithm lives in one backend helper. Clients read and compare the
+hash; they never compute it. Do not add client-side hash generation.
+
+### EWP-4. Stale evaluation: two checks, both required
+
+An in-flight evaluator must perform BOTH checks before applying
+state-change side effects:
+1. **Content hash check** — confirms the `writing_unit_version` content
+   the evaluator read matches the stored `content_hash`. Guards against
+   bit-rot or inadvertent mutation.
+2. **Version-number check** — confirms the version being evaluated is still
+   the latest version for the unit. Guards against fast-rewrite races.
+
+If content hash fails → abort the evaluation as corrupt.
+If version number is stale → preserve the evaluation row with
+`affects_current_state = false`; skip all state-change side effects
+(unit state, resolution events, mastery evidence). Do not conflate the two
+checks or drop either one.
+
+### EWP-5. `finalize_writing_session` is the single state-transition owner
+
+All session and unit state transitions (unit `ready → completed`,
+`evaluation_pending → rewrite_required`, session `active → completed`, etc.)
+are owned exclusively by `finalize_writing_session`. It is idempotent and
+must be called after every terminal event: session submission, deterministic
+eval complete, language eval complete, permanent job failure, recovery
+complete, session-check complete. No other path may write session or unit
+state.
+
+### EWP-6. Mastery evidence is POST-COMMIT and feature-flag gated
+
+`user_topic_mastery_evidence` inserts from writing evaluations must happen
+after the evaluation transaction commits, in a separate database call.
+Writing them inside the evaluation transaction risks lock contention that
+rolls back issue/resolution inserts.
+
+The `FF_WRITING_MASTERY_WRITES` flag (`off | shadow | live`) must default
+to `off`. Live writes are blocked until the Lane A unified aggregator gate
+clears and `FF_MOCK_MASTERY_WRITES` is proven stable. Shadow mode is safe
+at any time. Fails closed: any unrecognised flag value → treat as `off`.
+
+### EWP-7. Only verified, active prompts reach aspirant surfaces
+
+`writing_prompts` rows must have `review_status = 'verified'` and
+`is_active = true` before the planner or any aspirant-facing API may use
+them. `exam_descriptive_requirements` rows must similarly be verified and
+active. The prompt reviewer lifecycle is
+`pending → verified | rejected | needs_correction` (matches Exam
+Intelligence CMS pattern). Do not add a `draft → published` lifecycle.
+
+### EWP-8. Study tasks carry typed launch targets, never frontend URLs
+
+`study_tasks.launch_type` + `launch_entity_id` + `launch_context` is the
+stored form. The mission-control API computes `action_url` and
+`action_label` at response time from these fields. Never store a hardcoded
+frontend path in the database.
+
+### EWP-9. Migration number from live schema_migrations
+
+The next migration number for any EWP schema work must be read from:
+`select max(version)::int + 1 from schema_migrations`
+Never guess or hardcode a migration number. At architecture doc creation
+(2026-06-30) the highest was 204; the first EWP migration is 205.
