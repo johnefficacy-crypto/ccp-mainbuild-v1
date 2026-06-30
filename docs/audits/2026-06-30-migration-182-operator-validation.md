@@ -17,7 +17,14 @@ Executing DB role: postgres
 
 ```text
 Deployed application SHA: b7ca717fc156a3c988197673b3a6a1b291616b43
-Migration file SHA-256:   3BADF456FC7914468BC3A004FA01DD51E8D0C02C48B7F3D403B1805F4DE22B71
+Canonical Git blob SHA-256:
+39e7c12c1bec50cb634cb39c2449ddf9bfa113f97e83d4a52d8c6923f7c18819
+
+Operator Windows checkout SHA-256:
+3BADF456FC7914468BC3A004FA01DD51E8D0C02C48B7F3D403B1805F4DE22B71
+
+Checkout line-ending mode:
+index=LF, working-tree=CRLF, core.autocrlf=true
 ```
 
 ## Validation window
