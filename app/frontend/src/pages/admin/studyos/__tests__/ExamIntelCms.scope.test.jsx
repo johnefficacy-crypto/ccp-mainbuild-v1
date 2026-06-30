@@ -164,6 +164,8 @@ describe("G.1 Scope indicator", () => {
 });
 
 // ── Section G.2: Search input tests ──────────────────────────────────────────
+// Only syllabus-topic-mentions has backend text-search support (via param `q`).
+// All other entities: search input is NOT rendered.
 
 describe("G.2 Search input", () => {
   beforeEach(() => {
@@ -172,56 +174,63 @@ describe("G.2 Search input", () => {
     setupDefaultMocks();
   });
 
-  test("search input is rendered", async () => {
+  test("search input NOT rendered for default entity (exam-families)", async () => {
     mockSearchParamsRaw = {};
     renderCms();
     await waitFor(() => expect(api.get).toHaveBeenCalled());
-    expect(screen.getByTestId("cms-search-input")).toBeTruthy();
+    expect(screen.queryByTestId("cms-search-input")).toBeNull();
   });
 
-  test("typing in search input sends search param to backend after debounce", async () => {
+  test("search input IS rendered for syllabus-topic-mentions", async () => {
+    mockSearchParamsRaw = {};
+    renderCms();
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "syllabus-topic-mentions" } });
+    await waitFor(() => expect(screen.queryByTestId("cms-search-input")).toBeTruthy());
+  });
+
+  test("typing in search input sends `q` param to backend after debounce", async () => {
     jest.useFakeTimers();
     mockSearchParamsRaw = { exam_id: EXAM_ID };
     renderCms();
-    await screen.findByTestId("cms-search-input");
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "syllabus-topic-mentions" } });
+    await waitFor(() => screen.queryByTestId("cms-search-input"));
     api.get.mockClear();
     const input = screen.getByTestId("cms-search-input");
     fireEvent.change(input, { target: { value: "civil" } });
     act(() => jest.advanceTimersByTime(350));
     await waitFor(() => {
-      const calls = api.get.mock.calls;
-      return calls.some(([url]) => url.includes("search=civil"));
+      return api.get.mock.calls.some(([url]) => url.includes("q=civil"));
     });
-    expect(api.get.mock.calls.some(([url]) => url.includes("search=civil"))).toBe(true);
+    expect(api.get.mock.calls.some(([url]) => url.includes("q=civil"))).toBe(true);
     jest.useRealTimers();
   });
 
-  test("search input clears when entity changes", async () => {
+  test("search input clears when entity changes away from syllabus-topic-mentions", async () => {
     mockSearchParamsRaw = {};
     renderCms();
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "syllabus-topic-mentions" } });
     const input = await screen.findByTestId("cms-search-input");
     fireEvent.change(input, { target: { value: "hello" } });
     expect(input.value).toBe("hello");
     fireEvent.change(screen.getByTestId("cms-entity-select"), { target: { value: "exams" } });
-    await waitFor(() => expect(screen.getByTestId("cms-search-input").value).toBe(""));
+    // search input disappears (exams has no search), and search state is reset
+    await waitFor(() => expect(screen.queryByTestId("cms-search-input")).toBeNull());
   });
 
-  test("search request includes exam_id alongside search param", async () => {
+  test("search request includes exam_id alongside q param for syllabus-topic-mentions", async () => {
     jest.useFakeTimers();
     mockSearchParamsRaw = { exam_id: EXAM_ID };
     renderCms();
-    // Switch to a scoped entity
-    await screen.findByTestId("cms-entity-select");
-    fireEvent.change(screen.getByTestId("cms-entity-select"), { target: { value: "exam-cycles" } });
-    await waitFor(() => expect(api.get).toHaveBeenCalled());
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "syllabus-topic-mentions" } });
+    await waitFor(() => screen.queryByTestId("cms-search-input"));
     api.get.mockClear();
     const input = screen.getByTestId("cms-search-input");
     fireEvent.change(input, { target: { value: "upsc" } });
     act(() => jest.advanceTimersByTime(350));
     await waitFor(() => {
-      return api.get.mock.calls.some(([url]) => url.includes("search=upsc") && url.includes("exam_id="));
+      return api.get.mock.calls.some(([url]) => url.includes("q=upsc") && url.includes("exam_id="));
     });
-    expect(api.get.mock.calls.some(([url]) => url.includes("search=upsc") && url.includes("exam_id="))).toBe(true);
+    expect(api.get.mock.calls.some(([url]) => url.includes("q=upsc") && url.includes("exam_id="))).toBe(true);
     jest.useRealTimers();
   });
 });
@@ -268,17 +277,54 @@ describe("G.3 Status filter", () => {
     expect(screen.queryByTestId("cms-status-filter")).toBeNull();
   });
 
+  test("exam-topic-coverage status filter shows only COVERAGE_REVIEWER_STATUSES options", async () => {
+    mockSearchParamsRaw = {};
+    renderCms();
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "exam-topic-coverage" } });
+    const filter = await screen.findByTestId("cms-status-filter");
+    const optionValues = Array.from(filter.options).map((o) => o.value).filter(Boolean);
+    expect(optionValues).toEqual(["draft", "pending_review", "reviewed", "locked", "rejected"]);
+  });
+
+  test("syllabus-topic-mentions status filter shows verified/needs_correction options", async () => {
+    mockSearchParamsRaw = {};
+    renderCms();
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "syllabus-topic-mentions" } });
+    const filter = await screen.findByTestId("cms-status-filter");
+    const optionValues = Array.from(filter.options).map((o) => o.value).filter(Boolean);
+    expect(optionValues).toEqual(["pending", "verified", "rejected", "needs_correction"]);
+  });
+
+  test("pyq-papers trust_status filter does NOT include 'superseded' (only pending/verified/rejected)", async () => {
+    mockSearchParamsRaw = {};
+    renderCms();
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "pyq-papers" } });
+    const filter = await screen.findByTestId("cms-status-filter");
+    const optionValues = Array.from(filter.options).map((o) => o.value).filter(Boolean);
+    expect(optionValues).toEqual(["pending", "verified", "rejected"]);
+    expect(optionValues).not.toContain("superseded");
+  });
+
+  test("syllabus-documents trust_status filter includes 'superseded'", async () => {
+    mockSearchParamsRaw = {};
+    renderCms();
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "syllabus-documents" } });
+    const filter = await screen.findByTestId("cms-status-filter");
+    const optionValues = Array.from(filter.options).map((o) => o.value).filter(Boolean);
+    expect(optionValues).toEqual(["pending", "verified", "rejected", "superseded"]);
+  });
+
   test("selecting a reviewer_status value sends correct param to backend", async () => {
     mockSearchParamsRaw = {};
     renderCms();
     fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "exam-topic-coverage" } });
     const filter = await screen.findByTestId("cms-status-filter");
     api.get.mockClear();
-    fireEvent.change(filter, { target: { value: "approved" } });
+    fireEvent.change(filter, { target: { value: "pending_review" } });
     await waitFor(() => {
-      return api.get.mock.calls.some(([url]) => url.includes("reviewer_status=approved"));
+      return api.get.mock.calls.some(([url]) => url.includes("reviewer_status=pending_review"));
     });
-    expect(api.get.mock.calls.some(([url]) => url.includes("reviewer_status=approved"))).toBe(true);
+    expect(api.get.mock.calls.some(([url]) => url.includes("reviewer_status=pending_review"))).toBe(true);
   });
 
   test("selecting a trust_status value sends correct param for pyq-papers", async () => {
@@ -287,11 +333,11 @@ describe("G.3 Status filter", () => {
     fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "pyq-papers" } });
     const filter = await screen.findByTestId("cms-status-filter");
     api.get.mockClear();
-    fireEvent.change(filter, { target: { value: "trusted" } });
+    fireEvent.change(filter, { target: { value: "verified" } });
     await waitFor(() => {
-      return api.get.mock.calls.some(([url]) => url.includes("trust_status=trusted"));
+      return api.get.mock.calls.some(([url]) => url.includes("trust_status=verified"));
     });
-    expect(api.get.mock.calls.some(([url]) => url.includes("trust_status=trusted"))).toBe(true);
+    expect(api.get.mock.calls.some(([url]) => url.includes("trust_status=verified"))).toBe(true);
   });
 
   test("selecting all statuses sends no status filter param", async () => {
@@ -299,7 +345,7 @@ describe("G.3 Status filter", () => {
     renderCms();
     fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "exam-topic-coverage" } });
     const filter = await screen.findByTestId("cms-status-filter");
-    fireEvent.change(filter, { target: { value: "approved" } });
+    fireEvent.change(filter, { target: { value: "pending_review" } });
     api.get.mockClear();
     fireEvent.change(filter, { target: { value: "" } });
     await waitFor(() => {
@@ -313,8 +359,8 @@ describe("G.3 Status filter", () => {
     renderCms();
     fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "exam-topic-coverage" } });
     const filter = await screen.findByTestId("cms-status-filter");
-    fireEvent.change(filter, { target: { value: "approved" } });
-    expect(filter.value).toBe("approved");
+    fireEvent.change(filter, { target: { value: "pending_review" } });
+    expect(filter.value).toBe("pending_review");
     // Change to another entity with status filter
     fireEvent.change(screen.getByTestId("cms-entity-select"), { target: { value: "policy-updates" } });
     await waitFor(() => {

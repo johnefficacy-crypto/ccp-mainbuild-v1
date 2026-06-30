@@ -196,20 +196,24 @@ const ENTITY_CYCLE_SCOPE = new Set([
   "pyq-papers",
 ]);
 
-// J1: entities using reviewer_status vs trust_status for the status filter
-const REVIEWER_STATUS_ENTITIES = new Set([
-  "syllabus-topic-mentions",
-  "exam-topic-coverage",
-  "policy-updates",
-  "pyq-questions",
-]);
-const TRUST_STATUS_ENTITIES = new Set([
-  "syllabus-documents",
-  "pyq-papers",
-  "pyq-sources",
-]);
-const REVIEWER_STATUSES = ["pending", "approved", "rejected", "needs_revision"];
-const TRUST_STATUSES = ["pending", "trusted", "untrusted", "flagged"];
+// J1: per-entity status filter config — options derived from DB CHECK constraints.
+// See migrations 030/031/032/056; coverage uses COVERAGE_REVIEWER_STATUSES (migration 030).
+const ENTITY_STATUS_CONFIG = {
+  "syllabus-topic-mentions": { param: "reviewer_status", label: "Reviewer status", options: ["pending", "verified", "rejected", "needs_correction"] },
+  "exam-topic-coverage":     { param: "reviewer_status", label: "Reviewer status", options: COVERAGE_REVIEWER_STATUSES },
+  "policy-updates":          { param: "reviewer_status", label: "Reviewer status", options: ["pending", "verified", "rejected", "needs_correction"] },
+  "pyq-questions":           { param: "reviewer_status", label: "Reviewer status", options: ["pending", "verified", "rejected", "needs_correction"] },
+  "syllabus-documents":      { param: "trust_status",    label: "Trust status",    options: ["pending", "verified", "rejected", "superseded"] },
+  "pyq-papers":              { param: "trust_status",    label: "Trust status",    options: ["pending", "verified", "rejected"] },
+  "pyq-sources":             { param: "trust_status",    label: "Trust status",    options: ["pending", "verified", "rejected"] },
+};
+
+// J1: entities that support text search, keyed to the backend param name.
+// Only syllabus-topic-mentions exposes a `q` text-search param; all other list
+// endpoints ignore unknown params, so the control is hidden for them (OD-2).
+const ENTITY_SEARCH_PARAM = {
+  "syllabus-topic-mentions": "q",
+};
 
 const ENTITY_CONFIG = {
   "exam-families": {
@@ -846,15 +850,17 @@ export default function AdminExamIntelCms() {
       if (scopeExamId && ENTITY_EXAM_SCOPE.has(entity)) {
         params.set("exam_id", scopeExamId);
       }
-      if (scopeCycleId && ENTITY_CYCLE_SCOPE.has(entity)) {
+      // Per B.3: cycle_id without exam_id is ignored
+      if (scopeExamId && scopeCycleId && ENTITY_CYCLE_SCOPE.has(entity)) {
         params.set("exam_cycle_id", scopeCycleId);
       }
-      if (effectiveSearch) {
-        params.set("search", effectiveSearch);
+      const searchParamName = ENTITY_SEARCH_PARAM[entity];
+      if (effectiveSearch && searchParamName) {
+        params.set(searchParamName, effectiveSearch);
       }
-      if (effectiveFilter) {
-        const filterParam = TRUST_STATUS_ENTITIES.has(entity) ? "trust_status" : "reviewer_status";
-        params.set(filterParam, effectiveFilter);
+      const statusCfg = ENTITY_STATUS_CONFIG[entity];
+      if (effectiveFilter && statusCfg) {
+        params.set(statusCfg.param, effectiveFilter);
       }
       const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?${params}`);
       if (gen !== loadGenRef.current) return;
@@ -1114,7 +1120,8 @@ export default function AdminExamIntelCms() {
     setEditValues({});
     setEditReason("");
     setEditError(null);
-    // J1: reset search/filter/page when entity or scope changes
+    // J1: reset search/filter/page when entity or scope changes; clear pending debounce
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     setSearch("");
     setStatusFilter("");
     setPage(1);
@@ -1126,23 +1133,29 @@ export default function AdminExamIntelCms() {
   // J1: resolve human-readable scope names (only once authorized)
   useEffect(() => {
     if (!isAuthorized || !scopeExamId) { setScopeExamName(null); return; }
+    let cancelled = false;
     api.get("/api/admin/exam-intelligence-cms/exams?limit=200")
       .then((r) => {
+        if (cancelled) return;
         const exam = (r?.items || []).find((e) => e.id === scopeExamId);
         setScopeExamName(exam?.name ?? scopeExamId);
       })
-      .catch(() => setScopeExamName(scopeExamId));
+      .catch(() => { if (!cancelled) setScopeExamName(scopeExamId); });
+    return () => { cancelled = true; };
   }, [isAuthorized, scopeExamId]);
 
   useEffect(() => {
     if (!isAuthorized || !scopeCycleId) { setScopeCycleName(null); return; }
+    let cancelled = false;
     const examParam = scopeExamId ? `&exam_id=${encodeURIComponent(scopeExamId)}` : "";
     api.get(`/api/admin/exam-intelligence-cms/exam-cycles?limit=200${examParam}`)
       .then((r) => {
+        if (cancelled) return;
         const cycle = (r?.items || []).find((c) => c.id === scopeCycleId);
         setScopeCycleName(cycle?.cycle_name ?? cycle?.year ?? scopeCycleId);
       })
-      .catch(() => setScopeCycleName(scopeCycleId));
+      .catch(() => { if (!cancelled) setScopeCycleName(scopeCycleId); });
+    return () => { cancelled = true; };
   }, [isAuthorized, scopeCycleId, scopeExamId]);
 
   function handleSearchChange(e) {
@@ -1289,23 +1302,25 @@ export default function AdminExamIntelCms() {
       </div>
 
       {/* J1: search + status filter */}
-      {!isDocuments && (
+      {!isDocuments && (ENTITY_SEARCH_PARAM[entity] || ENTITY_STATUS_CONFIG[entity]) && (
         <div className="flex gap-2 items-end flex-wrap">
-          <label>
-            <span className="block text-xs text-muted-foreground mb-1">Search</span>
-            <input
-              type="search"
-              value={search}
-              onChange={handleSearchChange}
-              placeholder="Filter rows…"
-              className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background w-48"
-              data-testid="cms-search-input"
-            />
-          </label>
-          {(REVIEWER_STATUS_ENTITIES.has(entity) || TRUST_STATUS_ENTITIES.has(entity)) && (
+          {ENTITY_SEARCH_PARAM[entity] && (
+            <label>
+              <span className="block text-xs text-muted-foreground mb-1">Search</span>
+              <input
+                type="search"
+                value={search}
+                onChange={handleSearchChange}
+                placeholder="Filter rows…"
+                className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background w-48"
+                data-testid="cms-search-input"
+              />
+            </label>
+          )}
+          {ENTITY_STATUS_CONFIG[entity] && (
             <label>
               <span className="block text-xs text-muted-foreground mb-1">
-                {TRUST_STATUS_ENTITIES.has(entity) ? "Trust status" : "Reviewer status"}
+                {ENTITY_STATUS_CONFIG[entity].label}
               </span>
               <select
                 value={statusFilter}
@@ -1314,7 +1329,7 @@ export default function AdminExamIntelCms() {
                 data-testid="cms-status-filter"
               >
                 <option value="">All statuses</option>
-                {(TRUST_STATUS_ENTITIES.has(entity) ? TRUST_STATUSES : REVIEWER_STATUSES).map((s) => (
+                {ENTITY_STATUS_CONFIG[entity].options.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
