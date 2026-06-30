@@ -366,12 +366,17 @@ function PaperProvenanceModal({ paper, onCancel, onSubmit, pyqDocuments, pyqSour
 }
 
 export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status = null }) {
-  const { exam, cycle } = useExamWorkspace();
+  const { exam, cycle, phases } = useExamWorkspace();
   const examId = exam?.id;
   const cycleId = cycle?.id ?? null;
   // A selected cycle may carry a single active phase as provenance; the context
   // exposes phases as a list, not a single selection, so default to null.
   const phaseId = cycle?.exam_phase_id ?? null;
+  // Human-readable labels for the Add PYQ paper modal context display.
+  const cycleLabel = cycle?.cycle_name ?? null;
+  const phaseLabel = phaseId
+    ? (phases ?? []).reduce((found, p) => found || (p.id === phaseId ? (p.phase_name || p.phase_slug || null) : null), null)
+    : null;
 
   const { user } = useAuth();
   const canReview = user?.role === "super_admin" ||
@@ -760,6 +765,8 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           examName={exam?.name}
           cycleId={cycleId}
           phaseId={phaseId}
+          cycleLabel={cycleLabel}
+          phaseLabel={phaseLabel}
           pyqDocuments={pyqDocuments}
           pyqSources={pyqSources}
           onboardPaper={onboardPaper}

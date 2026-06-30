@@ -31,6 +31,8 @@ export default function AddPyqPaperModal({
   examName,
   cycleId = null,
   phaseId = null,
+  cycleLabel = null,
+  phaseLabel = null,
   pyqDocuments,
   pyqSources,
   onboardPaper,
@@ -211,10 +213,18 @@ export default function AddPyqPaperModal({
           Add PYQ paper{examName ? ` — ${examName}` : ""}
         </h2>
 
-        {/* Exam is prefilled + immutable from context */}
+        {/* Exam / cycle / phase context — immutable from workspace */}
         <p className="text-xs text-gray-500" data-testid="add-pyq-exam-immutable">
           Exam is set from this workspace and cannot be changed here.
         </p>
+        <div className="text-xs text-gray-500 flex gap-4" data-testid="add-pyq-cycle-context">
+          <span data-testid="add-pyq-cycle-label">
+            Cycle: {cycleLabel ?? "All cycles"}
+          </span>
+          <span data-testid="add-pyq-phase-label">
+            Phase: {phaseLabel ?? "No phase selected"}
+          </span>
+        </div>
 
         {/* ── Paper identity ── */}
         <fieldset className="flex flex-col gap-3 border border-gray-200 rounded p-3">
