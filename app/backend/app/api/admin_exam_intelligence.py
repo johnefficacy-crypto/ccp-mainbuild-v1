@@ -2203,15 +2203,88 @@ _SNAPSHOT_COLUMNS = (
 )
 
 
+_ENRICH_BATCH = 250  # matches score_snapshots.py _BATCH convention
+
+
+def _enrich_snapshot_topics(sb, rows: list) -> list:
+    """Attach topic_name and topic_path to each snapshot row.
+
+    Batches topic lookups in chunks of _ENRICH_BATCH IDs to stay within
+    PostgREST/URL query limits — snapshot history is append-only and can
+    accumulate thousands of rows.  topic_path is the parent topic name
+    (one level up from the tagged topic).
+    """
+    if not rows:
+        return rows
+    unique_ids = list({r["topic_id"] for r in rows if r.get("topic_id")})
+    if not unique_ids:
+        return rows
+
+    topic_by_id: dict = {}
+    chunks = [unique_ids[i : i + _ENRICH_BATCH] for i in range(0, len(unique_ids), _ENRICH_BATCH)]
+    for chunk in chunks:
+        try:
+            batch = (
+                sb.table("topics")
+                .select("id, name, parent_topic_id")
+                .in_("id", chunk)
+                .execute()
+                .data or []
+            )
+            for t in batch:
+                topic_by_id[t["id"]] = t
+        except Exception:
+            # On any batch failure return rows unresolved rather than partial names.
+            return rows
+
+    parent_ids = list({
+        t["parent_topic_id"]
+        for t in topic_by_id.values()
+        if t.get("parent_topic_id") and t["parent_topic_id"] not in topic_by_id
+    })
+    parent_chunks = [parent_ids[i : i + _ENRICH_BATCH] for i in range(0, len(parent_ids), _ENRICH_BATCH)]
+    for chunk in parent_chunks:
+        try:
+            batch = (
+                sb.table("topics")
+                .select("id, name")
+                .in_("id", chunk)
+                .execute()
+                .data or []
+            )
+            for p in batch:
+                topic_by_id[p["id"]] = p
+        except Exception:
+            pass
+
+    for r in rows:
+        t = topic_by_id.get(r.get("topic_id") or "", {})
+        r["topic_name"] = t.get("name")
+        parent = topic_by_id.get(t.get("parent_topic_id") or "", {})
+        r["topic_path"] = parent.get("name") if parent else None
+    return rows
+
+
 @router.get("/exams/{exam_id}/score-snapshots")
 def list_score_snapshots(
     exam_id: str,
     status: str | None = Query(default=None),
+    exam_phase_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     """List ``exam_topic_score_snapshots`` rows for an exam, ordered by computed_at DESC.
 
-    Paginated internally — ``total`` reflects the real count, not a capped value.
+    Accepts an optional ``exam_phase_id`` scope filter.  When ``exam_phase_id``
+    is supplied only rows for that phase are returned; when omitted only
+    exam-wide rows (``exam_phase_id IS NULL``) are returned.  This prevents
+    mixed exam-wide and phase-scoped rows appearing in the same review table.
+
+    Supports cursor-style pagination via ``limit`` (1–200, default 50) and
+    ``offset``.  ``total`` always reflects the full unfiltered count for the
+    scope so the UI can render a page-count without issuing a separate COUNT
+    request.
     """
     if status is not None and status not in _SNAPSHOT_STATUSES:
         raise HTTPException(
@@ -2219,8 +2292,11 @@ def list_score_snapshots(
             detail=f"Invalid status {status!r}. Must be one of: {sorted(_SNAPSHOT_STATUSES)}",
         )
     sb = get_supabase_admin()
-    rows = list_exam_score_snapshots(sb, exam_id, status=status)
-    return {"snapshots": rows, "total": len(rows), "exam_id": exam_id}
+    all_rows = list_exam_score_snapshots(sb, exam_id, status=status, exam_phase_id=exam_phase_id)
+    all_rows = _enrich_snapshot_topics(sb, all_rows)
+    total = len(all_rows)
+    page_rows = all_rows[offset: offset + limit]
+    return {"snapshots": page_rows, "total": total, "exam_id": exam_id}
 
 
 @router.patch("/score-snapshots/{snapshot_id}/review")

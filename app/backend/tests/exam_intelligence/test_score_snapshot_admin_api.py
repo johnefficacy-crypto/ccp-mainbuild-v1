@@ -600,3 +600,184 @@ def test_compute_returns_summary():
     assert body["model_version"] == MODEL_VERSION
     assert body["written"] >= 0
     # One topic (t1) has a locked coverage row + a primary verified tag.
+
+
+# ─── Phase scope isolation ────────────────────────────────────────────────────
+
+def _seed_with_phases():
+    """Seed with both exam-wide (null) and phase-scoped snapshot rows."""
+    base = _seed_snapshots()
+    snapshots = base["exam_topic_score_snapshots"]
+    # Add a Phase A row and a Phase B row alongside the existing null-scope rows.
+    snapshots.append({
+        "id": "s-phase-a", "exam_id": "e1", "topic_id": "t5", "status": "draft",
+        "exam_phase_id": "ph-a",
+        "model_version": MODEL_VERSION, "exam_priority_score": 50,
+        "is_high_yield": False, "confidence_score": 0.5, "evidence_count": 1,
+        "score_components": {}, "input_summary": {},
+        "computed_at": "2026-06-01T00:00:00+00:00",
+        "reviewer_notes": None,
+    })
+    snapshots.append({
+        "id": "s-phase-b", "exam_id": "e1", "topic_id": "t6", "status": "draft",
+        "exam_phase_id": "ph-b",
+        "model_version": MODEL_VERSION, "exam_priority_score": 45,
+        "is_high_yield": False, "confidence_score": 0.45, "evidence_count": 1,
+        "score_components": {}, "input_summary": {},
+        "computed_at": "2026-06-01T00:00:00+00:00",
+        "reviewer_notes": None,
+    })
+    return base
+
+
+def test_list_phase_scope_returns_only_that_phase():
+    """exam_phase_id filter returns only rows for the requested phase."""
+    sb = _SnapshotSBStub(_seed_with_phases())
+    client = TestClient(_build_app(sb))
+    r = client.get(f"{_LIST_BASE}?exam_phase_id=ph-a")
+    assert r.status_code == 200
+    body = r.json()
+    ids = {s["id"] for s in body["snapshots"]}
+    assert ids == {"s-phase-a"}, f"expected only phase-a row, got {ids}"
+    assert body["total"] == 1
+
+
+def test_list_exam_wide_excludes_phase_rows():
+    """Without exam_phase_id param, list returns only null-scope rows."""
+    sb = _SnapshotSBStub(_seed_with_phases())
+    client = TestClient(_build_app(sb))
+    r = client.get(_LIST_BASE)
+    assert r.status_code == 200
+    body = r.json()
+    ids = {s["id"] for s in body["snapshots"]}
+    # 4 null-scope rows from _seed_snapshots; phase rows must not appear.
+    assert "s-phase-a" not in ids
+    assert "s-phase-b" not in ids
+    assert body["total"] == 4
+
+
+def test_list_phase_a_does_not_include_phase_b_rows():
+    """Two-phase regression: Phase A scope cannot see Phase B rows."""
+    sb = _SnapshotSBStub(_seed_with_phases())
+    client = TestClient(_build_app(sb))
+    r = client.get(f"{_LIST_BASE}?exam_phase_id=ph-a")
+    assert r.status_code == 200
+    body = r.json()
+    ids = {s["id"] for s in body["snapshots"]}
+    assert "s-phase-b" not in ids, f"Phase B row leaked into Phase A list: {ids}"
+
+
+# ─── Topic enrichment ────────────────────────────────────────────────────────
+
+def _seed_with_topics():
+    """Seed snapshots + matching topics rows for enrichment test."""
+    base = _seed_snapshots()
+    base["topics"] = [
+        {"id": "t1", "name": "Polity", "parent_topic_id": "tp-root"},
+        {"id": "t2", "name": "Economy", "parent_topic_id": "tp-root"},
+        {"id": "t3", "name": "Geography", "parent_topic_id": None},
+        {"id": "t4", "name": "Science", "parent_topic_id": None},
+        {"id": "tp-root", "name": "General Studies", "parent_topic_id": None},
+    ]
+    return base
+
+
+def test_list_snapshots_enriches_topic_name():
+    """list_score_snapshots must attach topic_name and topic_path from the topics table."""
+    sb = _SnapshotSBStub(_seed_with_topics())
+    client = TestClient(_build_app(sb))
+    r = client.get(_LIST_BASE)
+    assert r.status_code == 200
+    snaps = {s["id"]: s for s in r.json()["snapshots"]}
+
+    # topic_name must be resolved from the topics table
+    assert snaps["s-draft"]["topic_name"] == "Polity"
+    assert snaps["s-reviewed"]["topic_name"] == "Economy"
+    assert snaps["s-locked"]["topic_name"] == "Geography"
+
+    # topic_path is the parent topic name (one level up)
+    assert snaps["s-draft"]["topic_path"] == "General Studies"
+    # Geography has no parent → topic_path should be None
+    assert snaps["s-locked"]["topic_path"] is None
+
+
+def test_list_snapshots_enrichment_is_graceful_on_missing_topics():
+    """If topics rows are absent, snapshots still return without error."""
+    # Seed without topics table entries (empty list)
+    base = _seed_snapshots()
+    base["topics"] = []
+    sb = _SnapshotSBStub(base)
+    client = TestClient(_build_app(sb))
+    r = client.get(_LIST_BASE)
+    assert r.status_code == 200
+    # topic_name defaults to None when topic row not found
+    snaps = r.json()["snapshots"]
+    assert all(s.get("topic_name") is None for s in snaps)
+
+
+# ─── Compute: body scope contract ────────────────────────────────────────────
+
+def test_compute_scope_body_persists_exam_phase_id():
+    """exam_phase_id in the POST body is written to every inserted snapshot row.
+
+    Regression: a backend that ignores body.exam_phase_id would still return
+    HTTP 200 and exam_id=='e1', so this test also inspects the written rows.
+    No null-scope row and no Phase-B row must appear in the result.
+    """
+    # Phase-scoped seed: paper and question carry exam_phase_id='ph-a'.
+    seed = {
+        "exams": [
+            {"id": "e1", "slug": "ssc-cgl", "name": "SSC CGL",
+             "exam_type": "recruitment", "is_active": True},
+        ],
+        "exam_phases": [
+            {"id": "ph-a", "exam_id": "e1", "phase_name": "Tier I", "phase_order": 1},
+        ],
+        "pyq_papers": [
+            # exam_phase_id on the paper causes the phase-scoped paper query to match.
+            {"id": "p1", "exam_id": "e1", "trust_status": "verified", "exam_phase_id": "ph-a"},
+        ],
+        "pyq_questions": [
+            {"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"},
+        ],
+        "pyq_question_topic_tags": [
+            {"question_id": "q1", "topic_id": "t1",
+             "reviewer_status": "verified", "tag_role": "primary"},
+        ],
+        "exam_topic_coverage": [
+            # Coverage row carries exam_phase_id so the phase-scoped coverage query matches.
+            {"topic_id": "t1", "exam_id": "e1", "exam_priority_score": 80,
+             "is_high_yield": True, "reviewer_status": "locked", "exam_phase_id": "ph-a"},
+        ],
+    }
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.post(_COMPUTE_BASE, json={"exam_phase_id": "ph-a"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["exam_id"] == "e1"
+
+    # Every newly written snapshot row must carry exam_phase_id='ph-a'.
+    written = sb.db.get("exam_topic_score_snapshots", [])
+    assert written, "compute must have written at least one snapshot row"
+    for row in written:
+        assert row.get("exam_phase_id") == "ph-a", (
+            f"row {row.get('id')} has exam_phase_id={row.get('exam_phase_id')!r},"
+            " expected 'ph-a'"
+        )
+        # No null-scope or Phase-B leakage.
+        assert row.get("exam_phase_id") is not None, "null-scope row created for a phase compute"
+
+
+def test_compute_exam_wide_does_not_set_exam_phase_id():
+    """Exam-wide compute (no body.exam_phase_id) writes null-scope rows only."""
+    seed = _compute_seed()
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.post(_COMPUTE_BASE, json={})
+    assert r.status_code == 200
+    written = sb.db.get("exam_topic_score_snapshots", [])
+    for row in written:
+        assert row.get("exam_phase_id") is None, (
+            f"exam-wide compute wrote a phase-scoped row: {row}"
+        )

@@ -525,11 +525,17 @@ def list_exam_score_snapshots(
     exam_id: str,
     *,
     status: str | None = None,
+    exam_phase_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return all snapshots for an admin list view (paginated).
 
-    Optionally filter by *status*. Returns full rows including review
-    metadata (``reviewed_by``, ``reviewed_at``, ``reviewer_notes``).
+    Optionally filter by *status* and *exam_phase_id*.  When *exam_phase_id*
+    is supplied only rows for that phase are returned; when ``None`` only
+    exam-wide rows (``exam_phase_id IS NULL``) are returned.  Mixing scopes
+    in a single call is intentionally not supported — operators review one
+    scope at a time to avoid comparing incomparable evidence sets.
+
+    Returns full rows including review metadata.
     """
     if not exam_id:
         return []
@@ -542,6 +548,10 @@ def list_exam_score_snapshots(
         )
         if status:
             q = q.eq("status", status)
+        if exam_phase_id:
+            q = q.eq("exam_phase_id", exam_phase_id)
+        else:
+            q = q.is_("exam_phase_id", None)
         return q.order("computed_at", desc=True).range(from_n, to_n).execute().data
 
     return _paginate(
