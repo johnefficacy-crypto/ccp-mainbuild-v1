@@ -972,7 +972,7 @@
     "hash": "3274378909d760eba8bbaa03bf8f866b"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\mastery_engine\\__init__.py": {
-    "mtime": 1779868904.3961813,
+    "mtime": 1782830159.4904816,
     "hash": "85596720b8744ca8c07e4026ee59ff5d"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\app\\study_os\\mastery_engine\\tests\\test_mastery_engine.py": {
@@ -1806,6 +1806,10 @@
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\onboarding_unified\\__init__.py": {
     "mtime": 1778782769.9331188,
     "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\ops\\test_verify_mastery_fingerprint.py": {
+    "mtime": 1782838094.9064107,
+    "hash": "fa6651f4e5254b3725e4e5cd37e1389f"
   },
   "D:\\GovtExamAgent\\ccp-mainbuild-v1\\app\\backend\\tests\\persona\\test_classifier.py": {
     "mtime": 1780916977.7720017,
