@@ -2,7 +2,7 @@
 owner: exam-intelligence
 status: architecture decision + phased implementation plan
 last_verified_against_code: 2026-06-30
-verified_against: main @ 3d99e6b3
+verified_against: main @ f0d84f8
 source_of_truth: code
 related_code:
   - app/backend/app/exam_intelligence/coverage.py
@@ -152,15 +152,15 @@ Official syllabus / reviewed PYQ sources / reviewed resources / reviewed CA sour
 
 ### Verified frequency
 
-The current `verified_pyq_topic_counts()` function counts every verified topic tag, regardless of `tag_role`. Therefore its output is a reviewed association count, not necessarily a unique-question frequency count.
+**Implemented (PR #767, slice-1 — MERGED):** `verified_pyq_topic_counts()` in `coverage.py` now filters `tag_role='primary'` at the DB query and guards the count loop (defence-in-depth), so one verified question can no longer inflate multiple topics through secondary/trap/calculation_layer tags. Paper `trust_status='verified'` + question `reviewer_status='verified'` + tag `reviewer_status='verified'` gates remain conjunctive. Seven frequency-semantics regression tests pass (`test_pyq_frequency_semantics.py`).
 
-Before using it as “exam frequency,” define and test one contract:
+The three candidate contracts were:
 
-1. Primary-only: one verified primary tag per question.
+1. **Primary-only (selected and implemented):** one verified primary tag per question.
 2. Role-weighted: primary = 1.0, secondary/conceptual = configured fractional weight, traps excluded from topic frequency.
 3. Multi-label coverage: count all roles but label the metric as associations, not questions.
 
-Primary-only is the safest default for exam-frequency charts. Role-weighted scoring can follow after corpus validation.
+Role-weighted scoring remains a future option after corpus validation. The current list API is presentation-paginated (Python-side slice after full enrichment); true DB-level pagination and count is a bounded scalability follow-up.
 
 ### Exam-topic analytical snapshot
 
@@ -369,10 +369,10 @@ Only after multiple complete exam corpora exist:
 
 ## Delivery order
 
-1. **Close current runtime gates.** Complete scheduler, shadow, allowlist, migration, and canary validation already tracked for Mock Engine v2.
-2. **Define frequency semantics.** Primary-only/weighted contract, corpus coverage, tests.
-3. **Activate `exam_topic_score_snapshots`.** Deterministic writer, review workflow, locked-only reader.
-4. **Add cognitive-demand classification.** Pending AI proposals + admin review.
+1. **Close current runtime gates.** Complete scheduler, shadow, allowlist, migration, and canary validation already tracked for Mock Engine v2. *(In progress — see `career-copilot-checklist.md`.)*
+2. ~~**Define frequency semantics.**~~ **DONE (PR #767, merged).** Primary-only semantics implemented in `coverage.py`; 7 regression tests; primary-only is the current default.
+3. ~~**Activate `exam_topic_score_snapshots`.**~~ **DONE (PRs #767/#773/#810, all merged).** Deterministic idempotent writer, draft→reviewed→locked transition matrix, atomic review RPC (migration 204), operator workbench embedded in PYQ Workbench tab, locked-only reader wired into planner as 0–15 pt confidence-weighted additive signal. Operator/browser validation still pending before full sign-off.
+4. **Add cognitive-demand classification.** Pending AI proposals + admin review. *(Unblocked — P2 contract needed before implementation.)*
 5. **Unify revision recommendations.** Topic mastery due/relearn/practice contract using existing SRS where appropriate.
 6. **Rank reviewed resources.** No AI-generated resource claims.
 7. **Build CA provenance and linking.** Separate from policy updates.

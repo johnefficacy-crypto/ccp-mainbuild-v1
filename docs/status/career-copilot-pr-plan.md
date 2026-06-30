@@ -1,6 +1,6 @@
 # Career Copilot remaining-work PR plan
 
-Last planned from repo state: 2026-06-21 at `main @ 2308b31`. IA decisions locked: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`.
+Last planned from repo state: 2026-06-30 at `main @ f0d84f8`. IA decisions locked: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`. PRs #810 (Score Snapshot Workbench), #811 (text-extract worker), #812 (cycle/phase label fix) merged 2026-06-30.
 
 This plan decomposes the remaining Career Copilot work into small PRs that can
 be assigned to simultaneous agents without overlapping write scopes. Status
@@ -467,9 +467,7 @@ Gates I9 implementation. Must define, for all 9 activation checklist steps:
 Architecture doc: `docs/architecture/pyq-intelligence-v2.md`.
 These PRs are isolated from all Exam Management IA work and can run in parallel with Lanes H/I/K.
 
-### P-slice-1 — Primary-only frequency semantics + score snapshot foundation — **IN REVIEW (PR #767)**
-
-**Branch:** `claude/jolly-cerf-3lu1pe`
+### P-slice-1 — Primary-only frequency semantics + score snapshot foundation — **MERGED (PR #767)**
 
 What landed:
 - `coverage.py`: `verified_pyq_topic_counts` now filters `tag_role='primary'` only (DB + loop guard).
@@ -496,7 +494,7 @@ Fix PR: open as P-slice-1b addressing all six items plus P2 items (model_version
 - `app/backend/tests/exam_intelligence/test_score_snapshot_admin_api.py`
 - `docs/status/career-copilot-checklist.md`
 
-### P-slice-2 — Planner consumption of locked snapshots — **IN REVIEW (PR #773)**
+### P-slice-2 — Planner consumption of locked snapshots — **MERGED (PR #773)**
 
 Wire `locked_score_snapshots()` into `planner.py` as an additional priority signal (up to 15 pts additive, confidence-weighted). Locked snapshots are cycle-independent (all-time verified PYQ corpus; no `exam_cycle_id` set by writer).
 
@@ -514,24 +512,21 @@ Wire `locked_score_snapshots()` into `planner.py` as an additional priority sign
 - `app/backend/tests/study_os/test_planner_snapshot_integration.py`
 - `docs/status/career-copilot-pr-plan.md`
 
-### P-slice-1c — Snapshot review atomicity (migration 204) — **IN PROGRESS (`claude/pyq-v2-finalization-jhptq9`)**
+### P-slice-1c — Snapshot review atomicity (migration 204) — **MERGED as part of PR #810**
 
-Closes the known atomicity gap recorded in checklist and acknowledged in the deferred comment at `admin_exam_intelligence.py` (cf. `185_pyq_paper_review_transaction.sql`).
+Closes the known atomicity gap. Shipped inside the Score Snapshot Workbench UI PR (#810) which also added the operator frontend and enrichment layer. See the PR #810 row in `career-copilot-checklist.md` for the full implementation record. **OPERATOR VALIDATION PENDING:** apply migration 204 to staging; verify EXECUTE grant matrix; confirm atomic audit trail in a live compute → review → lock cycle.
 
-What changed:
-- `app/supabase/migrations/204_atomic_snapshot_review_transition.sql` — `cms_review_exam_topic_snapshot` SECURITY DEFINER RPC; SELECT FOR UPDATE + transition matrix + audit INSERT + status UPDATE in one transaction; REVOKE/GRANT pattern from migration 203.
-- `app/backend/app/api/admin_exam_intelligence.py` — `review_score_snapshot` replaces the best-effort two-step writes with a single RPC call; error tokens mapped to 409/422/404/500.
-- `app/backend/tests/exam_intelligence/test_score_snapshot_admin_api.py` — `_SnapshotSBStub` mirrors RPC contract; new tests for atomicity, actor forwarding, no-fallback-on-failure, concurrent modification.
-- `docs/status/career-copilot-checklist.md` — new row recording migration 204 code fix + operator validation gates.
+### P-slice-3 — Score Snapshot Workbench UI (operator surface) — **MERGED (PR #810)**
 
-**Write scope:**
-- `app/supabase/migrations/204_atomic_snapshot_review_transition.sql`
-- `app/backend/app/api/admin_exam_intelligence.py`
-- `app/backend/tests/exam_intelligence/test_score_snapshot_admin_api.py`
-- `docs/status/career-copilot-checklist.md`
-- `docs/status/career-copilot-pr-plan.md`
+Operator workbench embedded as `?view=snapshots` inside PYQ Workbench tab. Scope selector, phase validation with error banner, generation-counter race guard, compute body contract, topic enrichment, evidence drawer, permission gate, focus management. 25 tests (12 frontend + 13 backend). CODE-FIXED, OPERATOR/BROWSER VALIDATION PENDING.
 
-**OPERATOR PENDING:** apply migration 204 to staging; verify EXECUTE grant matrix; confirm atomic audit trail in a live compute → review → lock cycle.
+### Lane EI-worker — Admin text-extract background worker — **MERGED (PR #811)**
+
+`text_extract_worker.py` + `doc:text_extract` APScheduler job (60 s, configurable). Scope-filtered to `admin_exam_intelligence` documents. `_fallback_fail_job` conditional write. `run_job_now` honours `_is_failure_result`. Manual-trigger permission raised to `exam_intelligence.cms`. 23 unit tests. OPERATOR VALIDATION PENDING. Retry/backoff deferred to issue #813; stuck-processing diagnostics deferred to issue #542.
+
+### Lane PYQ-labels — Cycle/phase label fix in AddPyqPaperModal — **MERGED (PR #812)**
+
+`AddPyqPaperModal` renders immutable cycle/phase context; `phaseId` always null (no `exam_phase_id` column on `exam_cycles`); ID/label mismatch fails closed with error banner + disabled submit; "No cycle selected (exam-wide paper)" shown when no cycle context active. BROWSER VALIDATION PENDING.
 
 ### P2 — Cognitive demand classification (Bloom's taxonomy) — **UNBLOCKED (P-slice-2 merged, PR #773), contract pending**
 

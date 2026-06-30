@@ -1,7 +1,7 @@
 # PYQ Onboarding Follow-ups Contract — OD-2 + OD-5
 
 - Document type: bounded follow-up contract (supersedes the v1 deferral of OD-2 and OD-5)
-- Status: DRAFT — OPERATOR APPROVAL REQUIRED
+- Status: APPROVED — IMPLEMENTATION MERGED, BROWSER VALIDATION PENDING
 - Date: 2026-06-26
 - Parent gate: `docs/status/PYQ-Source-and-Paper-Onboarding-Gate-2026-06-25.md` (APPROVED). That gate locked OD-2 and OD-5 as **out of scope for v1 / separate future contract**. This document is that separate contract; it authorizes the two follow-ups and is realized by PR #769.
 - Effect: Once approved, OD-2 (source trust lifecycle) and OD-5 (inline PDF upload) move from "deferred" to "in scope," bounded exactly as below. No new top-level surface; no change to the locked IA.
@@ -67,4 +67,4 @@ Until recorded, the checklist row stays `CODE-FIXED, VALIDATION PENDING` / `OPER
 
 ---
 
-*Planning artifact. The runtime change lives in PR #769; this document authorizes its scope. It does not assert operator/live validation, which remains pending per the section above.*
+*This contract is now APPROVED. Runtime changes live in PRs #769 and #812. Migrations 192 (onboarding RPC) and 201 (source review RPC) are OPERATOR VALIDATED on staging (2026-06-30; evidence in PR #806 body). Browser validation — Add PYQ paper flow, source Verify/Reject/Re-queue, inline upload (including deliberately failed extraction), and cycle/phase label display — is still required before this follow-up arc can be marked fully complete. Until recorded, the checklist rows stay CODE-FIXED, BROWSER/OPERATOR VALIDATION PENDING.*

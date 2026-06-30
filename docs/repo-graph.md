@@ -1,6 +1,6 @@
 # Repository Graph
 
-Generated from `D:\GovtExamAgent\ccp-mainbuild-v1` on 2026-05-11.
+Generated from `D:\GovtExamAgent\ccp-mainbuild-v1` on 2026-05-11. **STALE — last built at `a730dc70` (2026-06-29), before PRs #810/#811/#812 merged on 2026-06-30. Regenerate with `graphify update .` from a local checkout of `main @ f0d84f8` or later.**
 
 ## Top-Level Runtime Map
 
