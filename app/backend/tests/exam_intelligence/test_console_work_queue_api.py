@@ -91,8 +91,12 @@ def _build_app(sb, role="super_admin"):
     return app
 
 
-_RECENT = "2026-06-16T00:00:00+00:00"
-_STALE = "2026-01-01T00:00:00+00:00"
+# Relative to "now" so the fixtures never rot: a hardcoded _RECENT crosses the
+# 14-day STALE_REVIEW_DAYS boundary as wall-clock time advances (it did on
+# 2026-06-30), flipping "fresh" rows to "stale" and breaking these tests.
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz  # noqa: E402
+_RECENT = (_dt.now(_tz.utc) - _td(days=2)).isoformat()    # well within the 14-day window
+_STALE = (_dt.now(_tz.utc) - _td(days=90)).isoformat()    # well past it
 
 
 class _Seed:
