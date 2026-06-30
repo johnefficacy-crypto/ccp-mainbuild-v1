@@ -20,7 +20,7 @@ const CYCLE_ROW = {
   status: "expected",
 };
 
-const examsUrl = "/api/admin/exam-intelligence-cms/exams?limit=50";
+const examsUrl = "/api/admin/exam-intelligence-cms/exams?limit=50&offset=0";
 
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
@@ -53,7 +53,7 @@ beforeEach(() => {
     if (url === examsUrl) {
       return Promise.resolve({ items: [EXAM_ROW], total: 1 });
     }
-    if (url === "/api/admin/exam-intelligence-cms/exam-cycles?limit=50") {
+    if (url === "/api/admin/exam-intelligence-cms/exam-cycles?limit=50&offset=0") {
       return Promise.resolve({ items: [CYCLE_ROW], total: 1 });
     }
     return Promise.resolve({ items: [], total: 0 });
@@ -129,7 +129,7 @@ test("entity churn never restores the removed New guided exam CTA", async () => 
 
   selectEntity("exam-cycles");
   await screen.findByText("Sample Cycle");
-  expect(api.get).toHaveBeenCalledWith("/api/admin/exam-intelligence-cms/exam-cycles?limit=50");
+  expect(api.get).toHaveBeenCalledWith("/api/admin/exam-intelligence-cms/exam-cycles?limit=50&offset=0");
   expect(screen.queryByTestId("cms-new-guided-exam")).toBeNull();
   expect(screen.queryByRole("link", { name: /New guided exam/i })).toBeNull();
 

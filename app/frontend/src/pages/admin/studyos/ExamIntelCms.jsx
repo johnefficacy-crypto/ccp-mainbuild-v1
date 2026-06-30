@@ -196,6 +196,21 @@ const ENTITY_CYCLE_SCOPE = new Set([
   "pyq-papers",
 ]);
 
+// J1: entities using reviewer_status vs trust_status for the status filter
+const REVIEWER_STATUS_ENTITIES = new Set([
+  "syllabus-topic-mentions",
+  "exam-topic-coverage",
+  "policy-updates",
+  "pyq-questions",
+]);
+const TRUST_STATUS_ENTITIES = new Set([
+  "syllabus-documents",
+  "pyq-papers",
+  "pyq-sources",
+]);
+const REVIEWER_STATUSES = ["pending", "approved", "rejected", "needs_revision"];
+const TRUST_STATUSES = ["pending", "trusted", "untrusted", "flagged"];
+
 const ENTITY_CONFIG = {
   "exam-families": {
     label: "Exam families",
@@ -748,7 +763,7 @@ function parseValue(field, raw) {
 
 export default function AdminExamIntelCms() {
   const { user, status: authStatus } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const scopeExamId = searchParams.get("exam_id") ?? null;
   const scopeCycleId = searchParams.get("cycle_id") ?? null;
@@ -793,6 +808,16 @@ export default function AdminExamIntelCms() {
   const { run: runEdit, busy: busyEdit } = useApiAction();
   const { run: runRetire, busy: busyRetire } = useApiAction();
 
+  // J1: search / filter / pagination state
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(null);
+  const [scopeExamName, setScopeExamName] = useState(null);
+  const [scopeCycleName, setScopeCycleName] = useState(null);
+  const searchTimerRef = useRef(null);
+  const PAGE_SIZE = 50;
+
   const isDocuments = entity === "documents";
   const cfg = ENTITY_CONFIG[entity];
   const isEditable = EDITABLE_ENTITIES.has(entity);
@@ -801,7 +826,7 @@ export default function AdminExamIntelCms() {
   // backend enforces. Submit is never blocked client-side.
   const bulkCap = { "pyq-questions": 2000, "pyq-options": 4000, "pyq-question-topic-tags": 2000 }[entity] || 500;
 
-  async function load() {
+  async function load({ searchVal, filterVal, pageVal } = {}) {
     const gen = ++loadGenRef.current;
     if (!isAuthorized) return;
     // The Documents panel manages its own data via the upload/list endpoints.
@@ -812,17 +837,29 @@ export default function AdminExamIntelCms() {
     }
     setBusy(true);
     setErr(null);
+    const effectiveSearch = searchVal !== undefined ? searchVal : search;
+    const effectiveFilter = filterVal !== undefined ? filterVal : statusFilter;
+    const effectivePage = pageVal !== undefined ? pageVal : page;
+    const offset = (effectivePage - 1) * PAGE_SIZE;
     try {
-      const params = new URLSearchParams({ limit: "50" });
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
       if (scopeExamId && ENTITY_EXAM_SCOPE.has(entity)) {
         params.set("exam_id", scopeExamId);
       }
       if (scopeCycleId && ENTITY_CYCLE_SCOPE.has(entity)) {
         params.set("exam_cycle_id", scopeCycleId);
       }
+      if (effectiveSearch) {
+        params.set("search", effectiveSearch);
+      }
+      if (effectiveFilter) {
+        const filterParam = TRUST_STATUS_ENTITIES.has(entity) ? "trust_status" : "reviewer_status";
+        params.set(filterParam, effectiveFilter);
+      }
       const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?${params}`);
       if (gen !== loadGenRef.current) return;
       setItems(r);
+      if (r?.total != null) setTotalCount(r.total);
     } catch (e) {
       if (gen !== loadGenRef.current) return;
       setErr(getApiErrorMessage(e));
@@ -1077,9 +1114,65 @@ export default function AdminExamIntelCms() {
     setEditValues({});
     setEditReason("");
     setEditError(null);
-    load();
+    // J1: reset search/filter/page when entity or scope changes
+    setSearch("");
+    setStatusFilter("");
+    setPage(1);
+    setTotalCount(null);
+    load({ searchVal: "", filterVal: "", pageVal: 1 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, isAuthorized, scopeExamId, scopeCycleId]);
+
+  // J1: resolve human-readable scope names (only once authorized)
+  useEffect(() => {
+    if (!isAuthorized || !scopeExamId) { setScopeExamName(null); return; }
+    api.get("/api/admin/exam-intelligence-cms/exams?limit=200")
+      .then((r) => {
+        const exam = (r?.items || []).find((e) => e.id === scopeExamId);
+        setScopeExamName(exam?.name ?? scopeExamId);
+      })
+      .catch(() => setScopeExamName(scopeExamId));
+  }, [isAuthorized, scopeExamId]);
+
+  useEffect(() => {
+    if (!isAuthorized || !scopeCycleId) { setScopeCycleName(null); return; }
+    const examParam = scopeExamId ? `&exam_id=${encodeURIComponent(scopeExamId)}` : "";
+    api.get(`/api/admin/exam-intelligence-cms/exam-cycles?limit=200${examParam}`)
+      .then((r) => {
+        const cycle = (r?.items || []).find((c) => c.id === scopeCycleId);
+        setScopeCycleName(cycle?.cycle_name ?? cycle?.year ?? scopeCycleId);
+      })
+      .catch(() => setScopeCycleName(scopeCycleId));
+  }, [isAuthorized, scopeCycleId, scopeExamId]);
+
+  function handleSearchChange(e) {
+    const val = e.target.value;
+    setSearch(val);
+    setPage(1);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      load({ searchVal: val, filterVal: statusFilter, pageVal: 1 });
+    }, 300);
+  }
+
+  function handleStatusChange(e) {
+    const val = e.target.value;
+    setStatusFilter(val);
+    setPage(1);
+    load({ searchVal: search, filterVal: val, pageVal: 1 });
+  }
+
+  function handlePageChange(newPage) {
+    setPage(newPage);
+    load({ searchVal: search, filterVal: statusFilter, pageVal: newPage });
+  }
+
+  function clearScope() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("exam_id");
+    next.delete("cycle_id");
+    setSearchParams(next);
+  }
 
   if (authStatus === "checking") {
     return <div data-testid="advanced-repair-checking" style={{ padding: "2rem" }}>Checking permissions…</div>;
@@ -1123,15 +1216,33 @@ export default function AdminExamIntelCms() {
         broken-reference correction. Normal operational work belongs in Manage Exam. Raw changes can
         affect linked exam data and remain subject to the existing review and locking lifecycle.
       </AdminSafetyBanner>
-      {(scopeExamId || scopeCycleId) && (
+      {scopeExamId && (
         <div
           className="rounded border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
           data-testid="advanced-repair-scope-summary"
         >
-          Context filter —{" "}
-          {scopeExamId && <>exam <code>{scopeExamId}</code></>}
-          {scopeExamId && scopeCycleId && " · "}
-          {scopeCycleId && <>cycle <code>{scopeCycleId}</code></>}
+          <span className="flex items-center gap-3 flex-wrap">
+            <span>
+              <strong>Scope:</strong>{" "}
+              <span data-testid="scope-exam-name">{scopeExamName ?? scopeExamId}</span>
+              {scopeCycleId && (
+                <> · <span data-testid="scope-cycle-name">{scopeCycleName ?? scopeCycleId}</span></>
+              )}
+              {!ENTITY_EXAM_SCOPE.has(entity) && (
+                <span className="ml-2 text-amber-700" data-testid="scope-not-scoped-note">
+                  — This entity is not scoped by exam.
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              className="btn small"
+              onClick={clearScope}
+              data-testid="scope-clear-btn"
+            >
+              Clear scope
+            </button>
+          </span>
         </div>
       )}
 
@@ -1176,6 +1287,41 @@ export default function AdminExamIntelCms() {
           </>
         ) : null}
       </div>
+
+      {/* J1: search + status filter */}
+      {!isDocuments && (
+        <div className="flex gap-2 items-end flex-wrap">
+          <label>
+            <span className="block text-xs text-muted-foreground mb-1">Search</span>
+            <input
+              type="search"
+              value={search}
+              onChange={handleSearchChange}
+              placeholder="Filter rows…"
+              className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background w-48"
+              data-testid="cms-search-input"
+            />
+          </label>
+          {(REVIEWER_STATUS_ENTITIES.has(entity) || TRUST_STATUS_ENTITIES.has(entity)) && (
+            <label>
+              <span className="block text-xs text-muted-foreground mb-1">
+                {TRUST_STATUS_ENTITIES.has(entity) ? "Trust status" : "Reviewer status"}
+              </span>
+              <select
+                value={statusFilter}
+                onChange={handleStatusChange}
+                className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                data-testid="cms-status-filter"
+              >
+                <option value="">All statuses</option>
+                {(TRUST_STATUS_ENTITIES.has(entity) ? TRUST_STATUSES : REVIEWER_STATUSES).map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
 
       {entity === "exam-topic-coverage" && (
         <div className="rounded border border-border/60 bg-card p-4" data-testid="cms-lifecycle-legend">
@@ -1410,9 +1556,29 @@ export default function AdminExamIntelCms() {
             ))}
           </tbody>
         </table>
-        {items?.total != null ? (
-          <div className="text-xs text-muted-foreground p-2 border-t border-border/40">
-            total {items.total}, showing {items.items?.length ?? 0}
+        {totalCount != null ? (
+          <div className="flex items-center gap-3 text-xs text-muted-foreground p-2 border-t border-border/40" data-testid="cms-pagination-footer">
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page <= 1 || busy}
+              data-testid="cms-page-prev-btn"
+            >
+              Previous
+            </button>
+            <span data-testid="cms-page-indicator">
+              Page {page} of {Math.max(1, Math.ceil(totalCount / PAGE_SIZE))} ({totalCount} total)
+            </span>
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page >= Math.ceil(totalCount / PAGE_SIZE) || busy}
+              data-testid="cms-page-next-btn"
+            >
+              Next
+            </button>
           </div>
         ) : null}
       </section>
