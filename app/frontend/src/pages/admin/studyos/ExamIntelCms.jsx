@@ -211,9 +211,6 @@ const ENTITY_STATUS_CONFIG = {
 // J1: entities that support text search, keyed to the backend param name.
 // Only syllabus-topic-mentions exposes a `q` text-search param; all other list
 // endpoints ignore unknown params, so the control is hidden for them (OD-2).
-const ENTITY_SEARCH_PARAM = {
-  "syllabus-topic-mentions": "q",
-};
 
 const ENTITY_CONFIG = {
   "exam-families": {
@@ -854,9 +851,9 @@ export default function AdminExamIntelCms() {
       if (scopeExamId && scopeCycleId && ENTITY_CYCLE_SCOPE.has(entity)) {
         params.set("exam_cycle_id", scopeCycleId);
       }
-      const searchParamName = ENTITY_SEARCH_PARAM[entity];
-      if (effectiveSearch && searchParamName) {
-        params.set(searchParamName, effectiveSearch);
+      // Gate OD-2: send `search` for all entities (backend ignores if not supported)
+      if (effectiveSearch) {
+        params.set("search", effectiveSearch);
       }
       const statusCfg = ENTITY_STATUS_CONFIG[entity];
       if (effectiveFilter && statusCfg) {
@@ -865,7 +862,8 @@ export default function AdminExamIntelCms() {
       const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?${params}`);
       if (gen !== loadGenRef.current) return;
       setItems(r);
-      if (r?.total != null) setTotalCount(r.total);
+      // C.3: always update total; if absent, derive disabled-Next from item count
+      setTotalCount(r?.total != null ? r.total : (r?.items?.length < PAGE_SIZE ? (offset + (r?.items?.length ?? 0)) : null));
     } catch (e) {
       if (gen !== loadGenRef.current) return;
       setErr(getApiErrorMessage(e));
@@ -1111,7 +1109,8 @@ export default function AdminExamIntelCms() {
     if (scopeExamId && cfg?.fields.some((f) => !f.uiOnly && f.key === "exam_id")) {
       prefill.exam_id = scopeExamId;
     }
-    if (scopeCycleId && cfg?.fields.some((f) => !f.uiOnly && f.key === "exam_cycle_id")) {
+    // B.3: cycle_id without exam_id is ignored — do not prefill cycle into create form either
+    if (scopeExamId && scopeCycleId && cfg?.fields.some((f) => !f.uiOnly && f.key === "exam_cycle_id")) {
       prefill.exam_cycle_id = scopeCycleId;
     }
     setFormValues(prefill);
@@ -1130,31 +1129,49 @@ export default function AdminExamIntelCms() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, isAuthorized, scopeExamId, scopeCycleId]);
 
-  // J1: resolve human-readable scope names (only once authorized)
+  // J1: resolve human-readable scope names (only once authorized); paginate until found
   useEffect(() => {
     if (!isAuthorized || !scopeExamId) { setScopeExamName(null); return; }
     let cancelled = false;
-    api.get("/api/admin/exam-intelligence-cms/exams?limit=200")
-      .then((r) => {
-        if (cancelled) return;
-        const exam = (r?.items || []).find((e) => e.id === scopeExamId);
-        setScopeExamName(exam?.name ?? scopeExamId);
-      })
-      .catch(() => { if (!cancelled) setScopeExamName(scopeExamId); });
+    setScopeExamName(null); // loading state — JSX shows "Loading…"
+    (async () => {
+      let offset = 0;
+      try {
+        while (!cancelled) {
+          const r = await api.get(`/api/admin/exam-intelligence-cms/exams?limit=200&offset=${offset}`);
+          if (cancelled) return;
+          const items = r?.items || [];
+          const exam = items.find((e) => e.id === scopeExamId);
+          if (exam) { setScopeExamName(exam.name); return; }
+          if (items.length < 200) break;
+          offset += 200;
+        }
+        if (!cancelled) setScopeExamName("(exam not found)");
+      } catch { if (!cancelled) setScopeExamName("(exam not found)"); }
+    })();
     return () => { cancelled = true; };
   }, [isAuthorized, scopeExamId]);
 
   useEffect(() => {
     if (!isAuthorized || !scopeCycleId) { setScopeCycleName(null); return; }
     let cancelled = false;
-    const examParam = scopeExamId ? `&exam_id=${encodeURIComponent(scopeExamId)}` : "";
-    api.get(`/api/admin/exam-intelligence-cms/exam-cycles?limit=200${examParam}`)
-      .then((r) => {
-        if (cancelled) return;
-        const cycle = (r?.items || []).find((c) => c.id === scopeCycleId);
-        setScopeCycleName(cycle?.cycle_name ?? cycle?.year ?? scopeCycleId);
-      })
-      .catch(() => { if (!cancelled) setScopeCycleName(scopeCycleId); });
+    setScopeCycleName(null); // loading state
+    (async () => {
+      const examParam = scopeExamId ? `&exam_id=${encodeURIComponent(scopeExamId)}` : "";
+      let offset = 0;
+      try {
+        while (!cancelled) {
+          const r = await api.get(`/api/admin/exam-intelligence-cms/exam-cycles?limit=200&offset=${offset}${examParam}`);
+          if (cancelled) return;
+          const items = r?.items || [];
+          const cycle = items.find((c) => c.id === scopeCycleId);
+          if (cycle) { setScopeCycleName(cycle.cycle_name ?? cycle.year ?? "(cycle not found)"); return; }
+          if (items.length < 200) break;
+          offset += 200;
+        }
+        if (!cancelled) setScopeCycleName("(cycle not found)");
+      } catch { if (!cancelled) setScopeCycleName("(cycle not found)"); }
+    })();
     return () => { cancelled = true; };
   }, [isAuthorized, scopeCycleId, scopeExamId]);
 
@@ -1170,12 +1187,14 @@ export default function AdminExamIntelCms() {
 
   function handleStatusChange(e) {
     const val = e.target.value;
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     setStatusFilter(val);
     setPage(1);
     load({ searchVal: search, filterVal: val, pageVal: 1 });
   }
 
   function handlePageChange(newPage) {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     setPage(newPage);
     load({ searchVal: search, filterVal: statusFilter, pageVal: newPage });
   }
@@ -1237,9 +1256,9 @@ export default function AdminExamIntelCms() {
           <span className="flex items-center gap-3 flex-wrap">
             <span>
               <strong>Scope:</strong>{" "}
-              <span data-testid="scope-exam-name">{scopeExamName ?? scopeExamId}</span>
+              <span data-testid="scope-exam-name">{scopeExamName ?? "Loading…"}</span>
               {scopeCycleId && (
-                <> · <span data-testid="scope-cycle-name">{scopeCycleName ?? scopeCycleId}</span></>
+                <> · <span data-testid="scope-cycle-name">{scopeCycleName ?? "Loading…"}</span></>
               )}
               {!ENTITY_EXAM_SCOPE.has(entity) && (
                 <span className="ml-2 text-amber-700" data-testid="scope-not-scoped-note">
@@ -1301,22 +1320,20 @@ export default function AdminExamIntelCms() {
         ) : null}
       </div>
 
-      {/* J1: search + status filter */}
-      {!isDocuments && (ENTITY_SEARCH_PARAM[entity] || ENTITY_STATUS_CONFIG[entity]) && (
+      {/* J1: search + status filter (C.1: search shown for all non-documents entities) */}
+      {!isDocuments && (
         <div className="flex gap-2 items-end flex-wrap">
-          {ENTITY_SEARCH_PARAM[entity] && (
-            <label>
-              <span className="block text-xs text-muted-foreground mb-1">Search</span>
-              <input
-                type="search"
-                value={search}
-                onChange={handleSearchChange}
-                placeholder="Filter rows…"
-                className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background w-48"
-                data-testid="cms-search-input"
-              />
-            </label>
-          )}
+          <label>
+            <span className="block text-xs text-muted-foreground mb-1">Search</span>
+            <input
+              type="search"
+              value={search}
+              onChange={handleSearchChange}
+              placeholder={`Search ${cfg?.label ?? entity}…`}
+              className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background w-48"
+              data-testid="cms-search-input"
+            />
+          </label>
           {ENTITY_STATUS_CONFIG[entity] && (
             <label>
               <span className="block text-xs text-muted-foreground mb-1">

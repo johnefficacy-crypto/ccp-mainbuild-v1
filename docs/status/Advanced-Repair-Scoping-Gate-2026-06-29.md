@@ -1,7 +1,7 @@
 # Advanced Repair Scoping Gate — J1 Contract
 
 - Document type: J1 implementation contract — Advanced Repair scoping
-- Status: **OPERATOR APPROVED — IMPLEMENTATION COMPLETE (PR #820)**
+- Status: **OPERATOR APPROVED — CODE-FIXED, VALIDATION PENDING (PR #820 open draft)**
 - Date: 2026-06-29
 - Approval date: 2026-06-30 (operator johnefficacy-crypto, verbal "J1" selection)
 - Parent track: `J1 — Advanced Repair scoping` (`docs/status/career-copilot-checklist.md` row "J1 — Advanced Repair scoping")

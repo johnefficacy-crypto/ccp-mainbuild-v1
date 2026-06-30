@@ -151,6 +151,18 @@ describe("G.1 Scope indicator", () => {
     expect(note).toBeTruthy();
   });
 
+  test("cycle-only scope (no exam_id) does NOT prefill exam_cycle_id in create form", async () => {
+    mockSearchParamsRaw = { cycle_id: CYCLE_ID }; // no exam_id
+    renderCms();
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "exam-phases" } });
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+    // No scope indicator shown (exam_id absent)
+    expect(screen.queryByTestId("advanced-repair-scope-summary")).toBeNull();
+    // List loaded without exam_cycle_id scope
+    const calls = api.get.mock.calls.map(([u]) => u);
+    expect(calls.some((u) => u.includes("exam-phases") && u.includes("exam_cycle_id="))).toBe(false);
+  });
+
   test("scopable entity (exam-cycles) does NOT show 'not scoped by exam' note", async () => {
     mockSearchParamsRaw = { exam_id: EXAM_ID };
     renderCms();
@@ -164,8 +176,8 @@ describe("G.1 Scope indicator", () => {
 });
 
 // ── Section G.2: Search input tests ──────────────────────────────────────────
-// Only syllabus-topic-mentions has backend text-search support (via param `q`).
-// All other entities: search input is NOT rendered.
+// Per gate OD-2 / C.1: search input rendered for ALL non-documents entities;
+// sends `search` param to backend (backend ignores if unsupported).
 
 describe("G.2 Search input", () => {
   beforeEach(() => {
@@ -174,63 +186,81 @@ describe("G.2 Search input", () => {
     setupDefaultMocks();
   });
 
-  test("search input NOT rendered for default entity (exam-families)", async () => {
+  test("search input rendered for default entity (exam-families)", async () => {
     mockSearchParamsRaw = {};
     renderCms();
     await waitFor(() => expect(api.get).toHaveBeenCalled());
-    expect(screen.queryByTestId("cms-search-input")).toBeNull();
+    expect(screen.queryByTestId("cms-search-input")).toBeTruthy();
   });
 
-  test("search input IS rendered for syllabus-topic-mentions", async () => {
+  test("search input is rendered for syllabus-topic-mentions", async () => {
     mockSearchParamsRaw = {};
     renderCms();
     fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "syllabus-topic-mentions" } });
     await waitFor(() => expect(screen.queryByTestId("cms-search-input")).toBeTruthy());
   });
 
-  test("typing in search input sends `q` param to backend after debounce", async () => {
+  test("typing in search input sends `search` param to backend after debounce", async () => {
     jest.useFakeTimers();
     mockSearchParamsRaw = { exam_id: EXAM_ID };
     renderCms();
-    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "syllabus-topic-mentions" } });
     await waitFor(() => screen.queryByTestId("cms-search-input"));
     api.get.mockClear();
     const input = screen.getByTestId("cms-search-input");
     fireEvent.change(input, { target: { value: "civil" } });
     act(() => jest.advanceTimersByTime(350));
     await waitFor(() => {
-      return api.get.mock.calls.some(([url]) => url.includes("q=civil"));
+      return api.get.mock.calls.some(([url]) => url.includes("search=civil"));
     });
-    expect(api.get.mock.calls.some(([url]) => url.includes("q=civil"))).toBe(true);
+    expect(api.get.mock.calls.some(([url]) => url.includes("search=civil"))).toBe(true);
     jest.useRealTimers();
   });
 
-  test("search input clears when entity changes away from syllabus-topic-mentions", async () => {
+  test("search input clears when entity changes", async () => {
     mockSearchParamsRaw = {};
     renderCms();
-    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "syllabus-topic-mentions" } });
     const input = await screen.findByTestId("cms-search-input");
     fireEvent.change(input, { target: { value: "hello" } });
     expect(input.value).toBe("hello");
     fireEvent.change(screen.getByTestId("cms-entity-select"), { target: { value: "exams" } });
-    // search input disappears (exams has no search), and search state is reset
-    await waitFor(() => expect(screen.queryByTestId("cms-search-input")).toBeNull());
+    await waitFor(() => expect(screen.getByTestId("cms-search-input").value).toBe(""));
   });
 
-  test("search request includes exam_id alongside q param for syllabus-topic-mentions", async () => {
+  test("search request includes exam_id alongside search param for scoped entity", async () => {
     jest.useFakeTimers();
     mockSearchParamsRaw = { exam_id: EXAM_ID };
     renderCms();
-    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "syllabus-topic-mentions" } });
-    await waitFor(() => screen.queryByTestId("cms-search-input"));
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "exam-cycles" } });
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
     api.get.mockClear();
     const input = screen.getByTestId("cms-search-input");
     fireEvent.change(input, { target: { value: "upsc" } });
     act(() => jest.advanceTimersByTime(350));
     await waitFor(() => {
-      return api.get.mock.calls.some(([url]) => url.includes("q=upsc") && url.includes("exam_id="));
+      return api.get.mock.calls.some(([url]) => url.includes("search=upsc") && url.includes("exam_id="));
     });
-    expect(api.get.mock.calls.some(([url]) => url.includes("q=upsc") && url.includes("exam_id="))).toBe(true);
+    expect(api.get.mock.calls.some(([url]) => url.includes("search=upsc") && url.includes("exam_id="))).toBe(true);
+    jest.useRealTimers();
+  });
+
+  test("status change within debounce window cancels pending search and uses current filter", async () => {
+    jest.useFakeTimers();
+    mockSearchParamsRaw = {};
+    renderCms();
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "exam-topic-coverage" } });
+    await waitFor(() => screen.queryByTestId("cms-search-input"));
+    const input = screen.getByTestId("cms-search-input");
+    fireEvent.change(input, { target: { value: "bio" } });
+    // Change filter before debounce fires — should clear the timer
+    const filter = screen.getByTestId("cms-status-filter");
+    fireEvent.change(filter, { target: { value: "reviewed" } });
+    api.get.mockClear();
+    // Advance past debounce — no stale search request should fire
+    act(() => jest.advanceTimersByTime(400));
+    // The status request fired immediately; search timer was cleared
+    const urls = api.get.mock.calls.map(([u]) => u);
+    // None of the calls should be the old debounced unfiltered search
+    expect(urls.some((u) => u.includes("search=bio") && !u.includes("reviewer_status="))).toBe(false);
     jest.useRealTimers();
   });
 });
@@ -485,6 +515,20 @@ describe("G.4 Pagination", () => {
     expect(api.get.mock.calls.some(([url]) =>
       url.includes("offset=50") && url.includes("exam_id=") && url.includes("exam_cycle_id=")
     )).toBe(true);
+  });
+
+  test("when response has no total, Next disabled if fewer than 50 rows returned", async () => {
+    // Backend returns items but no total field
+    api.get.mockImplementation((url) => {
+      if (url.includes("/exams?")) return Promise.resolve(makeListResponse([{ id: EXAM_ID, name: EXAM_NAME }]));
+      if (url.includes("/exam-cycles?")) return Promise.resolve(makeListResponse([{ id: CYCLE_ID, cycle_name: CYCLE_NAME }]));
+      if (url.includes("/admin/organizations")) return Promise.resolve({ items: [] });
+      const fakeItems = Array.from({ length: 20 }, (_, i) => ({ id: `r${i}`, name: `Row ${i}` }));
+      return Promise.resolve({ items: fakeItems }); // no `total` field
+    });
+    renderCms();
+    await waitFor(() => screen.queryByTestId("cms-pagination-footer"));
+    expect(screen.getByTestId("cms-page-next-btn").disabled).toBe(true);
   });
 
   test("Next button disabled on last page", async () => {
