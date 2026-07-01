@@ -476,9 +476,19 @@ def run_text_extract_job(
     rpc_data = result.data or {}
     if not rpc_data.get("ok"):
         reason = rpc_data.get("reason", "unknown")
+        _fail_metrics = {"duration_ms": duration_ms, "bytes_processed": bytes_processed,
+                         "page_count": page_count}
         if reason == "document_archived":
+            _fail(sb, job_id=job_id, document_id=document_id,
+                  code="document_archived",
+                  message="document was archived while extraction was running",
+                  metrics=_fail_metrics)
             raise _ExtractError("document_archived",
                                  "document was archived while extraction was running")
+        _fail(sb, job_id=job_id, document_id=document_id,
+              code="finalize_failed",
+              message=f"finalize_document_extraction returned: {rpc_data}",
+              metrics=_fail_metrics)
         raise _ExtractError("finalize_failed", f"finalize_document_extraction returned: {rpc_data}")
 
     # PR3: if pypdf produced mostly-empty pages, hand the item off to
