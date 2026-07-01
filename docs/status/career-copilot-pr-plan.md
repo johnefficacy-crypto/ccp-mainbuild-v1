@@ -102,7 +102,7 @@ EWP-1 must land first. EWP-2 (deterministic API) and EWP-2B (evaluator worker) m
 
 ### EWP-1 — Architecture contract, schema, constraints, RLS
 
-**Status:** CODE-FIXED, VALIDATION PENDING — migration `205_english_writing_practice_schema.sql` + `version_set_hash` helper + tests landed. Validated against scratch Postgres 16. OPERATOR PENDING: staging apply + RLS/immutability proof.
+**Status:** CODE PRESENT IN PR #821 (open) / REVIEW PENDING — migration `205_english_writing_practice_schema.sql` + `version_set_hash` helper + text tests + a Postgres integration suite that runs in CI (backend job provisions Postgres + `EWP_PG_DSN`). Validated against Postgres 16. OPERATOR PENDING: run the live `select max(version)::int+1 from schema_migrations` to confirm/rename the number before merge; staging apply.
 
 **Goal:** Land the full schema with RLS, constraints, state-machine tests, and hash test vectors. No aspirant-facing UI. No mastery live writes. Migration number must come from `select max(version)::int + 1 from schema_migrations`.
 

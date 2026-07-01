@@ -208,7 +208,8 @@ def test_fold_excludes_stale_and_invalidated_and_superseded():
 
 def test_evidence_supersession_integrity():
     assert "utme_supersedes_fk" in _SQLL
-    assert "references public.user_topic_mastery_evidence(evidence_key)" in _SQLL
+    # composite same-user FK (enforced at write, not just in the read view)
+    assert "references public.user_topic_mastery_evidence(user_id, evidence_key)" in _SQLL
     assert "uq_utme_one_successor" in _SQLL          # linear chain
     assert "utme_op_cause_ck" in _SQLL               # retract/replace require cause + predecessor
     assert "utme_no_self_supersede_ck" in _SQLL
@@ -246,7 +247,9 @@ def test_full_section3_taxonomy_seeded():
     for slug in (
         "simple-sentences", "compound-sentences", "complex-sentences", "sentence-transformation",
         "topic-sentence", "conclusion",
-        "precis-writing", "essay-writing", "letter-report-writing", "comprehension-summary",
+        # descriptive leaves seeded as microtopics
+        "precis-writing-general", "essay-writing-general",
+        "letter-report-writing-general", "comprehension-summary-general",
     ):
         assert slug in _SQLL
 
@@ -254,3 +257,41 @@ def test_full_section3_taxonomy_seeded():
 def test_map_seed_validates_microtopic_level_and_active():
     assert "t.level = 'microtopic' and t.is_active = true" in _SQLL
     assert "no active english microtopic for slug" in _SQLL
+
+
+def test_effective_review_uses_created_at_and_seq_tiebreak():
+    # created_at alone ties within a transaction; event_seq is the monotonic
+    # tiebreak. The helper is one shared definition used by view + RLS.
+    assert "function public.ewp_issue_effectively_invalidated" in _SQLL
+    assert "event_seq bigint generated always as identity" in _SQLW
+    assert "order by r.created_at desc, r.event_seq desc" in _SQLL
+
+
+def test_owner_rls_filters_effectively_invalidated_issues():
+    # issue/resolution/projection owner reads must exclude effectively-invalidated
+    # issues, not just check ownership + feedback release.
+    assert _SQLL.count("ewp_issue_effectively_invalidated(writing_issue") >= 3
+
+
+def test_same_user_supersession_enforced_at_write():
+    assert "unique (user_id, evidence_key)" in _SQLL
+    assert "foreign key (user_id, supersedes_evidence_key)" in _SQLL
+    assert "references public.user_topic_mastery_evidence(user_id, evidence_key)" in _SQLL
+
+
+def test_blank_version_and_key_domains():
+    assert "writing_unit_versions_blank_ck" in _SQLL
+    assert "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" in _SQLL
+    assert "evidence_key text not null check (evidence_key ~ '^[0-9a-f]{64}$')" in _SQLW
+    assert "idempotency_key text not null check (idempotency_key ~ '^[0-9a-f]{64}$')" in _SQLW
+
+
+def test_queue_lease_shape_constraints():
+    assert "writing_evaluation_jobs_running_lease_ck" in _SQLL
+    assert "writing_mastery_outbox_processing_lease_ck" in _SQLL
+
+
+def test_review_override_integrity_enforced():
+    assert "writing_issue_review_events_corrected_ck" in _SQLL
+    assert "function public.ewp_check_override_projection" in _SQLL
+    assert "ewp_override_projection_guard" in _SQLL

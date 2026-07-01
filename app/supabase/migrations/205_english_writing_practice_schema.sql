@@ -242,7 +242,15 @@ CREATE TABLE IF NOT EXISTS public.writing_unit_versions (
   submission_kind   text NOT NULL DEFAULT 'user' CHECK (submission_kind IN ('user','blank')),
   content_hash      text NOT NULL CHECK (content_hash ~ '^[0-9a-f]{64}$'),   -- lowercase SHA-256 hex
   submitted_at      timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (unit_id, version_number)
+  UNIQUE (unit_id, version_number),
+  -- A blank exam version is server-created: empty text, empty-string SHA-256,
+  -- zero authoritative word count (§4.5).
+  CONSTRAINT writing_unit_versions_blank_ck CHECK (
+    submission_kind <> 'blank'
+    OR (answer_text = ''
+        AND content_hash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+        AND (server_word_count IS NULL OR server_word_count = 0))
+  )
 );
 
 -- ---------------------------------------------------------------------------
@@ -366,6 +374,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_writing_issue_projections_override
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_issue_review_events (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- Monotonic insertion ordinal. created_at (now()) is transaction-stable, and
+  -- id is a random UUID, so neither alone gives a deterministic "latest" on a
+  -- same-transaction tie. event_seq is the authoritative tiebreak (§4.10a).
+  event_seq             bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
   issue_event_id        uuid NOT NULL REFERENCES public.writing_issue_events(id),
   decision              text NOT NULL CHECK (decision IN ('confirmed','invalidated','reclassified')),
   corrected_issue_type  text,
@@ -375,7 +387,24 @@ CREATE TABLE IF NOT EXISTS public.writing_issue_review_events (
   reason                text,
   created_at            timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_writing_issue_review_events_issue ON public.writing_issue_review_events(issue_event_id, created_at, id);
+CREATE INDEX IF NOT EXISTS idx_writing_issue_review_events_issue ON public.writing_issue_review_events(issue_event_id, event_seq);
+
+-- review_events integrity (§4.10): reclassified <=> corrected_issue_type set
+-- (and in the issue-type enum); other decisions carry no corrected type.
+ALTER TABLE public.writing_issue_review_events
+  DROP CONSTRAINT IF EXISTS writing_issue_review_events_corrected_ck;
+ALTER TABLE public.writing_issue_review_events
+  ADD CONSTRAINT writing_issue_review_events_corrected_ck CHECK (
+    (decision = 'reclassified'
+       AND corrected_issue_type IS NOT NULL
+       AND corrected_issue_type IN (
+         'sentence_fragment','run_on_sentence','subject_verb_agreement','tense','article',
+         'preposition','pronoun_reference','modifier','spelling','punctuation','word_choice',
+         'collocation','redundancy','informal_usage','cohesion','logical_order','off_topic',
+         'word_limit','format_violation'))
+    OR
+    (decision <> 'reclassified' AND corrected_issue_type IS NULL)
+  );
 
 ALTER TABLE public.writing_issue_projections
   DROP CONSTRAINT IF EXISTS writing_issue_projections_override_review_event_id_fkey;
@@ -383,6 +412,55 @@ ALTER TABLE public.writing_issue_projections
   ADD CONSTRAINT writing_issue_projections_override_review_event_id_fkey
   FOREIGN KEY (override_review_event_id)
   REFERENCES public.writing_issue_review_events(id);
+
+-- Cross-table override integrity: a review_override projection must point at a
+-- 'reclassified' review event for the SAME issue_event, and carry a non-null
+-- canonical_error_type. Enforced by trigger (§4.11a).
+CREATE OR REPLACE FUNCTION public.ewp_check_override_projection()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  r_decision text;
+  r_issue    uuid;
+BEGIN
+  IF NEW.projection_kind = 'review_override' THEN
+    SELECT decision, issue_event_id INTO r_decision, r_issue
+      FROM public.writing_issue_review_events WHERE id = NEW.override_review_event_id;
+    IF r_decision IS DISTINCT FROM 'reclassified' THEN
+      RAISE EXCEPTION 'override_projection_invalid: review event % is not a reclassified decision', NEW.override_review_event_id;
+    END IF;
+    IF r_issue IS DISTINCT FROM NEW.issue_event_id THEN
+      RAISE EXCEPTION 'override_projection_invalid: review event % targets a different issue_event', NEW.override_review_event_id;
+    END IF;
+    IF NEW.canonical_error_type IS NULL THEN
+      RAISE EXCEPTION 'override_projection_invalid: review_override requires a non-null canonical_error_type';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS ewp_override_projection_guard ON public.writing_issue_projections;
+CREATE TRIGGER ewp_override_projection_guard
+  BEFORE INSERT ON public.writing_issue_projections
+  FOR EACH ROW EXECUTE FUNCTION public.ewp_check_override_projection();
+
+-- Effective review decision helper: latest by (created_at, id) — NOT timestamp
+-- alone (now() is transaction-stable, so same-txn events tie on created_at).
+-- One shared definition for the fold view and owner RLS (§4.10a).
+CREATE OR REPLACE FUNCTION public.ewp_issue_effectively_invalidated(p_issue uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE((
+    SELECT r.decision = 'invalidated'
+    FROM public.writing_issue_review_events r
+    WHERE r.issue_event_id = p_issue
+    ORDER BY r.created_at DESC, r.event_seq DESC
+    LIMIT 1
+  ), false)
+$$;
 
 -- ---------------------------------------------------------------------------
 -- 13. user_topic_mastery_evidence (append-only, service-role-only)
@@ -404,10 +482,13 @@ CREATE TABLE IF NOT EXISTS public.user_topic_mastery_evidence (
   evidence_op             text NOT NULL DEFAULT 'assert' CHECK (evidence_op IN ('assert','retract','replace')),
   review_event_id         uuid REFERENCES public.writing_issue_review_events(id),
   supersedes_evidence_key text,
-  evidence_key            text NOT NULL,
+  evidence_key            text NOT NULL CHECK (evidence_key ~ '^[0-9a-f]{64}$'),   -- SHA-256 hex
   observed_at             timestamptz NOT NULL,
   metadata                jsonb NOT NULL DEFAULT '{}'::jsonb,
   UNIQUE (evidence_key),
+  -- Composite target so a superseder must belong to the SAME user as its
+  -- predecessor (the FK below references this).
+  UNIQUE (user_id, evidence_key),
   -- Corrections must carry a cause and a predecessor (§4.12c).
   CONSTRAINT utme_op_cause_ck CHECK (
     evidence_op = 'assert'
@@ -422,13 +503,15 @@ CREATE INDEX IF NOT EXISTS idx_utme_user_microtopic ON public.user_topic_mastery
 CREATE UNIQUE INDEX IF NOT EXISTS uq_utme_one_successor
   ON public.user_topic_mastery_evidence(supersedes_evidence_key)
   WHERE supersedes_evidence_key IS NOT NULL;
--- Self-FK: a superseder must reference a real predecessor evidence_key.
+-- Same-user self-FK: a superseder must reference a predecessor evidence_key
+-- OWNED BY THE SAME USER. MATCH SIMPLE means the FK is skipped when
+-- supersedes_evidence_key IS NULL (original assertions), which is correct.
 ALTER TABLE public.user_topic_mastery_evidence
   DROP CONSTRAINT IF EXISTS utme_supersedes_fk;
 ALTER TABLE public.user_topic_mastery_evidence
   ADD CONSTRAINT utme_supersedes_fk
-  FOREIGN KEY (supersedes_evidence_key)
-  REFERENCES public.user_topic_mastery_evidence(evidence_key);
+  FOREIGN KEY (user_id, supersedes_evidence_key)
+  REFERENCES public.user_topic_mastery_evidence(user_id, evidence_key);
 
 -- ---------------------------------------------------------------------------
 -- 14. writing_evaluation_jobs (mutable queue)
@@ -448,7 +531,11 @@ CREATE TABLE IF NOT EXISTS public.writing_evaluation_jobs (
   created_at     timestamptz NOT NULL DEFAULT now(),
   updated_at     timestamptz NOT NULL DEFAULT now(),
   UNIQUE (evaluation_id, job_kind, generation),
-  CHECK (attempts <= max_attempts)
+  CHECK (attempts <= max_attempts),
+  -- A claimed (running) job must hold a lease + fencing token (§8.3).
+  CONSTRAINT writing_evaluation_jobs_running_lease_ck CHECK (
+    status <> 'running' OR (locked_at IS NOT NULL AND claim_token IS NOT NULL)
+  )
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_writing_evaluation_jobs_active
   ON public.writing_evaluation_jobs(evaluation_id, job_kind)
@@ -472,7 +559,7 @@ CREATE TABLE IF NOT EXISTS public.writing_mastery_shadow (
   score               numeric CHECK (score IS NULL OR score >= 0),
   confidence          numeric CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
   delta_json          jsonb NOT NULL DEFAULT '{}'::jsonb,
-  evidence_key        text NOT NULL,
+  evidence_key        text NOT NULL CHECK (evidence_key ~ '^[0-9a-f]{64}$'),
   processed_at        timestamptz NOT NULL DEFAULT now(),
   UNIQUE (evidence_key)
 );
@@ -488,7 +575,7 @@ CREATE TABLE IF NOT EXISTS public.writing_mastery_outbox (
   evidence_op         text NOT NULL DEFAULT 'assert' CHECK (evidence_op IN ('assert','retract','replace')),
   user_id             uuid NOT NULL REFERENCES public.profiles(id),
   mastery_flag_state  text NOT NULL CHECK (mastery_flag_state IN ('shadow','live')),
-  idempotency_key     text NOT NULL,
+  idempotency_key     text NOT NULL CHECK (idempotency_key ~ '^[0-9a-f]{64}$'),   -- SHA-256 hex
   status              text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','done','failed')),
   attempts            int NOT NULL DEFAULT 0 CHECK (attempts >= 0),
   max_attempts        int NOT NULL DEFAULT 5 CHECK (max_attempts > 0),
@@ -496,10 +583,15 @@ CREATE TABLE IF NOT EXISTS public.writing_mastery_outbox (
   last_error          text,
   created_at          timestamptz NOT NULL DEFAULT now(),
   processed_at        timestamptz,
+  CHECK (attempts <= max_attempts),
   CHECK (
     (source_kind = 'evaluation' AND evaluation_id IS NOT NULL AND review_event_id IS NULL)
     OR
     (source_kind = 'review_correction' AND review_event_id IS NOT NULL)
+  ),
+  -- A claimed (processing) outbox row must hold a lease (§8.3).
+  CONSTRAINT writing_mastery_outbox_processing_lease_ck CHECK (
+    status <> 'processing' OR locked_at IS NOT NULL
   ),
   UNIQUE (idempotency_key)
 );
@@ -583,15 +675,7 @@ WITH (security_invoker = true) AS
         AND s.user_id = e.user_id
     )
     AND (ie.id IS NULL OR ie.affects_current_state = true)
-    AND (ie.id IS NULL OR NOT EXISTS (
-      SELECT 1 FROM public.writing_issue_review_events r
-      WHERE r.issue_event_id = ie.id
-        AND r.decision = 'invalidated'
-        AND r.created_at = (
-          SELECT max(r2.created_at) FROM public.writing_issue_review_events r2
-          WHERE r2.issue_event_id = ie.id
-        )
-    ));
+    AND (ie.id IS NULL OR NOT public.ewp_issue_effectively_invalidated(ie.id));
 
 REVOKE ALL ON public.effective_user_topic_mastery_evidence FROM PUBLIC;
 REVOKE ALL ON public.effective_user_topic_mastery_evidence FROM authenticated;
@@ -672,7 +756,7 @@ CREATE POLICY writing_issue_events_owner_select ON public.writing_issue_events
       AND s.user_id = auth.uid()
       AND (s.mode = 'learning'
            OR (s.feedback_released_at IS NOT NULL AND s.feedback_released_at <= now()))
-  ));
+  ) AND NOT public.ewp_issue_effectively_invalidated(writing_issue_events.id));
 
 DROP POLICY IF EXISTS writing_issue_resolution_events_owner_select ON public.writing_issue_resolution_events;
 CREATE POLICY writing_issue_resolution_events_owner_select ON public.writing_issue_resolution_events
@@ -687,7 +771,7 @@ CREATE POLICY writing_issue_resolution_events_owner_select ON public.writing_iss
       AND s.user_id = auth.uid()
       AND (s.mode = 'learning'
            OR (s.feedback_released_at IS NOT NULL AND s.feedback_released_at <= now()))
-  ));
+  ) AND NOT public.ewp_issue_effectively_invalidated(writing_issue_resolution_events.issue_event_id));
 
 DROP POLICY IF EXISTS writing_issue_projections_owner_select ON public.writing_issue_projections;
 CREATE POLICY writing_issue_projections_owner_select ON public.writing_issue_projections
@@ -702,7 +786,7 @@ CREATE POLICY writing_issue_projections_owner_select ON public.writing_issue_pro
       AND s.user_id = auth.uid()
       AND (s.mode = 'learning'
            OR (s.feedback_released_at IS NOT NULL AND s.feedback_released_at <= now()))
-  ));
+  ) AND NOT public.ewp_issue_effectively_invalidated(writing_issue_projections.issue_event_id));
 
 DROP POLICY IF EXISTS writing_prompts_public_read ON public.writing_prompts;
 CREATE POLICY writing_prompts_public_read ON public.writing_prompts
@@ -772,7 +856,13 @@ DECLARE
     ARRAY['paragraph-writing','conclusion','Conclusion'],
     ARRAY['paragraph-writing','content-relevance','Content Relevance'],
     ARRAY['paragraph-writing','word-limit','Word Limit'],
-    ARRAY['paragraph-writing','format-rules','Format Rules']
+    ARRAY['paragraph-writing','format-rules','Format Rules'],
+    -- The four descriptive leaves get a microtopic child each so they are
+    -- usable as canonical prompt/evidence microtopics (level='microtopic').
+    ARRAY['precis-writing','precis-writing-general','Précis Writing'],
+    ARRAY['essay-writing','essay-writing-general','Essay Writing'],
+    ARRAY['letter-report-writing','letter-report-writing-general','Letter and Report Writing'],
+    ARRAY['comprehension-summary','comprehension-summary-general','Comprehension and Summary']
   ];
   -- issue_type -> microtopic slug
   maps      text[][] := ARRAY[

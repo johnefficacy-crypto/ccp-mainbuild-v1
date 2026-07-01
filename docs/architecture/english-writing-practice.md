@@ -1,6 +1,6 @@
 # English Writing Practice — Architecture Contract
 
-**Status:** DESIGN-LOCKED (merged in PR #819, 2026-07-01). Implementation proceeds per Lane H (EWP-1 landed; EWP-2 onward in progress).
+**Status:** DESIGN-LOCKED (merged in PR #819, 2026-07-01). Implementation per Lane H (EWP-1 in review — PR #821, code present / review pending; EWP-2 onward not started).
 **Checklist:** `docs/status/career-copilot-checklist.md` § English Writing Practice
 **PR plan:** `docs/status/career-copilot-pr-plan.md` § English Writing Practice PRs (EWP-1 … EWP-7)
 
