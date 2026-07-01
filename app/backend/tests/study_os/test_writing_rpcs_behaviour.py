@@ -1,6 +1,6 @@
-"""Behavioural integration test for the EWP-2 atomic runtime RPCs (migration 207).
+"""Behavioural integration test for the EWP-2 atomic runtime RPCs (migration 206).
 
-Applies migrations 205 + 207 to a real Postgres and exercises the contracts
+Applies migrations 205 + 206 to a real Postgres and exercises the contracts
 that substring inspection cannot prove: exam-mode rejection, the version CAS
 (mandatory token, stale/duplicate rejection), the in-DB unit state machine, the
 in-transaction session rollup (submit/reopen never leave a stale session
@@ -28,7 +28,7 @@ _DSN = os.environ.get("EWP_PG_DSN")
 _PSQL = shutil.which("psql")
 _MIG_DIR = Path(__file__).parents[3] / "supabase/migrations"
 _M205 = _MIG_DIR / "205_english_writing_practice_schema.sql"
-_M207 = _MIG_DIR / "207_english_writing_practice_rpcs.sql"
+_M206 = _MIG_DIR / "206_english_writing_practice_rpcs.sql"
 
 pytestmark = pytest.mark.skipif(
     not (_DSN and _PSQL),
@@ -107,8 +107,8 @@ def _fails_with(sql: str, token: str) -> None:
 def _apply():
     _psql(_BOOTSTRAP)
     _psql_file(_M205)
-    _psql_file(_M207)
-    _psql_file(_M207)  # idempotent re-apply
+    _psql_file(_M206)
+    _psql_file(_M206)  # idempotent re-apply
     _psql(_FIXTURES)
     yield
 

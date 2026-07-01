@@ -1,4 +1,4 @@
--- Migration 207: English Writing Practice (EWP-2) — atomic runtime RPCs.
+-- Migration 206: English Writing Practice (EWP-2) — atomic runtime RPCs.
 --
 -- The practice write paths (create session, submit unit, reopen unit) must be
 -- single transactions with the canonical lock order (§8.0: session row, then
@@ -22,9 +22,11 @@
 -- backend helper, §4.5a) and a coverage row is trusted only when its pinned
 -- hash still matches — the two-check contract (§4.7a) holds under concurrency.
 --
--- Migration number: 205 (EWP schema) + 206 (snapshot lock-authority guards,
--- PR #828) exist ahead of this; this is 207 — renumbered from 206 to avoid the
--- collision with #828. VERIFY DB against schema_migrations before apply (OPERATOR).
+-- Migration number: highest on main is 205, so this is 206 (the CI contiguity
+-- guard requires 206 here). NOTE: PR #828 also adds a 206 on its own branch;
+-- whichever of the two merges SECOND must renumber to 207 via the guard's
+-- rename-exemption path (a rename that resolves a duplicate-on-main is allowed).
+-- VERIFY DB against schema_migrations before apply (OPERATOR).
 
 -- ===========================================================================
 -- Private helpers (ewp_private is NOT exposed via PostgREST — no RPC oracle).
