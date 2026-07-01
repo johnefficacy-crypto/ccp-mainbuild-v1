@@ -8,7 +8,7 @@
 
 ---
 
-## Current Execution Plan — as of 2026-06-30 (`main @ b9bd9d7b`)
+## Current Execution Plan — as of 2026-07-01 (`main @ b9bd9d7b`)
 
 ### Merged and closed (do not dispatch)
 
@@ -43,7 +43,7 @@
 | Blocked | A-PR4/A-PR5/Track C | Lane A clean gate (FF_MOCK_MASTERY_WRITES=live) |
 | Blocked | J3 schema/domain redesign | Contract-first; I8 gates cleared |
 
-**Score Snapshot lock-authority note:** The planner consumes only locked rows, but the review RPC does not enforce that a stale-model or superseded snapshot cannot be locked while a newer locked row already exists for the same `(exam_id, exam_phase_id, topic_id, model_version)` scope. The authority boundary is the `reviewed→locked` transition: once a current-model row is locked, re-locking an older row for the same scope produces misleading planner input. A scoped issue/contract must define: (1) the exact comparison set and scope key; (2) the model-version rule; (3) whether the guard applies only to `reviewed→locked` or also to `locked→reviewed` reversal; (4) whether historical review (`draft→reviewed`) of older model-version rows remains allowed; (5) error token on violation; (6) test expectations. The checklist row is present (PLANNED); implementation is blocked until a linked issue/contract is approved. Note: the snapshot lifecycle is `draft→reviewed|rejected`, `reviewed→locked|rejected|draft`, `locked→reviewed`, `rejected→draft` — there is no `pending` status.
+**Score Snapshot lock-authority note:** Two distinct gaps require two explicit contract decisions before implementation: **(A) Stale-model guard:** the `reviewed→locked` transition must compare the candidate row's `model_version` against the server-owned current `MODEL_VERSION` constant and reject stale-model rows — independently of whether any current-model locked row exists. **(B) Superseded-current-model guard:** among rows for the same business scope `(exam_id, exam_phase_id, topic_id)` at the current model version, the planner uses the latest `computed_at` locked row; the RPC should prevent locking an older `computed_at` row when a newer locked row already exists for the same scope. Do not combine these into a single `(exam_id, exam_phase_id, topic_id, model_version)` tuple — that conflates the two checks. The scoped issue/contract must define: server-owned current-model authority; business scope key; supersession ordering; whether only `reviewed→locked` is guarded; exact error tokens and race-safe RPC behavior; historical-review policy for stale-model rows. Snapshot lifecycle: `draft→reviewed|rejected`, `reviewed→locked|rejected|draft`, `locked→reviewed`, `rejected→draft` — no `pending` status.
 
 **P2 classification gate note:** Reviewed metadata-only classification (cognitive demand per PYQ question, no mock-selection weighting) is independent of Track C. It may proceed once its own contract is approved. However, no classification output may feed mock-selection, weighting, or personalization before Lane A clears the text-MCQ feedback-loop gate (`FF_MOCK_MASTERY_WRITES=live`).
 
@@ -575,7 +575,7 @@ Closes the known atomicity gap. Shipped inside the Score Snapshot Workbench UI P
 
 ### P-slice-3 — Score Snapshot Workbench UI (operator surface) — **MERGED (PR #810)**
 
-Operator workbench embedded as `?view=snapshots` inside PYQ Workbench tab. Scope selector, phase validation with error banner, generation-counter race guard, compute body contract, topic enrichment, evidence drawer, permission gate, focus management. 25 tests (12 frontend + 13 backend). CODE-FIXED, OPERATOR/BROWSER VALIDATION PENDING.
+Operator workbench embedded as `?view=snapshots` inside PYQ Workbench tab. Scope selector, phase validation with error banner, generation-counter race guard, compute body contract, topic enrichment, evidence drawer, permission gate, focus management. 54 tests across two primary files: 25 frontend (`ScoreSnapshotPanel.test.jsx`) + 29 backend (`test_score_snapshot_admin_api.py`). CODE-FIXED, OPERATOR/BROWSER VALIDATION PENDING.
 
 ### Lane EI-worker — Admin text-extract background worker — **MERGED (PR #811)**
 
@@ -585,7 +585,7 @@ Operator workbench embedded as `?view=snapshots` inside PYQ Workbench tab. Scope
 
 `AddPyqPaperModal` renders immutable cycle/phase context; `phaseId` always null (no `exam_phase_id` column on `exam_cycles`); ID/label mismatch fails closed with error banner + disabled submit; "No cycle selected (exam-wide paper)" shown when no cycle context active. BROWSER VALIDATION PENDING.
 
-### P2 — Cognitive demand classification (Bloom's taxonomy) — **UNBLOCKED (P-slice-2 merged, PR #773), contract pending**
+### P2 — Cognitive demand classification (Bloom's taxonomy) — **CONTRACT REQUIRED** (P-slice-2 merged PR #773; metadata-only classification independent of Track C but not dispatch-ready until contract approved)
 
 Per `pyq-intelligence-v2.md` §P2 (governed cognitive and distractor classification): add `cognitive_demand` classification per PYQ question.
 Contract-first: define the taxonomy levels and how they feed `score_components` before implementation.
