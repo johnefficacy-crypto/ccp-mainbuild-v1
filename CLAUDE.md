@@ -105,3 +105,28 @@ Read `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` before editing a
 - Every PR that changes implementation status, validation status, operator gates, or product decisions must update `docs/status/career-copilot-checklist.md` in the same branch.
 - Status vocabulary: `MERGED` / `CODE-FIXED, VALIDATION PENDING` / `OPERATOR PENDING` / `VERIFY DB` / `BLOCKED` / `PLANNED` / `CLEANUP PENDING`.
 - After modifying code, run `graphify update .` to keep the knowledge graph current (AST-only, no API cost).
+
+---
+
+## `checkpost` command (PR review-only observation)
+
+Also available as the `/checkpost` slash command (`.claude/commands/checkpost.md`).
+
+**`checkpost <PR#>`** (e.g. `checkpost 823`) means: run a review-only observation pass on that open PR. With no number, run it for every open PR.
+
+**What to look for:**
+- Critical examination of the code fixed — correctness, completeness, consistency.
+- Verification against the contracted doc(s) and repo intent (follow the CLAUDE.md read order for the touched area).
+- Bugs — logic errors, edge cases, RLS/verified-read violations, entity-canonicity (`recruitments` vs `exams`, `exam_id` vs `recruitment_id`), migration-discipline breaks.
+- Gaps — missing pieces, unhandled states, checklist/status not updated, absent tests/validation.
+- Possible fixes — describe only.
+
+**Report:**
+- Comment the findings on the PR body/conversation.
+- Report back the **review comment ID** in chat, and **send that comment ID as the payload** (final line, e.g. `PAYLOAD: comment_id=<id>`).
+
+**Do NOT:**
+- Do NOT fix anything — no edits, commits, pushes, or code changes on the PR.
+- Do not resolve review threads or merge the PR.
+- Do not run `graphify`, migrations, or any mutating command.
+- Observation and reporting only; findings live in the PR comment.
