@@ -73,26 +73,28 @@ app/backend/tests/study_os/test_version_set_hash.py
 9. `writing_session_checks` with `version_set_hash`
 10. `writing_issue_events` with `lineage_id`, `predecessor_issue_event_id`, `affects_current_state`, UTF-16 span columns
 11. `writing_issue_resolution_events` with `successor_issue_event_id`, `unique(issue_event_id, resolving_version_id, evaluator_version)`
-12. `writing_issue_projections` with `unique(issue_event_id, projection_revision)`
+12. `writing_issue_projections` with `projection_kind` (`automatic`|`review_override`), `override_review_event_id`, source-kind check, partial `unique(issue_event_id, projection_revision) where kind='automatic'`, partial `unique(override_review_event_id) where kind='review_override'` (§4.11/§4.11a)
 13. `writing_issue_review_events`
 14. `user_topic_mastery_evidence` with `evidence_tier`, `issue_projection_id`, `evidence_op`, `review_event_id`, `supersedes_evidence_key`, `evidence_key` + `unique(evidence_key)` (§4.12b)
-15. `writing_evaluation_jobs` with `generation`, `unique(evaluation_id, job_kind, generation)`, active partial unique index
+15. `writing_evaluation_jobs` with `generation`, `unique(evaluation_id, job_kind, generation)`, active partial unique index, `locked_at` + `claim_token` for lease/fencing (§8.3)
 16. `writing_mastery_shadow` with `evidence_key` + `unique(evidence_key)` (§10.1a)
 17. `writing_mastery_outbox` with `source_kind` (`evaluation`|`review_correction`), `evaluation_id`/`review_event_id`, `evidence_op`, `mastery_flag_state`, `locked_at`, `idempotency_key` + `unique(idempotency_key)` + the source-kind check constraint (§8.2)
-18. `writing_issue_type_microtopic_map` (backend-owned `issue_type` → canonical English microtopic `topics.id`), seeded with stable UUIDs (§5.3) — the evaluator never supplies taxonomy IDs
-19. `study_tasks` additive columns: `launch_type text`, `launch_entity_id uuid`, `launch_context jsonb`
-20. `tier_rank(text) returns int` SQL helper: `recognition→1, correction→2, production→3, retention→4` (§4.12 — never lexical comparison)
-21. Immutability triggers (§12.4): `BEFORE UPDATE OR DELETE` raise-exception triggers on `writing_unit_versions`, `writing_issue_events`, `writing_issue_resolution_events`, `writing_issue_projections`, `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_mastery_shadow` — enforced against `service_role`, not just RLS
-22. RLS on all tables (see §12 of architecture doc): explicit owner-select policy per owner-readable table (`writing_sessions`, `writing_session_units`, `writing_unit_versions`, `writing_session_checks`, evaluations + issue tables); service-role-only (no client allow policy) for `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_evaluation_jobs`, `writing_mastery_shadow`, `writing_mastery_outbox`
-23. RLS verification: every new table must have RLS enabled and a deliberate policy decision recorded. Owner-select tables get an explicit owner policy (see §12.1 table). Service-role-only tables (§12.2) intentionally have NO client allow policy (`USING (false)` or no policy) — this is the correct, documented state for them, not the zero-policy defect. The zero-policy defect applies only to tables that should be owner-readable but lack a policy.
+18. `writing_issue_type_microtopic_map` (§4.15): `issue_type`, `microtopic_id references topics(id)`, `map_version`, `is_active`, partial `unique(issue_type) where is_active`, `unique(issue_type, map_version)`; seeded with stable UUIDs; English-subject + `level='microtopic'` validated; service-role writes. The evaluator never supplies taxonomy IDs.
+19. `effective_user_topic_mastery_evidence` view/RPC (§4.12d): folds `assert/retract/replace`, honours effective review decision, excludes stale/withdrawn — the ONLY planner/level source
+20. `study_tasks` additive columns: `launch_type text`, `launch_entity_id uuid`, `launch_context jsonb`
+21. `tier_rank(text) returns int` SQL helper: `recognition→1, correction→2, production→3, retention→4` (§4.12 — never lexical comparison)
+22. Immutability triggers (§12.4): `BEFORE UPDATE OR DELETE` raise-exception triggers on `writing_unit_versions`, `writing_issue_events`, `writing_issue_resolution_events`, `writing_issue_projections`, `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_mastery_shadow` — enforced against `service_role`, not just RLS
+23. RLS on all tables (see §12 of architecture doc): explicit owner-select policy per owner-readable table (`writing_sessions`, `writing_session_units`, `writing_unit_versions`, `writing_session_checks`, evaluations + issue tables); service-role-only (no client allow policy) for `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_evaluation_jobs`, `writing_mastery_shadow`, `writing_mastery_outbox`; `writing_issue_type_microtopic_map` deliberate read policy recorded (§4.15)
+24. RLS verification: every new table must have RLS enabled and a deliberate policy decision recorded. Owner-select tables get an explicit owner policy (see §12.1 table). Service-role-only tables (§12.2) intentionally have NO client allow policy (`USING (false)` or no policy) — this is the correct, documented state for them, not the zero-policy defect. The zero-policy defect applies only to tables that should be owner-readable but lack a policy.
 
 **Tests must include:**
 
 - Fixed-input `version_set_hash` fixture with expected SHA-256 digest (architecture §4.5a). Pin the exact hex output. Backend fixed-vector test + API integration assertion (clients consume, never compute — see AGENTS.md EWP-3).
 - Unit state machine: assert every allowed and forbidden transition for both learning and exam modes
-- Session rollup: assert priority ordering of rollup rules; session-level outcome aggregation (§9.1a)
+- Session rollup: assert priority ordering including the `evaluation_failed` / `evaluation_incomplete` rules (§4.3b); session-level outcome aggregation (§9.1a)
 - `unit_constraints` Pydantic validation: valid schema accepted, unknown key rejected, `max_words < min_words` rejected
 - `content_hash` for blank version: assert `SHA-256('') = e3b0c44...`
+- Review-override projection: assert a `review_override` row inserts alongside the `automatic` row at the same `projection_revision` (partial unique indexes)
 - RLS: every new table must have a wrapped-transaction test (see AGENTS.md § RLS verification protocol)
 - **Immutability triggers:** assert `service_role` UPDATE and `service_role` DELETE both fail on every immutable table (§12.4)
 
@@ -204,11 +206,16 @@ docs/status/career-copilot-checklist.md
 - Permanent-failure handling: `terminal_partial` mapping (§4.6a-1), `deterministic_only` outcome, recovery via `generation + 1`
 - Retry accounting owned by `writing_evaluation_jobs`, not the evaluation row
 - Atomic job acknowledgement: claimed job `status='done'` set in the SAME transaction as all evaluation side effects (§8.1 step 13); replay guard checks already-terminal evaluation before re-processing
-- Canonical lock order (§8.0): session-before-unit everywhere; evaluator never enters the finalizer holding a unit lock acquired before the session lock
+- Canonical lock order (§8.0): session first, then ALL required units ascending (not just the target), before entering the finalizer — on evaluator, reopen, submission, recovery paths
+- Evaluation-job lease + fencing (§8.3): `locked_at`/`claim_token`, stale-`running` sweeper, attempts/max-attempts, and a fencing re-check of `claim_token` in the final write transaction so an expired slow worker cannot commit after reclaim
 - Evaluator returns `issue_type` only; backend resolves canonical microtopic via `writing_issue_type_microtopic_map` and validates subject/level/active before insert (§5.3)
+- Review-correction pipeline (§4.12c): serialized per-issue processing, full transition matrix (assert/retract/replace/re-assert), `supersedes_evidence_key` points to the currently-effective row, review-override projection (§4.11a)
+- Corrections independent of the current flag: correction inherits the superseded row's `mastery_flag_state`; a `retract` is emitted even when the flag is now `off`
+- Effective-evidence fold `effective_user_topic_mastery_evidence` (§4.12d) is the only planner/level source
+- Shadow/live worker transaction writes evidence + shadow row + outbox `done` atomically (§8.2)
 - Mastery outbox claiming + lease-based recovery for stuck `processing` rows (§8.3)
 
-**Tests must include:** crash-after-commit/before-ack regression (job not double-applied), lock-order/no-deadlock test, malformed-evaluator-response rejection, projection race-safety, mastery-mode pinning, taxonomy-mapping rejection of invalid issue types.
+**Tests must include:** crash-after-commit/before-ack regression (job not double-applied); crash-during-LLM-call → job reclaimed and completes once; lease-expiry double-worker fencing (only current owner commits); lock-order/no-deadlock (session→all-units-ascending); malformed-evaluator-response rejection; projection race-safety; review transition matrix incl. `invalidated→confirmed` re-assert and `reclassified→confirmed` restore; correction emitted while flag is `off`; effective-evidence fold nets a retracted `production` so level does not inflate; mastery-mode pinning; taxonomy-mapping rejection of invalid issue types.
 
 **Stage 3 (rubric)** is included here for the dimensions used by sentence/paragraph drills. Descriptive-exam rubric extensions are scoped with EWP-7.
 
@@ -307,7 +314,7 @@ docs/status/career-copilot-checklist.md
 2. Shadow-to-live promotion gates in §10.3 pass
 3. Operator records approval in checklist
 
-**Planner integration:** reads source-neutral `user_topic_mastery_evidence` at microtopic granularity (written in shadow per §10.1 locked contract). Generates `sentence_construction`, `grammar_correction`, `vocabulary_in_context` task types with `launch_type = 'english_writing_session'`. During shadow the planner personalizes from evidence directly; it must NOT read writing-attributable `user_topic_mastery` deltas until `live`. Schedules retention retests using `user_topic_mastery.next_revision_at`.
+**Planner integration:** reads the effective-evidence fold `effective_user_topic_mastery_evidence` (§4.12d) at microtopic granularity — never the raw append-only table, so retracted/replaced evidence cannot drive tasks or level. Evidence is written in shadow per the §10.1 locked contract. Generates `sentence_construction`, `grammar_correction`, `vocabulary_in_context` task types with `launch_type = 'english_writing_session'`. During shadow the planner personalizes from the fold directly; it must NOT read writing-attributable `user_topic_mastery` deltas until `live`. Schedules retention retests using `user_topic_mastery.next_revision_at`.
 
 ---
 

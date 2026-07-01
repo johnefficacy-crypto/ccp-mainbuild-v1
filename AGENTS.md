@@ -464,12 +464,15 @@ The external/LLM evaluation must run with NO database transaction open; the
 short locking/write transaction begins only after the evaluator returns.
 
 **Canonical lock order (deadlock-free):** every multi-row path locks
-`writing_sessions` → `writing_session_units` (ascending `unit_number`) →
-`writing_evaluations`/`writing_session_checks` →
-`writing_evaluation_jobs`/`writing_mastery_outbox`. Never hold a unit lock
-and then acquire the session lock. The evaluator locks session-before-unit
-because it later calls `finalize_writing_session`, which also locks
-session-then-units. Reopen follows the same order.
+`writing_sessions` → **ALL required `writing_session_units` ascending by
+`unit_number`** → `writing_evaluations`/`writing_session_checks` →
+`writing_evaluation_jobs`/`writing_mastery_outbox`. A path touching only one
+unit still locks the FULL required-unit set ascending up front, because
+`finalize_writing_session` locks them all — locking only unit 5 then letting
+the finalizer take units 1–4 gives `session→unit5→unit1..4`, which deadlocks
+against a worker holding unit 1. Never hold a unit lock and then take the
+session lock, and never take the target unit before a lower-numbered one.
+Applies to evaluator, reopen, submission, recovery.
 
 **Atomic job acknowledgement:** the claimed `writing_evaluation_jobs` row is
 set `status='done'` in the SAME transaction as all evaluation side effects.
@@ -477,6 +480,15 @@ There is no window where side effects are durable but the job is still
 claimable. A replay guard additionally checks for an already-terminal
 evaluation before re-processing. A crash-after-commit/before-ack test is
 required.
+
+**Job lease + fencing:** because the LLM call runs outside the write
+transaction, a claimed job can be orphaned by a crash. Claiming stamps
+`locked_at` + a `claim_token`; a sweeper recovers stale `running` rows past
+the lease (increment attempts, clear token, or `failed` at max attempts).
+The final write transaction re-reads the job `FOR UPDATE` and asserts the
+`claim_token` still matches — a slow worker whose lease expired and whose job
+was reclaimed cannot commit. Same lease model applies to
+`writing_mastery_outbox`.
 
 **Evaluator returns `issue_type` only — never taxonomy IDs.** The backend
 maps `issue_type` to the canonical English microtopic via
@@ -543,15 +555,30 @@ value → `off`.
 production(3) < retention(4)` via a rank helper — never `evidence_tier <
 'production'` string comparison.
 
-**Post-emission corrections are append-only and key-distinct:** an
-`invalidated` (`retract`) or `reclassified` (`replace`) review event after
-evidence exists emits a NEW evidence row with `evidence_op` + causing
-`review_event_id` in its `evidence_key` (so it does not collide with the
-original `assert` row) and a `writing_mastery_outbox` row sourced by
-`review_event_id`. The aggregator nets it out. Existing rows are never
-mutated. A `reclassified` event uses a review-override projection identity —
-it does NOT advance the session's pinned `projection_revision` (that is the
-global code ruleset, not a per-issue human correction).
+**Post-emission corrections are append-only, key-distinct, flag-independent:**
+review events for one issue are serialized; each effective-decision change
+(full matrix incl. `invalidated→confirmed` re-assert and `reclassified→
+confirmed` restore) emits ONE correction whose `evidence_key` carries
+`evidence_op` + the causing `review_event_id`, superseding the currently
+effective evidence (via `supersedes_evidence_key`) — not always the original
+assert. A `reclassified` uses a `review_override` projection
+(`projection_kind='review_override'`, partial unique indexes) at the SAME
+pinned `projection_revision`; it does NOT bump the revision. Corrections are
+INDEPENDENT of the current flag: the correction inherits the superseded row's
+`mastery_flag_state`, so a `retract` still fires even if the flag is now
+`off` (flag changes stop new assertions, never suppress retractions of
+persisted evidence).
+
+**Effective-evidence fold is the only planner/level source:** the append-only
+`user_topic_mastery_evidence` is never read directly for personalization or
+level. A backend-owned `effective_user_topic_mastery_evidence` view/RPC folds
+`assert/retract/replace`, honours the effective review decision, and excludes
+stale/withdrawn rows. `user_current_level` and EWP-5 planner read only the
+fold, so a retracted `production` assertion cannot inflate level.
+
+**Shadow/live worker atomicity:** effective-evidence insert + shadow-row
+insert + outbox `done` update commit in ONE transaction, preventing
+evidence/shadow drift.
 
 ### EWP-7. Only verified, active prompts reach aspirant surfaces
 
