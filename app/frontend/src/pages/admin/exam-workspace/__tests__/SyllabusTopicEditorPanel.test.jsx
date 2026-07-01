@@ -16,6 +16,12 @@ jest.mock("../../../../lib/authContext", () => ({
 
 const { api } = require("../../../../lib/api");
 const SyllabusTopicEditorPanel = require("../syllabus-mapper/SyllabusTopicEditorPanel").default;
+const { TOPIC_LEVELS } = require("../../studyos/editors/TopicEditorForm");
+
+test("contract parity: shared TOPIC_LEVELS matches the backend _TOPIC_LEVELS", () => {
+  // Mirrors admin_exam_intel_cms._TOPIC_LEVELS / admin_exam_intel_manage.
+  expect(TOPIC_LEVELS).toEqual(["topic", "microtopic", "concept"]);
+});
 
 const SUBJECTS = { items: [{ id: "s1", name: "Quant" }, { id: "s2", name: "Reasoning" }], total: 2 };
 const TOPICS = { items: [
@@ -144,6 +150,27 @@ test("short reason is rejected client-side (no POST)", async () => {
   fireEvent.click(screen.getByTestId("ste-form-save"));
   await waitFor(() => expect(screen.getByTestId("ste-form")).toBeInTheDocument());
   expect(api.post).not.toHaveBeenCalled();
+});
+
+test("a failed topic fetch blocks writes (no silent empty state)", async () => {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/subjects")) return Promise.resolve(SUBJECTS);
+    if (url.includes("/topics")) return Promise.reject(new Error("500"));
+    return Promise.resolve({ items: [] });
+  });
+  renderPanel();
+  await waitFor(() => expect(screen.getByTestId("ste-subject-select")).not.toBeDisabled());
+  await waitFor(() => expect(screen.getByTestId("ste-new-topic")).toBeDisabled());
+});
+
+test("switching Edit targets does not carry stale field values", async () => {
+  renderPanel();
+  await screen.findByTestId("ste-topic-t1");
+  fireEvent.click(screen.getByTestId("ste-edit-t1"));
+  expect(screen.getByTestId("ste-form-name")).toHaveValue("Percentages");
+  // Cancel then edit a different topic; the form must show t2's values, not t1's.
+  fireEvent.click(screen.getByTestId("ste-edit-t2"));
+  await waitFor(() => expect(screen.getByTestId("ste-form-name")).toHaveValue("Ratios"));
 });
 
 test("mutations run through useApiAction (busy state disables save)", async () => {

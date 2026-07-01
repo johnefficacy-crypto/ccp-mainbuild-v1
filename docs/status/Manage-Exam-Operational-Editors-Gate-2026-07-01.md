@@ -159,9 +159,26 @@ Inside the existing Syllabus (`syllabus`) tab of `ExamWorkspace.jsx`. No new tab
       [New topic] [Edit topic] [Retire topic]
 ```
 
-### C.2 Reuse mandate (LOCKED)
+### C.2 Shared editor contract (CORRECTED 2026-07-01 — operator-approved)
 
-The topic / alias / prerequisite editor UI already exists in `ExamIntelCms.jsx`. J2-A MUST extract the reusable editor components (form, table, alias editor, prerequisite editor) into shared modules and consume them in BOTH surfaces. No copy-paste fork. This mirrors the PYQ onboarding `PyqProvenanceFields` reuse precedent. Shared components live under `app/frontend/src/pages/admin/studyos/editors/` (new directory) and are imported by both `ExamIntelCms.jsx` and the new Syllabus panel.
+> **OD-3 — Shared editor contract**
+>
+> Manage Exam topic and alias workflows must use reusable, surface-agnostic
+> editor components under `pages/admin/studyos/editors/`.
+>
+> Advanced Repair remains a generic ENTITY_CONFIG-driven renderer under OD-10
+> and is not required to import the Manage Exam component tree.
+>
+> Cross-surface parity is maintained through:
+> - the same canonical backend table contracts,
+> - shared enums/validation/serialization where practical,
+> - parity tests for fields and allowed values.
+>
+> A topic-specific rendering override inside `ExamIntelCms.jsx` is not required
+> for J2-A. Any CMS renderer convergence is a separate, serial follow-up after
+> the ExamIntelCms write lock clears.
+
+_(Correction rationale: the earlier "import from BOTH surfaces" wording assumed a topic-specific editor existed in `ExamIntelCms.jsx` to extract. It does not — the CMS is a generic `ENTITY_CONFIG` engine — so forcing a topic-specific override into it would contradict OD-10 and the serial-delivery boundary.)_
 
 ### C.3 Controls (LOCKED)
 
@@ -274,7 +291,7 @@ Permissions are currently global values in user `app_metadata`; the repo has no 
 |---|---|---|
 | OD-1 | Placement — editors go into existing tabs (Syllabus for J2-A), no new tab/route/sidebar entry. | **LOCKED** (no-new-surface rule). |
 | OD-2 | Permission tier. | **RESOLVED — OPERATOR APPROVED (2026-07-01, PR #824).** New `exam_intelligence.manage` token; single-token `require_permission(MANAGE_PERM)` on new J2 endpoints (no OR-helper); `cms` and `review` untouched. Full matrix + 6 implementation rules + global-permission limitation in Section D. |
-| OD-3 | Reuse mandate — extract shared topic/alias editor components; consume in both `ExamIntelCms.jsx` and the Syllabus panel. No fork. | **LOCKED — PARTIAL; amendment PROPOSED (OPERATOR APPROVAL PENDING).** Shared presentational components extracted to `app/frontend/src/pages/admin/studyos/editors/` (`TopicEditorForm`, `TopicAliasEditor`) and consumed by the Manage Exam Syllabus panel. **ExamIntelCms adoption is NOT done:** the Advanced Repair CMS uses a fully generic `ENTITY_CONFIG`-driven renderer with no topic-specific components to swap, and it is a serial-delivery-locked file (`Exam-Management-IA-Design-Lock`). **OD-3a — OPERATOR APPROVED (2026-07-01, PR #826):** CMS adoption of the shared components is a bounded follow-up (`j2a-cms-convergence`), tracked separately, so J2-A ships without a disproportionate rewrite of the locked generic engine. The shared module under `studyos/editors/` is the single source; the panel consumes it now, ExamIntelCms adopts it in the follow-up. |
+| OD-3 | Shared editor contract (see §C.2). | **CORRECTED — false premise removed (operator-approved 2026-07-01, PR #826).** Shared presentational components are required for Manage Exam (`TopicEditorForm`, `TopicAliasEditor` under `pages/admin/studyos/editors/`, consumed by the Syllabus panel). Advanced Repair remains generic under OD-10 and is NOT required to import the Manage Exam component tree. Parity is held via shared backend contracts + shared enums + parity tests. CMS renderer convergence is a separate serial follow-up after the ExamIntelCms write lock clears — **not required by J2-A.** |
 | OD-4 | Subject resolution — new backend helper endpoint returning the exam's distinct subjects via the `exam_topic_coverage` path. | **LOCKED** (path). Endpoint shape (`GET /exams/{id}/subjects` under the CMS router vs. exam-intelligence router) is an implementation detail; confirm router placement in the PR. |
 | OD-5 | Empty-coverage behavior — empty state + link to coverage mapping; never fall back to global subject list. | **LOCKED.** |
 | OD-6 | Write-safety — inherit J1 fail-closed `writesBlocked` model keyed on subject resolution. | **LOCKED.** |
@@ -317,7 +334,11 @@ Permissions are currently global values in user `app_metadata`; the repo has no 
 ### F.3 Reuse / invariants
 
 ```
-[ ] shared editor components are imported by BOTH ExamIntelCms.jsx and the Syllabus panel (no fork)
+[ ] Manage Exam imports the shared TopicEditorForm and TopicAliasEditor
+[ ] no duplicate topic/alias presentational form exists in Manage Exam
+[ ] Advanced Repair remains generic and behaviorally unchanged
+[ ] topic levels and mutation fields remain contract-parity tested
+[ ] no prerequisite editor is introduced
 [ ] Advanced Repair (ExamIntelCms.jsx) behavior unchanged: exam_intelligence.cms gate + collapsible={false} banner
 [ ] Syllabus editor renders NO AdminSafetyBanner
 [ ] no new route in navContract test; no sidebar/nav entry added

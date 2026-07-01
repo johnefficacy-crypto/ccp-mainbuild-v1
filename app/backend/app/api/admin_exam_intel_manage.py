@@ -142,7 +142,9 @@ def _topic_dependencies(supabase, topic_id: str) -> list[str]:
     if _safe_select(supabase, "syllabus_topic_mentions", topic_id=topic_id):
         blockers.append("syllabus mentions")
     if _safe_select(supabase, "topic_relation_edges", source_topic_id=topic_id):
-        blockers.append("topic relation edges")
+        blockers.append("topic relation edges (as source)")
+    if _safe_select(supabase, "topic_relation_edges", target_topic_id=topic_id):
+        blockers.append("topic relation edges (as target)")
     return blockers
 
 

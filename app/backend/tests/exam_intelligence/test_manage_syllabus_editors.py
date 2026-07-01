@@ -359,6 +359,17 @@ def test_delete_topic_blocked_by_pyq_question_tags():
     assert "pyq question tags" in str(r.json()["detail"]).lower()
 
 
+def test_delete_topic_blocked_by_target_side_relation_edge():
+    """topic_relation_edges.target_topic_id is CASCADE — must also block (409)."""
+    seed = _seed()
+    seed["topic_relation_edges"].append(
+        {"id": "re1", "source_topic_id": "t1", "target_topic_id": "t2", "relation_type": "leads_to"})
+    sb = MngSBStub(seed)
+    r = _client(sb).delete(f"{_BASE}/topics/t2?exam_id=E1&reason=target of a relation edge")
+    assert r.status_code == 409
+    assert "target" in str(r.json()["detail"]).lower()
+
+
 def test_delete_topic_succeeds_when_no_dependencies():
     sb = MngSBStub(_seed())  # t2 has no coverage/aliases/prereqs
     r = _client(sb).delete(f"{_BASE}/topics/t2?exam_id=E1&reason=remove unused topic")

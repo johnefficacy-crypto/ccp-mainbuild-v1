@@ -36,6 +36,7 @@ export default function SyllabusTopicEditorPanel({ examId }) {
   const [topics, setTopics] = useState([]);
   const [total, setTotal] = useState(null);
   const [topicsLoading, setTopicsLoading] = useState(false);
+  const [topicsError, setTopicsError] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
@@ -45,7 +46,9 @@ export default function SyllabusTopicEditorPanel({ examId }) {
   const [aliasTopic, setAliasTopic] = useState(null);
 
   const topicAction = useApiAction();
-  const writesBlocked = subjectState !== "valid" || !subjectId || topicAction.busy;
+  // Fail-closed on a failed topic fetch too: an incomplete/errored list must
+  // not let the operator create/edit against stale data (writes blocked).
+  const writesBlocked = subjectState !== "valid" || !subjectId || topicsError || topicAction.busy;
 
   // Resolve the exam's covered subjects (OD-4). Fail-closed while resolving.
   useEffect(() => {
@@ -81,6 +84,7 @@ export default function SyllabusTopicEditorPanel({ examId }) {
   const loadTopics = useCallback(async () => {
     if (!examId || !subjectId) { setTopics([]); setTotal(null); return; }
     setTopicsLoading(true);
+    setTopicsError(false);
     try {
       const params = new URLSearchParams({
         exam_id: examId,
@@ -96,6 +100,7 @@ export default function SyllabusTopicEditorPanel({ examId }) {
     } catch {
       setTopics([]);
       setTotal(null);
+      setTopicsError(true);
     } finally {
       setTopicsLoading(false);
     }
@@ -230,6 +235,7 @@ export default function SyllabusTopicEditorPanel({ examId }) {
 
       {form && (
         <TopicEditorForm
+          key={form.id || "new"}
           initial={form}
           busy={topicAction.busy}
           onSubmit={saveTopic}
