@@ -1,42 +1,54 @@
 """finalize_writing_session — single owner of session/unit rollup writes (§9).
 
-This wraps the pure rollup logic in `session_state` with the Supabase reads and
-the conditional, monotonic session-status/outcome write. It is idempotent:
-running it twice with the same DB state produces the same result.
+Wraps the pure rollup logic in `session_state` with the Supabase reads, the
+session-level completion gate (coverage + unresolved must_fix, §4.6c), and the
+conditional, monotonic session-status/outcome write. Idempotent.
 
-Locking/ordering note: the production implementation must acquire the canonical
-lock order (§8.0 — session row, then all required units ascending) via an RPC or
-`SELECT ... FOR UPDATE`. The Supabase client used here issues discrete calls; the
-row-lock RPC is tracked for the operator/DB hardening pass. The rollup decision
-itself is pure and covered by unit tests.
+Locking note: the production implementation must acquire the canonical lock
+order (§8.0 — session row, then all required units ascending) inside a single
+transaction/RPC. The Supabase client issues discrete calls; a dedicated
+row-lock RPC is REQUIRED follow-up (tracked in the checklist) — the rollup
+decision itself is pure and unit-tested.
 """
 from __future__ import annotations
 
 import logging
 from typing import Any
 
+from app.study_os.writing_practice import coverage_checker
 from app.study_os.writing_practice import session_state as st
 
 logger = logging.getLogger("career_copilot.study_os.writing_finalizer")
 
 
-def _latest_overall_status(supabase: Any, unit_version_ids: list[str]) -> dict[str, str | None]:
-    """Map unit_version_id -> latest evaluation overall_status (highest revision)."""
-    if not unit_version_ids:
-        return {}
+def _latest_evaluation(supabase: Any, unit_version_id: str) -> dict | None:
     rows = (
         supabase.table("writing_evaluations")
-        .select("unit_version_id,evaluation_revision,overall_status")
-        .in_("unit_version_id", unit_version_ids)
+        .select("id,evaluation_revision,overall_status")
+        .eq("unit_version_id", unit_version_id)
+        .order("evaluation_revision", desc=True)
+        .limit(1)
         .execute()
     ).data or []
-    latest: dict[str, tuple[int, str | None]] = {}
-    for r in rows:
-        uv = r["unit_version_id"]
-        rev = r.get("evaluation_revision") or 0
-        if uv not in latest or rev > latest[uv][0]:
-            latest[uv] = (rev, r.get("overall_status"))
-    return {uv: v[1] for uv, v in latest.items()}
+    return rows[0] if rows else None
+
+
+def _recovery_available(supabase: Any, evaluation_id: str | None) -> bool:
+    """A failed unit is recoverable while a job for its evaluation can retry.
+
+    NOTE: keyed on evaluation_id (the correct FK), not unit_version_id.
+    """
+    if not evaluation_id:
+        return True
+    jobs = (
+        supabase.table("writing_evaluation_jobs")
+        .select("attempts,max_attempts,status")
+        .eq("evaluation_id", evaluation_id)
+        .execute()
+    ).data or []
+    if not jobs:
+        return True  # a new generation can still be enqueued
+    return any((j.get("attempts") or 0) < (j.get("max_attempts") or 0) for j in jobs)
 
 
 def build_unit_views(supabase: Any, session_id: str) -> list[st.UnitView]:
@@ -61,43 +73,76 @@ def build_unit_views(supabase: Any, session_id: str) -> list[st.UnitView]:
         if uid not in latest_version_by_unit or v["version_number"] > latest_version_by_unit[uid]["version_number"]:
             latest_version_by_unit[uid] = v
 
-    overall_by_uv = _latest_overall_status(
-        supabase, [v["id"] for v in latest_version_by_unit.values()]
-    )
-
     views: list[st.UnitView] = []
     for u in units:
         lv = latest_version_by_unit.get(u["id"])
-        overall = overall_by_uv.get(lv["id"]) if lv else None
+        evaluation = _latest_evaluation(supabase, lv["id"]) if lv else None
+        overall = evaluation.get("overall_status") if evaluation else None
+        recovery = (
+            _recovery_available(supabase, evaluation.get("id") if evaluation else None)
+            if u["status"] == st.UNIT_EVAL_FAILED
+            else False
+        )
         views.append(st.UnitView(
             unit_number=u["unit_number"],
             status=u["status"],
             overall_status=overall,
-            recovery_available=_recovery_available(supabase, lv["id"]) if (lv and u["status"] == st.UNIT_EVAL_FAILED) else False,
+            recovery_available=recovery,
         ))
     return views
 
 
-def _recovery_available(supabase: Any, unit_version_id: str) -> bool:
-    """A failed unit is recoverable while a job can still retry / re-generate."""
-    jobs = (
-        supabase.table("writing_evaluation_jobs")
-        .select("attempts,max_attempts,status")
-        .eq("evaluation_id", unit_version_id)  # note: joined via evaluation in prod
+def _has_unresolved_must_fix(supabase: Any, session_id: str) -> bool:
+    """Any effective, unresolved must_fix issue on a latest version (§4.6c).
+
+    Empty until EWP-2B produces language issues; forward-compatible here.
+    """
+    units = (
+        supabase.table("writing_session_units").select("id").eq("session_id", session_id).execute()
+    ).data or []
+    version_ids: list[str] = []
+    for u in units:
+        rows = (
+            supabase.table("writing_unit_versions").select("id,version_number")
+            .eq("unit_id", u["id"]).order("version_number", desc=True).limit(1).execute()
+        ).data or []
+        if rows:
+            version_ids.append(rows[0]["id"])
+    if not version_ids:
+        return False
+    evals = (
+        supabase.table("writing_evaluations").select("id")
+        .in_("unit_version_id", version_ids).execute()
+    ).data or []
+    eval_ids = [e["id"] for e in evals]
+    if not eval_ids:
+        return False
+    issues = (
+        supabase.table("writing_issue_events")
+        .select("id,severity,affects_current_state")
+        .in_("evaluation_id", eval_ids)
+        .eq("severity", "must_fix")
+        .eq("affects_current_state", True)
         .execute()
     ).data or []
-    # If no job rows are visible, assume recovery is still possible (a new
-    # generation can be enqueued) rather than declaring the session terminal.
-    if not jobs:
-        return True
-    return any((j.get("attempts") or 0) < (j.get("max_attempts") or 0) for j in jobs)
+    if not issues:
+        return False
+    resolved = (
+        supabase.table("writing_issue_resolution_events")
+        .select("issue_event_id,outcome")
+        .in_("issue_event_id", [i["id"] for i in issues])
+        .eq("outcome", "resolved")
+        .execute()
+    ).data or []
+    resolved_ids = {r["issue_event_id"] for r in resolved}
+    return any(i["id"] not in resolved_ids for i in issues)
 
 
 def finalize_writing_session(supabase: Any, session_id: str) -> dict:
     """Recompute and persist session status + evaluation_outcome. Idempotent."""
     session = (
         supabase.table("writing_sessions")
-        .select("id,status,evaluation_outcome")
+        .select("id,status,evaluation_outcome,prompt_id")
         .eq("id", session_id)
         .single()
         .execute()
@@ -106,7 +151,14 @@ def finalize_writing_session(supabase: Any, session_id: str) -> dict:
         raise ValueError(f"writing session {session_id} not found")
 
     views = build_unit_views(supabase, session_id)
-    new_status = st.roll_up_session_status(views)
+    coverage_passed = coverage_checker.latest_authoritative_coverage(supabase, session_id)
+    unresolved_must_fix = _has_unresolved_must_fix(supabase, session_id)
+
+    new_status = st.roll_up_session_status(
+        views,
+        coverage_passed=coverage_passed,
+        has_unresolved_must_fix=unresolved_must_fix,
+    )
     new_outcome = st.monotonic_outcome(
         session.get("evaluation_outcome"), st.aggregate_session_outcome(views)
     )

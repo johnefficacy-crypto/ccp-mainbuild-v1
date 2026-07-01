@@ -20,8 +20,10 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
+from app.study_os.writing_practice import coverage_checker
 from app.study_os.writing_practice import deterministic as det
 from app.study_os.writing_practice import session_state as st
+from app.study_os.writing_practice.constraints import validate_unit_constraints
 from app.study_os.writing_practice.content_hash import compute_content_hash
 from app.study_os.writing_practice.session_finalizer import finalize_writing_session
 
@@ -95,24 +97,38 @@ def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_
     if not prompt:
         raise HTTPException(status_code=404, detail="prompt not found or not verified/active")
 
+    # A supplied study_task must belong to the caller (launch-identity check).
+    if body.study_task_id is not None:
+        task = (
+            supabase.table("study_tasks").select("id,user_id")
+            .eq("id", str(body.study_task_id)).maybe_single().execute()
+        ).data
+        if not task or task.get("user_id") != user_id:
+            raise HTTPException(status_code=404, detail="study task not found")
+
     # Snapshot the feedback-release policy for exam-mode prompts (§4.3); learning
-    # mode is immediate.
+    # mode is immediate. Match the requirement on the full identity
+    # (exam/cycle/phase/stream/language + exercise_type) with null-safe fallback.
     policy = "immediate"
     delay = None
     if body.mode == "exam":
-        req = (
+        q = (
             supabase.table("exam_descriptive_requirements")
-            .select("feedback_release_policy,feedback_release_delay_seconds")
+            .select("feedback_release_policy,feedback_release_delay_seconds,exam_cycle_id,exam_phase_id")
             .eq("exam_id", prompt["exam_id"])
             .eq("exercise_type", prompt["exercise_type"])
+            .eq("language", "english")
             .eq("reviewer_status", "verified")
             .eq("is_active", True)
-            .maybe_single()
-            .execute()
-        ).data
-        if req:
-            policy = req["feedback_release_policy"]
-            delay = req.get("feedback_release_delay_seconds")
+        )
+        if prompt.get("exam_cycle_id"):
+            q = q.eq("exam_cycle_id", prompt["exam_cycle_id"])
+        if prompt.get("exam_phase_id"):
+            q = q.eq("exam_phase_id", prompt["exam_phase_id"])
+        rows = (q.order("exam_phase_id", desc=True).limit(1).execute()).data or []
+        if rows:
+            policy = rows[0]["feedback_release_policy"]
+            delay = rows[0].get("feedback_release_delay_seconds")
 
     session = (
         supabase.table("writing_sessions")
@@ -130,11 +146,12 @@ def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_
     ).data[0]
 
     n_units = prompt.get("required_sentence_count") or 1
+    constraints = validate_unit_constraints({"schema_version": 1})
     unit_rows = [{
         "session_id": session["id"],
         "unit_number": i,
         "practice_microtopic_id": prompt.get("microtopic_id"),
-        "unit_constraints": {"schema_version": 1},
+        "unit_constraints": constraints,
         "status": st.UNIT_NOT_STARTED,
     } for i in range(1, n_units + 1)]
     supabase.table("writing_session_units").insert(unit_rows).execute()
@@ -169,6 +186,9 @@ def submit_unit(
     ).data
     if not unit:
         raise HTTPException(status_code=404, detail="unit not found")
+    _SUBMITTABLE = {st.UNIT_NOT_STARTED, st.UNIT_DRAFT, st.UNIT_REWRITE_REQUIRED, st.UNIT_EVAL_PENDING}
+    if unit["status"] not in _SUBMITTABLE:
+        raise HTTPException(status_code=409, detail=f"unit not submittable from status {unit['status']}")
 
     # Next version number.
     existing = (
@@ -185,6 +205,7 @@ def submit_unit(
         supabase.table("writing_prompts").select("min_words,max_words,required_words")
         .eq("id", session["prompt_id"]).single().execute()
     ).data
+    required_words = prompt.get("required_words") or []
 
     # Sibling texts for duplicate detection.
     siblings = _sibling_latest_texts(supabase, str(session_id), exclude_unit_id=unit["id"])
@@ -232,11 +253,18 @@ def submit_unit(
         "status": "pending",
     }).execute()
 
-    new_unit_status = st.UNIT_EVAL_PENDING
-    supabase.table("writing_session_units").update({"status": new_unit_status}).eq("id", unit["id"]).execute()
+    supabase.table("writing_session_units").update({"status": st.UNIT_EVAL_PENDING}).eq("id", unit["id"]).execute()
+
+    # Session-level required-word coverage check (§4.7), pinned to the current
+    # version-set hash; the finalizer reads the authoritative result.
+    coverage = coverage_checker.run_coverage_check(supabase, str(session_id), required_words)
 
     finalize_writing_session(supabase, str(session_id))
-    return {"evaluation": evaluation, "deterministic_result": result.to_dict()}
+    return {
+        "evaluation": evaluation,
+        "deterministic_result": result.to_dict(),
+        "coverage": coverage,
+    }
 
 
 @router.post("/sessions/{session_id}/units/{unit_id}/reopen")
@@ -272,30 +300,96 @@ def reopen_unit(
     return {"unit_id": str(unit_id), "status": st.UNIT_DRAFT}
 
 
+def _feedback_released(session: dict) -> bool:
+    """Whether feedback is visible for a session (learning=always; exam=gated)."""
+    if session.get("mode") == "learning":
+        return True
+    released = session.get("feedback_released_at")
+    if not released:
+        return False
+    from datetime import datetime, timezone
+
+    try:
+        ts = datetime.fromisoformat(str(released).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return ts <= datetime.now(timezone.utc)
+
+
 @router.get("/sessions/{session_id}/evaluations/{evaluation_id}")
 def get_evaluation(
     session_id: UUID, evaluation_id: UUID, user: dict = Depends(get_current_user),
 ) -> dict:
     supabase = get_supabase_admin()
-    _owned_session(supabase, str(session_id), user.get("id"))
+    session = _owned_session(supabase, str(session_id), user.get("id"))
+
+    # Prove the evaluation belongs to THIS owned session: evaluation -> version
+    # -> unit -> session. A globally-fetched evaluation is not sufficient.
     evaluation = (
         supabase.table("writing_evaluations").select("*").eq("id", str(evaluation_id)).maybe_single().execute()
     ).data
     if not evaluation:
         raise HTTPException(status_code=404, detail="evaluation not found")
+    version = (
+        supabase.table("writing_unit_versions").select("unit_id")
+        .eq("id", evaluation["unit_version_id"]).maybe_single().execute()
+    ).data
+    unit = version and (
+        supabase.table("writing_session_units").select("session_id")
+        .eq("id", version["unit_id"]).maybe_single().execute()
+    ).data
+    if not unit or unit["session_id"] != str(session_id):
+        raise HTTPException(status_code=404, detail="evaluation not found")
+
+    # Exam-mode feedback is gated on release; before release, hide the body.
+    if not _feedback_released(session):
+        raise HTTPException(status_code=409, detail="feedback not yet released")
     return {"evaluation": evaluation}
 
 
 @router.get("/error-summary")
 def error_summary(user: dict = Depends(get_current_user)) -> dict:
-    """Recurring writing issues for the user, grouped by microtopic.
+    """Recurring writing issues for the CALLER, grouped by microtopic.
 
-    Reads only current-state issue events (`affects_current_state = true`).
+    Scoped to the caller's own sessions (service-role bypasses RLS), restricted
+    to current-state issues (`affects_current_state = true`) on feedback-released
+    sessions. Effective-invalidation exclusion applies once EWP-2B produces
+    review events.
     """
     supabase = get_supabase_admin()
+    user_id = user.get("id")
+
+    sessions = (
+        supabase.table("writing_sessions").select("id,mode,feedback_released_at")
+        .eq("user_id", user_id).execute()
+    ).data or []
+    released_session_ids = [s["id"] for s in sessions if _feedback_released(s)]
+    if not released_session_ids:
+        return {"by_microtopic": {}}
+
+    units = (
+        supabase.table("writing_session_units").select("id,session_id")
+        .in_("session_id", released_session_ids).execute()
+    ).data or []
+    if not units:
+        return {"by_microtopic": {}}
+    versions = (
+        supabase.table("writing_unit_versions").select("id,unit_id")
+        .in_("unit_id", [u["id"] for u in units]).execute()
+    ).data or []
+    if not versions:
+        return {"by_microtopic": {}}
+    evals = (
+        supabase.table("writing_evaluations").select("id,unit_version_id")
+        .in_("unit_version_id", [v["id"] for v in versions]).execute()
+    ).data or []
+    if not evals:
+        return {"by_microtopic": {}}
+
     rows = (
         supabase.table("writing_issue_events")
-        .select("issue_type,microtopic_id,affects_current_state,evaluation_id")
+        .select("microtopic_id,affects_current_state,evaluation_id")
+        .in_("evaluation_id", [e["id"] for e in evals])
         .eq("affects_current_state", True)
         .execute()
     ).data or []

@@ -59,8 +59,19 @@ def unit_outcome(overall_status: str | None) -> str | None:
     return _OVERALL_TO_OUTCOME.get(overall_status or "")
 
 
-def roll_up_session_status(units: list[UnitView]) -> str:
-    """Session status by the locked priority order (§4.3b), first match wins."""
+def roll_up_session_status(
+    units: list[UnitView],
+    *,
+    coverage_passed: bool = True,
+    has_unresolved_must_fix: bool = False,
+) -> str:
+    """Session status by the locked priority order (§4.3b), first match wins.
+
+    The final "all units ready/completed" transition is additionally gated on
+    session-level completion conditions (§4.6c): required-word coverage must
+    pass and no unresolved effective ``must_fix`` issue may remain. When the
+    gate fails, the session is ``rewrite_required`` rather than ``completed``.
+    """
     statuses = {u.status for u in units}
 
     # 1. any unit not_started/draft -> active
@@ -81,12 +92,55 @@ def roll_up_session_status(units: list[UnitView]) -> str:
     if UNIT_REWRITE_REQUIRED in statuses:
         return SESSION_REWRITE_REQUIRED
 
-    # 5. all ready/completed -> completed
+    # 5. all ready/completed -> completed IFF the session gate passes
     if statuses and statuses <= {UNIT_READY, UNIT_COMPLETED}:
-        return SESSION_COMPLETED
+        if session_complete_gate(coverage_passed, has_unresolved_must_fix):
+            return SESSION_COMPLETED
+        return SESSION_REWRITE_REQUIRED
 
     # Fallback (empty or unexpected) -> active
     return SESSION_ACTIVE
+
+
+def session_complete_gate(coverage_passed: bool, has_unresolved_must_fix: bool) -> bool:
+    """Session-level completion conditions (§4.6c)."""
+    return coverage_passed and not has_unresolved_must_fix
+
+
+# --- unit state-machine transition validation (§4.4b) ---------------------
+
+_LEARNING_TRANSITIONS: set[tuple[str, str]] = {
+    (UNIT_NOT_STARTED, UNIT_DRAFT),
+    (UNIT_DRAFT, UNIT_EVAL_PENDING),
+    (UNIT_EVAL_PENDING, UNIT_REWRITE_REQUIRED),
+    (UNIT_EVAL_PENDING, UNIT_READY),
+    (UNIT_EVAL_PENDING, UNIT_EVAL_FAILED),
+    (UNIT_EVAL_FAILED, UNIT_EVAL_PENDING),
+    (UNIT_REWRITE_REQUIRED, UNIT_EVAL_PENDING),
+    (UNIT_READY, UNIT_DRAFT),         # explicit reopen (§7)
+    (UNIT_READY, UNIT_COMPLETED),     # finalizer
+}
+
+# Exam mode: rewrite_required is forbidden.
+_EXAM_TRANSITIONS: set[tuple[str, str]] = {
+    (UNIT_NOT_STARTED, UNIT_DRAFT),
+    (UNIT_DRAFT, UNIT_EVAL_PENDING),
+    (UNIT_EVAL_PENDING, UNIT_READY),
+    (UNIT_EVAL_PENDING, UNIT_EVAL_FAILED),
+    (UNIT_EVAL_FAILED, UNIT_EVAL_PENDING),
+    (UNIT_READY, UNIT_COMPLETED),
+}
+
+
+def is_allowed_unit_transition(mode: str, frm: str, to: str) -> bool:
+    """True if ``frm -> to`` is a legal unit transition for ``mode`` (§4.4b).
+
+    ``completed`` is terminal. A no-op (frm == to) is not a transition.
+    """
+    if frm == UNIT_COMPLETED:
+        return False
+    table = _EXAM_TRANSITIONS if mode == "exam" else _LEARNING_TRANSITIONS
+    return (frm, to) in table
 
 
 def aggregate_session_outcome(units: list[UnitView]) -> str | None:
