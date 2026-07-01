@@ -190,10 +190,14 @@ def test_every_immutable_table_rejects_update_and_delete(table):
 
 
 def test_effective_view_isolation():
-    # service_role (backend, BYPASSRLS) sees both users' effective rows.
+    # service_role (backend, BYPASSRLS) sees both users' effective rows. Scope the
+    # count to THIS test's two seeded keys so it stays correct when other suites
+    # (e.g. the EWP-2B evaluator behaviour tests) commit evidence into the shared
+    # CI database — an absolute count over the whole table is order-fragile.
     assert _count_in_txn(
         "service_role",
-        "SELECT count(*) FROM public.effective_user_topic_mastery_evidence;",
+        "SELECT count(*) FROM public.effective_user_topic_mastery_evidence "
+        f"WHERE evidence_key IN ('{_KEY_A}','{_KEY_B}');",
     ) == ["2"]
     # authenticated has NO privilege on the production view → permission denied.
     _psql("SET ROLE authenticated; SELECT * FROM public.effective_user_topic_mastery_evidence;", expect_ok=False)
