@@ -32,13 +32,13 @@ be led to activate an under-verified selected cycle**, not on immediate aspirant
 
 ## Recommendation summary
 
-| Item | What's deferred | Fail direction | **Recommendation** |
-|------|-----------------|----------------|--------------------|
+| Item | What's deferred | Risk | **Recommendation** |
+|------|-----------------|------|--------------------|
 | **D12** | Step 9 `review_activate` verdict is exam-wide + mode-blind | **fail-OPEN** | **v1 — must-fix** |
-| D06 | extraction `metrics` + `other_documents_unresolved` advisory not emitted | fail-closed | **v2 — defer** |
-| D11 | competition step missing draft/pending lifecycle counts | fail-closed | **v2 — defer** |
-| D14 | applicability derived from `gate_class`, not the explicit per-mode matrix | fail-closed | **v2 — defer** |
-| D15 | no runtime validation of the `not_applicable_reason` vocabulary | fail-closed | **v2 — defer** |
+| D06 | extraction `metrics` + `other_documents_unresolved` advisory not emitted | non-gating (under-reports; never over-blocks) | **v2 — defer** |
+| D11 | reviewed/locked collapsed to `ready` (no `locked`); no `partial` for core pending; no draft/pending counts | fail-closed (understates trust / over-blocks) | **v2 — defer** |
+| D14 | applicability derived from `gate_class`, not the explicit per-mode matrix | cosmetic (non-gating; field not rendered) | **v2 — defer** |
+| D15 | **existing** vocab violation (`no_phases_in_cycle` unapproved) + no runtime validation | non-gating (not rendered) | **v2 — defer** |
 
 **Net: 1 v1 item (D12), 4 v2 deferrals.** F2 closes once this split is accepted and the D12
 fix is scheduled as v1 work.
@@ -69,14 +69,18 @@ cycle*. Even though Step 9 is advisory today, a bulk/scripted activation — or 
 `activate()`/planner path that trusts the verdict — would propagate Cycle B's coverage into
 Cycle A. Shipping a fail-open activation gate contradicts the locked invariants.
 
-**Fix (v1 scope, small + testable):** make Step 9 reconcile to the **selected cycle** —
-evaluate its prerequisites directly per D12: (a) selected-cycle details complete (Step 1),
-(b) required phases present, (c) ≥1 locked coverage row *applicable to the selected cycle under
-the D08 scope/inheritance contract* — instead of trusting the exam-wide `classify_exam` status.
-Keep the existing mode gating (`index_only`/`archive` → N/A). Add regression tests:
-"Cycle A no coverage + Cycle B locked → Step 9 NOT ready", and the mode-aware variants.
-*This touches `cycle_readiness.py`/`work_queue.py`, which the I9 owner is actively editing —
-schedule it with that owner or as a scoped follow-up to avoid collision.*
+**Fix (v1 scope — evaluate prerequisites directly, per D12 L75):** Step 9 must stop consuming
+the exam-wide `classify_exam` verdict and instead check the **selected cycle**:
+(a) selected-cycle details complete (Step 1); (b) **required phases COMPLETE under D05/D14** —
+test completeness, not merely "≥1 phase row" / the current minimal Step 2 check; (c) ≥1 locked
+coverage row *applicable to the selected cycle under the D08 scope/inheritance contract*.
+Mode-awareness is more than `index_only`/`archive` → N/A: **`light` is conditional on
+Study-OS/planner-activation-enabled** — the fix must identify the **canonical source** for
+"planner activation enabled" rather than assume always-applicable. Regression tests:
+"Cycle A no coverage + Cycle B locked → Step 9 NOT ready"; `light` with planner disabled;
+phases present-but-incomplete → NOT ready.
+*Touches `cycle_readiness.py`/`work_queue.py`/`management_read_model.py`, which the I9 owner is
+actively editing — schedule with that owner to avoid collision.*
 
 ---
 
@@ -91,10 +95,10 @@ schedule it with that owner or as a scoped follow-up to avoid collision.*
 (`cycle_readiness.py` ~L401–428). What's missing is only the populated `metrics` and the
 `advisories` array (`_step()` doesn't emit `advisories`; `metrics` defaults to `{}`).
 
-**Fail direction:** fail-closed. Ready/not-ready is correct; extraction is `advisory` gate_class
-so it can't independently block; unresolved docs are simply not surfaced in-payload. Operators
-lose an at-a-glance count + a stable advisory code, but can inspect the Documents tab. No path
-to a false-ready selected cycle. → **v2.**
+**Risk:** **non-gating observability gap** — precise wording: the missing `metrics` +
+`other_documents_unresolved` advisory **under-report** unresolved work; they do **not** over-block,
+and the one-success readiness result stays contractually correct. No path to a false-ready
+selected cycle; operators can inspect the Documents tab. → **v2.**
 
 ---
 
@@ -104,14 +108,19 @@ to a false-ready selected cycle. → **v2.**
 (`light`/`index_only`/`archive` → `not_applicable` when the selected cycle has no reviewed/locked
 row); preserve draft/pending counts for operator visibility.
 
-**Current behavior:** Step 8 is correctly cycle-scoped (`exam_cycle_id == cycle_id`,
-`reviewer_status in ('reviewed','locked')`) and returns `not_applicable` for optional modes
-(`cycle_readiness.py` ~L596–614) — so it **cannot** fall back to another cycle. The only gap is
-the missing draft/pending lifecycle **counts** in the step's metrics.
+**Current behavior:** Step 8 is correctly cycle-scoped (`exam_cycle_id == cycle_id`) and returns
+`not_applicable` for optional modes — so it **cannot** fall back to another cycle. But it has
+**three** gaps vs the D11 contract (reviewed→`ready`, locked→`locked`, core pending-only→`partial`):
+1. **No locked-vs-reviewed distinction** — it groups `reviewer_status in ('reviewed','locked')`
+   and always emits `ready` (`cycle_readiness.py` ~L602–607); the `locked` state is never surfaced.
+2. **No `partial` state** — core with draft/pending-only evidence emits `missing` (~L618), not the
+   contractual `partial`.
+3. **No draft/pending metrics** for operator visibility.
 
-**Fail direction:** fail-closed (the N/A path prevents a false-ready; scope is respected). Pure
-operator-visibility gap. → **v2.** (Note: the *exam-wide Step 9* concern that surfaced while
-reviewing D11 is the **D12** item above, not D11's own competition scope.)
+**Risk:** fail-closed — each gap **understates trust** (`ready` shown where `locked` is due) or
+**over-blocks** (`missing` where `partial` is due); none can produce a false-ready. Scope is
+respected. → **v2.** (The *exam-wide Step 9* leak that surfaced here is the **D12** item, not
+D11's competition scope.)
 
 ---
 
@@ -138,13 +147,17 @@ gates activation **independently of `applicability`**, and the frontend
 reason code; non-N/A serializes `null`; frontend falls back safely on unknown codes; tests
 assert codes.
 
-**Current behavior:** no schema/runtime enforcement — relies on developer discipline. But **all
-current N/A emissions use approved codes** (`optional_for_management_mode`, `no_selected_cycle`,
-`no_phases_in_cycle`) and the tests assert exact codes, so a stray code would fail CI.
+**Current behavior:** no schema/runtime enforcement (`_na_step()` accepts `None` or any string,
+`cycle_readiness.py` L53/L80–93). This is an **existing violation, not just a future risk**:
+runtime emits **`no_phases_in_cycle`** (L318), which is **not** in the approved D15 vocabulary
+(`optional_for_management_mode`, `planner_activation_disabled`, `archive_reference_only`,
+`unsupported_exam_type`, `no_selected_cycle`). Tests asserting `no_phases_in_cycle` do **not**
+amend the decision record.
 
-**Fail direction:** fail-closed. The reason is informational, not rendered today, and never
-gates activation. The risk is a *future* unapproved code, already backstopped by tests. → **v2**
-(add the Pydantic/enum validation then).
+**Risk:** non-gating. The reason field never gates activation and is not rendered in
+`CycleActivationChecklist.jsx`, so the out-of-vocabulary code has no user-facing or gating
+effect today. → **v2** (add the enum validation + reconcile `no_phases_in_cycle` — either
+approve it into the vocabulary or replace it).
 
 ---
 
