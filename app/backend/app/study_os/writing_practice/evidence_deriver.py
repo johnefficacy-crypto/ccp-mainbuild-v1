@@ -31,8 +31,45 @@ EVIDENCE_KEY_LAYOUT_VERSION = "wev-1"
 #: tiers with ``<``/``>`` on the string; use the SQL ``tier_rank`` helper (§4.12a).
 EVIDENCE_TIERS = ("recognition", "correction", "production", "retention")
 
-#: Source type for writing (descriptive mock) evidence (§4.12a).
+#: Source types for writing evidence (§4.12a). These are a subset of the
+#: ``source_type`` CHECK enum shared by ``user_topic_mastery_evidence`` (§4.12)
+#: and ``writing_mastery_shadow`` (§10.1a):
+#: ('objective_mock','descriptive_mock','sentence_drill','paragraph_drill',
+#:  'human_review','mentor_review').
+SOURCE_TYPE_SENTENCE = "sentence_drill"
+SOURCE_TYPE_PARAGRAPH = "paragraph_drill"
+#: Fallback source type only (unknown/legacy exercise types).
 SOURCE_TYPE_WRITING = "descriptive_mock"
+
+#: ``writing_prompts.exercise_type`` values that map to sentence-level drills.
+_SENTENCE_EXERCISES = frozenset({
+    "sentence_construction",
+    "sentence_correction",
+    "sentence_rewrite",
+    "sentence_reconstruction",
+    "vocabulary_in_context",
+})
+#: ``writing_prompts.exercise_type`` values that map to paragraph-level drills.
+_PARAGRAPH_EXERCISES = frozenset({
+    "paragraph_writing",
+    "summary_writing",
+    "precis_practice",
+    "essay_practice",
+    "letter_practice",
+})
+
+
+def source_type_for_exercise(exercise_type: str) -> str:
+    """Map a ``writing_prompts.exercise_type`` to an evidence ``source_type``.
+
+    Sentence-level exercises → ``sentence_drill``; paragraph-level exercises →
+    ``paragraph_drill``; anything else → ``descriptive_mock`` (fallback only).
+    """
+    if exercise_type in _SENTENCE_EXERCISES:
+        return SOURCE_TYPE_SENTENCE
+    if exercise_type in _PARAGRAPH_EXERCISES:
+        return SOURCE_TYPE_PARAGRAPH
+    return SOURCE_TYPE_WRITING
 
 # Terminal-success statuses under which a unit yields production/correction
 # evidence. Any other status yields no evidence yet (deriver returns None).
@@ -160,6 +197,7 @@ def derive_unit_evidence(
     microtopic_id: str | None,
     exam_id: str | None,
     source_entity_id: str,
+    exercise_type: str,
     has_unresolved_must_fix: bool,
     resolved_issue_count: int,
     overall_status: str,
@@ -171,29 +209,39 @@ def derive_unit_evidence(
     projection) is intentionally deferred — hence ``issue_projection_id=None``
     and unit-level ``microtopic_id`` here.
 
+    The ``source_type`` is derived from ``exercise_type`` via
+    ``source_type_for_exercise`` (sentence_drill / paragraph_drill / fallback
+    descriptive_mock). Because ``source_type`` is a hashed field, the derived
+    ``evidence_key`` folds in the exercise-derived source type (§4.12b).
+
     Tier logic:
       * ``overall_status`` not in the terminal-success set
-        (``"completed"``/``"terminal_partial"``) → return ``None`` (no evidence
-        yet; the unit may still change).
-      * else if ``resolved_issue_count > 0`` and not ``has_unresolved_must_fix``
-        → tier ``"correction"``.
-      * else if not ``has_unresolved_must_fix`` → tier ``"production"``.
-      * else → tier ``"recognition"``.
+        (``"completed"``/``"terminal_partial"``) → return ``None`` (non-terminal;
+        no evidence yet, the unit may still change).
+      * else if ``has_unresolved_must_fix`` → return ``None``. A blocking answer
+        earns NO positive constructed-response evidence. ``"recognition"`` is
+        objective-choice evidence in the locked model and is never emitted by
+        this writing path.
+      * else if ``resolved_issue_count > 0`` → tier ``"correction"``.
+      * else → tier ``"production"``.
 
     The row is an ``assert`` (``evidence_op="assert"``, ``review_event_id=None``,
-    ``issue_projection_id=None``) with ``source_type=SOURCE_TYPE_WRITING``.
-    ``score``/``confidence`` are ``None`` for now. The returned row's
-    ``evidence_key`` is used by the caller/RPC as the outbox idempotency key.
+    ``issue_projection_id=None``). ``score``/``confidence`` are ``None`` for now.
+    The returned row's ``evidence_key`` is used by the caller/RPC as the outbox
+    idempotency key.
     """
     if overall_status not in _TERMINAL_SUCCESS:
         return None
 
-    if resolved_issue_count > 0 and not has_unresolved_must_fix:
+    if has_unresolved_must_fix:
+        return None
+
+    if resolved_issue_count > 0:
         evidence_tier = "correction"
-    elif not has_unresolved_must_fix:
-        evidence_tier = "production"
     else:
-        evidence_tier = "recognition"
+        evidence_tier = "production"
+
+    source_type = source_type_for_exercise(exercise_type)
 
     evidence_key = compute_evidence_key(
         evidence_op="assert",
@@ -202,7 +250,7 @@ def derive_unit_evidence(
         issue_projection_id=None,
         microtopic_id=microtopic_id,
         evidence_tier=evidence_tier,
-        source_type=SOURCE_TYPE_WRITING,
+        source_type=source_type,
         review_event_id=None,
     )
 
@@ -211,7 +259,7 @@ def derive_unit_evidence(
         topic_id=topic_id,
         microtopic_id=microtopic_id,
         exam_id=exam_id,
-        source_type=SOURCE_TYPE_WRITING,
+        source_type=source_type,
         source_entity_id=source_entity_id,
         evaluation_id=evaluation_id,
         issue_projection_id=None,

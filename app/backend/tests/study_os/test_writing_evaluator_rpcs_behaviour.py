@@ -250,17 +250,166 @@ def test_mastery_outbox_drain_writes_evidence_and_shadow():
     # a clean unit (no must_fix) → production evidence tier.
     ev = {
         "user_id": oc["user_id"], "exam_id": oc.get("exam_id"), "topic_id": oc["topic_id"],
-        "microtopic_id": oc.get("microtopic_id"), "source_type": "descriptive_mock",
+        "microtopic_id": oc.get("microtopic_id"), "source_type": "sentence_drill",
         "source_entity_id": oc["source_entity_id"], "evaluation_id": oc["evaluation_id"],
         "issue_projection_id": None, "evidence_tier": "production", "score": None,
         "confidence": None, "evidence_op": "assert", "evidence_key": key,
     }
     sh = {**{k: ev[k] for k in ev if k != "evidence_op"}, "delta_json": {}}
     out = _json(
-        f"SELECT ewp_complete_mastery_outbox('{oc['id']}','{json.dumps(ev)}'::jsonb,'{json.dumps(sh)}'::jsonb)")
+        f"SELECT ewp_complete_mastery_outbox('{oc['id']}','{oc['claim_token']}',"
+        f"'{json.dumps(ev)}'::jsonb,'{json.dumps(sh)}'::jsonb)")
     assert out["status"] == "done" and out["wrote_evidence"] is True
     assert _scalar(f"SELECT evidence_tier FROM user_topic_mastery_evidence WHERE evidence_key='{key}'") == "production"
     assert _scalar(f"SELECT evidence_tier FROM writing_mastery_shadow WHERE evidence_key='{key}'") == "production"
     assert _scalar(f"SELECT status FROM writing_mastery_outbox WHERE id='{oc['id']}'") == "done"
     # idempotent re-drain would not duplicate (unique evidence_key).
     assert _scalar(f"SELECT count(*) FROM user_topic_mastery_evidence WHERE evidence_key='{key}'") == "1"
+
+
+def _unit_id(sid: str) -> str:
+    return _scalar(f"SELECT id FROM writing_session_units WHERE session_id='{sid}'")
+
+
+def test_stale_version_suppresses_projections_and_rollup():
+    # v1 job pending; append a NEWER version so v1 is stale before it is completed.
+    sid = _new_submitted_session("stale version text", "8" * 64)
+    unit = _unit_id(sid)
+    _psql(
+        "INSERT INTO writing_unit_versions(unit_id,version_number,answer_text,content_hash,submission_kind) "
+        f"VALUES ('{unit}',2,'newer text here','{'9' * 64}','user')")
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    assert claim["is_current"] is False
+    issues = json.dumps([{
+        "issue_type": "subject_verb_agreement", "span_start_utf16": 0, "span_end_utf16": 4,
+        "quoted_text": "text", "original_text": "text", "suggested_text": "text",
+        "explanation": "x", "severity": "must_fix", "predecessor_issue_event_id": None,
+    }])
+    out = _json(
+        f"SELECT ewp_complete_language_evaluation('{claim['job_id']}','{claim['claim_token']}',"
+        f"'lang-mock-v1','{issues}'::jsonb,'{{}}'::jsonb,NULL,false,'off',NULL)")
+    eid = claim["evaluation_id"]
+    assert _scalar(
+        f"SELECT affects_current_state FROM writing_issue_events WHERE evaluation_id='{eid}'") == "f"
+    assert _scalar(
+        f"SELECT count(*) FROM writing_issue_projections p "
+        f"JOIN writing_issue_events i ON i.id=p.issue_event_id WHERE i.evaluation_id='{eid}'") == "0"
+    assert _scalar(f"SELECT status FROM writing_session_units WHERE id='{unit}'") == "evaluation_pending"
+    assert _scalar(f"SELECT status FROM writing_evaluation_jobs WHERE evaluation_id='{eid}'") == "done"
+
+
+def test_sweep_terminalizes_exhausted_lease():
+    sid = _new_submitted_session("exhausted lease text", "a1" + "0" * 62)
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    job = claim["job_id"]
+    _psql(
+        f"UPDATE writing_evaluation_jobs SET attempts=max_attempts, "
+        f"locked_at=now()-interval '2 hours' WHERE id='{job}'")
+    assert int(_scalar("SELECT ewp_sweep_stale_evaluation_jobs(900)")) >= 1
+    assert _scalar(f"SELECT status FROM writing_evaluation_jobs WHERE id='{job}'") == "failed"
+    eid = claim["evaluation_id"]
+    assert _scalar(f"SELECT overall_status FROM writing_evaluations WHERE id='{eid}'") == "terminal_partial"
+    assert _scalar(f"SELECT status FROM writing_session_units WHERE session_id='{sid}'") == "ready"
+    assert _scalar(
+        "SELECT count(*) FROM writing_evaluation_jobs WHERE status='pending' AND attempts > max_attempts") == "0"
+
+
+def test_mastery_outbox_fencing_and_payload_validation():
+    sid = _new_submitted_session("fencing payload text", "a2" + "0" * 62)
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    _json(
+        f"SELECT ewp_complete_language_evaluation('{claim['job_id']}','{claim['claim_token']}',"
+        f"'lang-mock-v1','[]'::jsonb,'{{}}'::jsonb,NULL,false,'shadow','{'a3' + '0' * 62}')")
+    oc = _json("SELECT ewp_claim_mastery_outbox(900)")
+    key = oc["idempotency_key"]
+    ev = {
+        "user_id": oc["user_id"], "exam_id": oc.get("exam_id"), "topic_id": oc["topic_id"],
+        "microtopic_id": oc.get("microtopic_id"), "source_type": "sentence_drill",
+        "source_entity_id": oc["source_entity_id"], "evaluation_id": oc["evaluation_id"],
+        "issue_projection_id": None, "evidence_tier": "production", "score": None,
+        "confidence": None, "evidence_op": "assert", "evidence_key": key,
+    }
+    sh = {**{k: ev[k] for k in ev if k != "evidence_op"}, "delta_json": {}}
+    # (a) wrong token → fencing failure.
+    p = _psql(
+        f"SELECT ewp_complete_mastery_outbox('{oc['id']}',"
+        f"'00000000-0000-0000-0000-000000000000','{json.dumps(ev)}'::jsonb,'{json.dumps(sh)}'::jsonb)",
+        expect_ok=False)
+    assert "ewp_outbox_fencing_failed" in p.stderr
+    # (b) right token but mismatched user_id → payload mismatch.
+    bad = {**ev, "user_id": "00000000-0000-0000-0000-0000000000bb"}
+    bad_sh = {**{k: bad[k] for k in bad if k != "evidence_op"}, "delta_json": {}}
+    p = _psql(
+        f"SELECT ewp_complete_mastery_outbox('{oc['id']}','{oc['claim_token']}',"
+        f"'{json.dumps(bad)}'::jsonb,'{json.dumps(bad_sh)}'::jsonb)", expect_ok=False)
+    assert "ewp_outbox_payload_mismatch" in p.stderr
+    # (c) correct payload → done, evidence + shadow written.
+    out = _json(
+        f"SELECT ewp_complete_mastery_outbox('{oc['id']}','{oc['claim_token']}',"
+        f"'{json.dumps(ev)}'::jsonb,'{json.dumps(sh)}'::jsonb)")
+    assert out["status"] == "done" and out["wrote_evidence"] is True
+    assert _scalar(f"SELECT evidence_tier FROM user_topic_mastery_evidence WHERE evidence_key='{key}'") == "production"
+    assert _scalar(f"SELECT evidence_tier FROM writing_mastery_shadow WHERE evidence_key='{key}'") == "production"
+
+
+def test_mastery_outbox_stale_sweep_reclaims():
+    sid = _new_submitted_session("outbox stale text", "a4" + "0" * 62)
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    _json(
+        f"SELECT ewp_complete_language_evaluation('{claim['job_id']}','{claim['claim_token']}',"
+        f"'lang-mock-v1','[]'::jsonb,'{{}}'::jsonb,NULL,false,'shadow','{'a5' + '0' * 62}')")
+    oc = _json("SELECT ewp_claim_mastery_outbox(900)")
+    _psql(
+        f"UPDATE writing_mastery_outbox SET locked_at=now()-interval '2 hours' WHERE id='{oc['id']}'")
+    assert int(_scalar("SELECT ewp_sweep_stale_mastery_outbox(900)")) >= 1
+    assert _scalar(f"SELECT status FROM writing_mastery_outbox WHERE id='{oc['id']}'") == "pending"
+
+
+def test_review_correction_outbox_left_pending():
+    # An evaluation with an issue we can hang a review event off of.
+    sid = _new_submitted_session("review correction text", "a6" + "0" * 62)
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    issues = json.dumps([{
+        "issue_type": "subject_verb_agreement", "span_start_utf16": 0, "span_end_utf16": 4,
+        "quoted_text": "text", "original_text": "text", "suggested_text": "text",
+        "explanation": "x", "severity": "must_fix", "predecessor_issue_event_id": None,
+    }])
+    _json(
+        f"SELECT ewp_complete_language_evaluation('{claim['job_id']}','{claim['claim_token']}',"
+        f"'lang-mock-v1','{issues}'::jsonb,'{{}}'::jsonb,NULL,false,'off',NULL)")
+    eid = claim["evaluation_id"]
+    issue = _scalar(f"SELECT id FROM writing_issue_events WHERE evaluation_id='{eid}' LIMIT 1")
+    _psql(
+        "INSERT INTO writing_issue_review_events(issue_event_id,decision,reviewer_type) "
+        f"VALUES ('{issue}','invalidated','system')")
+    rev = _scalar(
+        f"SELECT id FROM writing_issue_review_events WHERE issue_event_id='{issue}' LIMIT 1")
+    _psql(
+        "INSERT INTO writing_mastery_outbox(source_kind,review_event_id,evidence_op,user_id,"
+        "mastery_flag_state,idempotency_key,status) "
+        f"VALUES ('review_correction','{rev}','retract','{_A}','shadow','{'a7' + '0' * 62}','pending')")
+    raw = _scalar("SELECT ewp_claim_mastery_outbox(900)")
+    if raw:
+        claimed = json.loads(raw)
+        assert claimed["idempotency_key"] != ("a7" + "0" * 62)
+    assert _scalar(
+        f"SELECT status FROM writing_mastery_outbox WHERE idempotency_key='{'a7' + '0' * 62}'") == "pending"
+
+
+def test_projection_has_canonical_error_type():
+    sid = _new_submitted_session("canonical error text", "a8" + "0" * 62)
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    issues = json.dumps([{
+        "issue_type": "subject_verb_agreement", "span_start_utf16": 0, "span_end_utf16": 4,
+        "quoted_text": "text", "original_text": "text", "suggested_text": "text",
+        "explanation": "x", "severity": "must_fix", "predecessor_issue_event_id": None,
+    }])
+    _json(
+        f"SELECT ewp_complete_language_evaluation('{claim['job_id']}','{claim['claim_token']}',"
+        f"'lang-mock-v1','{issues}'::jsonb,'{{}}'::jsonb,NULL,false,'off',NULL)")
+    eid = claim["evaluation_id"]
+    row = _scalar(
+        f"SELECT canonical_error_type||'/'||(projection_confidence IS NOT NULL) "
+        f"FROM writing_issue_projections p JOIN writing_issue_events i ON i.id=p.issue_event_id "
+        f"WHERE i.evaluation_id='{eid}'")
+    assert row == "careless/true"

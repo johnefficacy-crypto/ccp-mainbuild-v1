@@ -27,6 +27,11 @@
 
 CREATE SCHEMA IF NOT EXISTS ewp_private;  -- created in 205; defensive for isolation.
 
+-- Fencing token for the mastery-outbox lease (§8.3): a claimed row carries a
+-- token; completion/failure must present it, so a stale worker whose lease was
+-- swept and reclaimed cannot double-apply. (writing_mastery_outbox is from 205.)
+ALTER TABLE public.writing_mastery_outbox ADD COLUMN IF NOT EXISTS claim_token uuid;
+
 -- ===========================================================================
 -- Private helper: active (unresolved) issues of a unit's PRIOR version (N-1).
 -- Returns issue_event rows the evaluator maps its rewrite against (§4.8a).
@@ -208,6 +213,7 @@ DECLARE
   v_human text := 'not_required';
   v_pred_type text;
   v_pred_quote text;
+  v_canonical text;
 BEGIN
   -- Resolve the id chain WITHOUT locking first, so locks can be taken strictly
   -- in the canonical order (§8.0): session → all units ascending → evaluation →
@@ -265,10 +271,14 @@ BEGIN
       v_lineage := gen_random_uuid();
     END IF;
 
-    -- Resolve microtopic via the active map; NULL (topic-level) if unmapped.
+    -- Resolve microtopic via the active map, then VALIDATE the mapped target is a
+    -- live English microtopic (§5.3). A map row pointing at a non-microtopic /
+    -- inactive topic is not trusted → topic-level (NULL) instead of a bad id.
     SELECT m.microtopic_id INTO v_microtopic
     FROM public.writing_issue_type_microtopic_map m
+    JOIN public.topics t ON t.id = m.microtopic_id
     WHERE m.issue_type = (v_issue->>'issue_type') AND m.is_active = TRUE
+      AND t.level = 'microtopic' AND t.is_active = TRUE
     LIMIT 1;
 
     INSERT INTO public.writing_issue_events(
@@ -286,29 +296,50 @@ BEGIN
       v_has_must_fix := TRUE;
     END IF;
 
-    -- Automatic projection with a race-safe prior-occurrence count: hold an
-    -- advisory xact lock on (user, microtopic, issue_type) across read+insert.
-    PERFORM pg_advisory_xact_lock(
-      hashtext(v_session.user_id::text || ':' ||
-               COALESCE(v_microtopic::text,'-') || ':' || (v_issue->>'issue_type')));
-    SELECT count(*) INTO v_count
-    FROM public.writing_issue_events i2
-    JOIN public.writing_evaluations e3 ON e3.id = i2.evaluation_id
-    JOIN public.writing_unit_versions v3 ON v3.id = e3.unit_version_id
-    JOIN public.writing_session_units u3 ON u3.id = v3.unit_id
-    JOIN public.writing_sessions s3 ON s3.id = u3.session_id
-    WHERE s3.user_id = v_session.user_id
-      AND i2.issue_type = (v_issue->>'issue_type')
-      -- Scope the count to the SAME microtopic as the advisory-lock key (§4.11),
-      -- so the lock actually serialises the readers it is meant to.
-      AND i2.microtopic_id IS NOT DISTINCT FROM v_microtopic
-      AND i2.id <> v_new_issue_id;
+    -- Projections + prior-occurrence counting are CURRENT-STATE only: a stale
+    -- (superseded) re-evaluation records the issue event (affects_current_state
+    -- = false, above) but must not create projections or inflate the count (§8.1).
+    IF v_is_current THEN
+      -- Race-safe count: advisory xact lock on (user, microtopic, issue_type),
+      -- held across read+insert; the count is scoped to the same key.
+      PERFORM pg_advisory_xact_lock(
+        hashtext(v_session.user_id::text || ':' ||
+                 COALESCE(v_microtopic::text,'-') || ':' || (v_issue->>'issue_type')));
+      SELECT count(*) INTO v_count
+      FROM public.writing_issue_events i2
+      JOIN public.writing_evaluations e3 ON e3.id = i2.evaluation_id
+      JOIN public.writing_unit_versions v3 ON v3.id = e3.unit_version_id
+      JOIN public.writing_session_units u3 ON u3.id = v3.unit_id
+      JOIN public.writing_sessions s3 ON s3.id = u3.session_id
+      WHERE s3.user_id = v_session.user_id
+        AND i2.issue_type = (v_issue->>'issue_type')
+        AND i2.microtopic_id IS NOT DISTINCT FROM v_microtopic
+        AND i2.id <> v_new_issue_id;
 
-    INSERT INTO public.writing_issue_projections(
-      issue_event_id, projection_revision, projection_kind, prior_occurrence_count)
-    VALUES (v_new_issue_id, v_session.projection_revision, 'automatic', v_count)
-    ON CONFLICT (issue_event_id, projection_revision)
-      WHERE projection_kind = 'automatic' DO NOTHING;
+      -- Frozen canonical-error projection (§6): mechanical slips → careless;
+      -- usage/construction → concept_gap; task-compliance issues carry no
+      -- taxonomic error type (NULL). Confidence is null when the type is unknown.
+      v_canonical := CASE v_issue->>'issue_type'
+        WHEN 'spelling' THEN 'careless' WHEN 'punctuation' THEN 'careless'
+        WHEN 'article' THEN 'careless' WHEN 'preposition' THEN 'careless'
+        WHEN 'subject_verb_agreement' THEN 'careless' WHEN 'tense' THEN 'careless'
+        WHEN 'pronoun_reference' THEN 'careless' WHEN 'modifier' THEN 'careless'
+        WHEN 'word_choice' THEN 'concept_gap' WHEN 'collocation' THEN 'concept_gap'
+        WHEN 'redundancy' THEN 'concept_gap' WHEN 'informal_usage' THEN 'concept_gap'
+        WHEN 'sentence_fragment' THEN 'concept_gap' WHEN 'run_on_sentence' THEN 'concept_gap'
+        WHEN 'cohesion' THEN 'concept_gap' WHEN 'logical_order' THEN 'concept_gap'
+        ELSE NULL  -- off_topic / word_limit / format_violation and unknowns
+      END;
+
+      INSERT INTO public.writing_issue_projections(
+        issue_event_id, projection_revision, projection_kind, prior_occurrence_count,
+        canonical_error_type, projection_confidence, rationale)
+      VALUES (v_new_issue_id, v_session.projection_revision, 'automatic', v_count,
+              v_canonical, CASE WHEN v_canonical IS NULL THEN NULL ELSE 0.6 END,
+              'auto:' || (v_issue->>'issue_type'))
+      ON CONFLICT (issue_event_id, projection_revision)
+        WHERE projection_kind = 'automatic' DO NOTHING;
+    END IF;
   END LOOP;
 
   -- Resolution events vs the prior version's active issues (only the current
@@ -371,10 +402,14 @@ BEGIN
 
   -- Acknowledge the job atomically with all side effects.
   UPDATE public.writing_evaluation_jobs
-  SET status = 'done', locked_at = NULL, updated_at = now() WHERE id = v_job.id;
+  SET status = 'done', locked_at = NULL, claim_token = NULL, updated_at = now() WHERE id = v_job.id;
 
-  -- In-transaction session rollup under the held canonical locks.
-  PERFORM ewp_private.ewp_apply_session_rollup(v_session.id);
+  -- Finalize only for the current version. A stale (superseded) re-evaluation
+  -- persisted its envelope + issue events and acked the job, but must not drive
+  -- the session state, which belongs to the current version (§8.1 stale path).
+  IF v_is_current THEN
+    PERFORM ewp_private.ewp_apply_session_rollup(v_session.id);
+  END IF;
 
   RETURN jsonb_build_object(
     'status', 'completed', 'overall_status', 'completed',
@@ -384,10 +419,70 @@ END;
 $$;
 
 -- ===========================================================================
+-- Private: terminalise a failed evaluation job. Single owner of the terminal
+-- transition — called by ewp_fail_evaluation_job (attempts exhausted) and by
+-- the stale-lease sweeper (a crashed job whose attempts are exhausted). Takes
+-- the canonical locks itself so both callers are safe. deterministic-complete
+-- → terminal_partial (unit ready), else failed (unit evaluation_failed).
+-- ===========================================================================
+CREATE OR REPLACE FUNCTION ewp_private.ewp_terminalize_eval_job(p_job_id uuid, p_error text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_job     public.writing_evaluation_jobs%ROWTYPE;
+  v_eval    public.writing_evaluations%ROWTYPE;
+  v_ver     public.writing_unit_versions%ROWTYPE;
+  v_unit    public.writing_session_units%ROWTYPE;
+  v_session public.writing_sessions%ROWTYPE;
+  v_maxver  int;
+  v_is_current boolean;
+  v_overall text;
+  v_unit_target text;
+BEGIN
+  SELECT * INTO v_job FROM public.writing_evaluation_jobs WHERE id = p_job_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'ewp_job_not_found: job % not found', p_job_id; END IF;
+  SELECT * INTO v_eval FROM public.writing_evaluations WHERE id = v_job.evaluation_id;
+  SELECT * INTO v_ver  FROM public.writing_unit_versions WHERE id = v_eval.unit_version_id;
+  SELECT * INTO v_unit FROM public.writing_session_units WHERE id = v_ver.unit_id;
+
+  SELECT * INTO v_session FROM public.writing_sessions WHERE id = v_unit.session_id FOR UPDATE;
+  PERFORM 1 FROM public.writing_session_units
+    WHERE session_id = v_session.id ORDER BY unit_number FOR UPDATE;
+  SELECT * INTO v_eval FROM public.writing_evaluations WHERE id = v_job.evaluation_id FOR UPDATE;
+  SELECT * INTO v_job  FROM public.writing_evaluation_jobs WHERE id = p_job_id FOR UPDATE;
+
+  SELECT MAX(version_number) INTO v_maxver
+  FROM public.writing_unit_versions WHERE unit_id = v_unit.id;
+  v_is_current := (v_ver.version_number = v_maxver);
+
+  v_overall := CASE WHEN v_eval.deterministic_status = 'completed'
+                    THEN 'terminal_partial' ELSE 'failed' END;
+
+  UPDATE public.writing_evaluations SET
+    language_status = 'failed', overall_status = v_overall, updated_at = now()
+  WHERE id = v_eval.id;
+  UPDATE public.writing_evaluation_jobs
+  SET status = 'failed', locked_at = NULL, claim_token = NULL, last_error = p_error, updated_at = now()
+  WHERE id = v_job.id;
+
+  IF v_is_current AND v_unit.status = 'evaluation_pending' THEN
+    v_unit_target := CASE WHEN v_overall = 'terminal_partial' THEN 'ready' ELSE 'evaluation_failed' END;
+    UPDATE public.writing_session_units SET status = v_unit_target WHERE id = v_unit.id;
+  ELSE
+    v_unit_target := v_unit.status;
+  END IF;
+
+  PERFORM ewp_private.ewp_apply_session_rollup(v_session.id);
+  RETURN jsonb_build_object('status','failed_terminal','overall_status',v_overall,'unit_status',v_unit_target);
+END;
+$$;
+
+-- ===========================================================================
 -- Fail / retry a job. Under max_attempts → back to pending with backoff.
--- At max_attempts → terminal: language failed; deterministic-complete maps to
--- terminal_partial (unit ready, deterministic_only), else failed (unit
--- evaluation_failed). Rolls the session up either way.
+-- At max_attempts → terminal via ewp_private.ewp_terminalize_eval_job.
 -- ===========================================================================
 CREATE OR REPLACE FUNCTION public.ewp_fail_evaluation_job(
   p_job_id uuid,
@@ -445,33 +540,9 @@ BEGIN
     RETURN jsonb_build_object('status','requeued','attempts',v_job.attempts);
   END IF;
 
-  -- Terminal failure.
-  SELECT MAX(version_number) INTO v_maxver
-  FROM public.writing_unit_versions WHERE unit_id = v_unit.id;
-  v_is_current := (v_ver.version_number = v_maxver);
-
-  -- deterministic-complete → terminal_partial (usable), else failed.
-  v_overall := CASE WHEN v_eval.deterministic_status = 'completed'
-                    THEN 'terminal_partial' ELSE 'failed' END;
-
-  UPDATE public.writing_evaluations SET
-    language_status = 'failed', overall_status = v_overall, updated_at = now()
-  WHERE id = v_eval.id;
-
-  UPDATE public.writing_evaluation_jobs
-  SET status = 'failed', locked_at = NULL, last_error = p_error, updated_at = now()
-  WHERE id = v_job.id;
-
-  IF v_is_current AND v_unit.status = 'evaluation_pending' THEN
-    v_unit_target := CASE WHEN v_overall = 'terminal_partial' THEN 'ready' ELSE 'evaluation_failed' END;
-    UPDATE public.writing_session_units SET status = v_unit_target WHERE id = v_unit.id;
-  ELSE
-    v_unit_target := v_unit.status;
-  END IF;
-
-  PERFORM ewp_private.ewp_apply_session_rollup(v_session.id);
-
-  RETURN jsonb_build_object('status','failed_terminal','overall_status',v_overall,'unit_status',v_unit_target);
+  -- Terminal failure — the single owner of the terminal transition is the
+  -- private helper (also used by the sweeper for exhausted leases).
+  RETURN ewp_private.ewp_terminalize_eval_job(v_job.id, p_error);
 END;
 $$;
 
@@ -487,30 +558,40 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_swept int;
+  v_swept int := 0;
+  v_job   record;
 BEGIN
-  WITH stale AS (
-    UPDATE public.writing_evaluation_jobs j
-    SET status = 'pending', locked_at = NULL, claim_token = NULL,
-        last_error = 'lease_expired', updated_at = now()
-    WHERE j.status = 'running'
-      AND j.locked_at IS NOT NULL
-      AND j.locked_at < now() - make_interval(secs => p_lease_seconds)
-    RETURNING j.evaluation_id
-  ),
-  reset AS (
-    UPDATE public.writing_evaluations e SET language_status = 'queued', updated_at = now()
-    WHERE e.id IN (SELECT evaluation_id FROM stale) AND e.language_status = 'running'
-    RETURNING 1
-  )
-  SELECT count(*)::int INTO v_swept FROM stale;
+  FOR v_job IN
+    SELECT id, attempts, max_attempts FROM public.writing_evaluation_jobs
+    WHERE status = 'running'
+      AND locked_at IS NOT NULL
+      AND locked_at < now() - make_interval(secs => p_lease_seconds)
+    FOR UPDATE SKIP LOCKED
+  LOOP
+    IF v_job.attempts >= v_job.max_attempts THEN
+      -- Exhausted crash: terminalise (do NOT requeue — a requeued pending row
+      -- with attempts=max would violate attempts_check on the next claim).
+      PERFORM ewp_private.ewp_terminalize_eval_job(v_job.id, 'lease_expired_exhausted');
+    ELSE
+      UPDATE public.writing_evaluation_jobs
+      SET status = 'pending', locked_at = NULL, claim_token = NULL,
+          last_error = 'lease_expired', updated_at = now()
+      WHERE id = v_job.id;
+      UPDATE public.writing_evaluations SET language_status = 'queued', updated_at = now()
+      WHERE id = (SELECT evaluation_id FROM public.writing_evaluation_jobs WHERE id = v_job.id)
+        AND language_status = 'running';
+    END IF;
+    v_swept := v_swept + 1;
+  END LOOP;
   RETURN v_swept;
 END;
 $$;
 
 -- ===========================================================================
--- Mastery outbox drain (post-commit, §8.2). Claim one pending row and return
--- the deterministic context the worker re-derives evidence from.
+-- Mastery outbox drain (post-commit, §8.2). Claim one pending EVALUATION row
+-- (review-correction rows are left pending until the EWP-3 correction handler
+-- exists — never falsely acked) and return the deterministic context the worker
+-- re-derives evidence from. Stamps a lease + fencing token.
 -- ===========================================================================
 CREATE OR REPLACE FUNCTION public.ewp_claim_mastery_outbox(p_lease_seconds int DEFAULT 900)
 RETURNS jsonb
@@ -520,6 +601,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_row     public.writing_mastery_outbox%ROWTYPE;
+  v_token   uuid := gen_random_uuid();
   v_eval    public.writing_evaluations%ROWTYPE;
   v_ver     public.writing_unit_versions%ROWTYPE;
   v_unit    public.writing_session_units%ROWTYPE;
@@ -529,21 +611,15 @@ DECLARE
   v_resolved int;
 BEGIN
   SELECT * INTO v_row FROM public.writing_mastery_outbox o
-  WHERE o.status = 'pending'
+  WHERE o.status = 'pending' AND o.source_kind = 'evaluation'
   ORDER BY o.created_at
   FOR UPDATE SKIP LOCKED
   LIMIT 1;
   IF NOT FOUND THEN RETURN NULL; END IF;
 
   UPDATE public.writing_mastery_outbox
-  SET status = 'processing', locked_at = now(), attempts = attempts + 1
+  SET status = 'processing', locked_at = now(), claim_token = v_token, attempts = attempts + 1
   WHERE id = v_row.id;
-
-  IF v_row.source_kind <> 'evaluation' THEN
-    -- review-correction outbox rows are an EWP-3 concern; ack as done (no-op).
-    UPDATE public.writing_mastery_outbox SET status = 'done', processed_at = now() WHERE id = v_row.id;
-    RETURN jsonb_build_object('id', v_row.id, 'skipped', true);
-  END IF;
 
   SELECT * INTO v_eval FROM public.writing_evaluations WHERE id = v_row.evaluation_id;
   SELECT * INTO v_ver  FROM public.writing_unit_versions WHERE id = v_eval.unit_version_id;
@@ -558,20 +634,55 @@ BEGIN
   WHERE r.resolving_evaluation_id = v_eval.id AND r.outcome = 'resolved';
 
   RETURN jsonb_build_object(
-    'id', v_row.id, 'evidence_op', v_row.evidence_op, 'user_id', v_row.user_id,
+    'id', v_row.id, 'claim_token', v_token, 'evidence_op', v_row.evidence_op, 'user_id', v_row.user_id,
     'mastery_flag_state', v_row.mastery_flag_state, 'idempotency_key', v_row.idempotency_key,
     'evaluation_id', v_eval.id, 'overall_status', v_eval.overall_status,
-    'topic_id', v_prompt.topic_id, 'exam_id', v_prompt.exam_id,
+    'topic_id', v_prompt.topic_id, 'exam_id', v_prompt.exam_id, 'exercise_type', v_prompt.exercise_type,
     'microtopic_id', v_unit.practice_microtopic_id, 'source_entity_id', v_session.id,
     'has_unresolved_must_fix', v_must_fix, 'resolved_issue_count', v_resolved);
 END;
 $$;
 
+-- Reclaim mastery-outbox rows whose lease expired (crash after claim). Exhausted
+-- rows terminalise to 'failed'; others go back to 'pending' for a fresh claim.
+CREATE OR REPLACE FUNCTION public.ewp_sweep_stale_mastery_outbox(p_lease_seconds int DEFAULT 900)
+RETURNS int
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_swept int := 0;
+  v_r record;
+BEGIN
+  FOR v_r IN
+    SELECT id, attempts, max_attempts FROM public.writing_mastery_outbox
+    WHERE status = 'processing' AND locked_at IS NOT NULL
+      AND locked_at < now() - make_interval(secs => p_lease_seconds)
+    FOR UPDATE SKIP LOCKED
+  LOOP
+    IF v_r.attempts >= v_r.max_attempts THEN
+      UPDATE public.writing_mastery_outbox
+      SET status = 'failed', locked_at = NULL, claim_token = NULL, last_error = 'lease_expired_exhausted'
+      WHERE id = v_r.id;
+    ELSE
+      UPDATE public.writing_mastery_outbox
+      SET status = 'pending', locked_at = NULL, claim_token = NULL, last_error = 'lease_expired'
+      WHERE id = v_r.id;
+    END IF;
+    v_swept := v_swept + 1;
+  END LOOP;
+  RETURN v_swept;
+END;
+$$;
+
 -- Complete a mastery outbox row: write evidence + shadow idempotently, ack.
--- Shadow-only until Lane A clears; a 'live' flag still only writes evidence +
--- shadow here (the unified aggregator publish is a separate, gated step).
+-- Fencing (claim_token) + payload validation against the claimed row prevent a
+-- stale/buggy worker from writing cross-user/eval evidence. Shadow-only until
+-- Lane A clears; a 'live' flag still only writes evidence + shadow here.
 CREATE OR REPLACE FUNCTION public.ewp_complete_mastery_outbox(
   p_id uuid,
+  p_claim_token uuid,
   p_evidence jsonb,   -- NULL when no evidence is warranted (row acked as done)
   p_shadow jsonb
 ) RETURNS jsonb
@@ -586,11 +697,21 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ewp_outbox_not_found: %', p_id;
   END IF;
-  IF v_row.status <> 'processing' THEN
-    RAISE EXCEPTION 'ewp_outbox_not_claimed: % is not processing', p_id;
+  IF v_row.status <> 'processing' OR v_row.claim_token IS DISTINCT FROM p_claim_token THEN
+    RAISE EXCEPTION 'ewp_outbox_fencing_failed: % is not owned by this claim', p_id;
   END IF;
 
   IF p_evidence IS NOT NULL THEN
+    -- The payload must belong to THIS claimed row (defence against a buggy worker).
+    IF (p_evidence->>'user_id')::uuid <> v_row.user_id
+       OR (p_evidence->>'evaluation_id')::uuid IS DISTINCT FROM v_row.evaluation_id
+       OR (p_evidence->>'evidence_key') <> v_row.idempotency_key
+       OR COALESCE(p_evidence->>'evidence_op','assert') <> v_row.evidence_op
+       OR (p_shadow->>'evidence_key') <> v_row.idempotency_key
+       OR (p_shadow->>'user_id')::uuid <> v_row.user_id THEN
+      RAISE EXCEPTION 'ewp_outbox_payload_mismatch: evidence/shadow does not match the claimed row %', p_id;
+    END IF;
+
     INSERT INTO public.user_topic_mastery_evidence(
       user_id, exam_id, topic_id, microtopic_id, source_type, source_entity_id,
       evidence_tier, score, confidence, issue_projection_id, evidence_op,
@@ -626,7 +747,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.ewp_fail_mastery_outbox(
-  p_id uuid, p_error text, p_backoff_seconds int DEFAULT 120
+  p_id uuid, p_claim_token uuid, p_error text, p_backoff_seconds int DEFAULT 120
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -637,11 +758,16 @@ DECLARE
 BEGIN
   SELECT * INTO v_row FROM public.writing_mastery_outbox WHERE id = p_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'ewp_outbox_not_found: %', p_id; END IF;
+  IF v_row.status <> 'processing' OR v_row.claim_token IS DISTINCT FROM p_claim_token THEN
+    RAISE EXCEPTION 'ewp_outbox_fencing_failed: % is not owned by this claim', p_id;
+  END IF;
   IF v_row.attempts >= v_row.max_attempts THEN
-    UPDATE public.writing_mastery_outbox SET status = 'failed', last_error = p_error, locked_at = NULL WHERE id = p_id;
+    UPDATE public.writing_mastery_outbox
+    SET status = 'failed', last_error = p_error, locked_at = NULL, claim_token = NULL WHERE id = p_id;
     RETURN jsonb_build_object('status','failed_terminal');
   END IF;
-  UPDATE public.writing_mastery_outbox SET status = 'pending', locked_at = NULL, last_error = p_error WHERE id = p_id;
+  UPDATE public.writing_mastery_outbox
+  SET status = 'pending', locked_at = NULL, claim_token = NULL, last_error = p_error WHERE id = p_id;
   RETURN jsonb_build_object('status','requeued');
 END;
 $$;
@@ -654,14 +780,16 @@ REVOKE ALL ON FUNCTION public.ewp_complete_language_evaluation(uuid,uuid,text,js
 REVOKE ALL ON FUNCTION public.ewp_fail_evaluation_job(uuid,uuid,text,int) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ewp_sweep_stale_evaluation_jobs(int) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ewp_claim_mastery_outbox(int) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.ewp_complete_mastery_outbox(uuid,jsonb,jsonb) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.ewp_fail_mastery_outbox(uuid,text,int) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.ewp_sweep_stale_mastery_outbox(int) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.ewp_complete_mastery_outbox(uuid,uuid,jsonb,jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.ewp_fail_mastery_outbox(uuid,uuid,text,int) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.ewp_claim_evaluation_job(int, text[]) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ewp_complete_language_evaluation(uuid,uuid,text,jsonb,jsonb,jsonb,boolean,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ewp_fail_evaluation_job(uuid,uuid,text,int) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ewp_sweep_stale_evaluation_jobs(int) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ewp_claim_mastery_outbox(int) TO service_role;
-GRANT EXECUTE ON FUNCTION public.ewp_complete_mastery_outbox(uuid,jsonb,jsonb) TO service_role;
-GRANT EXECUTE ON FUNCTION public.ewp_fail_mastery_outbox(uuid,text,int) TO service_role;
+GRANT EXECUTE ON FUNCTION public.ewp_sweep_stale_mastery_outbox(int) TO service_role;
+GRANT EXECUTE ON FUNCTION public.ewp_complete_mastery_outbox(uuid,uuid,jsonb,jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION public.ewp_fail_mastery_outbox(uuid,uuid,text,int) TO service_role;
 
 SELECT pg_notify('pgrst', 'reload schema');

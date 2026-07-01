@@ -32,28 +32,30 @@ def run_outbox_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
         return {"processed": 0, "status": "idle"}
 
     outbox_id = claim["id"]
-    if claim.get("skipped"):
-        # review-correction rows are acked as no-ops by the claim RPC (EWP-3).
-        return {"processed": 1, "status": "skipped", "id": outbox_id}
-
+    token = claim["claim_token"]
+    # review-correction rows are left pending by the claim RPC (no producer until
+    # EWP-3), so every claimed row here is an 'evaluation' row.
     try:
         row = ev.derive_unit_evidence(
             user_id=claim["user_id"], evaluation_id=claim["evaluation_id"],
             topic_id=claim["topic_id"], microtopic_id=claim.get("microtopic_id"),
             exam_id=claim.get("exam_id"), source_entity_id=claim["source_entity_id"],
+            exercise_type=claim["exercise_type"],
             has_unresolved_must_fix=claim["has_unresolved_must_fix"],
             resolved_issue_count=claim["resolved_issue_count"],
             overall_status=claim["overall_status"],
         )
         if row is None:
-            # No evidence warranted (e.g. non-terminal); ack the row as done.
+            # No evidence warranted (non-terminal, or a blocking answer earns no
+            # positive evidence); ack the row as done.
             sb.rpc("ewp_complete_mastery_outbox", {
-                "p_id": outbox_id, "p_evidence": None, "p_shadow": None,
+                "p_id": outbox_id, "p_claim_token": token, "p_evidence": None, "p_shadow": None,
             }).execute()
             return {"processed": 1, "status": "done_noop", "id": outbox_id}
 
         sb.rpc("ewp_complete_mastery_outbox", {
             "p_id": outbox_id,
+            "p_claim_token": token,
             "p_evidence": row.to_evidence_dict(),
             "p_shadow": row.to_shadow_dict(),
         }).execute()
@@ -65,8 +67,16 @@ def run_outbox_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
         logger.exception("mastery outbox drain failed for %s", outbox_id)
         try:
             sb.rpc("ewp_fail_mastery_outbox", {
-                "p_id": outbox_id, "p_error": str(exc)[:500],
+                "p_id": outbox_id, "p_claim_token": token, "p_error": str(exc)[:500],
             }).execute()
         except Exception:  # noqa: BLE001
             logger.exception("could not record outbox failure for %s", outbox_id)
         return {"processed": 1, "status": "failed", "id": outbox_id, "error": str(exc)[:200]}
+
+
+def sweep_stale_outbox(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
+    """Reclaim mastery-outbox rows whose lease expired (crash after claim); §8.3."""
+    swept = (
+        sb.rpc("ewp_sweep_stale_mastery_outbox", {"p_lease_seconds": lease_seconds}).execute()
+    ).data or 0
+    return {"swept": int(swept)}

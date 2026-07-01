@@ -32,6 +32,8 @@ def test_security_definer_functions_present():
         "ewp_claim_mastery_outbox",
         "ewp_complete_mastery_outbox",
         "ewp_fail_mastery_outbox",
+        "function public.ewp_sweep_stale_mastery_outbox",
+        "function ewp_private.ewp_terminalize_eval_job",
     ):
         assert fn in sql, f"missing function reference: {fn}"
 
@@ -66,10 +68,44 @@ def test_mastery_shadow_live_gated():
 
 def test_grants_service_role_only():
     sql = _sql()
-    assert sql.count("to service_role") == 7
+    assert sql.count("to service_role") == 8
     first_grant = sql.index("grant execute")
     assert "to authenticated" not in sql[first_grant:]
 
 
 def test_pg_notify_reload_present():
     assert "pg_notify" in _sql()
+
+
+def test_claim_token_column_added():
+    assert (
+        "alter table public.writing_mastery_outbox add column if not exists claim_token uuid"
+        in _sql()
+    )
+
+
+def test_outbox_fencing_and_payload_validation_tokens():
+    sql = _sql()
+    assert "ewp_outbox_fencing_failed" in sql
+    assert "ewp_outbox_payload_mismatch" in sql
+
+
+def test_mastery_claim_only_evaluation_rows():
+    assert "source_kind = 'evaluation'" in _sql()
+
+
+def test_stale_path_current_gating():
+    sql = _sql()
+    assert sql.count("if v_is_current then") >= 2
+
+
+def test_canonical_projection_mapping_present():
+    sql = _sql()
+    assert "canonical_error_type" in sql
+    assert "'careless'" in sql
+    assert "'concept_gap'" in sql
+
+
+def test_sweeper_terminalises_via_helper():
+    sql = _sql()
+    assert sql.count("ewp_private.ewp_terminalize_eval_job") >= 2
