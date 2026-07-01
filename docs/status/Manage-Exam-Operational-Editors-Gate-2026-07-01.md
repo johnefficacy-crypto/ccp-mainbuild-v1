@@ -260,11 +260,11 @@ cms     = exceptional recovery and broad raw-data repair
 
 Permissions are currently global values in user `app_metadata`; the repo has no per-exam operator-assignment model. Therefore `exam_intelligence.manage` initially permits management across ALL exams. The endpoints MUST still enforce the requested `exam_id` and all parent-child relationships (subject∈exam, topic∈subject, alias/prereq∈topic). Per-exam staff assignment is a separate future RBAC enhancement — it must NOT be guessed inside J2.
 
-### D.4 Implementation additions (when J2-A is built)
+### D.4 Implementation additions (J2-A — implemented)
 
-- A forward migration defining `exam_intelligence.manage` and granting it per the matrix in D.1; grant verified via role/grant inspection before the checklist row is marked complete (migration discipline).
-- New `manage`-gated mutation endpoints for Manage Exam topic/alias editing (prerequisites blocked per rule 6).
-- Frontend `canManage` UX gating (rule 2) inside the Syllabus panel; read/review paths remain ungated.
+- **Correction to the earlier draft:** this repo has **no permission-catalog / role-permission table**. Permission tokens are code constants checked against `auth.users.app_metadata.permissions` (see `app/core/permissions.py`, `app/core/auth.py::require_permission`). There is therefore **no SQL migration** that "defines" a token; the token is added as a constant (`EXAM_INTELLIGENCE_MANAGE` in `core/permissions.py`) and **granting is an operator step** (Supabase admin sets `app_metadata.permissions`). This is **OPERATOR PENDING** — it must not be marked complete from code inspection.
+- New `manage`-gated mutation + read endpoints for Manage Exam topic/alias editing in `app/backend/app/api/admin_exam_intel_manage.py` (router `/admin/exam-intelligence-manage`, registered in `server.py`). Prerequisites blocked per rule 6.
+- Frontend `canManage` UX gating (rule 2): `SyllabusTopicEditorPanel` renders only for manage/super_admin and is embedded in `SyllabusMapperPanel`; the existing read/review Syllabus content stays ungated.
 
 ---
 
@@ -282,7 +282,7 @@ Permissions are currently global values in user `app_metadata`; the repo has no 
 | OD-8 | In-memory control state (search/filter/page not in URL). | **LOCKED** (matches J1 OD-5). |
 | OD-9 | Delivery slicing — J2-A (topic + alias, Syllabus) first; **J2-A′ prerequisite editor BLOCKED** pending a prerequisite-semantics gate (Section D rule 6); J2-B (policy flags) and J2-C (cycle entities) each require a gate revision before code. | **LOCKED.** |
 | OD-10 | Advanced Repair unchanged — `ExamIntelCms.jsx` retains `exam_intelligence.cms` gate and `collapsible={false}` banner. Existing cms-gated editor endpoints are NOT re-gated. | **LOCKED.** |
-| OD-11 | No new migrations except the RBAC token migration defining/granting `exam_intelligence.manage`. No schema changes to topics/aliases/prerequisites. | **LOCKED.** |
+| OD-11 | No new migrations and no schema changes. `exam_intelligence.manage` is a code constant + `app_metadata` grant (no permission-catalog table exists), so there is NO token migration; granting is an operator step (see D.4). | **LOCKED — corrected 2026-07-01.** |
 | OD-12 | Editing never implies approval — writes carry a reason + audit record and never promote `reviewer_status`/trust/coverage/activation (Section D rule 3). | **LOCKED.** |
 | OD-13 | Verified/locked content must be reopened via `review` before `manage` may edit; no silent edits to locked rows (Section D rule 4). | **LOCKED.** |
 | OD-14 | Destructive actions bounded — 409 on dependency (aliases, locked coverage, questions, prereq edges); forced cleanup only via Advanced Repair/`cms` (Section D rule 5). | **LOCKED.** |
@@ -344,8 +344,10 @@ Permissions are currently global values in user `app_metadata`; the repo has no 
 | `app/frontend/src/pages/admin/studyos/ExamIntelCms.jsx` | Consume the extracted shared editor components (replace inline editors). | Frontend |
 | `app/frontend/src/pages/admin/exam-workspace/ExamWorkspace.jsx` | Add the Syllabus-tab editor panel (subject selector → topic/alias/prereq editors). Serial-owner change. | Frontend |
 | `app/frontend/src/pages/admin/exam-workspace/__tests__/…` | New tests covering Section F. | Frontend tests |
-| `app/backend/app/api/…` | Add `GET /exams/{id}/subjects` helper (OD-4); add new `manage`-gated topic/alias mutation endpoints (`require_permission("exam_intelligence.manage")`), with reason+audit (OD-12), locked-content reopen enforcement (OD-13), and bounded 409 deletes (OD-14). | Backend |
-| `app/supabase/migrations/<next>_exam_intelligence_manage_permission.sql` | Define + grant `exam_intelligence.manage` per D.1 matrix. | Migration |
+| `app/backend/app/api/admin_exam_intel_manage.py` (new) | `GET /exams/{id}/subjects` (OD-4) + `manage`-gated topic/alias endpoints (`require_permission("exam_intelligence.manage")`), reason+audit (OD-12), locked-content reopen enforcement (OD-13), bounded 409 deletes (OD-14). | Backend |
+| `app/backend/app/core/permissions.py` | Add `EXAM_INTELLIGENCE_MANAGE` constant. | Backend |
+| `app/backend/server.py` | Register the manage router. | Backend |
+| _(no migration)_ | `exam_intelligence.manage` is granted via `app_metadata` (operator step); no permission-catalog table exists — see D.4. | Operator |
 | `docs/status/career-copilot-checklist.md` | Update J2 row to reflect this gate + slicing. | Docs |
 
 **Must NOT change:** `AdminShell.jsx`, `adminRoutes.jsx` (no route/nav changes), the topics/aliases/prerequisites table schemas.

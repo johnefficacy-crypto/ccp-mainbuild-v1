@@ -84,6 +84,25 @@ MOCK_QUESTIONS_REVIEW  = "mock_questions:review"
 MOCK_QUESTIONS_PUBLISH = "mock_questions:publish"
 
 
+# ── Exam intelligence operate-tier permission (J2) ──────────────────────────
+#
+# Three-tier separation locked by the J2 gate
+# (docs/status/Manage-Exam-Operational-Editors-Gate-2026-07-01.md §D):
+#
+#   exam_intelligence.manage  — edit canonical operational content
+#                               (topics, aliases, prerequisites, policy flags)
+#                               from the Manage Exam surface. This module.
+#   exam_intelligence.review  — approve/change trust & lifecycle state
+#                               (verify, reject, re-queue, lock).
+#   exam_intelligence.cms     — exceptional recovery & broad raw-data repair
+#                               (Advanced Repair only).
+#
+# `manage` NEVER promotes reviewer_status / trust / coverage / activation
+# (gate rule 3) and NEVER edits verified/locked content silently (gate rule 4).
+# super_admin bypasses all checks via require_permission.
+EXAM_INTELLIGENCE_MANAGE = "exam_intelligence.manage"
+
+
 __all__ = [
     "SOURCES_MANAGE",
     "SCRAPING_MANAGE",
@@ -100,4 +119,5 @@ __all__ = [
     "MOCK_QUESTIONS_AUTHOR",
     "MOCK_QUESTIONS_REVIEW",
     "MOCK_QUESTIONS_PUBLISH",
+    "EXAM_INTELLIGENCE_MANAGE",
 ]
