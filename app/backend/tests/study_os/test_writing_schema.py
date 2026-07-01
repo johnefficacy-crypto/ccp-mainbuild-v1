@@ -150,9 +150,10 @@ def test_service_role_only_tables_have_no_client_policy():
     ):
         # RLS enabled (whitespace-insensitive) ...
         assert f"alter table public.{table} enable row level security" in _SQLW
-        # ... but no policy targets the table.
+        # ... but no SELECT policy targets the table (triggers use FOR EACH ROW,
+        # which must not trip this — match the policy form specifically).
         assert f"create policy {table}" not in _SQLW
-        assert f"on public.{table} for" not in _SQLW
+        assert f"on public.{table} for select" not in _SQLW
 
 
 def test_owner_select_policies_present():
@@ -295,3 +296,29 @@ def test_review_override_integrity_enforced():
     assert "writing_issue_review_events_corrected_ck" in _SQLL
     assert "function public.ewp_check_override_projection" in _SQLL
     assert "ewp_override_projection_guard" in _SQLL
+
+
+def test_invalidation_helper_is_security_definer_and_locked_down():
+    # Called from authenticated RLS on a zero-policy table; must be DEFINER or
+    # it sees no rows and leaks invalidated issues.
+    assert "security definer" in _SQLW
+    assert "set search_path = public" in _SQLL
+    assert "revoke all on function public.ewp_issue_effectively_invalidated(uuid) from public" in _SQLL
+    assert "revoke all on function public.ewp_issue_effectively_invalidated(uuid) from anon" in _SQLL
+    assert "grant execute on function public.ewp_issue_effectively_invalidated(uuid) to authenticated, service_role" in _SQLL
+
+
+def test_correction_causal_chain_trigger():
+    assert "function public.ewp_check_evidence_correction" in _SQLL
+    assert "ewp_evidence_correction_guard" in _SQLL
+    assert "not the effective tail" in _SQLL
+    assert "targets a different issue than the predecessor" in _SQLL
+
+
+def test_exercise_type_domain_constrained():
+    # both prompt and requirement exercise_type restricted to §4.1a vocabulary
+    assert _SQLW.count("exercise_type in ( 'sentence_construction'") >= 2
+
+
+def test_blank_version_requires_zero_word_count():
+    assert "server_word_count is not null and server_word_count = 0" in _SQLL

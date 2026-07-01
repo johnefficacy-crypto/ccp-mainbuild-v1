@@ -707,13 +707,15 @@ Aspirants have no SELECT access to this table.
 
 #### 4.10a Effective decision and supersession
 
-Multiple review events may target one `issue_event_id` (e.g. `invalidated` then later `confirmed`). The **effective decision** is the latest event by `(created_at, id)` ordering. Derivation:
+Multiple review events may target one `issue_event_id` (e.g. `invalidated` then later `confirmed`). The **effective decision** is the latest event by `(created_at, event_seq)` ordering. Derivation:
 
 - Effective `confirmed` (or no review event) → issue is `active`.
 - Effective `invalidated` → issue is `withdrawn`; excluded from `active_prior_issues`, `resolved_prior_lineages`, mastery, and planner queries.
 - Effective `reclassified` → issue uses the corrected classification via a review-override projection (§4.11a).
 
-Review events for one issue are **serialized** (processed in `(created_at, id)` order, one at a time). Each event that **changes** the effective decision emits exactly one correction evidence row keyed on that `review_event_id`, superseding the currently-effective evidence event — see the full transition matrix in §4.12c (including reversals like `invalidated → confirmed` which re-assert the original, and `reclassified → confirmed` which removes the replacement). A review event that does not change the effective decision (e.g. a redundant `confirmed`) emits nothing. Superseded events remain in the append-only history but do not drive current state.
+**Ordering contract — `event_seq`, not `id` (amended 2026-07-01).** The original lock specified `(created_at, id)`. In implementation this is unsafe: `created_at` defaults to `now()`, which is transaction-stable, so two review events inserted in one transaction tie on `created_at`; and `id` is a random UUID, so the `id` tiebreak does not reflect insertion order — an `invalidated` then `confirmed` pair in one transaction could resolve to `invalidated` at random. The authoritative tiebreak is therefore a monotonic insertion ordinal, `writing_issue_review_events.event_seq` (`GENERATED ALWAYS AS IDENTITY`). Effective order is `(created_at DESC, event_seq DESC)`. Sequence-allocation order is authoritative (a later `INSERT` always has a higher `event_seq`); concurrent inserts against one issue are ordered by their allocated `event_seq`. Correction evidence consumes this same ordering via the shared `ewp_issue_effectively_invalidated` helper. This is an implementation refinement of the merged contract, not a semantic change to which decision wins (still "latest review event for the issue").
+
+Review events for one issue are **serialized** (processed in `(created_at, event_seq)` order, one at a time). Each event that **changes** the effective decision emits exactly one correction evidence row keyed on that `review_event_id`, superseding the currently-effective evidence event — see the full transition matrix in §4.12c (including reversals like `invalidated → confirmed` which re-assert the original, and `reclassified → confirmed` which removes the replacement). A review event that does not change the effective decision (e.g. a redundant `confirmed`) emits nothing. Superseded events remain in the append-only history but do not drive current state.
 
 ---
 

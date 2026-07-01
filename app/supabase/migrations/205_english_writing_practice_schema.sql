@@ -99,7 +99,10 @@ CREATE TABLE IF NOT EXISTS public.writing_prompts (
   subject_id              uuid NOT NULL REFERENCES public.subjects(id),
   topic_id                uuid NOT NULL REFERENCES public.topics(id),
   microtopic_id           uuid REFERENCES public.topics(id),   -- level='microtopic'
-  exercise_type           text NOT NULL,
+  exercise_type           text NOT NULL CHECK (exercise_type IN (
+    'sentence_construction','sentence_correction','vocabulary_in_context','sentence_rewrite',
+    'sentence_reconstruction','paragraph_writing','summary_writing','precis_practice',
+    'essay_practice','letter_practice')),   -- §4.1a
   prompt_text             text NOT NULL,
   source_text             text,
   required_words          jsonb,
@@ -132,7 +135,10 @@ CREATE TABLE IF NOT EXISTS public.exam_descriptive_requirements (
   exam_phase_id                   uuid REFERENCES public.exam_phases(id),
   stream_key                      text,
   language                        text NOT NULL DEFAULT 'english',
-  exercise_type                   text NOT NULL,
+  exercise_type                   text NOT NULL CHECK (exercise_type IN (
+    'sentence_construction','sentence_correction','vocabulary_in_context','sentence_rewrite',
+    'sentence_reconstruction','paragraph_writing','summary_writing','precis_practice',
+    'essay_practice','letter_practice')),   -- §4.1a
   paper_name                      text,
   marks                           numeric CHECK (marks IS NULL OR marks >= 0),
   duration_minutes                int CHECK (duration_minutes IS NULL OR duration_minutes > 0),
@@ -249,7 +255,7 @@ CREATE TABLE IF NOT EXISTS public.writing_unit_versions (
     submission_kind <> 'blank'
     OR (answer_text = ''
         AND content_hash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
-        AND (server_word_count IS NULL OR server_word_count = 0))
+        AND server_word_count IS NOT NULL AND server_word_count = 0)
   )
 );
 
@@ -445,13 +451,26 @@ CREATE TRIGGER ewp_override_projection_guard
   BEFORE INSERT ON public.writing_issue_projections
   FOR EACH ROW EXECUTE FUNCTION public.ewp_check_override_projection();
 
--- Effective review decision helper: latest by (created_at, id) — NOT timestamp
--- alone (now() is transaction-stable, so same-txn events tie on created_at).
--- One shared definition for the fold view and owner RLS (§4.10a).
+-- Effective review decision helper: latest by (created_at, event_seq) — NOT
+-- timestamp alone (now() is transaction-stable, so same-txn events tie on
+-- created_at) and NOT id (random UUID). One shared definition for the fold
+-- view and owner RLS (§4.10a).
+--
+-- SECURITY DEFINER (repo pattern, cf. public.is_admin, migration 003): the
+-- helper is called from authenticated owner RLS policies on issue/resolution/
+-- projection tables, but it reads writing_issue_review_events, which is
+-- RLS-on with NO authenticated policy. A SECURITY INVOKER function would run
+-- as the caller, see zero review rows, and wrongly report "not invalidated" —
+-- leaking withdrawn feedback (locked rule 22). As DEFINER it reads the review
+-- history correctly. Execution is revoked from PUBLIC/anon so it cannot be
+-- probed as a PostgREST RPC oracle; only authenticated (for RLS) and
+-- service_role (for the fold) may execute it.
 CREATE OR REPLACE FUNCTION public.ewp_issue_effectively_invalidated(p_issue uuid)
 RETURNS boolean
 LANGUAGE sql
 STABLE
+SECURITY DEFINER
+SET search_path = public
 AS $$
   SELECT COALESCE((
     SELECT r.decision = 'invalidated'
@@ -461,6 +480,9 @@ AS $$
     LIMIT 1
   ), false)
 $$;
+REVOKE ALL ON FUNCTION public.ewp_issue_effectively_invalidated(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ewp_issue_effectively_invalidated(uuid) FROM anon;
+GRANT EXECUTE ON FUNCTION public.ewp_issue_effectively_invalidated(uuid) TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- 13. user_topic_mastery_evidence (append-only, service-role-only)
@@ -512,6 +534,63 @@ ALTER TABLE public.user_topic_mastery_evidence
   ADD CONSTRAINT utme_supersedes_fk
   FOREIGN KEY (user_id, supersedes_evidence_key)
   REFERENCES public.user_topic_mastery_evidence(user_id, evidence_key);
+
+-- Correction causal-chain integrity (§4.12c). A retract/replace must:
+--   * cite a review event for the SAME issue as the predecessor's projection;
+--   * supersede the currently EFFECTIVE tail (a row with no successor);
+--   * (replace) carry a projection on the same issue.
+-- Enforced by trigger because it spans evidence -> projection -> issue_event
+-- and the review event.
+CREATE OR REPLACE FUNCTION public.ewp_check_evidence_correction()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  pred_issue    uuid;
+  review_issue  uuid;
+  new_issue     uuid;
+  has_successor boolean;
+BEGIN
+  IF NEW.evidence_op IN ('retract','replace') THEN
+    -- predecessor must exist (FK guarantees same user) and be the effective tail
+    SELECT EXISTS (
+      SELECT 1 FROM public.user_topic_mastery_evidence s
+      WHERE s.supersedes_evidence_key = NEW.supersedes_evidence_key
+    ) INTO has_successor;
+    IF has_successor THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: predecessor % already superseded (not the effective tail)', NEW.supersedes_evidence_key;
+    END IF;
+
+    -- issue behind the predecessor's projection
+    SELECT ie.id INTO pred_issue
+      FROM public.user_topic_mastery_evidence p
+      JOIN public.writing_issue_projections pr ON pr.id = p.issue_projection_id
+      JOIN public.writing_issue_events ie ON ie.id = pr.issue_event_id
+      WHERE p.evidence_key = NEW.supersedes_evidence_key;
+
+    -- issue the citing review event targets
+    SELECT issue_event_id INTO review_issue
+      FROM public.writing_issue_review_events WHERE id = NEW.review_event_id;
+
+    IF pred_issue IS NOT NULL AND review_issue IS DISTINCT FROM pred_issue THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: review event % targets a different issue than the predecessor', NEW.review_event_id;
+    END IF;
+
+    IF NEW.evidence_op = 'replace' AND NEW.issue_projection_id IS NOT NULL THEN
+      SELECT pr.issue_event_id INTO new_issue
+        FROM public.writing_issue_projections pr WHERE pr.id = NEW.issue_projection_id;
+      IF pred_issue IS NOT NULL AND new_issue IS DISTINCT FROM pred_issue THEN
+        RAISE EXCEPTION 'evidence_correction_invalid: replacement projection is on a different issue than the predecessor';
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS ewp_evidence_correction_guard ON public.user_topic_mastery_evidence;
+CREATE TRIGGER ewp_evidence_correction_guard
+  BEFORE INSERT ON public.user_topic_mastery_evidence
+  FOR EACH ROW EXECUTE FUNCTION public.ewp_check_evidence_correction();
 
 -- ---------------------------------------------------------------------------
 -- 14. writing_evaluation_jobs (mutable queue)

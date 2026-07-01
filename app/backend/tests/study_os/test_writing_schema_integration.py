@@ -297,3 +297,77 @@ def test_cross_user_supersession_rejected():
     _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
           f"VALUES ('00000000-0000-0000-0000-0000000000bb',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','{'3'*64}','retract','00000000-0000-0000-0000-0000000000fb','{_KEY_A}',now())",
           expect_ok=False)
+
+
+def test_exercise_type_domain_enforced():
+    _psql("INSERT INTO writing_prompts(exam_id,subject_id,topic_id,exercise_type,prompt_text,difficulty_level) "
+          "SELECT '00000000-0000-0000-0000-0000000000e1',(SELECT id FROM subjects WHERE slug='english-language'),"
+          "(SELECT id FROM topics WHERE slug='grammar'),'typo_type','p',1", expect_ok=False)
+
+
+def test_blank_version_word_count_must_be_zero_not_null():
+    # NULL server_word_count for a blank version is now rejected (deterministic 0).
+    _psql("INSERT INTO writing_unit_versions(unit_id,version_number,answer_text,submission_kind,content_hash) "
+          "VALUES ('00000000-0000-0000-0000-0000000000d3',30,'','blank',"
+          "'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')", expect_ok=False)
+
+
+def test_authenticated_owner_cannot_read_effectively_invalidated_issue():
+    # THE path the earlier suite missed: the effective-review helper must work
+    # under the AUTHENTICATED role (SECURITY DEFINER reading a zero-policy table),
+    # or invalidated raw issue rows leak (locked rule 22). Seed one confirmed
+    # issue and one invalidated, then read as the owner.
+    _psql("""
+      INSERT INTO writing_issue_events(id,evaluation_id,issue_type,lineage_id,severity)
+        SELECT '00000000-0000-0000-0000-00000000c001','00000000-0000-0000-0000-0000000000d5','article',
+               '00000000-0000-0000-0000-0000000000a1','must_fix'
+        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_events WHERE id='00000000-0000-0000-0000-00000000c001');
+      INSERT INTO writing_issue_events(id,evaluation_id,issue_type,lineage_id,severity)
+        SELECT '00000000-0000-0000-0000-00000000c002','00000000-0000-0000-0000-0000000000d5','tense',
+               '00000000-0000-0000-0000-0000000000a2','must_fix'
+        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_events WHERE id='00000000-0000-0000-0000-00000000c002');
+      INSERT INTO writing_issue_review_events(issue_event_id,decision,reviewer_type)
+        SELECT '00000000-0000-0000-0000-00000000c002','invalidated','system'
+        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events
+                          WHERE issue_event_id='00000000-0000-0000-0000-00000000c002' AND decision='invalidated');
+    """)
+    out = _scalar(
+        "BEGIN; SET LOCAL ROLE authenticated; SET LOCAL ewp.uid='00000000-0000-0000-0000-0000000000aa'; "
+        "SELECT id::text FROM public.writing_issue_events ORDER BY id; COMMIT;"
+    )
+    seen = set(out.split())
+    assert "00000000-0000-0000-0000-00000000c001" in seen, "confirmed issue must stay visible"
+    assert "00000000-0000-0000-0000-00000000c002" not in seen, "invalidated issue must be hidden from owner"
+
+
+def test_helper_not_executable_by_anon():
+    _psql("SET ROLE anon; SELECT public.ewp_issue_effectively_invalidated('00000000-0000-0000-0000-00000000c002')",
+          expect_ok=False)
+
+
+def test_correction_cross_issue_rejected():
+    cc = "c" * 64
+    _psql(f"""
+      INSERT INTO writing_issue_projections(id,issue_event_id,projection_revision,projection_kind,canonical_error_type)
+        SELECT '00000000-0000-0000-0000-00000000b001','00000000-0000-0000-0000-00000000c001',1,'automatic','careless'
+        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_projections WHERE id='00000000-0000-0000-0000-00000000b001');
+      INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,observed_at)
+        SELECT '00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill',
+               '00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{cc}',now()
+        WHERE NOT EXISTS (SELECT 1 FROM user_topic_mastery_evidence WHERE evidence_key='{cc}');
+      INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type)
+        SELECT '00000000-0000-0000-0000-00000000b002','00000000-0000-0000-0000-00000000c002','invalidated','system'
+        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='00000000-0000-0000-0000-00000000b002');
+    """)
+    # retract cites a review for issue c002 while superseding evidence on c001 -> rejected
+    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
+          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','{'d'*64}','retract','00000000-0000-0000-0000-00000000b002','{cc}',now())",
+          expect_ok=False)
+
+
+def test_wrapped_role_rls_owner_only():
+    # A non-owner authenticated user and anon see none of user aa's sessions.
+    for role, setuid in [("authenticated", "SET LOCAL ewp.uid='00000000-0000-0000-0000-0000000000cc'; "), ("anon", "")]:
+        out = _scalar(f"BEGIN; SET LOCAL ROLE {role}; {setuid}SELECT count(*) FROM public.writing_sessions; COMMIT;")
+        digits = [ln for ln in out.splitlines() if ln.strip().isdigit()]
+        assert digits == ["0"], (role, out)
