@@ -70,8 +70,9 @@ def test_grants_service_role_only():
     sql = _sql()
     # 8 original evaluator/outbox RPCs + ewp_canonical_error_type (§6 helper) +
     # ewp_recover_evaluation (§4.14 recovery) + ewp_reject_corrupt_version
-    # (§8.1 corruption hard-fail) = 11 service_role grants.
-    assert sql.count("to service_role") == 11
+    # (§8.1 corruption hard-fail) = 11, plus the EWP-2B finish: batch completion +
+    # 3 review-correction RPCs (enqueue/claim/complete) = 15 service_role grants.
+    assert sql.count("to service_role") == 15
     first_grant = sql.index("grant execute")
     assert "to authenticated" not in sql[first_grant:]
 
@@ -172,3 +173,32 @@ def test_outbox_completion_rederives_and_binds_evidence_key():
     assert "ewp_private.ewp_outbox_evidence_context" in sql
     # the recomputed key must be asserted against the claimed idempotency_key.
     assert "v_derived_key <> v_row.idempotency_key" in sql
+
+
+def test_per_issue_projection_evidence_present():
+    sql = _sql()
+    # the mastery claim exposes current-state automatic issue projections...
+    assert "'issue_projections', v_projs" in sql
+    assert "pr.projection_kind = 'automatic'" in sql
+    assert "not ewp_private.ewp_issue_effectively_invalidated(ie.id)" in sql
+    # ...and the batch completion writes one row per projection idempotently.
+    assert "function public.ewp_complete_mastery_outbox_batch" in sql
+    assert "jsonb_array_elements(p_pairs)" in sql
+    assert "on conflict (evidence_key) do nothing" in sql
+
+
+def test_review_correction_pipeline_present():
+    sql = _sql()
+    assert "function public.ewp_enqueue_review_correction" in sql
+    assert "function public.ewp_claim_review_correction_outbox" in sql
+    assert "function public.ewp_complete_review_correction" in sql
+    # op is fixed by the decision (§4.12c).
+    assert "when 'invalidated' then 'retract'" in sql
+    assert "when 'reclassified' then 'replace'" in sql
+    # the correction outbox claim filters review_correction rows.
+    assert "o.source_kind = 'review_correction'" in sql
+    # flag-off: pinned mode copied from the assertion's evaluation outbox, never
+    # re-resolved from the current flag.
+    assert "o.source_kind = 'evaluation' and o.evaluation_id = v_eval" in sql
+    # correction key includes the review_event_id (§4.12b).
+    assert "v_row.review_event_id)" in sql

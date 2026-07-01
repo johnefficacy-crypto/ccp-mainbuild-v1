@@ -76,29 +76,84 @@ def test_idle_when_no_claim():
 def test_done_writes_evidence_and_shadow():
     sb = FakeSupabase({
         "ewp_claim_mastery_outbox": _terminal(),
-        "ewp_complete_mastery_outbox": None,
+        "ewp_complete_mastery_outbox_batch": None,
     })
     result = mastery_outbox_worker.run_outbox_pass(sb)
-    assert result["status"] == "done"
+    assert result["status"] == "done" and result["rows"] == 1
 
-    p = sb.params_for("ewp_complete_mastery_outbox")
+    p = sb.params_for("ewp_complete_mastery_outbox_batch")
     assert p["p_claim_token"] == "outbox-tok-1"
-    evidence, shadow = p["p_evidence"], p["p_shadow"]
+    pairs = p["p_pairs"]
+    assert isinstance(pairs, list) and len(pairs) == 1
+    evidence, shadow = pairs[0]["evidence"], pairs[0]["shadow"]
     assert isinstance(evidence, dict) and isinstance(shadow, dict)
     assert evidence["evidence_key"] == shadow["evidence_key"]
     assert _HEX64.match(evidence["evidence_key"])
+    assert evidence["issue_projection_id"] is None  # unit-level row
+
+
+def test_done_emits_per_issue_projection_rows():
+    # A must_fix answer earns NO unit-level positive evidence, but the two
+    # current-state automatic projections each earn a projection-linked row.
+    projs = [
+        {"issue_projection_id": "proj-a", "microtopic_id": "mt-a", "evidence_tier": "recognition"},
+        {"issue_projection_id": "proj-b", "microtopic_id": None, "evidence_tier": "correction"},
+    ]
+    sb = FakeSupabase({
+        "ewp_claim_mastery_outbox": _terminal(has_unresolved_must_fix=True, issue_projections=projs),
+        "ewp_complete_mastery_outbox_batch": None,
+    })
+    result = mastery_outbox_worker.run_outbox_pass(sb)
+    assert result["status"] == "done" and result["rows"] == 2
+    pairs = sb.params_for("ewp_complete_mastery_outbox_batch")["p_pairs"]
+    linked = {pr["evidence"]["issue_projection_id"]: pr["evidence"] for pr in pairs}
+    assert set(linked) == {"proj-a", "proj-b"}
+    assert linked["proj-a"]["evidence_tier"] == "recognition"
+    assert linked["proj-b"]["evidence_tier"] == "correction"
+    # distinct evidence keys per projection.
+    assert linked["proj-a"]["evidence_key"] != linked["proj-b"]["evidence_key"]
 
 
 def test_noop_blocking_answer():
     sb = FakeSupabase({
         "ewp_claim_mastery_outbox": _terminal(has_unresolved_must_fix=True),
-        "ewp_complete_mastery_outbox": None,
+        "ewp_complete_mastery_outbox_batch": None,
     })
     result = mastery_outbox_worker.run_outbox_pass(sb)
     assert result["status"] == "done_noop"
-    p = sb.params_for("ewp_complete_mastery_outbox")
+    p = sb.params_for("ewp_complete_mastery_outbox_batch")
     assert p["p_claim_token"] == "outbox-tok-1"
-    assert p["p_evidence"] is None
+    assert p["p_pairs"] is None
+
+
+def test_review_correction_pass_applies_retract():
+    claim = {
+        "id": "outbox-c1", "claim_token": "c-tok", "evidence_op": "retract",
+        "user_id": "user-1", "evaluation_id": "eval-1", "topic_id": "topic-1",
+        "microtopic_id": "mt-a", "exam_id": None, "source_type": "sentence_drill",
+        "source_entity_id": "sess-1", "evidence_tier": "recognition",
+        "issue_projection_id": "proj-a", "review_event_id": "rev-1",
+        "supersedes_evidence_key": "d" * 64, "mastery_flag_state": "shadow",
+    }
+    sb = FakeSupabase({
+        "ewp_claim_review_correction_outbox": claim,
+        "ewp_complete_review_correction": None,
+    })
+    result = mastery_outbox_worker.run_review_correction_pass(sb)
+    assert result["status"] == "done" and result["evidence_op"] == "retract"
+    p = sb.params_for("ewp_complete_review_correction")
+    ev = p["p_evidence"]
+    assert ev["evidence_op"] == "retract"
+    assert ev["review_event_id"] == "rev-1"
+    assert ev["supersedes_evidence_key"] == "d" * 64
+    assert ev["issue_projection_id"] == "proj-a"
+    assert _HEX64.match(ev["evidence_key"])
+    assert ev["evidence_key"] == p["p_shadow"]["evidence_key"]
+
+
+def test_review_correction_pass_idle():
+    sb = FakeSupabase({"ewp_claim_review_correction_outbox": None})
+    assert mastery_outbox_worker.run_review_correction_pass(sb) == {"processed": 0, "status": "idle"}
 
 
 def test_failure_path(monkeypatch):
