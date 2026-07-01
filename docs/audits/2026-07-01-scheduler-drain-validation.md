@@ -1,7 +1,7 @@
 ---
 owner: ops
 gate: P6 — Scheduler verification (jobs / manual-run / drain)
-status: PARTIAL OPERATOR PASS — AUTOMATIC DRAIN PROVENANCE PENDING
+status: OPERATOR PASS
 validated_date: 2026-07-01
 candidate_sha: b9bd9d7b6b66e7ee84031d508fce6d3532e73bff
 supersedes: docs/audits/2026-06-30-mastery-staging-preflight.md (partial-pass evidence only)
@@ -14,17 +14,9 @@ This document records the 2026-07-01 operator validation session for gate P6
 `b9bd9d7b6b66e7ee84031d508fce6d3532e73bff`. It supersedes the partial
 attestation in `2026-06-30-mastery-staging-preflight.md`.
 
-**Current gate status: PARTIAL OPERATOR PASS.**
-What this session proves: scheduler is registered and healthy; the worker
-processed a controlled `analytics_retry` job to terminal state (`done /
-attempts=1 / last_error=null`); DB state is correct. What it does NOT prove:
-(a) whether the 09:33 completion was driven by an automatic APScheduler tick
-or a manual `POST /api/admin/jobs/run/mock:sweeper` — the contemporaneous
-`/api/admin/jobs` response with `last_run.result.derivations` incremented was
-not captured; (b) drain within the expected ≤ 30-second cycle — the actual
-insertion-to-completion gap was ~65 minutes. Both items are required by the
-`docs/ops/pr1_scheduler_drain_verification.md` runbook (steps 3–4). See
-§ 13 (Gate Verdict) for the outstanding requirements.
+**Gate status: OPERATOR PASS** (updated after final watcher-based capture in
+§ 8b resolved both outstanding requirements from the initial session — see
+§ 13 for the full gate verdict table).
 
 ---
 
@@ -227,6 +219,62 @@ second outstanding item for full P6 PASS.
 
 ---
 
+## 8b. Final controlled job — watcher-based automatic drain proof
+
+A continuous watcher captured the scheduler tick that processed the final
+controlled job, resolving both outstanding requirements (automatic provenance
+and drain-within-30s).
+
+### Scheduler tick captured contemporaneously
+
+```text
+last_run.at:  2026-07-01T13:03:11.083609+00:00
+manual:       absent
+ok:           true
+result:
+  enqueued:       0
+  auto_submitted: 0
+  derivations:    1
+  failed:         0
+  errors:         0
+```
+
+`manual` absent confirms the run originated from the APScheduler interval
+(automatic runs omit the field; manual `/api/admin/jobs/run/mock:sweeper`
+calls set it). `derivations: 1` confirms the sweeper successfully processed
+one `analytics_retry` job; `errors: 0` confirms no failures on this tick.
+
+### Final controlled job row
+
+| Field | Value |
+|-------|-------|
+| Job ID | `cf2a8f44-0baa-4850-8340-aec6a55627ae` |
+| `job_kind` | `analytics_retry` |
+| Attempt ID | `ed665628-3026-46bf-8c25-ad667ce079ba` |
+| `created_at` (insertion) | `2026-07-01T13:02:52.496535Z` |
+| `updated_at` (completion) | `2026-07-01T13:03:12.162573Z` |
+| Elapsed | **19.666038 seconds** |
+| Final `status` | `done` |
+| Final `attempts` | `1` |
+| Final `last_error` | `null` |
+
+Elapsed 19.67 s is within the required ≤ 30-second scheduler cycle.
+
+### Earlier unsuccessful captures (for completeness)
+
+| Job ID | Elapsed | Why not counted |
+|--------|---------|-----------------|
+| `614fc312-5073-41fc-a14f-7396cf361b5a` | `194.775702s` | Failed timing threshold |
+| `374d7e50-5aed-4315-96e7-f805c08c094a` | `25.311847s` | Timing passed; contemporaneous tick not captured |
+| `37a6c417-c4b7-4388-b72f-abe5cc9600e9` | `21.357408s` | Timing passed; tick overwritten before capture |
+
+These three jobs confirmed worker execution but did not independently satisfy
+the automatic-provenance requirement (scheduler `last_run` is overwritten by
+each subsequent tick). The watcher-based run in this section resolves both
+requirements simultaneously.
+
+---
+
 ## 9. Duplicate shadow row check
 
 Query (per `pr1_scheduler_drain_verification.md` step 6 — correct invariant):
@@ -312,60 +360,48 @@ not within one 30-second scheduler cycle. The cause was not investigated.
 
 ## 13. Gate verdict
 
-### What this session proved
+All requirements from `docs/ops/pr1_scheduler_drain_verification.md` are met.
 
-| Check | Result |
-|-------|--------|
-| Candidate SHA deployed, A==B confirmed | PASS |
-| `FF_MOCK_MASTERY_WRITES=shadow` at deployment | PASS |
-| `ENABLE_SCHEDULER=true`, single instance | PASS |
-| `mock:sweeper` in `/api/admin/jobs` `jobs` + `registered` | PASS |
-| `next_run_at` advances between polls | PASS |
-| `last_run.at` updates after sweeps | PASS |
-| Controlled `analytics_retry` row reaches `done / attempts=1 / last_error=null` | PASS |
-| No spurious duplicate shadow rows for test attempt | PASS |
-| Fingerprint preflight (canonical Git-blob invocation) | PASS |
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Candidate SHA deployed, A==B confirmed | PASS | § 1 |
+| `FF_MOCK_MASTERY_WRITES=shadow` at deployment | PASS | § 1 |
+| `ENABLE_SCHEDULER=true`, single instance | PASS | § 1 |
+| `mock:sweeper` in `/api/admin/jobs` `jobs` + `registered` | PASS | § 7 |
+| `next_run_at` advances between polls | PASS | § 7 |
+| `last_run.at` updates automatically | PASS | § 8b |
+| Manual invocation excluded (`manual` absent) | PASS | § 8b |
+| Controlled job claimed within ≤ 30 s (19.67 s) | PASS | § 8b |
+| `derivations` incremented on processing tick | PASS — `1` | § 8b |
+| `errors` on processing tick | PASS — `0` | § 8b |
+| Final job state: `done / attempts=1 / last_error=null` | PASS | § 8b |
+| No duplicate shadow rows (correct invariant query) | PASS | § 9 |
+| Fingerprint preflight (canonical Git-blob invocation) | PASS | § 3 |
 
-### Outstanding requirements for full PASS (per `pr1_scheduler_drain_verification.md`)
-
-| Requirement | Runbook step | Status |
-|-------------|-------------|--------|
-| Drain within ≤ 30 s of insertion without manual trigger | Step 4 | **PENDING** — gap was ~65 min |
-| Contemporaneous `GET /api/admin/jobs` showing `last_run.result.derivations` incremented after drain | Step 4 | **PENDING** — not captured |
-
-Until both are provided, automatic provenance cannot be distinguished from a
-manual invocation, and the runbook drain-timing requirement is unmet.
-
-**Overall gate verdict: PARTIAL OPERATOR PASS**
+**Overall gate verdict: OPERATOR PASS**
 
 ---
 
 ## 14. Remaining blockers before T0 (window_start)
 
-**A — PR-6 clean rerun (Gate 9).**
-Deploy current `main` to staging (record candidate SHA A, confirm Render
+**A — PR-6 clean rerun (Gate 9) — next serial gate.**
+Deploy current `main` to staging (record candidate SHA A; confirm Render
 deployed SHA B == A). Run all 12 PR-6 gates with `FF=shadow` against that
 deployed SHA. Gate 9 must pass: `FF_MOCK_MASTERY_LIVE_USER_IDS` populated.
 
 **B — Real topic-linked attempt.**
 A real-data attempt with `topic_id != null` is required to validate topic
 mastery deltas, error-pattern writes, persisted shadow decisions, exact shadow
-replay, correction parity, and shadow-write idempotency.
+replay, correction parity, and mastery-write idempotency under re-processing.
 
-**C — P6 automatic drain proof (see § 13).**
-New controlled job with insertion timestamp, drain within ≤ 30 s of
-`scheduled_for`, plus a succeeding `GET /api/admin/jobs` response showing
-`last_run.result.derivations` (or equivalent) incremented with `manual`
-absent/false.
-
-**D — PR #800 staging validation (3 checks).**
+**C — PR #800 staging validation (3 checks).**
 Authenticated beacon ACK (`POST /api/study/mocks/attempts/{attempt_id}/events`
 returns `{accepted, duplicates, rejected}`); forced-rejection retry; partial-
 coverage `fallback_question_count`.
 
-**E — Explicit 36-file boundary approval.**
+**D — Explicit 36-file boundary approval.**
 Operator sign-off on the v2 manifest boundary.
 
-**F — Evidence merge, final freeze, T0.**
+**E — Evidence merge, final freeze, T0.**
 
-**G — 14-day shadow window (PR-7), canary (PR-8), live flip (PR-9).**
+**F — 14-day shadow window (PR-7), canary (PR-8), live flip (PR-9).**
