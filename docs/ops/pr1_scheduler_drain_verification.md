@@ -1,7 +1,7 @@
 # PR1: Automatic Scheduler Drain Verification
 
 **Type:** Operator evidence  
-**Status:** Pending capture
+**Status:** OPERATOR PASS — 2026-07-01 (candidate SHA `b9bd9d7b6b66e7ee84031d508fce6d3532e73bff`; full evidence in `docs/audits/2026-07-01-scheduler-drain-validation.md`)
 
 ## Purpose
 
@@ -106,12 +106,12 @@ Expected: zero rows (no duplicates).
 
 | Step | Verified | Notes |
 |------|----------|-------|
-| `/api/admin/jobs` contains exactly one `mock:sweeper` | ☐ | |
-| `next_run_at` advances between ticks | ☐ | |
-| `last_run` updates without manual trigger | ☐ | |
-| Pending retry job drained by scheduler | ☐ | |
-| Final job status / attempts / timestamps | ☐ | |
-| No duplicate shadow rows | ☐ | |
+| `/api/admin/jobs` contains exactly one `mock:sweeper` | ☑ | Confirmed — `jobs[0].id = "mock:sweeper"`, present in `registered` array (§ 7) |
+| `next_run_at` advances between ticks | ☑ | Confirmed — advances ~30 s between successive polls (§ 7) |
+| `last_run` updates without manual trigger | ☑ | Confirmed — `manual: absent`, `last_run.at` updated on capturing tick (§ 8b) |
+| Pending retry job drained by scheduler | ☑ | Confirmed — job `cf2a8f44` claimed and completed in 19.67 s ≤ 30 s (§ 8b) |
+| Final job status / attempts / timestamps | ☑ | `status=done`, `attempts=1`, `last_error=null`, `derivations=1`, `errors=0` (§ 8b) |
+| No duplicate shadow rows | ☑ | 0 rows returned for `(attempt_id, topic_id, flag_state)` invariant query (§ 9) |
 
 ## Notes
 

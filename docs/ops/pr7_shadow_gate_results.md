@@ -145,15 +145,14 @@ Steps 3–8 are sequential and each depends on those above it.
    three-guard smoke test — recorded in
    `docs/audits/2026-06-30-migration-182-operator-validation.md`. No
    further action required for this item.
-3a. **Scheduler drain (PARTIAL OPERATOR PASS — 2026-07-01; candidate SHA
-    `b9bd9d7b6b66e7ee84031d508fce6d3532e73bff`):** `/api/admin/jobs` response
-    shape confirmed; `mock:sweeper` registered; `next_run_at` / `last_run.at`
-    advance. Controlled `analytics_retry` row `1afa0c0a` inserted 08:28:17Z,
-    completed `done / attempts=1 / last_error=null` at 09:33:09Z. Outstanding:
-    (a) contemporaneous `GET /api/admin/jobs` with `last_run.result.derivations`
-    incremented not captured — automatic vs manual provenance unresolved;
-    (b) 65-minute drain gap does not satisfy the ≤ 30-second runbook requirement.
-    Full evidence: `docs/audits/2026-07-01-scheduler-drain-validation.md`.
+3a. **Scheduler drain (OPERATOR PASS — 2026-07-01; candidate SHA
+    `b9bd9d7b6b66e7ee84031d508fce6d3532e73bff`):** All `pr1_scheduler_drain_verification.md`
+    requirements met. Watcher-based capture: controlled `analytics_retry` job
+    `cf2a8f44-0baa-4850-8340-aec6a55627ae` inserted 13:02:52Z, completed
+    `done / attempts=1 / last_error=null` in **19.67 s**; contemporaneous
+    `/api/admin/jobs` tick shows `manual: absent` (automatic provenance confirmed),
+    `derivations: 1`, `errors: 0`. Full evidence:
+    `docs/audits/2026-07-01-scheduler-drain-validation.md`.
 4. **PR-6 clean operator run (OPERATOR RERUN PENDING):** Run the full
    12-gate PR-6 operator session on one pinned SHA; confirm Gate 9
    passes (allowlist deployed with named user(s) in
