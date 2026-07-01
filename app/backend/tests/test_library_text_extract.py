@@ -737,6 +737,58 @@ def test_mid_run_archive_race_no_pages_written_job_stays_failed(sb, monkeypatch)
         "archived document status must not be overwritten"
 
 
+def test_mid_flight_archive_race_job_terminalized_not_stranded(sb, monkeypatch):
+    """Regression for F3 (gate): when the document is archived *after* all
+    early-guard checks pass but *before* finalize_document_extraction is
+    called (true mid-flight archive race), the claimed job must be
+    terminalized to 'failed' — not left stranded in 'running'.
+
+    Distinguishes itself from test_mid_run_archive_race_no_pages_written_job_stays_failed,
+    which tests the API-layer archived pre-check (status='archived' at request
+    time → immediate 409 before run_text_extract_job is ever called). This
+    test exercises the RPC's own document_archived guard by flipping the
+    document status inside parse_pdf_pages, after both pre-checks have passed.
+    """
+    doc_id = "88888888-dddd-eeee-ffff-888888888888"
+    _seed_doc(sb, doc_id=doc_id, status="uploaded")
+
+    def _archive_mid_parse(raw_bytes):
+        # Simulate a concurrent archive arriving after early guards pass.
+        for doc in sb.db.get("document_assets", []):
+            if doc.get("id") == doc_id:
+                doc["status"] = "archived"
+        return ["page text"]
+
+    monkeypatch.setattr(text_extract_svc, "parse_pdf_pages", _archive_mid_parse)
+    monkeypatch.setattr(text_extract_svc, "_count_pdf_pages", lambda _b: 1)
+
+    r = _app(sb, USER_A).post(f"/api/library/items/{doc_id}/process-text")
+    # RPC returns document_archived → _ExtractError → HTTP 400 from the
+    # endpoint's _ExtractError handler (not 409, because the API-layer
+    # pre-check saw 'uploaded' and passed).
+    assert r.status_code == 400, r.text
+    assert r.json()["detail"]["code"] == "document_archived"
+
+    # Critical: the job must NOT be stranded in 'running'.
+    jobs = [j for j in sb.db.get("document_processing_jobs", [])
+            if j.get("document_id") == doc_id]
+    assert jobs, "a job must have been created and claimed"
+    job = jobs[-1]
+    assert job["status"] == "failed", (
+        f"job stranded in '{job['status']}' — terminalization missing on document_archived path"
+    )
+    assert job["error_code"] == "document_archived"
+
+    # No pages should have been written (RPC aborted before page swap).
+    pages_written = [p for p in sb.db.get("document_pages", [])
+                     if p.get("document_id") == doc_id]
+    assert pages_written == [], "no pages should be written when archive wins mid-flight"
+
+    # Document must remain 'archived' — _update_doc's .neq guard must hold.
+    doc_rows = [d for d in sb.db.get("document_assets", []) if d.get("id") == doc_id]
+    assert doc_rows[0]["status"] == "archived"
+
+
 def test_finalize_rpc_rejects_wrong_job_id(sb, monkeypatch):
     """Regression: the fake RPC rejects a job that doesn't belong to the document
     (or isn't in 'running' state), mirroring the SQL job-validation guard.

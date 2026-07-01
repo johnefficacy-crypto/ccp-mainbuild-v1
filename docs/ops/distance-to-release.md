@@ -5,7 +5,7 @@
 > live evidence lives in the gate docs / `docs/audits/`. When a gate changes, update the
 > checklist + its audit, then regenerate this view. Each row links its authoritative source.
 
-**as_of:** `main @ cbb5937` · 2026-07-01
+**as_of:** `main @ ad81e8d4` · 2026-07-01
 **Companion:** `docs/ops/v1-go-live-runbook.md` (the *how*) · `scripts/v1_release_verification.sql` (the *evidence*)
 **Position:** late-stage beta — feature-complete-approaching, **not** production-ready.
 
@@ -21,7 +21,7 @@
 | **Feature-complete (Condition 1)** |
 | F1 | Core features merged (RPC/RLS hardening, snapshot RPC, I9 containment, placeholder isolation) | ENG | ✅ CLEAR | on `main` | checklist |
 | F2 | I9 deferred noncompliance frozen as v1/v2 — **D11, D12, D14, D06, D15** | ENG | ⛔ OPEN | product decision + (if v1) code; **D14** = applicability-from-`gate_class` approximation | checklist "I9 implementation" |
-| F3 | Extraction archive-race terminalization | ENG | ⛔ OPEN (partial merged) | #788/#780 + mig `202` merged; **residual:** `finalize_document_extraction` → `document_archived` makes the caller raise **without terminalizing**, so the claimed job can stay `running`. Fix caller + add mid-flight regression | runbook CHECK 3 / extraction caller |
+| F3 | Extraction archive-race terminalization | ENG | 🟡 CODE-FIXED, VALIDATION PENDING | Caller now calls `_fail()` before raising on `document_archived` (and `finalize_failed`); mid-flight regression test added. Needs live/staging validation no jobs strand `running` after archive race. | `text_extract.py:476-492` + regression test |
 | **Production-ready (Condition 2)** |
 | P1 | Apply full migration chain to staging→prod (head `204`) via the approved runner | OPS | ⏳ NOT STARTED | **precedes P2/P4** | runbook Phase 1 |
 | P2 | RPC/RLS live verification (`scripts/v1_release_verification.sql`) + RLS real-JWT proof | OPS | 🟡 CODE-READY | needs P1, then a live run | verification script |
