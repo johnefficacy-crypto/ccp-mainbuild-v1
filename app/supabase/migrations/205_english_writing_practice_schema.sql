@@ -462,10 +462,20 @@ CREATE TRIGGER ewp_override_projection_guard
 -- RLS-on with NO authenticated policy. A SECURITY INVOKER function would run
 -- as the caller, see zero review rows, and wrongly report "not invalidated" —
 -- leaking withdrawn feedback (locked rule 22). As DEFINER it reads the review
--- history correctly. Execution is revoked from PUBLIC/anon so it cannot be
--- probed as a PostgREST RPC oracle; only authenticated (for RLS) and
--- service_role (for the fold) may execute it.
-CREATE OR REPLACE FUNCTION public.ewp_issue_effectively_invalidated(p_issue uuid)
+-- history correctly.
+--
+-- It lives in a PRIVATE schema (ewp_private) that is NOT in PostgREST's
+-- exposed-schema list, so it cannot be invoked as a REST RPC oracle to probe
+-- another user's issue state — while RLS policies (evaluated in-database) can
+-- still call it. Execution is revoked from PUBLIC/anon; only authenticated
+-- (for RLS) and service_role (for the fold) may execute it, and only USAGE on
+-- the private schema is granted to those roles.
+CREATE SCHEMA IF NOT EXISTS ewp_private;
+REVOKE ALL ON SCHEMA ewp_private FROM PUBLIC;
+GRANT USAGE ON SCHEMA ewp_private TO authenticated, service_role;
+
+DROP FUNCTION IF EXISTS public.ewp_issue_effectively_invalidated(uuid);
+CREATE OR REPLACE FUNCTION ewp_private.ewp_issue_effectively_invalidated(p_issue uuid)
 RETURNS boolean
 LANGUAGE sql
 STABLE
@@ -480,9 +490,8 @@ AS $$
     LIMIT 1
   ), false)
 $$;
-REVOKE ALL ON FUNCTION public.ewp_issue_effectively_invalidated(uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.ewp_issue_effectively_invalidated(uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.ewp_issue_effectively_invalidated(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION ewp_private.ewp_issue_effectively_invalidated(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ewp_private.ewp_issue_effectively_invalidated(uuid) TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- 13. user_topic_mastery_evidence (append-only, service-role-only)
@@ -511,11 +520,12 @@ CREATE TABLE IF NOT EXISTS public.user_topic_mastery_evidence (
   -- Composite target so a superseder must belong to the SAME user as its
   -- predecessor (the FK below references this).
   UNIQUE (user_id, evidence_key),
-  -- Corrections must carry a cause and a predecessor (§4.12c).
+  -- Any superseding row (retract / replace / re-assert) carries a cause
+  -- (review_event_id) and a predecessor (supersedes_evidence_key). Only an
+  -- ORIGINAL assertion has neither (§4.12c).
   CONSTRAINT utme_op_cause_ck CHECK (
-    evidence_op = 'assert'
-    OR (evidence_op IN ('retract','replace')
-        AND review_event_id IS NOT NULL AND supersedes_evidence_key IS NOT NULL)
+    (supersedes_evidence_key IS NULL AND evidence_op = 'assert')
+    OR (supersedes_evidence_key IS NOT NULL AND review_event_id IS NOT NULL)
   ),
   -- A correction cannot supersede itself.
   CONSTRAINT utme_no_self_supersede_ck CHECK (supersedes_evidence_key IS DISTINCT FROM evidence_key)
@@ -546,13 +556,18 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  pred_issue    uuid;
-  review_issue  uuid;
-  new_issue     uuid;
-  has_successor boolean;
+  pred_issue     uuid;
+  review_issue   uuid;
+  new_issue      uuid;
+  new_kind       text;
+  new_override   uuid;
+  has_successor  boolean;
 BEGIN
-  IF NEW.evidence_op IN ('retract','replace') THEN
-    -- predecessor must exist (FK guarantees same user) and be the effective tail
+  -- Validate EVERY superseding row: retract, replace, AND re-assert
+  -- (invalidated->confirmed / reclassified->confirmed emit correction-style
+  -- 'assert' rows with a predecessor). §4.12c.
+  IF NEW.supersedes_evidence_key IS NOT NULL THEN
+    -- must supersede the effective tail (a row with no successor)
     SELECT EXISTS (
       SELECT 1 FROM public.user_topic_mastery_evidence s
       WHERE s.supersedes_evidence_key = NEW.supersedes_evidence_key
@@ -561,26 +576,38 @@ BEGIN
       RAISE EXCEPTION 'evidence_correction_invalid: predecessor % already superseded (not the effective tail)', NEW.supersedes_evidence_key;
     END IF;
 
-    -- issue behind the predecessor's projection
+    -- predecessor MUST resolve to an issue via its projection (corrections only
+    -- apply to issue-derived evidence, not to projection-less evidence).
     SELECT ie.id INTO pred_issue
       FROM public.user_topic_mastery_evidence p
       JOIN public.writing_issue_projections pr ON pr.id = p.issue_projection_id
       JOIN public.writing_issue_events ie ON ie.id = pr.issue_event_id
       WHERE p.evidence_key = NEW.supersedes_evidence_key;
+    IF pred_issue IS NULL THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: predecessor % has no issue projection to correct', NEW.supersedes_evidence_key;
+    END IF;
 
-    -- issue the citing review event targets
+    -- the citing review event must target that same issue
     SELECT issue_event_id INTO review_issue
       FROM public.writing_issue_review_events WHERE id = NEW.review_event_id;
-
-    IF pred_issue IS NOT NULL AND review_issue IS DISTINCT FROM pred_issue THEN
+    IF review_issue IS DISTINCT FROM pred_issue THEN
       RAISE EXCEPTION 'evidence_correction_invalid: review event % targets a different issue than the predecessor', NEW.review_event_id;
     END IF;
 
-    IF NEW.evidence_op = 'replace' AND NEW.issue_projection_id IS NOT NULL THEN
-      SELECT pr.issue_event_id INTO new_issue
+    -- a replace MUST carry the review-override projection caused by that review
+    -- event (and hence on the same issue); it cannot be projection-less.
+    IF NEW.evidence_op = 'replace' THEN
+      IF NEW.issue_projection_id IS NULL THEN
+        RAISE EXCEPTION 'evidence_correction_invalid: replace requires the review-override projection';
+      END IF;
+      SELECT pr.issue_event_id, pr.projection_kind, pr.override_review_event_id
+        INTO new_issue, new_kind, new_override
         FROM public.writing_issue_projections pr WHERE pr.id = NEW.issue_projection_id;
-      IF pred_issue IS NOT NULL AND new_issue IS DISTINCT FROM pred_issue THEN
+      IF new_issue IS DISTINCT FROM pred_issue THEN
         RAISE EXCEPTION 'evidence_correction_invalid: replacement projection is on a different issue than the predecessor';
+      END IF;
+      IF new_kind IS DISTINCT FROM 'review_override' OR new_override IS DISTINCT FROM NEW.review_event_id THEN
+        RAISE EXCEPTION 'evidence_correction_invalid: replace must carry the review_override projection created by the cited review event';
       END IF;
     END IF;
   END IF;
@@ -754,7 +781,7 @@ WITH (security_invoker = true) AS
         AND s.user_id = e.user_id
     )
     AND (ie.id IS NULL OR ie.affects_current_state = true)
-    AND (ie.id IS NULL OR NOT public.ewp_issue_effectively_invalidated(ie.id));
+    AND (ie.id IS NULL OR NOT ewp_private.ewp_issue_effectively_invalidated(ie.id));
 
 REVOKE ALL ON public.effective_user_topic_mastery_evidence FROM PUBLIC;
 REVOKE ALL ON public.effective_user_topic_mastery_evidence FROM authenticated;
@@ -835,7 +862,7 @@ CREATE POLICY writing_issue_events_owner_select ON public.writing_issue_events
       AND s.user_id = auth.uid()
       AND (s.mode = 'learning'
            OR (s.feedback_released_at IS NOT NULL AND s.feedback_released_at <= now()))
-  ) AND NOT public.ewp_issue_effectively_invalidated(writing_issue_events.id));
+  ) AND NOT ewp_private.ewp_issue_effectively_invalidated(writing_issue_events.id));
 
 DROP POLICY IF EXISTS writing_issue_resolution_events_owner_select ON public.writing_issue_resolution_events;
 CREATE POLICY writing_issue_resolution_events_owner_select ON public.writing_issue_resolution_events
@@ -850,7 +877,7 @@ CREATE POLICY writing_issue_resolution_events_owner_select ON public.writing_iss
       AND s.user_id = auth.uid()
       AND (s.mode = 'learning'
            OR (s.feedback_released_at IS NOT NULL AND s.feedback_released_at <= now()))
-  ) AND NOT public.ewp_issue_effectively_invalidated(writing_issue_resolution_events.issue_event_id));
+  ) AND NOT ewp_private.ewp_issue_effectively_invalidated(writing_issue_resolution_events.issue_event_id));
 
 DROP POLICY IF EXISTS writing_issue_projections_owner_select ON public.writing_issue_projections;
 CREATE POLICY writing_issue_projections_owner_select ON public.writing_issue_projections
@@ -865,7 +892,7 @@ CREATE POLICY writing_issue_projections_owner_select ON public.writing_issue_pro
       AND s.user_id = auth.uid()
       AND (s.mode = 'learning'
            OR (s.feedback_released_at IS NOT NULL AND s.feedback_released_at <= now()))
-  ) AND NOT public.ewp_issue_effectively_invalidated(writing_issue_projections.issue_event_id));
+  ) AND NOT ewp_private.ewp_issue_effectively_invalidated(writing_issue_projections.issue_event_id));
 
 DROP POLICY IF EXISTS writing_prompts_public_read ON public.writing_prompts;
 CREATE POLICY writing_prompts_public_read ON public.writing_prompts

@@ -263,7 +263,7 @@ def test_map_seed_validates_microtopic_level_and_active():
 def test_effective_review_uses_created_at_and_seq_tiebreak():
     # created_at alone ties within a transaction; event_seq is the monotonic
     # tiebreak. The helper is one shared definition used by view + RLS.
-    assert "function public.ewp_issue_effectively_invalidated" in _SQLL
+    assert "function ewp_private.ewp_issue_effectively_invalidated" in _SQLL
     assert "event_seq bigint generated always as identity" in _SQLW
     assert "order by r.created_at desc, r.event_seq desc" in _SQLL
 
@@ -298,14 +298,20 @@ def test_review_override_integrity_enforced():
     assert "ewp_override_projection_guard" in _SQLL
 
 
-def test_invalidation_helper_is_security_definer_and_locked_down():
+def test_invalidation_helper_is_security_definer_and_private():
     # Called from authenticated RLS on a zero-policy table; must be DEFINER or
-    # it sees no rows and leaks invalidated issues.
+    # it sees no rows and leaks invalidated issues. Lives in a PRIVATE schema
+    # (not PostgREST-exposed) so it cannot be a cross-user RPC oracle; the old
+    # public function is dropped.
     assert "security definer" in _SQLW
     assert "set search_path = public" in _SQLL
-    assert "revoke all on function public.ewp_issue_effectively_invalidated(uuid) from public" in _SQLL
-    assert "revoke all on function public.ewp_issue_effectively_invalidated(uuid) from anon" in _SQLL
-    assert "grant execute on function public.ewp_issue_effectively_invalidated(uuid) to authenticated, service_role" in _SQLL
+    assert "create schema if not exists ewp_private" in _SQLL
+    assert "revoke all on schema ewp_private from public" in _SQLL
+    assert "grant usage on schema ewp_private to authenticated, service_role" in _SQLL
+    assert "drop function if exists public.ewp_issue_effectively_invalidated(uuid)" in _SQLL
+    assert "function ewp_private.ewp_issue_effectively_invalidated" in _SQLL
+    assert "revoke all on function ewp_private.ewp_issue_effectively_invalidated(uuid) from public" in _SQLL
+    assert "grant execute on function ewp_private.ewp_issue_effectively_invalidated(uuid) to authenticated, service_role" in _SQLL
 
 
 def test_correction_causal_chain_trigger():

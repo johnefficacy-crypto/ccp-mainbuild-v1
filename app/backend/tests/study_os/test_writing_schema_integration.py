@@ -286,7 +286,7 @@ def test_effective_review_created_at_id_tiebreak():
           VALUES ('00000000-0000-0000-0000-0000000000f8','confirmed','human');
       COMMIT;
     """)
-    assert _scalar("SELECT public.ewp_issue_effectively_invalidated('00000000-0000-0000-0000-0000000000f8')") == "f"
+    assert _scalar("SELECT ewp_private.ewp_issue_effectively_invalidated('00000000-0000-0000-0000-0000000000f8')") == "f"
 
 
 def test_cross_user_supersession_rejected():
@@ -340,9 +340,24 @@ def test_authenticated_owner_cannot_read_effectively_invalidated_issue():
     assert "00000000-0000-0000-0000-00000000c002" not in seen, "invalidated issue must be hidden from owner"
 
 
-def test_helper_not_executable_by_anon():
+def test_helper_not_a_public_rpc_oracle():
+    # The helper was moved out of `public` into `ewp_private` so PostgREST does
+    # not expose it as an RPC. Neither authenticated nor anon can call the old
+    # public function (it no longer exists), so no user can probe another user's
+    # issue invalidation state through the API surface.
+    _psql("SET ROLE authenticated; SELECT public.ewp_issue_effectively_invalidated('00000000-0000-0000-0000-00000000c002')",
+          expect_ok=False)
     _psql("SET ROLE anon; SELECT public.ewp_issue_effectively_invalidated('00000000-0000-0000-0000-00000000c002')",
           expect_ok=False)
+    # sanity: the private helper exists and is service_role-callable
+    assert _scalar(
+        "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace "
+        "WHERE p.proname='ewp_issue_effectively_invalidated' AND n.nspname='ewp_private'"
+    ) == "1"
+    assert _scalar(
+        "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace "
+        "WHERE p.proname='ewp_issue_effectively_invalidated' AND n.nspname='public'"
+    ) == "0"
 
 
 def test_correction_cross_issue_rejected():
@@ -371,3 +386,38 @@ def test_wrapped_role_rls_owner_only():
         out = _scalar(f"BEGIN; SET LOCAL ROLE {role}; {setuid}SELECT count(*) FROM public.writing_sessions; COMMIT;")
         digits = [ln for ln in out.splitlines() if ln.strip().isdigit()]
         assert digits == ["0"], (role, out)
+
+
+def test_correction_covers_reassert_and_rejects_incomplete_replace():
+    # predecessor evidence on issue c001 (has an automatic projection from
+    # test_correction_cross_issue_rejected's fixture).
+    ee = "e" * 64
+    _psql(f"""
+      INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type)
+        SELECT '00000000-0000-0000-0000-00000000b010','00000000-0000-0000-0000-00000000c001','confirmed','human'
+        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='00000000-0000-0000-0000-00000000b010');
+      INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,observed_at)
+        SELECT '00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill',
+               '00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{ee}',now()
+        WHERE NOT EXISTS (SELECT 1 FROM user_topic_mastery_evidence WHERE evidence_key='{ee}');
+    """)
+    reassert_key = "ab" * 32
+    # re-assert (assert + supersedes) citing the SAME issue's confirm event → OK
+    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
+          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{reassert_key}','assert','00000000-0000-0000-0000-00000000b010','{ee}',now())",
+          expect_ok=True)
+    # replace with NULL projection → rejected
+    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
+          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','{'ba'*32}','replace','00000000-0000-0000-0000-00000000b010','{reassert_key}',now())",
+          expect_ok=False)
+
+
+def test_correction_of_non_issue_evidence_rejected():
+    # evidence with NO issue projection cannot be corrected (KEY_A is a plain
+    # assert with issue_projection_id NULL).
+    _psql("INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type) "
+          "SELECT '00000000-0000-0000-0000-00000000b020','00000000-0000-0000-0000-00000000c001','invalidated','system' "
+          "WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='00000000-0000-0000-0000-00000000b020')")
+    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
+          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','{'7'*64}','retract','00000000-0000-0000-0000-00000000b020','{_KEY_A}',now())",
+          expect_ok=False)
