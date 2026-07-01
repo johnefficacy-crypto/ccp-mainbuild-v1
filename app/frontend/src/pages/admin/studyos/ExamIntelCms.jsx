@@ -208,9 +208,18 @@ const ENTITY_STATUS_CONFIG = {
   "pyq-sources":             { param: "trust_status",    label: "Trust status",    options: ["pending", "verified", "rejected"] },
 };
 
-// J1: entities that support text search, keyed to the backend param name.
-// Only syllabus-topic-mentions exposes a `q` text-search param; all other list
-// endpoints ignore unknown params, so the control is hidden for them (OD-2).
+// J1: entities that support backend text-search, keyed to the param name.
+// Only these 4 entities expose a `q` param; all others ignore unknown params.
+const ENTITY_SEARCH_PARAM = {
+  "syllabus-topic-mentions": "q",
+  "exam-phase-sections":     "q",
+  "subjects":                "q",
+  "topics":                  "q",
+};
+
+// J1: entities whose list endpoint has no `offset` support.
+// pyq-options uses .limit() only (no .range()); pagination is disabled for it.
+const ENTITY_NO_OFFSET = new Set(["pyq-options"]);
 
 const ENTITY_CONFIG = {
   "exam-families": {
@@ -814,6 +823,7 @@ export default function AdminExamIntelCms() {
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [scopeExamName, setScopeExamName] = useState(null);
   const [scopeCycleName, setScopeCycleName] = useState(null);
   const searchTimerRef = useRef(null);
@@ -826,6 +836,12 @@ export default function AdminExamIntelCms() {
   // Per-entity bulk caps — source of truth is the backend. UI copy only; the
   // backend enforces. Submit is never blocked client-side.
   const bulkCap = { "pyq-questions": 2000, "pyq-options": 4000, "pyq-question-topic-tags": 2000 }[entity] || 500;
+  // F4: fail closed when scope params are present but resolution failed.
+  // Null means still loading (OK); string "(exam not found)" means failed (block writes).
+  const scopeResolutionFailed =
+    (scopeExamId && scopeExamName === "(exam not found)") ||
+    (scopeCycleId && scopeExamId && scopeCycleName === "(cycle not found)");
+  const writesBlocked = !!scopeResolutionFailed;
 
   async function load({ searchVal, filterVal, pageVal } = {}) {
     const gen = ++loadGenRef.current;
@@ -838,12 +854,17 @@ export default function AdminExamIntelCms() {
     }
     setBusy(true);
     setErr(null);
+    // F5: clear rows immediately so stale rows are not actionable during transitions
+    setItems(null);
     const effectiveSearch = searchVal !== undefined ? searchVal : search;
     const effectiveFilter = filterVal !== undefined ? filterVal : statusFilter;
     const effectivePage = pageVal !== undefined ? pageVal : page;
-    const offset = (effectivePage - 1) * PAGE_SIZE;
+    const noOffset = ENTITY_NO_OFFSET.has(entity);
+    const offset = noOffset ? 0 : (effectivePage - 1) * PAGE_SIZE;
     try {
-      const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+      // F3: only send offset for entities whose backend supports it
+      if (!noOffset) params.set("offset", String(offset));
       if (scopeExamId && ENTITY_EXAM_SCOPE.has(entity)) {
         params.set("exam_id", scopeExamId);
       }
@@ -851,9 +872,10 @@ export default function AdminExamIntelCms() {
       if (scopeExamId && scopeCycleId && ENTITY_CYCLE_SCOPE.has(entity)) {
         params.set("exam_cycle_id", scopeCycleId);
       }
-      // Gate OD-2: send `search` for all entities (backend ignores if not supported)
-      if (effectiveSearch) {
-        params.set("search", effectiveSearch);
+      // F2: send search only for entities with documented backend support, using correct param
+      const searchParam = ENTITY_SEARCH_PARAM[entity];
+      if (effectiveSearch && searchParam) {
+        params.set(searchParam, effectiveSearch);
       }
       const statusCfg = ENTITY_STATUS_CONFIG[entity];
       if (effectiveFilter && statusCfg) {
@@ -862,8 +884,15 @@ export default function AdminExamIntelCms() {
       const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?${params}`);
       if (gen !== loadGenRef.current) return;
       setItems(r);
-      // C.3: always update total; if absent, derive disabled-Next from item count
-      setTotalCount(r?.total != null ? r.total : (r?.items?.length < PAGE_SIZE ? (offset + (r?.items?.length ?? 0)) : null));
+      // F6: track hasMore: full page without total → may have more; short page → done
+      const items = r?.items || [];
+      if (r?.total != null) {
+        setTotalCount(r.total);
+        setHasMore(offset + items.length < r.total);
+      } else {
+        setTotalCount(null);
+        setHasMore(!noOffset && items.length === PAGE_SIZE);
+      }
     } catch (e) {
       if (gen !== loadGenRef.current) return;
       setErr(getApiErrorMessage(e));
@@ -1125,6 +1154,7 @@ export default function AdminExamIntelCms() {
     setStatusFilter("");
     setPage(1);
     setTotalCount(null);
+    setHasMore(false);
     load({ searchVal: "", filterVal: "", pageVal: 1 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, isAuthorized, scopeExamId, scopeCycleId]);
@@ -1278,6 +1308,25 @@ export default function AdminExamIntelCms() {
         </div>
       )}
 
+      {scopeResolutionFailed && (
+        <div
+          className="rounded border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800"
+          role="alert"
+          data-testid="scope-resolution-error"
+        >
+          <strong>Scope error:</strong> The scoped exam or cycle could not be resolved. All write
+          actions are disabled until the scope is cleared or corrected.
+          <button
+            type="button"
+            className="ml-3 underline"
+            onClick={clearScope}
+            data-testid="scope-error-clear-btn"
+          >
+            Clear scope
+          </button>
+        </div>
+      )}
+
       <div className="flex gap-2 items-end flex-wrap">
         <label>
           <span className="block text-xs text-muted-foreground mb-1">Entity</span>
@@ -1302,6 +1351,7 @@ export default function AdminExamIntelCms() {
               type="button"
               className="btn small"
               onClick={() => setShowCreate((s) => !s)}
+              disabled={writesBlocked}
               data-testid="cms-toggle-create"
             >
               <Plus className="h-3 w-3" /> {showCreate ? "Cancel" : "New row"}
@@ -1311,6 +1361,7 @@ export default function AdminExamIntelCms() {
                 type="button"
                 className="btn small"
                 onClick={() => setShowBulk((s) => !s)}
+                disabled={writesBlocked}
                 data-testid="cms-toggle-bulk"
               >
                 <Plus className="h-3 w-3" /> {showBulk ? "Cancel bulk" : "Bulk import"}
@@ -1320,20 +1371,22 @@ export default function AdminExamIntelCms() {
         ) : null}
       </div>
 
-      {/* J1: search + status filter (C.1: search shown for all non-documents entities) */}
-      {!isDocuments && (
+      {/* J1: search + status filter; search only for entities with documented backend support */}
+      {!isDocuments && (ENTITY_SEARCH_PARAM[entity] || ENTITY_STATUS_CONFIG[entity]) && (
         <div className="flex gap-2 items-end flex-wrap">
-          <label>
-            <span className="block text-xs text-muted-foreground mb-1">Search</span>
-            <input
-              type="search"
-              value={search}
-              onChange={handleSearchChange}
-              placeholder={`Search ${cfg?.label ?? entity}…`}
-              className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background w-48"
-              data-testid="cms-search-input"
-            />
-          </label>
+          {ENTITY_SEARCH_PARAM[entity] && (
+            <label>
+              <span className="block text-xs text-muted-foreground mb-1">Search</span>
+              <input
+                type="search"
+                value={search}
+                onChange={handleSearchChange}
+                placeholder={`Search ${cfg?.label ?? entity}…`}
+                className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background w-48"
+                data-testid="cms-search-input"
+              />
+            </label>
+          )}
           {ENTITY_STATUS_CONFIG[entity] && (
             <label>
               <span className="block text-xs text-muted-foreground mb-1">
@@ -1559,6 +1612,7 @@ export default function AdminExamIntelCms() {
                       type="button"
                       className="btn small"
                       onClick={() => startEdit(r)}
+                      disabled={writesBlocked || busy}
                       data-testid={`cms-edit-${r.id}`}
                     >
                       Edit
@@ -1568,6 +1622,7 @@ export default function AdminExamIntelCms() {
                         type="button"
                         className="btn small ml-1"
                         onClick={() => deactivateRow(r)}
+                        disabled={writesBlocked || busy}
                         data-testid={`cms-retire-${r.id}`}
                       >
                         Retire
@@ -1588,7 +1643,7 @@ export default function AdminExamIntelCms() {
             ))}
           </tbody>
         </table>
-        {totalCount != null ? (
+        {items !== null && !ENTITY_NO_OFFSET.has(entity) ? (
           <div className="flex items-center gap-3 text-xs text-muted-foreground p-2 border-t border-border/40" data-testid="cms-pagination-footer">
             <button
               type="button"
@@ -1600,13 +1655,15 @@ export default function AdminExamIntelCms() {
               Previous
             </button>
             <span data-testid="cms-page-indicator">
-              Page {page} of {Math.max(1, Math.ceil(totalCount / PAGE_SIZE))} ({totalCount} total)
+              {totalCount != null
+                ? `Page ${page} of ${Math.max(1, Math.ceil(totalCount / PAGE_SIZE))} (${totalCount} total)`
+                : `Page ${page}`}
             </span>
             <button
               type="button"
               className="btn small"
               onClick={() => handlePageChange(page + 1)}
-              disabled={page >= Math.ceil(totalCount / PAGE_SIZE) || busy}
+              disabled={totalCount != null ? page >= Math.ceil(totalCount / PAGE_SIZE) : !hasMore || busy}
               data-testid="cms-page-next-btn"
             >
               Next

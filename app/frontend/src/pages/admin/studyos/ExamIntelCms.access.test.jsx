@@ -328,7 +328,10 @@ describe("ExamIntelCms create form scope prefill (I8-C)", () => {
 
   test("create form opens for exam-cycles without crashing (prefill does not throw)", async () => {
     mockUseAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" });
-    api.get.mockResolvedValue({ items: [], total: 0 });
+    api.get.mockImplementation((url) => {
+      if (url.includes("/exams?")) return Promise.resolve({ items: [{ id: "exam-prefill-1", name: "Exam Prefill 1" }], total: 1 });
+      return Promise.resolve({ items: [], total: 0 });
+    });
     renderCms("?exam_id=exam-prefill-1");
 
     await waitFor(() => screen.getByTestId("cms-entity-select"));
