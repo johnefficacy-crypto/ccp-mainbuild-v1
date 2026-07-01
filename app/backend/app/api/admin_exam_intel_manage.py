@@ -57,10 +57,6 @@ router = APIRouter(
 
 PERM_MANAGE = EXAM_INTELLIGENCE_MANAGE
 
-# Fields that identify a topic; changing any of these on a topic that has
-# locked coverage would invalidate the lock, so they are guarded by rule 4.
-_TOPIC_IDENTITY_FIELDS = {"subject_id", "parent_topic_id", "slug", "name", "level"}
-
 
 # ─── Scope resolution (gate OD-4: coverage path) ──────────────────────────
 
@@ -117,8 +113,22 @@ def _topic_has_locked_coverage(supabase, topic_id: str) -> bool:
 
 
 def _topic_dependencies(supabase, topic_id: str) -> list[str]:
-    """Return human-readable dependency labels blocking a topic delete."""
+    """Return human-readable dependency labels blocking a topic delete.
+
+    Covers every consumer that would either cascade-delete dependent rows
+    or reject at the DB layer (ON DELETE RESTRICT), so the endpoint returns
+    a clean 409 instead of silently cascading or 500-ing (gate rule 5):
+
+    - child topics (``parent_topic_id`` is ON DELETE CASCADE — a delete here
+      would silently remove the whole microtopic/concept subtree);
+    - aliases, prerequisite edges (both directions), topic relation edges
+      (all ON DELETE CASCADE);
+    - exam coverage and syllabus evidence (ON DELETE RESTRICT);
+    - PYQ question topic tags (ON DELETE RESTRICT — question-tagged topic).
+    """
     blockers: list[str] = []
+    if _safe_select(supabase, "topics", parent_topic_id=topic_id):
+        blockers.append("child topics")
     if _safe_select(supabase, "topic_aliases", topic_id=topic_id):
         blockers.append("aliases")
     if _safe_select(supabase, "exam_topic_coverage", topic_id=topic_id):
@@ -127,6 +137,12 @@ def _topic_dependencies(supabase, topic_id: str) -> list[str]:
         blockers.append("prerequisite edges (as topic)")
     if _safe_select(supabase, "topic_prerequisites", prerequisite_topic_id=topic_id):
         blockers.append("prerequisite edges (as prerequisite)")
+    if _safe_select(supabase, "pyq_question_topic_tags", topic_id=topic_id):
+        blockers.append("PYQ question tags")
+    if _safe_select(supabase, "syllabus_topic_mentions", topic_id=topic_id):
+        blockers.append("syllabus mentions")
+    if _safe_select(supabase, "topic_relation_edges", source_topic_id=topic_id):
+        blockers.append("topic relation edges")
     return blockers
 
 
@@ -236,14 +252,28 @@ def create_topic(
                 detail="parent_topic_id belongs to a different subject",
             )
     row.setdefault("is_active", True)
-    try:
-        inserted = (
-            supabase.table("topics")
-            .upsert(row, on_conflict="subject_id,parent_topic_id,slug")
-            .execute()
-            .data
-            or []
+    # Operational CREATE must not silently overwrite (no import/upsert
+    # semantics): a natural-key collision would bypass the PATCH locked-
+    # coverage guard yet be audited as a create. Probe explicitly and 409.
+    # The DB unique index on (subject_id, parent_topic_id, slug) does NOT
+    # catch top-level duplicates because NULL parent_topic_id is distinct in
+    # a unique index, so the probe handles the NULL-parent case in code.
+    candidates = (
+        supabase.table("topics")
+        .select("id, parent_topic_id")
+        .eq("subject_id", row["subject_id"])
+        .eq("slug", row["slug"])
+        .execute()
+        .data
+        or []
+    )
+    if any((c.get("parent_topic_id") or None) == (parent_id or None) for c in candidates):
+        raise HTTPException(
+            status_code=409,
+            detail="a topic with this (subject, parent, slug) already exists",
         )
+    try:
+        inserted = supabase.table("topics").insert(row).execute().data or []
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
     new = inserted[0] if inserted else row
@@ -276,24 +306,39 @@ def update_topic(
     if patch.get("level") and patch["level"] not in _TOPIC_LEVELS:
         raise HTTPException(status_code=422, detail=f"level must be one of {_TOPIC_LEVELS}")
     # Rule 4: manage must not silently edit locked content. If the topic has
-    # locked coverage, identity-defining changes must go through review first.
-    if set(patch) & _TOPIC_IDENTITY_FIELDS and _topic_has_locked_coverage(supabase, topic_id):
+    # locked coverage, ANY canonical field change (including is_active
+    # deactivation and default_difficulty_level) must go through review first —
+    # a narrow identity-only guard would let a load-bearing topic be
+    # deactivated or re-weighted out from under a locked/planner-ready row.
+    if _topic_has_locked_coverage(supabase, topic_id):
         raise HTTPException(
             status_code=409,
             detail=(
                 "topic has locked coverage; reopen it via review "
-                "(exam_intelligence.review) before editing identity fields"
+                "(exam_intelligence.review) before editing it with manage"
             ),
         )
+    # Effective subject/parent integrity (OD-15). When subject_id changes but
+    # parent_topic_id is not in the patch, the RETAINED parent must still
+    # belong to the new subject — otherwise a move would strand a child under
+    # a parent in the old subject. An explicit null clears the parent.
     target_subject = patch.get("subject_id", existing.get("subject_id"))
     if patch.get("subject_id"):
         _require_subject_in_exam(supabase, exam_id, patch["subject_id"])
-    if patch.get("parent_topic_id"):
-        parent = _safe_select(supabase, "topics", id=patch["parent_topic_id"])
+    parent_in_patch = "parent_topic_id" in patch
+    effective_parent = patch.get("parent_topic_id") if parent_in_patch else existing.get("parent_topic_id")
+    if effective_parent:
+        parent = _safe_select(supabase, "topics", id=effective_parent)
         if not parent:
             raise HTTPException(status_code=422, detail="parent_topic_id does not resolve")
         if parent.get("subject_id") != target_subject:
-            raise HTTPException(status_code=422, detail="parent_topic_id belongs to a different subject")
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "parent_topic_id belongs to a different subject than the "
+                    "target subject; clear or reassign the parent when moving subjects"
+                ),
+            )
     patch["updated_at"] = _now_iso()
     updated = supabase.table("topics").update(patch).eq("id", topic_id).execute().data or []
     audit_id = _audit(
@@ -330,7 +375,15 @@ def delete_topic(
                 "resolve them or use Advanced Repair for forced cleanup"
             ),
         )
-    supabase.table("topics").delete().eq("id", topic_id).execute()
+    # Safety net: any remaining ON DELETE RESTRICT consumer not enumerated
+    # above must surface as a 409, never an unhandled 500.
+    try:
+        supabase.table("topics").delete().eq("id", topic_id).execute()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=409,
+            detail=f"topic has remaining dependencies and cannot be deleted: {exc}",
+        )
     audit_id = _audit(
         supabase, admin, "exam_intel.manage.topic.delete",
         entity_type="topic", entity_id=topic_id,

@@ -109,6 +109,9 @@ def _seed() -> dict:
         ],
         "topic_aliases": [],
         "topic_prerequisites": [],
+        "pyq_question_topic_tags": [],
+        "syllabus_topic_mentions": [],
+        "topic_relation_edges": [],
         "admin_audit_logs": [],
     }
 
@@ -201,6 +204,33 @@ def test_create_topic_writes_row_and_audit():
     assert audit[-1]["notes"] == "admin_exam_intel_manage"
 
 
+def test_create_topic_rejects_duplicate_top_level_slug():
+    """No import/upsert semantics: a duplicate (subject, NULL, slug) → 409."""
+    sb = MngSBStub(_seed())  # t1 is (s1, NULL, percentages)
+    r = _client(sb).post(
+        f"{_BASE}/topics?exam_id=E1",
+        json={"reason": "attempt duplicate top-level", "payload": {
+            "subject_id": "s1", "slug": "percentages", "name": "Percentages 2", "level": "topic"}},
+    )
+    assert r.status_code == 409
+    # The existing row must be untouched (not overwritten).
+    assert next(t for t in sb.db["topics"] if t["id"] == "t1")["name"] == "Percentages"
+
+
+def test_create_topic_rejects_duplicate_child_slug():
+    seed = _seed()
+    seed["topics"].append({"id": "tc", "subject_id": "s1", "parent_topic_id": "t1",
+                           "slug": "basic", "name": "Basic", "level": "microtopic", "is_active": True})
+    sb = MngSBStub(seed)
+    r = _client(sb).post(
+        f"{_BASE}/topics?exam_id=E1",
+        json={"reason": "attempt duplicate child topic", "payload": {
+            "subject_id": "s1", "parent_topic_id": "t1", "slug": "basic",
+            "name": "Basic Again", "level": "microtopic"}},
+    )
+    assert r.status_code == 409
+
+
 def test_create_topic_rejects_subject_outside_exam():
     sb = MngSBStub(_seed())
     r = _client(sb).post(
@@ -234,13 +264,57 @@ def test_update_identity_field_blocked_when_coverage_locked():
     assert "locked" in str(r.json()["detail"]).lower()
 
 
-def test_update_nonidentity_field_allowed_when_coverage_locked():
+def test_update_any_field_blocked_when_coverage_locked():
+    """Rule 4: ALL canonical patches are rejected while coverage is locked."""
     seed = _seed()
     seed["exam_topic_coverage"][0]["reviewer_status"] = "locked"
     sb = MngSBStub(seed)
     r = _client(sb).patch(
         f"{_BASE}/topics/t1?exam_id=E1",
         json={"reason": "annotate description only", "payload": {"description": "note"}},
+    )
+    assert r.status_code == 409
+
+
+def test_deactivate_blocked_when_coverage_locked():
+    """is_active=false on a locked topic must be rejected (planner-impact)."""
+    seed = _seed()
+    seed["exam_topic_coverage"][0]["reviewer_status"] = "locked"
+    sb = MngSBStub(seed)
+    r = _client(sb).patch(
+        f"{_BASE}/topics/t1?exam_id=E1",
+        json={"reason": "deactivate a load-bearing topic", "payload": {"is_active": False}},
+    )
+    assert r.status_code == 409
+    assert next(t for t in sb.db["topics"] if t["id"] == "t1")["is_active"] is True
+
+
+def _seed_two_subjects_covered() -> dict:
+    seed = _seed()
+    # Cover s2 as well, and add a child under t1 in s1.
+    seed["exam_topic_coverage"].append({"id": "c2", "exam_id": "E1", "topic_id": "t9", "reviewer_status": "reviewed"})
+    seed["topics"].append({"id": "tc", "subject_id": "s1", "parent_topic_id": "t1",
+                           "slug": "basic", "name": "Basic", "level": "microtopic", "is_active": True})
+    return seed
+
+
+def test_subject_move_with_retained_cross_subject_parent_rejected():
+    """Moving a child to subject s2 while retaining its s1 parent → 422 (OD-15)."""
+    sb = MngSBStub(_seed_two_subjects_covered())
+    r = _client(sb).patch(
+        f"{_BASE}/topics/tc?exam_id=E1",
+        json={"reason": "move child across subjects", "payload": {"subject_id": "s2"}},
+    )
+    assert r.status_code == 422
+    assert "different subject" in str(r.json()["detail"]).lower()
+
+
+def test_subject_move_with_parent_cleared_allowed():
+    """Moving a child to s2 and clearing the parent (explicit null) is allowed."""
+    sb = MngSBStub(_seed_two_subjects_covered())
+    r = _client(sb).patch(
+        f"{_BASE}/topics/tc?exam_id=E1",
+        json={"reason": "move child and clear parent", "payload": {"subject_id": "s2", "parent_topic_id": None}},
     )
     assert r.status_code == 200, r.text
 
@@ -262,6 +336,27 @@ def test_delete_topic_blocked_by_alias_dependency():
     r = _client(sb).delete(f"{_BASE}/topics/t2?exam_id=E1&reason=cleanup attempt now")
     assert r.status_code == 409
     assert "aliases" in str(r.json()["detail"]).lower()
+
+
+def test_delete_topic_blocked_by_child_topics():
+    """parent_topic_id is ON DELETE CASCADE — must not silently delete a subtree."""
+    seed = _seed()
+    seed["topics"].append({"id": "tc", "subject_id": "s1", "parent_topic_id": "t2",
+                           "slug": "basic", "name": "Basic", "level": "microtopic", "is_active": True})
+    sb = MngSBStub(seed)
+    r = _client(sb).delete(f"{_BASE}/topics/t2?exam_id=E1&reason=would orphan a subtree")
+    assert r.status_code == 409
+    assert "child topics" in str(r.json()["detail"]).lower()
+
+
+def test_delete_topic_blocked_by_pyq_question_tags():
+    """pyq_question_topic_tags is ON DELETE RESTRICT — clean 409, not a 500."""
+    seed = _seed()
+    seed["pyq_question_topic_tags"].append({"id": "qt1", "question_id": "q1", "topic_id": "t2", "tag_role": "primary"})
+    sb = MngSBStub(seed)
+    r = _client(sb).delete(f"{_BASE}/topics/t2?exam_id=E1&reason=question tagged topic")
+    assert r.status_code == 409
+    assert "pyq question tags" in str(r.json()["detail"]).lower()
 
 
 def test_delete_topic_succeeds_when_no_dependencies():

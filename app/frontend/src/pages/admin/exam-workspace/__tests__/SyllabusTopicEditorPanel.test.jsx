@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
+import ToastProvider from "../../../../shared/ui/ToastProvider";
 
 jest.mock("../../../../lib/api", () => ({
   __esModule: true,
@@ -29,6 +30,14 @@ function routeGet(url) {
   return Promise.resolve({ items: [] });
 }
 
+function renderPanel() {
+  return render(
+    <ToastProvider>
+      <SyllabusTopicEditorPanel examId="E1" />
+    </ToastProvider>,
+  );
+}
+
 beforeEach(() => {
   mockAuthUser = { role: "admin", permissions: ["exam_intelligence.manage"] };
   api.get.mockReset();
@@ -43,30 +52,31 @@ beforeEach(() => {
 
 test("renders nothing without exam_intelligence.manage", () => {
   mockAuthUser = { role: "admin", permissions: [] };
-  const { container } = render(<SyllabusTopicEditorPanel examId="E1" />);
-  expect(container.firstChild).toBeNull();
+  const { container } = renderPanel();
+  expect(container.querySelector('[data-testid="syllabus-topic-editor"]')).toBeNull();
 });
 
 test("super_admin without token still sees the editor", async () => {
   mockAuthUser = { role: "super_admin", permissions: [] };
-  render(<SyllabusTopicEditorPanel examId="E1" />);
+  renderPanel();
   expect(await screen.findByTestId("syllabus-topic-editor")).toBeInTheDocument();
 });
 
 test("resolves subjects and lists topics for the first subject", async () => {
-  render(<SyllabusTopicEditorPanel examId="E1" />);
+  renderPanel();
   await waitFor(() => expect(screen.getByTestId("ste-subject-select")).not.toBeDisabled());
   expect(await screen.findByTestId("ste-topic-t1")).toHaveTextContent("Percentages");
   const topicCall = api.get.mock.calls.find(([u]) => u.includes("/topics?"));
   expect(topicCall[0]).toContain("exam_id=E1");
   expect(topicCall[0]).toContain("subject_id=s1");
+  expect(topicCall[0]).toContain("offset=0");
 });
 
 test("empty coverage shows empty-subjects state, no global fallback", async () => {
   api.get.mockImplementation((url) =>
     url.includes("/subjects") ? Promise.resolve({ items: [], total: 0 }) : routeGet(url),
   );
-  render(<SyllabusTopicEditorPanel examId="E1" />);
+  renderPanel();
   expect(await screen.findByTestId("ste-empty-subjects")).toBeInTheDocument();
   expect(api.get.mock.calls.some(([u]) => u.includes("/topics?"))).toBe(false);
 });
@@ -75,28 +85,42 @@ test("scope error blocks writes and shows an alert", async () => {
   api.get.mockImplementation((url) =>
     url.includes("/subjects") ? Promise.reject(new Error("boom")) : routeGet(url),
   );
-  render(<SyllabusTopicEditorPanel examId="E1" />);
+  renderPanel();
   expect(await screen.findByTestId("ste-scope-error")).toBeInTheDocument();
   expect(screen.getByTestId("ste-new-topic")).toBeDisabled();
 });
 
-test("search sends the q param after debounce", async () => {
+test("search sends q after debounce; level filter sends level", async () => {
   jest.useFakeTimers();
   try {
-    render(<SyllabusTopicEditorPanel examId="E1" />);
+    renderPanel();
     await waitFor(() => expect(screen.getByTestId("ste-search")).toBeInTheDocument());
     fireEvent.change(screen.getByTestId("ste-search"), { target: { value: "perc" } });
     act(() => { jest.advanceTimersByTime(350); });
-    await waitFor(() =>
-      expect(api.get.mock.calls.some(([u]) => u.includes("q=perc"))).toBe(true),
-    );
+    await waitFor(() => expect(api.get.mock.calls.some(([u]) => u.includes("q=perc"))).toBe(true));
+    fireEvent.change(screen.getByTestId("ste-level-filter"), { target: { value: "microtopic" } });
+    await waitFor(() => expect(api.get.mock.calls.some(([u]) => u.includes("level=microtopic"))).toBe(true));
   } finally {
     jest.useRealTimers();
   }
 });
 
+test("pagination: Next enabled when total exceeds page, advances offset; Prev resets", async () => {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/subjects")) return Promise.resolve(SUBJECTS);
+    if (url.includes("/topics")) return Promise.resolve({ items: TOPICS.items, total: 60 });
+    return Promise.resolve({ items: [] });
+  });
+  renderPanel();
+  await waitFor(() => expect(screen.getByTestId("ste-next")).not.toBeDisabled());
+  expect(screen.getByTestId("ste-prev")).toBeDisabled();
+  fireEvent.click(screen.getByTestId("ste-next"));
+  await waitFor(() => expect(api.get.mock.calls.some(([u]) => u.includes("offset=50"))).toBe(true));
+  expect(screen.getByTestId("ste-prev")).not.toBeDisabled();
+});
+
 test("creating a topic posts to the manage endpoint with a reason", async () => {
-  render(<SyllabusTopicEditorPanel examId="E1" />);
+  renderPanel();
   await waitFor(() => expect(screen.getByTestId("ste-new-topic")).not.toBeDisabled());
   fireEvent.click(screen.getByTestId("ste-new-topic"));
   fireEvent.change(screen.getByTestId("ste-form-name"), { target: { value: "Profit" } });
@@ -111,13 +135,28 @@ test("creating a topic posts to the manage endpoint with a reason", async () => 
 });
 
 test("short reason is rejected client-side (no POST)", async () => {
-  render(<SyllabusTopicEditorPanel examId="E1" />);
+  renderPanel();
   await waitFor(() => expect(screen.getByTestId("ste-new-topic")).not.toBeDisabled());
   fireEvent.click(screen.getByTestId("ste-new-topic"));
   fireEvent.change(screen.getByTestId("ste-form-name"), { target: { value: "X" } });
   fireEvent.change(screen.getByTestId("ste-form-slug"), { target: { value: "x" } });
   fireEvent.change(screen.getByTestId("ste-form-reason"), { target: { value: "short" } });
   fireEvent.click(screen.getByTestId("ste-form-save"));
-  await screen.findByTestId("ste-status");
+  await waitFor(() => expect(screen.getByTestId("ste-form")).toBeInTheDocument());
   expect(api.post).not.toHaveBeenCalled();
+});
+
+test("mutations run through useApiAction (busy state disables save)", async () => {
+  let resolvePost;
+  api.post.mockImplementation(() => new Promise((res) => { resolvePost = res; }));
+  renderPanel();
+  await waitFor(() => expect(screen.getByTestId("ste-new-topic")).not.toBeDisabled());
+  fireEvent.click(screen.getByTestId("ste-new-topic"));
+  fireEvent.change(screen.getByTestId("ste-form-name"), { target: { value: "Profit" } });
+  fireEvent.change(screen.getByTestId("ste-form-slug"), { target: { value: "profit" } });
+  fireEvent.change(screen.getByTestId("ste-form-reason"), { target: { value: "add operational topic" } });
+  fireEvent.click(screen.getByTestId("ste-form-save"));
+  await waitFor(() => expect(screen.getByTestId("ste-form-save")).toBeDisabled());
+  expect(screen.getByTestId("ste-form-save")).toHaveTextContent("Saving…");
+  await act(async () => { resolvePost({ ok: true }); });
 });
