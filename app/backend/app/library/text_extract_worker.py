@@ -201,11 +201,17 @@ def claim_next_retry_job(sb) -> dict | None:
             continue
         try:
             finished_at = _parse_iso(finished_at_str)
+            if finished_at.tzinfo is None:
+                # Fail-closed: timezone-naive timestamp cannot be safely
+                # compared with the tz-aware now(). _now_iso() always
+                # produces an aware timestamp, so naive values indicate
+                # an externally-written or legacy row.
+                continue
+            backoff = timedelta(seconds=attempt_count * BASE_BACKOFF_SECONDS)
+            if now - finished_at < backoff:
+                continue
         except (ValueError, TypeError):
-            # Fail-closed: malformed or timezone-naive timestamp.
-            continue
-        backoff = timedelta(seconds=attempt_count * BASE_BACKOFF_SECONDS)
-        if now - finished_at < backoff:
+            # Fail-closed: malformed timestamp.
             continue
         return row
     return None
@@ -263,13 +269,16 @@ def run_worker_pass(sb) -> dict[str, Any]:
             retry_due = _parse_iso(retry.get("finished_at") or "") + timedelta(
                 seconds=attempt_count * BASE_BACKOFF_SECONDS
             )
+            if retry_due.tzinfo is None:
+                retry_due = datetime.now(timezone.utc)
+            if queued_due.tzinfo is None:
+                queued_due = datetime.now(timezone.utc)
+            if retry_due <= queued_due:
+                candidate = retry
+                is_retry = True
+            else:
+                candidate = queued
         except (ValueError, TypeError):
-            retry_due = datetime.now(timezone.utc)
-
-        if retry_due <= queued_due:
-            candidate = retry
-            is_retry = True
-        else:
             candidate = queued
 
     job_id = candidate["id"]

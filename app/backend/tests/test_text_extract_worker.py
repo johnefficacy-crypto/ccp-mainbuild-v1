@@ -597,6 +597,22 @@ def test_retry_malformed_finished_at_skipped_fail_closed():
     assert claim_next_retry_job(sb) is None
 
 
+def test_retry_timezone_naive_finished_at_skipped_fail_closed():
+    """A tz-naive finished_at (no UTC offset) must be skipped fail-closed.
+    Without this guard, `now - finished_at` raises TypeError (offset-aware vs
+    offset-naive subtraction) and crashes the whole worker pass."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00",  # no 'Z' or '+00:00' → tz-naive
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    assert claim_next_retry_job(sb) is None  # must not raise
+
+
 def test_retry_pass_calls_run_job_without_pre_claim_requeue():
     """run_worker_pass must NOT mutate the job row before calling
     run_text_extract_job. _claim_job inside run_text_extract_job already
