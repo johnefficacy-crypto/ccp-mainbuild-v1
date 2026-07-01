@@ -951,31 +951,31 @@ BEGIN
   SELECT count(*)::int INTO v_resolved FROM public.writing_issue_resolution_events r
   WHERE r.resolving_evaluation_id = v_eval.id AND r.outcome = 'resolved';
 
-  -- Per-issue projection-linked evidence context (§4.12/§10.1). Every
-  -- CURRENT-STATE automatic projection on this evaluation that is not effectively
-  -- invalidated (an invalidated issue must never generate evidence, §4.10) earns
-  -- one projection-linked evidence row so it can participate in the schema
-  -- correction chain (§4.12c). Per-issue tier rule (§4.12a): a lineage the
-  -- aspirant already CORRECTED earlier in the session (a resolved resolution
-  -- event exists on that lineage — e.g. a regressed error) is 'correction'
-  -- (they corrected a supplied incorrect sentence); a freshly-surfaced error is
-  -- 'recognition' (the weakest signal — the error type was detected, not yet
-  -- produced correctly). 'production' is reserved for the clean unit-level row.
+  -- Per-issue projection-linked evidence context (§4.12/§4.12a/§10.1). POSITIVE
+  -- tiers require the aspirant to DEMONSTRATE the tier; the mere presence of an
+  -- active/unresolved error (esp. must_fix) is a WEAKNESS, not a demonstration,
+  -- and MUST NOT earn positive evidence (§4.12a). The architecture defines no
+  -- negative "error observation" evidence record — so an active error emits
+  -- NOTHING here. The ONLY positive projection-linked row emitted for an issue is
+  -- a 'correction' (§4.12a: "aspirant corrected a supplied incorrect sentence")
+  -- for a lineage the aspirant actually RESOLVED in THIS evaluation — i.e. a
+  -- resolution event with outcome='resolved' whose resolving_evaluation_id is
+  -- this evaluation. The row is linked to the RESOLVED (prior-version) issue's
+  -- automatic projection so a later false-positive review can retract/replace it
+  -- (§4.12c). A resolved issue that was itself review-invalidated earns nothing.
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'issue_projection_id', pr.id,
     'microtopic_id', ie.microtopic_id,
     'issue_type', ie.issue_type,
-    'evidence_tier', CASE WHEN EXISTS (
-        SELECT 1 FROM public.writing_issue_resolution_events r
-        JOIN public.writing_issue_events pie ON pie.id = r.issue_event_id
-        WHERE pie.lineage_id = ie.lineage_id AND r.outcome = 'resolved')
-      THEN 'correction' ELSE 'recognition' END
+    'evidence_tier', 'correction'
   ) ORDER BY pr.created_at, pr.id), '[]'::jsonb) INTO v_projs
-  FROM public.writing_issue_projections pr
-  JOIN public.writing_issue_events ie ON ie.id = pr.issue_event_id
-  WHERE ie.evaluation_id = v_eval.id
+  FROM public.writing_issue_resolution_events r
+  JOIN public.writing_issue_events ie ON ie.id = r.issue_event_id
+  JOIN public.writing_issue_projections pr
+    ON pr.issue_event_id = ie.id AND pr.projection_kind = 'automatic'
+  WHERE r.resolving_evaluation_id = v_eval.id
+    AND r.outcome = 'resolved'
     AND ie.affects_current_state = TRUE
-    AND pr.projection_kind = 'automatic'
     AND NOT ewp_private.ewp_issue_effectively_invalidated(ie.id);
 
   RETURN jsonb_build_object(
@@ -1230,19 +1230,23 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_row  public.writing_mastery_outbox%ROWTYPE;
-  v_ctx  record;
-  v_pair jsonb;
-  v_ev   jsonb;
-  v_sh   jsonb;
-  v_op   text;
-  v_tier text;
-  v_proj uuid;
-  v_micro uuid;
-  v_expect_micro uuid;
-  v_key  text;
-  v_wrote int := 0;
-  v_seen_unit boolean := FALSE;
+  v_row     public.writing_mastery_outbox%ROWTYPE;
+  v_ctx     record;
+  v_eval    public.writing_evaluations%ROWTYPE;
+  v_must_fix boolean;
+  v_resolved int;
+  v_unit_tier text;
+  v_pair    jsonb;
+  v_ev      jsonb;
+  v_sh      jsonb;
+  v_op      text;
+  v_tier    text;
+  v_proj    uuid;
+  v_micro   uuid;
+  v_key     text;
+  v_wrote   int := 0;
+  v_expected int;
+  v_exp     record;
 BEGIN
   SELECT * INTO v_row FROM public.writing_mastery_outbox WHERE id = p_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'ewp_outbox_not_found: %', p_id; END IF;
@@ -1254,6 +1258,55 @@ BEGIN
   END IF;
 
   SELECT * INTO v_ctx FROM ewp_private.ewp_outbox_evidence_context(p_id);
+  SELECT * INTO v_eval FROM public.writing_evaluations WHERE id = v_row.evaluation_id;
+  v_must_fix := EXISTS (
+    SELECT 1 FROM public.writing_issue_events i
+    WHERE i.evaluation_id = v_row.evaluation_id AND i.severity = 'must_fix'
+      AND i.affects_current_state = TRUE);
+  SELECT count(*)::int INTO v_resolved FROM public.writing_issue_resolution_events r
+  WHERE r.resolving_evaluation_id = v_row.evaluation_id AND r.outcome = 'resolved';
+
+  -- SERVER-DERIVED EXPECTED SET (§4.12/§4.12a). The completion NEVER trusts the
+  -- worker's row set or tiers: it derives, inside this transaction, the EXACT set
+  -- of evidence rows this evaluation must produce (projection ids + microtopic +
+  -- tier + key) and requires the supplied payload to match it exactly — count,
+  -- uniqueness, projection ids, microtopic and tier. Omission, duplicate and
+  -- forged-tier payloads are all rejected.
+  CREATE TEMP TABLE IF NOT EXISTS _ewp_expected(
+    proj uuid, micro uuid, tier text, key text, matched boolean) ON COMMIT DROP;
+  DELETE FROM _ewp_expected;
+
+  -- Unit-level row (projection-less): expected iff the evaluation reached a
+  -- terminal-success state with NO unresolved must_fix (mirrors
+  -- evidence_deriver.derive_unit_evidence). Tier = 'correction' when the aspirant
+  -- resolved ≥1 prior error this evaluation, else 'production'. Its key IS the
+  -- outbox idempotency_key.
+  IF v_eval.overall_status IN ('completed','terminal_partial') AND NOT v_must_fix THEN
+    v_unit_tier := CASE WHEN v_resolved > 0 THEN 'correction' ELSE 'production' END;
+    INSERT INTO _ewp_expected(proj, micro, tier, key, matched)
+    VALUES (NULL, v_ctx.microtopic_id, v_unit_tier, v_row.idempotency_key, FALSE);
+  END IF;
+
+  -- Projection-linked 'correction' rows: exactly one per lineage the aspirant
+  -- RESOLVED in this evaluation (outcome='resolved'), linked to the resolved
+  -- issue's automatic projection, keyed on the resolved issue's microtopic. A
+  -- review-invalidated resolved issue earns nothing.
+  INSERT INTO _ewp_expected(proj, micro, tier, key, matched)
+  SELECT pr.id, ie.microtopic_id, 'correction',
+         ewp_private.ewp_compute_evidence_key(
+           'assert', v_row.user_id, v_row.evaluation_id, pr.id, ie.microtopic_id,
+           'correction', v_ctx.source_type, NULL),
+         FALSE
+  FROM public.writing_issue_resolution_events r
+  JOIN public.writing_issue_events ie ON ie.id = r.issue_event_id
+  JOIN public.writing_issue_projections pr
+    ON pr.issue_event_id = ie.id AND pr.projection_kind = 'automatic'
+  WHERE r.resolving_evaluation_id = v_row.evaluation_id
+    AND r.outcome = 'resolved'
+    AND ie.affects_current_state = TRUE
+    AND NOT ewp_private.ewp_issue_effectively_invalidated(ie.id);
+
+  SELECT count(*) INTO v_expected FROM _ewp_expected;
 
   IF p_pairs IS NOT NULL AND jsonb_typeof(p_pairs) = 'array' THEN
     FOR v_pair IN SELECT * FROM jsonb_array_elements(p_pairs) LOOP
@@ -1281,53 +1334,39 @@ BEGIN
         RAISE EXCEPTION 'ewp_outbox_payload_mismatch: pair does not match the claimed row %', p_id;
       END IF;
 
-      -- Per-row microtopic/projection binding.
-      IF v_proj IS NULL THEN
-        -- Unit-level row: its key IS the outbox idempotency_key; microtopic is the
-        -- unit microtopic. Exactly one unit-level row is allowed.
-        IF v_seen_unit THEN
-          RAISE EXCEPTION 'ewp_outbox_payload_mismatch: more than one unit-level (projection-less) row';
-        END IF;
-        v_seen_unit := TRUE;
-        v_expect_micro := v_ctx.microtopic_id;
-        IF v_micro IS DISTINCT FROM v_ctx.microtopic_id
-           OR (v_ev->>'evidence_key') <> v_row.idempotency_key THEN
-          RAISE EXCEPTION 'ewp_outbox_payload_mismatch: unit-level row key/microtopic mismatch';
-        END IF;
-      ELSE
-        -- Projection-linked row: the projection must be a current-state automatic
-        -- projection on THIS evaluation and not effectively invalidated; the
-        -- microtopic must be that issue's microtopic.
-        SELECT ie.microtopic_id INTO v_expect_micro
-        FROM public.writing_issue_projections pr
-        JOIN public.writing_issue_events ie ON ie.id = pr.issue_event_id
-        WHERE pr.id = v_proj AND ie.evaluation_id = v_row.evaluation_id
-          AND ie.affects_current_state = TRUE
-          AND pr.projection_kind = 'automatic'
-          AND NOT ewp_private.ewp_issue_effectively_invalidated(ie.id);
-        IF NOT FOUND THEN
-          RAISE EXCEPTION 'ewp_outbox_payload_mismatch: projection % is not a current-state automatic projection on evaluation %', v_proj, v_row.evaluation_id;
-        END IF;
-        IF v_micro IS DISTINCT FROM v_expect_micro THEN
-          RAISE EXCEPTION 'ewp_outbox_payload_mismatch: projection-linked microtopic mismatch';
-        END IF;
+      -- Match this pair to an UNCONSUMED expected row keyed by projection id
+      -- (NULL for the unit-level row). Tier and microtopic must match the
+      -- server-derived expectation exactly; a re-supplied (duplicate) row finds
+      -- no unmatched expected row and is rejected.
+      SELECT * INTO v_exp FROM _ewp_expected e
+      WHERE e.proj IS NOT DISTINCT FROM v_proj AND e.matched = FALSE
+      LIMIT 1;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'ewp_outbox_payload_mismatch: unexpected or duplicate row for projection % (not in the server-derived expected set)', v_proj;
+      END IF;
+      IF v_tier <> v_exp.tier THEN
+        RAISE EXCEPTION 'ewp_outbox_payload_mismatch: forged tier % (expected % for projection %)', v_tier, v_exp.tier, v_proj;
+      END IF;
+      IF v_micro IS DISTINCT FROM v_exp.micro THEN
+        RAISE EXCEPTION 'ewp_outbox_payload_mismatch: microtopic mismatch for projection %', v_proj;
+      END IF;
+      -- Strongest binding: the re-derived key must equal both the server-derived
+      -- expected key AND the worker-supplied evidence key.
+      v_key := ewp_private.ewp_compute_evidence_key(
+        v_op, v_row.user_id, v_row.evaluation_id, v_proj, v_exp.micro,
+        v_tier, v_ctx.source_type, NULL);
+      IF v_key <> v_exp.key OR v_key <> (v_ev->>'evidence_key') THEN
+        RAISE EXCEPTION 'ewp_outbox_payload_mismatch: re-derived key does not match the expected/supplied evidence_key';
       END IF;
 
-      -- Strongest binding: the key is RE-DERIVED here from the bound identity and
-      -- must equal the worker-supplied evidence/shadow key.
-      v_key := ewp_private.ewp_compute_evidence_key(
-        v_op, v_row.user_id, v_row.evaluation_id, v_proj, v_expect_micro,
-        v_tier, v_ctx.source_type, NULL);
-      IF v_key <> (v_ev->>'evidence_key') THEN
-        RAISE EXCEPTION 'ewp_outbox_payload_mismatch: re-derived key does not match the supplied evidence_key';
-      END IF;
+      UPDATE _ewp_expected SET matched = TRUE WHERE proj IS NOT DISTINCT FROM v_proj;
 
       INSERT INTO public.user_topic_mastery_evidence(
         user_id, exam_id, topic_id, microtopic_id, source_type, source_entity_id,
         evidence_tier, score, confidence, issue_projection_id, evidence_op,
         evidence_key, observed_at)
       VALUES (
-        v_row.user_id, v_ctx.exam_id, v_ctx.topic_id, v_expect_micro,
+        v_row.user_id, v_ctx.exam_id, v_ctx.topic_id, v_exp.micro,
         v_ctx.source_type, v_ctx.source_entity_id, v_tier,
         NULLIF(v_ev->>'score','')::numeric, NULLIF(v_ev->>'confidence','')::numeric,
         v_proj, v_op, v_ev->>'evidence_key', now())
@@ -1338,7 +1377,7 @@ BEGIN
         evaluation_id, issue_projection_id, evidence_tier, score, confidence,
         delta_json, evidence_key)
       VALUES (
-        v_row.user_id, v_ctx.exam_id, v_ctx.topic_id, v_expect_micro,
+        v_row.user_id, v_ctx.exam_id, v_ctx.topic_id, v_exp.micro,
         v_ctx.source_type, v_ctx.source_entity_id, v_row.evaluation_id, v_proj,
         v_tier, NULLIF(v_sh->>'score','')::numeric, NULLIF(v_sh->>'confidence','')::numeric,
         COALESCE(v_sh->'delta_json','{}'::jsonb), v_sh->>'evidence_key')
@@ -1348,8 +1387,162 @@ BEGIN
     END LOOP;
   END IF;
 
+  -- Set equality: every server-derived expected row must have been supplied.
+  -- (Omission is rejected here; unexpected/duplicate rows were rejected above.)
+  IF EXISTS (SELECT 1 FROM _ewp_expected WHERE matched = FALSE) THEN
+    RAISE EXCEPTION 'ewp_outbox_payload_mismatch: payload omits % of % server-derived expected rows',
+      (SELECT count(*) FROM _ewp_expected WHERE matched = FALSE), v_expected;
+  END IF;
+
   UPDATE public.writing_mastery_outbox SET status = 'done', processed_at = now() WHERE id = p_id;
   RETURN jsonb_build_object('status','done','wrote_evidence', v_wrote > 0, 'rows', v_wrote);
+END;
+$$;
+
+-- ===========================================================================
+-- Correction-chain guard, ORDERED variant (§4.10a/§4.12c). Redefines the 205
+-- guard function so intermediate effective transitions can be applied in order
+-- (the 205 version only admitted corrections citing the LATEST review event,
+-- which silently dropped every intermediate transition — e.g. an invalidate that
+-- was later confirmed lost its retract→re-assert chain). The immutability rule is
+-- honoured: 205 is not edited; this is a forward CREATE OR REPLACE in a new
+-- migration. All other 205 invariants are preserved VERBATIM; ONLY the
+-- "cited-review-must-be-latest" staleness gate is replaced by an in-ORDER gate:
+-- a correction must supersede the tail produced by the IMMEDIATELY-PREVIOUS
+-- review event (the tail's causing decision must equal the cited event's previous
+-- effective decision). This applies every transition one step at a time in
+-- (created_at, event_seq) order and still rejects skip-ahead / out-of-order
+-- corrections, while allowing a non-latest event whose predecessor is already
+-- applied.
+-- ===========================================================================
+CREATE OR REPLACE FUNCTION public.ewp_check_evidence_correction()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  pred_issue      uuid;
+  pred_proj       uuid;
+  root_proj       uuid;
+  review_issue    uuid;
+  review_decision text;
+  cited_created   timestamptz;
+  cited_seq       bigint;
+  prev_decision   text;
+  tail_decision   text;
+  new_issue       uuid;
+  new_kind        text;
+  new_override    uuid;
+  has_successor   boolean;
+BEGIN
+  IF NEW.supersedes_evidence_key IS NOT NULL THEN
+    -- must supersede the effective tail (a row with no successor)
+    SELECT EXISTS (
+      SELECT 1 FROM public.user_topic_mastery_evidence s
+      WHERE s.supersedes_evidence_key = NEW.supersedes_evidence_key
+    ) INTO has_successor;
+    IF has_successor THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: predecessor % already superseded (not the effective tail)', NEW.supersedes_evidence_key;
+    END IF;
+
+    -- predecessor MUST resolve to an issue via its projection; capture the
+    -- predecessor's EXACT projection (retract must preserve it) AND the decision
+    -- of the review event that produced the tail (original assert → 'confirmed').
+    SELECT p.issue_projection_id, ie.id, COALESCE(rp.decision, 'confirmed')
+      INTO pred_proj, pred_issue, tail_decision
+      FROM public.user_topic_mastery_evidence p
+      JOIN public.writing_issue_projections pr ON pr.id = p.issue_projection_id
+      JOIN public.writing_issue_events ie ON ie.id = pr.issue_event_id
+      LEFT JOIN public.writing_issue_review_events rp ON rp.id = p.review_event_id
+      WHERE p.evidence_key = NEW.supersedes_evidence_key;
+    IF pred_issue IS NULL THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: predecessor % has no issue projection to correct', NEW.supersedes_evidence_key;
+    END IF;
+
+    -- root of the supersession chain (the original assert) — re-assert must
+    -- restore its EXACT automatic projection, not just any automatic one.
+    WITH RECURSIVE chain AS (
+      SELECT e.evidence_key, e.supersedes_evidence_key, e.issue_projection_id
+        FROM public.user_topic_mastery_evidence e
+        WHERE e.evidence_key = NEW.supersedes_evidence_key
+      UNION ALL
+      SELECT e.evidence_key, e.supersedes_evidence_key, e.issue_projection_id
+        FROM public.user_topic_mastery_evidence e
+        JOIN chain c ON e.evidence_key = c.supersedes_evidence_key
+    )
+    SELECT issue_projection_id INTO root_proj FROM chain WHERE supersedes_evidence_key IS NULL;
+
+    -- citing review event: target issue, decision, and ordering position
+    SELECT issue_event_id, decision, created_at, event_seq
+      INTO review_issue, review_decision, cited_created, cited_seq
+      FROM public.writing_issue_review_events WHERE id = NEW.review_event_id;
+    IF review_issue IS DISTINCT FROM pred_issue THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: review event % targets a different issue than the predecessor', NEW.review_event_id;
+    END IF;
+
+    -- Previous effective decision for the cited event = latest event strictly
+    -- before it, defaulting to 'confirmed' (active) when there is none.
+    SELECT decision INTO prev_decision
+      FROM public.writing_issue_review_events r2
+      WHERE r2.issue_event_id = pred_issue
+        AND (r2.created_at, r2.event_seq) < (cited_created, cited_seq)
+      ORDER BY r2.created_at DESC, r2.event_seq DESC
+      LIMIT 1;
+    prev_decision := COALESCE(prev_decision, 'confirmed');
+
+    -- ORDERED processing (replaces the 205 latest-only gate): the tail this
+    -- correction supersedes must be the one produced by the cited event's
+    -- immediately-previous review event. Equivalently the tail's causing decision
+    -- must equal prev_decision. This forbids skipping ahead (applying a later
+    -- transition before an earlier one) and re-applying an already-processed
+    -- transition, without forbidding a legitimately in-order non-latest event.
+    IF tail_decision IS DISTINCT FROM prev_decision THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: out-of-order correction (tail decision % <> previous effective decision % for the cited review %)', tail_decision, prev_decision, NEW.review_event_id;
+    END IF;
+
+    -- the decision must actually CHANGE the effective decision; an unchanged
+    -- transition (confirmed->confirmed, ...) emits nothing (§4.10a).
+    IF review_decision = prev_decision THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: review decision % is unchanged from the previous effective decision (no correction)', review_decision;
+    END IF;
+
+    -- Locked review-decision -> evidence-op mapping (§4.12c):
+    --   confirmed -> assert (re-assert), invalidated -> retract, reclassified -> replace.
+    IF (review_decision = 'confirmed'    AND NEW.evidence_op <> 'assert')
+       OR (review_decision = 'invalidated'  AND NEW.evidence_op <> 'retract')
+       OR (review_decision = 'reclassified' AND NEW.evidence_op <> 'replace') THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: evidence_op % does not match review decision %', NEW.evidence_op, review_decision;
+    END IF;
+
+    -- EVERY superseding row must carry a projection on the predecessor's issue.
+    IF NEW.issue_projection_id IS NULL THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: a superseding row must carry a projection on the predecessor issue';
+    END IF;
+    SELECT pr.issue_event_id, pr.projection_kind, pr.override_review_event_id
+      INTO new_issue, new_kind, new_override
+      FROM public.writing_issue_projections pr WHERE pr.id = NEW.issue_projection_id;
+    IF new_issue IS DISTINCT FROM pred_issue THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: projection is on a different issue than the predecessor';
+    END IF;
+
+    -- EXACT op-specific projection identity:
+    --   replace  -> the review-override projection created by the cited event;
+    --   re-assert-> the EXACT original automatic projection at the chain root;
+    --   retract  -> the predecessor's EXACT projection (preserve).
+    IF NEW.evidence_op = 'replace' THEN
+      IF new_kind IS DISTINCT FROM 'review_override' OR new_override IS DISTINCT FROM NEW.review_event_id THEN
+        RAISE EXCEPTION 'evidence_correction_invalid: replace must carry the review_override projection created by the cited review event';
+      END IF;
+    ELSIF NEW.evidence_op = 'assert' THEN
+      IF new_kind IS DISTINCT FROM 'automatic' OR NEW.issue_projection_id IS DISTINCT FROM root_proj THEN
+        RAISE EXCEPTION 'evidence_correction_invalid: re-assert must restore the exact original automatic projection at the chain root';
+      END IF;
+    ELSIF NEW.evidence_op = 'retract' THEN
+      IF NEW.issue_projection_id IS DISTINCT FROM pred_proj THEN
+        RAISE EXCEPTION 'evidence_correction_invalid: retract must preserve the predecessor''s exact projection';
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
 END;
 $$;
 
@@ -1380,10 +1573,12 @@ DECLARE
   v_tail      public.user_topic_mastery_evidence%ROWTYPE;
   v_user      uuid;
   v_eval      uuid;
+  v_micro     uuid;
   v_flag      text;
   v_key       text;
   v_override  uuid;
   v_canonical text;
+  v_count     int;
   v_revision  int;
 BEGIN
   SELECT issue_event_id, decision, corrected_issue_type, created_at, event_seq
@@ -1391,14 +1586,21 @@ BEGIN
     FROM public.writing_issue_review_events WHERE id = p_review_event_id;
   IF v_issue IS NULL THEN RAISE EXCEPTION 'ewp_review_event_not_found: %', p_review_event_id; END IF;
 
-  -- The cited review must be the LATEST for the issue (serialized; no stale).
-  IF EXISTS (SELECT 1 FROM public.writing_issue_review_events r2
-             WHERE r2.issue_event_id = v_issue
-               AND (r2.created_at, r2.event_seq) > (v_created, v_seq)) THEN
-    RETURN jsonb_build_object('status','noop','reason','not_latest');
-  END IF;
+  -- SERIALIZED per issue (§4.10a/§4.12c). Every review event that CHANGES the
+  -- effective decision is processed — NOT latest-only — so intermediate
+  -- transitions (e.g. invalidated then confirmed queued before the first drain)
+  -- are never dropped: the retract→re-assert chain stays causally intact. The
+  -- advisory lock serializes concurrent enqueues for one issue; the apply-side
+  -- correction guard (ewp_check_evidence_correction) enforces that each
+  -- correction supersedes the tail produced by the immediately-previous review
+  -- event, so corrections land in (created_at, event_seq) order one step at a
+  -- time regardless of enqueue/claim interleaving.
+  PERFORM pg_advisory_xact_lock(hashtext('ewp_review_issue:' || v_issue::text));
 
-  -- Previous effective decision (latest strictly before), default 'confirmed'.
+  -- Previous effective decision for the CITED event = latest event strictly
+  -- before it, default 'confirmed' (active). The op is this event's OWN
+  -- transition (not measured against the newest event), so a non-latest event
+  -- still enqueues its transition.
   SELECT decision INTO v_prev FROM public.writing_issue_review_events r2
     WHERE r2.issue_event_id = v_issue
       AND (r2.created_at, r2.event_seq) < (v_created, v_seq)
@@ -1412,7 +1614,10 @@ BEGIN
                           WHEN 'invalidated' THEN 'retract'
                           WHEN 'reclassified' THEN 'replace' END;
 
-  -- Currently-effective evidence tail for this issue (the row nothing supersedes).
+  -- Effective evidence tail for this issue at enqueue time (the row nothing
+  -- supersedes) — used only to confirm evidence exists to correct and to resolve
+  -- the user/pinned-mode. The APPLY-side claim recomputes the tail so a correction
+  -- always supersedes whatever is effective when it lands (§4.12c).
   SELECT e.* INTO v_tail
     FROM public.user_topic_mastery_evidence e
     JOIN public.writing_issue_projections pr ON pr.id = e.issue_projection_id
@@ -1425,8 +1630,11 @@ BEGIN
   END IF;
   v_user := v_tail.user_id;
 
-  -- Pinned mode is copied from the assertion's evaluation outbox (§4.12c/§8.2).
-  SELECT ie.evaluation_id, ie.microtopic_id INTO v_eval
+  -- Pinned mode is COPIED from the assertion's evaluation outbox (§4.12c/§8.2),
+  -- never re-resolved from the current flag. FAIL CLOSED: if the superseded
+  -- assertion's pinned channel cannot be resolved, do NOT invent 'shadow' — skip
+  -- and surface it, so a correction is never emitted on a fabricated channel.
+  SELECT ie.evaluation_id, ie.microtopic_id INTO v_eval, v_micro
     FROM public.writing_issue_projections pr
     JOIN public.writing_issue_events ie ON ie.id = pr.issue_event_id
     WHERE pr.id = v_tail.issue_projection_id;
@@ -1434,12 +1642,17 @@ BEGIN
     FROM public.writing_mastery_outbox o
     WHERE o.source_kind = 'evaluation' AND o.evaluation_id = v_eval
     ORDER BY o.created_at LIMIT 1;
-  v_flag := COALESCE(v_flag, 'shadow');
+  IF v_flag IS NULL THEN
+    RETURN jsonb_build_object('status','noop','reason','unresolved_pinned_mode');
+  END IF;
 
   -- For a reclassify, ensure the review-override projection exists (§4.11a): a
   -- human reclassification produces it at the session's pinned revision. Seeded
   -- flows may already have it; create it idempotently otherwise so 'replace' has
-  -- a projection to carry.
+  -- a projection to carry. The canonical error type uses the ACTUAL transactional
+  -- prior-occurrence count for (user, microtopic, corrected type) — NOT a
+  -- hardcoded prior_count=1 — via ewp_canonical_error_type; an unknown/unmappable
+  -- corrected type leaves canonical_error_type NULL (never forced, §6).
   IF v_decision = 'reclassified' THEN
     SELECT id INTO v_override FROM public.writing_issue_projections
       WHERE projection_kind = 'review_override' AND override_review_event_id = p_review_event_id;
@@ -1447,12 +1660,29 @@ BEGIN
       SELECT projection_revision INTO v_revision FROM public.writing_issue_projections
         WHERE issue_event_id = v_issue AND projection_kind = 'automatic'
         ORDER BY projection_revision DESC LIMIT 1;
-      v_canonical := ewp_private.ewp_canonical_error_type(COALESCE(v_corrected, 'word_choice'), 1);
+      -- Actual prior-occurrence count for the corrected type (current-state,
+      -- non-invalidated, this user + the issue's microtopic), excluding this issue.
+      SELECT count(*) INTO v_count
+      FROM public.writing_issue_events i2
+      JOIN public.writing_evaluations e3 ON e3.id = i2.evaluation_id
+      JOIN public.writing_unit_versions v3 ON v3.id = e3.unit_version_id
+      JOIN public.writing_session_units u3 ON u3.id = v3.unit_id
+      JOIN public.writing_sessions s3 ON s3.id = u3.session_id
+      WHERE s3.user_id = v_user
+        AND i2.issue_type = v_corrected
+        AND i2.microtopic_id IS NOT DISTINCT FROM v_micro
+        AND i2.id <> v_issue
+        AND i2.affects_current_state = TRUE
+        AND NOT ewp_private.ewp_issue_effectively_invalidated(i2.id);
+      v_canonical := CASE WHEN v_corrected IS NULL THEN NULL
+                          ELSE ewp_private.ewp_canonical_error_type(v_corrected, v_count) END;
       INSERT INTO public.writing_issue_projections(
         issue_event_id, projection_revision, projection_kind, override_review_event_id,
         canonical_error_type, projection_confidence, rationale)
       VALUES (v_issue, COALESCE(v_revision, 1), 'review_override', p_review_event_id,
-              COALESCE(v_canonical, 'concept_gap'), 0.9, 'review_override:' || COALESCE(v_corrected,'reclassified'))
+              v_canonical,
+              CASE WHEN v_canonical IS NULL THEN NULL ELSE 0.9 END,
+              'review_override:' || COALESCE(v_corrected,'reclassified'))
       RETURNING id INTO v_override;
     END IF;
   END IF;
@@ -1471,6 +1701,90 @@ BEGIN
     'supersedes_evidence_key', v_tail.evidence_key);
 END;
 $$;
+
+-- Shared, server-side correction context for a review_correction outbox row.
+-- Re-derives (never trusts the worker): the CURRENT effective evidence tail for
+-- the cited issue, the op-specific projection to carry (retract→predecessor's
+-- exact projection; replace→the review-override projection; assert→the chain-root
+-- automatic projection), the source evaluation, and the identity fields copied
+-- from the tail (topic/microtopic/exam/source_type/source_entity/tier). Both the
+-- claim RPC and the completion RPC consume THIS single derivation, so the payload
+-- the worker returns is bound field-for-field to what the server independently
+-- recomputes — a forged tier/topic/source/evaluation/supersedes cannot slip
+-- through (§4.12c/§8.2).
+CREATE OR REPLACE FUNCTION ewp_private.ewp_review_correction_context(p_outbox uuid)
+RETURNS TABLE(
+  review_event_id uuid, evidence_op text, user_id uuid,
+  supersedes_evidence_key text, issue_projection_id uuid, evaluation_id uuid,
+  topic_id uuid, microtopic_id uuid, exam_id uuid, source_type text,
+  source_entity_id uuid, evidence_tier text)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row   public.writing_mastery_outbox%ROWTYPE;
+  v_issue uuid;
+  v_tail  public.user_topic_mastery_evidence%ROWTYPE;
+  v_proj  uuid;
+  v_root  uuid;
+  v_eval  uuid;
+BEGIN
+  SELECT * INTO v_row FROM public.writing_mastery_outbox WHERE id = p_outbox;
+  IF NOT FOUND OR v_row.source_kind <> 'review_correction' THEN RETURN; END IF;
+
+  SELECT issue_event_id INTO v_issue
+    FROM public.writing_issue_review_events WHERE id = v_row.review_event_id;
+
+  SELECT e.* INTO v_tail
+    FROM public.user_topic_mastery_evidence e
+    JOIN public.writing_issue_projections pr ON pr.id = e.issue_projection_id
+    WHERE pr.issue_event_id = v_issue
+      AND NOT EXISTS (SELECT 1 FROM public.user_topic_mastery_evidence s
+                      WHERE s.supersedes_evidence_key = e.evidence_key AND s.user_id = e.user_id)
+    ORDER BY e.observed_at DESC LIMIT 1;
+  IF v_tail.evidence_key IS NULL THEN RETURN; END IF;
+
+  IF v_row.evidence_op = 'retract' THEN
+    v_proj := v_tail.issue_projection_id;
+  ELSIF v_row.evidence_op = 'replace' THEN
+    SELECT id INTO v_proj FROM public.writing_issue_projections
+      WHERE projection_kind = 'review_override' AND override_review_event_id = v_row.review_event_id;
+  ELSE  -- assert / re-assert
+    WITH RECURSIVE chain AS (
+      SELECT e.evidence_key, e.supersedes_evidence_key, e.issue_projection_id
+        FROM public.user_topic_mastery_evidence e WHERE e.evidence_key = v_tail.evidence_key
+      UNION ALL
+      SELECT e.evidence_key, e.supersedes_evidence_key, e.issue_projection_id
+        FROM public.user_topic_mastery_evidence e
+        JOIN chain c ON e.evidence_key = c.supersedes_evidence_key)
+    SELECT c.issue_projection_id INTO v_root FROM chain c WHERE c.supersedes_evidence_key IS NULL;
+    v_proj := v_root;
+  END IF;
+
+  SELECT ie.evaluation_id INTO v_eval
+    FROM public.writing_issue_projections pr
+    JOIN public.writing_issue_events ie ON ie.id = pr.issue_event_id
+    WHERE pr.id = v_tail.issue_projection_id;
+
+  review_event_id := v_row.review_event_id;
+  evidence_op := v_row.evidence_op;
+  user_id := v_row.user_id;
+  supersedes_evidence_key := v_tail.evidence_key;
+  issue_projection_id := v_proj;
+  evaluation_id := v_eval;
+  topic_id := v_tail.topic_id;
+  microtopic_id := v_tail.microtopic_id;
+  exam_id := v_tail.exam_id;
+  source_type := v_tail.source_type;
+  source_entity_id := v_tail.source_entity_id;
+  evidence_tier := v_tail.evidence_tier;
+  RETURN NEXT;
+END;
+$$;
+REVOKE ALL ON FUNCTION ewp_private.ewp_review_correction_context(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ewp_private.ewp_review_correction_context(uuid) TO service_role;
 
 -- Claim a pending review_correction outbox row (fencing token + lease) and
 -- return the full context the worker needs to build the correction evidence:
@@ -1563,6 +1877,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_row  public.writing_mastery_outbox%ROWTYPE;
+  v_ctx  record;
   v_op   text;
   v_tier text;
   v_proj uuid;
@@ -1583,27 +1898,54 @@ BEGIN
   v_proj := NULLIF(p_evidence->>'issue_projection_id','')::uuid;
   v_micro := NULLIF(p_evidence->>'microtopic_id','')::uuid;
 
-  -- Bind op / user / review to the claimed row.
+  -- IDENTITY BINDING (§4.12c). Re-derive the CURRENT effective tail and EVERY
+  -- correction identity field server-side (never trust the worker) and require
+  -- the payload to match field-for-field BEFORE insert: op, projection,
+  -- evaluation, topic, microtopic, exam, source_type, source_entity, tier, AND
+  -- supersedes_evidence_key (the effective tail). A forged tier/topic/source/
+  -- evaluation/projection/supersedes is rejected here, not merely by the chain
+  -- trigger.
+  SELECT * INTO v_ctx FROM ewp_private.ewp_review_correction_context(p_id);
+  IF v_ctx.review_event_id IS NULL THEN
+    RAISE EXCEPTION 'ewp_outbox_payload_mismatch: no effective evidence tail to correct for %', p_id;
+  END IF;
+
   IF v_op <> v_row.evidence_op
+     OR v_op <> v_ctx.evidence_op
      OR (p_evidence->>'user_id')::uuid <> v_row.user_id
+     OR (p_evidence->>'user_id')::uuid <> v_ctx.user_id
      OR (p_evidence->>'review_event_id')::uuid IS DISTINCT FROM v_row.review_event_id
      OR (p_shadow->>'evidence_key') <> (p_evidence->>'evidence_key')
-     OR (p_shadow->>'user_id')::uuid <> v_row.user_id THEN
-    RAISE EXCEPTION 'ewp_outbox_payload_mismatch: correction payload does not match claim %', p_id;
+     OR (p_shadow->>'user_id')::uuid <> v_row.user_id
+     -- every identity field must equal the server-re-derived context
+     OR v_proj IS DISTINCT FROM v_ctx.issue_projection_id
+     OR NULLIF(p_evidence->>'evaluation_id','')::uuid IS DISTINCT FROM v_ctx.evaluation_id
+     OR (p_evidence->>'topic_id')::uuid IS DISTINCT FROM v_ctx.topic_id
+     OR v_micro IS DISTINCT FROM v_ctx.microtopic_id
+     OR NULLIF(p_evidence->>'exam_id','')::uuid IS DISTINCT FROM v_ctx.exam_id
+     OR (p_evidence->>'source_type') <> v_ctx.source_type
+     OR (p_evidence->>'source_entity_id')::uuid IS DISTINCT FROM v_ctx.source_entity_id
+     OR v_tier <> v_ctx.evidence_tier
+     OR (p_evidence->>'supersedes_evidence_key') IS DISTINCT FROM v_ctx.supersedes_evidence_key
+     -- shadow identity must agree too
+     OR NULLIF(p_shadow->>'evaluation_id','')::uuid IS DISTINCT FROM v_ctx.evaluation_id
+     OR (p_shadow->>'topic_id')::uuid IS DISTINCT FROM v_ctx.topic_id
+     OR (p_shadow->>'evidence_tier') <> v_ctx.evidence_tier THEN
+    RAISE EXCEPTION 'ewp_outbox_payload_mismatch: correction payload does not match the server-re-derived effective tail for %', p_id;
   END IF;
 
   -- Re-derive the evidence key server-side (the correction op + review_event_id
   -- are part of the §4.12b key), and require the worker-supplied key to match.
   v_key := ewp_private.ewp_compute_evidence_key(
-    v_op, v_row.user_id, (p_evidence->>'evaluation_id')::uuid, v_proj, v_micro,
-    v_tier, p_evidence->>'source_type', v_row.review_event_id);
+    v_op, v_ctx.user_id, v_ctx.evaluation_id, v_ctx.issue_projection_id, v_ctx.microtopic_id,
+    v_ctx.evidence_tier, v_ctx.source_type, v_row.review_event_id);
   IF v_key <> (p_evidence->>'evidence_key') THEN
     RAISE EXCEPTION 'ewp_outbox_payload_mismatch: re-derived correction key mismatch';
   END IF;
 
-  -- The correction-chain trigger (ewp_check_evidence_correction) enforces:
-  -- supersedes the effective tail, cited review is latest, decision changes,
-  -- op matches decision, and the op-specific projection identity.
+  -- The correction-chain trigger (ewp_check_evidence_correction) additionally
+  -- enforces: supersedes the effective tail, in-order (not skip-ahead), decision
+  -- changes, op matches decision, and the op-specific projection identity.
   INSERT INTO public.user_topic_mastery_evidence(
     user_id, exam_id, topic_id, microtopic_id, source_type, source_entity_id,
     evidence_tier, score, confidence, issue_projection_id, evidence_op,

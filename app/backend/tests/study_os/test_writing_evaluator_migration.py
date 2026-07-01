@@ -71,8 +71,9 @@ def test_grants_service_role_only():
     # 8 original evaluator/outbox RPCs + ewp_canonical_error_type (§6 helper) +
     # ewp_recover_evaluation (§4.14 recovery) + ewp_reject_corrupt_version
     # (§8.1 corruption hard-fail) = 11, plus the EWP-2B finish: batch completion +
-    # 3 review-correction RPCs (enqueue/claim/complete) = 15 service_role grants.
-    assert sql.count("to service_role") == 15
+    # 3 review-correction RPCs (enqueue/claim/complete) = 15, plus the shared
+    # server-side correction-context helper (§4.12c) = 16 service_role grants.
+    assert sql.count("to service_role") == 16
     first_grant = sql.index("grant execute")
     assert "to authenticated" not in sql[first_grant:]
 
