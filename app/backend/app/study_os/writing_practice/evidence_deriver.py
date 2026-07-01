@@ -289,10 +289,14 @@ def derive_issue_evidence(
     issue's OWN microtopic), so the row can participate in the schema correction
     chain (§4.12c): a later ``retract``/``replace``/re-assert supersedes it.
 
-    ``evidence_tier`` is supplied by the drain claim (the per-issue tier rule is
-    resolved in-DB against the resolution history — ``correction`` for a lineage
-    the aspirant already corrected, ``recognition`` for a freshly-surfaced error).
-    The row is an ``assert`` (``review_event_id=None``); the derived key folds in
+    ``evidence_tier`` is supplied by the drain claim. Per §4.12a a POSITIVE tier
+    must be DEMONSTRATED: the drain emits a projection-linked row ONLY for a
+    lineage the aspirant actually RESOLVED this evaluation, always with tier
+    ``correction`` ("aspirant corrected a supplied incorrect sentence"). An
+    active/unresolved error earns NO positive evidence and therefore produces no
+    projection-linked row here (``recognition`` is objective-choice evidence in
+    the locked model and is never emitted by the writing path). The row is an
+    ``assert`` (``review_event_id=None``); the derived key folds in
     ``issue_projection_id`` and the issue microtopic so each issue produces a
     distinct evidence_key (§4.12b).
     """
