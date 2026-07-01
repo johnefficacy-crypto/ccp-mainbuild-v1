@@ -38,6 +38,11 @@ export default function TopicPrerequisiteEditor({
   // panel's current topic page), searchable + paginated (gate #4).
   const [candSearch, setCandSearch] = useState("");
   const [candItems, setCandItems] = useState([]);
+  const [candTotal, setCandTotal] = useState(null);
+  const [candPage, setCandPage] = useState(1); // 1-based
+  const [candLoading, setCandLoading] = useState(false);
+  const [candError, setCandError] = useState(false);
+  const [candReload, setCandReload] = useState(0); // retry trigger
   const [nameCache, setNameCache] = useState(() => {
     const m = {};
     for (const t of candidateTopics) m[t.id] = t.name;
@@ -77,31 +82,43 @@ export default function TopicPrerequisiteEditor({
 
   useEffect(() => { load(); }, [load]);
 
-  // Debounced candidate search across the exam's subjects (loads on open too).
+  // Reset candidate paging when the search term changes.
+  useEffect(() => { setCandPage(1); }, [candSearch]);
+
+  // Debounced, paginated candidate search across the exam's subjects, with
+  // explicit loading/empty/error states (loads on open too).
   useEffect(() => {
     if (!adding) return undefined;
     let cancelled = false;
+    setCandLoading(true);
+    setCandError(false);
     const t = setTimeout(async () => {
       try {
-        const params = new URLSearchParams({ exam_id: examId, limit: String(PAGE_SIZE) });
+        const params = new URLSearchParams({
+          exam_id: examId, limit: String(PAGE_SIZE), offset: String((candPage - 1) * PAGE_SIZE),
+        });
         if (candSearch.trim()) params.set("q", candSearch.trim());
         const r = await api.get(`${BASE}/exams/${examId}/candidate-topics?${params}`);
         if (cancelled) return;
         const items = (r?.items || []).filter((t) => t.id !== topic.id);
         setCandItems(items);
+        setCandTotal(typeof r?.total === "number" ? r.total : null);
         mergeNames(items);
       } catch {
-        if (!cancelled) setCandItems([]);
+        if (!cancelled) { setCandItems([]); setCandTotal(null); setCandError(true); }
+      } finally {
+        if (!cancelled) setCandLoading(false);
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [adding, candSearch, examId, topic.id, mergeNames]);
+  }, [adding, candSearch, candPage, candReload, examId, topic.id, mergeNames]);
 
   // Keep names resolvable for whatever edges are currently shown.
   useEffect(() => { mergeNames(candidateTopics); }, [candidateTopics, mergeNames]);
 
   const busy = action.busy;
   const edgeHasNext = edgeTotal != null ? edgePage * PAGE_SIZE < edgeTotal : edges.length === PAGE_SIZE;
+  const candHasNext = candTotal != null ? candPage * PAGE_SIZE < candTotal : candItems.length === PAGE_SIZE;
 
   function addEdge() {
     if (!form.prerequisite_topic_id || (form.reason || "").trim().length < 8) {
@@ -196,8 +213,12 @@ export default function TopicPrerequisiteEditor({
           {edges.map((e) => {
             const editable = EDITABLE.has(e.reviewer_status);
             const outgoing = e.topic_id === topic.id; // this topic depends on the other
-            const otherId = outgoing ? e.prerequisite_topic_id : e.topic_id;
-            const label = outgoing ? `→ ${nameOf(otherId)}` : `← ${nameOf(otherId)} (dependent)`;
+            // Prefer server-provided endpoint names (resolve for any edge, incl.
+            // cross-subject / off-page, without the client candidate cache).
+            const otherName = outgoing
+              ? (e.prerequisite_topic_name || nameOf(e.prerequisite_topic_id))
+              : (e.topic_name || nameOf(e.topic_id));
+            const label = outgoing ? `→ ${otherName}` : `← ${otherName} (dependent)`;
             return (
               <li key={e.id} className="py-1.5 flex items-center gap-2 flex-wrap" data-testid={`tpe-edge-${e.id}`}>
                 <span className="flex-1">
@@ -295,34 +316,64 @@ export default function TopicPrerequisiteEditor({
       )}
 
       {canManage && adding && (
-        <div className="flex gap-2 flex-wrap items-center" data-testid="tpe-add-form">
-          <input className="text-sm border rounded px-2 py-1" type="search"
-            placeholder="Search topics (all subjects)…" value={candSearch}
-            onChange={(e) => setCandSearch(e.target.value)}
-            aria-label="Search candidate topics" data-testid="tpe-cand-search" />
-          <select className="text-sm border rounded px-2 py-1" value={form.prerequisite_topic_id}
-            onChange={(e) => setForm({ ...form, prerequisite_topic_id: e.target.value })}
-            aria-label="Prerequisite topic" data-testid="tpe-prereq-select">
-            <option value="">Prerequisite topic…</option>
-            {candItems.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-          <select className="text-sm border rounded px-2 py-1" value={form.relation_type}
-            onChange={(e) => setForm({ ...form, relation_type: e.target.value })}
-            aria-label="Relation type" data-testid="tpe-relation-select">
-            {RELATIONS.map((rel) => <option key={rel} value={rel}>{rel}</option>)}
-          </select>
-          <input className="text-sm border rounded px-2 py-1 w-20" type="number" min="0" max="1" step="0.01"
-            value={form.strength} onChange={(e) => setForm({ ...form, strength: e.target.value })}
-            aria-label="Strength" data-testid="tpe-strength" />
-          <input className="text-sm border rounded px-2 py-1 flex-1" placeholder="reason (min 8 chars)"
-            value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })}
-            aria-label="Reason" data-testid="tpe-reason" />
-          <button type="button" className="text-sm px-3 py-1 border rounded bg-slate-800 text-white disabled:opacity-40"
-            onClick={addEdge} disabled={busy} data-testid="tpe-add-save">Add</button>
-          <button type="button" className="text-sm px-3 py-1 border rounded"
-            onClick={() => setAdding(false)} data-testid="tpe-add-cancel">Cancel</button>
+        <div className="space-y-2" data-testid="tpe-add-form">
+          <div className="flex gap-2 flex-wrap items-center">
+            <input className="text-sm border rounded px-2 py-1" type="search"
+              placeholder="Search topics (all subjects)…" value={candSearch}
+              onChange={(e) => setCandSearch(e.target.value)}
+              aria-label="Search candidate topics" data-testid="tpe-cand-search" />
+            <select className="text-sm border rounded px-2 py-1" value={form.prerequisite_topic_id}
+              onChange={(e) => setForm({ ...form, prerequisite_topic_id: e.target.value })}
+              aria-label="Prerequisite topic" data-testid="tpe-prereq-select"
+              disabled={candLoading || candError}>
+              <option value="">Prerequisite topic…</option>
+              {candItems.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            {candLoading && <span className="text-xs text-slate-400" data-testid="tpe-cand-loading">Loading…</span>}
+            {candError && (
+              <span className="text-xs text-rose-600" role="alert" data-testid="tpe-cand-error">
+                Couldn&apos;t load candidates.
+                <button type="button" className="ml-1 underline" onClick={() => setCandReload((n) => n + 1)}
+                  data-testid="tpe-cand-retry">Retry</button>
+              </span>
+            )}
+            {!candLoading && !candError && candItems.length === 0 && (
+              <span className="text-xs text-slate-400" data-testid="tpe-cand-empty">No matching topics.</span>
+            )}
+          </div>
+          {/* Candidate pagination — targets beyond the first 50 are reachable. */}
+          {!candError && (candPage > 1 || candHasNext) && (
+            <div className="flex items-center gap-2 text-xs" data-testid="tpe-cand-pagination">
+              <button type="button" className="px-2 py-0.5 border rounded disabled:opacity-40"
+                onClick={() => setCandPage((p) => Math.max(1, p - 1))} disabled={candPage <= 1}
+                data-testid="tpe-cand-prev">Prev</button>
+              <span className="text-slate-500" data-testid="tpe-cand-page">
+                {candTotal != null ? `${(candPage - 1) * PAGE_SIZE + candItems.length} / ${candTotal}` : `Page ${candPage}`}
+              </span>
+              <button type="button" className="px-2 py-0.5 border rounded disabled:opacity-40"
+                onClick={() => setCandPage((p) => p + 1)} disabled={!candHasNext}
+                data-testid="tpe-cand-next">Next</button>
+            </div>
+          )}
+          <div className="flex gap-2 flex-wrap items-center">
+            <select className="text-sm border rounded px-2 py-1" value={form.relation_type}
+              onChange={(e) => setForm({ ...form, relation_type: e.target.value })}
+              aria-label="Relation type" data-testid="tpe-relation-select">
+              {RELATIONS.map((rel) => <option key={rel} value={rel}>{rel}</option>)}
+            </select>
+            <input className="text-sm border rounded px-2 py-1 w-20" type="number" min="0" max="1" step="0.01"
+              value={form.strength} onChange={(e) => setForm({ ...form, strength: e.target.value })}
+              aria-label="Strength" data-testid="tpe-strength" />
+            <input className="text-sm border rounded px-2 py-1 flex-1" placeholder="reason (min 8 chars)"
+              value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })}
+              aria-label="Reason" data-testid="tpe-reason" />
+            <button type="button" className="text-sm px-3 py-1 border rounded bg-slate-800 text-white disabled:opacity-40"
+              onClick={addEdge} disabled={busy || candLoading || candError} data-testid="tpe-add-save">Add</button>
+            <button type="button" className="text-sm px-3 py-1 border rounded"
+              onClick={() => setAdding(false)} data-testid="tpe-add-cancel">Cancel</button>
+          </div>
         </div>
       )}
     </div>

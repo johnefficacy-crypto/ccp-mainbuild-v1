@@ -717,5 +717,10 @@ def test_edge_list_includes_both_directions():
     sb = MngSBStub(seed)
     r = _client(sb).get(f"{_BASE}/topic-prerequisites?exam_id=E1&topic_id=t2")
     assert r.status_code == 200, r.text
-    ids = {e["id"] for e in r.json()["items"]}
+    items = r.json()["items"]
+    ids = {e["id"] for e in items}
     assert ids == {"out1", "in1"}  # both directions returned
+    # endpoint names attached so any edge renders a readable label
+    by_id = {e["id"]: e for e in items}
+    assert by_id["out1"]["prerequisite_topic_name"] == "Percentages"
+    assert by_id["in1"]["topic_name"] == "Interest"

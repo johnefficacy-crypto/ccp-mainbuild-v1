@@ -151,6 +151,45 @@ test("edge list Next advances the offset", async () => {
   await waitFor(() => expect(api.get.mock.calls.some(([u]) => u.includes("/topic-prerequisites") && u.includes("offset=50"))).toBe(true));
 });
 
+test("candidate fetch error shows retry and blocks add-save", async () => {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/candidate-topics")) return Promise.reject(new Error("500"));
+    return Promise.resolve(edges([]));
+  });
+  renderEditor({ canManage: true, canReview: false });
+  fireEvent.click(await screen.findByTestId("tpe-add-toggle"));
+  expect(await screen.findByTestId("tpe-cand-error")).toBeInTheDocument();
+  expect(screen.getByTestId("tpe-add-save")).toBeDisabled();
+  expect(screen.getByTestId("tpe-prereq-select")).toBeDisabled();
+});
+
+test("candidate Next advances the candidate offset", async () => {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/candidate-topics")) return Promise.resolve({ items: CANDIDATE_RESULT.items, total: 60 });
+    return Promise.resolve(edges([]));
+  });
+  renderEditor({ canManage: true, canReview: false });
+  fireEvent.click(await screen.findByTestId("tpe-add-toggle"));
+  await waitFor(() => expect(screen.getByTestId("tpe-cand-next")).not.toBeDisabled());
+  fireEvent.click(screen.getByTestId("tpe-cand-next"));
+  await waitFor(() => expect(api.get.mock.calls.some(([u]) => u.includes("/candidate-topics") && u.includes("offset=50"))).toBe(true));
+});
+
+test("review-only resolves cross-subject edge names from the API (no raw ids)", async () => {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/candidate-topics")) return Promise.resolve(CANDIDATE_RESULT);
+    return Promise.resolve({ items: [
+      { id: "e1", topic_id: "t2", prerequisite_topic_id: "zz-other-subject",
+        topic_name: "Ratios", prerequisite_topic_name: "Thermodynamics",
+        relation_type: "requires", strength: 1.0, reviewer_status: "locked" },
+    ], total: 1 });
+  });
+  renderEditor({ canManage: false, canReview: true });
+  const row = await screen.findByTestId("tpe-edge-e1");
+  expect(row).toHaveTextContent("Thermodynamics");   // server-provided name, not the id
+  expect(row).not.toHaveTextContent("zz-other-subject");
+});
+
 test("a failed load shows an error and blocks adding", async () => {
   api.get.mockRejectedValue(new Error("500"));
   renderEditor({ canManage: true, canReview: false });

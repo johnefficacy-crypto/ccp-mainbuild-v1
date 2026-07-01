@@ -588,8 +588,22 @@ def list_topic_prerequisites(
         .range(offset, offset + limit - 1)
         .execute()
     )
+    items = res.data or []
+    # Attach endpoint names so any edge (incl. cross-subject / off-page) renders a
+    # readable label independent of the client's candidate cache — a review-only
+    # operator who never opens Add can still resolve both endpoints.
+    ids = sorted({r["topic_id"] for r in items} | {r["prerequisite_topic_id"] for r in items})
+    names: dict[str, str] = {}
+    if ids:
+        trows = (
+            supabase.table("topics").select("id, name").in_("id", ids).execute().data or []
+        )
+        names = {t["id"]: t.get("name") for t in trows}
+    for r in items:
+        r["topic_name"] = names.get(r.get("topic_id"))
+        r["prerequisite_topic_name"] = names.get(r.get("prerequisite_topic_id"))
     return {
-        "items": res.data or [],
+        "items": items,
         "total": getattr(res, "count", None),
         "limit": limit,
         "offset": offset,
