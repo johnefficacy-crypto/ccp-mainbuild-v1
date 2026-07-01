@@ -567,9 +567,11 @@ def list_topic_prerequisites(
     _admin: dict = Depends(_require_prereq_read),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    """List prerequisite edges touching a topic, in BOTH directions (edges
-    where the topic is the dependent AND edges where it is the prerequisite),
-    per the gate's both-directional contract. Readable by manage OR review."""
+    """List prerequisite edges touching a topic, in BOTH directions (edges where
+    the topic is the dependent AND edges where it is the prerequisite), per the
+    gate's both-directional contract. Single DB-filtered, counted, ranged query
+    so `items` and `total` are bounded/accurate (no Python merge of unbounded
+    reads). Readable by manage OR review."""
     supabase = get_supabase_admin()
     _require_topic_in_exam(supabase, exam_id, topic_id)
     cols = (
@@ -577,19 +579,58 @@ def list_topic_prerequisites(
         "source_basis, reviewer_status, reviewed_by, reviewed_at, "
         "review_notes, created_at, updated_at"
     )
-    outgoing = (
-        supabase.table("topic_prerequisites").select(cols).eq("topic_id", topic_id).execute().data
-        or []
+    res = (
+        supabase.table("topic_prerequisites")
+        .select(cols, count="exact")
+        .or_(f"topic_id.eq.{topic_id},prerequisite_topic_id.eq.{topic_id}")
+        .order("created_at", desc=True)
+        .order("id", desc=False)
+        .range(offset, offset + limit - 1)
+        .execute()
     )
-    incoming = (
-        supabase.table("topic_prerequisites").select(cols).eq("prerequisite_topic_id", topic_id).execute().data
-        or []
+    return {
+        "items": res.data or [],
+        "total": getattr(res, "count", None),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.get("/exams/{exam_id}/candidate-topics")
+def list_candidate_topics(
+    exam_id: str,
+    q: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(_require_prereq_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Searchable, deterministic, paginated candidate topics across ALL of the
+    exam's resolved subjects — the prerequisite picker's source so cross-subject
+    and late-page targets are reachable (gate PD-1 scope). Readable by manage OR
+    review."""
+    supabase = get_supabase_admin()
+    if not _safe_select(supabase, "exams", id=exam_id):
+        raise HTTPException(status_code=404, detail="Exam not found")
+    subject_ids = sorted(_exam_subject_ids(supabase, exam_id))
+    if not subject_ids:
+        return {"items": [], "total": 0, "limit": limit, "offset": offset}
+    query = (
+        supabase.table("topics")
+        .select("id, subject_id, name, level", count="exact")
+        .in_("subject_id", subject_ids)
+        .order("name", desc=False)
+        .order("id", desc=False)
     )
-    merged = {r["id"]: r for r in [*outgoing, *incoming]}
-    items = sorted(merged.values(), key=lambda r: (r.get("created_at") or "", r.get("id") or ""), reverse=True)
-    total = len(items)
-    page = items[offset:offset + limit]
-    return {"items": page, "total": total, "limit": limit, "offset": offset}
+    if q:
+        query = query.ilike("name", f"%{q.strip()}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    return {
+        "items": res.data or [],
+        "total": getattr(res, "count", None),
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.post("/topic-prerequisites")

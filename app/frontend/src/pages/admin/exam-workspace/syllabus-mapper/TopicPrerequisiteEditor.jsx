@@ -17,6 +17,7 @@ const BASE = "/api/admin/exam-intelligence-manage";
 // (supports/foundation_for) are Advanced-Repair-only (gate PD-3).
 const RELATIONS = ["requires", "recommended_before"];
 const EDITABLE = new Set(["draft", "rejected"]);
+const PAGE_SIZE = 50;
 
 export default function TopicPrerequisiteEditor({
   examId,
@@ -26,36 +27,81 @@ export default function TopicPrerequisiteEditor({
   canReview = false,
 }) {
   const [edges, setEdges] = useState([]);
+  const [edgeTotal, setEdgeTotal] = useState(null);
+  const [edgePage, setEdgePage] = useState(1); // 1-based
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ prerequisite_topic_id: "", relation_type: "requires", strength: "1.0", reason: "" });
   const [editing, setEditing] = useState(null); // { id, relation_type, strength, reason }
+  // Candidate picker: fetched independently across ALL exam subjects (not the
+  // panel's current topic page), searchable + paginated (gate #4).
+  const [candSearch, setCandSearch] = useState("");
+  const [candItems, setCandItems] = useState([]);
+  const [nameCache, setNameCache] = useState(() => {
+    const m = {};
+    for (const t of candidateTopics) m[t.id] = t.name;
+    return m;
+  });
   const action = useApiAction();
 
-  const nameOf = useCallback(
-    (id) => candidateTopics.find((t) => t.id === id)?.name || id,
-    [candidateTopics],
-  );
+  const nameOf = useCallback((id) => nameCache[id] || id, [nameCache]);
+
+  const mergeNames = useCallback((rows) => {
+    setNameCache((prev) => {
+      const next = { ...prev };
+      for (const t of rows) if (t.id && t.name) next[t.id] = t.name;
+      return next;
+    });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
-      const params = new URLSearchParams({ exam_id: examId, topic_id: topic.id, limit: "50" });
+      const params = new URLSearchParams({
+        exam_id: examId, topic_id: topic.id,
+        limit: String(PAGE_SIZE), offset: String((edgePage - 1) * PAGE_SIZE),
+      });
       const r = await api.get(`${BASE}/topic-prerequisites?${params}`);
       setEdges(r?.items || []);
+      setEdgeTotal(typeof r?.total === "number" ? r.total : null);
     } catch {
       setEdges([]);
+      setEdgeTotal(null);
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, [examId, topic.id]);
+  }, [examId, topic.id, edgePage]);
 
   useEffect(() => { load(); }, [load]);
 
+  // Debounced candidate search across the exam's subjects (loads on open too).
+  useEffect(() => {
+    if (!adding) return undefined;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ exam_id: examId, limit: String(PAGE_SIZE) });
+        if (candSearch.trim()) params.set("q", candSearch.trim());
+        const r = await api.get(`${BASE}/exams/${examId}/candidate-topics?${params}`);
+        if (cancelled) return;
+        const items = (r?.items || []).filter((t) => t.id !== topic.id);
+        setCandItems(items);
+        mergeNames(items);
+      } catch {
+        if (!cancelled) setCandItems([]);
+      }
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [adding, candSearch, examId, topic.id, mergeNames]);
+
+  // Keep names resolvable for whatever edges are currently shown.
+  useEffect(() => { mergeNames(candidateTopics); }, [candidateTopics, mergeNames]);
+
   const busy = action.busy;
+  const edgeHasNext = edgeTotal != null ? edgePage * PAGE_SIZE < edgeTotal : edges.length === PAGE_SIZE;
 
   function addEdge() {
     if (!form.prerequisite_topic_id || (form.reason || "").trim().length < 8) {
@@ -204,6 +250,22 @@ export default function TopicPrerequisiteEditor({
         </ul>
       )}
 
+      {!loading && !error && (
+        <div className="flex items-center gap-2 mb-2 text-sm" data-testid="tpe-pagination">
+          <button type="button" className="px-2 py-0.5 border rounded disabled:opacity-40"
+            onClick={() => setEdgePage((p) => Math.max(1, p - 1))} disabled={edgePage <= 1}
+            data-testid="tpe-prev">Previous</button>
+          <span className="text-slate-500" data-testid="tpe-page-indicator">
+            {edgeTotal != null
+              ? `Showing ${edges.length ? (edgePage - 1) * PAGE_SIZE + 1 : 0}–${(edgePage - 1) * PAGE_SIZE + edges.length} of ${edgeTotal}`
+              : `Page ${edgePage}`}
+          </span>
+          <button type="button" className="px-2 py-0.5 border rounded disabled:opacity-40"
+            onClick={() => setEdgePage((p) => p + 1)} disabled={!edgeHasNext}
+            data-testid="tpe-next">Next</button>
+        </div>
+      )}
+
       {canManage && editing && (
         <div className="flex gap-2 flex-wrap items-center mb-2" data-testid="tpe-edit-form">
           <span className="text-xs text-slate-500">Edit:</span>
@@ -234,11 +296,15 @@ export default function TopicPrerequisiteEditor({
 
       {canManage && adding && (
         <div className="flex gap-2 flex-wrap items-center" data-testid="tpe-add-form">
+          <input className="text-sm border rounded px-2 py-1" type="search"
+            placeholder="Search topics (all subjects)…" value={candSearch}
+            onChange={(e) => setCandSearch(e.target.value)}
+            aria-label="Search candidate topics" data-testid="tpe-cand-search" />
           <select className="text-sm border rounded px-2 py-1" value={form.prerequisite_topic_id}
             onChange={(e) => setForm({ ...form, prerequisite_topic_id: e.target.value })}
             aria-label="Prerequisite topic" data-testid="tpe-prereq-select">
             <option value="">Prerequisite topic…</option>
-            {candidateTopics.filter((t) => t.id !== topic.id).map((t) => (
+            {candItems.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>

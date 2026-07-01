@@ -30,17 +30,30 @@ function renderEditor(props) {
   );
 }
 
+const CANDIDATE_RESULT = {
+  items: [{ id: "t1", subject_id: "s1", name: "Percentages" }, { id: "t3", subject_id: "s2", name: "Interest" }],
+  total: 2,
+};
+
+function routeGet(url) {
+  if (url.includes("/candidate-topics")) return Promise.resolve(CANDIDATE_RESULT);
+  return Promise.resolve(edges([]));
+}
+
 beforeEach(() => {
-  api.get.mockReset(); api.post.mockReset(); api.del.mockReset();
-  api.get.mockResolvedValue(edges([]));
+  api.get.mockReset(); api.post.mockReset(); api.del.mockReset(); api.patch.mockReset();
+  api.get.mockImplementation(routeGet);
   api.post.mockResolvedValue({ ok: true });
   api.del.mockResolvedValue({ ok: true });
+  api.patch.mockResolvedValue({ ok: true });
 });
 
 test("manage can add a prerequisite (posts draft with reason)", async () => {
   renderEditor({ canManage: true, canReview: false });
   await waitFor(() => expect(screen.getByTestId("tpe-add-toggle")).toBeInTheDocument());
   fireEvent.click(screen.getByTestId("tpe-add-toggle"));
+  // Candidate options are fetched across all exam subjects.
+  await waitFor(() => expect(screen.getByTestId("tpe-prereq-select").querySelectorAll("option").length).toBeGreaterThan(1));
   fireEvent.change(screen.getByTestId("tpe-prereq-select"), { target: { value: "t1" } });
   fireEvent.change(screen.getByTestId("tpe-reason"), { target: { value: "t2 needs t1 first" } });
   fireEvent.click(screen.getByTestId("tpe-add-save"));
@@ -114,6 +127,28 @@ test("incoming edge is shown with a dependent marker", async () => {
   renderEditor({ canManage: true, canReview: false });
   const row = await screen.findByTestId("tpe-edge-e2");
   expect(row).toHaveTextContent("dependent");
+});
+
+test("candidate picker fetches across subjects and search sends q", async () => {
+  renderEditor({ canManage: true, canReview: false });
+  fireEvent.click(await screen.findByTestId("tpe-add-toggle"));
+  await waitFor(() => expect(api.get.mock.calls.some(([u]) => u.includes("/candidate-topics"))).toBe(true));
+  fireEvent.change(screen.getByTestId("tpe-cand-search"), { target: { value: "inter" } });
+  await waitFor(() => expect(api.get.mock.calls.some(([u]) => u.includes("/candidate-topics") && u.includes("q=inter"))).toBe(true));
+});
+
+test("edge list Next advances the offset", async () => {
+  api.get.mockImplementation((url) => {
+    if (url.includes("/candidate-topics")) return Promise.resolve(CANDIDATE_RESULT);
+    return Promise.resolve({ items: [
+      { id: "e1", topic_id: "t2", prerequisite_topic_id: "t1", relation_type: "requires", strength: 1.0, reviewer_status: "locked" },
+    ], total: 60 });
+  });
+  renderEditor({ canManage: true, canReview: false });
+  await waitFor(() => expect(screen.getByTestId("tpe-next")).not.toBeDisabled());
+  expect(screen.getByTestId("tpe-prev")).toBeDisabled();
+  fireEvent.click(screen.getByTestId("tpe-next"));
+  await waitFor(() => expect(api.get.mock.calls.some(([u]) => u.includes("/topic-prerequisites") && u.includes("offset=50"))).toBe(true));
 });
 
 test("a failed load shows an error and blocks adding", async () => {

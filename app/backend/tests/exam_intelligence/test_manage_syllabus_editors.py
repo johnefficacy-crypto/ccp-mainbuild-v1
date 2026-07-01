@@ -656,3 +656,66 @@ def test_manage_rejects_descriptive_relation_types():
                 "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": rel}},
         )
         assert r.status_code == 422, f"{rel}: {r.text}"
+
+
+# ── #4 candidate source + bounded both-direction pagination ───────────────
+
+def test_candidate_topics_span_all_exam_subjects():
+    seed = _seed_prereq()  # s1 covered (t1,t2,t3); add s2 coverage + a topic
+    seed["exam_topic_coverage"].append({"id": "c9", "exam_id": "E1", "topic_id": "t9", "reviewer_status": "reviewed"})
+    sb = MngSBStub(seed)
+    r = _client(sb).get(f"{_BASE}/exams/E1/candidate-topics")
+    assert r.status_code == 200, r.text
+    subj = {t["subject_id"] for t in r.json()["items"]}
+    assert subj == {"s1", "s2"}  # cross-subject reachable
+
+
+def test_candidate_topics_paginate_past_first_50():
+    seed = _seed()
+    seed["topics"] = [
+        {"id": f"tt{i}", "subject_id": "s1", "parent_topic_id": None, "slug": f"t{i}",
+         "name": f"Topic {i:03d}", "level": "topic", "is_active": True} for i in range(60)
+    ]
+    seed["exam_topic_coverage"] = [{"id": "c1", "exam_id": "E1", "topic_id": "tt0", "reviewer_status": "reviewed"}]
+    sb = MngSBStub(seed)
+    r = _client(sb).get(f"{_BASE}/exams/E1/candidate-topics?limit=50&offset=50")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["total"] == 60
+    assert len(body["items"]) == 10  # the tail past the first page is reachable
+
+
+def test_candidate_topics_search_filters():
+    seed = _seed_prereq()
+    sb = MngSBStub(seed)
+    r = _client(sb).get(f"{_BASE}/exams/E1/candidate-topics?q=interest")
+    assert r.status_code == 200, r.text
+    assert [t["name"] for t in r.json()["items"]] == ["Interest"]
+
+
+def test_edge_list_paginates_past_first_50():
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": f"e{i}", "topic_id": "t2", "prerequisite_topic_id": "t1",
+         "relation_type": "requires", "reviewer_status": "locked",
+         "created_at": f"2026-01-01T00:{i:02d}:00Z"} for i in range(60)
+    ]
+    sb = MngSBStub(seed)
+    r = _client(sb).get(f"{_BASE}/topic-prerequisites?exam_id=E1&topic_id=t2&limit=50&offset=50")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["total"] == 60
+    assert len(body["items"]) == 10  # edges beyond page 1 are visible
+
+
+def test_edge_list_includes_both_directions():
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": "out1", "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires", "reviewer_status": "draft"},
+        {"id": "in1", "topic_id": "t3", "prerequisite_topic_id": "t2", "relation_type": "requires", "reviewer_status": "draft"},
+    ]
+    sb = MngSBStub(seed)
+    r = _client(sb).get(f"{_BASE}/topic-prerequisites?exam_id=E1&topic_id=t2")
+    assert r.status_code == 200, r.text
+    ids = {e["id"] for e in r.json()["items"]}
+    assert ids == {"out1", "in1"}  # both directions returned
