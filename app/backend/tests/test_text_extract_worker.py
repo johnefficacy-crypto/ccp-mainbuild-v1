@@ -23,7 +23,11 @@ import pytest
 
 from app.library.text_extract_worker import (
     _ADMIN_SCOPES,
+    _TRANSIENT_ERROR_CODES,
+    BASE_BACKOFF_SECONDS,
+    MAX_TRANSIENT_ATTEMPTS,
     _fallback_fail_job,
+    claim_next_retry_job,
     claim_next_text_extract_job,
     run_worker_pass,
 )
@@ -145,6 +149,9 @@ def _job(
     document_id=None,
     status="queued",
     created_at="2026-01-01T00:00:00Z",
+    error_code=None,
+    attempt_count=0,
+    finished_at=None,
 ):
     """Build a document_processing_jobs row. No scope field — scope lives on
     document_assets and is resolved via the inner-join embed."""
@@ -154,6 +161,9 @@ def _job(
         "job_type": "text_extract",
         "status": status,
         "created_at": created_at,
+        "error_code": error_code,
+        "attempt_count": attempt_count,
+        "finished_at": finished_at,
     }
 
 
@@ -441,6 +451,138 @@ def test_run_worker_pass_unexpected_final_status_returns_failed():
     assert result["status"] == "failed"
 
 
+# ── claim_next_retry_job ─────────────────────────────────────────────────────
+
+
+def test_retry_returns_transient_failed_job_past_backoff():
+    """A failed job with a transient error_code, under the attempt cap, and past
+    the backoff window is returned by claim_next_retry_job."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00Z",  # far in the past → past backoff
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    result = claim_next_retry_job(sb)
+    assert result is not None
+    assert result["id"] == j["id"]
+
+
+def test_retry_skips_terminal_error_code():
+    """A failed job with a terminal error_code (e.g. unsupported_mime) must
+    never be returned by claim_next_retry_job."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="unsupported_mime",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    assert claim_next_retry_job(sb) is None
+
+
+def test_retry_skips_job_at_max_attempts():
+    """A job that has already reached MAX_TRANSIENT_ATTEMPTS must not be
+    retried even if its error_code is transient."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="download_failed",
+        attempt_count=MAX_TRANSIENT_ATTEMPTS,
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    assert claim_next_retry_job(sb) is None
+
+
+def test_retry_respects_backoff_window():
+    """A job whose backoff window has not expired (finished_at is too recent)
+    is not returned even if it is otherwise retry-eligible."""
+    from datetime import datetime, timezone
+
+    doc = _doc(scope="admin_exam_intelligence")
+    # finished_at is 1 second ago; attempt_count=1 → need BASE_BACKOFF_SECONDS
+    just_failed = datetime.now(timezone.utc).isoformat()
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at=just_failed,
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    assert claim_next_retry_job(sb) is None
+
+
+def test_retry_pass_requeues_and_runs_failed_job():
+    """run_worker_pass re-queues a retry-eligible failed job before calling
+    run_text_extract_job, allowing _claim_job (which requires status='queued')
+    to atomically claim it."""
+    doc_id = str(uuid4())
+    job_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+    j = _job(
+        job_id=job_id,
+        document_id=doc_id,
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+
+    fake_result = {"job": {"id": job_id, "status": "succeeded"}, "document": {}}
+    with patch(
+        "app.library.text_extract_worker.run_text_extract_job",
+        return_value=fake_result,
+    ) as mock_run:
+        result = run_worker_pass(sb)
+
+    assert result["processed"] == 1
+    assert result["status"] == "succeeded"
+    assert result["job_id"] == job_id
+    # The job must have been re-queued (status flipped to 'queued') so
+    # _claim_job inside run_text_extract_job can atomically claim it.
+    assert j["status"] == "queued"
+    mock_run.assert_called_once_with(sb, job_id, user_id=None, admin_scope="admin_exam_intelligence")
+
+
+def test_retry_not_attempted_when_queued_job_exists():
+    """The normal FIFO queued path takes priority over the retry path.
+    If a queued job exists, claim_next_retry_job must not be called."""
+    doc_id = str(uuid4())
+    job_id_queued = str(uuid4())
+    job_id_failed = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+    j_queued = _job(job_id=job_id_queued, document_id=doc_id, status="queued")
+    j_failed = _job(
+        job_id=job_id_failed,
+        document_id=doc_id,
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    sb = _Sb(jobs=[j_queued, j_failed], docs=[doc])
+
+    fake_result = {"job": {"id": job_id_queued, "status": "succeeded"}, "document": {}}
+    with patch(
+        "app.library.text_extract_worker.run_text_extract_job",
+        return_value=fake_result,
+    ) as mock_run:
+        result = run_worker_pass(sb)
+
+    assert result["job_id"] == job_id_queued
+    assert result["status"] == "succeeded"
+    mock_run.assert_called_once()
+
+
 # ── _ADMIN_SCOPES constant ───────────────────────────────────────────────────
 
 
@@ -450,3 +592,13 @@ def test_admin_scopes_contains_expected():
 
 def test_personal_library_not_in_admin_scopes():
     assert "personal_library" not in _ADMIN_SCOPES
+
+
+def test_transient_error_codes_contains_expected():
+    assert _TRANSIENT_ERROR_CODES >= {"download_failed", "storage_object_missing", "page_write_failed"}
+
+
+def test_terminal_codes_not_in_transient_set():
+    for code in ("unsupported_mime", "ownership_mismatch", "scope_mismatch",
+                 "archived", "file_too_large_for_extract", "extract_timeout"):
+        assert code not in _TRANSIENT_ERROR_CODES, f"{code} must be terminal"

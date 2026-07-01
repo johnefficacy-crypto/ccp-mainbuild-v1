@@ -34,9 +34,12 @@ Design constraints
   workers could both select the same row; the loser gets ``ExtractConflict``
   and returns ``processed=0, status='conflict'``. With ``max_instances=1``
   this race cannot happen within a single process.
-- Failed jobs stay ``status='failed'``. Transient retry with backoff is a
-  separate follow-up (see issue #813). Dead-letter handling (alert on
-  accumulated failures) is deferred.
+- Transient-failure retry: jobs whose ``error_code`` is in
+  ``_TRANSIENT_ERROR_CODES`` are re-queued and retried up to
+  ``MAX_TRANSIENT_ATTEMPTS`` times with per-attempt backoff
+  (``attempt_count * BASE_BACKOFF_SECONDS`` since ``finished_at``).
+  Terminal errors (``unsupported_mime``, ``ownership_mismatch``, etc.)
+  are never retried. See issue #813.
 - Fallback failure recovery: if ``run_text_extract_job`` raises an
   exception that bypassed its internal ``_fail()`` handler, the worker
   attempts a best-effort fallback UPDATE on both the job row and the
@@ -45,7 +48,7 @@ Design constraints
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.library.text_extract import ExtractConflict, run_text_extract_job
@@ -56,9 +59,25 @@ logger = logging.getLogger("career_copilot.library.text_extract_worker")
 # scopes must NOT be included — see module docstring.
 _ADMIN_SCOPES = frozenset({"admin_exam_intelligence"})
 
+# Error codes that indicate a transient infrastructure failure.
+# These jobs are retried up to MAX_TRANSIENT_ATTEMPTS times with backoff.
+# All other error codes are terminal and never retried.
+_TRANSIENT_ERROR_CODES = frozenset({
+    "download_failed",
+    "storage_object_missing",
+    "page_write_failed",
+})
+
+MAX_TRANSIENT_ATTEMPTS = 3
+BASE_BACKOFF_SECONDS = 60
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_iso(ts: str) -> datetime:
+    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
 
 def _fallback_fail_job(sb, job_id: str, document_id: str, error: str) -> None:
@@ -125,14 +144,65 @@ def claim_next_text_extract_job(sb) -> dict | None:
     return rows[0] if rows else None
 
 
+def claim_next_retry_job(sb) -> dict | None:
+    """Select the oldest retry-eligible transient-failed admin text_extract job.
+
+    A job is retry-eligible when all of:
+    - status = 'failed'
+    - error_code is in _TRANSIENT_ERROR_CODES
+    - attempt_count < MAX_TRANSIENT_ATTEMPTS
+    - now() - finished_at >= attempt_count * BASE_BACKOFF_SECONDS
+
+    The backoff condition is evaluated in Python because PostgREST cannot
+    express computed column arithmetic. We over-fetch (all transient+admin
+    failed rows under the cap) and filter in a tight loop — in practice
+    this set is tiny.
+
+    Returns the oldest eligible row (ordered by finished_at ascending), or
+    None if no eligible job exists.
+    """
+    rows = (
+        sb.table("document_processing_jobs")
+        .select("id, document_id, attempt_count, finished_at, document_assets!inner(scope)")
+        .eq("job_type", "text_extract")
+        .eq("status", "failed")
+        .in_("error_code", list(_TRANSIENT_ERROR_CODES))
+        .in_("document_assets.scope", list(_ADMIN_SCOPES))
+        .order("finished_at", desc=False)
+        .execute()
+        .data
+        or []
+    )
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        attempt_count = row.get("attempt_count") or 0
+        if attempt_count >= MAX_TRANSIENT_ATTEMPTS:
+            continue
+        finished_at_str = row.get("finished_at")
+        if finished_at_str:
+            finished_at = _parse_iso(finished_at_str)
+            backoff = timedelta(seconds=attempt_count * BASE_BACKOFF_SECONDS)
+            if now - finished_at < backoff:
+                continue
+        return row
+    return None
+
+
 def run_worker_pass(sb) -> dict[str, Any]:
-    """Claim and run at most one queued admin text_extract job.
+    """Claim and run at most one queued (or retry-eligible failed) admin text_extract job.
+
+    Pass priority:
+    1. Oldest queued job (normal FIFO path).
+    2. Oldest retry-eligible transient-failed job (issue #813 retry path).
+       The failed job is re-queued (status → 'queued') before calling
+       run_text_extract_job so that its internal _claim_job (which requires
+       status='queued') can perform the atomic conditional UPDATE.
 
     Returns a summary dict for the scheduler's ``_last_run`` log:
     ``{"processed": 0|1, "job_id": str|None, "status": str, "error": str|None}``.
 
     ``status`` values:
-    - ``"idle"``      — queue was empty; nothing to do.
+    - ``"idle"``      — queue was empty and no retry candidate; nothing to do.
     - ``"succeeded"`` — extraction completed successfully.
     - ``"failed"``    — extraction ran but the job ended in a failed state.
     - ``"conflict"``  — another worker claimed the job first (race); processed=0.
@@ -142,7 +212,20 @@ def run_worker_pass(sb) -> dict[str, Any]:
     ``ok=False`` for any ``status='failed'`` result so ``/api/admin/jobs``
     reflects the operational failure.
     """
+    is_retry = False
     candidate = claim_next_text_extract_job(sb)
+
+    if candidate is None:
+        candidate = claim_next_retry_job(sb)
+        if candidate is not None:
+            is_retry = True
+            # Re-queue so that run_text_extract_job's internal _claim_job
+            # (which requires status='queued') can atomically claim it.
+            # Scoped to status='failed' to be safe against a concurrent change.
+            sb.table("document_processing_jobs").update({
+                "status": "queued",
+            }).eq("id", candidate["id"]).eq("status", "failed").execute()
+
     if candidate is None:
         return {"processed": 0, "job_id": None, "status": "idle", "error": None}
 
@@ -165,8 +248,8 @@ def run_worker_pass(sb) -> dict[str, Any]:
         if final_status not in ("succeeded", "failed", "queued", "running"):
             final_status = "failed"
         logger.info(
-            "text-extract worker: job_id=%s doc=%s → %s",
-            job_id, document_id, final_status,
+            "text-extract worker: job_id=%s doc=%s retry=%s → %s",
+            job_id, document_id, is_retry, final_status,
         )
         return {
             "processed": 1,
