@@ -1,7 +1,7 @@
 ---
 owner: ops
 gate: P6 — Scheduler verification (jobs / manual-run / drain)
-status: OPERATOR PASS
+status: PARTIAL OPERATOR PASS — AUTOMATIC DRAIN PROVENANCE PENDING
 validated_date: 2026-07-01
 candidate_sha: b9bd9d7b6b66e7ee84031d508fce6d3532e73bff
 supersedes: docs/audits/2026-06-30-mastery-staging-preflight.md (partial-pass evidence only)
@@ -9,21 +9,22 @@ supersedes: docs/audits/2026-06-30-mastery-staging-preflight.md (partial-pass ev
 
 # Scheduler Drain Validation — Operator Evidence (2026-07-01)
 
-This document records the durable evidence for the scheduler verification
-gate (P6 in `docs/ops/distance-to-release.md`, row "Scheduler verification"
-in `docs/status/career-copilot-checklist.md`). The prior attestation
-(`2026-06-30-mastery-staging-preflight.md`) confirmed APScheduler startup and
-sweep registration but lacked the `/api/admin/jobs` payload, explicit manual
-trigger evidence, and a named pending-job drain proof. This document closes
-all three items at candidate SHA `b9bd9d7b6b66e7ee84031d508fce6d3532e73bff`.
+This document records the 2026-07-01 operator validation session for gate P6
+("Scheduler verification — jobs / manual-run / drain") at candidate SHA
+`b9bd9d7b6b66e7ee84031d508fce6d3532e73bff`. It supersedes the partial
+attestation in `2026-06-30-mastery-staging-preflight.md`.
 
-**AUTOMATIC-PROVENANCE CAVEAT:** All job rows observed in this validation
-were claimed and completed by the scheduler automatically, not via a manual
-operator trigger. Manual trigger evidence (explicit `POST
-/api/admin/jobs/run/mock:sweeper` with a `base.admin` bearer token) is not
-asserted here. For the purpose of the drain proof, automatic claiming by the
-running scheduler is the durable correctness signal; a manual-trigger test
-would exercise the same claim path but is not the gate for scheduler drain.
+**Current gate status: PARTIAL OPERATOR PASS.**
+What this session proves: scheduler is registered and healthy; the worker
+processed a controlled `analytics_retry` job to terminal state (`done /
+attempts=1 / last_error=null`); DB state is correct. What it does NOT prove:
+(a) whether the 09:33 completion was driven by an automatic APScheduler tick
+or a manual `POST /api/admin/jobs/run/mock:sweeper` — the contemporaneous
+`/api/admin/jobs` response with `last_run.result.derivations` incremented was
+not captured; (b) drain within the expected ≤ 30-second cycle — the actual
+insertion-to-completion gap was ~65 minutes. Both items are required by the
+`docs/ops/pr1_scheduler_drain_verification.md` runbook (steps 3–4). See
+§ 13 (Gate Verdict) for the outstanding requirements.
 
 ---
 
@@ -56,11 +57,13 @@ This satisfies checklist row 40 item (d): "operator must populate
 
 ## 3. Fingerprint preflight at candidate SHA
 
-Command run (canonical Git-blob, fail-closed):
+The direct `bash scripts/verify_mastery_fingerprint.sh` invocation failed
+locally due to a CRLF issue (`pipefail\r` interpreted as a literal token).
+The successful portable invocation read the script blob directly from Git:
 
 ```bash
-EXPECTED_SHA="b9bd9d7b6b66e7ee84031d508fce6d3532e73bff" \
-  bash scripts/verify_mastery_fingerprint.sh
+export EXPECTED_SHA="b9bd9d7b6b66e7ee84031d508fce6d3532e73bff"
+git show HEAD:scripts/verify_mastery_fingerprint.sh | bash
 ```
 
 Result: **PASS**
@@ -71,36 +74,33 @@ Result: **PASS**
 | File count | 36 |
 | Per-file attestation | All 36 files passed |
 | Cross-document digest | Consistent across manifest / pr7 / checklist |
-| Pinned SHA match | `b9bd9d7b` == `HEAD` |
+| Pinned SHA match | `b9bd9d7b` == `EXPECTED_SHA` |
 
-**Technical note — local bash CRLF:** A local shell issue (pipefail\r
-interpreted as a literal pipefail carriage-return token) was observed during
-validation. The canonical Git-blob verifier (`verify_mastery_fingerprint.sh`)
-is unaffected because it hashes Git-blob content (always LF) rather than
-working-tree bytes. The manual `sha256sum "${_files[@]}"` recipe would have
-produced a different digest on this machine. Do NOT substitute the manual
-recipe — use the verifier script.
+**Note on the two invocation forms:** The canonical verifier
+(`verify_mastery_fingerprint.sh`) hashes Git blobs (always LF) rather than
+working-tree bytes, so the digest is platform-independent once the script
+itself is read cleanly. On Windows/CRLF checkouts, pipe from `git show`
+as above rather than running the script file directly.
 
 This is a **reference fingerprint at the candidate SHA**, not the freeze hash.
-The freeze hash (window_start baseline) must be re-pinned at the final
-deployed SHA when all P8 prerequisites hold, immediately before recording
-`window_start`.
+The freeze hash must be re-pinned at the final deployed SHA when all P8
+prerequisites hold, immediately before recording `window_start`.
 
 ---
 
 ## 4. E2E template repair (prerequisite for lifecycle validation)
 
 Mock template `ibps-po-prelims-mock-1` returned HTTP 404 (application-level,
-not routing) at initial attempt. Root cause: all 15 questions in the template
-had `reviewer_status=archived`. Operator executed a guarded staging SQL update
-to reset them to `reviewer_status=published`.
+not routing) at initial attempt. Root cause: all 15 questions had
+`reviewer_status=archived`. Operator executed a guarded staging SQL update to
+reset them to `reviewer_status=published`.
 
 Post-repair: 15 selectable questions confirmed. The seed conflict handler
 does not reset `reviewer_status`; the repair SQL was run directly.
 
 **Note:** All 15 E2E fixture questions have `topic_id=null` and
-`microtopic_id=null`. This constrains what can be validated (see
-§ 12 — Zero shadow rows).
+`microtopic_id=null`. This constrains what can be validated (see § 11 —
+Zero shadow rows).
 
 ---
 
@@ -116,10 +116,16 @@ does not reset `reviewer_status`; the repair SQL was run directly.
 
 ---
 
-## 6. Inline mastery job (submit-path analytics)
+## 6. Inline mastery job (submit-path synchronous processing)
 
-Immediately after submission, an inline mastery job was produced by the
-`JOB_ANALYTICS_RETRY` → `mastery_retry` chain:
+Immediately after submission, a mastery retry job was produced and completed
+synchronously within the submit request. The submit route (`app/backend/app/api/mock_engine.py`)
+resolves `flag_state` via `get_or_resolve_pinned_mastery_flag`, then — if
+not already processed — calls `claim_mastery_retry_required` to claim the job
+row, invokes `MasteryWriter.process_attempt` inline, and calls
+`complete_mastery_retry_required` to mark it done. All of this occurs within
+the HTTP request; there is no async analytics chain. The code comment at
+line 172 explicitly states: "no second `compute_and_persist` here."
 
 | Field | Value |
 |-------|-------|
@@ -127,30 +133,33 @@ Immediately after submission, an inline mastery job was produced by the
 | `job_kind` | `mastery_retry` |
 | `mastery_flag_state` | `shadow` |
 | Final status | `done` |
-| Observed at | immediately post-submission |
+| Processing path | synchronous inline (submit route, not scheduler) |
 
-**Important distinction:** This job was produced by the submit-path inline
-analytics chain, not by the scheduler tick. It demonstrates the
-`compute_and_persist` → `mastery_retry` pipeline is live, but it is NOT the
-scheduler drain proof. The scheduler drain proof requires a separately
-controlled row (see § 8).
+**Important distinction:** This job was completed synchronously by the submit
+route, not by a scheduler tick. It demonstrates the inline mastery path is
+live but is NOT the scheduler drain proof. Per `pr1_scheduler_drain_verification.md`
+§ Notes: "The `done:shadow` mastery job in the submit flow does not prove
+scheduled drain — that result comes from inline processing at submit time."
 
 ---
 
-## 7. `/api/admin/jobs` response — confirmed shape
+## 7. `/api/admin/jobs` — confirmed fields
 
-`GET /api/admin/jobs` (with `base.admin` bearer token) returns:
+`GET /api/admin/jobs` (with `base.admin` bearer token). The following
+is **schematic** (field names and value shapes confirmed; the literal
+payload was not captured verbatim):
 
-```json
+```
 {
   "jobs": [
     {
       "id": "mock:sweeper",
-      "next_run_at": "<ISO-8601 advancing on each poll>",
-      "trigger": {"type": "interval", "seconds": 30},
+      "next_run_at": <ISO-8601, advances ~30s between polls>,
+      "trigger": "interval[0:00:30]",
       "last_run": {
-        "at": "<ISO-8601 updating after each sweep>",
-        "manual": false
+        "at": <ISO-8601, updates after each sweep>,
+        // "manual" is absent for automatic scheduler runs
+        "result": { ... }
       }
     }
   ],
@@ -160,72 +169,90 @@ controlled row (see § 8).
 
 Confirmed observations:
 - `mock:sweeper` present in both `jobs` array and `registered` array.
-- `next_run_at` advances by ~30 s between successive polls.
+- `next_run_at` advances between successive polls.
 - `last_run.at` updates after each completed sweep.
-- `last_run.manual` is `false` (or absent) for automatic scheduler runs.
-- **There is NO `enabled` field** in the response. Any documentation or
-  operator playbook referencing `enabled: true` should be treated as stale.
-- `/api/admin/jobs` is NOT an execution ledger — idle ticks overwrite the
-  `last_run` entry. The durable drain proof is the `mock_attempt_jobs` row
-  (§ 8), not repeated `/api/admin/jobs` polls.
+- `trigger` is the string `"interval[0:00:30]"`, not an object.
+- `last_run.manual` is absent (not `false`) for automatic scheduler runs.
+- **There is NO `enabled` field** in the response.
+- The exact payload at the time of the controlled job completion was not
+  captured. In particular, `last_run.result.derivations` (or equivalent) was
+  not recorded after the 09:33 completion. This missing capture is one of the
+  two outstanding items for full P6 PASS (see § 13).
 
 ---
 
-## 8. Controlled analytics_retry drain proof
+## 8. Controlled `analytics_retry` drain — evidence
 
-This is the definitive scheduler drain evidence. A controlled
-`analytics_retry` row was inserted with `scheduled_for=now()` to force the
-scheduler to claim it on its next tick.
+A controlled `analytics_retry` row was inserted with `scheduled_for=now()`
+to allow the scheduler's next tick to claim it.
 
 | Field | Value |
 |-------|-------|
 | Job ID (`mock_attempt_jobs.id`) | `1afa0c0a-4b6c-4c11-9638-cc7ad0363365` |
 | `job_kind` | `analytics_retry` |
-| Initial status at insertion | `pending` |
-| `scheduled_for` at insertion | `now()` (i.e., 2026-07-01 ~09:05 UTC) |
-| Intermediate observation (09:05:47Z) | `status=pending`, `attempts=0` |
-| Claimed by scheduler tick at | `2026-07-01T09:33:09.393890Z` |
+| Insertion timestamp (`created_at`) | `2026-07-01T08:28:17.828378Z` |
+| `scheduled_for` at insertion | `now()` at insertion time (~08:28 UTC) |
+| Intermediate observation | `2026-07-01T09:05:47Z` — `status=pending`, `attempts=0` |
+| Completion (`updated_at`) | `2026-07-01T09:33:09.393890Z` |
+| Final `scheduled_for` | `2026-07-01T09:34:07Z` (post-claim lease; see note) |
 | Final `status` | `done` |
 | Final `attempts` | `1` |
 | Final `last_error` | `null` |
-| Duplicate shadow rows from this job | `0` |
+| Insertion-to-completion gap | **~65 minutes** (08:28 → 09:33) |
 
-**Intermediate observation note:** At 09:05:47Z the row showed `pending /
-attempts=0`. This was a transient state before the scheduler's next 30-second
-tick processed it. The subsequent observation at 09:33:09Z confirmed automatic
-claiming and terminal completion. The ~28-minute gap between insertion and
-claim is consistent with the scheduler having reset the `scheduled_for` field
-as a crash-recovery lease deadline during the claim phase; `updated_at` is the
-claim/completion timestamp, and `attempts=1` is the definitive proof that the
-scheduler claimed the row exactly once.
+**Timestamp correction:** The row was inserted at `08:28:17Z`. The 09:05:47Z
+observation is an intermediate check ~37 minutes after insertion, not the
+insertion time. Earlier versions of this document incorrectly described 09:05
+as the insertion time and computed a ~28-minute gap; both were wrong.
 
-**Why `done` with `last_error=null` is the correct terminal state:** The
-controlled row did not correspond to a real attempt with pending analytics (it
-was inserted directly for drain testing). A `done` result indicates the job
-was claimed and ran to completion without an unhandled exception — the expected
-outcome for a job whose payload attempt has already been processed. A
-`failed_permanent` result would indicate an exception escaped the job handler.
+**On the 65-minute gap:** The scheduler fires every 30 seconds. A 65-minute
+drain delay is not explained by the crash-recovery lease mechanism — that
+lease updates `scheduled_for` to a future time during claim, which is why
+final `scheduled_for=09:34:07Z` is later than `updated_at=09:33:09Z`, but
+that does not explain why the row remained unclaimed through many prior
+30-second ticks. Plausible causes include a service restart or idle period
+between 08:28 and 09:33; this was not investigated. The delay does not
+prevent the DB state from being correct, but it means the runbook requirement
+of "drain within one sweeper cycle (≤ 30 s)" was not demonstrated.
+
+**On automatic vs manual provenance:** The `done / attempts=1 / last_error=null`
+final state proves the `run_sweeper()` worker processed the row. It does not
+distinguish an APScheduler tick from a manual `POST /api/admin/jobs/run/mock:sweeper`,
+because both paths invoke the same worker function and produce the same DB
+mutation. The runbook (step 4) requires "wait one sweeper cycle without
+manually triggering" and then "confirm `last_run.result.derivations`
+incremented in the next GET /api/admin/jobs response." The contemporaneous
+`/api/admin/jobs` capture after completion was not recorded. This is the
+second outstanding item for full P6 PASS.
 
 ---
 
 ## 9. Duplicate shadow row check
 
+Query (per `pr1_scheduler_drain_verification.md` step 6 — correct invariant):
+
 ```sql
-SELECT attempt_id, COUNT(*) AS cnt
-FROM mock_mastery_shadow
-GROUP BY attempt_id
+SELECT attempt_id, topic_id, flag_state, COUNT(*)
+FROM public.mock_mastery_shadow
+WHERE attempt_id = 'ed665628-3026-46bf-8c25-ad667ce079ba'::uuid
+GROUP BY 1, 2, 3
 HAVING COUNT(*) > 1;
 ```
 
-Result: **0 rows** (no duplicates).
+Result: **0 rows** (no duplicates for this attempt).
+
+**Scope limitation:** Because this fixture emitted zero shadow rows (see § 11),
+this result confirms "no spurious duplicate shadow rows were created" but does
+not exercise the shadow-write idempotency path. A real topic-linked attempt
+is required to validate idempotency under re-processing.
 
 ---
 
 ## 10. Total shadow rows for validation window
 
 ```sql
-SELECT COUNT(*) FROM mock_mastery_shadow
-WHERE attempt_id = 'ed665628-3026-46bf-8c25-ad667ce079ba';
+SELECT COUNT(*) FROM public.mock_mastery_shadow
+WHERE attempt_id = 'ed665628-3026-46bf-8c25-ad667ce079ba'::uuid;
 ```
 
 Result: **0 rows**.
@@ -240,135 +267,105 @@ non-null `topic_id` to emit a mastery delta row; without it, no
 `mock_mastery_shadow` row is written and no `user_topic_mastery_audit` row is
 produced. This is correct behavior, not a failure.
 
-**Consequence:** This E2E fixture validates the attempt lifecycle, analytics
-retry plumbing, scheduler claiming, job completion, retry idempotency, and
-no-duplicate-output invariant. It **cannot** validate topic mastery deltas,
-error-pattern writes, persisted shadow decisions, exact shadow replay, or
-correction parity. A real topic-linked attempt is required for those validations
-(see Remaining Blocker B).
+**Consequence:** This E2E fixture validates the attempt lifecycle, synchronous
+inline mastery processing, scheduler registration/health, worker job
+completion, and no-spurious-duplicate invariant. It **cannot** validate topic
+mastery deltas, error-pattern writes, persisted shadow decisions, exact shadow
+replay, correction parity, or shadow-write idempotency under re-processing. A
+real topic-linked attempt is required for those (see § 13, Blocker B).
 
 ---
 
 ## 12. Technical findings
 
-The following findings arose during this validation. None block the scheduler
-drain gate, but all are recorded for completeness.
-
 **F1 — `/api/admin/jobs` has no `enabled` field.**
-The response omits `enabled`. Any checklist item or operator playbook
-referencing `enabled: true` as a scheduler confirmation step is stale and
-should be corrected.
+Any checklist item or playbook referencing `enabled: true` as a scheduler
+confirmation step is stale and should be corrected.
 
 **F2 — Manual sweeper trigger ≠ scheduler drain proof.**
-An explicit `POST /api/admin/jobs/run/mock:sweeper` invocation does not
-constitute a drain proof because it tests the manual-trigger code path, not
-the automatic scheduler tick. The drain proof requires a controlled row
-inserted with `scheduled_for=now()` and observed to completion via the
-scheduler's own tick. Both the manual trigger and automatic tick exercise the
-same job-claim logic, but only the automatic path proves the scheduler is
-running and claiming jobs independently.
+The drain proof requires a controlled row inserted with `scheduled_for=now()`
+observed to completion via the scheduler's own tick, plus a contemporaneous
+`/api/admin/jobs` capture confirming automatic provenance. A manual
+`POST /api/admin/jobs/run/mock:sweeper` would exercise the same worker but
+proves a different code path.
 
 **F3 — Correct event endpoint.**
 The event ingest endpoint is `POST /api/study/mocks/attempts/{attempt_id}/events`
 (attempt-scoped path). The frontend authenticates with a bearer token via
-`fetch({keepalive:true})` — NOT `navigator.sendBeacon` (which cannot attach
-an `Authorization` header and would receive a 401 from `get_current_user`).
-The ACK body contract is `{accepted, duplicates, rejected}`.
+`fetch({keepalive:true})` — NOT `navigator.sendBeacon`. The ACK body contract
+is `{accepted, duplicates, rejected}`.
 
 **F4 — E2E template required repair.**
-The E2E mock template `ibps-po-prelims-mock-1` had all 15 questions archived.
-A staging SQL repair was required to reset `reviewer_status=published`. The
-seed conflict handler does not reset `reviewer_status`; direct DB intervention
-was necessary. This finding is not a regression in the code under validation
-but indicates the seed setup for staging E2E templates needs to be robust
-against archival state.
+All 15 questions in `ibps-po-prelims-mock-1` had `reviewer_status=archived`.
+A staging SQL repair was required. The seed conflict handler does not reset
+`reviewer_status`; direct DB intervention was necessary.
 
-**F5 — Local bash CRLF issue with pipefail.**
-The operator's local shell interpreted `pipefail\r` as a literal token
-(carriage-return in the shebang/set line). The canonical Git-blob verifier
-(`verify_mastery_fingerprint.sh`) is immune because it reads Git blobs (always
-LF). Working-tree `sha256sum` recipes are NOT immune. This reinforces that
-only `verify_mastery_fingerprint.sh` should be used for fingerprint checks.
+**F5 — Local bash CRLF issue.**
+The operator's local shell interpreted `pipefail\r` as a literal token. The
+portable invocation is `git show HEAD:scripts/verify_mastery_fingerprint.sh | bash`.
 
-**F6 — Intermediate pending observation before scheduler claim.**
-The controlled job row `1afa0c0a` was observed at `pending/attempts=0` at
-09:05:47Z, approximately 27 minutes before the scheduler claimed it at
-09:33:09Z. This is a transient state, not a failure. The scheduler's
-`scheduled_for` update (crash-recovery lease) during the claim phase is
-reflected in the gap; `attempts=1` at completion is the authoritative
-drain proof.
+**F6 — 65-minute drain delay unexplained.**
+The controlled job was inserted at 08:28 and completed at 09:33 (~65 min),
+not within one 30-second scheduler cycle. The cause was not investigated.
 
 ---
 
 ## 13. Gate verdict
 
+### What this session proved
+
 | Check | Result |
 |-------|--------|
-| Candidate SHA deployed and A==B confirmed | PASS |
+| Candidate SHA deployed, A==B confirmed | PASS |
 | `FF_MOCK_MASTERY_WRITES=shadow` at deployment | PASS |
 | `ENABLE_SCHEDULER=true`, single instance | PASS |
 | `mock:sweeper` in `/api/admin/jobs` `jobs` + `registered` | PASS |
-| `next_run_at` and `last_run.at` advance on successive polls | PASS |
-| Controlled `analytics_retry` row claimed automatically | PASS |
-| Final status: `done` / `attempts=1` / `last_error=null` | PASS |
-| Duplicate shadow rows: `0` | PASS |
-| Fingerprint preflight at candidate SHA | PASS |
+| `next_run_at` advances between polls | PASS |
+| `last_run.at` updates after sweeps | PASS |
+| Controlled `analytics_retry` row reaches `done / attempts=1 / last_error=null` | PASS |
+| No spurious duplicate shadow rows for test attempt | PASS |
+| Fingerprint preflight (canonical Git-blob invocation) | PASS |
 
-**Overall gate verdict: OPERATOR PASS**
+### Outstanding requirements for full PASS (per `pr1_scheduler_drain_verification.md`)
 
-This completes gate P6 (Scheduler verification) in `docs/ops/distance-to-release.md`.
+| Requirement | Runbook step | Status |
+|-------------|-------------|--------|
+| Drain within ≤ 30 s of insertion without manual trigger | Step 4 | **PENDING** — gap was ~65 min |
+| Contemporaneous `GET /api/admin/jobs` showing `last_run.result.derivations` incremented after drain | Step 4 | **PENDING** — not captured |
+
+Until both are provided, automatic provenance cannot be distinguished from a
+manual invocation, and the runbook drain-timing requirement is unmet.
+
+**Overall gate verdict: PARTIAL OPERATOR PASS**
 
 ---
 
 ## 14. Remaining blockers before T0 (window_start)
 
-The following items remain outstanding. None are scheduler-related; they are
-listed here for completeness and to avoid any ambiguity about what this
-document does and does not close.
-
 **A — PR-6 clean rerun (Gate 9).**
-Deploy current `main` to staging (record candidate SHA A, require Render
+Deploy current `main` to staging (record candidate SHA A, confirm Render
 deployed SHA B == A). Run all 12 PR-6 gates with `FF=shadow` against that
-deployed SHA. Gate 9 must pass: `FF_MOCK_MASTERY_LIVE_USER_IDS` populated with
-named user(s), confirmed allowlist resolves correctly. Currently: `GATE FAILED
-— OPERATOR RERUN PENDING`.
+deployed SHA. Gate 9 must pass: `FF_MOCK_MASTERY_LIVE_USER_IDS` populated.
 
-**B — Real topic-linked attempt for mastery quality validation.**
-The E2E fixture (ibps-po-prelims-mock-1) has `topic_id=null` on all 15
-questions. A real-data attempt with `topic_id != null` is required to validate
-topic mastery deltas, error-pattern writes, persisted shadow decisions, exact
-shadow replay, and correction parity. This is required before Gate 9 can pass
-and before the shadow window has meaningful telemetry.
+**B — Real topic-linked attempt.**
+A real-data attempt with `topic_id != null` is required to validate topic
+mastery deltas, error-pattern writes, persisted shadow decisions, exact shadow
+replay, correction parity, and shadow-write idempotency.
 
-**C — PR #800 staging validation (3 checks).**
-Code-fixed, validation pending. Three checks required on staging:
-1. Authenticated beacon ACK: `POST /api/study/mocks/attempts/{attempt_id}/events`
-   returns `{accepted, duplicates, rejected}` with a valid bearer token
-   (fetch with `keepalive:true`, NOT sendBeacon).
-2. Forced-rejection retry: sequences rejected with `db_error` are retained in
-   the durable queue and replayed.
-3. Partial-coverage `fallback_question_count`: `mock_attempt_summary.analytics_quality`
-   contains `fallback_question_count > 0` for an attempt with incomplete event
-   coverage.
+**C — P6 automatic drain proof (see § 13).**
+New controlled job with insertion timestamp, drain within ≤ 30 s of
+`scheduled_for`, plus a succeeding `GET /api/admin/jobs` response showing
+`last_run.result.derivations` (or equivalent) incremented with `manual`
+absent/false.
 
-**D — Explicit 36-file boundary approval.**
-The 36-file v2 fingerprint manifest boundary (`docs/ops/mastery_validation_fingerprint_manifest_v2.txt`)
-is PROPOSED pending operator sign-off. Operator must explicitly approve the
-boundary (including the four files added post-PR-796: `core/auth.py`,
-`lib/supabase.js`, `useAnswerSync.js`, `lib/api.js`) before the manifest can
-be declared frozen.
+**D — PR #800 staging validation (3 checks).**
+Authenticated beacon ACK (`POST /api/study/mocks/attempts/{attempt_id}/events`
+returns `{accepted, duplicates, rejected}`); forced-rejection retry; partial-
+coverage `fallback_question_count`.
 
-**E — Evidence merge and final freeze / T0.**
-After completing A–D: commit/merge all evidence documents to `main`, deploy
-the resulting SHA to staging, confirm A==B for that final SHA, run the
-fail-closed verifier at that exact SHA, and record `window_start`. Only then
-can T0 be set. The freeze hash must be recomputed at the deployed SHA — the
-`f2ee2c40…` reference digest applies only if no manifest file changed between
-the reference commit and the final deploy.
+**E — Explicit 36-file boundary approval.**
+Operator sign-off on the v2 manifest boundary.
 
-**F — 14-day shadow window (PR-7).**
-Not started. Begins only when T0 is set (all of A–E complete). Any
-fingerprint change or off/live FF period restarts the clock.
+**F — Evidence merge, final freeze, T0.**
 
-**G — Bounded live canary (PR-8) → live flip (PR-9).**
-Not started. Requires PR-7 PASS.
+**G — 14-day shadow window (PR-7), canary (PR-8), live flip (PR-9).**
