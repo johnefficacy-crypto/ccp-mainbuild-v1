@@ -680,3 +680,309 @@ def test_concurrent_sweeper_vs_completion_no_deadlock_exactly_once():
     lang = _scalar(f"SELECT language_status FROM writing_evaluations WHERE id='{eid}'")
     assert lang in ("completed", "queued", "failed", "running")
     assert _scalar(f"SELECT count(*) FROM writing_evaluations WHERE id='{eid}'") == "1"
+
+
+# ---------------------------------------------------------------------------
+# EWP-2B finish: per-issue projection-linked evidence (§4.12/§10.1) and the
+# serialized review-correction apply pipeline (§4.12c).
+# ---------------------------------------------------------------------------
+
+def _mk_evidence_dict(*, op, user, exam, topic, micro, source_type, source_entity,
+                      evaluation, tier, projection, key, review=None, supersedes=None):
+    ev = {
+        "user_id": user, "exam_id": exam, "topic_id": topic, "microtopic_id": micro,
+        "source_type": source_type, "source_entity_id": source_entity,
+        "evaluation_id": evaluation, "issue_projection_id": projection,
+        "evidence_tier": tier, "score": None, "confidence": None,
+        "evidence_op": op, "evidence_key": key,
+    }
+    if review is not None:
+        ev["review_event_id"] = review
+    if supersedes is not None:
+        ev["supersedes_evidence_key"] = supersedes
+    sh = {k: ev[k] for k in ev if k not in ("evidence_op", "review_event_id", "supersedes_evidence_key")}
+    sh["delta_json"] = {}
+    return ev, sh
+
+
+def _drain_batch(oc, unit_tier="production"):
+    """Build + apply the batch payload the worker would produce for a claimed
+    evaluation outbox row: the unit-level row plus one row per issue projection."""
+    pairs = []
+    unit_ev, unit_sh = _mk_evidence_dict(
+        op="assert", user=oc["user_id"], exam=oc.get("exam_id"), topic=oc["topic_id"],
+        micro=oc.get("microtopic_id"), source_type="sentence_drill",
+        source_entity=oc["source_entity_id"], evaluation=oc["evaluation_id"],
+        tier=unit_tier, projection=None, key=oc["idempotency_key"])
+    pairs.append({"evidence": unit_ev, "shadow": unit_sh})
+    per = {}
+    for proj in oc.get("issue_projections") or []:
+        k = _evidence_key(
+            evidence_op="assert", user_id=oc["user_id"], evaluation_id=oc["evaluation_id"],
+            issue_projection_id=proj["issue_projection_id"], microtopic_id=proj.get("microtopic_id"),
+            evidence_tier=proj["evidence_tier"], source_type="sentence_drill")
+        ev, sh = _mk_evidence_dict(
+            op="assert", user=oc["user_id"], exam=oc.get("exam_id"), topic=oc["topic_id"],
+            micro=proj.get("microtopic_id"), source_type="sentence_drill",
+            source_entity=oc["source_entity_id"], evaluation=oc["evaluation_id"],
+            tier=proj["evidence_tier"], projection=proj["issue_projection_id"], key=k)
+        pairs.append({"evidence": ev, "shadow": sh})
+        per[proj["issue_projection_id"]] = {"key": k, "tier": proj["evidence_tier"],
+                                            "micro": proj.get("microtopic_id")}
+    out = _json(
+        f"SELECT ewp_complete_mastery_outbox_batch('{oc['id']}','{oc['claim_token']}',"
+        f"'{json.dumps(pairs)}'::jsonb)")
+    return out, per
+
+
+def _seed_issue_assert(answer, ch, issue_type, severity="should_fix"):
+    """Produce a projection-linked ASSERT evidence row for one issue and return
+    its context (evaluation, issue, projection, evidence_key, ...)."""
+    sid = _new_submitted_session(answer, ch)
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    micro = claim.get("microtopic_id")
+    unit_key = _evidence_key(
+        evidence_op="assert", user_id=_A, evaluation_id=claim["evaluation_id"],
+        issue_projection_id=None, microtopic_id=micro,
+        evidence_tier="production", source_type="sentence_drill")
+    issues = json.dumps([_issue(issue_type, "quote", severity)])
+    _json(
+        f"SELECT ewp_complete_language_evaluation('{claim['job_id']}','{claim['claim_token']}',"
+        f"'lang-mock-v1','{issues}'::jsonb,'{{}}'::jsonb,NULL,false,'shadow','{unit_key}')")
+    oc = _json("SELECT ewp_claim_mastery_outbox(900)")
+    out, per = _drain_batch(oc)
+    eid = claim["evaluation_id"]
+    issue = _scalar(
+        f"SELECT id FROM writing_issue_events WHERE evaluation_id='{eid}' AND issue_type='{issue_type}'")
+    proj = _scalar(
+        f"SELECT p.id FROM writing_issue_projections p JOIN writing_issue_events i ON i.id=p.issue_event_id "
+        f"WHERE i.evaluation_id='{eid}' AND i.issue_type='{issue_type}' AND p.projection_kind='automatic'")
+    return {
+        "sid": sid, "eval": eid, "issue": issue, "projection": proj,
+        "evidence_key": per[proj]["key"], "tier": per[proj]["tier"], "micro": per[proj]["micro"],
+        "topic": oc["topic_id"], "exam": oc.get("exam_id"), "source_entity": oc["source_entity_id"],
+        "batch_rows": out["rows"],
+    }
+
+
+def test_per_issue_projection_evidence_written_with_non_null_projection():
+    ctx = _seed_issue_assert("per issue base text", "d1" + "0" * 62, "article")
+    # unit-level production + one projection-linked row.
+    assert ctx["batch_rows"] == 2
+    row = _scalar(
+        f"SELECT evidence_tier||'/'||(issue_projection_id IS NOT NULL) "
+        f"FROM user_topic_mastery_evidence WHERE evidence_key='{ctx['evidence_key']}'")
+    # a freshly-surfaced (never-resolved) issue → recognition tier.
+    assert row == "recognition/true"
+    assert _scalar(
+        f"SELECT issue_projection_id FROM user_topic_mastery_evidence "
+        f"WHERE evidence_key='{ctx['evidence_key']}'") == ctx["projection"]
+
+
+def test_per_issue_correction_tier_for_resolved_lineage_and_redrain_idempotent():
+    # v1: SVA must_fix. v2: resolved. v3: SVA REGRESSES (present again) → its
+    # lineage has a 'resolved' event, so the per-issue tier is 'correction'.
+    sid = _new_submitted_session("correction tier base", "d2" + "0" * 62)
+    e1 = _claim_complete([_issue("subject_verb_agreement", "they is")])
+    _rewrite(sid, "correction tier v2", "d3" + "0" * 62, 2)
+    e2 = _claim_complete([_issue("spelling", "teh")])  # SVA resolved
+    _rewrite(sid, "correction tier v3", "d4" + "0" * 62, 3)
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    unit_key = _evidence_key(
+        evidence_op="assert", user_id=_A, evaluation_id=claim["evaluation_id"],
+        issue_projection_id=None, microtopic_id=claim.get("microtopic_id"),
+        evidence_tier="production", source_type="sentence_drill")
+    issues = json.dumps([_issue("subject_verb_agreement", "they is")])
+    _json(
+        f"SELECT ewp_complete_language_evaluation('{claim['job_id']}','{claim['claim_token']}',"
+        f"'lang-mock-v1','{issues}'::jsonb,'{{}}'::jsonb,NULL,false,'shadow','{unit_key}')")
+    oc = _json("SELECT ewp_claim_mastery_outbox(900)")
+    projs = oc["issue_projections"]
+    assert len(projs) == 1 and projs[0]["evidence_tier"] == "correction"
+    out, per = _drain_batch(oc)
+    key = per[projs[0]["issue_projection_id"]]["key"]
+    assert _scalar(
+        f"SELECT evidence_tier FROM user_topic_mastery_evidence WHERE evidence_key='{key}'") == "correction"
+    # re-drain (simulate a crash-retry: reprocess the SAME row) inserts nothing new.
+    tok2 = "00000000-0000-0000-0000-0000000000cc"
+    _psql(
+        f"UPDATE writing_mastery_outbox SET status='processing', claim_token='{tok2}', "
+        f"locked_at=now() WHERE id='{oc['id']}'")
+    oc2 = {**oc, "claim_token": tok2}
+    _drain_batch(oc2)
+    assert _scalar(
+        f"SELECT count(*) FROM user_topic_mastery_evidence WHERE evidence_key='{key}'") == "1"
+
+
+def _claim_review_correction_for(rev):
+    """Claim the review_correction outbox row for `rev`. The claim RPC is
+    global-oldest (single-worker semantics); on a shared DB other tests leave
+    pending review_correction rows, so park any non-matching claimed row and
+    retry until ours surfaces."""
+    for _ in range(50):
+        raw = _scalar("SELECT ewp_claim_review_correction_outbox(900)")
+        if not raw:
+            break
+        rc = json.loads(raw)
+        if rc["review_event_id"] == rev:
+            return rc
+        _psql(
+            f"UPDATE writing_mastery_outbox SET status='failed', claim_token=NULL, "
+            f"locked_at=NULL WHERE id='{rc['id']}'")
+    raise AssertionError(f"no review_correction outbox row claimed for {rev}")
+
+
+def _apply_correction(ctx, decision, corrected=None):
+    """Seed a review event with `decision`, enqueue + claim + complete the
+    correction, and return (enqueue_result, review_event_id)."""
+    corr = f",'{corrected}'" if corrected else ",NULL"
+    _psql(
+        "INSERT INTO writing_issue_review_events(issue_event_id,decision,corrected_issue_type,reviewer_type) "
+        f"VALUES ('{ctx['issue']}','{decision}'{corr},'system')")
+    rev = _scalar(
+        f"SELECT id FROM writing_issue_review_events WHERE issue_event_id='{ctx['issue']}' "
+        "ORDER BY event_seq DESC LIMIT 1")
+    enq = _json(f"SELECT ewp_enqueue_review_correction('{rev}')")
+    if enq["status"] != "enqueued":
+        return enq, rev
+    rc = _claim_review_correction_for(rev)
+    ck = _evidence_key(
+        evidence_op=rc["evidence_op"], user_id=rc["user_id"], evaluation_id=rc["evaluation_id"],
+        issue_projection_id=rc["issue_projection_id"], microtopic_id=rc.get("microtopic_id"),
+        evidence_tier=rc["evidence_tier"], source_type=rc["source_type"],
+        review_event_id=rc["review_event_id"])
+    ev, sh = _mk_evidence_dict(
+        op=rc["evidence_op"], user=rc["user_id"], exam=rc.get("exam_id"), topic=rc["topic_id"],
+        micro=rc.get("microtopic_id"), source_type=rc["source_type"],
+        source_entity=rc["source_entity_id"], evaluation=rc["evaluation_id"],
+        tier=rc["evidence_tier"], projection=rc["issue_projection_id"], key=ck,
+        review=rc["review_event_id"], supersedes=rc["supersedes_evidence_key"])
+    out = _json(
+        f"SELECT ewp_complete_review_correction('{rc['id']}','{rc['claim_token']}',"
+        f"'{json.dumps(ev)}'::jsonb,'{json.dumps(sh)}'::jsonb)")
+    assert out["status"] == "done"
+    return enq, rev
+
+
+def _in_effective(projection):
+    return _scalar(
+        f"SELECT count(*) FROM effective_user_topic_mastery_evidence WHERE issue_projection_id='{projection}'")
+
+
+def test_review_correction_invalidated_retract_folds_out():
+    ctx = _seed_issue_assert("retract base text", "d5" + "0" * 62, "article")
+    assert _in_effective(ctx["projection"]) == "1"
+    enq, _ = _apply_correction(ctx, "invalidated")
+    assert enq["evidence_op"] == "retract" and enq["mastery_flag_state"] == "shadow"
+    # a retract row exists preserving the predecessor projection...
+    assert _scalar(
+        f"SELECT count(*) FROM user_topic_mastery_evidence "
+        f"WHERE evidence_op='retract' AND issue_projection_id='{ctx['projection']}'") == "1"
+    # ...and the effective fold no longer surfaces the issue.
+    assert _in_effective(ctx["projection"]) == "0"
+
+
+def test_review_correction_reclassified_replace_supersedes():
+    ctx = _seed_issue_assert("replace base text", "d6" + "0" * 62, "article")
+    enq, rev = _apply_correction(ctx, "reclassified", corrected="word_choice")
+    assert enq["evidence_op"] == "replace"
+    # a review_override projection was created for the cited review event...
+    override = _scalar(
+        f"SELECT id FROM writing_issue_projections "
+        f"WHERE projection_kind='review_override' AND override_review_event_id='{rev}'")
+    assert override
+    # ...the replace row carries it, the original automatic projection is superseded.
+    assert _scalar(
+        f"SELECT count(*) FROM user_topic_mastery_evidence "
+        f"WHERE evidence_op='replace' AND issue_projection_id='{override}'") == "1"
+    assert _in_effective(ctx["projection"]) == "0"      # original folded out
+    assert _in_effective(override) == "1"               # replacement effective
+
+
+def test_review_correction_confirmed_reassert_restores():
+    ctx = _seed_issue_assert("reassert base text", "d7" + "0" * 62, "article")
+    _apply_correction(ctx, "invalidated")               # retract
+    assert _in_effective(ctx["projection"]) == "0"
+    enq, _ = _apply_correction(ctx, "confirmed")        # re-assert
+    assert enq["evidence_op"] == "assert"
+    # the re-assert restores the ORIGINAL automatic projection into the fold.
+    assert _in_effective(ctx["projection"]) == "1"
+    assert _scalar(
+        f"SELECT count(*) FROM user_topic_mastery_evidence "
+        f"WHERE evidence_op='assert' AND review_event_id IS NOT NULL "
+        f"AND issue_projection_id='{ctx['projection']}'") == "1"
+
+
+def test_review_correction_pinned_flag_copied_not_reresolved():
+    # The correction inherits the assertion's pinned mode (§4.12c/§8.2); the
+    # pipeline NEVER reads a current flag, so a correction is emitted even when
+    # the current flag would be 'off'. The enqueued row's flag equals the pin.
+    ctx = _seed_issue_assert("pinned flag text", "d8" + "0" * 62, "article")
+    _psql(
+        "INSERT INTO writing_issue_review_events(issue_event_id,decision,reviewer_type) "
+        f"VALUES ('{ctx['issue']}','invalidated','system')")
+    rev = _scalar(
+        f"SELECT id FROM writing_issue_review_events WHERE issue_event_id='{ctx['issue']}' "
+        "ORDER BY event_seq DESC LIMIT 1")
+    enq = _json(f"SELECT ewp_enqueue_review_correction('{rev}')")
+    assert enq["status"] == "enqueued"
+    assert _scalar(
+        f"SELECT mastery_flag_state FROM writing_mastery_outbox WHERE review_event_id='{rev}'") == "shadow"
+
+
+def test_review_correction_stale_rejected_by_trigger():
+    # Enqueue a retract for an invalidation, then a NEWER confirmed review lands.
+    # Completing the (now stale) retract must be rejected by the correction guard.
+    ctx = _seed_issue_assert("stale correction text", "d9" + "0" * 62, "article")
+    _psql(
+        "INSERT INTO writing_issue_review_events(issue_event_id,decision,reviewer_type) "
+        f"VALUES ('{ctx['issue']}','invalidated','system')")
+    rev1 = _scalar(
+        f"SELECT id FROM writing_issue_review_events WHERE issue_event_id='{ctx['issue']}' "
+        "ORDER BY event_seq DESC LIMIT 1")
+    _json(f"SELECT ewp_enqueue_review_correction('{rev1}')")
+    rc = _claim_review_correction_for(rev1)
+    # a newer review event supersedes rev1.
+    _psql(
+        "INSERT INTO writing_issue_review_events(issue_event_id,decision,reviewer_type) "
+        f"VALUES ('{ctx['issue']}','confirmed','system')")
+    ck = _evidence_key(
+        evidence_op=rc["evidence_op"], user_id=rc["user_id"], evaluation_id=rc["evaluation_id"],
+        issue_projection_id=rc["issue_projection_id"], microtopic_id=rc.get("microtopic_id"),
+        evidence_tier=rc["evidence_tier"], source_type=rc["source_type"],
+        review_event_id=rc["review_event_id"])
+    ev, sh = _mk_evidence_dict(
+        op=rc["evidence_op"], user=rc["user_id"], exam=rc.get("exam_id"), topic=rc["topic_id"],
+        micro=rc.get("microtopic_id"), source_type=rc["source_type"],
+        source_entity=rc["source_entity_id"], evaluation=rc["evaluation_id"],
+        tier=rc["evidence_tier"], projection=rc["issue_projection_id"], key=ck,
+        review=rc["review_event_id"], supersedes=rc["supersedes_evidence_key"])
+    p = _psql(
+        f"SELECT ewp_complete_review_correction('{rc['id']}','{rc['claim_token']}',"
+        f"'{json.dumps(ev)}'::jsonb,'{json.dumps(sh)}'::jsonb)", expect_ok=False)
+    assert "evidence_correction_invalid" in p.stderr
+
+
+def test_review_correction_mismatched_op_rejected_by_trigger():
+    # A direct correction whose op does not match the review decision is rejected
+    # by ewp_check_evidence_correction (op↔decision is locked, §4.12c).
+    ctx = _seed_issue_assert("mismatch op text", "da" + "0" * 62, "article")
+    _psql(
+        "INSERT INTO writing_issue_review_events(issue_event_id,decision,reviewer_type) "
+        f"VALUES ('{ctx['issue']}','invalidated','system')")
+    rev = _scalar(
+        f"SELECT id FROM writing_issue_review_events WHERE issue_event_id='{ctx['issue']}' "
+        "ORDER BY event_seq DESC LIMIT 1")
+    # invalidated demands 'retract'; forge a 'replace' → trigger rejects.
+    ck = _evidence_key(
+        evidence_op="replace", user_id=_A, evaluation_id=ctx["eval"],
+        issue_projection_id=ctx["projection"], microtopic_id=ctx["micro"],
+        evidence_tier=ctx["tier"], source_type="sentence_drill", review_event_id=rev)
+    p = _psql(
+        "INSERT INTO user_topic_mastery_evidence(user_id,topic_id,microtopic_id,source_type,"
+        "source_entity_id,evidence_tier,issue_projection_id,evidence_op,review_event_id,"
+        "supersedes_evidence_key,evidence_key,observed_at) VALUES "
+        f"('{_A}','{ctx['topic']}',{'NULL' if ctx['micro'] is None else chr(39)+ctx['micro']+chr(39)},"
+        f"'sentence_drill','{ctx['source_entity']}','{ctx['tier']}','{ctx['projection']}','replace',"
+        f"'{rev}','{ctx['evidence_key']}','{ck}',now())", expect_ok=False)
+    assert "evidence_correction_invalid" in p.stderr

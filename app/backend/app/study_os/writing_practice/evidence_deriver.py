@@ -269,3 +269,106 @@ def derive_unit_evidence(
         evidence_key=evidence_key,
         evidence_op="assert",
     )
+
+
+def derive_issue_evidence(
+    *,
+    user_id: str,
+    evaluation_id: str,
+    topic_id: str,
+    exam_id: str | None,
+    source_entity_id: str,
+    exercise_type: str,
+    issue_projection_id: str,
+    issue_microtopic_id: str | None,
+    evidence_tier: str,
+) -> EvidenceRow:
+    """Derive ONE projection-linked evidence row for a single issue (§4.12/§10.1).
+
+    Unlike the unit-level row, this carries the ``issue_projection_id`` (and the
+    issue's OWN microtopic), so the row can participate in the schema correction
+    chain (§4.12c): a later ``retract``/``replace``/re-assert supersedes it.
+
+    ``evidence_tier`` is supplied by the drain claim (the per-issue tier rule is
+    resolved in-DB against the resolution history — ``correction`` for a lineage
+    the aspirant already corrected, ``recognition`` for a freshly-surfaced error).
+    The row is an ``assert`` (``review_event_id=None``); the derived key folds in
+    ``issue_projection_id`` and the issue microtopic so each issue produces a
+    distinct evidence_key (§4.12b).
+    """
+    source_type = source_type_for_exercise(exercise_type)
+    evidence_key = compute_evidence_key(
+        evidence_op="assert",
+        user_id=user_id,
+        evaluation_id=evaluation_id,
+        issue_projection_id=issue_projection_id,
+        microtopic_id=issue_microtopic_id,
+        evidence_tier=evidence_tier,
+        source_type=source_type,
+        review_event_id=None,
+    )
+    return EvidenceRow(
+        user_id=user_id,
+        topic_id=topic_id,
+        microtopic_id=issue_microtopic_id,
+        exam_id=exam_id,
+        source_type=source_type,
+        source_entity_id=source_entity_id,
+        evaluation_id=evaluation_id,
+        issue_projection_id=issue_projection_id,
+        evidence_tier=evidence_tier,
+        score=None,
+        confidence=None,
+        evidence_key=evidence_key,
+        evidence_op="assert",
+    )
+
+
+def derive_review_correction_evidence(
+    *,
+    evidence_op: str,
+    user_id: str,
+    evaluation_id: str,
+    topic_id: str,
+    microtopic_id: str | None,
+    exam_id: str | None,
+    source_type: str,
+    source_entity_id: str,
+    evidence_tier: str,
+    issue_projection_id: str,
+    review_event_id: str,
+    supersedes_evidence_key: str,
+) -> EvidenceRow:
+    """Derive the correction evidence row for a review decision (§4.12c).
+
+    ``evidence_op`` is fixed by the decision (``retract``/``replace``/re-assert
+    ``assert``); the identity fields (tier/microtopic/topic/source) are copied
+    from the superseded tail. Because ``evidence_op`` and ``review_event_id`` are
+    part of the §4.12b key, the correction row keys distinctly from the original
+    assertion and from other corrections of the same issue.
+    """
+    evidence_key = compute_evidence_key(
+        evidence_op=evidence_op,
+        user_id=user_id,
+        evaluation_id=evaluation_id,
+        issue_projection_id=issue_projection_id,
+        microtopic_id=microtopic_id,
+        evidence_tier=evidence_tier,
+        source_type=source_type,
+        review_event_id=review_event_id,
+    )
+    return EvidenceRow(
+        user_id=user_id,
+        topic_id=topic_id,
+        microtopic_id=microtopic_id,
+        exam_id=exam_id,
+        source_type=source_type,
+        source_entity_id=source_entity_id,
+        evaluation_id=evaluation_id,
+        issue_projection_id=issue_projection_id,
+        evidence_tier=evidence_tier,
+        score=None,
+        confidence=None,
+        evidence_key=evidence_key,
+        evidence_op=evidence_op,
+    )
