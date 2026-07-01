@@ -789,6 +789,50 @@ def test_mid_flight_archive_race_job_terminalized_not_stranded(sb, monkeypatch):
     assert doc_rows[0]["status"] == "archived"
 
 
+def test_finalize_failed_branch_job_terminalized(sb, monkeypatch):
+    """Regression: when finalize_document_extraction returns a generic failure
+    (ok=False, reason != 'document_archived'), the claimed job must be
+    terminalized to 'failed' — not left stranded in 'running'.
+
+    Covers the else-branch in run_text_extract_job that raises _ExtractError
+    with code='finalize_failed'; verifies _fail() is invoked on that path too.
+    """
+    doc_id = "77777777-eeee-ffff-aaaa-777777777777"
+    _seed_doc(sb, doc_id=doc_id, status="uploaded")
+    _patch_parser(monkeypatch, ["page text"], page_count=1)
+
+    # Force finalize_document_extraction to return a generic non-ok response,
+    # bypassing the stub's normal success path without altering table() ops
+    # (so _fail()'s _update_job calls still hit the in-memory DB).
+    original_rpc = sb.rpc
+
+    def _failing_rpc(name: str, params: dict):
+        if name == "finalize_document_extraction":
+            return _RpcCall(lambda: {"ok": False, "reason": "job_not_found_or_not_running"})
+        return original_rpc(name, params)
+
+    monkeypatch.setattr(sb, "rpc", _failing_rpc)
+
+    r = _app(sb, USER_A).post(f"/api/library/items/{doc_id}/process-text")
+    assert r.status_code == 400, r.text
+    assert r.json()["detail"]["code"] == "finalize_failed"
+
+    # Critical: the job must NOT be stranded in 'running'.
+    jobs = [j for j in sb.db.get("document_processing_jobs", [])
+            if j.get("document_id") == doc_id]
+    assert jobs, "a job must have been created and claimed"
+    job = jobs[-1]
+    assert job["status"] == "failed", (
+        f"job stranded in '{job['status']}' — terminalization missing on finalize_failed path"
+    )
+    assert job["error_code"] == "finalize_failed"
+
+    # No pages written — RPC aborted before page swap.
+    pages_written = [p for p in sb.db.get("document_pages", [])
+                     if p.get("document_id") == doc_id]
+    assert pages_written == [], "no pages should be written when finalize_failed"
+
+
 def test_finalize_rpc_rejects_wrong_job_id(sb, monkeypatch):
     """Regression: the fake RPC rejects a job that doesn't belong to the document
     (or isn't in 'running' state), mirroring the SQL job-validation guard.

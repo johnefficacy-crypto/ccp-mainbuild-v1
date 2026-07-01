@@ -300,8 +300,13 @@ def _write_pages(sb, document_id: str, rows: list[dict[str, Any]]) -> None:
     ).execute()
 
 
-def _update_job(sb, job_id: str, patch: dict[str, Any]) -> None:
-    sb.table("document_processing_jobs").update(patch).eq("id", job_id).execute()
+def _update_job(sb, job_id: str, patch: dict[str, Any], *, guard_running: bool = False) -> None:
+    # guard_running=True mirrors the RPC's own `status='running' FOR UPDATE` guard so
+    # a duplicate/concurrent finalize can't clobber an already-terminal job to 'failed'.
+    q = sb.table("document_processing_jobs").update(patch).eq("id", job_id)
+    if guard_running:
+        q = q.eq("status", "running")
+    q.execute()
 
 
 def _update_doc(sb, document_id: str, status: str) -> None:
@@ -320,7 +325,7 @@ def _fail(sb, *, job_id: str, document_id: str, code: str, message: str,
         "error_code": code,
         "error_message": message,
         "metrics": metrics or {},
-    })
+    }, guard_running=True)
     _update_doc(sb, document_id, "failed")
 
 
