@@ -168,8 +168,9 @@ Confirmed observations:
 - **There is NO `enabled` field** in the response.
 - The exact payload at the time of the controlled job completion was not
   captured. In particular, `last_run.result.derivations` (or equivalent) was
-  not recorded after the 09:33 completion. This missing capture is one of the
-  two outstanding items for full P6 PASS (see § 13).
+  not recorded after the 09:33 completion. This missing capture was one of the
+  two outstanding requirements for full P6 PASS — resolved by the watcher-based
+  capture in § 8b.
 
 ---
 
@@ -214,8 +215,9 @@ because both paths invoke the same worker function and produce the same DB
 mutation. The runbook (step 4) requires "wait one sweeper cycle without
 manually triggering" and then "confirm `last_run.result.derivations`
 incremented in the next GET /api/admin/jobs response." The contemporaneous
-`/api/admin/jobs` capture after completion was not recorded. This is the
-second outstanding item for full P6 PASS.
+`/api/admin/jobs` capture after completion was not recorded. This was the
+second outstanding requirement for full P6 PASS — resolved by the watcher-based
+capture in § 8b.
 
 ---
 

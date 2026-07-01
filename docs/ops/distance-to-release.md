@@ -5,7 +5,7 @@
 > live evidence lives in the gate docs / `docs/audits/`. When a gate changes, update the
 > checklist + its audit, then regenerate this view. Each row links its authoritative source.
 
-**as_of:** `main @ 9e085db5` · 2026-07-01
+**as_of:** `main @ a3b928e1` · 2026-07-01
 **Companion:** `docs/ops/v1-go-live-runbook.md` (the *how*) · `scripts/v1_release_verification.sql` (the *evidence*)
 **Position:** late-stage beta — feature-complete-approaching, **not** production-ready.
 
