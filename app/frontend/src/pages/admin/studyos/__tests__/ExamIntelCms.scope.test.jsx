@@ -62,7 +62,7 @@ jest.mock("../../../../shared/ui/heavy", () => ({
 
 jest.mock("../ExamIntelDocuments", () => ({
   __esModule: true,
-  default: () => null,
+  default: ({ writesBlocked }) => <div data-testid="documents-panel" data-writes-blocked={String(writesBlocked)} />,
 }));
 
 const { api } = require("../../../../lib/api");
@@ -569,5 +569,64 @@ describe("G.5 Invariants", () => {
   test("CMS renders for authorized user", async () => {
     renderCms();
     expect(await screen.findByTestId("admin-exam-intel-cms")).toBeTruthy();
+  });
+});
+
+
+// ── Finding 5: Scope safety state tests ──────────────────────────────────────
+
+describe("F5 Scope safety state", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSetSearchParams.mockClear();
+  });
+
+  test("scope error banner shown when exam_id cannot be resolved", async () => {
+    // Exam lookup returns empty list => not found => error state
+    api.get.mockImplementation((url) => {
+      if (url.includes("/admin/organizations")) return Promise.resolve({ items: [] });
+      return Promise.resolve(makeListResponse([], 0));
+    });
+    mockSearchParamsRaw = { exam_id: "nonexistent-exam-id" };
+    renderCms();
+    await waitFor(() => {
+      return screen.queryByTestId("scope-resolution-error") !== null;
+    });
+    expect(screen.queryByTestId("scope-resolution-error")).toBeTruthy();
+  });
+
+  test("writes blocked during resolving state — cms-toggle-create button is disabled", async () => {
+    // Never-resolving promise for exam lookup keeps state in 'resolving'
+    let resolveExamLookup;
+    api.get.mockImplementation((url) => {
+      if (url.includes("/admin/organizations")) return Promise.resolve({ items: [] });
+      if (url.includes("/exams?")) return new Promise((res) => { resolveExamLookup = res; });
+      return Promise.resolve(makeListResponse([], 0));
+    });
+    mockSearchParamsRaw = { exam_id: "some-exam-id" };
+    renderCms();
+    // The button should exist but be disabled because scope is still resolving
+    await waitFor(() => screen.queryByTestId("cms-toggle-create") !== null);
+    expect(screen.getByTestId("cms-toggle-create").disabled).toBe(true);
+    // Clean up the pending promise to avoid test leaks
+    if (resolveExamLookup) resolveExamLookup(makeListResponse([], 0));
+  });
+
+  test("writes blocked after scope error — documents panel receives writesBlocked=true", async () => {
+    // Exam lookup returns empty => error => writesBlocked=true
+    api.get.mockImplementation((url) => {
+      if (url.includes("/admin/organizations")) return Promise.resolve({ items: [] });
+      return Promise.resolve(makeListResponse([], 0));
+    });
+    mockSearchParamsRaw = { exam_id: "bad-exam-id" };
+    renderCms();
+    // Switch to documents entity
+    fireEvent.change(await screen.findByTestId("cms-entity-select"), { target: { value: "documents" } });
+    // Wait for scope error to be resolved
+    await waitFor(() => screen.queryByTestId("scope-resolution-error") !== null);
+    // Documents panel should have writesBlocked=true
+    const panel = screen.queryByTestId("documents-panel");
+    expect(panel).toBeTruthy();
+    expect(panel.getAttribute("data-writes-blocked")).toBe("true");
   });
 });

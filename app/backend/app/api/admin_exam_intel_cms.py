@@ -1724,11 +1724,12 @@ def update_pyq_question(
 @router.get("/pyq-options")
 def list_pyq_options(
     question_id: str | None = Query(default=None),
-    limit: int = Query(default=10, ge=1, le=50),
+    limit: int = Query(default=50, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
     _admin: dict = Depends(require_permission(PERM_CMS)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    """List PYQ options, optionally filtered by question_id."""
+    """List PYQ options with pagination, optionally filtered by question_id."""
     supabase = get_supabase_admin()
     q = (
         supabase.table("pyq_options")
@@ -1737,7 +1738,7 @@ def list_pyq_options(
     )
     if question_id:
         q = q.eq("question_id", question_id)
-    res = q.limit(limit).execute()
+    res = q.range(offset, offset + limit - 1).execute()
     return {"items": res.data or [], "total": getattr(res, "count", None)}
 
 
