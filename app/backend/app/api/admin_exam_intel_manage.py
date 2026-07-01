@@ -31,6 +31,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from app.api.admin_exam_intel_cms import (
     WriteEnvelope,
@@ -44,7 +45,7 @@ from app.api.admin_exam_intel_cms import (
     _TOPIC_FIELDS,
     _TOPIC_LEVELS,
 )
-from app.core.auth import require_permission
+from app.core.auth import get_current_user, require_permission
 from app.core.permissions import EXAM_INTELLIGENCE_MANAGE
 from app.db.supabase_client import get_supabase_admin
 
@@ -56,6 +57,56 @@ router = APIRouter(
 )
 
 PERM_MANAGE = EXAM_INTELLIGENCE_MANAGE
+PERM_REVIEW = "exam_intelligence.review"
+
+# ── Prerequisite lifecycle (J2-A′ gate) ───────────────────────────────────
+_PREREQ_FIELDS = {"topic_id", "prerequisite_topic_id", "relation_type", "strength", "source_basis"}
+_PREREQ_RELATIONS = ("requires", "recommended_before", "supports", "foundation_for")
+_ORDERING_RELATIONS = {"requires", "recommended_before"}
+# States a manage-tier operator may edit/delete/submit from.
+_MANAGE_EDITABLE = {"draft", "rejected"}
+# Review-only lifecycle transitions (from, to). Everything else is 409.
+_REVIEW_TRANSITIONS = {
+    ("draft", "rejected"),
+    ("pending_review", "reviewed"),
+    ("pending_review", "rejected"),
+    ("reviewed", "locked"),
+    ("reviewed", "rejected"),
+    ("reviewed", "draft"),
+    ("locked", "reviewed"),  # reopen — requires review_notes
+}
+
+
+def _require_prereq_read(user: dict = Depends(get_current_user)) -> dict:
+    """Read gate for prerequisite lists: existing admin/read access.
+
+    A review-only operator MUST be able to load the rows they review, so this
+    accepts manage OR review (super_admin bypasses) — gate §F blocker 2.
+    """
+    if user.get("is_anonymous"):
+        raise HTTPException(status_code=403, detail="Anonymous users cannot access this resource")
+    if user.get("role") == "super_admin":
+        return user
+    perms = set(user.get("permissions") or [])
+    if PERM_MANAGE in perms or PERM_REVIEW in perms:
+        return user
+    raise HTTPException(
+        status_code=403,
+        detail="Missing permission: exam_intelligence.manage or exam_intelligence.review",
+    )
+
+
+def _require_prereq_scope(supabase, exam_id: str, topic_id: str, prerequisite_topic_id: str) -> None:
+    """Both endpoints of an edge must belong to the exam's resolved subjects (PD-1)."""
+    _require_topic_in_exam(supabase, exam_id, topic_id)
+    _require_topic_in_exam(supabase, exam_id, prerequisite_topic_id)
+
+
+def _rpc_row(res) -> dict:
+    data = getattr(res, "data", None)
+    if isinstance(data, list):
+        return data[0] if data else {}
+    return data or {}
 
 
 # ─── Scope resolution (gate OD-4: coverage path) ──────────────────────────
@@ -485,3 +536,249 @@ def delete_topic_alias(
         notes="admin_exam_intel_manage",
     )
     return {"ok": True, "audit_id": audit_id, "id": alias_id}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Topic prerequisites (J2-A′ — lifecycle + cycle-safe writes)
+# ════════════════════════════════════════════════════════════════════════
+#
+# Every ordering-graph write (create + endpoint/relation-changing edit) goes
+# through the cycle-safe RPC `cms_write_topic_prerequisite` (single global
+# advisory lock + recursive cycle check). Lifecycle transitions are review-
+# only except the manage submit handoff. See the J2-A′ gate §C/§E/§F.
+
+
+class PrereqReviewEnvelope(BaseModel):
+    reason: str = Field(..., min_length=8, max_length=500)
+    target_status: str
+    review_notes: str | None = None
+
+
+@router.get("/topic-prerequisites")
+def list_topic_prerequisites(
+    exam_id: str = Query(...),
+    topic_id: str = Query(...),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(_require_prereq_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """List prerequisite edges of a topic. Readable by manage OR review."""
+    supabase = get_supabase_admin()
+    _require_topic_in_exam(supabase, exam_id, topic_id)
+    res = (
+        supabase.table("topic_prerequisites")
+        .select(
+            "id, topic_id, prerequisite_topic_id, relation_type, strength, "
+            "source_basis, reviewer_status, reviewed_by, reviewed_at, "
+            "review_notes, created_at, updated_at",
+            count="exact",
+        )
+        .eq("topic_id", topic_id)
+        .order("created_at", desc=True)
+        .order("id", desc=False)
+        .range(offset, offset + limit - 1)
+        .execute()
+    )
+    return {
+        "items": res.data or [],
+        "total": getattr(res, "count", None),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.post("/topic-prerequisites")
+def create_topic_prerequisite(
+    body: WriteEnvelope,
+    exam_id: str = Query(...),
+    admin: dict = Depends(require_permission(PERM_MANAGE)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _PREREQ_FIELDS, "topic_prerequisites")
+    row = {k: v for k, v in body.payload.items() if k in _PREREQ_FIELDS}
+    topic_id = row.get("topic_id")
+    prereq_id = row.get("prerequisite_topic_id")
+    if not topic_id or not prereq_id:
+        raise HTTPException(status_code=422, detail="topic_id and prerequisite_topic_id are required")
+    relation = row.get("relation_type") or "requires"
+    if relation not in _PREREQ_RELATIONS:
+        raise HTTPException(status_code=422, detail=f"relation_type must be one of {_PREREQ_RELATIONS}")
+    _require_prereq_scope(supabase, exam_id, topic_id, prereq_id)
+    try:
+        res = supabase.rpc(
+            "cms_write_topic_prerequisite",
+            {
+                "p_id": None,
+                "p_topic_id": topic_id,
+                "p_prerequisite_topic_id": prereq_id,
+                "p_relation_type": relation,
+                "p_strength": row.get("strength", 1.0),
+                "p_source_basis": row.get("source_basis"),
+                "p_created_by": admin.get("id"),
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=str(exc))
+    new = _rpc_row(res)
+    audit_id = _audit(
+        supabase, admin, "exam_intel.manage.topic_prerequisite.create",
+        entity_type="topic_prerequisite", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "exam_id": exam_id, "row": new},
+        notes="admin_exam_intel_manage",
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/topic-prerequisites/{prereq_id}")
+def update_topic_prerequisite(
+    prereq_id: str,
+    body: WriteEnvelope,
+    exam_id: str = Query(...),
+    admin: dict = Depends(require_permission(PERM_MANAGE)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "topic_prerequisites", id=prereq_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Topic prerequisite not found")
+    if existing.get("reviewer_status") not in _MANAGE_EDITABLE:
+        raise HTTPException(
+            status_code=409,
+            detail="edge is not editable in its current review state; reopen via review first",
+        )
+    _reject_unknown(body.payload, _PREREQ_FIELDS, "topic_prerequisites")
+    patch = {k: v for k, v in body.payload.items() if k in _PREREQ_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    relation = patch.get("relation_type", existing.get("relation_type"))
+    if relation not in _PREREQ_RELATIONS:
+        raise HTTPException(status_code=422, detail=f"relation_type must be one of {_PREREQ_RELATIONS}")
+    topic_id = patch.get("topic_id", existing.get("topic_id"))
+    prereq_topic = patch.get("prerequisite_topic_id", existing.get("prerequisite_topic_id"))
+    _require_prereq_scope(supabase, exam_id, topic_id, prereq_topic)
+    # The RPC re-runs the cycle check under the global lock — this covers both
+    # endpoint changes and a relation promotion into the ordering set.
+    try:
+        res = supabase.rpc(
+            "cms_write_topic_prerequisite",
+            {
+                "p_id": prereq_id,
+                "p_topic_id": topic_id,
+                "p_prerequisite_topic_id": prereq_topic,
+                "p_relation_type": relation,
+                "p_strength": patch.get("strength", existing.get("strength")),
+                "p_source_basis": patch.get("source_basis", existing.get("source_basis")),
+                "p_created_by": existing.get("created_by"),
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=str(exc))
+    updated = _rpc_row(res)
+    audit_id = _audit(
+        supabase, admin, "exam_intel.manage.topic_prerequisite.update",
+        entity_type="topic_prerequisite", entity_id=prereq_id,
+        new_value={"reason": body.reason, "exam_id": exam_id, "patch": patch, "previous": existing},
+        notes="admin_exam_intel_manage",
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated or (existing | patch)}
+
+
+@router.post("/topic-prerequisites/{prereq_id}/submit")
+def submit_topic_prerequisite(
+    prereq_id: str,
+    body: WriteEnvelope,
+    exam_id: str = Query(...),
+    admin: dict = Depends(require_permission(PERM_MANAGE)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Manage submit handoff: draft/rejected → pending_review (the sole
+    non-trust lifecycle transition manage may perform)."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "topic_prerequisites", id=prereq_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Topic prerequisite not found")
+    _require_topic_in_exam(supabase, exam_id, existing.get("topic_id"))
+    if existing.get("reviewer_status") not in _MANAGE_EDITABLE:
+        raise HTTPException(status_code=409, detail="only draft or rejected edges can be submitted")
+    supabase.table("topic_prerequisites").update(
+        {"reviewer_status": "pending_review", "updated_at": _now_iso()}
+    ).eq("id", prereq_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.manage.topic_prerequisite.submit",
+        entity_type="topic_prerequisite", entity_id=prereq_id,
+        new_value={"reason": body.reason, "exam_id": exam_id, "from": existing.get("reviewer_status")},
+        notes="admin_exam_intel_manage",
+    )
+    return {"ok": True, "audit_id": audit_id, "id": prereq_id, "reviewer_status": "pending_review"}
+
+
+@router.post("/topic-prerequisites/{prereq_id}/review")
+def review_topic_prerequisite(
+    prereq_id: str,
+    body: PrereqReviewEnvelope,
+    exam_id: str = Query(...),
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Review-only lifecycle transitions (gate §C.2). Reopen requires notes."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "topic_prerequisites", id=prereq_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Topic prerequisite not found")
+    _require_topic_in_exam(supabase, exam_id, existing.get("topic_id"))
+    current = existing.get("reviewer_status")
+    target = body.target_status
+    if (current, target) not in _REVIEW_TRANSITIONS:
+        raise HTTPException(status_code=409, detail=f"transition {current} -> {target} is not permitted")
+    if (current, target) == ("locked", "reviewed") and not (body.review_notes or "").strip():
+        raise HTTPException(status_code=422, detail="reopen (locked -> reviewed) requires review_notes")
+    patch: dict[str, Any] = {
+        "reviewer_status": target,
+        "reviewed_by": admin.get("id"),
+        "reviewed_at": _now_iso(),
+        "updated_at": _now_iso(),
+    }
+    if body.review_notes is not None:
+        patch["review_notes"] = body.review_notes
+    supabase.table("topic_prerequisites").update(patch).eq("id", prereq_id).execute()
+    audit_id = _audit(
+        supabase, admin, f"exam_intel.review.topic_prerequisite.{target}",
+        entity_type="topic_prerequisite", entity_id=prereq_id,
+        new_value={"reason": body.reason, "exam_id": exam_id, "from": current, "to": target,
+                   "review_notes": body.review_notes},
+        notes="admin_exam_intel_manage",
+    )
+    return {"ok": True, "audit_id": audit_id, "id": prereq_id, "reviewer_status": target}
+
+
+@router.delete("/topic-prerequisites/{prereq_id}")
+def delete_topic_prerequisite(
+    prereq_id: str,
+    exam_id: str = Query(...),
+    reason: str = Query(..., min_length=8, max_length=500),
+    admin: dict = Depends(require_permission(PERM_MANAGE)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Manage delete — only while draft/rejected. pending_review/reviewed/
+    locked require a review-authority rollback first (gate C.3). Forced
+    cleanup at any state remains Advanced Repair / exam_intelligence.cms."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "topic_prerequisites", id=prereq_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Topic prerequisite not found")
+    _require_topic_in_exam(supabase, exam_id, existing.get("topic_id"))
+    if existing.get("reviewer_status") not in _MANAGE_EDITABLE:
+        raise HTTPException(
+            status_code=409,
+            detail="only draft/rejected edges can be deleted by manage; roll back via review first",
+        )
+    supabase.table("topic_prerequisites").delete().eq("id", prereq_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.manage.topic_prerequisite.delete",
+        entity_type="topic_prerequisite", entity_id=prereq_id,
+        new_value={"reason": reason, "exam_id": exam_id, "deleted": existing},
+        notes="admin_exam_intel_manage",
+    )
+    return {"ok": True, "audit_id": audit_id, "id": prereq_id}

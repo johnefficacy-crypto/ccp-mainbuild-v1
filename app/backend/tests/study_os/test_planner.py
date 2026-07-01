@@ -54,7 +54,8 @@ def _seed() -> dict:
             {"id": "s2", "name": "English Language"},
         ],
         "topic_prerequisites": [
-            {"topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires"},
+            {"topic_id": "t2", "prerequisite_topic_id": "t1",
+             "relation_type": "requires", "reviewer_status": "locked"},
         ],
         "user_topic_mastery": [
             {"user_id": "u-1", "topic_id": "t1", "exam_id": "exam-1", "mastery_score": 80},
@@ -535,3 +536,36 @@ def test_pr3_planner_does_not_re_select_cycle_independently():
         f"_cached_next_cycle was called {len(cache_calls)} time(s) — planner is still "
         "re-selecting cycle independently of the resolver"
     )
+
+
+# ─── J2-A′ gate §G: locked-only prerequisite edges ────────────────────────
+def test_load_prerequisites_consumes_only_locked_edges():
+    """_load_prerequisites must load edges with reviewer_status='locked' and
+    ignore every other lifecycle state (draft/pending_review/reviewed/rejected).
+    """
+    from app.study_os.planner import _load_prerequisites
+
+    sb = SBStub({
+        "topic_prerequisites": [
+            # locked → must be loaded
+            {"topic_id": "t2", "prerequisite_topic_id": "t1",
+             "relation_type": "requires", "reviewer_status": "locked"},
+            # non-locked → must all be ignored
+            {"topic_id": "t3", "prerequisite_topic_id": "t1",
+             "relation_type": "requires", "reviewer_status": "draft"},
+            {"topic_id": "t3", "prerequisite_topic_id": "t2",
+             "relation_type": "requires", "reviewer_status": "pending_review"},
+            {"topic_id": "t4", "prerequisite_topic_id": "t1",
+             "relation_type": "requires", "reviewer_status": "reviewed"},
+            {"topic_id": "t4", "prerequisite_topic_id": "t2",
+             "relation_type": "requires", "reviewer_status": "rejected"},
+        ],
+    })
+
+    prereqs = _load_prerequisites(sb, ["t1", "t2", "t3", "t4"])
+
+    # Only the locked edge survives.
+    assert prereqs == {"t2": {"t1"}}
+    # Non-locked edges leave no trace.
+    assert "t3" not in prereqs
+    assert "t4" not in prereqs

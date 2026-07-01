@@ -294,7 +294,12 @@ def _load_locked_coverage(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
 def _load_prerequisites(
     supabase: Any, topic_ids: list[str]
 ) -> dict[str, set[str]]:
-    """Map ``topic_id -> {prerequisite_topic_id}`` for ordering relations."""
+    """Map ``topic_id -> {prerequisite_topic_id}`` for ordering relations.
+
+    Consumes ONLY locked prerequisite edges (``reviewer_status = 'locked'``)
+    per the J2-A′ gate §G; draft/pending_review/reviewed/rejected edges are
+    excluded at the query level and never influence planner ordering.
+    """
     if not topic_ids:
         return {}
     rows = (
@@ -303,6 +308,7 @@ def _load_prerequisites(
                 supabase.table("topic_prerequisites")
                 .select("topic_id, prerequisite_topic_id, relation_type")
                 .in_("topic_id", topic_ids)
+                .eq("reviewer_status", "locked")
                 .limit(5000)
                 .execute()
                 .data

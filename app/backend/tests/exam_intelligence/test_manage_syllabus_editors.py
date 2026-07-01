@@ -69,9 +69,25 @@ class _MngQuery(_Query):
         return out
 
 
+class _MngRpc:
+    def __init__(self, fn_name, params, db):
+        self._fn_name = fn_name
+        self._params = params
+        self._db = db
+
+    def execute(self):
+        if self._fn_name == "cms_write_topic_prerequisite":
+            from tests.exam_intelligence._prereq_rpc import emulate_cms_write_topic_prerequisite
+            return _Exec(emulate_cms_write_topic_prerequisite(self._db, self._params))
+        raise NotImplementedError(f"RPC {self._fn_name!r} not stubbed")
+
+
 class MngSBStub(SBStub):
     def table(self, name: str):
         return _MngQuery(name, self.db)
+
+    def rpc(self, fn_name: str, params: dict | None = None):
+        return _MngRpc(fn_name, params or {}, self.db)
 
 
 def _client(sb: MngSBStub, *, permissions=None, role="admin") -> TestClient:
@@ -408,3 +424,173 @@ def test_delete_alias_happy_path():
     r = _client(sb).delete(f"{_BASE}/topic-aliases/a1?exam_id=E1&reason=remove wrong alias")
     assert r.status_code == 200, r.text
     assert not any(a["id"] == "a1" for a in sb.db["topic_aliases"])
+
+
+# ── J2-A′ topic prerequisites: lifecycle + cycle-safety + permissions ─────
+
+REVIEW = mng.PERM_REVIEW
+
+
+def _seed_prereq() -> dict:
+    """Exam E1 covers subject s1 with three ordering-eligible topics."""
+    seed = _seed()
+    seed["topics"].append({"id": "t3", "subject_id": "s1", "parent_topic_id": None,
+                           "slug": "interest", "name": "Interest", "level": "topic", "is_active": True})
+    # Cover t2 and t3 too so all three resolve into the exam's subject set.
+    seed["exam_topic_coverage"].append({"id": "c2", "exam_id": "E1", "topic_id": "t2", "reviewer_status": "reviewed"})
+    seed["exam_topic_coverage"].append({"id": "c3", "exam_id": "E1", "topic_id": "t3", "reviewer_status": "reviewed"})
+    return seed
+
+
+def test_create_prerequisite_lands_as_draft_with_audit():
+    sb = MngSBStub(_seed_prereq())
+    r = _client(sb).post(
+        f"{_BASE}/topic-prerequisites?exam_id=E1",
+        json={"reason": "t2 needs t1 first", "payload": {
+            "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires"}},
+    )
+    assert r.status_code == 200, r.text
+    edge = sb.db["topic_prerequisites"][-1]
+    assert edge["reviewer_status"] == "draft"
+    assert sb.db["admin_audit_logs"][-1]["action"] == "exam_intel.manage.topic_prerequisite.create"
+
+
+def test_create_prerequisite_rejects_endpoint_outside_exam():
+    sb = MngSBStub(_seed_prereq())
+    r = _client(sb).post(
+        f"{_BASE}/topic-prerequisites?exam_id=E1",
+        json={"reason": "cross-exam prereq", "payload": {
+            "topic_id": "t2", "prerequisite_topic_id": "t9", "relation_type": "requires"}},
+    )
+    assert r.status_code == 422
+
+
+def test_create_prerequisite_self_edge_rejected():
+    sb = MngSBStub(_seed_prereq())
+    r = _client(sb).post(
+        f"{_BASE}/topic-prerequisites?exam_id=E1",
+        json={"reason": "self edge attempt", "payload": {
+            "topic_id": "t1", "prerequisite_topic_id": "t1"}},
+    )
+    assert r.status_code == 409
+
+
+def test_create_prerequisite_transitive_cycle_rejected():
+    """A→B, B→C already exist; adding C→A closes a 3-node ordering cycle."""
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": "e1", "topic_id": "t1", "prerequisite_topic_id": "t2", "relation_type": "requires", "reviewer_status": "locked"},
+        {"id": "e2", "topic_id": "t2", "prerequisite_topic_id": "t3", "relation_type": "requires", "reviewer_status": "locked"},
+    ]
+    sb = MngSBStub(seed)
+    # t1 depends on t2, t2 depends on t3; adding t3 depends on t1 → cycle.
+    r = _client(sb).post(
+        f"{_BASE}/topic-prerequisites?exam_id=E1",
+        json={"reason": "would close a 3-node cycle", "payload": {
+            "topic_id": "t3", "prerequisite_topic_id": "t1", "relation_type": "requires"}},
+    )
+    assert r.status_code == 409
+    assert "cycle" in str(r.json()["detail"]).lower()
+
+
+def test_patch_relation_promotion_into_ordering_rechecks_cycle():
+    """supports→requires promotion that closes a cycle is rejected."""
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": "e1", "topic_id": "t1", "prerequisite_topic_id": "t2", "relation_type": "requires", "reviewer_status": "locked"},
+        # descriptive edge t2 supports t1 — not cycle-checked while 'supports'
+        {"id": "e2", "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "supports", "reviewer_status": "draft"},
+    ]
+    sb = MngSBStub(seed)
+    r = _client(sb).patch(
+        f"{_BASE}/topic-prerequisites/e2?exam_id=E1",
+        json={"reason": "promote supports to requires", "payload": {"relation_type": "requires"}},
+    )
+    assert r.status_code == 409
+    assert "cycle" in str(r.json()["detail"]).lower()
+
+
+def test_manage_cannot_review_but_can_submit():
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": "e1", "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires", "reviewer_status": "draft"},
+    ]
+    sb = MngSBStub(seed)
+    # manage submit: draft → pending_review
+    r = _client(sb).post(f"{_BASE}/topic-prerequisites/e1/submit?exam_id=E1",
+                         json={"reason": "submit for review"})
+    assert r.status_code == 200, r.text
+    assert next(e for e in sb.db["topic_prerequisites"] if e["id"] == "e1")["reviewer_status"] == "pending_review"
+    # manage cannot review
+    r2 = _client(sb).post(f"{_BASE}/topic-prerequisites/e1/review?exam_id=E1",
+                          json={"reason": "trying to review", "target_status": "reviewed"})
+    assert r2.status_code == 403
+
+
+def test_review_transitions_and_reopen_notes():
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": "e1", "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires", "reviewer_status": "pending_review"},
+    ]
+    sb = MngSBStub(seed)
+    rc = _client(sb, permissions=[REVIEW])
+    assert rc.post(f"{_BASE}/topic-prerequisites/e1/review?exam_id=E1",
+                   json={"reason": "looks good", "target_status": "reviewed"}).status_code == 200
+    assert rc.post(f"{_BASE}/topic-prerequisites/e1/review?exam_id=E1",
+                   json={"reason": "lock this edge", "target_status": "locked"}).status_code == 200
+    # reopen requires notes
+    no_notes = rc.post(f"{_BASE}/topic-prerequisites/e1/review?exam_id=E1",
+                       json={"reason": "reopen without notes", "target_status": "reviewed"})
+    assert no_notes.status_code == 422
+    ok = rc.post(f"{_BASE}/topic-prerequisites/e1/review?exam_id=E1",
+                 json={"reason": "reopen with notes", "target_status": "reviewed", "review_notes": "needs fix"})
+    assert ok.status_code == 200
+
+
+def test_review_rejects_disallowed_transition():
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": "e1", "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires", "reviewer_status": "draft"},
+    ]
+    sb = MngSBStub(seed)
+    # draft → locked is not a permitted transition
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/topic-prerequisites/e1/review?exam_id=E1",
+        json={"reason": "skip straight to locked", "target_status": "locked"})
+    assert r.status_code == 409
+
+
+def test_review_only_operator_can_list():
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": "e1", "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires", "reviewer_status": "pending_review"},
+    ]
+    sb = MngSBStub(seed)
+    r = _client(sb, permissions=[REVIEW]).get(f"{_BASE}/topic-prerequisites?exam_id=E1&topic_id=t2")
+    assert r.status_code == 200, r.text
+    assert len(r.json()["items"]) == 1
+
+
+def test_manage_delete_only_draft_or_rejected():
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": "e1", "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires", "reviewer_status": "locked"},
+    ]
+    sb = MngSBStub(seed)
+    blocked = _client(sb).delete(f"{_BASE}/topic-prerequisites/e1?exam_id=E1&reason=remove locked edge")
+    assert blocked.status_code == 409
+    # flip to draft → deletable
+    sb.db["topic_prerequisites"][0]["reviewer_status"] = "draft"
+    ok = _client(sb).delete(f"{_BASE}/topic-prerequisites/e1?exam_id=E1&reason=remove draft edge")
+    assert ok.status_code == 200
+
+
+def test_manage_edit_blocked_unless_draft_or_rejected():
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": "e1", "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires", "reviewer_status": "reviewed"},
+    ]
+    sb = MngSBStub(seed)
+    r = _client(sb).patch(f"{_BASE}/topic-prerequisites/e1?exam_id=E1",
+                          json={"reason": "edit a reviewed edge", "payload": {"strength": 0.5}})
+    assert r.status_code == 409

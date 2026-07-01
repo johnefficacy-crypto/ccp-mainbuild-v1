@@ -5,20 +5,18 @@ import { useAuth } from "../../../../lib/authContext";
 import useApiAction from "../../../../lib/hooks/useApiAction";
 import TopicEditorForm, { TOPIC_LEVELS } from "../../studyos/editors/TopicEditorForm";
 import TopicAliasEditor from "../../studyos/editors/TopicAliasEditor";
+import TopicPrerequisiteEditor from "./TopicPrerequisiteEditor";
 
 /**
- * J2-A — Manage Exam operational editor for topics + aliases, scoped to one
- * exam's covered subjects.
+ * J2-A / J2-A′ — Manage Exam operational editor for topics + aliases +
+ * prerequisites, scoped to one exam's covered subjects.
  *
- * Governance (docs/status/Manage-Exam-Operational-Editors-Gate-2026-07-01.md §D):
- * - Rendered only when the user holds `exam_intelligence.manage` (or is
- *   super_admin); the surrounding Syllabus tab stays open to review users (rule 2).
- * - All mutations run through `useApiAction` (AGENTS.md mandate — shared
- *   busy/error/toast/rollback contract) against the `manage`-gated endpoints.
- * - Fail-closed: writes are blocked until the exam's subjects resolve and a
- *   subject is selected.
- * - Reuses the shared editor components under `pages/admin/studyos/editors/`
- *   (OD-3). Prerequisite editing (J2-A′) is intentionally absent (blocked).
+ * Governance (Manage-Exam gate §D; Topic-Prerequisite-Semantics gate §F):
+ * - Mounts for canManage || canReview (rule 2 / prereq blocker 2). Topic and
+ *   alias mutation controls are manage-only; the prerequisite editor exposes
+ *   manage controls to managers and review controls to reviewers.
+ * - All mutations run through `useApiAction`. Fail-closed on scope resolution.
+ * - Reuses shared components under `pages/admin/studyos/editors/` (OD-3).
  */
 const BASE = "/api/admin/exam-intelligence-manage";
 const PAGE_SIZE = 50;
@@ -28,6 +26,9 @@ export default function SyllabusTopicEditorPanel({ examId }) {
   const canManage =
     user?.role === "super_admin" ||
     user?.permissions?.includes("exam_intelligence.manage");
+  const canReview =
+    user?.role === "super_admin" ||
+    user?.permissions?.includes("exam_intelligence.review");
 
   const [subjectState, setSubjectState] = useState("idle"); // idle|resolving|valid|error
   const [subjects, setSubjects] = useState([]);
@@ -44,6 +45,7 @@ export default function SyllabusTopicEditorPanel({ examId }) {
 
   const [form, setForm] = useState(null);
   const [aliasTopic, setAliasTopic] = useState(null);
+  const [prereqTopic, setPrereqTopic] = useState(null);
 
   const topicAction = useApiAction();
   // Fail-closed on a failed topic fetch too: an incomplete/errored list must
@@ -52,7 +54,7 @@ export default function SyllabusTopicEditorPanel({ examId }) {
 
   // Resolve the exam's covered subjects (OD-4). Fail-closed while resolving.
   useEffect(() => {
-    if (!canManage || !examId) return;
+    if ((!canManage && !canReview) || !examId) return;
     let cancelled = false;
     setSubjectState("resolving");
     setSubjects([]);
@@ -70,7 +72,7 @@ export default function SyllabusTopicEditorPanel({ examId }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [canManage, examId]);
+  }, [canManage, canReview, examId]);
 
   // Debounce search (300 ms, gate C.3).
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function SyllabusTopicEditorPanel({ examId }) {
     });
   }
 
-  if (!canManage) return null;
+  if (!canManage && !canReview) return null;
 
   return (
     <div className="border-b border-gray-200 bg-slate-50 px-4 py-3" data-testid="syllabus-topic-editor">
@@ -173,12 +175,14 @@ export default function SyllabusTopicEditorPanel({ examId }) {
           value={search} onChange={(e) => setSearch(e.target.value)}
           aria-label="Search topics" data-testid="ste-search"
         />
-        <button
-          type="button" className="text-sm px-2 py-1 border rounded bg-white disabled:opacity-40 ml-auto"
-          onClick={() => setForm({ level: "topic" })} disabled={writesBlocked} data-testid="ste-new-topic"
-        >
-          + New topic
-        </button>
+        {canManage && (
+          <button
+            type="button" className="text-sm px-2 py-1 border rounded bg-white disabled:opacity-40 ml-auto"
+            onClick={() => setForm({ level: "topic" })} disabled={writesBlocked} data-testid="ste-new-topic"
+          >
+            + New topic
+          </button>
+        )}
       </div>
 
       {subjectState === "resolving" && <div className="text-sm text-slate-400 mt-2" data-testid="ste-resolving">Resolving subjects…</div>}
@@ -204,14 +208,23 @@ export default function SyllabusTopicEditorPanel({ examId }) {
                 {topics.map((t) => (
                   <li key={t.id} className="px-3 py-2 flex items-center gap-2" data-testid={`ste-topic-${t.id}`}>
                     <span className="flex-1">{t.name} <span className="text-slate-400">· {t.level}</span></span>
-                    <button type="button" className="text-xs px-2 py-0.5 border rounded disabled:opacity-40"
-                      onClick={() => setForm({ id: t.id, name: t.name, slug: t.slug, level: t.level, description: t.description || "" })}
-                      disabled={writesBlocked} data-testid={`ste-edit-${t.id}`}>Edit</button>
+                    {canManage && (
+                      <>
+                        <button type="button" className="text-xs px-2 py-0.5 border rounded disabled:opacity-40"
+                          onClick={() => setForm({ id: t.id, name: t.name, slug: t.slug, level: t.level, description: t.description || "" })}
+                          disabled={writesBlocked} data-testid={`ste-edit-${t.id}`}>Edit</button>
+                        <button type="button" className="text-xs px-2 py-0.5 border rounded"
+                          onClick={() => setAliasTopic(aliasTopic?.id === t.id ? null : t)}
+                          data-testid={`ste-aliases-${t.id}`}>Aliases</button>
+                      </>
+                    )}
                     <button type="button" className="text-xs px-2 py-0.5 border rounded"
-                      onClick={() => setAliasTopic(aliasTopic?.id === t.id ? null : t)}
-                      data-testid={`ste-aliases-${t.id}`}>Aliases</button>
-                    <button type="button" className="text-xs px-2 py-0.5 border rounded text-rose-600 disabled:opacity-40"
-                      onClick={() => deleteTopic(t)} disabled={writesBlocked} data-testid={`ste-delete-${t.id}`}>Delete</button>
+                      onClick={() => setPrereqTopic(prereqTopic?.id === t.id ? null : t)}
+                      data-testid={`ste-prereqs-${t.id}`}>Prereqs</button>
+                    {canManage && (
+                      <button type="button" className="text-xs px-2 py-0.5 border rounded text-rose-600 disabled:opacity-40"
+                        onClick={() => deleteTopic(t)} disabled={writesBlocked} data-testid={`ste-delete-${t.id}`}>Delete</button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -243,8 +256,18 @@ export default function SyllabusTopicEditorPanel({ examId }) {
         />
       )}
 
-      {aliasTopic && (
+      {aliasTopic && canManage && (
         <AliasEditorContainer examId={examId} topic={aliasTopic} disabled={writesBlocked} />
+      )}
+
+      {prereqTopic && (
+        <TopicPrerequisiteEditor
+          examId={examId}
+          topic={prereqTopic}
+          candidateTopics={topics}
+          canManage={canManage}
+          canReview={canReview}
+        />
       )}
     </div>
   );

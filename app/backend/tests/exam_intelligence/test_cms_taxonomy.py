@@ -83,6 +83,9 @@ class _RpcQuery:
             return self._exec_cms_set_pyq_paper_provenance()
         if self._fn_name == "cms_link_document_to_pyq_paper":
             return self._exec_cms_link_document_to_pyq_paper()
+        if self._fn_name == "cms_write_topic_prerequisite":
+            from tests.exam_intelligence._prereq_rpc import emulate_cms_write_topic_prerequisite
+            return _Exec(emulate_cms_write_topic_prerequisite(self._db, self._params))
         raise NotImplementedError(f"RPC {self._fn_name!r} not stubbed in TaxSBStub")
 
     def _exec_review_pyq_paper(self) -> "_Exec":
@@ -611,12 +614,14 @@ def test_post_prerequisite_cycle_422():
         ],
     })
     # t1 already requires t2; making t2 require t1 would close a 2-node cycle.
+    # Advanced Repair now routes through the cycle-safe RPC (J2-A′), which
+    # raises and the endpoint surfaces as 409.
     r = _client(sb).post(
         f"{_BASE}/topic-prerequisites",
         json={"reason": "would create a cycle", "payload": {
             "topic_id": "t2", "prerequisite_topic_id": "t1"}},
     )
-    assert r.status_code == 422, r.text
+    assert r.status_code == 409, r.text
     assert "cycle" in str(r.json().get("detail")).lower()
 
 
