@@ -421,3 +421,30 @@ def test_correction_of_non_issue_evidence_rejected():
     _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
           f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','{'7'*64}','retract','00000000-0000-0000-0000-00000000b020','{_KEY_A}',now())",
           expect_ok=False)
+
+
+def test_review_decision_to_evidence_op_mapping():
+    # Predecessor evidence on issue c001 (projection b001, automatic) exists from
+    # test_correction_cross_issue_rejected's fixture (evidence_key = 'c'*64).
+    pred = "c" * 64
+    # a confirmed and an invalidated review on the same issue
+    _psql("""
+      INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type)
+        SELECT '00000000-0000-0000-0000-00000000d101','00000000-0000-0000-0000-00000000c001','confirmed','human'
+        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='00000000-0000-0000-0000-00000000d101');
+      INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type)
+        SELECT '00000000-0000-0000-0000-00000000d102','00000000-0000-0000-0000-00000000c001','invalidated','system'
+        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='00000000-0000-0000-0000-00000000d102');
+    """)
+    # confirmed -> retract : rejected (decision/op mismatch)
+    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
+          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{'e1'*32}','retract','00000000-0000-0000-0000-00000000d101','{pred}',now())",
+          expect_ok=False)
+    # invalidated -> assert : rejected
+    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
+          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{'e2'*32}','assert','00000000-0000-0000-0000-00000000d102','{pred}',now())",
+          expect_ok=False)
+    # invalidated -> retract with automatic projection : accepted
+    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
+          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{'e3'*32}','retract','00000000-0000-0000-0000-00000000d102','{pred}',now())",
+          expect_ok=True)

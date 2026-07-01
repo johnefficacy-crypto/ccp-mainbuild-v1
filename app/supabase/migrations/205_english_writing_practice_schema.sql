@@ -556,12 +556,13 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  pred_issue     uuid;
-  review_issue   uuid;
-  new_issue      uuid;
-  new_kind       text;
-  new_override   uuid;
-  has_successor  boolean;
+  pred_issue      uuid;
+  review_issue    uuid;
+  review_decision text;
+  new_issue       uuid;
+  new_kind        text;
+  new_override    uuid;
+  has_successor   boolean;
 BEGIN
   -- Validate EVERY superseding row: retract, replace, AND re-assert
   -- (invalidated->confirmed / reclassified->confirmed emit correction-style
@@ -588,26 +589,42 @@ BEGIN
     END IF;
 
     -- the citing review event must target that same issue
-    SELECT issue_event_id INTO review_issue
+    SELECT issue_event_id, decision INTO review_issue, review_decision
       FROM public.writing_issue_review_events WHERE id = NEW.review_event_id;
     IF review_issue IS DISTINCT FROM pred_issue THEN
       RAISE EXCEPTION 'evidence_correction_invalid: review event % targets a different issue than the predecessor', NEW.review_event_id;
     END IF;
 
-    -- a replace MUST carry the review-override projection caused by that review
-    -- event (and hence on the same issue); it cannot be projection-less.
+    -- Locked review-decision -> evidence-op mapping (§4.12c):
+    --   confirmed -> assert (re-assert), invalidated -> retract, reclassified -> replace.
+    IF (review_decision = 'confirmed'    AND NEW.evidence_op <> 'assert')
+       OR (review_decision = 'invalidated'  AND NEW.evidence_op <> 'retract')
+       OR (review_decision = 'reclassified' AND NEW.evidence_op <> 'replace') THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: evidence_op % does not match review decision %', NEW.evidence_op, review_decision;
+    END IF;
+
+    -- EVERY superseding row must carry a projection on the predecessor's issue.
+    IF NEW.issue_projection_id IS NULL THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: a superseding row must carry a projection on the predecessor issue';
+    END IF;
+    SELECT pr.issue_event_id, pr.projection_kind, pr.override_review_event_id
+      INTO new_issue, new_kind, new_override
+      FROM public.writing_issue_projections pr WHERE pr.id = NEW.issue_projection_id;
+    IF new_issue IS DISTINCT FROM pred_issue THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: projection is on a different issue than the predecessor';
+    END IF;
+
+    -- op-specific projection identity:
+    --   replace  -> the review-override projection created by the cited event;
+    --   re-assert-> the automatic projection (restore the original classification);
+    --   retract  -> any projection on the same issue (preserve the predecessor).
     IF NEW.evidence_op = 'replace' THEN
-      IF NEW.issue_projection_id IS NULL THEN
-        RAISE EXCEPTION 'evidence_correction_invalid: replace requires the review-override projection';
-      END IF;
-      SELECT pr.issue_event_id, pr.projection_kind, pr.override_review_event_id
-        INTO new_issue, new_kind, new_override
-        FROM public.writing_issue_projections pr WHERE pr.id = NEW.issue_projection_id;
-      IF new_issue IS DISTINCT FROM pred_issue THEN
-        RAISE EXCEPTION 'evidence_correction_invalid: replacement projection is on a different issue than the predecessor';
-      END IF;
       IF new_kind IS DISTINCT FROM 'review_override' OR new_override IS DISTINCT FROM NEW.review_event_id THEN
         RAISE EXCEPTION 'evidence_correction_invalid: replace must carry the review_override projection created by the cited review event';
+      END IF;
+    ELSIF NEW.evidence_op = 'assert' THEN
+      IF new_kind IS DISTINCT FROM 'automatic' THEN
+        RAISE EXCEPTION 'evidence_correction_invalid: re-assert must restore the automatic projection';
       END IF;
     END IF;
   END IF;

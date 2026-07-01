@@ -87,7 +87,7 @@ terms come from `docs/status/career-copilot-checklist.md`.
 | E. Backend CI audit sequencing | Yes | Independent infrastructure PR | CI/backend infra agent |
 | F. Live-DB tails | Yes, operator-led | Does not block code cleanup unless evidence changes status | Operator |
 | G. Track C / personalization expansion | No | Waits on Lane A clean gate | Backend+frontend feature agents later |
-| H. English Writing Practice | EWP-1 starts after architecture lock (#819 merge); EWP-5 mastery live blocked on Lane A gate | Architecture lock (#819) gates EWP-1; EWP-5 mastery live blocked on Lane A gate | Backend + frontend agents |
+| H. English Writing Practice | EWP-1 (schema/constraints/RLS) in review — PR #821; runtime state-machine/rollup tests are EWP-2, not EWP-1; EWP-5 mastery live blocked on Lane A gate | Architecture lock (#819) gates EWP-1; EWP-5 mastery live blocked on Lane A gate | Backend + frontend agents |
 
 ## Lane H — English Writing Practice
 

@@ -849,7 +849,9 @@ The shadow idempotency key (§10.1a) uses the same identity components (includin
 
 #### 4.12c Correction path (post-emission) — transition matrix
 
-When a `writing_issue_review_events` row changes the **effective decision** (§4.10a) for an issue **after** evidence/shadow rows already exist, the existing rows are never mutated (append-only). A correction evidence row is appended. Review events for one `issue_event_id` are **serialized** (processed in `(created_at, id)` order, one at a time per issue) so the effective decision is well defined at each step.
+When a `writing_issue_review_events` row changes the **effective decision** (§4.10a) for an issue **after** evidence/shadow rows already exist, the existing rows are never mutated (append-only). A correction evidence row is appended. Review events for one `issue_event_id` are **serialized** (processed in `(created_at, event_seq)` order — see §4.10a; `event_seq` is the monotonic tiebreak, not `id`) one at a time per issue, so the effective decision is well defined at each step.
+
+**Locked review-decision → evidence-op mapping (enforced by `ewp_check_evidence_correction`):** `confirmed` → re-assert (`assert` with predecessor) restoring the automatic projection; `invalidated` → `retract` preserving the predecessor's issue projection; `reclassified` → `replace` carrying the review-override projection created by that review event. Every superseding row must supersede the effective tail and carry a projection on the predecessor's issue; corrections of projection-less evidence are rejected.
 
 `supersedes_evidence_key` always points to the **currently effective** evidence event for the issue — not always the original assertion. The correction supersedes whatever is effective now.
 

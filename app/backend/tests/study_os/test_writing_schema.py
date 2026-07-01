@@ -319,6 +319,10 @@ def test_correction_causal_chain_trigger():
     assert "ewp_evidence_correction_guard" in _SQLL
     assert "not the effective tail" in _SQLL
     assert "targets a different issue than the predecessor" in _SQLL
+    # locked review-decision -> evidence-op mapping + projection-per-superseder
+    assert "does not match review decision" in _SQLL
+    assert "a superseding row must carry a projection on the predecessor issue" in _SQLL
+    assert "re-assert must restore the automatic projection" in _SQLL
 
 
 def test_exercise_type_domain_constrained():
