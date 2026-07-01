@@ -17,6 +17,7 @@ const Saved = lazy(() => import("../pages/Saved"));
 const StudyPlan = lazy(() => import("../pages/StudyPlan"));
 const Focus = lazy(() => import("../pages/study/Focus"));
 const Mocks = lazy(() => import("../pages/study/Mocks"));
+const EnglishPracticeShell = lazy(() => import("../pages/study/EnglishPracticeShell"));
 const Subjects = lazy(() => import("../pages/study/Subjects"));
 const WeeklyReview = lazy(() => import("../pages/study/WeeklyReview"));
 const StudyCompare = lazy(() => import("../pages/study/Compare"));
@@ -81,6 +82,10 @@ export const appRouteElements = (
         <Route path="progress" element={<StudyProgressHub />} />
       </Route>
       <Route path="/app/study/focus" element={<Focus />} />
+      {/* English Writing Practice (EWP-3): a standalone study surface entered via
+          planner tasks. Not nested in StudyShell, not an attempt-shell route, and
+          intentionally absent from the sidebar (no-new-surface rule). */}
+      <Route path="/app/study/practice/english/:sessionId" element={<EnglishPracticeShell />} />
       <Route path="/app/study/mocks" element={<Mocks />} />
       <Route path="/app/study/mocks/attempts/:attemptId" element={<AttemptShellRouter />} />
       <Route path="/app/study/mocks/attempts/:attemptId/result" element={<MockResult />} />
