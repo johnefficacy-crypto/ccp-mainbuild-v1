@@ -1,8 +1,9 @@
 # Manage Exam Operational Editors Gate — J2 Contract
 
 - Document type: J2 implementation contract — operational editors in Manage Exam
-- Status: **DRAFT — OPERATOR APPROVAL REQUIRED** (no implementation PR may be dispatched until this is OPERATOR APPROVED)
+- Status: **OD-2 RESOLVED (permission tier, operator-approved 2026-07-01, PR #824); J2-A (topic + alias) buildable; prerequisite editor + J2-B/J2-C still gated**
 - Date: 2026-07-01
+- OD-2 approval: operator decision recorded on PR #824 (2026-07-01) — new `exam_intelligence.manage` token, permission matrix + 6 implementation rules (Section D)
 - Parent track: `J2 — missing operational editors in Manage Exam` (`docs/status/career-copilot-checklist.md`)
 - Authority: `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` §3.2 (per-component role resolution), §6 (Manage Exam content), §7 (blocker-to-editor deep-link contract)
 - Gates cleared: I8-A merged (PR #755), I8-B merged (PR #757 `385912bd`), I8-C merged (PR #759 `f4378097`), I6 merged (PR #761 `d69602f8`), J1 merged (PR #820 `d70c33aa`)
@@ -105,11 +106,12 @@ J2 ships as sequential slices, one owner, no fan-out (shared `ExamWorkspace.jsx`
 
 | Slice | Content | Tab | Status |
 |---|---|---|---|
-| **J2-A** | Topic + microtopic + alias + prerequisite editors | Syllabus | **This contract's first slice** |
+| **J2-A** | Topic + microtopic + **alias** editors | Syllabus | **This contract's first slice** — buildable after schema confirmation |
+| J2-A′ | Prerequisite editor | Syllabus | **BLOCKED** — requires a prerequisite-semantics gate (schema, directionality, scope, strength, planner impact) per Section D rule 6 |
 | J2-B | Policy-flag (`affects_*`) correction | Updates | Deferred to follow-up gate revision |
 | J2-C | Cycle-specific entity management | Setup / cycle selector | Deferred to follow-up gate revision |
 
-This document fully specifies **J2-A**. J2-B and J2-C are scoped at the summary level here and require a gate revision (or a follow-up gate) with the same OD process before implementation.
+This document fully specifies **J2-A** (topic + alias editors). The **prerequisite editor (J2-A′) is implementation-blocked** until a separate prerequisite-semantics gate is approved (Section D rule 6). J2-B and J2-C are scoped at the summary level here and require a gate revision with the same OD process before implementation.
 
 ---
 
@@ -178,23 +180,91 @@ The Syllabus editor panel must NOT render `AdminSafetyBanner`. Manage Exam is th
 
 ## Section D — Permission contract
 
-**OPERATOR DECISION REQUIRED — this is the pivotal J2 decision.**
+**OPERATOR DECISION RECORDED (2026-07-01, PR #824) — RESOLVED.**
 
-The backend editor endpoints (§0.2) are gated on `exam_intelligence.cms` (the Advanced Repair permission). Surfacing them in normal Manage Exam tabs forces a choice:
+A new permission token `exam_intelligence.manage` is introduced. The existing tokens are NOT reused:
 
-| Option | Description | Cost | Recommendation |
-|---|---|---|---|
-| **D-opt-1** | New `exam_intelligence.manage` operate-tier token. Editor endpoints accept `manage` OR `cms`. Add `require_any_permission([...])` helper to `auth.py`. RBAC migration to define/grant the token; audit wiring. | Medium — new token, new auth helper, one migration, grant matrix, audit. | **RECOMMENDED.** Preserves the operate-vs-repair separation the entire IA is built on (§0.1, IA lock §9). Idiomatic (`.manage` matches `exam_eligibility.manage`, `community.manage`, etc.). Governance/RBAC is P0. |
-| D-opt-2 | Reuse `exam_intelligence.cms` on the Manage Exam editors. | Low — no backend change. | Collapses the operate/repair tiers: routine editing then requires the repair permission. Weakens the IA. Not recommended. |
-| D-opt-3 | Reuse `exam_intelligence.review`. | Low — no new token. | Conflates review-authority with edit-authority (different scopes). Not recommended. |
+- `exam_intelligence.cms` remains **exclusive to Advanced Repair** — exceptional cross-exam repair, broken-FK correction, deduplication, migration backfills, generic raw-data CRUD.
+- `exam_intelligence.review` remains the **exclusive review / trust / lifecycle-transition** permission (verify, reject, re-queue, lock, status transitions) — NOT canonical content editing.
 
-If **D-opt-1** is approved, the implementation adds:
-- `require_any_permission(permissions: list[str])` in `app/core/auth.py` (super_admin bypass; 403 if none present).
-- A forward migration defining `exam_intelligence.manage` and granting it per the operator's role matrix.
-- The editor endpoints in `admin_exam_intel_cms.py` change from `require_permission(PERM_CMS)` to `require_any_permission([PERM_MANAGE, PERM_CMS])`, so existing `cms` holders retain access and new `manage` holders gain operate-tier access.
-- Every new table/grant verified via `pg_policies` / grant matrix before the checklist row is marked complete (migration discipline).
+Verbatim operator decision (LOCKED):
 
-**No implementation of Section D may proceed until one of D-opt-1 / D-opt-2 / D-opt-3 is explicitly approved.**
+```text
+All normal Manage Exam canonical-content editors are gated by
+exam_intelligence.manage.
+exam_intelligence.review remains the exclusive review/trust/lifecycle
+transition permission.
+exam_intelligence.cms remains exclusive to Advanced Repair and exceptional
+recovery workflows.
+super_admin bypass remains unchanged.
+```
+
+Separation model:
+
+```text
+manage  = edit canonical operational content
+review  = approve or change trust/lifecycle state
+cms     = exceptional recovery and broad raw-data repair
+```
+
+### D.1 Permission matrix (LOCKED)
+
+| Capability | Required permission |
+|---|---|
+| View Manage Exam and operational data | Existing admin route/read access |
+| Create/edit topic or microtopic | `exam_intelligence.manage` |
+| Add/remove topic aliases | `exam_intelligence.manage` |
+| Add/update/remove prerequisites | `exam_intelligence.manage` |
+| Correct policy `affects_*` flags | `exam_intelligence.manage` |
+| Verify/reject/re-queue/lock rows | `exam_intelligence.review` |
+| Activate exam / final trust decision | Existing review/activation authority |
+| Generic CMS CRUD, cross-exam repair, broken-FK repair | `exam_intelligence.cms` |
+| Emergency override | `super_admin` or Advanced Repair with `exam_intelligence.cms` |
+
+### D.2 Implementation rules (LOCKED)
+
+1. **Backend is authoritative.** Every new J2 mutation endpoint uses a **single-token** guard — NOT an OR-helper:
+
+   ```python
+   MANAGE_PERM = "exam_intelligence.manage"
+   _admin: dict = Depends(require_permission(MANAGE_PERM))
+   ```
+
+   The existing auth system already supports arbitrary permissions from trusted `app_metadata.permissions`; `super_admin` bypasses granular checks. No `require_any_permission` helper is needed — `manage` and `cms` stay cleanly separated. The existing `cms`-gated editor endpoints in `admin_exam_intel_cms.py` (§0.2) are **not** re-gated; J2 introduces its own `manage`-gated mutation endpoints for Manage Exam (frontend editor components are shared per OD-3, but the backend routes are distinct by permission tier).
+
+2. **Frontend gating is UX only.** Manage Exam tabs stay visible to admins; mutation controls are hidden/disabled unless the user has `exam_intelligence.manage`. Do NOT gate the whole Syllabus/PYQ/Updates tab — those panels also contain read and review workflows.
+
+   ```js
+   const canManage =
+     user?.role === "super_admin" ||
+     user?.permissions?.includes("exam_intelligence.manage");
+   ```
+
+3. **Editing must not imply approval.** Topic/alias/prerequisite/policy-flag writes must never promote `reviewer_status`, trust status, coverage state, or activation state. All writes carry a reason, create audit records, and preserve lifecycle enforcement.
+
+4. **Verified/locked content must be reopened before editing.** For a verified/locked policy row or load-bearing topic:
+
+   ```text
+   exam_intelligence.review:  verified/locked → needs_correction/reviewed
+   exam_intelligence.manage:  edit canonical fields
+   exam_intelligence.review:  re-review and re-lock/re-verify
+   ```
+
+   `manage` must NOT silently modify locked content.
+
+5. **Destructive actions remain bounded.** A `manage` user may delete/deactivate only when dependency checks pass. Topics with aliases, locked coverage, questions, or prerequisite edges return `409`. Forced cleanup belongs in Advanced Repair under `exam_intelligence.cms`, never as an override button in Manage Exam.
+
+6. **Prerequisites stay implementation-blocked.** The permission is decided, but the prerequisite editor cannot be built until prerequisite schema, directionality, scope, strength semantics, and planner impact are approved in a separate gate (see OD-9 slicing update).
+
+### D.3 Known limitation (LOCKED — recorded, not solved in J2)
+
+Permissions are currently global values in user `app_metadata`; the repo has no per-exam operator-assignment model. Therefore `exam_intelligence.manage` initially permits management across ALL exams. The endpoints MUST still enforce the requested `exam_id` and all parent-child relationships (subject∈exam, topic∈subject, alias/prereq∈topic). Per-exam staff assignment is a separate future RBAC enhancement — it must NOT be guessed inside J2.
+
+### D.4 Implementation additions (when J2-A is built)
+
+- A forward migration defining `exam_intelligence.manage` and granting it per the matrix in D.1; grant verified via role/grant inspection before the checklist row is marked complete (migration discipline).
+- New `manage`-gated mutation endpoints for Manage Exam topic/alias editing (prerequisites blocked per rule 6).
+- Frontend `canManage` UX gating (rule 2) inside the Syllabus panel; read/review paths remain ungated.
 
 ---
 
@@ -203,16 +273,20 @@ If **D-opt-1** is approved, the implementation adds:
 | ID | Decision | Status |
 |---|---|---|
 | OD-1 | Placement — editors go into existing tabs (Syllabus for J2-A), no new tab/route/sidebar entry. | **LOCKED** (no-new-surface rule). |
-| OD-2 | Permission tier. | **OPERATOR DECISION REQUIRED** — see Section D (D-opt-1 recommended). Requires `require_any_permission` helper + `exam_intelligence.manage` token + migration if D-opt-1. |
+| OD-2 | Permission tier. | **RESOLVED — OPERATOR APPROVED (2026-07-01, PR #824).** New `exam_intelligence.manage` token; single-token `require_permission(MANAGE_PERM)` on new J2 endpoints (no OR-helper); `cms` and `review` untouched. Full matrix + 6 implementation rules + global-permission limitation in Section D. |
 | OD-3 | Reuse mandate — extract shared topic/alias/prerequisite editor components; consume in both `ExamIntelCms.jsx` and the Syllabus panel. No fork. | **LOCKED.** |
 | OD-4 | Subject resolution — new backend helper endpoint returning the exam's distinct subjects via the `exam_topic_coverage` path. | **LOCKED** (path). Endpoint shape (`GET /exams/{id}/subjects` under the CMS router vs. exam-intelligence router) is an implementation detail; confirm router placement in the PR. |
 | OD-5 | Empty-coverage behavior — empty state + link to coverage mapping; never fall back to global subject list. | **LOCKED.** |
 | OD-6 | Write-safety — inherit J1 fail-closed `writesBlocked` model keyed on subject resolution. | **LOCKED.** |
 | OD-7 | No AdminSafetyBanner in Manage Exam editors. | **LOCKED.** |
 | OD-8 | In-memory control state (search/filter/page not in URL). | **LOCKED** (matches J1 OD-5). |
-| OD-9 | Delivery slicing — J2-A (Syllabus) first; J2-B (policy flags) and J2-C (cycle entities) each require a gate revision before code. | **LOCKED.** |
-| OD-10 | Advanced Repair unchanged — `ExamIntelCms.jsx` retains `exam_intelligence.cms` gate and `collapsible={false}` banner. | **LOCKED.** |
-| OD-11 | No new migrations except the RBAC token migration required by D-opt-1 (if approved). No schema changes to topics/aliases/prerequisites. | **LOCKED** (conditional on OD-2). |
+| OD-9 | Delivery slicing — J2-A (topic + alias, Syllabus) first; **J2-A′ prerequisite editor BLOCKED** pending a prerequisite-semantics gate (Section D rule 6); J2-B (policy flags) and J2-C (cycle entities) each require a gate revision before code. | **LOCKED.** |
+| OD-10 | Advanced Repair unchanged — `ExamIntelCms.jsx` retains `exam_intelligence.cms` gate and `collapsible={false}` banner. Existing cms-gated editor endpoints are NOT re-gated. | **LOCKED.** |
+| OD-11 | No new migrations except the RBAC token migration defining/granting `exam_intelligence.manage`. No schema changes to topics/aliases/prerequisites. | **LOCKED.** |
+| OD-12 | Editing never implies approval — writes carry a reason + audit record and never promote `reviewer_status`/trust/coverage/activation (Section D rule 3). | **LOCKED.** |
+| OD-13 | Verified/locked content must be reopened via `review` before `manage` may edit; no silent edits to locked rows (Section D rule 4). | **LOCKED.** |
+| OD-14 | Destructive actions bounded — 409 on dependency (aliases, locked coverage, questions, prereq edges); forced cleanup only via Advanced Repair/`cms` (Section D rule 5). | **LOCKED.** |
+| OD-15 | Global-permission limitation — `manage` initially spans all exams; endpoints MUST enforce `exam_id` + parent-child integrity; per-exam assignment is a separate future RBAC track (Section D.3). | **LOCKED.** |
 
 ---
 
@@ -270,9 +344,8 @@ If **D-opt-1** is approved, the implementation adds:
 | `app/frontend/src/pages/admin/studyos/ExamIntelCms.jsx` | Consume the extracted shared editor components (replace inline editors). | Frontend |
 | `app/frontend/src/pages/admin/exam-workspace/ExamWorkspace.jsx` | Add the Syllabus-tab editor panel (subject selector → topic/alias/prereq editors). Serial-owner change. | Frontend |
 | `app/frontend/src/pages/admin/exam-workspace/__tests__/…` | New tests covering Section F. | Frontend tests |
-| `app/backend/app/api/admin_exam_intel_cms.py` | Add `GET /exams/{id}/subjects` helper (OD-4); change editor endpoints to `require_any_permission` (if D-opt-1). | Backend |
-| `app/backend/app/core/auth.py` | Add `require_any_permission` helper (if D-opt-1). | Backend |
-| `app/supabase/migrations/<next>_exam_intelligence_manage_permission.sql` | Define + grant `exam_intelligence.manage` (if D-opt-1). | Migration |
+| `app/backend/app/api/…` | Add `GET /exams/{id}/subjects` helper (OD-4); add new `manage`-gated topic/alias mutation endpoints (`require_permission("exam_intelligence.manage")`), with reason+audit (OD-12), locked-content reopen enforcement (OD-13), and bounded 409 deletes (OD-14). | Backend |
+| `app/supabase/migrations/<next>_exam_intelligence_manage_permission.sql` | Define + grant `exam_intelligence.manage` per D.1 matrix. | Migration |
 | `docs/status/career-copilot-checklist.md` | Update J2 row to reflect this gate + slicing. | Docs |
 
 **Must NOT change:** `AdminShell.jsx`, `adminRoutes.jsx` (no route/nav changes), the topics/aliases/prerequisites table schemas.
@@ -290,4 +363,4 @@ If **D-opt-1** is approved, the implementation adds:
 
 ---
 
-*Status: DRAFT — OPERATOR APPROVAL REQUIRED. The pivotal open decision is OD-2 (Section D — permission tier; D-opt-1 `exam_intelligence.manage` recommended). J2-A (Syllabus editors) is fully specified; J2-B (policy flags) and J2-C (cycle entities) require a gate revision before implementation. J3 is a separate schema/domain-redesign track and is intentionally NOT covered here — it requires its own contract(s) per sub-item.*
+*Status: OD-2 RESOLVED (operator-approved 2026-07-01, PR #824) — canonical Manage Exam editors gated by the new `exam_intelligence.manage` token; `review` and `cms` untouched; permission matrix + 6 implementation rules + global-permission limitation locked in Section D. J2-A (topic + alias editors) is buildable. The prerequisite editor (J2-A′) is implementation-blocked pending a prerequisite-semantics gate. J2-B (policy flags) and J2-C (cycle entities) require gate revisions. J3 is a separate schema/domain-redesign track and is intentionally NOT covered here.*
