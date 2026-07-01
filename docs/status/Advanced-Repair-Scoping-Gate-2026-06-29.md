@@ -3,8 +3,9 @@
 - Document type: J1 implementation contract — Advanced Repair scoping
 - Status: **OPERATOR APPROVED — CODE-FIXED, VALIDATION PENDING (PR #820 open draft)**
 - Date: 2026-06-29
-- Approval date: 2026-06-30 (operator johnefficacy-crypto, verbal "J1" selection)
-- Approval record: https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4850772808 (covers OD-1 through OD-12)
+- Approval date: 2026-06-30 (operator johnefficacy-crypto, verbal "J1" selection); amended 2026-07-01
+- Approval record (original OD-1 through OD-12): https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4850772808
+- Approval record (amended OD-2 and OD-12): https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4851692372
 - Parent track: `J1 — Advanced Repair scoping` (`docs/status/career-copilot-checklist.md` row "J1 — Advanced Repair scoping")
 - Authority: `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` §9 (Advanced Repair access model)
 - Gates cleared: I8-C merged (PR #759 `f4378097`); I6 merged (PR #761 `d69602f8`)
@@ -241,7 +242,7 @@ The New row, Bulk import, and Reload controls remain in their current positions 
 | ID | Decision | Status |
 |---|---|---|
 | OD-1 | Scope params wiring | **LOCKED** — `exam_id` / `cycle_id` already wired in I8-C. J1 extends the UI with search/filter/pagination built on the existing scoped list requests. No new scope wiring is needed. |
-| OD-2 | Search param name sent to backend | **LOCKED — AMENDED** — Only 4 entities support text search via the `q` param: `syllabus-topic-mentions`, `exam-phase-sections`, `subjects`, `topics`. All other entities: search input hidden, no param sent. The gate's original universal `search=` contract is superseded by per-entity capability matrix (`ENTITY_SEARCH_PARAM` in `ExamIntelCms.jsx`). Approval recorded at https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4850772808. |
+| OD-2 | Search param name sent to backend | **LOCKED — AMENDED** — Only 4 entities support text search via the `q` param: `syllabus-topic-mentions`, `exam-phase-sections`, `subjects`, `topics`. All other entities: search input hidden, no param sent. The gate's original universal `search=` contract is superseded by per-entity capability matrix (`ENTITY_SEARCH_PARAM` in `ExamIntelCms.jsx`). Amendment approved at https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4851692372. |
 | OD-3 | Status filter field selection | **LOCKED** — `reviewer_status` for mention/coverage/policy/question entities; `trust_status` for document/paper/source entities. Determined by which field is present in the entity's `ENTITY_CONFIG.fields` array. |
 | OD-4 | Page size | **LOCKED** — 50 rows per page, constant. Not user-configurable in J1. |
 | OD-5 | URL state for search/filter/page | **LOCKED** — in-memory only in J1. Browser URL reflects `exam_id` / `cycle_id` scope params (existing) but not search/filter/page state. Deep-linking to search state is deferred. |
@@ -251,7 +252,7 @@ The New row, Bulk import, and Reload controls remain in their current positions 
 | OD-9 | AdminSafetyBanner | **LOCKED** — `collapsible={false}`, no text change, no placement change. |
 | OD-10 | Permission gate | **LOCKED** — `exam_intelligence.cms`, no change. |
 | OD-11 | New routes or nav entries | **LOCKED** — none. J1 adds zero routes and zero sidebar/nav entries. |
-| OD-12 | Backend changes | **LOCKED — AMENDED** — J1 is primarily frontend-only. Exception: `pyq-options` list endpoint amended in PR #820 to add `offset` param support (`.range()` instead of `.limit()` only). `ENTITY_NO_OFFSET` set emptied; `pyq-options` now participates in standard pagination. No new migrations. Approval recorded at https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4850772808. |
+| OD-12 | Backend changes | **LOCKED — AMENDED** — J1 is primarily frontend-only. Exception: `pyq-options` list endpoint amended in PR #820 to add `offset` param support (`.range()` instead of `.limit()` only), default limit changed 10→50. `ENTITY_NO_OFFSET` set emptied; `pyq-options` now participates in standard pagination. 5 backend regression tests added (`test_cms_pyq_options_pagination.py`). No new migrations. Amendment approved at https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4851692372. |
 
 ---
 

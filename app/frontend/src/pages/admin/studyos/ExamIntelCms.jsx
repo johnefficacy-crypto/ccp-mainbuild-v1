@@ -829,6 +829,11 @@ export default function AdminExamIntelCms() {
   // "idle" = no scope param; "resolving" = lookup in flight; "valid" = found; "error" = not found
   const [examScopeState, setExamScopeState] = useState("idle");
   const [cycleScopeState, setCycleScopeState] = useState("idle");
+  // resolvedExamId/resolvedCycleId track WHICH ID was successfully resolved.
+  // writesBlocked also checks these match current URL params to close the
+  // initial-render gap and the valid-A → resolving-B scope-change gap.
+  const [resolvedExamId, setResolvedExamId] = useState(null);
+  const [resolvedCycleId, setResolvedCycleId] = useState(null);
   const searchTimerRef = useRef(null);
   const PAGE_SIZE = 50;
 
@@ -839,14 +844,15 @@ export default function AdminExamIntelCms() {
   // Per-entity bulk caps — source of truth is the backend. UI copy only; the
   // backend enforces. Submit is never blocked client-side.
   const bulkCap = { "pyq-questions": 2000, "pyq-options": 4000, "pyq-question-topic-tags": 2000 }[entity] || 500;
-  // Fail-closed: block writes during resolving AND error states (not only after failure).
-  // If no scope is present, writes are always allowed (scopeState stays "idle").
+  // Fail-closed: block when no scope, scope is resolving, scope errored, OR
+  // resolved identity does not yet match the current URL param (covers first
+  // render and valid-A → resolving-B transitions).
   const scopeResolutionFailed =
     (scopeExamId && examScopeState === "error") ||
     (scopeCycleId && scopeExamId && cycleScopeState === "error");
   const writesBlocked =
-    (scopeExamId && (examScopeState === "resolving" || examScopeState === "error")) ||
-    (scopeCycleId && scopeExamId && (cycleScopeState === "resolving" || cycleScopeState === "error"));
+    (scopeExamId && (examScopeState !== "valid" || resolvedExamId !== scopeExamId)) ||
+    (scopeExamId && scopeCycleId && (cycleScopeState !== "valid" || resolvedCycleId !== scopeCycleId));
 
   async function load({ searchVal, filterVal, pageVal } = {}) {
     const gen = ++loadGenRef.current;
@@ -1168,12 +1174,16 @@ export default function AdminExamIntelCms() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, isAuthorized, scopeExamId, scopeCycleId]);
 
-  // J1: resolve human-readable scope names; track resolution state explicitly
+  // J1: resolve human-readable scope names; track resolution state and resolved identity
   useEffect(() => {
-    if (!isAuthorized || !scopeExamId) { setScopeExamName(null); setExamScopeState("idle"); return; }
+    if (!isAuthorized || !scopeExamId) {
+      setScopeExamName(null); setExamScopeState("idle"); setResolvedExamId(null); return;
+    }
     let cancelled = false;
+    // Reset synchronously so writesBlocked=true on this render and on scope change
     setScopeExamName(null);
     setExamScopeState("resolving");
+    setResolvedExamId(null);
     (async () => {
       let offset = 0;
       try {
@@ -1182,7 +1192,7 @@ export default function AdminExamIntelCms() {
           if (cancelled) return;
           const items = r?.items || [];
           const exam = items.find((e) => e.id === scopeExamId);
-          if (exam) { setScopeExamName(exam.name); setExamScopeState("valid"); return; }
+          if (exam) { setScopeExamName(exam.name); setExamScopeState("valid"); setResolvedExamId(scopeExamId); return; }
           if (items.length < 200) break;
           offset += 200;
         }
@@ -1193,10 +1203,13 @@ export default function AdminExamIntelCms() {
   }, [isAuthorized, scopeExamId]);
 
   useEffect(() => {
-    if (!isAuthorized || !scopeCycleId) { setScopeCycleName(null); setCycleScopeState("idle"); return; }
+    if (!isAuthorized || !scopeCycleId) {
+      setScopeCycleName(null); setCycleScopeState("idle"); setResolvedCycleId(null); return;
+    }
     let cancelled = false;
     setScopeCycleName(null);
     setCycleScopeState("resolving");
+    setResolvedCycleId(null);
     (async () => {
       const examParam = scopeExamId ? `&exam_id=${encodeURIComponent(scopeExamId)}` : "";
       let offset = 0;
@@ -1206,7 +1219,7 @@ export default function AdminExamIntelCms() {
           if (cancelled) return;
           const items = r?.items || [];
           const cycle = items.find((c) => c.id === scopeCycleId);
-          if (cycle) { setScopeCycleName(cycle.cycle_name ?? cycle.year ?? "(cycle not found)"); setCycleScopeState("valid"); return; }
+          if (cycle) { setScopeCycleName(cycle.cycle_name ?? cycle.year ?? "(cycle not found)"); setCycleScopeState("valid"); setResolvedCycleId(scopeCycleId); return; }
           if (items.length < 200) break;
           offset += 200;
         }
