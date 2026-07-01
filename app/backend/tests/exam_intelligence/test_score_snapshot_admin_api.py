@@ -57,13 +57,14 @@ class _SnapshotSBStub(SBStub):
         return super().rpc(fn_name, params)
 
     def _exec_review_snapshot(self, p: dict):
-        new_status     = p.get("p_new_status")
-        expected       = p.get("p_expected_status")
-        snap_id        = p.get("p_snapshot_id")
-        reviewer_notes = p.get("p_reviewer_notes")
-        actor_id       = p.get("p_actor_user_id")
+        new_status            = p.get("p_new_status")
+        expected              = p.get("p_expected_status")
+        snap_id               = p.get("p_snapshot_id")
+        reviewer_notes        = p.get("p_reviewer_notes")
+        actor_id              = p.get("p_actor_user_id")
+        current_model_version = p.get("p_current_model_version")
 
-        # 0. Missing actor guard (mirrors migration 204 step 0).
+        # 0. Missing actor guard (mirrors migration 206 step 0).
         if actor_id is None:
             raise Exception("missing_actor_id: p_actor_user_id must not be NULL")
 
@@ -94,14 +95,44 @@ class _SnapshotSBStub(SBStub):
                 f"transition_not_allowed: {expected} -> {new_status} is not a permitted transition"
             )
 
-        # 6. locked→reviewed requires non-blank reviewer_notes (migration 204 step 5).
+        # 6. locked→reviewed requires non-blank reviewer_notes (migration 206 step 6).
         if expected == "locked" and new_status == "reviewed":
             if not (reviewer_notes and reviewer_notes.strip()):
                 raise Exception(
                     "invalid_reviewer_notes: reviewer_notes required when reverting a locked snapshot"
                 )
 
-        # 7. Effective notes: NULL preserves existing; non-NULL replaces.
+        # 7. Guard A — Stale-model check (reviewed→locked only, migration 206 step 7).
+        if expected == "reviewed" and new_status == "locked":
+            if snap.get("model_version") != current_model_version:
+                raise Exception(
+                    f"stale_model_version: snapshot model_version={snap.get('model_version')!r}"
+                    f" does not match current={current_model_version!r}"
+                )
+
+        # 8. Guard B — Superseded-current-model check (reviewed→locked only, migration 206 step 8).
+        #    Rejects if any OTHER locked row in the same scope has computed_at >= this row's
+        #    computed_at (>= so equal timestamps are deterministically rejected).
+        if expected == "reviewed" and new_status == "locked":
+            scope_key = (
+                snap.get("exam_id"),
+                snap.get("exam_phase_id"),
+                snap.get("topic_id"),
+            )
+            blocking_locked = any(
+                s for s in snapshots
+                if s.get("id") != snap_id
+                and s.get("status") == "locked"
+                and s.get("model_version") == current_model_version
+                and (s.get("exam_id"), s.get("exam_phase_id"), s.get("topic_id")) == scope_key
+                and s.get("computed_at", "") >= snap.get("computed_at", "")
+            )
+            if blocking_locked:
+                raise Exception(
+                    "superseded_snapshot: a newer locked snapshot already exists for this scope"
+                )
+
+        # 9. Effective notes: NULL preserves existing; non-NULL replaces.
         effective_notes = snap.get("reviewer_notes") if reviewer_notes is None else reviewer_notes
 
         # 8. Atomic: audit INSERT + snapshot UPDATE (both or neither in SQL).
@@ -781,3 +812,236 @@ def test_compute_exam_wide_does_not_set_exam_phase_id():
         assert row.get("exam_phase_id") is None, (
             f"exam-wide compute wrote a phase-scoped row: {row}"
         )
+
+
+# ─── Lock-authority guards (migration 206) ────────────────────────────────────
+
+def _guard_seed():
+    """Seed with one reviewed snapshot at MODEL_VERSION, ready for lock tests."""
+    return {
+        "exams": [
+            {"id": "e1", "slug": "ssc-cgl", "name": "SSC CGL",
+             "exam_type": "recruitment", "is_active": True},
+        ],
+        "exam_topic_score_snapshots": [
+            {
+                "id": "s-reviewed", "exam_id": "e1", "topic_id": "t1",
+                "exam_phase_id": None, "status": "reviewed",
+                "model_version": MODEL_VERSION,
+                "exam_priority_score": 80, "is_high_yield": True,
+                "confidence_score": 0.8, "evidence_count": 2,
+                "score_components": {}, "input_summary": {},
+                "computed_at": "2026-05-03T00:00:00+00:00",
+                "reviewer_notes": "ok",
+            },
+        ],
+    }
+
+
+def test_review_guard_a_rejects_stale_model_version():
+    """reviewed→locked with a stale model_version returns 422 stale_model_version."""
+    seed = _guard_seed()
+    # Patch the snapshot to a different model version.
+    seed["exam_topic_score_snapshots"][0]["model_version"] = "v0.9"
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        f"{_REVIEW_BASE}/s-reviewed/review",
+        json={"status": "locked"},
+    )
+    assert r.status_code == 422
+    assert "stale_model_version" in r.text
+
+
+def test_review_guard_a_allows_draft_to_reviewed_with_stale_model():
+    """draft→reviewed is always allowed regardless of model_version (Guard A does not fire)."""
+    seed = _guard_seed()
+    # Override the reviewed row with a draft at a stale model version.
+    seed["exam_topic_score_snapshots"][0].update({
+        "id": "s-stale-draft",
+        "status": "draft",
+        "model_version": "v0.9",
+    })
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        f"{_REVIEW_BASE}/s-stale-draft/review",
+        json={"status": "reviewed"},
+    )
+    assert r.status_code == 200
+    assert r.json()["new_status"] == "reviewed"
+
+
+def test_review_guard_b_rejects_superseded_snapshot():
+    """reviewed→locked is rejected when a newer locked row already exists for the same scope."""
+    seed = _guard_seed()
+    # Add a newer locked row for the same (exam_id, exam_phase_id, topic_id) at MODEL_VERSION.
+    seed["exam_topic_score_snapshots"].append({
+        "id": "s-newer-locked", "exam_id": "e1", "topic_id": "t1",
+        "exam_phase_id": None, "status": "locked",
+        "model_version": MODEL_VERSION,
+        "exam_priority_score": 82, "is_high_yield": True,
+        "confidence_score": 0.85, "evidence_count": 3,
+        "score_components": {}, "input_summary": {},
+        "computed_at": "2026-05-04T00:00:00+00:00",  # later than s-reviewed
+        "reviewer_notes": "locked first",
+    })
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        f"{_REVIEW_BASE}/s-reviewed/review",
+        json={"status": "locked"},
+    )
+    assert r.status_code == 422
+    assert "superseded_snapshot" in r.text
+
+
+def test_review_guard_b_allows_lock_when_only_older_locked_exists():
+    """reviewed→locked succeeds when the existing locked row is OLDER (not superseding)."""
+    seed = _guard_seed()
+    # Add an older locked row for the same scope.
+    seed["exam_topic_score_snapshots"].append({
+        "id": "s-older-locked", "exam_id": "e1", "topic_id": "t1",
+        "exam_phase_id": None, "status": "locked",
+        "model_version": MODEL_VERSION,
+        "exam_priority_score": 75, "is_high_yield": True,
+        "confidence_score": 0.75, "evidence_count": 1,
+        "score_components": {}, "input_summary": {},
+        "computed_at": "2026-05-01T00:00:00+00:00",  # earlier than s-reviewed
+        "reviewer_notes": "older lock",
+    })
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        f"{_REVIEW_BASE}/s-reviewed/review",
+        json={"status": "locked"},
+    )
+    assert r.status_code == 200
+    assert r.json()["new_status"] == "locked"
+
+
+def test_review_guard_b_rejects_equal_computed_at():
+    """reviewed→locked is rejected when a locked row in the same scope has the SAME computed_at.
+
+    Equal timestamps are non-deterministic for the planner (ORDER BY computed_at DESC with no
+    ID tie-break), so both must not be locked.  Guard B uses >= to enforce one winner.
+    """
+    seed = _guard_seed()
+    # Add a locked row with the SAME computed_at as s-reviewed.
+    seed["exam_topic_score_snapshots"].append({
+        "id": "s-equal-locked", "exam_id": "e1", "topic_id": "t1",
+        "exam_phase_id": None, "status": "locked",
+        "model_version": MODEL_VERSION,
+        "exam_priority_score": 80, "is_high_yield": True,
+        "confidence_score": 0.8, "evidence_count": 2,
+        "score_components": {}, "input_summary": {},
+        "computed_at": "2026-05-03T00:00:00+00:00",  # identical to s-reviewed
+        "reviewer_notes": "locked with same timestamp",
+    })
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        f"{_REVIEW_BASE}/s-reviewed/review",
+        json={"status": "locked"},
+    )
+    assert r.status_code == 422
+    assert "superseded_snapshot" in r.text
+
+
+def test_review_guard_b_different_scope_does_not_block():
+    """A newer locked row in a DIFFERENT scope does not trigger Guard B."""
+    seed = _guard_seed()
+    # Add a newer locked row for a different topic_id.
+    seed["exam_topic_score_snapshots"].append({
+        "id": "s-other-topic-locked", "exam_id": "e1", "topic_id": "t99",
+        "exam_phase_id": None, "status": "locked",
+        "model_version": MODEL_VERSION,
+        "exam_priority_score": 90, "is_high_yield": True,
+        "confidence_score": 0.9, "evidence_count": 5,
+        "score_components": {}, "input_summary": {},
+        "computed_at": "2026-06-01T00:00:00+00:00",  # newer but different scope
+        "reviewer_notes": "different topic",
+    })
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        f"{_REVIEW_BASE}/s-reviewed/review",
+        json={"status": "locked"},
+    )
+    assert r.status_code == 200
+    assert r.json()["new_status"] == "locked"
+
+
+def test_review_locked_to_reviewed_allowed_for_superseded_row():
+    """locked→reviewed reversal is always allowed even if a newer locked row exists."""
+    seed = _guard_seed()
+    # Make the target row locked (stale), add a newer locked row in same scope.
+    seed["exam_topic_score_snapshots"][0].update({
+        "id": "s-old-locked", "status": "locked",
+        "computed_at": "2026-05-01T00:00:00+00:00",
+        "reviewer_notes": "old lock",
+    })
+    seed["exam_topic_score_snapshots"].append({
+        "id": "s-new-locked", "exam_id": "e1", "topic_id": "t1",
+        "exam_phase_id": None, "status": "locked",
+        "model_version": MODEL_VERSION,
+        "exam_priority_score": 85, "is_high_yield": True,
+        "confidence_score": 0.85, "evidence_count": 4,
+        "score_components": {}, "input_summary": {},
+        "computed_at": "2026-05-04T00:00:00+00:00",
+        "reviewer_notes": "new lock",
+    })
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    # Reverting the older locked row must succeed regardless of Guard B.
+    r = client.patch(
+        f"{_REVIEW_BASE}/s-old-locked/review",
+        json={"status": "reviewed", "reviewer_notes": "reverting for correction"},
+    )
+    assert r.status_code == 200
+    assert r.json()["new_status"] == "reviewed"
+
+
+def test_review_relock_after_reversal_blocked_by_guard_b():
+    """After reversal, re-lock attempt fails Guard B when a newer locked row now exists."""
+    seed = _guard_seed()
+    # s-reviewed (computed_at 2026-05-03) is reviewed; a newer locked row in same scope.
+    seed["exam_topic_score_snapshots"].append({
+        "id": "s-newer", "exam_id": "e1", "topic_id": "t1",
+        "exam_phase_id": None, "status": "locked",
+        "model_version": MODEL_VERSION,
+        "exam_priority_score": 82, "is_high_yield": True,
+        "confidence_score": 0.85, "evidence_count": 3,
+        "score_components": {}, "input_summary": {},
+        "computed_at": "2026-05-05T00:00:00+00:00",
+        "reviewer_notes": "newer locked",
+    })
+    sb = _SnapshotSBStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        f"{_REVIEW_BASE}/s-reviewed/review",
+        json={"status": "locked"},
+    )
+    assert r.status_code == 422
+    assert "superseded_snapshot" in r.text
+
+
+def test_review_passes_current_model_version_to_rpc():
+    """The Python layer forwards p_current_model_version equal to MODEL_VERSION."""
+    seed = _guard_seed()
+    received: list[dict] = []
+
+    class _CapturingStub(_SnapshotSBStub):
+        def _exec_review_snapshot(self, p: dict):
+            received.append(dict(p))
+            return super()._exec_review_snapshot(p)
+
+    sb = _CapturingStub(seed)
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        f"{_REVIEW_BASE}/s-reviewed/review",
+        json={"status": "locked"},
+    )
+    assert r.status_code == 200
+    assert received, "RPC stub was never called"
+    assert received[0].get("p_current_model_version") == MODEL_VERSION
