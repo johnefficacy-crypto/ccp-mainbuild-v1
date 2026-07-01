@@ -64,6 +64,12 @@ diagnosing them unless the failure pattern changes.
 - Treat failures as actionable unless the failure matches a documented
   environment/secrets outage pattern.
 
+**Vercel deployment (free-tier rate limit) — TEMPORARY NOTE, remove after 2026-07-02**
+- `vercel[bot]` posts a PR comment: "Resource is limited — try again in 24 hours (more than 100, code: api-deployments-free-per-day)".
+- This is a Vercel free-plan daily build-quota exhaustion. It is NOT a code failure.
+- Do not investigate, retry, or block merge on this. The deploy will succeed automatically on the next PR once the quota resets (~24 h).
+- Remove this entry after 2026-07-02 once the quota has naturally reset.
+
 **validate-pr-body (first run only)**
 - `pr-body-check.yml` triggers on `pull_request` events including
   `synchronize`. The very first run fires before the PR description is
