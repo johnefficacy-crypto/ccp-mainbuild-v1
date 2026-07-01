@@ -643,3 +643,16 @@ def test_rpc_cas_blocks_stale_update():
             "p_relation_type": "requires", "p_strength": 1.0, "p_source_basis": None,
             "p_created_by": None, "p_metadata": None, "p_expected_status": "draft",
         })
+
+
+def test_manage_rejects_descriptive_relation_types():
+    """Manage may only mint ordering relations; supports/foundation_for are
+    Advanced-Repair-only (gate PD-3)."""
+    sb = MngSBStub(_seed_prereq())
+    for rel in ("supports", "foundation_for"):
+        r = _client(sb).post(
+            f"{_BASE}/topic-prerequisites?exam_id=E1",
+            json={"reason": f"try {rel} via manage", "payload": {
+                "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": rel}},
+        )
+        assert r.status_code == 422, f"{rel}: {r.text}"

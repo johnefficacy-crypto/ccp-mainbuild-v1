@@ -13,7 +13,9 @@ import useApiAction from "../../../../lib/hooks/useApiAction";
  * - all mutations run through useApiAction; edges show reviewer_status.
  */
 const BASE = "/api/admin/exam-intelligence-manage";
-const RELATIONS = ["requires", "recommended_before", "supports", "foundation_for"];
+// Manage Exam exposes only the two ordering relations; descriptive relations
+// (supports/foundation_for) are Advanced-Repair-only (gate PD-3).
+const RELATIONS = ["requires", "recommended_before"];
 const EDITABLE = new Set(["draft", "rejected"]);
 
 export default function TopicPrerequisiteEditor({

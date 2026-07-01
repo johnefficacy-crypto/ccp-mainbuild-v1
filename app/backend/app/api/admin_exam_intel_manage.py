@@ -61,8 +61,12 @@ PERM_REVIEW = "exam_intelligence.review"
 
 # ── Prerequisite lifecycle (J2-A′ gate) ───────────────────────────────────
 _PREREQ_FIELDS = {"topic_id", "prerequisite_topic_id", "relation_type", "strength", "source_basis"}
-_PREREQ_RELATIONS = ("requires", "recommended_before", "supports", "foundation_for")
 _ORDERING_RELATIONS = {"requires", "recommended_before"}
+# Manage Exam may only create/edit the two ORDERING relations. The descriptive
+# relations (`supports`, `foundation_for`) have no planner consumer yet (gate
+# PD-3) and remain Advanced-Repair-only, so the operational editor must not mint
+# canonical rows that do nothing but require later review/cleanup.
+_MANAGE_RELATIONS = ("requires", "recommended_before")
 # States a manage-tier operator may edit/delete/submit from.
 _MANAGE_EDITABLE = {"draft", "rejected"}
 # Review-only lifecycle transitions (from, to). Everything else is 409.
@@ -603,8 +607,8 @@ def create_topic_prerequisite(
     if not topic_id or not prereq_id:
         raise HTTPException(status_code=422, detail="topic_id and prerequisite_topic_id are required")
     relation = row.get("relation_type") or "requires"
-    if relation not in _PREREQ_RELATIONS:
-        raise HTTPException(status_code=422, detail=f"relation_type must be one of {_PREREQ_RELATIONS}")
+    if relation not in _MANAGE_RELATIONS:
+        raise HTTPException(status_code=422, detail=f"relation_type must be one of {_MANAGE_RELATIONS} (descriptive relations are Advanced-Repair-only)")
     _require_prereq_scope(supabase, exam_id, topic_id, prereq_id)
     try:
         res = supabase.rpc(
@@ -655,8 +659,8 @@ def update_topic_prerequisite(
     if not patch:
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
     relation = patch.get("relation_type", existing.get("relation_type"))
-    if relation not in _PREREQ_RELATIONS:
-        raise HTTPException(status_code=422, detail=f"relation_type must be one of {_PREREQ_RELATIONS}")
+    if relation not in _MANAGE_RELATIONS:
+        raise HTTPException(status_code=422, detail=f"relation_type must be one of {_MANAGE_RELATIONS} (descriptive relations are Advanced-Repair-only)")
     topic_id = patch.get("topic_id", existing.get("topic_id"))
     prereq_topic = patch.get("prerequisite_topic_id", existing.get("prerequisite_topic_id"))
     _require_prereq_scope(supabase, exam_id, topic_id, prereq_topic)
