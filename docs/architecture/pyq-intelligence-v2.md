@@ -1,8 +1,8 @@
 ---
 owner: exam-intelligence
 status: architecture decision + phased implementation plan
-last_verified_against_code: 2026-06-30
-verified_against: main @ 3d99e6b3
+last_targeted_reconciliation: 2026-06-30
+reconciliation_scope: frequency-semantics section + delivery-order steps 2-4 (including P2/Track-C gate boundary); full cross-examination of all source paths, gap entries, and delivery dependencies not performed in this pass
 source_of_truth: code
 related_code:
   - app/backend/app/exam_intelligence/coverage.py
@@ -152,15 +152,15 @@ Official syllabus / reviewed PYQ sources / reviewed resources / reviewed CA sour
 
 ### Verified frequency
 
-The current `verified_pyq_topic_counts()` function counts every verified topic tag, regardless of `tag_role`. Therefore its output is a reviewed association count, not necessarily a unique-question frequency count.
+**Implemented (PR #767, slice-1 — MERGED):** `verified_pyq_topic_counts()` in `coverage.py` now filters `tag_role='primary'` at the DB query and guards the count loop (defence-in-depth), so one verified question can no longer inflate multiple topics through secondary/trap/calculation_layer tags. Paper `trust_status='verified'` + question `reviewer_status='verified'` + tag `reviewer_status='verified'` gates remain conjunctive. Seven frequency-semantics regression tests pass (`test_pyq_frequency_semantics.py`).
 
-Before using it as “exam frequency,” define and test one contract:
+The three candidate contracts were:
 
-1. Primary-only: one verified primary tag per question.
+1. **Primary-only (selected and implemented):** one verified primary tag per question.
 2. Role-weighted: primary = 1.0, secondary/conceptual = configured fractional weight, traps excluded from topic frequency.
 3. Multi-label coverage: count all roles but label the metric as associations, not questions.
 
-Primary-only is the safest default for exam-frequency charts. Role-weighted scoring can follow after corpus validation.
+Role-weighted scoring remains a future option after corpus validation. The current list API is presentation-paginated (Python-side slice after full enrichment); true DB-level pagination and count is a bounded scalability follow-up.
 
 ### Exam-topic analytical snapshot
 
@@ -369,30 +369,32 @@ Only after multiple complete exam corpora exist:
 
 ## Delivery order
 
-1. **Close current runtime gates.** Complete scheduler, shadow, allowlist, migration, and canary validation already tracked for Mock Engine v2.
-2. **Define frequency semantics.** Primary-only/weighted contract, corpus coverage, tests.
-3. **Activate `exam_topic_score_snapshots`.** Deterministic writer, review workflow, locked-only reader.
-4. **Add cognitive-demand classification.** Pending AI proposals + admin review.
+1. **Close current runtime gates.** Complete scheduler, shadow, allowlist, migration, and canary validation already tracked for Mock Engine v2. *(In progress — see `career-copilot-checklist.md`.)*
+2. ~~**Define frequency semantics.**~~ **DONE (PR #767, merged).** Primary-only semantics implemented in `coverage.py`; 7 regression tests; primary-only is the current default.
+3. ~~**Activate `exam_topic_score_snapshots`.**~~ **DONE (PRs #767/#773/#810, all merged).** Deterministic idempotent writer, draft→reviewed→locked transition matrix, atomic review RPC (migration 204), operator workbench embedded in PYQ Workbench tab, locked-only reader wired into planner as 0–15 pt confidence-weighted additive signal. Operator/browser validation still pending before full sign-off.
+4. **Add cognitive-demand classification.** Pending AI proposals + admin review. *(Metadata-only classification — reviewed per-question cognitive-demand records with no mock-selection or weighting output — is independent of Track C and may proceed once its contract is approved. However, no classification output may feed mock-selection weighting or personalization until Lane A clears the live mastery gate (`FF_MOCK_MASTERY_WRITES=live`). P2 contract must be defined before implementation.)*
 5. **Unify revision recommendations.** Topic mastery due/relearn/practice contract using existing SRS where appropriate.
 6. **Rank reviewed resources.** No AI-generated resource claims.
 7. **Build CA provenance and linking.** Separate from policy updates.
 8. **Enable mock personalization in shadow.** Only after live mastery gates pass.
 9. **Evaluate appearance forecasting.** Ship only if it beats baselines and is calibrated.
 
-## Acceptance criteria for the next implementation PR
+## Historical acceptance criteria — P-slice-1 / P-slice-3 (reference only)
 
-The first implementation PR should be limited to frequency semantics and score snapshots. It is complete only when:
+These criteria were written before implementation began. P-slice-1 (PR #767) and P-slice-3 (PR #810) are now MERGED. Annotations show what was met and what was deferred.
 
-- all reads are paper/question/tag trust-gated and paginated;
-- a question cannot inflate frequency through multiple non-primary tags unless the documented weighting explicitly permits it;
-- computation is deterministic and idempotent;
-- snapshots include model version, input fingerprint, evidence count, component breakdown, and confidence;
-- no draft/reviewed snapshot reaches user-facing APIs or the planner;
-- operator can review, lock, reject, and inspect evidence;
-- old locked snapshots remain auditable;
-- tests cover incomplete corpus, duplicate/multi-role tags, status reversal, zero evidence, pagination, and retry/idempotency;
-- no new top-level admin route is added; controls are embedded in the existing Exam Workspace/Intelligence surfaces;
-- the repo checklist is updated in the same PR when implementation status changes.
+- ~~all reads are paper/question/tag trust-gated~~ — **PARTIALLY MET**: compute-input reads are corpus-trust-gated (paper/question/tag `trust_status`/`reviewer_status`); list/review/admin endpoints are permission- and lifecycle-gated, not source-corpus trust-gated; ~~paginated~~ — **DEFERRED**: the admin snapshot list performs a full DB read/enrichment and slices in Python (`all_rows[offset: offset + limit]`); true DB-level pagination is a bounded scalability follow-up (no current open issue);
+- ~~a question cannot inflate frequency through multiple non-primary tags~~ — **MET** (primary-only filter at DB query + loop, PR #767);
+- ~~computation is deterministic and idempotent~~ — **MET** (SHA-256 input fingerprint; re-run with same corpus skips unchanged topics; idempotency coverage in `test_score_snapshots.py`);
+- ~~snapshots include model version, input fingerprint, evidence count, component breakdown, and confidence~~ — **MET**;
+- ~~no draft/reviewed snapshot reaches user-facing APIs or the planner~~ — **MET for aspirant-facing APIs and planner** (`locked_score_snapshots()` returns only `status='locked'` rows); admin review APIs intentionally expose draft/reviewed rows to operators;
+- ~~operator can review, lock, reject, and inspect evidence~~ — **MET** (workbench UI + atomic RPC, PR #810/migration 204);
+- ~~old locked snapshots remain auditable~~ — **PARTIALLY MET**: auditability is provided by `admin_audit_logs` (one row per transition); locked rows themselves are mutable — migration 204 permits `locked→reviewed` and updates the row's status, reviewer metadata, and notes; insert-only statement is incorrect;
+- ~~tests cover incomplete corpus, duplicate/multi-role tags, status reversal, zero evidence, pagination, and retry/idempotency~~ — **MET across three suites**: writer idempotency in `test_score_snapshots.py` (9 cases); frequency semantics in `test_pyq_frequency_semantics.py` (7 cases); admin API transitions/errors/pagination in `test_score_snapshot_admin_api.py` (29 cases) + UI in `ScoreSnapshotPanel.test.jsx` (25 cases);
+- ~~no new top-level admin route is added~~ — **MET** (controls embedded in existing Exam Workspace / PYQ Workbench `?view=snapshots`);
+- ~~the repo checklist is updated in the same PR when implementation status changes~~ — **MET**.
+
+The next implementation milestone is P2 cognitive-demand classification; acceptance criteria will be defined in its own contract.
 
 ## Explicit non-goals
 
