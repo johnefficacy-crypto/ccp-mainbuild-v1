@@ -626,35 +626,50 @@ def compute_cycle_readiness(
     #      Fallback: minimum gates check.
     # A1/A2: handled above via cascade.
     # -------------------------------------------------------------------------
-    if management_mode in _MGMT_MODES_NO_ACTIVATE:
-        # D12: index_only and archive -> not_applicable.
+    # D12: evaluate the planner-activation minimum for the SELECTED CYCLE, directly from
+    # prerequisite inputs — NOT from the exam-wide work_queue.classify_exam verdict, whose
+    # locked-coverage/phase counts span every cycle and would let Cycle B's evidence satisfy
+    # Cycle A (fail-open, cycle-canonicity violation). `activation_verdict` is intentionally
+    # no longer consumed for this decision.
+    #   minimum = cycle details complete (s1) AND required phases present (s2)
+    #             AND >=1 applicable locked coverage row for the selected cycle (D08: locked_count).
+    # Mode applicability (D12): index_only/archive -> N/A; light -> applicable only when the
+    # exam is exposed to Study OS / planner activation (exams.is_active); core/light-enabled -> apply.
+    planner_activation_enabled = bool((exam or {}).get("is_active", True))
+    if management_mode in _MGMT_MODES_NO_ACTIVATE or (
+        management_mode == "light" and not planner_activation_enabled
+    ):
         s9 = _na_step(
-            9, "review_activate", "Review & activate", "optional_for_management_mode",
-            gate_class="hard", evidence_scope="exam_wide",
+            9, "review_activate", "Review & activate", "planner_activation_disabled",
+            gate_class="hard", evidence_scope="selected_cycle",
         )
     elif not management_mode:
         s9 = _step(
             9, "review_activate", "Review & activate", _MISSING,
-            gate_class="hard", evidence_scope="exam_wide",
+            gate_class="hard", evidence_scope="selected_cycle",
             note="Management mode classification required",
         )
-    elif activation_verdict is not None:
-        # D12: bind to work_queue.classify_exam authority — no local fallback.
-        verdict_status = activation_verdict.get("status", "blocked")
-        step9_status = _READY if verdict_status == "ready" else (
-            _REVIEW_PENDING if verdict_status == "needs_action" else _MISSING
-        )
-        s9 = _step(
-            9, "review_activate", "Review & activate", step9_status,
-            gate_class="hard", evidence_scope="exam_wide",
-            note=activation_verdict.get("first_blocker_text"),
-        )
     else:
-        # D12: verdict unavailable — fail unavailable rather than derive locally.
+        minimum_met = (
+            s1["status"] == _READY
+            and s2["status"] == _READY
+            and locked_count >= 1
+        )
         s9 = _step(
-            9, "review_activate", "Review & activate", _MISSING,
-            gate_class="hard", evidence_scope="exam_wide",
-            note="Activation verdict unavailable — classification pending",
+            9, "review_activate", "Review & activate",
+            _READY if minimum_met else _MISSING,
+            gate_class="hard", evidence_scope="selected_cycle",
+            checks=[
+                {"check_id": "cycle_details_complete", "gate_class": "hard", "status": s1["status"]},
+                {"check_id": "required_phases_present", "gate_class": "hard", "status": s2["status"]},
+                {"check_id": "selected_cycle_locked_coverage", "gate_class": "hard",
+                 "status": _READY if locked_count >= 1 else _MISSING, "locked_count": locked_count},
+            ],
+            note=None if minimum_met else "Selected-cycle activation prerequisites incomplete",
+            action_cta=None if minimum_met else {
+                "label": "Complete setup",
+                "url": f"/admin/exam-intelligence/exams/{exam_id}?tab=setup",
+            },
         )
     steps.append(s9)
 

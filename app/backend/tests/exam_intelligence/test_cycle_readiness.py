@@ -445,7 +445,7 @@ def test_d10_no_verified_chain_missing():
 
 def test_d12_index_only_review_activate_not_applicable():
     """management_mode='index_only' -> step 9 = not_applicable with
-    optional_for_management_mode reason."""
+    planner_activation_disabled reason (D12: planner activation not applicable)."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="index_only", locked=1)
     s.cycle("cy1", "e1")
@@ -455,7 +455,74 @@ def test_d12_index_only_review_activate_not_applicable():
     cr = r.json()["cycle_readiness"]
     step9 = next(st for st in cr["steps"] if st["step"] == 9)
     assert step9["status"] == "not_applicable"
-    assert step9["not_applicable_reason"] == "optional_for_management_mode"
+    assert step9["not_applicable_reason"] == "planner_activation_disabled"
+
+
+# ── D12: Step 9 evaluates the SELECTED cycle directly (no exam-wide leak) ──────
+
+def test_d12_step9_other_cycle_locked_coverage_does_not_activate():
+    """FAIL-OPEN REGRESSION: selected Cycle A has no locked coverage; a locked
+    coverage row exists only for Cycle B. Step 9 must NOT be ready — Cycle B's
+    evidence must not satisfy Cycle A. Previously Step 9 bound to the exam-wide
+    classify_exam verdict, which counted the Cycle B row and wrongly said ready."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="core", locked=0)  # no exam-wide locked
+    s.cycle("cA", "e1")
+    s.cycle("cB", "e1")
+    s.phase("pA", "e1", "cA")
+    s.db["exam_topic_coverage"].append({
+        "id": "cov-cB", "exam_id": "e1", "exam_phase_id": "pB", "topic_id": "t1",
+        "exam_cycle_id": "cB", "reviewer_status": "locked", "created_at": _RECENT,
+    })
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    assert r.status_code == 200
+    cr = r.json()["cycle_readiness"]
+    step5 = next(st for st in cr["steps"] if st["step"] == 5)
+    step9 = next(st for st in cr["steps"] if st["step"] == 9)
+    assert step5["status"] == "missing"       # Cycle A has no locked coverage
+    assert step9["status"] == "missing"       # ...so activation must not be ready
+
+
+def test_d12_step9_core_selected_cycle_complete_is_ready():
+    """core + selected-cycle details + phase + >=1 applicable locked coverage
+    (exam-wide inheritance allowed by D08) -> Step 9 ready."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="core", locked=1)  # exam-wide locked row
+    s.cycle("cA", "e1")
+    s.phase("pA", "e1", "cA")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    assert r.status_code == 200
+    cr = r.json()["cycle_readiness"]
+    step9 = next(st for st in cr["steps"] if st["step"] == 9)
+    assert step9["status"] == "ready"
+
+
+def test_d12_step9_light_planner_disabled_not_applicable():
+    """light + planner activation disabled (exam.is_active=False) -> Step 9 N/A."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="light", locked=1, active=False)
+    s.cycle("cA", "e1")
+    s.phase("pA", "e1", "cA")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    assert r.status_code == 200
+    cr = r.json()["cycle_readiness"]
+    step9 = next(st for st in cr["steps"] if st["step"] == 9)
+    assert step9["status"] == "not_applicable"
+    assert step9["not_applicable_reason"] == "planner_activation_disabled"
+
+
+def test_d12_step9_light_planner_enabled_no_coverage_fails():
+    """light + planner activation enabled (is_active=True) but no applicable
+    locked coverage for the selected cycle -> minimum fails (missing), NOT N/A."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="light", locked=0, active=True)
+    s.cycle("cA", "e1")
+    s.phase("pA", "e1", "cA")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    assert r.status_code == 200
+    cr = r.json()["cycle_readiness"]
+    step9 = next(st for st in cr["steps"] if st["step"] == 9)
+    assert step9["status"] == "missing"
 
 
 # ---------------------------------------------------------------------------
