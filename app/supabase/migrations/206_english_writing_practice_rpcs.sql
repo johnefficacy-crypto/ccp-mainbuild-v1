@@ -410,7 +410,13 @@ BEGIN
   INSERT INTO public.writing_evaluation_jobs(evaluation_id, job_kind, generation, status)
   VALUES (v_evaluation, 'language_evaluation', 1, 'pending');
 
-  -- Legal transition -> evaluation_pending (§4.4b).
+  -- Walk the legal transition path (§4.4b) — no direct not_started ->
+  -- evaluation_pending edge. A first submission is persisted through draft
+  -- (not_started -> draft), then every submittable state advances
+  -- (draft | rewrite_required) -> evaluation_pending. Both edges are written.
+  IF v_unit.status = 'not_started' THEN
+    UPDATE public.writing_session_units SET status = 'draft' WHERE id = v_unit.id;
+  END IF;
   UPDATE public.writing_session_units SET status = 'evaluation_pending' WHERE id = v_unit.id;
 
   -- In-transaction rollup: session status can never lag this committed unit

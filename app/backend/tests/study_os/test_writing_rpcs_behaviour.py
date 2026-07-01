@@ -243,6 +243,44 @@ def test_user_isolation_on_write_paths():
     _fails_with(f"SELECT ewp_finalize_writing_session('{_B}','{sid}')", "ewp_not_found")
 
 
+def test_concurrent_duplicate_submit_serialized_by_lock():
+    """Two connections race the SAME first submission (expected_version=1).
+
+    The canonical session-row FOR UPDATE lock serializes them: whichever commits
+    first mints version 1 and advances the unit to evaluation_pending; the other
+    blocks, then is rejected — either by the submittable-status guard (the unit
+    is now evaluation_pending: ewp_not_submittable) or, if it re-read as a
+    resubmittable state, by the CAS (next is 2, expected 1: ewp_stale_version).
+    Exactly one wins; never a lost update or a duplicate version 1.
+    """
+    sid = _create(units=1)
+    call = (
+        f"SELECT ewp_submit_writing_unit('{_A}','{sid}',1,'racing answer text',3,3,"
+        f"'{'a' * 64}',1,'{{}}'::jsonb,'det-v1')"
+    )
+    # Fire both simultaneously so they genuinely contend on the session lock.
+    procs = [
+        subprocess.Popen(
+            [_PSQL, _DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", call],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        for _ in range(2)
+    ]
+    results = [(p.wait(), p.communicate()[1]) for p in procs]
+    rcs = [rc for rc, _ in results]
+    assert rcs.count(0) == 1, f"exactly one submit must win: {results}"
+    loser_err = next(err for rc, err in results if rc != 0)
+    assert ("ewp_not_submittable" in loser_err) or ("ewp_stale_version" in loser_err), loser_err
+    # exactly one version 1, unit advanced to evaluation_pending.
+    assert _scalar(
+        f"SELECT count(*) FROM writing_unit_versions v JOIN writing_session_units u ON u.id=v.unit_id "
+        f"WHERE u.session_id='{sid}' AND v.version_number=1"
+    ) == "1"
+    assert _scalar(
+        f"SELECT status FROM writing_session_units WHERE session_id='{sid}' AND unit_number=1"
+    ) == "evaluation_pending"
+
+
 def test_public_rpcs_execute_only_for_service_role():
     # authenticated/anon must not be able to call the write RPCs directly.
     for role in ("authenticated", "anon"):

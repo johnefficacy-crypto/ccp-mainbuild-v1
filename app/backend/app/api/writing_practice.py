@@ -200,22 +200,33 @@ def submit_unit(
     except Exception as exc:  # PostgREST surfaces the RAISE message
         raise _rpc_error(exc)
 
-    # Write the authoritative coverage row (pinned to the current
-    # version_set_hash), then finalize inside the transactional RPC so the
-    # completion gate is evaluated under the canonical locks (§4.7a, §8.0).
-    coverage = coverage_checker.run_coverage_check(supabase, str(session_id), required_words)
+    # The submission (version + evaluation + job + unit transition) has already
+    # committed atomically AND rolled the session up in-transaction inside the
+    # RPC, so session status is already consistent here. Writing the authoritative
+    # coverage row + re-finalizing under the completion gate (§4.7a, §8.0) is a
+    # best-effort REFRESH: both are idempotent and pinned to the version_set_hash,
+    # so a failure here is recomputed on the next submit/finalize/read. It must
+    # NOT surface as an error — that would leave the client unable to resubmit an
+    # already-committed version (duplicate submit is rejected by design).
+    coverage: dict | None = None
     try:
+        coverage = coverage_checker.run_coverage_check(supabase, str(session_id), required_words)
         supabase.rpc("ewp_finalize_writing_session", {
             "p_user": user.get("id"),
             "p_session": str(session_id),
         }).execute()
-    except Exception as exc:
-        raise _rpc_error(exc)
+    except Exception:  # noqa: BLE001 — submission is durable; refresh is retryable
+        logger.warning(
+            "post-submit coverage/finalize refresh failed for session %s (submission committed; "
+            "status already rolled up in-transaction, refresh is idempotent)",
+            session_id, exc_info=True,
+        )
     return {
         "evaluation": (submit or {}).get("evaluation"),
         "version_number": (submit or {}).get("version_number"),
         "deterministic_result": result.to_dict(),
         "coverage": coverage,
+        "coverage_refresh_deferred": coverage is None,
     }
 
 
