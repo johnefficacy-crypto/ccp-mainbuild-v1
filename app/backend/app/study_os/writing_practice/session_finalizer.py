@@ -1,14 +1,17 @@
-"""finalize_writing_session — single owner of session/unit rollup writes (§9).
+"""finalize_writing_session — pure reference rollup for session/unit status (§9).
 
-Wraps the pure rollup logic in `session_state` with the Supabase reads, the
+Wraps the pure rollup logic in `session_state` with Supabase reads, the
 session-level completion gate (coverage + unresolved must_fix, §4.6c), and the
-conditional, monotonic session-status/outcome write. Idempotent.
+conditional, monotonic session-status/outcome write.
 
-Locking note: the production implementation must acquire the canonical lock
-order (§8.0 — session row, then all required units ascending) inside a single
-transaction/RPC. The Supabase client issues discrete calls; a dedicated
-row-lock RPC is REQUIRED follow-up (tracked in the checklist) — the rollup
-decision itself is pure and unit-tested.
+Locking note: the AUTHORITATIVE, transaction-safe finalizer is now the in-DB
+``public.ewp_finalize_writing_session`` RPC (migration 206), which acquires the
+canonical lock order (§8.0 — session row, then all required units ascending)
+and applies ``ewp_private.ewp_apply_session_rollup`` under those locks; submit
+and reopen roll up in the same transaction. The API calls the RPC, not this
+module. This module is retained as the pure, unit-tested reference for the
+rollup decision (mirrored byte-for-byte by the SQL) and is NOT the runtime
+write path.
 """
 from __future__ import annotations
 

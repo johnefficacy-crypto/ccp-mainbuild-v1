@@ -25,7 +25,6 @@ from app.study_os.writing_practice import deterministic as det
 from app.study_os.writing_practice import session_state as st
 from app.study_os.writing_practice.constraints import validate_unit_constraints
 from app.study_os.writing_practice.content_hash import compute_content_hash
-from app.study_os.writing_practice.session_finalizer import finalize_writing_session
 
 logger = logging.getLogger("career_copilot.api.writing_practice")
 
@@ -43,7 +42,9 @@ class CreateSessionRequest(BaseModel):
 class SubmitUnitRequest(BaseModel):
     answer_text: str
     client_word_count: int | None = None
-    version_number: int | None = None
+    # Mandatory version CAS token: the version number the caller expects to
+    # create (1 for a unit's first submission). Rejects stale/duplicate submits.
+    version_number: int = Field(ge=1)
 
 
 class ReopenUnitRequest(BaseModel):
@@ -199,8 +200,17 @@ def submit_unit(
     except Exception as exc:  # PostgREST surfaces the RAISE message
         raise _rpc_error(exc)
 
+    # Write the authoritative coverage row (pinned to the current
+    # version_set_hash), then finalize inside the transactional RPC so the
+    # completion gate is evaluated under the canonical locks (§4.7a, §8.0).
     coverage = coverage_checker.run_coverage_check(supabase, str(session_id), required_words)
-    finalize_writing_session(supabase, str(session_id))
+    try:
+        supabase.rpc("ewp_finalize_writing_session", {
+            "p_user": user.get("id"),
+            "p_session": str(session_id),
+        }).execute()
+    except Exception as exc:
+        raise _rpc_error(exc)
     return {
         "evaluation": (submit or {}).get("evaluation"),
         "version_number": (submit or {}).get("version_number"),
@@ -229,7 +239,8 @@ def reopen_unit(
     except Exception as exc:
         raise _rpc_error(exc)
 
-    finalize_writing_session(supabase, str(session_id))
+    # Reopen rolls the session up in the same transaction (ready -> draft ->
+    # rollup, §8.0), so no separate finalize call is needed here.
     return out or {"unit_id": str(unit_id), "status": st.UNIT_DRAFT}
 
 
