@@ -5,7 +5,7 @@
 > live evidence lives in the gate docs / `docs/audits/`. When a gate changes, update the
 > checklist + its audit, then regenerate this view. Each row links its authoritative source.
 
-**as_of:** `main @ a3b928e1` · 2026-07-01
+**as_of:** `main @ cbb5937` · 2026-07-01
 **Companion:** `docs/ops/v1-go-live-runbook.md` (the *how*) · `scripts/v1_release_verification.sql` (the *evidence*)
 **Position:** late-stage beta — feature-complete-approaching, **not** production-ready.
 
@@ -72,14 +72,38 @@ Serial spine to T0:
 Parallelizable: F2 decision, R2 pilot (overlaps P8), R4 readiness.
 ```
 
-**ETA:** the only hard duration is **P8 = 14 days**. Pre-T0 work (F3 + P1→P4 + P5 + P6 drain +
-P7) is operator-paced — realistically a **handful of days** but not reproducibly fixed here, so
-it is expressed as a range, not a promise. Post-window (P9→R3) is a **few days**. **Floor ≈ 3
-weeks from T0**, *longer* if the shadow window restarts or PR-6 needs multiple reruns. Do not
-quote a calendar date until T0 is set.
+**ETA:** the only hard duration is **P8 = 14 days**. Remaining pre-T0 work (F3 + P1→P4 + P5 +
+P7; **P6 done**) is operator-/eng-paced — realistically a **handful of days** but not reproducibly
+fixed here, so it is expressed as a range, not a promise. Post-window (P9→R3) is a **few days**.
+**Floor ≈ 3 weeks from T0**, *longer* if the shadow window restarts or PR-6 needs multiple reruns.
+Do not quote a calendar date until T0 is set.
 
-## What reaches T0 fastest (next actions)
-1. **ENG:** fix **F3** terminalization; record the **F2** (D11/D12/**D14**/D06/D15) v1-vs-v2 decision.
-2. **OPS:** **P1** apply migrations → **P2** run the verification script (+RLS JWT proof) → **P4** validate mig 204.
-3. **OPS:** ~~**P6** scheduler drain~~ **DONE** (OPERATOR PASS 2026-07-01) → deploy current `main` to staging (record candidate SHA A; require Render deployed SHA B == A) → **P5** PR #800 validation + boundary approval → **P7** PR-6 rerun on the pinned deployed SHA.
-4. When the 7 prerequisites hold → re-pin the fingerprint, set **`window_start`** (T0), start **P8**.
+## Shortest path right now
+
+**P6 is CLOSED** (PR #827 merged; all scheduler-drain evidence on `main`). The two blockers on
+the serial spine to T0 are now **F3 (ENG)** and **P7 (OPS)** — and they are **independent, so run
+them simultaneously.** **P5** is a third, independent operator track that also runs in parallel.
+
+### F3 — ENG (pure code work, no operator dependency)
+`finalize_document_extraction` → `document_archived` raises without terminalizing the claimed
+job, so jobs can strand `running`. Needs: RPC/caller fix so the job reaches a terminal state on
+the archived path + a mid-flight-archive regression test. Does not depend on any deploy.
+
+### P7 — next operator gate (PR-6 revalidation rerun), runnable in parallel with F3
+1. Deploy current `main` (the SHA Render shows after the latest merge propagates) to **staging**.
+2. Record **candidate SHA A** from the deploy pipeline.
+3. Confirm **Render deployed SHA B == A** (Render dashboard).
+4. With `FF_MOCK_MASTERY_WRITES=shadow` active, run all **12 PR-6 gates** against that pinned
+   deployed SHA — **Gate 9 must pass** (`FF_MOCK_MASTERY_LIVE_USER_IDS` populated with ≥1 named user).
+5. Record PASS/FAIL per gate in `docs/audits/pr6_final_candidate_revalidation.md`.
+
+### P5 — parallel operator track (independent of P7)
+PR #800 staging delivery validation (3 manual checks) + explicit 36-file boundary sign-off.
+
+### After P7 PASS **and** P5 approval → T0
+Re-pin the fingerprint at the deployed SHA (from the `f2ee2c40…` reference) and record
+`window_start`. That sets **T0** and starts the 14-day **P8** shadow window.
+
+> **Do both now:** kick off the staging deploy (P7) and the F3 code fix at the same time; P5 runs
+> alongside. Nothing else shortens the distance — the 14-day P8 window is the floor, and it can't
+> open until F3 + P7 + P5 all clear.
