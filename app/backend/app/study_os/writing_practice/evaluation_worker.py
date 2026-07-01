@@ -51,16 +51,30 @@ def run_worker_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
 
     job_id = claim["job_id"]
     token = claim["claim_token"]
-    try:
-        # Defence-in-depth (§8.1/§14): recompute the stored answer's hash and
-        # require it to match the version's content_hash before evaluating, so a
-        # corrupted/tampered row is never scored.
-        answer_text = claim["answer_text"]
-        if compute_content_hash(answer_text) != claim["content_hash"]:
-            raise ValueError(
-                f"content_hash mismatch for version {claim.get('unit_version_id')}: "
-                "stored text does not match its recorded hash")
 
+    # Defence-in-depth (§8.1 step 2 / §14): recompute the stored answer's hash and
+    # require it to match the version's content_hash BEFORE evaluating. A mismatch
+    # is CORRUPTION and must FAIL CLOSED down a DISTINCT terminal path
+    # (ewp_reject_corrupt_version) — NOT the recoverable ewp_fail_evaluation_job
+    # retry path — so a corrupt version can never flow into terminal_partial/ready
+    # (a usable result) and never consumes a recoverable attempt.
+    answer_text = claim["answer_text"]
+    if compute_content_hash(answer_text) != claim["content_hash"]:
+        logger.error("content_hash mismatch for job %s (version %s) — rejecting corrupt",
+                     job_id, claim.get("unit_version_id"))
+        try:
+            out = (
+                sb.rpc("ewp_reject_corrupt_version", {
+                    "p_job_id": job_id, "p_claim_token": token,
+                    "p_error": "content_hash_mismatch",
+                }).execute()
+            ).data
+        except Exception:  # noqa: BLE001 — fencing may already have moved the job
+            logger.exception("could not reject corrupt version for %s", job_id)
+            out = None
+        return {"processed": 1, "status": "rejected_corrupt", "job_id": job_id, "result": out}
+
+    try:
         result = lang.evaluate_language(
             claim["answer_text"],
             exercise_type=claim["exercise_type"],

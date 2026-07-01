@@ -33,6 +33,52 @@ CREATE SCHEMA IF NOT EXISTS ewp_private;  -- created in 205; defensive for isola
 ALTER TABLE public.writing_mastery_outbox ADD COLUMN IF NOT EXISTS claim_token uuid;
 
 -- ===========================================================================
+-- Canonical error-type projection (§6). The mapping is FREQUENCY-DEPENDENT:
+-- p_prior_count = 0 is a FIRST occurrence, > 0 is a REPEATED occurrence for the
+-- same (user, microtopic, issue_type). Implements the §6 table EXACTLY:
+--   article/preposition/modifier/pronoun_reference : first careless → repeat concept_gap
+--   subject_verb_agreement/tense/sentence_fragment/run_on_sentence/cohesion/
+--     logical_order                                  : concept_gap (both)
+--   spelling                                         : first careless → repeat memory_gap
+--   word_choice/collocation/redundancy/informal_usage: memory_gap (both)
+--   punctuation                                      : first careless → repeat concept_gap
+--   off_topic                                        : first misread_question → repeat concept_gap
+--   word_limit                                       : time_management (both)
+--   format_violation                                 : concept_gap (both)
+--   anything else / unknown                          : NULL (never force a projection)
+-- ===========================================================================
+CREATE OR REPLACE FUNCTION ewp_private.ewp_canonical_error_type(p_issue_type text, p_prior_count int)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE p_issue_type
+    WHEN 'article'            THEN CASE WHEN p_prior_count > 0 THEN 'concept_gap' ELSE 'careless' END
+    WHEN 'preposition'        THEN CASE WHEN p_prior_count > 0 THEN 'concept_gap' ELSE 'careless' END
+    WHEN 'modifier'           THEN CASE WHEN p_prior_count > 0 THEN 'concept_gap' ELSE 'careless' END
+    WHEN 'pronoun_reference'  THEN CASE WHEN p_prior_count > 0 THEN 'concept_gap' ELSE 'careless' END
+    WHEN 'subject_verb_agreement' THEN 'concept_gap'
+    WHEN 'tense'              THEN 'concept_gap'
+    WHEN 'sentence_fragment'  THEN 'concept_gap'
+    WHEN 'run_on_sentence'    THEN 'concept_gap'
+    WHEN 'cohesion'           THEN 'concept_gap'
+    WHEN 'logical_order'      THEN 'concept_gap'
+    WHEN 'spelling'           THEN CASE WHEN p_prior_count > 0 THEN 'memory_gap' ELSE 'careless' END
+    WHEN 'word_choice'        THEN 'memory_gap'
+    WHEN 'collocation'        THEN 'memory_gap'
+    WHEN 'redundancy'         THEN 'memory_gap'
+    WHEN 'informal_usage'     THEN 'memory_gap'
+    WHEN 'punctuation'        THEN CASE WHEN p_prior_count > 0 THEN 'concept_gap' ELSE 'careless' END
+    WHEN 'off_topic'          THEN CASE WHEN p_prior_count > 0 THEN 'concept_gap' ELSE 'misread_question' END
+    WHEN 'word_limit'         THEN 'time_management'
+    WHEN 'format_violation'   THEN 'concept_gap'
+    ELSE NULL
+  END
+$$;
+REVOKE ALL ON FUNCTION ewp_private.ewp_canonical_error_type(text, int) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ewp_private.ewp_canonical_error_type(text, int) TO service_role;
+
+-- ===========================================================================
 -- Private helper: active (unresolved) issues of a unit's PRIOR version (N-1).
 -- Returns issue_event rows the evaluator maps its rewrite against (§4.8a).
 -- ===========================================================================
@@ -214,7 +260,17 @@ DECLARE
   v_pred_type text;
   v_pred_quote text;
   v_canonical text;
+  v_regressed_lineage uuid;
+  v_regressed_pred uuid;
+  v_reg record;
 BEGIN
+  -- Regression tracking (§4.9 'regressed'): per-issue-event ephemeral map of
+  -- which newly-inserted current-version issues re-opened a previously RESOLVED
+  -- lineage of THIS unit, so a resolution event with outcome 'regressed' can be
+  -- emitted (successor = the new issue) after all issue rows exist.
+  CREATE TEMP TABLE IF NOT EXISTS _ewp_regressions(
+    new_issue_id uuid, resolved_issue_id uuid, lineage_id uuid) ON COMMIT DROP;
+  DELETE FROM _ewp_regressions;
   -- Resolve the id chain WITHOUT locking first, so locks can be taken strictly
   -- in the canonical order (§8.0): session → all units ascending → evaluation →
   -- job. Locking the job/evaluation before the session would invert that order
@@ -253,6 +309,7 @@ BEGIN
   -- Insert issue events (backend owns lineage + microtopic resolution, §4.8a).
   FOR v_issue IN SELECT * FROM jsonb_array_elements(COALESCE(p_issues, '[]'::jsonb))
   LOOP
+    v_regressed_lineage := NULL;   -- reset per iteration (see regression block below)
     v_pred := NULLIF(v_issue->>'predecessor_issue_event_id','')::uuid;
     -- A supplied predecessor must be a real prior issue of THIS unit.
     IF v_pred IS NOT NULL THEN
@@ -268,17 +325,56 @@ BEGIN
         RAISE EXCEPTION 'ewp_bad_predecessor: % is not a prior-version issue of this unit', v_pred;
       END IF;
     ELSE
-      v_lineage := gen_random_uuid();
+      -- No predecessor supplied. Before minting a fresh lineage, check whether
+      -- this issue REGRESSES a previously-resolved lineage of THIS unit (§4.9):
+      -- match by issue_type against a resolved lineage whose latest issue is not
+      -- effectively invalidated and which has not already been re-opened by an
+      -- earlier issue in this same evaluation. Reuse that resolved lineage id and
+      -- point the predecessor at the latest resolved issue (append-only: the
+      -- lineage is assigned on the new row at INSERT time).
+      v_regressed_lineage := NULL;
+      v_regressed_pred := NULL;
+      IF v_is_current THEN
+        SELECT r.lineage_id, r.latest_issue_id INTO v_regressed_lineage, v_regressed_pred
+        FROM (
+          SELECT i.lineage_id,
+                 (array_agg(i.id ORDER BY i.created_at DESC, i.id DESC))[1] AS latest_issue_id,
+                 max(i.issue_type) AS issue_type
+          FROM public.writing_issue_resolution_events rr
+          JOIN public.writing_issue_events i ON i.id = rr.issue_event_id
+          JOIN public.writing_evaluations e2 ON e2.id = i.evaluation_id
+          JOIN public.writing_unit_versions v2 ON v2.id = e2.unit_version_id
+          WHERE v2.unit_id = v_unit.id AND rr.outcome = 'resolved'
+            AND NOT ewp_private.ewp_issue_effectively_invalidated(i.id)
+          GROUP BY i.lineage_id
+        ) r
+        WHERE r.issue_type = (v_issue->>'issue_type')
+          AND r.lineage_id NOT IN (SELECT lineage_id FROM _ewp_regressions)
+        LIMIT 1;
+      END IF;
+
+      IF v_regressed_lineage IS NOT NULL THEN
+        v_lineage := v_regressed_lineage;
+        v_pred := v_regressed_pred;   -- link the new issue back to the resolved one
+      ELSE
+        v_lineage := gen_random_uuid();
+      END IF;
     END IF;
 
     -- Resolve microtopic via the active map, then VALIDATE the mapped target is a
-    -- live English microtopic (§5.3). A map row pointing at a non-microtopic /
-    -- inactive topic is not trusted → topic-level (NULL) instead of a bad id.
+    -- live English microtopic (§5.3, §4.15). The mapped topic must be level
+    -- 'microtopic', active, AND inside the ENGLISH subject tree (subjects.slug =
+    -- 'english-language'). A map row pointing OUTSIDE English (or at a
+    -- non-microtopic / inactive topic) is not trusted → topic-level (NULL) instead
+    -- of a bad id, so a mis-seeded/remapped row can never attach evidence to a
+    -- foreign subject.
     SELECT m.microtopic_id INTO v_microtopic
     FROM public.writing_issue_type_microtopic_map m
     JOIN public.topics t ON t.id = m.microtopic_id
+    JOIN public.subjects sub ON sub.id = t.subject_id
     WHERE m.issue_type = (v_issue->>'issue_type') AND m.is_active = TRUE
       AND t.level = 'microtopic' AND t.is_active = TRUE
+      AND sub.slug = 'english-language'
     LIMIT 1;
 
     INSERT INTO public.writing_issue_events(
@@ -291,6 +387,11 @@ BEGIN
       v_issue->>'quoted_text', v_issue->>'original_text', v_issue->>'suggested_text',
       v_issue->>'explanation', v_issue->>'severity', v_is_current)
     RETURNING id INTO v_new_issue_id;
+
+    IF v_regressed_lineage IS NOT NULL AND v_is_current THEN
+      INSERT INTO _ewp_regressions(new_issue_id, resolved_issue_id, lineage_id)
+      VALUES (v_new_issue_id, v_regressed_pred, v_regressed_lineage);
+    END IF;
 
     IF (v_issue->>'severity') = 'must_fix' AND v_is_current THEN
       v_has_must_fix := TRUE;
@@ -305,6 +406,9 @@ BEGIN
       PERFORM pg_advisory_xact_lock(
         hashtext(v_session.user_id::text || ':' ||
                  COALESCE(v_microtopic::text,'-') || ':' || (v_issue->>'issue_type')));
+      -- Prior-occurrence count (§6): only CURRENT-STATE issues that are not
+      -- effectively invalidated count. Stale (affects_current_state=false) rows and
+      -- rows withdrawn by a review event must not inflate the first-vs-repeat count.
       SELECT count(*) INTO v_count
       FROM public.writing_issue_events i2
       JOIN public.writing_evaluations e3 ON e3.id = i2.evaluation_id
@@ -314,22 +418,13 @@ BEGIN
       WHERE s3.user_id = v_session.user_id
         AND i2.issue_type = (v_issue->>'issue_type')
         AND i2.microtopic_id IS NOT DISTINCT FROM v_microtopic
-        AND i2.id <> v_new_issue_id;
+        AND i2.id <> v_new_issue_id
+        AND i2.affects_current_state = TRUE
+        AND NOT ewp_private.ewp_issue_effectively_invalidated(i2.id);
 
-      -- Frozen canonical-error projection (§6): mechanical slips → careless;
-      -- usage/construction → concept_gap; task-compliance issues carry no
-      -- taxonomic error type (NULL). Confidence is null when the type is unknown.
-      v_canonical := CASE v_issue->>'issue_type'
-        WHEN 'spelling' THEN 'careless' WHEN 'punctuation' THEN 'careless'
-        WHEN 'article' THEN 'careless' WHEN 'preposition' THEN 'careless'
-        WHEN 'subject_verb_agreement' THEN 'careless' WHEN 'tense' THEN 'careless'
-        WHEN 'pronoun_reference' THEN 'careless' WHEN 'modifier' THEN 'careless'
-        WHEN 'word_choice' THEN 'concept_gap' WHEN 'collocation' THEN 'concept_gap'
-        WHEN 'redundancy' THEN 'concept_gap' WHEN 'informal_usage' THEN 'concept_gap'
-        WHEN 'sentence_fragment' THEN 'concept_gap' WHEN 'run_on_sentence' THEN 'concept_gap'
-        WHEN 'cohesion' THEN 'concept_gap' WHEN 'logical_order' THEN 'concept_gap'
-        ELSE NULL  -- off_topic / word_limit / format_violation and unknowns
-      END;
+      -- Canonical error type per the §6 frequency-dependent table (first vs repeat
+      -- decided by v_count). Confidence is null when the type is unprojectable.
+      v_canonical := ewp_private.ewp_canonical_error_type(v_issue->>'issue_type', v_count);
 
       INSERT INTO public.writing_issue_projections(
         issue_event_id, projection_revision, projection_kind, prior_occurrence_count,
@@ -352,10 +447,16 @@ BEGIN
       -- A prior issue "persists" if a new issue names it as predecessor OR (as a
       -- backend-owned fallback when the evaluator drops the predecessor) matches
       -- it by issue_type + quoted_text; otherwise it is genuinely resolved.
+      -- The fallback match MUST carry the SAME lineage as the prior issue: a new
+      -- issue that merely shares type+quote but was minted with a fresh lineage
+      -- (or re-opened a DIFFERENT resolved lineage) is NOT this issue's successor,
+      -- so pointing 'persisted' at it would fork the lineage. Guarding on
+      -- lineage_id keeps 'persisted' successors on the prior's lineage.
       SELECT id INTO v_new_issue FROM public.writing_issue_events
       WHERE evaluation_id = v_eval.id
         AND (predecessor_issue_event_id = v_pred
-             OR (issue_type = v_pred_type AND quoted_text IS NOT DISTINCT FROM v_pred_quote))
+             OR (issue_type = v_pred_type AND quoted_text IS NOT DISTINCT FROM v_pred_quote
+                 AND lineage_id = v_lineage))
       LIMIT 1;
       INSERT INTO public.writing_issue_resolution_events(
         issue_event_id, resolving_version_id, resolving_evaluation_id,
@@ -366,6 +467,23 @@ BEGIN
         p_evaluator_version)
       ON CONFLICT (issue_event_id, resolving_version_id, evaluator_version) DO NOTHING;
       IF v_new_issue IS NULL THEN v_resolved_count := v_resolved_count + 1; END IF;
+    END LOOP;
+
+    -- Regression events (§4.9 'regressed'): a lineage resolved in a PRIOR version
+    -- of this unit re-appeared in this rewrite. The reappearing issue was assigned
+    -- the resolved lineage id at INSERT time; here we record one resolution event
+    -- with outcome 'regressed', keyed on the latest resolved issue of that lineage
+    -- (issue_event_id) with the new issue as successor. Because the reappearing
+    -- issue is NOT in ewp_prior_active_issues (that set is version N-1 unresolved
+    -- only), the persist/resolve loop above never touched it — no double event.
+    FOR v_reg IN SELECT * FROM _ewp_regressions LOOP
+      INSERT INTO public.writing_issue_resolution_events(
+        issue_event_id, resolving_version_id, resolving_evaluation_id,
+        successor_issue_event_id, outcome, evaluator_version)
+      VALUES (
+        v_reg.resolved_issue_id, v_ver.id, v_eval.id, v_reg.new_issue_id,
+        'regressed', p_evaluator_version)
+      ON CONFLICT (issue_event_id, resolving_version_id, evaluator_version) DO NOTHING;
     END LOOP;
   END IF;
 
@@ -481,6 +599,66 @@ END;
 $$;
 
 -- ===========================================================================
+-- Private: sweep-safe requeue/terminalise of ONE stale-lease job. Acquires the
+-- canonical locks SESSION-FIRST (§8.0), then RE-VALIDATES under those locks that
+-- the job is still 'running' with an expired lease before acting. This makes the
+-- sweeper race-safe against a completing worker and against a second sweeper
+-- without holding a job-before-session lock: the pre-read that fed us this id may
+-- be stale (the worker committed, or another sweeper acted) — we simply no-op.
+-- Non-blocking like SKIP LOCKED: a job whose session is currently locked by a
+-- committing worker will serialize behind that lock and then fail re-validation
+-- (the worker moved the job to 'done'/'failed'), so we no-op — never double-act.
+-- ===========================================================================
+CREATE OR REPLACE FUNCTION ewp_private.ewp_requeue_stale_eval_job(p_job_id uuid, p_lease_seconds int)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_job     public.writing_evaluation_jobs%ROWTYPE;
+  v_eval    public.writing_evaluations%ROWTYPE;
+  v_ver     public.writing_unit_versions%ROWTYPE;
+  v_unit    public.writing_session_units%ROWTYPE;
+  v_session public.writing_sessions%ROWTYPE;
+BEGIN
+  -- Resolve ids WITHOUT locking, then lock session-first.
+  SELECT * INTO v_job FROM public.writing_evaluation_jobs WHERE id = p_job_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('acted','false','reason','gone'); END IF;
+  SELECT * INTO v_eval FROM public.writing_evaluations WHERE id = v_job.evaluation_id;
+  SELECT * INTO v_ver  FROM public.writing_unit_versions WHERE id = v_eval.unit_version_id;
+  SELECT * INTO v_unit FROM public.writing_session_units WHERE id = v_ver.unit_id;
+
+  SELECT * INTO v_session FROM public.writing_sessions WHERE id = v_unit.session_id FOR UPDATE;
+  PERFORM 1 FROM public.writing_session_units
+    WHERE session_id = v_session.id ORDER BY unit_number FOR UPDATE;
+  SELECT * INTO v_job FROM public.writing_evaluation_jobs WHERE id = p_job_id FOR UPDATE;
+
+  -- Re-validate under the session+job locks: still running with an expired lease?
+  -- A racing completion (job now 'done'/'failed') or a peer sweeper that already
+  -- reset it (locked_at NULL / lease fresh) fails this guard → no-op.
+  IF v_job.status <> 'running'
+     OR v_job.locked_at IS NULL
+     OR v_job.locked_at >= now() - make_interval(secs => p_lease_seconds) THEN
+    RETURN jsonb_build_object('acted','false','reason','revalidation_failed');
+  END IF;
+
+  IF v_job.attempts >= v_job.max_attempts THEN
+    -- Exhausted crash: terminalise (helper re-takes the same locks re-entrantly).
+    PERFORM ewp_private.ewp_terminalize_eval_job(v_job.id, 'lease_expired_exhausted');
+  ELSE
+    UPDATE public.writing_evaluation_jobs
+    SET status = 'pending', locked_at = NULL, claim_token = NULL,
+        last_error = 'lease_expired', updated_at = now()
+    WHERE id = v_job.id;
+    UPDATE public.writing_evaluations SET language_status = 'queued', updated_at = now()
+    WHERE id = v_job.evaluation_id AND language_status = 'running';
+  END IF;
+  RETURN jsonb_build_object('acted','true');
+END;
+$$;
+
+-- ===========================================================================
 -- Fail / retry a job. Under max_attempts → back to pending with backoff.
 -- At max_attempts → terminal via ewp_private.ewp_terminalize_eval_job.
 -- ===========================================================================
@@ -547,6 +725,148 @@ END;
 $$;
 
 -- ===========================================================================
+-- Generation+1 recovery (§4.14 / §8.3). For an evaluation whose LATEST job is
+-- terminally 'failed', mint a fresh generation+1 pending job (attempts=0) and CAS
+-- the evaluation's language_status failed → queued. The unique(evaluation_id,
+-- job_kind, generation) + the partial-unique active-job index guarantee that two
+-- racing recoverers cannot both insert; the loser's INSERT conflicts and the CAS
+-- is a no-op. A completed language result is never overwritten (guarded below).
+-- ===========================================================================
+CREATE OR REPLACE FUNCTION public.ewp_recover_evaluation(p_evaluation uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_eval    public.writing_evaluations%ROWTYPE;
+  v_ver     public.writing_unit_versions%ROWTYPE;
+  v_unit    public.writing_session_units%ROWTYPE;
+  v_session public.writing_sessions%ROWTYPE;
+  v_job     public.writing_evaluation_jobs%ROWTYPE;
+  v_new_gen int;
+  v_new_job uuid;
+BEGIN
+  -- Canonical lock order (§8.0): session → all units ascending → evaluation.
+  SELECT * INTO v_eval FROM public.writing_evaluations WHERE id = p_evaluation;
+  IF NOT FOUND THEN RAISE EXCEPTION 'ewp_evaluation_not_found: %', p_evaluation; END IF;
+  SELECT * INTO v_ver  FROM public.writing_unit_versions WHERE id = v_eval.unit_version_id;
+  SELECT * INTO v_unit FROM public.writing_session_units WHERE id = v_ver.unit_id;
+  SELECT * INTO v_session FROM public.writing_sessions WHERE id = v_unit.session_id FOR UPDATE;
+  PERFORM 1 FROM public.writing_session_units
+    WHERE session_id = v_session.id ORDER BY unit_number FOR UPDATE;
+  SELECT * INTO v_eval FROM public.writing_evaluations WHERE id = p_evaluation FOR UPDATE;
+
+  -- A completed language result is never recovered over (§4.14).
+  IF v_eval.language_status = 'completed' THEN
+    RETURN jsonb_build_object('status','noop','reason','language_completed');
+  END IF;
+
+  -- The latest language job must be terminally failed to recover it.
+  SELECT * INTO v_job FROM public.writing_evaluation_jobs
+  WHERE evaluation_id = p_evaluation AND job_kind = 'language_evaluation'
+  ORDER BY generation DESC LIMIT 1;
+  IF NOT FOUND THEN RAISE EXCEPTION 'ewp_no_job: no language job for %', p_evaluation; END IF;
+  IF v_job.status <> 'failed' THEN
+    RETURN jsonb_build_object('status','noop','reason','latest_job_not_failed',
+                              'job_status', v_job.status);
+  END IF;
+
+  v_new_gen := v_job.generation + 1;
+
+  -- Insert the fresh generation. The unique(evaluation_id, job_kind, generation)
+  -- and partial-unique active-job index protect against duplicate recovery.
+  INSERT INTO public.writing_evaluation_jobs(
+    evaluation_id, job_kind, generation, status, attempts, max_attempts, created_at, updated_at)
+  VALUES (p_evaluation, 'language_evaluation', v_new_gen, 'pending', 0, v_job.max_attempts, now(), now())
+  ON CONFLICT (evaluation_id, job_kind, generation) DO NOTHING
+  RETURNING id INTO v_new_job;
+
+  IF v_new_job IS NULL THEN
+    RETURN jsonb_build_object('status','noop','reason','generation_exists','generation',v_new_gen);
+  END IF;
+
+  -- CAS language_status failed → queued (never overwrite a completed result).
+  UPDATE public.writing_evaluations SET language_status = 'queued', updated_at = now()
+  WHERE id = p_evaluation AND language_status = 'failed';
+
+  RETURN jsonb_build_object('status','recovered','job_id',v_new_job,'generation',v_new_gen);
+END;
+$$;
+
+-- ===========================================================================
+-- CORRUPTION HARD-FAIL (§8.1 step 2 / fail-closed). When the worker recomputes
+-- the stored answer's content_hash and it does NOT match the version's recorded
+-- hash, the row is corrupt/tampered and must NEVER be scored. This is a DISTINCT
+-- terminal path from ewp_fail_evaluation_job: a corrupt version can never become
+-- a usable result. Regardless of deterministic_status it forces
+-- overall_status='failed' (NOT terminal_partial/ready) and the unit to
+-- 'evaluation_failed'. It does NOT count as a recoverable attempt — recovery
+-- would re-read the same corrupt bytes — so the job is set 'failed' immediately
+-- (attempts untouched). Fenced by claim_token like the other terminal writes.
+-- ===========================================================================
+CREATE OR REPLACE FUNCTION public.ewp_reject_corrupt_version(
+  p_job_id uuid,
+  p_claim_token uuid,
+  p_error text DEFAULT 'content_hash_mismatch'
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_job     public.writing_evaluation_jobs%ROWTYPE;
+  v_eval    public.writing_evaluations%ROWTYPE;
+  v_ver     public.writing_unit_versions%ROWTYPE;
+  v_unit    public.writing_session_units%ROWTYPE;
+  v_session public.writing_sessions%ROWTYPE;
+  v_maxver  int;
+  v_is_current boolean;
+  v_unit_target text;
+BEGIN
+  SELECT * INTO v_job FROM public.writing_evaluation_jobs WHERE id = p_job_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'ewp_job_not_found: job % not found', p_job_id; END IF;
+  SELECT * INTO v_eval FROM public.writing_evaluations WHERE id = v_job.evaluation_id;
+  SELECT * INTO v_ver  FROM public.writing_unit_versions WHERE id = v_eval.unit_version_id;
+  SELECT * INTO v_unit FROM public.writing_session_units WHERE id = v_ver.unit_id;
+
+  SELECT * INTO v_session FROM public.writing_sessions WHERE id = v_unit.session_id FOR UPDATE;
+  PERFORM 1 FROM public.writing_session_units
+    WHERE session_id = v_session.id ORDER BY unit_number FOR UPDATE;
+  SELECT * INTO v_eval FROM public.writing_evaluations WHERE id = v_job.evaluation_id FOR UPDATE;
+  SELECT * INTO v_job  FROM public.writing_evaluation_jobs WHERE id = p_job_id FOR UPDATE;
+
+  IF v_job.status <> 'running' OR v_job.claim_token IS DISTINCT FROM p_claim_token THEN
+    RAISE EXCEPTION 'ewp_job_fencing_failed: job % is no longer owned by this claim', p_job_id;
+  END IF;
+
+  SELECT MAX(version_number) INTO v_maxver
+  FROM public.writing_unit_versions WHERE unit_id = v_unit.id;
+  v_is_current := (v_ver.version_number = v_maxver);
+
+  -- Fail CLOSED regardless of deterministic_status: a corrupt version is never a
+  -- usable result. overall_status='failed' (never terminal_partial), unit
+  -- 'evaluation_failed' (never ready).
+  UPDATE public.writing_evaluations SET
+    language_status = 'failed', overall_status = 'failed', updated_at = now()
+  WHERE id = v_eval.id;
+  UPDATE public.writing_evaluation_jobs
+  SET status = 'failed', locked_at = NULL, claim_token = NULL, last_error = p_error, updated_at = now()
+  WHERE id = v_job.id;
+
+  IF v_is_current AND v_unit.status = 'evaluation_pending' THEN
+    v_unit_target := 'evaluation_failed';
+    UPDATE public.writing_session_units SET status = 'evaluation_failed' WHERE id = v_unit.id;
+  ELSE
+    v_unit_target := v_unit.status;
+  END IF;
+
+  PERFORM ewp_private.ewp_apply_session_rollup(v_session.id);
+  RETURN jsonb_build_object('status','rejected_corrupt','overall_status','failed','unit_status',v_unit_target);
+END;
+$$;
+
+-- ===========================================================================
 -- Sweep stale leases: running jobs whose lease expired go back to pending so a
 -- fresh worker can reclaim them (the reclaim mints a new token, fencing out the
 -- stale worker's terminal write). §8.3.
@@ -559,29 +879,26 @@ SET search_path = public
 AS $$
 DECLARE
   v_swept int := 0;
-  v_job   record;
+  v_id    uuid;
+  v_res   jsonb;
 BEGIN
-  FOR v_job IN
-    SELECT id, attempts, max_attempts FROM public.writing_evaluation_jobs
+  -- Select candidate stale job IDS with a PLAIN read (NO row lock). Taking a job
+  -- row lock here and THEN calling a helper that locks session→units→eval→job
+  -- would invert the canonical order (§8.0: session-first) and can deadlock a
+  -- racing completion. Instead the per-job requeue helper acquires locks
+  -- session-first and RE-VALIDATES the running+expired-lease precondition under
+  -- those locks, so a concurrent completion or a second sweeper is safe (a plain
+  -- pre-read that is stale by the time the lock is taken simply no-ops).
+  FOR v_id IN
+    SELECT id FROM public.writing_evaluation_jobs
     WHERE status = 'running'
       AND locked_at IS NOT NULL
       AND locked_at < now() - make_interval(secs => p_lease_seconds)
-    FOR UPDATE SKIP LOCKED
   LOOP
-    IF v_job.attempts >= v_job.max_attempts THEN
-      -- Exhausted crash: terminalise (do NOT requeue — a requeued pending row
-      -- with attempts=max would violate attempts_check on the next claim).
-      PERFORM ewp_private.ewp_terminalize_eval_job(v_job.id, 'lease_expired_exhausted');
-    ELSE
-      UPDATE public.writing_evaluation_jobs
-      SET status = 'pending', locked_at = NULL, claim_token = NULL,
-          last_error = 'lease_expired', updated_at = now()
-      WHERE id = v_job.id;
-      UPDATE public.writing_evaluations SET language_status = 'queued', updated_at = now()
-      WHERE id = (SELECT evaluation_id FROM public.writing_evaluation_jobs WHERE id = v_job.id)
-        AND language_status = 'running';
+    v_res := ewp_private.ewp_requeue_stale_eval_job(v_id, p_lease_seconds);
+    IF COALESCE(v_res->>'acted','false') = 'true' THEN
+      v_swept := v_swept + 1;
     END IF;
-    v_swept := v_swept + 1;
   END LOOP;
   RETURN v_swept;
 END;
@@ -676,6 +993,65 @@ BEGIN
 END;
 $$;
 
+-- Evidence-key layout mirrored from Python (evidence_deriver.compute_evidence_key,
+-- §4.12b): SHA-256 of the 8 identity fields joined by a single NUL byte, in order,
+-- with the documented coalesce sentinels. Keeping this in SQL lets the outbox
+-- completion RE-DERIVE and verify the claimed key rather than trust the worker.
+CREATE OR REPLACE FUNCTION ewp_private.ewp_compute_evidence_key(
+  p_evidence_op text, p_user_id uuid, p_evaluation_id uuid,
+  p_issue_projection_id uuid, p_microtopic_id uuid, p_evidence_tier text,
+  p_source_type text, p_review_event_id uuid)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  -- Build the payload as bytea: each field's UTF-8 bytes joined by a single NUL
+  -- byte ('\x00'::bytea). A text NUL cannot be represented, so we concatenate
+  -- bytea (matching Python's b"\x00".join(f.encode("utf-8") ...) exactly).
+  SELECT encode(sha256(
+    convert_to(p_evidence_op, 'UTF8') || '\x00'::bytea ||
+    convert_to(p_user_id::text, 'UTF8') || '\x00'::bytea ||
+    convert_to(p_evaluation_id::text, 'UTF8') || '\x00'::bytea ||
+    convert_to(COALESCE(p_issue_projection_id::text, 'no_projection'), 'UTF8') || '\x00'::bytea ||
+    convert_to(COALESCE(p_microtopic_id::text, 'no_microtopic'), 'UTF8') || '\x00'::bytea ||
+    convert_to(p_evidence_tier, 'UTF8') || '\x00'::bytea ||
+    convert_to(p_source_type, 'UTF8') || '\x00'::bytea ||
+    convert_to(COALESCE(p_review_event_id::text, 'no_review'), 'UTF8')
+  ), 'hex')
+$$;
+
+-- Canonical context for an outbox row, re-derived from the committed evaluation
+-- (NOT trusted from the worker). Mirrors the ewp_claim_mastery_outbox derivation:
+-- topic/microtopic/source_type/source_entity from the prompt+unit+session, so the
+-- completion can assert every payload identity field equals the claimed context.
+CREATE OR REPLACE FUNCTION ewp_private.ewp_outbox_evidence_context(p_outbox uuid)
+RETURNS TABLE(user_id uuid, evaluation_id uuid, topic_id uuid, microtopic_id uuid,
+              exam_id uuid, source_type text, source_entity_id uuid)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT o.user_id, e.id, p.topic_id, u.practice_microtopic_id, p.exam_id,
+         CASE
+           WHEN p.exercise_type IN ('sentence_construction','sentence_correction',
+                'sentence_rewrite','sentence_reconstruction','vocabulary_in_context')
+             THEN 'sentence_drill'
+           WHEN p.exercise_type IN ('paragraph_writing','summary_writing',
+                'precis_practice','essay_practice','letter_practice')
+             THEN 'paragraph_drill'
+           ELSE 'descriptive_mock'
+         END,
+         s.id
+  FROM public.writing_mastery_outbox o
+  JOIN public.writing_evaluations e ON e.id = o.evaluation_id
+  JOIN public.writing_unit_versions v ON v.id = e.unit_version_id
+  JOIN public.writing_session_units u ON u.id = v.unit_id
+  JOIN public.writing_sessions s ON s.id = u.session_id
+  JOIN public.writing_prompts p ON p.id = s.prompt_id
+  WHERE o.id = p_outbox;
+$$;
+
 -- Complete a mastery outbox row: write evidence + shadow idempotently, ack.
 -- Fencing (claim_token) + payload validation against the claimed row prevent a
 -- stale/buggy worker from writing cross-user/eval evidence. Shadow-only until
@@ -702,15 +1078,50 @@ BEGIN
   END IF;
 
   IF p_evidence IS NOT NULL THEN
-    -- The payload must belong to THIS claimed row (defence against a buggy worker).
-    IF (p_evidence->>'user_id')::uuid <> v_row.user_id
-       OR (p_evidence->>'evaluation_id')::uuid IS DISTINCT FROM v_row.evaluation_id
-       OR (p_evidence->>'evidence_key') <> v_row.idempotency_key
-       OR COALESCE(p_evidence->>'evidence_op','assert') <> v_row.evidence_op
-       OR (p_shadow->>'evidence_key') <> v_row.idempotency_key
-       OR (p_shadow->>'user_id')::uuid <> v_row.user_id THEN
-      RAISE EXCEPTION 'ewp_outbox_payload_mismatch: evidence/shadow does not match the claimed row %', p_id;
-    END IF;
+    -- Re-derive the canonical context for this outbox row from the COMMITTED
+    -- evaluation (never trusted from the worker) and bind EVERY identity field of
+    -- the payload to it. topic/microtopic/source_type/source_entity/exam come from
+    -- the derived context; user/evaluation/op from the claimed row; and — the
+    -- strongest binding — the evidence_key is RECOMPUTED from (op, user, eval,
+    -- projection, microtopic, tier, source_type) and must equal both the payload
+    -- key AND the claimed idempotency_key. A buggy/hostile worker cannot smuggle a
+    -- mismatched tier, projection, microtopic, source_type, or cross-entity target.
+    DECLARE
+      v_ctx        record;
+      v_ev_op      text := COALESCE(p_evidence->>'evidence_op','assert');
+      v_ev_tier    text := p_evidence->>'evidence_tier';
+      v_ev_proj    uuid := NULLIF(p_evidence->>'issue_projection_id','')::uuid;
+      v_ev_micro   uuid := NULLIF(p_evidence->>'microtopic_id','')::uuid;
+      v_ev_review  uuid := NULLIF(p_evidence->>'review_event_id','')::uuid;
+      v_derived_key text;
+    BEGIN
+      SELECT * INTO v_ctx FROM ewp_private.ewp_outbox_evidence_context(p_id);
+
+      v_derived_key := ewp_private.ewp_compute_evidence_key(
+        v_ev_op, v_ctx.user_id, v_ctx.evaluation_id, v_ev_proj, v_ev_micro,
+        v_ev_tier, v_ctx.source_type, v_ev_review);
+
+      IF (p_evidence->>'user_id')::uuid <> v_row.user_id
+         OR (p_evidence->>'evaluation_id')::uuid IS DISTINCT FROM v_row.evaluation_id
+         OR (p_evidence->>'evidence_key') <> v_row.idempotency_key
+         OR v_ev_op <> v_row.evidence_op
+         OR (p_shadow->>'evidence_key') <> v_row.idempotency_key
+         OR (p_shadow->>'user_id')::uuid <> v_row.user_id
+         -- identity fields must equal the re-derived context (not worker-asserted)
+         OR (p_evidence->>'topic_id')::uuid IS DISTINCT FROM v_ctx.topic_id
+         OR v_ev_micro IS DISTINCT FROM v_ctx.microtopic_id
+         OR (p_evidence->>'source_type') <> v_ctx.source_type
+         OR (p_evidence->>'source_entity_id')::uuid IS DISTINCT FROM v_ctx.source_entity_id
+         OR NULLIF(p_evidence->>'exam_id','')::uuid IS DISTINCT FROM v_ctx.exam_id
+         -- the shadow's own evaluation_id / tier must agree too
+         OR (p_shadow->>'evaluation_id')::uuid IS DISTINCT FROM v_row.evaluation_id
+         OR (p_shadow->>'evidence_tier') <> v_ev_tier
+         OR (p_shadow->>'topic_id')::uuid IS DISTINCT FROM v_ctx.topic_id
+         -- best binding: recomputed key must equal the claimed/payload key
+         OR v_derived_key <> v_row.idempotency_key THEN
+        RAISE EXCEPTION 'ewp_outbox_payload_mismatch: evidence/shadow does not match the claimed row %', p_id;
+      END IF;
+    END;
 
     INSERT INTO public.user_topic_mastery_evidence(
       user_id, exam_id, topic_id, microtopic_id, source_type, source_entity_id,
@@ -778,6 +1189,8 @@ $$;
 REVOKE ALL ON FUNCTION public.ewp_claim_evaluation_job(int, text[]) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ewp_complete_language_evaluation(uuid,uuid,text,jsonb,jsonb,jsonb,boolean,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ewp_fail_evaluation_job(uuid,uuid,text,int) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.ewp_recover_evaluation(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.ewp_reject_corrupt_version(uuid,uuid,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ewp_sweep_stale_evaluation_jobs(int) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ewp_claim_mastery_outbox(int) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ewp_sweep_stale_mastery_outbox(int) FROM PUBLIC, anon, authenticated;
@@ -786,6 +1199,8 @@ REVOKE ALL ON FUNCTION public.ewp_fail_mastery_outbox(uuid,uuid,text,int) FROM P
 GRANT EXECUTE ON FUNCTION public.ewp_claim_evaluation_job(int, text[]) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ewp_complete_language_evaluation(uuid,uuid,text,jsonb,jsonb,jsonb,boolean,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ewp_fail_evaluation_job(uuid,uuid,text,int) TO service_role;
+GRANT EXECUTE ON FUNCTION public.ewp_recover_evaluation(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.ewp_reject_corrupt_version(uuid,uuid,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ewp_sweep_stale_evaluation_jobs(int) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ewp_claim_mastery_outbox(int) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ewp_sweep_stale_mastery_outbox(int) TO service_role;

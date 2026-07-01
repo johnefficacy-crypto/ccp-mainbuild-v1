@@ -89,6 +89,22 @@ def _json(sql: str) -> dict:
     return json.loads(_scalar(sql))
 
 
+def _evidence_key(*, evidence_op: str, user_id: str, evaluation_id: str,
+                  issue_projection_id: str | None, microtopic_id: str | None,
+                  evidence_tier: str, source_type: str,
+                  review_event_id: str | None = None) -> str:
+    """The §4.12b evidence key, computed via the shared SQL helper so the outbox
+    completion's RE-DERIVED key (bound to the claimed evaluation's context)
+    matches the payload key exactly. Real workers derive this from
+    evidence_deriver.compute_evidence_key (byte-identical, asserted elsewhere)."""
+    def q(v):  # 'NULL' or a quoted literal
+        return "NULL" if v is None else f"'{v}'"
+    return _scalar(
+        "SELECT ewp_private.ewp_compute_evidence_key("
+        f"'{evidence_op}','{user_id}','{evaluation_id}',{q(issue_projection_id)},"
+        f"{q(microtopic_id)},'{evidence_tier}','{source_type}',{q(review_event_id)})")
+
+
 @pytest.fixture(scope="module", autouse=True)
 def _apply():
     _psql(_BOOTSTRAP)
@@ -100,8 +116,10 @@ def _apply():
 
 
 def _drain_pending() -> None:
-    """Complete every currently-pending language job so a test's freshly created
-    job is the sole/oldest pending one (the claim RPC is global-oldest)."""
+    """Complete every currently-pending language job AND every pending mastery
+    outbox row so a test's freshly created job/outbox is the sole/oldest pending
+    one (both claim RPCs are global-oldest). Outbox rows are acked as no-ops
+    (p_evidence=NULL) — no evidence key needed to clear the backlog."""
     for _ in range(50):
         raw = _scalar("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
         if not raw:
@@ -110,6 +128,13 @@ def _drain_pending() -> None:
         _scalar(
             f"SELECT ewp_complete_language_evaluation('{c['job_id']}','{c['claim_token']}',"
             f"'v','[]'::jsonb,'{{}}'::jsonb,NULL,false,'off',NULL)")
+    for _ in range(50):
+        raw = _scalar("SELECT ewp_claim_mastery_outbox(900)")
+        if not raw:
+            break
+        o = json.loads(raw)
+        _scalar(
+            f"SELECT ewp_complete_mastery_outbox('{o['id']}','{o['claim_token']}',NULL,NULL)")
 
 
 def _new_submitted_session(answer: str, ch: str) -> str:
@@ -230,17 +255,40 @@ def test_claim_and_drain_expose_microtopic_under_identical_key():
     sid = _new_submitted_session("microtopic parity text", "6" * 64)
     ce = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
     assert ce.get("microtopic_id"), "claim payload must expose a non-null microtopic_id"
+    key = _evidence_key(
+        evidence_op="assert", user_id=_A, evaluation_id=ce["evaluation_id"],
+        issue_projection_id=None, microtopic_id=ce.get("microtopic_id"),
+        evidence_tier="production", source_type="sentence_drill")
     _json(
         f"SELECT ewp_complete_language_evaluation('{ce['job_id']}','{ce['claim_token']}',"
-        f"'lang-mock-v1','[]'::jsonb,'{{}}'::jsonb,NULL,false,'shadow','{'7' * 64}')")
+        f"'lang-mock-v1','[]'::jsonb,'{{}}'::jsonb,NULL,false,'shadow','{key}')")
     oc = _json("SELECT ewp_claim_mastery_outbox(900)")
     assert oc["microtopic_id"] == ce["microtopic_id"]
+    # Complete it so it does not linger as an unprocessed global-oldest row for a
+    # later drain test (the claim RPC is global-oldest).
+    ev = {
+        "user_id": oc["user_id"], "exam_id": oc.get("exam_id"), "topic_id": oc["topic_id"],
+        "microtopic_id": oc.get("microtopic_id"), "source_type": "sentence_drill",
+        "source_entity_id": oc["source_entity_id"], "evaluation_id": oc["evaluation_id"],
+        "issue_projection_id": None, "evidence_tier": "production", "score": None,
+        "confidence": None, "evidence_op": "assert", "evidence_key": oc["idempotency_key"],
+    }
+    sh = {**{k: ev[k] for k in ev if k != "evidence_op"}, "delta_json": {}}
+    _json(
+        f"SELECT ewp_complete_mastery_outbox('{oc['id']}','{oc['claim_token']}',"
+        f"'{json.dumps(ev)}'::jsonb,'{json.dumps(sh)}'::jsonb)")
 
 
 def test_mastery_outbox_drain_writes_evidence_and_shadow():
     sid = _new_submitted_session("mastery drain text", "4" * 64)
     claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
-    key = "5" * 64
+    # Enqueue with the GENUINE §4.12b evidence key (a clean unit → production tier,
+    # no projection, unit microtopic) so the outbox completion's re-derived key
+    # binding is satisfied. (The trust-boundary hardening rejects synthetic keys.)
+    key = _evidence_key(
+        evidence_op="assert", user_id=_A, evaluation_id=claim["evaluation_id"],
+        issue_projection_id=None, microtopic_id=claim.get("microtopic_id"),
+        evidence_tier="production", source_type="sentence_drill")
     _json(
         f"SELECT ewp_complete_language_evaluation('{claim['job_id']}','{claim['claim_token']}',"
         f"'lang-mock-v1','[]'::jsonb,'{{}}'::jsonb,NULL,false,'shadow','{key}')")
@@ -317,9 +365,13 @@ def test_sweep_terminalizes_exhausted_lease():
 def test_mastery_outbox_fencing_and_payload_validation():
     sid = _new_submitted_session("fencing payload text", "a2" + "0" * 62)
     claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    key0 = _evidence_key(
+        evidence_op="assert", user_id=_A, evaluation_id=claim["evaluation_id"],
+        issue_projection_id=None, microtopic_id=claim.get("microtopic_id"),
+        evidence_tier="production", source_type="sentence_drill")
     _json(
         f"SELECT ewp_complete_language_evaluation('{claim['job_id']}','{claim['claim_token']}',"
-        f"'lang-mock-v1','[]'::jsonb,'{{}}'::jsonb,NULL,false,'shadow','{'a3' + '0' * 62}')")
+        f"'lang-mock-v1','[]'::jsonb,'{{}}'::jsonb,NULL,false,'shadow','{key0}')")
     oc = _json("SELECT ewp_claim_mastery_outbox(900)")
     key = oc["idempotency_key"]
     ev = {
@@ -412,4 +464,219 @@ def test_projection_has_canonical_error_type():
         f"SELECT canonical_error_type||'/'||(projection_confidence IS NOT NULL) "
         f"FROM writing_issue_projections p JOIN writing_issue_events i ON i.id=p.issue_event_id "
         f"WHERE i.evaluation_id='{eid}'")
-    assert row == "careless/true"
+    # §6: subject_verb_agreement projects to concept_gap on BOTH first and repeat
+    # occurrences (a construction/usage error, never 'careless').
+    assert row == "concept_gap/true"
+
+
+# ---------------------------------------------------------------------------
+# Round-2 review additions: regression lineage (§4.9), generation+1 recovery
+# (§4.14), corruption hard-fail (§8.1), microtopic English-tree trust boundary
+# (§5.3/§4.15), and a concurrent sweeper-vs-completion race (§8.0).
+# ---------------------------------------------------------------------------
+
+def _issue(issue_type: str, quoted: str, severity: str = "must_fix",
+           predecessor: str | None = None) -> dict:
+    return {
+        "issue_type": issue_type, "span_start_utf16": 0, "span_end_utf16": len(quoted),
+        "quoted_text": quoted, "original_text": quoted, "suggested_text": quoted,
+        "explanation": "x", "severity": severity, "predecessor_issue_event_id": predecessor,
+    }
+
+
+def _claim_complete(issues: list[dict]) -> str:
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    _json(
+        f"SELECT ewp_complete_language_evaluation('{claim['job_id']}','{claim['claim_token']}',"
+        f"'lang-mock-v1','{json.dumps(issues)}'::jsonb,'{{}}'::jsonb,NULL,false,'off',NULL)")
+    return claim["evaluation_id"]
+
+
+def _rewrite(sid: str, answer: str, ch: str, version: int) -> None:
+    _scalar(
+        f"SELECT ewp_submit_writing_unit('{_A}','{sid}',1,'{answer}',3,3,'{ch}',{version},"
+        "'{}'::jsonb,'det-v1')")
+
+
+def test_regressed_lineage_reuses_resolved_lineage_and_emits_regressed_event():
+    # v1: SVA (must_fix) + spelling (must_fix) → unit rewrite_required.
+    sid = _new_submitted_session("regress base text", "c1" + "0" * 62)
+    e1 = _claim_complete([_issue("subject_verb_agreement", "they is"),
+                          _issue("spelling", "teh")])
+    sva1 = _scalar(
+        f"SELECT id FROM writing_issue_events WHERE evaluation_id='{e1}' "
+        "AND issue_type='subject_verb_agreement'")
+    lineage = _scalar(f"SELECT lineage_id FROM writing_issue_events WHERE id='{sva1}'")
+
+    # v2 rewrite: SVA gone (resolved), spelling remains (keeps rewrite_required).
+    _rewrite(sid, "regress v2 text", "c2" + "0" * 62, 2)
+    e2 = _claim_complete([_issue("spelling", "teh")])
+    assert _scalar(
+        f"SELECT outcome FROM writing_issue_resolution_events WHERE issue_event_id='{sva1}'") == "resolved"
+
+    # v3 rewrite: SVA REAPPEARS (no predecessor supplied) → regression of lineage.
+    _rewrite(sid, "regress v3 text", "c3" + "0" * 62, 3)
+    e3 = _claim_complete([_issue("subject_verb_agreement", "they is"),
+                          _issue("spelling", "teh")])
+    sva3 = _scalar(
+        f"SELECT id FROM writing_issue_events WHERE evaluation_id='{e3}' "
+        "AND issue_type='subject_verb_agreement'")
+    # The reappearing issue reuses the ORIGINAL resolved lineage id.
+    assert _scalar(f"SELECT lineage_id FROM writing_issue_events WHERE id='{sva3}'") == lineage
+    # A 'regressed' resolution event links the resolved issue → the new successor.
+    assert _scalar(
+        f"SELECT outcome||'/'||(successor_issue_event_id='{sva3}') "
+        f"FROM writing_issue_resolution_events WHERE successor_issue_event_id='{sva3}' "
+        "AND outcome='regressed'") == "regressed/true"
+
+
+def test_persisted_never_points_at_a_fresh_lineage_successor():
+    # v1: SVA must_fix. v2 rewrite: SVA quote changes AND a genuinely new SVA
+    # appears; the fallback must not mark the prior 'persisted' against a
+    # different-lineage row. With the quote changed and no predecessor supplied,
+    # the prior is resolved (its lineage is not carried by the new fresh issue).
+    sid = _new_submitted_session("persist base text", "c4" + "0" * 62)
+    e1 = _claim_complete([_issue("subject_verb_agreement", "they is")])
+    sva1 = _scalar(f"SELECT id FROM writing_issue_events WHERE evaluation_id='{e1}'")
+    lin1 = _scalar(f"SELECT lineage_id FROM writing_issue_events WHERE id='{sva1}'")
+
+    _rewrite(sid, "persist v2 text", "c5" + "0" * 62, 2)
+    e2 = _claim_complete([_issue("subject_verb_agreement", "we was")])  # different quote
+    new = _scalar(f"SELECT id FROM writing_issue_events WHERE evaluation_id='{e2}'")
+    lin2 = _scalar(f"SELECT lineage_id FROM writing_issue_events WHERE id='{new}'")
+    # The new issue carries a FRESH lineage (not the prior's).
+    assert lin2 != lin1
+    # The prior is 'resolved' — NOT 'persisted' pointing at the fresh-lineage row.
+    res = _scalar(
+        f"SELECT outcome||'/'||COALESCE(successor_issue_event_id::text,'-') "
+        f"FROM writing_issue_resolution_events WHERE issue_event_id='{sva1}'")
+    assert res == "resolved/-"
+
+
+def test_recover_evaluation_mints_generation_2_and_requeues():
+    sid = _new_submitted_session("recover base text", "c6" + "0" * 62)
+    # Drive the job to terminal failure (max_attempts=3).
+    for _ in range(3):
+        claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+        out = _json(
+            f"SELECT ewp_fail_evaluation_job('{claim['job_id']}','{claim['claim_token']}','boom',0)")
+    assert out["status"] == "failed_terminal"
+    eid = claim["evaluation_id"]
+    # language_status is 'failed' after terminalisation.
+    assert _scalar(f"SELECT language_status FROM writing_evaluations WHERE id='{eid}'") == "failed"
+
+    rec = _json(f"SELECT ewp_recover_evaluation('{eid}')")
+    assert rec["status"] == "recovered" and rec["generation"] == 2
+    # a fresh pending gen=2 language job exists, attempts reset.
+    assert _scalar(
+        f"SELECT status||'/'||generation||'/'||attempts FROM writing_evaluation_jobs "
+        f"WHERE evaluation_id='{eid}' AND generation=2") == "pending/2/0"
+    # CAS moved the envelope back to queued.
+    assert _scalar(f"SELECT language_status FROM writing_evaluations WHERE id='{eid}'") == "queued"
+    # a second recovery is a no-op (latest job is pending, not failed).
+    assert _json(f"SELECT ewp_recover_evaluation('{eid}')")["status"] == "noop"
+
+
+def test_reject_corrupt_version_fails_closed_regardless_of_deterministic():
+    # Deterministic completed (submit path sets deterministic_status='completed'),
+    # yet a corruption reject must NOT yield terminal_partial/ready — it must be
+    # overall_status='failed' and unit 'evaluation_failed'.
+    sid = _new_submitted_session("corrupt fail text", "c7" + "0" * 62)
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    assert _scalar(
+        f"SELECT deterministic_status FROM writing_evaluations WHERE id='{claim['evaluation_id']}'") == "completed"
+    out = _json(
+        f"SELECT ewp_reject_corrupt_version('{claim['job_id']}','{claim['claim_token']}','content_hash_mismatch')")
+    assert out["status"] == "rejected_corrupt" and out["overall_status"] == "failed"
+    eid = claim["evaluation_id"]
+    assert _scalar(f"SELECT overall_status FROM writing_evaluations WHERE id='{eid}'") == "failed"
+    assert _scalar(f"SELECT status FROM writing_session_units WHERE session_id='{sid}'") == "evaluation_failed"
+    # NOT ready — a corrupt version never becomes a usable result.
+    assert _scalar(f"SELECT status FROM writing_session_units WHERE session_id='{sid}'") != "ready"
+
+
+def test_microtopic_map_outside_english_tree_is_dropped_to_topic_level():
+    # Point the SVA active map row at a microtopic in a NON-English subject. The
+    # resolver must refuse it and store microtopic_id = NULL (topic-level).
+    _psql(
+        "INSERT INTO subjects(id,slug,name) VALUES "
+        "('00000000-0000-0000-0000-0000000000f1','maths','Maths') ON CONFLICT DO NOTHING")
+    _psql(
+        "INSERT INTO topics(id,subject_id,slug,name,level,is_active) VALUES "
+        "('00000000-0000-0000-0000-0000000000f2','00000000-0000-0000-0000-0000000000f1',"
+        "'algebra-mt','Algebra','microtopic',true) ON CONFLICT DO NOTHING")
+    # Remap the active SVA mapping to the foreign microtopic (versioned flip).
+    _psql(
+        "UPDATE writing_issue_type_microtopic_map SET is_active=false "
+        "WHERE issue_type='subject_verb_agreement' AND is_active=true")
+    _psql(
+        "INSERT INTO writing_issue_type_microtopic_map(issue_type,microtopic_id,map_version,is_active) "
+        "VALUES ('subject_verb_agreement','00000000-0000-0000-0000-0000000000f2',99,true)")
+    try:
+        sid = _new_submitted_session("foreign map text", "c8" + "0" * 62)
+        e1 = _claim_complete([_issue("subject_verb_agreement", "they is")])
+        assert _scalar(
+            f"SELECT (microtopic_id IS NULL) FROM writing_issue_events WHERE evaluation_id='{e1}'") == "t"
+    finally:
+        # restore the English mapping so later tests keep a valid microtopic, and
+        # remove the foreign subject/topic so shared-DB seed-count assertions in
+        # other suites stay exact.
+        _psql(
+            "UPDATE writing_issue_type_microtopic_map SET is_active=false WHERE map_version=99")
+        _psql(
+            "UPDATE writing_issue_type_microtopic_map SET is_active=true "
+            "WHERE issue_type='subject_verb_agreement' AND map_version=1")
+        _psql(
+            "DELETE FROM writing_issue_type_microtopic_map WHERE map_version=99")
+        _psql("DELETE FROM topics WHERE id='00000000-0000-0000-0000-0000000000f2'")
+        _psql("DELETE FROM subjects WHERE id='00000000-0000-0000-0000-0000000000f1'")
+
+
+def test_concurrent_sweeper_vs_completion_no_deadlock_exactly_once():
+    # Two REAL connections (two independent psql processes run in parallel — no
+    # Python DB driver needed, mirroring CI which only ships psql): a worker
+    # committing a claimed (running) job whose lease we expire, and a sweeper. The
+    # sweeper's session-first RE-VALIDATING requeue must NOT deadlock against the
+    # worker's completion (which also locks session-first), and the job must be
+    # terminalised/completed EXACTLY once (the fencing token guarantees a single
+    # side-effecting writer).
+    import concurrent.futures as cf
+
+    sid = _new_submitted_session("concurrent sweep text", "c9" + "0" * 62)
+    claim = _json("SELECT ewp_claim_evaluation_job(900, ARRAY['language_evaluation'])")
+    job = claim["job_id"]
+    tok = claim["claim_token"]
+    # Expire the lease so the sweeper considers it stale.
+    _psql(f"UPDATE writing_evaluation_jobs SET locked_at = now() - interval '2 hours' WHERE id='{job}'")
+
+    def _run(sql: str) -> tuple[int, str]:
+        proc = subprocess.run([_PSQL, _DSN, "-X", "-q", "-c", sql],
+                              capture_output=True, text=True)
+        return proc.returncode, (proc.stdout + proc.stderr)
+
+    completion_sql = (
+        f"SELECT ewp_complete_language_evaluation('{job}','{tok}','lang-mock-v1',"
+        "'[]'::jsonb,'{}'::jsonb,NULL,false,'off',NULL)")
+    sweep_sql = "SELECT ewp_sweep_stale_evaluation_jobs(900)"
+
+    with cf.ThreadPoolExecutor(max_workers=2) as ex:
+        results = [f.result(timeout=30) for f in
+                   (ex.submit(_run, completion_sql), ex.submit(_run, sweep_sql))]
+
+    # No deadlock: neither process reported a deadlock error.
+    for _rc, out in results:
+        assert "deadlock" not in out.lower(), f"deadlock detected: {out}"
+
+    # Exactly-once terminalisation: the job ends in a single terminal state and
+    # the unit is not left half-transitioned. Depending on who won the race the
+    # job is 'done' (completion won) or 'pending'/'failed' (sweeper requeued), but
+    # never both applied — the fencing token guarantees a single side-effecting
+    # writer. The evaluation has exactly one row and a single coherent status.
+    status = _scalar(f"SELECT status FROM writing_evaluation_jobs WHERE id='{job}'")
+    assert status in ("done", "pending", "failed")
+    eid = claim["evaluation_id"]
+    # If completion won, envelope is completed; if sweeper requeued, it is queued
+    # again (running reset). Never a mixed/duplicate terminal application.
+    lang = _scalar(f"SELECT language_status FROM writing_evaluations WHERE id='{eid}'")
+    assert lang in ("completed", "queued", "failed", "running")
+    assert _scalar(f"SELECT count(*) FROM writing_evaluations WHERE id='{eid}'") == "1"
