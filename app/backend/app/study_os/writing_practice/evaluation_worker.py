@@ -23,6 +23,7 @@ from typing import Any
 from app.study_os.writing_practice import evidence_deriver as ev
 from app.study_os.writing_practice import language_evaluator as lang
 from app.study_os.writing_practice import rubric_evaluator as rubric
+from app.study_os.writing_practice.content_hash import compute_content_hash
 from app.study_os.writing_practice.mastery_flag import (
     get_writing_mastery_write_flag,
     resolve_effective_writing_mastery_flag,
@@ -51,6 +52,15 @@ def run_worker_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
     job_id = claim["job_id"]
     token = claim["claim_token"]
     try:
+        # Defence-in-depth (§8.1/§14): recompute the stored answer's hash and
+        # require it to match the version's content_hash before evaluating, so a
+        # corrupted/tampered row is never scored.
+        answer_text = claim["answer_text"]
+        if compute_content_hash(answer_text) != claim["content_hash"]:
+            raise ValueError(
+                f"content_hash mismatch for version {claim.get('unit_version_id')}: "
+                "stored text does not match its recorded hash")
+
         result = lang.evaluate_language(
             claim["answer_text"],
             exercise_type=claim["exercise_type"],
@@ -84,6 +94,7 @@ def run_worker_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
                 user_id=claim["user_id"], evaluation_id=claim["evaluation_id"],
                 topic_id=claim["topic_id"], microtopic_id=claim.get("microtopic_id"),
                 exam_id=claim.get("exam_id"), source_entity_id=claim["session_id"],
+                exercise_type=claim["exercise_type"],
                 has_unresolved_must_fix=has_must_fix, resolved_issue_count=resolved_count,
                 overall_status="completed",
             )

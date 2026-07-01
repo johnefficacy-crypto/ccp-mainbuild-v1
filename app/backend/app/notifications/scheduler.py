@@ -165,9 +165,14 @@ def _job_writing_evaluator() -> dict[str, Any]:
 
 
 def _job_writing_mastery_outbox() -> dict[str, Any]:
-    from app.study_os.writing_practice.mastery_outbox_worker import run_outbox_pass
+    from app.study_os.writing_practice.mastery_outbox_worker import run_outbox_pass, sweep_stale_outbox
 
-    return run_outbox_pass(get_supabase_admin())
+    sb = get_supabase_admin()
+    swept = sweep_stale_outbox(sb).get("swept", 0)
+    result = run_outbox_pass(sb)
+    if swept:
+        result = {**result, "swept": swept}
+    return result
 
 
 # Per-job permission overrides for the manual-trigger admin endpoint.

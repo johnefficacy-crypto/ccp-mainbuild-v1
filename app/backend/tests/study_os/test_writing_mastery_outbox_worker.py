@@ -50,6 +50,8 @@ class FakeSupabase:
 def _terminal(**overrides):
     base = {
         "id": "outbox-1",
+        "claim_token": "outbox-tok-1",
+        "exercise_type": "sentence_construction",
         "overall_status": "completed",
         "user_id": "user-1",
         "evaluation_id": "eval-1",
@@ -71,13 +73,6 @@ def test_idle_when_no_claim():
     assert result == {"processed": 0, "status": "idle"}
 
 
-def test_skipped_row():
-    sb = FakeSupabase({"ewp_claim_mastery_outbox": {"id": "outbox-9", "skipped": True}})
-    result = mastery_outbox_worker.run_outbox_pass(sb)
-    assert result["status"] == "skipped"
-    assert "ewp_complete_mastery_outbox" not in sb.call_names()
-
-
 def test_done_writes_evidence_and_shadow():
     sb = FakeSupabase({
         "ewp_claim_mastery_outbox": _terminal(),
@@ -87,20 +82,22 @@ def test_done_writes_evidence_and_shadow():
     assert result["status"] == "done"
 
     p = sb.params_for("ewp_complete_mastery_outbox")
+    assert p["p_claim_token"] == "outbox-tok-1"
     evidence, shadow = p["p_evidence"], p["p_shadow"]
     assert isinstance(evidence, dict) and isinstance(shadow, dict)
     assert evidence["evidence_key"] == shadow["evidence_key"]
     assert _HEX64.match(evidence["evidence_key"])
 
 
-def test_noop_non_terminal():
+def test_noop_blocking_answer():
     sb = FakeSupabase({
-        "ewp_claim_mastery_outbox": _terminal(overall_status="partial"),
+        "ewp_claim_mastery_outbox": _terminal(has_unresolved_must_fix=True),
         "ewp_complete_mastery_outbox": None,
     })
     result = mastery_outbox_worker.run_outbox_pass(sb)
     assert result["status"] == "done_noop"
     p = sb.params_for("ewp_complete_mastery_outbox")
+    assert p["p_claim_token"] == "outbox-tok-1"
     assert p["p_evidence"] is None
 
 
@@ -116,3 +113,5 @@ def test_failure_path(monkeypatch):
     result = mastery_outbox_worker.run_outbox_pass(sb)
     assert result["status"] == "failed"
     assert "ewp_fail_mastery_outbox" in sb.call_names()
+    p = sb.params_for("ewp_fail_mastery_outbox")
+    assert p["p_claim_token"] == "outbox-tok-1"

@@ -12,6 +12,9 @@ import pytest
 pytest.importorskip("pydantic")
 
 from app.study_os.writing_practice import evaluation_worker  # noqa: E402
+from app.study_os.writing_practice.content_hash import (  # noqa: E402
+    compute_content_hash,
+)
 
 _HEX64 = re.compile(r"\A[0-9a-f]{64}\Z")
 
@@ -63,10 +66,12 @@ class FakeSupabase:
 
 
 def _claim(**overrides):
+    answer_text = overrides.get("answer_text", "they is happy")
     base = {
         "job_id": "job-1",
         "claim_token": "tok-abc",
-        "answer_text": "they is happy",
+        "answer_text": answer_text,
+        "content_hash": compute_content_hash(answer_text),
         "exercise_type": "sentence_construction",
         "is_current": True,
         "user_id": "user-1",
@@ -91,8 +96,11 @@ def test_idle_when_no_claim():
 
 def test_success_path_shadow(monkeypatch):
     monkeypatch.setenv("FF_WRITING_MASTERY_WRITES", "shadow")
+    # A clean (no must_fix) but still-flagged answer: lowercase sentence start
+    # yields a should_fix capitalization issue only, so a positive evidence key
+    # is derived (a blocking must_fix answer would earn no evidence → None).
     sb = FakeSupabase({
-        "ewp_claim_evaluation_job": _claim(),
+        "ewp_claim_evaluation_job": _claim(answer_text="they are happy"),
         "ewp_complete_language_evaluation": {"ok": True},
     })
     result = evaluation_worker.run_worker_pass(sb)
@@ -144,6 +152,19 @@ def test_failure_path(monkeypatch):
     })
     result = evaluation_worker.run_worker_pass(sb)
     assert result["status"] == "failed"
+    assert "ewp_fail_evaluation_job" in sb.call_names()
+    p = sb.params_for("ewp_fail_evaluation_job")
+    assert p["p_claim_token"] == "tok-abc"
+
+
+def test_content_hash_mismatch_fails_the_job():
+    sb = FakeSupabase({
+        "ewp_claim_evaluation_job": _claim(content_hash="0" * 64),
+        "ewp_fail_evaluation_job": None,
+    })
+    result = evaluation_worker.run_worker_pass(sb)
+    assert result["status"] == "failed"
+    assert "ewp_complete_language_evaluation" not in sb.call_names()
     assert "ewp_fail_evaluation_job" in sb.call_names()
     p = sb.params_for("ewp_fail_evaluation_job")
     assert p["p_claim_token"] == "tok-abc"
