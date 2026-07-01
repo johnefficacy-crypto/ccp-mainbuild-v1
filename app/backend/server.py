@@ -87,6 +87,7 @@ from app.api.persona_questions import router as persona_questions_router
 from app.api.placeholders import router as placeholders_router
 from app.api.study_compare import router as study_compare_router
 from app.api.study_os import router as study_os_router
+from app.api.writing_practice import router as writing_practice_router
 from app.api.mock_engine import router as mock_engine_router
 from app.api.generated_mock import router as generated_mock_router
 from app.api.mock_attempt_events import router as mock_attempt_events_router
@@ -350,6 +351,7 @@ api.include_router(payments_router)  # razorpay + plans
 api.include_router(persona_router)  # internal aspirant persona v1
 api.include_router(persona_questions_router)  # PR2 progressive tiny questions
 api.include_router(study_os_router)  # PR3 Study OS Mission Control — before canonical so /study/mission-control wins
+api.include_router(writing_practice_router)  # EWP-2 English Writing Practice deterministic runtime
 api.include_router(mock_engine_router)          # PR1 Mock Engine: start→answer→submit→score
 api.include_router(generated_mock_router)        # A-PR3 generated-mock attempt start (D4 Option-B)
 api.include_router(mock_attempt_events_router)  # PR2b attempt events & telemetry
