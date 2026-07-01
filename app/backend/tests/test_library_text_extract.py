@@ -483,6 +483,24 @@ def test_atomic_claim_race_second_caller_gets_conflict(sb):
     assert second is None
 
 
+def test_claim_job_accepts_failed_status(sb):
+    """_claim_job must accept status='failed' so the retry worker can claim
+    transient-failed jobs without a pre-claim status mutation.
+    Regression: if the predicate reverts to status='queued' only, this test
+    fails while all text_extract_worker retry tests (which mock run_text_extract_job)
+    still pass green."""
+    _seed_doc(sb, doc_id="dddddddd-dddd-dddd-dddd-dddddddddddd")
+    enq = text_extract_svc.enqueue_text_extract_job(sb, "dddddddd-dddd-dddd-dddd-dddddddddddd")
+    job_id = enq["job"]["id"]
+    # Manually flip the job to 'failed' (simulates a transient-error terminal state).
+    for row in sb.db["document_processing_jobs"]:
+        if row["id"] == job_id:
+            row["status"] = "failed"
+    claimed = text_extract_svc._claim_job(sb, job_id)
+    assert claimed is not None, "_claim_job must accept status='failed'"
+    assert claimed["status"] == "running"
+
+
 def test_success_path_writes_pages_and_flips_status(sb, monkeypatch):
     doc_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
     _seed_doc(sb, doc_id=doc_id)
