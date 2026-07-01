@@ -83,8 +83,12 @@ def _session_payload(supabase: Any, session: dict) -> dict:
 @router.post("/sessions")
 def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_user)) -> dict:
     user_id = user.get("id")
-    supabase = get_supabase_admin()
+    # EWP-2 ships learning mode only; the exam-session runtime (§9.2/§9.3 —
+    # answer locking, blank versions, feedback release) is a later slice.
+    if body.mode != "learning":
+        raise HTTPException(status_code=400, detail="exam mode is not available in EWP-2")
 
+    supabase = get_supabase_admin()
     prompt = (
         supabase.table("writing_prompts")
         .select("*")
@@ -106,56 +110,23 @@ def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_
         if not task or task.get("user_id") != user_id:
             raise HTTPException(status_code=404, detail="study task not found")
 
-    # Snapshot the feedback-release policy for exam-mode prompts (§4.3); learning
-    # mode is immediate. Match the requirement on the full identity
-    # (exam/cycle/phase/stream/language + exercise_type) with null-safe fallback.
-    policy = "immediate"
-    delay = None
-    if body.mode == "exam":
-        q = (
-            supabase.table("exam_descriptive_requirements")
-            .select("feedback_release_policy,feedback_release_delay_seconds,exam_cycle_id,exam_phase_id")
-            .eq("exam_id", prompt["exam_id"])
-            .eq("exercise_type", prompt["exercise_type"])
-            .eq("language", "english")
-            .eq("reviewer_status", "verified")
-            .eq("is_active", True)
-        )
-        if prompt.get("exam_cycle_id"):
-            q = q.eq("exam_cycle_id", prompt["exam_cycle_id"])
-        if prompt.get("exam_phase_id"):
-            q = q.eq("exam_phase_id", prompt["exam_phase_id"])
-        rows = (q.order("exam_phase_id", desc=True).limit(1).execute()).data or []
-        if rows:
-            policy = rows[0]["feedback_release_policy"]
-            delay = rows[0].get("feedback_release_delay_seconds")
-
-    session = (
-        supabase.table("writing_sessions")
-        .insert({
-            "user_id": user_id,
-            "study_task_id": str(body.study_task_id) if body.study_task_id else None,
-            "prompt_id": str(body.prompt_id),
-            "mode": body.mode,
-            "status": st.SESSION_ACTIVE,
-            "projection_revision": _current_projection_revision(),
-            "feedback_release_policy": policy,
-            "feedback_release_delay_seconds": delay,
-        })
-        .execute()
-    ).data[0]
-
-    n_units = prompt.get("required_sentence_count") or 1
     constraints = validate_unit_constraints({"schema_version": 1})
-    unit_rows = [{
-        "session_id": session["id"],
-        "unit_number": i,
-        "practice_microtopic_id": prompt.get("microtopic_id"),
-        "unit_constraints": constraints,
-        "status": st.UNIT_NOT_STARTED,
-    } for i in range(1, n_units + 1)]
-    supabase.table("writing_session_units").insert(unit_rows).execute()
-
+    # Atomic: session + all units in one transaction (§8.0). Learning-mode
+    # feedback is immediate.
+    session = (
+        supabase.rpc("ewp_create_writing_session", {
+            "p_user": user_id,
+            "p_prompt": str(body.prompt_id),
+            "p_study_task": str(body.study_task_id) if body.study_task_id else None,
+            "p_mode": "learning",
+            "p_projection_revision": _current_projection_revision(),
+            "p_policy": "immediate",
+            "p_delay": None,
+            "p_unit_count": prompt.get("required_sentence_count") or 1,
+            "p_microtopic": prompt.get("microtopic_id"),
+            "p_constraints": constraints,
+        }).execute()
+    ).data
     return _session_payload(supabase, session)
 
 
@@ -186,82 +157,53 @@ def submit_unit(
     ).data
     if not unit:
         raise HTTPException(status_code=404, detail="unit not found")
-    _SUBMITTABLE = {st.UNIT_NOT_STARTED, st.UNIT_DRAFT, st.UNIT_REWRITE_REQUIRED, st.UNIT_EVAL_PENDING}
-    if unit["status"] not in _SUBMITTABLE:
-        raise HTTPException(status_code=409, detail=f"unit not submittable from status {unit['status']}")
-
-    # Next version number.
-    existing = (
-        supabase.table("writing_unit_versions")
-        .select("version_number")
-        .eq("unit_id", unit["id"])
-        .order("version_number", desc=True)
-        .limit(1)
-        .execute()
-    ).data or []
-    next_version = (existing[0]["version_number"] + 1) if existing else 1
 
     prompt = (
         supabase.table("writing_prompts").select("min_words,max_words,required_words")
         .eq("id", session["prompt_id"]).single().execute()
     ).data
     required_words = prompt.get("required_words") or []
+    constraints = unit.get("unit_constraints") or {}
 
-    # Sibling texts for duplicate detection.
+    # Per-unit bounds override prompt-level bounds when present (§4.4a).
+    min_words = constraints.get("min_words", prompt.get("min_words"))
+    max_words = constraints.get("max_words", prompt.get("max_words"))
+
+    # Deterministic Stage-1 (pure) — computed before the atomic write.
     siblings = _sibling_latest_texts(supabase, str(session_id), exclude_unit_id=unit["id"])
     result = det.evaluate_unit(
         body.answer_text,
-        min_words=prompt.get("min_words"),
-        max_words=prompt.get("max_words"),
-        required_words=None,  # per-unit words are constraint-driven; coverage is session-level
+        min_words=min_words,
+        max_words=max_words,
+        required_words=constraints.get("hint_words"),
         other_unit_texts=siblings,
     )
 
-    version = (
-        supabase.table("writing_unit_versions")
-        .insert({
-            "unit_id": unit["id"],
-            "version_number": next_version,
-            "answer_text": body.answer_text,
-            "client_word_count": body.client_word_count,
-            "server_word_count": result.server_word_count,
-            "submission_kind": "user",
-            "content_hash": compute_content_hash(body.answer_text),
-        })
-        .execute()
-    ).data[0]
+    # Atomic submit: locks (session -> all units ascending), version CAS,
+    # version + evaluation + job insert, unit transition — one transaction (§8.0).
+    try:
+        submit = (
+            supabase.rpc("ewp_submit_writing_unit", {
+                "p_user": user.get("id"),
+                "p_session": str(session_id),
+                "p_unit_number": unit_number,
+                "p_answer": body.answer_text,
+                "p_client_wc": body.client_word_count,
+                "p_server_wc": result.server_word_count,
+                "p_content_hash": compute_content_hash(body.answer_text),
+                "p_expected_version": body.version_number,
+                "p_det_result": result.to_dict(),
+                "p_det_version": result.evaluator_version,
+            }).execute()
+        ).data
+    except Exception as exc:  # PostgREST surfaces the RAISE message
+        raise _rpc_error(exc)
 
-    evaluation = (
-        supabase.table("writing_evaluations")
-        .insert({
-            "unit_version_id": version["id"],
-            "evaluation_revision": 1,
-            "deterministic_evaluator_version": result.evaluator_version,
-            "deterministic_status": "completed",
-            "language_status": "queued" if session["mode"] == "learning" else "queued",
-            "overall_status": "partial",
-            "deterministic_result": result.to_dict(),
-        })
-        .execute()
-    ).data[0]
-
-    # Enqueue the Stage-2 language job (consumed by EWP-2B).
-    supabase.table("writing_evaluation_jobs").insert({
-        "evaluation_id": evaluation["id"],
-        "job_kind": "language_evaluation",
-        "generation": 1,
-        "status": "pending",
-    }).execute()
-
-    supabase.table("writing_session_units").update({"status": st.UNIT_EVAL_PENDING}).eq("id", unit["id"]).execute()
-
-    # Session-level required-word coverage check (§4.7), pinned to the current
-    # version-set hash; the finalizer reads the authoritative result.
     coverage = coverage_checker.run_coverage_check(supabase, str(session_id), required_words)
-
     finalize_writing_session(supabase, str(session_id))
     return {
-        "evaluation": evaluation,
+        "evaluation": (submit or {}).get("evaluation"),
+        "version_number": (submit or {}).get("version_number"),
         "deterministic_result": result.to_dict(),
         "coverage": coverage,
     }
@@ -273,31 +215,22 @@ def reopen_unit(
     user: dict = Depends(get_current_user),
 ) -> dict:
     supabase = get_supabase_admin()
-    session = _owned_session(supabase, str(session_id), user.get("id"))
-    if session["mode"] != "learning":
-        raise HTTPException(status_code=409, detail="reopen is only available in learning mode")
-    if session["status"] not in (st.SESSION_REWRITE_REQUIRED, st.SESSION_ACTIVE):
-        raise HTTPException(status_code=409, detail="session is not reopenable")
+    # Atomic: locks session + all units, validates learning-mode/status/ready +
+    # optimistic latest-version, transitions ready -> draft (§7.3, §8.0).
+    try:
+        out = (
+            supabase.rpc("ewp_reopen_writing_unit", {
+                "p_user": user.get("id"),
+                "p_session": str(session_id),
+                "p_unit": str(unit_id),
+                "p_expected_latest_version": str(body.expected_latest_version_id),
+            }).execute()
+        ).data
+    except Exception as exc:
+        raise _rpc_error(exc)
 
-    unit = (
-        supabase.table("writing_session_units").select("*")
-        .eq("id", str(unit_id)).eq("session_id", str(session_id)).maybe_single().execute()
-    ).data
-    if not unit:
-        raise HTTPException(status_code=404, detail="unit not found")
-    if unit["status"] != st.UNIT_READY:
-        raise HTTPException(status_code=409, detail="only a ready unit can be reopened")
-
-    latest = (
-        supabase.table("writing_unit_versions").select("id")
-        .eq("unit_id", str(unit_id)).order("version_number", desc=True).limit(1).execute()
-    ).data or []
-    if not latest or latest[0]["id"] != str(body.expected_latest_version_id):
-        raise HTTPException(status_code=409, detail="expected_latest_version_id is stale")
-
-    supabase.table("writing_session_units").update({"status": st.UNIT_DRAFT}).eq("id", str(unit_id)).execute()
     finalize_writing_session(supabase, str(session_id))
-    return {"unit_id": str(unit_id), "status": st.UNIT_DRAFT}
+    return out or {"unit_id": str(unit_id), "status": st.UNIT_DRAFT}
 
 
 def _feedback_released(session: dict) -> bool:
@@ -405,6 +338,26 @@ def error_summary(user: dict = Depends(get_current_user)) -> dict:
 def _current_projection_revision() -> int:
     """Code-defined projection revision pinned at session creation (§4.11)."""
     return 1
+
+
+# Map the RPC RAISE prefixes to HTTP status codes.
+_RPC_STATUS = {
+    "ewp_not_found": 404,
+    "ewp_stale_version": 409,
+    "ewp_not_submittable": 409,
+    "ewp_session_closed": 409,
+    "ewp_reopen_forbidden": 409,
+    "ewp_mode_unsupported": 400,
+}
+
+
+def _rpc_error(exc: Exception) -> HTTPException:
+    msg = str(getattr(exc, "message", None) or exc)
+    for prefix, code in _RPC_STATUS.items():
+        if prefix in msg:
+            return HTTPException(status_code=code, detail=msg.split("\n", 1)[0])
+    logger.exception("writing-practice RPC failed")
+    return HTTPException(status_code=500, detail="writing practice operation failed")
 
 
 def _sibling_latest_texts(supabase: Any, session_id: str, *, exclude_unit_id: str) -> dict[int, str]:
