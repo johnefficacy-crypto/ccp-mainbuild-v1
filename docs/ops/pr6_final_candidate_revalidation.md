@@ -27,35 +27,41 @@ for the shadow gate — but only once the allowlist gate (Gate 9) is cleared.
 
 ---
 
-## Start Gate Results — 2026-06-19
+## Start Gate Results — 2026-06-19 (STATIC PREFLIGHT — NOT a clean operator run)
+
+> **Important:** The 2026-06-19 session was a **static code-inspection preflight**, not a live
+> operator run. No HTTP calls, no DB queries, no feature-flag changes were made. Gates 2, 3, 5,
+> 6 (live state), 7 (live registration), 12 were OPERATOR PENDING or NOT RUN. The run stopped
+> at Gate 9. These results do **not** constitute eleven operator passes — only a partial
+> code-level pre-check. A full clean operator run is required for P7. The existing
+> `docs/audits/2026-06-19-final-candidate-revalidation.md` is immutable; the clean run must
+> produce a **separate dated audit** (e.g. `docs/audits/2026-07-XX-final-candidate-revalidation.md`).
 
 Code-level gates were verified against `origin/main` SHA
-`ba3ea3516f10d07d4708a12942e03162d2f2da50`. Live gates are marked OPERATOR
-PENDING and cannot be verified from the documentation agent environment.
+`ba3ea3516f10d07d4708a12942e03162d2f2da50` (stale — new candidate must be current `main`).
+Live gates are marked OPERATOR PENDING and cannot be verified from the documentation agent environment.
 
 | Gate | Check | Result | Notes |
 |------|-------|--------|-------|
-| 1 | main SHA (A) recorded | PASS | `ba3ea3516f10d07d4708a12942e03162d2f2da50` |
+| 1 | main SHA (A) recorded | CODE PASS | `ba3ea3516f10d07d4708a12942e03162d2f2da50` — **stale**; new candidate must be current `main` |
 | 2 | Render deployed SHA (B) | OPERATOR PENDING | Render API not accessible from agent; must be captured by operator |
 | 3 | A == B | OPERATOR PENDING | Requires Gate 2 |
-| 4 | Validation fingerprint computed | PASS | Combined SHA256: `6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a` |
+| 4 | Validation fingerprint computed | SUPERSEDED | 18-file hash `6ddce48c…` computed at stale SHA against old v1 manifest; **v2 manifest is 36 files** (reference hash `f2ee2c40…` per `pr7_shadow_gate_results.md`); must be recomputed at the new deployed candidate SHA before use |
 | 5 | Render instance count = 1 | OPERATOR PENDING | Topology proof requires Render dashboard access |
 | 6 | DISABLE_SCHEDULER unset or false | CODE PRESENT | `scheduler.py:140` guard confirmed; live env state requires operator |
-| 7 | `GET /api/admin/jobs` preflight | PASS | Endpoint at `notifications.py:241`; `mock:sweeper` registered (30 s interval, `max_instances=1`) |
-| 8 | Preview route exists (404 not 405) | PASS | `admin_study_os.py:1318` — `GET /api/admin/study-os/mocks/{mock_id}/mastery-preview` defined |
-| **9** | **Allowlist code deployed** | **STOP — NOT FOUND** | No `FF_MOCK_MASTERY_LIVE_USER_IDS` or per-user allowlist found; `FF_MOCK_MASTERY_WRITES` is global; canary plan requires bounded allowlist before any live traffic |
-| 10 | Migration 181 deployed | PASS | `181_mock_correction_tasks_uniqueness.sql` present; unique partial indexes on `mock_correction_tasks` confirmed |
-| 11 | Writer-authority guard deployed | PASS | `canonical.py:2252` — `platform_attempt_authoritative_fields_rejected` (allowlist `_PLATFORM_REVIEW_ALLOWED = {"review_status", "notes"}`) |
-| 12 | FF = shadow for run | NOT RUN | Gate 9 stops the run |
+| 7 | `GET /api/admin/jobs` preflight | CODE PASS / LIVE PENDING | Endpoint at `notifications.py:241`; `mock:sweeper` registered (30 s interval, `max_instances=1`) — live scheduler registration requires operator confirmation |
+| 8 | Preview route exists (404 not 405) | CODE PASS | `admin_study_os.py:1318` — `GET /api/admin/study-os/mocks/{mock_id}/mastery-preview` defined |
+| **9** | **Allowlist code deployed** | **STOP — NOT FOUND (2026-06-19); CODE-FIXED on main** | Allowlist (`FF_MOCK_MASTERY_LIVE_USER_IDS`) was absent in June; merged PR #753. Operator must set `FF_MOCK_MASTERY_LIVE_USER_IDS` with ≥1 named user UUID on the new candidate |
+| 10 | Migration 181 deployed | FILE PRESENT / LIVE-DB PENDING | File + static inspection confirmed; live staging DB migration history must be verified (`\d+ mock_correction_tasks` and partial indexes) |
+| 11 | Writer-authority guard deployed | CODE PASS | `canonical.py` — `platform_attempt_authoritative_fields_rejected` confirmed |
+| 12 | FF = shadow for run | NOT RUN | Gate 9 stopped the run in June; must be confirmed on new candidate |
 
-**Gate 9 is a hard prerequisite.** Per the canary plan, `FF_MOCK_MASTERY_WRITES`
-is currently a global flag. A live flip without a user-scoped allowlist would
-expose every user to live mastery writes. The allowlist implementation PR has not
-yet merged (see checklist: `Live canary user allowlist | BLOCKED`).
+**Gate 9 is a hard prerequisite.** Allowlist code (`FF_MOCK_MASTERY_LIVE_USER_IDS`) is now
+merged (PR #753). The new P7 run must deploy current `main` to staging, populate the allowlist
+env var with ≥1 named consenting user, and re-run all 12 gates on that pinned SHA.
 
 ---
 
-## Code Remediation Status
 ## Shadow Gate Tool
 
 The shadow analysis tool (`tools/mastery_shadow_analysis/shadow_analysis.py`)
@@ -130,7 +136,6 @@ code-fixed on `main`. Live proof pending Gate 9 clearance.
 
 - [ ] Resubmit does not increase `mock_mastery_shadow` row count (unique index enforced)
 
-### F. Automatic scheduler drain
 ### F. Shadow-replay gate (PR-5A tool)
 
 - [ ] Run: `python tools/mastery_shadow_analysis/shadow_analysis.py --json shadow-replay --days 1`
@@ -161,27 +166,36 @@ code-fixed on `main`. Live proof pending Gate 9 clearance.
 
 ## Evidence Location
 
+### 2026-06-19 static preflight (IMMUTABLE — superseded)
+
 | Artifact | Location |
 |----------|----------|
-| HTTP curl output | Operator-held (outside repo) |
-| SQL query results | Operator-held (outside repo) |
-| Shadow analysis JSON | Operator-held (outside repo) |
-| Code fingerprint | Recorded in this file and in `docs/audits/2026-06-19-final-candidate-revalidation.md` |
+| Code-level inspection results | This file (gate table above) |
+| Preflight SHA | `ba3ea3516f10d07d4708a12942e03162d2f2da50` (stale — static inspection only) |
+| Old 18-file fingerprint | `6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a` (superseded by 36-file v2 manifest) |
+| Historical record | `docs/audits/2026-06-19-final-candidate-revalidation.md` (immutable) |
 
-**Baseline SHA:** `ba3ea3516f10d07d4708a12942e03162d2f2da50` (main as of 2026-06-19 inspection; deployed Render SHA must be confirmed A == B by operator)
-**Validation fingerprint:** `6ddce48c1c8e92a5c40bb076e3b6e9740b9a4c4d9ce3cfc325fbfa995603b72a`
-**Gate 9 failure date:** 2026-06-19
-**Validated by:** Remote docs agent (code-level only); full operator run blocked by Gate 9
-**Next action:** Merge and deploy live canary user allowlist, then repeat full operator run
+**Gate 9 failure date:** 2026-06-19  
+**Validated by:** Static code inspection only; no live HTTP/DB/FF evidence; full operator run blocked by Gate 9  
+**Next action:** Deploy current `main` to staging; record new candidate SHA A; confirm Render SHA B == A; set `FF_MOCK_MASTERY_LIVE_USER_IDS`; re-run all 12 gates + A–J checklist on a real topic-linked attempt. Create a new dated audit for the clean run.
+
+---
+
+### Clean P7 run evidence (TO BE FILLED by operator)
+
+Create a new dated audit file: `docs/audits/2026-07-XX-final-candidate-revalidation.md`  
+Then update `docs/ops/pr6_final_candidate_revalidation.md` and the shared checklist to reflect PASS/FAIL.
+
 | Artifact | Where to store |
 |---|---|
-| HTTP response screenshots / curl output | Attach to this PR |
-| SQL query results | Attach to this PR |
-| shadow-replay JSON output | Attach to this PR |
-| correction-parity JSON output | Attach to this PR |
+| HTTP response screenshots / curl output | New dated audit + attached to PR |
+| SQL query results (migration 181 live-DB check) | New dated audit |
+| shadow-replay JSON output | New dated audit |
+| correction-parity JSON output | New dated audit |
+| 36-file fingerprint recomputed at candidate SHA | New dated audit |
 | Baseline SHA | Record below |
 
-**Baseline SHA:** `______________________________`  
+**Baseline SHA (new candidate):** `______________________________`  
 **Deployed at:** `______________________________`  
 **Validated by:** `______________________________`  
 **Date:** `______________________________`
