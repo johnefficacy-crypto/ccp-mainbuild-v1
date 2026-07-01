@@ -73,11 +73,11 @@ class _Seed:
         })
         return self
 
-    def phase(self, pid, exam_id, cycle_id):
+    def phase(self, pid, exam_id, cycle_id, *, status="expected"):
         self.db["exam_phases"].append({
             "id": pid, "exam_id": exam_id, "exam_cycle_id": cycle_id,
             "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1,
-            "phase_start": None, "phase_end": None, "status": "expected",
+            "phase_start": None, "phase_end": None, "status": status,
         })
         return self
 
@@ -484,45 +484,71 @@ def test_d12_step9_other_cycle_locked_coverage_does_not_activate():
 
 
 def test_d12_step9_core_selected_cycle_complete_is_ready():
-    """core + selected-cycle details + phase + >=1 applicable locked coverage
-    (exam-wide inheritance allowed by D08) -> Step 9 ready."""
+    """core + cycle details + CONFIRMED phase (status=completed) + >=1 applicable
+    locked coverage (exam-wide inheritance allowed by D08) -> Step 9 ready."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="core", locked=1)  # exam-wide locked row
     s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA")
+    s.phase("pA", "e1", "cA", status="completed")
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step9 = next(st for st in cr["steps"] if st["step"] == 9)
     assert step9["status"] == "ready"
+    assert step9["evidence_scope"] == "selected_cycle_plus_exam_wide"
 
 
-def test_d12_step9_light_planner_disabled_not_applicable():
-    """light + planner activation disabled (exam.is_active=False) -> Step 9 N/A."""
+def test_d12_step9_incomplete_phase_not_ready():
+    """FAIL-OPEN REGRESSION: an 'expected' (placeholder, unconfirmed) phase is
+    present and locked coverage exists, but the phase is NOT complete -> Step 9
+    must NOT be ready (phase presence is not phase completeness)."""
     s = _Seed()
-    s.exam("e1", name="Exam1", mode="light", locked=1, active=False)
+    s.exam("e1", name="Exam1", mode="core", locked=1)
     s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA")
-    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
-    assert r.status_code == 200
-    cr = r.json()["cycle_readiness"]
-    step9 = next(st for st in cr["steps"] if st["step"] == 9)
-    assert step9["status"] == "not_applicable"
-    assert step9["not_applicable_reason"] == "planner_activation_disabled"
-
-
-def test_d12_step9_light_planner_enabled_no_coverage_fails():
-    """light + planner activation enabled (is_active=True) but no applicable
-    locked coverage for the selected cycle -> minimum fails (missing), NOT N/A."""
-    s = _Seed()
-    s.exam("e1", name="Exam1", mode="light", locked=0, active=True)
-    s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA")
+    s.phase("pA", "e1", "cA", status="expected")  # present but not confirmed
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step9 = next(st for st in cr["steps"] if st["step"] == 9)
     assert step9["status"] == "missing"
+    phase_chk = next(c for c in step9["checks"] if c["check_id"] == "required_phases_complete")
+    assert phase_chk["status"] == "missing"
+
+
+def test_d12_step9_light_applies_minimum_no_is_active_shortcut():
+    """light has no canonical planner-activation source, so it is treated like
+    core (minimum APPLIED, fail-closed). is_active=False must NOT make it N/A:
+    a complete light cycle is ready; without coverage it is missing."""
+    s = _Seed()
+    # light + inactive + complete -> still evaluated (ready), NOT not_applicable.
+    s.exam("e1", name="Exam1", mode="light", locked=1, active=False)
+    s.cycle("cA", "e1")
+    s.phase("pA", "e1", "cA", status="active")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
+    assert step9["status"] == "ready"
+
+    # light + no coverage -> minimum fails (missing), still not N/A.
+    s2 = _Seed()
+    s2.exam("e2", name="Exam2", mode="light", locked=0, active=True)
+    s2.cycle("cB", "e2")
+    s2.phase("pB", "e2", "cB", status="completed")
+    r2 = _detail(_client_from_seed(s2), "e2", cycle_id="cB")
+    step9b = next(st for st in r2.json()["cycle_readiness"]["steps"] if st["step"] == 9)
+    assert step9b["status"] == "missing"
+
+
+def test_d12_step9_coverage_failure_routes_cta_to_syllabus():
+    """Locked deep-link contract: when cycle+phases are complete but coverage is
+    missing, the CTA routes to Syllabus/coverage (not Setup)."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="core", locked=0)  # no coverage
+    s.cycle("cA", "e1")
+    s.phase("pA", "e1", "cA", status="completed")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
+    assert step9["status"] == "missing"
+    assert "tab=syllabus" in step9["action_cta"]["url"]
 
 
 # ---------------------------------------------------------------------------

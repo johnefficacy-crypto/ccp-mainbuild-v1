@@ -631,45 +631,62 @@ def compute_cycle_readiness(
     # locked-coverage/phase counts span every cycle and would let Cycle B's evidence satisfy
     # Cycle A (fail-open, cycle-canonicity violation). `activation_verdict` is intentionally
     # no longer consumed for this decision.
-    #   minimum = cycle details complete (s1) AND required phases present (s2)
-    #             AND >=1 applicable locked coverage row for the selected cycle (D08: locked_count).
-    # Mode applicability (D12): index_only/archive -> N/A; light -> applicable only when the
-    # exam is exposed to Study OS / planner activation (exams.is_active); core/light-enabled -> apply.
-    planner_activation_enabled = bool((exam or {}).get("is_active", True))
-    if management_mode in _MGMT_MODES_NO_ACTIVATE or (
-        management_mode == "light" and not planner_activation_enabled
-    ):
+    #   minimum = cycle details complete (s1) AND required phases COMPLETE
+    #             AND >=1 applicable locked coverage row (D08 selected-cycle+exam-wide, locked_count).
+    # Required-phase COMPLETENESS: phase presence (s2) is necessary but not sufficient. A phase is
+    # confirmed when its status is 'active' or 'completed'; 'cancelled' phases are ignored; any
+    # remaining 'expected' (placeholder) phase means the cycle's phases are not complete. (The full
+    # D05 phase_kind / evidence-policy predicate is not implemented yet; requiring confirmed status
+    # here is the fail-closed subset — it never reports ready on an unconfirmed phase row.)
+    phase_status_rows = (
+        sb.table("exam_phases").select("status").eq("exam_cycle_id", cycle_id).execute().data or []
+    )
+    _confirmable_phases = [p for p in phase_status_rows if (p.get("status") or "") != "cancelled"]
+    required_phases_complete = bool(_confirmable_phases) and all(
+        (p.get("status") or "") in ("active", "completed") for p in _confirmable_phases
+    )
+    # Mode applicability (D12): index_only/archive -> N/A. `light` is "required only when exposed
+    # to Study OS / planner activation", but the schema has NO canonical planner-activation source
+    # (exams.is_active is aspirant visibility per domain-model, and planner.py does not gate on it),
+    # so we cannot truthfully mark light N/A. Until that authority exists, `light` is treated like
+    # `core` and the minimum is APPLIED (fail-closed — over-block, never false-ready).
+    if management_mode in _MGMT_MODES_NO_ACTIVATE:
         s9 = _na_step(
             9, "review_activate", "Review & activate", "planner_activation_disabled",
-            gate_class="hard", evidence_scope="selected_cycle",
+            gate_class="hard", evidence_scope="selected_cycle_plus_exam_wide",
         )
     elif not management_mode:
         s9 = _step(
             9, "review_activate", "Review & activate", _MISSING,
-            gate_class="hard", evidence_scope="selected_cycle",
+            gate_class="hard", evidence_scope="selected_cycle_plus_exam_wide",
             note="Management mode classification required",
         )
     else:
-        minimum_met = (
-            s1["status"] == _READY
-            and s2["status"] == _READY
-            and locked_count >= 1
-        )
+        cycle_ok = s1["status"] == _READY
+        coverage_ok = locked_count >= 1
+        minimum_met = cycle_ok and required_phases_complete and coverage_ok
+        # Locked deep-link contract: route the CTA to the FIRST failed prerequisite.
+        if minimum_met:
+            cta = None
+        elif not cycle_ok or not required_phases_complete:
+            cta = {"label": "Complete setup",
+                   "url": f"/admin/exam-intelligence/exams/{exam_id}?tab=setup"}
+        else:  # cycle + phases fine -> the failure is coverage
+            cta = {"label": "Review syllabus coverage",
+                   "url": f"/admin/exam-intelligence/exams/{exam_id}?tab=syllabus"}
         s9 = _step(
             9, "review_activate", "Review & activate",
             _READY if minimum_met else _MISSING,
-            gate_class="hard", evidence_scope="selected_cycle",
+            gate_class="hard", evidence_scope="selected_cycle_plus_exam_wide",
             checks=[
                 {"check_id": "cycle_details_complete", "gate_class": "hard", "status": s1["status"]},
-                {"check_id": "required_phases_present", "gate_class": "hard", "status": s2["status"]},
-                {"check_id": "selected_cycle_locked_coverage", "gate_class": "hard",
-                 "status": _READY if locked_count >= 1 else _MISSING, "locked_count": locked_count},
+                {"check_id": "required_phases_complete", "gate_class": "hard",
+                 "status": _READY if required_phases_complete else _MISSING},
+                {"check_id": "applicable_locked_coverage", "gate_class": "hard",
+                 "status": _READY if coverage_ok else _MISSING, "locked_count": locked_count},
             ],
             note=None if minimum_met else "Selected-cycle activation prerequisites incomplete",
-            action_cta=None if minimum_met else {
-                "label": "Complete setup",
-                "url": f"/admin/exam-intelligence/exams/{exam_id}?tab=setup",
-            },
+            action_cta=cta,
         )
     steps.append(s9)
 
