@@ -1,4 +1,4 @@
-"""Pure text-contract tests for migration 208 (EWP-2B evaluator RPCs).
+"""Pure text-contract tests for migration 209 (EWP-2B evaluator RPCs).
 
 No DB. Reads the SQL file as text and asserts the structural invariants that the
 async evaluator + mastery-outbox workers depend on (fencing, replay guard,
@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 _SQL_PATH = (
-    Path(__file__).parents[3] / "supabase/migrations/208_english_writing_practice_evaluator.sql"
+    Path(__file__).parents[3] / "supabase/migrations/209_english_writing_practice_evaluator.sql"
 )
 
 
@@ -19,7 +19,7 @@ def _sql() -> str:
 
 def test_migration_header():
     text = _SQL_PATH.read_text(encoding="utf-8")
-    assert text.startswith("-- Migration 208")
+    assert text.startswith("-- Migration 209")
 
 
 def test_security_definer_functions_present():

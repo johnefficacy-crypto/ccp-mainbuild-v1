@@ -1,4 +1,4 @@
-"""Behavioural integration test for the EWP-2B evaluator RPCs (migration 208).
+"""Behavioural integration test for the EWP-2B evaluator RPCs (migration 209).
 
 Applies migrations 205 + 207 + 208 to a real Postgres and drives the async
 evaluator contract end-to-end: claim (FOR UPDATE SKIP LOCKED + lease + token),
@@ -110,7 +110,7 @@ def _apply():
     _psql(_BOOTSTRAP)
     _psql_file(_MIG / "205_english_writing_practice_schema.sql")
     _psql_file(_MIG / "207_english_writing_practice_rpcs.sql")
-    _psql_file(_MIG / "208_english_writing_practice_evaluator.sql")
+    _psql_file(_MIG / "209_english_writing_practice_evaluator.sql")
     _psql(_FIXTURES)
     yield
 

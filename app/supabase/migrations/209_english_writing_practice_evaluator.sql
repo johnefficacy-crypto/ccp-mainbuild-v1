@@ -1,4 +1,4 @@
--- Migration 208: English Writing Practice (EWP-2B) — async evaluator worker RPCs.
+-- Migration 209: English Writing Practice (EWP-2B) — async evaluator worker RPCs.
 --
 -- The async language/rubric evaluator runs OUTSIDE the DB (the model/mock call
 -- must not hold a transaction, §8.1 step 3). The claim, the atomic terminal
@@ -22,7 +22,7 @@
 --   * Mastery side effects go through the transactional outbox (§8.2); the drain
 --     writes evidence + shadow idempotently (shadow-only until Lane A clears).
 --
--- Migration number: highest on main is 207; this is 208.
+-- Migration number: highest on main is 208 (208_topic_prerequisite_lifecycle landed); this is 209.
 -- VERIFY DB against schema_migrations before apply (OPERATOR).
 
 CREATE SCHEMA IF NOT EXISTS ewp_private;  -- created in 205; defensive for isolation.
