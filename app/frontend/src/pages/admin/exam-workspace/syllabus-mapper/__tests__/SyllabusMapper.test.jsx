@@ -20,6 +20,14 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 jest.mock("../../../../../lib/api", () => ({
   __esModule: true,
   api: { get: jest.fn(), post: jest.fn() },
+  getApiErrorMessage: (e) => (e && e.message) || "error",
+}));
+
+// SyllabusMapperPanel now renders the (manage-gated) topic editor, which reads
+// auth. Default to a non-manage user so the editor renders null here.
+jest.mock("../../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "admin", permissions: [] } }),
 }));
 
 const { api } = require("../../../../../lib/api");

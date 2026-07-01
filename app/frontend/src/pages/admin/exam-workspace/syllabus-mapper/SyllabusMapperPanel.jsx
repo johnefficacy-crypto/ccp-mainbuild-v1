@@ -6,6 +6,7 @@ import DocumentSelector from "./DocumentSelector";
 import PageViewer from "./PageViewer";
 import ProposalActionBar from "./ProposalActionBar";
 import ProposalRunner from "./ProposalRunner";
+import SyllabusTopicEditorPanel from "./SyllabusTopicEditorPanel";
 import TopicTreePanel from "./TopicTreePanel";
 import TopicEditDrawer from "./topic-edit/TopicEditDrawer";
 import { useTopicEdit } from "./topic-edit/useTopicEdit";
@@ -78,6 +79,8 @@ export default function SyllabusMapperPanel({ status = null, rowId = null }) {
 
   return (
     <div className="flex flex-col h-full" data-testid="syllabus-mapper-panel">
+      {/* J2-A: canonical topic/alias editor (manage-gated; renders null otherwise) */}
+      <SyllabusTopicEditorPanel examId={examId} />
       {/* Deep-link: show pending review list when status/rowId is in the URL */}
       {showPendingList && (
         <div className="border-b border-gray-200 bg-amber-50 px-4 py-3" data-testid="syllabus-pending-list">
