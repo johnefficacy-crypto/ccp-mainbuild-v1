@@ -557,8 +557,13 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   pred_issue      uuid;
+  pred_proj       uuid;
+  root_proj       uuid;
   review_issue    uuid;
   review_decision text;
+  cited_created   timestamptz;
+  cited_seq       bigint;
+  prev_decision   text;
   new_issue       uuid;
   new_kind        text;
   new_override    uuid;
@@ -577,9 +582,9 @@ BEGIN
       RAISE EXCEPTION 'evidence_correction_invalid: predecessor % already superseded (not the effective tail)', NEW.supersedes_evidence_key;
     END IF;
 
-    -- predecessor MUST resolve to an issue via its projection (corrections only
-    -- apply to issue-derived evidence, not to projection-less evidence).
-    SELECT ie.id INTO pred_issue
+    -- predecessor MUST resolve to an issue via its projection; capture the
+    -- predecessor's EXACT projection (retract must preserve it).
+    SELECT p.issue_projection_id, ie.id INTO pred_proj, pred_issue
       FROM public.user_topic_mastery_evidence p
       JOIN public.writing_issue_projections pr ON pr.id = p.issue_projection_id
       JOIN public.writing_issue_events ie ON ie.id = pr.issue_event_id
@@ -588,11 +593,49 @@ BEGIN
       RAISE EXCEPTION 'evidence_correction_invalid: predecessor % has no issue projection to correct', NEW.supersedes_evidence_key;
     END IF;
 
-    -- the citing review event must target that same issue
-    SELECT issue_event_id, decision INTO review_issue, review_decision
+    -- root of the supersession chain (the original assert) — re-assert must
+    -- restore its EXACT automatic projection, not just any automatic one.
+    WITH RECURSIVE chain AS (
+      SELECT e.evidence_key, e.supersedes_evidence_key, e.issue_projection_id
+        FROM public.user_topic_mastery_evidence e
+        WHERE e.evidence_key = NEW.supersedes_evidence_key
+      UNION ALL
+      SELECT e.evidence_key, e.supersedes_evidence_key, e.issue_projection_id
+        FROM public.user_topic_mastery_evidence e
+        JOIN chain c ON e.evidence_key = c.supersedes_evidence_key
+    )
+    SELECT issue_projection_id INTO root_proj FROM chain WHERE supersedes_evidence_key IS NULL;
+
+    -- citing review event: target issue, decision, and ordering position
+    SELECT issue_event_id, decision, created_at, event_seq
+      INTO review_issue, review_decision, cited_created, cited_seq
       FROM public.writing_issue_review_events WHERE id = NEW.review_event_id;
     IF review_issue IS DISTINCT FROM pred_issue THEN
       RAISE EXCEPTION 'evidence_correction_invalid: review event % targets a different issue than the predecessor', NEW.review_event_id;
+    END IF;
+
+    -- the cited review must be the LATEST for the issue (no stale corrections)
+    IF EXISTS (
+      SELECT 1 FROM public.writing_issue_review_events r2
+      WHERE r2.issue_event_id = pred_issue
+        AND (r2.created_at, r2.event_seq) > (cited_created, cited_seq)
+    ) THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: review event % is not the latest for the issue (stale)', NEW.review_event_id;
+    END IF;
+
+    -- the decision must actually CHANGE the effective decision; an unchanged
+    -- transition (confirmed->confirmed, invalidated->invalidated, ...) emits
+    -- nothing (§4.10a). Previous effective = latest event strictly before the
+    -- cited one, defaulting to 'confirmed' (active) when there is none.
+    SELECT decision INTO prev_decision
+      FROM public.writing_issue_review_events r2
+      WHERE r2.issue_event_id = pred_issue
+        AND (r2.created_at, r2.event_seq) < (cited_created, cited_seq)
+      ORDER BY r2.created_at DESC, r2.event_seq DESC
+      LIMIT 1;
+    prev_decision := COALESCE(prev_decision, 'confirmed');
+    IF review_decision = prev_decision THEN
+      RAISE EXCEPTION 'evidence_correction_invalid: review decision % is unchanged from the previous effective decision (no correction)', review_decision;
     END IF;
 
     -- Locked review-decision -> evidence-op mapping (§4.12c):
@@ -614,17 +657,21 @@ BEGIN
       RAISE EXCEPTION 'evidence_correction_invalid: projection is on a different issue than the predecessor';
     END IF;
 
-    -- op-specific projection identity:
+    -- EXACT op-specific projection identity:
     --   replace  -> the review-override projection created by the cited event;
-    --   re-assert-> the automatic projection (restore the original classification);
-    --   retract  -> any projection on the same issue (preserve the predecessor).
+    --   re-assert-> the EXACT original automatic projection at the chain root;
+    --   retract  -> the predecessor's EXACT projection (preserve).
     IF NEW.evidence_op = 'replace' THEN
       IF new_kind IS DISTINCT FROM 'review_override' OR new_override IS DISTINCT FROM NEW.review_event_id THEN
         RAISE EXCEPTION 'evidence_correction_invalid: replace must carry the review_override projection created by the cited review event';
       END IF;
     ELSIF NEW.evidence_op = 'assert' THEN
-      IF new_kind IS DISTINCT FROM 'automatic' THEN
-        RAISE EXCEPTION 'evidence_correction_invalid: re-assert must restore the automatic projection';
+      IF new_kind IS DISTINCT FROM 'automatic' OR NEW.issue_projection_id IS DISTINCT FROM root_proj THEN
+        RAISE EXCEPTION 'evidence_correction_invalid: re-assert must restore the exact original automatic projection at the chain root';
+      END IF;
+    ELSIF NEW.evidence_op = 'retract' THEN
+      IF NEW.issue_projection_id IS DISTINCT FROM pred_proj THEN
+        RAISE EXCEPTION 'evidence_correction_invalid: retract must preserve the predecessor''s exact projection';
       END IF;
     END IF;
   END IF;

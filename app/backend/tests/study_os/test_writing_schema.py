@@ -322,7 +322,12 @@ def test_correction_causal_chain_trigger():
     # locked review-decision -> evidence-op mapping + projection-per-superseder
     assert "does not match review decision" in _SQLL
     assert "a superseding row must carry a projection on the predecessor issue" in _SQLL
-    assert "re-assert must restore the automatic projection" in _SQLL
+    # stale / redundant / exact-projection identity (latest-review + prev-effective)
+    assert "is not the latest for the issue (stale)" in _SQLL
+    assert "unchanged from the previous effective decision" in _SQLL
+    assert "re-assert must restore the exact original automatic projection at the chain root" in _SQLL
+    assert "retract must preserve the predecessor" in _SQLL
+    assert "with recursive chain as" in _SQLL  # chain-root resolution
 
 
 def test_exercise_type_domain_constrained():

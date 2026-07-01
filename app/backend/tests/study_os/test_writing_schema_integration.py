@@ -360,26 +360,6 @@ def test_helper_not_a_public_rpc_oracle():
     ) == "0"
 
 
-def test_correction_cross_issue_rejected():
-    cc = "c" * 64
-    _psql(f"""
-      INSERT INTO writing_issue_projections(id,issue_event_id,projection_revision,projection_kind,canonical_error_type)
-        SELECT '00000000-0000-0000-0000-00000000b001','00000000-0000-0000-0000-00000000c001',1,'automatic','careless'
-        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_projections WHERE id='00000000-0000-0000-0000-00000000b001');
-      INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,observed_at)
-        SELECT '00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill',
-               '00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{cc}',now()
-        WHERE NOT EXISTS (SELECT 1 FROM user_topic_mastery_evidence WHERE evidence_key='{cc}');
-      INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type)
-        SELECT '00000000-0000-0000-0000-00000000b002','00000000-0000-0000-0000-00000000c002','invalidated','system'
-        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='00000000-0000-0000-0000-00000000b002');
-    """)
-    # retract cites a review for issue c002 while superseding evidence on c001 -> rejected
-    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
-          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','{'d'*64}','retract','00000000-0000-0000-0000-00000000b002','{cc}',now())",
-          expect_ok=False)
-
-
 def test_wrapped_role_rls_owner_only():
     # A non-owner authenticated user and anon see none of user aa's sessions.
     for role, setuid in [("authenticated", "SET LOCAL ewp.uid='00000000-0000-0000-0000-0000000000cc'; "), ("anon", "")]:
@@ -388,63 +368,99 @@ def test_wrapped_role_rls_owner_only():
         assert digits == ["0"], (role, out)
 
 
-def test_correction_covers_reassert_and_rejects_incomplete_replace():
-    # predecessor evidence on issue c001 (has an automatic projection from
-    # test_correction_cross_issue_rejected's fixture).
-    ee = "e" * 64
+# --- Correction-chain tests: each uses an ISOLATED issue so the history-sensitive
+#     latest-review / previous-effective-decision checks are deterministic. ---
+
+def _seed_issue(n, *, extra_proj_rev=None):
+    """Isolated issue + automatic projection + predecessor assert for user aa.
+    Returns (issue_id, proj_id, pred_key). Optionally seeds a second automatic
+    projection at extra_proj_rev (returned proj id is derivable)."""
+    issue = f"1eee0000-0000-4000-8000-{n:012x}"
+    proj = f"2eee0000-0000-4000-8000-{n:012x}"
+    pred = f"{n:02x}" * 32
     _psql(f"""
-      INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type)
-        SELECT '00000000-0000-0000-0000-00000000b010','00000000-0000-0000-0000-00000000c001','confirmed','human'
-        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='00000000-0000-0000-0000-00000000b010');
+      INSERT INTO writing_issue_events(id,evaluation_id,issue_type,lineage_id,severity)
+        SELECT '{issue}','00000000-0000-0000-0000-0000000000d5','article','{issue}','must_fix'
+        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_events WHERE id='{issue}');
+      INSERT INTO writing_issue_projections(id,issue_event_id,projection_revision,projection_kind,canonical_error_type)
+        SELECT '{proj}','{issue}',1,'automatic','careless'
+        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_projections WHERE id='{proj}');
       INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,observed_at)
         SELECT '00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill',
-               '00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{ee}',now()
-        WHERE NOT EXISTS (SELECT 1 FROM user_topic_mastery_evidence WHERE evidence_key='{ee}');
+               '00000000-0000-0000-0000-0000000000d4','production','{proj}','{pred}',now()
+        WHERE NOT EXISTS (SELECT 1 FROM user_topic_mastery_evidence WHERE evidence_key='{pred}');
     """)
-    reassert_key = "ab" * 32
-    # re-assert (assert + supersedes) citing the SAME issue's confirm event → OK
-    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
-          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{reassert_key}','assert','00000000-0000-0000-0000-00000000b010','{ee}',now())",
-          expect_ok=True)
-    # replace with NULL projection → rejected
-    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
-          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','{'ba'*32}','replace','00000000-0000-0000-0000-00000000b010','{reassert_key}',now())",
-          expect_ok=False)
+    if extra_proj_rev is not None:
+        proj2 = f"2fff0000-0000-4000-8000-{n:012x}"
+        _psql(f"INSERT INTO writing_issue_projections(id,issue_event_id,projection_revision,projection_kind,canonical_error_type) "
+              f"SELECT '{proj2}','{issue}',{extra_proj_rev},'automatic','concept_gap' "
+              f"WHERE NOT EXISTS (SELECT 1 FROM writing_issue_projections WHERE id='{proj2}')")
+    return issue, proj, pred
 
 
-def test_correction_of_non_issue_evidence_rejected():
-    # evidence with NO issue projection cannot be corrected (KEY_A is a plain
-    # assert with issue_projection_id NULL).
-    _psql("INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type) "
-          "SELECT '00000000-0000-0000-0000-00000000b020','00000000-0000-0000-0000-00000000c001','invalidated','system' "
-          "WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='00000000-0000-0000-0000-00000000b020')")
-    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
-          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','{'7'*64}','retract','00000000-0000-0000-0000-00000000b020','{_KEY_A}',now())",
-          expect_ok=False)
+def _review(issue, k, decision):
+    rid = f"3eee0000-0000-4000-8000-{k:012x}"
+    _psql(f"INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type) "
+          f"SELECT '{rid}','{issue}','{decision}','system' "
+          f"WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='{rid}')")
+    return rid
+
+
+def _corr(pred, proj, rid, op, key, *, expect_ok):
+    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,"
+          "issue_projection_id,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
+          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill',"
+          f"'00000000-0000-0000-0000-0000000000d4','production',{'NULL' if proj is None else repr(proj)},'{key}','{op}',"
+          f"'{rid}','{pred}',now())", expect_ok=expect_ok)
+
+
+def test_correction_cross_issue_rejected():
+    issue_a, proj_a, pred_a = _seed_issue(0x10)
+    issue_b, _, _ = _seed_issue(0x11)
+    rev_b = _review(issue_b, 0x110, "invalidated")   # review on the WRONG issue
+    _corr(pred_a, proj_a, rev_b, "retract", "d1" * 32, expect_ok=False)
 
 
 def test_review_decision_to_evidence_op_mapping():
-    # Predecessor evidence on issue c001 (projection b001, automatic) exists from
-    # test_correction_cross_issue_rejected's fixture (evidence_key = 'c'*64).
-    pred = "c" * 64
-    # a confirmed and an invalidated review on the same issue
-    _psql("""
-      INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type)
-        SELECT '00000000-0000-0000-0000-00000000d101','00000000-0000-0000-0000-00000000c001','confirmed','human'
-        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='00000000-0000-0000-0000-00000000d101');
-      INSERT INTO writing_issue_review_events(id,issue_event_id,decision,reviewer_type)
-        SELECT '00000000-0000-0000-0000-00000000d102','00000000-0000-0000-0000-00000000c001','invalidated','system'
-        WHERE NOT EXISTS (SELECT 1 FROM writing_issue_review_events WHERE id='00000000-0000-0000-0000-00000000d102');
-    """)
-    # confirmed -> retract : rejected (decision/op mismatch)
-    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
-          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{'e1'*32}','retract','00000000-0000-0000-0000-00000000d101','{pred}',now())",
-          expect_ok=False)
-    # invalidated -> assert : rejected
-    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
-          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{'e2'*32}','assert','00000000-0000-0000-0000-00000000d102','{pred}',now())",
-          expect_ok=False)
-    # invalidated -> retract with automatic projection : accepted
-    _psql("INSERT INTO user_topic_mastery_evidence(user_id,topic_id,source_type,source_entity_id,evidence_tier,issue_projection_id,evidence_key,evidence_op,review_event_id,supersedes_evidence_key,observed_at) "
-          f"VALUES ('00000000-0000-0000-0000-0000000000aa',(SELECT id FROM topics WHERE slug='grammar'),'sentence_drill','00000000-0000-0000-0000-0000000000d4','production','00000000-0000-0000-0000-00000000b001','{'e3'*32}','retract','00000000-0000-0000-0000-00000000d102','{pred}',now())",
-          expect_ok=True)
+    issue, proj, pred = _seed_issue(0x12)
+    rev_inv = _review(issue, 0x120, "invalidated")   # latest, changes from active
+    _corr(pred, proj, rev_inv, "assert", "e1" * 32, expect_ok=False)   # invalidated->assert
+    # confirmed->retract needs a confirmed as latest; use a fresh issue
+    issue2, proj2, pred2 = _seed_issue(0x13)
+    rev_conf = _review(issue2, 0x130, "confirmed")   # confirmed but effective was already active → redundant OR mismatch
+    # confirmed with no prior review == unchanged (active) → redundant reject
+    _corr(pred2, proj2, rev_conf, "assert", "e2" * 32, expect_ok=False)
+    # invalidated->retract with the exact predecessor projection → accepted
+    _corr(pred, proj, rev_inv, "retract", "e3" * 32, expect_ok=True)
+
+
+def test_correction_of_non_issue_evidence_rejected():
+    # KEY_A is a plain assert with issue_projection_id NULL → cannot be corrected.
+    issue, _, _ = _seed_issue(0x14)
+    rev = _review(issue, 0x140, "invalidated")
+    _corr(_KEY_A, "2eee0000-0000-4000-8000-000000000014", rev, "retract", "77" * 32, expect_ok=False)
+
+
+def test_correction_stale_and_redundant_rejected():
+    issue, proj, pred = _seed_issue(0x15)
+    rev1 = _review(issue, 0x150, "invalidated")   # seq1
+    rev2 = _review(issue, 0x151, "confirmed")     # seq2 (latest)
+    # citing rev1 (stale — rev2 is later) → rejected
+    _corr(pred, proj, rev1, "retract", "a1" * 32, expect_ok=False)
+    # redundant: a second confirmed while effective is already confirmed → rejected
+    rev3 = _review(issue, 0x152, "confirmed")
+    _corr(pred, proj, rev3, "assert", "a2" * 32, expect_ok=False)
+
+
+def test_correction_exact_projection_identity():
+    # issue with a second automatic projection at a different revision.
+    issue, proj_root, pred = _seed_issue(0x16, extra_proj_rev=2)
+    proj_other = "2fff0000-0000-4000-8000-000000000016"
+    rev_inv = _review(issue, 0x160, "invalidated")
+    # retract must preserve the predecessor's EXACT projection (proj_root), not proj_other
+    _corr(pred, proj_other, rev_inv, "retract", "b1" * 32, expect_ok=False)
+    _corr(pred, proj_root, rev_inv, "retract", "b2" * 32, expect_ok=True)   # tail = b2 now
+    # re-assert must restore the EXACT root projection, not the other revision
+    rev_conf = _review(issue, 0x161, "confirmed")
+    _corr("b2" * 32, proj_other, rev_conf, "assert", "b3" * 32, expect_ok=False)
+    _corr("b2" * 32, proj_root, rev_conf, "assert", "b4" * 32, expect_ok=True)
