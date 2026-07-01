@@ -1,8 +1,9 @@
 # Topic Prerequisite Semantics and Planner Authority Gate — J2-A′
 
 - Document type: J2-A′ implementation contract — topic prerequisite semantics, trust lifecycle, and planner authority
-- Status: **DRAFT — OPERATOR APPROVAL REQUIRED** (no implementation PR may be dispatched until OPERATOR APPROVED)
+- Status: **DRAFT — PD-D-opt-1 OPERATOR APPROVED (2026-07-01, PR #830); full gate approval pending re-review of the 5 checkpost corrections** (no implementation PR may be dispatched until full approval)
 - Date: 2026-07-01
+- **PD-D — OPERATOR APPROVED (2026-07-01):** `PD-D-opt-1` — backfill every pre-migration `topic_prerequisites` row to `reviewer_status='locked'` in the same forward migration. Implementation validation must record: pre-migration edge count; post-migration grandfathered `locked` count; zero legacy rows left in another status; planner behavior preserved for a representative existing graph; grandfathered rows require the review reopen path before manage-tier edits/deletes.
 - Parent track: `J2 — missing operational editors in Manage Exam` (J2-A′ sub-slice, blocked in `Manage-Exam-Operational-Editors-Gate-2026-07-01.md` OD-9 / rule 6)
 - Authority: `Manage-Exam-Operational-Editors-Gate-2026-07-01.md` §D (permission tiers, rules 3–5); `docs/architecture/domain-model.md`
 - Prerequisite gates cleared: J2-A merged (PR #826 `822f874`)
@@ -89,28 +90,32 @@ draft → pending_review → reviewed → locked
                        ↘ rejected
 ```
 
-- `exam_intelligence.manage`: **creates and edits** edges in `draft` or `rejected` state; may submit `draft → pending_review`. Cannot review.
-- `exam_intelligence.review`: performs lifecycle transitions (`pending_review → reviewed`, `reviewed → locked`, `pending_review → rejected`, `reviewed → rejected`, `locked → reviewed` reopen-with-notes). Cannot create canonical content.
+- `exam_intelligence.manage`: **creates and edits** edges in `draft` or `rejected` state; may perform the **submit handoff** (`draft → pending_review`, `rejected → pending_review`) only. Cannot reject, review, lock, reopen, or `reviewed → draft`.
+- `exam_intelligence.review`: performs all lifecycle transitions (`pending_review → reviewed`, `reviewed → locked`, `pending_review → rejected`, `reviewed → rejected`, `reviewed → draft`, `locked → reviewed` reopen-with-notes). Cannot create canonical content.
 - `super_admin`: bypass.
 
 ### C.2 Transition matrix (LOCKED)
 
 | From \ To | draft | pending_review | reviewed | locked | rejected |
 |---|---|---|---|---|---|
-| draft | — | manage/review | — | — | review |
+| draft | — | **manage (submit)** | — | — | review |
 | pending_review | — | — | review | — | review |
-| reviewed | **manage/review** | — | — | review | review |
+| reviewed | **review only** | — | — | review | review |
 | locked | — | — | review (reopen; notes required) | — | — |
-| rejected | manage (edit back to draft) | — | — | — | — |
+| rejected | — | **manage (submit)** | — | — | — |
 
 Any transition not in the matrix → 409. Reopen (`locked → reviewed`) requires `review_notes` (mirrors the score-snapshot reopen precedent).
 
-**Reopen-to-edit path (LOCKED — closes the C.2 dead-end):** correcting a locked edge is `locked → reviewed` (review, notes) → `reviewed → draft` (manage or review) → edit as `draft` (manage) → resubmit → re-review → re-lock. Without the `reviewed → draft` transition a reopened edge would strand in `reviewed`, which `manage` cannot edit — matching the score-snapshot precedent that permits `reviewed → draft` for exactly this reason.
+**Permission separation (LOCKED — parent gate rule):** `exam_intelligence.review` is exclusive to trust/lifecycle transitions. Therefore **all** state changes are review-only **except one documented exception:** the **submit handoff** `draft → pending_review` and `rejected → pending_review`, which `manage` may perform to hand its own work to review. `manage` can NEVER perform reject, review, lock, reopen, or `reviewed → draft`. In particular `reviewed → draft` is **review-only** (an earlier draft allowed manage — corrected).
+
+**Rejected correction path (LOCKED — no lifecycle rewrite by manage):** a `rejected` edge is corrected by **editing in place while `rejected`** (manage, per C.3) and then the explicit **`rejected → pending_review` submit handoff** (manage). Manage does not move `rejected → draft`; there is no manage path that erases a review-assigned state.
+
+**Reopen-to-edit path (LOCKED — closes the C.2 dead-end, permission-correct):** correcting a locked edge is `locked → reviewed` (review, notes) → `reviewed → draft` (**review only**) → edit as `draft` (manage) → `draft → pending_review` submit (manage) → re-review → re-lock.
 
 ### C.3 Editing/deletion under lock (LOCKED — J2-A gate rules 4/5)
 
-- `manage` may edit an edge only while `draft`/`rejected`. A `locked`/`reviewed`/`pending_review` edge must be reopened by `review` first.
-- Deleting a `locked` edge is blocked; it must be reopened first. Forced cleanup remains Advanced Repair / `exam_intelligence.cms`.
+- `manage` may **edit** an edge only while `draft`/`rejected`. A `pending_review`/`reviewed`/`locked` edge must be rolled back by `review` first.
+- `manage` may **delete** an edge only while `draft`/`rejected`. `pending_review`, `reviewed`, and `locked` all require review-authority rollback (to `draft`/`rejected`) before a manage delete. Forced exceptional cleanup at any state remains Advanced Repair / `exam_intelligence.cms`, audited.
 
 ---
 
@@ -130,9 +135,9 @@ updated_at timestamptz not null default now()
 
 Plus an index on `(reviewer_status)` for the planner's locked-only read.
 
-**OPERATOR DECISION REQUIRED — backfill of existing rows:** the planner will switch to reading **only `locked`** edges (Section G). Existing edges predate the lifecycle and were effectively live. Options:
-- **PD-D-opt-1 (RECOMMENDED):** backfill existing rows to `locked` — grandfathers already-live curated edges so planner output does not silently change on deploy. **Consequence:** grandfathered `locked` edges immediately fall under C.3 — `manage` can no longer edit or delete them without a `review` reopen. This is the intended trust posture but should be understood: existing edges become review-controlled on deploy.
-- PD-D-opt-2: backfill to `draft` — forces re-review of every existing edge; planner ordering loses all current prerequisite influence until re-locked (behavior regression until review sweep completes).
+**PD-D — OPERATOR APPROVED: `PD-D-opt-1`** (backfill of existing rows). The planner switches to reading **only `locked`** edges (Section G); existing edges predate the lifecycle and were effectively live.
+- **PD-D-opt-1 (APPROVED):** backfill existing rows to `locked` in the same forward migration — grandfathers already-live curated edges so planner output does not silently change on deploy. **Consequence:** grandfathered `locked` edges immediately fall under C.3 — `manage` can no longer edit or delete them without a `review` reopen (intended trust posture). **Implementation validation MUST record:** pre-migration existing-edge count; post-migration grandfathered `locked` count; zero legacy rows left in another status; planner behavior preserved for a representative existing graph; grandfathered rows require the review reopen path before manage edits/deletes.
+- ~~PD-D-opt-2: backfill to `draft`~~ — rejected (would regress planner ordering until a re-review sweep completes).
 
 RLS/grants updated per migration discipline; verify with `pg_policies` before marking complete.
 
@@ -141,9 +146,11 @@ RLS/grants updated per migration discipline; verify with `pg_policies` before ma
 ## Section E — Recursive cycle-validation contract (LOCKED)
 
 - Cycle detection must reject **all transitive cycles** (`A→B→…→A`), not just the direct reverse edge.
-- The check must be **transactional and race-safe**: two concurrent inserts must not be able to jointly form a cycle. Implement as a **`SECURITY DEFINER` RPC** (e.g. `cms_add_topic_prerequisite`) that, inside one transaction, takes the appropriate row/advisory lock, runs a **recursive CTE** reachability test from `prerequisite_topic_id` back to `topic_id`, and inserts only if no path exists. This mirrors the existing review-RPC pattern (migrations 185/201).
+- **Single global lock (LOCKED — blocker 4).** A pair-scoped lock is insufficient: three concurrent writes `A→B`, `B→C`, `C→A` use different pair keys, each observe no path, and jointly commit a cycle. Every ordering-edge write MUST take **one shared, transaction-scoped advisory lock** (a single constant lock key for the whole `topic_prerequisites` ordering graph, e.g. `pg_advisory_xact_lock(<constant>)`) before running the recursive check, so all ordering writes serialize against each other. (An alternative algorithm is acceptable only with an equivalent concurrency proof.)
+- The check runs inside a **`SECURITY DEFINER` RPC** (e.g. `cms_write_topic_prerequisite`) that, in one transaction: takes the global lock, runs a **recursive CTE** reachability test from `prerequisite_topic_id` back to `topic_id`, and writes only if no path exists. Reuse the lock-then-check pattern landing in the score-snapshot RPC (PR #828) for consistency.
+- **Single write path for ALL writers (LOCKED — blocker 1).** Every application writer to `topic_prerequisites` — the Manage Exam `manage` endpoints **AND Advanced Repair (`admin_exam_intel_cms.py`, `exam_intelligence.cms`)** — MUST go through this same cycle-safe RPC. Advanced Repair keeps its own permission and exceptional-cleanup authority, but it must NOT bypass graph acyclicity and must NOT unrestrictedly promote lifecycle state via direct table insert. Equivalent-strength alternative: enforce acyclicity as a **database-level trigger/constraint** that any direct insert (including CMS) cannot bypass. The current CMS direct insert + direct-reverse-only check is removed/replaced.
 - The unique `(topic_id, prerequisite_topic_id)` constraint and `topic_id <> prerequisite_topic_id` check remain.
-- Cycle detection considers only ordering relations (`requires`, `recommended_before`) — `supports`/`foundation_for` do not form ordering cycles (PD-3). **A PATCH that promotes `relation_type` into the ordering set MUST run the same recursive check** (a non-ordering edge is never cycle-checked, so promotion is a create-equivalent for cycle purposes).
+- Cycle detection considers only ordering relations (`requires`, `recommended_before`) — `supports`/`foundation_for` do not form ordering cycles (PD-3). **A PATCH that changes endpoints OR promotes `relation_type` into the ordering set MUST run the same locked recursive check** (a non-ordering edge is never cycle-checked, so promotion is a create-equivalent for cycle purposes) — and takes the same single global lock.
 
 ---
 
@@ -153,14 +160,14 @@ Under the J2 `manage` router (`/admin/exam-intelligence-manage`), all mutations 
 
 | Method | Path | Permission | Notes |
 |---|---|---|---|
-| GET | `/topic-prerequisites?exam_id&topic_id` | manage | list edges for a topic (both directions), with `reviewer_status` |
+| GET | `/topic-prerequisites?exam_id&topic_id` | **read: existing admin/read access (manage OR review)** | list edges for a topic (both directions), with `reviewer_status`. Read-only under the parent gate's "View Manage Exam and operational data" access so a **review-only** operator can load the rows they must review (blocker 2). |
 | POST | `/topic-prerequisites?exam_id` | manage | create `draft` via the cycle-safe RPC (Section E); both topics ∈ exam subjects (PD-1); never sets a review state |
 | PATCH | `/topic-prerequisites/{id}?exam_id` | manage | edit only while `draft`/`rejected`; relation/strength/source_basis; **re-run the cycle check whenever endpoints change OR `relation_type` transitions into the ordering set** (`requires`/`recommended_before`) — a `supports`/`foundation_for` → `requires` promotion can close an ordering cycle that was never checked |
-| POST | `/topic-prerequisites/{id}/submit?exam_id` | manage | `draft → pending_review` |
-| POST | `/topic-prerequisites/{id}/review?exam_id` | review | lifecycle transitions per C.2; reopen requires notes |
-| DELETE | `/topic-prerequisites/{id}?exam_id` | manage | blocked while `locked` (reopen first); reason required |
+| POST | `/topic-prerequisites/{id}/submit?exam_id` | manage | submit handoff: `draft → pending_review` and `rejected → pending_review` (the sole manage lifecycle exception) |
+| POST | `/topic-prerequisites/{id}/review?exam_id` | review | lifecycle transitions per C.2 (incl. `reviewed → draft`, reopen); reopen requires notes |
+| DELETE | `/topic-prerequisites/{id}?exam_id` | manage | allowed only while `draft`/`rejected`; `pending_review`/`reviewed`/`locked` require review rollback first (C.3); reason required |
 
-Frontend: the prerequisite editor is added to the Manage Exam Syllabus panel (reusing the J2-A `canManage`/fail-closed pattern and shared `studyos/editors/` module), showing `reviewer_status`, relation, and advisory `strength`. Review transitions surface only to `exam_intelligence.review` holders.
+Frontend: the prerequisite editor is added to the Manage Exam Syllabus panel; the panel section mounts for **`canManage || canReview`**. Mutation controls (create/edit/delete/submit) render only for `canManage`; review-transition controls render only for `canReview`; a review-only operator sees the list + review controls but no manage mutations. Reuses the J2-A `canManage`/fail-closed pattern and the shared `studyos/editors/` module; shows `reviewer_status`, relation, and advisory `strength`.
 
 ---
 
@@ -191,9 +198,11 @@ Everything else in planner ordering is unchanged (candidate-set limiting, safe f
 ```
 [ ] direct reverse (B→A when A→B) rejected
 [ ] transitive cycle (A→B→C→A) rejected by the recursive check
-[ ] concurrent inserts cannot jointly form a cycle (RPC lock/serializable test)
+[ ] concurrent inserts cannot jointly form a cycle (RPC lock test)
+[ ] THREE concurrent writes A→B, B→C, C→A cannot jointly commit a cycle (single global lock serializes them; exactly one path-closing write is rejected)
 [ ] self-edge rejected (existing check)
 [ ] PATCH promoting relation_type supports→requires that would close a cycle is rejected
+[ ] Advanced Repair (cms) create/promote goes through the same cycle-safe path — a cms write that would close a cycle is rejected (parity test)
 ```
 ### H.3 Lifecycle + permission separation (Section C)
 ```
@@ -202,12 +211,16 @@ Everything else in planner ordering is unchanged (candidate-set limiting, safe f
 [ ] locked→reviewed reopen requires review_notes
 [ ] reopen-to-edit path works: locked→reviewed→draft makes the edge manage-editable again (no dead-end)
 [ ] manage cannot review (403); review cannot create (403); super_admin bypass
+[ ] manage CANNOT perform reject / review / lock / reopen / reviewed→draft (403 or 409)
+[ ] manage submit handoff works for draft→pending_review AND rejected→pending_review
+[ ] review-only operator can GET/list edges (read gate allows manage OR review)
 [ ] every write has a reason + audit row; create never sets a review state (rule 3)
 ```
 ### H.4 Edit/delete under lock (C.3)
 ```
-[ ] manage edit blocked on locked/reviewed/pending_review edge (reopen first)
-[ ] delete blocked on locked edge; allowed on draft/rejected with reason
+[ ] manage edit blocked on locked/reviewed/pending_review edge (rollback first)
+[ ] manage delete allowed ONLY on draft/rejected; blocked on pending_review/reviewed/locked (review rollback first)
+[ ] cms forced cleanup remains available and audited at any state
 ```
 ### H.5 Planner authority (Section G)
 ```
@@ -224,8 +237,8 @@ Everything else in planner ordering is unchanged (candidate-set limiting, safe f
 | File | Change |
 |---|---|
 | `app/supabase/migrations/<next>_topic_prerequisite_lifecycle.sql` | Lifecycle columns + index + cycle-safe RPC + backfill (per PD-D) + RLS/grants. **Migration number:** pick the next free slot at implementation time (`206` is contended by PRs #828 and #823 → use ≥ `207`); do not hardcode from a stale branch. **RPC:** reuse the lock-then-check `SECURITY DEFINER` pattern landing in the score-snapshot RPC (PR #828) for consistent race-safety. |
-| `app/backend/app/api/admin_exam_intel_manage.py` | manage prerequisite endpoints (create via RPC, edit/submit/delete) |
-| `app/backend/app/api/…review…` | `review` transition endpoint (or extend the manage router with review-gated routes) |
+| `app/backend/app/api/admin_exam_intel_manage.py` | manage prerequisite endpoints (create/edit/submit/delete via the cycle-safe RPC); GET readable by manage OR review; review-transition endpoint (review-gated, incl. reviewed→draft + reopen) |
+| `app/backend/app/api/admin_exam_intel_cms.py` | **route the existing Advanced Repair `/topic-prerequisites` writes through the same cycle-safe RPC** (remove the direct insert + direct-reverse-only check) so cms cannot bypass acyclicity (blocker 1) |
 | `app/backend/app/study_os/planner.py` | `_load_prerequisites` locked-only filter |
 | `app/frontend/.../syllabus-mapper/` + `studyos/editors/` | prerequisite editor UI (manage) + review controls (review) |
 | backend + frontend tests | Section H |
@@ -242,4 +255,4 @@ Everything else in planner ordering is unchanged (candidate-set limiting, safe f
 
 ---
 
-*Status: DRAFT — OPERATOR APPROVAL REQUIRED. Open decision: PD-D (backfill of existing edges; PD-D-opt-1 grandfather-to-`locked` recommended). All other decisions reconcile the existing implementation per operator direction. On approval: J2-A′ implementation (migration + endpoints + planner locked-only read + editor UI + tests).*
+*Status: DRAFT — `PD-D-opt-1` OPERATOR APPROVED (2026-07-01, PR #830). Five checkpost blockers corrected in this head: (1) all writers incl. Advanced Repair use the single cycle-safe RPC — no cms bypass; (2) GET readable by manage OR review so review-only operators can review; (3) transition matrix permission-correct — lifecycle is review-only except the manage submit handoff; (4) single global transaction-scoped advisory lock (3-transaction cycle case covered); (5) delete allowed only for draft/rejected. Full gate approval pending operator re-review of this head. On approval: J2-A′ implementation (migration ≥207 + cycle-safe RPC + endpoints + planner locked-only read + editor UI + tests).*
