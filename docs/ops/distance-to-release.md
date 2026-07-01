@@ -29,7 +29,7 @@
 | P4 | Migration 204 snapshot-review RPC validated on staging | OPS | 🟡 CODE-READY | needs P1; grant matrix + review→lock cycle | checklist (mig 204) |
 | P5 | PR-7 36-file fingerprint boundary approved + re-pinned at deployed SHA | OPS | 🟡 OPERATOR-APPROVAL ONLY | verifier code/tooling closed (#803/#814, ref digest `f2ee2c40…`); needs **PR #800 staging delivery validation + boundary sign-off**; fingerprint is reference-only until re-pinned at `window_start` | `pr7_shadow_gate_results.md` |
 | P6 | Scheduler verification (jobs/manual-run/drain) | OPS | ✅ CLEAR | OPERATOR PASS (2026-07-01, candidate SHA `b9bd9d7b`): job `cf2a8f44` drained in 19.67 s; `manual: absent`, `derivations: 1` on capturing tick; all `pr1_scheduler_drain_verification.md` steps met. | `audits/2026-07-01-scheduler-drain-validation.md` |
-| P7 | **PR-6** final-candidate revalidation rerun (clear Gate 9) | OPS | ⛔ `gate_failed` | P6 now CLEAR; deploy current `main` to staging (record candidate SHA A; require Render deployed SHA B == A); rerun 12 gates with `FF=shadow` on the pinned deployed SHA | `pr6_final_candidate_revalidation.md` |
+| P7 | **PR-6** final-candidate revalidation rerun (clear Gate A) | OPS+ENG | ⛔ CODE-FIX REQUIRED, REVALIDATION PENDING | 2026-07-02 partial run at SHA `9b0c96ed`: 12 start gates PASS; Gate A BLOCKED (`canonical.py::review_mock` schema mismatch `review_status`/`reviewed_at` vs `review_state`); code fix on branch (PR #840); re-deploy + Gate A re-run required; staging fixtures preserved | `pr6_final_candidate_revalidation.md` + `audits/2026-07-02-p7-candidate-revalidation-partial.md` |
 | P8 | **PR-7 14-day shadow window** | OPS | ⏳ NOT STARTED — **THE FLOOR** | full prerequisite chain below; **any threshold miss restarts the 14 days** | `pr7_shadow_gate_results.md` |
 | P9 | PR-8 bounded live canary | OPS | ⏳ NOT STARTED | after P8 passes | `pr8_live_canary_plan.md` |
 | P10 | PR-9 approval → flip `FF_MOCK_MASTERY_WRITES=live` | OPS | ⛔ BLOCKED | after P9 + sign-offs | `pr9_live_approval.md` |
@@ -80,22 +80,29 @@ Do not quote a calendar date until T0 is set.
 
 ## Shortest path right now
 
-**P6 is CLOSED** (PR #827 merged; all scheduler-drain evidence on `main`). The two blockers on
-the serial spine to T0 are now **F3 (ENG)** and **P7 (OPS)** — and they are **independent, so run
-them simultaneously.** **P5** is a third, independent operator track that also runs in parallel.
+**P6 is CLOSED** (PR #827 merged; all scheduler-drain evidence on `main`). **F3 is CODE-FIXED**
+(PR #834 merged: `_update_job` guard + `finalize_failed` regression test; needs live/staging
+validation only). The active ENG blocker is **P7 Gate A** (schema contract fix, PR #840 in
+review). **P5** is an independent operator track running in parallel.
 
-### F3 — ENG (pure code work, no operator dependency)
-`finalize_document_extraction` → `document_archived` raises without terminalizing the claimed
-job, so jobs can strand `running`. Needs: RPC/caller fix so the job reaches a terminal state on
-the archived path + a mid-flight-archive regression test. Does not depend on any deploy.
+### F3 — CODE-FIXED, VALIDATION PENDING (PR #834, merged)
+`finalize_document_extraction` → `document_archived` now calls `_fail()` before raising (no job
+can strand `running`); mid-flight regression test added. No code work remains — ENG dependency is
+MET. Live/staging confirmation still required before T0.
 
-### P7 — next operator gate (PR-6 revalidation rerun), runnable in parallel with F3
-1. Deploy current `main` (the SHA Render shows after the latest merge propagates) to **staging**.
-2. Record **candidate SHA A** from the deploy pipeline.
-3. Confirm **Render deployed SHA B == A** (Render dashboard).
-4. With `FF_MOCK_MASTERY_WRITES=shadow` active, run all **12 PR-6 gates** against that pinned
-   deployed SHA — **Gate 9 must pass** (`FF_MOCK_MASTERY_LIVE_USER_IDS` populated with ≥1 named user).
-5. Record PASS/FAIL per gate in `docs/audits/pr6_final_candidate_revalidation.md`.
+### P7 — Gate A code fix + re-run required
+2026-07-02 partial run at SHA `9b0c96ed` confirmed 12 start gates PASS. Gate A BLOCKED:
+`canonical.py::review_mock` writes `review_status`/`reviewed_at` but schema has `review_state`
+(no `reviewed_at` column). Code fix on PR #840 (branch `claude/brave-maxwell-kywecs`):
+maps `review_status` → `review_state`, removes `reviewed_at`, accepts
+`scheduled|unreviewed|reviewed|correction_drafted`, null-guards explicit `null` write.
+
+After PR #840 merges:
+1. Deploy the fixed SHA to **staging** (SHA A from Render; confirm deployed SHA B == A).
+2. With `FF_MOCK_MASTERY_WRITES=shadow` and `FF_MOCK_MASTERY_LIVE_USER_IDS` populated, re-run
+   **Gate A** using preserved attempt `60b14100-02eb-40fa-a1f0-88a43a48b315`.
+3. Confirm `review_status: "reviewed"` → HTTP 200, `review_state = "reviewed"` in DB.
+4. Record full gate results in a new dated audit under `docs/audits/`.
 
 ### P5 — parallel operator track (independent of P7)
 PR #800 staging delivery validation (3 manual checks) + explicit 36-file boundary sign-off.
@@ -104,6 +111,6 @@ PR #800 staging delivery validation (3 manual checks) + explicit 36-file boundar
 Re-pin the fingerprint at the deployed SHA (from the `f2ee2c40…` reference) and record
 `window_start`. That sets **T0** and starts the 14-day **P8** shadow window.
 
-> **Do both now:** kick off the staging deploy (P7) and the F3 code fix at the same time; P5 runs
-> alongside. Nothing else shortens the distance — the 14-day P8 window is the floor, and it can't
-> open until F3 + P7 + P5 all clear.
+> **Now:** merge PR #840 → deploy to staging → re-run Gate A. P5 runs alongside. Nothing else
+> shortens the distance — the 14-day P8 window is the floor, and it can't open until
+> F3 (validation) + P7 (Gate A PASS) + P5 all clear.

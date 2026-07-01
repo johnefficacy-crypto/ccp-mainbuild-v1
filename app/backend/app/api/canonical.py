@@ -2134,7 +2134,8 @@ class MockReviewBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # No default: omitting review_status must NOT silently overwrite the DB value.
-    review_status: str | None = Field(default=None, pattern="^(unreviewed|reviewed|correction)$")
+    # API field; maps to DB column review_state on write (schema has review_state, not review_status).
+    review_status: str | None = Field(default=None, pattern="^(scheduled|unreviewed|reviewed|correction_drafted)$")
     total_questions: int | None = None
     correct_answers: int | None = None
     wrong_answers: int | None = None
@@ -2268,12 +2269,10 @@ async def review_mock(
                 },
             )
         platform_patch: dict[str, Any] = {"updated_at": _now_iso()}
-        for field in supplied & _PLATFORM_REVIEW_ALLOWED:
-            platform_patch[field] = getattr(body, field)
+        if "notes" in supplied:
+            platform_patch["notes"] = body.notes
         if "review_status" in supplied and body.review_status is not None:
-            platform_patch["reviewed_at"] = (
-                _now_iso() if body.review_status != "unreviewed" else None
-            )
+            platform_patch["review_state"] = body.review_status
         try:
             up = (
                 supabase.table("mock_tests")
@@ -2311,10 +2310,7 @@ async def review_mock(
     # error_types) so callers can clear those fields.
     patch: dict[str, Any] = {"updated_at": _now_iso()}
     if "review_status" in supplied and body.review_status is not None:
-        patch["review_status"] = body.review_status
-        patch["reviewed_at"] = (
-            _now_iso() if body.review_status != "unreviewed" else None
-        )
+        patch["review_state"] = body.review_status
     for field in ("total_questions", "correct_answers", "wrong_answers",
                   "skipped_questions", "avg_time_sec"):
         if field in supplied:
