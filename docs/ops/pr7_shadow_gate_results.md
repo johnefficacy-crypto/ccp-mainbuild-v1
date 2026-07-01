@@ -145,6 +145,13 @@ Steps 3–8 are sequential and each depends on those above it.
    three-guard smoke test — recorded in
    `docs/audits/2026-06-30-migration-182-operator-validation.md`. No
    further action required for this item.
+3a. **Scheduler drain (OPERATOR PASS — 2026-07-01; candidate SHA
+    `b9bd9d7b6b66e7ee84031d508fce6d3532e73bff`):** `/api/admin/jobs` response
+    shape confirmed; `mock:sweeper` present in both `jobs` and `registered`
+    arrays. Controlled `analytics_retry` row `1afa0c0a-4b6c-4c11-9638-cc7ad0363365`
+    inserted, automatically claimed by scheduler tick, completed `status=done /
+    attempts=1 / last_error=null`. Full evidence:
+    `docs/audits/2026-07-01-scheduler-drain-validation.md`.
 4. **PR-6 clean operator run (OPERATOR RERUN PENDING):** Run the full
    12-gate PR-6 operator session on one pinned SHA; confirm Gate 9
    passes (allowlist deployed with named user(s) in
