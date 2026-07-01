@@ -64,6 +64,8 @@ def _is_noop_result(name: str, result: Any) -> bool:
         )
     if name == "doc:text_extract":
         return result.get("processed", 0) == 0 and result.get("status") == "idle"
+    if name in ("writing:evaluate", "writing:mastery_outbox"):
+        return result.get("processed", 0) == 0 and not result.get("swept")
     return False
 
 
@@ -80,6 +82,8 @@ def _is_failure_result(name: str, result: Any) -> bool:
         # processed=1 + status='failed' means extraction was attempted and failed.
         # processed=0 + status='conflict' is a race, not a failure.
         return result.get("processed", 0) == 1 and result.get("status") == "failed"
+    if name in ("writing:evaluate", "writing:mastery_outbox"):
+        return result.get("status") == "failed"
     return False
 
 
@@ -148,6 +152,24 @@ def _job_text_extract_worker() -> dict[str, Any]:
     return run_worker_pass(get_supabase_admin())
 
 
+def _job_writing_evaluator() -> dict[str, Any]:
+    # Lazy import — writing_practice pulls in the study_os package.
+    from app.study_os.writing_practice.evaluation_worker import run_worker_pass, sweep_stale_jobs
+
+    sb = get_supabase_admin()
+    swept = sweep_stale_jobs(sb).get("swept", 0)
+    result = run_worker_pass(sb)
+    if swept:
+        result = {**result, "swept": swept}
+    return result
+
+
+def _job_writing_mastery_outbox() -> dict[str, Any]:
+    from app.study_os.writing_practice.mastery_outbox_worker import run_outbox_pass
+
+    return run_outbox_pass(get_supabase_admin())
+
+
 # Per-job permission overrides for the manual-trigger admin endpoint.
 # Jobs not listed here fall back to the endpoint's default (require_admin).
 # The value is the permission string checked by require_permission().
@@ -164,6 +186,8 @@ JOBS: dict[str, callable] = {  # type: ignore[type-arg]
     "anon:cleanup": _job_cleanup_anonymous_users,
     "mock:sweeper": _job_mock_sweeper,
     "doc:text_extract": _job_text_extract_worker,
+    "writing:evaluate": _job_writing_evaluator,
+    "writing:mastery_outbox": _job_writing_mastery_outbox,
 }
 
 
@@ -268,6 +292,27 @@ def start_scheduler() -> BackgroundScheduler | None:
         _wrap("doc:text_extract", _job_text_extract_worker),
         IntervalTrigger(seconds=_text_extract_interval),
         id="doc:text_extract",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
+    # Every 20s — claim and run one queued writing language-evaluation job
+    # (also sweeps expired leases). Single-instance so a slow evaluator pass
+    # never stacks on itself.
+    sched.add_job(
+        _wrap("writing:evaluate", _job_writing_evaluator),
+        IntervalTrigger(seconds=20),
+        id="writing:evaluate",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    # Every 20s — drain one mastery-outbox row (post-commit shadow evidence).
+    sched.add_job(
+        _wrap("writing:mastery_outbox", _job_writing_mastery_outbox),
+        IntervalTrigger(seconds=20),
+        id="writing:mastery_outbox",
         replace_existing=True,
         max_instances=1,
         coalesce=True,
