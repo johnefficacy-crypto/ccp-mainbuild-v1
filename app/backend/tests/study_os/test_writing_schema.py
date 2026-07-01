@@ -188,3 +188,69 @@ def test_schema_reload_notify():
 
 def test_migration_is_number_205():
     assert _SQL.startswith("-- Migration 205")
+
+
+def test_effective_view_is_security_invoker_and_service_role_only():
+    # A plain view runs with the owner's privileges and would leak every user's
+    # evidence. security_invoker + REVOKE authenticated + GRANT service_role only.
+    assert "with (security_invoker = true)" in _SQLL
+    assert "revoke all on public.effective_user_topic_mastery_evidence from authenticated" in _SQLL
+    assert "grant select on public.effective_user_topic_mastery_evidence to service_role" in _SQLL
+    assert "grant select on public.effective_user_topic_mastery_evidence to authenticated" not in _SQLL
+
+
+def test_fold_excludes_stale_and_invalidated_and_superseded():
+    assert "affects_current_state = true" in _SQLL
+    assert "decision = 'invalidated'" in _SQLL
+    assert "s.supersedes_evidence_key = e.evidence_key" in _SQLL
+    assert "s.user_id = e.user_id" in _SQLL  # same-user chain, no cross-user hiding
+
+
+def test_evidence_supersession_integrity():
+    assert "utme_supersedes_fk" in _SQLL
+    assert "references public.user_topic_mastery_evidence(evidence_key)" in _SQLL
+    assert "uq_utme_one_successor" in _SQLL          # linear chain
+    assert "utme_op_cause_ck" in _SQLL               # retract/replace require cause + predecessor
+    assert "utme_no_self_supersede_ck" in _SQLL
+
+
+def test_session_snapshot_immutability_guard():
+    assert "function public.ewp_guard_session_snapshot" in _SQLL
+    assert "session_snapshot_immutable" in _SQLL
+    assert "ewp_session_snapshot_guard" in _SQLL
+    assert "writing_sessions_feedback_delay_ck" in _SQLL
+
+
+def test_value_domain_constraints():
+    assert "content_hash ~ '^[0-9a-f]{64}$'" in _SQLL
+    assert "unit_number > 0" in _SQLL
+    assert "version_number > 0" in _SQLL
+    assert "span_end_utf16 >= span_start_utf16" in _SQLL
+    assert "issue_type in (" in _SQLL
+    assert "canonical_error_type in (" in _SQLL
+    assert "'concept_gap','memory_gap','careless'" in _SQLL
+
+
+def test_immutable_history_fks_not_cascade():
+    # A cascade into an immutable child fires its BEFORE DELETE trigger and fails.
+    for immutable_ref in (
+        "references public.writing_unit_versions(id) on delete cascade",
+        "references public.writing_issue_events(id) on delete cascade",
+        "references public.writing_issue_events(id) on delete set null",
+        "references public.writing_evaluations(id) on delete cascade",
+    ):
+        assert immutable_ref not in _SQLL
+
+
+def test_full_section3_taxonomy_seeded():
+    for slug in (
+        "simple-sentences", "compound-sentences", "complex-sentences", "sentence-transformation",
+        "topic-sentence", "conclusion",
+        "precis-writing", "essay-writing", "letter-report-writing", "comprehension-summary",
+    ):
+        assert slug in _SQLL
+
+
+def test_map_seed_validates_microtopic_level_and_active():
+    assert "t.level = 'microtopic' and t.is_active = true" in _SQLL
+    assert "no active english microtopic for slug" in _SQLL

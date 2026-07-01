@@ -1,6 +1,6 @@
 # English Writing Practice — Architecture Contract
 
-**Status:** PROPOSED / REVIEW-PENDING on branch `claude/english-practice-studio-x6kv4m` (PR #819). Not design-locked until #819 merges. Do not implement until locked.
+**Status:** DESIGN-LOCKED (merged in PR #819, 2026-07-01). Implementation proceeds per Lane H (EWP-1 landed; EWP-2 onward in progress).
 **Checklist:** `docs/status/career-copilot-checklist.md` § English Writing Practice
 **PR plan:** `docs/status/career-copilot-pr-plan.md` § English Writing Practice PRs (EWP-1 … EWP-7)
 

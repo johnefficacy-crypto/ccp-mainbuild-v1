@@ -4,16 +4,27 @@
 -- docs/architecture/english-writing-practice.md. Additive only; no runtime
 -- behaviour, API, or mastery writes (those are EWP-2/EWP-2B).
 --
--- Invariants enforced here (see architecture §§4,8,9,10,12):
+-- Invariants enforced here (see architecture §§3,4,8,9,10,12):
 --   * user_id / reviewer FKs -> public.profiles(id) (repo convention; profiles.id = auth.users.id).
 --   * Append-only history tables get DATABASE-level immutability triggers, not
 --     just RLS — RLS does not constrain service_role (§12.4).
+--   * Append-only history uses ON DELETE NO ACTION (never CASCADE/SET NULL):
+--     a cascade into an immutable child would fire its BEFORE DELETE trigger and
+--     fail. History is RETAINED; profile/exam/topic deletion is blocked once
+--     writing history exists. Account deletion must go through an explicit
+--     anonymisation/retention routine (future EWP work), not FK cascade.
 --   * Service-role-only tables get RLS enabled with NO client allow policy.
 --   * Owner-readable tables get explicit owner-select policies (§12.1).
+--   * The effective-evidence view is security_invoker + service_role-only so it
+--     cannot bypass the zero-policy posture of user_topic_mastery_evidence.
+--   * Locked value domains are CHECK constraints, not comments.
 --   * Deterministic seed UUIDs via md5('ewp:...')::uuid — re-run safe, never gen_random_uuid() (§EWP-1).
 --
--- Migration number: highest existing migration is 204; this is 205. VERIFY DB
--- against schema_migrations before applying (OPERATOR PENDING).
+-- Migration number: highest existing migration file is 204; this is 205, which
+-- the repo `migration-numbers` check validates for filesystem contiguity. The
+-- authoritative live value (`select max(version)::int + 1 from schema_migrations`)
+-- remains an OPERATOR gate — verify on staging before apply and rename if the
+-- live DB disagrees.
 
 -- ---------------------------------------------------------------------------
 -- 0. Helpers
@@ -48,13 +59,30 @@ BEGIN
 END;
 $$;
 
+-- Session snapshot guard: projection_revision, feedback_release_policy, and
+-- feedback_release_delay_seconds are pinned at creation and immutable (§4.3).
+-- Lifecycle fields (status, timestamps, feedback_released_at, outcome) stay mutable.
+CREATE OR REPLACE FUNCTION public.ewp_guard_session_snapshot()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.projection_revision IS DISTINCT FROM OLD.projection_revision
+     OR NEW.feedback_release_policy IS DISTINCT FROM OLD.feedback_release_policy
+     OR NEW.feedback_release_delay_seconds IS DISTINCT FROM OLD.feedback_release_delay_seconds THEN
+    RAISE EXCEPTION 'session_snapshot_immutable: projection_revision / feedback_release_policy / feedback_release_delay_seconds cannot change after creation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 -- ---------------------------------------------------------------------------
 -- 1. writing_rubrics
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_rubrics (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name        text NOT NULL,
-  version     int  NOT NULL,
+  version     int  NOT NULL CHECK (version > 0),
   dimensions  jsonb NOT NULL,   -- array of {key,label,weight,max_score}
   created_at  timestamptz NOT NULL DEFAULT now(),
   UNIQUE (name, version)
@@ -65,26 +93,26 @@ CREATE TABLE IF NOT EXISTS public.writing_rubrics (
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_prompts (
   id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  exam_id                 uuid NOT NULL REFERENCES public.exams(id) ON DELETE CASCADE,
-  exam_cycle_id           uuid REFERENCES public.exam_cycles(id) ON DELETE SET NULL,
-  exam_phase_id           uuid REFERENCES public.exam_phases(id) ON DELETE SET NULL,
-  subject_id              uuid NOT NULL REFERENCES public.subjects(id) ON DELETE CASCADE,
-  topic_id                uuid NOT NULL REFERENCES public.topics(id) ON DELETE CASCADE,
-  microtopic_id           uuid REFERENCES public.topics(id) ON DELETE SET NULL,   -- level='microtopic'
+  exam_id                 uuid NOT NULL REFERENCES public.exams(id),
+  exam_cycle_id           uuid REFERENCES public.exam_cycles(id),
+  exam_phase_id           uuid REFERENCES public.exam_phases(id),
+  subject_id              uuid NOT NULL REFERENCES public.subjects(id),
+  topic_id                uuid NOT NULL REFERENCES public.topics(id),
+  microtopic_id           uuid REFERENCES public.topics(id),   -- level='microtopic'
   exercise_type           text NOT NULL,
   prompt_text             text NOT NULL,
   source_text             text,
   required_words          jsonb,
-  required_sentence_count int,
+  required_sentence_count int CHECK (required_sentence_count IS NULL OR required_sentence_count > 0),
   difficulty_level        int NOT NULL CHECK (difficulty_level BETWEEN 1 AND 10),
-  min_words               int,
+  min_words               int CHECK (min_words IS NULL OR min_words >= 0),
   max_words               int,
-  max_rewrite_attempts    int NOT NULL DEFAULT 3,
-  rubric_id               uuid REFERENCES public.writing_rubrics(id) ON DELETE SET NULL,
+  max_rewrite_attempts    int NOT NULL DEFAULT 3 CHECK (max_rewrite_attempts >= 0),
+  rubric_id               uuid REFERENCES public.writing_rubrics(id),
   reviewer_status         text NOT NULL DEFAULT 'pending'
     CHECK (reviewer_status IN ('pending','verified','rejected','needs_correction')),
   is_active               boolean NOT NULL DEFAULT false,
-  source_document_id      uuid REFERENCES public.document_assets(id) ON DELETE SET NULL,
+  source_document_id      uuid REFERENCES public.document_assets(id),
   metadata                jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at              timestamptz NOT NULL DEFAULT now(),
   updated_at              timestamptz NOT NULL DEFAULT now(),
@@ -99,14 +127,14 @@ CREATE INDEX IF NOT EXISTS idx_writing_prompts_active
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.exam_descriptive_requirements (
   id                              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  exam_id                         uuid NOT NULL REFERENCES public.exams(id) ON DELETE CASCADE,
-  exam_cycle_id                   uuid REFERENCES public.exam_cycles(id) ON DELETE SET NULL,
-  exam_phase_id                   uuid REFERENCES public.exam_phases(id) ON DELETE SET NULL,
+  exam_id                         uuid NOT NULL REFERENCES public.exams(id),
+  exam_cycle_id                   uuid REFERENCES public.exam_cycles(id),
+  exam_phase_id                   uuid REFERENCES public.exam_phases(id),
   stream_key                      text,
   language                        text NOT NULL DEFAULT 'english',
   exercise_type                   text NOT NULL,
   paper_name                      text,
-  marks                           numeric,
+  marks                           numeric CHECK (marks IS NULL OR marks >= 0),
   duration_minutes                int CHECK (duration_minutes IS NULL OR duration_minutes > 0),
   minimum_words                   int CHECK (minimum_words IS NULL OR minimum_words >= 0),
   maximum_words                   int,
@@ -116,13 +144,13 @@ CREATE TABLE IF NOT EXISTS public.exam_descriptive_requirements (
   feedback_release_policy         text NOT NULL
     CHECK (feedback_release_policy IN ('immediate','on_submit','on_evaluation_terminal','scheduled_after_submit')),
   feedback_release_delay_seconds  int,
-  syllabus_document_id            uuid REFERENCES public.document_assets(id) ON DELETE SET NULL,
-  notification_document_id        uuid REFERENCES public.document_assets(id) ON DELETE SET NULL,
+  syllabus_document_id            uuid REFERENCES public.document_assets(id),
+  notification_document_id        uuid REFERENCES public.document_assets(id),
   source_url                      text,
   source_locator                  jsonb,
   reviewer_status                 text NOT NULL DEFAULT 'pending'
     CHECK (reviewer_status IN ('pending','verified','rejected','needs_correction')),
-  reviewed_by                     uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  reviewed_by                     uuid REFERENCES public.profiles(id),
   reviewed_at                     timestamptz,
   reviewer_notes                  text,
   is_active                       boolean NOT NULL DEFAULT false,
@@ -132,7 +160,7 @@ CREATE TABLE IF NOT EXISTS public.exam_descriptive_requirements (
   -- NB: explicit IS NOT NULL — a bare `delay > 0` yields NULL for a NULL delay,
   -- and a CHECK only fails on FALSE, so scheduled_after_submit + NULL delay would
   -- otherwise slip through.
-  CHECK (
+  CONSTRAINT exam_descriptive_requirements_feedback_delay_ck CHECK (
     (feedback_release_policy = 'scheduled_after_submit'
        AND feedback_release_delay_seconds IS NOT NULL AND feedback_release_delay_seconds > 0)
     OR
@@ -155,33 +183,46 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_exam_descriptive_requirements
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_sessions (
   id                              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id                         uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  study_task_id                   uuid REFERENCES public.study_tasks(id) ON DELETE SET NULL,
-  prompt_id                       uuid NOT NULL REFERENCES public.writing_prompts(id) ON DELETE CASCADE,
+  user_id                         uuid NOT NULL REFERENCES public.profiles(id),
+  study_task_id                   uuid REFERENCES public.study_tasks(id),
+  prompt_id                       uuid NOT NULL REFERENCES public.writing_prompts(id),
   mode                            text NOT NULL CHECK (mode IN ('learning','exam')),
   status                          text NOT NULL DEFAULT 'active'
     CHECK (status IN ('active','evaluation_pending','rewrite_required','submitted','completed','evaluation_incomplete','abandoned')),
-  projection_revision             int NOT NULL,
-  feedback_release_policy         text NOT NULL,
+  projection_revision             int NOT NULL CHECK (projection_revision > 0),
+  feedback_release_policy         text NOT NULL
+    CHECK (feedback_release_policy IN ('immediate','on_submit','on_evaluation_terminal','scheduled_after_submit')),
   feedback_release_delay_seconds  int,
   feedback_released_at            timestamptz,
   evaluation_outcome              text
     CHECK (evaluation_outcome IS NULL OR evaluation_outcome IN ('unscored','deterministic_only','fully_evaluated')),
   started_at                      timestamptz NOT NULL DEFAULT now(),
   submitted_at                    timestamptz,
-  completed_at                    timestamptz
+  completed_at                    timestamptz,
+  -- Same null-safe policy/delay contract as the requirement snapshot it copies.
+  CONSTRAINT writing_sessions_feedback_delay_ck CHECK (
+    (feedback_release_policy = 'scheduled_after_submit'
+       AND feedback_release_delay_seconds IS NOT NULL AND feedback_release_delay_seconds > 0)
+    OR
+    (feedback_release_policy <> 'scheduled_after_submit' AND feedback_release_delay_seconds IS NULL)
+  )
 );
 CREATE INDEX IF NOT EXISTS idx_writing_sessions_user ON public.writing_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_writing_sessions_task ON public.writing_sessions(study_task_id);
+
+DROP TRIGGER IF EXISTS ewp_session_snapshot_guard ON public.writing_sessions;
+CREATE TRIGGER ewp_session_snapshot_guard
+  BEFORE UPDATE ON public.writing_sessions
+  FOR EACH ROW EXECUTE FUNCTION public.ewp_guard_session_snapshot();
 
 -- ---------------------------------------------------------------------------
 -- 5. writing_session_units
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_session_units (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id             uuid NOT NULL REFERENCES public.writing_sessions(id) ON DELETE CASCADE,
-  unit_number            int NOT NULL,
-  practice_microtopic_id uuid REFERENCES public.topics(id) ON DELETE SET NULL,   -- level='microtopic'
+  session_id             uuid NOT NULL REFERENCES public.writing_sessions(id),
+  unit_number            int NOT NULL CHECK (unit_number > 0),
+  practice_microtopic_id uuid REFERENCES public.topics(id),   -- level='microtopic'
   unit_constraints       jsonb NOT NULL DEFAULT '{}'::jsonb,
   status                 text NOT NULL DEFAULT 'not_started'
     CHECK (status IN ('not_started','draft','evaluation_pending','evaluation_failed','rewrite_required','ready','completed')),
@@ -193,13 +234,13 @@ CREATE TABLE IF NOT EXISTS public.writing_session_units (
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_unit_versions (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  unit_id           uuid NOT NULL REFERENCES public.writing_session_units(id) ON DELETE CASCADE,
-  version_number    int NOT NULL,
+  unit_id           uuid NOT NULL REFERENCES public.writing_session_units(id),
+  version_number    int NOT NULL CHECK (version_number > 0),
   answer_text       text NOT NULL,
-  client_word_count int,
-  server_word_count int,   -- computed at submit, included in INSERT; never updated
+  client_word_count int CHECK (client_word_count IS NULL OR client_word_count >= 0),
+  server_word_count int CHECK (server_word_count IS NULL OR server_word_count >= 0),   -- computed at submit, in INSERT; never updated
   submission_kind   text NOT NULL DEFAULT 'user' CHECK (submission_kind IN ('user','blank')),
-  content_hash      text NOT NULL,   -- SHA-256(answer_text) lowercase hex
+  content_hash      text NOT NULL CHECK (content_hash ~ '^[0-9a-f]{64}$'),   -- lowercase SHA-256 hex
   submitted_at      timestamptz NOT NULL DEFAULT now(),
   UNIQUE (unit_id, version_number)
 );
@@ -209,8 +250,8 @@ CREATE TABLE IF NOT EXISTS public.writing_unit_versions (
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_evaluations (
   id                              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  unit_version_id                 uuid NOT NULL REFERENCES public.writing_unit_versions(id) ON DELETE CASCADE,
-  evaluation_revision             int NOT NULL DEFAULT 1,
+  unit_version_id                 uuid NOT NULL REFERENCES public.writing_unit_versions(id),
+  evaluation_revision             int NOT NULL DEFAULT 1 CHECK (evaluation_revision > 0),
   deterministic_evaluator_version text,
   language_evaluator_version      text,
   deterministic_status            text NOT NULL DEFAULT 'pending'
@@ -234,9 +275,9 @@ CREATE TABLE IF NOT EXISTS public.writing_evaluations (
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_session_checks (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id       uuid NOT NULL REFERENCES public.writing_sessions(id) ON DELETE CASCADE,
+  session_id       uuid NOT NULL REFERENCES public.writing_sessions(id),
   check_type       text NOT NULL,
-  version_set_hash text NOT NULL,
+  version_set_hash text NOT NULL CHECK (version_set_hash ~ '^[0-9a-f]{64}$'),
   passed           boolean NOT NULL,
   details          jsonb NOT NULL DEFAULT '{}'::jsonb,
   checker_version  text NOT NULL,
@@ -245,24 +286,29 @@ CREATE TABLE IF NOT EXISTS public.writing_session_checks (
 CREATE INDEX IF NOT EXISTS idx_writing_session_checks_session ON public.writing_session_checks(session_id);
 
 -- ---------------------------------------------------------------------------
--- 9. writing_issue_events (append-only)
+-- 9. writing_issue_events (append-only). issue_type restricted to §5.1 enum.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_issue_events (
   id                         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  evaluation_id              uuid NOT NULL REFERENCES public.writing_evaluations(id) ON DELETE CASCADE,
-  issue_type                 text NOT NULL,
-  microtopic_id              uuid REFERENCES public.topics(id) ON DELETE SET NULL,   -- level='microtopic'
+  evaluation_id              uuid NOT NULL REFERENCES public.writing_evaluations(id),
+  issue_type                 text NOT NULL CHECK (issue_type IN (
+    'sentence_fragment','run_on_sentence','subject_verb_agreement','tense','article',
+    'preposition','pronoun_reference','modifier','spelling','punctuation','word_choice',
+    'collocation','redundancy','informal_usage','cohesion','logical_order','off_topic',
+    'word_limit','format_violation')),
+  microtopic_id              uuid REFERENCES public.topics(id),   -- level='microtopic'
   lineage_id                 uuid NOT NULL,
-  predecessor_issue_event_id uuid REFERENCES public.writing_issue_events(id) ON DELETE SET NULL,
-  span_start_utf16           int,
-  span_end_utf16             int,
+  predecessor_issue_event_id uuid REFERENCES public.writing_issue_events(id),
+  span_start_utf16           int CHECK (span_start_utf16 IS NULL OR span_start_utf16 >= 0),
+  span_end_utf16             int CHECK (span_end_utf16 IS NULL OR span_end_utf16 >= 0),
   quoted_text                text,
   original_text              text,
   suggested_text             text,
   explanation                text,
   severity                   text NOT NULL CHECK (severity IN ('advisory','should_fix','must_fix')),
   affects_current_state      boolean NOT NULL DEFAULT true,
-  created_at                 timestamptz NOT NULL DEFAULT now()
+  created_at                 timestamptz NOT NULL DEFAULT now(),
+  CHECK (span_start_utf16 IS NULL OR span_end_utf16 IS NULL OR span_end_utf16 >= span_start_utf16)
 );
 CREATE INDEX IF NOT EXISTS idx_writing_issue_events_eval ON public.writing_issue_events(evaluation_id);
 CREATE INDEX IF NOT EXISTS idx_writing_issue_events_lineage ON public.writing_issue_events(lineage_id);
@@ -272,13 +318,13 @@ CREATE INDEX IF NOT EXISTS idx_writing_issue_events_lineage ON public.writing_is
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_issue_resolution_events (
   id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  issue_event_id           uuid NOT NULL REFERENCES public.writing_issue_events(id) ON DELETE CASCADE,
-  resolving_version_id     uuid NOT NULL REFERENCES public.writing_unit_versions(id) ON DELETE CASCADE,
-  resolving_evaluation_id  uuid NOT NULL REFERENCES public.writing_evaluations(id) ON DELETE CASCADE,
-  successor_issue_event_id uuid REFERENCES public.writing_issue_events(id) ON DELETE SET NULL,
+  issue_event_id           uuid NOT NULL REFERENCES public.writing_issue_events(id),
+  resolving_version_id     uuid NOT NULL REFERENCES public.writing_unit_versions(id),
+  resolving_evaluation_id  uuid NOT NULL REFERENCES public.writing_evaluations(id),
+  successor_issue_event_id uuid REFERENCES public.writing_issue_events(id),
   outcome                  text NOT NULL CHECK (outcome IN ('resolved','persisted','regressed','uncertain')),
   evaluator_version        text NOT NULL,
-  confidence               numeric,
+  confidence               numeric CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
   rationale                text,
   created_at               timestamptz NOT NULL DEFAULT now(),
   UNIQUE (issue_event_id, resolving_version_id, evaluator_version)
@@ -289,16 +335,17 @@ CREATE TABLE IF NOT EXISTS public.writing_issue_resolution_events (
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_issue_projections (
   id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  issue_event_id           uuid NOT NULL REFERENCES public.writing_issue_events(id) ON DELETE CASCADE,
-  projection_revision      int NOT NULL,
+  issue_event_id           uuid NOT NULL REFERENCES public.writing_issue_events(id),
+  projection_revision      int NOT NULL CHECK (projection_revision > 0),
   projection_kind          text NOT NULL DEFAULT 'automatic'
     CHECK (projection_kind IN ('automatic','review_override')),
-  -- FK to writing_issue_review_events added by ALTER below (that table is
-  -- created after this one).
+  -- FK to writing_issue_review_events added by ALTER below (created after this).
   override_review_event_id uuid,
-  canonical_error_type     text,
-  projection_confidence    numeric,
-  prior_occurrence_count   int,
+  canonical_error_type     text CHECK (canonical_error_type IS NULL OR canonical_error_type IN (
+    'concept_gap','memory_gap','careless','speed_issue','misread_question',
+    'option_trap','formula_confusion','time_management','unknown')),
+  projection_confidence    numeric CHECK (projection_confidence IS NULL OR (projection_confidence >= 0 AND projection_confidence <= 1)),
+  prior_occurrence_count   int CHECK (prior_occurrence_count IS NULL OR prior_occurrence_count >= 0),
   rationale                text,
   created_at               timestamptz NOT NULL DEFAULT now(),
   CHECK (
@@ -307,7 +354,6 @@ CREATE TABLE IF NOT EXISTS public.writing_issue_projections (
     (projection_kind = 'review_override' AND override_review_event_id IS NOT NULL)
   )
 );
--- One automatic projection per (issue, revision); overrides live alongside (§4.11a).
 CREATE UNIQUE INDEX IF NOT EXISTS uq_writing_issue_projections_automatic
   ON public.writing_issue_projections(issue_event_id, projection_revision)
   WHERE projection_kind = 'automatic';
@@ -320,71 +366,89 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_writing_issue_projections_override
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_issue_review_events (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  issue_event_id        uuid NOT NULL REFERENCES public.writing_issue_events(id) ON DELETE CASCADE,
+  issue_event_id        uuid NOT NULL REFERENCES public.writing_issue_events(id),
   decision              text NOT NULL CHECK (decision IN ('confirmed','invalidated','reclassified')),
   corrected_issue_type  text,
   reviewer_type         text NOT NULL CHECK (reviewer_type IN ('human','system')),
-  reviewer_id           uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  reviewer_id           uuid REFERENCES public.profiles(id),
   evaluator_version     text,
   reason                text,
   created_at            timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_writing_issue_review_events_issue ON public.writing_issue_review_events(issue_event_id);
+CREATE INDEX IF NOT EXISTS idx_writing_issue_review_events_issue ON public.writing_issue_review_events(issue_event_id, created_at, id);
 
--- Deferred FK: writing_issue_projections.override_review_event_id references
--- this table, which is created after it. Add the FK now.
 ALTER TABLE public.writing_issue_projections
   DROP CONSTRAINT IF EXISTS writing_issue_projections_override_review_event_id_fkey;
 ALTER TABLE public.writing_issue_projections
   ADD CONSTRAINT writing_issue_projections_override_review_event_id_fkey
   FOREIGN KEY (override_review_event_id)
-  REFERENCES public.writing_issue_review_events(id) ON DELETE CASCADE;
+  REFERENCES public.writing_issue_review_events(id);
 
 -- ---------------------------------------------------------------------------
 -- 13. user_topic_mastery_evidence (append-only, service-role-only)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.user_topic_mastery_evidence (
   id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id                 uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  exam_id                 uuid REFERENCES public.exams(id) ON DELETE SET NULL,
-  exam_phase_id           uuid REFERENCES public.exam_phases(id) ON DELETE SET NULL,
-  topic_id                uuid NOT NULL REFERENCES public.topics(id) ON DELETE CASCADE,
-  microtopic_id           uuid REFERENCES public.topics(id) ON DELETE SET NULL,   -- level='microtopic'
+  user_id                 uuid NOT NULL REFERENCES public.profiles(id),
+  exam_id                 uuid REFERENCES public.exams(id),
+  exam_phase_id           uuid REFERENCES public.exam_phases(id),
+  topic_id                uuid NOT NULL REFERENCES public.topics(id),
+  microtopic_id           uuid REFERENCES public.topics(id),   -- level='microtopic'
   source_type             text NOT NULL
     CHECK (source_type IN ('objective_mock','descriptive_mock','sentence_drill','paragraph_drill','human_review','mentor_review')),
   source_entity_id        uuid NOT NULL,
   evidence_tier           text NOT NULL CHECK (evidence_tier IN ('recognition','correction','production','retention')),
-  score                   numeric,
-  confidence              numeric,
-  issue_projection_id     uuid REFERENCES public.writing_issue_projections(id) ON DELETE SET NULL,
+  score                   numeric CHECK (score IS NULL OR score >= 0),
+  confidence              numeric CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
+  issue_projection_id     uuid REFERENCES public.writing_issue_projections(id),
   evidence_op             text NOT NULL DEFAULT 'assert' CHECK (evidence_op IN ('assert','retract','replace')),
-  review_event_id         uuid REFERENCES public.writing_issue_review_events(id) ON DELETE SET NULL,
+  review_event_id         uuid REFERENCES public.writing_issue_review_events(id),
   supersedes_evidence_key text,
   evidence_key            text NOT NULL,
   observed_at             timestamptz NOT NULL,
   metadata                jsonb NOT NULL DEFAULT '{}'::jsonb,
-  UNIQUE (evidence_key)
+  UNIQUE (evidence_key),
+  -- Corrections must carry a cause and a predecessor (§4.12c).
+  CONSTRAINT utme_op_cause_ck CHECK (
+    evidence_op = 'assert'
+    OR (evidence_op IN ('retract','replace')
+        AND review_event_id IS NOT NULL AND supersedes_evidence_key IS NOT NULL)
+  ),
+  -- A correction cannot supersede itself.
+  CONSTRAINT utme_no_self_supersede_ck CHECK (supersedes_evidence_key IS DISTINCT FROM evidence_key)
 );
 CREATE INDEX IF NOT EXISTS idx_utme_user_microtopic ON public.user_topic_mastery_evidence(user_id, microtopic_id);
+-- Linear supersession chain: at most one successor per predecessor (§4.12d).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_utme_one_successor
+  ON public.user_topic_mastery_evidence(supersedes_evidence_key)
+  WHERE supersedes_evidence_key IS NOT NULL;
+-- Self-FK: a superseder must reference a real predecessor evidence_key.
+ALTER TABLE public.user_topic_mastery_evidence
+  DROP CONSTRAINT IF EXISTS utme_supersedes_fk;
+ALTER TABLE public.user_topic_mastery_evidence
+  ADD CONSTRAINT utme_supersedes_fk
+  FOREIGN KEY (supersedes_evidence_key)
+  REFERENCES public.user_topic_mastery_evidence(evidence_key);
 
 -- ---------------------------------------------------------------------------
 -- 14. writing_evaluation_jobs (mutable queue)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_evaluation_jobs (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  evaluation_id  uuid NOT NULL REFERENCES public.writing_evaluations(id) ON DELETE CASCADE,
+  evaluation_id  uuid NOT NULL REFERENCES public.writing_evaluations(id),
   job_kind       text NOT NULL CHECK (job_kind IN ('language_evaluation','rubric_evaluation')),
-  generation     int NOT NULL DEFAULT 1,
+  generation     int NOT NULL DEFAULT 1 CHECK (generation > 0),
   status         text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','running','done','failed')),
-  attempts       int NOT NULL DEFAULT 0,
-  max_attempts   int NOT NULL DEFAULT 3,
+  attempts       int NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+  max_attempts   int NOT NULL DEFAULT 3 CHECK (max_attempts > 0),
   scheduled_for  timestamptz,
   locked_at      timestamptz,
   claim_token    uuid,   -- lease/fencing (§8.3)
   last_error     text,
   created_at     timestamptz NOT NULL DEFAULT now(),
   updated_at     timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (evaluation_id, job_kind, generation)
+  UNIQUE (evaluation_id, job_kind, generation),
+  CHECK (attempts <= max_attempts)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_writing_evaluation_jobs_active
   ON public.writing_evaluation_jobs(evaluation_id, job_kind)
@@ -395,17 +459,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_writing_evaluation_jobs_active
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_mastery_shadow (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id             uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  exam_id             uuid REFERENCES public.exams(id) ON DELETE SET NULL,
-  topic_id            uuid NOT NULL REFERENCES public.topics(id) ON DELETE CASCADE,
-  microtopic_id       uuid REFERENCES public.topics(id) ON DELETE SET NULL,
-  source_type         text NOT NULL,
+  user_id             uuid NOT NULL REFERENCES public.profiles(id),
+  exam_id             uuid REFERENCES public.exams(id),
+  topic_id            uuid NOT NULL REFERENCES public.topics(id),
+  microtopic_id       uuid REFERENCES public.topics(id),
+  source_type         text NOT NULL
+    CHECK (source_type IN ('objective_mock','descriptive_mock','sentence_drill','paragraph_drill','human_review','mentor_review')),
   source_entity_id    uuid NOT NULL,
-  evaluation_id       uuid NOT NULL REFERENCES public.writing_evaluations(id) ON DELETE CASCADE,
-  issue_projection_id uuid REFERENCES public.writing_issue_projections(id) ON DELETE SET NULL,
-  evidence_tier       text NOT NULL,
-  score               numeric,
-  confidence          numeric,
+  evaluation_id       uuid NOT NULL REFERENCES public.writing_evaluations(id),
+  issue_projection_id uuid REFERENCES public.writing_issue_projections(id),
+  evidence_tier       text NOT NULL CHECK (evidence_tier IN ('recognition','correction','production','retention')),
+  score               numeric CHECK (score IS NULL OR score >= 0),
+  confidence          numeric CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
   delta_json          jsonb NOT NULL DEFAULT '{}'::jsonb,
   evidence_key        text NOT NULL,
   processed_at        timestamptz NOT NULL DEFAULT now(),
@@ -418,15 +483,15 @@ CREATE TABLE IF NOT EXISTS public.writing_mastery_shadow (
 CREATE TABLE IF NOT EXISTS public.writing_mastery_outbox (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   source_kind         text NOT NULL CHECK (source_kind IN ('evaluation','review_correction')),
-  evaluation_id       uuid REFERENCES public.writing_evaluations(id) ON DELETE CASCADE,
-  review_event_id     uuid REFERENCES public.writing_issue_review_events(id) ON DELETE CASCADE,
+  evaluation_id       uuid REFERENCES public.writing_evaluations(id),
+  review_event_id     uuid REFERENCES public.writing_issue_review_events(id),
   evidence_op         text NOT NULL DEFAULT 'assert' CHECK (evidence_op IN ('assert','retract','replace')),
-  user_id             uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  user_id             uuid NOT NULL REFERENCES public.profiles(id),
   mastery_flag_state  text NOT NULL CHECK (mastery_flag_state IN ('shadow','live')),
   idempotency_key     text NOT NULL,
   status              text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','done','failed')),
-  attempts            int NOT NULL DEFAULT 0,
-  max_attempts        int NOT NULL DEFAULT 5,
+  attempts            int NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+  max_attempts        int NOT NULL DEFAULT 5 CHECK (max_attempts > 0),
   locked_at           timestamptz,
   last_error          text,
   created_at          timestamptz NOT NULL DEFAULT now(),
@@ -446,9 +511,13 @@ CREATE INDEX IF NOT EXISTS idx_writing_mastery_outbox_claim
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_issue_type_microtopic_map (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  issue_type    text NOT NULL,
-  microtopic_id uuid NOT NULL REFERENCES public.topics(id) ON DELETE CASCADE,   -- English, level='microtopic'
-  map_version   int NOT NULL DEFAULT 1,
+  issue_type    text NOT NULL CHECK (issue_type IN (
+    'sentence_fragment','run_on_sentence','subject_verb_agreement','tense','article',
+    'preposition','pronoun_reference','modifier','spelling','punctuation','word_choice',
+    'collocation','redundancy','informal_usage','cohesion','logical_order','off_topic',
+    'word_limit','format_violation')),
+  microtopic_id uuid NOT NULL REFERENCES public.topics(id),   -- English, level='microtopic'
+  map_version   int NOT NULL DEFAULT 1 CHECK (map_version > 0),
   is_active     boolean NOT NULL DEFAULT true,
   created_at    timestamptz NOT NULL DEFAULT now(),
   UNIQUE (issue_type, map_version)
@@ -493,25 +562,44 @@ $$;
 -- ---------------------------------------------------------------------------
 -- effective_user_topic_mastery_evidence: the ONLY planner/level source (§4.12d)
 -- ---------------------------------------------------------------------------
--- Folds assert/retract/replace per supersession chain. A row is effective when
--- no later row supersedes it AND it is not itself a retraction. Retracted or
--- replaced assertions, and stale evidence, are excluded. The planner and level
--- derivation must read THIS view, never the raw append-only table.
-CREATE OR REPLACE VIEW public.effective_user_topic_mastery_evidence AS
+-- security_invoker=true so it honours the underlying table's RLS (which has NO
+-- client policy) instead of the view owner's privileges — a normal view would
+-- leak every user's evidence to any grantee. Granted to service_role only.
+--
+-- Fold: keep assert/replace rows that have no same-user successor, are not
+-- attached to a stale issue (affects_current_state=false), and whose issue is
+-- not effectively invalidated (latest review decision). Retracted/replaced
+-- assertions and stale/withdrawn evidence are excluded.
+CREATE OR REPLACE VIEW public.effective_user_topic_mastery_evidence
+WITH (security_invoker = true) AS
   SELECT e.*
   FROM public.user_topic_mastery_evidence e
+  LEFT JOIN public.writing_issue_projections p ON p.id = e.issue_projection_id
+  LEFT JOIN public.writing_issue_events ie ON ie.id = p.issue_event_id
   WHERE e.evidence_op IN ('assert','replace')
     AND NOT EXISTS (
-      SELECT 1
-      FROM public.user_topic_mastery_evidence s
+      SELECT 1 FROM public.user_topic_mastery_evidence s
       WHERE s.supersedes_evidence_key = e.evidence_key
-    );
+        AND s.user_id = e.user_id
+    )
+    AND (ie.id IS NULL OR ie.affects_current_state = true)
+    AND (ie.id IS NULL OR NOT EXISTS (
+      SELECT 1 FROM public.writing_issue_review_events r
+      WHERE r.issue_event_id = ie.id
+        AND r.decision = 'invalidated'
+        AND r.created_at = (
+          SELECT max(r2.created_at) FROM public.writing_issue_review_events r2
+          WHERE r2.issue_event_id = ie.id
+        )
+    ));
+
+REVOKE ALL ON public.effective_user_topic_mastery_evidence FROM PUBLIC;
+REVOKE ALL ON public.effective_user_topic_mastery_evidence FROM authenticated;
+GRANT SELECT ON public.effective_user_topic_mastery_evidence TO service_role;
 
 -- ---------------------------------------------------------------------------
 -- RLS (§12)
 -- ---------------------------------------------------------------------------
-
--- Owner-readable: sessions and their children.
 ALTER TABLE public.writing_sessions       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.writing_session_units  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.writing_unit_versions  ENABLE ROW LEVEL SECURITY;
@@ -521,7 +609,6 @@ ALTER TABLE public.writing_issue_events   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.writing_issue_resolution_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.writing_issue_projections       ENABLE ROW LEVEL SECURITY;
 
--- Catalog reads (verified + active only).
 ALTER TABLE public.writing_prompts                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exam_descriptive_requirements   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.writing_rubrics                 ENABLE ROW LEVEL SECURITY;
@@ -560,7 +647,6 @@ CREATE POLICY writing_session_checks_owner_select ON public.writing_session_chec
     WHERE s.id = writing_session_checks.session_id AND s.user_id = auth.uid()
   ));
 
--- Feedback-gated owner policy for evaluations and the issue tables (§12.1).
 DROP POLICY IF EXISTS writing_evaluations_owner_select ON public.writing_evaluations;
 CREATE POLICY writing_evaluations_owner_select ON public.writing_evaluations
   FOR SELECT USING (EXISTS (
@@ -618,7 +704,6 @@ CREATE POLICY writing_issue_projections_owner_select ON public.writing_issue_pro
            OR (s.feedback_released_at IS NOT NULL AND s.feedback_released_at <= now()))
   ));
 
--- Catalog reads: verified + active only.
 DROP POLICY IF EXISTS writing_prompts_public_read ON public.writing_prompts;
 CREATE POLICY writing_prompts_public_read ON public.writing_prompts
   FOR SELECT USING (reviewer_status = 'verified' AND is_active = true);
@@ -631,7 +716,6 @@ DROP POLICY IF EXISTS writing_rubrics_read ON public.writing_rubrics;
 CREATE POLICY writing_rubrics_read ON public.writing_rubrics
   FOR SELECT USING (true);
 
--- Non-sensitive reference data; readable by authenticated users (§4.15).
 DROP POLICY IF EXISTS issue_type_microtopic_map_read ON public.writing_issue_type_microtopic_map;
 CREATE POLICY issue_type_microtopic_map_read ON public.writing_issue_type_microtopic_map
   FOR SELECT USING (is_active = true);
@@ -639,92 +723,131 @@ CREATE POLICY issue_type_microtopic_map_read ON public.writing_issue_type_microt
 -- Service-role-only tables: no client allow policy is created, by design.
 
 -- ---------------------------------------------------------------------------
--- Seed: English Language taxonomy + issue_type -> microtopic map
--- Deterministic md5('ewp:...')::uuid ids; re-run safe.
+-- Seed: full §3 English Language taxonomy + issue_type -> microtopic map.
+-- Deterministic md5('ewp:...')::uuid ids; re-run safe. Mapping is validated
+-- (English subject + level='microtopic' + active) and fails loudly otherwise.
 -- ---------------------------------------------------------------------------
 DO $$
 DECLARE
   v_subject uuid := md5('ewp:subject:english-language')::uuid;
   v_parent  uuid;
   v_micro   uuid;
-  rec       record;
-  parents   text[][] := ARRAY[
+  i int;
+  -- level-1 topics (§3). The last four are direct-leaf topics (no microtopics yet).
+  topics2   text[][] := ARRAY[
     ARRAY['sentence-construction','Sentence Construction'],
     ARRAY['grammar','Grammar'],
     ARRAY['vocabulary-in-context','Vocabulary in Context'],
-    ARRAY['paragraph-writing','Paragraph Writing']
+    ARRAY['paragraph-writing','Paragraph Writing'],
+    ARRAY['precis-writing','Précis Writing'],
+    ARRAY['essay-writing','Essay Writing'],
+    ARRAY['letter-report-writing','Letter and Report Writing'],
+    ARRAY['comprehension-summary','Comprehension and Summary']
   ];
-  -- issue_type, parent_slug, microtopic_slug, microtopic_name
+  -- microtopics: parent_slug, slug, name. Includes all §3 leaves plus a few
+  -- error-only leaves (sentence-structure, spelling, content-relevance,
+  -- word-limit, format-rules) that the §5.1 error taxonomy needs but §3's
+  -- learning hierarchy does not enumerate as skills.
   micros    text[][] := ARRAY[
-    ARRAY['sentence_fragment','sentence-construction','sentence-structure','Sentence Structure'],
-    ARRAY['run_on_sentence','sentence-construction','sentence-structure','Sentence Structure'],
-    ARRAY['subject_verb_agreement','grammar','subject-verb-agreement','Subject-Verb Agreement'],
-    ARRAY['tense','grammar','tense','Tense'],
-    ARRAY['article','grammar','articles','Articles'],
-    ARRAY['preposition','grammar','prepositions','Prepositions'],
-    ARRAY['pronoun_reference','grammar','pronoun-reference','Pronoun Reference'],
-    ARRAY['modifier','grammar','modifiers','Modifiers'],
-    ARRAY['spelling','grammar','spelling','Spelling'],
-    ARRAY['punctuation','grammar','punctuation','Punctuation'],
-    ARRAY['word_choice','vocabulary-in-context','word-choice','Word Choice'],
-    ARRAY['collocation','vocabulary-in-context','collocations','Collocations'],
-    ARRAY['redundancy','vocabulary-in-context','redundancy','Redundancy'],
-    ARRAY['informal_usage','vocabulary-in-context','formal-vocabulary','Formal Vocabulary'],
-    ARRAY['cohesion','paragraph-writing','cohesion','Cohesion'],
-    ARRAY['logical_order','paragraph-writing','logical-order','Logical Order'],
-    ARRAY['off_topic','paragraph-writing','content-relevance','Content Relevance'],
-    ARRAY['word_limit','paragraph-writing','word-limit','Word Limit'],
-    ARRAY['format_violation','paragraph-writing','format-rules','Format Rules']
+    ARRAY['sentence-construction','simple-sentences','Simple Sentences'],
+    ARRAY['sentence-construction','compound-sentences','Compound Sentences'],
+    ARRAY['sentence-construction','complex-sentences','Complex Sentences'],
+    ARRAY['sentence-construction','sentence-transformation','Sentence Transformation'],
+    ARRAY['sentence-construction','sentence-structure','Sentence Structure'],
+    ARRAY['grammar','subject-verb-agreement','Subject-Verb Agreement'],
+    ARRAY['grammar','tense','Tense'],
+    ARRAY['grammar','articles','Articles'],
+    ARRAY['grammar','prepositions','Prepositions'],
+    ARRAY['grammar','pronoun-reference','Pronoun Reference'],
+    ARRAY['grammar','modifiers','Modifiers'],
+    ARRAY['grammar','punctuation','Punctuation'],
+    ARRAY['grammar','spelling','Spelling'],
+    ARRAY['vocabulary-in-context','word-choice','Word Choice'],
+    ARRAY['vocabulary-in-context','collocations','Collocations'],
+    ARRAY['vocabulary-in-context','formal-vocabulary','Formal Vocabulary'],
+    ARRAY['vocabulary-in-context','redundancy','Redundancy'],
+    ARRAY['paragraph-writing','topic-sentence','Topic Sentence'],
+    ARRAY['paragraph-writing','cohesion','Cohesion'],
+    ARRAY['paragraph-writing','logical-order','Logical Order'],
+    ARRAY['paragraph-writing','conclusion','Conclusion'],
+    ARRAY['paragraph-writing','content-relevance','Content Relevance'],
+    ARRAY['paragraph-writing','word-limit','Word Limit'],
+    ARRAY['paragraph-writing','format-rules','Format Rules']
   ];
-  i int;
+  -- issue_type -> microtopic slug
+  maps      text[][] := ARRAY[
+    ARRAY['sentence_fragment','sentence-structure'],
+    ARRAY['run_on_sentence','sentence-structure'],
+    ARRAY['subject_verb_agreement','subject-verb-agreement'],
+    ARRAY['tense','tense'],
+    ARRAY['article','articles'],
+    ARRAY['preposition','prepositions'],
+    ARRAY['pronoun_reference','pronoun-reference'],
+    ARRAY['modifier','modifiers'],
+    ARRAY['spelling','spelling'],
+    ARRAY['punctuation','punctuation'],
+    ARRAY['word_choice','word-choice'],
+    ARRAY['collocation','collocations'],
+    ARRAY['redundancy','redundancy'],
+    ARRAY['informal_usage','formal-vocabulary'],
+    ARRAY['cohesion','cohesion'],
+    ARRAY['logical_order','logical-order'],
+    ARRAY['off_topic','content-relevance'],
+    ARRAY['word_limit','word-limit'],
+    ARRAY['format_violation','format-rules']
+  ];
 BEGIN
-  -- Subject
   INSERT INTO public.subjects (id, slug, name, subject_group, description, is_active)
   VALUES (v_subject, 'english-language', 'English Language', 'language',
           'English writing practice taxonomy (EWP).', true)
   ON CONFLICT (slug) DO NOTHING;
   SELECT id INTO v_subject FROM public.subjects WHERE slug = 'english-language';
 
-  -- Parent topics (level='topic')
-  FOR i IN 1 .. array_length(parents, 1) LOOP
+  FOR i IN 1 .. array_length(topics2, 1) LOOP
     INSERT INTO public.topics (id, subject_id, parent_topic_id, slug, name, level, is_active)
-    SELECT md5('ewp:topic:' || parents[i][1])::uuid, v_subject, NULL,
-           parents[i][1], parents[i][2], 'topic', true
+    SELECT md5('ewp:topic:' || topics2[i][1])::uuid, v_subject, NULL,
+           topics2[i][1], topics2[i][2], 'topic', true
     WHERE NOT EXISTS (
       SELECT 1 FROM public.topics
-      WHERE subject_id = v_subject AND parent_topic_id IS NULL AND slug = parents[i][1]
+      WHERE subject_id = v_subject AND parent_topic_id IS NULL AND slug = topics2[i][1]
     );
   END LOOP;
 
-  -- Microtopics (level='microtopic') + issue_type map
   FOR i IN 1 .. array_length(micros, 1) LOOP
     SELECT id INTO v_parent FROM public.topics
-      WHERE subject_id = v_subject AND parent_topic_id IS NULL AND slug = micros[i][2];
+      WHERE subject_id = v_subject AND parent_topic_id IS NULL AND slug = micros[i][1];
+    IF v_parent IS NULL THEN
+      RAISE EXCEPTION 'ewp seed: missing parent topic % for microtopic %', micros[i][1], micros[i][2];
+    END IF;
 
     INSERT INTO public.topics (id, subject_id, parent_topic_id, slug, name, level, is_active)
-    SELECT md5('ewp:microtopic:' || micros[i][3])::uuid, v_subject, v_parent,
-           micros[i][3], micros[i][4], 'microtopic', true
+    SELECT md5('ewp:microtopic:' || micros[i][2])::uuid, v_subject, v_parent,
+           micros[i][2], micros[i][3], 'microtopic', true
     WHERE NOT EXISTS (
       SELECT 1 FROM public.topics
-      WHERE subject_id = v_subject AND parent_topic_id = v_parent AND slug = micros[i][3]
+      WHERE subject_id = v_subject AND parent_topic_id = v_parent AND slug = micros[i][2]
     );
+  END LOOP;
 
-    SELECT id INTO v_micro FROM public.topics
-      WHERE subject_id = v_subject AND parent_topic_id = v_parent AND slug = micros[i][3];
+  FOR i IN 1 .. array_length(maps, 1) LOOP
+    -- Validate: English subject + level='microtopic' + active before mapping.
+    SELECT t.id INTO v_micro
+      FROM public.topics t
+      WHERE t.subject_id = v_subject AND t.slug = maps[i][2]
+        AND t.level = 'microtopic' AND t.is_active = true;
+    IF v_micro IS NULL THEN
+      RAISE EXCEPTION 'ewp seed: no active English microtopic for slug % (issue_type %)',
+        maps[i][2], maps[i][1];
+    END IF;
 
     INSERT INTO public.writing_issue_type_microtopic_map (issue_type, microtopic_id, map_version, is_active)
-    SELECT micros[i][1], v_micro, 1, true
+    SELECT maps[i][1], v_micro, 1, true
     WHERE NOT EXISTS (
       SELECT 1 FROM public.writing_issue_type_microtopic_map
-      WHERE issue_type = micros[i][1] AND map_version = 1
+      WHERE issue_type = maps[i][1] AND map_version = 1
     );
   END LOOP;
 END;
 $$;
-
--- ---------------------------------------------------------------------------
--- Grants (service_role owns all writes; authenticated reads gated by RLS)
--- ---------------------------------------------------------------------------
-GRANT SELECT ON public.effective_user_topic_mastery_evidence TO authenticated, service_role;
 
 SELECT pg_notify('pgrst', 'reload schema');
