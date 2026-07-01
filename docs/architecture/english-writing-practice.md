@@ -1,6 +1,6 @@
 # English Writing Practice — Architecture Contract
 
-**Status:** PROPOSED / REVIEW-PENDING on branch `claude/english-practice-studio-x6kv4m` (PR #819). Not design-locked until #819 merges. Do not implement until locked.
+**Status:** DESIGN-LOCKED (merged in PR #819, 2026-07-01). Implementation per Lane H (EWP-1 in review — PR #821, code present / review pending; EWP-2 onward not started).
 **Checklist:** `docs/status/career-copilot-checklist.md` § English Writing Practice
 **PR plan:** `docs/status/career-copilot-pr-plan.md` § English Writing Practice PRs (EWP-1 … EWP-7)
 
@@ -707,13 +707,15 @@ Aspirants have no SELECT access to this table.
 
 #### 4.10a Effective decision and supersession
 
-Multiple review events may target one `issue_event_id` (e.g. `invalidated` then later `confirmed`). The **effective decision** is the latest event by `(created_at, id)` ordering. Derivation:
+Multiple review events may target one `issue_event_id` (e.g. `invalidated` then later `confirmed`). The **effective decision** is the latest event by `(created_at, event_seq)` ordering. Derivation:
 
 - Effective `confirmed` (or no review event) → issue is `active`.
 - Effective `invalidated` → issue is `withdrawn`; excluded from `active_prior_issues`, `resolved_prior_lineages`, mastery, and planner queries.
 - Effective `reclassified` → issue uses the corrected classification via a review-override projection (§4.11a).
 
-Review events for one issue are **serialized** (processed in `(created_at, id)` order, one at a time). Each event that **changes** the effective decision emits exactly one correction evidence row keyed on that `review_event_id`, superseding the currently-effective evidence event — see the full transition matrix in §4.12c (including reversals like `invalidated → confirmed` which re-assert the original, and `reclassified → confirmed` which removes the replacement). A review event that does not change the effective decision (e.g. a redundant `confirmed`) emits nothing. Superseded events remain in the append-only history but do not drive current state.
+**Ordering contract — `event_seq`, not `id` (amended 2026-07-01).** The original lock specified `(created_at, id)`. In implementation this is unsafe: `created_at` defaults to `now()`, which is transaction-stable, so two review events inserted in one transaction tie on `created_at`; and `id` is a random UUID, so the `id` tiebreak does not reflect insertion order — an `invalidated` then `confirmed` pair in one transaction could resolve to `invalidated` at random. The authoritative tiebreak is therefore a monotonic insertion ordinal, `writing_issue_review_events.event_seq` (`GENERATED ALWAYS AS IDENTITY`). Effective order is `(created_at DESC, event_seq DESC)`. Sequence-allocation order is authoritative (a later `INSERT` always has a higher `event_seq`); concurrent inserts against one issue are ordered by their allocated `event_seq`. Correction evidence consumes this same ordering via the shared `ewp_issue_effectively_invalidated` helper. This is an implementation refinement of the merged contract, not a semantic change to which decision wins (still "latest review event for the issue").
+
+Review events for one issue are **serialized** (processed in `(created_at, event_seq)` order, one at a time). Each event that **changes** the effective decision emits exactly one correction evidence row keyed on that `review_event_id`, superseding the currently-effective evidence event — see the full transition matrix in §4.12c (including reversals like `invalidated → confirmed` which re-assert the original, and `reclassified → confirmed` which removes the replacement). A review event that does not change the effective decision (e.g. a redundant `confirmed`) emits nothing. Superseded events remain in the append-only history but do not drive current state.
 
 ---
 
@@ -847,7 +849,9 @@ The shadow idempotency key (§10.1a) uses the same identity components (includin
 
 #### 4.12c Correction path (post-emission) — transition matrix
 
-When a `writing_issue_review_events` row changes the **effective decision** (§4.10a) for an issue **after** evidence/shadow rows already exist, the existing rows are never mutated (append-only). A correction evidence row is appended. Review events for one `issue_event_id` are **serialized** (processed in `(created_at, id)` order, one at a time per issue) so the effective decision is well defined at each step.
+When a `writing_issue_review_events` row changes the **effective decision** (§4.10a) for an issue **after** evidence/shadow rows already exist, the existing rows are never mutated (append-only). A correction evidence row is appended. Review events for one `issue_event_id` are **serialized** (processed in `(created_at, event_seq)` order — see §4.10a; `event_seq` is the monotonic tiebreak, not `id`) one at a time per issue, so the effective decision is well defined at each step.
+
+**Locked review-decision → evidence-op mapping (enforced by `ewp_check_evidence_correction`):** `confirmed` → re-assert (`assert` with predecessor) restoring the automatic projection; `invalidated` → `retract` preserving the predecessor's issue projection; `reclassified` → `replace` carrying the review-override projection created by that review event. Every superseding row must supersede the effective tail and carry a projection on the predecessor's issue; corrections of projection-less evidence are rejected.
 
 `supersedes_evidence_key` always points to the **currently effective** evidence event for the issue — not always the original assertion. The correction supersedes whatever is effective now.
 

@@ -87,7 +87,7 @@ terms come from `docs/status/career-copilot-checklist.md`.
 | E. Backend CI audit sequencing | Yes | Independent infrastructure PR | CI/backend infra agent |
 | F. Live-DB tails | Yes, operator-led | Does not block code cleanup unless evidence changes status | Operator |
 | G. Track C / personalization expansion | No | Waits on Lane A clean gate | Backend+frontend feature agents later |
-| H. English Writing Practice | EWP-1 starts after architecture lock (#819 merge); EWP-5 mastery live blocked on Lane A gate | Architecture lock (#819) gates EWP-1; EWP-5 mastery live blocked on Lane A gate | Backend + frontend agents |
+| H. English Writing Practice | EWP-1 (schema/constraints/RLS) in review — PR #821; runtime state-machine/rollup tests are EWP-2, not EWP-1; EWP-5 mastery live blocked on Lane A gate | Architecture lock (#819) gates EWP-1; EWP-5 mastery live blocked on Lane A gate | Backend + frontend agents |
 
 ## Lane H — English Writing Practice
 
@@ -102,7 +102,7 @@ EWP-1 must land first. EWP-2 (deterministic API) and EWP-2B (evaluator worker) m
 
 ### EWP-1 — Architecture contract, schema, constraints, RLS
 
-**Status:** PLANNED — blocked on architecture lock (PR #819 merge)
+**Status:** CODE PRESENT IN PR #821 (open) / REVIEW PENDING — migration `205_english_writing_practice_schema.sql` + `version_set_hash` helper + text tests + a Postgres integration suite that runs in CI (backend job provisions Postgres + `EWP_PG_DSN`). Validated against Postgres 16. OPERATOR PENDING: run the live `select max(version)::int+1 from schema_migrations` to confirm/rename the number before merge; staging apply.
 
 **Goal:** Land the full schema with RLS, constraints, state-machine tests, and hash test vectors. No aspirant-facing UI. No mastery live writes. Migration number must come from `select max(version)::int + 1 from schema_migrations`.
 
@@ -112,7 +112,9 @@ EWP-1 must land first. EWP-2 (deterministic API) and EWP-2B (evaluator worker) m
 docs/architecture/english-writing-practice.md        (already present — no further edits in this PR)
 docs/status/career-copilot-checklist.md              (update EWP-1 row)
 docs/status/career-copilot-pr-plan.md                (update EWP-1 row)
-app/supabase/migrations/<next>_english_writing_practice_schema.sql
+app/supabase/migrations/205_english_writing_practice_schema.sql
+app/backend/app/study_os/writing_practice/__init__.py
+app/backend/app/study_os/writing_practice/version_set_hash.py   (shared helper; EWP-2 consumes it)
 app/backend/tests/study_os/test_writing_schema.py
 app/backend/tests/study_os/test_version_set_hash.py
 ```
@@ -144,18 +146,22 @@ app/backend/tests/study_os/test_version_set_hash.py
 23. RLS on all tables (see §12 of architecture doc): explicit owner-select policy per owner-readable table (`writing_sessions`, `writing_session_units`, `writing_unit_versions`, `writing_session_checks`, evaluations + issue tables); service-role-only (no client allow policy) for `writing_issue_review_events`, `user_topic_mastery_evidence`, `writing_evaluation_jobs`, `writing_mastery_shadow`, `writing_mastery_outbox`; `writing_issue_type_microtopic_map` deliberate read policy recorded (§4.15)
 24. RLS verification: every new table must have RLS enabled and a deliberate policy decision recorded. Owner-select tables get an explicit owner policy (see §12.1 table). Service-role-only tables (§12.2) intentionally have NO client allow policy (`USING (false)` or no policy) — this is the correct, documented state for them, not the zero-policy defect. The zero-policy defect applies only to tables that should be owner-readable but lack a policy.
 
-**Tests must include:**
+**Tests must include (scope revised 2026-07-01 — schema-level only; runtime-state contracts moved to EWP-2):**
 
-- Fixed-input `version_set_hash` fixture with expected SHA-256 digest (architecture §4.5a). Pin the exact hex output. Backend fixed-vector test + API integration assertion (clients consume, never compute — see AGENTS.md EWP-3).
-- Unit state machine: assert every allowed and forbidden transition for both learning and exam modes
-- Session rollup: assert priority ordering including the `evaluation_failed` / `evaluation_incomplete` rules (§4.3b); session-level outcome aggregation (§9.1a)
-- `unit_constraints` Pydantic validation: valid schema accepted, unknown key rejected, `max_words < min_words` rejected
-- `content_hash` for blank version: assert `SHA-256('') = e3b0c44...`
-- Review-override projection: assert a `review_override` row inserts alongside the `automatic` row at the same `projection_revision` (partial unique indexes)
-- RLS: every new table must have a wrapped-transaction test (see AGENTS.md § RLS verification protocol)
-- **Immutability triggers:** assert `service_role` UPDATE and `service_role` DELETE both fail on every immutable table (§12.4)
+EWP-1 lands the *schema*, so its tests prove schema/constraint/RLS behaviour, not runtime state-machine logic. The following are EWP-1's contract (all present):
+- Fixed-input `version_set_hash` fixture with pinned SHA-256 digest (§4.5a). Clients consume, never compute (AGENTS.md EWP-3) — backend vector test; the API integration assertion lands with the endpoint in EWP-2.
+- `content_hash` for blank version: enforced by `writing_unit_versions_blank_ck` (empty text + `SHA-256('')` + zero word count); behavioural test present.
+- Review-override projection: a `review_override` row inserts alongside `automatic` at the same `projection_revision` (partial unique indexes) — behavioural test present.
+- RLS: wrapped-role test that a non-owner authenticated user and anon read zero owned rows; owner cannot read an effectively-invalidated issue/resolution/projection; the fold view is service-role-only.
+- **Immutability triggers:** `service_role` UPDATE and DELETE both fail on every immutable table (§12.4) — parametrized behavioural test present.
+- Constraint/domain rejection: value domains, key formats, lease shapes, causal-chain corrections, cross-user supersession.
 
-**Does not include:** API endpoints, frontend, mastery writes, evaluator integration.
+**Moved to EWP-2 (runtime logic, not schema — enforced by the finalizer / API, not by DDL):**
+- Unit state-machine allowed/forbidden transitions (learning + exam) — the DB CHECK constrains the *set* of states; the *legal transitions* are owned by `finalize_writing_session` (EWP-2).
+- Session rollup incl. `evaluation_failed`/`evaluation_incomplete` (§4.3b) and session-level outcome monotonicity (§9.1a) — finalizer behaviour (EWP-2).
+- `unit_constraints` Pydantic validation (valid accepted / unknown key rejected / `max_words < min_words`) — backend model validation (EWP-2).
+
+**Does not include:** API endpoints, frontend, mastery writes, evaluator integration, and the runtime-state tests listed above.
 
 ---
 
@@ -165,6 +171,8 @@ app/backend/tests/study_os/test_version_set_hash.py
 
 **Goal:** implement the practice runtime API with deterministic (Stage 1) evaluation only. No LLM calls. Returns immediate feedback on word count, required-word presence, sentence count, duplicates, and empty submissions.
 
+**Tests must include (moved here from EWP-1 — runtime-state contracts):** unit state-machine allowed/forbidden transitions for learning + exam modes; session rollup incl. `evaluation_failed`/`evaluation_incomplete` (§4.3b) and outcome monotonicity (§9.1a) via `finalize_writing_session`; `unit_constraints` Pydantic validation (valid accepted / unknown key rejected / `max_words < min_words`); the `version_set_hash` API integration assertion (endpoint returns the backend-computed digest).
+
 **Write scope:**
 
 ```
@@ -173,7 +181,7 @@ app/backend/app/study_os/writing_practice/
   sessions.py          (session create/read/resume)
   units.py             (unit submit, rewrite submit)
   evaluation.py        (Stage 1 deterministic checks)
-  version_set_hash.py  (shared hash helper — used by evaluator, planner, API)
+  version_set_hash.py  (shared hash helper — LANDED in EWP-1; EWP-2 consumes it)
   session_finalizer.py (finalize_writing_session — single owner of rollup)
   coverage_checker.py  (required-word coverage session check)
   mastery_shadow.py    (shadow-only mastery evidence emission, FF-gated)
