@@ -2281,10 +2281,11 @@ def list_score_snapshots(
     exam-wide rows (``exam_phase_id IS NULL``) are returned.  This prevents
     mixed exam-wide and phase-scoped rows appearing in the same review table.
 
-    Supports cursor-style pagination via ``limit`` (1–200, default 50) and
-    ``offset``.  ``total`` always reflects the full unfiltered count for the
-    scope so the UI can render a page-count without issuing a separate COUNT
-    request.
+    Supports offset pagination via ``limit`` (1–200, default 50) and
+    ``offset``.  All rows are read and enriched in Python first; ``offset``
+    and ``limit`` are applied as a slice on the in-memory result.  ``total``
+    always reflects the full unfiltered count for the scope so the UI can
+    render a page-count without issuing a separate COUNT request.
     """
     if status is not None and status not in _SNAPSHOT_STATUSES:
         raise HTTPException(
