@@ -196,6 +196,31 @@ const ENTITY_CYCLE_SCOPE = new Set([
   "pyq-papers",
 ]);
 
+// J1: per-entity status filter config — options derived from DB CHECK constraints.
+// See migrations 030/031/032/056; coverage uses COVERAGE_REVIEWER_STATUSES (migration 030).
+const ENTITY_STATUS_CONFIG = {
+  "syllabus-topic-mentions": { param: "reviewer_status", label: "Reviewer status", options: ["pending", "verified", "rejected", "needs_correction"] },
+  "exam-topic-coverage":     { param: "reviewer_status", label: "Reviewer status", options: COVERAGE_REVIEWER_STATUSES },
+  "policy-updates":          { param: "reviewer_status", label: "Reviewer status", options: ["pending", "verified", "rejected", "needs_correction"] },
+  "pyq-questions":           { param: "reviewer_status", label: "Reviewer status", options: ["pending", "verified", "rejected", "needs_correction"] },
+  "syllabus-documents":      { param: "trust_status",    label: "Trust status",    options: ["pending", "verified", "rejected", "superseded"] },
+  "pyq-papers":              { param: "trust_status",    label: "Trust status",    options: ["pending", "verified", "rejected"] },
+  "pyq-sources":             { param: "trust_status",    label: "Trust status",    options: ["pending", "verified", "rejected"] },
+};
+
+// J1: entities that support backend text-search, keyed to the param name.
+// Only these 4 entities expose a `q` param; all others ignore unknown params.
+const ENTITY_SEARCH_PARAM = {
+  "syllabus-topic-mentions": "q",
+  "exam-phase-sections":     "q",
+  "subjects":                "q",
+  "topics":                  "q",
+};
+
+// J1: entities whose list endpoint has no `offset` support.
+// (pyq-options now supports offset via .range() — backend amended in PR #820.)
+const ENTITY_NO_OFFSET = new Set();
+
 const ENTITY_CONFIG = {
   "exam-families": {
     label: "Exam families",
@@ -748,7 +773,7 @@ function parseValue(field, raw) {
 
 export default function AdminExamIntelCms() {
   const { user, status: authStatus } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const scopeExamId = searchParams.get("exam_id") ?? null;
   const scopeCycleId = searchParams.get("cycle_id") ?? null;
@@ -793,6 +818,25 @@ export default function AdminExamIntelCms() {
   const { run: runEdit, busy: busyEdit } = useApiAction();
   const { run: runRetire, busy: busyRetire } = useApiAction();
 
+  // J1: search / filter / pagination state
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [scopeExamName, setScopeExamName] = useState(null);
+  const [scopeCycleName, setScopeCycleName] = useState(null);
+  // "idle" = no scope param; "resolving" = lookup in flight; "valid" = found; "error" = not found
+  const [examScopeState, setExamScopeState] = useState("idle");
+  const [cycleScopeState, setCycleScopeState] = useState("idle");
+  // resolvedExamId/resolvedCycleId track WHICH ID was successfully resolved.
+  // writesBlocked also checks these match current URL params to close the
+  // initial-render gap and the valid-A → resolving-B scope-change gap.
+  const [resolvedExamId, setResolvedExamId] = useState(null);
+  const [resolvedCycleId, setResolvedCycleId] = useState(null);
+  const searchTimerRef = useRef(null);
+  const PAGE_SIZE = 50;
+
   const isDocuments = entity === "documents";
   const cfg = ENTITY_CONFIG[entity];
   const isEditable = EDITABLE_ENTITIES.has(entity);
@@ -800,8 +844,17 @@ export default function AdminExamIntelCms() {
   // Per-entity bulk caps — source of truth is the backend. UI copy only; the
   // backend enforces. Submit is never blocked client-side.
   const bulkCap = { "pyq-questions": 2000, "pyq-options": 4000, "pyq-question-topic-tags": 2000 }[entity] || 500;
+  // Fail-closed: block when no scope, scope is resolving, scope errored, OR
+  // resolved identity does not yet match the current URL param (covers first
+  // render and valid-A → resolving-B transitions).
+  const scopeResolutionFailed =
+    (scopeExamId && examScopeState === "error") ||
+    (scopeCycleId && scopeExamId && cycleScopeState === "error");
+  const writesBlocked =
+    (scopeExamId && (examScopeState !== "valid" || resolvedExamId !== scopeExamId)) ||
+    (scopeExamId && scopeCycleId && (cycleScopeState !== "valid" || resolvedCycleId !== scopeCycleId));
 
-  async function load() {
+  async function load({ searchVal, filterVal, pageVal } = {}) {
     const gen = ++loadGenRef.current;
     if (!isAuthorized) return;
     // The Documents panel manages its own data via the upload/list endpoints.
@@ -812,17 +865,45 @@ export default function AdminExamIntelCms() {
     }
     setBusy(true);
     setErr(null);
+    // F5: clear rows immediately so stale rows are not actionable during transitions
+    setItems(null);
+    const effectiveSearch = searchVal !== undefined ? searchVal : search;
+    const effectiveFilter = filterVal !== undefined ? filterVal : statusFilter;
+    const effectivePage = pageVal !== undefined ? pageVal : page;
+    const noOffset = ENTITY_NO_OFFSET.has(entity);
+    const offset = noOffset ? 0 : (effectivePage - 1) * PAGE_SIZE;
     try {
-      const params = new URLSearchParams({ limit: "50" });
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+      // F3: only send offset for entities whose backend supports it
+      if (!noOffset) params.set("offset", String(offset));
       if (scopeExamId && ENTITY_EXAM_SCOPE.has(entity)) {
         params.set("exam_id", scopeExamId);
       }
-      if (scopeCycleId && ENTITY_CYCLE_SCOPE.has(entity)) {
+      // Per B.3: cycle_id without exam_id is ignored
+      if (scopeExamId && scopeCycleId && ENTITY_CYCLE_SCOPE.has(entity)) {
         params.set("exam_cycle_id", scopeCycleId);
+      }
+      // F2: send search only for entities with documented backend support, using correct param
+      const searchParam = ENTITY_SEARCH_PARAM[entity];
+      if (effectiveSearch && searchParam) {
+        params.set(searchParam, effectiveSearch);
+      }
+      const statusCfg = ENTITY_STATUS_CONFIG[entity];
+      if (effectiveFilter && statusCfg) {
+        params.set(statusCfg.param, effectiveFilter);
       }
       const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?${params}`);
       if (gen !== loadGenRef.current) return;
       setItems(r);
+      // F6: track hasMore: full page without total → may have more; short page → done
+      const items = r?.items || [];
+      if (r?.total != null) {
+        setTotalCount(r.total);
+        setHasMore(offset + items.length < r.total);
+      } else {
+        setTotalCount(null);
+        setHasMore(!noOffset && items.length === PAGE_SIZE);
+      }
     } catch (e) {
       if (gen !== loadGenRef.current) return;
       setErr(getApiErrorMessage(e));
@@ -856,6 +937,7 @@ export default function AdminExamIntelCms() {
 
   async function submitBulk(e) {
     e.preventDefault();
+    if (writesBlocked) { setStatus({ ok: false, message: "Write blocked: scope is unresolved or invalid." }); return; }
     setBulkResult(null);
     if (bulkReason.trim().length < 8) {
       setStatus({ ok: false, message: "Bulk reason must be ≥8 chars." });
@@ -890,6 +972,7 @@ export default function AdminExamIntelCms() {
 
   async function submitCreate(e) {
     e.preventDefault();
+    if (writesBlocked) { setStatus({ ok: false, message: "Write blocked: scope is unresolved or invalid." }); return; }
     if (reason.trim().length < 8) {
       setStatus({ ok: false, message: "Reason must be ≥8 chars." });
       return;
@@ -966,6 +1049,7 @@ export default function AdminExamIntelCms() {
   async function submitEdit(e) {
     e.preventDefault();
     if (!editingRow) return;
+    if (writesBlocked) { setEditError("Write blocked: scope is unresolved or invalid."); return; }
     if (editReason.trim().length < 8) {
       setEditError("Reason must be ≥8 chars.");
       return;
@@ -1030,6 +1114,7 @@ export default function AdminExamIntelCms() {
 
   async function confirmRetire() {
     if (!retireTarget) return;
+    if (writesBlocked) { setRetireError("Write blocked: scope is unresolved or invalid."); return; }
     if (retireReason.trim().length < 8) {
       setRetireError("Retire reason must be ≥8 chars.");
       return;
@@ -1068,7 +1153,8 @@ export default function AdminExamIntelCms() {
     if (scopeExamId && cfg?.fields.some((f) => !f.uiOnly && f.key === "exam_id")) {
       prefill.exam_id = scopeExamId;
     }
-    if (scopeCycleId && cfg?.fields.some((f) => !f.uiOnly && f.key === "exam_cycle_id")) {
+    // B.3: cycle_id without exam_id is ignored — do not prefill cycle into create form either
+    if (scopeExamId && scopeCycleId && cfg?.fields.some((f) => !f.uiOnly && f.key === "exam_cycle_id")) {
       prefill.exam_cycle_id = scopeCycleId;
     }
     setFormValues(prefill);
@@ -1077,9 +1163,102 @@ export default function AdminExamIntelCms() {
     setEditValues({});
     setEditReason("");
     setEditError(null);
-    load();
+    // J1: reset search/filter/page when entity or scope changes; clear pending debounce
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    setSearch("");
+    setStatusFilter("");
+    setPage(1);
+    setTotalCount(null);
+    setHasMore(false);
+    load({ searchVal: "", filterVal: "", pageVal: 1 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, isAuthorized, scopeExamId, scopeCycleId]);
+
+  // J1: resolve human-readable scope names; track resolution state and resolved identity
+  useEffect(() => {
+    if (!isAuthorized || !scopeExamId) {
+      setScopeExamName(null); setExamScopeState("idle"); setResolvedExamId(null); return;
+    }
+    let cancelled = false;
+    // Reset synchronously so writesBlocked=true on this render and on scope change
+    setScopeExamName(null);
+    setExamScopeState("resolving");
+    setResolvedExamId(null);
+    (async () => {
+      let offset = 0;
+      try {
+        while (!cancelled) {
+          const r = await api.get(`/api/admin/exam-intelligence-cms/exams?limit=200&offset=${offset}`);
+          if (cancelled) return;
+          const items = r?.items || [];
+          const exam = items.find((e) => e.id === scopeExamId);
+          if (exam) { setScopeExamName(exam.name); setExamScopeState("valid"); setResolvedExamId(scopeExamId); return; }
+          if (items.length < 200) break;
+          offset += 200;
+        }
+        if (!cancelled) { setScopeExamName("(exam not found)"); setExamScopeState("error"); }
+      } catch { if (!cancelled) { setScopeExamName("(exam not found)"); setExamScopeState("error"); } }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthorized, scopeExamId]);
+
+  useEffect(() => {
+    if (!isAuthorized || !scopeCycleId) {
+      setScopeCycleName(null); setCycleScopeState("idle"); setResolvedCycleId(null); return;
+    }
+    let cancelled = false;
+    setScopeCycleName(null);
+    setCycleScopeState("resolving");
+    setResolvedCycleId(null);
+    (async () => {
+      const examParam = scopeExamId ? `&exam_id=${encodeURIComponent(scopeExamId)}` : "";
+      let offset = 0;
+      try {
+        while (!cancelled) {
+          const r = await api.get(`/api/admin/exam-intelligence-cms/exam-cycles?limit=200&offset=${offset}${examParam}`);
+          if (cancelled) return;
+          const items = r?.items || [];
+          const cycle = items.find((c) => c.id === scopeCycleId);
+          if (cycle) { setScopeCycleName(cycle.cycle_name ?? cycle.year ?? "(cycle not found)"); setCycleScopeState("valid"); setResolvedCycleId(scopeCycleId); return; }
+          if (items.length < 200) break;
+          offset += 200;
+        }
+        if (!cancelled) { setScopeCycleName("(cycle not found)"); setCycleScopeState("error"); }
+      } catch { if (!cancelled) { setScopeCycleName("(cycle not found)"); setCycleScopeState("error"); } }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthorized, scopeCycleId, scopeExamId]);
+
+  function handleSearchChange(e) {
+    const val = e.target.value;
+    setSearch(val);
+    setPage(1);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      load({ searchVal: val, filterVal: statusFilter, pageVal: 1 });
+    }, 300);
+  }
+
+  function handleStatusChange(e) {
+    const val = e.target.value;
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    setStatusFilter(val);
+    setPage(1);
+    load({ searchVal: search, filterVal: val, pageVal: 1 });
+  }
+
+  function handlePageChange(newPage) {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    setPage(newPage);
+    load({ searchVal: search, filterVal: statusFilter, pageVal: newPage });
+  }
+
+  function clearScope() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("exam_id");
+    next.delete("cycle_id");
+    setSearchParams(next);
+  }
 
   if (authStatus === "checking") {
     return <div data-testid="advanced-repair-checking" style={{ padding: "2rem" }}>Checking permissions…</div>;
@@ -1123,15 +1302,52 @@ export default function AdminExamIntelCms() {
         broken-reference correction. Normal operational work belongs in Manage Exam. Raw changes can
         affect linked exam data and remain subject to the existing review and locking lifecycle.
       </AdminSafetyBanner>
-      {(scopeExamId || scopeCycleId) && (
+      {scopeExamId && (
         <div
           className="rounded border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
           data-testid="advanced-repair-scope-summary"
         >
-          Context filter —{" "}
-          {scopeExamId && <>exam <code>{scopeExamId}</code></>}
-          {scopeExamId && scopeCycleId && " · "}
-          {scopeCycleId && <>cycle <code>{scopeCycleId}</code></>}
+          <span className="flex items-center gap-3 flex-wrap">
+            <span>
+              <strong>Scope:</strong>{" "}
+              <span data-testid="scope-exam-name">{scopeExamName ?? "Loading…"}</span>
+              {scopeCycleId && (
+                <> · <span data-testid="scope-cycle-name">{scopeCycleName ?? "Loading…"}</span></>
+              )}
+              {!ENTITY_EXAM_SCOPE.has(entity) && (
+                <span className="ml-2 text-amber-700" data-testid="scope-not-scoped-note">
+                  — This entity is not scoped by exam.
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              className="btn small"
+              onClick={clearScope}
+              data-testid="scope-clear-btn"
+            >
+              Clear scope
+            </button>
+          </span>
+        </div>
+      )}
+
+      {scopeResolutionFailed && (
+        <div
+          className="rounded border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800"
+          role="alert"
+          data-testid="scope-resolution-error"
+        >
+          <strong>Scope error:</strong> The scoped exam or cycle could not be resolved. All write
+          actions are disabled until the scope is cleared or corrected.
+          <button
+            type="button"
+            className="ml-3 underline"
+            onClick={clearScope}
+            data-testid="scope-error-clear-btn"
+          >
+            Clear scope
+          </button>
         </div>
       )}
 
@@ -1159,6 +1375,7 @@ export default function AdminExamIntelCms() {
               type="button"
               className="btn small"
               onClick={() => setShowCreate((s) => !s)}
+              disabled={writesBlocked}
               data-testid="cms-toggle-create"
             >
               <Plus className="h-3 w-3" /> {showCreate ? "Cancel" : "New row"}
@@ -1168,6 +1385,7 @@ export default function AdminExamIntelCms() {
                 type="button"
                 className="btn small"
                 onClick={() => setShowBulk((s) => !s)}
+                disabled={writesBlocked}
                 data-testid="cms-toggle-bulk"
               >
                 <Plus className="h-3 w-3" /> {showBulk ? "Cancel bulk" : "Bulk import"}
@@ -1176,6 +1394,43 @@ export default function AdminExamIntelCms() {
           </>
         ) : null}
       </div>
+
+      {/* J1: search + status filter; search only for entities with documented backend support */}
+      {!isDocuments && (ENTITY_SEARCH_PARAM[entity] || ENTITY_STATUS_CONFIG[entity]) && (
+        <div className="flex gap-2 items-end flex-wrap">
+          {ENTITY_SEARCH_PARAM[entity] && (
+            <label>
+              <span className="block text-xs text-muted-foreground mb-1">Search</span>
+              <input
+                type="search"
+                value={search}
+                onChange={handleSearchChange}
+                placeholder={`Search ${cfg?.label ?? entity}…`}
+                className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background w-48"
+                data-testid="cms-search-input"
+              />
+            </label>
+          )}
+          {ENTITY_STATUS_CONFIG[entity] && (
+            <label>
+              <span className="block text-xs text-muted-foreground mb-1">
+                {ENTITY_STATUS_CONFIG[entity].label}
+              </span>
+              <select
+                value={statusFilter}
+                onChange={handleStatusChange}
+                className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                data-testid="cms-status-filter"
+              >
+                <option value="">All statuses</option>
+                {ENTITY_STATUS_CONFIG[entity].options.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
 
       {entity === "exam-topic-coverage" && (
         <div className="rounded border border-border/60 bg-card p-4" data-testid="cms-lifecycle-legend">
@@ -1201,7 +1456,7 @@ export default function AdminExamIntelCms() {
 
       {err ? <div className="text-sm text-red-700" role="alert">{err}</div> : null}
 
-      {isDocuments ? <ExamIntelDocuments scopeExamId={scopeExamId} scopeCycleId={scopeCycleId} /> : null}
+      {isDocuments ? <ExamIntelDocuments scopeExamId={scopeExamId} scopeCycleId={scopeCycleId} writesBlocked={writesBlocked} /> : null}
 
       {!isDocuments && showBulk && cfg.supportsBulk !== false ? (
         <form onSubmit={submitBulk} className="rounded border border-border/60 bg-card p-4 space-y-2" data-testid="cms-bulk-form">
@@ -1381,6 +1636,7 @@ export default function AdminExamIntelCms() {
                       type="button"
                       className="btn small"
                       onClick={() => startEdit(r)}
+                      disabled={writesBlocked || busy}
                       data-testid={`cms-edit-${r.id}`}
                     >
                       Edit
@@ -1390,12 +1646,13 @@ export default function AdminExamIntelCms() {
                         type="button"
                         className="btn small ml-1"
                         onClick={() => deactivateRow(r)}
+                        disabled={writesBlocked || busy}
                         data-testid={`cms-retire-${r.id}`}
                       >
                         Retire
                       </button>
                     ) : null}
-                    {entity === "exams" ? (
+                    {entity === "exams" && !writesBlocked ? (
                       <a
                         href={`/admin/exam-intelligence/exams/${r.id}/add-cycle`}
                         className="btn small ml-1"
@@ -1410,9 +1667,31 @@ export default function AdminExamIntelCms() {
             ))}
           </tbody>
         </table>
-        {items?.total != null ? (
-          <div className="text-xs text-muted-foreground p-2 border-t border-border/40">
-            total {items.total}, showing {items.items?.length ?? 0}
+        {items !== null && !ENTITY_NO_OFFSET.has(entity) ? (
+          <div className="flex items-center gap-3 text-xs text-muted-foreground p-2 border-t border-border/40" data-testid="cms-pagination-footer">
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page <= 1 || busy}
+              data-testid="cms-page-prev-btn"
+            >
+              Previous
+            </button>
+            <span data-testid="cms-page-indicator">
+              {totalCount != null
+                ? `Page ${page} of ${Math.max(1, Math.ceil(totalCount / PAGE_SIZE))} (${totalCount} total)`
+                : `Page ${page}`}
+            </span>
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => handlePageChange(page + 1)}
+              disabled={totalCount != null ? page >= Math.ceil(totalCount / PAGE_SIZE) : !hasMore || busy}
+              data-testid="cms-page-next-btn"
+            >
+              Next
+            </button>
           </div>
         ) : null}
       </section>

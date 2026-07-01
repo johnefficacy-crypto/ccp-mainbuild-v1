@@ -1,12 +1,15 @@
 # Advanced Repair Scoping Gate — J1 Contract
 
 - Document type: J1 implementation contract — Advanced Repair scoping
-- Status: **DRAFT — AWAITING OPERATOR APPROVAL**
+- Status: **OPERATOR APPROVED — CODE-FIXED, VALIDATION PENDING (PR #820 open draft)**
 - Date: 2026-06-29
+- Approval date: 2026-06-30 (operator johnefficacy-crypto, verbal "J1" selection); amended 2026-07-01
+- Approval record (original OD-1 through OD-12): https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4850772808
+- Approval record (amended OD-2 and OD-12): https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4851692372
 - Parent track: `J1 — Advanced Repair scoping` (`docs/status/career-copilot-checklist.md` row "J1 — Advanced Repair scoping")
 - Authority: `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` §9 (Advanced Repair access model)
 - Gates cleared: I8-C merged (PR #759 `f4378097`); I6 merged (PR #761 `d69602f8`)
-- Repository scope of the PR introducing this document: **documentation and checklist only**. No runtime, route, component, API, migration, or test change is authorized by this file.
+- Implementation PR: #820 (`claude/j1-advanced-repair-scoping`)
 
 ---
 
@@ -104,7 +107,7 @@ The current implementation applies scope params to list requests but has no sear
 - No changes to `AdminSafetyBanner` (`collapsible={false}` — unchanged).
 - No changes to the `ENTITY_EXAM_SCOPE` or `ENTITY_CYCLE_SCOPE` sets (already correct after I8-C).
 - No changes to entity field definitions or CRUD logic.
-- No changes to backend endpoint signatures (search/filter params already accepted by all relevant list endpoints).
+- Backend change (exception): `pyq-options` list endpoint amended in PR #820 to add `offset` param support; all other backend endpoints unchanged.
 - No new database migrations.
 - No changes to `AdminShell.jsx`, `adminRoutes.jsx`, `ExamWorkspace.jsx`, or any routing file.
 
@@ -159,7 +162,7 @@ The backend column name is `exam_cycle_id`, NOT `cycle_id`. The URL query param 
 ### C.1 Search input (LOCKED)
 
 - A text input labeled "Search" (or "Filter rows") appears at the top of the entity list, below the scope indicator and entity selector.
-- The search input sends a `search` query param to the backend list endpoint.
+- The search input sends a `q` query param for the 4 entities with documented backend support (`syllabus-topic-mentions`, `exam-phase-sections`, `subjects`, `topics`). For all other entities the search input is hidden and no param is sent. (The original universal `search=` contract is superseded by the per-entity capability matrix.)
 - Debounce: 300 ms minimum between keystrokes and request dispatch.
 - The search input clears when the selected entity changes.
 - Placeholder text: `"Search <entity label>…"` (uses the entity's `label` from `ENTITY_CONFIG`).
@@ -189,9 +192,9 @@ The following URL/request query params are used by the J1 controls:
 
 | Control | Backend param | Notes |
 |---|---|---|
-| Search input | `search` | Text string; passed as-is |
+| Search input | `q` (4 entities only) | Only `syllabus-topic-mentions`, `exam-phase-sections`, `subjects`, `topics` support text search. Input hidden and no param sent for all other entities. |
 | Status filter | `reviewer_status` or `trust_status` | Depends on entity type |
-| Page navigation | `limit`, `offset` | Always integers; `limit=50` constant |
+| Page navigation | `limit`, `offset` | Always integers; `limit=50` constant. All entities (including `pyq-options`, amended PR #820) support offset. |
 | Scope (existing) | `exam_id`, `exam_cycle_id` | Already implemented pre-J1 |
 
 The URL (browser address bar) is NOT updated with search/filter/page state in J1. These controls are in-memory only (component state). Deep-linking to a specific search/filter/page is out of scope for J1.
@@ -239,7 +242,7 @@ The New row, Bulk import, and Reload controls remain in their current positions 
 | ID | Decision | Status |
 |---|---|---|
 | OD-1 | Scope params wiring | **LOCKED** — `exam_id` / `cycle_id` already wired in I8-C. J1 extends the UI with search/filter/pagination built on the existing scoped list requests. No new scope wiring is needed. |
-| OD-2 | Search param name sent to backend | **LOCKED** — `search`. All relevant CMS list endpoints accept a `search` query param. If an endpoint does not support it, the frontend omits it and the control is hidden for that entity. |
+| OD-2 | Search param name sent to backend | **LOCKED — AMENDED** — Only 4 entities support text search via the `q` param: `syllabus-topic-mentions`, `exam-phase-sections`, `subjects`, `topics`. All other entities: search input hidden, no param sent. The gate's original universal `search=` contract is superseded by per-entity capability matrix (`ENTITY_SEARCH_PARAM` in `ExamIntelCms.jsx`). Amendment approved at https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4851692372. |
 | OD-3 | Status filter field selection | **LOCKED** — `reviewer_status` for mention/coverage/policy/question entities; `trust_status` for document/paper/source entities. Determined by which field is present in the entity's `ENTITY_CONFIG.fields` array. |
 | OD-4 | Page size | **LOCKED** — 50 rows per page, constant. Not user-configurable in J1. |
 | OD-5 | URL state for search/filter/page | **LOCKED** — in-memory only in J1. Browser URL reflects `exam_id` / `cycle_id` scope params (existing) but not search/filter/page state. Deep-linking to search state is deferred. |
@@ -249,7 +252,7 @@ The New row, Bulk import, and Reload controls remain in their current positions 
 | OD-9 | AdminSafetyBanner | **LOCKED** — `collapsible={false}`, no text change, no placement change. |
 | OD-10 | Permission gate | **LOCKED** — `exam_intelligence.cms`, no change. |
 | OD-11 | New routes or nav entries | **LOCKED** — none. J1 adds zero routes and zero sidebar/nav entries. |
-| OD-12 | No new backend migrations | **LOCKED** — J1 is frontend-only (search/filter/pagination controls in `ExamIntelCms.jsx`). Backend list endpoints already accept `search`, `limit`, `offset`, and status filter params. |
+| OD-12 | Backend changes | **LOCKED — AMENDED** — J1 is primarily frontend-only. Exception: `pyq-options` list endpoint amended in PR #820 to add `offset` param support (`.range()` instead of `.limit()` only), default limit changed 10→50. `ENTITY_NO_OFFSET` set emptied; `pyq-options` now participates in standard pagination. 5 backend regression tests added (`test_cms_pyq_options_pagination.py`). No new migrations. Amendment approved at https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4851692372. |
 
 ---
 
@@ -270,10 +273,11 @@ The following tests must pass before the J1 implementation PR may merge.
 ### G.2 Search input tests
 
 ```
-[ ] search input is rendered for scoped entities when exam_id is present
-[ ] typing in search input sends a list request with search=<value> after debounce
+[ ] search input is rendered only for the 4 entities in ENTITY_SEARCH_PARAM (syllabus-topic-mentions, exam-phase-sections, subjects, topics)
+[ ] typing in search input sends a list request with q=<value> (not search=) after debounce
+[ ] search input is NOT rendered for entities outside ENTITY_SEARCH_PARAM
 [ ] search input clears when the entity selection changes
-[ ] list reloads with the search param included alongside existing exam_id and status filter
+[ ] list reloads with the q param included alongside existing exam_id and status filter
 [ ] page resets to 1 when search value changes
 ```
 
@@ -302,7 +306,22 @@ The following tests must pass before the J1 implementation PR may merge.
 [ ] pagination works correctly under active scope (exam_id + cycle_id params included in all page requests)
 ```
 
-### G.5 Invariant / regression tests
+### G.5 Scope safety tests (added PR #820 round-4)
+
+```
+[ ] scope error banner shown when exam_id cannot be resolved (examScopeState === "error")
+[ ] writesBlocked=true while scope is resolving (examScopeState === "resolving")
+[ ] writesBlocked=true after scope error (examScopeState === "error")
+[ ] New row / Bulk import buttons disabled when writesBlocked=true
+[ ] submitCreate, submitBulk, submitEdit, confirmRetire all no-op when writesBlocked=true
+[ ] ExamIntelDocuments receives writesBlocked prop; upload and link actions disabled under blocked scope
+[ ] "Add cycle" link absent from exams rows when writesBlocked=true
+[ ] no POST/PATCH/DELETE calls before scope resolution completes
+[ ] no POST/PATCH/DELETE calls after scope resolution fails
+[ ] clear scope button in error banner removes exam_id/cycle_id params
+```
+
+### G.6 Invariant / regression tests
 
 ```
 [ ] AdminSafetyBanner is visible and collapsible={false} (unchanged)
@@ -312,6 +331,7 @@ The following tests must pass before the J1 implementation PR may merge.
 [ ] ENTITY_EXAM_SCOPE and ENTITY_CYCLE_SCOPE sets are unchanged
 [ ] New row, Bulk import, and Reload controls still function
 [ ] CRUD (create/edit/delete) still functions for all entity types
+[ ] pyq-options uses standard limit+offset pagination (no special ENTITY_NO_OFFSET treatment)
 ```
 
 ---
@@ -329,7 +349,7 @@ The following tests must pass before the J1 implementation PR may merge.
 - `app/frontend/src/pages/admin/AdminShell.jsx` — no nav changes
 - `app/frontend/src/routes/adminRoutes.jsx` — no route changes
 - `app/frontend/src/pages/admin/exam-workspace/ExamWorkspace.jsx` — no workspace changes
-- Any backend file in `app/backend/` — no backend changes
+- Any backend file in `app/backend/` — except `admin_exam_intel_cms.py` `list_pyq_options` (offset support, PR #820)
 - Any database migration file — no migrations
 
 ---
@@ -345,4 +365,4 @@ The following files were read to verify the decisions in this document:
 
 ---
 
-*This document is a planning artifact. No runtime files were changed in the PR that introduced it. The gate is DRAFT — AWAITING OPERATOR APPROVAL. No J1 implementation PR may be dispatched until the operator approves this document.*
+*Status: OPERATOR APPROVED. Approval (OD-1 through OD-12 plus amendments) recorded at https://github.com/johnefficacy-crypto/ccp-mainbuild-v1/pull/820#issuecomment-4850772808. Implementation live in PR #820 (`claude/j1-advanced-repair-scoping`). Validation pending live Supabase deployment.*

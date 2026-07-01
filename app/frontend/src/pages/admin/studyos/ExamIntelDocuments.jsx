@@ -57,7 +57,7 @@ const refPhase = (filters) => ({ endpoint: "exam-phases", labelKey: "phase_name"
  * operator inspect extracted pages and link a document into a syllabus /
  * PYQ-paper row. Reuses the shared Combobox pickers.
  */
-export default function ExamIntelDocuments({ scopeExamId, scopeCycleId }) {
+export default function ExamIntelDocuments({ scopeExamId, scopeCycleId, writesBlocked = false }) {
   const [form, setForm] = useState(() => ({
     structural_format: "unknown",
     source_kind: "unknown",
@@ -131,6 +131,7 @@ export default function ExamIntelDocuments({ scopeExamId, scopeCycleId }) {
 
   async function doUpload(e) {
     e.preventDefault();
+    if (writesBlocked) return setStatus({ ok: false, message: "Write blocked: scope is unresolved or invalid." });
     setStatus(null);
     if (!form.exam_id) return setStatus({ ok: false, message: "Select an exam first." });
     if (!form.document_kind) return setStatus({ ok: false, message: "Select a document kind." });
@@ -218,6 +219,7 @@ export default function ExamIntelDocuments({ scopeExamId, scopeCycleId }) {
   }
 
   async function confirmLink() {
+    if (writesBlocked) return setStatus({ ok: false, message: "Write blocked: scope is unresolved or invalid." });
     const { docId, kind, targetId, reason } = linkTarget;
     if (!targetId) return setStatus({ ok: false, message: "Pick a target first." });
     if (!reason || reason.trim().length < 8) {
@@ -349,7 +351,7 @@ export default function ExamIntelDocuments({ scopeExamId, scopeCycleId }) {
           <span className="block text-xs text-muted-foreground mb-1">PDF file</span>
           <input type="file" accept="application/pdf,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} data-testid="doc-file" className="block text-xs" />
         </label>
-        <button type="submit" className="btn small" disabled={busy} data-testid="doc-upload-submit">
+        <button type="submit" className="btn small" disabled={busy || writesBlocked} data-testid="doc-upload-submit">
           <Upload className="h-3 w-3" /> {busy ? "Uploading…" : "Upload"}
         </button>
       </form>
@@ -384,8 +386,8 @@ export default function ExamIntelDocuments({ scopeExamId, scopeCycleId }) {
                   <td className="p-2 space-x-1">
                     <button type="button" className="btn small" onClick={() => viewPages(d.id)} data-testid={`doc-pages-${d.id}`}><FileText className="h-3 w-3" /> Pages</button>
                     <button type="button" className="btn small" onClick={() => refreshStatus(d.id)} data-testid={`doc-refresh-${d.id}`}>Status</button>
-                    <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: d.id, kind: "syllabus", targetId: "", reason: "" })} data-testid={`doc-link-syllabus-${d.id}`}>→ Syllabus</button>
-                    <button type="button" className="btn small" onClick={() => setLinkTarget({ docId: d.id, kind: "pyq", targetId: "", reason: "" })} data-testid={`doc-link-pyq-${d.id}`}>→ PYQ paper</button>
+                    <button type="button" className="btn small" disabled={writesBlocked} onClick={() => setLinkTarget({ docId: d.id, kind: "syllabus", targetId: "", reason: "" })} data-testid={`doc-link-syllabus-${d.id}`}>→ Syllabus</button>
+                    <button type="button" className="btn small" disabled={writesBlocked} onClick={() => setLinkTarget({ docId: d.id, kind: "pyq", targetId: "", reason: "" })} data-testid={`doc-link-pyq-${d.id}`}>→ PYQ paper</button>
                   </td>
                 </tr>
                 {linkTarget.docId === d.id ? (

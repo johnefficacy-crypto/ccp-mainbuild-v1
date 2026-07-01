@@ -206,20 +206,29 @@ describe("ExamIntelCms scope summary (I8-C)", () => {
 
   test("scope summary visible when exam_id present", async () => {
     mockUseAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" });
-    mockDefaultApiResponse();
+    api.get.mockImplementation((url) => {
+      if (url.includes("/exams?")) return Promise.resolve({ items: [{ id: "exam-abc", name: "Exam ABC" }], total: 1 });
+      return Promise.resolve({ items: [], total: 0 });
+    });
     renderCms("?exam_id=exam-abc");
     await waitFor(() => screen.getByTestId("advanced-repair-scope-summary"));
-    expect(screen.getByTestId("advanced-repair-scope-summary").textContent).toContain("exam-abc");
+    expect(screen.getByTestId("advanced-repair-scope-summary").textContent).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByTestId("scope-exam-name").textContent).toBe("Exam ABC"),
+    );
   });
 
   test("scope summary includes cycle_id when both params present", async () => {
     mockUseAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" });
-    mockDefaultApiResponse();
+    api.get.mockImplementation((url) => {
+      if (url.includes("/exams?")) return Promise.resolve({ items: [{ id: "exam-abc", name: "Exam ABC" }], total: 1 });
+      if (url.includes("/exam-cycles?")) return Promise.resolve({ items: [{ id: "cycle-2026", cycle_name: "2026 Cycle" }], total: 1 });
+      return Promise.resolve({ items: [], total: 0 });
+    });
     renderCms("?exam_id=exam-abc&cycle_id=cycle-2026");
     await waitFor(() => screen.getByTestId("advanced-repair-scope-summary"));
-    const summary = screen.getByTestId("advanced-repair-scope-summary");
-    expect(summary.textContent).toContain("exam-abc");
-    expect(summary.textContent).toContain("cycle-2026");
+    await waitFor(() => expect(screen.getByTestId("scope-exam-name").textContent).toBe("Exam ABC"));
+    await waitFor(() => expect(screen.getByTestId("scope-cycle-name").textContent).toBe("2026 Cycle"));
   });
 
   test("scope summary absent when no exam_id or cycle_id", async () => {
@@ -319,7 +328,10 @@ describe("ExamIntelCms create form scope prefill (I8-C)", () => {
 
   test("create form opens for exam-cycles without crashing (prefill does not throw)", async () => {
     mockUseAuth.mockReturnValue({ user: { role: "super_admin", permissions: [] }, status: "backend_authed" });
-    api.get.mockResolvedValue({ items: [], total: 0 });
+    api.get.mockImplementation((url) => {
+      if (url.includes("/exams?")) return Promise.resolve({ items: [{ id: "exam-prefill-1", name: "Exam Prefill 1" }], total: 1 });
+      return Promise.resolve({ items: [], total: 0 });
+    });
     renderCms("?exam_id=exam-prefill-1");
 
     await waitFor(() => screen.getByTestId("cms-entity-select"));
