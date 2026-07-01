@@ -483,9 +483,13 @@ def test_d12_step9_other_cycle_locked_coverage_does_not_activate():
     assert step9["status"] == "missing"       # ...so activation must not be ready
 
 
-def test_d12_step9_core_selected_cycle_complete_is_ready():
-    """core + cycle details + CONFIRMED phase (status=completed) + >=1 applicable
-    locked coverage (exam-wide inheritance allowed by D08) -> Step 9 ready."""
+def test_d12_step9_confirmed_phase_still_not_ready_evaluator_pending():
+    """D12 v1 fail-closed: even with cycle details + a confirmed-looking phase
+    (status=completed) + locked coverage, Step 9 must NOT be ready. Required-phase
+    COMPLETENESS (D05 canonical phase_kind + evidence) has no evaluator yet and
+    lifecycle status is not an authorized completeness proxy, so Step 9 stays blocked
+    (over-block, never false-ready). Operator prerequisites are met, so there is no
+    operator-actionable CTA."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="core", locked=1)  # exam-wide locked row
     s.cycle("cA", "e1")
@@ -494,18 +498,22 @@ def test_d12_step9_core_selected_cycle_complete_is_ready():
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step9 = next(st for st in cr["steps"] if st["step"] == 9)
-    assert step9["status"] == "ready"
+    assert step9["status"] == "missing"
     assert step9["evidence_scope"] == "selected_cycle_plus_exam_wide"
+    phase_chk = next(c for c in step9["checks"] if c["check_id"] == "required_phases_complete")
+    assert phase_chk["status"] == "missing"
+    assert step9["action_cta"] is None
 
 
-def test_d12_step9_incomplete_phase_not_ready():
-    """FAIL-OPEN REGRESSION: an 'expected' (placeholder, unconfirmed) phase is
-    present and locked coverage exists, but the phase is NOT complete -> Step 9
-    must NOT be ready (phase presence is not phase completeness)."""
+def test_d12_step9_default_active_phase_lacking_classification_not_ready():
+    """Reviewer regression: a phase using the DB default status='active' but lacking
+    canonical phase_kind / D05 evidence must NOT let Step 9 reach ready. 'active' is a
+    lifecycle default, not a completeness signal — D05 says an active unclassified phase
+    requires operator action."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="core", locked=1)
     s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA", status="expected")  # present but not confirmed
+    s.phase("pA", "e1", "cA", status="active")  # DB default, unclassified
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
@@ -515,32 +523,24 @@ def test_d12_step9_incomplete_phase_not_ready():
     assert phase_chk["status"] == "missing"
 
 
-def test_d12_step9_light_applies_minimum_no_is_active_shortcut():
-    """light has no canonical planner-activation source, so it is treated like
-    core (minimum APPLIED, fail-closed). is_active=False must NOT make it N/A:
-    a complete light cycle is ready; without coverage it is missing."""
+def test_d12_step9_light_evaluated_not_na_no_is_active_shortcut():
+    """light has no canonical planner-activation source, so it is NOT marked N/A by
+    is_active — it is evaluated like core (fail-closed). Step 9 is 'missing', never
+    'not_applicable', regardless of is_active."""
     s = _Seed()
-    # light + inactive + complete -> still evaluated (ready), NOT not_applicable.
     s.exam("e1", name="Exam1", mode="light", locked=1, active=False)
     s.cycle("cA", "e1")
     s.phase("pA", "e1", "cA", status="active")
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
-    assert step9["status"] == "ready"
-
-    # light + no coverage -> minimum fails (missing), still not N/A.
-    s2 = _Seed()
-    s2.exam("e2", name="Exam2", mode="light", locked=0, active=True)
-    s2.cycle("cB", "e2")
-    s2.phase("pB", "e2", "cB", status="completed")
-    r2 = _detail(_client_from_seed(s2), "e2", cycle_id="cB")
-    step9b = next(st for st in r2.json()["cycle_readiness"]["steps"] if st["step"] == 9)
-    assert step9b["status"] == "missing"
+    assert step9["status"] == "missing"
+    assert step9["not_applicable_reason"] is None
 
 
-def test_d12_step9_coverage_failure_routes_cta_to_syllabus():
-    """Locked deep-link contract: when cycle+phases are complete but coverage is
-    missing, the CTA routes to Syllabus/coverage (not Setup)."""
+def test_d12_step9_coverage_failure_routes_cta_to_syllabus_with_cycle():
+    """Locked deep-link contract: when cycle details are complete but coverage is
+    missing, the CTA routes to Syllabus/coverage AND preserves selected-cycle identity
+    (?cycle=<id>) so the blocker opens the cycle whose readiness produced it."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="core", locked=0)  # no coverage
     s.cycle("cA", "e1")
@@ -548,7 +548,26 @@ def test_d12_step9_coverage_failure_routes_cta_to_syllabus():
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
     assert step9["status"] == "missing"
-    assert "tab=syllabus" in step9["action_cta"]["url"]
+    url = step9["action_cta"]["url"]
+    assert "tab=syllabus" in url
+    assert "cycle=cA" in url
+
+
+def test_d12_step9_setup_cta_preserves_cycle_identity():
+    """When cycle details are incomplete, the Setup CTA also preserves ?cycle=<id>."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="core", locked=1)
+    # cycle row missing year -> s1 not ready -> cycle_ok False -> Setup CTA.
+    s.db["exam_cycles"].append({
+        "id": "cA", "exam_id": "e1", "cycle_name": "Cycle", "year": None,
+        "status": "active", "created_at": _RECENT,
+    })
+    s.phase("pA", "e1", "cA", status="completed")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
+    url = step9["action_cta"]["url"]
+    assert "tab=setup" in url
+    assert "cycle=cA" in url
 
 
 # ---------------------------------------------------------------------------
