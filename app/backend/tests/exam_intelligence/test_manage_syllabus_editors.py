@@ -162,12 +162,21 @@ def test_exam_subjects_404_for_unknown_exam():
 # ── permission gating (rule 1) ───────────────────────────────────────────
 
 
-def test_topics_list_denied_without_manage():
+def test_topics_list_denied_without_manage_or_review():
+    """Topic list is a read: manage OR review can load it; neither is 403."""
+    sb = MngSBStub(_seed())
+    r = _client(sb, permissions=["some.other.permission"]).get(
+        f"{_BASE}/topics?exam_id=E1&subject_id=s1"
+    )
+    assert r.status_code == 403
+
+
+def test_topics_list_readable_by_review_only():
     sb = MngSBStub(_seed())
     r = _client(sb, permissions=["exam_intelligence.review"]).get(
         f"{_BASE}/topics?exam_id=E1&subject_id=s1"
     )
-    assert r.status_code == 403
+    assert r.status_code == 200, r.text
 
 
 def test_topics_list_allowed_for_super_admin_without_token():
@@ -594,3 +603,43 @@ def test_manage_edit_blocked_unless_draft_or_rejected():
     r = _client(sb).patch(f"{_BASE}/topic-prerequisites/e1?exam_id=E1",
                           json={"reason": "edit a reviewed edge", "payload": {"strength": 0.5}})
     assert r.status_code == 409
+
+
+# ── J2-A′ review round: two-endpoint scope, CAS, metadata ─────────────────
+
+import pytest  # noqa: E402
+from tests.exam_intelligence._prereq_rpc import emulate_cms_write_topic_prerequisite  # noqa: E402
+
+
+def test_submit_rejects_when_prerequisite_endpoint_outside_exam():
+    seed = _seed_prereq()
+    # e1's prerequisite_topic_id (t9) is in subject s2, NOT covered by E1.
+    seed["topic_prerequisites"] = [
+        {"id": "e1", "topic_id": "t2", "prerequisite_topic_id": "t9", "relation_type": "requires", "reviewer_status": "draft"},
+    ]
+    sb = MngSBStub(seed)
+    r = _client(sb).post(f"{_BASE}/topic-prerequisites/e1/submit?exam_id=E1", json={"reason": "submit for review"})
+    assert r.status_code == 422
+
+
+def test_delete_rejects_when_prerequisite_endpoint_outside_exam():
+    seed = _seed_prereq()
+    seed["topic_prerequisites"] = [
+        {"id": "e1", "topic_id": "t2", "prerequisite_topic_id": "t9", "relation_type": "requires", "reviewer_status": "draft"},
+    ]
+    sb = MngSBStub(seed)
+    r = _client(sb).delete(f"{_BASE}/topic-prerequisites/e1?exam_id=E1&reason=remove cross-exam edge")
+    assert r.status_code == 422
+
+
+def test_rpc_cas_blocks_stale_update():
+    """The cycle-safe RPC's CAS guard rejects an update against a stale state."""
+    db = {"topic_prerequisites": [
+        {"id": "e1", "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires", "reviewer_status": "pending_review"},
+    ]}
+    with pytest.raises(Exception, match="concurrent_modification"):
+        emulate_cms_write_topic_prerequisite(db, {
+            "p_id": "e1", "p_topic_id": "t2", "p_prerequisite_topic_id": "t1",
+            "p_relation_type": "requires", "p_strength": 1.0, "p_source_basis": None,
+            "p_created_by": None, "p_metadata": None, "p_expected_status": "draft",
+        })

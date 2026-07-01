@@ -207,7 +207,7 @@ def _topic_dependencies(supabase, topic_id: str) -> list[str]:
 @router.get("/exams/{exam_id}/subjects")
 def list_exam_subjects(
     exam_id: str,
-    _admin: dict = Depends(require_permission(PERM_MANAGE)),
+    _admin: dict = Depends(_require_prereq_read),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     """List the subjects an exam covers (coverage path, OD-4).
@@ -247,7 +247,7 @@ def list_topics(
     q: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    _admin: dict = Depends(require_permission(PERM_MANAGE)),
+    _admin: dict = Depends(_require_prereq_read),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
@@ -563,29 +563,29 @@ def list_topic_prerequisites(
     _admin: dict = Depends(_require_prereq_read),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    """List prerequisite edges of a topic. Readable by manage OR review."""
+    """List prerequisite edges touching a topic, in BOTH directions (edges
+    where the topic is the dependent AND edges where it is the prerequisite),
+    per the gate's both-directional contract. Readable by manage OR review."""
     supabase = get_supabase_admin()
     _require_topic_in_exam(supabase, exam_id, topic_id)
-    res = (
-        supabase.table("topic_prerequisites")
-        .select(
-            "id, topic_id, prerequisite_topic_id, relation_type, strength, "
-            "source_basis, reviewer_status, reviewed_by, reviewed_at, "
-            "review_notes, created_at, updated_at",
-            count="exact",
-        )
-        .eq("topic_id", topic_id)
-        .order("created_at", desc=True)
-        .order("id", desc=False)
-        .range(offset, offset + limit - 1)
-        .execute()
+    cols = (
+        "id, topic_id, prerequisite_topic_id, relation_type, strength, "
+        "source_basis, reviewer_status, reviewed_by, reviewed_at, "
+        "review_notes, created_at, updated_at"
     )
-    return {
-        "items": res.data or [],
-        "total": getattr(res, "count", None),
-        "limit": limit,
-        "offset": offset,
-    }
+    outgoing = (
+        supabase.table("topic_prerequisites").select(cols).eq("topic_id", topic_id).execute().data
+        or []
+    )
+    incoming = (
+        supabase.table("topic_prerequisites").select(cols).eq("prerequisite_topic_id", topic_id).execute().data
+        or []
+    )
+    merged = {r["id"]: r for r in [*outgoing, *incoming]}
+    items = sorted(merged.values(), key=lambda r: (r.get("created_at") or "", r.get("id") or ""), reverse=True)
+    total = len(items)
+    page = items[offset:offset + limit]
+    return {"items": page, "total": total, "limit": limit, "offset": offset}
 
 
 @router.post("/topic-prerequisites")
@@ -617,6 +617,8 @@ def create_topic_prerequisite(
                 "p_strength": row.get("strength", 1.0),
                 "p_source_basis": row.get("source_basis"),
                 "p_created_by": admin.get("id"),
+                "p_metadata": None,
+                "p_expected_status": None,
             },
         ).execute()
     except Exception as exc:  # noqa: BLE001
@@ -671,6 +673,10 @@ def update_topic_prerequisite(
                 "p_strength": patch.get("strength", existing.get("strength")),
                 "p_source_basis": patch.get("source_basis", existing.get("source_basis")),
                 "p_created_by": existing.get("created_by"),
+                "p_metadata": None,
+                # CAS: only update if the edge is still in the state we validated,
+                # so a concurrent review/lock transition is not overwritten.
+                "p_expected_status": existing.get("reviewer_status"),
             },
         ).execute()
     except Exception as exc:  # noqa: BLE001
@@ -699,12 +705,22 @@ def submit_topic_prerequisite(
     existing = _safe_select(supabase, "topic_prerequisites", id=prereq_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Topic prerequisite not found")
-    _require_topic_in_exam(supabase, exam_id, existing.get("topic_id"))
+    _require_prereq_scope(supabase, exam_id, existing.get("topic_id"), existing.get("prerequisite_topic_id"))
     if existing.get("reviewer_status") not in _MANAGE_EDITABLE:
         raise HTTPException(status_code=409, detail="only draft or rejected edges can be submitted")
-    supabase.table("topic_prerequisites").update(
-        {"reviewer_status": "pending_review", "updated_at": _now_iso()}
-    ).eq("id", prereq_id).execute()
+    # CAS: the transition only lands if the edge is still draft/rejected, so a
+    # concurrent review transition cannot be clobbered (last-write-wins).
+    affected = (
+        supabase.table("topic_prerequisites")
+        .update({"reviewer_status": "pending_review", "updated_at": _now_iso()})
+        .eq("id", prereq_id)
+        .in_("reviewer_status", ["draft", "rejected"])
+        .execute()
+        .data
+        or []
+    )
+    if not affected:
+        raise HTTPException(status_code=409, detail="edge changed review state concurrently; re-fetch and retry")
     audit_id = _audit(
         supabase, admin, "exam_intel.manage.topic_prerequisite.submit",
         entity_type="topic_prerequisite", entity_id=prereq_id,
@@ -727,7 +743,7 @@ def review_topic_prerequisite(
     existing = _safe_select(supabase, "topic_prerequisites", id=prereq_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Topic prerequisite not found")
-    _require_topic_in_exam(supabase, exam_id, existing.get("topic_id"))
+    _require_prereq_scope(supabase, exam_id, existing.get("topic_id"), existing.get("prerequisite_topic_id"))
     current = existing.get("reviewer_status")
     target = body.target_status
     if (current, target) not in _REVIEW_TRANSITIONS:
@@ -742,7 +758,19 @@ def review_topic_prerequisite(
     }
     if body.review_notes is not None:
         patch["review_notes"] = body.review_notes
-    supabase.table("topic_prerequisites").update(patch).eq("id", prereq_id).execute()
+    # CAS on the observed `current` state so two reviewers cannot both transition
+    # from the same starting state (last-write-wins).
+    affected = (
+        supabase.table("topic_prerequisites")
+        .update(patch)
+        .eq("id", prereq_id)
+        .eq("reviewer_status", current)
+        .execute()
+        .data
+        or []
+    )
+    if not affected:
+        raise HTTPException(status_code=409, detail="edge changed review state concurrently; re-fetch and retry")
     audit_id = _audit(
         supabase, admin, f"exam_intel.review.topic_prerequisite.{target}",
         entity_type="topic_prerequisite", entity_id=prereq_id,
@@ -768,13 +796,25 @@ def delete_topic_prerequisite(
     existing = _safe_select(supabase, "topic_prerequisites", id=prereq_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Topic prerequisite not found")
-    _require_topic_in_exam(supabase, exam_id, existing.get("topic_id"))
+    _require_prereq_scope(supabase, exam_id, existing.get("topic_id"), existing.get("prerequisite_topic_id"))
     if existing.get("reviewer_status") not in _MANAGE_EDITABLE:
         raise HTTPException(
             status_code=409,
             detail="only draft/rejected edges can be deleted by manage; roll back via review first",
         )
-    supabase.table("topic_prerequisites").delete().eq("id", prereq_id).execute()
+    # CAS: only delete if still draft/rejected (a concurrent submit/review must
+    # not be silently discarded).
+    affected = (
+        supabase.table("topic_prerequisites")
+        .delete()
+        .eq("id", prereq_id)
+        .in_("reviewer_status", ["draft", "rejected"])
+        .execute()
+        .data
+        or []
+    )
+    if not affected:
+        raise HTTPException(status_code=409, detail="edge changed review state concurrently; re-fetch and retry")
     audit_id = _audit(
         supabase, admin, "exam_intel.manage.topic_prerequisite.delete",
         entity_type="topic_prerequisite", entity_id=prereq_id,

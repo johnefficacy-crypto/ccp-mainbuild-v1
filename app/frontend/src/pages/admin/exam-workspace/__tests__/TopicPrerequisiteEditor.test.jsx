@@ -91,6 +91,31 @@ test("locked edge offers Reopen to reviewer (prompts for notes)", async () => {
   }
 });
 
+test("manage can edit an editable edge (PATCH relation/strength)", async () => {
+  api.get.mockResolvedValue(edges([
+    { id: "e1", topic_id: "t2", prerequisite_topic_id: "t1", relation_type: "requires", strength: 1.0, reviewer_status: "draft" },
+  ]));
+  api.patch.mockResolvedValue({ ok: true });
+  renderEditor({ canManage: true, canReview: false });
+  fireEvent.click(await screen.findByTestId("tpe-edit-e1"));
+  fireEvent.change(screen.getByTestId("tpe-edit-relation"), { target: { value: "recommended_before" } });
+  fireEvent.change(screen.getByTestId("tpe-edit-reason"), { target: { value: "soften the edge" } });
+  fireEvent.click(screen.getByTestId("tpe-edit-save"));
+  await waitFor(() => expect(api.patch).toHaveBeenCalled());
+  const [url, body] = api.patch.mock.calls[0];
+  expect(url).toContain("/topic-prerequisites/e1?exam_id=E1");
+  expect(body.payload).toMatchObject({ relation_type: "recommended_before" });
+});
+
+test("incoming edge is shown with a dependent marker", async () => {
+  api.get.mockResolvedValue(edges([
+    { id: "e2", topic_id: "t3", prerequisite_topic_id: "t2", relation_type: "requires", strength: 1.0, reviewer_status: "locked" },
+  ]));
+  renderEditor({ canManage: true, canReview: false });
+  const row = await screen.findByTestId("tpe-edge-e2");
+  expect(row).toHaveTextContent("dependent");
+});
+
 test("a failed load shows an error and blocks adding", async () => {
   api.get.mockRejectedValue(new Error("500"));
   renderEditor({ canManage: true, canReview: false });

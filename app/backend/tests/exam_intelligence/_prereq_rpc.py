@@ -58,6 +58,7 @@ def emulate_cms_write_topic_prerequisite(db: dict, params: dict) -> dict[str, An
             "strength": params.get("p_strength", 1.0),
             "source_basis": params.get("p_source_basis"),
             "created_by": params.get("p_created_by"),
+            "metadata": params.get("p_metadata") or {},
             "reviewer_status": "draft",
         }
         rows.append(new)
@@ -66,6 +67,10 @@ def emulate_cms_write_topic_prerequisite(db: dict, params: dict) -> dict[str, An
     row = next((r for r in rows if r.get("id") == pid), None)
     if not row:
         raise Exception("not_found")
+    # CAS guard mirrors the SQL: only update if still in the expected state.
+    expected = params.get("p_expected_status")
+    if expected is not None and row.get("reviewer_status") != expected:
+        raise Exception("concurrent_modification: edge changed review state; re-fetch and retry")
     row.update({
         "topic_id": topic_id,
         "prerequisite_topic_id": prereq_id,
@@ -73,4 +78,6 @@ def emulate_cms_write_topic_prerequisite(db: dict, params: dict) -> dict[str, An
         "strength": params.get("p_strength"),
         "source_basis": params.get("p_source_basis"),
     })
+    if params.get("p_metadata") is not None:
+        row["metadata"] = params.get("p_metadata")
     return row

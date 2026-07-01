@@ -911,3 +911,16 @@ def test_review_document_lock_catches_concurrent_status_change():
     assert r.status_code == 422, r.text
     detail = r.json().get("detail", "")
     assert "source_document_id_bad_status" in str(detail)
+
+
+def test_post_prerequisite_preserves_metadata_through_rpc():
+    """Advanced Repair metadata is persisted by the cycle-safe RPC (not dropped)."""
+    sb = TaxSBStub(_seed())
+    r = _client(sb).post(
+        f"{_BASE}/topic-prerequisites",
+        json={"reason": "prereq with metadata", "payload": {
+            "topic_id": "t2", "prerequisite_topic_id": "t1", "relation_type": "requires",
+            "metadata": {"note": "keep me"}}},
+    )
+    assert r.status_code == 200, r.text
+    assert sb.db["topic_prerequisites"][-1]["metadata"] == {"note": "keep me"}

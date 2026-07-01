@@ -2463,6 +2463,10 @@ def create_topic_prerequisite(
                 "p_strength": row.get("strength", 1.0),
                 "p_source_basis": row.get("source_basis"),
                 "p_created_by": admin.get("id"),
+                # Preserve caller-supplied metadata (CMS _TOPIC_PREREQ_FIELDS
+                # includes it); the RPC persists it instead of dropping it.
+                "p_metadata": row.get("metadata"),
+                "p_expected_status": None,
             },
         ).execute()
     except Exception as exc:  # noqa: BLE001

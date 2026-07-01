@@ -72,7 +72,9 @@ create or replace function public.cms_write_topic_prerequisite(
     p_relation_type          text,
     p_strength               numeric,
     p_source_basis           text,
-    p_created_by             uuid
+    p_created_by             uuid,
+    p_metadata               jsonb default '{}'::jsonb,
+    p_expected_status        text  default null  -- CAS guard for updates
 )
 returns public.topic_prerequisites
 language plpgsql
@@ -124,26 +126,36 @@ begin
     if p_id is null then
         insert into public.topic_prerequisites (
             topic_id, prerequisite_topic_id, relation_type,
-            strength, source_basis, created_by, reviewer_status, updated_at
+            strength, source_basis, created_by, metadata, reviewer_status, updated_at
         )
         values (
             p_topic_id, p_prerequisite_topic_id, p_relation_type,
-            p_strength, p_source_basis, p_created_by, 'draft', now()
+            p_strength, p_source_basis, p_created_by,
+            coalesce(p_metadata, '{}'::jsonb), 'draft', now()
         )
         returning * into v_row;
         return v_row;
     else
+        -- CAS guard: when p_expected_status is supplied the update only lands if
+        -- the row is still in that lifecycle state, so a concurrent review/lock
+        -- transition cannot be silently overwritten (last-write-wins) by a
+        -- read-then-write editor.
         update public.topic_prerequisites
         set topic_id              = p_topic_id,
             prerequisite_topic_id = p_prerequisite_topic_id,
             relation_type         = p_relation_type,
             strength              = p_strength,
             source_basis          = p_source_basis,
+            metadata              = coalesce(p_metadata, metadata),
             updated_at            = now()
         where id = p_id
+          and (p_expected_status is null or reviewer_status = p_expected_status)
         returning * into v_row;
 
         if not found then
+            if exists (select 1 from public.topic_prerequisites where id = p_id) then
+                raise exception 'concurrent_modification: edge changed review state; re-fetch and retry';
+            end if;
             raise exception 'not_found';
         end if;
         return v_row;
@@ -154,10 +166,10 @@ $$;
 -- ── Grants: mirror migration 203 / 204 hardening exactly. ─────────────────────
 -- Supabase auto-grants public-schema functions to anon + authenticated at
 -- creation; REVOKE FROM PUBLIC alone is insufficient, so revoke all three.
-revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid) from public;
-revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid) from anon;
-revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid) from authenticated;
-grant  execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid) to service_role;
+revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text) from public;
+revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text) from anon;
+revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text) from authenticated;
+grant  execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text) to service_role;
 
 commit;
 

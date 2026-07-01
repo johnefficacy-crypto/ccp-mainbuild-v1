@@ -28,6 +28,7 @@ export default function TopicPrerequisiteEditor({
   const [error, setError] = useState(false);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ prerequisite_topic_id: "", relation_type: "requires", strength: "1.0", reason: "" });
+  const [editing, setEditing] = useState(null); // { id, relation_type, strength, reason }
   const action = useApiAction();
 
   const nameOf = useCallback(
@@ -73,6 +74,23 @@ export default function TopicPrerequisiteEditor({
       successMessage: "Prerequisite added (draft).",
       errorMessage: "Could not add prerequisite.",
       onSuccess: () => { setAdding(false); setForm({ prerequisite_topic_id: "", relation_type: "requires", strength: "1.0", reason: "" }); load(); },
+    });
+  }
+
+  function saveEdit() {
+    if ((editing.reason || "").trim().length < 8) {
+      action.run({ action: () => Promise.reject(new Error("A reason of at least 8 characters is required.")),
+        errorMessage: "A reason of at least 8 characters is required." });
+      return;
+    }
+    action.run({
+      action: () => api.patch(`${BASE}/topic-prerequisites/${editing.id}?exam_id=${examId}`, {
+        reason: editing.reason.trim(),
+        payload: { relation_type: editing.relation_type, strength: Number(editing.strength) },
+      }),
+      successMessage: "Prerequisite updated.",
+      errorMessage: "Could not update prerequisite.",
+      onSuccess: () => { setEditing(null); load(); },
     });
   }
 
@@ -129,10 +147,13 @@ export default function TopicPrerequisiteEditor({
           {edges.length === 0 && <li className="py-1 text-slate-400">No prerequisites.</li>}
           {edges.map((e) => {
             const editable = EDITABLE.has(e.reviewer_status);
+            const outgoing = e.topic_id === topic.id; // this topic depends on the other
+            const otherId = outgoing ? e.prerequisite_topic_id : e.topic_id;
+            const label = outgoing ? `→ ${nameOf(otherId)}` : `← ${nameOf(otherId)} (dependent)`;
             return (
               <li key={e.id} className="py-1.5 flex items-center gap-2 flex-wrap" data-testid={`tpe-edge-${e.id}`}>
                 <span className="flex-1">
-                  {nameOf(e.prerequisite_topic_id)}
+                  {label}
                   <span className="text-slate-400"> · {e.relation_type} · {Number(e.strength).toFixed(2)}</span>
                 </span>
                 <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600" data-testid={`tpe-status-${e.id}`}>
@@ -140,6 +161,9 @@ export default function TopicPrerequisiteEditor({
                 </span>
                 {canManage && editable && (
                   <>
+                    <button type="button" className="text-xs px-2 py-0.5 border rounded disabled:opacity-40"
+                      onClick={() => setEditing({ id: e.id, relation_type: e.relation_type, strength: String(e.strength), reason: "" })}
+                      disabled={busy} data-testid={`tpe-edit-${e.id}`}>Edit</button>
                     <button type="button" className="text-xs px-2 py-0.5 border rounded disabled:opacity-40"
                       onClick={() => submitEdge(e)} disabled={busy} data-testid={`tpe-submit-${e.id}`}>Submit</button>
                     <button type="button" className="text-xs px-2 py-0.5 border rounded text-rose-600 disabled:opacity-40"
@@ -170,6 +194,27 @@ export default function TopicPrerequisiteEditor({
             );
           })}
         </ul>
+      )}
+
+      {canManage && editing && (
+        <div className="flex gap-2 flex-wrap items-center mb-2" data-testid="tpe-edit-form">
+          <span className="text-xs text-slate-500">Edit:</span>
+          <select className="text-sm border rounded px-2 py-1" value={editing.relation_type}
+            onChange={(ev) => setEditing({ ...editing, relation_type: ev.target.value })}
+            aria-label="Edit relation type" data-testid="tpe-edit-relation">
+            {RELATIONS.map((rel) => <option key={rel} value={rel}>{rel}</option>)}
+          </select>
+          <input className="text-sm border rounded px-2 py-1 w-20" type="number" min="0" max="1" step="0.01"
+            value={editing.strength} onChange={(ev) => setEditing({ ...editing, strength: ev.target.value })}
+            aria-label="Edit strength" data-testid="tpe-edit-strength" />
+          <input className="text-sm border rounded px-2 py-1 flex-1" placeholder="reason (min 8 chars)"
+            value={editing.reason} onChange={(ev) => setEditing({ ...editing, reason: ev.target.value })}
+            aria-label="Edit reason" data-testid="tpe-edit-reason" />
+          <button type="button" className="text-sm px-3 py-1 border rounded bg-slate-800 text-white disabled:opacity-40"
+            onClick={saveEdit} disabled={busy} data-testid="tpe-edit-save">Save</button>
+          <button type="button" className="text-sm px-3 py-1 border rounded"
+            onClick={() => setEditing(null)} data-testid="tpe-edit-cancel">Cancel</button>
+        </div>
       )}
 
       {canManage && !adding && (
