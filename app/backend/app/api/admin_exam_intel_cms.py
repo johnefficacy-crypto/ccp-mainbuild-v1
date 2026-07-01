@@ -2447,18 +2447,32 @@ def create_topic_prerequisite(
         raise HTTPException(status_code=422, detail="topic_id does not resolve")
     if not _safe_select(supabase, "topics", id=prereq_id):
         raise HTTPException(status_code=422, detail="prerequisite_topic_id does not resolve")
-    # Basic cycle guard: reject B→A when A→B already exists. (One level only;
-    # transitive cycle detection would need a recursive CTE — see PR notes.)
-    if _safe_select(supabase, "topic_prerequisites", topic_id=prereq_id, prerequisite_topic_id=topic_id):
-        raise HTTPException(
-            status_code=422,
-            detail="cycle: the reverse prerequisite already exists",
-        )
+    # Advanced Repair is NOT a bypass around graph acyclicity (J2-A′ gate
+    # blocker 1): even the cms writer goes through the single cycle-safe RPC
+    # (global advisory lock + recursive transitive-cycle check). New edges land
+    # as 'draft' — cms retains its exceptional-cleanup DELETE authority below,
+    # but cannot silently create a transitive cycle or a live edge.
     try:
-        inserted = supabase.table("topic_prerequisites").insert(row).execute().data or []
+        res = supabase.rpc(
+            "cms_write_topic_prerequisite",
+            {
+                "p_id": None,
+                "p_topic_id": topic_id,
+                "p_prerequisite_topic_id": prereq_id,
+                "p_relation_type": row.get("relation_type") or "requires",
+                "p_strength": row.get("strength", 1.0),
+                "p_source_basis": row.get("source_basis"),
+                "p_created_by": admin.get("id"),
+                # Preserve caller-supplied metadata (CMS _TOPIC_PREREQ_FIELDS
+                # includes it); the RPC persists it instead of dropping it.
+                "p_metadata": row.get("metadata"),
+                "p_expected_status": None,
+            },
+        ).execute()
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
-    new = inserted[0] if inserted else row
+        raise HTTPException(status_code=409, detail=str(exc))
+    data = getattr(res, "data", None)
+    new = (data[0] if isinstance(data, list) and data else data) or row
     audit_id = _audit(
         supabase, admin, "exam_intel.cms.topic_prerequisite.create",
         entity_type="topic_prerequisite", entity_id=new.get("id"),

@@ -68,6 +68,25 @@ test("super_admin without token still sees the editor", async () => {
   expect(await screen.findByTestId("syllabus-topic-editor")).toBeInTheDocument();
 });
 
+test("review-only operator sees the panel + Prereqs but not manage controls", async () => {
+  mockAuthUser = { role: "admin", permissions: ["exam_intelligence.review"] };
+  renderPanel();
+  expect(await screen.findByTestId("syllabus-topic-editor")).toBeInTheDocument();
+  await screen.findByTestId("ste-topic-t1");
+  expect(screen.getByTestId("ste-prereqs-t1")).toBeInTheDocument();
+  // manage-only controls are absent for a review-only operator
+  expect(screen.queryByTestId("ste-new-topic")).toBeNull();
+  expect(screen.queryByTestId("ste-edit-t1")).toBeNull();
+  expect(screen.queryByTestId("ste-delete-t1")).toBeNull();
+});
+
+test("Prereqs button opens the prerequisite editor", async () => {
+  renderPanel();
+  await screen.findByTestId("ste-topic-t1");
+  fireEvent.click(screen.getByTestId("ste-prereqs-t1"));
+  expect(await screen.findByTestId("tpe-editor")).toBeInTheDocument();
+});
+
 test("resolves subjects and lists topics for the first subject", async () => {
   renderPanel();
   await waitFor(() => expect(screen.getByTestId("ste-subject-select")).not.toBeDisabled());
