@@ -1735,6 +1735,7 @@ def list_pyq_options(
         supabase.table("pyq_options")
         .select("*", count="exact")
         .order("option_label", desc=False)
+        .order("id", desc=False)
     )
     if question_id:
         q = q.eq("question_id", question_id)

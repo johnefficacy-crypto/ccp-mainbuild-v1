@@ -19,12 +19,20 @@ from tests.persona_questions._stub import SBStub, _Query, _Exec
 
 
 class _PaginatingQuery(_Query):
-    """Extends SBStub query to implement .range() properly for pagination tests."""
+    """Extends SBStub query to implement .range() and multi-key ordering for pagination tests."""
 
     def __init__(self, name, db):
         super().__init__(name, db)
         self._range_start: int = 0
         self._range_end: int | None = None
+        self._order_keys: list[tuple[str, bool]] = []
+
+    def order(self, key, desc=False, **kwargs):
+        # Accumulate multiple order keys instead of overwriting (base class overwrites)
+        self._order_keys.append((key, desc))
+        self._order_key = key
+        self._desc = desc
+        return self
 
     def range(self, start: int, end: int):
         self._range_start = start
@@ -34,11 +42,13 @@ class _PaginatingQuery(_Query):
     def execute(self):
         rows_store = self.db.setdefault(self.name, [])
         matching = [r for r in rows_store if self._matches(r)]
-        if self._order_key:
-            matching.sort(
-                key=lambda r: (r.get(self._order_key) if r.get(self._order_key) is not None else ""),
-                reverse=self._desc,
-            )
+        if self._order_keys:
+            # Apply multi-key sort: Python's sort is stable so we sort by least-significant key first
+            for key, desc in reversed(self._order_keys):
+                matching.sort(
+                    key=lambda r, k=key: (r.get(k) if r.get(k) is not None else ""),
+                    reverse=desc,
+                )
         total = len(matching)
         # Apply range-based slicing
         if self._range_end is not None:
