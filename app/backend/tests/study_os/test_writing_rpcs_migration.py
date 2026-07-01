@@ -1,4 +1,4 @@
-"""Migration 206 contract: atomic EWP-2 runtime RPCs.
+"""Migration 207 contract: atomic EWP-2 runtime RPCs.
 
 Text-assertion style (matches the repo's migration contracts); behavioural
 apply/round-trip is validated against Postgres in the operator/integration pass
@@ -10,13 +10,13 @@ from pathlib import Path
 
 _SQL = (
     Path(__file__).parents[3]
-    / "supabase/migrations/206_english_writing_practice_rpcs.sql"
+    / "supabase/migrations/207_english_writing_practice_rpcs.sql"
 ).read_text()
 _L = _SQL.lower()
 
 
-def test_is_migration_206():
-    assert _SQL.startswith("-- Migration 206")
+def test_is_migration_207():
+    assert _SQL.startswith("-- Migration 207")
 
 
 def test_public_rpcs_defined_security_definer():
