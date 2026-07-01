@@ -1,7 +1,7 @@
 # Topic Prerequisite Semantics and Planner Authority Gate — J2-A′
 
 - Document type: J2-A′ implementation contract — topic prerequisite semantics, trust lifecycle, and planner authority
-- Status: **DRAFT — PD-D-opt-1 OPERATOR APPROVED (2026-07-01, PR #830); full gate approval pending re-review of the 5 checkpost corrections** (no implementation PR may be dispatched until full approval)
+- Status: **OPERATOR APPROVED (2026-07-01).** Gate merged via PR #830 and confirmed approved by the operator (merge treated as approval, recorded here per the operator's directive on PR #835). PD-D-opt-1 approved. Implementation authorized (PR #835). Audit-atomicity acceptance amended — see §C.2a.
 - Date: 2026-07-01
 - **PD-D — OPERATOR APPROVED (2026-07-01):** `PD-D-opt-1` — backfill every pre-migration `topic_prerequisites` row to `reviewer_status='locked'` in the same forward migration. Implementation validation must record: pre-migration edge count; post-migration grandfathered `locked` count; zero legacy rows left in another status; planner behavior preserved for a representative existing graph; grandfathered rows require the review reopen path before manage-tier edits/deletes.
 - Parent track: `J2 — missing operational editors in Manage Exam` (J2-A′ sub-slice, blocked in `Manage-Exam-Operational-Editors-Gate-2026-07-01.md` OD-9 / rule 6)
@@ -158,6 +158,8 @@ RLS/grants updated per migration discipline; verify with `pg_policies` before ma
 
 Under the J2 `manage` router (`/admin/exam-intelligence-manage`), all mutations single-token `require_permission("exam_intelligence.manage")`; reviews single-token `require_permission("exam_intelligence.review")`; reason + audit on every write; PD-1 scope enforced on both endpoints of an edge.
 
+**§C.2a Audit atomicity (AMENDED 2026-07-01, operator-approved).** Every write emits an `admin_audit_logs` row via the shared `_audit()` helper, which is **best-effort** (logged-not-fatal on failure) — consistent with the entire CMS/admin surface, which uses the same helper. The gate does NOT require prerequisite writes to be transactionally atomic with their audit insert; making prerequisites uniquely transactional while the rest of the CMS is best-effort was rejected as disproportionate and inconsistent. Acceptance is "an audit row is emitted on every write path," not "the write is impossible without a committed audit row."
+
 | Method | Path | Permission | Notes |
 |---|---|---|---|
 | GET | `/topic-prerequisites?exam_id&topic_id` | **read: existing admin/read access (manage OR review)** | list edges for a topic (both directions), with `reviewer_status`. Read-only under the parent gate's "View Manage Exam and operational data" access so a **review-only** operator can load the rows they must review (blocker 2). |
@@ -255,4 +257,4 @@ Everything else in planner ordering is unchanged (candidate-set limiting, safe f
 
 ---
 
-*Status: DRAFT — `PD-D-opt-1` OPERATOR APPROVED (2026-07-01, PR #830). Five checkpost blockers corrected in this head: (1) all writers incl. Advanced Repair use the single cycle-safe RPC — no cms bypass; (2) GET readable by manage OR review so review-only operators can review; (3) transition matrix permission-correct — lifecycle is review-only except the manage submit handoff; (4) single global transaction-scoped advisory lock (3-transaction cycle case covered); (5) delete allowed only for draft/rejected. Full gate approval pending operator re-review of this head. On approval: J2-A′ implementation (migration ≥207 + cycle-safe RPC + endpoints + planner locked-only read + editor UI + tests).*
+*Status: OPERATOR APPROVED (2026-07-01) — gate merged (#830) and confirmed approved; PD-D-opt-1 approved; audit-atomicity amended to best-effort (§C.2a). Implementation in PR #835: migration 208 (lifecycle + backfill + cycle-safe RPC w/ single global advisory lock + CAS lifecycle & lost-update guards + RLS trust-boundary tightening), manage/review endpoints, Advanced-Repair reroute, planner locked-only read, editor UI. VERIFY DB: concurrency/CAS proven against real Postgres via `app/supabase/validation/validate_topic_prerequisite_concurrency.sql`. Remaining P1 follow-up: scoped searchable candidate source + bounded both-direction pagination (#4).*
