@@ -6,8 +6,10 @@ the "I9 implementation" row and (for D12) open the v1 fix.
 **Author input:** decision records `Exam-Cycle-Setup-D06-D08 / D11 / D12-D16-*`, current code
 in `app/backend/app/exam_intelligence/cycle_readiness.py` + `work_queue.py` + the
 `CycleActivationChecklist.jsx` renderer.
-**Scope:** closes gate **F2** — freeze the five I9 deferred items (D06, D11, D12, D14, D15) as
-either **v1 (must-fix before GA)** or **v2 (explicitly deferred)**.
+**Scope:** provides the **decision artifact required to close gate F2** by classifying the five
+I9 deferred items (D06, D11, D12, D14, D15) as **v1 (must-fix before GA)** or **v2 (explicitly
+deferred)**. **F2 remains OPEN** until product/operator sign-off **and** checklist reconciliation
+in `career-copilot-checklist.md`; this document does not itself close the gate.
 
 ---
 
