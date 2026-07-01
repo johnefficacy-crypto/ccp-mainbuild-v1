@@ -289,6 +289,44 @@ Write the code; operator sign-off required before merge.
 - **J2 sub-steps are serial** within a single agent — all Manage Exam tab work is a shared write scope.
 - **No new top-level surface** unless it removes ≥ 2 existing peers (no-new-surface rule, locked 2026-06-21).
 
+## English Writing Practice — Lane H
+
+Architecture contract: `docs/architecture/english-writing-practice.md`
+PR plan: `docs/status/career-copilot-pr-plan.md` § Lane H
+
+Current verdict: **ARCHITECTURE REVIEW PENDING — PR #819 (draft). Not locked until #819 merges. EWP-1 may begin only after the contract is locked. EWP-5 mastery live writes blocked on Lane A gate.**
+
+Migration number for EWP-1 must come from `select max(version)::int + 1 from schema_migrations`. VERIFY DB before writing the migration file — do not guess or derive from filenames.
+
+| Item | Current status | Repo evidence / notes |
+|---|---|---|
+| Architecture contract | REVIEW PENDING — PR #819 (draft) | `docs/architecture/english-writing-practice.md` — 24 locked implementation rules, full schema, state machines, evaluation stages, RLS contract, projection policy. |
+| English taxonomy seed | PLANNED | Microtopics for Grammar (7), Sentence Construction (4), Vocabulary (4), Paragraph Writing (4), Précis/Essay/Letter/Comprehension subjects. Must be seeded in EWP-1 migration using stable UUID constants, not auto-generated. |
+| EWP-1 — Schema, constraints, RLS | PLANNED — blocked on architecture lock (#819 merge) | Tables: `writing_rubrics`, `writing_prompts`, `exam_descriptive_requirements`, `writing_sessions`, `writing_session_units`, `writing_unit_versions`, `writing_evaluations`, `writing_session_checks`, `writing_issue_events`, `writing_issue_resolution_events`, `writing_issue_projections` (with `projection_kind`/override), `writing_issue_review_events`, `user_topic_mastery_evidence` (with `evidence_key`/`evidence_op`), `writing_evaluation_jobs` (with `claim_token`), `writing_mastery_shadow`, `writing_mastery_outbox`, `writing_issue_type_microtopic_map`. View: `effective_user_topic_mastery_evidence`. Additive columns on `study_tasks`: `launch_type`, `launch_entity_id`, `launch_context`. `tier_rank()` helper. Immutability triggers. Must include `version_set_hash` fixed-input test vector, unit state machine, and review-override projection tests. |
+| EWP-2 — Deterministic practice API | PLANNED — blocked on EWP-1 merged | Practice runtime API: session create/read, unit submit (Stage 1 synchronous; enqueues Stage 2 job), reopen, evaluation poll, error summary. `finalize_writing_session` single-owner rollup. Mission-control `action_url` computation from `launch_type`. Shadow mastery only (`FF_WRITING_MASTERY_WRITES=shadow`). |
+| EWP-2B — Evaluator runtime (Stage 2/3) | PLANNED — blocked on EWP-1 merged (concurrent with EWP-2; merges before EWP-3/EWP-4) | Language + rubric worker: job claiming (`FOR UPDATE SKIP LOCKED`), structured-output validation, issue lineage + resolution events, race-safe projection insert, mastery outbox with pinned mode, recovery via `generation+1`, `terminal_partial` handling. |
+| EWP-3 — Sentence Builder UI | PLANNED — blocked on EWP-2 + EWP-2B merged | `EnglishPracticeShell`, `SentenceBuilder`, `SentenceIssueCard`, `RewriteEditor`, `BeforeAfterDiff`. Route `/app/study/practice/english/:sessionId` under `StudyShell`. Not through `AttemptShellRouter`. |
+| EWP-4 — Grammar Lab and Error Lab | PLANNED — blocked on EWP-2 + EWP-2B merged (can parallelize with EWP-3) | Grammar drill exercises (identify/correct/rewrite/construct/reconstruct). Error Lab grouped by microtopic with Grammar Lab cross-links. Shadow evidence. |
+| EWP-5 — Planner integration | PLANNED — blocked on EWP-2 merged; mastery live writes blocked on Lane A gate | Writing task generation (sentence_construction, grammar_correction, vocabulary_in_context). Mission-control launch URL. Shadow-to-live promotion requires §10.3 of architecture doc gates + operator approval. |
+| EWP-6 — Paragraph Builder | PLANNED — blocked on EWP-3 merged + release gates §16 of architecture doc | Evidence-gated scaffolding (via `tier_rank`), outline scratchpad as `outline_json`. |
+| EWP-7 — Descriptive mock runtime | PLANNED — blocked on EWP-6 stable + release gates §16 of architecture doc | Extends mock `AnswerBody`. Adds `descriptive` interface mode to `AttemptShellRouter`. Wires M176/M177 columns. |
+| `FF_WRITING_MASTERY_WRITES` | BLOCKED — live prohibited until Lane A gate clears | Defaults to `off`. Shadow mode is permitted at any time. Live mode blocked on Lane A gate + §10.3 promotion gates + operator approval; `live` publishes to the unified aggregator, never writes `user_topic_mastery` directly. |
+| `version_set_hash` test vector | PLANNED — required in EWP-1 | Backend fixed-input → pinned SHA-256 hex vector, plus an API integration assertion that the value returned to clients matches. Clients consume the hash and never compute it (AGENTS.md EWP-3), so there is no client-side parity test. |
+| UTF-16 span offset contract | PLANNED — required in EWP-2 | `span_start_utf16 + span_end_utf16 + quoted_text` verification in both Python evaluator and React frontend. |
+| Prompt bank seed | PLANNED — pre-aspirant launch | 50 sentence-construction + 50 sentence-correction + 100 grammar + 50 vocabulary + 20 paragraph prompts. All must pass reviewer lifecycle (`reviewer_status = 'verified'`, `is_active = true`) before aspirant launch. Authored in Exam Workspace CMS; no new admin surface. |
+| Release gates for paragraphs/essays | PLANNED | 10 quality gates in §16 of architecture doc. Not time-based. Operator approval required before EWP-6 begins. |
+
+### Operator validation still required (EWP)
+
+| Item | Gate |
+|---|---|
+| EWP-1 migration applied | OPERATOR PENDING — apply to staging, verify RLS, confirm no authenticated/anon write access to issue/projection/mastery tables |
+| `version_set_hash` backend vector | OPERATOR PENDING — confirm the backend helper output matches the pinned fixed-input vector and the API returns that exact value (clients consume only) |
+| Append-only immutability triggers | OPERATOR PENDING — confirm service-role UPDATE and DELETE fail on every immutable table (§12.4) on staging |
+| Shadow mastery output | OPERATOR PENDING — after EWP-2B deploys, verify source-neutral evidence + shadow rows appear and no `user_topic_mastery` mutations occur |
+| Prompt bank reviewed | OPERATOR PENDING — 270 prompts through CMS review lifecycle before aspirant launch |
+| Release gates §16 | OPERATOR PENDING — 10 gates must be documented in this checklist before EWP-6 begins |
+
 ## Prior arcs / live-DB-only tails
 
 Keep these separated from code-verifiable status.
@@ -309,5 +347,6 @@ Every PR that changes any of the following must update this checklist in the sam
 3. Exam intelligence setup/workspace UX, Advanced Import / Repair, Guided/Add Cycle flows, document readiness, PYQ, topic coverage, competition, or publish gates.
 4. Backend CI ordering, dependency audit policy, or known flaky checks.
 5. Any operator decision that changes a `BLOCKED`, `OPERATOR PENDING`, `PLANNED`, or `CLEANUP PENDING` status.
+6. English Writing Practice schema, API, frontend, mastery flag, evaluation pipeline, or prompt bank.
 
 When a task is live-DB or deployment-only, write **OPERATOR PENDING** or **VERIFY DB**; never mark it complete from code inspection alone.

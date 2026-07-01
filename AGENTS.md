@@ -400,3 +400,205 @@ verified primary tag. Multiple secondary/trap/calculation_layer tags on the
 same question do NOT inflate frequency. This is intentional. Do not revert
 to all-role counting without an explicit architectural decision and downstream
 consumer audit.
+
+## English Writing Practice module contracts
+
+Architecture doc: `docs/architecture/english-writing-practice.md`.
+Delivery tracked in `docs/status/career-copilot-checklist.md` (Lane H rows).
+PR plan: Lane H in `docs/status/career-copilot-pr-plan.md`.
+
+### EWP-1. Practice sessions are not mock attempts
+
+`writing_sessions` / `writing_session_units` / `writing_unit_versions` are
+the practice data model. Do not insert into `mock_attempts`, do not route
+through `AttemptShellRouter`, and do not reuse any mock-attempt foreign keys.
+The descriptive mock runtime (EWP-7) also does NOT use these tables — it
+writes to `mock_attempt_responses` columns M176/M177 on the existing mock
+attempt row. The two runtimes share taxonomy, rubrics, and mastery plumbing
+only.
+
+### EWP-2. Submitted writing and raw issue events are append-only
+
+`writing_unit_versions` rows and `writing_issue_events` rows are never
+updated or deleted after insert. Reopen creates a new version row; an issue
+outcome change appends a new resolution event. The immutable history is
+required for lineage tracking and stale-evaluation audit.
+
+This is enforced at the DATABASE, not just by convention: EWP-1 installs
+`BEFORE UPDATE OR DELETE` raise-exception triggers on the append-only tables
+(`writing_unit_versions`, `writing_issue_events`,
+`writing_issue_resolution_events`, `writing_issue_projections`,
+`writing_issue_review_events`, `user_topic_mastery_evidence`,
+`writing_mastery_shadow`). RLS does not constrain `service_role`; the
+triggers do. Tests must prove service-role UPDATE and DELETE fail.
+
+### EWP-3. `version_set_hash` — one backend helper, clients consume only
+
+`version_set_hash` is a SHA-256 over a domain-separated binary payload
+(`WPS_VERSION_SET_V1\x00` + uint32 BE count + per-unit uint32 BE
+`unit_number` + 16-byte RFC4122 UUID (unit id) + 16-byte RFC4122 UUID
+(version id) + 32-byte content hash bytes, units sorted by `unit_number`).
+The algorithm lives in one backend helper. Clients read and compare the
+hash; they never compute it. Do not add client-side hash generation.
+
+### EWP-4. Stale evaluation: two checks, both required
+
+An in-flight evaluator must perform BOTH checks before applying
+state-change side effects:
+1. **Content hash check** — RECOMPUTE `sha256(stored_answer_text)` and
+   require it equal both the stored `content_hash` and the
+   `requested_content_hash`. Field equality alone does not detect mutated
+   text; recomputation does. Guards against bit-rot or inadvertent mutation.
+2. **Version-number check** — confirms the version being evaluated is still
+   the latest version for the unit. Guards against fast-rewrite races.
+
+If content hash fails → abort the evaluation as corrupt.
+If version number is stale → still persist the evaluation row and its issue
+events, with `affects_current_state = false` on the issue events (that column
+lives on `writing_issue_events`, not `writing_evaluations`); skip the
+remaining state-change side effects (resolution events, projections, mastery
+outbox, unit/session finalization). Do not conflate the two checks or drop
+either one.
+
+The external/LLM evaluation must run with NO database transaction open; the
+short locking/write transaction begins only after the evaluator returns.
+
+**Canonical lock order (deadlock-free):** every multi-row path locks
+`writing_sessions` → **ALL required `writing_session_units` ascending by
+`unit_number`** → `writing_evaluations`/`writing_session_checks` →
+`writing_evaluation_jobs`/`writing_mastery_outbox`. A path touching only one
+unit still locks the FULL required-unit set ascending up front, because
+`finalize_writing_session` locks them all — locking only unit 5 then letting
+the finalizer take units 1–4 gives `session→unit5→unit1..4`, which deadlocks
+against a worker holding unit 1. Never hold a unit lock and then take the
+session lock, and never take the target unit before a lower-numbered one.
+Applies to evaluator, reopen, submission, recovery.
+
+**Atomic job acknowledgement:** the claimed `writing_evaluation_jobs` row is
+set `status='done'` in the SAME transaction as all evaluation side effects.
+There is no window where side effects are durable but the job is still
+claimable. A replay guard additionally checks for an already-terminal
+evaluation before re-processing. A crash-after-commit/before-ack test is
+required.
+
+**Job lease + fencing:** because the LLM call runs outside the write
+transaction, a claimed job can be orphaned by a crash. Claiming stamps
+`locked_at` + a `claim_token`; a sweeper recovers stale `running` rows past
+the lease (increment attempts, clear token, or `failed` at max attempts).
+The final write transaction re-reads the job `FOR UPDATE` and asserts the
+`claim_token` still matches — a slow worker whose lease expired and whose job
+was reclaimed cannot commit. Same lease model applies to
+`writing_mastery_outbox`.
+
+**Evaluator returns `issue_type` only — never taxonomy IDs.** The backend
+maps `issue_type` to the canonical English microtopic via
+`writing_issue_type_microtopic_map` and validates subject + `level` + active
+state before insert. The model must not choose repository taxonomy UUIDs;
+JSON-schema validation proves shape only.
+
+### EWP-5. `finalize_writing_session` owns rollup-derived state transitions
+
+All **rollup-derived** session and unit state transitions (unit
+`evaluation_pending → rewrite_required`, `evaluation_pending → ready`,
+`ready → completed`; session `active → evaluation_pending`,
+`evaluation_pending → rewrite_required`, `evaluation_pending → completed`,
+etc.) are owned exclusively by `finalize_writing_session`. It is idempotent
+and must be called after every terminal event: session submission,
+deterministic eval complete, language eval complete, permanent job failure,
+recovery complete, session-check complete.
+
+**Explicitly permitted outside the finalizer:** the unit reopen command
+(`ready → draft`) is a command-driven transition issued by the reopen
+endpoint before calling the finalizer to recompute session state. This is
+not a rollup transition — it is a deliberate user-directed state override.
+All other paths that write session or unit state must route through the
+finalizer.
+
+### EWP-6. Mastery evidence is durable-outbox, mode-pinned, idempotent
+
+`user_topic_mastery_evidence` inserts from writing evaluations must NOT be
+inside the evaluation transaction (lock contention would roll back
+issue/resolution inserts). Use a transactional outbox: insert a
+`writing_mastery_outbox` job inside the evaluation transaction, then a worker
+processes it post-commit. An optional after-commit callback without a
+committed outbox row is not permitted — it loses evidence on crash.
+
+**Mode pinning:** the effective `off|shadow|live` mode (with per-user
+allowlist) is resolved ONCE when the outbox row is created and stored in
+`writing_mastery_outbox.mastery_flag_state`. The worker reads the pinned
+state and never re-reads the environment; retries reuse it. `off` creates no
+outbox row.
+
+**End-to-end idempotency:** `user_topic_mastery_evidence` and
+`writing_mastery_shadow` carry a deterministic `evidence_key`
+(`sha256(evidence_op, user_id, evaluation_id, issue_projection_id,
+microtopic_id, evidence_tier, source_type, review_event_id)`) with a unique
+constraint. The evidence insert (`ON CONFLICT DO NOTHING`) and the
+outbox-completion UPDATE run in one transaction. A crash-after-insert/
+before-ack retry inserts no duplicate.
+
+**Shadow writes evidence (locked contract):** in `shadow`, source-neutral
+`user_topic_mastery_evidence` IS written, plus `writing_mastery_shadow`
+delta rows — only canonical aggregation into `user_topic_mastery` is
+disabled. This is deliberate so the EWP-5 planner can read writing evidence
+during the shadow period. `off` writes neither. Do not "skip evidence in
+shadow."
+
+The `FF_WRITING_MASTERY_WRITES` flag (`off | shadow | live`) defaults to
+`off`. `live` publishes validated evidence to the unified aggregator — it
+NEVER writes `user_topic_mastery` directly (locked rule 19). `live` is
+blocked until the Lane A aggregator gate clears and `FF_MOCK_MASTERY_WRITES`
+is proven stable. Shadow is safe at any time. Fails closed: any unrecognised
+value → `off`.
+
+**Tier rank is explicit, never lexical:** `recognition(1) < correction(2) <
+production(3) < retention(4)` via a rank helper — never `evidence_tier <
+'production'` string comparison.
+
+**Post-emission corrections are append-only, key-distinct, flag-independent:**
+review events for one issue are serialized; each effective-decision change
+(full matrix incl. `invalidated→confirmed` re-assert and `reclassified→
+confirmed` restore) emits ONE correction whose `evidence_key` carries
+`evidence_op` + the causing `review_event_id`, superseding the currently
+effective evidence (via `supersedes_evidence_key`) — not always the original
+assert. A `reclassified` uses a `review_override` projection
+(`projection_kind='review_override'`, partial unique indexes) at the SAME
+pinned `projection_revision`; it does NOT bump the revision. Corrections are
+INDEPENDENT of the current flag: the correction inherits the superseded row's
+`mastery_flag_state`, so a `retract` still fires even if the flag is now
+`off` (flag changes stop new assertions, never suppress retractions of
+persisted evidence).
+
+**Effective-evidence fold is the only planner/level source:** the append-only
+`user_topic_mastery_evidence` is never read directly for personalization or
+level. A backend-owned `effective_user_topic_mastery_evidence` view/RPC folds
+`assert/retract/replace`, honours the effective review decision, and excludes
+stale/withdrawn rows. `user_current_level` and EWP-5 planner read only the
+fold, so a retracted `production` assertion cannot inflate level.
+
+**Shadow/live worker atomicity:** effective-evidence insert + shadow-row
+insert + outbox `done` update commit in ONE transaction, preventing
+evidence/shadow drift.
+
+### EWP-7. Only verified, active prompts reach aspirant surfaces
+
+`writing_prompts` rows must have `reviewer_status = 'verified'` and
+`is_active = true` before the planner or any aspirant-facing API may use
+them. `exam_descriptive_requirements` rows must similarly be verified and
+active. The prompt reviewer lifecycle is
+`pending → verified | rejected | needs_correction` (matches Exam
+Intelligence CMS pattern). Do not add a `draft → published` lifecycle.
+
+### EWP-8. Study tasks carry typed launch targets, never frontend URLs
+
+`study_tasks.launch_type` + `launch_entity_id` + `launch_context` is the
+stored form. The mission-control API computes `action_url` and
+`action_label` at response time from these fields. Never store a hardcoded
+frontend path in the database.
+
+### EWP-9. Migration number from live schema_migrations
+
+The next migration number for any EWP schema work must be read from:
+`select max(version)::int + 1 from schema_migrations`
+Never guess or hardcode a migration number. The correct value must be
+VERIFIED against the live database before writing any migration file.
