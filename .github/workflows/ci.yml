@@ -147,12 +147,15 @@ jobs:
           --health-retries 10
     env:
       EWP_PG_DSN: postgresql://postgres:postgres@localhost:5432/ewp_it
+      SNAP_LOCK_PG_DSN: postgresql://postgres:postgres@localhost:5432/snap_lock_it
     steps:
       - uses: actions/checkout@v4
       - name: Install system dependencies (Tesseract OCR + Postgres client)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-eng postgresql-client
       - name: Create disposable EWP integration database
         run: psql "postgresql://postgres:postgres@localhost:5432/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS ewp_it;" -c "CREATE DATABASE ewp_it;"
+      - name: Create disposable snapshot lock-authority integration database
+        run: psql "postgresql://postgres:postgres@localhost:5432/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS snap_lock_it;" -c "CREATE DATABASE snap_lock_it;"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
