@@ -170,6 +170,10 @@ export default function TopicPrerequisiteEditor({
                       onClick={() => deleteEdge(e)} disabled={busy} data-testid={`tpe-delete-${e.id}`}>Delete</button>
                   </>
                 )}
+                {canReview && e.reviewer_status === "draft" && (
+                  <button type="button" className="text-xs px-2 py-0.5 border rounded disabled:opacity-40"
+                    onClick={() => review(e, "rejected")} disabled={busy} data-testid={`tpe-reject-${e.id}`}>Reject</button>
+                )}
                 {canReview && e.reviewer_status === "pending_review" && (
                   <>
                     <button type="button" className="text-xs px-2 py-0.5 border rounded disabled:opacity-40"
@@ -184,6 +188,8 @@ export default function TopicPrerequisiteEditor({
                       onClick={() => review(e, "locked")} disabled={busy} data-testid={`tpe-lock-${e.id}`}>Lock</button>
                     <button type="button" className="text-xs px-2 py-0.5 border rounded disabled:opacity-40"
                       onClick={() => review(e, "draft")} disabled={busy} data-testid={`tpe-return-${e.id}`}>Return to draft</button>
+                    <button type="button" className="text-xs px-2 py-0.5 border rounded disabled:opacity-40"
+                      onClick={() => review(e, "rejected")} disabled={busy} data-testid={`tpe-reject-${e.id}`}>Reject</button>
                   </>
                 )}
                 {canReview && e.reviewer_status === "locked" && (

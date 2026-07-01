@@ -12,9 +12,10 @@
 -- WHAT THIS DOES
 -- --------------
 --   C. Adds a review lifecycle (reviewer_status + audit columns) to the existing
---      RLS-enabled public.topic_prerequisites table. reviewer_status is a new
---      column on an existing authenticated-read table; the existing read policy
---      still applies, so no new RLS policy is added.
+--      RLS-enabled public.topic_prerequisites table.
+--   C.1 Tightens the RLS trust boundary: drops the permissive authenticated
+--      read policy and revokes direct anon/authenticated SELECT so draft/pending
+--      edges and review metadata are not leaked (all reads are service-role).
 --   D. One-time PD-D-opt-1 grandfather backfill: every edge that exists at deploy
 --      time is promoted to 'locked' so already-live planner authority is preserved.
 --   E. A cycle-safe, self-edge-safe SECURITY DEFINER write RPC that NEVER sets
@@ -64,6 +65,20 @@ update public.topic_prerequisites
 set reviewer_status = 'locked'
 where reviewer_status = 'draft';
 
+-- ── C.1 RLS trust boundary (checkpost P0) ────────────────────────────────────
+-- Before this migration, topic_prerequisites had `... read_authenticated USING (true)`,
+-- so ANY signed-in user could read draft/pending/rejected edges and internal
+-- review metadata (reviewed_by, review_notes) directly via PostgREST — bypassing
+-- the locked-only trust boundary. No runtime consumer reads this table via the
+-- authenticated client (the planner and all admin paths use the service role,
+-- which bypasses RLS), so we drop the permissive authenticated read policy and
+-- revoke direct anon/authenticated SELECT entirely. All reads are service-role /
+-- FastAPI-mediated; a locked-only safe projection can be added if an aspirant
+-- runtime ever needs direct access.
+drop policy if exists topic_prerequisites_read_authenticated on public.topic_prerequisites;
+revoke select on public.topic_prerequisites from authenticated;
+revoke select on public.topic_prerequisites from anon;
+
 -- ── E. Cycle-safe write RPC ───────────────────────────────────────────────────
 create or replace function public.cms_write_topic_prerequisite(
     p_id                     uuid,   -- NULL for create, existing id for update
@@ -74,7 +89,8 @@ create or replace function public.cms_write_topic_prerequisite(
     p_source_basis           text,
     p_created_by             uuid,
     p_metadata               jsonb default '{}'::jsonb,
-    p_expected_status        text  default null  -- CAS guard for updates
+    p_expected_status        text  default null,  -- CAS: lifecycle-state guard
+    p_expected_updated_at    timestamptz default null  -- CAS: lost-update guard
 )
 returns public.topic_prerequisites
 language plpgsql
@@ -150,6 +166,7 @@ begin
             updated_at            = now()
         where id = p_id
           and (p_expected_status is null or reviewer_status = p_expected_status)
+          and (p_expected_updated_at is null or updated_at = p_expected_updated_at)
         returning * into v_row;
 
         if not found then
@@ -166,10 +183,10 @@ $$;
 -- ── Grants: mirror migration 203 / 204 hardening exactly. ─────────────────────
 -- Supabase auto-grants public-schema functions to anon + authenticated at
 -- creation; REVOKE FROM PUBLIC alone is insufficient, so revoke all three.
-revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text) from public;
-revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text) from anon;
-revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text) from authenticated;
-grant  execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text) to service_role;
+revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text, timestamptz) from public;
+revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text, timestamptz) from anon;
+revoke execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text, timestamptz) from authenticated;
+grant  execute on function public.cms_write_topic_prerequisite(uuid, uuid, uuid, text, numeric, text, uuid, jsonb, text, timestamptz) to service_role;
 
 commit;
 

@@ -21,13 +21,19 @@
 --   then commit each.
 -- EXPECTED: the global advisory lock serializes them; exactly the cycle-closing
 -- call raises `cycle: ...`. The graph must NOT contain A->B->C->A afterwards.
--- CHECK (must return 0):
---   with recursive r(n) as (
---     select :'A'::uuid
---     union
---     select tp.prerequisite_topic_id from topic_prerequisites tp
---       join r on tp.topic_id = r.n where tp.relation_type in ('requires','recommended_before'))
---   select count(*) from r where n = :'A' and exists (select 1 from r where n <> :'A');
+-- CHECK — proper cycle detection (must return 0). Tracks the visited path and
+-- flags when a walk revisits a node already on its path, which is a real cycle:
+--   with recursive walk(node, path, is_cycle) as (
+--     select :'A'::uuid, array[:'A'::uuid], false
+--     union all
+--     select tp.prerequisite_topic_id,
+--            w.path || tp.prerequisite_topic_id,
+--            tp.prerequisite_topic_id = any(w.path)
+--     from topic_prerequisites tp
+--       join walk w on tp.topic_id = w.node
+--     where tp.relation_type in ('requires','recommended_before')
+--       and not w.is_cycle)
+--   select count(*) from walk where is_cycle;   -- 0 = acyclic (A→B alone yields 0)
 
 -- ── 2. Lifecycle CAS race (edit vs review) ───────────────────────────────────
 -- Seed one edge E in 'draft'. Concurrently:

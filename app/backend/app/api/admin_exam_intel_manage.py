@@ -674,9 +674,11 @@ def update_topic_prerequisite(
                 "p_source_basis": patch.get("source_basis", existing.get("source_basis")),
                 "p_created_by": existing.get("created_by"),
                 "p_metadata": None,
-                # CAS: only update if the edge is still in the state we validated,
-                # so a concurrent review/lock transition is not overwritten.
+                # CAS: only update if the edge is still in the state we validated
+                # AND has not been modified since we read it — blocks a concurrent
+                # review/lock transition and a same-state lost update.
                 "p_expected_status": existing.get("reviewer_status"),
+                "p_expected_updated_at": existing.get("updated_at"),
             },
         ).execute()
     except Exception as exc:  # noqa: BLE001

@@ -67,10 +67,14 @@ def emulate_cms_write_topic_prerequisite(db: dict, params: dict) -> dict[str, An
     row = next((r for r in rows if r.get("id") == pid), None)
     if not row:
         raise Exception("not_found")
-    # CAS guard mirrors the SQL: only update if still in the expected state.
+    # CAS guard mirrors the SQL: only update if still in the expected state AND
+    # unchanged since read (lost-update guard).
     expected = params.get("p_expected_status")
     if expected is not None and row.get("reviewer_status") != expected:
         raise Exception("concurrent_modification: edge changed review state; re-fetch and retry")
+    expected_ts = params.get("p_expected_updated_at")
+    if expected_ts is not None and row.get("updated_at") != expected_ts:
+        raise Exception("concurrent_modification: edge modified since read; re-fetch and retry")
     row.update({
         "topic_id": topic_id,
         "prerequisite_topic_id": prereq_id,
