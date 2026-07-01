@@ -157,14 +157,19 @@ def test_failure_path(monkeypatch):
     assert p["p_claim_token"] == "tok-abc"
 
 
-def test_content_hash_mismatch_fails_the_job():
+def test_content_hash_mismatch_rejects_corrupt_not_recoverable():
+    # A hash mismatch is CORRUPTION: it must fail closed through the DISTINCT
+    # ewp_reject_corrupt_version path (never scored, never the recoverable
+    # ewp_fail_evaluation_job retry path).
     sb = FakeSupabase({
         "ewp_claim_evaluation_job": _claim(content_hash="0" * 64),
-        "ewp_fail_evaluation_job": None,
+        "ewp_reject_corrupt_version": {"status": "rejected_corrupt"},
     })
     result = evaluation_worker.run_worker_pass(sb)
-    assert result["status"] == "failed"
+    assert result["status"] == "rejected_corrupt"
     assert "ewp_complete_language_evaluation" not in sb.call_names()
-    assert "ewp_fail_evaluation_job" in sb.call_names()
-    p = sb.params_for("ewp_fail_evaluation_job")
+    assert "ewp_fail_evaluation_job" not in sb.call_names()
+    assert "ewp_reject_corrupt_version" in sb.call_names()
+    p = sb.params_for("ewp_reject_corrupt_version")
     assert p["p_claim_token"] == "tok-abc"
+    assert p["p_error"] == "content_hash_mismatch"
