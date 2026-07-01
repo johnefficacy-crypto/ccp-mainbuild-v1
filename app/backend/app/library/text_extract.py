@@ -285,21 +285,6 @@ def _build_page_rows(
     return rows, truncated, timed_out
 
 
-def _write_pages(sb, document_id: str, rows: list[dict[str, Any]]) -> None:
-    """Single-transaction page swap via the SQL function defined in
-    migration 113. The RPC deletes prior rows for the document and
-    inserts the new set in one transaction."""
-    sb.rpc(
-        "replace_document_pages",
-        {
-            "p_document_id": document_id,
-            "p_parser_engine": PARSER_ENGINE,
-            "p_parser_version": PARSER_VERSION,
-            "p_pages": rows,
-        },
-    ).execute()
-
-
 def _update_job(sb, job_id: str, patch: dict[str, Any], *, guard_running: bool = False) -> None:
     # guard_running=True mirrors the RPC's own `status='running' FOR UPDATE` guard so
     # a duplicate/concurrent finalize can't clobber an already-terminal job to 'failed'.

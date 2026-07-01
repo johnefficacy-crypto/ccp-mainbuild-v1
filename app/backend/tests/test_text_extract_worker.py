@@ -1,14 +1,19 @@
-"""Tests for text_extract_worker.py (issue #540).
+"""Tests for text_extract_worker.py (issues #540 and #813).
 
 Covers:
 - claim_next_text_extract_job: empty queue, FIFO ordering, non-queued rows
   ignored, non-admin scopes excluded — scope resolved via document_assets join
-- run_worker_pass: idle, success, conflict race, failure with fallback recovery
+- claim_next_retry_job: transient vs terminal codes, attempt cap enforced
+  server-side (lt filter), backoff window, null/malformed finished_at
+  fail-closed, capped-row prefix does not hide eligible rows
+- run_worker_pass: idle, success, conflict race, failure with fallback recovery,
+  fair combined due-time ordering (retry starvation prevention), no pre-claim
+  status mutation on retry candidates
 - Admin-scope routing: admin_exam_intelligence → admin_scope= param forwarded
   from embedded document_assets row (not hard-coded)
 - Fallback failure recovery: stranded 'running' job AND parent document_assets
   row both flipped to 'failed'
-- _ADMIN_SCOPES constant
+- _ADMIN_SCOPES and _TRANSIENT_ERROR_CODES constants
 
 Schema alignment: document_processing_jobs has NO scope column; scope lives on
 document_assets and is resolved via the inner-join embed.
@@ -23,7 +28,11 @@ import pytest
 
 from app.library.text_extract_worker import (
     _ADMIN_SCOPES,
+    _TRANSIENT_ERROR_CODES,
+    BASE_BACKOFF_SECONDS,
+    MAX_TRANSIENT_ATTEMPTS,
     _fallback_fail_job,
+    claim_next_retry_job,
     claim_next_text_extract_job,
     run_worker_pass,
 )
@@ -75,6 +84,10 @@ class _Q:
         self._filters.append(("in", col, vals))
         return self
 
+    def lt(self, col, val):
+        self._filters.append(("lt", col, val))
+        return self
+
     def order(self, col, *, desc=False):
         self._order_key = col
         self._desc = desc
@@ -97,7 +110,8 @@ class _Q:
                 if r.get("document_id") in doc_by_id
             ]
 
-        for op, col, val in self._filters:
+        for op, col, *rest in self._filters:
+            val = rest[0]
             if "." in col:
                 # Embedded resource filter: "resource.field"
                 resource, field = col.split(".", 1)
@@ -107,18 +121,23 @@ class _Q:
                     rows = [r for r in rows if (r.get(resource) or {}).get(field) in val]
                 elif op == "neq":
                     rows = [r for r in rows if (r.get(resource) or {}).get(field) != val]
+                elif op == "lt":
+                    rows = [r for r in rows if (r.get(resource) or {}).get(field) is not None
+                            and (r.get(resource) or {}).get(field) < val]
             elif op == "eq":
                 rows = [r for r in rows if r.get(col) == val]
             elif op == "in":
                 rows = [r for r in rows if r.get(col) in val]
             elif op == "neq":
                 rows = [r for r in rows if r.get(col) != val]
+            elif op == "lt":
+                rows = [r for r in rows if r.get(col) is not None and r.get(col) < val]
 
         if self._op == "update" and self._update_payload:
             for r in rows:
                 r.update(self._update_payload)
         if self._order_key:
-            rows = sorted(rows, key=lambda r: r.get(self._order_key, ""), reverse=self._desc)
+            rows = sorted(rows, key=lambda r: r.get(self._order_key) or "", reverse=self._desc)
         if self._limit_n is not None:
             rows = rows[: self._limit_n]
         return _R(rows)
@@ -145,6 +164,9 @@ def _job(
     document_id=None,
     status="queued",
     created_at="2026-01-01T00:00:00Z",
+    error_code=None,
+    attempt_count=0,
+    finished_at=None,
 ):
     """Build a document_processing_jobs row. No scope field — scope lives on
     document_assets and is resolved via the inner-join embed."""
@@ -154,6 +176,9 @@ def _job(
         "job_type": "text_extract",
         "status": status,
         "created_at": created_at,
+        "error_code": error_code,
+        "attempt_count": attempt_count,
+        "finished_at": finished_at,
     }
 
 
@@ -323,6 +348,7 @@ def test_run_worker_pass_unhandled_error_fallback_recovery():
     candidate = {
         "id": job_id,
         "document_id": doc_id,
+        "created_at": "2026-01-01T00:00:00Z",
         "document_assets": {"scope": "admin_exam_intelligence"},
     }
     sb = _Sb(jobs=[])  # empty — claim is mocked below
@@ -330,6 +356,9 @@ def test_run_worker_pass_unhandled_error_fallback_recovery():
     with patch(
         "app.library.text_extract_worker.claim_next_text_extract_job",
         return_value=candidate,
+    ), patch(
+        "app.library.text_extract_worker.claim_next_retry_job",
+        return_value=None,
     ), patch(
         "app.library.text_extract_worker.run_text_extract_job",
         side_effect=RuntimeError("unexpected transport error"),
@@ -441,6 +470,284 @@ def test_run_worker_pass_unexpected_final_status_returns_failed():
     assert result["status"] == "failed"
 
 
+# ── claim_next_retry_job ─────────────────────────────────────────────────────
+
+
+def test_retry_returns_transient_failed_job_past_backoff():
+    """A failed job with a transient error_code, under the attempt cap, and past
+    the backoff window is returned by claim_next_retry_job."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00Z",  # far in the past → past backoff
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    result = claim_next_retry_job(sb)
+    assert result is not None
+    assert result["id"] == j["id"]
+
+
+def test_retry_skips_terminal_error_code():
+    """A failed job with a terminal error_code (e.g. unsupported_mime) must
+    never be returned by claim_next_retry_job."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="unsupported_mime",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    assert claim_next_retry_job(sb) is None
+
+
+def test_retry_skips_job_at_max_attempts():
+    """A job that has already reached MAX_TRANSIENT_ATTEMPTS must not be
+    retried even if its error_code is transient. The lt filter enforces this
+    at the server side so capped rows never appear in the result set."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="download_failed",
+        attempt_count=MAX_TRANSIENT_ATTEMPTS,
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    assert claim_next_retry_job(sb) is None
+
+
+def test_retry_respects_backoff_window():
+    """A job whose backoff window has not expired (finished_at is too recent)
+    is not returned even if it is otherwise retry-eligible."""
+    from datetime import datetime, timezone
+
+    doc = _doc(scope="admin_exam_intelligence")
+    just_failed = datetime.now(timezone.utc).isoformat()
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at=just_failed,
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    assert claim_next_retry_job(sb) is None
+
+
+def test_retry_capped_prefix_does_not_hide_eligible_row():
+    """Capped rows (attempt_count >= MAX_TRANSIENT_ATTEMPTS) are excluded by
+    the server-side lt filter, so they cannot push an eligible row past
+    PostgREST's max_rows ceiling."""
+    doc_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+    # Capped row comes first by finished_at; without the lt filter it would
+    # consume the result and the eligible row would not be returned.
+    capped = _job(
+        document_id=doc_id,
+        status="failed",
+        error_code="download_failed",
+        attempt_count=MAX_TRANSIENT_ATTEMPTS,  # at cap — excluded by lt
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    eligible = _job(
+        document_id=doc_id,
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-02T00:00:00Z",  # still in the past → past backoff
+    )
+    sb = _Sb(jobs=[capped, eligible], docs=[doc])
+    result = claim_next_retry_job(sb)
+    assert result is not None
+    assert result["id"] == eligible["id"]
+
+
+def test_retry_null_finished_at_skipped_fail_closed():
+    """A failed job with finished_at=None must be skipped (fail-closed) because
+    the backoff cannot be calculated."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at=None,
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    assert claim_next_retry_job(sb) is None
+
+
+def test_retry_malformed_finished_at_skipped_fail_closed():
+    """A failed job with a malformed finished_at string must be skipped
+    (fail-closed) rather than raising an exception."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="not-a-timestamp",
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    assert claim_next_retry_job(sb) is None
+
+
+def test_retry_timezone_naive_finished_at_skipped_fail_closed():
+    """A tz-naive finished_at (no UTC offset) must be skipped fail-closed.
+    Without this guard, `now - finished_at` raises TypeError (offset-aware vs
+    offset-naive subtraction) and crashes the whole worker pass."""
+    doc = _doc(scope="admin_exam_intelligence")
+    j = _job(
+        document_id=doc["id"],
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00",  # no 'Z' or '+00:00' → tz-naive
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+    assert claim_next_retry_job(sb) is None  # must not raise
+
+
+def test_retry_pass_calls_run_job_without_pre_claim_requeue():
+    """run_worker_pass must NOT mutate the job row before calling
+    run_text_extract_job. _claim_job inside run_text_extract_job already
+    accepts status IN ('queued', 'failed') atomically, and a pre-claim
+    UPDATE to 'queued' can violate the active-job unique index."""
+    doc_id = str(uuid4())
+    job_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+    j = _job(
+        job_id=job_id,
+        document_id=doc_id,
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    original_status = j["status"]
+    sb = _Sb(jobs=[j], docs=[doc])
+
+    fake_result = {"job": {"id": job_id, "status": "succeeded"}, "document": {}}
+    with patch(
+        "app.library.text_extract_worker.run_text_extract_job",
+        return_value=fake_result,
+    ) as mock_run:
+        result = run_worker_pass(sb)
+
+    assert result["processed"] == 1
+    assert result["status"] == "succeeded"
+    assert result["job_id"] == job_id
+    # The worker must NOT have changed the job status before calling run_text_extract_job.
+    assert j["status"] == original_status, "worker must not pre-claim-mutate the job row"
+    mock_run.assert_called_once_with(sb, job_id, user_id=None, admin_scope="admin_exam_intelligence")
+
+
+def test_retry_picked_when_queue_empty():
+    """When no queued jobs exist, a retry-eligible failed job is processed."""
+    doc_id = str(uuid4())
+    job_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+    j = _job(
+        job_id=job_id,
+        document_id=doc_id,
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    sb = _Sb(jobs=[j], docs=[doc])
+
+    fake_result = {"job": {"id": job_id, "status": "succeeded"}, "document": {}}
+    with patch(
+        "app.library.text_extract_worker.run_text_extract_job",
+        return_value=fake_result,
+    ):
+        result = run_worker_pass(sb)
+
+    assert result["job_id"] == job_id
+    assert result["status"] == "succeeded"
+
+
+def test_retry_prioritised_over_newer_queued_when_due_earlier():
+    """Fair combined ordering: a retry candidate whose due time predates a
+    queued job's created_at is processed first, preventing starvation."""
+    doc_id = str(uuid4())
+    queued_job_id = str(uuid4())
+    retry_job_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+
+    # Queued job created recently.
+    j_queued = _job(
+        job_id=queued_job_id,
+        document_id=doc_id,
+        status="queued",
+        created_at="2026-06-01T12:00:00Z",
+    )
+    # Retry candidate: attempt_count=1, finished_at far in the past.
+    # due = 2020-01-01T00:01:00Z (finished_at + 1*60s) — well before queued created_at.
+    j_retry = _job(
+        job_id=retry_job_id,
+        document_id=doc_id,
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    sb = _Sb(jobs=[j_queued, j_retry], docs=[doc])
+
+    fake_result = {"job": {"id": retry_job_id, "status": "succeeded"}, "document": {}}
+    with patch(
+        "app.library.text_extract_worker.run_text_extract_job",
+        return_value=fake_result,
+    ) as mock_run:
+        result = run_worker_pass(sb)
+
+    assert result["job_id"] == retry_job_id, "retry candidate must win when its due time is earlier"
+    mock_run.assert_called_once_with(sb, retry_job_id, user_id=None, admin_scope="admin_exam_intelligence")
+
+
+def test_queued_prioritised_over_retry_when_queued_due_earlier():
+    """Fair combined ordering: a queued job created before the retry candidate's
+    due time is processed first (normal FIFO path takes priority)."""
+    doc_id = str(uuid4())
+    queued_job_id = str(uuid4())
+    retry_job_id = str(uuid4())
+    doc = _doc(doc_id=doc_id, scope="admin_exam_intelligence")
+
+    # Queued job created very early — predates any retry due time.
+    j_queued = _job(
+        job_id=queued_job_id,
+        document_id=doc_id,
+        status="queued",
+        created_at="2019-01-01T00:00:00Z",
+    )
+    # Retry candidate due in 2020 — after the queued job's created_at.
+    j_retry = _job(
+        job_id=retry_job_id,
+        document_id=doc_id,
+        status="failed",
+        error_code="download_failed",
+        attempt_count=1,
+        finished_at="2020-01-01T00:00:00Z",
+    )
+    sb = _Sb(jobs=[j_queued, j_retry], docs=[doc])
+
+    fake_result = {"job": {"id": queued_job_id, "status": "succeeded"}, "document": {}}
+    with patch(
+        "app.library.text_extract_worker.run_text_extract_job",
+        return_value=fake_result,
+    ) as mock_run:
+        result = run_worker_pass(sb)
+
+    assert result["job_id"] == queued_job_id
+    mock_run.assert_called_once_with(sb, queued_job_id, user_id=None, admin_scope="admin_exam_intelligence")
+
+
 # ── _ADMIN_SCOPES constant ───────────────────────────────────────────────────
 
 
@@ -450,3 +757,13 @@ def test_admin_scopes_contains_expected():
 
 def test_personal_library_not_in_admin_scopes():
     assert "personal_library" not in _ADMIN_SCOPES
+
+
+def test_transient_error_codes_contains_expected():
+    assert _TRANSIENT_ERROR_CODES >= {"download_failed", "storage_object_missing", "page_write_failed"}
+
+
+def test_terminal_codes_not_in_transient_set():
+    for code in ("unsupported_mime", "ownership_mismatch", "scope_mismatch",
+                 "archived", "file_too_large_for_extract", "extract_timeout"):
+        assert code not in _TRANSIENT_ERROR_CODES, f"{code} must be terminal"
