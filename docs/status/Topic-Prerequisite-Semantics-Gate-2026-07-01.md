@@ -99,11 +99,13 @@ draft → pending_review → reviewed → locked
 |---|---|---|---|---|---|
 | draft | — | manage/review | — | — | review |
 | pending_review | — | — | review | — | review |
-| reviewed | — | — | — | review | review |
+| reviewed | **manage/review** | — | — | review | review |
 | locked | — | — | review (reopen; notes required) | — | — |
 | rejected | manage (edit back to draft) | — | — | — | — |
 
 Any transition not in the matrix → 409. Reopen (`locked → reviewed`) requires `review_notes` (mirrors the score-snapshot reopen precedent).
+
+**Reopen-to-edit path (LOCKED — closes the C.2 dead-end):** correcting a locked edge is `locked → reviewed` (review, notes) → `reviewed → draft` (manage or review) → edit as `draft` (manage) → resubmit → re-review → re-lock. Without the `reviewed → draft` transition a reopened edge would strand in `reviewed`, which `manage` cannot edit — matching the score-snapshot precedent that permits `reviewed → draft` for exactly this reason.
 
 ### C.3 Editing/deletion under lock (LOCKED — J2-A gate rules 4/5)
 
@@ -129,7 +131,7 @@ updated_at timestamptz not null default now()
 Plus an index on `(reviewer_status)` for the planner's locked-only read.
 
 **OPERATOR DECISION REQUIRED — backfill of existing rows:** the planner will switch to reading **only `locked`** edges (Section G). Existing edges predate the lifecycle and were effectively live. Options:
-- **PD-D-opt-1 (RECOMMENDED):** backfill existing rows to `locked` — grandfathers already-live curated edges so planner output does not silently change on deploy.
+- **PD-D-opt-1 (RECOMMENDED):** backfill existing rows to `locked` — grandfathers already-live curated edges so planner output does not silently change on deploy. **Consequence:** grandfathered `locked` edges immediately fall under C.3 — `manage` can no longer edit or delete them without a `review` reopen. This is the intended trust posture but should be understood: existing edges become review-controlled on deploy.
 - PD-D-opt-2: backfill to `draft` — forces re-review of every existing edge; planner ordering loses all current prerequisite influence until re-locked (behavior regression until review sweep completes).
 
 RLS/grants updated per migration discipline; verify with `pg_policies` before marking complete.
@@ -141,7 +143,7 @@ RLS/grants updated per migration discipline; verify with `pg_policies` before ma
 - Cycle detection must reject **all transitive cycles** (`A→B→…→A`), not just the direct reverse edge.
 - The check must be **transactional and race-safe**: two concurrent inserts must not be able to jointly form a cycle. Implement as a **`SECURITY DEFINER` RPC** (e.g. `cms_add_topic_prerequisite`) that, inside one transaction, takes the appropriate row/advisory lock, runs a **recursive CTE** reachability test from `prerequisite_topic_id` back to `topic_id`, and inserts only if no path exists. This mirrors the existing review-RPC pattern (migrations 185/201).
 - The unique `(topic_id, prerequisite_topic_id)` constraint and `topic_id <> prerequisite_topic_id` check remain.
-- Cycle detection considers only ordering relations (`requires`, `recommended_before`) — `supports`/`foundation_for` do not form ordering cycles (PD-3).
+- Cycle detection considers only ordering relations (`requires`, `recommended_before`) — `supports`/`foundation_for` do not form ordering cycles (PD-3). **A PATCH that promotes `relation_type` into the ordering set MUST run the same recursive check** (a non-ordering edge is never cycle-checked, so promotion is a create-equivalent for cycle purposes).
 
 ---
 
@@ -153,7 +155,7 @@ Under the J2 `manage` router (`/admin/exam-intelligence-manage`), all mutations 
 |---|---|---|---|
 | GET | `/topic-prerequisites?exam_id&topic_id` | manage | list edges for a topic (both directions), with `reviewer_status` |
 | POST | `/topic-prerequisites?exam_id` | manage | create `draft` via the cycle-safe RPC (Section E); both topics ∈ exam subjects (PD-1); never sets a review state |
-| PATCH | `/topic-prerequisites/{id}?exam_id` | manage | edit only while `draft`/`rejected`; relation/strength/source_basis; re-run cycle check if endpoints change |
+| PATCH | `/topic-prerequisites/{id}?exam_id` | manage | edit only while `draft`/`rejected`; relation/strength/source_basis; **re-run the cycle check whenever endpoints change OR `relation_type` transitions into the ordering set** (`requires`/`recommended_before`) — a `supports`/`foundation_for` → `requires` promotion can close an ordering cycle that was never checked |
 | POST | `/topic-prerequisites/{id}/submit?exam_id` | manage | `draft → pending_review` |
 | POST | `/topic-prerequisites/{id}/review?exam_id` | review | lifecycle transitions per C.2; reopen requires notes |
 | DELETE | `/topic-prerequisites/{id}?exam_id` | manage | blocked while `locked` (reopen first); reason required |
@@ -191,12 +193,14 @@ Everything else in planner ordering is unchanged (candidate-set limiting, safe f
 [ ] transitive cycle (A→B→C→A) rejected by the recursive check
 [ ] concurrent inserts cannot jointly form a cycle (RPC lock/serializable test)
 [ ] self-edge rejected (existing check)
+[ ] PATCH promoting relation_type supports→requires that would close a cycle is rejected
 ```
 ### H.3 Lifecycle + permission separation (Section C)
 ```
 [ ] manage creates edges as draft; cannot transition beyond submit→pending_review
 [ ] review performs pending_review→reviewed→locked and the reject branch
 [ ] locked→reviewed reopen requires review_notes
+[ ] reopen-to-edit path works: locked→reviewed→draft makes the edge manage-editable again (no dead-end)
 [ ] manage cannot review (403); review cannot create (403); super_admin bypass
 [ ] every write has a reason + audit row; create never sets a review state (rule 3)
 ```
@@ -219,7 +223,7 @@ Everything else in planner ordering is unchanged (candidate-set limiting, safe f
 
 | File | Change |
 |---|---|
-| `app/supabase/migrations/<next>_topic_prerequisite_lifecycle.sql` | Lifecycle columns + index + cycle-safe RPC + backfill (per PD-D) + RLS/grants |
+| `app/supabase/migrations/<next>_topic_prerequisite_lifecycle.sql` | Lifecycle columns + index + cycle-safe RPC + backfill (per PD-D) + RLS/grants. **Migration number:** pick the next free slot at implementation time (`206` is contended by PRs #828 and #823 → use ≥ `207`); do not hardcode from a stale branch. **RPC:** reuse the lock-then-check `SECURITY DEFINER` pattern landing in the score-snapshot RPC (PR #828) for consistent race-safety. |
 | `app/backend/app/api/admin_exam_intel_manage.py` | manage prerequisite endpoints (create via RPC, edit/submit/delete) |
 | `app/backend/app/api/…review…` | `review` transition endpoint (or extend the manage router with review-gated routes) |
 | `app/backend/app/study_os/planner.py` | `_load_prerequisites` locked-only filter |
