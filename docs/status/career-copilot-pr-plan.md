@@ -102,7 +102,7 @@ EWP-1 must land first. EWP-2 (deterministic API) and EWP-2B (evaluator worker) m
 
 ### EWP-1 — Architecture contract, schema, constraints, RLS
 
-**Status:** PLANNED — blocked on architecture lock (PR #819 merge)
+**Status:** CODE-FIXED, VALIDATION PENDING — migration `205_english_writing_practice_schema.sql` + `version_set_hash` helper + tests landed. Validated against scratch Postgres 16. OPERATOR PENDING: staging apply + RLS/immutability proof.
 
 **Goal:** Land the full schema with RLS, constraints, state-machine tests, and hash test vectors. No aspirant-facing UI. No mastery live writes. Migration number must come from `select max(version)::int + 1 from schema_migrations`.
 
@@ -112,7 +112,9 @@ EWP-1 must land first. EWP-2 (deterministic API) and EWP-2B (evaluator worker) m
 docs/architecture/english-writing-practice.md        (already present — no further edits in this PR)
 docs/status/career-copilot-checklist.md              (update EWP-1 row)
 docs/status/career-copilot-pr-plan.md                (update EWP-1 row)
-app/supabase/migrations/<next>_english_writing_practice_schema.sql
+app/supabase/migrations/205_english_writing_practice_schema.sql
+app/backend/app/study_os/writing_practice/__init__.py
+app/backend/app/study_os/writing_practice/version_set_hash.py   (shared helper; EWP-2 consumes it)
 app/backend/tests/study_os/test_writing_schema.py
 app/backend/tests/study_os/test_version_set_hash.py
 ```
@@ -173,7 +175,7 @@ app/backend/app/study_os/writing_practice/
   sessions.py          (session create/read/resume)
   units.py             (unit submit, rewrite submit)
   evaluation.py        (Stage 1 deterministic checks)
-  version_set_hash.py  (shared hash helper — used by evaluator, planner, API)
+  version_set_hash.py  (shared hash helper — LANDED in EWP-1; EWP-2 consumes it)
   session_finalizer.py (finalize_writing_session — single owner of rollup)
   coverage_checker.py  (required-word coverage session check)
   mastery_shadow.py    (shadow-only mastery evidence emission, FF-gated)
