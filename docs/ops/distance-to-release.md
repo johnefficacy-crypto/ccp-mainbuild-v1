@@ -5,7 +5,7 @@
 > live evidence lives in the gate docs / `docs/audits/`. When a gate changes, update the
 > checklist + its audit, then regenerate this view. Each row links its authoritative source.
 
-**as_of:** `main @ 3484a92` · 2026-06-30
+**as_of:** `main @ 9e085db5` · 2026-07-01
 **Companion:** `docs/ops/v1-go-live-runbook.md` (the *how*) · `scripts/v1_release_verification.sql` (the *evidence*)
 **Position:** late-stage beta — feature-complete-approaching, **not** production-ready.
 
@@ -28,8 +28,8 @@
 | P3 | Migration 182 operator validation | OPS | ✅ CLEAR | OPERATOR VALIDATED | `audits/2026-06-30-migration-182-operator-validation.md` |
 | P4 | Migration 204 snapshot-review RPC validated on staging | OPS | 🟡 CODE-READY | needs P1; grant matrix + review→lock cycle | checklist (mig 204) |
 | P5 | PR-7 36-file fingerprint boundary approved + re-pinned at deployed SHA | OPS | 🟡 OPERATOR-APPROVAL ONLY | verifier code/tooling closed (#803/#814, ref digest `f2ee2c40…`); needs **PR #800 staging delivery validation + boundary sign-off**; fingerprint is reference-only until re-pinned at `window_start` | `pr7_shadow_gate_results.md` |
-| P6 | Scheduler verification (jobs/manual-run/drain) | OPS | 🟡 PARTIAL PASS | startup + sweeper registration + repeat sweeps ✅ at staging `daaddaae`; **remaining:** `/api/admin/jobs` payload, manual sweeper invocation, named pending-job drain | `audits/2026-06-30-mastery-staging-preflight.md` |
-| P7 | **PR-6** final-candidate revalidation rerun (clear Gate 9) | OPS | ⛔ `gate_failed` | needs P6 scheduler evidence first; deploy current main (`3484a923`, post-PR-814) to staging; rerun 12 gates with `FF=shadow` on the pinned deployed SHA | `pr6_final_candidate_revalidation.md` |
+| P6 | Scheduler verification (jobs/manual-run/drain) | OPS | 🟡 PARTIAL PASS | Candidate SHA `b9bd9d7b`: startup + sweeper registration + `/api/admin/jobs` shape ✅; controlled `analytics_retry` job `1afa0c0a` reached done/attempts=1. **Remaining:** automatic provenance unverified (contemporaneous `last_run.result.derivations` capture missing); drain-within-30s not demonstrated (65-min gap). | `audits/2026-07-01-scheduler-drain-validation.md` |
+| P7 | **PR-6** final-candidate revalidation rerun (clear Gate 9) | OPS | ⛔ `gate_failed` | needs P6 full PASS first; deploy current `main` to staging (record candidate SHA A; require Render deployed SHA B == A); rerun 12 gates with `FF=shadow` on the pinned deployed SHA | `pr6_final_candidate_revalidation.md` |
 | P8 | **PR-7 14-day shadow window** | OPS | ⏳ NOT STARTED — **THE FLOOR** | full prerequisite chain below; **any threshold miss restarts the 14 days** | `pr7_shadow_gate_results.md` |
 | P9 | PR-8 bounded live canary | OPS | ⏳ NOT STARTED | after P8 passes | `pr8_live_canary_plan.md` |
 | P10 | PR-9 approval → flip `FF_MOCK_MASTERY_WRITES=live` | OPS | ⛔ BLOCKED | after P9 + sign-offs | `pr9_live_approval.md` |
@@ -81,5 +81,5 @@ quote a calendar date until T0 is set.
 ## What reaches T0 fastest (next actions)
 1. **ENG:** fix **F3** terminalization; record the **F2** (D11/D12/**D14**/D06/D15) v1-vs-v2 decision.
 2. **OPS:** **P1** apply migrations → **P2** run the verification script (+RLS JWT proof) → **P4** validate mig 204.
-3. **OPS:** finish **P6** scheduler drain (`/api/admin/jobs` payload + manual sweeper invocation + named pending-job drain proof) → deploy current main (`3484a923`) to staging → **P5** PR #800 validation + boundary approval → **P7** PR-6 rerun on the pinned deployed SHA.
+3. **OPS:** finish **P6** scheduler drain (automatic provenance capture + drain-within-30s; see `audits/2026-07-01-scheduler-drain-validation.md` § 13) → deploy current `main` to staging (record candidate SHA A; require Render deployed SHA B == A) → **P5** PR #800 validation + boundary approval → **P7** PR-6 rerun on the pinned deployed SHA.
 4. When the 7 prerequisites hold → re-pin the fingerprint, set **`window_start`** (T0), start **P8**.
