@@ -32,7 +32,7 @@
 
 | Priority | Item | Gate |
 |---|---|---|
-| **Immediate** | Score Snapshot lock-authority correctness | PLANNED — scoped issue/contract required; see note below |
+| **Immediate** | Score Snapshot lock-authority correctness | CODE-FIXED, OPERATOR VALIDATION PENDING — issue #822 approved; migration 206 + Python layer + 9 new tests on branch `claude/snapshot-lock-authority-s9k2mn` |
 | **Immediate** | Operator validation wave: PYQ onboarding (#812), Score Snapshots (#810), text extraction (#811) | Deploy exact main SHA first |
 | High | J1 Advanced Repair scoping contract | `docs/status/Advanced-Repair-Scoping-Gate-2026-06-29.md` DRAFT — OPERATOR APPROVAL PENDING |
 | High | J1 Advanced Repair scoping implementation | J1 contract operator approval |
@@ -43,7 +43,7 @@
 | Blocked | A-PR4/A-PR5/Track C | Lane A clean gate (FF_MOCK_MASTERY_WRITES=live) |
 | Blocked | J3 schema/domain redesign | Contract-first; I8 gates cleared |
 
-**Score Snapshot lock-authority note:** Two distinct gaps require two explicit contract decisions before implementation: **(A) Stale-model guard:** the `reviewed→locked` transition must compare the candidate row's `model_version` against the server-owned current `MODEL_VERSION` constant and reject stale-model rows — independently of whether any current-model locked row exists. **(B) Superseded-current-model guard:** among rows for the same business scope `(exam_id, exam_phase_id, topic_id)` at the current model version, the planner uses the latest `computed_at` locked row; the RPC should prevent locking an older `computed_at` row when a newer locked row already exists for the same scope. Do not combine these into a single `(exam_id, exam_phase_id, topic_id, model_version)` tuple — that conflates the two checks. The scoped issue/contract must define: server-owned current-model authority; business scope key; supersession ordering; whether only `reviewed→locked` is guarded; exact error tokens and race-safe RPC behavior; historical-review policy for stale-model rows. Snapshot lifecycle: `draft→reviewed|rejected`, `reviewed→locked|rejected|draft`, `locked→reviewed`, `rejected→draft` — no `pending` status.
+**Score Snapshot lock-authority note:** Implemented via issue #822 (approved 2026-07-01) and PR on branch `claude/snapshot-lock-authority-s9k2mn`. Guard A (stale-model) and Guard B (superseded-current-model) are independent checks on the `reviewed→locked` transition only. `draft→reviewed` and `locked→reviewed` remain always allowed. Migration 206 replaces the 6-param RPC with a 7-param version; Guard B uses `>=` to reject equal-timestamp ties; Python layer extended with `p_current_model_version`; 38 backend tests pass (9 new). Operator validation pending: apply migration 206 to staging and validate the two guard error tokens before marking closed.
 
 **P2 classification gate note:** Reviewed metadata-only classification (cognitive demand per PYQ question, no mock-selection weighting) is independent of Track C. It may proceed once its own contract is approved. However, no classification output may feed mock-selection, weighting, or personalization before Lane A clears the text-MCQ feedback-loop gate (`FF_MOCK_MASTERY_WRITES=live`).
 

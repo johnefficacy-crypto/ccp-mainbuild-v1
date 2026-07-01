@@ -2357,12 +2357,13 @@ def review_score_snapshot(
         result = sb.rpc(
             "cms_review_exam_topic_snapshot",
             {
-                "p_snapshot_id":     snapshot_id,
-                "p_expected_status": current_status,
-                "p_new_status":      new_status,
-                "p_reviewer_notes":  body.reviewer_notes,
-                "p_actor_user_id":   admin.get("id"),
-                "p_actor_email":     admin.get("email"),
+                "p_snapshot_id":             snapshot_id,
+                "p_expected_status":         current_status,
+                "p_new_status":              new_status,
+                "p_reviewer_notes":          body.reviewer_notes,
+                "p_actor_user_id":           admin.get("id"),
+                "p_actor_email":             admin.get("email"),
+                "p_current_model_version":   _SNAPSHOT_MODEL_VERSION,
             },
         ).execute()
     except Exception as exc:  # noqa: BLE001
@@ -2376,6 +2377,7 @@ def review_score_snapshot(
         if any(tok in msg_lower for tok in (
             "transition_not_allowed", "invalid_target_status",
             "invalid_reviewer_notes", "missing_actor_id",
+            "stale_model_version", "superseded_snapshot",
         )):
             raise HTTPException(status_code=422, detail=msg) from exc
         if "not_found" in msg_lower:
