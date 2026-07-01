@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import ErrorState from "../../shared/ui/ErrorState";
+import EmptyState from "../../shared/ui/EmptyState";
 import { PageHeader, StudyCard, SectionHeader, StatusDot } from "../../shared/ui/studyos";
 import SentenceBuilder from "../../features/study/english-practice/SentenceBuilder";
 import RewriteEditor from "../../features/study/english-practice/RewriteEditor";
@@ -47,7 +48,7 @@ function issuesFromResult(result) {
 
 export default function EnglishPracticeShell() {
   const { sessionId } = useParams();
-  const { fetchSession, submitUnit, reopenUnit, busy } = useEnglishPracticeSession();
+  const { fetchSession, submitUnit, busy } = useEnglishPracticeSession();
 
   const [status, setStatus] = useState("loading"); // loading | error | ready
   const [error, setError] = useState(null);
@@ -56,9 +57,8 @@ export default function EnglishPracticeShell() {
   // Per-unit-number local runtime state captured from submit responses (the
   // current API's get_session does not return versions/evaluations — resume of
   // prior evaluations is an EWP-2 deferred item, tracked in the checklist).
-  const [results, setResults] = useState({}); // { [unitNumber]: submitResponse }
+  const [results, setResults] = useState({}); // { [unitNumber]: submitResponse + submittedText }
   const [nextVersion, setNextVersion] = useState({}); // { [unitNumber]: int }
-  const [reopened, setReopened] = useState({}); // { [unitId]: bool }
 
   const load = useCallback(async () => {
     setStatus("loading");
@@ -78,32 +78,18 @@ export default function EnglishPracticeShell() {
     load();
   }, [load]);
 
-  const applyOutcome = useCallback((unit, res) => {
-    if (!res?.ok) return;
-    const data = res.data || {};
-    setResults((prev) => ({ ...prev, [unit.unit_number]: data }));
-    setNextVersion((prev) => ({
-      ...prev,
-      [unit.unit_number]: (data.version_number || 0) + 1,
-    }));
-    setReopened((prev) => ({ ...prev, [unit.id]: false }));
-    // Refresh unit statuses (submit drives the rollup server-side).
-    load();
-  }, [load]);
-
   const onSubmitUnit = useCallback(async (unit, text) => {
     const version = nextVersion[unit.unit_number] || 1;
     const res = await submitUnit(sessionId, unit.unit_number, text, version);
-    applyOutcome(unit, res);
-  }, [nextVersion, submitUnit, sessionId, applyOutcome]);
-
-  const onReopenUnit = useCallback(async (unit) => {
-    const latest = results[unit.unit_number]?.version_id
-      || results[unit.unit_number]?.evaluation?.unit_version_id;
-    if (!latest) return; // cannot reopen without the latest version id (resume gap)
-    const res = await reopenUnit(sessionId, unit.id, latest);
-    if (res?.ok) setReopened((prev) => ({ ...prev, [unit.id]: true }));
-  }, [results, reopenUnit, sessionId]);
+    if (!res?.ok) return;
+    const data = res.data || {};
+    // Retain the submitted text so an in-session rewrite can seed the editor
+    // (get_session does not return prior answers — full resume is deferred to a
+    // backend resume endpoint once EWP-2B lands).
+    setResults((prev) => ({ ...prev, [unit.unit_number]: { ...data, submittedText: text } }));
+    setNextVersion((prev) => ({ ...prev, [unit.unit_number]: (data.version_number || 0) + 1 }));
+    load(); // submit drives the server-side rollup; refresh unit statuses
+  }, [nextVersion, submitUnit, sessionId, load]);
 
   const prompt = useMemo(() => session?.prompt || {}, [session]);
 
@@ -134,13 +120,22 @@ export default function EnglishPracticeShell() {
         sub={session?.mode === "exam" ? "Exam mode" : "Learning mode"}
       />
 
+      {units.length === 0 && (
+        <div className="mt-4" data-testid="ewp-empty">
+          <EmptyState
+            title="No sentences to practise"
+            description="This session has no units yet. Launch English practice from a planner task."
+          />
+        </div>
+      )}
+
       {units.map((unit) => {
         const meta = UNIT_STATUS[unit.status] || UNIT_STATUS.not_started;
         const result = results[unit.unit_number];
         const issues = issuesFromResult(result);
+        const answerText = result?.submittedText || "";
         const minWords = unitConstraint(unit, "min_words", prompt.min_words);
         const maxWords = unitConstraint(unit, "max_words", prompt.max_words);
-        const isRewrite = unit.status === "rewrite_required" || reopened[unit.id];
 
         return (
           <StudyCard key={unit.id} className="mt-4" data-testid={`unit-${unit.unit_number}`}>
@@ -152,8 +147,8 @@ export default function EnglishPracticeShell() {
               </span>
             </div>
 
-            {/* Compose / rewrite / pending / done, driven by unit status. */}
-            {["not_started", "draft"].includes(unit.status) && !reopened[unit.id] && (
+            {/* Compose (not_started/draft): submit version 1+. */}
+            {["not_started", "draft"].includes(unit.status) && (
               <SentenceBuilder
                 unitNumber={unit.unit_number}
                 promptText={prompt.prompt_text}
@@ -170,25 +165,17 @@ export default function EnglishPracticeShell() {
               </p>
             )}
 
-            {isRewrite && result && (
+            {/* Mandatory rewrite: rewrite_required is directly submittable — edit
+                and submit the next version (no reopen; reopen is the separate
+                ready→draft coverage-correction path, deferred to the resume API). */}
+            {unit.status === "rewrite_required" && (
               <RewriteEditor
-                previousAnswer={result.evaluation?.answer_text || result.answer_text || ""}
+                previousAnswer={answerText}
                 minWords={minWords}
                 maxWords={maxWords}
                 busy={busy}
                 onSubmit={(text) => onSubmitUnit(unit, text)}
               />
-            )}
-            {unit.status === "rewrite_required" && result && !reopened[unit.id] && (
-              <button
-                type="button"
-                className="btn btn-ghost mt-2"
-                data-testid={`unit-${unit.unit_number}-reopen`}
-                disabled={busy}
-                onClick={() => onReopenUnit(unit)}
-              >
-                Start rewrite
-              </button>
             )}
 
             {["ready", "completed"].includes(unit.status) && (
@@ -197,21 +184,14 @@ export default function EnglishPracticeShell() {
               </p>
             )}
 
-            {/* Deterministic + language feedback (when a submit response is held). */}
             {result?.coverage && result.coverage.passed === false && (
-              <p className="mt-2 text-xs text-rose-600">
-                Some required words are still missing.
-              </p>
+              <p className="mt-2 text-xs text-rose-600">Some required words are still missing.</p>
             )}
             {issues.length > 0 && (
               <div className="mt-3 space-y-2">
                 <SectionHeader eyebrow="Feedback" title="Language issues" />
                 {issues.map((issue, i) => (
-                  <SentenceIssueCard
-                    key={`${unit.unit_number}-${i}`}
-                    issue={issue}
-                    answerText={result.evaluation?.answer_text || result.answer_text || ""}
-                  />
+                  <SentenceIssueCard key={`${unit.unit_number}-${i}`} issue={issue} answerText={answerText} />
                 ))}
               </div>
             )}

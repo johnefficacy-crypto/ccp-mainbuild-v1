@@ -80,12 +80,12 @@ export const appRouteElements = (
         <Route path="plan" element={<StudyPlan />} />
         <Route path="learning" element={<StudyLearningHub />} />
         <Route path="progress" element={<StudyProgressHub />} />
+        {/* English Writing Practice (EWP-3): mounted UNDER StudyShell + inside
+            RouteErrorBoundary per the design lock. Entered via planner tasks; not
+            an attempt-shell route; absent from the sidebar (no-new-surface rule). */}
+        <Route path="practice/english/:sessionId" element={<EnglishPracticeShell />} />
       </Route>
       <Route path="/app/study/focus" element={<Focus />} />
-      {/* English Writing Practice (EWP-3): a standalone study surface entered via
-          planner tasks. Not nested in StudyShell, not an attempt-shell route, and
-          intentionally absent from the sidebar (no-new-surface rule). */}
-      <Route path="/app/study/practice/english/:sessionId" element={<EnglishPracticeShell />} />
       <Route path="/app/study/mocks" element={<Mocks />} />
       <Route path="/app/study/mocks/attempts/:attemptId" element={<AttemptShellRouter />} />
       <Route path="/app/study/mocks/attempts/:attemptId/result" element={<MockResult />} />
