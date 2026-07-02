@@ -1,14 +1,14 @@
 # J3 Implementation Checklist — sequencing, migrations, consumer switchover, rollback
 
 - Document type: implementation execution checklist for the four J3 sub-items.
-- Status: **READY — pending gate-document amendments + operator sign-off** (see `J3-OD-Resolutions-Locked-2026-07-02.md` §10).
-- Date: 2026-07-02
-- Decision authority: `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` (all OD resolutions live there; this file is the "how/when", not the "what").
+- Status: **BLOCKED — gate-document amendments + operator sign-off pending** (see `J3-OD-Resolutions-Locked-2026-07-02.md` §10). No item below may dispatch until that record reads `OPERATOR APPROVED`.
+- Date: 2026-07-02 (revised same day per PR #857 checkpost review)
+- Decision authority: the four J3 gate documents, as amended per `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` (the "what" lives there; this file is the "how/when").
 
 ## Cross-cutting rules (apply to every PR)
 
 - [ ] Migration numbers resolved from the **live `schema_migrations` ledger**, not inferred from filenames. Latest landed at drafting was migration `209`+ — verify at implementation time.
-- [ ] Migrations are **immutable once merged** — never edit a landed migration.
+- [ ] Migrations are **immutable once merged** — never edit a landed migration. Corollary: **rollback is forward-only** (see Rollback posture) — never "drop the migration".
 - [ ] Every new table gets an RLS policy; verify with `SELECT * FROM pg_policies WHERE tablename='<name>'` before marking complete. Do NOT copy migration 057's `profiles.is_admin` policy — app metadata is the role source of truth (AGENTS.md).
 - [ ] Do NOT mark live-deployment / Supabase-operator steps complete from code inspection — use `OPERATOR PENDING` / `VERIFY DB`.
 - [ ] `graphify update .` after each PR's code lands.
@@ -22,28 +22,29 @@
 **Serial anchor.** Nothing in the competition read/write surface may be branched concurrently.
 
 ### Migration(s)
-- [ ] `reservation_categories` + `reservation_category_aliases` tables (§6 schema). Seed `general/ews/obc/sc/st`; aliases `ur→general`, `gen→general`, `obc_ncl→obc`. RLS admin/service-role only.
+- [ ] `reservation_categories` + `reservation_category_aliases` tables (resolutions §6). Seed `general/ews/obc/sc/st`; aliases `ur→general`, `gen→general`, `obc_ncl→obc`. RLS admin/service-role only.
 - [ ] Additive columns on `exam_competition_metrics`: `cutoff_by_category jsonb`, `difficulty_assessment jsonb`, `metric_kind text`, `version_no int`, `supersedes_id uuid`, `superseded_at timestamptz`, `is_current_published boolean`, `breakdown_complete boolean`. **Do NOT** rename/drop `cutoff_trend`/`difficulty_trend`/`selection_ratio` (deprecate in place).
-- [ ] `metric_kind` CHECK (`cycle_summary | phase_cutoff`) + cross-granularity CHECKs: `cycle_summary` ⇒ `exam_phase_id IS NULL` (owns vacancy/pressure); `phase_cutoff` ⇒ `exam_phase_id IS NOT NULL` (owns cutoffs/difficulty).
-- [ ] Partial unique indexes for the **two-lane** model: one current published row per `(exam_id, exam_cycle_id, exam_phase_id, metric_kind)` where `is_current_published`; at most one current working row per same scope where `reviewer_status IN ('draft','pending_review')`.
-- [ ] JSON-validation trigger: `cutoff_by_category` / `vacancy_by_category` keys validated against `reservation_categories.code`; `cutoff_by_category` value = `{marks (≥0), max_marks (>0, optional), ...}` with **no `stage` field**; reject bare string/number/list.
-- [ ] `exam_competition_metric_evidence` child table (§4 full schema) + indexes + RLS + `notify pgrst`.
-- [ ] OD-5 selective legacy normalization: valid category→number maps → `cutoff_by_category`; strings/bare numbers/lists → `metadata.legacy_*`, clear canonical field, set row to `draft`. Record pre/post counts. Never manufacture marks.
+- [ ] Consistency CHECKs per resolutions §2.1: `metric_kind` shape (`cycle_summary` ⇒ phase NULL / `phase_cutoff` ⇒ phase set), `metric_kind IS NOT NULL ⇒ exam_cycle_id IS NOT NULL`, `is_current_published ⇒ reviewer_status IN ('reviewed','locked') AND superseded_at IS NULL`, `superseded_at IS NOT NULL ⇒ NOT is_current_published`. All `metric_kind` CHECKs gated on `metric_kind IS NOT NULL` until disposition completes.
+- [ ] **Legacy `metric_kind` disposition (resolutions §1.3), fail-closed:** preflight report (populated fields × phase × cycle × status, committed as evidence); cycle-level-only rows → `cycle_summary` in place; combined rows with known phase → split (cycle fields → new/existing `cycle_summary` revision, cutoff/difficulty stays as `phase_cutoff`); phaseless cutoff content → payload to `metadata.legacy_*` + working draft for operator triage; cycle-less rows → operator triage; published rows never returned to draft (valid fields stay published; malformed content → `metadata.legacy_*` + separate working draft); terminal `DO` block raising on any `metric_kind IS NULL` remainder, any pre/post count mismatch, or any published-row data loss. Only then enable cross-granularity CHECKs + lane indexes.
+- [ ] Two-lane partial unique indexes exactly per resolutions §2.1 (scope-specific; NULL-safe — plain UNIQUE over nullable scope columns does not enforce uniqueness).
+- [ ] JSON-validation trigger: `cutoff_by_category` / `vacancy_by_category` keys validated against `reservation_categories.code`; `cutoff_by_category` value = `{marks (≥0), max_marks (>0, optional)}` with **no `stage` field**; reject bare string/number/list.
+- [ ] `exam_competition_metric_evidence` child table (resolutions §4 full schema) + indexes + RLS + **immutability triggers** (block UPDATE/DELETE/INSERT of evidence on a published parent; block DELETE of a published parent metric row — cascade fires only for genuinely-draft cleanup) + `notify pgrst`.
+- [ ] OD-5 selective legacy normalization: valid category→number maps → `cutoff_by_category`; strings/bare numbers/lists → `metadata.legacy_*`, clear canonical field; lane-aware disposition (draft/pending → back to `draft`; published → stays published + separate working draft carries the legacy payload). Record pre/post counts. Never manufacture marks.
 
 ### Backend
-- [ ] Lifecycle + CAS **DB RPC / state machine** (OD-8) enforcing `draft → pending_review → reviewed → locked`, `→ rejected`, notes-required `reopen_for_edit` (clone-to-draft, §2). App-layer validation mirrors it.
-- [ ] Promotion validation: shape valid; every populated high-risk claim has qualifying **primary** evidence; category vocabulary valid; vacancy-sum rule (OD-4: `sum>total` hard error, `sum<total` warning, equality only when `breakdown_complete`); `model_generated` barred from reviewed/locked without human evidence + `source_basis` change (OD-2); source trust (§7: `is_active`/`is_verified`/`discovery_only=false`/`source_type≠aggregator`/url-or-doc present).
-- [ ] `evidence_count` derived from active child rows; removed from write allowlist.
-- [ ] Ratio amendment: remove `selection_ratio` from write allowlists; stop new computations; add derived `selection_rate` / `candidates_per_vacancy` / `ratio_denominator` + `selection_ratio_legacy`.
+- [ ] Lifecycle + CAS **DB RPC / state machine** (OD-8) enforcing `draft → pending_review → reviewed → locked`, `→ rejected`, notes-required `reopen_for_edit` (clone-to-draft, resolutions §2). App-layer validation mirrors it.
+- [ ] Promotion validation: shape valid; every populated high-risk claim has qualifying **primary** evidence; category vocabulary valid; vacancy-sum rule (OD-4: `sum>total` hard error, `sum<total` warning, equality only when `breakdown_complete`); `model_generated` barred from reviewed/locked without human evidence + `source_basis` change (OD-2); source trust (resolutions §7: `is_active`/`is_verified`/`discovery_only=false`/`source_type≠aggregator`/url-or-doc present).
+- [ ] `evidence_count` derived by counting the revision's child rows (append-only model); removed from write allowlist.
+- [ ] **Ratio contract, PR-1 half only (resolutions §1.2):** remove `selection_ratio` from write allowlists; stop new computations from it; add derived fields with the **null contract** (`selection_rate`/`candidates_per_vacancy`/`ratio_denominator` = null until a provenance-proven denominator exists — do NOT derive from legacy `applicant_count`); expose `selection_ratio_legacy` verbatim, labelled legacy; all consumers keep rendering the legacy value → zero silent behavior change. The atomic derivation switch happens in PR 2.
 - [ ] Cutoff/difficulty **direction derived at read time** in `competition.py` (≥2 comparable cycles: same phase, category, non-null `max_marks`; else `null`).
-- [ ] Move all `selection_ratio` consumers together (API-contract migration): `admin_exam_intel_cms.py`, `admin_exam_intelligence.py`, `competition.py`, `competition_context.py`, `evidence.py`, `status.py` (`competition_series`).
+- [ ] Shared current-published selector used by every reader (`competition.py`, `competition_context.py`, admin reads) — no per-reader "best row" heuristic.
 
 ### Frontend
-- [ ] `CompetitionPanel.jsx` → category-map editor for `cutoff_by_category`; add `vacancy_by_category` inputs; stop writing `"rising"` string; remove inverse local ratio calc.
+- [ ] `CompetitionPanel.jsx` → category-map editor for `cutoff_by_category`; add `vacancy_by_category` inputs; stop writing `"rising"` string; remove inverse local ratio calc (render `selection_ratio_legacy` labelled as legacy until PR 2).
 - [ ] `CompetitionMetricsTable.jsx` (review surface) displays all cutoff + vacancy + evidence fields (OD-9). No new surface.
 
 ### Tests / status
-- [ ] Acceptance tests: schema validation, entity canonicity, lifecycle matrix (reject `draft→locked`), two-lane coexistence, evidence immutability on published, read/UI parity round-trip, RLS (authenticated cannot read/mutate evidence).
+- [ ] Acceptance: schema validation, entity canonicity, lifecycle matrix (reject `draft→locked`), two-lane coexistence + NULL-safe uniqueness, §1.3 disposition (split/triage/zero-loss/fail-closed), evidence immutability **including direct service-role UPDATE/DELETE of published evidence and published-parent DELETE (trigger-rejected)**, ratio null contract + display parity, read/UI parity round-trip, RLS (authenticated cannot read/mutate evidence).
 - [ ] Checklist row updated; `graphify update .`.
 
 ---
@@ -51,21 +52,21 @@
 ## PR 2 — Applied-vs-Appeared (branch from merged PR 1)
 
 ### Migration(s)
-- [ ] `exam_candidate_counts`: `exam_id` (not null), `exam_cycle_id` (required), `exam_phase_id`, `scope_kind text CHECK (cycle|phase)`, `count_type text CHECK (applied|appeared)`, `reservation_category_id uuid` (FK, nullable = total), `count_value int CHECK (>=0)`, `source_basis`/`confidence_score`, revision columns (`version_no`/`supersedes_id`/`superseded_at`/`is_current_published`), full reviewer lifecycle, timestamps.
-- [ ] CHECKs: `applied` ⇒ `scope_kind='cycle'` + `exam_phase_id IS NULL`; `appeared` ⇒ (`scope_kind='phase'` + phase set) OR (`scope_kind='cycle'` + phase null, labelled aggregate).
-- [ ] Unique (current unsuperseded) index: `(exam_id, exam_cycle_id, scope_kind, exam_phase_id, count_type, reservation_category)` with deterministic null handling + two-lane partial indexes.
-- [ ] `exam_candidate_count_evidence` (own first-class evidence table, mirroring §4 posture) + RLS.
-- [ ] RLS on both new tables (verified-only read; admin/service-role write). Verify via `pg_policies`.
+- [ ] `exam_candidate_counts`: `exam_id` (not null), `exam_cycle_id` (not null), `exam_phase_id`, `scope_kind text CHECK (scope_kind in ('cycle','phase'))`, `count_type text CHECK (count_type in ('applied','appeared'))`, `reservation_category_id uuid` (FK, NULL = official total), `count_value int CHECK (>=0)`, `source_basis`/`confidence_score`, revision columns (`version_no`/`supersedes_id`/`superseded_at`/`is_current_published`) + the same `is_current_published`/`superseded_at` consistency CHECKs as PR 1, full reviewer lifecycle, timestamps.
+- [ ] Scope CHECKs: `applied` ⇒ `scope_kind='cycle'` + `exam_phase_id IS NULL`; `appeared` ⇒ (`scope_kind='phase'` + phase set) OR (`scope_kind='cycle'` + phase NULL, labelled aggregate).
+- [ ] Two-lane unique indexes per resolutions §2.1: `(exam_id, exam_cycle_id, scope_kind, exam_phase_id, count_type, reservation_category_id)` **`NULLS NOT DISTINCT`** (PG15+; fallback: `coalesce(..., zero-uuid)` expression indexes), partial on published lane / working lane.
+- [ ] `exam_candidate_count_evidence` (own first-class evidence table, mirroring resolutions §4 schema + immutability triggers) + RLS.
+- [ ] RLS on both new tables with the **exact predicate**: non-admin read requires `reviewer_status IN ('reviewed','locked')`; writes service-role/app-metadata-admin only. Verify via `pg_policies`.
 - [ ] OD-6 Option B backfill: convert only rows whose evidence proves "applied"; preserve rest as legacy unknown; exclude from ratios. Record converted/unknown/zero-loss counts. Assert no ambiguous row written as `applied`.
 
 ### Backend
 - [ ] Write validator: phase belongs to same exam + cycle.
 - [ ] Same lifecycle RPC/revision model as PR 1.
-- [ ] Consume reviewed/locked counts in APIs immediately (prefer appeared → applied → no ratio). Document `selection_rate`/`candidates_per_vacancy` denominator. **Do NOT** alter `competition_pressure_score`; only fix count display + pressure explanation text.
-- [ ] `competition.py` / `competition_context.py` read explicit fields (not overloaded `applicant_count`).
+- [ ] **Ratio contract, PR-2 half (atomic switch):** ratio derivation moves to reviewed/locked candidate counts (prefer `appeared` → `applied` → null) and **all ratio consumers switch in this PR together** (`competition.py`, `competition_context.py`, admin reads, both frontends). Document the denominator via `ratio_denominator`. **Do NOT** alter `competition_pressure_score`; only fix count display + pressure explanation text.
+- [ ] `competition.py` / `competition_context.py` read explicit fields (not the overloaded `applicant_count`).
 
 ### Tests / status
-- [ ] Acceptance: canonicity, scope/phase consistency, per-count evidence, uniqueness, backfill zero-loss + no-silent-convert, verified-only reads, pressure output preserved for a representative exam.
+- [ ] Acceptance: canonicity, scope/phase consistency, per-count evidence (incl. service-role trigger tests), NULL-safe uniqueness (duplicate NULL-category/phase rows rejected), backfill zero-loss + no-silent-convert, verified-only reads (exact predicate), ratio switch (appeared preferred, applied fallback, null otherwise), pressure output preserved for a representative exam.
 - [ ] Checklist row; `graphify update .`.
 
 ---
@@ -85,36 +86,39 @@
 ## PR 4 — Coverage derivation (coordinate migration slot after PR 2)
 
 ### Migration (single, atomic)
-- [ ] Add `source_basis='evidence_derived'` to the `exam_topic_coverage` CHECK **and** the exam-wide partial unique index `(exam_id, topic_id) WHERE exam_cycle_id IS NULL AND exam_phase_id IS NULL` — one migration.
+- [ ] Extend the `exam_topic_coverage.source_basis` **text CHECK constraint** (not a PG enum) with `'evidence_derived'` **and** add the exam-wide partial unique index `(exam_id, topic_id) WHERE exam_cycle_id IS NULL AND exam_phase_id IS NULL` — one migration.
 - [ ] **Fail-closed** `DO` block raising a descriptive exception if any exam-wide `(exam_id, topic_id)` duplicate remains. Duplicate resolution is **manual/operator** (report → operator selects canonical → merge evidence/notes → audited repair → record pre/post + IDs → apply index). Never auto-keep latest `reviewed_at`.
 
 ### Backend
 - [ ] New `coverage_derivation.py`: deterministic projection of the **latest locked** `exam_topic_score_snapshots` (+ verified syllabus mentions) into a `draft` `exam_topic_coverage` row. Fingerprint-idempotent; fail-closed on read error. Copies snapshot priority/confidence/high_yield **unchanged**.
-- [ ] `coverage_depth` buckets per §5.1; no row when syllabus=0 AND evidence=0.
-- [ ] Conflict rules (§5.2): skip if manual/admin/official row exists; update own `evidence_derived` draft; leave reviewed/locked `evidence_derived` untouched (explicit operator replacement).
+- [ ] `coverage_depth` buckets per resolutions §5.1 — **total function** (incl. the `deep` fallback for `evidence_count >= 10` failing any `core` predicate); no row when syllabus=0 AND evidence=0.
+- [ ] Conflict rules per resolutions §5.2 — **complete over the full `source_basis` vocabulary** (`manual`/`admin_review`/`official_syllabus`/`pyq_analysis`/`hybrid` → skip+delta; `model_generated` → skip+triage; `evidence_derived` by status → update/skip/leave/update).
 - [ ] Scope: exam-wide + phase-scoped only; **no cycle-only** (snapshots cycle-independent); one explicit scope per invocation.
 - [ ] Manual operator-invoked "derive coverage" action (OD-4); permission-gated; audited. **No new top-level route.** No scheduler.
 - [ ] **Break-the-edge invariant:** `score_snapshots.py` excludes `source_basis='evidence_derived'` from `coverage_component`. Enforced by **unit/integration tests** (this is a scoring invariant, not a promotion check).
 - [ ] Delta (proposed-vs-current) stored in audit/derivation metadata; no shadow rows.
 
 ### Tests / status
-- [ ] Acceptance: determinism/idempotency; evidence-only + primary-only; no mutation of reviewed/locked; break-the-edge (no self-reinforcement across recompute); lifecycle/provenance; scope isolation; exam-wide duplicate fail-closed.
+- [ ] Acceptance: determinism/idempotency + bucket totality (every valid input produces exactly one bucket); evidence-only + primary-only; conflict-rule coverage for every `source_basis` × status combination; break-the-edge (no self-reinforcement across recompute); lifecycle/provenance; scope isolation; exam-wide duplicate fail-closed.
 - [ ] Checklist row; cross-reference `docs/architecture/pyq-intelligence-v2.md` (P1 elaboration, no scoring re-spec); `graphify update .`.
 
 ---
 
-## Rollback posture
+## Rollback posture (forward-only — migrations are immutable and data may already exist)
 
-| PR | Rollback risk | Mitigation |
+Never drop landed tables/indexes/CHECK values as "rollback". Rollback = disable the new read/write path, restore the legacy reader, preserve all new data; physical removal only via a later corrective migration once proven safe.
+
+| PR | Rollback risk | Forward-only mitigation |
 |---|---|---|
-| PR 1 | API-contract migration (ratio + column moves) touches 8 consumers | Additive columns + deprecate-in-place → old columns still answer; feature-flag the new derived response if a staged cutover is wanted; all readers ship in one PR so there is no split-brain window. |
-| PR 2 | Legacy `applicant_count` reinterpretation | Option B converts only provenance-proven rows; unknowns preserved untouched → revert = drop new table + restore read path; no legacy data mutated destructively. |
-| PR 3 | Extraction rejection path | Pure guard before OCR; revert = remove the flag check; no schema, no data. |
-| PR 4 | Exam-wide unique index + enum value | Fail-closed migration cannot land with duplicates present → no partial state; revert = drop index + enum value (no rows written by derivation are locked without operator action). |
+| PR 1 | Ratio/columns contract touches 8 consumers | PR 1 is additive with display parity (legacy value still rendered), so "rollback" = keep serving `selection_ratio_legacy` and ignore the null derived fields. Legacy columns remain authoritative until PR 2; new tables/columns/indexes stay in place, inert. |
+| PR 2 | Legacy `applicant_count` reinterpretation + ratio switch | OD-6 converts only provenance-proven rows; unknowns preserved untouched. Rollback = switch ratio readers back to the PR-1 legacy path via code revert; `exam_candidate_counts` rows are preserved (never dropped); corrective migration only if ever needed and proven safe. |
+| PR 3 | Extraction rejection path | Pure pre-OCR guard; rollback = remove the flag check (code revert); no schema, no data. |
+| PR 4 | Exam-wide unique index + `source_basis` CHECK value | Fail-closed migration cannot land with duplicates present → no partial state. Rollback = disable the derivation action (code revert); the index and CHECK value remain (harmless); derived `draft` rows stay inert — they are never planner-visible unless an operator locks them. |
 
 ## Verification gates before "done"
 
-- [ ] `pg_policies` proof for every new table (evidence, candidate counts, candidate evidence, `reservation_categories`, aliases).
+- [ ] `pg_policies` proof for every new table (competition evidence, candidate counts, candidate evidence, `reservation_categories`, aliases).
 - [ ] RPC EXECUTE grant matrix: anon/authenticated denied, service_role allowed, on every new SECURITY DEFINER RPC.
-- [ ] Migration evidence artifacts (pre/post counts) committed for OD-5 (competition legacy normalization), OD-6 (applicant_count disposition), and the coverage exam-wide duplicate resolution.
+- [ ] Trigger-enforcement proof: direct service-role UPDATE/DELETE of published evidence and published-parent DELETE are rejected (not just endpoint-level tests).
+- [ ] Migration evidence artifacts (pre/post counts) committed for the §1.3 metric_kind disposition, OD-5 (competition legacy normalization), OD-6 (applicant_count disposition), and the coverage exam-wide duplicate resolution.
 - [ ] Operator validation on staging captured in a dated audit before any production apply.
