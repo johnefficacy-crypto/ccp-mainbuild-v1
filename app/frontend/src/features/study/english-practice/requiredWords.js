@@ -30,6 +30,54 @@ export function tokenize(text) {
 }
 
 /**
+ * Word-count tokeniser — parity-critical mirror of the backend.
+ *
+ * MUST stay byte-for-byte behaviourally identical to
+ * `app/backend/app/study_os/writing_practice/deterministic.py`:
+ *   _WORD_RE = re.compile(r"[^\W_]+(?:['\-][^\W_]+)*", re.UNICODE)
+ *   tokenize_words(text) -> _WORD_RE.findall(NFC(text))
+ *   word_count(text)     -> len(tokenize_words(text))
+ *
+ * A token is a run of Unicode letters/digits (NOT underscore), with internal
+ * single straight-apostrophe `'` or hyphen `-` joining letter/digit runs.
+ *
+ * Two divergence traps that this function deliberately avoids:
+ *   1. JS `\w`/`\W` are ASCII-only even with the `u` flag, so we use Unicode
+ *      property escapes `\p{L}\p{N}` — NOT `[^\W_]`.
+ *   2. The inner separator class is ONLY straight apostrophe `'` and hyphen `-`.
+ *      The curly apostrophe `’` (U+2019) is NOT a joiner here (unlike `tokenize`
+ *      above, which is for chip matching only). Including it would diverge from
+ *      the backend for curly-apostrophe input.
+ *
+ * WORD_TOKENIZER_VERSION mirrors the backend DETERMINISTIC_EVALUATOR_VERSION;
+ * bump both together when the counting rule changes.
+ */
+export const WORD_TOKENIZER_VERSION = "det-v1";
+
+const _WORD_RE = /[\p{L}\p{N}]+(?:['-][\p{L}\p{N}]+)*/gu;
+
+/**
+ * Tokenise `text` into word tokens using the backend-parity rule (see above).
+ * Casing is preserved (word counting is case-insensitive by construction).
+ * @param {string} text
+ * @returns {string[]}
+ */
+export function tokenizeWords(text) {
+  const normalised = String(text == null ? "" : text).normalize("NFC");
+  return normalised.match(_WORD_RE) || [];
+}
+
+/**
+ * Count words the same way the backend does. This is the authoritative
+ * client-side count for min/max display parity (§16 gate #3).
+ * @param {string} text
+ * @returns {number}
+ */
+export function wordCount(text) {
+  return tokenizeWords(text).length;
+}
+
+/**
  * Which of `requiredWords` appear as whole tokens in `text`.
  * @param {string} text
  * @param {string[]} requiredWords
