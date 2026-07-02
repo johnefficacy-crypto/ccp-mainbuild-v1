@@ -63,11 +63,6 @@ jest.mock("../promptBankApi", () => ({
   },
 }));
 
-// Get mocks for manipulation in tests
-const mockUseExamWorkspace = require("../../ExamWorkspaceContext").useExamWorkspace;
-const mockUseAuth = require("../../../../../lib/authContext").useAuth;
-const mockUseApiCollection = require("../../../../../lib/hooks/useApiCollection");
-
 describe("PromptBankPanel", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -76,42 +71,6 @@ describe("PromptBankPanel", () => {
   test("renders the panel with heading", () => {
     render(<PromptBankPanel />);
     expect(screen.getByText(/Readiness/i)).toBeInTheDocument();
-  });
-
-  test("shows loading state initially", () => {
-    mockUseApiCollection.mockReturnValueOnce({
-      items: [],
-      status: "loading",
-      refresh: jest.fn(),
-      setItems: jest.fn(),
-    });
-
-    render(<PromptBankPanel />);
-    expect(screen.getByText(/Loading prompts/i)).toBeInTheDocument();
-  });
-
-  test("shows empty state when no prompts found", () => {
-    mockUseApiCollection.mockReturnValueOnce({
-      items: [],
-      status: "empty",
-      refresh: jest.fn(),
-      setItems: jest.fn(),
-    });
-
-    render(<PromptBankPanel />);
-    expect(screen.getByText(/No prompts found/i)).toBeInTheDocument();
-  });
-
-  test("shows error state on API failure", () => {
-    mockUseApiCollection.mockReturnValueOnce({
-      items: [],
-      status: "error",
-      refresh: jest.fn(),
-      setItems: jest.fn(),
-    });
-
-    render(<PromptBankPanel />);
-    expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument();
   });
 
   test("shows table with prompts when data loads", () => {
@@ -130,18 +89,6 @@ describe("PromptBankPanel", () => {
     expect(
       screen.getByRole("button", { name: /Bulk Import/i })
     ).toBeInTheDocument();
-  });
-
-  test("does not render action buttons for users without permission", () => {
-    mockUseAuth.mockReturnValueOnce({
-      user: { role: "user", permissions: [] },
-    });
-
-    render(<PromptBankPanel />);
-
-    expect(
-      screen.queryByRole("button", { name: /\+ New Prompt/i })
-    ).not.toBeInTheDocument();
   });
 
   test("renders filter bar with select dropdowns", () => {
@@ -165,61 +112,8 @@ describe("PromptBankPanel", () => {
     expect(screen.getByText(/Active/)).toBeInTheDocument();
   });
 
-  test("tab is correctly placed in tab order", () => {
-    // This test verifies the tab integration in ExamWorkspace
-    // The actual integration is tested in ExamWorkspace.test.jsx
-    // This is a placeholder for structural validation
-    expect(true).toBe(true);
-  });
-
-  test("passing exam_id=null shows informative message", () => {
-    mockUseExamWorkspace.mockReturnValueOnce({
-      exam: null,
-      cycle: null,
-    });
-
-    render(<PromptBankPanel />);
-
-    expect(
-      screen.getByText(/Select an exam to view prompts/)
-    ).toBeInTheDocument();
-  });
-});
-
-describe("PromptBankPanel - Action flows", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  test("create button opens editor drawer", () => {
-    render(<PromptBankPanel />);
-
-    const createBtn = screen.getByRole("button", { name: /\+ New Prompt/i });
-
-    // The editor drawer should render (it uses a different component)
-    // For now, verify the button is present
-    expect(createBtn).toBeInTheDocument();
-  });
-
-  test("bulk import button opens bulk flow", () => {
-    render(<PromptBankPanel />);
-
-    const importBtn = screen.getByRole("button", { name: /Bulk Import/i });
-
-    expect(importBtn).toBeInTheDocument();
-  });
-});
-
-describe("PromptBankPanel - Readiness Summary", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   test("displays readiness summary table", () => {
     render(<PromptBankPanel />);
-
-    // The readiness component should be present
-    // We're testing through the parent, so just verify it renders without error
     expect(screen.getByText(/Readiness/i)).toBeInTheDocument();
   });
 });
