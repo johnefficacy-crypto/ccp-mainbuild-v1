@@ -66,18 +66,21 @@ class _Seed:
                 })
         return self
 
-    def cycle(self, cid, exam_id, *, name="Cycle 2026", year=2026, status="active"):
+    def cycle(self, cid, exam_id, *, name="Cycle 2026", year=2026, status="active",
+              planner_activation_enabled=False):
         self.db["exam_cycles"].append({
             "id": cid, "exam_id": exam_id, "cycle_name": name,
             "year": year, "status": status, "created_at": _RECENT,
+            "planner_activation_enabled": planner_activation_enabled,
         })
         return self
 
-    def phase(self, pid, exam_id, cycle_id, *, status="expected"):
+    def phase(self, pid, exam_id, cycle_id, *, status="expected", phase_kind=None):
         self.db["exam_phases"].append({
             "id": pid, "exam_id": exam_id, "exam_cycle_id": cycle_id,
             "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1,
             "phase_start": None, "phase_end": None, "status": status,
+            "phase_kind": phase_kind,
         })
         return self
 
@@ -483,37 +486,35 @@ def test_d12_step9_other_cycle_locked_coverage_does_not_activate():
     assert step9["status"] == "missing"       # ...so activation must not be ready
 
 
-def test_d12_step9_confirmed_phase_still_not_ready_evaluator_pending():
-    """D12 v1 fail-closed: even with cycle details + a confirmed-looking phase
-    (status=completed) + locked coverage, Step 9 must NOT be ready. Required-phase
-    COMPLETENESS (D05 canonical phase_kind + evidence) has no evaluator yet and
-    lifecycle status is not an authorized completeness proxy, so Step 9 stays blocked
-    (over-block, never false-ready). Operator prerequisites are met, so there is no
-    operator-actionable CTA."""
+def test_d12_step9_core_classified_phase_and_coverage_is_ready():
+    """D12 v1: core + cycle details + a CLASSIFIED phase (canonical phase_kind) + >=1
+    applicable locked coverage -> Step 9 ready. This is the real completeness path that
+    replaced the fail-closed always-missing behavior."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="core", locked=1)  # exam-wide locked row
     s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA", status="completed")
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step9 = next(st for st in cr["steps"] if st["step"] == 9)
-    assert step9["status"] == "missing"
+    assert step9["status"] == "ready"
     assert step9["evidence_scope"] == "selected_cycle_plus_exam_wide"
-    phase_chk = next(c for c in step9["checks"] if c["check_id"] == "required_phases_complete")
-    assert phase_chk["status"] == "missing"
+    assert step9["applicability"] == "required"
     assert step9["action_cta"] is None
+    phase_chk = next(c for c in step9["checks"] if c["check_id"] == "required_phases_complete")
+    assert phase_chk["status"] == "ready"
 
 
-def test_d12_step9_default_active_phase_lacking_classification_not_ready():
-    """Reviewer regression: a phase using the DB default status='active' but lacking
-    canonical phase_kind / D05 evidence must NOT let Step 9 reach ready. 'active' is a
-    lifecycle default, not a completeness signal — D05 says an active unclassified phase
-    requires operator action."""
+def test_d12_step9_unclassified_phase_not_ready_routes_to_setup():
+    """Reviewer regression: a phase with the DB default status='active' but NO canonical
+    phase_kind (unclassified) must NOT let Step 9 reach ready — D05 says an active
+    unclassified phase requires operator action. CTA routes to Setup (classify phases),
+    preserving cycle identity."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="core", locked=1)
     s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA", status="active")  # DB default, unclassified
+    s.phase("pA", "e1", "cA", status="active", phase_kind=None)  # unclassified
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
@@ -521,30 +522,82 @@ def test_d12_step9_default_active_phase_lacking_classification_not_ready():
     assert step9["status"] == "missing"
     phase_chk = next(c for c in step9["checks"] if c["check_id"] == "required_phases_complete")
     assert phase_chk["status"] == "missing"
+    url = step9["action_cta"]["url"]
+    assert "tab=setup" in url
+    assert "cycle=cA" in url
 
 
-def test_d12_step9_light_evaluated_not_na_no_is_active_shortcut():
-    """light has no canonical planner-activation source, so it is NOT marked N/A by
-    is_active — it is evaluated like core (fail-closed). Step 9 is 'missing', never
-    'not_applicable', regardless of is_active."""
+def test_d12_step9_other_phase_kind_counts_as_unclassified():
+    """D05: phase_kind='other' is UNCLASSIFIED (requires operator classification) and must
+    not satisfy required-phase completeness."""
     s = _Seed()
-    s.exam("e1", name="Exam1", mode="light", locked=1, active=False)
+    s.exam("e1", name="Exam1", mode="core", locked=1)
     s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA", status="active")
+    s.phase("pA", "e1", "cA", status="active", phase_kind="other")
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
     assert step9["status"] == "missing"
-    assert step9["not_applicable_reason"] is None
+
+
+def test_d12_step9_cancelled_phase_ignored_for_completeness():
+    """A cancelled phase is ignored: if the only non-cancelled phase is classified and
+    coverage exists, Step 9 is ready even though a cancelled unclassified phase is present."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="core", locked=1)
+    s.cycle("cA", "e1")
+    s.phase("pA", "e1", "cA", status="active", phase_kind="descriptive_written")
+    s.phase("pX", "e1", "cA", status="cancelled", phase_kind=None)  # ignored
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
+    assert step9["status"] == "ready"
+
+
+def test_d12_step9_light_not_exposed_is_not_applicable():
+    """D12/D14: `light` review_activate is conditional on Study-OS/planner exposure. With
+    planner_activation_enabled=false the step is not_applicable (planner_activation_disabled),
+    applicability=conditional — and is_active is irrelevant."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="light", locked=1, active=False)
+    s.cycle("cA", "e1", planner_activation_enabled=False)
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
+    assert step9["status"] == "not_applicable"
+    assert step9["applicability"] == "conditional"
+    assert step9["not_applicable_reason"] == "planner_activation_disabled"
+
+
+def test_d12_step9_light_exposed_evaluates_minimum():
+    """`light` with planner_activation_enabled=true is evaluated like core (condition true):
+    classified phase + coverage -> ready (applicability=conditional); without coverage ->
+    missing (still evaluated, not N/A)."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="light", locked=1, active=False)
+    s.cycle("cA", "e1", planner_activation_enabled=True)
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
+    assert step9["status"] == "ready"
+    assert step9["applicability"] == "conditional"
+
+    s2 = _Seed()
+    s2.exam("e2", name="Exam2", mode="light", locked=0, active=True)
+    s2.cycle("cB", "e2", planner_activation_enabled=True)
+    s2.phase("pB", "e2", "cB", status="active", phase_kind="objective_written")
+    r2 = _detail(_client_from_seed(s2), "e2", cycle_id="cB")
+    step9b = next(st for st in r2.json()["cycle_readiness"]["steps"] if st["step"] == 9)
+    assert step9b["status"] == "missing"
+    assert step9b["not_applicable_reason"] is None
 
 
 def test_d12_step9_coverage_failure_routes_cta_to_syllabus_with_cycle():
-    """Locked deep-link contract: when cycle details are complete but coverage is
-    missing, the CTA routes to Syllabus/coverage AND preserves selected-cycle identity
-    (?cycle=<id>) so the blocker opens the cycle whose readiness produced it."""
+    """Locked deep-link contract: when cycle details + phase classification are complete but
+    coverage is missing, the CTA routes to Syllabus/coverage AND preserves selected-cycle
+    identity (?cycle=<id>)."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="core", locked=0)  # no coverage
     s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA", status="completed")
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")  # classified
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
     assert step9["status"] == "missing"
@@ -560,9 +613,9 @@ def test_d12_step9_setup_cta_preserves_cycle_identity():
     # cycle row missing year -> s1 not ready -> cycle_ok False -> Setup CTA.
     s.db["exam_cycles"].append({
         "id": "cA", "exam_id": "e1", "cycle_name": "Cycle", "year": None,
-        "status": "active", "created_at": _RECENT,
+        "status": "active", "created_at": _RECENT, "planner_activation_enabled": False,
     })
-    s.phase("pA", "e1", "cA", status="completed")
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
     url = step9["action_cta"]["url"]

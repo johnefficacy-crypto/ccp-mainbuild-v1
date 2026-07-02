@@ -45,6 +45,18 @@ be led to activate an under-verified selected cycle**, not on immediate aspirant
 **Net: 1 v1 item (D12), 4 v2 deferrals.** F2 closes once this split is accepted and the D12
 fix is scheduled as v1 work.
 
+> **Update (D12 v1 DELIVERED, code):** the full D12 v1 scope has now been implemented across
+> two PRs — PR #841 (cross-cycle fail-open) and the D12-v1 PR (required-phase completeness +
+> `light` planner-exposure). Migration **209** adds canonical `exam_phases.phase_kind`
+> (D05 §1) and `exam_cycles.planner_activation_enabled` (canonical Study-OS/planner exposure
+> authority, distinct from `exams.is_active`). Step 9 now: gates required-phase completeness on
+> canonical **classification** of every non-cancelled selected-cycle phase; marks `light` review_activate
+> `not_applicable` unless the cycle is exposed; and reaches `ready` on the real minimum. **Scope
+> boundary held:** the deeper per-phase D05 evidence-policy engine (D05 §2–5) remains a separate
+> contract (gated on D06/D08), and planner-path enforcement of the exposure flag is a separate
+> rollout — neither is required for the D12 v1 gate. VALIDATION PENDING: live apply of migration
+> 209 + operator classification/exposure data.
+
 ---
 
 ## D12 — **v1 must-fix** (the only fail-open item)
