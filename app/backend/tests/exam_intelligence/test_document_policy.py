@@ -11,8 +11,23 @@ def _base_db():
     return {t: [] for t in (
         "exam_evidence_requirements", "exam_evidence_requirement_overrides",
         "exam_document_evidence", "exam_document_evidence_roles",
-        "source_registry", "document_processing_jobs", "pyq_papers",
+        "source_registry", "document_processing_jobs", "pyq_papers", "pyq_sources",
     )}
+
+
+def _pyq(db, *, phase="pA", verified=True, official=True, active=True, discovery=False,
+         with_source=True, in_registry=True, n=1):
+    """Register a PYQ paper + its source chain (pyq_sources -> source_registry)."""
+    psrc = f"psrc{n}" if with_source else None
+    if with_source:
+        reg = f"pyreg{n}" if in_registry else None
+        db["pyq_sources"].append({"id": psrc, "exam_id": "e1", "source_id": reg})
+        if in_registry:
+            db["source_registry"].append({"id": reg, "is_active": active,
+                                          "is_official_source": official, "discovery_only": discovery})
+    db["pyq_papers"].append({"id": f"pp{n}", "exam_id": "e1", "exam_phase_id": phase,
+                             "year": 2025, "pyq_source_id": psrc,
+                             "trust_status": "verified" if verified else "pending"})
 
 
 def _req(db, kind, *, scope="phase", phase_kind="objective_written", cond="always",
@@ -193,23 +208,72 @@ def test_phase_override_beats_exam_override():
 
 
 def test_pyq_requirement_uses_verified_phase_compatible_papers():
-    db = _base_db(); _req(db, "pyq_paper", satisfied_by="source_registry", src=True, extract=False)
-    # verified but NOT phase-tagged -> does not satisfy (D05 per-phase compatibility)
-    db["pyq_papers"].append({"id": "p1", "exam_id": "e1", "exam_phase_id": None,
-                             "pyq_source_id": "s", "trust_status": "verified"})
+    # src=False isolates the phase-compatibility predicate from source authority.
+    db = _base_db(); _req(db, "pyq_paper", satisfied_by="source_registry", src=False, extract=False)
+    _pyq(db, phase=None, n=1)   # verified but NOT phase-tagged -> does not satisfy
     assert _eval(db)["complete"] is False
-    # verified + phase-tagged (pA) + sourced -> satisfies
-    db["pyq_papers"].append({"id": "p2", "exam_id": "e1", "exam_phase_id": "pA",
-                             "pyq_source_id": "s", "trust_status": "verified"})
+    _pyq(db, phase="pA", n=2)   # verified + phase-tagged -> satisfies
     assert _eval(db)["complete"] is True
 
 
 def test_pyq_other_phase_paper_does_not_satisfy():
     """Cross-phase rejection: a verified paper tagged to a different phase must not satisfy."""
-    db = _base_db(); _req(db, "pyq_paper", satisfied_by="source_registry", src=True, extract=False)
-    db["pyq_papers"].append({"id": "p1", "exam_id": "e1", "exam_phase_id": "pOTHER",
-                             "pyq_source_id": "s", "trust_status": "verified"})
+    db = _base_db(); _req(db, "pyq_paper", satisfied_by="source_registry", src=False, extract=False)
+    _pyq(db, phase="pOTHER", n=1)
     assert _eval(db)["complete"] is False
+
+
+def test_pyq_source_authority_resolved_through_registry():
+    """requires_verified_source for PYQ resolves pyq_sources -> source_registry and applies the
+    active+official+not-discovery predicate (not just a non-null pyq_source_id)."""
+    def one(**kw):
+        db = _base_db(); _req(db, "pyq_paper", satisfied_by="source_registry", src=True, extract=False)
+        _pyq(db, phase="pA", n=1, **kw)
+        return _eval(db)["complete"]
+    assert one() is True                       # official + active + not discovery -> ok
+    assert one(official=False) is False        # aggregator / non-official
+    assert one(active=False) is False          # inactive source
+    assert one(discovery=True) is False        # discovery-only
+    assert one(with_source=False) is False     # null pyq_source_id
+    assert one(in_registry=False) is False     # pyq_source not linked to a registry row
+
+
+def test_requires_human_review_flag_is_honored():
+    """When requires_human_review=false a usable non-verified (pending) doc satisfies; when true
+    it does not. Rejected/superseded are always rejected."""
+    # human_review true (default): pending does NOT satisfy
+    db = _base_db(); _req(db, "syllabus")
+    _evi(db, "e1", "syllabus", cycle="cA", phase="pA", verified=False)
+    assert _eval(db)["complete"] is False
+    # human_review false: pending DOES satisfy
+    db2 = _base_db()
+    db2["exam_evidence_requirements"].append({
+        "id": "req-nr", "management_mode": "core", "exam_type": None,
+        "phase_kind": "objective_written", "evidence_kind": "syllabus",
+        "satisfied_by": "document_asset", "requirement_level": "required", "gate_effect": "block",
+        "scope": "phase", "minimum_count": 1, "requires_verified_source": False,
+        "requires_human_review": False, "requires_extraction": False,
+        "condition_code": "always", "is_active": True})
+    _evi(db2, "e1", "syllabus", cycle="cA", phase="pA", verified=False)  # pending
+    assert _eval(db2)["complete"] is True
+    # ...but a rejected doc never satisfies even when human_review=false
+    db2["exam_document_evidence"][0]["trust_status"] = "rejected"
+    assert _eval(db2)["complete"] is False
+
+
+def test_targeted_override_only_affects_matching_base():
+    """An override with base_requirement_id applies only to the base row with that id."""
+    db = _base_db(); _req(db, "syllabus")  # base id 'req-syllabus-phase'
+    db["exam_evidence_requirement_overrides"].append({
+        "exam_id": "e1", "base_requirement_id": "some-other-base-id",
+        "exam_cycle_id": None, "exam_phase_id": None, "evidence_kind": "syllabus",
+        "requirement_level": "not_applicable", "gate_effect": "none",
+        "expires_at": None, "is_active": True})
+    # override targets a different base -> does NOT drop this blocker -> not complete (no evidence)
+    assert _eval(db)["complete"] is False
+    # a targeted override matching the actual base id DOES apply
+    db["exam_evidence_requirement_overrides"][0]["base_requirement_id"] = "req-syllabus-phase"
+    assert _eval(db)["complete"] is True
 
 
 def test_exam_type_overlay_selects_most_specific_base():

@@ -149,15 +149,28 @@ def _resolve_overrides(overrides: list[dict], *, cycle_id: str, phase_id: str | 
 
 
 def _effective_requirements(base: dict[str, dict], overrides: dict[str, dict]) -> list[dict]:
-    """Merge base + override per evidence_kind; return the ones that remain BLOCKING."""
+    """Merge base + override per evidence_kind; return the ones that remain BLOCKING.
+
+    A TARGETED override (non-null base_requirement_id) applies only to the selected base row with
+    that id; an untargeted override (null base_requirement_id) applies to the evidence_kind
+    generally and may add a requirement where no base exists. Overrides can promote a warn base to
+    blocking or downgrade a blocker to advisory/not-applicable.
+    """
     kinds = set(base) | set(overrides)
     out: list[dict] = []
     for k in kinds:
-        eff = dict(base.get(k) or {"evidence_kind": k, "satisfied_by": "document_asset",
-                                   "requirement_level": "required", "gate_effect": "block",
-                                   "minimum_count": 1, "requires_verified_source": True,
-                                   "requires_extraction": False, "condition_code": "always"})
+        base_row = base.get(k)
         ov = overrides.get(k)
+        if ov is not None and ov.get("base_requirement_id") is not None:
+            if base_row is None or base_row.get("id") != ov.get("base_requirement_id"):
+                ov = None  # targets a different base variant -> not applicable to this selection
+        if base_row is None and ov is None:
+            continue
+        eff = dict(base_row) if base_row else {
+            "evidence_kind": k, "satisfied_by": "document_asset",
+            "requirement_level": "required", "gate_effect": "block", "minimum_count": 1,
+            "requires_verified_source": True, "requires_human_review": True,
+            "requires_extraction": False, "condition_code": "always"}
         if ov is not None:
             for f in _OVERRIDE_FIELDS:
                 if ov.get(f) is not None:
@@ -186,24 +199,35 @@ class _EvidenceIndex:
                 "document_evidence_id, evidence_kind, exam_cycle_id, exam_phase_id",
                 {"document_evidence_id": ev_id},
             ))
-        src_ids = {e.get("source_registry_id") for e in self.evidence if e.get("source_registry_id")}
+        self.extracted_ok = self._latest_extract_ok(
+            sb, [e.get("document_asset_id") for e in self.evidence if e.get("document_asset_id")])
+        self._by_ev = {e["id"]: e for e in self.evidence if e.get("id")}
+        # verified, phase-tagged PYQ papers grouped by phase (D05 per-phase compatibility).
+        papers = [p for p in _fetch_paged(
+            sb, "pyq_papers", "id, exam_id, exam_phase_id, year, pyq_source_id, trust_status",
+            {"exam_id": exam_id})
+            if p.get("trust_status") == "verified" and p.get("exam_phase_id")]
+        self.pyq_by_phase: dict[str, list[dict]] = {}
+        for p in papers:
+            self.pyq_by_phase.setdefault(p["exam_phase_id"], []).append(p)
+        # Resolve the PYQ source-authority chain: pyq_papers.pyq_source_id -> pyq_sources.source_id
+        # -> source_registry, so requires_verified_source is a REAL authority check (not just a
+        # non-null link).
+        pyq_source_to_reg: dict[str, str | None] = {}
+        for psid in {p.get("pyq_source_id") for p in papers if p.get("pyq_source_id")}:
+            for ps in _fetch_paged(sb, "pyq_sources", "id, source_id", {"id": psid}):
+                pyq_source_to_reg[ps["id"]] = ps.get("source_id")
+        # Load every referenced source_registry row once (document evidence + PYQ sources).
+        reg_ids = {e.get("source_registry_id") for e in self.evidence if e.get("source_registry_id")}
+        reg_ids |= {r for r in pyq_source_to_reg.values() if r}
         self.authoritative_src: set[str] = set()
-        for sid in src_ids:
+        for sid in reg_ids:
             for s in _fetch_paged(sb, "source_registry",
                                   "id, is_active, is_official_source, discovery_only", {"id": sid}):
                 if s.get("is_active") and s.get("is_official_source") and not s.get("discovery_only"):
                     self.authoritative_src.add(s["id"])
-        self.extracted_ok = self._latest_extract_ok(
-            sb, [e.get("document_asset_id") for e in self.evidence if e.get("document_asset_id")])
-        self._by_ev = {e["id"]: e for e in self.evidence if e.get("id")}
-        # verified PYQ papers grouped by phase (D05 per-phase compatibility; D10 corpus is verified).
-        self.pyq_by_phase: dict[str, list[dict]] = {}
-        for p in _fetch_paged(sb, "pyq_papers",
-                              "id, exam_id, exam_phase_id, year, pyq_source_id, trust_status",
-                              {"exam_id": exam_id}):
-            if p.get("trust_status") != "verified" or not p.get("exam_phase_id"):
-                continue
-            self.pyq_by_phase.setdefault(p["exam_phase_id"], []).append(p)
+        self.authoritative_pyq_sources: set[str] = {
+            psid for psid, reg in pyq_source_to_reg.items() if reg in self.authoritative_src}
 
     @staticmethod
     def _latest_extract_ok(sb, doc_ids: list[str]) -> set[str]:
@@ -223,12 +247,14 @@ class _EvidenceIndex:
         minimum = int(req.get("minimum_count") or 1)
 
         if kind == "pyq_paper":
-            # D05: one verified COMPATIBLE paper per written phase (phase-tagged, not exam-wide).
+            # D05: one verified COMPATIBLE paper per written phase (phase-tagged, not exam-wide),
+            # with the source-authority predicate resolved through pyq_sources -> source_registry.
             if phase_id is None:
                 return False
             papers = self.pyq_by_phase.get(phase_id, [])
             if req.get("requires_verified_source"):
-                papers = [p for p in papers if p.get("pyq_source_id")]
+                papers = [p for p in papers
+                          if p.get("pyq_source_id") in self.authoritative_pyq_sources]
             min_years = req.get("minimum_distinct_years")
             if min_years:
                 years = {p.get("year") for p in papers if p.get("year") is not None}
@@ -237,6 +263,10 @@ class _EvidenceIndex:
 
         need_src = bool(req.get("requires_verified_source"))
         need_extract = bool(req.get("requires_extraction"))
+        # requires_human_review: when true, only trust_status='verified' counts; when false, any
+        # USABLE lifecycle counts (still reject rejected/superseded).
+        rhr = req.get("requires_human_review")
+        need_review = True if rhr is None else bool(rhr)
         # Count DISTINCT satisfying evidence registrations (not role rows) toward minimum_count.
         matched_docs: set[str] = set()
         for role in self.roles:
@@ -245,7 +275,10 @@ class _EvidenceIndex:
             ev = self._by_ev.get(role.get("document_evidence_id"))
             if not ev:
                 continue
-            if ev.get("trust_status") != "verified" or ev.get("superseded_by_id") is not None:
+            ts = ev.get("trust_status")
+            if ev.get("superseded_by_id") is not None or ts == "rejected":
+                continue  # unusable lifecycle regardless of policy
+            if need_review and ts != "verified":
                 continue
             ev_phase = role.get("exam_phase_id") or ev.get("exam_phase_id")
             ev_cycle = role.get("exam_cycle_id") or ev.get("exam_cycle_id")
@@ -295,9 +328,10 @@ def evaluate_required_phases_complete(
     )
     overrides = _fetch_paged(
         sb, "exam_evidence_requirement_overrides",
-        "exam_id, exam_cycle_id, exam_phase_id, evidence_kind, requirement_level, gate_effect, "
-        "minimum_count, minimum_distinct_years, requires_verified_source, requires_human_review, "
-        "requires_extraction, condition_code, condition_params, expires_at, is_active",
+        "exam_id, base_requirement_id, exam_cycle_id, exam_phase_id, evidence_kind, "
+        "requirement_level, gate_effect, minimum_count, minimum_distinct_years, "
+        "requires_verified_source, requires_human_review, requires_extraction, condition_code, "
+        "condition_params, expires_at, is_active",
         {"exam_id": exam_id},
     )
     index = _EvidenceIndex(sb, exam_id)
@@ -324,15 +358,17 @@ def evaluate_required_phases_complete(
             continue
         base = _resolve_base(reqs, exam_type=exam_type, phase_kind=pk, scope="phase")
         ov = _resolve_overrides(overrides, cycle_id=cycle_id, phase_id=p["id"])
+        effs = _effective_requirements(base, ov)
         # Fail-closed by CODE, not by seed: a classified phase with NO seeded policy at all for
-        # its (mode, exam_type, phase_kind) is NOT vacuously complete — an unseeded/regressed
-        # policy cannot verify activation-readiness. (Requirements explicitly resolved to
-        # not_applicable by an operator OVERRIDE are governed intent and remain allowed.)
-        if not base and not ov:
+        # its (mode, exam_type, phase_kind) AND no effective governing requirement is NOT
+        # vacuously complete — an unseeded/regressed policy cannot verify activation-readiness.
+        # (Requirements explicitly resolved to not_applicable by an operator OVERRIDE on an
+        # existing base are governed intent and remain allowed.)
+        if not base and not effs:
             unmet.append({"scope": "phase", "phase_id": p["id"], "phase_kind": pk,
                           "evidence_kind": None, "reason": "no_blocking_policy"})
             continue
-        for eff in _effective_requirements(base, ov):
+        for eff in effs:
             if not _condition_applies(eff.get("condition_code") or "always",
                                       phase_kind=pk, cycle_status=cycle_status):
                 continue

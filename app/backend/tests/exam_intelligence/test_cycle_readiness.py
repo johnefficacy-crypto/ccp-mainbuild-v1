@@ -40,6 +40,7 @@ class _Seed:
             # D05 evidence-policy (migrations 211/212) — mirrored for the document_policy evaluator.
             "exam_evidence_requirements", "exam_evidence_requirement_overrides",
             "exam_document_evidence", "exam_document_evidence_roles", "source_registry",
+            "pyq_sources",
         )}
         self._ev_seq = 0
 
@@ -69,10 +70,16 @@ class _Seed:
                  verified=True, official=True, extracted=True):
         if kind == "pyq_paper":
             self._ev_seq += 1
+            n = self._ev_seq
+            reg_id, psrc_id = f"pyreg-{n}", f"pysrc-{n}"
+            self.db["source_registry"].append({
+                "id": reg_id, "is_active": True,
+                "is_official_source": official, "discovery_only": False})
+            self.db["pyq_sources"].append({"id": psrc_id, "exam_id": exam_id, "source_id": reg_id})
             self.db["pyq_papers"].append({
-                "id": f"{exam_id}-pyq-{self._ev_seq}", "exam_id": exam_id,
+                "id": f"{exam_id}-pyq-{n}", "exam_id": exam_id,
                 "exam_cycle_id": cycle_id, "exam_phase_id": phase_id, "year": 2025,
-                "pyq_source_id": f"pysrc-{self._ev_seq}",
+                "pyq_source_id": psrc_id,
                 "trust_status": "verified" if verified else "pending"})
             return self
         self._ev_seq += 1
