@@ -51,7 +51,15 @@ pytestmark = pytest.mark.skipif(
 # 205 recreates an index on the now-dropped `exam_id`, which would then fail.
 # So this suite applies everything to an ISOLATED throwaway database, created and
 # dropped in the module fixture, leaving the shared DB untouched.
-_OWN_DB = "wpt_targets_it"
+#
+# The name is per-xdist-worker: under `pytest -n auto --dist load` individual
+# tests of this module can land on different workers, each running the module
+# fixture, so a FIXED name would collide (one worker's `DROP DATABASE ... FORCE`
+# terminates another worker's live connections mid-run and deadlocks). Suffixing
+# with the worker id gives each worker its own DB.
+_OWN_DB = "wpt_targets_it_" + re.sub(
+    r"\W", "", os.environ.get("PYTEST_XDIST_WORKER", "main")
+)
 
 
 def _swap_dbname(dsn: str, dbname: str) -> str:
@@ -141,24 +149,24 @@ INSERT INTO writing_prompts(id,exam_id,exam_cycle_id,exam_phase_id,subject_id,to
 
 def _psql(sql: str) -> None:
     proc = subprocess.run([_PSQL, _DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", sql],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, timeout=180)
     assert proc.returncode == 0, f"unexpected failure:\n{proc.stderr}"
 
 
 def _psql_file(path: Path) -> None:
     proc = subprocess.run([_PSQL, _DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-f", str(path)],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, timeout=180)
     assert proc.returncode == 0, f"failed applying {path.name}:\n{proc.stderr}"
 
 
 def _psql_try(sql: str) -> subprocess.CompletedProcess:
     """Run `sql`; return the completed process so the caller can assert failure."""
     return subprocess.run([_PSQL, _DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", sql],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, timeout=180)
 
 
 def _scalar(sql: str) -> str:
-    proc = subprocess.run([_PSQL, _DSN, "-t", "-A", "-X", "-q", "-c", sql], capture_output=True, text=True)
+    proc = subprocess.run([_PSQL, _DSN, "-t", "-A", "-X", "-q", "-c", sql], capture_output=True, text=True, timeout=180)
     assert proc.returncode == 0, proc.stderr
     out = proc.stdout.strip()
     out = re.sub(r"\s*(?:INSERT|UPDATE|DELETE)\s+\d+\s+\d+\s*$", "", out)
@@ -178,7 +186,7 @@ def _admin_psql(sql: str) -> subprocess.CompletedProcess:
     """Run maintenance SQL (CREATE/DROP DATABASE) against the `postgres` db."""
     return subprocess.run(
         [_PSQL, _swap_dbname(_DSN, "postgres"), "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", sql],
-        capture_output=True, text=True,
+        capture_output=True, text=True, timeout=180,
     )
 
 
