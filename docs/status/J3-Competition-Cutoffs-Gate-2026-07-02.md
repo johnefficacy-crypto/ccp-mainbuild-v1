@@ -249,7 +249,7 @@ Transition-matrix + CAS enforcement is a backend change to the review endpoint, 
 [ ] out-of-matrix transition (e.g. draft→locked) rejected (409)
 [ ] locked→reviewed reopen requires reviewer_notes
 [ ] malformed legacy row cannot be promoted to reviewed/locked (blocked by shape validation)
-[ ] only reviewed/locked rows visible to a non-admin (RLS); only locked feeds the planner
+[ ] only reviewed/locked rows visible to a non-admin (RLS); planner reads reviewed+locked with locked preferred (per `_READABLE_STATUSES = ("locked","reviewed")`) — a reviewed-but-not-locked row must remain planner-visible, never silently dropped
 ```
 ### G.4 Evidence (Section C)
 ```
