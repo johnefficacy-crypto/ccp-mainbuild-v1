@@ -102,8 +102,13 @@ PR #800 staging delivery validation (3 manual checks) + explicit 36-file boundar
 The fingerprint re-attestation at the final deployed SHA must happen at T0 time, not before.
 
 ### After F3 validation + P5 approval → T0
-With F3 confirmed live and P5 sign-off obtained, record `window_start` (UTC) at the deployed SHA.
-That sets **T0** and starts the 14-day **P8** shadow window.
+F3 and P5 are the remaining **external** gates. Once both clear, the operator must still satisfy
+conditions 5–7 from the prerequisite chain before recording T0:
 
-> **Now:** F3 live/staging validation + P5 operator sign-off. Nothing else shortens the distance —
-> the 14-day P8 window is the floor, and it can't open until F3 (validation) + P5 both clear.
+5. Deployed SHA **matches the approved candidate**, with **continuous `FF_MOCK_MASTERY_WRITES=shadow`** — re-verify at the final SHA, not the P7 SHA.
+6. **Freshly computed + attested fingerprint at that exact deployed SHA** — re-run `verify_mastery_fingerprint.sh` at the final SHA; do NOT copy the P7 digest (`b3cec4ac…`) blindly. Record the new per-file attestation.
+7. **Exact UTC `window_start` recorded** — set T0 only when 5 and 6 are both confirmed. This is the moment the 14-day **P8** clock starts.
+
+> **Now:** F3 live/staging validation + P5 operator sign-off (parallel). On completion, re-verify
+> conditions 5–7 at the final deployed SHA and record `window_start`. The 14-day P8 window cannot
+> open until F3 + P5 + conditions 5–7 all hold simultaneously.
