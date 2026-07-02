@@ -3,19 +3,19 @@ import { render, screen } from "@testing-library/react";
 import PromptBankPanel from "../PromptBankPanel";
 
 jest.mock("../../ExamWorkspaceContext", () => ({
-  useExamWorkspace: jest.fn(() => ({
+  useExamWorkspace: () => ({
     exam: { id: "exam-123", name: "UPSC GS-I" },
     cycle: { id: "cycle-456", cycle_name: "2026" },
-  })),
+  }),
 }));
 
 jest.mock("../../../../../lib/authContext", () => ({
-  useAuth: jest.fn(() => ({
+  useAuth: () => ({
     user: {
       role: "super_admin",
       permissions: ["exam_intelligence.cms", "exam_intelligence.review"],
     },
-  })),
+  }),
 }));
 
 jest.mock("../../../../../lib/hooks/useApiCollection", () =>
