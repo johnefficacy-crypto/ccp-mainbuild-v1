@@ -370,4 +370,29 @@ describe("EnglishPracticeShell", () => {
     expect(await screen.findByText("Practice session unavailable")).toBeInTheDocument();
     expect(screen.getByText("Retry")).toBeInTheDocument();
   });
+
+  test("offers a contextual Error Lab entry that navigates to /app/study/error-lab", async () => {
+    useEnglishPracticeSession.mockReturnValue({
+      fetchSession: jest.fn().mockResolvedValue(
+        payload([{ id: "u1", unit_number: 1, status: "not_started", unit_constraints: {} }]),
+      ),
+      submitUnit: jest.fn(),
+      busy: false,
+    });
+    render(
+      <MemoryRouter initialEntries={["/app/study/practice/english/S1"]}>
+        <Routes>
+          <Route path="/app/study/practice/english/:sessionId" element={<EnglishPracticeShell />} />
+          <Route
+            path="/app/study/error-lab"
+            element={<div data-testid="error-lab-landing">Error Lab</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const link = await screen.findByTestId("error-lab-link");
+    expect(link).toHaveAttribute("href", "/app/study/error-lab");
+    fireEvent.click(link);
+    expect(await screen.findByTestId("error-lab-landing")).toBeInTheDocument();
+  });
 });

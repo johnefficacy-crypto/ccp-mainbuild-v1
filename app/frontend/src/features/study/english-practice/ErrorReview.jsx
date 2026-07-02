@@ -28,16 +28,18 @@ const SEVERITY_BADGE = {
  * wired to a generation endpoint (verified-only reads).
  *
  * @param {object} props
- * @param {{ microtopic_id: string|null, issue_count: number, issues: Array }} props.group
+ * @param {{ microtopic_id: string|null, microtopic_name: string|null,
+ *   microtopic_slug: string|null, issue_count: number, issues: Array }} props.group
  * @param {boolean} [props.defaultExpanded]
  */
 export default function ErrorReview({ group, defaultExpanded = false }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const issues = Array.isArray(group?.issues) ? group.issues : [];
   const count = group?.issue_count ?? issues.length;
-  const title = group?.microtopic_id
-    ? `Microtopic ${group.microtopic_id}`
-    : "Unmapped issues";
+  // Render the human microtopic NAME (from the backend canonical-topic join),
+  // never the bare UUID. Null-microtopic issues (unmapped issue types) fall back
+  // to a generic label.
+  const title = group?.microtopic_name || "Unmapped issues";
   const panelId = `error-group-${group?.microtopic_id || "unmapped"}`;
 
   return (
@@ -127,6 +129,8 @@ export default function ErrorReview({ group, defaultExpanded = false }) {
 ErrorReview.propTypes = {
   group: PropTypes.shape({
     microtopic_id: PropTypes.string,
+    microtopic_name: PropTypes.string,
+    microtopic_slug: PropTypes.string,
     issue_count: PropTypes.number,
     issues: PropTypes.arrayOf(PropTypes.object),
   }).isRequired,

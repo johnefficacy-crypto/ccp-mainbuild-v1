@@ -1,10 +1,15 @@
-"""EWP-4 Error Lab read-surface tests.
+"""EWP-4 Error Lab endpoint-shaping tests.
 
-Exercises the pure gating/grouping logic of
-``writing_practice.error_lab`` / ``error_summary`` against a fake Supabase,
-proving the hard read constraints: owner-scoped, feedback-released only,
-``affects_current_state=true`` only, and effective-invalidation aware
-(§4.8 / §4.10a). No pending/rejected/stale/invalidated finding may leak.
+The owner-scoping, feedback-release gating, `affects_current_state` filter, the
+effective-review-decision fold (§4.10a) and the reclassification remap now live
+in SQL — `public.ewp_error_lab` / `ewp_private.ewp_error_lab` (migration 213) —
+so those behaviours are exercised against a real Postgres in
+`test_writing_error_lab_read_model_behaviour.py` (EWP_PG_DSN-gated).
+
+Here we test the thin Python endpoints (`error_lab` / `error_summary`) purely as
+consumers of that read model: they call the RPC once (no session→unit→version
+→evaluation ID fan-out) and shape the returned rows into microtopic groups /
+counts, carrying the human `microtopic_name` + `microtopic_slug` through.
 
 Skips if the module's optional deps are unavailable locally (present in CI).
 """
@@ -18,173 +23,105 @@ pytest.importorskip("supabase")
 from app.api import writing_practice as wp  # noqa: E402
 
 
-class _Query:
-    """Minimal chainable stand-in for the Supabase query builder."""
-
-    def __init__(self, rows):
-        self._rows = list(rows)
-
-    def select(self, *a, **k):
-        return self
-
-    def eq(self, col, val):
-        self._rows = [r for r in self._rows if r.get(col) == val]
-        return self
-
-    def in_(self, col, vals):
-        vals = set(vals)
-        self._rows = [r for r in self._rows if r.get(col) in vals]
-        return self
-
-    def order(self, col, desc=False):
-        self._rows = sorted(self._rows, key=lambda r: r.get(col), reverse=desc)
-        return self
-
-    class _Res:
-        def __init__(self, data):
-            self.data = data
-
-    def execute(self):
-        return _Query._Res(self._rows)
+class _Res:
+    def __init__(self, data):
+        self.data = data
 
 
 class _FakeSupabase:
-    def __init__(self, tables):
-        self._tables = tables
+    """Fake service-role client whose only surface the endpoints use is rpc()."""
 
-    def table(self, name):
-        return _Query(self._tables.get(name, []))
+    def __init__(self, rows, *, spy=None):
+        self._rows = rows
+        self._spy = spy if spy is not None else []
 
-
-def _base_tables():
-    """One released learning session with two current-state issues on two microtopics."""
-    return {
-        "writing_sessions": [
-            {"id": "S1", "user_id": "U1", "mode": "learning", "feedback_released_at": None},
-            # Another user's released session — must never leak in.
-            {"id": "S9", "user_id": "U2", "mode": "learning", "feedback_released_at": None},
-        ],
-        "writing_session_units": [
-            {"id": "u1", "session_id": "S1"},
-            {"id": "u9", "session_id": "S9"},
-        ],
-        "writing_unit_versions": [
-            {"id": "v1", "unit_id": "u1"},
-            {"id": "v9", "unit_id": "u9"},
-        ],
-        "writing_evaluations": [
-            {"id": "e1", "unit_version_id": "v1"},
-            {"id": "e9", "unit_version_id": "v9"},
-        ],
-        "writing_issue_events": [
-            {"id": "i1", "evaluation_id": "e1", "microtopic_id": "m1",
-             "issue_type": "subject_verb_agreement", "severity": "must_fix",
-             "quoted_text": "they was", "explanation": "Use 'were'.",
-             "suggested_text": "they were", "span_start_utf16": 0,
-             "span_end_utf16": 8, "affects_current_state": True,
-             "created_at": "2026-06-01T00:00:00+00:00"},
-            {"id": "i2", "evaluation_id": "e1", "microtopic_id": "m1",
-             "issue_type": "article_use", "severity": "should_fix",
-             "quoted_text": "a apple", "explanation": "Use 'an'.",
-             "suggested_text": "an apple", "span_start_utf16": 10,
-             "span_end_utf16": 17, "affects_current_state": True,
-             "created_at": "2026-06-02T00:00:00+00:00"},
-            {"id": "i3", "evaluation_id": "e1", "microtopic_id": None,
-             "issue_type": "word_choice", "severity": "advisory",
-             "quoted_text": "big", "explanation": "Consider 'large'.",
-             "suggested_text": "large", "span_start_utf16": 20,
-             "span_end_utf16": 23, "affects_current_state": True,
-             "created_at": "2026-06-03T00:00:00+00:00"},
-            # Stale finding (non-latest version) — must be excluded.
-            {"id": "i_stale", "evaluation_id": "e1", "microtopic_id": "m1",
-             "issue_type": "tense", "severity": "must_fix", "quoted_text": "x",
-             "explanation": "stale", "affects_current_state": False,
-             "created_at": "2026-06-04T00:00:00+00:00"},
-            # Another user's issue — must be excluded by owner scoping.
-            {"id": "i_other", "evaluation_id": "e9", "microtopic_id": "m1",
-             "issue_type": "tense", "severity": "must_fix", "quoted_text": "y",
-             "explanation": "not mine", "affects_current_state": True,
-             "created_at": "2026-06-05T00:00:00+00:00"},
-        ],
-        "writing_issue_review_events": [],
-    }
+    def rpc(self, name, params):
+        self._spy.append((name, params))
+        return _RpcCall(name, params, self._rows)
 
 
-def test_error_lab_groups_current_state_issues_by_microtopic():
-    sb = _FakeSupabase(_base_tables())
-    # error_lab reads via get_supabase_admin(); exercise the underlying logic.
-    rows = wp._current_state_issue_events(
-        sb, "U1",
-        "id,microtopic_id,issue_type,severity,quoted_text,explanation,"
-        "suggested_text,span_start_utf16,span_end_utf16,created_at",
-    )
-    ids = {r["id"] for r in rows}
-    assert ids == {"i1", "i2", "i3"}  # stale + other-user excluded
+class _RpcCall:
+    def __init__(self, name, params, rows):
+        self._name = name
+        self._params = params
+        self._rows = rows
+
+    def execute(self):
+        assert self._name == "ewp_error_lab"
+        return _Res(list(self._rows))
 
 
-def test_error_lab_excludes_effectively_invalidated_issue():
-    tables = _base_tables()
-    # i1 invalidated, then confirmed (higher event_seq) -> effective active (kept).
-    # i2 confirmed, then invalidated (higher event_seq) -> effective invalidated (dropped).
-    tables["writing_issue_review_events"] = [
-        {"issue_event_id": "i1", "decision": "invalidated",
-         "created_at": "2026-06-10T00:00:00+00:00", "event_seq": 1},
-        {"issue_event_id": "i1", "decision": "confirmed",
-         "created_at": "2026-06-10T00:00:00+00:00", "event_seq": 2},
-        {"issue_event_id": "i2", "decision": "confirmed",
-         "created_at": "2026-06-10T00:00:00+00:00", "event_seq": 3},
-        {"issue_event_id": "i2", "decision": "invalidated",
-         "created_at": "2026-06-10T00:00:00+00:00", "event_seq": 4},
+def _rows():
+    """What ewp_error_lab returns: current-state, effective-decision-resolved
+    issues with the microtopic name/slug already joined (no UUIDs to render)."""
+    return [
+        {"id": "i1", "issue_type": "subject_verb_agreement", "severity": "must_fix",
+         "quoted_text": "they was", "explanation": "Use 'were'.",
+         "suggested_text": "they were", "span_start_utf16": 0, "span_end_utf16": 8,
+         "microtopic_id": "m1", "microtopic_name": "Subject-verb agreement",
+         "microtopic_slug": "subject-verb-agreement",
+         "created_at": "2026-06-01T00:00:00+00:00"},
+        {"id": "i2", "issue_type": "subject_verb_agreement", "severity": "should_fix",
+         "quoted_text": "he go", "explanation": "Use 'goes'.",
+         "suggested_text": "he goes", "span_start_utf16": 10, "span_end_utf16": 15,
+         "microtopic_id": "m1", "microtopic_name": "Subject-verb agreement",
+         "microtopic_slug": "subject-verb-agreement",
+         "created_at": "2026-06-03T00:00:00+00:00"},
+        {"id": "i3", "issue_type": "word_choice", "severity": "advisory",
+         "quoted_text": "big", "explanation": "Consider 'large'.",
+         "suggested_text": "large", "span_start_utf16": 20, "span_end_utf16": 23,
+         "microtopic_id": None, "microtopic_name": None, "microtopic_slug": None,
+         "created_at": "2026-06-02T00:00:00+00:00"},
     ]
-    sb = _FakeSupabase(tables)
-    rows = wp._current_state_issue_events(sb, "U1", "id,microtopic_id")
-    ids = {r["id"] for r in rows}
-    assert "i1" in ids       # invalidated -> confirmed re-asserts active
-    assert "i2" not in ids   # confirmed -> invalidated is withdrawn
-    assert "i3" in ids
 
 
-def test_effective_invalidation_uses_event_seq_not_id_or_created_at():
-    # Same created_at; the LOWER event_seq is 'confirmed' and the HIGHER is
-    # 'invalidated' -> effective invalidated. Proves event_seq is the tiebreak.
-    events = [
-        {"issue_event_id": "i1", "decision": "confirmed",
-         "created_at": "2026-06-10T00:00:00+00:00", "event_seq": 5},
-        {"issue_event_id": "i1", "decision": "invalidated",
-         "created_at": "2026-06-10T00:00:00+00:00", "event_seq": 6},
-    ]
-    sb = _FakeSupabase({"writing_issue_review_events": events})
-    assert wp._effectively_invalidated_issue_ids(sb, ["i1"]) == {"i1"}
+def _patch(monkeypatch, rows, spy=None):
+    fake = _FakeSupabase(rows, spy=spy)
+    monkeypatch.setattr(wp, "get_supabase_admin", lambda: fake)
+    return fake
 
 
-def test_error_summary_counts_exclude_stale_and_invalidated():
-    tables = _base_tables()
-    tables["writing_issue_review_events"] = [
-        {"issue_event_id": "i2", "decision": "invalidated",
-         "created_at": "2026-06-10T00:00:00+00:00", "event_seq": 1},
-    ]
-    sb = _FakeSupabase(tables)
-    rows = wp._current_state_issue_events(sb, "U1", "id,microtopic_id")
-    counts: dict = {}
-    for r in rows:
-        key = r.get("microtopic_id") or "unmapped"
-        counts[key] = counts.get(key, 0) + 1
-    # i1 (m1) kept, i2 (m1) invalidated, i3 unmapped kept.
-    assert counts == {"m1": 1, "unmapped": 1}
+def test_error_lab_uses_the_rpc_read_model_once(monkeypatch):
+    spy: list = []
+    _patch(monkeypatch, _rows(), spy=spy)
+    wp.error_lab(user={"id": "U1"})
+    # Exactly one server-side call, owner-scoped — no per-hop ID fan-out.
+    assert spy == [("ewp_error_lab", {"p_user": "U1"})]
 
 
-def test_unreleased_exam_session_yields_no_issues():
-    tables = _base_tables()
-    # Make S1 an exam session with a FUTURE release -> not released -> no issues.
-    tables["writing_sessions"][0] = {
-        "id": "S1", "user_id": "U1", "mode": "exam",
-        "feedback_released_at": "2999-01-01T00:00:00+00:00",
-    }
-    sb = _FakeSupabase(tables)
-    assert wp._current_state_issue_events(sb, "U1", "id,microtopic_id") == []
+def test_error_lab_groups_by_microtopic_with_names_and_ordering(monkeypatch):
+    _patch(monkeypatch, _rows())
+    out = wp.error_lab(user={"id": "U1"})
+    items = out["items"]
+    # Busiest microtopic first: m1 has 2, unmapped has 1.
+    assert [g["issue_count"] for g in items] == [2, 1]
+    m1 = items[0]
+    assert m1["microtopic_id"] == "m1"
+    assert m1["microtopic_name"] == "Subject-verb agreement"
+    assert m1["microtopic_slug"] == "subject-verb-agreement"
+    # Recency order within the group (i2 @06-03 before i1 @06-01).
+    assert [i["id"] for i in m1["issues"]] == ["i2", "i1"]
+    # Unmapped group carries a null id/name (frontend renders a generic label).
+    unmapped = items[1]
+    assert unmapped["microtopic_id"] is None
+    assert unmapped["microtopic_name"] is None
+    assert [i["id"] for i in unmapped["issues"]] == ["i3"]
 
 
-def test_no_sessions_returns_empty():
-    sb = _FakeSupabase({"writing_sessions": []})
-    assert wp._released_evaluation_ids(sb, "U1") == []
-    assert wp._current_state_issue_events(sb, "U1", "id,microtopic_id") == []
+def test_error_summary_counts_from_the_same_model(monkeypatch):
+    _patch(monkeypatch, _rows())
+    out = wp.error_summary(user={"id": "U1"})
+    assert out["by_microtopic"] == {"m1": 2, "unmapped": 1}
+
+
+def test_empty_model_yields_empty_surfaces(monkeypatch):
+    _patch(monkeypatch, [])
+    assert wp.error_lab(user={"id": "U1"}) == {"items": []}
+    assert wp.error_summary(user={"id": "U1"}) == {"by_microtopic": {}}
+
+
+def test_missing_user_short_circuits_without_calling_rpc(monkeypatch):
+    spy: list = []
+    _patch(monkeypatch, _rows(), spy=spy)
+    assert wp._error_lab_rows(wp.get_supabase_admin(), None) == []
+    assert spy == []
