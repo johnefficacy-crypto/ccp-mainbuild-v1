@@ -3,29 +3,54 @@ owner: ops
 status: not_started
 verdict: START_CONDITION_NOT_MET
 checked_date: 2026-06-20
+updated: 2026-07-02
+pr6_pass: "OPERATOR PASS 2026-07-02 at SHA 6ecfbed956cc467c70ad50c4f7dce3b1a2443d25"
 related_audit: docs/audits/mastery-shadow-14day-gate-2026-06-20.md
 ---
 
 # PR7: 14-Day Mastery Shadow Gate
 
 **Type:** Operator evidence
-**Status:** NOT STARTED — BLOCKED ON PR-6
+**Status:** NOT STARTED — BLOCKED ON P5 (36-file boundary sign-off); T0 not set
 
 ---
 
-## Start-Condition Assessment (2026-06-20)
+## Start-Condition Update (2026-07-02)
 
-The 14-day shadow observation window has not opened. All three conditions
-below must be true before the window can start.
+**PR-6 OPERATOR PASS** at deployed SHA `6ecfbed956cc467c70ad50c4f7dce3b1a2443d25`
+(confirmed Render B == A). All 12 start gates PASS; Gate A PASS; Gates B–E, H–J PASS;
+F/G INSUFFICIENT_DATA exit 3 (permitted). Gate 4 fresh fingerprint
+`b3cec4accf3bdf729d3f68d9694dcbb5fc69e96bfbc165f5739973de7738da8b` (36 files).
+Full evidence: `docs/audits/2026-07-02-p7-final-candidate-revalidation-6ecfbed9.md`.
 
 | Condition | Status | Notes |
 |-----------|--------|-------|
-| PR-6 PASS verdict | **NOT MET** | PR-6 gate failed at Gate 9 (live canary user allowlist not deployed). Verdict: "DO NOT PROCEED TO LIVE." See `docs/ops/pr6_final_candidate_revalidation.md` and `docs/audits/2026-06-19-final-candidate-revalidation.md`. |
-| `FF_MOCK_MASTERY_WRITES=shadow` confirmed in deployed environment | **OPERATOR PENDING** | Cannot be verified without Render dashboard access. |
-| Validated baseline SHA deployed and confirmed A==B | **OPERATOR PENDING** | Render deployed SHA has not been operator-confirmed. |
+| PR-6 PASS verdict | **✅ MET (2026-07-02)** | OPERATOR PASS at SHA `6ecfbed9`. Gate A PASS (review_state updated); Gates B–E, H–J PASS; F/G exit 3 permitted. |
+| `FF_MOCK_MASTERY_WRITES=shadow` confirmed in deployed environment | **✅ MET (2026-07-02)** | Confirmed active throughout the 2026-07-02 operator run. |
+| Validated baseline SHA deployed and confirmed A==B | **✅ MET (2026-07-02)** | Render deployed SHA B == candidate SHA A confirmed at the 2026-07-02 run. |
 
-Because PR-6 did not pass, the start condition is not met and the window
-has not started. No threshold evaluation has occurred.
+All three conditions met as of 2026-07-02. The window has not opened because P5
+(36-file boundary operator approval) is still pending and `window_start` has not
+been recorded. T0 has not occurred.
+
+---
+
+## Start-Condition Assessment (2026-06-20) — HISTORICAL
+
+> This section records the 2026-06-20 static preflight assessment. It is superseded
+> by the 2026-07-02 update above. Kept for audit continuity.
+
+The 14-day shadow observation window had not opened. All three conditions
+below needed to be true before the window could start.
+
+| Condition | Status at 2026-06-20 | Notes |
+|-----------|--------|-------|
+| PR-6 PASS verdict | **NOT MET** | PR-6 gate failed at Gate 9 (live canary user allowlist not deployed). Verdict: "DO NOT PROCEED TO LIVE." See `docs/ops/pr6_final_candidate_revalidation.md` and `docs/audits/2026-06-19-final-candidate-revalidation.md`. |
+| `FF_MOCK_MASTERY_WRITES=shadow` confirmed in deployed environment | **OPERATOR PENDING** | Could not be verified without Render dashboard access. |
+| Validated baseline SHA deployed and confirmed A==B | **OPERATOR PENDING** | Render deployed SHA had not been operator-confirmed. |
+
+Because PR-6 did not pass, the start condition was not met and the window
+had not started. No threshold evaluation had occurred.
 
 ---
 
@@ -153,11 +178,7 @@ Steps 3–8 are sequential and each depends on those above it.
     `/api/admin/jobs` tick shows `manual: absent` (automatic provenance confirmed),
     `derivations: 1`, `errors: 0`. Full evidence:
     `docs/audits/2026-07-01-scheduler-drain-validation.md`.
-4. **PR-6 clean operator run (OPERATOR RERUN PENDING):** Run the full
-   12-gate PR-6 operator session on one pinned SHA; confirm Gate 9
-   passes (allowlist deployed with named user(s) in
-   `FF_MOCK_MASTERY_LIVE_USER_IDS`) and `FF_MOCK_MASTERY_WRITES=shadow`
-   for the run.
+4. **PR-6 clean operator run: ✅ OPERATOR PASS (2026-07-02, SHA `6ecfbed956cc467c70ad50c4f7dce3b1a2443d25`):** All 12 start gates PASS; Gate A PASS (review_state `unreviewed→reviewed`); Gates B–E, H–J PASS; F/G INSUFFICIENT_DATA exit 3 (permitted); Gate 4 fresh fingerprint `b3cec4ac…` (36 files). `FF_MOCK_MASTERY_LIVE_USER_IDS` populated with named user(s); `FF_MOCK_MASTERY_WRITES=shadow` confirmed throughout. Full evidence: `docs/audits/2026-07-02-p7-final-candidate-revalidation-6ecfbed9.md`.
 5. **Render SHA confirmation:** Operator confirms Render deployed SHA
    (B) matches the approved candidate main SHA (A).
 6. **FF confirmation:** Confirm `FF_MOCK_MASTERY_WRITES=shadow`
