@@ -250,7 +250,7 @@ def compute_cycle_readiness(
     management_mode = (exam or {}).get("management_mode", "")
     steps: list[dict[str, Any]] = []
     # D12/D14: canonical planner/Study-OS exposure authority for the SELECTED cycle
-    # (migration 209, `exam_cycles.planner_activation_enabled`). Captured in Step 1 and
+    # (migration 210, `exam_cycles.planner_activation_enabled`). Captured in Step 1 and
     # consumed by Step 9 to decide `light` applicability. Fail-closed default: not exposed.
     planner_exposed = False
 
@@ -645,7 +645,7 @@ def compute_cycle_readiness(
     #               AND >=1 applicable locked coverage row (D08 selected-cycle + exam-wide).
     #
     # Required-phase COMPLETENESS (D12 "required phases complete", D05 §1): every non-cancelled
-    # phase in the selected cycle carries a canonical, classified `phase_kind` (migration 209).
+    # phase in the selected cycle carries a canonical, classified `phase_kind` (migration 210).
     # `NULL`/`'other'` are UNCLASSIFIED (D05: an active unclassified phase requires operator
     # action) and never count. Lifecycle `status` is NOT used as a completeness signal. (Deeper
     # per-phase evidence-policy completeness — D05 §2–5 policy tables — is the separate D05

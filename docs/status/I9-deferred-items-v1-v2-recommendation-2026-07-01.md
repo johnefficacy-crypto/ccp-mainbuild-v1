@@ -45,17 +45,27 @@ be led to activate an under-verified selected cycle**, not on immediate aspirant
 **Net: 1 v1 item (D12), 4 v2 deferrals.** F2 closes once this split is accepted and the D12
 fix is scheduled as v1 work.
 
-> **Update (D12 v1 DELIVERED, code):** the full D12 v1 scope has now been implemented across
-> two PRs — PR #841 (cross-cycle fail-open) and the D12-v1 PR (required-phase completeness +
-> `light` planner-exposure). Migration **209** adds canonical `exam_phases.phase_kind`
-> (D05 §1) and `exam_cycles.planner_activation_enabled` (canonical Study-OS/planner exposure
-> authority, distinct from `exams.is_active`). Step 9 now: gates required-phase completeness on
-> canonical **classification** of every non-cancelled selected-cycle phase; marks `light` review_activate
-> `not_applicable` unless the cycle is exposed; and reaches `ready` on the real minimum. **Scope
-> boundary held:** the deeper per-phase D05 evidence-policy engine (D05 §2–5) remains a separate
-> contract (gated on D06/D08), and planner-path enforcement of the exposure flag is a separate
-> rollout — neither is required for the D12 v1 gate. VALIDATION PENDING: live apply of migration
-> 209 + operator classification/exposure data.
+> **Update (D12 v1 IN PROGRESS — operator scope decision required):** PR #841 (cross-cycle
+> fail-open) is merged. PR #843 adds migration **210** (`exam_phases.phase_kind` D05 §1 +
+> `exam_cycles.planner_activation_enabled`) and wires Step 9 to gate required-phase completeness
+> on canonical phase **classification** and `light` applicability on the exposure flag. Review of
+> #843 flagged **two contract blockers that block calling D12 v1 delivered**:
+> 1. **Completeness ≠ classification.** D05/D12 define "required phases complete" as satisfying the
+>    full D05 evidence policy (phase-kind-specific evidence + independent predicates), not
+>    classification alone; classification-only is still a false-ready path. But D05 §2–5 (the
+>    evidence-policy engine) is, by D05's own boundary, gated on **D06 and D08** — which this very
+>    document defers to **v2**. So genuinely completing D12 v1's completeness half requires either
+>    pulling D06/D08 into v1, or an operator-approved amendment narrowing D12 v1 completeness to
+>    canonical classification.
+> 2. **Exposure authority not canonical.** `study_os/planner.py::_compute_plan()` does not consume
+>    `planner_activation_enabled`, so readiness could mark `light` N/A while the planner still runs.
+>    Readiness + planner must share the authority (land planner enforcement + backfill together), or
+>    `light` applicability stays fail-closed/open.
+>
+> **Pending operator decision** (see PR #843): (A) authorize the classification-level D12 v1
+> boundary + shared-authority plan via a decision-record amendment; (B) expand v1 scope to the full
+> D05 evidence engine + D06/D08 + planner enforcement; or (C) keep D12 partial and fail-closed,
+> landing migration 210 columns as forward scaffolding only.
 
 ---
 
