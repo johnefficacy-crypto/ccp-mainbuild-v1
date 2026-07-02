@@ -1,4 +1,4 @@
-﻿---
+---
 audit_type: f3_extraction_archive_race_validation
 status: PASS
 validation_date: 2026-07-02
