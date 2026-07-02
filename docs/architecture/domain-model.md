@@ -1,6 +1,6 @@
 # Database Domain Model: Recruitment vs Exam
 
-_Last updated: 2026-06-17_
+_Last updated: 2026-07-02_
 
 ## Current model
 
@@ -92,6 +92,33 @@ Before adding a foreign key, decide which entity the table belongs to:
 
 Do not add both columns unless there is a documented bridge use case and a
 clear owner for keeping them consistent.
+
+## Shared content vs applicability vs requirements (added 2026-07-02)
+
+Some content is **canonical and reusable across exams** (e.g. the mock question
+bank, English writing prompts). For such content, three scopes are kept
+**separate** and must not be conflated:
+
+| Scope | Meaning | Keyed by | Example table |
+|---|---|---|---|
+| **Content (canonical)** | The reusable item itself | subject → topic → microtopic | `writing_prompts`, `mock_question_bank` |
+| **Applicability** | Which exams/families/phases may use the item | `exam_family_id` / `exam_id` / `exam_phase_id` | `writing_prompt_targets` |
+| **Requirements** | An exam's official cycle/phase rules | `exam_id` / `exam_cycle_id` / `exam_phase_id` | `exam_descriptive_requirements` |
+
+**Applicability precedence:** `phase-specific > exam-specific > exam-family >
+globally-applicable (no mapping row)`.
+
+**Applicability is evergreen** — it does **not** carry `exam_cycle_id`.
+Canonical content survives cycles; cycle-specific rules belong in the
+requirements scope, never the applicability mapping.
+
+Shared-content tables use a **nullable `exam_id`** so an item can exist without
+belonging to any single exam. Precedent: `mock_question_bank.exam_id`
+(`references exams(id) on delete set null`, migration 136). Migration 214 makes
+`writing_prompts.exam_id` nullable to adopt the same shared-content semantics;
+its exam applicability is carried by `writing_prompt_targets`, not by the FK
+column. This does not change entity canonicity — `exam_id` still references
+`public.exams(id)`; it is only optional.
 
 ## Agent instruction
 

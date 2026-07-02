@@ -413,6 +413,14 @@ Architecture doc: `docs/architecture/english-writing-practice.md`.
 Delivery tracked in `docs/status/career-copilot-checklist.md` (Lane H rows).
 PR plan: Lane H in `docs/status/career-copilot-pr-plan.md`.
 
+> **REVISION 2026-07-02 — content scoping (migration 214).** Canonical writing
+> prompts are **subject-scoped** shared content (`writing_prompts.exam_id` is
+> now NULLABLE, mirroring `mock_question_bank`). Exam applicability is a
+> separate mapping (`writing_prompt_targets`, precedence phase > exam > family >
+> global; evergreen, no cycle). Prompts are authored/governed in the shared
+> **Content Studio**, NOT in Exam Workspace. Any "Prompt Bank tab in Exam
+> Workspace" plan is withdrawn. See `docs/architecture/content-studio.md`.
+
 ### EWP-1. Practice sessions are not mock attempts
 
 `writing_sessions` / `writing_session_units` / `writing_unit_versions` are

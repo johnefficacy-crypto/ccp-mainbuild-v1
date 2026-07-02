@@ -94,11 +94,11 @@ The repo has no separate `microtopics` table. All subject/topic/microtopic rows 
 
 ### 4.1 `writing_prompts`
 
-Reviewed exercise content. Prompts are not created by the aspirant or the planner. They are authored in the Exam Workspace CMS and flow through the existing review lifecycle.
+Reviewed exercise content. Prompts are not created by the aspirant or the planner. They are authored and governed in the shared **Content Studio** admin surface (see §17 and `docs/architecture/content-studio.md`) and flow through the existing review lifecycle. Canonical identity is **subject-scoped** (`subject_id`/`topic_id`/`microtopic_id`); as of migration 214 `exam_id` is **nullable** and exam applicability is carried by `writing_prompt_targets` (§17.2), not by this column.
 
 ```sql
 id                      uuid primary key
-exam_id                 uuid not null references exams(id)
+exam_id                 uuid references exams(id)        -- NULLABLE (migration 214); applicability lives in writing_prompt_targets
 exam_cycle_id           uuid references exam_cycles(id)
 exam_phase_id           uuid references exam_phases(id)
 subject_id              uuid not null references subjects(id)
@@ -1749,7 +1749,62 @@ Move to paragraph or essay modes when these conditions pass — not after a fixe
 
 ## 17. Prompt content ownership
 
-Initial prompts are authored as embedded content in the existing Exam Workspace CMS. No new admin sidebar destination. The no-new-surface rule applies to admin surfaces too.
+> **REVISED 2026-07-02 (content-scoping architecture, migration 214).** The
+> earlier instruction — "prompts are authored as embedded content in the Exam
+> Workspace CMS" — is **withdrawn**. Canonical prompts are **subject-scoped**
+> shared content, not exam-owned content, and are authored and governed in the
+> consolidated **Content Studio** admin surface. See
+> `docs/architecture/content-studio.md`. This is a deliberate revision of a
+> locked decision, authorized by the product owner — not a silent workaround.
+
+### 17.1 Three scopes (content vs applicability vs requirements)
+
+Writing content is governed by three **separate** scopes. Do not conflate them:
+
+| Scope | Question it answers | Storage | Keyed by |
+|---|---|---|---|
+| **Content (canonical)** | "What is this prompt?" | `writing_prompts` | `subject_id` → `topic_id` → `microtopic_id` |
+| **Applicability** | "Which exams may use it?" | `writing_prompt_targets` (migration 214) | `exam_family_id` / `exam_id` / `exam_phase_id` |
+| **Requirements** | "What are this exam/cycle/phase's official rules?" | `exam_descriptive_requirements` (§4.2) | `exam_id` / `exam_cycle_id` / `exam_phase_id` / `stream_key` |
+
+**Canonical content is subject-scoped.** A prompt's identity is
+`subject_id`/`topic_id`/`microtopic_id`; it is reusable across many exams. As of
+migration 214, `writing_prompts.exam_id` is **NULLABLE** — a canonical prompt
+need not belong to any exam. This mirrors the shared-content semantics already
+used by the mock question bank (`136_mock_question_workflow.sql`, where
+`exam_id references exams(id) on delete set null`).
+
+### 17.2 Applicability model (`writing_prompt_targets`)
+
+Applicability is a **many-to-many mapping**, never content duplication. One
+prompt applies to many exams/families/phases via `writing_prompt_targets` rows.
+Resolution precedence, most specific first:
+
+```
+phase-specific  >  exam-specific  >  exam-family  >  globally-applicable (no target rows)
+```
+
+A prompt with **no** target rows is globally applicable to every exam.
+Applicability is **evergreen** — the mapping carries **no `exam_cycle_id`**,
+because canonical content survives cycles. Cycle-specific rules stay in
+`exam_descriptive_requirements`.
+
+The mapping table is service-role-managed (RLS enabled, no client allow policy).
+The applicability resolver (a later PR) runs under the service role; aspirant
+surfaces receive its already-filtered, verified-only result, never raw target
+rows.
+
+### 17.3 Requirements stay in `exam_descriptive_requirements`
+
+Requirements (word limits, marks, duration, format, sections, feedback policy)
+remain exam/cycle/phase-scoped in `exam_descriptive_requirements` (§4.2),
+unchanged by this revision.
+
+### 17.4 Lifecycle and minimum bank (unchanged)
+
+The `reviewer_status = 'verified'` → `is_active = true` lifecycle (§4.1b) is
+unchanged. All prompts must pass the reviewer lifecycle
+(`reviewer_status = 'verified'`) before `is_active` can be set to `true`.
 
 Minimum reviewed prompt bank before aspirant launch:
 
@@ -1760,5 +1815,3 @@ Minimum reviewed prompt bank before aspirant launch:
 50 vocabulary-in-context prompts
 20 scaffolded paragraph prompts
 ```
-
-All prompts must pass the reviewer lifecycle (`reviewer_status = 'verified'`) before `is_active` can be set to `true`.

@@ -37,6 +37,14 @@ This is not a label change. It is a structural consolidation. After I8-C is merg
 
 **No new top-level destination unless it removes at least two existing top-level destinations.**
 
+> **Applied 2026-07-02 — Content Studio consolidation.** A new **Content Studio**
+> admin destination is authorized under this rule because it **removes 3**
+> existing top-level Mock Content destinations (`/admin/mocks/questions`,
+> `/admin/mocks/review-queue`, `/admin/mocks/import`) and **adds 1** (net −2).
+> Canonical content (incl. writing prompts) is authored there, not in
+> Exam Workspace. The nav/routing consolidation is a later serial-delivery PR.
+> See `docs/architecture/content-studio.md`.
+
 The following are classified as surfaces and are therefore prohibited from being added:
 
 - a separate portfolio dashboard
