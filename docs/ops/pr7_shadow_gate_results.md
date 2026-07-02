@@ -117,10 +117,16 @@ only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
 - **[P2 RESOLVED]** `verify_mastery_fingerprint.sh` cross-checks the recorded
   digest across the manifest / pr7 / checklist AND requires a pinned SHA
   (`EXPECTED_SHA`, or `SKIP_SHA=1` for a content-only check).
-- **[OPEN — OPERATOR ONLY]** PR #800 remains `CODE-FIXED / VALIDATION PENDING`
-  (its three staging checks unchecked) and the 34 → 36 manifest expansion is
-  PROPOSED pending operator approval. Per AGENTS.md the gate stays FREEZE PENDING
-  until the operator validates #800 on staging and approves the boundary.
+- **[CODE-FIXED, VALIDATION PENDING - 2026-07-02 staging failure]**
+  The first PR #800 staging check exposed a frontend-origin defect:
+  authenticated `POST /api/study/mocks/attempts/{id}/events` carried
+  `question.visited` but was sent to the Vercel frontend origin and returned
+  HTTP 405. `MockAttemptShell.jsx` now initializes the direct-fetch event bus
+  with the configured backend origin (`BACKEND_URL`). Regression tests and
+  the production frontend build pass locally. All three staging checks remain
+  unchecked until this remediation is deployed and revalidated. The 36-file
+  manifest expansion remains PROPOSED pending operator approval; the gate
+  stays FREEZE PENDING.
 
 **Reference fingerprint (PR #803 branch, 36 files) — NOT the freeze /
 window_start hash; re-pin to the post-merge main SHA at window_start:**

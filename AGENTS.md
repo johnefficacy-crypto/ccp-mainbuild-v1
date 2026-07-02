@@ -413,6 +413,29 @@ Architecture doc: `docs/architecture/english-writing-practice.md`.
 Delivery tracked in `docs/status/career-copilot-checklist.md` (Lane H rows).
 PR plan: Lane H in `docs/status/career-copilot-pr-plan.md`.
 
+> **REVISION 2026-07-02 — content scoping (migration 214).** Canonical writing
+> prompts are **subject-scoped** shared content; migration 214 **DROPS** the
+> exam-scope columns (`exam_id`, `exam_cycle_id`, `exam_phase_id`) from
+> `writing_prompts` (backfilling `writing_prompt_targets` first). Exam
+> applicability is carried **solely** by the mapping table
+> `writing_prompt_targets`, which is **DEFAULT-DENY**: a prompt is applicable
+> **IFF** it has an `applicability_status='active'` matching target; **no active
+> target ⇒ NOT applicable (unassigned), never global**. "Global" is an
+> **explicit** capability (`is_global boolean` column), never implied by absent
+> rows — the earlier "no rows = global" baseline was fail-open and is
+> superseded. Exactly one of {global, family, exam, phase} per row
+> (`CHECK num_nonnulls(...) + (is_global)::int = 1`), null-safe unique identity
+> incl. `is_global`; precedence phase > exam > family > global; `excluded`
+> subtracts from an explicit active broader scope; `pending_review` inert;
+> evergreen (no cycle). **Legacy cycle-scoped prompts are QUARANTINED**
+> (`pending_review`, `source_basis='legacy_cycle_quarantine'`, cycle in
+> `metadata`), not converted to evergreen targets. **Activation gate is
+> migration-enforced:** 214 sets `is_active=false` on all prompts (fail-closed)
+> until the resolver + enforcement + public-read-policy replacement land.
+> Prompts are authored/governed in the shared **Content Studio**, NOT in Exam
+> Workspace. Any "Prompt Bank tab in Exam Workspace" plan is withdrawn. See
+> `docs/architecture/content-studio.md`.
+
 ### EWP-1. Practice sessions are not mock attempts
 
 `writing_sessions` / `writing_session_units` / `writing_unit_versions` are

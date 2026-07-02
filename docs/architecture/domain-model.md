@@ -1,6 +1,6 @@
 # Database Domain Model: Recruitment vs Exam
 
-_Last updated: 2026-06-17_
+_Last updated: 2026-07-02_
 
 ## Current model
 
@@ -92,6 +92,52 @@ Before adding a foreign key, decide which entity the table belongs to:
 
 Do not add both columns unless there is a documented bridge use case and a
 clear owner for keeping them consistent.
+
+## Shared content vs applicability vs requirements (added 2026-07-02)
+
+Some content is **canonical and reusable across exams** (e.g. the mock question
+bank, English writing prompts). For such content, three scopes are kept
+**separate** and must not be conflated:
+
+| Scope | Meaning | Keyed by | Example table |
+|---|---|---|---|
+| **Content (canonical)** | The reusable item itself | subject → topic → microtopic | `writing_prompts`, `mock_question_bank` |
+| **Applicability** | Which exams/families/phases may use the item | `is_global` / `exam_family_id` / `exam_id` / `exam_phase_id` | `writing_prompt_targets` |
+| **Requirements** | An exam's official cycle/phase rules | `exam_id` / `exam_cycle_id` / `exam_phase_id` | `exam_descriptive_requirements` |
+
+**Applicability precedence:** `phase-specific > exam-specific > exam-family >
+global`.
+
+**Applicability is DEFAULT-DENY (fail-closed).** A canonical item is applicable to
+an exam/phase context **IFF** it has an `applicability_status='active'` matching
+target: an active `is_global` row (applies everywhere) OR an active
+family/exam/phase row matching the context. **No active target ⇒ NOT applicable
+(unassigned) — never global.** "Global" is an **explicit** capability
+(`is_global=true`, all scope columns NULL), never implied by the absence of rows
+(the earlier "no mapping row = global" rule was fail-open and is superseded).
+Each row names exactly one of {global, family, exam, phase}. `excluded` rows
+subtract a narrower scope from an explicit active broader scope; `pending_review`
+rows are inert.
+
+**Applicability is evergreen** — it does **not** carry `exam_cycle_id`.
+Canonical content survives cycles; cycle-specific rules belong in the
+requirements scope, never the applicability mapping. Legacy prompts that carried
+an `exam_cycle_id` are **quarantined** (`pending_review`) by the 214 backfill
+rather than converted to evergreen targets.
+
+A shared-content table may either keep a **nullable `exam_id`** (so an item can
+exist without belonging to any single exam — e.g. `mock_question_bank.exam_id`,
+`references exams(id) on delete set null`, migration 136) **or** carry no
+exam-scope column at all, deferring applicability entirely to the mapping table.
+Migration 214 takes the latter, stronger stance for `writing_prompts`: the
+exam-scope columns (`exam_id`, `exam_cycle_id`, `exam_phase_id`) are **DROPPED**,
+and exam applicability is carried **solely** by `writing_prompt_targets`. This
+eliminates dual authority (no FK column can contradict a mapping row). Migration
+214 backfills a target row for each legacy exam-scoped prompt **before** dropping
+the columns (non-cycle prompts → `active`; cycle-scoped prompts → `pending_review`
+quarantine with the cycle preserved in `metadata`), so no assignment is lost.
+Entity canonicity is preserved — the mapping's `exam_id` still references
+`public.exams(id)`.
 
 ## Agent instruction
 

@@ -2,11 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../lib/api";
 import { supabase } from "../../../lib/supabase";
+import { BACKEND_URL } from "../../../shared/config/env";
 import { eventBus } from "./attemptEventBus";
 import useAnswerSync, { SYNC } from "./useAnswerSync";
 import AnswerSyncIndicator from "./AnswerSyncIndicator";
 
 const DEBOUNCE_MS = 600;
+const MOCK_ATTEMPT_API_BASE = `${BACKEND_URL.replace(/\/+$/, "")}/api/study/mocks/attempts`;
 
 function formatTime(sec) {
   if (sec <= 0) return "0:00";
@@ -54,7 +56,7 @@ export default function MockAttemptShell() {
     try {
       eventBus.init({
         attemptId,
-        apiBase: "/api/study/mocks/attempts",
+        apiBase: MOCK_ATTEMPT_API_BASE,
         getAuthToken: async () => {
           try {
             const { data } = await supabase.auth.getSession();

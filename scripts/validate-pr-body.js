@@ -52,7 +52,7 @@ function isEmptyOrPlaceholder(content, section) {
 
 function fail(msg) { console.error(`❌ ${msg}`); process.exitCode = 1; }
 
-const body = getBody();
+const body = getBody().replace(/\r\n/g, '\n');
 
 requiredSections.forEach((section) => {
   const content = sectionContent(body, section);
