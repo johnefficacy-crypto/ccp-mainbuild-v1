@@ -61,6 +61,11 @@ jest.mock("../useAnswerSync", () => ({
 
 jest.mock("../AnswerSyncIndicator", () => ({ __esModule: true, default: () => null }));
 
+jest.mock("../../../../shared/config/env", () => ({
+  __esModule: true,
+  BACKEND_URL: "https://api.example.test/",
+}));
+
 import MockAttemptShell from "../MockAttemptShell";
 
 const ATTEMPT = {
