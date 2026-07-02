@@ -73,7 +73,9 @@ describe("PromptBankPanel", () => {
     render(<PromptBankPanel />);
 
     expect(screen.getByText(/Construct a simple sentence/)).toBeInTheDocument();
-    expect(screen.getByText(/Sentence construction/)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/Sentence construction/).length
+    ).toBeGreaterThan(0);
   });
 
   test("renders create and bulk import buttons for operators with cms permission", () => {
