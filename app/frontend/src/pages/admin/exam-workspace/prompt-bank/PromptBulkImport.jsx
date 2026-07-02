@@ -109,13 +109,11 @@ export default function PromptBulkImport({ examId, onImport, onClose }) {
     const f = e.target.files?.[0];
     if (!f) return;
 
-    setFile(f);
     setParseError("");
     setImporting(true);
 
     try {
       const parsed = await parseImportFile(f);
-      setRows(parsed);
 
       const validated = parsed.map((row) => ({
         row,
