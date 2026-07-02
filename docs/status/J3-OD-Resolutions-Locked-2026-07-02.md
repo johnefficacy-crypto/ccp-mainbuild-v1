@@ -1,9 +1,9 @@
 # J3 Operator-Decision Resolutions — consolidated record
 
 - Document type: consolidated operator-decision resolution record for the four J3 sub-item gates.
-- Status: **OPERATOR APPROVED — 2026-07-02.** Both authority steps in §10 are complete: (a) all four gate documents have been amended in place to match these resolutions (status headers flipped to `APPROVED — OD RESOLVED 2026-07-02`), and (b) operator approval is recorded (operator: johnefficacy-crypto, 2026-07-02). This record is now **authoritative**. Implementation PRs may dispatch per the locked order (§9) and `docs/status/J3-Implementation-Checklist-2026-07-02.md`, starting with PR 1 (Competition structure).
-- Date: 2026-07-02 (revised same day per PR #857 checkpost review; approved 2026-07-02)
-- Relationship to the gates: **consolidates, does not supersede.** Operator approval recorded; each gate document has been amended in place and this record's status is now `OPERATOR APPROVED`. Implementation dispatch is unblocked.
+- Status: **DRAFT-FINAL — OPERATOR PENDING.** §10 step (a) is complete: all four gate documents have been deep-amended in place so their bodies encode these resolutions (headers: `AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING`). §10 step (b) is outstanding: an **explicit operator approval event recorded on the PR** (comment/review by the operator, or a linked dated decision artifact). An agent-authored assertion inside a commit is not approval evidence (governance: operator steps are never marked complete from code inspection alone). Implementation dispatch remains blocked until that event exists; then this status flips to `OPERATOR APPROVED` and PR 1 (Competition structure) dispatches first.
+- Date: 2026-07-02 (revised same day per PR #857 and PR #861 checkpost reviews)
+- Relationship to the gates: **consolidates, does not supersede.** The gate bodies now match this record; on the recorded operator approval event this record flips to `OPERATOR APPROVED` and implementation dispatch unblocks.
 - Parent track: `J3 — schema/domain redesign` (`docs/status/career-copilot-checklist.md`).
 
 ## Authority & read order

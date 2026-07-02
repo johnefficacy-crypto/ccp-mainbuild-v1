@@ -1,7 +1,7 @@
 # Mixed-Format PDF Extraction Gate — J3 (extraction-architecture sub-item)
 
 - Document type: J3 implementation contract — mixed-format (page-level layout) PDF extraction architecture
-- Status: **APPROVED — OD RESOLVED 2026-07-02.** Operator sign-off recorded; resolutions folded in from docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §8. Every previously-PROPOSED lock is now LOCKED. Implementation per docs/status/J3-Implementation-Checklist-2026-07-02.md PR 3 (independent).
+- Status: **AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING.** Body reconciled with docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §8 (2026-07-02). Implementation remains BLOCKED until explicit operator approval is recorded on the PR.
 - Date: 2026-07-02
 - Parent track: `J3 — schema/domain redesign` (checklist rows "Mixed-format PDF support DEFERRED — EXTRACTION ARCHITECTURE" and "mixed-format PDF extraction" under the J3 row)
 - Authority / read order (CLAUDE.md): `graphify-out/GRAPH_REPORT.md`; `docs/00-ai-context.md`; `AGENTS.md`; `docs/architecture/domain-model.md`; this gate
@@ -12,9 +12,9 @@
 
 ## How to use this document
 
-This gate **reconciles the existing extraction implementation** — it does not design from scratch. Every section states a LOCKED decision or an exact specification. Items marked **OPERATOR DECISION REQUIRED** must be resolved by operator approval and not guessed.
+This gate **reconciles the existing extraction implementation** — it does not design from scratch. Every section states a LOCKED decision or an exact specification. The body has been reconciled with the approved resolutions in `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §8; the operator decisions below are RESOLVED (OD-1 = B, OD-2 = B1, OD-3 = N/A-now).
 
-**No implementation PR may be dispatched until this document is OPERATOR APPROVED.**
+Implementation is **PR 3** in `docs/status/J3-Implementation-Checklist-2026-07-02.md` — independent, and may run in parallel with PR 1/PR 2. **Dispatch is blocked ONLY on explicit operator sign-off recorded on the PR.**
 
 **Serial delivery rule (locked):** this work touches the extraction dispatch/pipeline and the `document_assets` classification surface — one owner's sequential work, no fan-out.
 
@@ -90,9 +90,9 @@ This gate **reconciles the existing extraction implementation** — it does not 
 
 ---
 
-## Section C — OPERATOR DECISIONS — RESOLVED
+## Section C — OPERATOR DECISIONS — RESOLVED (pending sign-off)
 
-The checklist framed this as an either/or: **(A) support page-range classification** OR **(B) reject mixed files clearly and document a temporary workaround.** This gate presented both and a recommendation. **The operator has selected Option B** (see the resolved OD block below). Options A and B are retained below for context; the resolved decisions are authoritative.
+The checklist framed this as an either/or: **(A) support page-range classification** OR **(B) reject mixed files clearly and document a temporary workaround.** The resolutions in `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §8 select **Option B with B1 admin-declared detection only**. Options A and B are retained below for context; the resolved decisions are authoritative.
 
 ### Option A — Page-range format classification (full support)
 
@@ -123,25 +123,25 @@ Add a per-range format model, dispatch the extractor per segment, and skip/route
 - **Migration:** one forward migration (next free slot at implementation time — do not hardcode; ≥ current max, verify against landed migrations) creating the table, the non-overlap constraint, indexes (`document_id`, `(document_id, page_start)`), RLS, and `notify pgrst`. **No backfill** — absence of segment rows preserves today's single-format path.
 - **Cost:** classifier UI/logic, segment-aware dispatch, per-segment scope-fence errors, tests, admin surface to author ranges. Larger, and it commits us to per-segment maintenance.
 
-### Option B — Explicit clear rejection + documented temporary workaround (RECOMMENDED)
+### Option B — Explicit clear rejection + documented temporary workaround (SELECTED — OD-1)
 
 Keep one format per document. Detect that a file is mixed and **reject it loudly** with an actionable message; document the manual workaround (split the PDF into homogeneous per-format sub-documents, upload each with its own `structural_format`).
 
-- **Detection (deterministic, no AI):** a document-level guard. Two acceptable mechanisms (operator picks one at implementation; both deterministic):
-  - **B1 (admin-declared):** an explicit boolean/flag an admin sets when they know a file is mixed (e.g. `document_assets.metadata.mixed_format=true`, or reuse `structural_format='unknown'` to force classification). No detector required.
-  - **B2 (heuristic pre-check):** a deterministic sampling pre-pass (e.g. page-level column/word-density signature already available from `layout.detect_columns`) that flags inconsistency across sampled pages. Its output only *rejects*; it never labels or extracts.
-- **New scope-fence error (LOCKED shape if B is chosen):** add `ExtractionMixedFormatError(RuntimeError)` in `pipeline.py`, raised in the scope-fence block before OCR, with a message that (a) states the file appears to contain multiple formats, (b) instructs the admin to split it into homogeneous sub-documents (one `structural_format` each) or reclassify, and (c) links the workaround SOP doc.
+- **Detection (RESOLVED per OD-2 — B1 admin-declared ONLY):**
+  - **B1 (admin-declared, selected):** a validated explicit flag an admin sets when they know a file is mixed — `document_assets.metadata.mixed_format=true`. No detector required.
+  - **B2 (heuristic pre-check) — explicitly deferred, NOT part of the locked scope.** A deterministic sampling pre-pass may be revisited in a later gate; do not add it now.
+- **New scope-fence error (LOCKED shape):** add `ExtractionMixedFormatError(RuntimeError)` in `pipeline.py`, raised in the scope-fence block before any OCR, with a message that (a) states the file is declared mixed-format, (b) instructs the admin to split it into homogeneous sub-documents (one `structural_format` each) or reclassify, and (c) links the workaround SOP doc.
 - **Temporary workaround (documented):** admin splits the source PDF at the format boundary and uploads N homogeneous `document_assets` rows, each extracted independently by the existing pipeline. This is captured in an engineering SOP (e.g. `docs/engineering/mixed-format-pdf-workaround-v1.md`) and referenced by the error message.
 - **Review lifecycle:** untouched.
-- **Migration:** none required for B1 via `metadata` (JSONB already exists) — or a tiny nullable flag column if the operator prefers a typed field (then RLS re-verify). B2 requires no schema change.
+- **Migration:** none required for B1 via `metadata` (JSONB already exists) — unless a DB constraint is chosen for validating the flag (then RLS re-verify).
 - **Cost:** small, reversible, honors Trust > Speed / Determinism > Heuristics. Does not foreclose Option A later (segments can be added when the descriptive-format extractor tiers land).
 
-### Recommendation
+### Resolved path (per OD-1/OD-2)
 
-**Adopt Option B (explicit clear rejection + documented workaround) now.** Rationale:
+**Option B (explicit clear rejection + documented workaround), with B1 admin-declared detection ONLY.** Rationale:
 - v1 only extracts `mcq_bilingual_two_column` (PD-2). Until the Tier-2/Tier-3 extractors for essay/technical/vernacular formats exist, per-range classification would still route every non-MCQ segment to "skip" — Option A's extra machinery buys **no additional extracted content today**, only maintenance surface and mis-extraction risk.
 - Option B closes G-2/G-3 immediately (no silent garbage into review), is a small deterministic change, and is forward-compatible: `document_format_segments` (Option A) can be introduced in a later gate once a non-MCQ extractor is contracted.
-- Prefer **B2 with a B1 override** phrasing at implementation only if the operator wants automatic detection; otherwise **B1** (admin-declared) is the lowest-risk, fully deterministic default.
+- Detection is **B1 admin-declared only**: a validated `document_assets.metadata.mixed_format=true` flag. **B2 heuristic detection is explicitly deferred** and is not part of the recommended or implemented path.
 
 **OPERATOR DECISION — OD-1 (RESOLVED):** **Option B** — reject mixed PDFs loudly and document the split/re-upload workaround. (v1 applies one two-column MCQ strategy to every selected page and supports only `pyq_paper`; page-range infrastructure would not extract non-MCQ sections anyway.)
 **OPERATOR DECISION — OD-2 (RESOLVED):** **B1 admin-declared** detection via validated `document_assets.metadata.mixed_format=true`. Do **not** add B2 heuristic detection yet.
@@ -164,10 +164,9 @@ No migration required for the metadata approach (unless metadata validation need
 
 | Approach | Migration | RLS | Reviewer lifecycle |
 |---|---|---|---|
-| A | New `document_format_segments` table (+ non-overlap constraint, indexes, `notify pgrst`); next free slot, verify number at impl time; **no backfill** | New admin/service-role-only policy; verify via `pg_policies` before complete | Unchanged — `create_pyq_question` → `pending` → verified |
-| B1 (metadata flag) | None (reuse `document_assets.metadata` JSONB) | Unchanged (existing `document_assets` policies) | Unchanged |
-| B1 (typed column) | Small nullable `boolean` column on `document_assets` | Re-verify `document_assets` policies still cover it | Unchanged |
-| B2 (heuristic) | None | Unchanged | Unchanged |
+| **B1 metadata flag (SELECTED)** | None (reuse `document_assets.metadata` JSONB) — unless a DB constraint is chosen for the flag (then re-verify policies) | Unchanged (existing `document_assets` policies) | Unchanged — `create_pyq_question` → `pending` → verified |
+| A (deferred; recorded for later per OD-3) | New `document_format_segments` child table (+ non-overlap constraint, indexes, `notify pgrst`); next free slot, verify number at impl time; **NO backfill** | New admin/service-role-only policy; verify via `pg_policies` before complete | Unchanged |
+| B2 (heuristic) — deferred, out of scope | — | — | — |
 
 Migration discipline: migrations immutable once merged; every new table needs an RLS policy; do not mark live/operator steps complete from code inspection alone — use `OPERATOR PENDING` / `VERIFY DB` until live proof is captured.
 
@@ -175,49 +174,36 @@ Migration discipline: migrations immutable once merged; every new table needs an
 
 ## Section E — Acceptance tests
 
-### E.1 Common (both options)
+Locked scope (Option B, B1 only):
+
 ```
 [ ] a homogeneous mcq_bilingual_two_column document extracts exactly as today (no regression)
 [ ] all extracted questions land as reviewer_status='pending' via create_pyq_question (no bypass)
 [ ] no user-facing/verified write occurs from this feature (verified-only invariant)
 [ ] document_kind != 'pyq_paper' still rejected (ExtractionWrongDocumentKindError)
-```
-
-### E.2 If Option A (page-range)
-```
-[ ] overlapping segments rejected by the non-overlap constraint
-[ ] a document with segments {pp1-20 mcq_bilingual_two_column, pp21-40 essay_long_form} extracts ONLY pp1-20 as MCQ; pp21-40 recorded in pages_skipped with reason format_not_v1_eligible
-[ ] a segment with structural_format='unknown' raises classification-required scoped to its range
-[ ] a document with NO segment rows behaves exactly as the single-format path (backward compat)
-[ ] extraction_runs.metadata records the segment_map used
-[ ] pg_policies shows document_format_segments is service-role/admin only (no end-user read)
-[ ] per-question provenance (source_page/source_regions) is correct for the extracted segment
-```
-
-### E.3 If Option B (reject + workaround)
-```
-[ ] a file declared/detected as mixed raises ExtractionMixedFormatError BEFORE any OCR
-[ ] the error message names the split-and-reupload workaround and links the SOP doc
-[ ] no pyq_questions rows are created for a rejected mixed file (loud failure, no partial garbage)
-[ ] (B1) admin-declared mixed flag reliably triggers rejection
-[ ] (B2) deterministic pre-check flags an actually-mixed sample and does NOT flag a homogeneous file (no false-positive on the v1 corpus fixtures)
+[ ] a file with validated document_assets.metadata.mixed_format=true raises ExtractionMixedFormatError in the extraction pipeline scope fence BEFORE any OCR
+[ ] no pyq_questions rows are created for a rejected mixed file (loud failure, zero writes)
+[ ] the error message names the split-and-reupload workaround and links the SOP doc (docs/engineering/mixed-format-pdf-workaround-v1.md)
+[ ] the admin-declared mixed flag reliably triggers rejection (declaration control works end to end)
 [ ] splitting into homogeneous sub-documents lets each extract independently (workaround verified)
 ```
 
+No B2 heuristic tests — B2 is deferred (OD-2). Option A tests (segment table, non-overlap constraint, segment-aware dispatch) are deferred with Option A (OD-3 N/A-now); recorded for later: Option A would use a `document_format_segments` child table with a non-overlap constraint and **no backfill**.
+
 ---
 
-## Section F — Files to change (on approval)
+## Section F — Files to change (PR 3, locked scope: Option B + B1)
 
-| File | Change (A) | Change (B) |
-|---|---|---|
-| `app/supabase/migrations/<next>_*.sql` | new `document_format_segments` table + non-overlap constraint + indexes + RLS + `notify pgrst` | none (B1 metadata / B2) or small nullable flag column |
-| `app/backend/app/exam_intelligence/extraction/dispatch.py` | per-segment eligibility resolution | (B2) deterministic mixed-format signature helper |
-| `app/backend/app/exam_intelligence/extraction/pipeline.py` | segment-aware page dispatch; per-segment scope-fence errors; `pages_skipped` reasons | add `ExtractionMixedFormatError` + scope-fence guard before OCR |
-| `app/backend/app/exam_intelligence/extraction/run.py` / writer | record segment_map in run metadata | none (writer unchanged) |
-| admin classification surface (document_assets admin UI) | segment-range authoring UI | (B1) mixed-format declare control |
-| `docs/engineering/mixed-format-pdf-workaround-v1.md` | reference note | **create** — the temporary workaround SOP (required for B) |
-| backend tests | Section E.2 | Section E.3 |
-| `docs/status/career-copilot-checklist.md` | flip the two mixed-format rows from DEFERRED to the implemented status | same |
+| File | Change |
+|---|---|
+| `app/backend/app/exam_intelligence/extraction/pipeline.py` | add `ExtractionMixedFormatError` + scope-fence guard (validated `document_assets.metadata.mixed_format=true`) raised before any OCR; error message links the SOP doc |
+| admin classification surface (document_assets admin UI) | mixed-format declare control (admin sets the validated flag) |
+| `docs/engineering/mixed-format-pdf-workaround-v1.md` | **create in PR 3** — the temporary split-and-reupload workaround SOP referenced by the error message |
+| backend tests | Section E (locked-scope list) |
+| `app/supabase/migrations/<next>_*.sql` | none — unless a DB constraint is chosen for validating the flag |
+| `docs/status/career-copilot-checklist.md` | flip the two mixed-format rows from DEFERRED to the implemented status |
+
+Deferred (not in PR 3): B2 heuristic helper in `dispatch.py` (OD-2); Option A `document_format_segments` table, segment-aware dispatch, and run-metadata segment_map (OD-3 N/A-now — recorded: child table with non-overlap constraint, no backfill).
 
 ---
 
@@ -234,4 +220,4 @@ Migration discipline: migrations immutable once merged; every new table needs an
 
 ---
 
-*Status: APPROVED — OD RESOLVED 2026-07-02. Operator selected Option B (explicit clear rejection + documented workaround) with B1 admin-declared detection (`document_assets.metadata.mixed_format=true`), given v1 extracts only `mcq_bilingual_two_column`; Option A (page-range `document_format_segments`, no backfill) deferred to a later gate once a non-MCQ extractor tier is contracted. Resolved: OD-1 = B, OD-2 = B1, OD-3 = N/A-now (later Option A uses `document_format_segments` with no backfill). Implementation per docs/status/J3-Implementation-Checklist-2026-07-02.md PR 3 (independent).*
+*Status: AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING. Body reconciled with docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §8 (2026-07-02); resolutions select Option B (explicit clear rejection + documented workaround) with B1 admin-declared detection (`document_assets.metadata.mixed_format=true`), given v1 extracts only `mcq_bilingual_two_column`; Option A (page-range `document_format_segments`, no backfill) deferred to a later gate once a non-MCQ extractor tier is contracted. Resolved: OD-1 = B, OD-2 = B1, OD-3 = N/A-now (later Option A uses `document_format_segments` with no backfill). Implementation per docs/status/J3-Implementation-Checklist-2026-07-02.md PR 3 (independent, may run parallel to PR 1/2); dispatch remains BLOCKED until explicit operator approval is recorded on the PR.*

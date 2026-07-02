@@ -1,7 +1,7 @@
 # Evidence-Based Coverage Scoring Gate — J3 sub-item
 
 - Document type: J3 implementation contract — deterministic, evidence-derived `exam_topic_coverage` scoring, its review lifecycle, and its relationship to the already-locked `exam_topic_score_snapshots` pipeline.
-- Status: **APPROVED — OD RESOLVED 2026-07-02.** Operator sign-off recorded; resolutions folded in from docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5. Every previously-PROPOSED lock is now LOCKED. Implementation per docs/status/J3-Implementation-Checklist-2026-07-02.md PR 4 (migration slot after PR 2).
+- Status: **AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING.** Body reconciled with docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5 (2026-07-02). Implementation remains BLOCKED until explicit operator approval is recorded on the PR.
 - Date: 2026-07-02
 - Parent track: `J3 — schema/domain redesign` (checklist row: "evidence-based coverage scoring"), `DEFERRED — CONTRACT-FIRST`.
 - Authority: `docs/architecture/pyq-intelligence-v2.md` (scoring contracts, snapshot authority, "do not write directly into locked `exam_topic_coverage` from an AI job"); `docs/architecture/domain-model.md` (entity canonicity); `CLAUDE.md` invariants (Determinism > Heuristics, verified-only reads, primary-only PYQ frequency, no new AI writes).
@@ -11,9 +11,9 @@
 
 ## How to use this document
 
-This gate **reconciles the existing implementation** — a large evidence-scoring pipeline already exists (Section 0). It does not design from scratch. Every section states a LOCKED decision or an exact specification. The operator-decision items (OD-1…OD-6, OD-5a) are now **RESOLVED** (Section E) with the resolutions folded in from `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §5.
+This gate **reconciles the existing implementation** — a large evidence-scoring pipeline already exists (Section 0). It does not design from scratch. Every section states a LOCKED decision or an exact specification. The operator-decision items (OD-1…OD-6, OD-5a) are **RESOLVED (pending sign-off)** — Section E — with the resolutions folded in from `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §5.
 
-**Operator approval recorded 2026-07-02.** Implementation dispatches as PR 4 in `docs/status/J3-Implementation-Checklist-2026-07-02.md` (migration slot after PR 2).
+**Operator sign-off is PENDING.** Once approval is recorded on the PR, implementation dispatches as PR 4 in `docs/status/J3-Implementation-Checklist-2026-07-02.md` (migration slot after PR 2).
 
 **Serial delivery rule (locked):** J3 coverage scoring touches shared exam-intelligence write paths (`admin_exam_intel_manage.py`, `admin_exam_intel_cms.py`) and the score-snapshot computation module — one owner's sequential work, no fan-out.
 
@@ -77,14 +77,14 @@ The evidence pipeline (0.2) currently **consumes** locked `exam_topic_coverage` 
 | PD-2 | **Determinism + idempotency.** The derivation is a pure function of its inputs; identical inputs produce identical output and re-running writes nothing new (fingerprint-guarded, mirroring `score_snapshots.py`). |
 | PD-3 | **Draft-only writes; review before lock.** The job writes/updates `exam_topic_coverage` rows only in `reviewer_status='draft'`. Promotion `draft → pending_review → reviewed → locked` is operator-driven through the existing coverage review lifecycle. **No compute path ever writes or mutates a `locked` (or `reviewed`) coverage row** — satisfies CLAUDE.md "no new AI writes" and `pyq-intelligence-v2.md` P1. |
 | PD-4 | **Locked wins over recompute.** A topic whose coverage row is already `reviewed`/`locked` is never overwritten by the derivation; the job skips it (records a "would-differ" delta in `input_summary`/audit for operator visibility, but does not mutate). Manual `admin_review` locked rows are likewise preserved. |
-| PD-4a | **Row-ownership / conflict model (LOCKED — added per checkpost; corrects the PD-4 gap that only protected reviewed/locked).** **Uniqueness caveat (per Codex review):** the existing `exam_topic_coverage` unique indexes are *partial* — they only cover scopes where `exam_phase_id` is non-null (and the cycle-scoped variants); an **exam-wide** row (`exam_cycle_id` AND `exam_phase_id` both NULL) is NOT constrained, so manual and derived exam-wide rows can silently duplicate. This gate therefore does NOT rely on a blanket "one row per scope/topic" guarantee — enforcing it is a **precondition** (see OD-5 / migration decision): before the derivation may run on the exam-wide scope, either a partial unique index covering the all-NULL scope is added, or a separate delta table is used. Given that, ownership rules: (1) the derivation may write/update a row ONLY when that row is **derivation-owned** — identified by `source_basis ∈ {derived provenance set}` AND `model_version` set by the derivation (i.e. a row it previously created); (2) a row in ANY state (incl. `draft`) that is human/manual-authored (`source_basis ∈ {manual, admin_review}`) is NEVER overwritten — a manual `draft` is protected exactly like a locked row; (3) if the canonical scope/topic already has a manual or reviewed/locked row, the derivation does NOT create a second row — it records a **delta** (see PD-4b) instead of upserting, and MUST match-by-scope explicitly (not rely on the DB rejecting a duplicate) on the unconstrained exam-wide scope. |
-| PD-4b | **Comparison storage without violating uniqueness (LOCKED requirement; mechanism = OD-5).** "Would-differ" / comparison-vs-locked evidence is stored WITHOUT a parallel `exam_topic_coverage` row — options: an audit/delta record, a snapshot delta field, or the `input_summary` blob. A shadow `draft` row **alongside** a locked row is NOT implementable on the no-new-table path (uniqueness); OD-5 must therefore either drop the shadow-alongside option or accept a schema change (a separate delta/shadow table). |
-| PD-5 | **Provenance.** Derived draft rows set `source_basis='pyq_analysis'` (evidence-only) or `'hybrid'` (evidence + verified syllabus mention), and set `model_version` to the derivation version. `'manual'` / `'admin_review'` remain reserved for human-entered rows. (Whether to add a distinct `'evidence_derived'` enum value is **OD-1**.) |
+| PD-4a | **Row-ownership / conflict model (LOCKED — added per checkpost; corrects the PD-4 gap that only protected reviewed/locked).** **Uniqueness caveat (per Codex review):** the existing `exam_topic_coverage` unique indexes are *partial* — they only cover scopes where `exam_phase_id` is non-null (and the cycle-scoped variants); an **exam-wide** row (`exam_cycle_id` AND `exam_phase_id` both NULL) is NOT constrained, so manual and derived exam-wide rows can silently duplicate. Enforcing it is a **precondition, resolved by OD-5a/§5.5**: the exam-wide partial unique index (`(exam_id, topic_id) WHERE exam_cycle_id IS NULL AND exam_phase_id IS NULL`) ships in the same atomic migration as the `source_basis` CHECK extension, **before** exam-wide derivation is enabled. Ownership rules: (1) the derivation may write/update a row ONLY when that row is **derivation-owned** — identified by `source_basis = 'evidence_derived'` AND `model_version` set by the derivation (i.e. a row it previously created); (2) a row in ANY state (incl. `draft`) with any other `source_basis` (`manual`, `admin_review`, `official_syllabus`, `pyq_analysis`, `hybrid`, `model_generated`) is NEVER overwritten — a manual `draft` is protected exactly like a locked row; (3) if the canonical scope/topic already has such a row, the derivation does NOT create a second row — it records a **delta** (see PD-4b) instead of upserting, and MUST match-by-scope explicitly (not rely on the DB rejecting a duplicate). Full status × basis matrix: Section E §5.2. |
+| PD-4b | **Comparison storage without violating uniqueness (LOCKED; mechanism resolved by OD-5).** "Would-differ" / comparison-vs-current evidence is stored WITHOUT a parallel `exam_topic_coverage` row: the proposed-vs-current **delta** goes in the audit record or derivation-result metadata. **No parallel shadow coverage rows** — a shadow `draft` alongside a locked row is prohibited (and blocked by the uniqueness indexes). |
+| PD-5 | **Provenance (per OD-1).** Derived draft rows set `source_basis='evidence_derived'` (new value added to the `source_basis` **text CHECK constraint** — it is a CHECK today, not a PG enum) and set `model_version` to the derivation version. The pyq-vs-hybrid detail (evidence-only vs evidence + verified syllabus mention) is recorded in **metadata**, not in `source_basis`. All other basis values (`manual`, `admin_review`, `official_syllabus`, `pyq_analysis`, `hybrid`, `model_generated`) remain reserved for human-entered/legacy rows — the derivation never writes them. |
 | PD-6 | **Single source of evidence numbers.** The frequency/high-yield/priority signals come from the **locked `exam_topic_score_snapshots`** authority, NOT a parallel recomputation, to guarantee one number across planner, snapshot, and coverage surfaces (resolves §0.3 circularity — see Section D). |
 
 ---
 
-## Section C — Deterministic scoring model (LOCKED shape; two knobs are OD)
+## Section C — Deterministic scoring model (LOCKED shape)
 
 **Input** (per topic, per scope `exam_id` + `exam_phase_id|NULL`): the **latest locked** `exam_topic_score_snapshots` row (`exam_priority_score`, `is_high_yield`, `confidence_score`, `score_components`, `evidence_count`) plus verified `syllabus_topic_mentions` count for the topic.
 
@@ -94,10 +94,11 @@ The evidence pipeline (0.2) currently **consumes** locked `exam_topic_coverage` 
 exam_priority_score := locked_snapshot.exam_priority_score           # already 0..100, deterministic
 is_high_yield       := locked_snapshot.is_high_yield
 confidence_score    := locked_snapshot.confidence_score
-coverage_depth      := f(verified_syllabus_mention_count, evidence_count)   # deterministic bucketing — OD-2
-source_basis        := 'pyq_analysis' | 'hybrid'                     # PD-5 / OD-1
+coverage_depth      := f(verified_syllabus_mention_count, evidence_count)   # total bucket table — §5.1 (Section E)
+source_basis        := 'evidence_derived'                             # PD-5 / OD-1 (CHECK-extended value)
 model_version       := DERIVATION_VERSION
-metadata.evidence   := { snapshot_id, evidence_count, syllabus_mentions, fingerprint }
+metadata.evidence   := { snapshot_id, evidence_count, syllabus_mentions, fingerprint,
+                         derivation_basis: 'pyq' | 'hybrid' }         # pyq-vs-hybrid detail lives here, not in source_basis
 reviewer_status     := 'draft'
 ```
 
@@ -108,22 +109,18 @@ reviewer_status     := 'draft'
 
 ---
 
-## Section D — Relationship to `exam_topic_score_snapshots` (LOCKED + one OD)
+## Section D — Relationship to `exam_topic_score_snapshots` (LOCKED; OD-3 RESOLVED)
 
-The circularity in §0.3 (snapshot reads locked coverage as `coverage_component`; J3 would derive coverage from the snapshot) MUST be broken deterministically:
+The circularity in §0.3 (snapshot reads locked coverage as `coverage_component`; J3 derives coverage from the snapshot) is broken deterministically:
 
 - **LOCKED:** J3 coverage derivation reads the **locked snapshot only** and writes a **draft coverage** row. Because it writes only `draft` and the snapshot's `coverage_component` reads only `locked` coverage, a freshly derived draft cannot feed back into the snapshot until an operator locks it — no automatic feedback loop. One human review sits on every edge.
-- **OD-3 (OPERATOR DECISION REQUIRED):** the residual steady-state loop — once a derived coverage row is locked, the next snapshot recompute will fold it back into `coverage_component`, which then re-projects into coverage. Options:
-  - (a) **Break the input edge:** stop `score_snapshots.py` from reading `exam_topic_coverage` for topics whose coverage `source_basis` is evidence-derived (avoid self-reinforcement); keep it only for genuinely manual/`admin_review` coverage.
-  - (b) **Keep the edge, rely on fingerprint idempotency + human review** at each lock to damp it.
-  - (c) **Zero the `coverage_component` for evidence-derived rows** so priority is frequency+evidence only.
-  This changes merged snapshot behavior, so it is operator-gated and MUST NOT be guessed.
+- **OD-3 (RESOLVED — Option A, break the input edge):** the residual steady-state loop — once a derived coverage row is locked, the next snapshot recompute would fold it back into `coverage_component` and re-project into coverage — is eliminated at the source: `score_snapshots.py` MUST exclude `source_basis='evidence_derived'` coverage from its `coverage_component` input; the component keeps reading only genuinely human-authored coverage (`manual`/`admin_review`/etc.). This is a **read-model / scoring invariant enforced by unit/integration tests** — it is NOT a row-promotion validator check.
 
 ---
 
-## Section E — OPERATOR DECISIONS — RESOLVED
+## Section E — OPERATOR DECISIONS — RESOLVED (pending sign-off)
 
-Resolved 2026-07-02, folded in from `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §5.
+Resolved 2026-07-02, folded in from `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §5. Operator sign-off on the PR is still pending (see status header).
 
 | ID | Resolved decision |
 |---|---|
@@ -184,17 +181,20 @@ create unique index <name>
 
 ---
 
-## Section F — Migration decision (LOCKED shape; gated on OD-1)
+## Section F — Migration decision (LOCKED per OD-1 / OD-5a / §5.5)
 
-- **If OD-1 = reuse existing enum:** *no migration required* — `exam_topic_coverage` already has `source_basis`, `model_version`, `reviewer_status`, `reviewed_by/at`, `review_notes`, and the necessary indexes (030). This is the preferred minimal path.
-- **If OD-1 = add `'evidence_derived'`:** one forward migration alters the `source_basis` CHECK constraint. **Migration number:** pick the next free slot at implementation time; do not hardcode from a stale branch. Migrations are immutable once merged.
+- **One atomic migration** (single file, atomic derivation precondition — §5.5; no benefit to splitting) containing BOTH:
+  1. Extension of the `exam_topic_coverage.source_basis` **text CHECK constraint** (not a PG enum) with `'evidence_derived'` (OD-1).
+  2. The **exam-wide partial unique index** `(exam_id, topic_id) WHERE exam_cycle_id IS NULL AND exam_phase_id IS NULL` (OD-5a / §5.3) — existing indexes constrain only cycle+phase and phase-only scopes; the all-NULL exam-wide scope is otherwise unconstrained.
+- **Fail-closed duplicate resolution (§5.3):** the migration carries a defensive `DO` block that raises a descriptive exception if any exam-wide `(exam_id, topic_id)` duplicate remains. Duplicate resolution is **manual/operator** — preflight report → operator selects the canonical row → merge legitimate evidence/notes → audited repair → record pre/post counts + selected IDs → apply the index. **Never auto-keep latest `reviewed_at`** (latest ≠ correct, especially manual vs. evidence-derived).
+- **Migration number:** pick the next free slot from the live `schema_migrations` ledger at implementation time; do not hardcode from a stale branch. Migrations are immutable once merged.
 - No new table. No new FK. Entity canonicity unchanged: this is `exam_id`-scoped exam-identity data (`public.exams`), never recruitment (`docs/architecture/domain-model.md`).
 
 ---
 
 ## Section G — RLS
 
-- `exam_topic_coverage` RLS already exists (migration 035 / hardening 195). J3 adds **no new table**, so no new policy is required in the reuse path. If OD-1 adds an enum value, RLS is unaffected (constraint-only change).
+- `exam_topic_coverage` RLS already exists (migration 035 / hardening 195). J3 adds **no new table**, so no new policy is required. The Section F migration (CHECK extension + unique index) does not affect RLS.
 - Verify before marking complete: `SELECT * FROM pg_policies WHERE tablename = 'exam_topic_coverage';` — confirm authenticated read is locked-only at the query layer and writes are service-role/definer-gated. Mark `VERIFY DB` until captured against live Supabase.
 
 ---
@@ -229,39 +229,62 @@ locked → reviewed (reopen, notes required)
 [ ] no draft/reviewed/rejected snapshot influences the derived coverage row
 [ ] primary-only frequency contract inherited (no re-implementation; parity with coverage.py)
 ```
-### I.3 No AI writes into locked coverage (PD-3, PD-4)
+### I.3 No AI writes into locked coverage + conflict rules (PD-3, PD-4, PD-4a, §5.2)
 ```
 [ ] derivation writes only reviewer_status='draft'
 [ ] a reviewed/locked coverage row is NEVER mutated by the job (skipped)
-[ ] manual/admin_review locked rows preserved; delta recorded in audit/metadata only
+[ ] §5.2 conflict matrix covered for EVERY source_basis × status combination:
+    manual/admin_review/official_syllabus (any status) → skip + delta;
+    pyq_analysis/hybrid (any status) → skip + delta (legacy human-entered);
+    model_generated (any status) → skip + flag for operator triage;
+    evidence_derived: draft → recompute/update; pending_review → skip + delta;
+    reviewed/locked → leave unchanged; rejected → recompute/update (back to draft)
+[ ] delta recorded in audit/derivation metadata only; NO shadow coverage row (PD-4b / OD-5)
 ```
-### I.4 Feedback-loop safety (Section D / OD-3 once chosen)
+### I.4 Feedback-loop safety (Section D / OD-3, Option A — test-enforced scoring invariant)
 ```
 [ ] a freshly derived draft does NOT feed the snapshot coverage_component until locked
-[ ] chosen OD-3 option behaves as specified (no runaway self-reinforcement across recompute cycles)
+[ ] score_snapshots.py excludes source_basis='evidence_derived' coverage from
+    coverage_component (unit/integration tests; NOT a promotion-validator check)
+[ ] no self-reinforcement across recompute cycles (derive → lock → recompute → re-derive is stable)
 ```
 ### I.5 Lifecycle + provenance (PD-5, Section H)
 ```
-[ ] derived draft carries source_basis + model_version + evidence metadata
+[ ] derived draft carries source_basis='evidence_derived' + model_version + evidence metadata
+    (incl. pyq-vs-hybrid derivation_basis in metadata)
 [ ] draft → pending_review → reviewed → locked transitions work via existing endpoints
 [ ] planner/aspirant reads still see locked-only coverage (coverage.py unchanged contract)
 ```
-### I.6 Scope isolation (Section C / OD-6)
+### I.6 Bucket totality (OD-2 / §5.1)
+```
+[ ] every valid (evidence_count, syllabus_mentions, is_high_yield) input maps to exactly one bucket
+[ ] deep fallback: evidence_count >= 10 failing any core predicate → deep
+[ ] no row written when syllabus_mentions = 0 AND evidence_count = 0
+```
+### I.7 Scope isolation + trigger model (OD-4 / OD-6)
 ```
 [ ] exam-wide derivation uses exam_phase_id IS NULL; phase derivation uses equality; no scope mixing
+[ ] cycle-only derivation is NOT supported (rejected); each invocation targets one explicit scope
+[ ] derivation runs only via the manual operator-triggered action (no scheduler, no snapshot piggy-back)
+```
+### I.8 Migration (Section F / §5.3)
+```
+[ ] one atomic migration: source_basis CHECK extension + exam-wide partial unique index
+[ ] fail-closed DO block raises on any remaining exam-wide (exam_id, topic_id) duplicate
+[ ] duplicate resolution is manual/operator with audited repair; never auto-keep latest reviewed_at
 ```
 
 ---
 
-## Section J — Files to change (on approval)
+## Section J — Files to change (on operator sign-off; aligns with Implementation Checklist PR 4)
 
 | File | Change |
 |---|---|
-| `app/backend/app/exam_intelligence/` (new module, e.g. `coverage_derivation.py`) | deterministic projection of locked snapshots (+ verified syllabus mentions) into `draft` `exam_topic_coverage`; fingerprint idempotency; fail-closed; PD-3/PD-4 guards. Reuses `score_snapshots.py` / `coverage.py` helpers; no new frequency logic. |
-| `app/backend/app/exam_intelligence/score_snapshots.py` | **only if OD-3 = (a)/(c)** — adjust `coverage_component` input for evidence-derived rows. No change otherwise. |
-| `app/backend/app/api/admin_exam_intelligence.py` (or the existing snapshot compute surface) | operator-invoked "derive coverage" action per OD-4; permission-gated; audited. **No new top-level admin route** (no-new-surface rule). |
-| `app/supabase/migrations/<next>_coverage_source_basis_evidence.sql` | **only if OD-1 approved** — extend `source_basis` CHECK; next free slot; immutable. |
-| backend tests | Section I. |
+| `app/backend/app/exam_intelligence/` (new module, e.g. `coverage_derivation.py`) | deterministic projection of the latest locked snapshot (+ verified syllabus mentions) into `draft` `exam_topic_coverage` (`source_basis='evidence_derived'`); §5.1 total bucket function; §5.2 conflict rules; fingerprint idempotency; fail-closed; exam-wide + phase scopes only (no cycle-only); delta reporting to audit/metadata. Reuses `score_snapshots.py` / `coverage.py` helpers; no new frequency logic. |
+| `app/backend/app/exam_intelligence/score_snapshots.py` | exclude `source_basis='evidence_derived'` coverage from `coverage_component` input (OD-3 Option A, break-the-edge; enforced as a test invariant). |
+| `app/backend/app/api/admin_exam_intelligence.py` (or the existing snapshot compute surface) | manual operator-invoked "derive coverage" action per OD-4 (no scheduler); one explicit scope per invocation; permission-gated; audited. **No new top-level admin route** (no-new-surface rule). |
+| `app/supabase/migrations/<next>_coverage_source_basis_evidence.sql` | **one atomic migration** (§5.5): extend `source_basis` CHECK with `'evidence_derived'` AND add the exam-wide partial unique index; fail-closed duplicate `DO` block per §5.3; next free slot from the live ledger; immutable. |
+| backend tests | Section I (incl. §5.2 conflict-matrix coverage, bucket totality, break-the-edge invariant, fail-closed duplicate test). |
 | `docs/status/career-copilot-checklist.md` | J3 "evidence-based coverage scoring" row status update in the same branch. |
 | `docs/architecture/pyq-intelligence-v2.md` | cross-reference the coverage-derivation projection (P1 elaboration); no scoring re-spec. |
 
@@ -279,4 +302,4 @@ locked → reviewed (reopen, notes required)
 
 ---
 
-*Status: APPROVED — OD RESOLVED 2026-07-02. Reconciles a substantial existing evidence-scoring pipeline (`exam_topic_score_snapshots` + `score_snapshots.py`, merged PRs #767/#773/#810); J3 adds only the governed, deterministic projection of locked snapshots into reviewable `draft` `exam_topic_coverage` rows. All operator-decision items (OD-1…OD-6, OD-5a) are RESOLVED per docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5; implementation dispatches as PR 4 (migration slot after PR 2) per docs/status/J3-Implementation-Checklist-2026-07-02.md.*
+*Status: AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING. Reconciles a substantial existing evidence-scoring pipeline (`exam_topic_score_snapshots` + `score_snapshots.py`, merged PRs #767/#773/#810); J3 adds only the governed, deterministic projection of locked snapshots into reviewable `draft` `exam_topic_coverage` rows. All operator-decision items (OD-1…OD-6, OD-5a) are RESOLVED (pending sign-off) per docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5; once operator approval is recorded on the PR, implementation dispatches as PR 4 (migration slot after PR 2) per docs/status/J3-Implementation-Checklist-2026-07-02.md.*
