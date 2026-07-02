@@ -1,32 +1,26 @@
 """D05 evidence-policy evaluator (D12 v1, PR-2).
 
-Given a selected cycle's phases, resolves the D05 phase-scoped evidence
-requirements from ``exam_evidence_requirements`` (+ active overrides) and evaluates
-each *blocking* requirement against the relational evidence registered in
-``exam_document_evidence`` / ``exam_document_evidence_roles`` (migration 211) and the
-existing verified corpora, applying the D05 independent predicates:
+Resolves the D05 evidence requirements for a selected cycle's phases (deterministic base-policy
+specificity + phase>cycle>exam override precedence, with expiry) and evaluates each *blocking*
+requirement against the relational evidence registered in ``exam_document_evidence`` /
+``exam_document_evidence_roles`` (migration 211) and the verified PYQ corpus, applying the D05
+independent predicates:
 
   1. correct exam / cycle / phase scope,
   2. evidence role matches the required class,
   3. authoritative source        — ``source_registry`` active + official + not discovery-only,
   4. human trust review verified — ``exam_document_evidence.trust_status = 'verified'``,
   5. not superseded/rejected,
-  6. extraction succeeded        — latest ``text_extract`` job ``succeeded`` (when text use required).
+  6. extraction succeeded        — latest ``text_extract`` job ``succeeded`` (when required).
 
 Used by ``cycle_readiness`` Step 9 for ``required_phases_complete``. Until documents are
-registered as evidence (PR-4 upload/review), no document-backed requirement is satisfied, so
-Step 9 stays fail-closed (never false-ready) — the correct posture.
-
-Scope note: this evaluator gates the **phase-scoped** subset of the D05 matrix (the phases'
-"required cycle/phase facts"). Exam/cycle-scoped evidence (verified source, primary cycle
-document, corrigendum, …) is seeded in migration 212 and consumed by the document/source steps;
-`light` planner-exposure applicability + planner enforcement land in PR-3. Conditions that need
-the exposure signal (`study_os_enabled`, `pattern_details_exposed`) evaluate conservatively
-(applies) here — fail-closed / over-require — until PR-3 wires the canonical signal.
+registered as evidence (PR-4), no document-backed requirement is satisfied, so Step 9 stays
+fail-closed (never false-ready).
 """
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger("career_copilot.exam_intelligence.document_policy")
@@ -37,127 +31,214 @@ CLASSIFIED_PHASE_KINDS = (
     "interview", "physical_test", "medical", "document_verification",
 )
 
+# D05 §6: operational-cycle policy applies to expected/open/active cycles only.
+OPERATIONAL_CYCLE_STATUSES = ("expected", "open", "active")
+
 _PAGE = 500
 
 
-# D05 §6: operational-cycle policy applies to expected/open/active cycles.
-_OPERATIONAL_CYCLE_STATUSES = ("expected", "open", "active")
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
-def _condition_applies(code: str, *, phase_kind: str | None = None, cycle_status: str | None = None) -> bool:
+def _parse_ts(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        return None
+
+
+def _fetch_paged(sb, table: str, select: str, eq: dict[str, Any]) -> list[dict]:
+    """Paginated read (avoids silent truncation from a fixed .limit())."""
+    rows: list[dict] = []
+    offset = 0
+    while True:
+        q = sb.table(table).select(select)
+        for k, v in eq.items():
+            q = q.eq(k, v)
+        batch = q.range(offset, offset + _PAGE - 1).execute().data or []
+        rows.extend(batch)
+        if len(batch) < _PAGE:
+            break
+        offset += _PAGE
+    return rows
+
+
+def _condition_applies(code: str, *, phase_kind: str | None, cycle_status: str | None) -> bool:
     """Whether a requirement's condition_code is active in this context.
 
-    Fail-closed defaults: exposure-dependent conditions evaluate to True (require the
-    evidence) until PR-3 wires the canonical Study-OS/planner exposure signal.
+    Fail-closed defaults: any condition we cannot canonically evaluate returns True (require the
+    evidence — over-block, never false-ready).
+      * ``objective_pyq_used_for_scoring``: there is no canonical scoring-use signal in the
+        schema yet, so this is a CONSERVATIVE default — objective/mixed written phases are
+        assumed to use objective scoring (answer key required). Not a real scoring-use check.
+      * ``study_os_enabled`` / ``pattern_details_exposed``: no exposure signal until PR-3 -> True.
     """
     if code == "always":
         return True
-    if code == "objective_pyq_used_for_scoring":
-        return phase_kind in ("objective_written", "mixed_written")
     if code == "cycle_is_operational":
-        return (cycle_status or "") in _OPERATIONAL_CYCLE_STATUSES
-    if code in ("study_os_enabled", "pattern_details_exposed"):
-        return True  # conservative / over-require until PR-3
-    # cycle_dates_published / corrigendum_known / application_tracking_enabled are advisory
-    # (gate_effect=warn) in the seed, so they never enter the blocking set; if a blocking rule
-    # ever carries one, fail closed (treat as applicable).
+        return (cycle_status or "") in OPERATIONAL_CYCLE_STATUSES
+    if code == "objective_pyq_used_for_scoring":
+        return phase_kind in ("objective_written", "mixed_written")  # conservative default
+    # study_os_enabled / pattern_details_exposed / cycle_dates_published / corrigendum_known /
+    # application_tracking_enabled -> fail closed (applies).
     return True
 
 
-def _fetch_all(sb, table: str, select: str, eq: dict[str, Any]) -> list[dict]:
-    q = sb.table(table).select(select)
-    for k, v in eq.items():
-        q = q.eq(k, v)
-    return q.limit(2000).execute().data or []
+# ─── policy resolution ───────────────────────────────────────────────────────
+_OVERRIDE_FIELDS = (
+    "requirement_level", "gate_effect", "minimum_count", "minimum_distinct_years",
+    "requires_verified_source", "requires_human_review", "requires_extraction",
+    "condition_code", "condition_params",
+)
 
 
-def _latest_text_extract_succeeded(sb, doc_asset_ids: list[str]) -> set[str]:
-    """Return the set of document_asset ids whose LATEST text_extract job succeeded (D06)."""
-    if not doc_asset_ids:
-        return set()
-    jobs = (
-        sb.table("document_processing_jobs")
-        .select("id, document_id, status, created_at")
-        .eq("job_type", "text_extract")
-        .in_("document_id", doc_asset_ids)
-        .limit(5000)
-        .execute()
-        .data
-        or []
-    )
-    latest: dict[str, dict] = {}
-    for j in jobs:
-        d = j.get("document_id")
-        if not d:
+def _resolve_base(reqs: list[dict], *, exam_type: str | None, phase_kind: str | None,
+                  scope: str) -> dict[str, dict]:
+    """Most-specific base requirement per evidence_kind for (exam_type, phase_kind, scope).
+
+    D05 specificity: exact(mode+exam_type+phase_kind) > mode+exam_type > mode+phase_kind >
+    mode default. Higher rank wins; the unique identity index guarantees no ties.
+    """
+    best: dict[str, tuple[int, dict]] = {}
+    for r in reqs:
+        if r.get("scope") != scope or r.get("is_active") is False:
             continue
-        cur = latest.get(d)
-        key = (j.get("created_at", ""), j.get("id", ""))
-        if cur is None or key > (cur.get("created_at", ""), cur.get("id", "")):
-            latest[d] = j
-    return {d for d, j in latest.items() if j.get("status") == "succeeded"}
+        rpk, ret = r.get("phase_kind"), r.get("exam_type")
+        if rpk not in (None, phase_kind) or ret not in (None, exam_type):
+            continue
+        rank = (2 if (ret is not None and ret == exam_type) else 0) + \
+               (1 if (rpk is not None and rpk == phase_kind) else 0)
+        k = r["evidence_kind"]
+        cur = best.get(k)
+        if cur is None or rank > cur[0]:
+            best[k] = (rank, r)
+    return {k: v[1] for k, v in best.items()}
 
 
+def _resolve_overrides(overrides: list[dict], *, cycle_id: str, phase_id: str | None
+                       ) -> dict[str, dict]:
+    """Most-specific ACTIVE, unexpired override per evidence_kind (phase > cycle > exam)."""
+    now = _now()
+    best: dict[str, tuple[int, dict]] = {}
+    for o in overrides:
+        if o.get("is_active") is False:
+            continue
+        exp = _parse_ts(o.get("expires_at"))
+        if exp is not None and exp <= now:
+            continue  # expired override is ignored
+        oc, op = o.get("exam_cycle_id"), o.get("exam_phase_id")
+        if op is not None:
+            if phase_id is None or op != phase_id:
+                continue
+            rank = 3
+        elif oc is not None:
+            if oc != cycle_id:
+                continue
+            rank = 2
+        else:
+            rank = 1  # exam-level
+        k = o["evidence_kind"]
+        cur = best.get(k)
+        if cur is None or rank > cur[0]:
+            best[k] = (rank, o)
+    return {k: v[1] for k, v in best.items()}
+
+
+def _effective_requirements(base: dict[str, dict], overrides: dict[str, dict]) -> list[dict]:
+    """Merge base + override per evidence_kind; return the ones that remain BLOCKING."""
+    kinds = set(base) | set(overrides)
+    out: list[dict] = []
+    for k in kinds:
+        eff = dict(base.get(k) or {"evidence_kind": k, "satisfied_by": "document_asset",
+                                   "requirement_level": "required", "gate_effect": "block",
+                                   "minimum_count": 1, "requires_verified_source": True,
+                                   "requires_extraction": False, "condition_code": "always"})
+        ov = overrides.get(k)
+        if ov is not None:
+            for f in _OVERRIDE_FIELDS:
+                if ov.get(f) is not None:
+                    eff[f] = ov[f]
+        if eff.get("requirement_level") == "required" and eff.get("gate_effect") == "block":
+            out.append(eff)
+    return out
+
+
+# ─── evidence evaluation ─────────────────────────────────────────────────────
 class _EvidenceIndex:
-    """One-shot load of the exam's registered evidence + supporting predicates."""
+    """One-shot paginated load of the exam's registered evidence + supporting predicates."""
 
     def __init__(self, sb, exam_id: str):
-        self.evidence = _fetch_all(
+        self.evidence = _fetch_paged(
             sb, "exam_document_evidence",
             "id, document_asset_id, exam_id, exam_cycle_id, exam_phase_id, "
             "source_registry_id, trust_status, superseded_by_id",
             {"exam_id": exam_id},
         )
         ev_ids = [e["id"] for e in self.evidence if e.get("id")]
-        self.roles = []
-        if ev_ids:
-            self.roles = (
-                sb.table("exam_document_evidence_roles")
-                .select("document_evidence_id, evidence_kind, exam_cycle_id, exam_phase_id")
-                .in_("document_evidence_id", ev_ids)
-                .limit(5000)
-                .execute()
-                .data
-                or []
-            )
-        # source authority: active + official + not discovery-only
-        src_ids = [e.get("source_registry_id") for e in self.evidence if e.get("source_registry_id")]
+        self.roles: list[dict] = []
+        for ev_id in ev_ids:
+            self.roles.extend(_fetch_paged(
+                sb, "exam_document_evidence_roles",
+                "document_evidence_id, evidence_kind, exam_cycle_id, exam_phase_id",
+                {"document_evidence_id": ev_id},
+            ))
+        src_ids = {e.get("source_registry_id") for e in self.evidence if e.get("source_registry_id")}
         self.authoritative_src: set[str] = set()
-        if src_ids:
-            for s in (
-                sb.table("source_registry")
-                .select("id, is_active, is_official_source, discovery_only")
-                .in_("id", list(set(src_ids)))
-                .limit(2000)
-                .execute()
-                .data
-                or []
-            ):
+        for sid in src_ids:
+            for s in _fetch_paged(sb, "source_registry",
+                                  "id, is_active, is_official_source, discovery_only", {"id": sid}):
                 if s.get("is_active") and s.get("is_official_source") and not s.get("discovery_only"):
                     self.authoritative_src.add(s["id"])
-        self.extracted_ok = _latest_text_extract_succeeded(
-            sb, [e.get("document_asset_id") for e in self.evidence if e.get("document_asset_id")]
-        )
+        self.extracted_ok = self._latest_extract_ok(
+            sb, [e.get("document_asset_id") for e in self.evidence if e.get("document_asset_id")])
         self._by_ev = {e["id"]: e for e in self.evidence if e.get("id")}
-        # verified pyq papers for the exam (D10 exam-wide); count for pyq_paper requirements.
-        self.verified_pyq_papers = sum(
-            1 for p in (
-                sb.table("pyq_papers").select("id, trust_status").eq("exam_id", exam_id)
-                .limit(5000).execute().data or []
-            ) if p.get("trust_status") == "verified"
-        )
+        # verified PYQ papers grouped by phase (D05 per-phase compatibility; D10 corpus is verified).
+        self.pyq_by_phase: dict[str, list[dict]] = {}
+        for p in _fetch_paged(sb, "pyq_papers",
+                              "id, exam_id, exam_phase_id, year, pyq_source_id, trust_status",
+                              {"exam_id": exam_id}):
+            if p.get("trust_status") != "verified" or not p.get("exam_phase_id"):
+                continue
+            self.pyq_by_phase.setdefault(p["exam_phase_id"], []).append(p)
 
-    def satisfies(self, req: dict, *, cycle_id: str, phase_id: str) -> bool:
+    @staticmethod
+    def _latest_extract_ok(sb, doc_ids: list[str]) -> set[str]:
+        latest: dict[str, dict] = {}
+        for d in {d for d in doc_ids if d}:
+            for j in _fetch_paged(sb, "document_processing_jobs",
+                                  "id, document_id, status, created_at, job_type",
+                                  {"document_id": d, "job_type": "text_extract"}):
+                cur = latest.get(d)
+                key = (j.get("created_at", ""), j.get("id", ""))
+                if cur is None or key > (cur.get("created_at", ""), cur.get("id", "")):
+                    latest[d] = j
+        return {d for d, j in latest.items() if j.get("status") == "succeeded"}
+
+    def satisfies(self, req: dict, *, cycle_id: str, phase_id: str | None) -> bool:
         kind = req["evidence_kind"]
         minimum = int(req.get("minimum_count") or 1)
 
         if kind == "pyq_paper":
-            # PYQ evidence is verified in pyq_papers (exam-wide corpus).
-            return self.verified_pyq_papers >= minimum
+            # D05: one verified COMPATIBLE paper per written phase (phase-tagged, not exam-wide).
+            if phase_id is None:
+                return False
+            papers = self.pyq_by_phase.get(phase_id, [])
+            if req.get("requires_verified_source"):
+                papers = [p for p in papers if p.get("pyq_source_id")]
+            min_years = req.get("minimum_distinct_years")
+            if min_years:
+                years = {p.get("year") for p in papers if p.get("year") is not None}
+                return len(years) >= int(min_years)
+            return len(papers) >= minimum
 
-        # document-backed: count registered, verified, in-scope, authoritative, extracted roles.
         need_src = bool(req.get("requires_verified_source"))
         need_extract = bool(req.get("requires_extraction"))
-        matched = 0
+        # Count DISTINCT satisfying evidence registrations (not role rows) toward minimum_count.
+        matched_docs: set[str] = set()
         for role in self.roles:
             if role.get("evidence_kind") != kind:
                 continue
@@ -166,8 +247,6 @@ class _EvidenceIndex:
                 continue
             if ev.get("trust_status") != "verified" or ev.get("superseded_by_id") is not None:
                 continue
-            # Scope: evidence must apply to this phase. A role/evidence may be phase-scoped
-            # (exact phase), cycle-scoped (this cycle, phase null), or exam-wide (both null).
             ev_phase = role.get("exam_phase_id") or ev.get("exam_phase_id")
             ev_cycle = role.get("exam_cycle_id") or ev.get("exam_cycle_id")
             if ev_phase is not None and ev_phase != phase_id:
@@ -178,104 +257,60 @@ class _EvidenceIndex:
                 continue
             if need_extract and ev.get("document_asset_id") not in self.extracted_ok:
                 continue
-            matched += 1
-            if matched >= minimum:
+            matched_docs.add(ev["id"])
+            if len(matched_docs) >= minimum:
                 return True
         return False
 
 
-def _resolve_requirements(sb, management_mode: str) -> tuple[dict[str, list[dict]], list[dict]]:
-    """Return (phase-scoped blocking requirements by phase_kind, cycle-scoped blocking list).
-
-    Only hard/blocking requirements (required + gate_effect=block) gate completeness.
-    """
-    rows = _fetch_all(
-        sb, "exam_evidence_requirements",
-        "id, phase_kind, evidence_kind, requirement_level, gate_effect, scope, "
-        "minimum_count, requires_verified_source, requires_extraction, condition_code, is_active",
-        {"management_mode": management_mode},
-    )
-    by_kind: dict[str, list[dict]] = {}
-    cycle_reqs: list[dict] = []
-    for r in rows:
-        if r.get("is_active") is False:
-            continue
-        if r.get("requirement_level") != "required" or r.get("gate_effect") != "block":
-            continue
-        if r.get("scope") == "phase" and r.get("phase_kind"):
-            by_kind.setdefault(r["phase_kind"], []).append(r)
-        elif r.get("scope") == "cycle":
-            cycle_reqs.append(r)
-    return by_kind, cycle_reqs
-
-
-def _exam_level_overrides(sb, exam_id: str) -> dict[str, dict]:
-    """Active exam-level (cycle & phase null) overrides by evidence_kind (one active per key)."""
-    out: dict[str, dict] = {}
-    for o in _fetch_all(
-        sb, "exam_evidence_requirement_overrides",
-        "exam_id, exam_cycle_id, exam_phase_id, evidence_kind, requirement_level, "
-        "gate_effect, minimum_count, requires_verified_source, requires_extraction, is_active",
-        {"exam_id": exam_id},
-    ):
-        if o.get("is_active") is False:
-            continue
-        if o.get("exam_cycle_id") is None and o.get("exam_phase_id") is None:
-            out[o["evidence_kind"]] = o
-    return out
-
-
-def _effective_req(req: dict, overrides: dict[str, dict]) -> dict | None:
-    """Merge a base requirement with its exam-level override; return None if no longer a blocker.
-
-    An override may downgrade requirement_level/gate_effect (dropping the blocker) or tighten
-    predicates (minimum_count, requires_*).
-    """
-    ov = overrides.get(req["evidence_kind"])
-    eff = dict(req)
-    if ov is not None:
-        for f in ("requirement_level", "gate_effect", "minimum_count",
-                  "requires_verified_source", "requires_extraction"):
-            if ov.get(f) is not None:
-                eff[f] = ov[f]
-    if eff.get("requirement_level") == "required" and eff.get("gate_effect") == "block":
-        return eff
-    return None
-
-
 def evaluate_required_phases_complete(
     sb, exam_id: str, cycle_id: str, management_mode: str, phases: list[dict],
-    *, cycle_status: str | None = None,
+    *, exam_type: str | None = None, cycle_status: str | None = None,
 ) -> dict[str, Any]:
     """Evaluate D12 required-phase completeness for the selected cycle.
 
-    ``phases`` is the list of exam_phases rows for the cycle (each with id, phase_kind, status).
-    Completeness holds when: every non-cancelled phase is canonically classified AND every
-    applicable blocking phase-scoped requirement for its phase_kind is satisfied, AND every
-    applicable blocking cycle-scoped requirement (the cycle's "required cycle facts", e.g. the
-    primary cycle document) is satisfied — each against verified, in-scope, authoritative,
-    extracted evidence registered in exam_document_evidence.
+    Completeness holds when: the cycle is operational; every non-cancelled phase is canonically
+    classified AND every applicable blocking phase-scoped requirement for its phase_kind is
+    satisfied; AND every applicable blocking cycle-scoped requirement is satisfied — each against
+    verified, in-scope, authoritative, extracted evidence. Deterministic base-policy specificity
+    and phase>cycle>exam override precedence (with expiry) are applied.
 
-    Returns {complete, evaluated_phases, unclassified_phases, unmet_requirements:[...]}.
+    Returns {complete, evaluated_phases, unclassified_phases, unmet_requirements:[...], reason?}.
     """
     active = [p for p in phases if (p.get("status") or "") != "cancelled"]
     if not active:
         return {"complete": False, "evaluated_phases": 0, "unclassified_phases": 0,
                 "unmet_requirements": [], "reason": "no_phases"}
+    # D05 §6: activation policy applies only to operational cycles.
+    if (cycle_status or "") not in OPERATIONAL_CYCLE_STATUSES:
+        return {"complete": False, "evaluated_phases": len(active), "unclassified_phases": 0,
+                "unmet_requirements": [], "reason": "cycle_not_operational"}
 
-    by_kind, cycle_reqs = _resolve_requirements(sb, management_mode)
-    overrides = _exam_level_overrides(sb, exam_id)
+    reqs = _fetch_paged(
+        sb, "exam_evidence_requirements",
+        "id, exam_type, phase_kind, evidence_kind, satisfied_by, requirement_level, gate_effect, "
+        "scope, minimum_count, minimum_distinct_years, requires_verified_source, "
+        "requires_human_review, requires_extraction, condition_code, condition_params, is_active",
+        {"management_mode": management_mode},
+    )
+    overrides = _fetch_paged(
+        sb, "exam_evidence_requirement_overrides",
+        "exam_id, exam_cycle_id, exam_phase_id, evidence_kind, requirement_level, gate_effect, "
+        "minimum_count, minimum_distinct_years, requires_verified_source, requires_human_review, "
+        "requires_extraction, condition_code, condition_params, expires_at, is_active",
+        {"exam_id": exam_id},
+    )
     index = _EvidenceIndex(sb, exam_id)
 
     unclassified = 0
     unmet: list[dict] = []
 
-    # Cycle-scoped "required cycle facts" (evaluated once; evidence scoped to the cycle).
-    for req in cycle_reqs:
-        eff = _effective_req(req, overrides)
-        if eff is None:
-            continue
-        if not _condition_applies(eff.get("condition_code") or "always", cycle_status=cycle_status):
+    # Cycle-scoped "required cycle facts" (evaluated once).
+    cyc_base = _resolve_base(reqs, exam_type=exam_type, phase_kind=None, scope="cycle")
+    cyc_ov = _resolve_overrides(overrides, cycle_id=cycle_id, phase_id=None)
+    for eff in _effective_requirements(cyc_base, cyc_ov):
+        if not _condition_applies(eff.get("condition_code") or "always",
+                                  phase_kind=None, cycle_status=cycle_status):
             continue
         if not index.satisfies(eff, cycle_id=cycle_id, phase_id=None):
             unmet.append({"scope": "cycle", "evidence_kind": eff["evidence_kind"],
@@ -287,11 +322,19 @@ def evaluate_required_phases_complete(
         if pk not in CLASSIFIED_PHASE_KINDS:
             unclassified += 1
             continue
-        for req in by_kind.get(pk, []):
-            eff = _effective_req(req, overrides)
-            if eff is None:
-                continue
-            if not _condition_applies(eff.get("condition_code") or "always", phase_kind=pk):
+        base = _resolve_base(reqs, exam_type=exam_type, phase_kind=pk, scope="phase")
+        ov = _resolve_overrides(overrides, cycle_id=cycle_id, phase_id=p["id"])
+        # Fail-closed by CODE, not by seed: a classified phase with NO seeded policy at all for
+        # its (mode, exam_type, phase_kind) is NOT vacuously complete — an unseeded/regressed
+        # policy cannot verify activation-readiness. (Requirements explicitly resolved to
+        # not_applicable by an operator OVERRIDE are governed intent and remain allowed.)
+        if not base and not ov:
+            unmet.append({"scope": "phase", "phase_id": p["id"], "phase_kind": pk,
+                          "evidence_kind": None, "reason": "no_blocking_policy"})
+            continue
+        for eff in _effective_requirements(base, ov):
+            if not _condition_applies(eff.get("condition_code") or "always",
+                                      phase_kind=pk, cycle_status=cycle_status):
                 continue
             if not index.satisfies(eff, cycle_id=cycle_id, phase_id=p["id"]):
                 unmet.append({"scope": "phase", "phase_id": p["id"], "phase_kind": pk,

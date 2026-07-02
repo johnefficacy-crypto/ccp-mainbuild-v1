@@ -99,21 +99,158 @@ def test_override_drops_blocker():
     assert _eval(db)["complete"] is True
 
 
-def test_cycle_scoped_requirement_gated_on_operational_status():
+def test_non_operational_cycle_is_never_complete():
+    """D05 §6: a closed/completed/cancelled cycle is not an activation target."""
+    db = _base_db(); _req(db, "syllabus")
+    _evi(db, "e1", "syllabus", cycle="cA", phase="pA")  # evidence present
+    for st in ("closed", "completed", "cancelled"):
+        res = _eval(db, cycle_status=st)
+        assert res["complete"] is False
+        assert res["reason"] == "cycle_not_operational"
+
+
+def test_cycle_scoped_requirement_applies_on_operational_cycle():
     db = _base_db()
+    _req(db, "syllabus")  # phase policy (satisfied below) so the phase isn't empty-policy
+    _evi(db, "e1", "syllabus", cycle="cA", phase="pA", n=1)
     _req(db, "primary_cycle_document", scope="cycle", cond="cycle_is_operational")
-    # non-operational cycle -> requirement not applicable -> complete with no evidence
-    assert _eval(db, cycle_status="closed")["complete"] is True
-    # operational cycle -> requirement applies -> not complete without evidence
+    # operational cycle -> cycle requirement applies -> not complete without cycle evidence
+    assert _eval(db, cycle_status="active")["complete"] is False
+    # register cycle-scoped primary_cycle_document -> complete
+    _evi(db, "e1", "primary_cycle_document", cycle="cA", phase=None, n=2)
+    assert _eval(db, cycle_status="active")["complete"] is True
+
+
+def test_empty_policy_phase_is_not_ready():
+    """Checkpost P1: a classified phase with NO seeded blocking policy must NOT be vacuously
+    complete (fail-closed by code, independent of the seed)."""
+    db = _base_db()  # no requirements at all
     assert _eval(db, cycle_status="active")["complete"] is False
 
 
-def test_pyq_requirement_uses_verified_papers():
-    db = _base_db(); _req(db, "pyq_paper", satisfied_by="source_registry", src=True, extract=False)
-    db["pyq_papers"].append({"id": "p1", "exam_id": "e1", "trust_status": "pending"})
+def test_wrong_role_does_not_satisfy():
+    """Evidence-role-match predicate: a doc registered under a different role must not satisfy."""
+    db = _base_db(); _req(db, "syllabus")
+    _evi(db, "e1", "exam_pattern", cycle="cA", phase="pA")  # wrong role for a syllabus requirement
     assert _eval(db)["complete"] is False
-    db["pyq_papers"].append({"id": "p2", "exam_id": "e1", "trust_status": "verified"})
+
+
+def test_inactive_source_fails_authority():
+    db = _base_db(); _req(db, "syllabus", src=True)
+    _evi(db, "e1", "syllabus", cycle="cA", phase="pA", active=False)
+    assert _eval(db)["complete"] is False
+
+
+def test_discovery_only_source_fails_authority():
+    db = _base_db(); _req(db, "syllabus", src=True)
+    _evi(db, "e1", "syllabus", cycle="cA", phase="pA", discovery=True)
+    assert _eval(db)["complete"] is False
+
+
+def test_override_can_promote_advisory_to_blocking():
+    """Direction: an override may PROMOTE a warn/advisory base requirement to blocking."""
+    db = _base_db()
+    # base syllabus is advisory (warn) -> not blocking on its own
+    db["exam_evidence_requirements"].append({
+        "id": "req-syl-warn", "management_mode": "core", "exam_type": None,
+        "phase_kind": "objective_written", "evidence_kind": "syllabus",
+        "satisfied_by": "document_asset", "requirement_level": "recommended", "gate_effect": "warn",
+        "scope": "phase", "minimum_count": 1, "requires_verified_source": True,
+        "requires_extraction": True, "condition_code": "always", "is_active": True})
+    # with only the advisory row + no override, base exists but nothing blocks -> complete
+    assert _eval(db, cycle_status="active")["complete"] is True
+    # exam-level override promotes it to required/block -> now not complete without evidence
+    db["exam_evidence_requirement_overrides"].append({
+        "exam_id": "e1", "exam_cycle_id": None, "exam_phase_id": None,
+        "evidence_kind": "syllabus", "requirement_level": "required", "gate_effect": "block",
+        "expires_at": None, "is_active": True})
+    assert _eval(db, cycle_status="active")["complete"] is False
+
+
+def test_expired_override_is_ignored():
+    """An expired exam-level 'syllabus -> not_applicable' override must NOT drop the blocker."""
+    db = _base_db(); _req(db, "syllabus")
+    db["exam_evidence_requirement_overrides"].append({
+        "exam_id": "e1", "exam_cycle_id": None, "exam_phase_id": None,
+        "evidence_kind": "syllabus", "requirement_level": "not_applicable",
+        "gate_effect": "none", "expires_at": "2020-01-01T00:00:00+00:00", "is_active": True})
+    assert _eval(db)["complete"] is False  # expired -> blocker remains, no evidence
+
+
+def test_phase_override_beats_exam_override():
+    """Precedence: a phase-level override outranks an exam-level override for the same kind."""
+    db = _base_db(); _req(db, "syllabus")
+    # exam-level drops the blocker; phase-level re-requires it -> phase wins -> not complete
+    db["exam_evidence_requirement_overrides"].append({
+        "exam_id": "e1", "exam_cycle_id": None, "exam_phase_id": None,
+        "evidence_kind": "syllabus", "requirement_level": "not_applicable",
+        "gate_effect": "none", "expires_at": None, "is_active": True})
+    db["exam_evidence_requirement_overrides"].append({
+        "exam_id": "e1", "exam_cycle_id": None, "exam_phase_id": "pA",
+        "evidence_kind": "syllabus", "requirement_level": "required",
+        "gate_effect": "block", "expires_at": None, "is_active": True})
+    assert _eval(db)["complete"] is False
+
+
+def test_pyq_requirement_uses_verified_phase_compatible_papers():
+    db = _base_db(); _req(db, "pyq_paper", satisfied_by="source_registry", src=True, extract=False)
+    # verified but NOT phase-tagged -> does not satisfy (D05 per-phase compatibility)
+    db["pyq_papers"].append({"id": "p1", "exam_id": "e1", "exam_phase_id": None,
+                             "pyq_source_id": "s", "trust_status": "verified"})
+    assert _eval(db)["complete"] is False
+    # verified + phase-tagged (pA) + sourced -> satisfies
+    db["pyq_papers"].append({"id": "p2", "exam_id": "e1", "exam_phase_id": "pA",
+                             "pyq_source_id": "s", "trust_status": "verified"})
     assert _eval(db)["complete"] is True
+
+
+def test_pyq_other_phase_paper_does_not_satisfy():
+    """Cross-phase rejection: a verified paper tagged to a different phase must not satisfy."""
+    db = _base_db(); _req(db, "pyq_paper", satisfied_by="source_registry", src=True, extract=False)
+    db["pyq_papers"].append({"id": "p1", "exam_id": "e1", "exam_phase_id": "pOTHER",
+                             "pyq_source_id": "s", "trust_status": "verified"})
+    assert _eval(db)["complete"] is False
+
+
+def test_exam_type_overlay_selects_most_specific_base():
+    """Specificity: an exact (mode+exam_type+phase_kind) row beats a (mode+phase_kind) row."""
+    db = _base_db()
+    _req(db, "syllabus")  # (core, exam_type=None, objective_written) required
+    db["exam_evidence_requirements"].append({  # (core, entrance, objective_written) N/A
+        "id": "req-et", "management_mode": "core", "exam_type": "entrance",
+        "phase_kind": "objective_written", "evidence_kind": "syllabus",
+        "satisfied_by": "document_asset", "requirement_level": "not_applicable",
+        "gate_effect": "none", "scope": "phase", "minimum_count": 1,
+        "requires_verified_source": True, "requires_extraction": True,
+        "condition_code": "always", "is_active": True})
+
+    def ev(exam_type):
+        sb = SBStub(db)
+        phases = [{"id": "pA", "phase_kind": "objective_written", "status": "active"}]
+        return evaluate_required_phases_complete(
+            sb, "e1", "cA", "core", phases, exam_type=exam_type, cycle_status="active")
+    # entrance -> exact row (N/A) wins -> no blocker -> complete without evidence
+    assert ev("entrance")["complete"] is True
+    # recruitment -> falls back to mode+phase_kind (required) -> not complete
+    assert ev("recruitment")["complete"] is False
+
+
+def test_answer_key_condition_objective_vs_non_objective():
+    """objective_pyq_used_for_scoring (conservative default): applies to objective/mixed,
+    not to non-written phase kinds."""
+    db = _base_db()
+    db["exam_evidence_requirements"].append({
+        "id": "req-ak-int", "management_mode": "core", "exam_type": None,
+        "phase_kind": "interview", "evidence_kind": "answer_key",
+        "satisfied_by": "document_asset", "requirement_level": "required", "gate_effect": "block",
+        "scope": "phase", "minimum_count": 1, "requires_verified_source": True,
+        "requires_extraction": True, "condition_code": "objective_pyq_used_for_scoring",
+        "is_active": True})
+    sb = SBStub(db)
+    phases = [{"id": "pI", "phase_kind": "interview", "status": "active"}]
+    # interview: condition false -> answer_key not required -> complete without evidence
+    res = evaluate_required_phases_complete(sb, "e1", "cA", "core", phases, cycle_status="active")
+    assert res["complete"] is True
 
 
 def test_unclassified_phase_never_complete():

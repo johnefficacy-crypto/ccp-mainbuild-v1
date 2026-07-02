@@ -35,10 +35,11 @@ values
 on conflict (management_mode, coalesce(exam_type, ''), coalesce(phase_kind, ''), evidence_kind, scope)
 do nothing;
 
--- Assertion: core cycle primary_cycle_document is a blocker gated on operational cycle.
+-- Assertions (checkpost P1b — validate counts + the whole matrix, not just one row).
 do $$
-declare v_gate text; v_cond text;
+declare v_gate text; v_cond text; v_n int;
 begin
+  -- core cycle primary_cycle_document: blocker gated on operational cycle.
   select gate_effect, condition_code into v_gate, v_cond
     from public.exam_evidence_requirements
     where management_mode='core' and phase_kind is null
@@ -46,6 +47,27 @@ begin
   if v_gate is distinct from 'block' or v_cond is distinct from 'cycle_is_operational' then
     raise exception 'seed assert failed: core cycle primary_cycle_document must be block/cycle_is_operational (got %/%)', v_gate, v_cond;
   end if;
+  -- light cycle primary_cycle_document: blocker gated on Study-OS exposure.
+  select gate_effect, condition_code into v_gate, v_cond
+    from public.exam_evidence_requirements
+    where management_mode='light' and phase_kind is null
+      and evidence_kind='primary_cycle_document' and scope='cycle';
+  if v_gate is distinct from 'block' or v_cond is distinct from 'study_os_enabled' then
+    raise exception 'seed assert failed: light cycle primary_cycle_document must be block/study_os_enabled (got %/%)', v_gate, v_cond;
+  end if;
+  -- exactly 4 cycle-scoped rows per planner-activating mode (primary/corrigendum/schedule/application).
+  select count(*) into v_n from public.exam_evidence_requirements
+    where scope='cycle' and management_mode='core';
+  if v_n <> 4 then raise exception 'seed assert failed: expected 4 core cycle rows, got %', v_n; end if;
+  select count(*) into v_n from public.exam_evidence_requirements
+    where scope='cycle' and management_mode='light';
+  if v_n <> 4 then raise exception 'seed assert failed: expected 4 light cycle rows, got %', v_n; end if;
+  -- every planner-activating mode must have >=1 BLOCKING cycle requirement (no all-advisory hole).
+  for v_cond in select unnest(array['core','light']) loop
+    select count(*) into v_n from public.exam_evidence_requirements
+      where scope='cycle' and management_mode=v_cond and requirement_level='required' and gate_effect='block';
+    if v_n < 1 then raise exception 'seed assert failed: mode % has no blocking cycle requirement', v_cond; end if;
+  end loop;
 end $$;
 
 notify pgrst, 'reload schema';

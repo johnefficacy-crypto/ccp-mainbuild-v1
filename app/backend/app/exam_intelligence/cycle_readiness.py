@@ -653,16 +653,37 @@ def compute_cycle_readiness(
             gate_class="hard", evidence_scope="selected_cycle_plus_exam_wide",
             note="Management mode classification required",
         )
+    elif (cycle_status or "") not in ("expected", "open", "active"):
+        # D05 §6: planner-activation policy applies only to operational cycles; a
+        # closed/completed/cancelled cycle uses preservation/history rules — activation N/A.
+        s9 = _step(
+            9, "review_activate", "Review & activate", _NA,
+            gate_class="hard", evidence_scope="selected_cycle_plus_exam_wide",
+            applicability="conditional",
+            not_applicable_reason="planner_activation_disabled",
+            note="Selected cycle is not operational (closed/completed/cancelled)",
+        )
     else:
         cycle_ok = s1["status"] == _READY
         coverage_ok = locked_count >= 1
+        exam_type = (exam or {}).get("exam_type")
+        # Fail-soft boundary (per module contract): a transient read / schema-lag / permission
+        # failure in the evidence evaluator must NOT raise out of the readiness endpoint. On
+        # error, fail closed (required_phases_complete=missing) with a typed diagnostic note.
+        _eval_error = False
         phase_rows = (
             sb.table("exam_phases").select("id, phase_kind, status")
             .eq("exam_cycle_id", cycle_id).execute().data or []
         )
-        phase_eval = evaluate_required_phases_complete(
-            sb, exam_id, cycle_id, management_mode, phase_rows, cycle_status=cycle_status
-        )
+        try:
+            phase_eval = evaluate_required_phases_complete(
+                sb, exam_id, cycle_id, management_mode, phase_rows,
+                exam_type=exam_type, cycle_status=cycle_status,
+            )
+        except Exception as exc:  # noqa: BLE001 — fail-soft, never surface as 500
+            logger.warning("cycle_readiness Step 9 evidence evaluation failed: %s", exc)
+            phase_eval = {"complete": False, "unclassified_phases": 0, "unmet_requirements": []}
+            _eval_error = True
         required_phases_complete = bool(phase_eval.get("complete"))
         _unclassified = int(phase_eval.get("unclassified_phases") or 0)
         _unmet = phase_eval.get("unmet_requirements") or []
@@ -672,6 +693,8 @@ def compute_cycle_readiness(
         _base = f"/admin/exam-intelligence/exams/{exam_id}?cycle={cycle_id}"
         if minimum_met:
             cta, note = None, None
+        elif _eval_error:
+            cta, note = None, "Evidence policy evaluation unavailable — activation held (fail-closed)"
         elif not cycle_ok:
             cta = {"label": "Complete setup", "url": f"{_base}&tab=setup"}
             note = "Selected-cycle activation prerequisites incomplete"
@@ -692,7 +715,8 @@ def compute_cycle_readiness(
                 {"check_id": "cycle_details_complete", "gate_class": "hard", "status": s1["status"]},
                 {"check_id": "required_phases_complete", "gate_class": "hard",
                  "status": _READY if required_phases_complete else _MISSING,
-                 "unclassified_phases": _unclassified, "unmet_requirement_count": len(_unmet)},
+                 "unclassified_phases": _unclassified, "unmet_requirement_count": len(_unmet),
+                 "evaluator_error": _eval_error},
                 {"check_id": "applicable_locked_coverage", "gate_class": "hard",
                  "status": _READY if coverage_ok else _MISSING, "locked_count": locked_count},
             ],

@@ -68,10 +68,12 @@ class _Seed:
     def evidence(self, exam_id, kind, *, cycle_id=None, phase_id=None,
                  verified=True, official=True, extracted=True):
         if kind == "pyq_paper":
+            self._ev_seq += 1
             self.db["pyq_papers"].append({
                 "id": f"{exam_id}-pyq-{self._ev_seq}", "exam_id": exam_id,
-                "exam_cycle_id": cycle_id, "trust_status": "verified" if verified else "pending"})
-            self._ev_seq += 1
+                "exam_cycle_id": cycle_id, "exam_phase_id": phase_id, "year": 2025,
+                "pyq_source_id": f"pysrc-{self._ev_seq}",
+                "trust_status": "verified" if verified else "pending"})
             return self
         self._ev_seq += 1
         n = self._ev_seq
@@ -102,7 +104,7 @@ class _Seed:
         for k in ("syllabus", "exam_pattern", "answer_key", "primary_cycle_document"):
             self.evidence(exam_id, k, cycle_id=cycle_id,
                           phase_id=None if k == "primary_cycle_document" else phase_id)
-        self.evidence(exam_id, "pyq_paper", cycle_id=cycle_id)
+        self.evidence(exam_id, "pyq_paper", cycle_id=cycle_id, phase_id=phase_id)
         return self
 
     def exam(self, eid, *, name, mode="core", locked=1, vpyq=0, active=True):
@@ -658,6 +660,44 @@ def test_d12_step9_coverage_failure_routes_cta_to_syllabus_with_cycle():
     url = step9["action_cta"]["url"]
     assert "tab=syllabus" in url
     assert "cycle=cA" in url
+
+
+def test_d12_step9_non_operational_cycle_not_applicable():
+    """D05 §6: a closed/completed/cancelled cycle is not an activation target -> Step 9 N/A,
+    even with full evidence + coverage (must not false-ready)."""
+    for st in ("closed", "completed", "cancelled"):
+        s = _Seed()
+        s.exam("e1", name="Exam1", mode="core", locked=1)
+        s.cycle("cA", "e1", status=st)
+        s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
+        s.policy("core")
+        s.full_objective_evidence("e1", "cA", "pA")
+        r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+        step9 = next(st_ for st_ in r.json()["cycle_readiness"]["steps"] if st_["step"] == 9)
+        assert step9["status"] == "not_applicable", st
+        assert step9["not_applicable_reason"] == "planner_activation_disabled"
+
+
+def test_d12_step9_evaluator_failure_is_fail_soft(monkeypatch):
+    """Fail-soft boundary: an evaluator exception must NOT raise out of the endpoint — Step 9
+    reports missing (fail-closed) with evaluator_error, checklist still returns 200."""
+    import app.exam_intelligence.cycle_readiness as cr
+
+    def _boom(*a, **k):
+        raise RuntimeError("transient read failure")
+    monkeypatch.setattr(cr, "evaluate_required_phases_complete", _boom)
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="core", locked=1)
+    s.cycle("cA", "e1", status="active")
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    assert r.status_code == 200
+    cr_body = r.json()["cycle_readiness"]
+    assert cr_body is not None
+    step9 = next(st for st in cr_body["steps"] if st["step"] == 9)
+    assert step9["status"] == "missing"
+    chk = next(c for c in step9["checks"] if c["check_id"] == "required_phases_complete")
+    assert chk["evaluator_error"] is True
 
 
 def test_d12_step9_setup_cta_preserves_cycle_identity():
