@@ -329,6 +329,47 @@ Migration number for EWP-1 must come from `select max(version)::int + 1 from sch
 | Prompt bank reviewed | OPERATOR PENDING — 270 prompts through CMS review lifecycle before aspirant launch |
 | Release gates §16 | OPERATOR PENDING — 10 gates must be documented in this checklist before EWP-6 begins |
 
+### 1. Delivery track
+
+Engineering-complete does not mean release-ready. Two independent readiness tracks govern rollout: the 270-prompt content inventory blocks aspirant launch; the §16 reliability evidence blocks progression into Paragraph Builder (EWP-6) and descriptive mocks (EWP-7).
+
+| Track | Current state | Entry gate | Exit gate |
+|---|---|---|---|
+| Sentence foundation | EWP-3 validation pending | EWP-2/2B merged | EWP-3 merged and stable |
+| Grammar and planner | EWP-4/5 planned | EWP-2/2B merged | Shadow evidence and planner validated |
+| Paragraph runtime | EWP-6 blocked | EWP-3 stable + §16 approved | Paragraph stability evidence |
+| Descriptive mocks | EWP-7 blocked | EWP-6 stable + §16 valid | Mock-runtime validation |
+
+### 2. §17 prompt-bank tracker
+
+Track actual operator progress per exercise type, not a single "270 prompts pending" row. Only the `Verified` and `Active` counts determine launch readiness — a prompt is aspirant-visible only when both `reviewer_status = 'verified'` and `is_active = true`. Author or import inside the existing Exam Workspace CMS; do not add a new admin sidebar destination.
+
+| Type | Required | Authored | Verified | Active | Status |
+|---|---:|---:|---:|---:|---|
+| Sentence construction | 50 | 0 | 0 | 0 | OPERATOR PENDING |
+| Sentence correction | 50 | 0 | 0 | 0 | OPERATOR PENDING |
+| Grammar rules | 100 | 0 | 0 | 0 | OPERATOR PENDING |
+| Vocabulary context | 50 | 0 | 0 | 0 | OPERATOR PENDING |
+| Scaffolded paragraphs | 20 | 0 | 0 | 0 | OPERATOR PENDING |
+| **Total** | **270** | **0** | **0** | **0** | OPERATOR PENDING |
+
+### 3. §16 release-gate tracker
+
+Evidence-based gates — do not substitute elapsed time, session count, or development completion for this evidence. Status and links live here; large benchmark outputs, SQL captures, test reports, and operator validation proof live in separate dated evidence files under `docs/audits/ewp/` (created only when validation evidence exists) and are linked from the rows below.
+
+| Gate | Status | Evidence document | Owner approval |
+|---|---|---|---|
+| Autosave no-loss | NOT STARTED | — | — |
+| Submission idempotency | NOT STARTED | — | — |
+| Word-count parity | NOT STARTED | — | — |
+| UTF-16 span benchmark | NOT STARTED | — | — |
+| Grammar false-positive rate | NOT STARTED | — | — |
+| Mastery replay determinism | NOT STARTED | — | — |
+| Planner task deduplication | NOT STARTED | — | — |
+| Verified exam configuration | NOT STARTED | — | — |
+| Writing shadow gate | NOT STARTED | — | — |
+| Operator approval | BLOCKED | — | — |
+
 ## Prior arcs / live-DB-only tails
 
 Keep these separated from code-verifiable status.
