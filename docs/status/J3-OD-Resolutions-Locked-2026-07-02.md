@@ -67,11 +67,12 @@ Legacy columns are removed only in a **later cleanup migration** after all consu
   "selection_rate":         null,       // vacancies / denominator — null until a provenance-proven denominator exists
   "candidates_per_vacancy": null,       // denominator / vacancies — same null contract
   "ratio_denominator":      null,       // "appeared" | "applied" | null
-  "selection_ratio_legacy": 0.00125     // verbatim legacy column value, labelled legacy/unverified-denominator
+  "selection_ratio":        0.00125,    // EXISTING KEY PRESERVED — deprecated alias, verbatim legacy value
+  "selection_ratio_legacy": 0.00125     // explicit legacy field, same value, labelled legacy/unverified-denominator
 }
 ```
 
-3. All existing consumers keep rendering `selection_ratio_legacy` (labelled as legacy) — display parity, zero silent change.
+3. **The existing `selection_ratio` response key is NOT removed in PR 1** — external clients may read it. It is served as a deprecated alias carrying the verbatim legacy value alongside `selection_ratio_legacy` (additive compatibility response). Internal consumers move to the explicit fields; the alias is removed only in the later cleanup migration/endpoint-version step after external-consumer verification. Display parity, zero silent change.
 
 **PR 2 (atomic switch):** introduce `exam_candidate_counts`, then in the same PR switch ratio derivation and **all** ratio consumers together: denominator preference `appeared` → `applied` → null (reviewed/locked counts only). Only rows with a provenance-proven denominator ever produce a non-null `selection_rate`.
 
@@ -89,7 +90,27 @@ Existing `exam_competition_metrics` rows can legitimately carry vacancy, cutoff,
 4. **Cutoff/difficulty content with `exam_phase_id IS NULL`** → phase identity cannot be assigned deterministically: canonical cutoff fields are NOT populated; the payload is preserved in `metadata.legacy_*`; the row becomes `cycle_summary` (keeping its valid cycle-level fields); a **working draft** revision is created for operator triage to assign the phase.
 5. **Cycle-less rows** (`exam_cycle_id IS NULL`) → operator triage (v1 requires a cycle; see OD-11). Not auto-assigned.
 6. **Published (reviewed/locked) rows are never returned to draft** (OD-7). Their valid fields stay published on the disposed revision(s); malformed/unassignable content moves to `metadata.legacy_*` with a separate working draft carrying it for correction (per OD-5 as amended).
-7. **Fail-closed assertion:** a `DO` block at the end of the disposition raises a descriptive exception if any row remains with `metric_kind IS NULL`, if any pre/post field-value count mismatches (zero-loss), or if any published row lost aspirant-visible valid data. Only then are the cross-granularity CHECKs and §2.1 indexes enabled.
+7. **Fail-closed assertion:** a `DO` block at the end of the disposition raises a descriptive exception if any row remains with `metric_kind IS NULL`, if any pre/post field-value count mismatches (zero-loss), or if any published row lost aspirant-visible valid data. Only then does §1.4 lane initialization run; the cross-granularity CHECKs and §2.1 indexes are enabled only after §1.4 completes.
+
+### 1.4 Current-lane initialization (fail-closed; runs after §1.3, before indexes/reader switch)
+
+The existing table has no uniqueness or current marker: multiple reviewed/locked rows and multiple draft/pending rows can already coexist for what becomes one scope. `is_current_published` must not default to false everywhere (readers switching to the shared selector would black out aspirant data) and must not be set on several rows (index creation fails). A dedicated initialization phase therefore backfills the lanes:
+
+1. **Duplicate report:** per `(exam_id, exam_cycle_id, exam_phase_id, metric_kind)` after §1.3, list every scope with >1 published-lane row (`reviewer_status IN ('reviewed','locked')`) or >1 working-lane row (`draft`/`pending_review`). Committed as migration evidence.
+2. **Published lane:** where exactly one published row exists → it is mechanically marked `is_current_published = true`. Where multiple exist → **fail-closed**: the migration raises until the operator records an audited canonical selection (same posture as §5.3 — never auto-keep latest); the selected row becomes current, the others are marked superseded (`superseded_at` stamped, `is_current_published = false`) and remain fully preserved.
+3. **Working lane:** where multiple working rows exist, the operator-audited disposition keeps one working row (default recommendation: the most recently updated) and marks the rest superseded (`superseded_at` stamped) so the working-lane partial index can build. No row is deleted.
+4. **Version/lineage backfill:** within each scope, rows are ordered by `COALESCE(reviewed_at, created_at)` and assigned `version_no` 1..N monotonically; `supersedes_id` chains each revision to its predecessor. All new-model rows end with `version_no > 0` and a consistent chain (§2.1 lineage constraints).
+5. **Legacy trust/evidence disposition (per `source_basis`):** legacy rows have only an integer `evidence_count` and no child evidence to backfill, but removing them would destroy all visible data. Policy for entering the published lane:
+   - `manual`, `official`, `reviewed_analysis`, `derived` reviewed/locked rows → **grandfathered** as current-published (they passed the human review lifecycle), flagged `metadata.legacy_unvalidated_evidence = true`. The §4 primary-evidence requirement applies **prospectively**: at their next lifecycle transition (reopen-for-edit → promotion) qualifying child evidence is mandatory. They are surfaced in a revalidation worklist.
+   - `model_generated` reviewed/locked rows → **NOT auto-grandfathered**. Fail-closed operator triage: the operator either attaches qualifying evidence and re-bases `source_basis` (audited) so the row can be current-published, or demotes it via an audited action. This is the only case where visibility may change, and only by explicit operator decision.
+   - All working-lane legacy rows keep their status; the evidence requirement binds at promotion as usual.
+6. **Zero-availability-loss assertion:** a terminal `DO` block verifies that every scope which had ≥1 published row before initialization has exactly one `is_current_published` row after it (excepting only scopes the operator explicitly triaged under the `model_generated` rule, which are enumerated in the report), and that no row was deleted. Only then are the §2.1 partial unique indexes created and readers switched to the shared selector.
+
+### 1.5 Canonical JSONB contracts (validator-enforced; closes the residual opacity)
+
+- **`cutoff_by_category`** — object of `{ "<category>": { "marks": <number ≥ 0>, "max_marks": <number > 0, optional> } }`. Keys validated against `reservation_categories.code`. Bare string/number/list values rejected by the validator. **Migration conversion rule (OD-5):** a legacy bare-number map value is explicitly normalized into object form — `{"general": 120}` → `{"general": {"marks": 120}}` — before the validator is enabled; only non-numeric/unlabelable payloads go to `metadata.legacy_*`.
+- **`vacancy_by_category`** — object of `{ "<category>": <integer ≥ 0> }`. Keys validated against `reservation_categories.code`; **values validated as non-negative integers** (no nulls inside the map — omit the key instead; `{}` means "no breakdown"). This makes the OD-4 sum rule executable.
+- **`difficulty_assessment`** — locked shape `{ "level": "harder" | "stable" | "easier", "basis": "<text 8–500 chars>" }`. Validator enforces the `level` enum and `basis` length. Descriptive only — never planner input (OD-3). A bare string (the legacy `difficulty_trend` form) is rejected.
 
 ---
 
@@ -111,6 +132,8 @@ Columns: `version_no`, `supersedes_id`, `superseded_at`, `is_current_published`.
 
 **Reopen-for-edit:** clones the published row into a new draft revision — the published row is untouched and stays aspirant-visible until the new revision is promoted.
 
+**Published-parent UPDATE guard (DB-enforced on BOTH tables — OD-7 is not app-only):** service-role callers can update tables directly today, so a `BEFORE UPDATE` trigger on `exam_competition_metrics` and `exam_candidate_counts` enforces immutability of published rows: when the existing row is published (`reviewer_status IN ('reviewed','locked')`), **all content columns are frozen** (cutoffs, vacancy fields, difficulty, pressure, counts, scope/identity columns, `source_basis`, `confidence_score`, `breakdown_complete`, metadata payload fields) — only the lifecycle/supersession columns may change (`reviewer_status` per the transition matrix, `superseded_at`, `is_current_published`, `reviewed_by`/`reviewed_at`/`reviewer_notes`, `updated_at`), and only in the combinations the state machine permits (`reviewed → locked`, `locked → reviewed` reopen with notes, atomic supersession by the promotion RPC). Implementation note: the lifecycle RPC may additionally set a transaction-local GUC (`set_config('app.lifecycle_rpc','1',true)`) that the trigger checks for the supersession combination, but the column allowlist holds regardless of caller. **Direct service-role parent-UPDATE attempts against published rows are a required test** (verification gates), alongside the evidence and parent-DELETE trigger tests.
+
 `exam_candidate_counts` uses the same revision model so a plain unique tuple does not prevent preserving corrected historical official counts.
 
 ### 2.1 Executable uniqueness DDL + consistency constraints (NULL-safe)
@@ -130,7 +153,40 @@ alter table public.exam_competition_metrics
     check (not is_current_published
            or (reviewer_status in ('reviewed','locked') and superseded_at is null)),
   add constraint ecm_superseded_not_current
-    check (superseded_at is null or not is_current_published);
+    check (superseded_at is null or not is_current_published),
+  -- cross-granularity FIELD-OWNERSHIP checks (the asserted OD-11 rule, executable):
+  -- cycle rows cannot carry cutoff/difficulty; phase rows cannot carry vacancy/pressure/count fields
+  add constraint ecm_kind_field_ownership
+    check (metric_kind is null
+           or (metric_kind = 'cycle_summary'
+               and (cutoff_by_category is null or cutoff_by_category = '{}'::jsonb)
+               and (difficulty_assessment is null or difficulty_assessment = '{}'::jsonb))
+           or (metric_kind = 'phase_cutoff'
+               and vacancy_total is null
+               and vacancy_by_category = '{}'::jsonb
+               and applicant_count is null
+               and competition_pressure_score is null)),
+  -- version-lineage invariants (backfilled by §1.4; enforced for every new-model row)
+  add constraint ecm_version_no_positive
+    check (metric_kind is null or (version_no is not null and version_no > 0)),
+  add constraint ecm_no_self_supersede
+    check (supersedes_id is null or supersedes_id <> id);
+
+-- supersedes_id is a self-FK:
+--   supersedes_id uuid references public.exam_competition_metrics(id) on delete restrict
+-- Cross-row lineage invariants that a CHECK cannot express are enforced in the lifecycle
+-- RPC + a validation trigger: the supersedes_id target must share the same
+-- (exam_id, exam_cycle_id, exam_phase_id, metric_kind) scope; version_no must equal
+-- parent.version_no + 1; cycles are impossible given monotonic version_no + the
+-- per-scope version uniqueness indexes below.
+
+-- version_no is unique per scope (monotonic chain, no duplicates):
+create unique index ecm_version_cycle_summary_uq
+  on public.exam_competition_metrics (exam_id, exam_cycle_id, version_no)
+  where metric_kind = 'cycle_summary';
+create unique index ecm_version_phase_cutoff_uq
+  on public.exam_competition_metrics (exam_id, exam_cycle_id, exam_phase_id, version_no)
+  where metric_kind = 'phase_cutoff';
 
 -- one current PUBLISHED row per scope
 create unique index ecm_current_pub_cycle_summary_uq
@@ -169,7 +225,7 @@ create unique index ecc_working_uq
   where reviewer_status in ('draft','pending_review') and superseded_at is null;
 ```
 
-(The same `*_current_published_state` / `*_superseded_not_current` CHECKs apply to `exam_candidate_counts`.)
+(The same `*_current_published_state` / `*_superseded_not_current` CHECKs, the `version_no > 0` + self-FK `supersedes_id` + no-self-reference lineage constraints, the per-scope `version_no` uniqueness index (`NULLS NOT DISTINCT` over the scope tuple + `version_no`), and the RPC/trigger same-scope-ancestry rule apply identically to `exam_candidate_counts`.)
 
 ---
 
@@ -184,7 +240,7 @@ create unique index ecc_working_uq
 | **OD-5** | **Consume the new reviewed/locked counts immediately** in APIs (prefer `appeared`, then `applied`, else return no ratio). Do **NOT** let this PR alter `competition_pressure_score` itself — only fix count display and the pressure **explanation** text. The §1.2 transitional contract makes PR 2 the point where ratio derivation and all ratio consumers switch atomically. |
 | **OD-6** | **Option B** — migrate only rows whose evidence explicitly proves the value means "applied." Preserve all other `applicant_count` values as **legacy unknown** and exclude them from ratios. Record converted / unknown / zero-loss counts in migration evidence. Ambiguous rows are **never** silently converted. |
 
-**Uniqueness:** enforced by the NULL-safe two-lane DDL in §2.1 over `(exam_id, exam_cycle_id, scope_kind, exam_phase_id, count_type, reservation_category_id)`. **Reviewer lifecycle & RLS read predicate (exact):** the same five-state `reviewer_status` vocabulary as `exam_competition_metrics`; non-admin reads require `reviewer_status IN ('reviewed','locked')` (RLS mirrors migration 057's predicate, but the admin check uses app-metadata roles, **not** the deprecated `profiles.is_admin`). **Evidence:** applied/appeared facts get their **own** first-class evidence table (`exam_candidate_count_evidence`, mirroring §4's schema and enforcement posture) — do NOT attach them to the generic competition-metric evidence row; their lifecycle and parent identity differ.
+**Uniqueness:** enforced by the NULL-safe two-lane DDL in §2.1 over `(exam_id, exam_cycle_id, scope_kind, exam_phase_id, count_type, reservation_category_id)`. **Reviewer lifecycle & RLS read predicate (exact):** the same five-state `reviewer_status` vocabulary as `exam_competition_metrics`; non-admin reads require `reviewer_status IN ('reviewed','locked')` (RLS mirrors migration 057's predicate, but the admin check uses app-metadata roles, **not** the deprecated `profiles.is_admin`). **Evidence:** applied/appeared facts get their **own** first-class evidence table — exact schema and promotion-comparison rules in **§4.1** — do NOT attach them to the generic competition-metric evidence row; their lifecycle and parent identity differ.
 
 ---
 
@@ -252,9 +308,60 @@ create index exam_comp_metric_evidence_claim_idx
   - Evidence rows are **append-only**: attached only while the parent revision is `draft`/`pending_review`; a wrong attachment on a working revision is corrected by **deleting and re-inserting while still in the working lane** — never by UPDATE.
   - `evidence_count` = **count of all child rows of that revision** (there is no soft-delete/supersession sub-state on evidence; corrections after publication happen by cloning a new working revision with fresh evidence, per §2).
   - **DB triggers (service-role writers can bypass app rules, so app-only enforcement is insufficient):** (1) `BEFORE UPDATE OR DELETE` on evidence → raise when the parent revision's `reviewer_status IN ('reviewed','locked')`; (2) `BEFORE DELETE` on `exam_competition_metrics` → raise when the row is published (`reviewer_status IN ('reviewed','locked')` or `is_current_published`) — the FK cascade therefore only ever fires for genuinely-draft cleanup; (3) `BEFORE INSERT` on evidence → raise when the parent revision is published.
-  - Promotion validates every populated high-risk claim has qualifying **primary** evidence.
-  - **Tests must include direct service-role UPDATE/DELETE attempts against published evidence and a published-parent DELETE attempt** (asserting the triggers reject them), not only endpoint behavior.
+  - Promotion validates every populated high-risk claim has qualifying **primary** evidence **whose `claim_value` matches the current parent field/category value** — mere existence of a primary evidence row is insufficient, otherwise stale evidence attached before a later working-parent edit would survive. A claim-value mismatch is a promotion failure requiring fresh evidence.
+  - **Tests must include direct service-role UPDATE/DELETE attempts against published evidence, a published-parent DELETE attempt, and a published-parent UPDATE attempt against frozen content columns** (asserting the triggers reject them), not only endpoint behavior.
 - **RLS:** enable RLS; **no** anon/authenticated direct read or write; access only through permission-gated FastAPI evidence/review routes using the service role. **Do NOT** copy migration 057's `profiles.is_admin` policy — AGENTS.md marks profile-based authority deprecated; app metadata is the role source of truth.
+
+### 4.1 Candidate-count evidence (`exam_candidate_count_evidence`) — exact schema
+
+The candidate-count parent row IS the single claim (one `count_value` for one scope/category), so this table has **no `claim_field`** and **no `reservation_category_id`** (the parent carries the category). It does not "mirror §4" mechanically:
+
+```sql
+create table public.exam_candidate_count_evidence (
+  id uuid primary key default gen_random_uuid(),
+
+  count_id uuid not null
+    references public.exam_candidate_counts(id) on delete cascade,
+    -- cascade fires only for genuinely-draft cleanup; published-parent DELETE is trigger-blocked
+
+  evidence_kind text not null
+    check (evidence_kind in (
+      'official_notification','official_result','official_statistics',
+      'corrigendum','official_page','reviewed_analysis')),
+
+  evidence_role text not null default 'primary'
+    check (evidence_role in ('primary','supporting')),
+
+  source_id uuid references public.source_registry(id) on delete set null,
+  document_asset_id uuid references public.document_assets(id) on delete set null,
+
+  evidence_url text,
+  source_label text,
+  source_page integer check (source_page is null or source_page >= 1),
+  source_excerpt text,
+
+  -- snapshot of the exact fact this evidence supported when attached:
+  -- { count_type, scope_kind, exam_phase_id, reservation_category_code, count_value }
+  claim_value jsonb not null,
+  content_hash text,
+  evidence_key text not null unique,  -- server-computed hash of
+                                      -- (parent scope tuple, count_type, category, source/page, claim_value)
+
+  captured_at timestamptz not null default now(),
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  metadata jsonb not null default '{}'::jsonb,
+
+  check (num_nonnulls(source_id, document_asset_id, evidence_url) >= 1)
+);
+
+create index exam_candidate_count_evidence_count_idx
+  on public.exam_candidate_count_evidence(count_id);
+```
+
+- **Same enforcement posture as §4:** append-only; attach only while the parent is `draft`/`pending_review`; INSERT/UPDATE/DELETE trigger-blocked once the parent is published; published-parent UPDATE/DELETE guards per §2; RLS with no anon/authenticated access; `evidence_count` derived by counting child rows.
+- **Promotion comparison:** an `appeared`/`applied` count may be promoted only when ≥1 qualifying **primary** evidence row exists whose `claim_value.count_value` equals the parent `count_value` AND whose `claim_value` category/scope fields match the parent — stale evidence (attached before a later edit of the working parent) does not qualify. `reviewed_analysis` is not acceptable as the sole primary evidence for official counts (§7).
+- **Source-trust validation** identical to §7 (`is_active`, `is_verified`, `discovery_only=false`, `source_type != 'aggregator'`, url-or-doc present).
 
 ---
 
@@ -393,7 +500,7 @@ No migration required for the metadata approach (unless metadata validation need
 Two **sequential PRs** (not one combined PR) for the competition pair; independent PRs for the rest. "Serial delivery" = same owner/agent, no concurrent branches touching the shared schema/read models, PR 2 based on merged PR 1, migration numbers resolved from the live `schema_migrations` ledger (never inferred from filenames), migrations immutable once merged.
 
 1. **PR 1 — Competition structure**
-   `reservation_categories` + aliases; additive `cutoff_by_category` / `difficulty_assessment` columns; two-lane competition revisions + §2.1 DDL/CHECKs; `metric_kind` + §1.3 legacy disposition (fail-closed); shared current-published selector; JSON validation trigger (category keys vs `reservation_categories.code`); `exam_competition_metric_evidence` child table + immutability triggers; promotion RPC + evidence/source trust validation; OD-5 selective legacy normalization; §1.2 **PR-1 half** of the ratio contract (additive null-contract fields, stop legacy writes, display parity via `selection_ratio_legacy`); UI/read parity.
+   `reservation_categories` + aliases; additive `cutoff_by_category` / `difficulty_assessment` columns; two-lane competition revisions + §2.1 DDL/CHECKs (incl. field-ownership + lineage constraints); `metric_kind` + §1.3 legacy disposition (fail-closed) + **§1.4 current-lane initialization** (fail-closed duplicate resolution, version/lineage backfill, per-basis legacy trust disposition, zero-availability-loss assertion); §1.5 JSONB contracts + validation trigger; shared current-published selector; `exam_competition_metric_evidence` child table + immutability triggers + **published-parent UPDATE guard** (§2); promotion RPC + evidence/source trust + claim-value-match validation; OD-5 selective legacy normalization (incl. bare-number → `{marks}` conversion); §1.2 **PR-1 half** of the ratio contract (additive fields; existing `selection_ratio` key preserved as deprecated alias); UI/read parity.
 2. **PR 2 — Applied-vs-Appeared** (branch from merged PR 1)
    `exam_candidate_counts` + `exam_candidate_count_evidence`; RLS (exact reviewed/locked predicate); `scope_kind` + phase/cycle CHECK + write validator; same revision model + shared taxonomy; conservative OD-6 legacy migration; §1.2 **PR-2 half**: atomic switch of ratio derivation + all ratio consumers (appeared → applied → null); pressure explanation fix (no change to `competition_pressure_score` itself).
 3. **PR 3 — Mixed-Format Option B** (independent)
