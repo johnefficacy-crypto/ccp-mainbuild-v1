@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from app.study_os.mission_control import (
+    _load_today_tasks,
     build_mission_control,
     invalidate_per_exam_intelligence,
 )
@@ -603,3 +604,51 @@ def test_per_exam_intelligence_cache_is_per_exam_id():
     assert counts2.get("exams", 0) >= 1, (
         f"different exam_id must miss cache; counts={counts2}"
     )
+
+
+# ── mission-control launch wiring (§11.1) ───────────────────────────────────
+# Moved here from the retired test_writing_planner.py when the EWP-5 planner
+# generator was deferred to a later transactional slice. These assert that
+# _load_today_tasks serializes launch metadata for English writing tasks and
+# leaves non-english tasks untouched.
+
+
+def test_mission_control_serializes_english_launch_action():
+    sb = SBStub({
+        "study_tasks": [
+            {
+                "id": "task-eng", "plan_id": "plan-1", "scheduled_date": _today(),
+                "status": "planned", "title": "Correction practice",
+                "task_type": "grammar_correction",
+                "launch_type": "english_writing_session",
+                "launch_entity_id": "sess-1",
+                "launch_context": {"exercise_type": "sentence_correction"},
+            },
+        ],
+    })
+    shaped = _load_today_tasks(sb, "plan-1")
+    assert len(shaped) == 1
+    t = shaped[0]
+    assert t["launch_type"] == "english_writing_session"
+    assert t["launch_entity_id"] == "sess-1"
+    assert t["action_url"] == "/app/study/practice/english/sess-1"
+    assert t["action_label"] == "Start correction practice"
+
+
+def test_mission_control_leaves_non_english_task_untouched():
+    sb = SBStub({
+        "study_tasks": [
+            {
+                "id": "task-std", "plan_id": "plan-1", "scheduled_date": _today(),
+                "status": "planned", "title": "Algebra · Concept learning",
+                "task_type": "concept_learning",
+                "launch_type": None, "launch_entity_id": None, "launch_context": None,
+            },
+        ],
+    })
+    shaped = _load_today_tasks(sb, "plan-1")
+    assert len(shaped) == 1
+    t = shaped[0]
+    assert "action_url" not in t
+    assert "action_label" not in t
+    assert "launch_type" not in t

@@ -34,6 +34,7 @@ from app.study_os.task_reasoning import (
     build_task_reasoning,
     build_task_reasoning_detail,
 )
+from app.study_os.writing_practice import launch as writing_launch
 
 logger = logging.getLogger("career_copilot.study_os.mission_control")
 
@@ -797,7 +798,8 @@ def _load_today_tasks(supabase: Any, plan_id: str) -> list[dict[str, Any]]:
                 "title, duration_mins, planned_minutes, status, "
                 "completed_at, scheduled_date, "
                 "priority_score, why_this_task, "
-                "topic_id, exam_topic_coverage_id, subject_id"
+                "topic_id, exam_topic_coverage_id, subject_id, "
+                "launch_type, launch_entity_id, launch_context"
             )
             .eq("plan_id", plan_id)
             .order("day_label")
@@ -817,27 +819,38 @@ def _load_today_tasks(supabase: Any, plan_id: str) -> list[dict[str, Any]]:
         if scheduled and scheduled != today_iso:
             continue
         status = (r.get("status") or "planned").lower()
-        shaped.append(
-            {
-                "id": r.get("id"),
-                "title": r.get("title") or r.get("topic") or r.get("subject"),
-                "time": r.get("day_label") or "Today",
-                "status": status,
-                "done": status == "completed",
-                "subject": r.get("subject"),
-                "topic": r.get("topic"),
-                "task_type": r.get("task_type"),
-                "planned_minutes": r.get("planned_minutes") or r.get("duration_mins"),
-                # Planner reasoning. Pass through the real value — may be
-                # null on legacy rows from before migration 034. Never
-                # hard-code to None.
-                "priority_score": r.get("priority_score"),
-                "why_this_task": r.get("why_this_task"),
-                "topic_id": r.get("topic_id"),
-                "exam_topic_coverage_id": r.get("exam_topic_coverage_id"),
-                "subject_id": r.get("subject_id"),
-            }
+        shaped_task = {
+            "id": r.get("id"),
+            "title": r.get("title") or r.get("topic") or r.get("subject"),
+            "time": r.get("day_label") or "Today",
+            "status": status,
+            "done": status == "completed",
+            "subject": r.get("subject"),
+            "topic": r.get("topic"),
+            "task_type": r.get("task_type"),
+            "planned_minutes": r.get("planned_minutes") or r.get("duration_mins"),
+            # Planner reasoning. Pass through the real value — may be
+            # null on legacy rows from before migration 034. Never
+            # hard-code to None.
+            "priority_score": r.get("priority_score"),
+            "why_this_task": r.get("why_this_task"),
+            "topic_id": r.get("topic_id"),
+            "exam_topic_coverage_id": r.get("exam_topic_coverage_id"),
+            "subject_id": r.get("subject_id"),
+        }
+        # §11.1: compute the launch target's frontend URL + label at response
+        # time from the typed launch columns — never stored in the DB. Only
+        # english_writing_session tasks resolve; everything else returns None
+        # and the task's existing shape is left untouched.
+        action = writing_launch.compute_action(
+            r.get("launch_type"), r.get("launch_entity_id"), r.get("launch_context")
         )
+        if action:
+            shaped_task["launch_type"] = r.get("launch_type")
+            shaped_task["launch_entity_id"] = r.get("launch_entity_id")
+            shaped_task["action_url"] = action["action_url"]
+            shaped_task["action_label"] = action["action_label"]
+        shaped.append(shaped_task)
     return shaped
 
 
