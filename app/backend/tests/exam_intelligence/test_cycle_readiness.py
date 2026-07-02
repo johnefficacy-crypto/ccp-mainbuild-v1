@@ -37,7 +37,73 @@ class _Seed:
             "pyq_question_topic_tags", "pyq_options", "organizations", "exam_families",
             "exam_cycles", "document_assets", "document_processing_jobs",
             "exam_competition_metrics",
+            # D05 evidence-policy (migrations 211/212) — mirrored for the document_policy evaluator.
+            "exam_evidence_requirements", "exam_evidence_requirement_overrides",
+            "exam_document_evidence", "exam_document_evidence_roles", "source_registry",
         )}
+        self._ev_seq = 0
+
+    # D05 phase+cycle blocking requirements for a mode (mirror of migrations 211/212, the
+    # subset the tests exercise: objective_written phase + cycle primary_cycle_document).
+    def policy(self, mode="core"):
+        def add(scope, phase_kind, kind, satisfied_by, cond, extract, src):
+            self.db["exam_evidence_requirements"].append({
+                "id": f"req-{mode}-{scope}-{phase_kind}-{kind}",
+                "management_mode": mode, "phase_kind": phase_kind, "evidence_kind": kind,
+                "satisfied_by": satisfied_by, "requirement_level": "required",
+                "gate_effect": "block", "scope": scope, "minimum_count": 1,
+                "requires_verified_source": src, "requires_extraction": extract,
+                "condition_code": cond, "is_active": True,
+            })
+        add("phase", "objective_written", "syllabus", "document_asset", "always", True, True)
+        add("phase", "objective_written", "exam_pattern", "document_asset", "always", True, True)
+        add("phase", "objective_written", "pyq_paper", "source_registry", "always", False, True)
+        add("phase", "objective_written", "answer_key", "document_asset",
+            "objective_pyq_used_for_scoring", True, True)
+        add("cycle", None, "primary_cycle_document", "document_asset", "cycle_is_operational", True, True)
+        return self
+
+    # Register a verified, authoritative, extracted document evidence satisfying `kind`
+    # (or a verified pyq_paper when kind == 'pyq_paper').
+    def evidence(self, exam_id, kind, *, cycle_id=None, phase_id=None,
+                 verified=True, official=True, extracted=True):
+        if kind == "pyq_paper":
+            self.db["pyq_papers"].append({
+                "id": f"{exam_id}-pyq-{self._ev_seq}", "exam_id": exam_id,
+                "exam_cycle_id": cycle_id, "trust_status": "verified" if verified else "pending"})
+            self._ev_seq += 1
+            return self
+        self._ev_seq += 1
+        n = self._ev_seq
+        doc_id = f"doc-{n}"
+        src_id = f"src-{n}"
+        self.db["document_assets"].append({"id": doc_id, "scope": "admin_exam_intelligence"})
+        self.db["source_registry"].append({
+            "id": src_id, "is_active": True,
+            "is_official_source": official, "discovery_only": False})
+        self.db["exam_document_evidence"].append({
+            "id": f"ev-{n}", "document_asset_id": doc_id, "exam_id": exam_id,
+            "exam_cycle_id": cycle_id, "exam_phase_id": phase_id,
+            "source_registry_id": src_id,
+            "trust_status": "verified" if verified else "pending",
+            "superseded_by_id": None})
+        self.db["exam_document_evidence_roles"].append({
+            "document_evidence_id": f"ev-{n}", "evidence_kind": kind,
+            "exam_cycle_id": cycle_id, "exam_phase_id": phase_id})
+        if extracted:
+            self.db["document_processing_jobs"].append({
+                "id": f"job-{n}", "document_id": doc_id, "job_type": "text_extract",
+                "status": "succeeded", "created_at": _RECENT})
+        return self
+
+    # Register the full evidence set that makes an objective_written phase + operational
+    # cycle evidence-complete under policy(mode).
+    def full_objective_evidence(self, exam_id, cycle_id, phase_id):
+        for k in ("syllabus", "exam_pattern", "answer_key", "primary_cycle_document"):
+            self.evidence(exam_id, k, cycle_id=cycle_id,
+                          phase_id=None if k == "primary_cycle_document" else phase_id)
+        self.evidence(exam_id, "pyq_paper", cycle_id=cycle_id)
+        return self
 
     def exam(self, eid, *, name, mode="core", locked=1, vpyq=0, active=True):
         self.db["exams"].append({
@@ -73,11 +139,12 @@ class _Seed:
         })
         return self
 
-    def phase(self, pid, exam_id, cycle_id, *, status="expected"):
+    def phase(self, pid, exam_id, cycle_id, *, status="expected", phase_kind=None):
         self.db["exam_phases"].append({
             "id": pid, "exam_id": exam_id, "exam_cycle_id": cycle_id,
             "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1,
             "phase_start": None, "phase_end": None, "status": status,
+            "phase_kind": phase_kind,
         })
         return self
 
@@ -483,26 +550,65 @@ def test_d12_step9_other_cycle_locked_coverage_does_not_activate():
     assert step9["status"] == "missing"       # ...so activation must not be ready
 
 
-def test_d12_step9_confirmed_phase_still_not_ready_evaluator_pending():
-    """D12 v1 fail-closed: even with cycle details + a confirmed-looking phase
-    (status=completed) + locked coverage, Step 9 must NOT be ready. Required-phase
-    COMPLETENESS (D05 canonical phase_kind + evidence) has no evaluator yet and
-    lifecycle status is not an authorized completeness proxy, so Step 9 stays blocked
-    (over-block, never false-ready). Operator prerequisites are met, so there is no
-    operator-actionable CTA."""
+def test_d12_step9_classified_phase_missing_evidence_not_ready_routes_documents():
+    """PR-2 evaluator: a CLASSIFIED phase + locked coverage but NO registered D05 evidence
+    must NOT be ready — the phase's blocking evidence requirements are unmet. CTA routes to
+    Documents (register/verify evidence), preserving cycle identity."""
     s = _Seed()
-    s.exam("e1", name="Exam1", mode="core", locked=1)  # exam-wide locked row
+    s.exam("e1", name="Exam1", mode="core", locked=1)  # locked coverage present
     s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA", status="completed")
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
+    s.policy("core")  # requirements exist, but no evidence registered
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     assert r.status_code == 200
     cr = r.json()["cycle_readiness"]
     step9 = next(st for st in cr["steps"] if st["step"] == 9)
     assert step9["status"] == "missing"
-    assert step9["evidence_scope"] == "selected_cycle_plus_exam_wide"
     phase_chk = next(c for c in step9["checks"] if c["check_id"] == "required_phases_complete")
     assert phase_chk["status"] == "missing"
+    assert phase_chk["unmet_requirement_count"] >= 1
+    url = step9["action_cta"]["url"]
+    assert "tab=documents" in url
+    assert "cycle=cA" in url
+
+
+def test_d12_step9_full_evidence_and_coverage_is_ready():
+    """PR-2 evaluator: core + cycle details + classified objective_written phase + the full
+    D05 evidence set (verified/authoritative/extracted syllabus, pattern, answer-key, primary
+    cycle document + verified PYQ) + locked coverage -> Step 9 READY."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="core", locked=1)
+    s.cycle("cA", "e1", status="active")  # operational -> primary_cycle_document required
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
+    s.policy("core")
+    s.full_objective_evidence("e1", "cA", "pA")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    assert r.status_code == 200
+    cr = r.json()["cycle_readiness"]
+    step9 = next(st for st in cr["steps"] if st["step"] == 9)
+    assert step9["status"] == "ready", step9["checks"]
     assert step9["action_cta"] is None
+    phase_chk = next(c for c in step9["checks"] if c["check_id"] == "required_phases_complete")
+    assert phase_chk["status"] == "ready"
+
+
+def test_d12_step9_unverified_evidence_does_not_satisfy():
+    """Verified-only: registered but NOT trust-verified evidence must not satisfy a
+    requirement — Step 9 stays not ready (D05 human-review predicate)."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="core", locked=1)
+    s.cycle("cA", "e1", status="active")
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
+    s.policy("core")
+    # all evidence present but syllabus is only pending (not verified)
+    s.evidence("e1", "syllabus", cycle_id="cA", phase_id="pA", verified=False)
+    s.evidence("e1", "exam_pattern", cycle_id="cA", phase_id="pA")
+    s.evidence("e1", "answer_key", cycle_id="cA", phase_id="pA")
+    s.evidence("e1", "primary_cycle_document", cycle_id="cA")
+    s.evidence("e1", "pyq_paper", cycle_id="cA")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
+    assert step9["status"] == "missing"
 
 
 def test_d12_step9_default_active_phase_lacking_classification_not_ready():
@@ -538,13 +644,14 @@ def test_d12_step9_light_evaluated_not_na_no_is_active_shortcut():
 
 
 def test_d12_step9_coverage_failure_routes_cta_to_syllabus_with_cycle():
-    """Locked deep-link contract: when cycle details are complete but coverage is
-    missing, the CTA routes to Syllabus/coverage AND preserves selected-cycle identity
-    (?cycle=<id>) so the blocker opens the cycle whose readiness produced it."""
+    """Locked deep-link contract: when cycle details + phase evidence are complete but locked
+    coverage is missing, the CTA routes to Syllabus/coverage AND preserves cycle identity."""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="core", locked=0)  # no coverage
-    s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA", status="completed")
+    s.cycle("cA", "e1", status="active")
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
+    s.policy("core")
+    s.full_objective_evidence("e1", "cA", "pA")  # evidence complete; only coverage missing
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
     assert step9["status"] == "missing"
