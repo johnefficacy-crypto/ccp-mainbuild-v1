@@ -94,13 +94,13 @@ The repo has no separate `microtopics` table. All subject/topic/microtopic rows 
 
 ### 4.1 `writing_prompts`
 
-Reviewed exercise content. Prompts are not created by the aspirant or the planner. They are authored in the Exam Workspace CMS and flow through the existing review lifecycle.
+Reviewed exercise content. Prompts are not created by the aspirant or the planner. They are authored and governed in the shared **Content Studio** admin surface (see §17 and `docs/architecture/content-studio.md`) and flow through the existing review lifecycle. Canonical identity is **subject-scoped** (`subject_id`/`topic_id`/`microtopic_id`); as of migration 214 the exam-scope columns (`exam_id`, `exam_cycle_id`, `exam_phase_id`) are **DROPPED** from `writing_prompts` — exam applicability is carried **solely** by `writing_prompt_targets` (§17.2). There is no dual authority: no exam-scope column remains on `writing_prompts` that could contradict a target row.
 
 ```sql
 id                      uuid primary key
-exam_id                 uuid not null references exams(id)
-exam_cycle_id           uuid references exam_cycles(id)
-exam_phase_id           uuid references exam_phases(id)
+-- exam_id / exam_cycle_id / exam_phase_id: DROPPED in migration 214.
+--   Applicability lives only in writing_prompt_targets (§17.2); requirements
+--   stay in exam_descriptive_requirements (§4.2). No exam-scope column here.
 subject_id              uuid not null references subjects(id)
 topic_id                uuid not null references topics(id)
 microtopic_id           uuid references topics(id)      -- level='microtopic'
@@ -1749,7 +1749,106 @@ Move to paragraph or essay modes when these conditions pass — not after a fixe
 
 ## 17. Prompt content ownership
 
-Initial prompts are authored as embedded content in the existing Exam Workspace CMS. No new admin sidebar destination. The no-new-surface rule applies to admin surfaces too.
+> **REVISED 2026-07-02 (content-scoping architecture, migration 214).** The
+> earlier instruction — "prompts are authored as embedded content in the Exam
+> Workspace CMS" — is **withdrawn**. Canonical prompts are **subject-scoped**
+> shared content, not exam-owned content, and are authored and governed in the
+> consolidated **Content Studio** admin surface. See
+> `docs/architecture/content-studio.md`. This is a deliberate revision of a
+> locked decision, authorized by the product owner — not a silent workaround.
+
+### 17.1 Three scopes (content vs applicability vs requirements)
+
+Writing content is governed by three **separate** scopes. Do not conflate them:
+
+| Scope | Question it answers | Storage | Keyed by |
+|---|---|---|---|
+| **Content (canonical)** | "What is this prompt?" | `writing_prompts` | `subject_id` → `topic_id` → `microtopic_id` |
+| **Applicability** | "Which exams may use it?" | `writing_prompt_targets` (migration 214) | `is_global` / `exam_family_id` / `exam_id` / `exam_phase_id` |
+| **Requirements** | "What are this exam/cycle/phase's official rules?" | `exam_descriptive_requirements` (§4.2) | `exam_id` / `exam_cycle_id` / `exam_phase_id` / `stream_key` |
+
+**Canonical content is subject-scoped.** A prompt's identity is
+`subject_id`/`topic_id`/`microtopic_id`; it is reusable across many exams. As of
+migration 214, the exam-scope columns (`exam_id`, `exam_cycle_id`,
+`exam_phase_id`) are **DROPPED** from `writing_prompts` — a canonical prompt has
+no exam column at all. Applicability is carried **solely** by
+`writing_prompt_targets` (the sole applicability authority; no dual authority).
+Migration 214 backfills a target row for every legacy prompt that named an exam
+**before** dropping the columns, so no legacy assignment is lost. A non-cycle
+legacy prompt becomes an **active** target (most-specific: phase-scoped if a
+phase was set, else exam-scoped; `source_basis='legacy_backfill'`). A legacy
+prompt that carried an `exam_cycle_id` is **quarantined** as
+`applicability_status='pending_review'` (`source_basis='legacy_cycle_quarantine'`)
+with the original cycle/exam/phase preserved in `metadata` — cycle-scoped content
+is held for operator disposition, never silently converted to evergreen
+applicability. No `is_global` rows are created by the backfill.
+
+### 17.2 Applicability model (`writing_prompt_targets`)
+
+Applicability is a **many-to-many mapping**, never content duplication. One
+prompt applies to many exams/families/phases via `writing_prompt_targets` rows.
+Resolution precedence, most specific first:
+
+```
+phase-specific  >  exam-specific  >  exam-family  >  global
+```
+
+**Row shape (deterministic identity).** Each target row names **exactly one** of
+{global, family, exam, phase} — enforced by
+`CHECK (num_nonnulls(exam_family_id, exam_id, exam_phase_id) + (is_global)::int = 1)`.
+`is_global` is a boolean (default `false`); an explicit global row sets
+`is_global=true` with all three scope columns NULL. A prompt that applies to
+several scopes gets several rows. A null-safe unique index
+(`(prompt_id, is_global, exam_family_id, exam_id, exam_phase_id) NULLS NOT DISTINCT`,
+PG16) guarantees at most one row per `(prompt, scope)` — including at most one
+global row per prompt — so a prompt+scope can never carry two contradictory
+statuses; `priority_score` then `created_at` only ever tie-break across
+*different* prompts within a band.
+
+**DEFAULT-DENY (the single precise rule — replaces the earlier "no rows = global"
+baseline, which was fail-open).** A prompt is applicable to an exam/phase context
+**IFF** it has an **`applicability_status='active'`** matching target: an active
+`is_global` target (everywhere), OR an active family/exam/phase target matching
+the context by the precedence above. **No active target ⇒ NOT applicable
+(unassigned) — never global.** Deleting a target, cascading an exam away, or
+leaving a prompt without an active target removes it from every surface; it can
+never widen access (fail-closed). "Global" is an **explicit** capability
+(`is_global=true`), never implied. An `applicability_status='excluded'` row is an
+**override** that subtracts a narrower scope from an explicit active broader scope
+(e.g. exclude one exam/phase from an active `is_global` or family target); it
+confers no applicability on its own. An `applicability_status='pending_review'`
+target is **inert** — it confers no applicability until an operator promotes it to
+`active`.
+
+Applicability is **evergreen** — the mapping carries **no `exam_cycle_id`**,
+because canonical content survives cycles. Cycle-specific rules stay in
+`exam_descriptive_requirements`; legacy prompts that carried a cycle are
+quarantined as `pending_review` (§17.1), not converted to evergreen targets.
+
+The mapping table is service-role-managed (RLS enabled, no client allow policy).
+The applicability resolver (a later PR) runs under the service role; aspirant
+surfaces receive its already-filtered, verified-only result, never raw target
+rows.
+
+### 17.3 Requirements stay in `exam_descriptive_requirements`
+
+Requirements (word limits, marks, duration, format, sections, feedback policy)
+remain exam/cycle/phase-scoped in `exam_descriptive_requirements` (§4.2),
+unchanged by this revision.
+
+### 17.4 Lifecycle and minimum bank (unchanged)
+
+The `reviewer_status = 'verified'` → `is_active = true` lifecycle (§4.1b) is
+unchanged. All prompts must pass the reviewer lifecycle
+(`reviewer_status = 'verified'`) before `is_active` can be set to `true`.
+
+**Activation gate (migration-enforced, fail-closed).** Because the applicability
+resolver, session/planner enforcement, and the `writing_prompts_public_read`
+policy replacement do not exist yet, migration 214 sets `is_active=false` on
+**every** `writing_prompts` row after declaring `writing_prompt_targets` the sole
+applicability authority — so no prompt is launchable through the known
+public-read bypass while enforcement is incomplete. Reactivation is gated on the
+resolver + enforcement + public-read-policy-replacement PR.
 
 Minimum reviewed prompt bank before aspirant launch:
 
@@ -1760,5 +1859,3 @@ Minimum reviewed prompt bank before aspirant launch:
 50 vocabulary-in-context prompts
 20 scaffolded paragraph prompts
 ```
-
-All prompts must pass the reviewer lifecycle (`reviewer_status = 'verified'`) before `is_active` can be set to `true`.
