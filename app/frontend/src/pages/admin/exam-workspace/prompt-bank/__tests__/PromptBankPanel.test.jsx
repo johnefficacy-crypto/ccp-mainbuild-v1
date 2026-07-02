@@ -1,63 +1,61 @@
 import React from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import PromptBankPanel from "../PromptBankPanel";
-import * as promptBankApi from "../promptBankApi";
 
-// Mock the ExamWorkspace context
-jest.mock("../../ExamWorkspaceContext", () => ({
-  useExamWorkspace: () => ({
-    exam: { id: "exam-123", name: "UPSC GS-I" },
-    cycle: { id: "cycle-456", cycle_name: "2026" },
-  }),
+const mockUseExamWorkspace = jest.fn(() => ({
+  exam: { id: "exam-123", name: "UPSC GS-I" },
+  cycle: { id: "cycle-456", cycle_name: "2026" },
 }));
 
-// Mock the auth context
-jest.mock("../../../../../lib/authContext", () => ({
-  useAuth: () => ({
-    user: {
-      role: "super_admin",
-      permissions: ["exam_intelligence.cms", "exam_intelligence.review"],
+const mockUseAuth = jest.fn(() => ({
+  user: {
+    role: "super_admin",
+    permissions: ["exam_intelligence.cms", "exam_intelligence.review"],
+  },
+}));
+
+const mockUseApiCollection = jest.fn(() => ({
+  items: [
+    {
+      id: "prompt-1",
+      prompt_text: "Construct a simple sentence.",
+      exercise_type: "sentence_construction",
+      topic_name: "Sentence Construction",
+      difficulty_level: 3,
+      min_words: 5,
+      max_words: 20,
+      reviewer_status: "verified",
+      is_active: true,
+      updated_at: "2026-07-02T10:00:00Z",
     },
-  }),
+  ],
+  status: "live",
+  refresh: jest.fn(),
+  setItems: jest.fn(),
 }));
 
-// Mock useApiCollection
-jest.mock("../../../../../lib/hooks/useApiCollection", () => {
-  return jest.fn(() => ({
-    items: [
-      {
-        id: "prompt-1",
-        prompt_text: "Construct a simple sentence.",
-        exercise_type: "sentence_construction",
-        topic_name: "Sentence Construction",
-        difficulty_level: 3,
-        min_words: 5,
-        max_words: 20,
-        reviewer_status: "verified",
-        is_active: true,
-        updated_at: "2026-07-02T10:00:00Z",
-      },
-    ],
-    status: "live",
-    refresh: jest.fn(),
-    setItems: jest.fn(),
-  }));
-});
+const mockUseApiAction = jest.fn(() => ({
+  run: jest.fn((opts) => {
+    if (opts.action) {
+      opts.action();
+      if (opts.onSuccess) opts.onSuccess();
+    }
+  }),
+  busy: false,
+}));
 
-// Mock useApiAction
-jest.mock("../../../../../lib/hooks/useApiAction", () => {
-  return jest.fn(() => ({
-    run: jest.fn((opts) => {
-      if (opts.action) {
-        opts.action();
-        if (opts.onSuccess) opts.onSuccess();
-      }
-    }),
-    busy: false,
-  }));
-});
+jest.mock("../../ExamWorkspaceContext", () => ({
+  useExamWorkspace: mockUseExamWorkspace,
+}));
 
-// Mock API
+jest.mock("../../../../../lib/authContext", () => ({
+  useAuth: mockUseAuth,
+}));
+
+jest.mock("../../../../../lib/hooks/useApiCollection", () => mockUseApiCollection);
+
+jest.mock("../../../../../lib/hooks/useApiAction", () => mockUseApiAction);
+
 jest.mock("../promptBankApi", () => ({
   promptBankApi: {
     listPrompts: jest.fn(),
@@ -80,8 +78,7 @@ describe("PromptBankPanel", () => {
   });
 
   test("shows loading state initially", () => {
-    const useApiCollection = require("../../../../../lib/hooks/useApiCollection");
-    useApiCollection.mockReturnValueOnce({
+    mockUseApiCollection.mockReturnValueOnce({
       items: [],
       status: "loading",
       refresh: jest.fn(),
@@ -93,8 +90,7 @@ describe("PromptBankPanel", () => {
   });
 
   test("shows empty state when no prompts found", () => {
-    const useApiCollection = require("../../../../../lib/hooks/useApiCollection");
-    useApiCollection.mockReturnValueOnce({
+    mockUseApiCollection.mockReturnValueOnce({
       items: [],
       status: "empty",
       refresh: jest.fn(),
@@ -106,8 +102,7 @@ describe("PromptBankPanel", () => {
   });
 
   test("shows error state on API failure", () => {
-    const useApiCollection = require("../../../../../lib/hooks/useApiCollection");
-    useApiCollection.mockReturnValueOnce({
+    mockUseApiCollection.mockReturnValueOnce({
       items: [],
       status: "error",
       refresh: jest.fn(),
@@ -137,8 +132,7 @@ describe("PromptBankPanel", () => {
   });
 
   test("does not render action buttons for users without permission", () => {
-    const { useAuth } = require("../../../../../lib/authContext");
-    useAuth.mockReturnValueOnce({
+    mockUseAuth.mockReturnValueOnce({
       user: { role: "user", permissions: [] },
     });
 
@@ -178,8 +172,7 @@ describe("PromptBankPanel", () => {
   });
 
   test("passing exam_id=null shows informative message", () => {
-    const { useExamWorkspace } = require("../../ExamWorkspaceContext");
-    useExamWorkspace.mockReturnValueOnce({
+    mockUseExamWorkspace.mockReturnValueOnce({
       exam: null,
       cycle: null,
     });
