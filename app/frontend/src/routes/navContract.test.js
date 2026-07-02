@@ -61,6 +61,7 @@ const APP_ROUTE_PATHS = new Set([
   "/app/study/progress",
   "/app/study/focus",
   "/app/study/practice/english/:sessionId",
+  "/app/study/error-lab",
   "/app/study/mocks",
   "/app/study/mocks/attempts/:attemptId",
   "/app/study/mocks/attempts/:attemptId/result",
