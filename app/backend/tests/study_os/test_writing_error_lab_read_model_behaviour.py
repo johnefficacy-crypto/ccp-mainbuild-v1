@@ -90,6 +90,17 @@ def _scalar(sql: str) -> str:
     return proc.stdout.strip()
 
 
+def _psql_as(role: str, sql: str) -> subprocess.CompletedProcess:
+    """Run `sql` with the session role reset to `role` (SET ROLE, then RESET).
+
+    Returns the completed process so callers can assert success OR the exact
+    'permission denied' failure. ON_ERROR_STOP so the SELECT's failure is fatal."""
+    return subprocess.run(
+        [_PSQL, _DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c",
+         f"SET ROLE {role}; {sql}"],
+        capture_output=True, text=True)
+
+
 def _lab(user: str = _U1) -> list[dict]:
     raw = _scalar(f"SELECT COALESCE(json_agg(t),'[]'::json) FROM public.ewp_error_lab('{user}') t")
     return json.loads(raw)
@@ -144,12 +155,18 @@ def _add_issue(eval_id: str, issue_type: str, *, current: bool = True,
 
 
 def _review(issue_id: str, decision: str, *, corrected: str | None = None,
+            reviewer_type: str = "human",
             created_at: str = "2026-06-10T00:00:00+00:00") -> None:
-    """Append a review event; event_seq is IDENTITY so later inserts win a tie."""
+    """Append a review event; event_seq is IDENTITY so later inserts win a tie.
+
+    reviewer_type is NOT NULL with CHECK IN ('human','system') in migration 205
+    (no default) — a human review decision is 'human'; pass 'system' for an
+    evaluator-authored decision. Omitting it made the very first INSERT fail and
+    took down the whole EWP_PG_DSN suite (the backend-CI failure)."""
     corr = "NULL" if corrected is None else f"'{corrected}'"
     _psql(f"""INSERT INTO writing_issue_review_events(issue_event_id,decision,
-      corrected_issue_type,created_at)
-      VALUES ('{issue_id}','{decision}',{corr},'{created_at}');""")
+      corrected_issue_type,reviewer_type,created_at)
+      VALUES ('{issue_id}','{decision}',{corr},'{reviewer_type}','{created_at}');""")
 
 
 def _name_for(issue_type: str) -> str:
@@ -226,3 +243,29 @@ def test_large_history_returns_in_a_single_call():
     rows = [r for r in _lab() if r["issue_type"] == "cohesion"]
     # One SQL call returns the whole current-state set (no per-hop ID fan-out).
     assert len(rows) >= 60
+
+
+# --- SECURITY DEFINER privilege matrix (§ REVOKE/GRANT on public.ewp_error_lab) ---
+# The function is service_role-only; authenticated/anon must be denied EXECUTE.
+# A grant regression here would turn the wrapper into a cross-user oracle, so the
+# denial is also asserted when the caller passes ANOTHER user's UUID.
+
+def test_service_role_can_execute_error_lab():
+    proc = _psql_as("service_role", f"SELECT count(*) FROM public.ewp_error_lab('{_U1}');")
+    assert proc.returncode == 0, f"service_role must be able to execute:\n{proc.stderr}"
+
+
+def test_authenticated_is_denied_error_lab_even_for_another_user():
+    # Own UUID and another user's UUID must BOTH be denied at EXECUTE — the grant
+    # matrix, not the WHERE clause, is the authorization boundary.
+    for uid in (_U1, _U2):
+        proc = _psql_as("authenticated", f"SELECT * FROM public.ewp_error_lab('{uid}');")
+        assert proc.returncode != 0, f"authenticated must be denied for {uid}"
+        assert "permission denied" in proc.stderr.lower(), proc.stderr
+
+
+def test_anon_is_denied_error_lab_even_for_another_user():
+    for uid in (_U1, _U2):
+        proc = _psql_as("anon", f"SELECT * FROM public.ewp_error_lab('{uid}');")
+        assert proc.returncode != 0, f"anon must be denied for {uid}"
+        assert "permission denied" in proc.stderr.lower(), proc.stderr

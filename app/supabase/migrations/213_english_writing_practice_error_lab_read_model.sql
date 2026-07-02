@@ -30,12 +30,22 @@
 -- Read-only: no writes, no AI writes. Mirrors the ewp_private SECURITY DEFINER
 -- pattern of 205/209 (private schema, service_role EXECUTE only).
 --
--- MIGRATION NUMBER: max on main at authoring time is 212; this is 213. The live
--- schema_migrations table could not be queried from the authoring container —
--- reconcile the number at apply time (VERIFY DB) and renumber if 213 is taken.
+-- MIGRATION NUMBER: derived from the repo max (main's highest is 212) + 1 = 213,
+-- so it is filesystem-contiguous and the validate/migration-numbers check is
+-- green. The live authoritative value
+-- (`select max(version)::int + 1 from schema_migrations`) could NOT be queried
+-- from the authoring container, so the live schema_migrations reconcile / rename
+-- is an OPERATOR / VERIFY DB step AT APPLY (do not renumber blindly here).
 -- ===========================================================================
 
 CREATE SCHEMA IF NOT EXISTS ewp_private;  -- created in 205; defensive for isolation.
+
+-- Supporting index for the per-issue "latest effective review" LATERAL below.
+-- 205 already indexes (issue_event_id, event_seq); this adds the created_at DESC
+-- ordering the fold keys on so the correlated lookup is an index-only descend to
+-- the latest event per user-scoped issue, not a sort.
+CREATE INDEX IF NOT EXISTS idx_writing_issue_review_events_effective
+  ON public.writing_issue_review_events (issue_event_id, created_at DESC, event_seq DESC);
 
 -- ---------------------------------------------------------------------------
 -- ewp_private.ewp_error_lab(p_user) — the current-state Error Lab read model.
@@ -68,17 +78,14 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  WITH eff AS (
-    -- Effective review decision per issue: latest by (created_at DESC,
-    -- event_seq DESC). event_seq is the authoritative tiebreak (§4.10a).
-    SELECT DISTINCT ON (r.issue_event_id)
-           r.issue_event_id,
-           r.decision,
-           r.corrected_issue_type
-    FROM public.writing_issue_review_events r
-    ORDER BY r.issue_event_id, r.created_at DESC, r.event_seq DESC
-  ),
-  base AS (
+  -- STEP 1 — scope the candidate issue set to p_user FIRST. We walk
+  -- issue_events -> evaluations -> versions -> units -> sessions filtered by
+  -- sessions.user_id = p_user, current-state, and feedback-released, so the row
+  -- set is already the owner's before any review history is touched. (The prior
+  -- shape folded a GLOBAL `DISTINCT ON` over EVERY row of
+  -- writing_issue_review_events across the whole platform and only user-scoped
+  -- afterwards — this reverses that order.)
+  WITH base AS (
     SELECT
       ie.id,
       ie.created_at,
@@ -89,26 +96,40 @@ AS $$
       ie.span_start_utf16,
       ie.span_end_utf16,
       ie.issue_type       AS orig_issue_type,
-      ie.microtopic_id    AS orig_microtopic_id,
-      eff.decision        AS eff_decision,
-      -- Effective issue type: corrected type on an effective reclassify, else
-      -- the original.
-      CASE WHEN eff.decision = 'reclassified' THEN eff.corrected_issue_type
-           ELSE ie.issue_type END AS eff_issue_type
+      ie.microtopic_id    AS orig_microtopic_id
     FROM public.writing_issue_events ie
     JOIN public.writing_evaluations   e ON e.id = ie.evaluation_id
     JOIN public.writing_unit_versions v ON v.id = e.unit_version_id
     JOIN public.writing_session_units u ON u.id = v.unit_id
     JOIN public.writing_sessions      s ON s.id = u.session_id
-    LEFT JOIN eff ON eff.issue_event_id = ie.id
     WHERE s.user_id = p_user
       AND ie.affects_current_state = TRUE
       AND (
         s.mode = 'learning'
         OR (s.feedback_released_at IS NOT NULL AND s.feedback_released_at <= now())
       )
-      -- Effective invalidation excluded (default 'confirmed' when no events).
-      AND COALESCE(eff.decision, 'confirmed') <> 'invalidated'
+  ),
+  -- STEP 2 — fold ONLY these (already user-scoped) issues' reviews. A correlated
+  -- LATERAL picks the latest effective review per issue by (created_at DESC,
+  -- event_seq DESC) — event_seq is the authoritative tiebreak (§4.10a) — keyed
+  -- on the user-scoped id, never a global scan. Effective invalidation excluded
+  -- (default 'confirmed' when no events); effective reclassify swaps in the
+  -- corrected issue_type.
+  scoped AS (
+    SELECT
+      b.*,
+      eff.decision AS eff_decision,
+      CASE WHEN eff.decision = 'reclassified' THEN eff.corrected_issue_type
+           ELSE b.orig_issue_type END AS eff_issue_type
+    FROM base b
+    LEFT JOIN LATERAL (
+      SELECT r.decision, r.corrected_issue_type
+      FROM public.writing_issue_review_events r
+      WHERE r.issue_event_id = b.id
+      ORDER BY r.created_at DESC, r.event_seq DESC
+      LIMIT 1
+    ) eff ON TRUE
+    WHERE COALESCE(eff.decision, 'confirmed') <> 'invalidated'
   ),
   resolved AS (
     SELECT
@@ -132,7 +153,7 @@ AS $$
         LIMIT 1
       )
       ELSE b.orig_microtopic_id END AS resolved_microtopic_id
-    FROM base b
+    FROM scoped b
   )
   SELECT
     r.id,
