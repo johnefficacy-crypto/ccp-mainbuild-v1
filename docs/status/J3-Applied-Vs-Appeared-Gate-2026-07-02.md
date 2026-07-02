@@ -1,7 +1,7 @@
 # Applied vs Appeared Counts Gate — J3 sub-item
 
 - Document type: J3 sub-slice implementation contract — candidate **applied** vs **appeared** counts for competition-pressure / vacancy analytics
-- Status: **AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING.** Body reconciled with docs/status/J3-OD-Resolutions-Locked-2026-07-02.md (2026-07-02). Implementation remains BLOCKED until explicit operator approval is recorded on the PR.
+- Status: **OPERATOR APPROVED — 2026-07-02.** Resolutions from docs/status/J3-OD-Resolutions-Locked-2026-07-02.md are approved by the operator (recorded on PR #861, 2026-07-02). Implementation may dispatch as PR 2 (Applied-vs-Appeared, branches from merged PR 1) per docs/status/J3-Implementation-Checklist-2026-07-02.md.
 - Date: 2026-07-02
 - Parent track: `J3 — schema/domain redesign` (`docs/status/career-copilot-checklist.md`, J3 row: "Phase/category competition cutoffs, applied vs appeared counts, mixed-format PDF extraction, evidence-based coverage scoring").
 - Sibling gate (cross-reference, non-overlapping): `docs/status/J3-Competition-Cutoffs-Gate-2026-07-02.md` — owns the **cutoffs/vacancy JSONB** redesign (`cutoff_trend`, `vacancy_by_category`, `vacancy_total`). **This gate does NOT touch those columns.** This gate owns exclusively the **applied vs appeared candidate counts** and their granularity, evidence model, and reviewer lifecycle. If the sibling gate is not yet drafted, the JSONB boundary in §B (PD-6) still holds: applied/appeared counts must not be encoded inside `vacancy_by_category` or any cutoff JSONB.
@@ -13,7 +13,7 @@
 
 This gate **reconciles the existing implementation** — it does not design from scratch. Every section states a LOCKED decision or an exact specification. The body has been reconciled with the approved resolutions in `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md`; all former `OPERATOR DECISION REQUIRED` items are resolved (Section E).
 
-**Implementation is PR 2 in `docs/status/J3-Implementation-Checklist-2026-07-02.md` (branches from merged PR 1). Dispatch remains blocked ONLY on explicit operator sign-off recorded on the PR.**
+**Implementation is PR 2 in `docs/status/J3-Implementation-Checklist-2026-07-02.md` (branches from merged PR 1). Operator sign-off is now recorded on PR #861 (2026-07-02); dispatch may proceed once PR 1 merges.**
 
 **Serial delivery rule (locked):** the applied/appeared slice touches the competition read path (`competition_context.py`, `competition.py`) shared with the sibling cutoffs gate. Implementation across the two J3 competition gates must be **one owner's sequential work** — no fan-out — because both edit the same read models and (potentially) the same migration slot.
 
@@ -245,6 +245,6 @@ From docs/status/J3-OD-Resolutions-Locked-2026-07-02.md (§2, §2.1, §3, §4.1,
 
 ---
 
-*Status: AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING. Body reconciled with docs/status/J3-OD-Resolutions-Locked-2026-07-02.md (2026-07-02; §0, §2, §2.1, §3, §4.1, §6, §7, §1.2). OD-1…OD-6 resolved; implementation remains BLOCKED until explicit operator approval is recorded on the PR. Implementation is PR 2 of docs/status/J3-Implementation-Checklist-2026-07-02.md (branches from merged PR 1). Cross-references the sibling J3 cutoffs/vacancy-JSONB gate; JSONB boundary (PD-6) prevents overlap.*
+*Status: OPERATOR APPROVED — 2026-07-02. Body reconciled with docs/status/J3-OD-Resolutions-Locked-2026-07-02.md (2026-07-02; §0, §2, §2.1, §3, §4.1, §6, §7, §1.2). OD-1…OD-6 resolved; operator approval recorded on PR #861 (2026-07-02). Implementation is PR 2 of docs/status/J3-Implementation-Checklist-2026-07-02.md (branches from merged PR 1); dispatch may proceed once PR 1 merges. Cross-references the sibling J3 cutoffs/vacancy-JSONB gate; JSONB boundary (PD-6) prevents overlap.*
 </content>
 </invoke>

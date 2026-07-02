@@ -1,8 +1,8 @@
 # J3 Implementation Checklist — sequencing, migrations, consumer switchover, rollback
 
 - Document type: implementation execution checklist for the four J3 sub-items.
-- Status: **BLOCKED — operator sign-off pending.** §10 step 1 is complete (the four gate documents are deep-amended so their bodies encode the resolutions); step 2 — an explicit operator approval event recorded on the PR — is outstanding. No item below may dispatch until `J3-OD-Resolutions-Locked-2026-07-02.md` reads `OPERATOR APPROVED` on the strength of that event. Then: PR 1 (Competition structure) dispatches as the serial anchor; PR 2 branches from merged PR 1; PR 3 is independent; PR 4 coordinates its migration slot after PR 2.
-- Date: 2026-07-02 (revised same day per PR #857 and PR #861 checkpost reviews)
+- Status: **UNBLOCKED — 2026-07-02.** Both §10 authority steps are complete: the four gate documents are deep-amended (`OPERATOR APPROVED — 2026-07-02`) and `J3-OD-Resolutions-Locked-2026-07-02.md` reads `OPERATOR APPROVED` on the strength of the operator's explicit approval recorded on PR #861. PR 1 (Competition structure) may now dispatch as the serial anchor; PR 2 branches from merged PR 1; PR 3 is independent; PR 4 coordinates its migration slot after PR 2.
+- Date: 2026-07-02 (revised same day per PR #857 and PR #861 checkpost reviews; unblocked 2026-07-02 on recorded operator approval)
 - Decision authority: the four J3 gate documents, as amended per `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` (the "what" lives there; this file is the "how/when").
 
 ## Cross-cutting rules (apply to every PR)

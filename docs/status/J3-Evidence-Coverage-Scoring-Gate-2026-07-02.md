@@ -1,7 +1,7 @@
 # Evidence-Based Coverage Scoring Gate — J3 sub-item
 
 - Document type: J3 implementation contract — deterministic, evidence-derived `exam_topic_coverage` scoring, its review lifecycle, and its relationship to the already-locked `exam_topic_score_snapshots` pipeline.
-- Status: **AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING.** Body reconciled with docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5 (2026-07-02). Implementation remains BLOCKED until explicit operator approval is recorded on the PR.
+- Status: **OPERATOR APPROVED — 2026-07-02.** Resolutions from docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5 are approved by the operator (recorded on PR #861, 2026-07-02). Implementation may dispatch as PR 4 (Coverage derivation, migration slot after PR 2) per docs/status/J3-Implementation-Checklist-2026-07-02.md.
 - Date: 2026-07-02
 - Parent track: `J3 — schema/domain redesign` (checklist row: "evidence-based coverage scoring"), `DEFERRED — CONTRACT-FIRST`.
 - Authority: `docs/architecture/pyq-intelligence-v2.md` (scoring contracts, snapshot authority, "do not write directly into locked `exam_topic_coverage` from an AI job"); `docs/architecture/domain-model.md` (entity canonicity); `CLAUDE.md` invariants (Determinism > Heuristics, verified-only reads, primary-only PYQ frequency, no new AI writes).
@@ -13,7 +13,7 @@
 
 This gate **reconciles the existing implementation** — a large evidence-scoring pipeline already exists (Section 0). It does not design from scratch. Every section states a LOCKED decision or an exact specification. The operator-decision items (OD-1…OD-6, OD-5a) are **RESOLVED (pending sign-off)** — Section E — with the resolutions folded in from `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §5.
 
-**Operator sign-off is PENDING.** Once approval is recorded on the PR, implementation dispatches as PR 4 in `docs/status/J3-Implementation-Checklist-2026-07-02.md` (migration slot after PR 2).
+**Operator sign-off is RECORDED (PR #861, 2026-07-02).** Implementation dispatches as PR 4 in `docs/status/J3-Implementation-Checklist-2026-07-02.md` (migration slot after PR 2).
 
 **Serial delivery rule (locked):** J3 coverage scoring touches shared exam-intelligence write paths (`admin_exam_intel_manage.py`, `admin_exam_intel_cms.py`) and the score-snapshot computation module — one owner's sequential work, no fan-out.
 
@@ -302,4 +302,4 @@ locked → reviewed (reopen, notes required)
 
 ---
 
-*Status: AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING. Reconciles a substantial existing evidence-scoring pipeline (`exam_topic_score_snapshots` + `score_snapshots.py`, merged PRs #767/#773/#810); J3 adds only the governed, deterministic projection of locked snapshots into reviewable `draft` `exam_topic_coverage` rows. All operator-decision items (OD-1…OD-6, OD-5a) are RESOLVED (pending sign-off) per docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5; once operator approval is recorded on the PR, implementation dispatches as PR 4 (migration slot after PR 2) per docs/status/J3-Implementation-Checklist-2026-07-02.md.*
+*Status: OPERATOR APPROVED — 2026-07-02. Reconciles a substantial existing evidence-scoring pipeline (`exam_topic_score_snapshots` + `score_snapshots.py`, merged PRs #767/#773/#810); J3 adds only the governed, deterministic projection of locked snapshots into reviewable `draft` `exam_topic_coverage` rows. All operator-decision items (OD-1…OD-6, OD-5a) are RESOLVED and APPROVED per docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5, recorded on PR #861 (2026-07-02); implementation dispatches as PR 4 (migration slot after PR 2) per docs/status/J3-Implementation-Checklist-2026-07-02.md.*

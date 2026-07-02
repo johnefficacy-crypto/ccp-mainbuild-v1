@@ -1,7 +1,7 @@
 # Mixed-Format PDF Extraction Gate — J3 (extraction-architecture sub-item)
 
 - Document type: J3 implementation contract — mixed-format (page-level layout) PDF extraction architecture
-- Status: **AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING.** Body reconciled with docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §8 (2026-07-02). Implementation remains BLOCKED until explicit operator approval is recorded on the PR.
+- Status: **OPERATOR APPROVED — 2026-07-02.** Resolutions from docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §8 are approved by the operator (recorded on PR #861, 2026-07-02). Implementation may dispatch as PR 3 (Mixed-Format Option B, independent — may run parallel to PR 1/2) per docs/status/J3-Implementation-Checklist-2026-07-02.md.
 - Date: 2026-07-02
 - Parent track: `J3 — schema/domain redesign` (checklist rows "Mixed-format PDF support DEFERRED — EXTRACTION ARCHITECTURE" and "mixed-format PDF extraction" under the J3 row)
 - Authority / read order (CLAUDE.md): `graphify-out/GRAPH_REPORT.md`; `docs/00-ai-context.md`; `AGENTS.md`; `docs/architecture/domain-model.md`; this gate
@@ -14,7 +14,7 @@
 
 This gate **reconciles the existing extraction implementation** — it does not design from scratch. Every section states a LOCKED decision or an exact specification. The body has been reconciled with the approved resolutions in `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §8; the operator decisions below are RESOLVED (OD-1 = B, OD-2 = B1, OD-3 = N/A-now).
 
-Implementation is **PR 3** in `docs/status/J3-Implementation-Checklist-2026-07-02.md` — independent, and may run in parallel with PR 1/PR 2. **Dispatch is blocked ONLY on explicit operator sign-off recorded on the PR.**
+Implementation is **PR 3** in `docs/status/J3-Implementation-Checklist-2026-07-02.md` — independent, and may run in parallel with PR 1/PR 2. **Operator approval has been recorded on PR #861 (2026-07-02); dispatch may proceed.**
 
 **Serial delivery rule (locked):** this work touches the extraction dispatch/pipeline and the `document_assets` classification surface — one owner's sequential work, no fan-out.
 
@@ -220,4 +220,4 @@ Deferred (not in PR 3): B2 heuristic helper in `dispatch.py` (OD-2); Option A `d
 
 ---
 
-*Status: AMENDED TO MATCH APPROVED RESOLUTIONS — OPERATOR SIGN-OFF PENDING. Body reconciled with docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §8 (2026-07-02); resolutions select Option B (explicit clear rejection + documented workaround) with B1 admin-declared detection (`document_assets.metadata.mixed_format=true`), given v1 extracts only `mcq_bilingual_two_column`; Option A (page-range `document_format_segments`, no backfill) deferred to a later gate once a non-MCQ extractor tier is contracted. Resolved: OD-1 = B, OD-2 = B1, OD-3 = N/A-now (later Option A uses `document_format_segments` with no backfill). Implementation per docs/status/J3-Implementation-Checklist-2026-07-02.md PR 3 (independent, may run parallel to PR 1/2); dispatch remains BLOCKED until explicit operator approval is recorded on the PR.*
+*Status: OPERATOR APPROVED — 2026-07-02. Body reconciled with docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §8 (2026-07-02); resolutions select Option B (explicit clear rejection + documented workaround) with B1 admin-declared detection (`document_assets.metadata.mixed_format=true`), given v1 extracts only `mcq_bilingual_two_column`; Option A (page-range `document_format_segments`, no backfill) deferred to a later gate once a non-MCQ extractor tier is contracted. Resolved: OD-1 = B, OD-2 = B1, OD-3 = N/A-now (later Option A uses `document_format_segments` with no backfill). Operator approval recorded on PR #861 (2026-07-02, at PR head de7d3d54f113b4a5492823591a3984b68e25346d). Implementation per docs/status/J3-Implementation-Checklist-2026-07-02.md PR 3 (independent, may run parallel to PR 1/2); dispatch may proceed.*
