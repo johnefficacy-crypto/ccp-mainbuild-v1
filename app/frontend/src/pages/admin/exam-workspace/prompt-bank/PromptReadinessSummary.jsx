@@ -45,7 +45,6 @@ export default function PromptReadinessSummary({ summary = null }) {
 
   // Calculate total active and required
   const requiredTypes = ["sentence_construction", "sentence_correction", "vocabulary_in_context", "paragraph_writing"];
-  let totalRequired = 0;
   let totalActive = 0;
   let allMettle = true;
 
@@ -56,7 +55,6 @@ export default function PromptReadinessSummary({ summary = null }) {
 
     if (!metTarget) allMettle = false;
 
-    totalRequired += target;
     totalActive += counts.active;
 
     return {

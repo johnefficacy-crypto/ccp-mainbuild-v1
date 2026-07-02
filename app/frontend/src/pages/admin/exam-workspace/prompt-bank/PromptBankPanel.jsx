@@ -58,7 +58,7 @@ export default function PromptBankPanel() {
   const [showBulkImport, setShowBulkImport] = useState(false);
 
   // Fetch prompts with filters
-  const { items: prompts, status, refresh, setItems } = useApiCollection(
+  const { items: prompts, status, setItems } = useApiCollection(
     "/api/admin/exam-intelligence-cms/writing-prompts",
     [],
     { params: filters }
@@ -71,11 +71,6 @@ export default function PromptBankPanel() {
   // Refresh with summary capture
   const loadPrompts = useCallback(async () => {
     try {
-      const qs = new URLSearchParams();
-      Object.entries(filters).forEach(([k, v]) => {
-        if (v != null && v !== "" && v !== false) qs.set(k, v);
-      });
-      const url = `/api/admin/exam-intelligence-cms/writing-prompts?${qs.toString()}`;
       const data = await promptBankApi.listPrompts(filters);
       setItems(data?.items || []);
       setSummary(data?.summary);

@@ -100,8 +100,6 @@ function validateRow(row) {
 
 export default function PromptBulkImport({ examId, onImport, onClose }) {
   const [stage, setStage] = useState("upload"); // upload, preview, summary
-  const [file, setFile] = useState(null);
-  const [rows, setRows] = useState([]);
   const [validatedRows, setValidatedRows] = useState([]);
   const [parseError, setParseError] = useState("");
   const [importing, setImporting] = useState(false);
