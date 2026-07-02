@@ -620,41 +620,81 @@ def compute_cycle_readiness(
     steps.append(s8)
 
     # -------------------------------------------------------------------------
-    # Step 9: review_activate
-    # D12: index_only and archive -> not_applicable.
-    #      If activation_verdict provided, use it as authoritative source.
-    #      Fallback: minimum gates check.
-    # A1/A2: handled above via cascade.
-    # -------------------------------------------------------------------------
+    # Step 9: review_activate  (D12 — selected-cycle activation minimum)
+    #
+    # v1 scope: the only contract-correct, implementable change here is removing the
+    # cross-cycle fail-open — Step 9 no longer consumes the exam-wide
+    # work_queue.classify_exam verdict, whose locked-coverage/phase counts span every
+    # cycle and let Cycle B's evidence satisfy Cycle A (cycle-canonicity violation).
+    # `activation_verdict` is intentionally no longer consumed for this decision. The
+    # operator-actionable prerequisites are evaluated for the SELECTED CYCLE:
+    #   cycle_details_complete (s1)  +  applicable_locked_coverage (D08 selected-cycle
+    #   + exam-wide precedence, locked_count >= 1).
+    #
+    # Required-phase COMPLETENESS is a THIRD hard prerequisite that this build cannot yet
+    # verify. Per D05, completeness means every required phase carries canonical `phase_kind`
+    # and its independent evidence predicates; D05 defers `phase_kind` to a not-yet-authored
+    # forward migration and states that "an active unclassified phase produces operator
+    # action". The lifecycle `exam_phases.status` field is NOT a completeness signal — its
+    # DB default is 'active', so a freshly inserted, unclassified phase would look "complete".
+    # We therefore FAIL CLOSED: until the D05 phase-classification/evidence evaluator exists,
+    # required_phases_complete is treated as unverifiable and Step 9 can never report `ready`
+    # on its strength (over-block, never false-ready). This is the deferred half of D12.
+    #
+    # Mode applicability: index_only/archive -> N/A. `light` ("required only when exposed to
+    # Study OS / planner activation") has NO canonical planner-activation source in the schema
+    # (exams.is_active is aspirant visibility per domain-model; planner.py does not gate on it),
+    # so it cannot be truthfully marked N/A and is treated like `core` (fail-closed).
     if management_mode in _MGMT_MODES_NO_ACTIVATE:
-        # D12: index_only and archive -> not_applicable.
         s9 = _na_step(
-            9, "review_activate", "Review & activate", "optional_for_management_mode",
-            gate_class="hard", evidence_scope="exam_wide",
+            9, "review_activate", "Review & activate", "planner_activation_disabled",
+            gate_class="hard", evidence_scope="selected_cycle_plus_exam_wide",
         )
     elif not management_mode:
         s9 = _step(
             9, "review_activate", "Review & activate", _MISSING,
-            gate_class="hard", evidence_scope="exam_wide",
+            gate_class="hard", evidence_scope="selected_cycle_plus_exam_wide",
             note="Management mode classification required",
         )
-    elif activation_verdict is not None:
-        # D12: bind to work_queue.classify_exam authority — no local fallback.
-        verdict_status = activation_verdict.get("status", "blocked")
-        step9_status = _READY if verdict_status == "ready" else (
-            _REVIEW_PENDING if verdict_status == "needs_action" else _MISSING
-        )
-        s9 = _step(
-            9, "review_activate", "Review & activate", step9_status,
-            gate_class="hard", evidence_scope="exam_wide",
-            note=activation_verdict.get("first_blocker_text"),
-        )
     else:
-        # D12: verdict unavailable — fail unavailable rather than derive locally.
+        cycle_ok = s1["status"] == _READY
+        coverage_ok = locked_count >= 1
+        # D05 phase-completeness evaluator (canonical phase_kind + evidence) is not
+        # implemented; lifecycle status is not authorized as a completeness proxy.
+        required_phases_complete = False  # fail-closed: unverifiable in v1
+        minimum_met = cycle_ok and required_phases_complete and coverage_ok  # -> never True in v1
+        # Locked deep-link contract: route the CTA to the first *operator-actionable* failed
+        # prerequisite, preserving selected-cycle identity (?cycle=<id> so the blocker opens the
+        # cycle whose readiness produced it, not the UI default). The pending phase-completeness
+        # evaluator is NOT operator-actionable, so it never drives the CTA.
+        _base = f"/admin/exam-intelligence/exams/{exam_id}?cycle={cycle_id}"
+        if not cycle_ok:
+            cta = {"label": "Complete setup", "url": f"{_base}&tab=setup"}
+        elif not coverage_ok:
+            cta = {"label": "Review syllabus coverage", "url": f"{_base}&tab=syllabus"}
+        else:
+            cta = None  # operator prerequisites met; Step 9 still blocked by pending D05 evaluator
+        if minimum_met:
+            note = None
+        elif not cycle_ok or not coverage_ok:
+            note = "Selected-cycle activation prerequisites incomplete"
+        else:
+            note = ("Selected-cycle operator prerequisites met; activation blocked pending "
+                    "D05 phase-classification evaluator (phase_kind + evidence)")
         s9 = _step(
-            9, "review_activate", "Review & activate", _MISSING,
-            gate_class="hard", evidence_scope="exam_wide",
-            note="Activation verdict unavailable — classification pending",
+            9, "review_activate", "Review & activate",
+            _READY if minimum_met else _MISSING,
+            gate_class="hard", evidence_scope="selected_cycle_plus_exam_wide",
+            checks=[
+                {"check_id": "cycle_details_complete", "gate_class": "hard", "status": s1["status"]},
+                {"check_id": "required_phases_complete", "gate_class": "hard",
+                 "status": _MISSING,
+                 "note": "D05 phase-classification evaluator (phase_kind + evidence) pending"},
+                {"check_id": "applicable_locked_coverage", "gate_class": "hard",
+                 "status": _READY if coverage_ok else _MISSING, "locked_count": locked_count},
+            ],
+            note=note,
+            action_cta=cta,
         )
     steps.append(s9)
 
