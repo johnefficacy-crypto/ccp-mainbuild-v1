@@ -5,7 +5,7 @@
 > live evidence lives in the gate docs / `docs/audits/`. When a gate changes, update the
 > checklist + its audit, then regenerate this view. Each row links its authoritative source.
 
-**as_of:** `main @ 2eb611fb` · 2026-07-02
+**as_of:** `main @ 59a01817` · 2026-07-02
 **Companion:** `docs/ops/v1-go-live-runbook.md` (the *how*) · `scripts/v1_release_verification.sql` (the *evidence*)
 **Position:** late-stage beta — feature-complete-approaching, **not** production-ready.
 
@@ -21,7 +21,7 @@
 | **Feature-complete (Condition 1)** |
 | F1 | Core features merged (RPC/RLS hardening, snapshot RPC, I9 containment, placeholder isolation) | ENG | ✅ CLEAR | on `main` | checklist |
 | F2 | I9 deferred noncompliance frozen as v1/v2 — **D11, D12, D14, D06, D15** | ENG | 🟡 PARTIAL — D12 v1 IN PROGRESS; D06/D11/D14/D15 v2 deferred | **D12 v1:** full D05 evidence-policy engine (multi-PR program: PR-1=#843 schema ✅, PR-2=#849 evaluator ✅, PR-3 planner enforcement, PR-4 UI wiring). Step 9 fail-closed until PR-4 registers evidence. **D06/D11/D14/D15:** operator-approved v2 deferral (product decision 2026-07-02). | checklist "I9 implementation" |
-| F3 | Extraction archive-race terminalization | ENG | 🟡 CODE-FIXED, VALIDATION PENDING | Caller now calls `_fail()` before raising on `document_archived` (and `finalize_failed`); mid-flight regression test added. Needs live/staging validation no jobs strand `running` after archive race. | `text_extract.py:476-492` + regression test |
+| F3 | Extraction archive-race terminalization | ENG | ✅ CLEAR | OPERATOR PASS (2026-07-02, SHA `920024c4`): job stranded `running` while doc `processing`; doc archived mid-extraction; API → HTTP 400 `document_archived`; job → `failed` `error_code=document_archived`; zero pages committed. Full evidence in `audits/2026-07-02-f3-extraction-archive-race-validation.md`. | `text_extract.py:476-492` + audit |
 | **Production-ready (Condition 2)** |
 | P1 | Apply full migration chain to staging→prod (head `212`) via the approved runner | OPS | ⏳ NOT STARTED | **precedes P2/P4; parallel with P8 — does NOT gate T0** | runbook Phase 1 |
 | P2 | RPC/RLS live verification (`scripts/v1_release_verification.sql`) + RLS real-JWT proof | OPS | 🟡 CODE-READY | needs P1, then a live run | verification script |
@@ -44,7 +44,7 @@
 ## P8 (PR-7) start prerequisites — the exact chain
 
 The 14-day clock may start **only** when ALL hold (do not start on P5+P7 alone):
-1. **F3** extraction terminalization fixed (no jobs can strand `running`).
+1. **F3** extraction terminalization fixed (no jobs can strand `running`) — ✅ OPERATOR PASS (2026-07-02, SHA `920024c4`).
 2. **P6** scheduler evidence complete (jobs/manual-run/**drain**) — ✅ OPERATOR PASS (2026-07-01).
 3. **P7** PR-6 PASS (Gate A cleared) on the deployed candidate SHA — ✅ OPERATOR PASS (2026-07-02, SHA `6ecfbed9`).
 4. **P5** PR #800 staging delivery validation + explicit 36-file boundary approval.
@@ -72,25 +72,21 @@ Serial spine to T0:
 Parallelizable: F2 decision, R2 pilot (overlaps P8), R4 readiness.
 ```
 
-**ETA:** the only hard duration is **P8 = 14 days**. Remaining pre-T0 work (F3 validation + P5
-approval; **P6/P7 DONE**) is operator-/eng-paced — realistically a **handful of days** but not
-reproducibly fixed here, so it is expressed as a range, not a promise. **P1/P2/P4** (migration
-chain `head 212` + RLS + snapshot RPC) are **parallel release gates** that run concurrently with
-P8 and do NOT gate T0 — they must complete before P10 (live flip). Post-window (P9→R3) is a
-**few days**. **Floor ≈ 3 weeks from T0**, *longer* if the shadow window restarts.
+**ETA:** the only hard duration is **P8 = 14 days**. Remaining pre-T0 work (**P5** PR #800 staging delivery validation + 36-file boundary sign-off; **F3/P6/P7 all DONE**) is operator-paced — realistically a **handful of days** but not reproducibly fixed here, so it is expressed as a range, not a promise. **P1/P2/P4** (migration chain `head 212` + RLS + snapshot RPC) are **parallel release gates** that run concurrently with P8 and do NOT gate T0 — they must complete before P10 (live flip). Post-window (P9→R3) is a **few days**. **Floor ≈ 3 weeks from T0**, *longer* if the shadow window restarts.
 Do not quote a calendar date until T0 is set.
 
 ## Shortest path right now
 
 **P6 is CLOSED** (PR #827 merged). **P7 is CLOSED** (OPERATOR PASS 2026-07-02 at SHA `6ecfbed9`;
-PR #840 code fix + PR #850 PASS audit merged). **F3 is CODE-FIXED**
-(PR #834 merged: `_update_job` guard + `finalize_failed` regression test; needs live/staging
-validation only). **P5** is the active operator blocker running in parallel with F3 validation.
+PR #840 code fix + PR #850 PASS audit merged). **F3 is CLOSED** (OPERATOR PASS 2026-07-02 at SHA
+`920024c4`; PR #834 code fix + audit `2026-07-02-f3-extraction-archive-race-validation.md` merged).
+**P5** is the sole remaining operator gate before T0.
 
-### F3 — CODE-FIXED, VALIDATION PENDING (PR #834, merged)
-`finalize_document_extraction` → `document_archived` now calls `_fail()` before raising (no job
-can strand `running`); mid-flight regression test added. No code work remains — ENG dependency is
-MET. Live/staging confirmation still required before T0.
+### F3 — OPERATOR PASS (2026-07-02, SHA `920024c4`)
+CLOSED. Full evidence in `docs/audits/2026-07-02-f3-extraction-archive-race-validation.md`.
+Job was observed `running` while document was `processing`; document archived mid-extraction;
+API returned HTTP 400 `document_archived`; job transitioned to `failed` with
+`error_code=document_archived`; zero pages committed. No ENG or OPS action remains.
 
 ### P7 — OPERATOR PASS (2026-07-02, SHA `6ecfbed9`)
 CLOSED. Full evidence in `docs/audits/2026-07-02-p7-final-candidate-revalidation-6ecfbed9.md`.
@@ -99,18 +95,18 @@ Gate 4 fresh fingerprint: `b3cec4accf3bdf729d3f68d9694dcbb5fc69e96bfbc165f573997
 Gate A PASS: `review_state` changed `unreviewed→reviewed`; notes-only preserved; null-guard held.
 Gates B–E, H–J PASS. F/G INSUFFICIENT_DATA exit 3 (permitted). No ENG action remains.
 
-### P5 — active operator track (independent; parallel with F3)
+### P5 — active operator track (sole remaining pre-T0 gate)
 PR #800 staging delivery validation (3 manual checks) + explicit 36-file boundary sign-off.
 The fingerprint re-attestation at the final deployed SHA must happen at T0 time, not before.
 
-### After F3 validation + P5 approval → T0
-F3 and P5 are the remaining **external** gates. Once both clear, the operator must still satisfy
+### After P5 approval → T0
+P5 is the sole remaining **external** gate. Once it clears, the operator must still satisfy
 conditions 5–7 from the prerequisite chain before recording T0:
 
 5. Deployed SHA **matches the approved candidate**, with **continuous `FF_MOCK_MASTERY_WRITES=shadow`** — re-verify at the final SHA, not the P7 SHA.
 6. **Freshly computed + attested fingerprint at that exact deployed SHA** — re-run `verify_mastery_fingerprint.sh` at the final SHA; do NOT copy the P7 digest (`b3cec4ac…`) blindly. Record the new per-file attestation.
 7. **Exact UTC `window_start` recorded** — set T0 only when 5 and 6 are both confirmed. This is the moment the 14-day **P8** clock starts.
 
-> **Now:** F3 live/staging validation + P5 operator sign-off (parallel). On completion, re-verify
-> conditions 5–7 at the final deployed SHA and record `window_start`. The 14-day P8 window cannot
-> open until F3 + P5 + conditions 5–7 all hold simultaneously.
+> **Now:** P5 operator sign-off is the only remaining pre-T0 gate (F3/P6/P7 all CLOSED). On
+> completion, re-verify conditions 5–7 at the final deployed SHA and record `window_start`. The
+> 14-day P8 window cannot open until P5 + conditions 5–7 all hold simultaneously.
