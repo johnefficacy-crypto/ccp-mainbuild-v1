@@ -43,9 +43,24 @@ coverage; Study OS = select/deliver.**
 | **Applicability** | `writing_prompt_targets` (migration 214) | `exam_family_id` / `exam_id` / `exam_phase_id` |
 | **Requirements** | `exam_descriptive_requirements` | `exam_id` / `exam_cycle_id` / `exam_phase_id` |
 
+`writing_prompts` carries **no exam-scope column** — migration 214 **drops**
+`exam_id`, `exam_cycle_id`, and `exam_phase_id`. `writing_prompt_targets` is the
+**sole** applicability authority (no dual authority; nothing on the content row
+can contradict a mapping row).
+
 Applicability precedence: `phase-specific > exam-specific > exam-family >
-globally-applicable (no target rows)`. Applicability is **evergreen** — no
+globally-applicable (baseline)`. Applicability is **evergreen** — no
 `exam_cycle_id`; cycle rules stay in requirements.
+
+**Global-with-exclusions (baseline + overrides — the single precise rule).** A
+prompt is globally applicable as its **baseline** when it has no
+`applicability_status='active'` target row restricting it to a narrower scope
+("no target rows at all" is the trivial case). An `excluded` row for scope X is
+an **override** that subtracts X only, leaving the global baseline intact
+elsewhere — so a global prompt may carry `excluded` rows without contradiction.
+Each target row names **exactly one** scope (`CHECK num_nonnulls(...) = 1`), and
+a null-safe unique index makes `(prompt, scope)` unique, so statuses are never
+self-contradictory for a prompt+scope.
 
 Verified-only reads are preserved end to end: aspirant/planner surfaces read
 only `reviewer_status='verified' AND is_active=true` content, resolved through
@@ -74,6 +89,30 @@ destinations and **adds 1**:
 → replaced by a single **Content Studio** destination. Net change: −3 +1.
 This **satisfies** the rule (removes ≥ 2, adds 1). The routing/nav change is a
 later serial-delivery PR (§7), owned by one owner per the serial-delivery rule.
+
+### 3.1 Route contract (canonical route + back-compat redirects)
+
+Canonical destination (one top-level route, tabs as query param):
+
+```
+/admin/content-studio?tab=library|review-queue|bulk-import|exam-assignments
+```
+
+`tab=library` is the default when `tab` is absent. The three removed Mock
+Content routes **redirect** (301/client-side) to the equivalent tab, preserving
+deep links and back-button history:
+
+| Legacy route (removed) | Redirects to |
+|---|---|
+| `/admin/mocks/questions`     | `/admin/content-studio?tab=library` |
+| `/admin/mocks/review-queue`  | `/admin/content-studio?tab=review-queue` |
+| `/admin/mocks/import`        | `/admin/content-studio?tab=bulk-import` |
+
+Query params on the legacy routes (e.g. filters, `exam_id`, pagination) are
+carried through the redirect. The Manage-Exam deep link (§5) targets the
+canonical route: `/admin/content-studio?tab=exam-assignments&exam_id=…`.
+Implementing these routes/redirects is the serial-delivery UI PR (§7), not this
+docs+migration PR.
 
 ---
 
@@ -109,7 +148,7 @@ items exist per subject/microtopic for the exam/cycle/phase) and links out to
 Content Studio for assignment:
 
 ```
-Manage assignments → Content Studio?exam_id=…&cycle=…&phase=…
+Manage assignments → /admin/content-studio?tab=exam-assignments&exam_id=…&phase=…
 ```
 
 The deep link pre-filters Content Studio's Exam Assignments tab to that context.
@@ -143,7 +182,11 @@ This PR is docs + one migration + checklist only. Deferred:
 
 1. **Applicability resolver** — service-role function that, given
    `(exam_id, exam_phase_id)`, returns the applicable verified/active prompt set
-   using the §2 precedence. Consumes `writing_prompt_targets`.
+   using the §2 precedence. Consumes `writing_prompt_targets`. **The resolver PR
+   MUST also replace/remove `writing_prompts_public_read`** (migration 205),
+   which currently exposes verified+active prompts directly to clients and would
+   bypass the applicability model. Until then, **no prompt may be activated for
+   aspirant launch** — see the activation gate in the checklist.
 2. **Content Studio UI** — the consolidated admin surface (Library / Review
    Queue / Bulk Import / Exam Assignments) and the nav consolidation that
    removes the 3 Mock Content destinations. Serial-delivery, single owner

@@ -8,10 +8,11 @@
 --   1. CONTENT (canonical) = SUBJECT-scoped.
 --      A writing prompt's canonical identity is subject_id / topic_id /
 --      microtopic_id. It is reusable across many exams — it does NOT belong
---      to a single exam. `writing_prompts.exam_id` therefore becomes NULLABLE
---      (mirrors the shared-content semantics already used by the mock question
---      bank, `136_mock_question_workflow.sql`, where
---      `exam_id uuid references exams(id) on delete set null`).
+--      to a single exam. The dual-authority exam-scope columns on
+--      `writing_prompts` (`exam_id`, `exam_cycle_id`, `exam_phase_id`) are
+--      therefore DROPPED (see §2 below): applicability is now carried SOLELY
+--      by `writing_prompt_targets`. There is no longer any exam-scope column
+--      on `writing_prompts` that could contradict a target row.
 --
 --   2. APPLICABILITY = exam / family / phase-scoped, via the NEW mapping
 --      table `public.writing_prompt_targets`. One prompt may apply to many
@@ -19,7 +20,22 @@
 --      when resolving which prompts apply to an exam+phase context:
 --
 --        phase-specific  >  exam-specific  >  exam-family  >  globally-applicable
---        (a prompt with NO target rows is globally applicable to every exam)
+--
+--      Global-with-exclusions semantics (BASELINE + OVERRIDES — the single,
+--      precise rule; supersedes any "no rows = global" vs "excluded rows
+--      exist" ambiguity):
+--        * A prompt is GLOBALLY applicable as its baseline when it has no
+--          `applicability_status='active'` target row that RESTRICTS it to a
+--          narrower scope (i.e. no active family/exam/phase target). "No target
+--          rows at all" is the trivial case of this baseline.
+--        * An `applicability_status='excluded'` row for exam/family/phase X is
+--          an OVERRIDE that removes the prompt from X only, while leaving the
+--          global baseline intact everywhere else. Thus a globally-applicable
+--          prompt can still carry `excluded` rows without contradiction: the
+--          excluded rows subtract specific scopes from an otherwise-global set.
+--        * The resolver applies overrides within their precedence band: a more
+--          specific `excluded` (phase) beats a broader `active` (exam/family),
+--          and vice-versa, per the phase>exam>family>global ordering.
 --
 --      NOTE: applicability is deliberately EVERGREEN — it carries no
 --      `exam_cycle_id`. Canonical content survives cycles; a cycle-specific
@@ -36,12 +52,17 @@
 -- docs/architecture/english-writing-practice.md.
 --
 -- ----------------------------------------------------------------------------
--- MIGRATION NUMBER — VERIFY DB / reconcile-at-apply.
--- The filesystem max migration on `main` is 213, so this file is numbered 214
--- (the CI `validate` guard enforces filesystem contiguity vs main). The live
--- `select max(version)::int + 1 from schema_migrations` CANNOT be run in this
--- container and MUST be reconciled/renamed at apply time (OPERATOR PENDING),
--- per the standard EWP-9 fallback in AGENTS.md.
+-- MIGRATION NUMBER + OPERATOR APPLY ORDER (concrete — no reconcile-rename).
+--   * Filesystem max migration on `main` is 213
+--     (`213_english_writing_practice_error_lab_read_model.sql`), so 214 is the
+--     only contiguous slot. The CI `validate` guard enforces this filesystem
+--     contiguity; the filename is CORRECT and MUST NOT be renamed.
+--   * The LIVE `schema_migrations` max is 212 — merged migration 213 (Error Lab
+--     read model) has NOT been applied to the live DB yet. Therefore the
+--     OPERATOR must apply in order:
+--         1) apply pending 213 (Error Lab read model)   — OPERATOR PENDING
+--         2) then apply 214 (this migration)            — OPERATOR PENDING
+--     Do NOT apply 214 before 213. No renumber/rename is required or permitted.
 --
 -- ----------------------------------------------------------------------------
 -- RLS posture (CLAUDE.md: every new table needs an RLS policy):
@@ -57,67 +78,150 @@
 --     SELECT * FROM pg_policies WHERE tablename = 'writing_prompt_targets';
 --   must show RLS enabled and NO authenticated/anon policy.
 --
--- No data backfill (the ~270-item prompt bank is not seeded yet). DDL only.
--- No AI writes. No writes beyond DDL.
+-- IDEMPOTENCY: this migration is safe to re-apply. The backfill uses
+-- `ON CONFLICT DO NOTHING` against the null-safe unique identity; the column
+-- drops are `IF EXISTS`; the index drops/creates are `IF EXISTS`/`IF NOT
+-- EXISTS`. No AI writes. Writes are limited to the one-time legacy backfill.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- 1. Canonical content is subject-scoped: exam_id becomes optional.
--- ----------------------------------------------------------------------------
--- A canonical prompt need not belong to any exam. subject_id / topic_id /
--- microtopic_id (from migration 205) remain NOT NULL / as-declared and carry
--- canonical identity.
-ALTER TABLE public.writing_prompts
-  ALTER COLUMN exam_id DROP NOT NULL;
-
--- The landed migration-205 partial unique/verified index on
--- (exam_id, exercise_type) WHERE reviewer_status='verified' AND is_active=true
--- still functions with a NULL exam_id: NULLs are simply not indexed for
--- uniqueness, so subject-scoped prompts with no exam do not collide. That index
--- is intentionally NOT dropped or recreated here (migration 205 is immutable).
-
--- ----------------------------------------------------------------------------
--- 2. Applicability mapping table (exam / family / phase-scoped).
+-- 1. Applicability mapping table (exam / family / phase-scoped).
+--    Created BEFORE the backfill (§1b) and BEFORE the column drops (§2), so the
+--    legacy exam scope on writing_prompts can be captured as target rows first.
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.writing_prompt_targets (
   id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   prompt_id            uuid NOT NULL
                          REFERENCES public.writing_prompts(id) ON DELETE CASCADE,
-  -- At least one scope must be set (enforced by the CHECK below). The resolver
-  -- reads phase > exam > family precedence; a prompt with NO target rows is
-  -- globally applicable.
+  -- EXACTLY ONE scope must be set (enforced by the CHECK below). A single
+  -- target row names a single scope kind (family OR exam OR phase); a prompt
+  -- that applies to several scopes gets several rows. This makes the
+  -- (prompt_id, scope) identity deterministic and lets the null-safe unique
+  -- index below reject duplicates.
   exam_family_id       uuid REFERENCES public.exam_families(id),
   exam_id              uuid REFERENCES public.exams(id) ON DELETE CASCADE,
   exam_phase_id        uuid REFERENCES public.exam_phases(id),
   applicability_status text NOT NULL DEFAULT 'active'
                          CHECK (applicability_status IN ('active','excluded','pending_review')),
-  -- Optional operator-set tiebreak within a precedence band; the resolver's
-  -- primary ordering is the phase>exam>family>global precedence — this only
-  -- breaks ties inside a band.
+  -- Optional operator-set tiebreak. Because (prompt_id, scope) is UNIQUE, a
+  -- given prompt maps to AT MOST ONE row per scope — so status is never
+  -- self-contradictory for a prompt+scope. priority_score (then created_at)
+  -- only ever tie-breaks ACROSS DIFFERENT prompts competing within the same
+  -- precedence band, never between two statuses of one prompt+scope.
   priority_score       numeric,
-  -- Provenance of the assignment (e.g. 'operator', 'notification', 'import').
+  -- Provenance of the assignment (e.g. 'operator', 'notification', 'import',
+  -- 'legacy_backfill').
   source_basis         text,
   metadata             jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at           timestamptz NOT NULL DEFAULT now(),
 
-  -- A target row must name at least one applicability scope. A NULL cycle is
-  -- intentional and is not a scope (applicability is evergreen).
-  CONSTRAINT writing_prompt_targets_scope_present
-    CHECK (
-      exam_family_id IS NOT NULL
-      OR exam_id IS NOT NULL
-      OR exam_phase_id IS NOT NULL
-    )
+  -- EXACTLY ONE applicability scope per row. A NULL cycle is intentional and is
+  -- not a scope (applicability is evergreen). num_nonnulls collapses the
+  -- three-way choice to a single deterministic invariant.
+  CONSTRAINT writing_prompt_targets_scope_exactly_one
+    CHECK (num_nonnulls(exam_family_id, exam_id, exam_phase_id) = 1)
 );
 
 COMMENT ON TABLE public.writing_prompt_targets IS
   'Exam/family/phase applicability mapping for canonical (subject-scoped) '
-  'writing_prompts. Precedence: phase > exam > family > global (no target row). '
-  'Evergreen: intentionally no exam_cycle_id — cycle rules live in '
-  'exam_descriptive_requirements. Service-role-managed (see migration header).';
+  'writing_prompts (sole applicability authority — writing_prompts has no exam '
+  'scope columns). Exactly one scope per row. Precedence: phase > exam > '
+  'family > global (baseline). applicability_status=excluded is a per-scope '
+  'override that subtracts a scope from an otherwise-global prompt. Evergreen: '
+  'no exam_cycle_id (cycle rules live in exam_descriptive_requirements). '
+  'Service-role-managed (see migration header).';
+
+-- Null-safe UNIQUE identity: the same prompt cannot have two rows for the same
+-- scope. Postgres 16 `NULLS NOT DISTINCT` treats the two NULL scope columns of
+-- any given row as EQUAL, so (prompt, exam=X, family=NULL, phase=NULL) collides
+-- with a second identical row but not with (prompt, family=Y, ...). CI Postgres
+-- is 16, so this is the clean, index-native way to express the constraint.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_writing_prompt_targets_scope
+  ON public.writing_prompt_targets
+     (prompt_id, exam_family_id, exam_id, exam_phase_id)
+  NULLS NOT DISTINCT;
 
 -- ----------------------------------------------------------------------------
--- 3. Resolver indexes.
+-- 1b. Backfill BEFORE dropping the legacy exam-scope columns (idempotent).
+--     For every existing writing_prompts row that names an exam, capture its
+--     scope as a target row. Prefer the MOST SPECIFIC scope: if exam_phase_id
+--     is present -> a phase-scoped target; else an exam-scoped target. We do
+--     NOT carry exam_cycle_id (evergreen). ON CONFLICT DO NOTHING against the
+--     null-safe unique index makes re-application a no-op.
+--
+--     Guarded by an information_schema column-existence check so a SECOND apply
+--     (after the columns are already dropped in §2) is a clean no-op rather
+--     than an error on the missing columns.
+-- ----------------------------------------------------------------------------
+DO $backfill$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name  = 'writing_prompts'
+      AND column_name = 'exam_id'
+  ) THEN
+    -- Phase-scoped where a phase is named (most specific).
+    EXECUTE $sql$
+      INSERT INTO public.writing_prompt_targets
+        (prompt_id, exam_phase_id, applicability_status, source_basis)
+      SELECT wp.id, wp.exam_phase_id, 'active', 'legacy_backfill'
+      FROM public.writing_prompts wp
+      WHERE wp.exam_id IS NOT NULL
+        AND wp.exam_phase_id IS NOT NULL
+      ON CONFLICT DO NOTHING
+    $sql$;
+
+    -- Exam-scoped where no phase is named.
+    EXECUTE $sql$
+      INSERT INTO public.writing_prompt_targets
+        (prompt_id, exam_id, applicability_status, source_basis)
+      SELECT wp.id, wp.exam_id, 'active', 'legacy_backfill'
+      FROM public.writing_prompts wp
+      WHERE wp.exam_id IS NOT NULL
+        AND wp.exam_phase_id IS NULL
+      ON CONFLICT DO NOTHING
+    $sql$;
+  END IF;
+END
+$backfill$;
+
+-- ----------------------------------------------------------------------------
+-- 2. Drop the dual-authority exam-scope columns from writing_prompts.
+--    Canonical identity is subject_id / topic_id / microtopic_id (from 205,
+--    left NOT NULL / as-declared). Applicability now lives ONLY in
+--    writing_prompt_targets — no dual authority.
+--
+--    Migration 205 created two indexes that reference exam_id:
+--      idx_writing_prompts_exam   ON (exam_id)
+--      idx_writing_prompts_active ON (exam_id, exercise_type)
+--                                 WHERE reviewer_status='verified' AND is_active=true
+--    A column drop would fail (or silently cascade-drop dependent indexes) — we
+--    DROP both indexes explicitly FIRST. Dropping a landed index inside a NEW
+--    forward migration is allowed (migration 205 itself stays immutable / is
+--    NOT edited).
+-- ----------------------------------------------------------------------------
+DROP INDEX IF EXISTS public.idx_writing_prompts_exam;
+DROP INDEX IF EXISTS public.idx_writing_prompts_active;
+
+ALTER TABLE public.writing_prompts
+  DROP COLUMN IF EXISTS exam_id,
+  DROP COLUMN IF EXISTS exam_cycle_id,
+  DROP COLUMN IF EXISTS exam_phase_id;
+
+-- Replacement lookup index on the SUBJECT-scoped canonical identity for the
+-- verified/active read path (mirrors the intent of the dropped
+-- idx_writing_prompts_active, now keyed on canonical content instead of exam).
+-- NOTE (correcting a false claim in an earlier draft): this is a NON-UNIQUE
+-- partial index, and Postgres B-tree indexes DO index NULL keys — a NULL
+-- microtopic_id is present in the index, not "unindexed". The partiality is the
+-- WHERE predicate only (verified + active), not any NULL-key exclusion.
+CREATE INDEX IF NOT EXISTS idx_writing_prompts_active_subject
+  ON public.writing_prompts (subject_id, topic_id, microtopic_id, exercise_type)
+  WHERE reviewer_status = 'verified' AND is_active = true;
+
+-- ----------------------------------------------------------------------------
+-- 3. Resolver indexes on the mapping table.
 -- ----------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_writing_prompt_targets_prompt
   ON public.writing_prompt_targets(prompt_id);

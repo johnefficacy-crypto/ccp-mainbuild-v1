@@ -414,12 +414,16 @@ Delivery tracked in `docs/status/career-copilot-checklist.md` (Lane H rows).
 PR plan: Lane H in `docs/status/career-copilot-pr-plan.md`.
 
 > **REVISION 2026-07-02 — content scoping (migration 214).** Canonical writing
-> prompts are **subject-scoped** shared content (`writing_prompts.exam_id` is
-> now NULLABLE, mirroring `mock_question_bank`). Exam applicability is a
-> separate mapping (`writing_prompt_targets`, precedence phase > exam > family >
-> global; evergreen, no cycle). Prompts are authored/governed in the shared
-> **Content Studio**, NOT in Exam Workspace. Any "Prompt Bank tab in Exam
-> Workspace" plan is withdrawn. See `docs/architecture/content-studio.md`.
+> prompts are **subject-scoped** shared content; migration 214 **DROPS** the
+> exam-scope columns (`exam_id`, `exam_cycle_id`, `exam_phase_id`) from
+> `writing_prompts` (backfilling `writing_prompt_targets` first). Exam
+> applicability is carried **solely** by the mapping table
+> `writing_prompt_targets` (exactly-one-scope per row; null-safe unique
+> identity; precedence phase > exam > family > global baseline, with `excluded`
+> rows as per-scope overrides; evergreen, no cycle). Prompts are
+> authored/governed in the shared **Content Studio**, NOT in Exam Workspace. Any
+> "Prompt Bank tab in Exam Workspace" plan is withdrawn. See
+> `docs/architecture/content-studio.md`.
 
 ### EWP-1. Practice sessions are not mock attempts
 

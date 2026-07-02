@@ -112,13 +112,17 @@ globally-applicable (no mapping row)`.
 Canonical content survives cycles; cycle-specific rules belong in the
 requirements scope, never the applicability mapping.
 
-Shared-content tables use a **nullable `exam_id`** so an item can exist without
-belonging to any single exam. Precedent: `mock_question_bank.exam_id`
-(`references exams(id) on delete set null`, migration 136). Migration 214 makes
-`writing_prompts.exam_id` nullable to adopt the same shared-content semantics;
-its exam applicability is carried by `writing_prompt_targets`, not by the FK
-column. This does not change entity canonicity — `exam_id` still references
-`public.exams(id)`; it is only optional.
+A shared-content table may either keep a **nullable `exam_id`** (so an item can
+exist without belonging to any single exam — e.g. `mock_question_bank.exam_id`,
+`references exams(id) on delete set null`, migration 136) **or** carry no
+exam-scope column at all, deferring applicability entirely to the mapping table.
+Migration 214 takes the latter, stronger stance for `writing_prompts`: the
+exam-scope columns (`exam_id`, `exam_cycle_id`, `exam_phase_id`) are **DROPPED**,
+and exam applicability is carried **solely** by `writing_prompt_targets`. This
+eliminates dual authority (no FK column can contradict a mapping row). Migration
+214 backfills a target row for each legacy exam-scoped prompt **before** dropping
+the columns, so no assignment is lost. Entity canonicity is preserved — the
+mapping's `exam_id` still references `public.exams(id)`.
 
 ## Agent instruction
 

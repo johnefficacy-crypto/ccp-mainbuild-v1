@@ -94,13 +94,13 @@ The repo has no separate `microtopics` table. All subject/topic/microtopic rows 
 
 ### 4.1 `writing_prompts`
 
-Reviewed exercise content. Prompts are not created by the aspirant or the planner. They are authored and governed in the shared **Content Studio** admin surface (see §17 and `docs/architecture/content-studio.md`) and flow through the existing review lifecycle. Canonical identity is **subject-scoped** (`subject_id`/`topic_id`/`microtopic_id`); as of migration 214 `exam_id` is **nullable** and exam applicability is carried by `writing_prompt_targets` (§17.2), not by this column.
+Reviewed exercise content. Prompts are not created by the aspirant or the planner. They are authored and governed in the shared **Content Studio** admin surface (see §17 and `docs/architecture/content-studio.md`) and flow through the existing review lifecycle. Canonical identity is **subject-scoped** (`subject_id`/`topic_id`/`microtopic_id`); as of migration 214 the exam-scope columns (`exam_id`, `exam_cycle_id`, `exam_phase_id`) are **DROPPED** from `writing_prompts` — exam applicability is carried **solely** by `writing_prompt_targets` (§17.2). There is no dual authority: no exam-scope column remains on `writing_prompts` that could contradict a target row.
 
 ```sql
 id                      uuid primary key
-exam_id                 uuid references exams(id)        -- NULLABLE (migration 214); applicability lives in writing_prompt_targets
-exam_cycle_id           uuid references exam_cycles(id)
-exam_phase_id           uuid references exam_phases(id)
+-- exam_id / exam_cycle_id / exam_phase_id: DROPPED in migration 214.
+--   Applicability lives only in writing_prompt_targets (§17.2); requirements
+--   stay in exam_descriptive_requirements (§4.2). No exam-scope column here.
 subject_id              uuid not null references subjects(id)
 topic_id                uuid not null references topics(id)
 microtopic_id           uuid references topics(id)      -- level='microtopic'
@@ -1769,10 +1769,14 @@ Writing content is governed by three **separate** scopes. Do not conflate them:
 
 **Canonical content is subject-scoped.** A prompt's identity is
 `subject_id`/`topic_id`/`microtopic_id`; it is reusable across many exams. As of
-migration 214, `writing_prompts.exam_id` is **NULLABLE** — a canonical prompt
-need not belong to any exam. This mirrors the shared-content semantics already
-used by the mock question bank (`136_mock_question_workflow.sql`, where
-`exam_id references exams(id) on delete set null`).
+migration 214, the exam-scope columns (`exam_id`, `exam_cycle_id`,
+`exam_phase_id`) are **DROPPED** from `writing_prompts` — a canonical prompt has
+no exam column at all. Applicability is carried **solely** by
+`writing_prompt_targets` (the sole applicability authority; no dual authority).
+Migration 214 backfills a target row for every legacy prompt that named an exam
+(most-specific: a phase-scoped target if a phase was set, else exam-scoped;
+`applicability_status='active'`, `source_basis='legacy_backfill'`) **before**
+dropping the columns, so no legacy assignment is lost.
 
 ### 17.2 Applicability model (`writing_prompt_targets`)
 
@@ -1781,10 +1785,28 @@ prompt applies to many exams/families/phases via `writing_prompt_targets` rows.
 Resolution precedence, most specific first:
 
 ```
-phase-specific  >  exam-specific  >  exam-family  >  globally-applicable (no target rows)
+phase-specific  >  exam-specific  >  exam-family  >  globally-applicable (baseline)
 ```
 
-A prompt with **no** target rows is globally applicable to every exam.
+**Row shape (deterministic identity).** Each target row names **exactly one**
+scope — family OR exam OR phase — enforced by
+`CHECK (num_nonnulls(exam_family_id, exam_id, exam_phase_id) = 1)`. A prompt that
+applies to several scopes gets several rows. A null-safe unique index
+(`(prompt_id, exam_family_id, exam_id, exam_phase_id) NULLS NOT DISTINCT`, PG16)
+guarantees at most one row per `(prompt, scope)`, so a prompt+scope can never
+carry two contradictory statuses; `priority_score` then `created_at` only ever
+tie-break across *different* prompts within a band.
+
+**Global-with-exclusions (baseline + overrides — the single precise rule).**
+A prompt is **globally applicable as its baseline** when it has no
+`applicability_status='active'` row restricting it to a narrower scope ("no
+target rows at all" is the trivial case). An `applicability_status='excluded'`
+row for scope X is an **override** that removes the prompt from X only, leaving
+the global baseline intact everywhere else — so a global prompt may still carry
+`excluded` rows without contradiction (the excluded rows *subtract* scopes).
+Overrides apply within their precedence band (a phase `excluded` beats a broader
+exam/family `active`, and vice-versa).
+
 Applicability is **evergreen** — the mapping carries **no `exam_cycle_id`**,
 because canonical content survives cycles. Cycle-specific rules stay in
 `exam_descriptive_requirements`.
