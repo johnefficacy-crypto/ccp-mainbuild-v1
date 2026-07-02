@@ -18,6 +18,7 @@ const StudyPlan = lazy(() => import("../pages/StudyPlan"));
 const Focus = lazy(() => import("../pages/study/Focus"));
 const Mocks = lazy(() => import("../pages/study/Mocks"));
 const EnglishPracticeShell = lazy(() => import("../pages/study/EnglishPracticeShell"));
+const ErrorLab = lazy(() => import("../pages/study/ErrorLab"));
 const Subjects = lazy(() => import("../pages/study/Subjects"));
 const WeeklyReview = lazy(() => import("../pages/study/WeeklyReview"));
 const StudyCompare = lazy(() => import("../pages/study/Compare"));
@@ -84,6 +85,10 @@ export const appRouteElements = (
             RouteErrorBoundary per the design lock. Entered via planner tasks; not
             an attempt-shell route; absent from the sidebar (no-new-surface rule). */}
         <Route path="practice/english/:sessionId" element={<EnglishPracticeShell />} />
+        {/* Error Lab (EWP-4): recurring writing issues grouped by microtopic.
+            Mounted UNDER StudyShell + inside RouteErrorBoundary like the EWP-3
+            route; absent from the sidebar (no-new-surface rule). */}
+        <Route path="error-lab" element={<ErrorLab />} />
       </Route>
       <Route path="/app/study/focus" element={<Focus />} />
       <Route path="/app/study/mocks" element={<Mocks />} />
