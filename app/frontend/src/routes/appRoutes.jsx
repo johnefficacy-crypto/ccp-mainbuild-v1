@@ -17,6 +17,7 @@ const Saved = lazy(() => import("../pages/Saved"));
 const StudyPlan = lazy(() => import("../pages/StudyPlan"));
 const Focus = lazy(() => import("../pages/study/Focus"));
 const Mocks = lazy(() => import("../pages/study/Mocks"));
+const EnglishPracticeShell = lazy(() => import("../pages/study/EnglishPracticeShell"));
 const Subjects = lazy(() => import("../pages/study/Subjects"));
 const WeeklyReview = lazy(() => import("../pages/study/WeeklyReview"));
 const StudyCompare = lazy(() => import("../pages/study/Compare"));
@@ -79,6 +80,10 @@ export const appRouteElements = (
         <Route path="plan" element={<StudyPlan />} />
         <Route path="learning" element={<StudyLearningHub />} />
         <Route path="progress" element={<StudyProgressHub />} />
+        {/* English Writing Practice (EWP-3): mounted UNDER StudyShell + inside
+            RouteErrorBoundary per the design lock. Entered via planner tasks; not
+            an attempt-shell route; absent from the sidebar (no-new-surface rule). */}
+        <Route path="practice/english/:sessionId" element={<EnglishPracticeShell />} />
       </Route>
       <Route path="/app/study/focus" element={<Focus />} />
       <Route path="/app/study/mocks" element={<Mocks />} />
