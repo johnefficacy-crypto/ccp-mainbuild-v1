@@ -12,10 +12,21 @@ import { normalizeToken, usedRequiredWords } from "./requiredWords";
  * @returns {JSX.Element|null}
  */
 export default function WordChips({ requiredWords, text }) {
-  const words = useMemo(
-    () => (Array.isArray(requiredWords) ? requiredWords : []),
-    [requiredWords],
-  );
+  // Dedupe by normalized token so case/duplicate variants of the same required
+  // word count once — one chip, and one slot in the N/total denominator.
+  const words = useMemo(() => {
+    const list = Array.isArray(requiredWords) ? requiredWords : [];
+    const seen = new Set();
+    const out = [];
+    for (const w of list) {
+      const key = normalizeToken(w);
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        out.push(w);
+      }
+    }
+    return out;
+  }, [requiredWords]);
   const usedSet = useMemo(() => {
     const used = usedRequiredWords(text, words);
     return new Set(used.map(normalizeToken));

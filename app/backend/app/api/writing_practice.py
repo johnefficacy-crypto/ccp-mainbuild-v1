@@ -91,13 +91,17 @@ def _session_prompt(supabase: Any, session: dict) -> dict | None:
 def _resume_unit_state(supabase: Any, session: dict, unit_ids: list[str]) -> dict[str, dict]:
     """Per-unit resume state: latest version + latest evaluation.
 
-    Returns ``{unit_id: {"latest_version": {...}|None, "latest_evaluation": {...}|None}}``.
+    Returns ``{unit_id: {"latest_version": {...}|None, "previous_version": {...}|None,
+    "latest_evaluation": {...}|None}}``.
     Feedback-bearing evaluation fields (``language_result``, ``dimension_scores``)
     are included only when feedback is released for the session (§13 rule 13 —
     learning mode is always released; exam mode gates on ``feedback_released_at``).
     The evaluation id + statuses are always present so the client can poll.
     """
-    out: dict[str, dict] = {uid: {"latest_version": None, "latest_evaluation": None} for uid in unit_ids}
+    out: dict[str, dict] = {
+        uid: {"latest_version": None, "previous_version": None, "latest_evaluation": None}
+        for uid in unit_ids
+    }
     if not unit_ids:
         return out
 
@@ -108,10 +112,18 @@ def _resume_unit_state(supabase: Any, session: dict, unit_ids: list[str]) -> dic
         .order("version_number", desc=True)
         .execute()
     ).data or []
-    # First row per unit is its latest version (query is version_number desc).
+    # First row per unit is its latest version (query is version_number desc);
+    # the second row (if any) is the version immediately before it. The prior
+    # version powers the accepted before->after diff on a resumed ready/completed
+    # unit (EWP-3) — it is the aspirant's own submission, so it is NOT feedback-gated.
     latest_by_unit: dict[str, dict] = {}
+    previous_by_unit: dict[str, dict] = {}
     for v in versions:
-        latest_by_unit.setdefault(v["unit_id"], v)
+        uid = v["unit_id"]
+        if uid not in latest_by_unit:
+            latest_by_unit[uid] = v
+        elif uid not in previous_by_unit:
+            previous_by_unit[uid] = v
 
     released = _feedback_released(session)
     version_ids = [v["id"] for v in latest_by_unit.values()]
@@ -140,6 +152,13 @@ def _resume_unit_state(supabase: Any, session: dict, unit_ids: list[str]) -> dic
             "answer_text": latest["answer_text"],
             "server_word_count": latest.get("server_word_count"),
         }
+        prev = previous_by_unit.get(uid)
+        if prev:
+            out[uid]["previous_version"] = {
+                "id": prev["id"],
+                "version_number": prev["version_number"],
+                "answer_text": prev["answer_text"],
+            }
         ev = evals_by_version.get(latest["id"])
         if ev:
             projected = {
@@ -167,6 +186,7 @@ def _session_payload(supabase: Any, session: dict) -> dict:
     for u in units:
         state = resume.get(u["id"], {})
         u["latest_version"] = state.get("latest_version")
+        u["previous_version"] = state.get("previous_version")
         u["latest_evaluation"] = state.get("latest_evaluation")
     return {
         "session": session,

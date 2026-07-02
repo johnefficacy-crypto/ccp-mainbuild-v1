@@ -69,19 +69,30 @@ export default function EnglishPracticeShell() {
   const [session, setSession] = useState(null);
   const [prompt, setPrompt] = useState({});
   const [units, setUnits] = useState([]);
-  const [feedbackReleased, setFeedbackReleased] = useState(true);
+  const [feedbackReleased, setFeedbackReleased] = useState(false);
   const [pollTimedOut, setPollTimedOut] = useState(false);
   // Immediate submit responses keyed by unit number: deterministic coverage
   // feedback + the before/after pair of an accepted rewrite (so the diff
   // survives the rewrite_required → ready/completed transition).
   const [results, setResults] = useState({});
-  // Monotonic load token — bumped on unmount and session change. A read commits
-  // its result only while its captured token is still current (drop-stale).
-  const tokenRef = useRef(0);
+  // Ordering guards for ALL session reads (not just the poll loop):
+  //  - genRef      → bumped on unmount + session change; a read from an old
+  //                  generation never commits (no cross-session clobber).
+  //  - seqRef      → monotonic id assigned to every read AND every optimistic
+  //                  local commit, in call order.
+  //  - committedRef → highest seq that has committed. A read commits only if its
+  //                  seq is still the newest, so an older poll that resolves
+  //                  after a newer submit-refresh (across independent units)
+  //                  can never overwrite fresher state.
+  const genRef = useRef(0);
+  const seqRef = useRef(0);
+  const committedRef = useRef(0);
 
-  // Fetch the session and commit it iff this read is still the current one.
+  // Fetch the session and commit it iff this read is still the newest (by seq)
+  // within the current generation.
   const fetchAndCommit = useCallback(
-    async (token, { showLoading = false } = {}) => {
+    async (gen, { showLoading = false } = {}) => {
+      const seq = (seqRef.current += 1);
       if (showLoading) {
         setStatus("loading");
         setError(null);
@@ -93,7 +104,8 @@ export default function EnglishPracticeShell() {
       } catch (e) {
         err = e;
       }
-      if (tokenRef.current !== token) return null; // superseded — drop
+      if (genRef.current !== gen) return null; // superseded session — drop
+      if (seq <= committedRef.current) return null; // a newer read already won — drop
       if (err) {
         if (showLoading) {
           setError(err?.message || "Could not load this practice session.");
@@ -101,32 +113,41 @@ export default function EnglishPracticeShell() {
         }
         return null;
       }
+      committedRef.current = seq;
       setSession(data.session);
       setPrompt(data.prompt || {});
       setUnits(data.units || []);
-      setFeedbackReleased(data.feedback_released !== false);
+      // Fail CLOSED: show feedback only on an explicit true (never leak issues
+      // if the flag is ever absent/malformed) — "no unreleased-data leakage".
+      setFeedbackReleased(data.feedback_released === true);
       setStatus("ready");
       return data;
     },
     [fetchSession, sessionId],
   );
 
+  // Apply a local unit mutation as the newest commit, so no older in-flight read
+  // can overwrite it (used for the optimistic post-submit pending lock).
+  const commitLocalUnits = useCallback((updater) => {
+    committedRef.current = seqRef.current += 1;
+    setUnits(updater);
+  }, []);
+
   // Initial load / reload on session change. Cleanup invalidates any in-flight
   // read so a late response for a previous session can't clobber the new one.
   useEffect(() => {
-    tokenRef.current += 1;
-    const token = tokenRef.current;
+    genRef.current += 1;
+    const gen = genRef.current;
     setPollTimedOut(false);
-    fetchAndCommit(token, { showLoading: true });
+    fetchAndCommit(gen, { showLoading: true });
     return () => {
-      tokenRef.current += 1;
+      genRef.current += 1;
     };
   }, [fetchAndCommit]);
 
   const retry = useCallback(() => {
-    tokenRef.current += 1;
     setPollTimedOut(false);
-    return fetchAndCommit(tokenRef.current, { showLoading: true });
+    return fetchAndCommit(genRef.current, { showLoading: true });
   }, [fetchAndCommit]);
 
   const pendingCount = useMemo(
@@ -139,7 +160,7 @@ export default function EnglishPracticeShell() {
   // fetchAndCommit prevents an overlapping/stale commit.
   useEffect(() => {
     if (status !== "ready" || pendingCount === 0) return undefined;
-    const token = tokenRef.current;
+    const gen = genRef.current;
     let active = true;
     let timer = null;
     let polls = 0;
@@ -147,8 +168,8 @@ export default function EnglishPracticeShell() {
     const tick = async () => {
       if (!active) return;
       polls += 1;
-      const data = await fetchAndCommit(token, { showLoading: false });
-      if (!active || tokenRef.current !== token) return;
+      const data = await fetchAndCommit(gen, { showLoading: false });
+      if (!active || genRef.current !== gen) return;
       if (polls >= MAX_POLLS) {
         setPollTimedOut(true);
         return;
@@ -183,10 +204,31 @@ export default function EnglishPracticeShell() {
         },
       }));
       setPollTimedOut(false);
-      fetchAndCommit(tokenRef.current, { showLoading: false });
+      // Optimistically lock the unit into evaluation_pending with the accepted
+      // version as the new CAS baseline. The submit committed durably on the
+      // server, so even if the authoritative refresh below fails, the unit's
+      // compose/rewrite control is withdrawn (no duplicate ewp_stale_version
+      // resubmit) and polling keeps trying. Applied as the newest commit so an
+      // older in-flight read can't revert it.
+      commitLocalUnits((prev) =>
+        prev.map((u) =>
+          u.unit_number === unit.unit_number
+            ? {
+                ...u,
+                status: "evaluation_pending",
+                latest_version: {
+                  ...(u.latest_version || {}),
+                  version_number: version,
+                  answer_text: text,
+                },
+              }
+            : u,
+        ),
+      );
+      fetchAndCommit(genRef.current, { showLoading: false });
       return res;
     },
-    [submitUnit, sessionId, fetchAndCommit],
+    [submitUnit, sessionId, fetchAndCommit, commitLocalUnits],
   );
 
   if (status === "loading") {
@@ -235,7 +277,13 @@ export default function EnglishPracticeShell() {
         const maxWords = unitConstraint(unit, "max_words", prompt.max_words);
         const requiredWords = prompt.required_words || [];
         const isDone = ["ready", "completed"].includes(unit.status);
-        const showRewriteDiff = isDone && result?.rewriteBefore != null && result?.rewriteAfter != null;
+        // Post-success diff: prefer the in-session accepted pair; on reload fall
+        // back to the resumed prior version → latest version (§EWP-3 resume).
+        const diffBefore = result?.rewriteBefore ?? unit.previous_version?.answer_text ?? null;
+        const diffAfter =
+          result?.rewriteAfter ?? unit.latest_version?.answer_text ?? null;
+        const showRewriteDiff =
+          isDone && diffBefore != null && diffAfter != null && diffBefore !== diffAfter;
 
         return (
           <StudyCard key={unit.id} className="mt-4" data-testid={`unit-${unit.unit_number}`}>
@@ -310,7 +358,7 @@ export default function EnglishPracticeShell() {
             {showRewriteDiff && (
               <div className="mt-3" data-testid={`unit-${unit.unit_number}-rewrite-diff`}>
                 <SectionHeader eyebrow="Your rewrite" title="What changed" />
-                <BeforeAfterDiff before={result.rewriteBefore} after={result.rewriteAfter} />
+                <BeforeAfterDiff before={diffBefore} after={diffAfter} />
               </div>
             )}
 

@@ -27,4 +27,15 @@ describe("requiredWords tokenisation", () => {
   test("returns each used required word once, preserving original casing", () => {
     expect(usedRequiredWords("Diligent, diligent work.", ["Diligent"])).toEqual(["Diligent"]);
   });
+
+  test("matches hyphenated required words as whole tokens", () => {
+    expect(usedRequiredWords("A well-known fact.", ["well-known"])).toEqual(["well-known"]);
+    // The compound must not be satisfied by only one half.
+    expect(usedRequiredWords("A known fact.", ["well-known"])).toEqual([]);
+  });
+
+  test("matches apostrophe words", () => {
+    expect(usedRequiredWords("I don't know.", ["don't"])).toEqual(["don't"]);
+    expect(tokenize("don't well-known")).toEqual(["don't", "well-known"]);
+  });
 });

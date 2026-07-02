@@ -15,14 +15,17 @@ export function normalizeToken(word) {
 }
 
 /**
- * Tokenise text into lowercased Unicode word tokens.
+ * Tokenise text into lowercased Unicode word tokens. Internal apostrophes and
+ * hyphens are kept as part of a token so compound/possessive required words like
+ * `well-known` or `don't` match as whole tokens (edge punctuation is not
+ * captured — a leading/trailing dash or a standalone " - " is skipped).
  * @param {string} text
  * @returns {string[]}
  */
 export function tokenize(text) {
   const matches = String(text == null ? "" : text)
     .toLowerCase()
-    .match(/[\p{L}\p{N}']+/gu);
+    .match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu);
   return matches || [];
 }
 

@@ -124,6 +124,14 @@ describe("EnglishPracticeShell", () => {
     }
   }
 
+  function deferred() {
+    let resolve;
+    const promise = new Promise((r) => {
+      resolve = r;
+    });
+    return { promise, resolve };
+  }
+
   function pendingUnit() {
     return payload([
       { id: "u1", unit_number: 1, status: "evaluation_pending", unit_constraints: {},
@@ -213,6 +221,94 @@ describe("EnglishPracticeShell", () => {
     expect(screen.getByTestId("unit-1-done")).toBeInTheDocument();
   });
 
+  test("resumes the before/after diff on reload from previous_version", async () => {
+    const ready = payload([
+      { id: "u1", unit_number: 1, status: "ready", unit_constraints: {},
+        previous_version: { id: "v1", version_number: 1, answer_text: "She is diligent." },
+        latest_version: { id: "v2", version_number: 2, answer_text: "She is a diligent scholar." } },
+    ]);
+    useEnglishPracticeSession.mockReturnValue({
+      fetchSession: jest.fn().mockResolvedValue(ready),
+      submitUnit: jest.fn(),
+      busy: false,
+    });
+    renderShell();
+    // No in-session result exists on a fresh load — the diff comes from the
+    // resumed prior version → latest version.
+    expect(await screen.findByTestId("unit-1-rewrite-diff")).toBeInTheDocument();
+  });
+
+  test("a committed submit locks the unit even if the authoritative refresh fails", async () => {
+    const fetchSession = jest
+      .fn()
+      .mockResolvedValueOnce(
+        payload([{ id: "u1", unit_number: 1, status: "not_started", unit_constraints: {} }]),
+      )
+      .mockRejectedValue(new Error("refresh boom")); // post-submit refresh fails
+    const submitUnit = jest.fn().mockResolvedValue({ ok: true, data: { version_number: 1 } });
+    useEnglishPracticeSession.mockReturnValue({ fetchSession, submitUnit, busy: false });
+
+    renderShell();
+    await screen.findByTestId("sentence-builder");
+    fireEvent.change(screen.getByTestId("sentence-input"), { target: { value: "my answer" } });
+    fireEvent.click(screen.getByTestId("sentence-submit"));
+
+    // The durable submit optimistically locks the unit into pending: the composer
+    // is withdrawn and no duplicate submit is possible, even though refresh failed.
+    await waitFor(() => expect(screen.getByTestId("unit-1-pending")).toBeInTheDocument());
+    expect(screen.queryByTestId("sentence-builder")).not.toBeInTheDocument();
+    expect(submitUnit).toHaveBeenCalledTimes(1);
+  });
+
+  test("an out-of-order poll cannot revert a unit submitted meanwhile", async () => {
+    jest.useFakeTimers();
+    const u1Pending = {
+      id: "u1", unit_number: 1, status: "evaluation_pending", unit_constraints: {},
+      latest_version: { id: "v1", version_number: 1, answer_text: "a sentence here" },
+    };
+    const initial = payload([u1Pending, { id: "u2", unit_number: 2, status: "not_started", unit_constraints: {} }]);
+    // Stale snapshot the older u1 poll will return LAST — u2 still not_started.
+    const stale = payload([u1Pending, { id: "u2", unit_number: 2, status: "not_started", unit_constraints: {} }]);
+    // Fresh post-submit refresh — u2 now pending.
+    const fresh = payload([
+      u1Pending,
+      { id: "u2", unit_number: 2, status: "evaluation_pending", unit_constraints: {},
+        latest_version: { id: "v2b", version_number: 1, answer_text: "hello world here" } },
+    ]);
+
+    const pollD = deferred();
+    const refreshD = deferred();
+    const fetchSession = jest
+      .fn()
+      .mockResolvedValueOnce(initial) // 1: initial load
+      .mockReturnValueOnce(pollD.promise) // 2: the u1 poll (kept in flight)
+      .mockReturnValueOnce(refreshD.promise); // 3: post-submit refresh for u2
+    const submitUnit = jest.fn().mockResolvedValue({ ok: true, data: { version_number: 1 } });
+    useEnglishPracticeSession.mockReturnValue({ fetchSession, submitUnit, busy: false });
+
+    renderShell();
+    await screen.findByTestId("sentence-builder"); // u2 composer
+
+    // Start the u1 poll (call 2) — leaves it in flight.
+    await act(async () => {
+      jest.advanceTimersByTime(2500);
+    });
+    // Submit u2 → optimistic pending + post-submit refresh (call 3).
+    fireEvent.change(screen.getByTestId("sentence-input"), { target: { value: "hello world here" } });
+    fireEvent.click(screen.getByTestId("sentence-submit"));
+    // Fresh refresh resolves FIRST (u2 pending)...
+    await act(async () => {
+      refreshD.resolve(fresh);
+    });
+    // ...then the older poll resolves LAST with the stale snapshot.
+    await act(async () => {
+      pollD.resolve(stale);
+    });
+
+    // u2 must remain pending — the stale poll is dropped by the sequence guard.
+    expect(screen.getByTestId("unit-2-pending")).toBeInTheDocument();
+  });
+
   test("hides issues when feedback is not released (exam gating)", async () => {
     useEnglishPracticeSession.mockReturnValue({
       fetchSession: jest.fn().mockResolvedValue(
@@ -225,6 +321,27 @@ describe("EnglishPracticeShell", () => {
           { feedbackReleased: false },
         ),
       ),
+      submitUnit: jest.fn(),
+      busy: false,
+    });
+    renderShell();
+    await screen.findByTestId("rewrite-editor");
+    expect(screen.queryByTestId("issue-card")).not.toBeInTheDocument();
+  });
+
+  test("fails closed on a missing feedback_released flag (hides issues)", async () => {
+    const data = {
+      session: { id: "S1", mode: "learning", status: "active" },
+      prompt: { prompt_text: "p", required_words: [] },
+      units: [
+        { id: "u1", unit_number: 1, status: "rewrite_required", unit_constraints: {},
+          latest_version: { id: "v1", version_number: 1, answer_text: "She is diligent." },
+          latest_evaluation: { id: "e1", language_result: { issues: [ISSUE] } } },
+      ],
+      // feedback_released intentionally OMITTED — client must fail closed.
+    };
+    useEnglishPracticeSession.mockReturnValue({
+      fetchSession: jest.fn().mockResolvedValue(data),
       submitUnit: jest.fn(),
       busy: false,
     });

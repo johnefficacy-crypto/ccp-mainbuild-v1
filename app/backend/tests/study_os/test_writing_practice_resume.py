@@ -95,12 +95,13 @@ def _fixture(*, feedback_released=True, mode="learning"):
              "practice_microtopic_id": "m1", "unit_constraints": {}},
         ],
         "writing_unit_versions": [
+            {"id": "v2", "unit_id": "u1", "version_number": 2,
+             "answer_text": "She is a diligent scholar.", "server_word_count": 5},
             {"id": "v1", "unit_id": "u1", "version_number": 1, "answer_text": "She is diligent.",
              "server_word_count": 3},
-            {"id": "v0", "unit_id": "u1", "version_number": 0, "answer_text": "old", "server_word_count": 1},
         ],
         "writing_evaluations": [
-            {"id": "e1", "unit_version_id": "v1", "evaluation_revision": 1,
+            {"id": "e1", "unit_version_id": "v2", "evaluation_revision": 1,
              "overall_status": "completed", "deterministic_status": "completed",
              "language_status": "completed",
              "language_result": {"issues": [{"issue_type": "word_choice", "quoted_text": "She"}]},
@@ -119,10 +120,10 @@ def test_resume_payload_includes_prompt_latest_version_and_issues():
     assert out["feedback_released"] is True
 
     unit = out["units"][0]
-    # Latest version is v1 (version_number 1), not the stale v0.
-    assert unit["latest_version"]["id"] == "v1"
-    assert unit["latest_version"]["version_number"] == 1
-    assert unit["latest_version"]["answer_text"] == "She is diligent."
+    # Latest version is v2 (highest version_number), not the prior v1.
+    assert unit["latest_version"]["id"] == "v2"
+    assert unit["latest_version"]["version_number"] == 2
+    assert unit["latest_version"]["answer_text"] == "She is a diligent scholar."
     # Released evaluation carries language issues.
     assert unit["latest_evaluation"]["id"] == "e1"
     assert unit["latest_evaluation"]["language_result"]["issues"][0]["quoted_text"] == "She"
@@ -139,3 +140,76 @@ def test_resume_payload_gates_feedback_when_not_released():
     assert ev["overall_status"] == "completed"
     assert "language_result" not in ev
     assert "dimension_scores" not in ev
+
+
+def test_resume_payload_includes_previous_version_for_diff():
+    session, sb = _fixture()
+    out = wp._session_payload(sb, session)
+
+    unit = out["units"][0]
+    # Latest is still the highest version.
+    assert unit["latest_version"]["version_number"] == 2
+    # Previous version is the one immediately before the latest (v1), so the
+    # accepted before->after diff is reconstructable on reload.
+    assert unit["previous_version"]["id"] == "v1"
+    assert unit["previous_version"]["version_number"] == 1
+    assert unit["previous_version"]["answer_text"] == "She is diligent."
+
+
+def test_resume_payload_previous_version_none_with_single_version():
+    session, sb = _fixture()
+    # Collapse to a single version for the unit.
+    sb._tables["writing_unit_versions"] = [
+        {"id": "v1", "unit_id": "u1", "version_number": 1,
+         "answer_text": "She is diligent.", "server_word_count": 3},
+    ]
+    sb._tables["writing_evaluations"] = [
+        {"id": "e1", "unit_version_id": "v1", "evaluation_revision": 1,
+         "overall_status": "completed", "deterministic_status": "completed",
+         "language_status": "completed", "language_result": {"issues": []},
+         "dimension_scores": {"clarity": 4}},
+    ]
+    out = wp._session_payload(sb, session)
+
+    unit = out["units"][0]
+    assert unit["latest_version"]["version_number"] == 1
+    assert unit["previous_version"] is None
+
+
+def test_resume_payload_exam_released_shows_feedback():
+    # Exam mode with a PAST feedback_released_at (set by _fixture) — the
+    # time-comparison branch resolves released=True, so feedback is shown.
+    session, sb = _fixture(feedback_released=True, mode="exam")
+    out = wp._session_payload(sb, session)
+
+    assert out["feedback_released"] is True
+    ev = out["units"][0]["latest_evaluation"]
+    assert ev["id"] == "e1"
+    assert ev["language_result"]["issues"][0]["quoted_text"] == "She"
+
+
+def test_resume_payload_exam_future_release_still_gates():
+    # Exam mode with a FUTURE feedback_released_at — the time-comparison branch
+    # fails closed (ts > now), so the feedback body stays withheld while the id
+    # and statuses remain present for polling.
+    session, sb = _fixture(feedback_released=True, mode="exam")
+    session["feedback_released_at"] = "2999-01-01T00:00:00+00:00"
+    out = wp._session_payload(sb, session)
+
+    assert out["feedback_released"] is False
+    ev = out["units"][0]["latest_evaluation"]
+    assert ev["id"] == "e1"
+    assert ev["overall_status"] == "completed"
+    assert "language_result" not in ev
+    assert "dimension_scores" not in ev
+
+
+def test_resume_payload_latest_evaluation_none_when_no_evaluation():
+    # Latest version exists but carries no evaluation row.
+    session, sb = _fixture()
+    sb._tables["writing_evaluations"] = []
+    out = wp._session_payload(sb, session)
+
+    unit = out["units"][0]
+    assert unit["latest_version"]["id"] == "v2"
+    assert unit["latest_evaluation"] is None

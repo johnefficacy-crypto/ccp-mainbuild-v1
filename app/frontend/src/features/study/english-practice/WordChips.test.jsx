@@ -19,6 +19,13 @@ describe("WordChips", () => {
     expect(screen.getByTestId("words-used")).toHaveTextContent("1/2");
   });
 
+  test("dedupes case/duplicate required words in the chips and the N/total counter", () => {
+    render(<WordChips requiredWords={["Diligent", "diligent"]} text="A diligent mind." />);
+    // One chip, and the denominator counts the word once (not 1/2).
+    expect(screen.getAllByTestId(/^word-chip(-used)?$/)).toHaveLength(1);
+    expect(screen.getByTestId("words-used")).toHaveTextContent("1/1");
+  });
+
   test("tracks each unit independently (no shared state across instances)", () => {
     const { rerender } = render(<WordChips requiredWords={["ran"]} text="he ran" />);
     expect(screen.getByTestId("words-used")).toHaveTextContent("1/1");
