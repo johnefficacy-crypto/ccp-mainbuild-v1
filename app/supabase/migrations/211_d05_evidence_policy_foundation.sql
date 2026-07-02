@@ -111,10 +111,11 @@ create table if not exists public.exam_document_evidence (
   exam_id uuid not null references public.exams(id) on delete cascade,
   exam_cycle_id uuid references public.exam_cycles(id) on delete cascade,
   exam_phase_id uuid references public.exam_phases(id) on delete cascade,
-  -- Inert in PR-1/PR-2: no canonical source registry exists yet, so this identifier is NOT
-  -- relationally enforced and MUST NOT be used to satisfy the D05 source-authority predicate
-  -- until a canonical source registry + FK land (documented follow-up).
-  source_registry_id uuid,
+  -- D05 source-authority predicate: canonical source is public.source_registry (migration 002/022).
+  -- PR-2 satisfies `requires_verified_source=true` from this FK using existing registry facts —
+  -- at minimum is_active AND is_official_source AND NOT discovery_only — kept DISTINCT from the
+  -- human trust_status lifecycle below (source authority != human review).
+  source_registry_id uuid references public.source_registry(id) on delete set null,
   trust_status text not null default 'pending'
     check (trust_status in ('pending', 'verified', 'rejected', 'superseded')),
   superseded_by_id uuid references public.exam_document_evidence(id) on delete set null,
@@ -224,6 +225,7 @@ comment on table public.exam_evidence_requirement_overrides is
 -- ─────────────────────────────────────────────────────────────────────────────
 create or replace function public._d05_check_evidence_scope() returns trigger
 language plpgsql as $fn$
+declare v_target_exam uuid;
 begin
   if new.exam_cycle_id is not null
      and not exists (select 1 from public.exam_cycles c
@@ -238,19 +240,56 @@ begin
     raise exception 'exam_document_evidence: phase % not in exam %/cycle %',
       new.exam_phase_id, new.exam_id, new.exam_cycle_id;
   end if;
+  -- Supersession consistency: a superseded link and the 'superseded' status are bidirectional;
+  -- the target must exist, differ from self, and belong to the same exam.
+  if new.superseded_by_id is not null then
+    if new.superseded_by_id = new.id then
+      raise exception 'exam_document_evidence: superseded_by_id cannot reference the row itself';
+    end if;
+    if new.trust_status <> 'superseded' then
+      raise exception 'exam_document_evidence: superseded_by_id set but trust_status is % (must be superseded)',
+        new.trust_status;
+    end if;
+    select exam_id into v_target_exam from public.exam_document_evidence e
+      where e.id = new.superseded_by_id;
+    if v_target_exam is null then
+      raise exception 'exam_document_evidence: superseded_by_id % not found', new.superseded_by_id;
+    end if;
+    if v_target_exam <> new.exam_id then
+      raise exception 'exam_document_evidence: superseded_by_id % belongs to a different exam', new.superseded_by_id;
+    end if;
+  elsif new.trust_status = 'superseded' then
+    raise exception 'exam_document_evidence: trust_status=superseded requires a superseded_by_id target';
+  end if;
   return new;
 end;
 $fn$;
 
 create or replace function public._d05_check_role_scope() returns trigger
 language plpgsql as $fn$
-declare v_exam uuid;
+declare
+  v_exam uuid;
+  v_pcycle uuid;
+  v_pphase uuid;
+  v_eff_cycle uuid;
 begin
-  select exam_id into v_exam from public.exam_document_evidence e
-    where e.id = new.document_evidence_id;
+  select exam_id, exam_cycle_id, exam_phase_id into v_exam, v_pcycle, v_pphase
+    from public.exam_document_evidence e where e.id = new.document_evidence_id;
   if v_exam is null then
     raise exception 'evidence role: parent evidence % not found', new.document_evidence_id;
   end if;
+  -- A role may inherit (leave null) or narrow an exam-level parent, but must not escape or
+  -- conflict with a cycle/phase-scoped parent registration.
+  if v_pcycle is not null and new.exam_cycle_id is not null and new.exam_cycle_id <> v_pcycle then
+    raise exception 'evidence role: cycle % conflicts with cycle-scoped parent cycle %',
+      new.exam_cycle_id, v_pcycle;
+  end if;
+  if v_pphase is not null and new.exam_phase_id is not null and new.exam_phase_id <> v_pphase then
+    raise exception 'evidence role: phase % conflicts with phase-scoped parent phase %',
+      new.exam_phase_id, v_pphase;
+  end if;
+  -- Effective cycle is the role's own cycle if set, else the parent's.
+  v_eff_cycle := coalesce(new.exam_cycle_id, v_pcycle);
   if new.exam_cycle_id is not null
      and not exists (select 1 from public.exam_cycles c
                      where c.id = new.exam_cycle_id and c.exam_id = v_exam) then
@@ -259,9 +298,9 @@ begin
   if new.exam_phase_id is not null
      and not exists (select 1 from public.exam_phases p
                      where p.id = new.exam_phase_id and p.exam_id = v_exam
-                       and (new.exam_cycle_id is null or p.exam_cycle_id = new.exam_cycle_id)) then
-    raise exception 'evidence role: phase % not in parent exam %/cycle %',
-      new.exam_phase_id, v_exam, new.exam_cycle_id;
+                       and (v_eff_cycle is null or p.exam_cycle_id = v_eff_cycle)) then
+    raise exception 'evidence role: phase % not in parent exam %/effective cycle %',
+      new.exam_phase_id, v_exam, v_eff_cycle;
   end if;
   return new;
 end;
@@ -314,9 +353,15 @@ create trigger trg_d05_check_override
   for each row execute function public._d05_check_override();
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Seed: per-management-mode × phase_kind phase-scoped requirements (D05
--- "Phase-specific rules" + "Mandatory evidence matrix"). core and light are seeded
--- SEPARATELY because their approved requirement levels differ:
+-- Seed: the PHASE-SCOPED subset of the D05 matrix (D05 "Phase-specific rules") only.
+-- The exam-scoped and cycle-scoped requirements from the D05 "Mandatory evidence matrix"
+-- (verified official source, primary_cycle_document per cycle, conditional corrigendum,
+-- phase_schedule, application_instructions) are NOT seeded here — they land with the
+-- PR-2 evaluator migration, and Step 9 stays fail-closed until those policy rows exist.
+-- PR-2 is therefore the "phase-completeness" evaluator over the full seeded set, not a
+-- "full D05 evaluator" over a partial policy.
+--
+-- core and light are seeded SEPARATELY because their approved requirement levels differ:
 --   core  written: syllabus/pattern/PYQ required+block; answer_key required when objective
 --                  PYQ used for scoring; non-written phase rules required+block.
 --   light written: syllabus required when Study-OS exposed; pattern required when pattern
