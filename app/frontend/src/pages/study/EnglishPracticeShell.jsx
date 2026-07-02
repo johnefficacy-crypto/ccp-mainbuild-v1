@@ -13,6 +13,11 @@
  * unit is `evaluation_pending`; the async EWP-2B evaluator produces issues out of
  * band, so the shell polls the session until no unit is pending, then renders the
  * released issues and the rewrite path.
+ *
+ * Polling is cancellation-safe: reads commit through a monotonic load token that
+ * is invalidated on unmount and on session change, and the loop is serialized
+ * (each tick is scheduled only after the previous read resolves) so a slow older
+ * poll can never overwrite newer terminal state.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -23,6 +28,7 @@ import { PageHeader, StudyCard, SectionHeader, StatusDot } from "../../shared/ui
 import SentenceBuilder from "../../features/study/english-practice/SentenceBuilder";
 import RewriteEditor from "../../features/study/english-practice/RewriteEditor";
 import SentenceIssueCard from "../../features/study/english-practice/SentenceIssueCard";
+import BeforeAfterDiff from "../../features/study/english-practice/BeforeAfterDiff";
 import useEnglishPracticeSession from "../../features/study/english-practice/useEnglishPracticeSession";
 
 // Unit status → a human label + a StatusDot state (see shared/ui/studyos).
@@ -64,75 +70,123 @@ export default function EnglishPracticeShell() {
   const [prompt, setPrompt] = useState({});
   const [units, setUnits] = useState([]);
   const [feedbackReleased, setFeedbackReleased] = useState(true);
-  // Immediate submit responses (deterministic coverage feedback) keyed by unit
-  // number. Language issues + the CAS baseline come from the server session read.
+  const [pollTimedOut, setPollTimedOut] = useState(false);
+  // Immediate submit responses keyed by unit number: deterministic coverage
+  // feedback + the before/after pair of an accepted rewrite (so the diff
+  // survives the rewrite_required → ready/completed transition).
   const [results, setResults] = useState({});
-  const pollsRef = useRef(0);
+  // Monotonic load token — bumped on unmount and session change. A read commits
+  // its result only while its captured token is still current (drop-stale).
+  const tokenRef = useRef(0);
 
-  const refresh = useCallback(
-    async ({ silent = false } = {}) => {
-      if (!silent) {
+  // Fetch the session and commit it iff this read is still the current one.
+  const fetchAndCommit = useCallback(
+    async (token, { showLoading = false } = {}) => {
+      if (showLoading) {
         setStatus("loading");
         setError(null);
       }
+      let data = null;
+      let err = null;
       try {
-        const data = await fetchSession(sessionId);
-        setSession(data.session);
-        setPrompt(data.prompt || {});
-        setUnits(data.units || []);
-        setFeedbackReleased(data.feedback_released !== false);
-        setStatus("ready");
-        return data;
+        data = await fetchSession(sessionId);
       } catch (e) {
-        if (!silent) {
-          setError(e?.message || "Could not load this practice session.");
+        err = e;
+      }
+      if (tokenRef.current !== token) return null; // superseded — drop
+      if (err) {
+        if (showLoading) {
+          setError(err?.message || "Could not load this practice session.");
           setStatus("error");
         }
         return null;
       }
+      setSession(data.session);
+      setPrompt(data.prompt || {});
+      setUnits(data.units || []);
+      setFeedbackReleased(data.feedback_released !== false);
+      setStatus("ready");
+      return data;
     },
     [fetchSession, sessionId],
   );
 
+  // Initial load / reload on session change. Cleanup invalidates any in-flight
+  // read so a late response for a previous session can't clobber the new one.
   useEffect(() => {
-    pollsRef.current = 0;
-    refresh();
-  }, [refresh]);
+    tokenRef.current += 1;
+    const token = tokenRef.current;
+    setPollTimedOut(false);
+    fetchAndCommit(token, { showLoading: true });
+    return () => {
+      tokenRef.current += 1;
+    };
+  }, [fetchAndCommit]);
+
+  const retry = useCallback(() => {
+    tokenRef.current += 1;
+    setPollTimedOut(false);
+    return fetchAndCommit(tokenRef.current, { showLoading: true });
+  }, [fetchAndCommit]);
 
   const pendingCount = useMemo(
     () => units.filter((u) => u.status === "evaluation_pending").length,
     [units],
   );
 
-  // Poll while any unit is being evaluated (EWP-2B produces issues out of band).
-  // Stops on unmount, session change, when nothing is pending, or after the cap.
+  // Serialized, cancellation-safe poll while any unit is being evaluated. Each
+  // tick awaits its read before scheduling the next; the token guard inside
+  // fetchAndCommit prevents an overlapping/stale commit.
   useEffect(() => {
     if (status !== "ready" || pendingCount === 0) return undefined;
-    let cancelled = false;
-    const id = setInterval(() => {
-      pollsRef.current += 1;
-      if (pollsRef.current > MAX_POLLS) {
-        clearInterval(id);
+    const token = tokenRef.current;
+    let active = true;
+    let timer = null;
+    let polls = 0;
+
+    const tick = async () => {
+      if (!active) return;
+      polls += 1;
+      const data = await fetchAndCommit(token, { showLoading: false });
+      if (!active || tokenRef.current !== token) return;
+      if (polls >= MAX_POLLS) {
+        setPollTimedOut(true);
         return;
       }
-      if (!cancelled) refresh({ silent: true });
-    }, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
+      const stillPending = data
+        ? (data.units || []).some((u) => u.status === "evaluation_pending")
+        : true;
+      if (stillPending) timer = setTimeout(tick, POLL_INTERVAL_MS);
     };
-  }, [status, pendingCount, refresh]);
+
+    timer = setTimeout(tick, POLL_INTERVAL_MS);
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [status, pendingCount, fetchAndCommit]);
 
   const onSubmitUnit = useCallback(
     async (unit, text) => {
       const version = (unit.latest_version?.version_number || 0) + 1;
+      const before = unit.latest_version?.answer_text || "";
       const res = await submitUnit(sessionId, unit.unit_number, text, version);
-      if (!res?.ok) return;
-      setResults((prev) => ({ ...prev, [unit.unit_number]: { ...(res.data || {}), submittedText: text } }));
-      pollsRef.current = 0;
-      refresh({ silent: true }); // pick up the evaluation_pending transition + start polling
+      if (!res?.ok) return res; // surface failure so the composer keeps its autosave
+      setResults((prev) => ({
+        ...prev,
+        [unit.unit_number]: {
+          ...(res.data || {}),
+          submittedText: text,
+          // Retain the accepted rewrite pair for a post-success diff.
+          rewriteBefore: version > 1 ? before : null,
+          rewriteAfter: version > 1 ? text : null,
+        },
+      }));
+      setPollTimedOut(false);
+      fetchAndCommit(tokenRef.current, { showLoading: false });
+      return res;
     },
-    [submitUnit, sessionId, refresh],
+    [submitUnit, sessionId, fetchAndCommit],
   );
 
   if (status === "loading") {
@@ -149,7 +203,7 @@ export default function EnglishPracticeShell() {
   if (status === "error") {
     return (
       <div className="mx-auto max-w-3xl p-4">
-        <ErrorState title="Practice session unavailable" message={error} onRetry={refresh} />
+        <ErrorState title="Practice session unavailable" message={error} onRetry={retry} />
       </div>
     );
   }
@@ -180,6 +234,8 @@ export default function EnglishPracticeShell() {
         const minWords = unitConstraint(unit, "min_words", prompt.min_words);
         const maxWords = unitConstraint(unit, "max_words", prompt.max_words);
         const requiredWords = prompt.required_words || [];
+        const isDone = ["ready", "completed"].includes(unit.status);
+        const showRewriteDiff = isDone && result?.rewriteBefore != null && result?.rewriteAfter != null;
 
         return (
           <StudyCard key={unit.id} className="mt-4" data-testid={`unit-${unit.unit_number}`}>
@@ -206,14 +262,27 @@ export default function EnglishPracticeShell() {
             )}
 
             {unit.status === "evaluation_pending" && (
-              <p
-                className="text-sm text-amber-700"
-                role="status"
-                aria-live="polite"
-                data-testid={`unit-${unit.unit_number}-pending`}
-              >
-                Your sentence is being evaluated. Language feedback will appear here shortly.
-              </p>
+              <div role="status" aria-live="polite" data-testid={`unit-${unit.unit_number}-pending`}>
+                {pollTimedOut ? (
+                  <div className="text-sm text-amber-700">
+                    <p data-testid={`unit-${unit.unit_number}-poll-timeout`}>
+                      Feedback is taking longer than expected.
+                    </p>
+                    <button
+                      type="button"
+                      data-testid={`unit-${unit.unit_number}-poll-retry`}
+                      onClick={retry}
+                      className="mt-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                    >
+                      Check again
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-700">
+                    Your sentence is being evaluated. Language feedback will appear here shortly.
+                  </p>
+                )}
+              </div>
             )}
 
             {/* Mandatory rewrite: rewrite_required is directly submittable — edit
@@ -224,15 +293,25 @@ export default function EnglishPracticeShell() {
                 previousAnswer={answerText}
                 minWords={minWords}
                 maxWords={maxWords}
+                sessionId={sessionId}
+                unitNumber={unit.unit_number}
                 busy={busy}
                 onSubmit={(text) => onSubmitUnit(unit, text)}
               />
             )}
 
-            {["ready", "completed"].includes(unit.status) && (
+            {isDone && (
               <p className="text-sm text-emerald-700" data-testid={`unit-${unit.unit_number}-done`}>
                 Nicely done — this sentence is complete.
               </p>
+            )}
+
+            {/* Retain the accepted before/after diff through the successful rewrite. */}
+            {showRewriteDiff && (
+              <div className="mt-3" data-testid={`unit-${unit.unit_number}-rewrite-diff`}>
+                <SectionHeader eyebrow="Your rewrite" title="What changed" />
+                <BeforeAfterDiff before={result.rewriteBefore} after={result.rewriteAfter} />
+              </div>
             )}
 
             {result?.coverage && result.coverage.passed === false && (

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import RewriteEditor from "./RewriteEditor";
 
 describe("RewriteEditor", () => {
@@ -49,5 +49,43 @@ describe("RewriteEditor", () => {
       target: { value: "the cat sat quietly" },
     });
     expect(screen.getByTestId("rewrite-submit")).not.toBeDisabled();
+  });
+
+  describe("autosave", () => {
+    beforeEach(() => window.sessionStorage.clear());
+
+    test("restores an in-progress rewrite over the server answer", () => {
+      window.sessionStorage.setItem("ewp:draft:S1:1", "my saved correction");
+      render(
+        <RewriteEditor previousAnswer="server answer" sessionId="S1" unitNumber={1} onSubmit={() => {}} />,
+      );
+      expect(screen.getByTestId("rewrite-input")).toHaveValue("my saved correction");
+    });
+
+    test("seeds from the previous answer when there is no saved draft", () => {
+      render(
+        <RewriteEditor previousAnswer="server answer" sessionId="S1" unitNumber={1} onSubmit={() => {}} />,
+      );
+      expect(screen.getByTestId("rewrite-input")).toHaveValue("server answer");
+    });
+
+    test("clears the draft only after a successful rewrite; preserves it on failure", async () => {
+      const ok = jest.fn().mockResolvedValue({ ok: true });
+      const { unmount } = render(
+        <RewriteEditor previousAnswer="old" sessionId="S1" unitNumber={1} onSubmit={ok} />,
+      );
+      fireEvent.change(screen.getByTestId("rewrite-input"), { target: { value: "new correction" } });
+      expect(window.sessionStorage.getItem("ewp:draft:S1:1")).toBe("new correction");
+      fireEvent.click(screen.getByTestId("rewrite-submit"));
+      await waitFor(() => expect(window.sessionStorage.getItem("ewp:draft:S1:1")).toBeNull());
+      unmount();
+
+      const fail = jest.fn().mockResolvedValue({ ok: false });
+      render(<RewriteEditor previousAnswer="old" sessionId="S1" unitNumber={1} onSubmit={fail} />);
+      fireEvent.change(screen.getByTestId("rewrite-input"), { target: { value: "keep this" } });
+      fireEvent.click(screen.getByTestId("rewrite-submit"));
+      await waitFor(() => expect(fail).toHaveBeenCalled());
+      expect(window.sessionStorage.getItem("ewp:draft:S1:1")).toBe("keep this");
+    });
   });
 });

@@ -45,6 +45,7 @@ describe("EnglishPracticeShell", () => {
   afterEach(() => {
     jest.clearAllMocks();
     jest.useRealTimers();
+    window.sessionStorage.clear();
   });
 
   test("renders a sentence builder for a not-started unit", async () => {
@@ -111,21 +112,38 @@ describe("EnglishPracticeShell", () => {
     );
   });
 
-  test("polls a pending unit until the async evaluation lands, then shows issues", async () => {
-    jest.useFakeTimers();
-    const pending = payload([
+  // Advance N poll intervals, flushing microtasks after each so the awaited
+  // async tick resolves and schedules the next timer (works on legacy timers,
+  // which lack advanceTimersByTimeAsync).
+  async function advancePolls(n) {
+    for (let i = 0; i < n; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => {
+        jest.advanceTimersByTime(2500);
+      });
+    }
+  }
+
+  function pendingUnit() {
+    return payload([
       { id: "u1", unit_number: 1, status: "evaluation_pending", unit_constraints: {},
         latest_version: { id: "v1", version_number: 1, answer_text: "She is diligent." } },
     ]);
-    const done = payload([
+  }
+  function doneUnit() {
+    return payload([
       { id: "u1", unit_number: 1, status: "rewrite_required", unit_constraints: {},
         latest_version: { id: "v1", version_number: 1, answer_text: "She is diligent." },
         latest_evaluation: { id: "e1", language_result: { issues: [ISSUE] } } },
     ]);
+  }
+
+  test("polls a pending unit until the async evaluation lands, then shows issues", async () => {
+    jest.useFakeTimers();
     const fetchSession = jest
       .fn()
-      .mockResolvedValueOnce(pending) // initial load
-      .mockResolvedValue(done); // subsequent polls
+      .mockResolvedValueOnce(pendingUnit()) // initial load
+      .mockResolvedValue(doneUnit()); // subsequent polls
     useEnglishPracticeSession.mockReturnValue({ fetchSession, submitUnit: jest.fn(), busy: false });
 
     renderShell();
@@ -133,11 +151,66 @@ describe("EnglishPracticeShell", () => {
     expect(fetchSession).toHaveBeenCalledTimes(1);
 
     // Advance one poll interval → re-fetch resolves to the terminal state.
-    await act(async () => {
-      jest.advanceTimersByTime(2500);
-    });
-    await waitFor(() => expect(screen.getByTestId("issue-card")).toBeInTheDocument());
+    await advancePolls(1);
+    expect(screen.getByTestId("issue-card")).toBeInTheDocument();
     expect(fetchSession.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("polling stops and does not keep fetching after the component unmounts", async () => {
+    jest.useFakeTimers();
+    const fetchSession = jest.fn().mockResolvedValue(pendingUnit());
+    useEnglishPracticeSession.mockReturnValue({ fetchSession, submitUnit: jest.fn(), busy: false });
+
+    const { unmount } = renderShell();
+    await screen.findByTestId("unit-1-pending");
+    const callsBefore = fetchSession.mock.calls.length;
+    unmount();
+    await advancePolls(5);
+    // No further fetches once unmounted (cleanup cleared the timer + token).
+    expect(fetchSession.mock.calls.length).toBe(callsBefore);
+  });
+
+  test("surfaces a timeout + manual retry once the poll cap is hit", async () => {
+    jest.useFakeTimers();
+    const fetchSession = jest.fn().mockResolvedValue(pendingUnit()); // never terminal
+    useEnglishPracticeSession.mockReturnValue({ fetchSession, submitUnit: jest.fn(), busy: false });
+
+    renderShell();
+    await screen.findByTestId("unit-1-pending");
+    // Exhaust the cap (24 polls) plus margin.
+    await advancePolls(26);
+    expect(screen.getByTestId("unit-1-poll-timeout")).toBeInTheDocument();
+    const callsAtCap = fetchSession.mock.calls.length;
+    // Manual retry re-fetches.
+    await act(async () => {
+      screen.getByTestId("unit-1-poll-retry").click();
+    });
+    expect(fetchSession.mock.calls.length).toBeGreaterThan(callsAtCap);
+  });
+
+  test("retains the before/after diff through a successful rewrite", async () => {
+    const rewrite = payload([
+      { id: "u1", unit_number: 1, status: "rewrite_required", unit_constraints: {},
+        latest_version: { id: "v1", version_number: 1, answer_text: "She is diligent." } },
+    ]);
+    const ready = payload([
+      { id: "u1", unit_number: 1, status: "ready", unit_constraints: {},
+        latest_version: { id: "v2", version_number: 2, answer_text: "She is a diligent scholar." } },
+    ]);
+    const fetchSession = jest
+      .fn()
+      .mockResolvedValueOnce(rewrite) // initial
+      .mockResolvedValue(ready); // after submit refresh
+    const submitUnit = jest.fn().mockResolvedValue({ ok: true, data: { version_number: 2 } });
+    useEnglishPracticeSession.mockReturnValue({ fetchSession, submitUnit, busy: false });
+
+    renderShell();
+    const input = await screen.findByTestId("rewrite-input");
+    fireEvent.change(input, { target: { value: "She is a diligent scholar." } });
+    fireEvent.click(screen.getByTestId("rewrite-submit"));
+
+    await waitFor(() => expect(screen.getByTestId("unit-1-rewrite-diff")).toBeInTheDocument());
+    expect(screen.getByTestId("unit-1-done")).toBeInTheDocument();
   });
 
   test("hides issues when feedback is not released (exam gating)", async () => {

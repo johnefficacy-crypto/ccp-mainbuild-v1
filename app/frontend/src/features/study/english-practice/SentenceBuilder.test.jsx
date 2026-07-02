@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import SentenceBuilder from "./SentenceBuilder";
 
 describe("SentenceBuilder", () => {
@@ -70,13 +70,23 @@ describe("SentenceBuilder", () => {
       expect(screen.getByTestId("sentence-input")).toHaveValue("restored text");
     });
 
-    test("clears the autosaved draft after a successful submit", () => {
-      const onSubmit = jest.fn();
+    test("clears the autosaved draft only after a SUCCESSFUL submit", async () => {
+      const onSubmit = jest.fn().mockResolvedValue({ ok: true });
       render(<SentenceBuilder unitNumber={2} sessionId="S1" onSubmit={onSubmit} />);
       fireEvent.change(screen.getByTestId("sentence-input"), { target: { value: "final answer" } });
       fireEvent.click(screen.getByTestId("sentence-submit"));
       expect(onSubmit).toHaveBeenCalledWith("final answer");
-      expect(window.sessionStorage.getItem("ewp:draft:S1:2")).toBeNull();
+      await waitFor(() => expect(window.sessionStorage.getItem("ewp:draft:S1:2")).toBeNull());
+    });
+
+    test("preserves the autosaved draft when the submit fails", async () => {
+      const onSubmit = jest.fn().mockResolvedValue({ ok: false });
+      render(<SentenceBuilder unitNumber={2} sessionId="S1" onSubmit={onSubmit} />);
+      fireEvent.change(screen.getByTestId("sentence-input"), { target: { value: "keep me" } });
+      fireEvent.click(screen.getByTestId("sentence-submit"));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      // Failed submit must not wipe the recoverable draft.
+      expect(window.sessionStorage.getItem("ewp:draft:S1:2")).toBe("keep me");
     });
   });
 });

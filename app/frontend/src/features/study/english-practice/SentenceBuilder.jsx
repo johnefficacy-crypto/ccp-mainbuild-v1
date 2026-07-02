@@ -57,9 +57,12 @@ export default function SentenceBuilder({
 
   const hasHint = typeof minWords === "number" || typeof maxWords === "number";
 
-  const handleSubmit = () => {
-    if (sessionId != null) clearDraft(sessionId, unitNumber);
-    onSubmit(draft.trim());
+  const handleSubmit = async () => {
+    // Clear the autosaved draft ONLY after the submission succeeds — a failed /
+    // stale-CAS / network-errored submit must keep the draft so a reload can
+    // still recover the answer.
+    const result = await onSubmit(draft.trim());
+    if (sessionId != null && result?.ok) clearDraft(sessionId, unitNumber);
   };
 
   return (
