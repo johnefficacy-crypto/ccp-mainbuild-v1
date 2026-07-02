@@ -419,105 +419,37 @@ def get_evaluation(
     return {"evaluation": evaluation}
 
 
-def _released_evaluation_ids(supabase: Any, user_id: str) -> list[str]:
-    """Evaluation ids on the caller's OWN, feedback-released sessions.
+def _error_lab_rows(supabase: Any, user_id: str) -> list[dict]:
+    """Current-state Error Lab issue rows for the caller, from the SQL read model.
 
-    Walks session -> unit -> version -> evaluation, scoped to ``user_id`` and
-    gated on ``_feedback_released`` (§13 rule 13). Returns ``[]`` at any empty
-    hop, so callers can short-circuit. Service-role bypasses RLS; this owner
-    scoping is the primary authorization (RLS is defence-in-depth).
+    Delegates the whole session -> unit -> version -> evaluation -> issue walk,
+    the effective-review-decision fold (§4.10a), the reclassification remap, and
+    the canonical-topic join to ``public.ewp_error_lab`` (migration 213) in a
+    SINGLE owner-scoped round-trip — no progressive ``IN (...)`` fan-out. The RPC
+    already returns only owner-scoped, feedback-released, ``affects_current_state``
+    issues with effective invalidation excluded and effective reclassification
+    applied (corrected issue_type + remapped active canonical microtopic), each
+    joined to its microtopic name/slug. Read-only; no pending/rejected/stale/
+    invalidated leakage.
     """
-    sessions = (
-        supabase.table("writing_sessions").select("id,mode,feedback_released_at")
-        .eq("user_id", user_id).execute()
-    ).data or []
-    released_session_ids = [s["id"] for s in sessions if _feedback_released(s)]
-    if not released_session_ids:
+    if not user_id:
         return []
-
-    units = (
-        supabase.table("writing_session_units").select("id,session_id")
-        .in_("session_id", released_session_ids).execute()
-    ).data or []
-    if not units:
-        return []
-    versions = (
-        supabase.table("writing_unit_versions").select("id,unit_id")
-        .in_("unit_id", [u["id"] for u in units]).execute()
-    ).data or []
-    if not versions:
-        return []
-    evals = (
-        supabase.table("writing_evaluations").select("id,unit_version_id")
-        .in_("unit_version_id", [v["id"] for v in versions]).execute()
-    ).data or []
-    return [e["id"] for e in evals]
-
-
-def _effectively_invalidated_issue_ids(supabase: Any, issue_ids: list[str]) -> set[str]:
-    """Issue-event ids whose EFFECTIVE review decision is ``invalidated`` (§4.10a).
-
-    The effective decision is the latest review event by ``(created_at DESC,
-    event_seq DESC)`` — the monotonic ``event_seq`` is the authoritative tiebreak,
-    NOT ``id`` (§4.10a, amended 2026-07-01). Mirrors
-    ``ewp_private.ewp_issue_effectively_invalidated`` in Python so the read stays
-    a plain owner-scoped select. An effectively invalidated issue is a withdrawn
-    false positive and must never leak into the Error Lab.
-    """
-    if not issue_ids:
-        return set()
-    rows = (
-        supabase.table("writing_issue_review_events")
-        .select("issue_event_id,decision,created_at,event_seq")
-        .in_("issue_event_id", issue_ids)
-        .execute()
-    ).data or []
-    latest: dict[str, dict] = {}
-    for r in rows:
-        iid = r.get("issue_event_id")
-        key = (str(r.get("created_at") or ""), r.get("event_seq") or 0)
-        cur = latest.get(iid)
-        if cur is None or key > cur["_key"]:
-            latest[iid] = {"_key": key, "decision": r.get("decision")}
-    return {iid for iid, v in latest.items() if v["decision"] == "invalidated"}
-
-
-def _current_state_issue_events(supabase: Any, user_id: str, columns: str) -> list[dict]:
-    """Current-state, non-invalidated issue events for the caller.
-
-    Restricts to ``affects_current_state = true`` (stale non-latest-version
-    findings are excluded — §4.8) on feedback-released owned sessions, then
-    drops any issue whose effective review decision is ``invalidated`` (§4.10a).
-    ``columns`` must include ``id`` for the invalidation filter. No
-    pending/rejected/stale/invalidated leakage.
-    """
-    eval_ids = _released_evaluation_ids(supabase, user_id)
-    if not eval_ids:
-        return []
-    rows = (
-        supabase.table("writing_issue_events")
-        .select(columns)
-        .in_("evaluation_id", eval_ids)
-        .eq("affects_current_state", True)
-        .execute()
-    ).data or []
-    if not rows:
-        return []
-    invalidated = _effectively_invalidated_issue_ids(supabase, [r["id"] for r in rows])
-    return [r for r in rows if r["id"] not in invalidated]
+    rows = (supabase.rpc("ewp_error_lab", {"p_user": user_id}).execute()).data or []
+    return rows
 
 
 @router.get("/error-summary")
 def error_summary(user: dict = Depends(get_current_user)) -> dict:
     """Recurring writing issues for the CALLER, grouped by microtopic.
 
-    Scoped to the caller's own sessions (service-role bypasses RLS), restricted
-    to current-state issues (`affects_current_state = true`) on feedback-released
-    sessions, and effective-invalidation aware (§4.10a) — withdrawn false
-    positives are excluded from the counts.
+    Counts the caller's current-state issues from the ``ewp_error_lab`` read
+    model (owner-scoped, feedback-released, `affects_current_state=true`,
+    effective-invalidation aware and reclassification-remapped — §4.8/§4.10a).
+    Withdrawn false positives are excluded and reclassified issues are counted
+    under their CORRECTED microtopic.
     """
     supabase = get_supabase_admin()
-    rows = _current_state_issue_events(supabase, user.get("id"), "id,microtopic_id")
+    rows = _error_lab_rows(supabase, user.get("id"))
     counts: dict[str, int] = {}
     for r in rows:
         key = r.get("microtopic_id") or "unmapped"
@@ -529,28 +461,36 @@ def error_summary(user: dict = Depends(get_current_user)) -> dict:
 def error_lab(user: dict = Depends(get_current_user)) -> dict:
     """Error Lab drill-down: the caller's current-state issues by microtopic (EWP-4).
 
-    Same gating as ``error-summary`` (owner-scoped, feedback-released,
-    `affects_current_state=true`, effective-invalidation aware — §4.8/§4.10a),
-    but returns the per-issue detail the Error Lab renders: issue_type, severity,
-    quoted_text/explanation and the UTF-16 span, grouped by microtopic and
-    ordered most-recent-first within a group. Read-only; never leaks
-    pending/rejected/stale/invalidated findings.
+    Reads the ``ewp_error_lab`` server-side model (§4.8/§4.10a gating, effective
+    reclassification applied) and shapes it into per-microtopic groups the Error
+    Lab renders: issue_type (corrected when reclassified), severity, quoted_text/
+    explanation, the UTF-16 span, and the human ``microtopic_name`` +
+    ``microtopic_slug`` (never a bare UUID). Ordered busiest-microtopic-first and
+    most-recent-first within a group. Read-only; never leaks pending/rejected/
+    stale/invalidated findings.
 
-    Response: ``{"items": [{"microtopic_id", "issue_count", "issues": [...]}, ...]}``
-    (``items`` shape matches the frontend ``useApiCollection`` contract).
+    Response: ``{"items": [{microtopic_id, microtopic_name, microtopic_slug,
+    issue_count, issues: [...]}, ...]}`` — ``items`` matches the frontend
+    ``useApiCollection`` contract; ``microtopic_id`` is kept only as an internal
+    grouping key.
     """
     supabase = get_supabase_admin()
-    rows = _current_state_issue_events(
-        supabase,
-        user.get("id"),
-        "id,microtopic_id,issue_type,severity,quoted_text,explanation,"
-        "suggested_text,span_start_utf16,span_end_utf16,created_at",
-    )
+    rows = _error_lab_rows(supabase, user.get("id"))
 
-    groups: dict[str, list[dict]] = {}
+    groups: dict[str, dict] = {}
     for r in rows:
-        key = r.get("microtopic_id") or "unmapped"
-        groups.setdefault(key, []).append({
+        mid = r.get("microtopic_id")
+        key = mid or "unmapped"
+        grp = groups.get(key)
+        if grp is None:
+            grp = {
+                "microtopic_id": mid,
+                "microtopic_name": r.get("microtopic_name"),
+                "microtopic_slug": r.get("microtopic_slug"),
+                "issues": [],
+            }
+            groups[key] = grp
+        grp["issues"].append({
             "id": r.get("id"),
             "issue_type": r.get("issue_type"),
             "severity": r.get("severity"),
@@ -559,15 +499,18 @@ def error_lab(user: dict = Depends(get_current_user)) -> dict:
             "suggested_text": r.get("suggested_text"),
             "span_start_utf16": r.get("span_start_utf16"),
             "span_end_utf16": r.get("span_end_utf16"),
-            "microtopic_id": r.get("microtopic_id"),
+            "microtopic_id": mid,
             "created_at": r.get("created_at"),
         })
 
     items = []
-    for microtopic_id, issues in groups.items():
+    for grp in groups.values():
+        issues = grp["issues"]
         issues.sort(key=lambda i: str(i.get("created_at") or ""), reverse=True)
         items.append({
-            "microtopic_id": None if microtopic_id == "unmapped" else microtopic_id,
+            "microtopic_id": grp["microtopic_id"],
+            "microtopic_name": grp["microtopic_name"],
+            "microtopic_slug": grp["microtopic_slug"],
             "issue_count": len(issues),
             "issues": issues,
         })

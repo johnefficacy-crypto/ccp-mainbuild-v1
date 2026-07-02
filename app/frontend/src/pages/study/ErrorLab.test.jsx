@@ -13,6 +13,8 @@ jest.mock("../../features/study/english-practice/useErrorLab", () => ({
 
 const GROUP = {
   microtopic_id: "m1",
+  microtopic_name: "Subject-verb agreement",
+  microtopic_slug: "subject-verb-agreement",
   issue_count: 2,
   issues: [
     {
@@ -75,7 +77,9 @@ test("group toggles collapse/expand and Grammar Lab stub is disabled", () => {
   expect(stub).toHaveAttribute("aria-disabled", "true");
 
   // Collapse the first group → issues disappear.
-  const toggle = screen.getByRole("button", { name: /Microtopic m1: 2 recurring issues/i });
+  const toggle = screen.getByRole("button", {
+    name: /Subject-verb agreement: 2 recurring issues/i,
+  });
   fireEvent.click(toggle);
   expect(screen.queryByTestId("error-issue")).not.toBeInTheDocument();
 });

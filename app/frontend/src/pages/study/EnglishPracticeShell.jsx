@@ -20,7 +20,7 @@
  * poll can never overwrite newer terminal state.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import ErrorState from "../../shared/ui/ErrorState";
 import EmptyState from "../../shared/ui/EmptyState";
@@ -257,6 +257,20 @@ export default function EnglishPracticeShell() {
         title={prompt.prompt_text || "Sentence practice"}
         sub={session?.mode === "exam" ? "Exam mode" : "Learning mode"}
       />
+
+      {/* Contextual entry to the Error Lab (EWP-4): the caller's recurring
+          writing issues grouped by microtopic. This is the ONLY entry point —
+          Error Lab is absent from the sidebar (no-new-surface rule). */}
+      <div className="mt-2">
+        <Link
+          to="/app/study/error-lab"
+          data-testid="error-lab-link"
+          aria-label="View your recurring writing issues in the Error Lab"
+          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+        >
+          Review recurring issues in Error Lab
+        </Link>
+      </div>
 
       {units.length === 0 && (
         <div className="mt-4" data-testid="ewp-empty">
