@@ -301,26 +301,7 @@ class SBStub:
             return _RpcCall(self._ensure_mock_correction_drafts(params))
         if name == "replace_manual_mock_correction_drafts":
             return _RpcCall(self._replace_manual_mock_correction_drafts(params))
-        if name == "ewp_create_writing_session":
-            return _RpcCall(self._ewp_create_writing_session(params))
         return _RpcCall(None)
-
-    def _ewp_create_writing_session(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate the atomic learning-session create RPC (EWP-2).
-
-        Inserts a minimal writing_sessions row and returns it (the real RPC
-        returns the created session row). Just enough for planner_writing tests.
-        """
-        session = {
-            "id": str(uuid.uuid4()),
-            "user_id": params.get("p_user"),
-            "prompt_id": params.get("p_prompt"),
-            "study_task_id": params.get("p_study_task"),
-            "mode": params.get("p_mode") or "learning",
-            "status": "in_progress",
-        }
-        self.db.setdefault("writing_sessions", []).append(session)
-        return session
 
 
     def _claim_mock_mastery_retry(self, params: dict[str, Any]) -> list[dict[str, Any]]:
