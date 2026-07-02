@@ -1764,7 +1764,7 @@ Writing content is governed by three **separate** scopes. Do not conflate them:
 | Scope | Question it answers | Storage | Keyed by |
 |---|---|---|---|
 | **Content (canonical)** | "What is this prompt?" | `writing_prompts` | `subject_id` → `topic_id` → `microtopic_id` |
-| **Applicability** | "Which exams may use it?" | `writing_prompt_targets` (migration 214) | `exam_family_id` / `exam_id` / `exam_phase_id` |
+| **Applicability** | "Which exams may use it?" | `writing_prompt_targets` (migration 214) | `is_global` / `exam_family_id` / `exam_id` / `exam_phase_id` |
 | **Requirements** | "What are this exam/cycle/phase's official rules?" | `exam_descriptive_requirements` (§4.2) | `exam_id` / `exam_cycle_id` / `exam_phase_id` / `stream_key` |
 
 **Canonical content is subject-scoped.** A prompt's identity is
@@ -1774,9 +1774,14 @@ migration 214, the exam-scope columns (`exam_id`, `exam_cycle_id`,
 no exam column at all. Applicability is carried **solely** by
 `writing_prompt_targets` (the sole applicability authority; no dual authority).
 Migration 214 backfills a target row for every legacy prompt that named an exam
-(most-specific: a phase-scoped target if a phase was set, else exam-scoped;
-`applicability_status='active'`, `source_basis='legacy_backfill'`) **before**
-dropping the columns, so no legacy assignment is lost.
+**before** dropping the columns, so no legacy assignment is lost. A non-cycle
+legacy prompt becomes an **active** target (most-specific: phase-scoped if a
+phase was set, else exam-scoped; `source_basis='legacy_backfill'`). A legacy
+prompt that carried an `exam_cycle_id` is **quarantined** as
+`applicability_status='pending_review'` (`source_basis='legacy_cycle_quarantine'`)
+with the original cycle/exam/phase preserved in `metadata` — cycle-scoped content
+is held for operator disposition, never silently converted to evergreen
+applicability. No `is_global` rows are created by the backfill.
 
 ### 17.2 Applicability model (`writing_prompt_targets`)
 
@@ -1785,31 +1790,40 @@ prompt applies to many exams/families/phases via `writing_prompt_targets` rows.
 Resolution precedence, most specific first:
 
 ```
-phase-specific  >  exam-specific  >  exam-family  >  globally-applicable (baseline)
+phase-specific  >  exam-specific  >  exam-family  >  global
 ```
 
-**Row shape (deterministic identity).** Each target row names **exactly one**
-scope — family OR exam OR phase — enforced by
-`CHECK (num_nonnulls(exam_family_id, exam_id, exam_phase_id) = 1)`. A prompt that
-applies to several scopes gets several rows. A null-safe unique index
-(`(prompt_id, exam_family_id, exam_id, exam_phase_id) NULLS NOT DISTINCT`, PG16)
-guarantees at most one row per `(prompt, scope)`, so a prompt+scope can never
-carry two contradictory statuses; `priority_score` then `created_at` only ever
-tie-break across *different* prompts within a band.
+**Row shape (deterministic identity).** Each target row names **exactly one** of
+{global, family, exam, phase} — enforced by
+`CHECK (num_nonnulls(exam_family_id, exam_id, exam_phase_id) + (is_global)::int = 1)`.
+`is_global` is a boolean (default `false`); an explicit global row sets
+`is_global=true` with all three scope columns NULL. A prompt that applies to
+several scopes gets several rows. A null-safe unique index
+(`(prompt_id, is_global, exam_family_id, exam_id, exam_phase_id) NULLS NOT DISTINCT`,
+PG16) guarantees at most one row per `(prompt, scope)` — including at most one
+global row per prompt — so a prompt+scope can never carry two contradictory
+statuses; `priority_score` then `created_at` only ever tie-break across
+*different* prompts within a band.
 
-**Global-with-exclusions (baseline + overrides — the single precise rule).**
-A prompt is **globally applicable as its baseline** when it has no
-`applicability_status='active'` row restricting it to a narrower scope ("no
-target rows at all" is the trivial case). An `applicability_status='excluded'`
-row for scope X is an **override** that removes the prompt from X only, leaving
-the global baseline intact everywhere else — so a global prompt may still carry
-`excluded` rows without contradiction (the excluded rows *subtract* scopes).
-Overrides apply within their precedence band (a phase `excluded` beats a broader
-exam/family `active`, and vice-versa).
+**DEFAULT-DENY (the single precise rule — replaces the earlier "no rows = global"
+baseline, which was fail-open).** A prompt is applicable to an exam/phase context
+**IFF** it has an **`applicability_status='active'`** matching target: an active
+`is_global` target (everywhere), OR an active family/exam/phase target matching
+the context by the precedence above. **No active target ⇒ NOT applicable
+(unassigned) — never global.** Deleting a target, cascading an exam away, or
+leaving a prompt without an active target removes it from every surface; it can
+never widen access (fail-closed). "Global" is an **explicit** capability
+(`is_global=true`), never implied. An `applicability_status='excluded'` row is an
+**override** that subtracts a narrower scope from an explicit active broader scope
+(e.g. exclude one exam/phase from an active `is_global` or family target); it
+confers no applicability on its own. An `applicability_status='pending_review'`
+target is **inert** — it confers no applicability until an operator promotes it to
+`active`.
 
 Applicability is **evergreen** — the mapping carries **no `exam_cycle_id`**,
 because canonical content survives cycles. Cycle-specific rules stay in
-`exam_descriptive_requirements`.
+`exam_descriptive_requirements`; legacy prompts that carried a cycle are
+quarantined as `pending_review` (§17.1), not converted to evergreen targets.
 
 The mapping table is service-role-managed (RLS enabled, no client allow policy).
 The applicability resolver (a later PR) runs under the service role; aspirant
@@ -1827,6 +1841,14 @@ unchanged by this revision.
 The `reviewer_status = 'verified'` → `is_active = true` lifecycle (§4.1b) is
 unchanged. All prompts must pass the reviewer lifecycle
 (`reviewer_status = 'verified'`) before `is_active` can be set to `true`.
+
+**Activation gate (migration-enforced, fail-closed).** Because the applicability
+resolver, session/planner enforcement, and the `writing_prompts_public_read`
+policy replacement do not exist yet, migration 214 sets `is_active=false` on
+**every** `writing_prompts` row after declaring `writing_prompt_targets` the sole
+applicability authority — so no prompt is launchable through the known
+public-read bypass while enforcement is incomplete. Reactivation is gated on the
+resolver + enforcement + public-read-policy-replacement PR.
 
 Minimum reviewed prompt bank before aspirant launch:
 

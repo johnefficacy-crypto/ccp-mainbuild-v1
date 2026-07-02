@@ -8,9 +8,18 @@ revision:
   - a legacy exam-scoped prompt is BACKFILLED into a `writing_prompt_targets`
     row BEFORE the columns are dropped, and re-applying 214 does NOT duplicate
     it (idempotency — the migration is applied a second time in-test),
-  - the exactly-one-scope CHECK rejects a 0-scope and a 2-scope insert,
-  - the null-safe unique identity rejects a duplicate `(prompt, same scope)`,
+  - the exactly-one-scope CHECK (one of {global, family, exam, phase}) rejects a
+    0-scope and a 2-scope insert, and accepts an explicit is_global row,
+  - the null-safe unique identity (incl. is_global) rejects a duplicate
+    `(prompt, same scope)` and a duplicate global row,
   - `ON DELETE CASCADE` from `writing_prompts` removes target rows,
+  - DEFAULT-DENY (P0-1): target deletion, exam deletion (FK cascade removing the
+    only exam target), and pending_review-only targets all leave the prompt with
+    NO active target (unassigned, never global),
+  - legacy-cycle QUARANTINE (P0-2): cycle-only / exam+cycle / exam+cycle+phase
+    legacy rows become pending_review quarantine targets carrying the cycle in
+    metadata, and re-apply does not duplicate them,
+  - activation-gate (P0-4): 214 deactivates every active writing_prompts row,
   - RLS is enabled on `writing_prompt_targets` with NO anon/authenticated policy.
 
 Runs in CI (the backend job provides Postgres + EWP_PG_DSN); locally set
@@ -60,7 +69,18 @@ _EXAM = "00000000-0000-0000-0000-0000000000e1"
 _EXAM2 = "00000000-0000-0000-0000-0000000000e2"
 _FAMILY = "00000000-0000-0000-0000-0000000000f1"
 _PHASE = "00000000-0000-0000-0000-0000000000c1"
+_CYCLE = "00000000-0000-0000-0000-0000000000a1"
 _LEGACY_PROMPT = "00000000-0000-0000-0000-0000000000d1"
+# Legacy-cycle quarantine fixtures (P0-2): each carries exam_cycle_id and must be
+# backfilled as a pending_review quarantine target (NOT an evergreen active one),
+# with the cycle preserved in metadata. NOTE: migration 205 declares
+# writing_prompts.exam_id NOT NULL, so a literal exam-LESS "cycle-only" row
+# cannot exist in the legacy schema — every legacy-cycle row necessarily carries
+# an exam_id. We therefore cover the two shapes that CAN exist: exam+cycle and
+# exam+cycle+phase. (The migration still keeps a defensive is_global fallback for
+# the theoretical exam-less case; it is unreachable under the 205 schema.)
+_LEGACY_EXAM_CYCLE = "00000000-0000-0000-0000-0000000000d3"        # exam + cycle
+_LEGACY_EXAM_CYCLE_PHASE = "00000000-0000-0000-0000-0000000000d4"  # exam + cycle + phase
 
 # Base tables migration 205/214 reference but do not create (real schema builds
 # them in migration 030). exam_families is required by 214's FK.
@@ -84,21 +104,38 @@ CREATE TABLE IF NOT EXISTS public.topics (id uuid PRIMARY KEY DEFAULT gen_random
 """
 
 # Seeded AFTER migration 205 (needs subjects/topics) and BEFORE migration 214
-# (needs the still-present exam_id column). One exam-scoped legacy prompt.
+# (needs the still-present exam_id/exam_cycle_id/exam_phase_id columns).
+#
+# NOTE (P0-3 fix): migration 205 ALREADY seeds the `english-language` subject and
+# a top-level `grammar` topic (parent_topic_id=NULL, deterministic
+# md5('ewp:topic:grammar')::uuid). This seed MUST NOT insert a second top-level
+# `grammar` — the UNIQUE(subject_id, parent_topic_id, slug) does NOT collide on a
+# NULL parent, so a duplicate insert would slip through and make
+# `SELECT id FROM topics WHERE slug='grammar'` return >1 row (subquery error).
+# So we reference the 205-seeded rows and keep every topic subquery deterministic
+# (parent_topic_id IS NULL + ORDER BY created_at LIMIT 1).
+_GRAMMAR = ("(SELECT id FROM topics WHERE slug='grammar' "
+            "AND parent_topic_id IS NULL ORDER BY created_at LIMIT 1)")
+_ENGLISH = "(SELECT id FROM subjects WHERE slug='english-language')"
 _SEED_LEGACY = f"""
 INSERT INTO exams(id) VALUES ('{_EXAM}'),('{_EXAM2}') ON CONFLICT DO NOTHING;
 INSERT INTO exam_families(id) VALUES ('{_FAMILY}') ON CONFLICT DO NOTHING;
 INSERT INTO exam_phases(id) VALUES ('{_PHASE}') ON CONFLICT DO NOTHING;
-INSERT INTO subjects(slug,name) VALUES ('english-language','English') ON CONFLICT DO NOTHING;
-INSERT INTO topics(subject_id,slug,name,level)
-  SELECT id,'grammar','Grammar','topic' FROM subjects WHERE slug='english-language'
-  ON CONFLICT DO NOTHING;
+INSERT INTO exam_cycles(id) VALUES ('{_CYCLE}') ON CONFLICT DO NOTHING;
+-- subject + grammar topic already seeded by migration 205; do NOT re-insert.
 INSERT INTO writing_prompts(id,exam_id,subject_id,topic_id,exercise_type,prompt_text,difficulty_level,reviewer_status,is_active)
-  SELECT '{_LEGACY_PROMPT}','{_EXAM}',
-    (SELECT id FROM subjects WHERE slug='english-language'),
-    (SELECT id FROM topics WHERE slug='grammar'),
+  SELECT '{_LEGACY_PROMPT}','{_EXAM}', {_ENGLISH}, {_GRAMMAR},
     'sentence_construction','write a sentence',1,'verified',true
   WHERE NOT EXISTS (SELECT 1 FROM writing_prompts WHERE id='{_LEGACY_PROMPT}');
+-- P0-2 legacy-cycle rows (must be quarantined pending_review, cycle kept).
+INSERT INTO writing_prompts(id,exam_id,exam_cycle_id,subject_id,topic_id,exercise_type,prompt_text,difficulty_level,reviewer_status,is_active)
+  SELECT '{_LEGACY_EXAM_CYCLE}','{_EXAM}','{_CYCLE}', {_ENGLISH}, {_GRAMMAR},
+    'sentence_construction','exam+cycle',1,'verified',true
+  WHERE NOT EXISTS (SELECT 1 FROM writing_prompts WHERE id='{_LEGACY_EXAM_CYCLE}');
+INSERT INTO writing_prompts(id,exam_id,exam_cycle_id,exam_phase_id,subject_id,topic_id,exercise_type,prompt_text,difficulty_level,reviewer_status,is_active)
+  SELECT '{_LEGACY_EXAM_CYCLE_PHASE}','{_EXAM}','{_CYCLE}','{_PHASE}', {_ENGLISH}, {_GRAMMAR},
+    'sentence_construction','exam+cycle+phase',1,'verified',true
+  WHERE NOT EXISTS (SELECT 1 FROM writing_prompts WHERE id='{_LEGACY_EXAM_CYCLE_PHASE}');
 """
 
 
@@ -130,10 +167,9 @@ def _scalar(sql: str) -> str:
 
 def _new_prompt() -> str:
     """A subject-scoped prompt (no exam columns — they no longer exist)."""
-    return _scalar("""
+    return _scalar(f"""
     INSERT INTO writing_prompts(subject_id,topic_id,exercise_type,prompt_text,difficulty_level)
-    SELECT (SELECT id FROM subjects WHERE slug='english-language'),
-           (SELECT id FROM topics WHERE slug='grammar'),
+    SELECT {_ENGLISH}, {_GRAMMAR},
            'sentence_construction','p',1
     RETURNING id;""")
 
@@ -252,3 +288,124 @@ def test_rls_enabled_with_no_client_policy():
     assert enabled == "t", "RLS must be ENABLED on writing_prompt_targets"
     npol = _scalar("SELECT count(*) FROM pg_policies WHERE tablename='writing_prompt_targets'")
     assert npol == "0", f"service-role-managed table must have NO client policy, found {npol}"
+
+
+# ---------------------------------------------------------------------------
+# P0-1 — DEFAULT-DENY applicability + explicit is_global capability.
+# ---------------------------------------------------------------------------
+def _active_target_count(pid: str) -> str:
+    return _scalar(
+        f"SELECT count(*) FROM writing_prompt_targets "
+        f"WHERE prompt_id='{pid}' AND applicability_status='active'")
+
+
+def test_explicit_global_row_is_accepted():
+    pid = _new_prompt()
+    _psql(f"INSERT INTO writing_prompt_targets(prompt_id,is_global) VALUES ('{pid}',true);")
+    assert _scalar(
+        f"SELECT count(*) FROM writing_prompt_targets "
+        f"WHERE prompt_id='{pid}' AND is_global=true "
+        f"AND exam_id IS NULL AND exam_family_id IS NULL AND exam_phase_id IS NULL") == "1"
+
+
+def test_check_rejects_global_combined_with_a_scope():
+    pid = _new_prompt()
+    proc = _psql_try(
+        f"INSERT INTO writing_prompt_targets(prompt_id,is_global,exam_id) "
+        f"VALUES ('{pid}',true,'{_EXAM}');")
+    assert proc.returncode != 0, "is_global + a scope must be rejected (exactly one)"
+    assert "writing_prompt_targets_scope_exactly_one" in proc.stderr, proc.stderr
+
+
+def test_unique_identity_rejects_duplicate_global():
+    pid = _new_prompt()
+    _psql(f"INSERT INTO writing_prompt_targets(prompt_id,is_global) VALUES ('{pid}',true);")
+    proc = _psql_try(f"INSERT INTO writing_prompt_targets(prompt_id,is_global) VALUES ('{pid}',true);")
+    assert proc.returncode != 0, "duplicate global row must be rejected"
+    assert "uq_writing_prompt_targets_scope" in proc.stderr or "duplicate key" in proc.stderr.lower(), proc.stderr
+
+
+def test_default_deny_target_deletion_leaves_unassigned_not_global():
+    # An active target makes the prompt applicable; deleting it must leave the
+    # prompt with NO active target (unassigned) — NEVER an implicit global.
+    pid = _new_prompt()
+    tid = _scalar(
+        f"INSERT INTO writing_prompt_targets(prompt_id,exam_id) "
+        f"VALUES ('{pid}','{_EXAM}') RETURNING id;")
+    assert _active_target_count(pid) == "1"
+    _psql(f"DELETE FROM writing_prompt_targets WHERE id='{tid}';")
+    assert _active_target_count(pid) == "0", "no active target ⇒ unassigned, not global"
+
+
+def test_default_deny_exam_deletion_removes_only_active_target():
+    # The FK cascade removing the sole exam target must leave the prompt
+    # unassigned (default-deny), not fall back to global.
+    pid = _new_prompt()
+    ex = _scalar("INSERT INTO exams DEFAULT VALUES RETURNING id;")
+    _psql(f"INSERT INTO writing_prompt_targets(prompt_id,exam_id) VALUES ('{pid}','{ex}');")
+    assert _active_target_count(pid) == "1"
+    _psql(f"DELETE FROM exams WHERE id='{ex}';")
+    assert _active_target_count(pid) == "0", "exam-cascade delete ⇒ unassigned, not global"
+    assert _scalar(f"SELECT count(*) FROM writing_prompts WHERE id='{pid}'") == "1"
+
+
+def test_pending_review_only_confers_no_applicability():
+    # A prompt whose ONLY target is pending_review has NO active target and is
+    # therefore not applicable (default-deny). pending_review is inert.
+    pid = _new_prompt()
+    _psql(f"INSERT INTO writing_prompt_targets(prompt_id,exam_id,applicability_status) "
+          f"VALUES ('{pid}','{_EXAM}','pending_review');")
+    assert _active_target_count(pid) == "0", "pending_review-only ⇒ not applicable"
+
+
+# ---------------------------------------------------------------------------
+# P0-2 — legacy exam_cycle scope is QUARANTINED (pending_review), not dropped.
+# ---------------------------------------------------------------------------
+def test_legacy_exam_cycle_quarantined_pending_review_exam_scoped():
+    n = _scalar(f"""SELECT count(*) FROM writing_prompt_targets
+      WHERE prompt_id='{_LEGACY_EXAM_CYCLE}'
+        AND applicability_status='pending_review'
+        AND source_basis='legacy_cycle_quarantine'
+        AND exam_id='{_EXAM}' AND exam_phase_id IS NULL AND is_global=false
+        AND metadata->>'legacy_exam_cycle_id'='{_CYCLE}'
+        AND metadata->>'legacy_exam_id'='{_EXAM}'""")
+    assert n == "1", f"exam+cycle legacy row must be a single exam-scoped quarantine, got {n}"
+    assert _active_target_count(_LEGACY_EXAM_CYCLE) == "0", "quarantine confers no applicability"
+
+
+def test_legacy_exam_cycle_phase_quarantined_pending_review_phase_scoped():
+    n = _scalar(f"""SELECT count(*) FROM writing_prompt_targets
+      WHERE prompt_id='{_LEGACY_EXAM_CYCLE_PHASE}'
+        AND applicability_status='pending_review'
+        AND source_basis='legacy_cycle_quarantine'
+        AND exam_phase_id='{_PHASE}' AND exam_id IS NULL AND is_global=false
+        AND metadata->>'legacy_exam_cycle_id'='{_CYCLE}'
+        AND metadata->>'legacy_exam_phase_id'='{_PHASE}'
+        AND metadata->>'legacy_exam_id'='{_EXAM}'""")
+    assert n == "1", f"exam+cycle+phase legacy row must be a single phase-scoped quarantine, got {n}"
+    assert _active_target_count(_LEGACY_EXAM_CYCLE_PHASE) == "0"
+
+
+def test_quarantine_is_idempotent_no_duplicate():
+    before = _scalar(
+        f"SELECT count(*) FROM writing_prompt_targets "
+        f"WHERE source_basis='legacy_cycle_quarantine'")
+    _psql_file(_MIG / "214_writing_prompt_content_scoping.sql")  # re-apply
+    after = _scalar(
+        f"SELECT count(*) FROM writing_prompt_targets "
+        f"WHERE source_basis='legacy_cycle_quarantine'")
+    assert before == after == "2", f"quarantine re-apply must not duplicate ({before} -> {after})"
+
+
+# ---------------------------------------------------------------------------
+# P0-4 — activation gate: 214 deactivates every active writing_prompts row.
+# ---------------------------------------------------------------------------
+def test_activation_gate_deactivated_seeded_active_prompts():
+    # The seeded legacy prompts were is_active=true; migration 214 must have
+    # flipped them to false (fail-closed until the resolver/enforcement PR).
+    seeded = "','".join(
+        [_LEGACY_PROMPT, _LEGACY_EXAM_CYCLE, _LEGACY_EXAM_CYCLE_PHASE])
+    n = _scalar(
+        f"SELECT count(*) FROM writing_prompts "
+        f"WHERE id IN ('{seeded}') AND is_active=true")
+    assert n == "0", f"214 must deactivate all active writing_prompts, found {n} still active"

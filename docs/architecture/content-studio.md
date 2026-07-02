@@ -40,7 +40,7 @@ coverage; Study OS = select/deliver.**
 | Scope | Storage | Keyed by |
 |---|---|---|
 | **Content (canonical)** | `writing_prompts`, `mock_question_bank`, … | `subject_id` → `topic_id` → `microtopic_id` |
-| **Applicability** | `writing_prompt_targets` (migration 214) | `exam_family_id` / `exam_id` / `exam_phase_id` |
+| **Applicability** | `writing_prompt_targets` (migration 214) | `is_global` / `exam_family_id` / `exam_id` / `exam_phase_id` |
 | **Requirements** | `exam_descriptive_requirements` | `exam_id` / `exam_cycle_id` / `exam_phase_id` |
 
 `writing_prompts` carries **no exam-scope column** — migration 214 **drops**
@@ -49,18 +49,36 @@ coverage; Study OS = select/deliver.**
 can contradict a mapping row).
 
 Applicability precedence: `phase-specific > exam-specific > exam-family >
-globally-applicable (baseline)`. Applicability is **evergreen** — no
-`exam_cycle_id`; cycle rules stay in requirements.
+global`. Applicability is **evergreen** — no `exam_cycle_id`; cycle rules stay in
+requirements.
 
-**Global-with-exclusions (baseline + overrides — the single precise rule).** A
-prompt is globally applicable as its **baseline** when it has no
-`applicability_status='active'` target row restricting it to a narrower scope
-("no target rows at all" is the trivial case). An `excluded` row for scope X is
-an **override** that subtracts X only, leaving the global baseline intact
-elsewhere — so a global prompt may carry `excluded` rows without contradiction.
-Each target row names **exactly one** scope (`CHECK num_nonnulls(...) = 1`), and
-a null-safe unique index makes `(prompt, scope)` unique, so statuses are never
-self-contradictory for a prompt+scope.
+**DEFAULT-DENY (the single precise rule — replaces the earlier "no rows = global"
+baseline, which was fail-open).** A prompt is applicable to an exam/phase context
+**IFF** it has an **`applicability_status='active'`** matching target: an active
+`is_global` target (applies everywhere), OR an active family/exam/phase target
+matching the context (resolved by the precedence above). **No active target ⇒ the
+prompt is NOT applicable (unassigned) — never global.** Deleting a target,
+cascading an exam away, or leaving a prompt without an active target removes it
+from every surface; it can never widen access (fail-closed). "Global" is an
+**explicit** capability carried by a row with `is_global=true` (all scope columns
+NULL) — it is never implied. An `excluded` row is an **override** that subtracts a
+narrower scope from an explicit active broader scope (e.g. exclude one exam from
+an active `is_global` or family target); it confers no applicability on its own. A
+`pending_review` target is inert and confers no applicability. Each target row
+names **exactly one** of {global, family, exam, phase}
+(`CHECK num_nonnulls(exam_family_id, exam_id, exam_phase_id) + (is_global)::int = 1`),
+and a null-safe unique index over `(prompt_id, is_global, family, exam, phase)`
+makes `(prompt, scope)` unique, so statuses are never self-contradictory for a
+prompt+scope.
+
+**Legacy backfill + cycle quarantine.** Before dropping the exam-scope columns,
+214 backfills a target row per legacy prompt: a non-cycle exam/phase-scoped
+prompt becomes an **active** exam/phase target (no `is_global` rows are created).
+A legacy prompt that carried an `exam_cycle_id` is **quarantined** — backfilled as
+`applicability_status='pending_review'` (default-deny keeps it inapplicable) with
+the original cycle/exam/phase preserved in `metadata` and
+`source_basis='legacy_cycle_quarantine'`, so cycle-scoped content is held for
+operator disposition rather than silently widened to evergreen applicability.
 
 Verified-only reads are preserved end to end: aspirant/planner surfaces read
 only `reviewer_status='verified' AND is_active=true` content, resolved through
@@ -186,7 +204,10 @@ This PR is docs + one migration + checklist only. Deferred:
    MUST also replace/remove `writing_prompts_public_read`** (migration 205),
    which currently exposes verified+active prompts directly to clients and would
    bypass the applicability model. Until then, **no prompt may be activated for
-   aspirant launch** — see the activation gate in the checklist.
+   aspirant launch** — the activation gate is now **migration-enforced**:
+   migration 214 sets `is_active=false` on every `writing_prompts` row (fail
+   closed), and reactivation is gated on this resolver + enforcement +
+   public-read-policy-replacement PR (see the checklist activation-gate row).
 2. **Content Studio UI** — the consolidated admin surface (Library / Review
    Queue / Bulk Import / Exam Assignments) and the nav consolidation that
    removes the 3 Mock Content destinations. Serial-delivery, single owner
