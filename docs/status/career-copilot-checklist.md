@@ -130,8 +130,8 @@ Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Ca
 | E1 / I7 | KnowledgeGovernance "Exam truth & planner readiness" lane removed | CODE-FIXED, VALIDATION PENDING | Lane card removed from `KnowledgeGovernance.jsx` (§4.4 landing-card removal). Landing copy updated from "Four lanes" → "Three lanes". Exam-governance links (Console, Registry, Create exam) remain in AdminShell primary nav — not duplicated on the KG landing page. Sidebar exam group untouched (removed atomically in I8-A). 4 landing tests updated. |
 | E2 | ExamIntelligence.jsx exposes 5 navigation paths simultaneously | **LOCKED — SUPERSEDED; I8 GATED** | Decision locked 2026-06-21: old "registry-first cleanup" approach is superseded. Locked end state: one visible Exam Management front door combining Registry + Console purposes (search/discovery, blocked/needs-action/ready filters, family/exam/cycle context, first blocker, one row action: `Manage exam`). "Console" and "Workspace" must not be peer product choices. I8-A/B/C gated by IA design lock document. See §Exam Management IA section below. |
 | E3 | Exam/cycle/phase entities editable from 3 surfaces, no governance model | DESIGN QUESTION | CMS (`ExamIntelCms.jsx:159–200`): full CRUD. Workspace (`SetupPanel.jsx`): operational edits. Header cycle picker (`ExamWorkspace.jsx:136`). UI does not communicate the tier hierarchy (CMS=repair, workspace=operation, CMS=power-users-only). |
-| E4 | PyqPaperWorkspace reachable as standalone route and embedded tab | CODE-FIXED, VALIDATION PENDING | Fixed in commit `9aefa58` (Wave 1 UI cleanup, 2026-06-29). |
-| E5 | Three surfaces to create a new exam | CODE-FIXED, VALIDATION PENDING | Fixed in commit `9aefa58` (Wave 1 UI cleanup, 2026-06-29). |
+| E4 | PyqPaperWorkspace reachable as standalone route and embedded tab | CLEANUP PENDING | Commit `9aefa58` adds a source-code comment explaining embedded vs standalone, but both entry points remain and no operator-facing path guidance was added. Defect still open. |
+| E5 | Three surfaces to create a new exam | CLEANUP PENDING | Commit `9aefa58` adds helper text distinguishing the guided wizard from the CMS repair form (partially addresses "UI does not differentiate"), but all three creation entry points remain. The bounded outcome is: differentiation copy added; overlapping entry points not removed. |
 
 ### F-series — Workflow gaps and flow inconsistency (5 defects)
 
@@ -143,7 +143,7 @@ Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Ca
 | F2 | Bulk import modal detached from paper management workflow | CODE-FIXED, VALIDATION PENDING | `BulkImportModal` now accepts `onSuccess(paperId)` prop. On result-step Close, fires `onSuccess(state.selected_paper_id)` then `onClose`. `PyqWorkbenchPanel` passes `onSuccess={(paperId) => { setSelectedPaperId(paperId); setShowBulkImport(false); }}` — auto-selects imported paper and mounts `<PyqPaperWorkspace>`. `CommitResult` shows inline success banner ("N questions committed. Close to open the paper.") and relabels Close → "Open paper" when committed > 0. Tests: `BulkImport.test.jsx` (F2 onSuccess, success banner, button label); `PyqWorkbench.test.jsx` (F2 auto-select via mocked BulkImportModal). |
 | F3 | PYQ tab shows one paper at a time with no overview | CODE-FIXED, VALIDATION PENDING | `PyqWorkbenchPanel.jsx` `<select>` replaced with a table (columns: year, section, questions, readiness). Row click sets selected paper; `<PyqPaperWorkspace>` is driven by the selected row. Tests added in `__tests__/PyqWorkbench.test.jsx` asserting no `<select>`, table rows per paper, and row-click selection. |
 | F4 | Topics management not accessible from workspace context | DESIGN QUESTION | `TopicAliasesEditor.jsx` nested inside `TopicEditDrawer` inside `SyllabusMapperPanel` only. Topics cannot be browsed or filtered by exam from the Setup tab. Topic prerequisites have no dedicated management surface anywhere. |
-| F5 | Policy `affects_*` flags displayed prominently but immutable | CODE-FIXED, VALIDATION PENDING | Fixed in commit `9aefa58` (Wave 1 UI cleanup, 2026-06-29). |
+| F5 | Policy `affects_*` flags displayed prominently but immutable | CLEANUP PENDING | Commit `9aefa58` adds a tooltip saying flags are immutable and to contact admin; there is still no correction path for an incorrect `affects_*` value. Defect still open. |
 
 ### M-series — Missing CRUD / management capabilities (4 defects)
 
@@ -152,9 +152,9 @@ Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` §Ca
 | ID | Area | Status | Notes |
 |---|---|---|---|
 | M1 | Topic prerequisites: no editable surface | PLANNED | `TopicEditDrawer.jsx` allows editing topic fields, but strength values between topics have no UI. Confirmed: no prerequisite CRUD exists anywhere in the codebase. Requires schema design decision before implementation. |
-| M2 | Topic aliases: exists only in mapper context | CODE-FIXED, VALIDATION PENDING | Fixed in commit `9aefa58` (Wave 1 UI cleanup, 2026-06-29). |
+| M2 | Topic aliases: exists only in mapper context | CLEANUP PENDING | Commit `9aefa58` adds copy saying aliases are available only inside Syllabus Mapper. Standalone/pre-proposal alias management is still absent. Defect still open. |
 | M3 | PYQ questions: all 200 loaded simultaneously, no pagination | CODE-FIXED, VALIDATION PENDING | `limit=200` removed. `PyqPaperWorkspace` now fetches `PAGE_SIZE=50` per page with `limit`/`offset` server params. `reviewer_status` and `source_kind` filters both moved server-side (backend: `source_kind: str | None = Query(default=None)` added to `list_pyq_questions`; frontend: `loadQuestions` sends `source_kind` param when filter ≠ "all"; client-side `source_kind` filter removed). Client-only sorts (`confidence_asc`, `status`) dropped — server orders by `question_number ASC`. Offset resets on filter/paper/source_kind change; page clamped after mutations; questions refetched after review actions; total from server shown in list header. Pagination controls (prev/next, range label) added to left pane. 14 targeted tests: `PyqPaperWorkspace.pagination.test.jsx` (includes source_kind server filter + offset reset). |
-| M4 | Subjects surface: IDs visible, no exam-scoped management | CODE-FIXED, VALIDATION PENDING | Fixed in commit `9aefa58` (Wave 1 UI cleanup, 2026-06-29). |
+| M4 | Subjects surface: IDs visible, no exam-scoped management | CLEANUP PENDING | Commit `9aefa58` applies UUID humanization to subject IDs via `renderCellValue`. Exam-family filtering is explicitly noted as still not implemented; subjects remain globally loaded. UUID display is improved but the scoping defect is still open. |
 
 ### I-series — Identifier leakage (5 sites)
 
@@ -295,7 +295,7 @@ Write the code; operator sign-off required before merge.
 Architecture contract: `docs/architecture/english-writing-practice.md`
 PR plan: `docs/status/career-copilot-pr-plan.md` § Lane H
 
-Current verdict: **ARCHITECTURE LOCKED (PR #819 merged). EWP-1 MERGED (PR #821): migration 205 + version_set_hash helper — OPERATOR VALIDATION PENDING (apply migration 205 to staging, verify RLS). EWP-2 MERGED (PR #823): deterministic practice API — OPERATOR VALIDATION PENDING. EWP-2B onward not started. EWP-5 mastery live writes blocked on Lane A gate.**
+Current verdict: **ARCHITECTURE LOCKED (PR #819 merged). EWP-1 MERGED (PR #821): migration 205 + version_set_hash helper — OPERATOR VALIDATION PENDING (apply migration 205 to staging, verify RLS). EWP-2 MERGED (PR #823): deterministic practice API — OPERATOR VALIDATION PENDING. EWP-2B MERGED (PR #836): migration 209, evaluator/mastery-outbox workers, scheduler wiring — OPERATOR VALIDATION PENDING. EWP-3 onward not started. EWP-5 mastery live writes blocked on Lane A gate.**
 
 Migration number for EWP-1 must come from `select max(version)::int + 1 from schema_migrations`. VERIFY DB before writing the migration file — do not guess or derive from filenames.
 
