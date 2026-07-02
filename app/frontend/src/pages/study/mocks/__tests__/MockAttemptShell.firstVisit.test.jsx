@@ -45,6 +45,11 @@ jest.mock("../../../../lib/api", () => ({
 }));
 
 // ── mock supabase ────────────────────────────────────────────────
+jest.mock("../../../../shared/config/env", () => ({
+  __esModule: true,
+  BACKEND_URL: "https://api.example.test/",
+}));
+
 jest.mock("../../../../lib/supabase", () => ({
   __esModule: true,
   supabase: {
@@ -233,4 +238,19 @@ test("setCurrentQuestionId is called with q1 id after attempt loads", async () =
     ([qid]) => qid === "q1"
   );
   expect(callsWithQ1.length).toBeGreaterThanOrEqual(1);
+});
+
+test("event bus uses the configured backend origin for telemetry delivery", async () => {
+  primeApi();
+
+  await act(async () => {
+    render(<MockAttemptShell />);
+  });
+
+  expect(mockInit).toHaveBeenCalledWith(
+    expect.objectContaining({
+      attemptId: "attempt-123",
+      apiBase: "https://api.example.test/api/study/mocks/attempts",
+    }),
+  );
 });
