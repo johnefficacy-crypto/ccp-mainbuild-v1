@@ -85,9 +85,15 @@ def _psql_file(path: Path) -> None:
 
 
 def _scalar(sql: str) -> str:
-    proc = subprocess.run([_PSQL, _DSN, "-t", "-A", "-X", "-c", sql], capture_output=True, text=True)
+    # -q suppresses the command-status notice; even so, an ``INSERT … RETURNING
+    # id`` can print the returned value followed by the ``INSERT 0 1`` tag on some
+    # psql builds, so take the FIRST non-empty line (the scalar) rather than the
+    # whole stdout — otherwise the id comes back as "<uuid>\nINSERT 0 1" and the
+    # next INSERT rejects it as an invalid uuid.
+    proc = subprocess.run([_PSQL, _DSN, "-t", "-A", "-X", "-q", "-c", sql], capture_output=True, text=True)
     assert proc.returncode == 0, proc.stderr
-    return proc.stdout.strip()
+    lines = [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
+    return lines[0] if lines else ""
 
 
 def _psql_as(role: str, sql: str) -> subprocess.CompletedProcess:
