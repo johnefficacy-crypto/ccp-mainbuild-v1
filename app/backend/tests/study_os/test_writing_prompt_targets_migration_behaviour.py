@@ -22,6 +22,7 @@ import os
 import re
 import shutil
 import subprocess
+import urllib.parse as _urlparse
 from pathlib import Path
 
 import pytest
@@ -34,6 +35,26 @@ pytestmark = pytest.mark.skipif(
     not (_DSN and _PSQL),
     reason="set EWP_PG_DSN to a disposable Postgres superuser DB (and have psql) to run",
 )
+
+# Migration 214 DROPS columns from writing_prompts (destructive). It must NOT run
+# against the shared EWP_PG_DSN database: co-tenant tests (e.g.
+# test_writing_schema_integration) re-apply migration 205 to that same DB, and
+# 205 recreates an index on the now-dropped `exam_id`, which would then fail.
+# So this suite applies everything to an ISOLATED throwaway database, created and
+# dropped in the module fixture, leaving the shared DB untouched.
+_OWN_DB = "wpt_targets_it"
+
+
+def _swap_dbname(dsn: str, dbname: str) -> str:
+    """Return `dsn` with its database name replaced (URL or libpq key=value form)."""
+    parts = _urlparse.urlsplit(dsn)
+    if parts.scheme:  # postgresql://user:pass@host:port/<db>?...
+        return _urlparse.urlunsplit(
+            (parts.scheme, parts.netloc, "/" + dbname, parts.query, parts.fragment)
+        )
+    if re.search(r"\bdbname=", dsn):
+        return re.sub(r"\bdbname=\S+", "dbname=" + dbname, dsn)
+    return dsn.rstrip() + " dbname=" + dbname
 
 _EXAM = "00000000-0000-0000-0000-0000000000e1"
 _EXAM2 = "00000000-0000-0000-0000-0000000000e2"
@@ -117,17 +138,36 @@ def _new_prompt() -> str:
     RETURNING id;""")
 
 
+def _admin_psql(sql: str) -> subprocess.CompletedProcess:
+    """Run maintenance SQL (CREATE/DROP DATABASE) against the `postgres` db."""
+    return subprocess.run(
+        [_PSQL, _swap_dbname(_DSN, "postgres"), "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", sql],
+        capture_output=True, text=True,
+    )
+
+
 @pytest.fixture(scope="module", autouse=True)
 def _apply():
-    _psql(_BOOTSTRAP)
-    _psql_file(_MIG / "205_english_writing_practice_schema.sql")
-    _psql(_SEED_LEGACY)
-    # Migration 213 (Error Lab read model) is applied in the real OPERATOR order
-    # (213 then 214); it is not required for these assertions but keeps the apply
-    # sequence faithful.
-    _psql_file(_MIG / "213_english_writing_practice_error_lab_read_model.sql")
-    _psql_file(_MIG / "214_writing_prompt_content_scoping.sql")
-    yield
+    global _DSN
+    # Isolated throwaway DB so 214's destructive column-drop never touches the
+    # shared EWP_PG_DSN database that co-tenant tests re-apply 205 to.
+    pre = _admin_psql(f"DROP DATABASE IF EXISTS {_OWN_DB} WITH (FORCE)")
+    assert pre.returncode == 0, f"pre-drop of {_OWN_DB} failed:\n{pre.stderr}"
+    created = _admin_psql(f"CREATE DATABASE {_OWN_DB}")
+    assert created.returncode == 0, f"create of {_OWN_DB} failed:\n{created.stderr}"
+
+    _DSN = _swap_dbname(_DSN, _OWN_DB)  # helpers below now target the throwaway DB
+    try:
+        _psql(_BOOTSTRAP)
+        _psql_file(_MIG / "205_english_writing_practice_schema.sql")
+        _psql(_SEED_LEGACY)
+        # 213 (Error Lab) then 214 — the real OPERATOR apply order; 213 is not
+        # required for these assertions but keeps the sequence faithful.
+        _psql_file(_MIG / "213_english_writing_practice_error_lab_read_model.sql")
+        _psql_file(_MIG / "214_writing_prompt_content_scoping.sql")
+        yield
+    finally:
+        _admin_psql(f"DROP DATABASE IF EXISTS {_OWN_DB} WITH (FORCE)")
 
 
 def _columns(table: str) -> set[str]:
