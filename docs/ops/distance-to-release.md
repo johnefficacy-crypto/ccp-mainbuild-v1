@@ -5,7 +5,7 @@
 > live evidence lives in the gate docs / `docs/audits/`. When a gate changes, update the
 > checklist + its audit, then regenerate this view. Each row links its authoritative source.
 
-**as_of:** `main @ 0ffad093` · 2026-07-02
+**as_of:** `main @ 2eb611fb` · 2026-07-02
 **Companion:** `docs/ops/v1-go-live-runbook.md` (the *how*) · `scripts/v1_release_verification.sql` (the *evidence*)
 **Position:** late-stage beta — feature-complete-approaching, **not** production-ready.
 
@@ -20,10 +20,10 @@
 |---|------|-------|--------|----------------------------|--------|
 | **Feature-complete (Condition 1)** |
 | F1 | Core features merged (RPC/RLS hardening, snapshot RPC, I9 containment, placeholder isolation) | ENG | ✅ CLEAR | on `main` | checklist |
-| F2 | I9 deferred noncompliance frozen as v1/v2 — **D11, D12, D14, D06, D15** | ENG | ⛔ OPEN | product decision + (if v1) code; **D14** = applicability-from-`gate_class` approximation | checklist "I9 implementation" |
+| F2 | I9 deferred noncompliance frozen as v1/v2 — **D11, D12, D14, D06, D15** | ENG | 🟡 PARTIAL — D12 v1 IN PROGRESS; D06/D11/D14/D15 v2 deferred | **D12 v1:** full D05 evidence-policy engine (multi-PR program: PR-1=#843 schema ✅, PR-2=#849 evaluator ✅, PR-3 planner enforcement, PR-4 UI wiring). Step 9 fail-closed until PR-4 registers evidence. **D06/D11/D14/D15:** operator-approved v2 deferral (product decision 2026-07-02). | checklist "I9 implementation" |
 | F3 | Extraction archive-race terminalization | ENG | 🟡 CODE-FIXED, VALIDATION PENDING | Caller now calls `_fail()` before raising on `document_archived` (and `finalize_failed`); mid-flight regression test added. Needs live/staging validation no jobs strand `running` after archive race. | `text_extract.py:476-492` + regression test |
 | **Production-ready (Condition 2)** |
-| P1 | Apply full migration chain to staging→prod (head `204`) via the approved runner | OPS | ⏳ NOT STARTED | **precedes P2/P4** | runbook Phase 1 |
+| P1 | Apply full migration chain to staging→prod (head `212`) via the approved runner | OPS | ⏳ NOT STARTED | **precedes P2/P4; parallel with P8 — does NOT gate T0** | runbook Phase 1 |
 | P2 | RPC/RLS live verification (`scripts/v1_release_verification.sql`) + RLS real-JWT proof | OPS | 🟡 CODE-READY | needs P1, then a live run | verification script |
 | P3 | Migration 182 operator validation | OPS | ✅ CLEAR | OPERATOR VALIDATED | `audits/2026-06-30-migration-182-operator-validation.md` |
 | P4 | Migration 204 snapshot-review RPC validated on staging | OPS | 🟡 CODE-READY | needs P1; grant matrix + review→lock cycle | checklist (mig 204) |
@@ -72,11 +72,13 @@ Serial spine to T0:
 Parallelizable: F2 decision, R2 pilot (overlaps P8), R4 readiness.
 ```
 
-**ETA:** the only hard duration is **P8 = 14 days**. Remaining pre-T0 work (F3 + P1→P4 + P5;
-**P6 done, P7 OPERATOR PASS 2026-07-02**) is operator-/eng-paced — realistically a **handful of
-days** but not reproducibly fixed here, so it is expressed as a range, not a promise.
-Post-window (P9→R3) is a **few days**. **Floor ≈ 3 weeks from T0**, *longer* if the shadow window
-restarts. Do not quote a calendar date until T0 is set.
+**ETA:** the only hard duration is **P8 = 14 days**. Remaining pre-T0 work (F3 validation + P5
+approval; **P6/P7 DONE**) is operator-/eng-paced — realistically a **handful of days** but not
+reproducibly fixed here, so it is expressed as a range, not a promise. **P1/P2/P4** (migration
+chain `head 212` + RLS + snapshot RPC) are **parallel release gates** that run concurrently with
+P8 and do NOT gate T0 — they must complete before P10 (live flip). Post-window (P9→R3) is a
+**few days**. **Floor ≈ 3 weeks from T0**, *longer* if the shadow window restarts.
+Do not quote a calendar date until T0 is set.
 
 ## Shortest path right now
 
