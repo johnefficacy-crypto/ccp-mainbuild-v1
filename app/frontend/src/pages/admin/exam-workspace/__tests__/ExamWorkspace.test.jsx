@@ -6,7 +6,7 @@
  * - shell renders error state with retry button
  * - shell renders exam name from context
  * - shell renders cycle picker populated from cycles[]
- * - shell renders 7 clickable tabs (no Overview after I8-B)
+ * - shell renders 8 clickable tabs (including Prompt Bank)
  * - URL is the single source of tab state (tab click updates ?tab=)
  * - cycle change preserves ?tab= and drops document/paper/row
  * - management endpoint called with cycle_id when ?cycle= is set
@@ -220,26 +220,26 @@ describe("ExamWorkspace shell", () => {
     expect(picker.options[2].text).toBe("2025");
   });
 
-  test("renders exactly 7 tabs all clickable (no Overview after I8-B)", async () => {
+  test("renders exactly 8 tabs all clickable (no Overview after I8-B)", async () => {
     mockAllEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(7);
+    expect(tabs).toHaveLength(8);
     tabs.forEach((tab) => {
       expect(tab.disabled).toBeFalsy();
     });
   });
 
-  test("renders all 7 tab labels (no Overview)", async () => {
+  test("renders all 8 tab labels (no Overview)", async () => {
     mockAllEndpoints();
     renderWorkspace();
     await waitFor(() => screen.getByTestId("tab-strip"));
 
     const expectedLabels = [
       "Setup", "Documents", "Syllabus Mapper", "PYQ Workbench",
-      "Updates", "Competition", "Review & Activate",
+      "Prompt Bank", "Updates", "Competition", "Review & Activate",
     ];
     expectedLabels.forEach((label) => {
       expect(screen.getByText(label)).toBeTruthy();
@@ -567,7 +567,7 @@ describe("ExamWorkspace standalone layout regression (B2)", () => {
       </MemoryRouter>,
     );
     await waitFor(() => screen.getByTestId("tab-strip"));
-    expect(screen.getAllByRole("tab")).toHaveLength(7);
+    expect(screen.getAllByRole("tab")).toHaveLength(8);
     expect(screen.getByTestId("cycle-picker")).toBeTruthy();
     // verdict headline comes from management response (not workspace readiness)
     expect(screen.getByTestId("smart-header-verdict")).toBeTruthy();
