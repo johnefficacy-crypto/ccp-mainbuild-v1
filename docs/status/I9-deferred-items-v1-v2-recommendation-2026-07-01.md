@@ -45,6 +45,39 @@ be led to activate an under-verified selected cycle**, not on immediate aspirant
 **Net: 1 v1 item (D12), 4 v2 deferrals.** F2 closes once this split is accepted and the D12
 fix is scheduled as v1 work.
 
+> **Update (D12 v1 IN PROGRESS — operator scope decision required):** PR #841 (cross-cycle
+> fail-open) is merged. PR #843 adds migration **210** (`exam_phases.phase_kind` D05 §1 +
+> `exam_cycles.planner_activation_enabled`) and wires Step 9 to gate required-phase completeness
+> on canonical phase **classification** and `light` applicability on the exposure flag. Review of
+> #843 flagged **two contract blockers that block calling D12 v1 delivered**:
+> 1. **Completeness ≠ classification.** D05/D12 define "required phases complete" as satisfying the
+>    full D05 evidence policy (phase-kind-specific evidence + independent predicates), not
+>    classification alone; classification-only is still a false-ready path. But D05 §2–5 (the
+>    evidence-policy engine) is, by D05's own boundary, gated on **D06 and D08** — which this very
+>    document defers to **v2**. So genuinely completing D12 v1's completeness half requires either
+>    pulling D06/D08 into v1, or an operator-approved amendment narrowing D12 v1 completeness to
+>    canonical classification.
+> 2. **Exposure authority not canonical.** `study_os/planner.py::_compute_plan()` does not consume
+>    `planner_activation_enabled`, so readiness could mark `light` N/A while the planner still runs.
+>    Readiness + planner must share the authority (land planner enforcement + backfill together), or
+>    `light` applicability stays fail-closed/open.
+>
+> **Operator decision (2026-07-02): build the full D05 evidence engine** (option B) — do not
+> narrow D12 completeness to classification. Delivered as a sequenced program:
+> - **PR-1 = #843 (schema foundation, no behavior change):** migration 210 (`exam_phases.phase_kind`
+>   + `exam_cycles.planner_activation_enabled`) + migration 211 (D05 §2–5, 5 tables incl. the
+>   `exam_evidence_kinds` vocab and a `source_registry` FK for source authority; **phase-subset seed
+>   only**; hierarchy/role/supersession/override integrity triggers; **service-role-only RLS**).
+>   Step 9 stays fail-closed (as merged in #841).
+> - **PR-2:** forward migration seeding the exam/cycle-scoped D05 matrix + `document_policy.py`
+>   evaluator → wire cycle_readiness Step 9 required-phase completeness (fail-closed until seeded).
+> - **PR-3:** `study_os/planner.py` consumes `planner_activation_enabled` (shared authority) + backfill.
+> - **PR-4:** document-evidence upload/review UI.
+>
+> D06/D07/D08 v1 rules are already approved AND implemented in `cycle_readiness` (their F2 "v2"
+> tag covered only the observability metrics/advisories, not the core rules), so the D05 evidence
+> engine's prerequisites are met. D12 v1 is delivered only when PR-2/PR-3 land.
+
 ---
 
 ## D12 — **v1 must-fix** (the only fail-open item)
