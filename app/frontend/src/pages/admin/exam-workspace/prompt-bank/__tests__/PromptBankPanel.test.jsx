@@ -2,59 +2,55 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import PromptBankPanel from "../PromptBankPanel";
 
-const mockUseExamWorkspace = jest.fn(() => ({
-  exam: { id: "exam-123", name: "UPSC GS-I" },
-  cycle: { id: "cycle-456", cycle_name: "2026" },
-}));
-
-const mockUseAuth = jest.fn(() => ({
-  user: {
-    role: "super_admin",
-    permissions: ["exam_intelligence.cms", "exam_intelligence.review"],
-  },
-}));
-
-const mockUseApiCollection = jest.fn(() => ({
-  items: [
-    {
-      id: "prompt-1",
-      prompt_text: "Construct a simple sentence.",
-      exercise_type: "sentence_construction",
-      topic_name: "Sentence Construction",
-      difficulty_level: 3,
-      min_words: 5,
-      max_words: 20,
-      reviewer_status: "verified",
-      is_active: true,
-      updated_at: "2026-07-02T10:00:00Z",
-    },
-  ],
-  status: "live",
-  refresh: jest.fn(),
-  setItems: jest.fn(),
-}));
-
-const mockUseApiAction = jest.fn(() => ({
-  run: jest.fn((opts) => {
-    if (opts.action) {
-      opts.action();
-      if (opts.onSuccess) opts.onSuccess();
-    }
-  }),
-  busy: false,
-}));
-
 jest.mock("../../ExamWorkspaceContext", () => ({
-  useExamWorkspace: mockUseExamWorkspace,
+  useExamWorkspace: jest.fn(() => ({
+    exam: { id: "exam-123", name: "UPSC GS-I" },
+    cycle: { id: "cycle-456", cycle_name: "2026" },
+  })),
 }));
 
 jest.mock("../../../../../lib/authContext", () => ({
-  useAuth: mockUseAuth,
+  useAuth: jest.fn(() => ({
+    user: {
+      role: "super_admin",
+      permissions: ["exam_intelligence.cms", "exam_intelligence.review"],
+    },
+  })),
 }));
 
-jest.mock("../../../../../lib/hooks/useApiCollection", () => mockUseApiCollection);
+jest.mock("../../../../../lib/hooks/useApiCollection", () =>
+  jest.fn(() => ({
+    items: [
+      {
+        id: "prompt-1",
+        prompt_text: "Construct a simple sentence.",
+        exercise_type: "sentence_construction",
+        topic_name: "Sentence Construction",
+        difficulty_level: 3,
+        min_words: 5,
+        max_words: 20,
+        reviewer_status: "verified",
+        is_active: true,
+        updated_at: "2026-07-02T10:00:00Z",
+      },
+    ],
+    status: "live",
+    refresh: jest.fn(),
+    setItems: jest.fn(),
+  }))
+);
 
-jest.mock("../../../../../lib/hooks/useApiAction", () => mockUseApiAction);
+jest.mock("../../../../../lib/hooks/useApiAction", () =>
+  jest.fn(() => ({
+    run: jest.fn((opts) => {
+      if (opts.action) {
+        opts.action();
+        if (opts.onSuccess) opts.onSuccess();
+      }
+    }),
+    busy: false,
+  }))
+);
 
 jest.mock("../promptBankApi", () => ({
   promptBankApi: {
@@ -66,6 +62,11 @@ jest.mock("../promptBankApi", () => ({
     clonePrompt: jest.fn(),
   },
 }));
+
+// Get mocks for manipulation in tests
+const mockUseExamWorkspace = require("../../ExamWorkspaceContext").useExamWorkspace;
+const mockUseAuth = require("../../../../../lib/authContext").useAuth;
+const mockUseApiCollection = require("../../../../../lib/hooks/useApiCollection");
 
 describe("PromptBankPanel", () => {
   beforeEach(() => {
