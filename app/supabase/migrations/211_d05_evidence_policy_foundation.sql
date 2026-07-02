@@ -1,18 +1,49 @@
 -- 211_d05_evidence_policy_foundation.sql
 --
 -- D05 evidence-policy foundation (PR-1 of the D12-v1 "full D05 engine" program).
--- SCHEMA ONLY — no readiness/planner behavior changes here. The document_policy
--- evaluator that consumes these tables and the cycle_readiness Step 9 wiring land
--- in a follow-up PR; planner enforcement + backfill in a further PR.
+-- SCHEMA ONLY — no readiness/planner behavior change. The document_policy evaluator
+-- that consumes these tables + the cycle_readiness Step 9 wiring land in PR-2; planner
+-- enforcement + backfill in PR-3; upload/review UI in PR-4.
 --
 -- Implements the normalized evidence model from D05 §2–5:
 --   §2 exam_evidence_requirements            — the policy table (seeded below)
 --   §3 exam_document_evidence                — relational document registration + trust lifecycle
 --   §4 exam_document_evidence_roles          — one source document may satisfy multiple roles
 --   §5 exam_evidence_requirement_overrides   — narrow per-exam/cycle/phase exceptions
+--   + exam_evidence_kinds                    — canonical evidence-kind vocabulary (shared FK)
 --
--- All four tables get RLS (admin-all; the backend reads via service role which
--- bypasses RLS). Migrations are immutable once merged.
+-- ACCESS MODEL (governance tables — see PR #843 review): these four config/evidence tables
+-- are backend/FastAPI mediated ONLY. RLS is enabled and NO authenticated policy is created, so
+-- direct PostgREST access by anon/authenticated is denied by default; table privileges are
+-- REVOKED from public/anon/authenticated and GRANTed to service_role (which the backend uses and
+-- which bypasses RLS). This deliberately does NOT consult the deprecated profiles.is_admin flag
+-- (AGENTS.md). All mutation — including trust_status transitions — must flow through FastAPI
+-- permission + audit paths in PR-2/PR-4. Operator staging validation must assert the access
+-- matrix (anon / ordinary authenticated / stale-profile-admin / app-metadata admin / service role).
+--
+-- Migrations are immutable once merged.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Canonical evidence-kind vocabulary (P2 — shared, not free text)
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.exam_evidence_kinds (
+  kind text primary key,
+  description text,
+  created_at timestamptz not null default now()
+);
+
+insert into public.exam_evidence_kinds (kind, description) values
+  ('primary_cycle_document',  'Notification / bulletin / prospectus / handbook — normalized primary cycle document'),
+  ('syllabus',                'Official syllabus'),
+  ('exam_pattern',            'Official pattern or scheme'),
+  ('pyq_paper',               'Compatible previous-year question paper evidence'),
+  ('answer_key',              'Official answer key'),
+  ('phase_rules',             'Official phase rules or standards (interview/physical/medical/doc-verification)'),
+  ('corrigendum',             'Official corrigendum'),
+  ('notification',            'Notification document (display subtype of primary_cycle_document)'),
+  ('application_instructions','Application instructions'),
+  ('phase_schedule',          'Phase schedule or calendar')
+on conflict (kind) do nothing;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- §2 Policy table
@@ -28,7 +59,7 @@ create table if not exists public.exam_evidence_requirements (
     check (phase_kind is null or phase_kind in
       ('objective_written', 'descriptive_written', 'mixed_written',
        'interview', 'physical_test', 'medical', 'document_verification', 'other')),
-  evidence_kind text not null,
+  evidence_kind text not null references public.exam_evidence_kinds(kind),
   satisfied_by text not null default 'document_asset'
     check (satisfied_by in
       ('document_asset', 'source_registry', 'cycle_fields', 'phase_fields', 'external_link')),
@@ -57,7 +88,7 @@ create table if not exists public.exam_evidence_requirements (
   updated_at timestamptz not null default now()
 );
 
--- Deterministic identity for a base policy row (used for idempotent seed + override joins).
+-- Deterministic identity for a base policy row (idempotent seed + override joins).
 create unique index if not exists exam_evidence_requirements_identity_uidx
   on public.exam_evidence_requirements (
     management_mode,
@@ -68,8 +99,8 @@ create unique index if not exists exam_evidence_requirements_identity_uidx
   );
 
 comment on table public.exam_evidence_requirements is
-  'D05 §2 normalized evidence-requirement policy. Requirements are derived from '
-  'management_mode + exam_type + phase_kind + scope, NOT hardcoded per exam slug.';
+  'D05 §2 normalized evidence-requirement policy. Derived from management_mode + exam_type + '
+  'phase_kind + scope, NOT hardcoded per exam slug.';
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- §3 Relational document evidence registration (+ trust lifecycle)
@@ -80,11 +111,14 @@ create table if not exists public.exam_document_evidence (
   exam_id uuid not null references public.exams(id) on delete cascade,
   exam_cycle_id uuid references public.exam_cycles(id) on delete cascade,
   exam_phase_id uuid references public.exam_phases(id) on delete cascade,
+  -- Inert in PR-1/PR-2: no canonical source registry exists yet, so this identifier is NOT
+  -- relationally enforced and MUST NOT be used to satisfy the D05 source-authority predicate
+  -- until a canonical source registry + FK land (documented follow-up).
   source_registry_id uuid,
   trust_status text not null default 'pending'
     check (trust_status in ('pending', 'verified', 'rejected', 'superseded')),
   superseded_by_id uuid references public.exam_document_evidence(id) on delete set null,
-  reviewed_by uuid,
+  reviewed_by uuid references auth.users(id) on delete set null,
   reviewed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -103,8 +137,9 @@ create index if not exists exam_document_evidence_trust_idx
 
 comment on table public.exam_document_evidence is
   'D05 §3 relational registration of a document_asset as exam-domain evidence, with a human '
-  'trust lifecycle (pending/verified/rejected/superseded). Readiness must join on these '
-  'relational IDs rather than treating document_assets.metadata JSON as the canonical policy join.';
+  'trust lifecycle (pending/verified/rejected/superseded). Readiness joins on these relational '
+  'IDs, not on document_assets.metadata JSON. Hierarchy (cycle/phase belong to exam) is enforced '
+  'by trigger _d05_check_evidence_scope, since individual FKs do not imply scope consistency.';
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- §4 Evidence roles (one source may satisfy multiple requirement classes)
@@ -113,7 +148,7 @@ create table if not exists public.exam_document_evidence_roles (
   id uuid primary key default gen_random_uuid(),
   document_evidence_id uuid not null
     references public.exam_document_evidence(id) on delete cascade,
-  evidence_kind text not null,
+  evidence_kind text not null references public.exam_evidence_kinds(kind),
   exam_cycle_id uuid references public.exam_cycles(id) on delete cascade,
   exam_phase_id uuid references public.exam_phases(id) on delete cascade,
   created_at timestamptz not null default now()
@@ -130,12 +165,11 @@ create index if not exists exam_document_evidence_roles_kind_idx
   on public.exam_document_evidence_roles (evidence_kind);
 
 comment on table public.exam_document_evidence_roles is
-  'D05 §4 normalized evidence roles for a registered document. Preserve display subtypes '
-  '(information_bulletin/prospectus/etc.) elsewhere; here evidence_kind is the normalized '
-  'policy role (primary_cycle_document, syllabus, exam_pattern, answer_key, ...).';
+  'D05 §4 normalized evidence roles for a registered document. Role scope must be consistent with '
+  'the parent evidence registration''s exam (enforced by trigger _d05_check_role_scope).';
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- §5 Narrow per-exam/cycle/phase overrides
+-- §5 Narrow per-exam/cycle/phase overrides (deterministic identity)
 -- ─────────────────────────────────────────────────────────────────────────────
 create table if not exists public.exam_evidence_requirement_overrides (
   id uuid primary key default gen_random_uuid(),
@@ -143,7 +177,7 @@ create table if not exists public.exam_evidence_requirement_overrides (
   exam_id uuid not null references public.exams(id) on delete cascade,
   exam_cycle_id uuid references public.exam_cycles(id) on delete cascade,
   exam_phase_id uuid references public.exam_phases(id) on delete cascade,
-  evidence_kind text not null,
+  evidence_kind text not null references public.exam_evidence_kinds(kind),
   requirement_level text
     check (requirement_level is null or requirement_level in ('required', 'recommended', 'not_applicable')),
   gate_effect text
@@ -160,90 +194,239 @@ create table if not exists public.exam_evidence_requirement_overrides (
        'application_tracking_enabled')),
   condition_params jsonb,
   reason text,
-  created_by uuid,
+  created_by uuid references auth.users(id) on delete set null,
+  is_active boolean not null default true,
   created_at timestamptz not null default now(),
   expires_at timestamptz
 );
 
+-- Deterministic winner: at most one ACTIVE override per canonical key
+-- (exam + cycle-scope + phase-scope + evidence_kind). PR-2 resolves precedence
+-- phase > cycle > exam deterministically because each level has a single active row.
+create unique index if not exists exam_evidence_requirement_overrides_active_uidx
+  on public.exam_evidence_requirement_overrides (
+    exam_id,
+    coalesce(exam_cycle_id, '00000000-0000-0000-0000-000000000000'::uuid),
+    coalesce(exam_phase_id, '00000000-0000-0000-0000-000000000000'::uuid),
+    evidence_kind
+  )
+  where is_active;
 create index if not exists exam_evidence_requirement_overrides_exam_idx
   on public.exam_evidence_requirement_overrides (exam_id);
-create index if not exists exam_evidence_requirement_overrides_scope_idx
-  on public.exam_evidence_requirement_overrides (exam_id, exam_cycle_id, exam_phase_id, evidence_kind);
 
 comment on table public.exam_evidence_requirement_overrides is
-  'D05 §5 narrow overrides. Precedence (most specific wins): phase > cycle > exam override > '
-  'exact management_mode+exam_type+phase_kind > management_mode+exam_type > management_mode+phase_kind '
-  '> management_mode default.';
+  'D05 §5 narrow overrides. At most one ACTIVE row per (exam, cycle, phase, evidence_kind) — '
+  'see partial unique index. Precedence (PR-2): phase > cycle > exam > policy defaults. '
+  'base_requirement_id (if set) must share evidence_kind (enforced by trigger _d05_check_override).';
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Seed: per-management-mode × phase_kind phase-scoped evidence requirements (D05
--- "Phase-specific rules"). Only planner-activating modes (core, light) carry
--- phase evidence; index_only/archive do not enter activation. `light` rows mirror
--- `core` — light's "only when Study-OS exposed" gate is applied at the Step 9 mode
--- layer (planner_activation_enabled), not per-requirement, so the evidence set is
--- identical once light is exposed. Idempotent via ON CONFLICT on the identity index.
+-- Hierarchy / consistency triggers (P1 — FKs alone do not imply scope consistency)
+-- ─────────────────────────────────────────────────────────────────────────────
+create or replace function public._d05_check_evidence_scope() returns trigger
+language plpgsql as $fn$
+begin
+  if new.exam_cycle_id is not null
+     and not exists (select 1 from public.exam_cycles c
+                     where c.id = new.exam_cycle_id and c.exam_id = new.exam_id) then
+    raise exception 'exam_document_evidence: cycle % does not belong to exam %',
+      new.exam_cycle_id, new.exam_id;
+  end if;
+  if new.exam_phase_id is not null
+     and not exists (select 1 from public.exam_phases p
+                     where p.id = new.exam_phase_id and p.exam_id = new.exam_id
+                       and (new.exam_cycle_id is null or p.exam_cycle_id = new.exam_cycle_id)) then
+    raise exception 'exam_document_evidence: phase % not in exam %/cycle %',
+      new.exam_phase_id, new.exam_id, new.exam_cycle_id;
+  end if;
+  return new;
+end;
+$fn$;
+
+create or replace function public._d05_check_role_scope() returns trigger
+language plpgsql as $fn$
+declare v_exam uuid;
+begin
+  select exam_id into v_exam from public.exam_document_evidence e
+    where e.id = new.document_evidence_id;
+  if v_exam is null then
+    raise exception 'evidence role: parent evidence % not found', new.document_evidence_id;
+  end if;
+  if new.exam_cycle_id is not null
+     and not exists (select 1 from public.exam_cycles c
+                     where c.id = new.exam_cycle_id and c.exam_id = v_exam) then
+    raise exception 'evidence role: cycle % not in parent exam %', new.exam_cycle_id, v_exam;
+  end if;
+  if new.exam_phase_id is not null
+     and not exists (select 1 from public.exam_phases p
+                     where p.id = new.exam_phase_id and p.exam_id = v_exam
+                       and (new.exam_cycle_id is null or p.exam_cycle_id = new.exam_cycle_id)) then
+    raise exception 'evidence role: phase % not in parent exam %/cycle %',
+      new.exam_phase_id, v_exam, new.exam_cycle_id;
+  end if;
+  return new;
+end;
+$fn$;
+
+create or replace function public._d05_check_override() returns trigger
+language plpgsql as $fn$
+declare v_base_kind text;
+begin
+  if new.exam_cycle_id is not null
+     and not exists (select 1 from public.exam_cycles c
+                     where c.id = new.exam_cycle_id and c.exam_id = new.exam_id) then
+    raise exception 'override: cycle % not in exam %', new.exam_cycle_id, new.exam_id;
+  end if;
+  if new.exam_phase_id is not null
+     and not exists (select 1 from public.exam_phases p
+                     where p.id = new.exam_phase_id and p.exam_id = new.exam_id
+                       and (new.exam_cycle_id is null or p.exam_cycle_id = new.exam_cycle_id)) then
+    raise exception 'override: phase % not in exam %/cycle %',
+      new.exam_phase_id, new.exam_id, new.exam_cycle_id;
+  end if;
+  if new.base_requirement_id is not null then
+    select evidence_kind into v_base_kind from public.exam_evidence_requirements r
+      where r.id = new.base_requirement_id;
+    if v_base_kind is null then
+      raise exception 'override: base_requirement % not found', new.base_requirement_id;
+    end if;
+    if v_base_kind <> new.evidence_kind then
+      raise exception 'override: evidence_kind % != base_requirement evidence_kind %',
+        new.evidence_kind, v_base_kind;
+    end if;
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists trg_d05_check_evidence_scope on public.exam_document_evidence;
+create trigger trg_d05_check_evidence_scope
+  before insert or update on public.exam_document_evidence
+  for each row execute function public._d05_check_evidence_scope();
+
+drop trigger if exists trg_d05_check_role_scope on public.exam_document_evidence_roles;
+create trigger trg_d05_check_role_scope
+  before insert or update on public.exam_document_evidence_roles
+  for each row execute function public._d05_check_role_scope();
+
+drop trigger if exists trg_d05_check_override on public.exam_evidence_requirement_overrides;
+create trigger trg_d05_check_override
+  before insert or update on public.exam_evidence_requirement_overrides
+  for each row execute function public._d05_check_override();
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Seed: per-management-mode × phase_kind phase-scoped requirements (D05
+-- "Phase-specific rules" + "Mandatory evidence matrix"). core and light are seeded
+-- SEPARATELY because their approved requirement levels differ:
+--   core  written: syllabus/pattern/PYQ required+block; answer_key required when objective
+--                  PYQ used for scoring; non-written phase rules required+block.
+--   light written: syllabus required when Study-OS exposed; pattern required when pattern
+--                  details exposed; PYQ recommended (warn, NOT a blocker); answer_key required
+--                  when objective PYQ used for scoring; non-written phase rules recommended+warn.
+-- index_only/archive carry no phase-activation evidence (they don't enter planner activation).
+-- Idempotent via ON CONFLICT on the identity index.
 -- ─────────────────────────────────────────────────────────────────────────────
 insert into public.exam_evidence_requirements
-  (management_mode, phase_kind, evidence_kind, satisfied_by, requirement_level,
-   gate_effect, scope, minimum_count, requires_verified_source, requires_human_review,
-   requires_extraction, condition_code, priority)
-select m.mode, b.phase_kind, b.evidence_kind, b.satisfied_by, 'required',
-       'block', 'phase', b.minimum_count, true, true, b.requires_extraction, b.condition_code, 100
-from (values
-  -- objective_written
-  ('objective_written', 'syllabus',     'document_asset', 1, true,  'always'),
-  ('objective_written', 'exam_pattern',  'document_asset', 1, true,  'always'),
-  ('objective_written', 'pyq_paper',     'source_registry', 1, false, 'always'),
-  ('objective_written', 'answer_key',    'document_asset', 1, true,  'objective_pyq_used_for_scoring'),
-  -- descriptive_written (answer_key not applicable)
-  ('descriptive_written', 'syllabus',    'document_asset', 1, true,  'always'),
-  ('descriptive_written', 'exam_pattern', 'document_asset', 1, true,  'always'),
-  ('descriptive_written', 'pyq_paper',    'source_registry', 1, false, 'always'),
-  -- mixed_written
-  ('mixed_written', 'syllabus',          'document_asset', 1, true,  'always'),
-  ('mixed_written', 'exam_pattern',       'document_asset', 1, true,  'always'),
-  ('mixed_written', 'pyq_paper',          'source_registry', 1, false, 'always'),
-  ('mixed_written', 'answer_key',         'document_asset', 1, true,  'objective_pyq_used_for_scoring'),
-  -- non-written phases: official phase rules / standards
-  ('interview',             'phase_rules', 'document_asset', 1, false, 'always'),
-  ('physical_test',         'phase_rules', 'document_asset', 1, false, 'always'),
-  ('medical',               'phase_rules', 'document_asset', 1, false, 'always'),
-  ('document_verification', 'phase_rules', 'document_asset', 1, false, 'always')
-) as b(phase_kind, evidence_kind, satisfied_by, minimum_count, requires_extraction, condition_code)
-cross join (values ('core'), ('light')) as m(mode)
+  (management_mode, phase_kind, evidence_kind, satisfied_by, requirement_level, gate_effect,
+   scope, minimum_count, requires_verified_source, requires_human_review, requires_extraction,
+   condition_code, priority)
+values
+  -- ── core ─────────────────────────────────────────────────────────────────
+  ('core','objective_written','syllabus',    'document_asset','required','block','phase',1,true,true,true, 'always',100),
+  ('core','objective_written','exam_pattern', 'document_asset','required','block','phase',1,true,true,true, 'always',100),
+  ('core','objective_written','pyq_paper',    'source_registry','required','block','phase',1,true,false,false,'always',100),
+  ('core','objective_written','answer_key',   'document_asset','required','block','phase',1,true,true,true, 'objective_pyq_used_for_scoring',100),
+  ('core','descriptive_written','syllabus',   'document_asset','required','block','phase',1,true,true,true, 'always',100),
+  ('core','descriptive_written','exam_pattern','document_asset','required','block','phase',1,true,true,true, 'always',100),
+  ('core','descriptive_written','pyq_paper',  'source_registry','required','block','phase',1,true,false,false,'always',100),
+  ('core','mixed_written','syllabus',         'document_asset','required','block','phase',1,true,true,true, 'always',100),
+  ('core','mixed_written','exam_pattern',     'document_asset','required','block','phase',1,true,true,true, 'always',100),
+  ('core','mixed_written','pyq_paper',        'source_registry','required','block','phase',1,true,false,false,'always',100),
+  ('core','mixed_written','answer_key',       'document_asset','required','block','phase',1,true,true,true, 'objective_pyq_used_for_scoring',100),
+  ('core','interview','phase_rules',             'document_asset','required','block','phase',1,true,true,false,'always',100),
+  ('core','physical_test','phase_rules',         'document_asset','required','block','phase',1,true,true,false,'always',100),
+  ('core','medical','phase_rules',               'document_asset','required','block','phase',1,true,true,false,'always',100),
+  ('core','document_verification','phase_rules', 'document_asset','required','block','phase',1,true,true,false,'always',100),
+  -- ── light ────────────────────────────────────────────────────────────────
+  ('light','objective_written','syllabus',    'document_asset','required','block','phase',1,true,true,true, 'study_os_enabled',100),
+  ('light','objective_written','exam_pattern', 'document_asset','required','block','phase',1,true,true,true, 'pattern_details_exposed',100),
+  ('light','objective_written','pyq_paper',    'source_registry','recommended','warn','phase',1,true,false,false,'always',100),
+  ('light','objective_written','answer_key',   'document_asset','required','block','phase',1,true,true,true, 'objective_pyq_used_for_scoring',100),
+  ('light','descriptive_written','syllabus',   'document_asset','required','block','phase',1,true,true,true, 'study_os_enabled',100),
+  ('light','descriptive_written','exam_pattern','document_asset','required','block','phase',1,true,true,true, 'pattern_details_exposed',100),
+  ('light','descriptive_written','pyq_paper',  'source_registry','recommended','warn','phase',1,true,false,false,'always',100),
+  ('light','mixed_written','syllabus',         'document_asset','required','block','phase',1,true,true,true, 'study_os_enabled',100),
+  ('light','mixed_written','exam_pattern',     'document_asset','required','block','phase',1,true,true,true, 'pattern_details_exposed',100),
+  ('light','mixed_written','pyq_paper',        'source_registry','recommended','warn','phase',1,true,false,false,'always',100),
+  ('light','mixed_written','answer_key',       'document_asset','required','block','phase',1,true,true,true, 'objective_pyq_used_for_scoring',100),
+  ('light','interview','phase_rules',             'document_asset','recommended','warn','phase',1,true,false,false,'always',100),
+  ('light','physical_test','phase_rules',         'document_asset','recommended','warn','phase',1,true,false,false,'always',100),
+  ('light','medical','phase_rules',               'document_asset','recommended','warn','phase',1,true,false,false,'always',100),
+  ('light','document_verification','phase_rules', 'document_asset','recommended','warn','phase',1,true,false,false,'always',100)
 on conflict (management_mode, coalesce(exam_type, ''), coalesce(phase_kind, ''), evidence_kind, scope)
 do nothing;
 
--- ─────────────────────────────────────────────────────────────────────────────
--- RLS: enable + admin-all (backend reads via service role, which bypasses RLS).
--- ─────────────────────────────────────────────────────────────────────────────
-alter table public.exam_evidence_requirements enable row level security;
-alter table public.exam_document_evidence enable row level security;
-alter table public.exam_document_evidence_roles enable row level security;
-alter table public.exam_evidence_requirement_overrides enable row level security;
-
+-- Seed assertions (fail the migration if the approved matrix is not what landed).
 do $$
 declare
-  t text;
-  policy_name text;
+  v_level text;
+  v_gate text;
+  v_cond text;
+begin
+  -- light written PYQ must be recommended/warn (NOT a blocker) for all three written kinds.
+  for v_cond in select unnest(array['objective_written','descriptive_written','mixed_written']) loop
+    select requirement_level, gate_effect into v_level, v_gate
+      from public.exam_evidence_requirements
+      where management_mode='light' and phase_kind=v_cond and evidence_kind='pyq_paper' and scope='phase';
+    if v_level is distinct from 'recommended' or v_gate is distinct from 'warn' then
+      raise exception 'seed assert failed: light/%/pyq_paper must be recommended/warn (got %/%)',
+        v_cond, v_level, v_gate;
+    end if;
+  end loop;
+  -- light written pattern is conditional on pattern exposure.
+  select condition_code into v_cond from public.exam_evidence_requirements
+    where management_mode='light' and phase_kind='objective_written' and evidence_kind='exam_pattern' and scope='phase';
+  if v_cond is distinct from 'pattern_details_exposed' then
+    raise exception 'seed assert failed: light objective exam_pattern condition must be pattern_details_exposed (got %)', v_cond;
+  end if;
+  -- answer_key stays conditional on objective PYQ scoring (core + light).
+  select condition_code into v_cond from public.exam_evidence_requirements
+    where management_mode='light' and phase_kind='mixed_written' and evidence_kind='answer_key' and scope='phase';
+  if v_cond is distinct from 'objective_pyq_used_for_scoring' then
+    raise exception 'seed assert failed: light mixed answer_key condition must be objective_pyq_used_for_scoring (got %)', v_cond;
+  end if;
+  -- core written PYQ must be required/block.
+  select requirement_level, gate_effect into v_level, v_gate from public.exam_evidence_requirements
+    where management_mode='core' and phase_kind='objective_written' and evidence_kind='pyq_paper' and scope='phase';
+  if v_level is distinct from 'required' or v_gate is distinct from 'block' then
+    raise exception 'seed assert failed: core objective pyq_paper must be required/block (got %/%)', v_level, v_gate;
+  end if;
+  -- descriptive_written must NOT seed an answer_key requirement (core or light).
+  if exists (select 1 from public.exam_evidence_requirements
+             where phase_kind='descriptive_written' and evidence_kind='answer_key') then
+    raise exception 'seed assert failed: descriptive_written must not require answer_key';
+  end if;
+end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- RLS: enabled + service-role mediated. No authenticated policy (deny by default);
+-- privileges revoked from public/anon/authenticated and granted to service_role.
+-- ─────────────────────────────────────────────────────────────────────────────
+do $$
+declare t text;
 begin
   foreach t in array array[
+    'exam_evidence_kinds',
     'exam_evidence_requirements',
     'exam_document_evidence',
     'exam_document_evidence_roles',
     'exam_evidence_requirement_overrides'
   ]
   loop
-    policy_name := t || '_admin_all';
-    if not exists (
-      select 1 from pg_policies
-      where schemaname = 'public' and tablename = t and policyname = policy_name
-    ) then
-      execute format(
-        'create policy %I on public.%I for all to authenticated using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_admin = true)) with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_admin = true))',
-        policy_name, t
-      );
-    end if;
+    execute format('alter table public.%I enable row level security', t);
+    execute format('revoke all on public.%I from public', t);
+    execute format('revoke all on public.%I from anon', t);
+    execute format('revoke all on public.%I from authenticated', t);
+    execute format('grant select, insert, update, delete on public.%I to service_role', t);
   end loop;
 end $$;
 
