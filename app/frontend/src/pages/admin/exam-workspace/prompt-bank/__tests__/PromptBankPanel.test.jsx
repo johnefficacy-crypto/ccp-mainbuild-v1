@@ -18,39 +18,35 @@ jest.mock("../../../../../lib/authContext", () => ({
   }),
 }));
 
-jest.mock("../../../../../lib/hooks/useApiCollection", () =>
-  jest.fn(() => ({
-    items: [
-      {
-        id: "prompt-1",
-        prompt_text: "Construct a simple sentence.",
-        exercise_type: "sentence_construction",
-        topic_name: "Sentence Construction",
-        difficulty_level: 3,
-        min_words: 5,
-        max_words: 20,
-        reviewer_status: "verified",
-        is_active: true,
-        updated_at: "2026-07-02T10:00:00Z",
-      },
-    ],
-    status: "live",
-    refresh: jest.fn(),
-    setItems: jest.fn(),
-  }))
-);
+jest.mock("../../../../../lib/hooks/useApiCollection", () => () => ({
+  items: [
+    {
+      id: "prompt-1",
+      prompt_text: "Construct a simple sentence.",
+      exercise_type: "sentence_construction",
+      topic_name: "Sentence Construction",
+      difficulty_level: 3,
+      min_words: 5,
+      max_words: 20,
+      reviewer_status: "verified",
+      is_active: true,
+      updated_at: "2026-07-02T10:00:00Z",
+    },
+  ],
+  status: "live",
+  refresh: jest.fn(),
+  setItems: jest.fn(),
+}));
 
-jest.mock("../../../../../lib/hooks/useApiAction", () =>
-  jest.fn(() => ({
-    run: jest.fn((opts) => {
-      if (opts.action) {
-        opts.action();
-        if (opts.onSuccess) opts.onSuccess();
-      }
-    }),
-    busy: false,
-  }))
-);
+jest.mock("../../../../../lib/hooks/useApiAction", () => () => ({
+  run: jest.fn((opts) => {
+    if (opts.action) {
+      opts.action();
+      if (opts.onSuccess) opts.onSuccess();
+    }
+  }),
+  busy: false,
+}));
 
 jest.mock("../promptBankApi", () => ({
   promptBankApi: {
