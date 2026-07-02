@@ -47,7 +47,7 @@ def test_review_persists_error_types_and_status():
     )
     assert r.status_code == 200
     mock = sb.db["mock_tests"][0]
-    assert mock["review_status"] == "reviewed"
+    assert mock["review_state"] == "reviewed"
     assert mock["error_types"] == {"concept_gap": 3, "time_pressure": 1}
     assert mock["notes"] == "Need to revisit percentages."
 
@@ -192,7 +192,7 @@ def test_platform_attempt_breakdown_rejection_writes_nothing():
     )
     # mock_tests row must not have been mutated
     platform_mock = next(m for m in sb.db["mock_tests"] if m["id"] == "m3")
-    assert platform_mock.get("review_status") is None
+    assert platform_mock.get("review_state") is None
     # no breakdown rows
     assert sb.db.get("mock_topic_breakdowns", []) == []
 
@@ -207,7 +207,7 @@ def test_metadata_only_platform_review_allowed():
     )
     assert r.status_code == 200
     platform_mock = next(m for m in sb.db["mock_tests"] if m["id"] == "m3")
-    assert platform_mock["review_status"] == "reviewed"
+    assert platform_mock["review_state"] == "reviewed"
     assert platform_mock["notes"] == "Good attempt."
     # no breakdowns written
     assert sb.db.get("mock_topic_breakdowns", []) == []
@@ -240,16 +240,59 @@ def test_review_empty_body_rejected_422():
 
 # ─── model_fields_set-driven patch (BUG-A regression) ────────────────────────
 
-def test_review_notes_only_does_not_mutate_review_status():
-    """Omitting review_status must not overwrite the existing DB value (BUG-A)."""
+def test_review_notes_only_does_not_mutate_review_state():
+    """Omitting review_status must not overwrite the existing DB review_state (BUG-A)."""
     sb = SBStub(_seed())
-    sb.db["mock_tests"][0]["review_status"] = "unreviewed"
+    sb.db["mock_tests"][0]["review_state"] = "unreviewed"
     _, client = _client(sb)
     r = client.post("/api/study/mocks/m1/review", json={"notes": "Practice more."})
     assert r.status_code == 200
     mock = sb.db["mock_tests"][0]
-    assert mock.get("review_status") == "unreviewed"
+    assert mock.get("review_state") == "unreviewed"
     assert mock["notes"] == "Practice more."
+
+
+def test_review_status_null_does_not_write_review_state():
+    """Explicit review_status: null must not write review_state (NOT NULL constraint)."""
+    sb = SBStub(_seed())
+    sb.db["mock_tests"][0]["review_state"] = "unreviewed"
+    _, client = _client(sb)
+    r = client.post("/api/study/mocks/m1/review", json={"review_status": None, "notes": "Note."})
+    assert r.status_code == 200
+    mock = sb.db["mock_tests"][0]
+    assert mock.get("review_state") == "unreviewed"
+    assert "review_state" not in {k for k, v in mock.items() if v is None}
+
+
+def test_review_status_correction_drafted_accepted():
+    """correction_drafted is a valid review_status value and maps to review_state."""
+    sb = SBStub(_seed())
+    _, client = _client(sb)
+    r = client.post("/api/study/mocks/m1/review", json={"review_status": "correction_drafted"})
+    assert r.status_code == 200
+    mock = sb.db["mock_tests"][0]
+    assert mock["review_state"] == "correction_drafted"
+
+
+def test_platform_review_status_null_does_not_write_review_state():
+    """Explicit review_status: null on platform mock must not touch review_state."""
+    sb = SBStub(_seed())
+    sb.db["mock_tests"][2]["review_state"] = "unreviewed"
+    _, client = _client(sb)
+    r = client.post("/api/study/mocks/m3/review", json={"review_status": None, "notes": "N."})
+    assert r.status_code == 200
+    platform_mock = next(m for m in sb.db["mock_tests"] if m["id"] == "m3")
+    assert platform_mock.get("review_state") == "unreviewed"
+
+
+def test_platform_review_status_correction_drafted_accepted():
+    """correction_drafted is a valid review_status for platform mocks and maps to review_state."""
+    sb = SBStub(_seed())
+    _, client = _client(sb)
+    r = client.post("/api/study/mocks/m3/review", json={"review_status": "correction_drafted"})
+    assert r.status_code == 200
+    platform_mock = next(m for m in sb.db["mock_tests"] if m["id"] == "m3")
+    assert platform_mock["review_state"] == "correction_drafted"
 
 
 def test_review_notes_null_clears_existing_note():
@@ -449,7 +492,7 @@ def test_platform_attempt_forbidden_scalar_409_and_no_writes():
     assert "total_questions" in detail["fields"]
     # Sentinel: mock_tests row must be completely unmodified.
     platform_mock = next(m for m in sb.db["mock_tests"] if m["id"] == "m3")
-    assert platform_mock.get("review_status") is None
+    assert platform_mock.get("review_state") is None
     assert platform_mock.get("total_questions") is None
     assert sb.db.get("mock_topic_breakdowns", []) == []
 
