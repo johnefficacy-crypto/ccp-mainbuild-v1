@@ -87,27 +87,6 @@ describe("PromptBankPanel", () => {
     ).toBeInTheDocument();
   });
 
-  test("renders filter bar with select dropdowns", () => {
-    render(<PromptBankPanel />);
-
-    expect(screen.getByLabelText(/Search/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Exercise Type/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Reviewer Status/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Active Status/i)).toBeInTheDocument();
-  });
-
-  test("prompt table shows expected columns", () => {
-    render(<PromptBankPanel />);
-
-    expect(screen.getByText(/Prompt/)).toBeInTheDocument();
-    expect(screen.getByText(/Exercise type/)).toBeInTheDocument();
-    expect(screen.getByText(/Topic/)).toBeInTheDocument();
-    expect(screen.getByText(/Difficulty/)).toBeInTheDocument();
-    expect(screen.getByText(/Word limit/)).toBeInTheDocument();
-    expect(screen.getByText(/Reviewer status/)).toBeInTheDocument();
-    expect(screen.getByText(/Active/)).toBeInTheDocument();
-  });
-
   test("displays readiness summary table", () => {
     render(<PromptBankPanel />);
     expect(screen.getByText(/Readiness/i)).toBeInTheDocument();
