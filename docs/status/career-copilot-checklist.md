@@ -296,7 +296,7 @@ Write the code; operator sign-off required before merge.
 Architecture contract: `docs/architecture/english-writing-practice.md`
 PR plan: `docs/status/career-copilot-pr-plan.md` § Lane H
 
-Current verdict: **ARCHITECTURE LOCKED (PR #819 merged). EWP-1 MERGED (PR #821): migration 205 + version_set_hash helper — OPERATOR VALIDATION PENDING (apply migration 205 to staging, verify RLS). EWP-2 MERGED (PR #823): deterministic practice API — OPERATOR VALIDATION PENDING. EWP-2B MERGED (PR #836): migration 209, evaluator/mastery-outbox workers, scheduler wiring — OPERATOR VALIDATION PENDING. EWP-3 onward not started. EWP-5 mastery live writes blocked on Lane A gate.**
+Current verdict: **ARCHITECTURE LOCKED (PR #819 merged). EWP-1 MERGED (PR #821): migration 205 + version_set_hash helper — OPERATOR VALIDATION PENDING (apply migration 205 to staging, verify RLS). EWP-2 MERGED (PR #823): deterministic practice API — OPERATOR VALIDATION PENDING. EWP-2B MERGED (PR #836): migration 209, evaluator/mastery-outbox workers, scheduler wiring — OPERATOR VALIDATION PENDING. EWP-3 (Sentence Builder UI) CODE PRESENT in open PR / VALIDATION PENDING (`pages/study/EnglishPracticeShell.jsx` + `features/study/english-practice/*`). EWP-4 onward not started. EWP-5 mastery live writes blocked on Lane A gate.**
 
 Migration number for EWP-1 must come from `select max(version)::int + 1 from schema_migrations`. VERIFY DB before writing the migration file — do not guess or derive from filenames.
 
@@ -328,6 +328,49 @@ Migration number for EWP-1 must come from `select max(version)::int + 1 from sch
 | Shadow mastery output | OPERATOR PENDING — after EWP-2B deploys, verify source-neutral evidence + shadow rows appear and no `user_topic_mastery` mutations occur |
 | Prompt bank reviewed | OPERATOR PENDING — 270 prompts through CMS review lifecycle before aspirant launch |
 | Release gates §16 | OPERATOR PENDING — 10 gates must be documented in this checklist before EWP-6 begins |
+
+### 1. Delivery track
+
+Engineering-complete does not mean release-ready. Two independent readiness tracks govern rollout: the 270-prompt content inventory blocks aspirant launch; the §16 reliability evidence blocks progression into Paragraph Builder (EWP-6) and descriptive mocks (EWP-7).
+
+| Track | Current state | Entry gate | Exit gate |
+|---|---|---|---|
+| Sentence foundation | EWP-3 validation pending | EWP-2/2B merged | EWP-3 merged and stable |
+| Grammar and planner | EWP-4/5 planned | EWP-2/2B merged | Shadow evidence and planner validated |
+| Paragraph runtime | EWP-6 blocked | EWP-3 stable + §16 approved | Paragraph stability evidence |
+| Descriptive mocks | EWP-7 blocked | EWP-6 stable + §16 valid | Mock-runtime validation |
+
+### 2. §17 prompt-bank tracker
+
+Track actual operator progress per exercise type, not a single "270 prompts pending" row. Only the `Verified` and `Active` counts determine launch readiness — a prompt is aspirant-visible only when both `reviewer_status = 'verified'` and `is_active = true`. Author or import inside the existing Exam Workspace CMS; do not add a new admin sidebar destination.
+
+`Required` is the fixed inventory target. `Authored`/`Verified`/`Active` are live CMS/DB facts the repository cannot prove — they stay `VERIFY DB` until a dated query/export is captured and linked here (per AGENTS.md: absence of repo evidence is not a zero count).
+
+| Type | Required | Authored | Verified | Active | Status |
+|---|---:|---:|---:|---:|---|
+| Sentence construction | 50 | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
+| Sentence correction | 50 | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
+| Grammar rules | 100 | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
+| Vocabulary context | 50 | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
+| Scaffolded paragraphs | 20 | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
+| **Total** | **270** | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
+
+### 3. §16 release-gate tracker
+
+Evidence-based gates — do not substitute elapsed time, session count, or development completion for this evidence. Statuses use the declared checklist vocabulary and are grounded in repo code/tests where present; the "Evidence" column links existing code/tests, and large benchmark outputs, SQL captures, test reports, and operator validation proof will live in separate dated files under `docs/audits/ewp/` (created only when validation evidence exists). Code-present ≠ gate-passed: every gate still needs its release evidence and owner approval.
+
+| Gate | Status | Evidence | Owner approval |
+|---|---|---|---|
+| Autosave no-loss | CODE PRESENT, VALIDATION PENDING | `features/study/english-practice/autosave.js` + `autosave.test.js`; destructive reload/tab-close/network-failure benchmark pending | — |
+| Submission idempotency | CODE PRESENT, VALIDATION PENDING | migration-207/209 CAS + two-connection race test in `tests/study_os/test_writing_rpcs_behaviour.py`; broader release evidence pending | — |
+| Word-count parity | BLOCKED — CODE FIX REQUIRED | Mismatch: `SentenceBuilder.jsx` counts via `draft.split(/\s+/)` while backend `deterministic.py` uses `_WORD_RE = [^\W_]+(?:['\-][^\W_]+)*` (e.g. `hello,world` = 1 client vs 2 server). Frontend must adopt the versioned tokenizer before parity can be measured. | — |
+| UTF-16 span benchmark | CODE PRESENT, VALIDATION PENDING | `features/study/english-practice/utf16.js` span-verified highlight (§4.5b); curated exact-text benchmark pending | — |
+| Grammar false-positive rate | PLANNED | Only deterministic mock evaluator (`language_evaluator.py`, `lang-mock-v1`) exists; acceptable threshold undefined and no human-labelled sample set yet | — |
+| Mastery replay determinism | CODE PRESENT, VALIDATION PENDING | Deterministic evidence-key derivation in `evidence_deriver.py` (§4.12b) + `deterministic.py`; byte-equivalent replay projection benchmark pending | — |
+| Planner task deduplication | PLANNED | Blocked on EWP-5 planner integration (not started); retest-dedup evidence cannot exist yet | — |
+| Verified exam configuration | OPERATOR PENDING | ≥1 officially sourced `exam_descriptive_requirements` row verified + active — live CMS/DB fact (VERIFY DB) | — |
+| Writing shadow gate | OPERATOR PENDING | §10.3 shadow-to-live conditions; `FF_WRITING_MASTERY_WRITES` remains `shadow`, live blocked on Lane A gate + operator approval | — |
+| Operator approval | BLOCKED | Depends on all gates above; dated approval to be recorded here + `docs/audits/ewp/` | — |
 
 ## Prior arcs / live-DB-only tails
 
