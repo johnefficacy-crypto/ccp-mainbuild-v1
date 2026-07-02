@@ -2,6 +2,7 @@
 
 - Document type: J3 implementation contract — mixed-format (page-level layout) PDF extraction architecture
 - Status: **DRAFT — OPERATOR APPROVAL REQUIRED**
+- Note: every item marked **LOCKED** below is a **PROPOSED lock** — nothing in this document is authoritative until operator approval. Agents must not treat draft text as approved policy.
 - Date: 2026-07-02
 - Parent track: `J3 — schema/domain redesign` (checklist rows "Mixed-format PDF support DEFERRED — EXTRACTION ARCHITECTURE" and "mixed-format PDF extraction" under the J3 row)
 - Authority / read order (CLAUDE.md): `graphify-out/GRAPH_REPORT.md`; `docs/00-ai-context.md`; `AGENTS.md`; `docs/architecture/domain-model.md`; this gate

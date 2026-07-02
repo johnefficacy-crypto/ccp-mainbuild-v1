@@ -147,6 +147,15 @@ Retire the free string. Model as an object: `{ "level": "harder"|"stable"|"easie
 - Vacancy is `(exam_id, exam_cycle_id, category)`-addressable (cycle-level; `exam_phase_id` NULL or ignored for vacancy).
 - Cross-cycle "trend" series is a READ-TIME aggregation over rows (as `competition.py` already does), never a stored trend blob.
 
+### B.6 Row identity, uniqueness & supersession (LOCKED requirement; mechanics = OD-10/OD-11 — added per checkpost)
+
+The current `exam_competition_metrics` table has **no uniqueness/supersession rule** for `(exam_id, exam_cycle_id, exam_phase_id)`, and the proposed migration (Section E) only added JSON-shape validation. Without an identity rule, multiple `reviewed`/`locked` rows for the same scope can coexist and two readers (one "pick best", one "aggregate") return different answers. This gate therefore REQUIRES the following to be locked before implementation:
+
+1. **Canonical row identity + uniqueness/versioning (OD-10):** either a unique constraint on the canonical scope (one live row per scope, superseded rows archived/soft-deleted) OR an explicit version column with a deterministic "current" selector. One of these MUST be chosen — coexisting live rows for the same scope are prohibited.
+2. **Row kind separation (OD-11):** cycle-level vacancy and phase-level cutoff are addressed at different granularities (B.5). Lock whether they are (a) **separate row kinds** (a `metric_kind` discriminator: `vacancy` rows carry `exam_phase_id IS NULL`; `cutoff` rows require `exam_phase_id`) or (b) **separate child fact tables**. A single undiscriminated row shape is rejected — it lets a phase row carry a competing cycle-level vacancy value.
+3. **Deterministic supersession/selection:** the read helper MUST select exactly one row per scope by a deterministic rule (latest version / max `reviewed_at` with `locked` preferred), not "first returned". This selector is specified once and shared by every reader (no per-caller "best row" heuristics).
+4. **Constraint preventing cross-granularity leakage:** a DB CHECK (or the child-table split) MUST prevent a phase-scoped cutoff row from carrying cycle-level vacancy and vice-versa.
+
 ---
 
 ## Section C — Evidence model (PROPOSED)
@@ -178,7 +187,7 @@ locked → reviewed (reopen; reviewer_notes required)
 rejected → draft (reset)
 ```
 
-- Only `reviewed`/`locked` are aspirant-readable (already enforced by RLS + read helper). Only `locked` is planner-ready (already true in `competition_context.py`).
+- Only `reviewed`/`locked` are aspirant-readable (already enforced by RLS + read helper). **Correction (checkpost):** `competition_context.py` reads `reviewer_status in ('locked','reviewed')` with **locked preferred** (`_READABLE_STATUSES = ("locked","reviewed")`, l.19/137) — it is NOT locked-only. This gate PRESERVES that existing reviewed+locked / locked-preferred contract (matching AGENTS.md "reviewed or locked rows feed the planner; locked preferred"); it does not redefine it. Any move to locked-only would be a separate OPERATOR DECISION with the required runtime/UI migration.
 - LOCKED: `PATCH /competition-metrics/{id}/review` MUST enforce this matrix server-side and reject out-of-matrix jumps with 409 (today it accepts any jump). Reopen (`locked → reviewed`) requires `reviewer_notes`.
 - LOCKED: shape validation (Section B) MUST run on the `draft → pending_review` submit AND on the `→ reviewed`/`→ locked` promotion, so malformed JSONB cannot be promoted even if it was inserted before validation existed.
 - Whether editing a `reviewed`/`locked` row requires review-rollback first (J2-A′ C.3 posture) is **OD-7**.
@@ -213,6 +222,8 @@ Transition-matrix + CAS enforcement is a backend change to the review endpoint, 
 | **OD-7** | Does editing a `reviewed`/`locked` competition row require review-rollback first (J2-A′ C.3 posture), or may `manage` edit in place? | Trust-posture decision consistent (or not) with the prerequisite gate. |
 | **OD-8** | Enforce the transition matrix + CAS in app layer (`review_competition_metric`) only, or as a DB state-machine trigger (stronger, matches migration 208 precedent)? | Architecture strength vs. scope. |
 | **OD-9** | Reconcile the two operator UIs: does `CompetitionPanel.jsx` migrate to the category-map editor, or is the workspace panel retired in favor of the review-surface `CompetitionMetricsTable.jsx` (which must then gain cutoff/vacancy editing + display)? | Frontend no-new-surface + single-source-of-truth rules; affects which surface owns competition writes. |
+| **OD-10** | Row identity/uniqueness (B.6): unique-constraint-on-scope (one live row, archive superseded) vs. explicit version column + deterministic "current" selector. | Prevents coexisting live rows for the same scope returning divergent answers. Decisive for the migration and the read helper. |
+| **OD-11** | Row-kind separation (B.6): `metric_kind` discriminator on one table (vacancy → `exam_phase_id IS NULL`; cutoff → phase required) vs. separate child fact tables for cutoff vs vacancy. | Prevents a phase row carrying a competing cycle-level vacancy value; sets the DB CHECK/constraint shape. |
 
 ---
 
@@ -262,7 +273,7 @@ Transition-matrix + CAS enforcement is a backend change to the review endpoint, 
 | `app/backend/app/api/admin_exam_intel_cms.py` | Extend `_validate_competition_payload` to enforce Section B shapes on create/patch. |
 | `app/backend/app/api/admin_exam_intelligence.py` | `review_competition_metric`: enforce Section D transition matrix + CAS + reopen-notes; run shape validation on promote. |
 | `app/backend/app/exam_intelligence/competition.py` | Read the locked object shape (drop the tolerant number/list convention once legacy is normalized). |
-| `app/backend/app/study_os/competition_context.py` | Confirm locked-only read still holds against the new shape. |
+| `app/backend/app/study_os/competition_context.py` | Confirm the existing reviewed+locked (locked-preferred) read still holds against the new shape; do NOT narrow to locked-only without a separate OD. |
 | `app/frontend/.../CompetitionPanel.jsx` | Replace string-enum cutoff/difficulty inputs with the category-map editor; add `vacancy_by_category` inputs (per OD-9). |
 | `app/frontend/.../CompetitionMetricsTable.jsx` | Display cutoff_trend + vacancy_by_category on the review surface (G-7). |
 | backend + frontend tests | Section G. |
@@ -283,4 +294,4 @@ Transition-matrix + CAS enforcement is a backend change to the review endpoint, 
 
 ---
 
-*Status: DRAFT — OPERATOR APPROVAL REQUIRED. Nine OPERATOR DECISION REQUIRED items (OD-1…OD-9) block implementation dispatch. Reconciles the existing `exam_competition_metrics` table/RLS/CMS/review/read implementation; the core defect is the opaque JSONB with three mutually contradictory shapes across writer, reader, and reviewer.*
+*Status: DRAFT — OPERATOR APPROVAL REQUIRED. Every "LOCKED" item here is a PROPOSED lock, not authoritative until operator approval. Eleven OPERATOR DECISION REQUIRED items (OD-1…OD-11) block implementation dispatch — including OD-10 (row identity/uniqueness) and OD-11 (row-kind separation) added per checkpost. Reconciles the existing `exam_competition_metrics` table/RLS/CMS/review/read implementation; the core defects are the opaque JSONB with three contradictory shapes AND the absence of any row-identity/uniqueness rule for the canonical scope.*

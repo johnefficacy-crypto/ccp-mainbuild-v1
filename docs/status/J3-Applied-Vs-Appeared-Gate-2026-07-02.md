@@ -2,6 +2,7 @@
 
 - Document type: J3 sub-slice implementation contract — candidate **applied** vs **appeared** counts for competition-pressure / vacancy analytics
 - Status: **DRAFT — OPERATOR APPROVAL REQUIRED**
+- Note: every item marked **LOCKED** below is a **PROPOSED lock** — nothing in this document is authoritative until operator approval. Agents must not treat draft text as approved policy.
 - Date: 2026-07-02
 - Parent track: `J3 — schema/domain redesign` (`docs/status/career-copilot-checklist.md`, J3 row: "Phase/category competition cutoffs, applied vs appeared counts, mixed-format PDF extraction, evidence-based coverage scoring").
 - Sibling gate (cross-reference, non-overlapping): `docs/status/J3-Competition-Cutoffs-Gate-2026-07-02.md` — owns the **cutoffs/vacancy JSONB** redesign (`cutoff_trend`, `vacancy_by_category`, `vacancy_total`). **This gate does NOT touch those columns.** This gate owns exclusively the **applied vs appeared candidate counts** and their granularity, evidence model, and reviewer lifecycle. If the sibling gate is not yet drafted, the JSONB boundary in §B (PD-6) still holds: applied/appeared counts must not be encoded inside `vacancy_by_category` or any cutoff JSONB.
@@ -104,7 +105,7 @@ create table public.exam_competition_metrics (
 | PD-4 | **Category / reservation axis (OPERATOR DECISION REQUIRED — see OD-1).** Whether counts are stored per reservation category or only as totals is not decided here. Do not guess. |
 | PD-5 | **Table vs extend (OPERATOR DECISION REQUIRED — see OD-2).** Whether to add typed columns to `exam_competition_metrics` or create a dedicated `exam_candidate_counts` table depends on the category-axis decision (PD-4). Do not guess. |
 | PD-6 | **JSONB boundary (LOCKED).** Applied/appeared counts must NOT be encoded inside `vacancy_by_category`, `cutoff_trend`, or any JSONB owned by the sibling cutoffs gate. Counts are first-class typed data (typed columns or a typed child table), not opaque JSONB — so they are checkable (`>= 0`), indexable, and reviewable. |
-| PD-7 | **`applicant_count` disposition (LOCKED intent; migration mechanics in §D).** The existing overloaded `applicant_count` is to be **interpreted as "applied"** for backfill and then superseded by the explicit model. It is NOT deleted in the forward migration (immutability + no data loss); it is documented as deprecated-in-place, read paths migrate to the new explicit fields, and a follow-up cleanup is tracked. |
+| PD-7 | **`applicant_count` disposition — OPERATOR DECISION REQUIRED (corrected per checkpost).** The column is semantically overloaded/unknown (G-1), so it **must NOT be blanket-relabelled as "applied"** — that would manufacture certainty and can corrupt competition ratios. LOCKED only: the column is NOT deleted (immutability, no data loss) and is deprecated-in-place. The disposition of its values is an auditable operator choice (see OD-6): (a) preserve every legacy value as `legacy_unknown` and require review before it feeds any ratio; (b) backfill to `applied` ONLY rows with explicit provenance proving "applied", leaving the rest null/unknown; (c) quarantine ambiguous rows and leave the new explicit fields null. **Ambiguous rows must never be silently converted** (acceptance test F.4). |
 | PD-8 | **`selection_ratio` (LOCKED).** Once explicit counts exist, `selection_ratio` becomes a derived, display-only convenience whose denominator MUST be documented (vacancy ÷ appeared preferred where appeared is known, else vacancy ÷ applied). The engine does not persist a new derived ratio without recording which denominator was used. No new AI/heuristic derivation. |
 
 ---
@@ -112,7 +113,7 @@ create table public.exam_competition_metrics (
 ## Section C — Evidence & reviewer lifecycle (LOCKED)
 
 - **Reviewer lifecycle reused unchanged:** five-state `reviewer_status` (`draft → pending_review → reviewed → locked`, with `rejected`), mirroring `exam_competition_metrics` / `exam_topic_coverage`. No new state machine is invented.
-- **Verified-only reads (LOCKED, CLAUDE.md).** All aspirant/planner-facing reads of applied/appeared counts filter to `reviewer_status in ('reviewed','locked')` — never `draft`/`pending_review`/`rejected`. Planner-authoritative reads (if any consumer is added) filter to `locked` only, matching the competition-metrics precedent.
+- **Verified-only reads (PROPOSED LOCK, CLAUDE.md).** All aspirant/planner-facing reads of applied/appeared counts filter to `reviewer_status in ('reviewed','locked')` — never `draft`/`pending_review`/`rejected`. **Correction (checkpost):** the competition read path is reviewed+locked with **locked preferred** (`competition_context.py::_READABLE_STATUSES = ("locked","reviewed")`), NOT locked-only; AGENTS.md locks the Study OS copy as "reviewed or locked rows feed the planner; locked preferred." This gate PRESERVES that contract — applied/appeared reads follow the same reviewed+locked (locked-preferred) rule. It does NOT redefine planner reads to locked-only; any such change would be a separate OD with the runtime/UI migration.
 - **Source basis / provenance (LOCKED).** Each count carries `source_basis` from the existing constrained set (`manual`,`official`,`reviewed_analysis`,`derived`,`model_generated`) plus `confidence_score` and `evidence_count`, so applied (typically `official` at notification) and appeared (typically `official` post-result) can each state their own provenance. If applied and appeared live on the same row (PD-5 = extend), a **per-count source basis is required** — a single row-level `source_basis` cannot honestly describe two facts from different sources at different times; this is a decisive input to OD-2.
 - **No AI writes (LOCKED).** No pipeline may write appeared/applied counts as `model_generated` into a reviewed/locked state without passing the human review lifecycle. `model_generated` rows start `draft`.
 
@@ -123,7 +124,7 @@ create table public.exam_competition_metrics (
 - A single forward migration. **Migration number:** pick the next free slot at implementation time (latest landed is `209`; do not hardcode — coordinate with the sibling J3 cutoffs gate to avoid a contended slot).
 - **If OD-2 = extend `exam_competition_metrics`:** add typed nullable columns `applied_count integer check (>= 0)`, `appeared_count integer check (>= 0)`, `applied_source_basis text`, `appeared_source_basis text` (+ per-count evidence if approved). Constraint that `appeared_count` requires `exam_phase_id is not null` (per PD-3, subject to OD-3).
 - **If OD-2 = new table `exam_candidate_counts`:** `id`, `exam_id` (not null), `exam_cycle_id`, `exam_phase_id`, `count_type text check (count_type in ('applied','appeared'))`, `reservation_category text` (nullable; per OD-1), `count_value integer check (>= 0)`, full `source_basis`/`confidence_score`/`evidence_count`, full reviewer-lifecycle columns (`reviewer_status`, `reviewed_by/at`, `reviewer_notes`), `created_at`/`updated_at`. Unique index over `(exam_id, exam_cycle_id, exam_phase_id, count_type, reservation_category)` with the null-handling partial-index pattern used by `exam_topic_coverage`. This is the recommended option if OD-1 = per-category (avoids JSONB and lets each count be independently reviewed).
-- **Backfill (LOCKED intent):** existing `exam_competition_metrics.applicant_count` values map to `applied` (PD-7). Backfill must record: pre-migration non-null `applicant_count` row count; post-migration migrated `applied` count; zero rows lost; competition-pressure read output preserved for a representative exam.
+- **Backfill (per the OD-6 disposition chosen for PD-7 — NOT a blanket "applied" relabel):** backfill must record: pre-migration non-null `applicant_count` row count; count converted vs. count left `legacy_unknown`/null; zero rows lost; competition-pressure read output preserved for a representative exam; and an assertion that no ambiguous (no-provenance) row was written as `applied`.
 - **RLS (LOCKED).** If a new table: enable RLS and add the verified-only read policy (`reviewer_status in ('reviewed','locked')` OR admin) + admin-all write policy, mirroring migration 057. **Verify with `SELECT * FROM pg_policies WHERE tablename='<name>'` before marking complete** (migration discipline). Every new table needs an RLS policy.
 - Migrations immutable once merged; do not edit 055.
 
@@ -138,6 +139,7 @@ create table public.exam_competition_metrics (
 | **OD-3** | **Enforce PD-3 shape at the DB level?** i.e. hard `CHECK` that `appeared` rows require `exam_phase_id`, and `applied` at cycle level. | Some exams publish appeared counts only at cycle level (no phase split). Hard-enforcing may reject legitimate real-world data. Operator must confirm the phase-mandatory rule vs advisory. |
 | **OD-4** | **Reservation category vocabulary/source of truth**, if OD-1 = per-category — free-text vs a constrained enum vs an existing categories reference table. | Affects checkability and cross-exam comparability; must align with the eligibility engine's category vocabulary rather than invent a parallel one. |
 | **OD-5** | **Does any planner/pressure consumer switch to the new counts on landing, or is this schema-only (data captured, read paths unchanged until a later slice)?** | Changing `competition_context.py` pressure math is a behavior change to user-facing analytics; operator must approve scope (schema-first capture vs immediate consumption). |
+| **OD-6** | **Legacy `applicant_count` disposition (PD-7):** (a) preserve all as `legacy_unknown` + require review; (b) convert to `applied` ONLY rows with explicit provenance, rest null; (c) quarantine ambiguous rows, new fields null. | The column is semantically unknown; blanket relabelling to `applied` manufactures certainty and can corrupt ratios. Must be auditable; ambiguous rows never silently converted. |
 
 ---
 
@@ -164,7 +166,8 @@ create table public.exam_competition_metrics (
 ```
 ### F.4 Migration & backfill
 ```
-[ ] existing applicant_count backfilled as applied; pre/post counts recorded; zero rows lost
+[ ] legacy applicant_count handled per the chosen OD-6 disposition; pre/post counts recorded; zero rows lost
+[ ] ambiguous (no-provenance) legacy rows are NOT silently converted to `applied` (asserted)
 [ ] competition-pressure read output preserved for a representative exam post-migration
 [ ] new table (if chosen) has RLS verified via pg_policies before completion
 [ ] selection_ratio, where recomputed, records its denominator (vacancy÷appeared or ÷applied)
@@ -201,6 +204,6 @@ create table public.exam_competition_metrics (
 
 ---
 
-*Status: DRAFT — OPERATOR APPROVAL REQUIRED. No implementation PR may be dispatched until this gate is OPERATOR APPROVED. Blocking operator decisions: OD-1 (category granularity), OD-2 (extend vs new table), OD-3 (phase-mandatory enforcement), OD-4 (category vocabulary), OD-5 (consume now vs schema-first). Cross-references the sibling J3 cutoffs/vacancy-JSONB gate; JSONB boundary (PD-6) prevents overlap.*
+*Status: DRAFT — OPERATOR APPROVAL REQUIRED. No implementation PR may be dispatched until this gate is OPERATOR APPROVED. Blocking operator decisions: OD-1 (category granularity), OD-2 (extend vs new table), OD-3 (phase-mandatory enforcement), OD-4 (category vocabulary), OD-5 (consume now vs schema-first), OD-6 (legacy applicant_count disposition). Cross-references the sibling J3 cutoffs/vacancy-JSONB gate; JSONB boundary (PD-6) prevents overlap.*
 </content>
 </invoke>
