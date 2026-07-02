@@ -1,9 +1,9 @@
 # J3 Operator-Decision Resolutions — consolidated record
 
 - Document type: consolidated operator-decision resolution record for the four J3 sub-item gates.
-- Status: **DRAFT-FINAL — OPERATOR PENDING.** The resolutions below are drafted-final and internally consistent, but this document is **NOT authoritative** until (a) the four gate documents are amended to match (§10) and (b) operator approval is explicitly recorded here and in each gate. Until then, the four gate documents remain the governing authority and **implementation dispatch remains blocked**.
-- Date: 2026-07-02 (revised same day per PR #857 checkpost review)
-- Relationship to the gates: **consolidates, does not supersede.** On operator approval, each gate document is amended in place and this record's status flips to `OPERATOR APPROVED`; only then may implementation PRs dispatch.
+- Status: **OPERATOR APPROVED — 2026-07-02.** Both authority steps in §10 are complete: (a) all four gate documents have been amended in place to match these resolutions (status headers flipped to `APPROVED — OD RESOLVED 2026-07-02`), and (b) operator approval is recorded (operator: johnefficacy-crypto, 2026-07-02). This record is now **authoritative**. Implementation PRs may dispatch per the locked order (§9) and `docs/status/J3-Implementation-Checklist-2026-07-02.md`, starting with PR 1 (Competition structure).
+- Date: 2026-07-02 (revised same day per PR #857 checkpost review; approved 2026-07-02)
+- Relationship to the gates: **consolidates, does not supersede.** Operator approval recorded; each gate document has been amended in place and this record's status is now `OPERATOR APPROVED`. Implementation dispatch is unblocked.
 - Parent track: `J3 — schema/domain redesign` (`docs/status/career-copilot-checklist.md`).
 
 ## Authority & read order

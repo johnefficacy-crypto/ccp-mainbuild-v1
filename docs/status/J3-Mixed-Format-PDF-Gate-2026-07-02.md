@@ -1,8 +1,7 @@
 # Mixed-Format PDF Extraction Gate — J3 (extraction-architecture sub-item)
 
 - Document type: J3 implementation contract — mixed-format (page-level layout) PDF extraction architecture
-- Status: **DRAFT — OPERATOR APPROVAL REQUIRED**
-- Note: every item marked **LOCKED** below is a **PROPOSED lock** — nothing in this document is authoritative until operator approval. Agents must not treat draft text as approved policy.
+- Status: **APPROVED — OD RESOLVED 2026-07-02.** Operator sign-off recorded; resolutions folded in from docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §8. Every previously-PROPOSED lock is now LOCKED. Implementation per docs/status/J3-Implementation-Checklist-2026-07-02.md PR 3 (independent).
 - Date: 2026-07-02
 - Parent track: `J3 — schema/domain redesign` (checklist rows "Mixed-format PDF support DEFERRED — EXTRACTION ARCHITECTURE" and "mixed-format PDF extraction" under the J3 row)
 - Authority / read order (CLAUDE.md): `graphify-out/GRAPH_REPORT.md`; `docs/00-ai-context.md`; `AGENTS.md`; `docs/architecture/domain-model.md`; this gate
@@ -91,9 +90,9 @@ This gate **reconciles the existing extraction implementation** — it does not 
 
 ---
 
-## Section C — OPERATOR DECISION REQUIRED (the either/or)
+## Section C — OPERATOR DECISIONS — RESOLVED
 
-The checklist frames this as an either/or: **(A) support page-range classification** OR **(B) reject mixed files clearly and document a temporary workaround.** This gate presents both and a recommendation. **The operator must select one before any implementation PR.**
+The checklist framed this as an either/or: **(A) support page-range classification** OR **(B) reject mixed files clearly and document a temporary workaround.** This gate presented both and a recommendation. **The operator has selected Option B** (see the resolved OD block below). Options A and B are retained below for context; the resolved decisions are authoritative.
 
 ### Option A — Page-range format classification (full support)
 
@@ -144,9 +143,20 @@ Keep one format per document. Detect that a file is mixed and **reject it loudly
 - Option B closes G-2/G-3 immediately (no silent garbage into review), is a small deterministic change, and is forward-compatible: `document_format_segments` (Option A) can be introduced in a later gate once a non-MCQ extractor is contracted.
 - Prefer **B2 with a B1 override** phrasing at implementation only if the operator wants automatic detection; otherwise **B1** (admin-declared) is the lowest-risk, fully deterministic default.
 
-**OPERATOR DECISION REQUIRED — OD-1:** choose **Option A** (build page-range classification now) or **Option B** (reject + workaround; recommended).
-**OPERATOR DECISION REQUIRED — OD-2 (only if B):** choose detection mechanism **B1 (admin-declared)** vs **B2 (deterministic heuristic pre-check)**. Recommendation: B1 default, B2 optional.
-**OPERATOR DECISION REQUIRED — OD-3 (only if A):** confirm the child-table approach (`document_format_segments`) vs. any alternative, and confirm **no backfill** (existing docs keep single-format behavior).
+**OPERATOR DECISION — OD-1 (RESOLVED):** **Option B** — reject mixed PDFs loudly and document the split/re-upload workaround. (v1 applies one two-column MCQ strategy to every selected page and supports only `pyq_paper`; page-range infrastructure would not extract non-MCQ sections anyway.)
+**OPERATOR DECISION — OD-2 (RESOLVED):** **B1 admin-declared** detection via validated `document_assets.metadata.mixed_format=true`. Do **not** add B2 heuristic detection yet.
+**OPERATOR DECISION — OD-3 (RESOLVED):** Not applicable now. Recorded: a later Option A must use the proposed `document_format_segments` child table with **no backfill**.
+
+**Required behavior:**
+
+```text
+mixed flag
+  → ExtractionMixedFormatError before OCR
+  → zero question writes
+  → error links to the split-and-reupload SOP (docs/engineering/mixed-format-pdf-workaround-v1.md)
+```
+
+No migration required for the metadata approach (unless metadata validation needs a DB constraint). Create the SOP doc (`docs/engineering/mixed-format-pdf-workaround-v1.md`).
 
 ---
 
@@ -224,4 +234,4 @@ Migration discipline: migrations immutable once merged; every new table needs an
 
 ---
 
-*Status: DRAFT — OPERATOR APPROVAL REQUIRED. Recommendation: Option B (explicit clear rejection + documented workaround), B1 detection, given v1 extracts only `mcq_bilingual_two_column`; Option A (page-range `document_format_segments`) deferred to a later gate once a non-MCQ extractor tier is contracted. Open decisions: OD-1 (A vs B), OD-2 (B1 vs B2), OD-3 (A child-table + no-backfill confirmation). No implementation PR may be dispatched until this document is OPERATOR APPROVED.*
+*Status: APPROVED — OD RESOLVED 2026-07-02. Operator selected Option B (explicit clear rejection + documented workaround) with B1 admin-declared detection (`document_assets.metadata.mixed_format=true`), given v1 extracts only `mcq_bilingual_two_column`; Option A (page-range `document_format_segments`, no backfill) deferred to a later gate once a non-MCQ extractor tier is contracted. Resolved: OD-1 = B, OD-2 = B1, OD-3 = N/A-now (later Option A uses `document_format_segments` with no backfill). Implementation per docs/status/J3-Implementation-Checklist-2026-07-02.md PR 3 (independent).*

@@ -1,8 +1,7 @@
 # Applied vs Appeared Counts Gate — J3 sub-item
 
 - Document type: J3 sub-slice implementation contract — candidate **applied** vs **appeared** counts for competition-pressure / vacancy analytics
-- Status: **DRAFT — OPERATOR APPROVAL REQUIRED**
-- Note: every item marked **LOCKED** below is a **PROPOSED lock** — nothing in this document is authoritative until operator approval. Agents must not treat draft text as approved policy.
+- Status: **APPROVED — OD RESOLVED 2026-07-02.** Operator sign-off recorded; resolutions folded in from docs/status/J3-OD-Resolutions-Locked-2026-07-02.md (§0, §2, §3, §4.1, §6, §7, §1.2). Every previously-PROPOSED lock is now LOCKED. Implementation per docs/status/J3-Implementation-Checklist-2026-07-02.md PR 2 (branches from merged PR 1).
 - Date: 2026-07-02
 - Parent track: `J3 — schema/domain redesign` (`docs/status/career-copilot-checklist.md`, J3 row: "Phase/category competition cutoffs, applied vs appeared counts, mixed-format PDF extraction, evidence-based coverage scoring").
 - Sibling gate (cross-reference, non-overlapping): `docs/status/J3-Competition-Cutoffs-Gate-2026-07-02.md` — owns the **cutoffs/vacancy JSONB** redesign (`cutoff_trend`, `vacancy_by_category`, `vacancy_total`). **This gate does NOT touch those columns.** This gate owns exclusively the **applied vs appeared candidate counts** and their granularity, evidence model, and reviewer lifecycle. If the sibling gate is not yet drafted, the JSONB boundary in §B (PD-6) still holds: applied/appeared counts must not be encoded inside `vacancy_by_category` or any cutoff JSONB.
@@ -130,16 +129,31 @@ create table public.exam_competition_metrics (
 
 ---
 
-## Section E — OPERATOR DECISION REQUIRED
+## Section E — OPERATOR DECISIONS — RESOLVED
 
-| ID | Decision needed | Why it cannot be guessed |
-|---|---|---|
-| **OD-1** | **Category/reservation granularity of counts.** Options: (a) totals only (applied/appeared as single integers); (b) per reservation category (General/OBC/SC/ST/EWS/PwD/…). | Drives whether counts are scalar columns or a typed child table with a `reservation_category` axis. Reservation-aware competition is a stated product value ("category competition"), but per-category official appeared data is often unavailable — an operator/product call, not a technical default. |
-| **OD-2** | **Extend `exam_competition_metrics` vs new `exam_candidate_counts` table.** | Depends on OD-1 and on §C provenance: two facts (applied/appeared) with different sources at different times argue for a typed child table; totals-only argues for two columns. Structural, entity-shaping decision. |
-| **OD-3** | **Enforce PD-3 shape at the DB level?** i.e. hard `CHECK` that `appeared` rows require `exam_phase_id`, and `applied` at cycle level. | Some exams publish appeared counts only at cycle level (no phase split). Hard-enforcing may reject legitimate real-world data. Operator must confirm the phase-mandatory rule vs advisory. |
-| **OD-4** | **Reservation category vocabulary/source of truth**, if OD-1 = per-category — free-text vs a constrained enum vs an existing categories reference table. | Affects checkability and cross-exam comparability; must align with the eligibility engine's category vocabulary rather than invent a parallel one. |
-| **OD-5** | **Does any planner/pressure consumer switch to the new counts on landing, or is this schema-only (data captured, read paths unchanged until a later slice)?** | Changing `competition_context.py` pressure math is a behavior change to user-facing analytics; operator must approve scope (schema-first capture vs immediate consumption). |
-| **OD-6** | **Legacy `applicant_count` disposition (PD-7):** (a) preserve all as `legacy_unknown` + require review; (b) convert to `applied` ONLY rows with explicit provenance, rest null; (c) quarantine ambiguous rows, new fields null. | The column is semantically unknown; blanket relabelling to `applied` manufactures certainty and can corrupt ratios. Must be auditable; ambiguous rows never silently converted. |
+Resolved 2026-07-02 per docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §3 (operator-approved). Full SQL and cross-cutting model live in that resolution doc.
+
+| ID | Resolution |
+|---|---|
+| **OD-1** | Support **both totals and optional per-category** counts. `reservation_category_id = NULL` means the official total; category rows are captured **only when official data exists**. Category detail is supported but never mandatory. |
+| **OD-2** | New typed **`exam_candidate_counts` table** (not two more nullable fields on the overloaded competition row). Applied and appeared arrive at different times with independent evidence and lifecycles. |
+| **OD-3** | Add **`scope_kind ∈ {cycle, phase}`** (constrained CHECK). `exam_cycle_id` is **always required**. `applied` → `scope_kind='cycle'`, `exam_phase_id IS NULL`. `appeared` → either `scope_kind='phase'` with `exam_phase_id` set, **or** an explicitly-labelled cycle aggregate (`scope_kind='cycle'`, `exam_phase_id IS NULL`) for authorities that publish only aggregate appearance data. A write validator confirms the phase belongs to the same exam **and** cycle. |
+| **OD-4** | Reuse the **shared `reservation_categories` vocabulary + aliases** (§6 of the resolution doc) via FK — not free text, not a hard-to-extend PG enum. |
+| **OD-5** | **Consume the new reviewed/locked counts immediately** in APIs (prefer `appeared`, then `applied`, else return no ratio). Do **NOT** let this PR alter `competition_pressure_score` itself — only fix count display and the pressure **explanation** text. The §1.2 transitional contract makes PR 2 the point where ratio derivation and all ratio consumers switch atomically. |
+| **OD-6** | **Option B** — migrate only rows whose evidence explicitly proves the value means "applied." Preserve all other `applicant_count` values as **legacy unknown** and exclude them from ratios. Record converted / unknown / zero-loss counts in migration evidence. Ambiguous rows are **never** silently converted. |
+
+### Resolved additions folded in
+
+From docs/status/J3-OD-Resolutions-Locked-2026-07-02.md (§2, §2.1, §3, §4.1, §6, §7, §1.2 — see that doc for full SQL):
+
+- **New typed `exam_candidate_counts` table (OD-2)** — first-class typed counts, not extra nullable columns on `exam_competition_metrics`; applied and appeared carry independent evidence and lifecycles.
+- **`scope_kind ∈ {cycle, phase}` (OD-3)** — constrained CHECK plus the phase/cycle shape CHECK (`applied` → cycle/`exam_phase_id IS NULL`; `appeared` → phase with `exam_phase_id`, or an explicit cycle aggregate) and a **write validator** confirming the phase belongs to the same exam and cycle.
+- **Shared `reservation_categories` FK (OD-4 / §6)** — `exam_candidate_counts.reservation_category_id` and `exam_candidate_count_evidence` (via parent) reference the shared taxonomy + aliases created in the Competition PR; no free text, no parallel enum.
+- **Two-lane revision model + NULL-safe uniqueness (§2 / §2.1)** — `exam_candidate_counts` uses the same one-current-published / at-most-one-current-working lane model (`version_no`, `supersedes_id`, `superseded_at`, `is_current_published`). Lanes enforced by partial unique indexes with **`NULLS NOT DISTINCT`** over `(exam_id, exam_cycle_id, scope_kind, exam_phase_id, count_type, reservation_category_id)` (fallback: `coalesce(col, zero-uuid)` expression indexes on PG < 15), because `exam_phase_id` and `reservation_category_id` are legitimately NULL within a lane. Same `*_current_published_state` / `*_superseded_not_current` CHECKs, `version_no > 0`, self-FK `supersedes_id` with no self-reference, per-scope `version_no` uniqueness, and RPC/trigger same-scope-ancestry rule apply.
+- **`exam_candidate_count_evidence` (§4.1)** — first-class evidence table with **no `claim_field`** and **no `reservation_category_id`** (the parent row IS the single claim; parent carries the category). Append-only; `claim_value` snapshots the exact fact (`{count_type, scope_kind, exam_phase_id, reservation_category_code, count_value}`); server-computed `evidence_key`; `evidence_count` derived by counting child rows. **Immutability / published-parent guards:** INSERT/UPDATE/DELETE trigger-blocked once the parent is published; published-parent UPDATE freezes content columns and published-parent DELETE is trigger-blocked (§2). Do NOT attach applied/appeared facts to the generic `exam_competition_metric_evidence` row.
+- **Promotion comparison (§4.1)** — an `appeared`/`applied` count promotes only when ≥1 qualifying **primary** evidence row exists whose `claim_value.count_value` equals the parent `count_value` and whose category/scope fields match; stale evidence does not qualify. `reviewed_analysis` is not acceptable as the sole primary evidence for official counts (§7).
+- **Exact RLS reviewed/locked read predicate (§3)** — five-state `reviewer_status` vocabulary matching `exam_competition_metrics`; non-admin reads require `reviewer_status IN ('reviewed','locked')` (RLS mirrors migration 057's predicate) but the admin check uses **app-metadata roles, NOT the deprecated `profiles.is_admin`**. Evidence tables: RLS enabled, no anon/authenticated direct access, service-role permission-gated routes only. This supersedes any migration-057-style `profiles.is_admin` policy referenced in Section D.
+- **§1.2 PR-2 atomic ratio switch** — PR 2 introduces `exam_candidate_counts`, then in the same PR switches ratio derivation and **all** ratio consumers together: denominator preference **appeared → applied → null** (reviewed/locked counts only). Only rows with a provenance-proven denominator produce a non-null `selection_rate`. **Do NOT alter `competition_pressure_score`** — fix only count display and the pressure explanation text. Consumers moving together: `admin_exam_intel_cms.py`, `admin_exam_intelligence.py`, `competition.py`, `competition_context.py`, `evidence.py`, `status.py`, `CompetitionMetricsTable.jsx`, `CompetitionPanel.jsx`.
 
 ---
 
@@ -204,6 +218,6 @@ create table public.exam_competition_metrics (
 
 ---
 
-*Status: DRAFT — OPERATOR APPROVAL REQUIRED. No implementation PR may be dispatched until this gate is OPERATOR APPROVED. Blocking operator decisions: OD-1 (category granularity), OD-2 (extend vs new table), OD-3 (phase-mandatory enforcement), OD-4 (category vocabulary), OD-5 (consume now vs schema-first), OD-6 (legacy applicant_count disposition). Cross-references the sibling J3 cutoffs/vacancy-JSONB gate; JSONB boundary (PD-6) prevents overlap.*
+*Status: APPROVED — OD RESOLVED 2026-07-02. Operator sign-off recorded; OD-1…OD-6 resolved and folded in from docs/status/J3-OD-Resolutions-Locked-2026-07-02.md (§0, §2, §3, §4.1, §6, §7, §1.2). Every previously-PROPOSED lock is now LOCKED. Implementation per docs/status/J3-Implementation-Checklist-2026-07-02.md PR 2 (branches from merged PR 1). Cross-references the sibling J3 cutoffs/vacancy-JSONB gate; JSONB boundary (PD-6) prevents overlap.*
 </content>
 </invoke>
