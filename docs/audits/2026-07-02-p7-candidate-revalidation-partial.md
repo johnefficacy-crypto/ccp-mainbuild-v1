@@ -17,7 +17,7 @@ next_action: merge PR #840, re-deploy, re-run Gate A on preserved staging fixtur
 
 ---
 
-## 12 Start Gates — All PASS at candidate SHA
+## Start Gates — 11 PASS, Gate 4 NOT RUN (REFERENCE ONLY)
 
 | Gate | Description | Result |
 |------|-------------|--------|
@@ -44,16 +44,16 @@ next_action: merge PR #840, re-deploy, re-run Gate A on preserved staging fixtur
 
 | Item | Description | Result |
 |------|-------------|--------|
-| A | `review_mock` writes accepted values to `mock_tests` | **BLOCKED — schema mismatch** |
-| B | Shadow write idempotency (no duplicate shadow rows) | PASS |
-| C | Mastery flag pinning (non-cancelled job read before re-resolve) | PASS |
-| D | Classification readiness gate (mastery never runs with null error_types) | PASS |
-| E | Correction-parity query covers unanswered-only attempts | PASS |
-| F | Shadow-replay exit 0 (≥20 attempts AND ≥50 topic decisions) | INSUFFICIENT DATA (≥20 attempts confirmed; topic decisions = 3 at run time, below ≥50 threshold) |
-| G | Live-audit-compare PASS (sign_agreement ≥95%, delta_mismatch = 0) | INSUFFICIENT DATA (decision_count = 3) |
-| H | Scheduler drain confirmed (cross-ref P6 audit) | PASS (OPERATOR PASS 2026-07-01; no routine rerun needed) |
-| I | No jobs stranded `running` after archive race | CODE-FIXED (PR #834, F3); live staging validation pending |
-| J | Allowlist downgrades `live` → `shadow` for non-allowlisted users | PASS |
+| A | Writer guard — `review_mock` writes accepted state to `mock_tests` | **BLOCKED — schema mismatch (code fix in PR #840)** |
+| B | Mastery-preview parity — `GET /mocks/{id}/mastery-preview` 6-section validation (`response_counts`, `classification_coverage`, `persisted_shadow_decision`, `replay_consistency`, `attempt_evidence_corrections`, `current_state_preview`) | PASS |
+| C | Deterministic corrections — preview called twice → identical `attempt_evidence_corrections` | PASS |
+| D | Null-selection — `response_counts.marked_unanswered` > 0 for null-selection attempt; unanswered questions absent from `mastery_deltas` | PASS |
+| E | Shadow idempotency — resubmit does not increase `mock_mastery_shadow` row count (unique index enforced) | PASS |
+| F | Shadow replay — `shadow-replay` command; `distinct_attempt_count=1`, `topic_decision_count=2`; thresholds: `min_distinct_attempts=20`, `min_topic_decisions=50` | INSUFFICIENT DATA (exit 3 — permitted) |
+| G | Correction parity — `correction-parity` command; `decision_count=3`; threshold: `min_correction_decisions=10` | INSUFFICIENT DATA (exit 3 — permitted) |
+| H | Scheduler drain — cross-ref P6 audit (OPERATOR PASS 2026-07-01; no routine rerun needed) | PASS |
+| I | No live-table mutation — `user_topic_mastery`, `user_topic_mastery_audit`, `study_tasks` unchanged for test user | PASS |
+| J | Compatibility-row parity — `mock_tests` row present with `source_type=platform_attempt`, `trust_level=platform_verified`, integer `total_marks` | PASS |
 
 ---
 
@@ -65,7 +65,7 @@ next_action: merge PR #840, re-deploy, re-run Gate A on preserved staging fixtur
 |------|----------|--------|
 | POST `review` with `topic_breakdowns` payload | 409 | 409 ✓ |
 | POST `review` with `notes` only (notes-only path) | 200; `review_state` unchanged | 200; `review_state` unchanged ✓ |
-| POST `review` with `review_status: "reviewed"` | 200; `review_state = "reviewed"` in DB | 500 ✗ (schema mismatch) |
+| POST `review` with `review_status: "reviewed"` | 200; `review_state = "reviewed"` in DB | NOT RUN — blocked by code-schema inspection (route wrote to wrong column; persistence failure contract is HTTP 503 `mock_review_update_failed`) |
 
 **Root cause:** `canonical.py::review_mock` writes `review_status` to `mock_tests`, but the DB
 column is named `review_state`. The route also writes `reviewed_at` which does not exist as a
@@ -87,13 +87,12 @@ the canonical schema values are `scheduled|unreviewed|reviewed|correction_drafte
 
 ## Gate F / G Context
 
-At the 2026-07-02 run, `decision_count = 3` shadow decisions existed in the DB for the test
-attempt. Both gates require a higher population:
-- Gate F exit 0: ≥20 submitted attempts AND ≥50 topic decisions.
-- Gate G: sign_agreement and delta_mismatch are only meaningful with sufficient data.
+At the 2026-07-02 run the shadow analysis tools reported:
 
-These gates are INSUFFICIENT DATA, not FAIL. They should be re-evaluated after the 14-day
-shadow window accumulates production-scale data.
+- **Gate F (shadow-replay):** `distinct_attempt_count=1`, `topic_decision_count=2`. Thresholds (from `_SR_THRESHOLDS` in `shadow_analysis.py`): `min_distinct_attempts=20`, `min_topic_decisions=50`. Exit 3 (INSUFFICIENT_DATA) — permitted.
+- **Gate G (correction-parity):** `decision_count=3`. Threshold (from `_CP_THRESHOLDS` in `shadow_analysis.py`): `min_correction_decisions=10`. Exit 3 (INSUFFICIENT_DATA) — permitted.
+
+These are INSUFFICIENT DATA, not FAIL. Both gates should be re-evaluated on the fixed candidate SHA after Gate A is cleared and more attempts accumulate.
 
 ---
 

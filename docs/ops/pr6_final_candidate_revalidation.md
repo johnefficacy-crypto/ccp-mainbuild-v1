@@ -12,7 +12,7 @@ prior_preflight_audit: docs/audits/2026-06-19-final-candidate-revalidation.md
 **Type:** Operator validation (docs + evidence only)
 **Branch:** `docs/final-shadow-candidate-revalidation`
 **Prerequisite:** PRs 2–5 merged and deployed on one fixed SHA
-**Current status:** CODE-FIX REQUIRED, REVALIDATION PENDING — all 12 start gates PASS at candidate SHA `9b0c96ed82f8427049c838ee22b7147f5bdd151e` (2026-07-02); checklist B–J PASS or INSUFFICIENT DATA; Gate A BLOCKED (`canonical.py::review_mock` writes `review_status`/`reviewed_at` but schema has `review_state`/no `reviewed_at`)
+**Current status:** CODE-FIX REQUIRED, REVALIDATION PENDING — 11 start gates PASS, Gate 4 NOT RUN (REFERENCE ONLY — fingerprint not recomputed at candidate SHA), at candidate SHA `9b0c96ed82f8427049c838ee22b7147f5bdd151e` (2026-07-02); checklist B–J PASS or INSUFFICIENT DATA; Gate A BLOCKED (`canonical.py::review_mock` writes `review_status`/`reviewed_at` but schema has `review_state`/no `reviewed_at`)
 **Verdict:** DO NOT PROCEED TO LIVE — fix schema contract in `app/backend/app/api/canonical.py::review_mock`, re-deploy, re-run Gate A on the fixed SHA
 
 ---
@@ -68,7 +68,7 @@ env var with ≥1 named consenting user, and re-run all 12 gates on that pinned 
 
 **Candidate SHA (A):** `9b0c96ed82f8427049c838ee22b7147f5bdd151e`  
 **Run type:** Live operator run on staging  
-**Verdict:** CODE-FIX REQUIRED — all 12 start gates PASS (Gate 4: REFERENCE ONLY — fingerprint not recomputed at candidate SHA, see note); checklist B–J PASS or INSUFFICIENT DATA; Gate A BLOCKED by schema contract mismatch  
+**Verdict:** CODE-FIX REQUIRED — 11 start gates PASS, Gate 4 NOT RUN (REFERENCE ONLY — fingerprint not recomputed at candidate SHA); checklist B–J PASS or INSUFFICIENT DATA; Gate A BLOCKED by schema contract mismatch  
 **Staging fixture preserved** (do NOT delete until fixed SHA is deployed and Gate A is rerun):
 - Template: `f753a9fc-cdf8-489c-b560-5c0ac5d431b4`
 - Attempt: `60b14100-02eb-40fa-a1f0-88a43a48b315`
@@ -102,7 +102,7 @@ env var with ≥1 named consenting user, and re-run all 12 gates on that pinned 
 **Live test evidence (2026-07-02):**
 - `POST /review` with `topic_breakdowns` → HTTP 409 `platform_attempt_authoritative_fields_rejected`, breakdown count 0→0 ✓
 - `POST /review` with notes only → HTTP 200, notes persisted, `review_state` unchanged (`unreviewed`) ✓
-- `POST /review` with `review_status: reviewed` → HTTP 500 (DB write failed — `review_status` column does not exist) ✗ **BLOCKED**
+- `POST /review` with `review_status: reviewed` → NOT RUN (blocked by code-schema inspection — route wrote to wrong column; persistence failure contract is HTTP 503 `mock_review_update_failed`) ✗ **BLOCKED**
 
 Full evidence in `docs/audits/2026-07-02-p7-candidate-revalidation-partial.md`.
 
@@ -116,7 +116,7 @@ task overlap ≥ 60%) are **removed** — they relied on invalid comparators or
 cross-population topic identity that is not available. The valid gates are:
 
 - `shadow-replay`: exact_match_pct = 100.0, coverage_pct = 100.0, zero violations (≥20 attempts required for exit 0; exit 3 if insufficient)
-- `correction-parity`: exact_parity_pct = 100.0 (≥50 topic decisions required for exit 0; exit 3 if insufficient)
+- `correction-parity`: exact_parity_pct = 100.0 (min 10 decisions required for exit 0; exit 3 if insufficient)
 
 See docs/ops/pr7_shadow_gate_results.md for the full threshold table.
 
@@ -185,19 +185,15 @@ code-fixed on `main`. Live proof pending Gate A clearance.
 
 ### F. Shadow-replay gate (PR-5A tool) — INSUFFICIENT DATA (exit 3 — permitted)
 
-> 1 attempt in window; ≥20-attempt threshold not met. 100% exact_match / 100% coverage on
-> available sample. Re-run (exit 0 requires ≥20 attempts **and** ≥50 topic decisions) after
-> more attempts accumulate on the fixed candidate SHA.
+> `distinct_attempt_count=1`, `topic_decision_count=2`; thresholds: `min_distinct_attempts=20`, `min_topic_decisions=50`. 100% exact_match / 100% coverage on available sample. Re-run (exit 0 requires ≥20 distinct attempts **and** ≥50 topic decisions) after more attempts accumulate on the fixed candidate SHA.
 
 - [x] Run: `python tools/mastery_shadow_analysis/shadow_analysis.py --json shadow-replay --days 1`
-- [x] Exit code 3 (INSUFFICIENT_DATA) — permitted per runbook when <20 attempts exist.
-      100% match on the 1 available attempt; no violations.
-- [ ] Full PASS (exit 0, ≥20 attempts, ≥50 topic decisions) — pending fixed SHA + more attempts
+- [x] Exit code 3 (INSUFFICIENT_DATA) — permitted per runbook. `distinct_attempt_count=1`, `topic_decision_count=2`; no violations.
+- [ ] Full PASS (exit 0, ≥20 distinct attempts, ≥50 topic decisions) — pending fixed SHA + more attempts
 
 ### G. Correction-parity gate (PR-5A tool) — INSUFFICIENT DATA (exit 3 — permitted)
 
-> 3 topic decisions in window; ≥50-decision threshold not met (minimum 10 per runbook). 100%
-> exact_parity on available sample. Re-run after ≥10 decisions accumulate on the fixed SHA.
+> `decision_count=3`; threshold: `min_correction_decisions=10`. 100% exact_parity on available sample. Re-run after ≥10 decisions accumulate on the fixed SHA.
 
 - [x] Run: `python tools/mastery_shadow_analysis/shadow_analysis.py --json correction-parity --days 1`
 - [x] Exit code 3 (INSUFFICIENT_DATA) — permitted per runbook. decision_count = 3.

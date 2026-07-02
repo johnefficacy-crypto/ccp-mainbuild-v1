@@ -285,6 +285,16 @@ def test_platform_review_status_null_does_not_write_review_state():
     assert platform_mock.get("review_state") == "unreviewed"
 
 
+def test_platform_review_status_correction_drafted_accepted():
+    """correction_drafted is a valid review_status for platform mocks and maps to review_state."""
+    sb = SBStub(_seed())
+    _, client = _client(sb)
+    r = client.post("/api/study/mocks/m3/review", json={"review_status": "correction_drafted"})
+    assert r.status_code == 200
+    platform_mock = next(m for m in sb.db["mock_tests"] if m["id"] == "m3")
+    assert platform_mock["review_state"] == "correction_drafted"
+
+
 def test_review_notes_null_clears_existing_note():
     """Explicit null for notes must be persisted (clears the field)."""
     sb = SBStub(_seed())
