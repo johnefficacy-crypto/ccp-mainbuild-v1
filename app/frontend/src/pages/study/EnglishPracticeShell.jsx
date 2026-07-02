@@ -1,18 +1,20 @@
 /**
  * EnglishPracticeShell — the EWP-3 Sentence Builder surface.
  *
- * Route: /app/study/practice/english/:sessionId (a sibling route under the
- * protected DashShell, NOT nested in StudyShell and NOT via AttemptShellRouter —
+ * Route: /app/study/practice/english/:sessionId — mounted UNDER StudyShell and
+ * inside RouteErrorBoundary per the design lock (NOT via AttemptShellRouter —
  * English practice uses writing_sessions, never mock_attempts, §2). Entry is via
  * planner tasks; there is no sidebar destination (no-new-surface rule).
  *
  * One API source of truth: /api/study/practice/english/* through
- * useEnglishPracticeSession. Language issues (EWP-2B, async) are rendered when
- * present in a submit/evaluation response; until the async evaluator + a resume
- * endpoint land, the surface degrades gracefully to deterministic feedback +
- * unit status.
+ * useEnglishPracticeSession. The enriched session read returns, per unit, the
+ * latest version (answer text + number → CAS baseline) and the latest evaluation
+ * (language issues), gated by feedback release (§13 rule 13). After a submit the
+ * unit is `evaluation_pending`; the async EWP-2B evaluator produces issues out of
+ * band, so the shell polls the session until no unit is pending, then renders the
+ * released issues and the rewrite path.
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import ErrorState from "../../shared/ui/ErrorState";
@@ -34,15 +36,21 @@ const UNIT_STATUS = {
   completed: { label: "Completed", dot: "verified" },
 };
 
+// Poll cadence + cap while a unit is being evaluated asynchronously (EWP-2B).
+const POLL_INTERVAL_MS = 2500;
+const MAX_POLLS = 24;
+
 function unitConstraint(unit, key, fallback) {
   const c = unit?.unit_constraints || {};
   return c[key] ?? fallback;
 }
 
-/** Extract language issues from a submit/evaluation payload, if any are present. */
-function issuesFromResult(result) {
-  const langIssues = result?.evaluation?.language_result?.issues;
-  if (Array.isArray(langIssues)) return langIssues;
+/** Language issues for a unit: server-resumed evaluation first, else in-session. */
+function unitIssues(unit, inSessionResult) {
+  const resumed = unit?.latest_evaluation?.language_result?.issues;
+  if (Array.isArray(resumed)) return resumed;
+  const live = inSessionResult?.evaluation?.language_result?.issues;
+  if (Array.isArray(live)) return live;
   return [];
 }
 
@@ -53,45 +61,79 @@ export default function EnglishPracticeShell() {
   const [status, setStatus] = useState("loading"); // loading | error | ready
   const [error, setError] = useState(null);
   const [session, setSession] = useState(null);
+  const [prompt, setPrompt] = useState({});
   const [units, setUnits] = useState([]);
-  // Per-unit-number local runtime state captured from submit responses (the
-  // current API's get_session does not return versions/evaluations — resume of
-  // prior evaluations is an EWP-2 deferred item, tracked in the checklist).
-  const [results, setResults] = useState({}); // { [unitNumber]: submitResponse + submittedText }
-  const [nextVersion, setNextVersion] = useState({}); // { [unitNumber]: int }
+  const [feedbackReleased, setFeedbackReleased] = useState(true);
+  // Immediate submit responses (deterministic coverage feedback) keyed by unit
+  // number. Language issues + the CAS baseline come from the server session read.
+  const [results, setResults] = useState({});
+  const pollsRef = useRef(0);
 
-  const load = useCallback(async () => {
-    setStatus("loading");
-    setError(null);
-    try {
-      const data = await fetchSession(sessionId);
-      setSession(data.session);
-      setUnits(data.units || []);
-      setStatus("ready");
-    } catch (e) {
-      setError(e?.message || "Could not load this practice session.");
-      setStatus("error");
-    }
-  }, [fetchSession, sessionId]);
+  const refresh = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!silent) {
+        setStatus("loading");
+        setError(null);
+      }
+      try {
+        const data = await fetchSession(sessionId);
+        setSession(data.session);
+        setPrompt(data.prompt || {});
+        setUnits(data.units || []);
+        setFeedbackReleased(data.feedback_released !== false);
+        setStatus("ready");
+        return data;
+      } catch (e) {
+        if (!silent) {
+          setError(e?.message || "Could not load this practice session.");
+          setStatus("error");
+        }
+        return null;
+      }
+    },
+    [fetchSession, sessionId],
+  );
 
   useEffect(() => {
-    load();
-  }, [load]);
+    pollsRef.current = 0;
+    refresh();
+  }, [refresh]);
 
-  const onSubmitUnit = useCallback(async (unit, text) => {
-    const version = nextVersion[unit.unit_number] || 1;
-    const res = await submitUnit(sessionId, unit.unit_number, text, version);
-    if (!res?.ok) return;
-    const data = res.data || {};
-    // Retain the submitted text so an in-session rewrite can seed the editor
-    // (get_session does not return prior answers — full resume is deferred to a
-    // backend resume endpoint once EWP-2B lands).
-    setResults((prev) => ({ ...prev, [unit.unit_number]: { ...data, submittedText: text } }));
-    setNextVersion((prev) => ({ ...prev, [unit.unit_number]: (data.version_number || 0) + 1 }));
-    load(); // submit drives the server-side rollup; refresh unit statuses
-  }, [nextVersion, submitUnit, sessionId, load]);
+  const pendingCount = useMemo(
+    () => units.filter((u) => u.status === "evaluation_pending").length,
+    [units],
+  );
 
-  const prompt = useMemo(() => session?.prompt || {}, [session]);
+  // Poll while any unit is being evaluated (EWP-2B produces issues out of band).
+  // Stops on unmount, session change, when nothing is pending, or after the cap.
+  useEffect(() => {
+    if (status !== "ready" || pendingCount === 0) return undefined;
+    let cancelled = false;
+    const id = setInterval(() => {
+      pollsRef.current += 1;
+      if (pollsRef.current > MAX_POLLS) {
+        clearInterval(id);
+        return;
+      }
+      if (!cancelled) refresh({ silent: true });
+    }, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [status, pendingCount, refresh]);
+
+  const onSubmitUnit = useCallback(
+    async (unit, text) => {
+      const version = (unit.latest_version?.version_number || 0) + 1;
+      const res = await submitUnit(sessionId, unit.unit_number, text, version);
+      if (!res?.ok) return;
+      setResults((prev) => ({ ...prev, [unit.unit_number]: { ...(res.data || {}), submittedText: text } }));
+      pollsRef.current = 0;
+      refresh({ silent: true }); // pick up the evaluation_pending transition + start polling
+    },
+    [submitUnit, sessionId, refresh],
+  );
 
   if (status === "loading") {
     return (
@@ -107,7 +149,7 @@ export default function EnglishPracticeShell() {
   if (status === "error") {
     return (
       <div className="mx-auto max-w-3xl p-4">
-        <ErrorState title="Practice session unavailable" message={error} onRetry={load} />
+        <ErrorState title="Practice session unavailable" message={error} onRetry={refresh} />
       </div>
     );
   }
@@ -132,10 +174,12 @@ export default function EnglishPracticeShell() {
       {units.map((unit) => {
         const meta = UNIT_STATUS[unit.status] || UNIT_STATUS.not_started;
         const result = results[unit.unit_number];
-        const issues = issuesFromResult(result);
-        const answerText = result?.submittedText || "";
+        const answerText = unit.latest_version?.answer_text || result?.submittedText || "";
+        // Feedback (issues) is gated by the server; the client honours the flag too.
+        const issues = feedbackReleased ? unitIssues(unit, result) : [];
         const minWords = unitConstraint(unit, "min_words", prompt.min_words);
         const maxWords = unitConstraint(unit, "max_words", prompt.max_words);
+        const requiredWords = prompt.required_words || [];
 
         return (
           <StudyCard key={unit.id} className="mt-4" data-testid={`unit-${unit.unit_number}`}>
@@ -154,20 +198,27 @@ export default function EnglishPracticeShell() {
                 promptText={prompt.prompt_text}
                 minWords={minWords}
                 maxWords={maxWords}
+                requiredWords={requiredWords}
+                sessionId={sessionId}
                 busy={busy}
                 onSubmit={(text) => onSubmitUnit(unit, text)}
               />
             )}
 
             {unit.status === "evaluation_pending" && (
-              <p className="text-sm text-amber-700" data-testid={`unit-${unit.unit_number}-pending`}>
+              <p
+                className="text-sm text-amber-700"
+                role="status"
+                aria-live="polite"
+                data-testid={`unit-${unit.unit_number}-pending`}
+              >
                 Your sentence is being evaluated. Language feedback will appear here shortly.
               </p>
             )}
 
             {/* Mandatory rewrite: rewrite_required is directly submittable — edit
-                and submit the next version (no reopen; reopen is the separate
-                ready→draft coverage-correction path, deferred to the resume API). */}
+                the latest answer and submit the next version (CAS derived from
+                the server's latest version number). */}
             {unit.status === "rewrite_required" && (
               <RewriteEditor
                 previousAnswer={answerText}

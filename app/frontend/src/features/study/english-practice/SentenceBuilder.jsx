@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import WordChips from "./WordChips";
+import { clearDraft, loadDraft, saveDraft } from "./autosave";
 
 /**
  * Compose and submit an answer for a single practice sentence unit.
@@ -8,7 +10,9 @@ import { useState } from "react";
  * @param {string} [props.promptText] - Optional prompt shown above the textarea.
  * @param {number} [props.minWords] - Optional minimum word count.
  * @param {number} [props.maxWords] - Optional maximum word count.
+ * @param {string[]} [props.requiredWords] - Required words for the exercise (chips).
  * @param {string} [props.initialValue] - Initial draft value.
+ * @param {string} [props.sessionId] - Session id for autosave key (enables autosave).
  * @param {(text: string) => void} props.onSubmit - Called with the trimmed draft.
  * @param {boolean} [props.busy] - Disables submit while a request is in flight.
  * @param {string} [props.submitLabel] - Label for the submit button.
@@ -19,12 +23,28 @@ export default function SentenceBuilder({
   promptText,
   minWords,
   maxWords,
+  requiredWords,
   initialValue = "",
+  sessionId,
   onSubmit,
   busy = false,
   submitLabel = "Submit",
 }) {
-  const [draft, setDraft] = useState(initialValue);
+  // Restore an autosaved draft (reload safety) when nothing was passed in.
+  const [draft, setDraft] = useState(() => {
+    if (initialValue) return initialValue;
+    if (sessionId != null) {
+      const saved = loadDraft(sessionId, unitNumber);
+      if (saved != null) return saved;
+    }
+    return "";
+  });
+
+  // Persist the draft as it changes so an accidental reload never loses work.
+  useEffect(() => {
+    if (sessionId == null) return;
+    saveDraft(sessionId, unitNumber, draft);
+  }, [sessionId, unitNumber, draft]);
 
   const words = draft.split(/\s+/).filter(Boolean);
   const wordCount = words.length;
@@ -36,6 +56,11 @@ export default function SentenceBuilder({
   const disabled = busy || isEmpty;
 
   const hasHint = typeof minWords === "number" || typeof maxWords === "number";
+
+  const handleSubmit = () => {
+    if (sessionId != null) clearDraft(sessionId, unitNumber);
+    onSubmit(draft.trim());
+  };
 
   return (
     <div
@@ -53,6 +78,7 @@ export default function SentenceBuilder({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
       />
+      <WordChips requiredWords={requiredWords} text={draft} />
       <div className="mt-2 flex items-center justify-between">
         <p className="text-xs text-slate-500">
           <span className={outOfRange ? "text-rose-600" : undefined}>
@@ -69,7 +95,7 @@ export default function SentenceBuilder({
           type="button"
           data-testid="sentence-submit"
           disabled={disabled}
-          onClick={() => onSubmit(draft.trim())}
+          onClick={handleSubmit}
           className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {submitLabel}

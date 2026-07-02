@@ -33,4 +33,21 @@ describe("RewriteEditor", () => {
     );
     expect(screen.getByTestId("rewrite-submit")).toBeDisabled();
   });
+
+  test("submit disabled when the rewrite is unchanged from the previous answer", () => {
+    render(<RewriteEditor previousAnswer="the cat sat" onSubmit={() => {}} />);
+    // Untouched — identical to the previous answer.
+    expect(screen.getByTestId("rewrite-submit")).toBeDisabled();
+    // Whitespace-only changes still count as unchanged.
+    fireEvent.change(screen.getByTestId("rewrite-input"), {
+      target: { value: "  the cat sat  " },
+    });
+    expect(screen.getByTestId("rewrite-submit")).toBeDisabled();
+    expect(screen.getByTestId("rewrite-unchanged")).toBeInTheDocument();
+    // A real edit re-enables submit.
+    fireEvent.change(screen.getByTestId("rewrite-input"), {
+      target: { value: "the cat sat quietly" },
+    });
+    expect(screen.getByTestId("rewrite-submit")).not.toBeDisabled();
+  });
 });

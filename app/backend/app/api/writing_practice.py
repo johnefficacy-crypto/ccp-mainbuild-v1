@@ -68,6 +68,93 @@ def _owned_session(supabase: Any, session_id: str, user_id: str) -> dict:
     return row
 
 
+_PROMPT_RESUME_COLUMNS = (
+    "id,exercise_type,prompt_text,source_text,required_words,"
+    "required_sentence_count,difficulty_level,min_words,max_words"
+)
+
+
+def _session_prompt(supabase: Any, session: dict) -> dict | None:
+    """The verified prompt for a session, projected to the fields the UI needs."""
+    prompt_id = session.get("prompt_id")
+    if not prompt_id:
+        return None
+    return (
+        supabase.table("writing_prompts")
+        .select(_PROMPT_RESUME_COLUMNS)
+        .eq("id", prompt_id)
+        .maybe_single()
+        .execute()
+    ).data
+
+
+def _resume_unit_state(supabase: Any, session: dict, unit_ids: list[str]) -> dict[str, dict]:
+    """Per-unit resume state: latest version + latest evaluation.
+
+    Returns ``{unit_id: {"latest_version": {...}|None, "latest_evaluation": {...}|None}}``.
+    Feedback-bearing evaluation fields (``language_result``, ``dimension_scores``)
+    are included only when feedback is released for the session (§13 rule 13 —
+    learning mode is always released; exam mode gates on ``feedback_released_at``).
+    The evaluation id + statuses are always present so the client can poll.
+    """
+    out: dict[str, dict] = {uid: {"latest_version": None, "latest_evaluation": None} for uid in unit_ids}
+    if not unit_ids:
+        return out
+
+    versions = (
+        supabase.table("writing_unit_versions")
+        .select("id,unit_id,version_number,answer_text,server_word_count")
+        .in_("unit_id", unit_ids)
+        .order("version_number", desc=True)
+        .execute()
+    ).data or []
+    # First row per unit is its latest version (query is version_number desc).
+    latest_by_unit: dict[str, dict] = {}
+    for v in versions:
+        latest_by_unit.setdefault(v["unit_id"], v)
+
+    released = _feedback_released(session)
+    version_ids = [v["id"] for v in latest_by_unit.values()]
+    evals_by_version: dict[str, dict] = {}
+    if version_ids:
+        evals = (
+            supabase.table("writing_evaluations")
+            .select(
+                "id,unit_version_id,evaluation_revision,overall_status,"
+                "deterministic_status,language_status,language_result,dimension_scores"
+            )
+            .in_("unit_version_id", version_ids)
+            .order("evaluation_revision", desc=True)
+            .execute()
+        ).data or []
+        for e in evals:
+            evals_by_version.setdefault(e["unit_version_id"], e)
+
+    for uid in unit_ids:
+        latest = latest_by_unit.get(uid)
+        if not latest:
+            continue
+        out[uid]["latest_version"] = {
+            "id": latest["id"],
+            "version_number": latest["version_number"],
+            "answer_text": latest["answer_text"],
+            "server_word_count": latest.get("server_word_count"),
+        }
+        ev = evals_by_version.get(latest["id"])
+        if ev:
+            projected = {
+                "id": ev["id"],
+                "overall_status": ev.get("overall_status"),
+                "deterministic_status": ev.get("deterministic_status"),
+                "language_status": ev.get("language_status"),
+            }
+            if released:
+                projected["language_result"] = ev.get("language_result")
+                projected["dimension_scores"] = ev.get("dimension_scores")
+            out[uid]["latest_evaluation"] = projected
+    return out
+
+
 def _session_payload(supabase: Any, session: dict) -> dict:
     units = (
         supabase.table("writing_session_units")
@@ -76,7 +163,17 @@ def _session_payload(supabase: Any, session: dict) -> dict:
         .order("unit_number")
         .execute()
     ).data or []
-    return {"session": session, "units": units}
+    resume = _resume_unit_state(supabase, session, [u["id"] for u in units])
+    for u in units:
+        state = resume.get(u["id"], {})
+        u["latest_version"] = state.get("latest_version")
+        u["latest_evaluation"] = state.get("latest_evaluation")
+    return {
+        "session": session,
+        "prompt": _session_prompt(supabase, session),
+        "units": units,
+        "feedback_released": _feedback_released(session),
+    }
 
 
 # --- endpoints ------------------------------------------------------------

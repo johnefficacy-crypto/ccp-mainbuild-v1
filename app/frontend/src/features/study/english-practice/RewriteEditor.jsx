@@ -4,6 +4,10 @@ import BeforeAfterDiff from "./BeforeAfterDiff";
 /**
  * Edit a prior answer into a rewrite, with a live word-level diff.
  *
+ * A rewrite must actually change the answer: submitting text identical to the
+ * previous answer (ignoring surrounding whitespace) is blocked, since the
+ * backend would only reject or duplicate an unchanged resubmission.
+ *
  * @param {Object} props
  * @param {string} props.previousAnswer - The prior answer to rewrite.
  * @param {number} [props.minWords] - Optional minimum word count.
@@ -27,7 +31,9 @@ export default function RewriteEditor({
   const outOfRange = belowMin || aboveMax;
 
   const hasHint = typeof minWords === "number" || typeof maxWords === "number";
-  const disabled = busy || draft.trim().length === 0;
+  const isEmpty = draft.trim().length === 0;
+  const unchanged = draft.trim() === String(previousAnswer || "").trim();
+  const disabled = busy || isEmpty || unchanged;
 
   return (
     <div
@@ -55,6 +61,11 @@ export default function RewriteEditor({
               {typeof minWords === "number" ? ` · min ${minWords}` : ""}
               {typeof maxWords === "number" ? ` · max ${maxWords}` : ""}
             </>
+          ) : null}
+          {unchanged && !isEmpty ? (
+            <span className="ml-2 text-amber-600" data-testid="rewrite-unchanged">
+              Change your answer to submit a rewrite.
+            </span>
           ) : null}
         </p>
         <button
