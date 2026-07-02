@@ -1,9 +1,9 @@
 # J3 Operator-Decision Resolutions — consolidated record
 
 - Document type: consolidated operator-decision resolution record for the four J3 sub-item gates.
-- Status: **DRAFT-FINAL — OPERATOR PENDING.** The resolutions below are drafted-final and internally consistent, but this document is **NOT authoritative** until (a) the four gate documents are amended to match (§10) and (b) operator approval is explicitly recorded here and in each gate. Until then, the four gate documents remain the governing authority and **implementation dispatch remains blocked**.
-- Date: 2026-07-02 (revised same day per PR #857 checkpost review)
-- Relationship to the gates: **consolidates, does not supersede.** On operator approval, each gate document is amended in place and this record's status flips to `OPERATOR APPROVED`; only then may implementation PRs dispatch.
+- Status: **OPERATOR APPROVED — 2026-07-02.** Both §10 authority steps are complete: (a) all four gate documents were deep-amended in place so their bodies encode these resolutions, and (b) the operator recorded explicit approval on PR #861 ("I approve the J3 OD resolutions as amended, 2026-07-02," applying to the consolidated resolution record and all four reconciled gate contracts at PR head `de7d3d54f113b4a5492823591a3984b68e25346d`). This record is now **authoritative**. Implementation dispatch is unblocked: PR 1 (Competition structure) may proceed as the serial anchor, per `docs/status/J3-Implementation-Checklist-2026-07-02.md`.
+- Date: 2026-07-02 (revised same day per PR #857 and PR #861 checkpost reviews; operator-approved 2026-07-02 on PR #861)
+- Relationship to the gates: **consolidates, does not supersede.** The gate bodies match this record and the operator approval covers both; each gate document's header is updated to reflect approval in the same amendment pass as this record.
 - Parent track: `J3 — schema/domain redesign` (`docs/status/career-copilot-checklist.md`).
 
 ## Authority & read order
