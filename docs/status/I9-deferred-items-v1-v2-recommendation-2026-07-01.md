@@ -62,10 +62,20 @@ fix is scheduled as v1 work.
 >    Readiness + planner must share the authority (land planner enforcement + backfill together), or
 >    `light` applicability stays fail-closed/open.
 >
-> **Pending operator decision** (see PR #843): (A) authorize the classification-level D12 v1
-> boundary + shared-authority plan via a decision-record amendment; (B) expand v1 scope to the full
-> D05 evidence engine + D06/D08 + planner enforcement; or (C) keep D12 partial and fail-closed,
-> landing migration 210 columns as forward scaffolding only.
+> **Operator decision (2026-07-02): build the full D05 evidence engine** (option B) — do not
+> narrow D12 completeness to classification. Delivered as a sequenced program:
+> - **PR-1 = #843 (schema foundation, no behavior change):** migration 210 (`exam_phases.phase_kind`
+>   + `exam_cycles.planner_activation_enabled`) + migration 211 (D05 §2–5: `exam_evidence_requirements`
+>   policy table + seed, `exam_document_evidence` registration + trust lifecycle,
+>   `exam_document_evidence_roles`, `exam_evidence_requirement_overrides`; RLS-covered). Step 9 stays
+>   fail-closed (as merged in #841).
+> - **PR-2:** `document_policy.py` evaluator → wire cycle_readiness Step 9 required-phase completeness.
+> - **PR-3:** `study_os/planner.py` consumes `planner_activation_enabled` (shared authority) + backfill.
+> - **PR-4:** document-evidence upload/review UI.
+>
+> D06/D07/D08 v1 rules are already approved AND implemented in `cycle_readiness` (their F2 "v2"
+> tag covered only the observability metrics/advisories, not the core rules), so the D05 evidence
+> engine's prerequisites are met. D12 v1 is delivered only when PR-2/PR-3 land.
 
 ---
 
