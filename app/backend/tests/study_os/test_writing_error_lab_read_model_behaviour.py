@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -85,9 +86,16 @@ def _psql_file(path: Path) -> None:
 
 
 def _scalar(sql: str) -> str:
-    proc = subprocess.run([_PSQL, _DSN, "-t", "-A", "-X", "-c", sql], capture_output=True, text=True)
+    # Some psql builds print the command-status tag (e.g. ``INSERT 0 1``) after
+    # the RETURNING value even with -q, which would contaminate an id used in the
+    # next INSERT ("<uuid>\nINSERT 0 1" → invalid uuid). Strip a trailing
+    # data-modifying tag line, but keep the full (possibly multi-line) body so a
+    # SELECT ``json_agg`` result is returned intact for json.loads.
+    proc = subprocess.run([_PSQL, _DSN, "-t", "-A", "-X", "-q", "-c", sql], capture_output=True, text=True)
     assert proc.returncode == 0, proc.stderr
-    return proc.stdout.strip()
+    out = proc.stdout.strip()
+    out = re.sub(r"\s*(?:INSERT|UPDATE|DELETE)\s+\d+\s+\d+\s*$", "", out)
+    return out.strip()
 
 
 def _psql_as(role: str, sql: str) -> subprocess.CompletedProcess:
