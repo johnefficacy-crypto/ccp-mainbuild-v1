@@ -87,7 +87,28 @@ class ExtractionWrongDocumentKindError(RuntimeError):
     """
 
 
+class ExtractionMixedFormatError(RuntimeError):
+    """document_assets row is admin-declared mixed-format
+    (metadata.mixed_format=true).
+
+    A single uploaded PDF whose pages do not all share one
+    structural_format (e.g. an MCQ objective section followed by a
+    descriptive/essay section) cannot be safely run through the v1
+    extractor: v1 applies one two-column MCQ strategy to every selected
+    page, so non-MCQ pages would be silently mis-extracted into
+    pyq_questions as garbage candidates (J3 Mixed-Format PDF Gate,
+    Option B / B1 admin-declared detection).
+
+    Split the source PDF into homogeneous per-format sub-documents (one
+    structural_format each) and upload each separately, or reclassify the
+    document if it was declared mixed-format in error. See the workaround
+    SOP: docs/engineering/mixed-format-pdf-workaround-v1.md.
+    """
+
+
 ELIGIBLE_DOCUMENT_KINDS_V1: frozenset[str] = frozenset({'pyq_paper'})
+
+MIXED_FORMAT_WORKAROUND_SOP: str = "docs/engineering/mixed-format-pdf-workaround-v1.md"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -102,10 +123,24 @@ class _DocumentAssetsRow:
     source_kind: SourceKind
     document_kind: str
     storage_path: str
+    mixed_format: bool = False
+
+
+def _is_mixed_format_declared(metadata: dict | None) -> bool:
+    """Validate the admin-declared metadata.mixed_format flag.
+
+    B1 (admin-declared only, per J3 Mixed-Format PDF Gate / OD-2): the flag
+    must be the JSON boolean literal `true`. Anything else (missing key,
+    "true" string, 1, null, etc.) is treated as not-declared — app-level
+    validation only, no DB constraint (no migration required for B1).
+    """
+    if not metadata:
+        return False
+    return metadata.get("mixed_format") is True
 
 
 def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
-    """SELECT id, structural_format, exam_identity, source_kind, document_kind, storage_path
+    """SELECT id, structural_format, exam_identity, source_kind, document_kind, storage_path, metadata
     FROM document_assets WHERE id = $1.
 
     Service-role client; read-only. Raises ValueError if not found.
@@ -115,7 +150,7 @@ def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
     sb = get_supabase_admin()
     row = (
         sb.table("document_assets")
-        .select("id, structural_format, exam_identity, source_kind, document_kind, storage_path")
+        .select("id, structural_format, exam_identity, source_kind, document_kind, storage_path, metadata")
         .eq("id", document_id)
         .single()
         .execute()
@@ -131,6 +166,7 @@ def _fetch_document_assets_row(document_id: str) -> _DocumentAssetsRow:
         source_kind=SourceKind(row["source_kind"]),
         document_kind=row.get("document_kind") or "unknown",
         storage_path=row["storage_path"],
+        mixed_format=_is_mixed_format_declared(row.get("metadata")),
     )
 
 
@@ -284,6 +320,19 @@ def extract(
     # unsupported documents prevents silent garbage rows.
 
     doc_row = _fetch_document_assets_row(document_id)
+
+    if doc_row.mixed_format:
+        raise ExtractionMixedFormatError(
+            f"Document {document_id} is declared mixed-format "
+            f"(document_assets.metadata.mixed_format=true). This file mixes "
+            f"multiple page-level structural formats (e.g. an MCQ objective "
+            f"section followed by a descriptive/essay section) and cannot be "
+            f"run through the v1 extractor, which applies a single strategy "
+            f"to every selected page. Split the source PDF into homogeneous "
+            f"sub-documents (one structural_format each) and upload each "
+            f"separately, or clear the mixed_format flag if it was set in "
+            f"error. Workaround SOP: {MIXED_FORMAT_WORKAROUND_SOP}."
+        )
 
     if doc_row.structural_format == StructuralFormat.UNKNOWN:
         raise ExtractionRequiresClassificationError(
