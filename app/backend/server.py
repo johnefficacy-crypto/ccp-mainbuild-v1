@@ -38,6 +38,7 @@ from app.api.admin_scrape import router as admin_scrape_router
 from app.api.admin_study_os import router as admin_study_os_router
 from app.api.admin_exam_intel_cms import router as admin_exam_intel_cms_router
 from app.api.admin_exam_intel_manage import router as admin_exam_intel_manage_router
+from app.api.content_studio import router as content_studio_router
 from app.api.admin_exam_intel_documents import router as admin_exam_intel_documents_router
 from app.api.admin_community_governance import router as admin_community_governance_router
 from app.api.admin_conflicts import router as admin_conflicts_router
@@ -360,6 +361,7 @@ api.include_router(admin_mocks_router)          # PR2 Admin question bank + revi
 api.include_router(admin_study_os_router)  # admin Study OS ops (flagged via ADMIN_STUDY_OS_ENABLED)
 api.include_router(admin_exam_intel_cms_router)  # admin Exam Intelligence CMS — Phase 4 (same flag)
 api.include_router(admin_exam_intel_manage_router)  # J2 Manage Exam operational editors (exam_intelligence.manage)
+api.include_router(content_studio_router)  # Content Studio — subject-scoped writing-prompt ops (EWP Stage 1)
 api.include_router(admin_exam_intel_documents_router)  # admin Exam Intelligence PDF uploads (same flag)
 api.include_router(admin_community_governance_router)  # admin Community / Mentors / Resources governance (§4.1–§4.4)
 api.include_router(study_compare_router)  # Study OS comparison + social + verification

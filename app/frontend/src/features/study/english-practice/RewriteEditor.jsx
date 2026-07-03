@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import BeforeAfterDiff from "./BeforeAfterDiff";
+import { wordCount as countWords } from "./requiredWords";
 import { clearDraft, loadDraft, saveDraft } from "./autosave";
 
 /**
@@ -48,7 +49,8 @@ export default function RewriteEditor({
     saveDraft(sessionId, unitNumber, draft);
   }, [sessionId, unitNumber, draft]);
 
-  const wordCount = draft.split(/\s+/).filter(Boolean).length;
+  // Backend-parity word count (§16 gate #3) — matches deterministic.word_count.
+  const wordCount = countWords(draft);
   const belowMin = typeof minWords === "number" && wordCount < minWords;
   const aboveMax = typeof maxWords === "number" && wordCount > maxWords;
   const outOfRange = belowMin || aboveMax;

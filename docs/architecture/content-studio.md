@@ -46,7 +46,11 @@ coverage; Study OS = select/deliver.**
 `writing_prompts` carries **no exam-scope column** — migration 214 **drops**
 `exam_id`, `exam_cycle_id`, and `exam_phase_id`. `writing_prompt_targets` is the
 **sole** applicability authority (no dual authority; nothing on the content row
-can contradict a mapping row).
+can contradict a mapping row). Content `metadata` must **never** carry
+`exam_id` / `exam_cycle_id` / `exam_phase_id` (nor the system-owned `external_key`):
+the Content Studio write path rejects those reserved keys at both the API boundary
+and the RPC (migration 215) so free-form metadata cannot reopen the dropped
+dual-authority backdoor.
 
 Applicability precedence: `phase-specific > exam-specific > exam-family >
 global`. Applicability is **evergreen** — no `exam_cycle_id`; cycle rules stay in
@@ -196,7 +200,16 @@ SUPERSEDED** by this decision (tracked in the checklist).
 
 ## 7. Follow-ups (explicitly later PRs — NOT in this PR)
 
-This PR is docs + one migration + checklist only. Deferred:
+> **Update (PR #855):** the **writing-prompt write-path backend** has since shipped
+> ahead of the UI — migration `215_writing_prompt_content_studio_ops.sql` (the
+> `cms_*_writing_prompt` / `cms_propose|review|remove_writing_prompt_target` RPCs)
+> and the `app/api/content_studio.py` router at `/api/admin/content-studio`
+> (Library / Review Queue / Bulk Import / Exam Assignments). No activation path
+> ships (it stays gated — see item 1). The Content Studio **UI** (item 2 below) and
+> the nav consolidation are still deferred. FE contract:
+> `docs/status/ewp-prompt-bank-frontend-handoff.md`.
+
+The originating PR was docs + one migration (214) + checklist only. Deferred:
 
 1. **Applicability resolver** — service-role function that, given
    `(exam_id, exam_phase_id)`, returns the applicable verified/active prompt set

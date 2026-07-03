@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import WordChips from "./WordChips";
+import { wordCount as countWords } from "./requiredWords";
 import { clearDraft, loadDraft, saveDraft } from "./autosave";
 
 /**
@@ -46,8 +47,9 @@ export default function SentenceBuilder({
     saveDraft(sessionId, unitNumber, draft);
   }, [sessionId, unitNumber, draft]);
 
-  const words = draft.split(/\s+/).filter(Boolean);
-  const wordCount = words.length;
+  // Count words with the backend-parity tokeniser so the displayed count never
+  // diverges from the server's deterministic word_count (§16 gate #3).
+  const wordCount = countWords(draft);
   const belowMin = typeof minWords === "number" && wordCount < minWords;
   const aboveMax = typeof maxWords === "number" && wordCount > maxWords;
   const outOfRange = belowMin || aboveMax;
