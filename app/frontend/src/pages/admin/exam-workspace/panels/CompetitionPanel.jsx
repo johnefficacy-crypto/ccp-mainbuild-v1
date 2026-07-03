@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
+import CandidateCountsSection from "./CandidateCountsSection";
 
 // Vertical reservation categories, v1 (resolutions §OD-1). Kept in sync with
 // the `reservation_categories` seed in migration 216 — do not add PwBD /
@@ -393,6 +394,7 @@ export default function CompetitionPanel() {
             </button>
           </div>
         </div>
+        <CandidateCountsSection />
       </div>
     );
   }
@@ -665,6 +667,8 @@ export default function CompetitionPanel() {
           </table>
         </div>
       )}
+
+      <CandidateCountsSection />
     </div>
   );
 }
