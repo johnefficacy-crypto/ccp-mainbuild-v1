@@ -23,8 +23,21 @@
 -- (PR #871) but collided with 219_j3_applied_vs_appeared.sql (PR #870), which
 -- merged first and keeps 219. Renumbered to 220 to resolve the duplicate
 -- schema_migrations version — the CI migration-numbers guard exempts renaming a
--- duplicate-version file, and neither 219 was live-applied yet. Reconcile the
--- applied version against the deployed schema_migrations state at apply time.
+-- duplicate-version file.
+--
+-- VERIFY DB (OPERATOR, before applying) — the rename direction assumes the live
+-- schema_migrations ledger does NOT already record version 219 as THIS PYQ
+-- migration. Both #870 and #871 left apply as OPERATOR PENDING; the repository
+-- cannot prove which (if any) 219 is deployed. Query each target FIRST:
+--   select version, name from supabase_migrations.schema_migrations
+--     where version in ('219','220') order by version;
+--   select max(version::bigint) from supabase_migrations.schema_migrations;
+-- Disposition:
+--   * no 219 row, OR 219 == j3_applied_vs_appeared  → this mapping is correct;
+--     apply 219 (j3) then 220 (this file).
+--   * 219 == pyq_onboarding_phase_cycle_consistency → this branch renamed the
+--     WRONG file: keep PYQ at 219 and renumber/reconcile J3 instead, or execute
+--     an explicit ledger-repair plan before rollout. Do NOT apply blindly.
 
 CREATE OR REPLACE FUNCTION public.cms_pyq_onboarding(
     p_actor_id      text,
