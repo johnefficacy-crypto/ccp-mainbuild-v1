@@ -32,6 +32,17 @@ _PRIMARY_TAG_ROLE     = "primary"
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+def _short_label(question_text: str | None, *, limit: int = 80) -> str:
+    """A trimmed, single-line question label for operator display (EI-CLEAN-04).
+
+    Empty/whitespace text yields "" (the frontend falls back to a short id).
+    """
+    text = " ".join((question_text or "").split())
+    if not text:
+        return ""
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
 def _fetch_paper(sb: Any, paper_id: str) -> dict | None:
     rows = (
         sb.table("pyq_papers")
@@ -270,6 +281,9 @@ def preview_paper_projection(sb: Any, paper_id: str) -> dict:
 
         entry: dict = {
             "question_id": qid,
+            # EI-CLEAN-04: readable row identity so the operator UI can show the
+            # question text instead of a truncated UUID. Trimmed to a short label.
+            "label": _short_label(q.get("question_text")),
             "eligible": eligible,
             "reason": reason,
             "existing_projection": projection,

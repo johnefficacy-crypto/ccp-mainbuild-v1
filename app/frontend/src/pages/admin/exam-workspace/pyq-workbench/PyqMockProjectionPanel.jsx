@@ -15,6 +15,51 @@ import useApiAction from "../../../../lib/hooks/useApiAction";
 
 const _BASE = (paperId) => `/api/admin/mocks/pyq-papers/${paperId}/projection`;
 
+// EI-CLEAN-04: map internal eligibility reason codes to operator-readable text.
+// Codes carry a ":detail" suffix (status / count) which is folded into the label.
+function humanizeProjectionReason(reason) {
+  const [code, detail] = String(reason ?? "").split(":");
+  switch (code) {
+    case "eligible":
+      return "Eligible";
+    case "paper_not_verified":
+      return `Paper not verified${detail ? ` (${detail})` : ""}`;
+    case "question_not_verified":
+      return `Question not verified${detail ? ` (${detail})` : ""}`;
+    case "empty_question_text":
+      return "Question text is empty";
+    case "not_exactly_one_verified_primary_tag":
+      return detail === "0" || detail === undefined
+        ? "Missing verified primary topic tag"
+        : `Needs exactly one verified primary tag (has ${detail})`;
+    default:
+      // Graceful fallback: de-snake-case an unknown code rather than leak it raw.
+      return code
+        ? code.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()) +
+            (detail ? ` (${detail})` : "")
+        : "Ineligible";
+  }
+}
+
+// Aggregate ineligible preview rows into humanized blocker groups (largest first).
+function aggregateBlockers(questions) {
+  const byCode = new Map();
+  for (const q of questions ?? []) {
+    if (q.eligible) continue;
+    const code = String(q.reason ?? "").split(":")[0] || "ineligible";
+    byCode.set(code, (byCode.get(code) || 0) + 1);
+  }
+  return Array.from(byCode.entries())
+    .map(([code, count]) => ({ code, count, label: humanizeProjectionReason(code) }))
+    .sort((a, b) => b.count - a.count);
+}
+
+// Readable row identity: question label if present, else a short id.
+function rowIdentity(q) {
+  if (q.label && q.label.trim()) return q.label;
+  return `${String(q.question_id).slice(0, 8)}…`;
+}
+
 function StatusPill({ status }) {
   const colors = {
     active:   "bg-emerald-50 text-emerald-700 border border-emerald-200",
@@ -116,6 +161,12 @@ export default function PyqMockProjectionPanel({ paperId }) {
 
   if (!paperId) return null;
 
+  // EI-CLEAN-04: once a preview is loaded, a zero-eligible corpus must never be
+  // syncable — the old guard only checked the audit-reason length.
+  const previewLoaded = preview != null;
+  const zeroEligible = previewLoaded && (preview.eligible_count ?? 0) === 0;
+  const blockerGroups = previewLoaded ? aggregateBlockers(preview.questions) : [];
+
   return (
     <section
       className="border-t border-gray-200 bg-gray-50 px-4 py-3"
@@ -134,6 +185,19 @@ export default function PyqMockProjectionPanel({ paperId }) {
         </button>
       </div>
 
+      {/* Projection contract — info disclosure (keyboard-operable). */}
+      <details className="mb-2 text-xs text-gray-500" data-testid="projection-info-disclosure">
+        <summary className="cursor-pointer select-none text-gray-600">
+          ⓘ What gets projected?
+        </summary>
+        <p className="mt-1 leading-relaxed">
+          A PYQ question is projected into the mock bank only when its parent paper
+          is verified, the question is verified, and it carries exactly one verified
+          primary topic tag. Preview shows what would change; Sync writes eligible
+          questions. Ineligible questions are grouped below with the reason to fix.
+        </p>
+      </details>
+
       {/* Audit reason + sync — required before sync is allowed */}
       <div className="flex gap-2 mb-2">
         <input
@@ -148,13 +212,19 @@ export default function PyqMockProjectionPanel({ paperId }) {
         <button
           type="button"
           onClick={handleSync}
-          disabled={syncing || auditReason.trim().length < 8}
+          disabled={syncing || auditReason.trim().length < 8 || zeroEligible}
+          title={zeroEligible ? "No eligible questions to sync — clear the blockers below first." : undefined}
           className="text-xs px-2.5 py-1 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
           data-testid="projection-sync-btn"
         >
           {syncing ? "Syncing…" : "Sync to mock bank"}
         </button>
       </div>
+      {zeroEligible && (
+        <p className="text-xs text-amber-600 mb-2" data-testid="projection-zero-eligible-note">
+          0 eligible for projection — sync is disabled until at least one question clears the blockers.
+        </p>
+      )}
 
       {/* Status summary */}
       {loadingStatus && (
@@ -207,6 +277,22 @@ export default function PyqMockProjectionPanel({ paperId }) {
             <span>Would create: <strong>{preview.would_create_count}</strong></span>
             <span>Would update: <strong>{preview.would_update_count}</strong></span>
           </div>
+          {/* Aggregated blocker summary — humanized reason groups, largest first. */}
+          {blockerGroups.length > 0 && (
+            <div
+              className="px-3 py-2 border-b border-gray-100 flex flex-wrap gap-x-4 gap-y-1 text-xs"
+              data-testid="projection-blocker-summary"
+            >
+              {blockerGroups.map((g) => (
+                <span key={g.code} className="text-amber-700" data-testid={`blocker-group-${g.code}`}>
+                  <strong>{g.count}</strong> {g.label}
+                </span>
+              ))}
+              <span className="text-gray-500">
+                <strong>{preview.eligible_count}</strong> eligible for projection
+              </span>
+            </div>
+          )}
           <div className="max-h-40 overflow-y-auto divide-y divide-gray-50">
             {(preview.questions ?? []).map((q) => (
               <div
@@ -214,11 +300,13 @@ export default function PyqMockProjectionPanel({ paperId }) {
                 className="px-3 py-1.5 flex items-center justify-between gap-2 text-xs"
                 data-testid={`preview-row-${q.question_id}`}
               >
-                <span className="font-mono text-gray-400 truncate max-w-[12ch]">
-                  {q.question_id.slice(0, 8)}…
+                <span className="text-gray-700 truncate max-w-[60%]" title={rowIdentity(q)}>
+                  {rowIdentity(q)}
                 </span>
-                <span className={`${q.eligible ? "text-gray-700" : "text-amber-600"}`}>
-                  {q.eligible ? (q.would_update ? "update" : "create/no-change") : q.reason}
+                <span className={`${q.eligible ? "text-gray-600" : "text-amber-600"} text-right`}>
+                  {q.eligible
+                    ? (q.would_update ? "update" : "create / no change")
+                    : humanizeProjectionReason(q.reason)}
                 </span>
               </div>
             ))}
@@ -247,8 +335,8 @@ export default function PyqMockProjectionPanel({ paperId }) {
                 className="px-3 py-1.5 flex items-center justify-between gap-2 text-xs"
                 data-testid={`sync-row-${q.question_id}`}
               >
-                <span className="font-mono text-gray-400 truncate max-w-[12ch]">
-                  {q.question_id.slice(0, 8)}…
+                <span className="text-gray-700 truncate max-w-[60%]" title={rowIdentity(q)}>
+                  {rowIdentity(q)}
                 </span>
                 <OutcomeBadge outcome={q.outcome} />
               </div>
