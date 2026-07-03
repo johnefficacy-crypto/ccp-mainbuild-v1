@@ -11,11 +11,42 @@
 --   1. idempotency index for bulk import — SUBJECT-scoped external_key.
 --   2. activation-integrity CHECK (is_active ⇒ verified).
 --   3. ewp_validate_prompt_scope() — subject/topic/microtopic + source_document
---      provenance (no exam scope — prompts are subject-scoped now).
+--      provenance (no exam scope — prompts are subject-scoped now). Topic must be
+--      ACTIVE and level='topic'; microtopic ACTIVE, level='microtopic', child.
 --   4. cms_create_writing_prompt / cms_review_writing_prompt /
 --      cms_update_writing_prompt / cms_bulk_upsert_writing_prompts.
---   5. cms_set_writing_prompt_target / cms_remove_writing_prompt_target — the
---      Exam Assignments write path over writing_prompt_targets.
+--   5. Exam Assignments write path over writing_prompt_targets, split by the
+--      LOCKED J2 authority separation (see below):
+--        cms_propose_writing_prompt_target  (manage: create INERT pending_review)
+--        cms_review_writing_prompt_target   (review: pending_review→active|excluded)
+--        cms_remove_writing_prompt_target   (review: CAS-guarded removal)
+--
+-- J2 AUTHORITY SEPARATION (locked, docs/status/Manage-Exam-Operational-Editors-
+-- Gate-2026-07-01.md §D). `exam_intelligence.manage` NEVER promotes lifecycle /
+-- activation / coverage state; `exam_intelligence.review` owns trust/lifecycle
+-- transitions. content-studio.md assigns applicability OWNERSHIP to Manage Exam
+-- but does NOT supersede that lifecycle split — so making an assignment EFFECTIVE
+-- (active|excluded) is a review-authority transition. manage may only PROPOSE an
+-- inert `pending_review` assignment (default-deny keeps it inapplicable); review
+-- promotes it. This mirrors the topic_prerequisites manage(propose)/review(approve)
+-- split already shipped in admin_exam_intel_manage. The router enforces the
+-- permission tier; the RPCs enforce the state machine + CAS.
+--
+-- CONCURRENCY / CAS (authoritative, in-DB — not merely at the API layer):
+--   * Prompt review/curation require a NON-NULL `p_expected_updated_at` CAS token
+--     and fail closed (409) when omitted — the service-role RPC contract itself
+--     cannot bypass the optimistic-lock invariant.
+--   * writing_prompt_targets gains an `updated_at` revision token; propose is
+--     INSERT-ONLY (a duplicate (prompt,scope) → 409, never a silent overwrite);
+--     review/remove take the target's `updated_at` and reject stale writes (409),
+--     auditing the EXACT old and new rows (never old_value=NULL on an update).
+--   * bulk import takes a per-(subject,external_key) transaction advisory lock so
+--     two concurrent FIRST imports of the same key serialize into create-then-
+--     unchanged/update instead of one aborting on the unique index.
+--
+-- Review RE-VALIDATES taxonomy/provenance inside the locked transaction before
+-- 'verified' — a topic/document that went inactive/archived after authoring can
+-- never be verified.
 --
 -- ACTIVATION IS DELIBERATELY OMITTED. Migration 214's activation gate
 -- deactivated every prompt and blocks REACTIVATION until the applicability
@@ -29,9 +60,10 @@
 -- OPERATOR apply order: pending 213 → 214 → 215. No rename permitted.
 --
 -- Error ERRCODE tokens → HTTP:
---   P0404 → 404, P0409 → 409,
+--   P0404 → 404, P0409 → 409 (concurrent_modification | target_exists),
 --   P0422 → 422 (invalid_reason | invalid_scope | invalid_target_status |
---                transition_not_allowed | prompt_verified_locked | missing_actor_id)
+--                transition_not_allowed | prompt_verified_locked |
+--                target_effective_locked | missing_actor_id)
 
 -- ---------------------------------------------------------------------------
 -- 1. Idempotency key for bulk import — SUBJECT-scoped (content is reusable
@@ -49,6 +81,14 @@ ALTER TABLE public.writing_prompts
 ALTER TABLE public.writing_prompts
   ADD CONSTRAINT writing_prompts_active_requires_verified
   CHECK (is_active = false OR reviewer_status = 'verified');
+
+-- ---------------------------------------------------------------------------
+-- 2b. Applicability revision token (CAS for the Exam Assignments write path).
+--     214's writing_prompt_targets has only created_at; add updated_at so
+--     status/priority changes are optimistic-lock-guarded and auditable.
+-- ---------------------------------------------------------------------------
+ALTER TABLE public.writing_prompt_targets
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
 -- ---------------------------------------------------------------------------
 -- Shared helpers.
@@ -83,6 +123,8 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
 $$;
 
 -- Subject-scoped canonical validation (NO exam scope — prompts are reusable).
+-- Topic must be ACTIVE + level='topic'; microtopic ACTIVE + level='microtopic' +
+-- child-of-topic; source document must be a live admin exam-intelligence asset.
 CREATE OR REPLACE FUNCTION ewp_validate_prompt_scope(
     p_subject uuid, p_topic uuid, p_microtopic uuid, p_document uuid DEFAULT NULL
 )
@@ -99,8 +141,9 @@ BEGIN
             USING ERRCODE = 'P0422';
     END IF;
     SELECT * INTO v_topic FROM public.topics WHERE id = p_topic;
-    IF NOT FOUND OR v_topic.subject_id IS DISTINCT FROM p_subject THEN
-        RAISE EXCEPTION 'invalid_scope: topic % does not belong to subject %', p_topic, p_subject
+    IF NOT FOUND OR v_topic.subject_id IS DISTINCT FROM p_subject
+       OR v_topic.is_active IS NOT TRUE OR v_topic.level <> 'topic' THEN
+        RAISE EXCEPTION 'invalid_scope: topic % must be an active level=topic topic of subject %', p_topic, p_subject
             USING ERRCODE = 'P0422';
     END IF;
     IF p_microtopic IS NOT NULL THEN
@@ -169,7 +212,8 @@ END;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 4. Atomic reviewer-status transition (§4.1b; mandatory reason; content-CAS).
+-- 4. Atomic reviewer-status transition (§4.1b; mandatory reason; mandatory
+--    content-CAS; scope re-validated before 'verified').
 --    is_active is only ever cleared here (never set) — activation is gated.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION cms_review_writing_prompt(
@@ -186,6 +230,10 @@ BEGIN
     IF p_actor_user_id IS NULL THEN
         RAISE EXCEPTION 'missing_actor_id: p_actor_user_id must not be NULL' USING ERRCODE = 'P0422';
     END IF;
+    -- Optimistic-lock token is MANDATORY at the authoritative boundary.
+    IF p_expected_updated_at IS NULL THEN
+        RAISE EXCEPTION 'concurrent_modification: p_expected_updated_at (CAS token) is required' USING ERRCODE = 'P0409';
+    END IF;
     PERFORM ewp_assert_reason(p_reason);
     IF p_new_status NOT IN ('pending','verified','rejected','needs_correction') THEN
         RAISE EXCEPTION 'invalid_target_status: %', p_new_status USING ERRCODE = 'P0422';
@@ -197,7 +245,7 @@ BEGIN
     IF v_prompt.reviewer_status IS DISTINCT FROM p_expected_status THEN
         RAISE EXCEPTION 'concurrent_modification: expected reviewer_status=% found %', p_expected_status, v_prompt.reviewer_status USING ERRCODE = 'P0409';
     END IF;
-    IF p_expected_updated_at IS NOT NULL AND v_prompt.updated_at IS DISTINCT FROM p_expected_updated_at THEN
+    IF v_prompt.updated_at IS DISTINCT FROM p_expected_updated_at THEN
         RAISE EXCEPTION 'concurrent_modification: prompt content changed since read' USING ERRCODE = 'P0409';
     END IF;
     IF NOT (
@@ -206,6 +254,11 @@ BEGIN
         OR (v_prompt.reviewer_status = 'verified'         AND p_new_status IN ('rejected','needs_correction'))
     ) THEN
         RAISE EXCEPTION 'transition_not_allowed: % -> %', v_prompt.reviewer_status, p_new_status USING ERRCODE = 'P0422';
+    END IF;
+    -- Re-validate taxonomy/provenance inside the locked txn before verifying:
+    -- a topic/document that went inactive/archived after authoring must not verify.
+    IF p_new_status = 'verified' THEN
+        PERFORM ewp_validate_prompt_scope(v_prompt.subject_id, v_prompt.topic_id, v_prompt.microtopic_id, v_prompt.source_document_id);
     END IF;
     v_new_active := CASE WHEN p_new_status = 'verified' THEN v_prompt.is_active ELSE false END;
 
@@ -227,7 +280,7 @@ END;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 5. Atomic curation (verified-locked; updated_at CAS; scope re-validated).
+-- 5. Atomic curation (verified-locked; mandatory updated_at CAS; scope re-validated).
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION cms_update_writing_prompt(
     p_prompt_id uuid, p_expected_updated_at timestamptz, p_patch jsonb,
@@ -243,6 +296,9 @@ BEGIN
     IF p_actor_user_id IS NULL THEN
         RAISE EXCEPTION 'missing_actor_id: p_actor_user_id must not be NULL' USING ERRCODE = 'P0422';
     END IF;
+    IF p_expected_updated_at IS NULL THEN
+        RAISE EXCEPTION 'concurrent_modification: p_expected_updated_at (CAS token) is required' USING ERRCODE = 'P0409';
+    END IF;
     PERFORM ewp_assert_reason(p_reason);
     SELECT * INTO v_existing FROM public.writing_prompts WHERE id = p_prompt_id FOR UPDATE;
     IF NOT FOUND THEN
@@ -251,7 +307,7 @@ BEGIN
     IF v_existing.reviewer_status = 'verified' THEN
         RAISE EXCEPTION 'prompt_verified_locked: demote via review first' USING ERRCODE = 'P0422';
     END IF;
-    IF p_expected_updated_at IS NOT NULL AND v_existing.updated_at IS DISTINCT FROM p_expected_updated_at THEN
+    IF v_existing.updated_at IS DISTINCT FROM p_expected_updated_at THEN
         RAISE EXCEPTION 'concurrent_modification: prompt changed since read' USING ERRCODE = 'P0409';
     END IF;
     v_patch := coalesce(p_patch, '{}'::jsonb) - 'id' - 'reviewer_status' - 'is_active' - 'created_at' - 'updated_at';
@@ -280,6 +336,9 @@ $$;
 
 -- ---------------------------------------------------------------------------
 -- 6. Transactional, lifecycle-safe bulk upsert (subject-scoped external_key).
+--    A per-(subject, external_key) advisory xact lock makes a concurrent first
+--    import of the same key serialize (create-then-unchanged/update) rather than
+--    one caller aborting on the unique index.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION cms_bulk_upsert_writing_prompts(
     p_subject_id uuid, p_rows jsonb, p_reason text, p_actor_user_id uuid, p_actor_email text
@@ -312,6 +371,9 @@ BEGIN
             RAISE EXCEPTION 'invalid_target_status: duplicate external_key in batch: %', v_ext USING ERRCODE = 'P0422';
         END IF;
         v_seen := array_append(v_seen, v_ext);
+        -- Serialize concurrent first-imports of the SAME (subject, key): the lock
+        -- is held to txn end, so a racing caller waits and then observes the row.
+        PERFORM pg_advisory_xact_lock(hashtext(p_subject_id::text), hashtext(v_ext));
         v_meta := coalesce(v_elem->'metadata', '{}'::jsonb) || jsonb_build_object('external_key', v_ext);
         v_incoming := jsonb_populate_record(NULL::public.writing_prompts,
             (v_elem - 'external_key' - 'id' - 'created_at' - 'updated_at')
@@ -361,11 +423,19 @@ $$;
 
 -- ---------------------------------------------------------------------------
 -- 7. Exam Assignments — writing_prompt_targets write path (applicability).
---    Upsert a single (prompt, scope) row; status active|excluded|pending_review.
+--    J2 authority split: manage PROPOSES inert pending_review; review PROMOTES to
+--    active|excluded and REMOVES. See migration header.
 -- ---------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION cms_set_writing_prompt_target(
+
+-- Drop the earlier single-RPC draft (never merged) if a dev applied it.
+DROP FUNCTION IF EXISTS cms_set_writing_prompt_target(uuid, boolean, uuid, uuid, uuid, text, numeric, text, uuid, text);
+
+-- 7a. PROPOSE (manage authority, router-gated): INSERT-ONLY inert pending_review
+--     assignment. A duplicate (prompt, scope) is a 409 (never a silent overwrite);
+--     changing an existing assignment goes through review/remove.
+CREATE OR REPLACE FUNCTION cms_propose_writing_prompt_target(
     p_prompt_id uuid, p_is_global boolean, p_exam_family_id uuid, p_exam_id uuid, p_exam_phase_id uuid,
-    p_status text, p_priority numeric, p_reason text, p_actor_user_id uuid, p_actor_email text
+    p_priority numeric, p_reason text, p_actor_user_id uuid, p_actor_email text
 )
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -377,10 +447,6 @@ BEGIN
         RAISE EXCEPTION 'missing_actor_id: p_actor_user_id must not be NULL' USING ERRCODE = 'P0422';
     END IF;
     PERFORM ewp_assert_reason(p_reason);
-    IF coalesce(p_status, 'active') NOT IN ('active','excluded','pending_review') THEN
-        RAISE EXCEPTION 'invalid_target_status: %', p_status USING ERRCODE = 'P0422';
-    END IF;
-    -- exactly one scope (mirror the table CHECK so we can give a clean 422)
     v_scope_count := (CASE WHEN coalesce(p_is_global,false) THEN 1 ELSE 0 END)
                    + (CASE WHEN p_exam_family_id IS NOT NULL THEN 1 ELSE 0 END)
                    + (CASE WHEN p_exam_id IS NOT NULL THEN 1 ELSE 0 END)
@@ -401,39 +467,121 @@ BEGIN
         RAISE EXCEPTION 'invalid_scope: exam_phase % does not exist', p_exam_phase_id USING ERRCODE = 'P0422';
     END IF;
 
-    INSERT INTO public.writing_prompt_targets (prompt_id, is_global, exam_family_id, exam_id, exam_phase_id, applicability_status, priority_score, source_basis)
-    VALUES (p_prompt_id, coalesce(p_is_global,false), p_exam_family_id, p_exam_id, p_exam_phase_id, coalesce(p_status,'active'), p_priority, 'operator')
-    ON CONFLICT (prompt_id, is_global, exam_family_id, exam_id, exam_phase_id)
-    DO UPDATE SET applicability_status = EXCLUDED.applicability_status, priority_score = EXCLUDED.priority_score, source_basis = 'operator'
+    -- Reject a duplicate (prompt, scope) up front so the response is a clean 409
+    -- with the existing target's id/status rather than a unique-violation.
+    SELECT * INTO v_target FROM public.writing_prompt_targets
+    WHERE prompt_id = p_prompt_id
+      AND is_global = coalesce(p_is_global,false)
+      AND exam_family_id IS NOT DISTINCT FROM p_exam_family_id
+      AND exam_id IS NOT DISTINCT FROM p_exam_id
+      AND exam_phase_id IS NOT DISTINCT FROM p_exam_phase_id
+    FOR UPDATE;
+    IF FOUND THEN
+        RAISE EXCEPTION 'target_exists: an assignment for this (prompt, scope) already exists (id=%, status=%) — review or remove it', v_target.id, v_target.applicability_status USING ERRCODE = 'P0409';
+    END IF;
+
+    INSERT INTO public.writing_prompt_targets (prompt_id, is_global, exam_family_id, exam_id, exam_phase_id, applicability_status, priority_score, source_basis, updated_at)
+    VALUES (p_prompt_id, coalesce(p_is_global,false), p_exam_family_id, p_exam_id, p_exam_phase_id, 'pending_review', p_priority, 'operator', now())
     RETURNING * INTO v_target;
 
     INSERT INTO public.admin_audit_logs (actor_id, actor_email, admin_user_id, action, entity_type, entity_id, old_value, new_value, notes)
-    VALUES (p_actor_user_id, p_actor_email, p_actor_user_id, 'writing_prompt_target_set', 'writing_prompt_target', v_target.id::text, NULL, to_jsonb(v_target), p_reason)
+    VALUES (p_actor_user_id, p_actor_email, p_actor_user_id, 'writing_prompt_target_propose', 'writing_prompt_target', v_target.id::text, NULL, to_jsonb(v_target), p_reason)
     RETURNING id INTO v_audit_id;
     RETURN jsonb_build_object('ok', true, 'audit_id', v_audit_id, 'target_id', v_target.id, 'row', to_jsonb(v_target));
 END;
 $$;
 
+-- 7b. REVIEW (review authority, router-gated): promote pending_review to an
+--     EFFECTIVE state (active|excluded), or flip between them. Mandatory CAS on
+--     updated_at; audits exact old and new rows. A global target can never be
+--     'excluded' (no broader scope to subtract from).
+CREATE OR REPLACE FUNCTION cms_review_writing_prompt_target(
+    p_target_id uuid, p_expected_updated_at timestamptz, p_new_status text,
+    p_priority numeric, p_reason text, p_actor_user_id uuid, p_actor_email text
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_old public.writing_prompt_targets%ROWTYPE;
+    v_new public.writing_prompt_targets%ROWTYPE;
+    v_audit_id uuid;
+BEGIN
+    IF p_actor_user_id IS NULL THEN
+        RAISE EXCEPTION 'missing_actor_id: p_actor_user_id must not be NULL' USING ERRCODE = 'P0422';
+    END IF;
+    IF p_expected_updated_at IS NULL THEN
+        RAISE EXCEPTION 'concurrent_modification: p_expected_updated_at (CAS token) is required' USING ERRCODE = 'P0409';
+    END IF;
+    PERFORM ewp_assert_reason(p_reason);
+    IF p_new_status NOT IN ('active','excluded') THEN
+        RAISE EXCEPTION 'invalid_target_status: review may only set active|excluded, got %', p_new_status USING ERRCODE = 'P0422';
+    END IF;
+    SELECT * INTO v_old FROM public.writing_prompt_targets WHERE id = p_target_id FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'not_found: writing_prompt_target % does not exist', p_target_id USING ERRCODE = 'P0404';
+    END IF;
+    IF v_old.updated_at IS DISTINCT FROM p_expected_updated_at THEN
+        RAISE EXCEPTION 'concurrent_modification: target changed since read' USING ERRCODE = 'P0409';
+    END IF;
+    IF p_new_status = 'excluded' AND v_old.is_global THEN
+        RAISE EXCEPTION 'invalid_scope: a global assignment cannot be excluded (no broader scope to subtract from)' USING ERRCODE = 'P0422';
+    END IF;
+    IF v_old.applicability_status NOT IN ('pending_review','active','excluded') THEN
+        RAISE EXCEPTION 'transition_not_allowed: % -> %', v_old.applicability_status, p_new_status USING ERRCODE = 'P0422';
+    END IF;
+
+    UPDATE public.writing_prompt_targets
+       SET applicability_status = p_new_status,
+           priority_score = coalesce(p_priority, priority_score),
+           source_basis = 'operator',
+           updated_at = now()
+     WHERE id = p_target_id AND updated_at = p_expected_updated_at
+    RETURNING * INTO v_new;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'concurrent_modification: zero rows updated after lock' USING ERRCODE = 'P0409';
+    END IF;
+
+    INSERT INTO public.admin_audit_logs (actor_id, actor_email, admin_user_id, action, entity_type, entity_id, old_value, new_value, notes)
+    VALUES (p_actor_user_id, p_actor_email, p_actor_user_id, 'writing_prompt_target_review', 'writing_prompt_target', p_target_id::text, to_jsonb(v_old), to_jsonb(v_new), p_reason)
+    RETURNING id INTO v_audit_id;
+    RETURN jsonb_build_object('ok', true, 'audit_id', v_audit_id, 'target_id', p_target_id, 'row', to_jsonb(v_new));
+END;
+$$;
+
+-- 7c. REMOVE (review authority, router-gated): CAS-guarded delete that audits the
+--     EXACT removed row (old_value is never NULL on removal).
 CREATE OR REPLACE FUNCTION cms_remove_writing_prompt_target(
-    p_target_id uuid, p_reason text, p_actor_user_id uuid, p_actor_email text
+    p_target_id uuid, p_expected_updated_at timestamptz, p_reason text, p_actor_user_id uuid, p_actor_email text
 )
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
     v_target public.writing_prompt_targets%ROWTYPE;
     v_audit_id uuid;
+    v_deleted int;
 BEGIN
     IF p_actor_user_id IS NULL THEN
         RAISE EXCEPTION 'missing_actor_id: p_actor_user_id must not be NULL' USING ERRCODE = 'P0422';
+    END IF;
+    IF p_expected_updated_at IS NULL THEN
+        RAISE EXCEPTION 'concurrent_modification: p_expected_updated_at (CAS token) is required' USING ERRCODE = 'P0409';
     END IF;
     PERFORM ewp_assert_reason(p_reason);
     SELECT * INTO v_target FROM public.writing_prompt_targets WHERE id = p_target_id FOR UPDATE;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'not_found: writing_prompt_target % does not exist', p_target_id USING ERRCODE = 'P0404';
     END IF;
+    IF v_target.updated_at IS DISTINCT FROM p_expected_updated_at THEN
+        RAISE EXCEPTION 'concurrent_modification: target changed since read' USING ERRCODE = 'P0409';
+    END IF;
+
     INSERT INTO public.admin_audit_logs (actor_id, actor_email, admin_user_id, action, entity_type, entity_id, old_value, new_value, notes)
     VALUES (p_actor_user_id, p_actor_email, p_actor_user_id, 'writing_prompt_target_remove', 'writing_prompt_target', p_target_id::text, to_jsonb(v_target), NULL, p_reason)
     RETURNING id INTO v_audit_id;
-    DELETE FROM public.writing_prompt_targets WHERE id = p_target_id;
+
+    DELETE FROM public.writing_prompt_targets WHERE id = p_target_id AND updated_at = p_expected_updated_at;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+    IF v_deleted = 0 THEN
+        RAISE EXCEPTION 'concurrent_modification: target changed before delete' USING ERRCODE = 'P0409';
+    END IF;
     RETURN jsonb_build_object('ok', true, 'audit_id', v_audit_id, 'target_id', p_target_id);
 END;
 $$;
@@ -453,9 +601,11 @@ REVOKE EXECUTE ON FUNCTION cms_update_writing_prompt(uuid, timestamptz, jsonb, t
 GRANT  EXECUTE ON FUNCTION cms_update_writing_prompt(uuid, timestamptz, jsonb, text, uuid, text) TO service_role;
 REVOKE EXECUTE ON FUNCTION cms_bulk_upsert_writing_prompts(uuid, jsonb, text, uuid, text) FROM PUBLIC, anon, authenticated;
 GRANT  EXECUTE ON FUNCTION cms_bulk_upsert_writing_prompts(uuid, jsonb, text, uuid, text) TO service_role;
-REVOKE EXECUTE ON FUNCTION cms_set_writing_prompt_target(uuid, boolean, uuid, uuid, uuid, text, numeric, text, uuid, text) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION cms_set_writing_prompt_target(uuid, boolean, uuid, uuid, uuid, text, numeric, text, uuid, text) TO service_role;
-REVOKE EXECUTE ON FUNCTION cms_remove_writing_prompt_target(uuid, text, uuid, text) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION cms_remove_writing_prompt_target(uuid, text, uuid, text) TO service_role;
+REVOKE EXECUTE ON FUNCTION cms_propose_writing_prompt_target(uuid, boolean, uuid, uuid, uuid, numeric, text, uuid, text) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION cms_propose_writing_prompt_target(uuid, boolean, uuid, uuid, uuid, numeric, text, uuid, text) TO service_role;
+REVOKE EXECUTE ON FUNCTION cms_review_writing_prompt_target(uuid, timestamptz, text, numeric, text, uuid, text) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION cms_review_writing_prompt_target(uuid, timestamptz, text, numeric, text, uuid, text) TO service_role;
+REVOKE EXECUTE ON FUNCTION cms_remove_writing_prompt_target(uuid, timestamptz, text, uuid, text) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION cms_remove_writing_prompt_target(uuid, timestamptz, text, uuid, text) TO service_role;
 
 SELECT pg_notify('pgrst', 'reload schema');

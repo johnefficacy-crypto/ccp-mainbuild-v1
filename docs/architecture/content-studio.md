@@ -196,7 +196,16 @@ SUPERSEDED** by this decision (tracked in the checklist).
 
 ## 7. Follow-ups (explicitly later PRs — NOT in this PR)
 
-This PR is docs + one migration + checklist only. Deferred:
+> **Update (PR #855):** the **writing-prompt write-path backend** has since shipped
+> ahead of the UI — migration `215_writing_prompt_content_studio_ops.sql` (the
+> `cms_*_writing_prompt` / `cms_propose|review|remove_writing_prompt_target` RPCs)
+> and the `app/api/content_studio.py` router at `/api/admin/content-studio`
+> (Library / Review Queue / Bulk Import / Exam Assignments). No activation path
+> ships (it stays gated — see item 1). The Content Studio **UI** (item 2 below) and
+> the nav consolidation are still deferred. FE contract:
+> `docs/status/ewp-prompt-bank-frontend-handoff.md`.
+
+The originating PR was docs + one migration (214) + checklist only. Deferred:
 
 1. **Applicability resolver** — service-role function that, given
    `(exam_id, exam_phase_id)`, returns the applicable verified/active prompt set

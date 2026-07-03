@@ -422,10 +422,16 @@ def test_bulk_maps_locked_row_to_422():
     assert r.status_code == 422
 
 
-# ── Exam Assignments (writing_prompt_targets) ─────────────────────────────
+# ── Exam Assignments (writing_prompt_targets) — J2 propose/review/remove split ─
+#
+# manage (exam_intelligence.manage) PROPOSES inert pending_review; review
+# (exam_intelligence.review) PROMOTES to active|excluded and removes.
+
+ASSIGN_REVIEW = cs.PERM_ASSIGN_REVIEW
+_TOKEN = "2026-07-01T00:00:00Z"
 
 
-def test_set_target_requires_assign_permission():
+def test_propose_target_requires_manage_permission():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[AUTHOR]).post(
         f"{_BASE}/writing-prompts/{_PROMPT}/targets",
@@ -433,23 +439,90 @@ def test_set_target_requires_assign_permission():
     assert r.status_code == 403
 
 
-def test_set_target_happy_path_calls_rpc():
+def test_propose_target_happy_path_calls_propose_rpc():
     sb = CSSBStub(_seed())
     sb.rpc_result = {"ok": True, "target_id": "t-1"}
     r = _client(sb, permissions=[ASSIGN]).post(
         f"{_BASE}/writing-prompts/{_PROMPT}/targets",
-        json={"reason": "make globally applicable", "is_global": True})
+        json={"reason": "propose a global assignment", "is_global": True})
     assert r.status_code == 200, r.text
-    assert sb.rpc_calls[-1][0] == "cms_set_writing_prompt_target"
+    assert sb.rpc_calls[-1][0] == "cms_propose_writing_prompt_target"
     assert sb.rpc_calls[-1][1]["p_is_global"] is True
+    # manage cannot smuggle an effective status — no p_status param exists.
+    assert "p_status" not in sb.rpc_calls[-1][1]
 
 
-def test_set_target_maps_invalid_scope_to_422():
+def test_propose_target_rejects_applicability_status_field():
+    # manage may not set an effective status even by sending the field.
     sb = CSSBStub(_seed())
-    sb.rpc_error = "invalid_scope: exactly one of {...} required"
     r = _client(sb, permissions=[ASSIGN]).post(
         f"{_BASE}/writing-prompts/{_PROMPT}/targets",
-        json={"reason": "zero scopes provided", "is_global": False})
+        json={"reason": "try to activate directly", "is_global": True,
+              "applicability_status": "active"})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_propose_target_maps_duplicate_to_409():
+    sb = CSSBStub(_seed())
+    sb.rpc_error = "target_exists: an assignment for this (prompt, scope) already exists"
+    r = _client(sb, permissions=[ASSIGN]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/targets",
+        json={"reason": "duplicate scope proposal", "is_global": True})
+    assert r.status_code == 409
+
+
+def test_review_target_requires_review_permission():
+    # manage may propose but NOT promote to effective.
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[ASSIGN]).post(
+        f"{_BASE}/writing-prompt-targets/t-1/review",
+        json={"reason": "manage cannot activate", "applicability_status": "active",
+              "expected_updated_at": _TOKEN})
+    assert r.status_code == 403
+
+
+def test_review_target_happy_path_calls_review_rpc():
+    sb = CSSBStub(_seed())
+    sb.rpc_result = {"ok": True, "target_id": "t-1"}
+    r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
+        f"{_BASE}/writing-prompt-targets/t-1/review",
+        json={"reason": "promote to active", "applicability_status": "active",
+              "expected_updated_at": _TOKEN})
+    assert r.status_code == 200, r.text
+    assert sb.rpc_calls[-1][0] == "cms_review_writing_prompt_target"
+    assert sb.rpc_calls[-1][1]["p_expected_updated_at"] == _TOKEN
+    assert sb.rpc_calls[-1][1]["p_new_status"] == "active"
+
+
+def test_review_target_rejects_pending_review_status():
+    # review may only set active|excluded (Literal) — pending_review is rejected.
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
+        f"{_BASE}/writing-prompt-targets/t-1/review",
+        json={"reason": "cannot set pending", "applicability_status": "pending_review",
+              "expected_updated_at": _TOKEN})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_review_target_requires_cas_token():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
+        f"{_BASE}/writing-prompt-targets/t-1/review",
+        json={"reason": "no CAS token supplied", "applicability_status": "active"})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_review_target_maps_invalid_scope_to_422():
+    # global + excluded is rejected by the RPC.
+    sb = CSSBStub(_seed())
+    sb.rpc_error = "invalid_scope: a global assignment cannot be excluded"
+    r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
+        f"{_BASE}/writing-prompt-targets/t-1/review",
+        json={"reason": "exclude a global row", "applicability_status": "excluded",
+              "expected_updated_at": _TOKEN})
     assert r.status_code == 422
 
 
@@ -464,21 +537,51 @@ def test_list_targets_readable_by_content_reader():
     assert {t["id"] for t in r.json()["items"]} == {"t-1"}
 
 
-def test_remove_target_requires_assign_permission():
+def test_remove_target_requires_review_permission():
     sb = CSSBStub(_seed())
-    r = _client(sb, permissions=[REVIEW]).post(
+    r = _client(sb, permissions=[ASSIGN]).post(
         f"{_BASE}/writing-prompt-targets/t-1/remove",
-        json={"reason": "reviewer cannot unassign"})
+        json={"reason": "manage cannot remove effective", "expected_updated_at": _TOKEN})
     assert r.status_code == 403
+
+
+def test_remove_target_requires_cas_token():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
+        f"{_BASE}/writing-prompt-targets/t-1/remove",
+        json={"reason": "no CAS token supplied"})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
 
 
 def test_remove_target_maps_not_found_to_404():
     sb = CSSBStub(_seed())
     sb.rpc_error = "not_found: writing_prompt_target does not exist"
-    r = _client(sb, permissions=[ASSIGN]).post(
+    r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
         f"{_BASE}/writing-prompt-targets/ghost/remove",
-        json={"reason": "removing a ghost target"})
+        json={"reason": "removing a ghost target", "expected_updated_at": _TOKEN})
     assert r.status_code == 404
+
+
+# ── RPC error mapping through a REAL postgrest APIError (not just canned str) ──
+
+
+def test_map_rpc_error_handles_real_postgrest_apierror():
+    """The claimed ERRCODE→HTTP mapping must hold for the actual exception type
+    supabase-py raises, not only bare RuntimeError strings."""
+    from postgrest.exceptions import APIError
+
+    cases = {
+        "concurrent_modification: prompt changed since read": 409,
+        "prompt_verified_locked: demote via review first": 422,
+        "invalid_scope: subject must be english-language": 422,
+        "target_exists: an assignment already exists": 409,
+        "not_found: writing_prompt does not exist": 404,
+    }
+    for message, expected in cases.items():
+        err = APIError({"code": "P0", "message": message, "details": None, "hint": None})
+        mapped = cs._map_rpc_error(err, "unit")
+        assert mapped.status_code == expected, (message, mapped.status_code)
 
 
 # ── there is NO activate endpoint (activation is gated by migration 214) ───

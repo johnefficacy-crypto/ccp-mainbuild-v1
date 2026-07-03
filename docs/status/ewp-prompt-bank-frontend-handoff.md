@@ -1,6 +1,8 @@
 # EWP Prompt Operations — Frontend Handoff (Content Studio)
 
-Status: **backend delivered** (migration 215 + `app/api/content_studio.py`), frontend **not started**.
+Status: **CODE PRESENT IN PR / VALIDATION PENDING** (migration 215 + `app/api/content_studio.py`,
+PR #855 — not yet merged; RPC apply + live round-trip + operator app-metadata provisioning
+pending). Frontend **not started**.
 Owner of this doc: the EWP backend slice. Consumer: the Content Studio frontend owner.
 
 This is the API contract + placement rules for building the operator UI that authors,
@@ -16,9 +18,12 @@ architecture first: `docs/architecture/content-studio.md` (§1.1 division of own
   `subject_id` / `topic_id` / `microtopic_id`. There are **no** exam columns on
   `writing_prompts` (migration 214 dropped `exam_id`/`exam_cycle_id`/`exam_phase_id`).
   The UI must never send an exam id as part of prompt content.
-- **Applicability is separate.** Which exams/families/phases a prompt applies to is
-  carried by `writing_prompt_targets` ("Exam Assignments"), edited through its own
-  endpoints and gated on `exam_intelligence.manage` (Manage Exam owns applicability).
+- **Applicability is separate, and its lifecycle is review-gated.** Which
+  exams/families/phases a prompt applies to is carried by `writing_prompt_targets`
+  ("Exam Assignments"), edited through its own endpoints. Per the locked J2 split,
+  `exam_intelligence.manage` may only **propose** an inert `pending_review`
+  assignment; promoting it to effective `active`/`excluded` and removing it require
+  `exam_intelligence.review`. Making content applicable is never a manage action.
 - **No new sidebar destination.** Prompt operations live **inside Content Studio**
   (Library / Review Queue / Bulk Import / Exam Assignments), filtered to
   subject = English. The no-new-surface rule (IA lock §1.2) is satisfied by Content
@@ -48,13 +53,21 @@ missing/short reason is a 422. All mutations go through the data-layer hook
 | `POST /writing-prompts/bulk` | `content_studio.author` | `{reason, subject_id, rows:[{…prompt fields…, external_key}]}` | `external_key` **required** per row (subject-scoped idempotency). Identical row = unchanged; changed pending/needs_correction = updated (reset to pending); changed verified/rejected = 422 `bulk_locked_row`; in-batch dup key = 422. Returns `{created,updated,unchanged}`. Rows carry **no** `subject_id` (body-level). |
 | `POST /writing-prompts/{id}/review` | `content_studio.review` | `{status, reason, reviewer_notes?}` | Allowed transitions: `pending → verified\|rejected\|needs_correction`; `needs_correction → verified\|rejected\|pending`; `verified → rejected\|needs_correction`; `rejected` is terminal. Illegal/unknown status → 422. |
 
-### Exam Assignments — writing_prompt_targets
+### Exam Assignments — writing_prompt_targets (J2 propose/review/remove split)
+
+Making an assignment **effective** is a lifecycle transition, so it is split by the
+locked J2 authority separation: `exam_intelligence.manage` may only **propose** an
+inert `pending_review` assignment (default-deny keeps it inapplicable); making it
+`active`/`excluded` and removing it require `exam_intelligence.review`. The UI must
+render "activate assignment" and "remove assignment" only for a reviewer, and show a
+manage-only user their proposals as pending awaiting review.
 
 | Method + path | Permission | Body | Notes |
 |---|---|---|---|
-| `GET /writing-prompts/{id}/targets` | read set | — | `{items}`. |
-| `POST /writing-prompts/{id}/targets` | `exam_intelligence.manage` | `{reason, is_global?, exam_family_id?, exam_id?, exam_phase_id?, applicability_status(active\|excluded\|pending_review)=active, priority_score?}` | **Exactly one** of {is_global, exam_family_id, exam_id, exam_phase_id} → else 422 `invalid_scope`. Upsert by (prompt, scope). |
-| `POST /writing-prompt-targets/{target_id}/remove` | `exam_intelligence.manage` | `{reason}` | 404 if the target is gone. |
+| `GET /writing-prompts/{id}/targets` | read set | — | `{items}` — each row carries `id`, scope, `applicability_status`, `priority_score`, `updated_at` (the CAS token for review/remove). |
+| `POST /writing-prompts/{id}/targets` (propose) | `exam_intelligence.manage` | `{reason, is_global?, exam_family_id?, exam_id?, exam_phase_id?, priority_score?}` | **Exactly one** scope → else 422 `invalid_scope`. Always lands `pending_review` (no `applicability_status` field — sending one is 422). A duplicate (prompt, scope) → **409 `target_exists`** (review/remove the existing one). |
+| `POST /writing-prompt-targets/{target_id}/review` (activate) | `exam_intelligence.review` | `{reason, applicability_status: "active"\|"excluded", priority_score?, expected_updated_at}` | Promote a `pending_review` (or flip active↔excluded). `expected_updated_at` = the target's `updated_at` (**CAS, required**; stale → 409). A **global** assignment cannot be `excluded` → 422 `invalid_scope`. |
+| `POST /writing-prompt-targets/{target_id}/remove` | `exam_intelligence.review` | `{reason, expected_updated_at}` | CAS-guarded (stale → 409). 404 if the target is gone. |
 
 ## Error → UX mapping
 

@@ -108,10 +108,14 @@ EXAM_INTELLIGENCE_MANAGE = "exam_intelligence.manage"
 # exam-scoped Exam Workspace: authoring/review is content-scoped.
 #   content_studio.author — create/edit/bulk-import canonical content drafts
 #   content_studio.review — pending→verified|rejected|needs_correction lifecycle
-# Applicability (writing_prompt_targets / Exam Assignments) stays under
-# exam_intelligence.manage — Manage Exam owns applicability (§1.1).
+# Applicability (writing_prompt_targets / Exam Assignments) is split by the
+# locked J2 authority separation: exam_intelligence.manage PROPOSES an inert
+# pending_review assignment; exam_intelligence.review PROMOTES it to an EFFECTIVE
+# active|excluded state and removes it (making content applicable is a lifecycle
+# transition — manage never promotes activation state; see §1.1 + J2 gate §D).
 CONTENT_STUDIO_AUTHOR = "content_studio.author"
 CONTENT_STUDIO_REVIEW = "content_studio.review"
+EXAM_INTELLIGENCE_REVIEW = "exam_intelligence.review"
 
 
 __all__ = [
@@ -133,4 +137,5 @@ __all__ = [
     "MOCK_QUESTIONS_REVIEW",
     "MOCK_QUESTIONS_PUBLISH",
     "EXAM_INTELLIGENCE_MANAGE",
+    "EXAM_INTELLIGENCE_REVIEW",
 ]

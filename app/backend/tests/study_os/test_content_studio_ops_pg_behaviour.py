@@ -4,19 +4,25 @@ Applies migrations 205 → 213 → 214 → 215 to a real, ISOLATED Postgres and 
 the subject-scoped operator write path (all atomic SECURITY DEFINER RPCs):
 
   - cms_create_writing_prompt: forces pending/inactive, validates subject/topic/
-    microtopic scope, writes an audit row; rejects a non-english subject, a
-    cross-topic microtopic, a short reason, and a NULL actor,
-  - the activation-integrity CHECK: is_active=true is impossible unless
-    reviewer_status='verified',
-  - cms_review_writing_prompt: pending→verified transition, CAS on updated_at
-    (stale token → concurrent_modification), disallowed transition rejected,
-  - cms_update_writing_prompt: verified rows are locked (P0422), pending rows edit,
-  - cms_bulk_upsert_writing_prompts: subject-scoped external_key idempotency —
-    create / identical-unchanged / changed-pending-update / changed-verified-locked,
-    and an in-batch duplicate external_key is rejected,
-  - cms_set_writing_prompt_target / cms_remove_writing_prompt_target: the Exam
-    Assignments write path (global target upsert + audit + removal); zero-scope
-    rejected.
+    microtopic scope, writes an audit row; rejects a non-english subject, an
+    INACTIVE topic, a WRONG-LEVEL topic, a cross-topic microtopic, an archived
+    source document, a short reason, and a NULL actor,
+  - the activation-integrity CHECK: is_active=true is impossible unless verified,
+  - cms_review_writing_prompt: transitions; MANDATORY updated_at CAS (NULL token
+    and stale token both rejected); re-runs scope validation before 'verified' so
+    a topic/document that went inactive/archived after authoring cannot verify,
+  - cms_update_writing_prompt: verified-locked (P0422); MANDATORY CAS; scope re-val,
+  - cms_bulk_upsert_writing_prompts: subject-scoped external_key idempotency
+    (create/identical/changed-pending/changed-verified-locked/in-batch-dup) AND a
+    two-connection concurrent first-import of the same key (advisory-lock serialized),
+  - Exam Assignments J2 split: cms_propose_writing_prompt_target (manage: inert
+    pending_review; duplicate scope → 409), cms_review_writing_prompt_target
+    (review: pending_review→active|excluded, CAS, global-exclude rejected, valid
+    family/exam/phase exclusion), cms_remove_writing_prompt_target (review: CAS,
+    exact-old audit) + a two-connection same-target review race,
+  - deterministic review-vs-curation and review-vs-bulk contention (stale review
+    loses with 409, no transition audit commits, prompt stays pending),
+  - the service-role-only privilege matrix.
 
 Migration 214 DROPS columns (destructive) so — like
 test_writing_prompt_targets_migration_behaviour — this suite runs against an
@@ -99,19 +105,15 @@ CREATE TABLE IF NOT EXISTS public.subjects (id uuid PRIMARY KEY DEFAULT gen_rand
 CREATE TABLE IF NOT EXISTS public.topics (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), subject_id uuid NOT NULL REFERENCES public.subjects(id) ON DELETE CASCADE, parent_topic_id uuid REFERENCES public.topics(id) ON DELETE CASCADE, slug text NOT NULL, name text NOT NULL, level text NOT NULL DEFAULT 'topic' CHECK (level IN ('topic','microtopic','concept')), default_difficulty_level text, description text, is_active boolean NOT NULL DEFAULT true, metadata jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE(subject_id, parent_topic_id, slug));
 """
 
-# Seeded AFTER 205 (needs subjects/topics; 205 seeds english-language + grammar).
 _ENGLISH = "(SELECT id FROM subjects WHERE slug='english-language')"
 _GRAMMAR = ("(SELECT id FROM topics WHERE slug='grammar' "
             "AND parent_topic_id IS NULL ORDER BY created_at LIMIT 1)")
 _SEED = f"""
--- a microtopic child of grammar (active, level=microtopic).
 INSERT INTO topics(subject_id, parent_topic_id, slug, name, level, is_active)
   SELECT {_ENGLISH}, {_GRAMMAR}, 'tenses', 'Tenses', 'microtopic', true
   WHERE NOT EXISTS (SELECT 1 FROM topics WHERE slug='tenses' AND subject_id={_ENGLISH});
--- a non-english subject to prove scope validation rejects it.
 INSERT INTO subjects(slug, name, is_active) VALUES ('reasoning','Reasoning',true)
   ON CONFLICT (slug) DO NOTHING;
--- a valid admin exam-intelligence document.
 INSERT INTO document_assets(scope, document_kind, status, storage_bucket, storage_path)
   VALUES ('admin_exam_intelligence','syllabus','ready','docs','a/b.pdf');
 """
@@ -149,8 +151,15 @@ def _admin_psql(sql: str) -> subprocess.CompletedProcess:
 
 
 def _q(v) -> str:
-    """JSON-encode `v` then SQL-quote it as a jsonb literal argument."""
     return "'" + json.dumps(v).replace("'", "''") + "'::jsonb"
+
+
+def _ts(v) -> str:
+    """Render a timestamp argument: the sentinel 'NULL' → SQL NULL, else a literal."""
+    return "NULL" if v == "NULL" else f"'{v}'::timestamptz"
+
+
+# ── create ──────────────────────────────────────────────────────────────────
 
 
 def _create(payload: dict, reason: str = _REASON, actor: str = _ACTOR) -> subprocess.CompletedProcess:
@@ -159,8 +168,7 @@ def _create(payload: dict, reason: str = _REASON, actor: str = _ACTOR) -> subpro
 
 
 def _create_id(payload: dict) -> str:
-    actor_sql = f"'{_ACTOR}'::uuid"
-    return _scalar(f"SELECT cms_create_writing_prompt({_q(payload)}, '{_REASON}', {actor_sql}, 'op@x')->>'prompt_id';")
+    return _scalar(f"SELECT cms_create_writing_prompt({_q(payload)}, '{_REASON}', '{_ACTOR}'::uuid, 'op@x')->>'prompt_id';")
 
 
 def _base_payload(**over) -> dict:
@@ -169,6 +177,16 @@ def _base_payload(**over) -> dict:
          "prompt_text": "Write one grammatical sentence.", "difficulty_level": 2}
     p.update(over)
     return p
+
+
+def _prompt_updated_at(pid: str) -> str:
+    return _scalar(f"SELECT updated_at FROM writing_prompts WHERE id='{pid}';")
+
+
+def _fresh_topic(slug: str) -> str:
+    return _scalar(
+        f"INSERT INTO topics(subject_id,slug,name,level,is_active) "
+        f"SELECT {_ENGLISH},'{slug}','{slug}','topic',true RETURNING id;")
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -197,9 +215,6 @@ def _apply():
         _admin_psql(f"DROP DATABASE IF EXISTS {_OWN_DB} WITH (FORCE)")
 
 
-# ── create ─────────────────────────────────────────────────────────────────
-
-
 def test_create_lands_pending_inactive_with_audit():
     pid = _create_id(_base_payload(microtopic_id=_MICRO_ID))
     row = _scalar(f"SELECT reviewer_status||'/'||is_active FROM writing_prompts WHERE id='{pid}';")
@@ -223,11 +238,21 @@ def test_create_rejects_non_english_subject():
     assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
 
 
+def test_create_rejects_inactive_topic():
+    t = _fresh_topic("inactive-topic")
+    _psql(f"UPDATE topics SET is_active=false WHERE id='{t}';")
+    proc = _create(_base_payload(topic_id=t))
+    assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
+
+
+def test_create_rejects_wrong_level_topic():
+    # a microtopic (level='microtopic') may not be used as the topic scope.
+    proc = _create(_base_payload(topic_id=_MICRO_ID))
+    assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
+
+
 def test_create_rejects_microtopic_not_child_of_topic():
-    # tenses is a child of grammar; pass a DIFFERENT topic as parent -> reject.
-    other_topic = _scalar(
-        f"INSERT INTO topics(subject_id,slug,name,level) "
-        f"SELECT {_ENGLISH},'vocab','Vocab','topic' RETURNING id;")
+    other_topic = _fresh_topic("vocab-parent")
     proc = _create(_base_payload(topic_id=other_topic, microtopic_id=_MICRO_ID))
     assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
 
@@ -259,19 +284,19 @@ def test_create_rejects_archived_source_document():
 
 
 def test_active_requires_verified_constraint_blocks_direct_activation():
-    pid = _create_id(_base_payload())  # pending
+    pid = _create_id(_base_payload())
     proc = _try(f"UPDATE writing_prompts SET is_active=true WHERE id='{pid}';")
     assert proc.returncode != 0, "activating a non-verified prompt must be rejected"
     assert "writing_prompts_active_requires_verified" in proc.stderr, proc.stderr
 
 
-# ── review ──────────────────────────────────────────────────────────────────
+# ── review (mandatory CAS + re-validation) ──────────────────────────────────
 
 
-def _review(pid, expected_status, new_status, updated_at="NULL", reason=_REASON):
-    ua = updated_at if updated_at == "NULL" else f"'{updated_at}'::timestamptz"
+def _review(pid, expected_status, new_status, updated_at="__fetch__", reason=_REASON):
+    ua = _prompt_updated_at(pid) if updated_at == "__fetch__" else updated_at
     return _try(
-        f"SELECT cms_review_writing_prompt('{pid}','{expected_status}',{ua},"
+        f"SELECT cms_review_writing_prompt('{pid}','{expected_status}',{_ts(ua)},"
         f"'{new_status}','{reason}',NULL,'{_ACTOR}'::uuid,'op@x');")
 
 
@@ -284,9 +309,16 @@ def test_review_pending_to_verified_and_audit():
     assert n == "1"
 
 
+def test_review_requires_expected_updated_at():
+    pid = _create_id(_base_payload())
+    proc = _review(pid, "pending", "verified", updated_at="NULL")
+    assert proc.returncode != 0 and "concurrent_modification" in proc.stderr, proc.stderr
+    assert _scalar(f"SELECT reviewer_status FROM writing_prompts WHERE id='{pid}';") == "pending"
+
+
 def test_review_disallowed_transition_rejected():
     pid = _create_id(_base_payload())
-    _review(pid, "pending", "rejected")  # rejected is terminal
+    _review(pid, "pending", "rejected")
     proc = _review(pid, "rejected", "verified")
     assert proc.returncode != 0 and "transition_not_allowed" in proc.stderr, proc.stderr
 
@@ -298,17 +330,46 @@ def test_review_stale_updated_at_is_concurrent_modification():
 
 
 def test_review_wrong_expected_status_is_concurrent_modification():
-    pid = _create_id(_base_payload())  # actually pending
+    pid = _create_id(_base_payload())
     proc = _review(pid, "verified", "rejected")
     assert proc.returncode != 0 and "concurrent_modification" in proc.stderr, proc.stderr
 
 
-# ── update (verified-lock + CAS) ────────────────────────────────────────────
+def test_review_revalidates_scope_blocks_verify_when_topic_inactivated():
+    t = _fresh_topic("post-authoring-inactivation")
+    pid = _create_id(_base_payload(topic_id=t))
+    _psql(f"UPDATE topics SET is_active=false WHERE id='{t}';")  # goes bad AFTER authoring
+    proc = _review(pid, "pending", "verified")
+    assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
+    assert _scalar(f"SELECT reviewer_status FROM writing_prompts WHERE id='{pid}';") == "pending"
 
 
-def _update(pid, patch: dict, expected_updated_at="NULL", reason=_REASON):
-    ua = expected_updated_at if expected_updated_at == "NULL" else f"'{expected_updated_at}'::timestamptz"
-    return _try(f"SELECT cms_update_writing_prompt('{pid}',{ua},{_q(patch)},'{reason}','{_ACTOR}'::uuid,'op@x');")
+def test_review_revalidates_scope_blocks_verify_when_document_archived():
+    doc = _scalar(
+        "INSERT INTO document_assets(scope,document_kind,status,storage_bucket,storage_path) "
+        "VALUES ('admin_exam_intelligence','syllabus','ready','docs','later.pdf') RETURNING id;")
+    pid = _create_id(_base_payload(source_document_id=doc))
+    _psql(f"UPDATE document_assets SET status='archived' WHERE id='{doc}';")
+    proc = _review(pid, "pending", "verified")
+    assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
+
+
+def test_review_rejected_still_allowed_when_scope_went_bad():
+    # scope re-validation gates ONLY 'verified'; rejecting a now-invalid prompt is fine.
+    t = _fresh_topic("rejectable-after-inactivation")
+    pid = _create_id(_base_payload(topic_id=t))
+    _psql(f"UPDATE topics SET is_active=false WHERE id='{t}';")
+    proc = _review(pid, "pending", "rejected")
+    assert proc.returncode == 0, proc.stderr
+    assert _scalar(f"SELECT reviewer_status FROM writing_prompts WHERE id='{pid}';") == "rejected"
+
+
+# ── update (verified-lock + mandatory CAS) ──────────────────────────────────
+
+
+def _update(pid, patch: dict, expected_updated_at="__fetch__", reason=_REASON):
+    ua = _prompt_updated_at(pid) if expected_updated_at == "__fetch__" else expected_updated_at
+    return _try(f"SELECT cms_update_writing_prompt('{pid}',{_ts(ua)},{_q(patch)},'{reason}','{_ACTOR}'::uuid,'op@x');")
 
 
 def test_update_pending_edits_content():
@@ -316,6 +377,12 @@ def test_update_pending_edits_content():
     proc = _update(pid, {"difficulty_level": 7})
     assert proc.returncode == 0, proc.stderr
     assert _scalar(f"SELECT difficulty_level FROM writing_prompts WHERE id='{pid}';") == "7"
+
+
+def test_update_requires_expected_updated_at():
+    pid = _create_id(_base_payload())
+    proc = _update(pid, {"difficulty_level": 8}, expected_updated_at="NULL")
+    assert proc.returncode != 0 and "concurrent_modification" in proc.stderr, proc.stderr
 
 
 def test_update_verified_is_locked():
@@ -331,7 +398,7 @@ def test_update_rescopes_and_revalidates():
     assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
 
 
-# ── bulk upsert (subject-scoped external_key idempotency) ───────────────────
+# ── bulk upsert (subject-scoped external_key idempotency + concurrency) ──────
 
 
 def _bulk(rows: list, reason: str = _REASON, subject: str = None):
@@ -355,13 +422,10 @@ def _row(ext, **over) -> dict:
 
 
 def test_bulk_creates_then_unchanged_then_updates():
-    # first import creates
     c, u, n = _bulk_counts([_row("bk-1", prompt_text="Sentence one here.")])
     assert (c, u, n) == ("1", "0", "0")
-    # identical re-import -> unchanged
     c, u, n = _bulk_counts([_row("bk-1", prompt_text="Sentence one here.")])
     assert (c, u, n) == ("0", "0", "1")
-    # changed content on a pending row -> update
     c, u, n = _bulk_counts([_row("bk-1", prompt_text="Sentence one, revised.")])
     assert (c, u, n) == ("0", "1", "0")
 
@@ -387,58 +451,190 @@ def test_bulk_rejects_in_batch_duplicate_external_key():
     assert proc.returncode != 0 and "duplicate external_key" in proc.stderr, proc.stderr
 
 
-# ── Exam Assignments (writing_prompt_targets) ───────────────────────────────
+def test_bulk_concurrent_first_import_same_key_is_idempotent():
+    """Two connections race the SAME first import of one external_key. The
+    per-(subject,key) advisory xact lock serializes them: exactly one row exists
+    and BOTH callers succeed (create then identical-unchanged) — never a
+    unique-violation abort."""
+    rows = [_row("bk-race", prompt_text="Racing identical sentence.")]
+    call = (f"SELECT cms_bulk_upsert_writing_prompts('{_ENGLISH_ID}'::uuid,{_q(rows)},"
+            f"'{_REASON}','{_ACTOR}'::uuid,'op@x');")
+    procs = [subprocess.Popen([_PSQL, _DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", call],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+             for _ in range(2)]
+    results = [(p.wait(), p.communicate()[1]) for p in procs]
+    assert all(rc == 0 for rc, _ in results), f"both must succeed: {results}"
+    n = _scalar(f"SELECT count(*) FROM writing_prompts "
+                f"WHERE subject_id='{_ENGLISH_ID}' AND metadata->>'external_key'='bk-race';")
+    assert n == "1", f"advisory lock must yield exactly one row, got {n}"
 
 
-def _set_target(pid, *, is_global="false", family="NULL", exam="NULL", phase="NULL",
-                status="active", reason=_REASON):
+# ── review-vs-curation / review-vs-bulk contention (deterministic CAS) ───────
+
+
+def test_review_loses_to_concurrent_curation_stale_token():
+    pid = _create_id(_base_payload())
+    stale = _prompt_updated_at(pid)          # reviewer's snapshot
+    _update(pid, {"difficulty_level": 6})    # curation commits first, bumps updated_at
+    proc = _review(pid, "pending", "verified", updated_at=stale)
+    assert proc.returncode != 0 and "concurrent_modification" in proc.stderr, proc.stderr
+    assert _scalar(f"SELECT reviewer_status FROM writing_prompts WHERE id='{pid}';") == "pending"
+    n = _scalar(f"SELECT count(*) FROM admin_audit_logs WHERE entity_id='{pid}' AND action='writing_prompt_status_transition';")
+    assert n == "0", "no review transition audit may commit when the review loses"
+
+
+def test_review_loses_to_concurrent_bulk_stale_token():
+    _bulk_counts([_row("bk-vs", prompt_text="Original bulk sentence.")])
+    pid = _scalar(f"SELECT id FROM writing_prompts WHERE metadata->>'external_key'='bk-vs' AND subject_id='{_ENGLISH_ID}';")
+    stale = _prompt_updated_at(pid)
+    _bulk_counts([_row("bk-vs", prompt_text="Revised bulk sentence.")])  # bulk update bumps updated_at
+    proc = _review(pid, "pending", "verified", updated_at=stale)
+    assert proc.returncode != 0 and "concurrent_modification" in proc.stderr, proc.stderr
+    assert _scalar(f"SELECT reviewer_status FROM writing_prompts WHERE id='{pid}';") == "pending"
+
+
+# ── Exam Assignments (J2 split: propose / review / remove) ───────────────────
+
+
+def _propose_target(pid, *, is_global="false", family="NULL", exam="NULL", phase="NULL", reason=_REASON):
     def u(v):
         return "NULL" if v == "NULL" else f"'{v}'::uuid"
     return _try(
-        f"SELECT cms_set_writing_prompt_target('{pid}',{is_global},{u(family)},{u(exam)},{u(phase)},"
-        f"'{status}',NULL,'{reason}','{_ACTOR}'::uuid,'op@x');")
+        f"SELECT cms_propose_writing_prompt_target('{pid}',{is_global},{u(family)},{u(exam)},{u(phase)},"
+        f"NULL,'{reason}','{_ACTOR}'::uuid,'op@x');")
 
 
-def test_set_global_target_and_audit():
+def _propose_target_id(pid, **kw) -> str:
+    def u(v):
+        return "NULL" if v == "NULL" else f"'{v}'::uuid"
+    ig = kw.get("is_global", "false")
+    return _scalar(
+        f"SELECT cms_propose_writing_prompt_target('{pid}',{ig},{u(kw.get('family','NULL'))},"
+        f"{u(kw.get('exam','NULL'))},{u(kw.get('phase','NULL'))},NULL,'{_REASON}','{_ACTOR}'::uuid,'op@x')->>'target_id';")
+
+
+def _target_updated_at(tid: str) -> str:
+    return _scalar(f"SELECT updated_at FROM writing_prompt_targets WHERE id='{tid}';")
+
+
+def _review_target(tid, new_status, updated_at="__fetch__", reason=_REASON):
+    ua = _target_updated_at(tid) if updated_at == "__fetch__" else updated_at
+    return _try(
+        f"SELECT cms_review_writing_prompt_target('{tid}',{_ts(ua)},'{new_status}',NULL,"
+        f"'{reason}','{_ACTOR}'::uuid,'op@x');")
+
+
+def _remove_target(tid, updated_at="__fetch__", reason=_REASON):
+    ua = _target_updated_at(tid) if updated_at == "__fetch__" else updated_at
+    return _try(
+        f"SELECT cms_remove_writing_prompt_target('{tid}',{_ts(ua)},'{reason}','{_ACTOR}'::uuid,'op@x');")
+
+
+def test_propose_lands_pending_review_inert_with_audit():
     pid = _create_id(_base_payload())
-    proc = _set_target(pid, is_global="true")
-    assert proc.returncode == 0, proc.stderr
-    n = _scalar(
-        f"SELECT count(*) FROM writing_prompt_targets "
-        f"WHERE prompt_id='{pid}' AND is_global=true AND source_basis='operator'")
-    assert n == "1"
-    a = _scalar(f"SELECT count(*) FROM admin_audit_logs WHERE action='writing_prompt_target_set';")
-    assert int(a) >= 1
-
-
-def test_set_target_zero_scope_rejected():
-    pid = _create_id(_base_payload())
-    proc = _set_target(pid)  # nothing set
-    assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
-
-
-def test_set_target_upsert_updates_status_in_place():
-    pid = _create_id(_base_payload())
-    _set_target(pid, is_global="true", status="active")
-    _set_target(pid, is_global="true", status="excluded")
-    rows = _scalar(f"SELECT count(*) FROM writing_prompt_targets WHERE prompt_id='{pid}' AND is_global=true;")
-    st = _scalar(f"SELECT applicability_status FROM writing_prompt_targets WHERE prompt_id='{pid}' AND is_global=true;")
-    assert rows == "1" and st == "excluded"
-
-
-def test_remove_target_deletes_and_audits():
-    pid = _create_id(_base_payload())
-    _set_target(pid, is_global="true")
-    tid = _scalar(f"SELECT id FROM writing_prompt_targets WHERE prompt_id='{pid}' AND is_global=true;")
-    proc = _try(f"SELECT cms_remove_writing_prompt_target('{tid}','{_REASON}','{_ACTOR}'::uuid,'op@x');")
-    assert proc.returncode == 0, proc.stderr
-    assert _scalar(f"SELECT count(*) FROM writing_prompt_targets WHERE id='{tid}';") == "0"
-    a = _scalar(f"SELECT count(*) FROM admin_audit_logs WHERE entity_id='{tid}' AND action='writing_prompt_target_remove';")
+    tid = _propose_target_id(pid, is_global="true")
+    st = _scalar(f"SELECT applicability_status FROM writing_prompt_targets WHERE id='{tid}';")
+    assert st == "pending_review", "manage may only PROPOSE an inert assignment"
+    a = _scalar(f"SELECT count(*) FROM admin_audit_logs WHERE entity_id='{tid}' AND action='writing_prompt_target_propose';")
     assert a == "1"
 
 
+def test_propose_zero_scope_rejected():
+    pid = _create_id(_base_payload())
+    proc = _propose_target(pid)
+    assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
+
+
+def test_propose_duplicate_scope_rejected_409():
+    pid = _create_id(_base_payload())
+    _propose_target_id(pid, is_global="true")
+    proc = _propose_target(pid, is_global="true")
+    assert proc.returncode != 0 and "target_exists" in proc.stderr, proc.stderr
+
+
+def test_review_promotes_pending_to_active_and_audits_old_new():
+    pid = _create_id(_base_payload())
+    tid = _propose_target_id(pid, is_global="true")
+    proc = _review_target(tid, "active")
+    assert proc.returncode == 0, proc.stderr
+    assert _scalar(f"SELECT applicability_status FROM writing_prompt_targets WHERE id='{tid}';") == "active"
+    # audit carries the EXACT old (pending_review) and new (active) rows.
+    row = _scalar(
+        f"SELECT (old_value->>'applicability_status')||'->'||(new_value->>'applicability_status') "
+        f"FROM admin_audit_logs WHERE entity_id='{tid}' AND action='writing_prompt_target_review' "
+        f"ORDER BY created_at DESC LIMIT 1;")
+    assert row == "pending_review->active"
+
+
+def test_review_global_exclude_rejected():
+    pid = _create_id(_base_payload())
+    tid = _propose_target_id(pid, is_global="true")
+    proc = _review_target(tid, "excluded")
+    assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
+
+
+def test_review_exam_scope_exclude_allowed():
+    pid = _create_id(_base_payload())
+    ex = _scalar("INSERT INTO exams DEFAULT VALUES RETURNING id;")
+    tid = _propose_target_id(pid, exam=ex)
+    proc = _review_target(tid, "excluded")
+    assert proc.returncode == 0, proc.stderr
+    assert _scalar(f"SELECT applicability_status FROM writing_prompt_targets WHERE id='{tid}';") == "excluded"
+
+
+def test_review_target_requires_cas_token():
+    pid = _create_id(_base_payload())
+    tid = _propose_target_id(pid, is_global="true")
+    proc = _review_target(tid, "active", updated_at="NULL")
+    assert proc.returncode != 0 and "concurrent_modification" in proc.stderr, proc.stderr
+
+
+def test_review_target_stale_token_rejected():
+    pid = _create_id(_base_payload())
+    tid = _propose_target_id(pid, is_global="true")
+    proc = _review_target(tid, "active", updated_at="2000-01-01T00:00:00Z")
+    assert proc.returncode != 0 and "concurrent_modification" in proc.stderr, proc.stderr
+
+
+def test_concurrent_target_review_serialized_exactly_one_wins():
+    pid = _create_id(_base_payload())
+    tid = _propose_target_id(pid, is_global="true")
+    token = _target_updated_at(tid)
+    call = (f"SELECT cms_review_writing_prompt_target('{tid}','{token}'::timestamptz,'active',NULL,"
+            f"'{_REASON}','{_ACTOR}'::uuid,'op@x');")
+    procs = [subprocess.Popen([_PSQL, _DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", call],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+             for _ in range(2)]
+    results = [(p.wait(), p.communicate()[1]) for p in procs]
+    rcs = [rc for rc, _ in results]
+    assert rcs.count(0) == 1, f"exactly one review must win: {results}"
+    loser = next(err for rc, err in results if rc != 0)
+    assert "concurrent_modification" in loser, loser
+
+
+def test_remove_target_cas_and_exact_old_audit():
+    pid = _create_id(_base_payload())
+    tid = _propose_target_id(pid, is_global="true")
+    _review_target(tid, "active")
+    proc = _remove_target(tid)
+    assert proc.returncode == 0, proc.stderr
+    assert _scalar(f"SELECT count(*) FROM writing_prompt_targets WHERE id='{tid}';") == "0"
+    old_status = _scalar(
+        f"SELECT old_value->>'applicability_status' FROM admin_audit_logs "
+        f"WHERE entity_id='{tid}' AND action='writing_prompt_target_remove' ORDER BY created_at DESC LIMIT 1;")
+    assert old_status == "active", "removal must audit the exact old row (not NULL)"
+
+
+def test_remove_target_requires_cas_token():
+    pid = _create_id(_base_payload())
+    tid = _propose_target_id(pid, is_global="true")
+    proc = _remove_target(tid, updated_at="NULL")
+    assert proc.returncode != 0 and "concurrent_modification" in proc.stderr, proc.stderr
+
+
 def test_remove_missing_target_is_not_found():
-    proc = _try(f"SELECT cms_remove_writing_prompt_target(gen_random_uuid(),'{_REASON}','{_ACTOR}'::uuid,'op@x');")
+    proc = _remove_target("00000000-0000-0000-0000-0000000000ff",
+                          updated_at="2026-07-01T00:00:00Z")
     assert proc.returncode != 0 and "not_found" in proc.stderr, proc.stderr
 
 
@@ -446,10 +642,15 @@ def test_remove_missing_target_is_not_found():
 
 
 def test_rpcs_revoked_from_anon_and_authenticated():
-    for role in ("anon", "authenticated"):
-        ok = _scalar(
-            "SELECT has_function_privilege('%s','cms_create_writing_prompt(jsonb, text, uuid, text)','EXECUTE');" % role)
-        assert ok == "f", f"{role} must NOT execute cms_create_writing_prompt"
-    svc = _scalar(
-        "SELECT has_function_privilege('service_role','cms_create_writing_prompt(jsonb, text, uuid, text)','EXECUTE');")
-    assert svc == "t", "service_role must execute cms_create_writing_prompt"
+    sigs = [
+        "cms_create_writing_prompt(jsonb, text, uuid, text)",
+        "cms_propose_writing_prompt_target(uuid, boolean, uuid, uuid, uuid, numeric, text, uuid, text)",
+        "cms_review_writing_prompt_target(uuid, timestamptz, text, numeric, text, uuid, text)",
+        "cms_remove_writing_prompt_target(uuid, timestamptz, text, uuid, text)",
+    ]
+    for sig in sigs:
+        for role in ("anon", "authenticated"):
+            ok = _scalar(f"SELECT has_function_privilege('{role}','{sig}','EXECUTE');")
+            assert ok == "f", f"{role} must NOT execute {sig}"
+        svc = _scalar(f"SELECT has_function_privilege('service_role','{sig}','EXECUTE');")
+        assert svc == "t", f"service_role must execute {sig}"
