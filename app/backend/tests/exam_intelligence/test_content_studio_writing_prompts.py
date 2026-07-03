@@ -1,0 +1,489 @@
+"""Router-layer tests for Content Studio writing-prompt operations.
+
+Covers the subject-scoped `/api/admin/content-studio` surface (migration 215 +
+`app/api/content_studio.py`) at the FastAPI boundary — permission gating,
+strict Pydantic validation, read filters, the reviewer-transition guard, and
+RPC error-code → HTTP mapping. The atomic RPC *behaviour* (audit rows, CAS,
+verified-lock, bulk lifecycle, scope validation) is proven against real
+Postgres in ``tests/study_os/test_content_studio_ops_pg_behaviour.py``.
+
+Key architecture facts enforced here:
+  - content is SUBJECT-scoped (subject_id/topic_id/microtopic_id); there are NO
+    exam columns on writing_prompts (migration 214 dropped them),
+  - authoring/curation/bulk = content_studio.author; review = content_studio.review;
+    reads = author OR review OR exam_intelligence.manage OR super_admin,
+  - applicability (writing_prompt_targets / "Exam Assignments") = exam_intelligence.manage,
+  - there is NO activate endpoint (activation is gated by migration 214).
+"""
+from __future__ import annotations
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from app.api import content_studio as cs
+from app.core.auth import get_current_user
+from tests.persona_questions._stub import SBStub, _Exec, _Query
+
+_BASE = "/api/admin/content-studio"
+AUTHOR = cs.PERM_AUTHOR
+REVIEW = cs.PERM_REVIEW
+ASSIGN = cs.PERM_ASSIGN
+
+_SUBJECT = "00000000-0000-0000-0000-0000000000a1"
+_TOPIC = "00000000-0000-0000-0000-0000000000b1"
+_MICRO = "00000000-0000-0000-0000-0000000000c1"
+_PROMPT = "00000000-0000-0000-0000-0000000000d1"
+_EXAM = "00000000-0000-0000-0000-0000000000e1"
+
+
+class _CSQuery(_Query):
+    """Adds ilike / range / count='exact' on the read path (like _MngQuery)."""
+
+    def __init__(self, name, db):
+        super().__init__(name, db)
+        self._count_exact = False
+        self._range = None
+
+    def select(self, *args, **kwargs):
+        if kwargs.get("count") == "exact":
+            self._count_exact = True
+        return self
+
+    def ilike(self, key, pattern):
+        self.filters.append((key, "ilike", str(pattern).strip("%").lower()))
+        return self
+
+    def range(self, lo, hi):
+        self._range = (lo, hi)
+        return self
+
+    def execute(self):
+        if (self._pending_insert is not None or self._pending_update is not None
+                or self._pending_upsert is not None):
+            return super().execute()
+        ilikes = [(k, v) for (k, op, v) in self.filters if op == "ilike"]
+        self.filters = [f for f in self.filters if f[1] != "ilike"]
+        res = super().execute()
+        data = list(res.data)
+        for k, needle in ilikes:
+            data = [r for r in data if isinstance(r.get(k), str) and needle in r[k].lower()]
+        out = _Exec(data)
+        if self._count_exact:
+            out.count = len(data)
+        if self._range:
+            lo, hi = self._range
+            out.data = data[lo:hi + 1]
+        return out
+
+
+class _CSRpc:
+    """Records the call and returns a canned success dict, or raises a canned
+    exception so the router's ``_map_rpc_error`` can be exercised."""
+
+    def __init__(self, stub, fn_name, params):
+        self._stub = stub
+        self._fn_name = fn_name
+        self._params = params
+
+    def execute(self):
+        self._stub.rpc_calls.append((self._fn_name, self._params))
+        if self._stub.rpc_error is not None:
+            raise RuntimeError(self._stub.rpc_error)
+        return _Exec(self._stub.rpc_result if self._stub.rpc_result is not None
+                     else {"ok": True, "audit_id": "aud-1", "prompt_id": _PROMPT})
+
+
+class CSSBStub(SBStub):
+    def __init__(self, db=None):
+        super().__init__(db)
+        self.rpc_calls: list[tuple[str, dict]] = []
+        self.rpc_error: str | None = None
+        self.rpc_result = None
+
+    def table(self, name: str):
+        return _CSQuery(name, self.db)
+
+    def rpc(self, fn_name: str, params: dict | None = None):
+        return _CSRpc(self, fn_name, params or {})
+
+
+def _client(sb: CSSBStub, *, permissions=None, role="admin") -> TestClient:
+    app = FastAPI()
+    app.include_router(cs.router, prefix="/api")
+    cs.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    app.dependency_overrides[cs._flag_enabled] = lambda: None
+    app.dependency_overrides[get_current_user] = lambda: {
+        "id": "op-1",
+        "email": "op@example.com",
+        "role": role,
+        "permissions": permissions if permissions is not None else [AUTHOR],
+        "is_anonymous": False,
+    }
+    return TestClient(app, raise_server_exceptions=False)
+
+
+def _seed() -> dict:
+    return {
+        "writing_prompts": [
+            {"id": _PROMPT, "subject_id": _SUBJECT, "topic_id": _TOPIC,
+             "microtopic_id": None, "exercise_type": "sentence_construction",
+             "prompt_text": "Write a sentence.", "difficulty_level": 1,
+             "min_words": 5, "max_words": 20, "max_rewrite_attempts": 3,
+             "reviewer_status": "pending", "is_active": False,
+             "metadata": {}, "updated_at": "2026-07-01T00:00:00Z",
+             "created_at": "2026-07-01T00:00:00Z"},
+        ],
+        "writing_prompt_targets": [],
+        "admin_audit_logs": [],
+    }
+
+
+def _valid_payload(**over) -> dict:
+    body = {"subject_id": _SUBJECT, "topic_id": _TOPIC,
+            "exercise_type": "sentence_construction",
+            "prompt_text": "Compose one grammatical sentence.",
+            "difficulty_level": 3, "min_words": 5, "max_words": 30}
+    body.update(over)
+    return body
+
+
+def _bulk_row(**over) -> dict:
+    """A bulk row carries no subject_id (subject is body-level, idempotency scope)."""
+    row = _valid_payload(**over)
+    row.pop("subject_id", None)
+    return row
+
+
+# ── read permission gating ────────────────────────────────────────────────
+
+
+def test_list_readable_by_author_review_manage_and_super_admin():
+    for perms, role in (([AUTHOR], "admin"), ([REVIEW], "admin"),
+                        ([ASSIGN], "admin"), ([], "super_admin")):
+        sb = CSSBStub(_seed())
+        r = _client(sb, permissions=perms, role=role).get(f"{_BASE}/writing-prompts")
+        assert r.status_code == 200, (perms, role, r.text)
+
+
+def test_list_denied_without_any_content_permission():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=["some.other"]).get(f"{_BASE}/writing-prompts")
+    assert r.status_code == 403
+
+
+def test_list_denied_for_anonymous():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[AUTHOR], role="user").get(f"{_BASE}/writing-prompts")
+    # role user with author perm passes; flip to anonymous:
+    app = FastAPI()
+    app.include_router(cs.router, prefix="/api")
+    cs.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    app.dependency_overrides[cs._flag_enabled] = lambda: None
+    app.dependency_overrides[get_current_user] = lambda: {
+        "id": "anon", "role": "user", "permissions": [AUTHOR], "is_anonymous": True}
+    r2 = TestClient(app, raise_server_exceptions=False).get(f"{_BASE}/writing-prompts")
+    assert r.status_code == 200 and r2.status_code == 403
+
+
+# ── read filters ──────────────────────────────────────────────────────────
+
+
+def test_list_filters_by_subject_and_status():
+    seed = _seed()
+    seed["writing_prompts"].append(
+        {"id": "p2", "subject_id": "other", "topic_id": _TOPIC,
+         "exercise_type": "sentence_correction", "prompt_text": "x",
+         "difficulty_level": 1, "reviewer_status": "verified", "is_active": True,
+         "metadata": {}, "created_at": "2026-07-02T00:00:00Z"})
+    sb = CSSBStub(seed)
+    r = _client(sb).get(f"{_BASE}/writing-prompts?subject_id={_SUBJECT}&reviewer_status=pending")
+    assert r.status_code == 200, r.text
+    ids = {p["id"] for p in r.json()["items"]}
+    assert ids == {_PROMPT}
+
+
+def test_list_text_search_matches_prompt_text():
+    sb = CSSBStub(_seed())
+    r = _client(sb).get(f"{_BASE}/writing-prompts?q=grammat")
+    assert r.status_code == 200, r.text
+    assert r.json()["items"] == []  # seeded prompt_text has no 'grammat'
+    r2 = _client(sb).get(f"{_BASE}/writing-prompts?q=sentence")
+    assert {p["id"] for p in r2.json()["items"]} == {_PROMPT}
+
+
+def test_get_returns_404_when_absent():
+    sb = CSSBStub(_seed())
+    r = _client(sb).get(f"{_BASE}/writing-prompts/does-not-exist")
+    assert r.status_code == 404
+
+
+def test_get_returns_prompt():
+    sb = CSSBStub(_seed())
+    r = _client(sb).get(f"{_BASE}/writing-prompts/{_PROMPT}")
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == _PROMPT
+
+
+# ── create: permission + strict validation ────────────────────────────────
+
+
+def test_create_denied_without_author():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/writing-prompts",
+        json={"reason": "add a prompt", "payload": _valid_payload()})
+    assert r.status_code == 403
+
+
+def test_create_happy_path_calls_rpc():
+    sb = CSSBStub(_seed())
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts",
+        json={"reason": "add a canonical prompt", "payload": _valid_payload()})
+    assert r.status_code == 200, r.text
+    assert sb.rpc_calls and sb.rpc_calls[-1][0] == "cms_create_writing_prompt"
+    sent = sb.rpc_calls[-1][1]["p_payload"]
+    assert sent["subject_id"] == _SUBJECT and "id" not in sent
+
+
+def test_create_rejects_unknown_field():
+    sb = CSSBStub(_seed())
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts",
+        json={"reason": "sneak an extra field", "payload": _valid_payload(exam_id=_EXAM)})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_create_rejects_explicit_null_on_not_null_column():
+    sb = CSSBStub(_seed())
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts",
+        json={"reason": "explicit null topic", "payload": _valid_payload(topic_id=None)})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_create_rejects_max_words_below_min():
+    sb = CSSBStub(_seed())
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts",
+        json={"reason": "invalid word bounds", "payload": _valid_payload(min_words=30, max_words=10)})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_create_requires_subject_id():
+    sb = CSSBStub(_seed())
+    payload = _valid_payload()
+    payload.pop("subject_id")
+    r = _client(sb).post(f"{_BASE}/writing-prompts",
+                         json={"reason": "missing subject", "payload": payload})
+    assert r.status_code == 422
+
+
+# ── patch: merged word-bound validation + verified-lock mapping ────────────
+
+
+def test_patch_merged_min_max_validation_uses_stored_values():
+    # stored min_words=5; patch only max_words=3 → merged 3 < 5 → 422.
+    sb = CSSBStub(_seed())
+    r = _client(sb).patch(
+        f"{_BASE}/writing-prompts/{_PROMPT}",
+        json={"reason": "shrink max below stored min", "payload": {"max_words": 3}})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_patch_empty_payload_rejected():
+    sb = CSSBStub(_seed())
+    r = _client(sb).patch(f"{_BASE}/writing-prompts/{_PROMPT}",
+                          json={"reason": "no fields at all", "payload": {}})
+    assert r.status_code == 422
+
+
+def test_patch_404_when_prompt_absent():
+    sb = CSSBStub(_seed())
+    r = _client(sb).patch(f"{_BASE}/writing-prompts/nope",
+                          json={"reason": "patch a ghost", "payload": {"difficulty_level": 4}})
+    assert r.status_code == 404
+
+
+def test_patch_maps_verified_locked_to_422():
+    sb = CSSBStub(_seed())
+    sb.rpc_error = "prompt_verified_locked: demote via review first"
+    r = _client(sb).patch(f"{_BASE}/writing-prompts/{_PROMPT}",
+                          json={"reason": "edit a verified prompt", "payload": {"difficulty_level": 4}})
+    assert r.status_code == 422
+    assert r.json()["detail"]["error"] == "prompt_verified_locked"
+
+
+def test_patch_maps_concurrent_modification_to_409():
+    sb = CSSBStub(_seed())
+    sb.rpc_error = "concurrent_modification: prompt changed since read"
+    r = _client(sb).patch(f"{_BASE}/writing-prompts/{_PROMPT}",
+                          json={"reason": "stale write attempt", "payload": {"difficulty_level": 4}})
+    assert r.status_code == 409
+
+
+# ── review: transition guard + permission ─────────────────────────────────
+
+
+def test_review_denied_without_review_permission():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[AUTHOR]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/review",
+        json={"status": "verified", "reason": "author cannot review"})
+    assert r.status_code == 403
+
+
+def test_review_rejects_unknown_status():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/review",
+        json={"status": "published", "reason": "not a real status"})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_review_rejects_disallowed_transition():
+    seed = _seed()
+    seed["writing_prompts"][0]["reviewer_status"] = "rejected"
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/review",
+        json={"status": "verified", "reason": "rejected is terminal"})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_review_happy_path_pending_to_verified():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/review",
+        json={"status": "verified", "reason": "content looks correct"})
+    assert r.status_code == 200, r.text
+    assert sb.rpc_calls[-1][0] == "cms_review_writing_prompt"
+    assert sb.rpc_calls[-1][1]["p_expected_status"] == "pending"
+
+
+def test_review_404_when_prompt_absent():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/writing-prompts/ghost/review",
+        json={"status": "verified", "reason": "reviewing a ghost"})
+    assert r.status_code == 404
+
+
+# ── bulk import ───────────────────────────────────────────────────────────
+
+
+def test_bulk_requires_external_key_per_row():
+    sb = CSSBStub(_seed())
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts/bulk",
+        json={"reason": "import without keys", "subject_id": _SUBJECT,
+              "rows": [_bulk_row()]})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_bulk_happy_path_passes_subject_and_rows():
+    sb = CSSBStub(_seed())
+    sb.rpc_result = {"ok": True, "created": 2, "updated": 0, "unchanged": 0}
+    rows = [_bulk_row(external_key="ek-1"),
+            _bulk_row(external_key="ek-2", prompt_text="Another sentence here.")]
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts/bulk",
+        json={"reason": "seed two prompts", "subject_id": _SUBJECT, "rows": rows})
+    assert r.status_code == 200, r.text
+    call = sb.rpc_calls[-1]
+    assert call[0] == "cms_bulk_upsert_writing_prompts"
+    assert call[1]["p_subject_id"] == _SUBJECT
+    assert len(call[1]["p_rows"]) == 2
+
+
+def test_bulk_rejects_unknown_field_in_row():
+    sb = CSSBStub(_seed())
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts/bulk",
+        json={"reason": "row with exam column", "subject_id": _SUBJECT,
+              "rows": [_bulk_row(external_key="ek-1", exam_id=_EXAM)]})
+    assert r.status_code == 422
+
+
+def test_bulk_maps_locked_row_to_422():
+    sb = CSSBStub(_seed())
+    sb.rpc_error = "bulk_locked_row: external_key ek-1 is verified"
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts/bulk",
+        json={"reason": "reimport onto verified", "subject_id": _SUBJECT,
+              "rows": [_bulk_row(external_key="ek-1")]})
+    assert r.status_code == 422
+
+
+# ── Exam Assignments (writing_prompt_targets) ─────────────────────────────
+
+
+def test_set_target_requires_assign_permission():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[AUTHOR]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/targets",
+        json={"reason": "author cannot assign", "is_global": True})
+    assert r.status_code == 403
+
+
+def test_set_target_happy_path_calls_rpc():
+    sb = CSSBStub(_seed())
+    sb.rpc_result = {"ok": True, "target_id": "t-1"}
+    r = _client(sb, permissions=[ASSIGN]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/targets",
+        json={"reason": "make globally applicable", "is_global": True})
+    assert r.status_code == 200, r.text
+    assert sb.rpc_calls[-1][0] == "cms_set_writing_prompt_target"
+    assert sb.rpc_calls[-1][1]["p_is_global"] is True
+
+
+def test_set_target_maps_invalid_scope_to_422():
+    sb = CSSBStub(_seed())
+    sb.rpc_error = "invalid_scope: exactly one of {...} required"
+    r = _client(sb, permissions=[ASSIGN]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/targets",
+        json={"reason": "zero scopes provided", "is_global": False})
+    assert r.status_code == 422
+
+
+def test_list_targets_readable_by_content_reader():
+    seed = _seed()
+    seed["writing_prompt_targets"].append(
+        {"id": "t-1", "prompt_id": _PROMPT, "is_global": True,
+         "applicability_status": "active", "created_at": "2026-07-01T00:00:00Z"})
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[REVIEW]).get(f"{_BASE}/writing-prompts/{_PROMPT}/targets")
+    assert r.status_code == 200, r.text
+    assert {t["id"] for t in r.json()["items"]} == {"t-1"}
+
+
+def test_remove_target_requires_assign_permission():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/writing-prompt-targets/t-1/remove",
+        json={"reason": "reviewer cannot unassign"})
+    assert r.status_code == 403
+
+
+def test_remove_target_maps_not_found_to_404():
+    sb = CSSBStub(_seed())
+    sb.rpc_error = "not_found: writing_prompt_target does not exist"
+    r = _client(sb, permissions=[ASSIGN]).post(
+        f"{_BASE}/writing-prompt-targets/ghost/remove",
+        json={"reason": "removing a ghost target"})
+    assert r.status_code == 404
+
+
+# ── there is NO activate endpoint (activation is gated by migration 214) ───
+
+
+def test_no_activate_route_is_registered():
+    paths = {r.path for r in cs.router.routes}
+    assert not any("activate" in p or p.endswith("/active") for p in paths)
