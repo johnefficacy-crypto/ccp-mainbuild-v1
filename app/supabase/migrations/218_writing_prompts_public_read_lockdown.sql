@@ -1,0 +1,78 @@
+-- ============================================================================
+-- 218_writing_prompts_public_read_lockdown.sql
+--
+-- English Writing Practice — remove the raw client read bypass on
+-- `public.writing_prompts` (the third and final leg of migration 214's
+-- ACTIVATION GATE, alongside the applicability resolver + session/planner
+-- enforcement shipped in this same PR).
+--
+-- WHY (fail-open bypass 214 flagged and could not itself close):
+--   Migration 205 §12 created:
+--     CREATE POLICY writing_prompts_public_read ON public.writing_prompts
+--       FOR SELECT USING (reviewer_status = 'verified' AND is_active = true);
+--   That policy lets ANY authenticated/anon client read (and therefore launch
+--   against) every verified+active prompt DIRECTLY — bypassing
+--   `writing_prompt_targets`, which migration 214 declared the SOLE
+--   applicability authority under DEFAULT-DENY semantics. While that policy
+--   exists, applicability is not actually enforced on the read path: a prompt
+--   with NO active target — or one explicitly EXCLUDED for the aspirant's exam —
+--   would still be visible/launchable. That is exactly the fail-open hole 214
+--   deactivated all prompts to hold shut.
+--
+-- WHAT THIS MIGRATION DOES:
+--   DROP the `writing_prompts_public_read` policy and DO NOT replace it with any
+--   client allow policy. `writing_prompts` keeps RLS ENABLED (migration 205
+--   §12), so with no SELECT policy anon/authenticated clients get ZERO rows —
+--   fail-closed. Prompt content now reaches aspirants ONLY through the backend,
+--   which:
+--     * reads `writing_prompts` via the SERVICE ROLE (bypasses RLS), and
+--     * gates every launch through the applicability resolver
+--       (`app.study_os.writing_practice.applicability`) + the session-creation
+--       enforcement in `app/api/writing_practice.py`.
+--   This mirrors the migration-205 §12.2 / migration-214 §4 service-role-managed
+--   posture already used for `writing_prompt_targets`: applicability stays an
+--   implementation detail of verified-only reads; aspirant surfaces never read
+--   raw prompt rows, they receive the resolver's already-filtered result.
+--
+--   `exam_descriptive_requirements_public_read` (also created by 205 §12) is
+--   INTENTIONALLY LEFT IN PLACE: requirements are exam-cycle-scoped official
+--   metadata (word limits/marks/format), NOT launchable content, and are not an
+--   applicability bypass. This migration touches ONLY the prompt read policy.
+--
+-- No new table is created, so no new RLS policy is required. This is a policy
+-- removal on an existing RLS-enabled table.
+--
+-- IDEMPOTENCY: `DROP POLICY IF EXISTS` — safe to re-apply; a second apply is a
+-- no-op. No data writes. No AI writes.
+--
+-- MIGRATION NUMBER (AGENTS.md EWP-9 + .github/workflows/migration-numbers.yml):
+--   Filesystem max on `main` is 217 (`217_evidence_derived_coverage.sql`), so
+--   218 is the only contiguous slot the CI `validate` guard accepts (MAX_ON_MAIN
+--   + 1). The filename MUST NOT be renamed.
+--   The LIVE `schema_migrations` max CANNOT be queried from the CI container and
+--   is reconciled by the operator at apply time. Recorded as VERIFY DB /
+--   OPERATOR PENDING in docs/status/career-copilot-checklist.md with the
+--   apply-order note (pending 213 → 214 → 215 → 216 → 217 → 218; do not apply
+--   218 before 214/215).
+--
+-- POST-APPLY VERIFICATION (OPERATOR / VERIFY DB):
+--   SELECT * FROM pg_policies WHERE tablename = 'writing_prompts';
+--     must NOT list `writing_prompts_public_read` (no client SELECT policy on
+--     writing_prompts remains).
+--   SELECT relrowsecurity FROM pg_class
+--     WHERE oid = 'public.writing_prompts'::regclass;   -- must be `t` (RLS on).
+-- ============================================================================
+
+DROP POLICY IF EXISTS writing_prompts_public_read ON public.writing_prompts;
+
+-- Defense-in-depth: RLS was enabled by migration 205 §12; assert it is still on
+-- so that dropping the only client SELECT policy truly fails closed rather than
+-- silently exposing the table (a table with RLS disabled ignores the absence of
+-- policies).
+ALTER TABLE public.writing_prompts ENABLE ROW LEVEL SECURITY;
+
+-- No CREATE POLICY: the zero-client-policy posture is deliberate (service-role
+-- reads only). Do NOT add a SELECT policy back without an explicit architecture
+-- decision that restores an applicability-aware read path.
+
+SELECT pg_notify('pgrst', 'reload schema');
