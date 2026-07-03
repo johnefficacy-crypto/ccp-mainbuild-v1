@@ -1,906 +1,902 @@
-{
-  "reason": "Seed batch: grammar-rule correction prompts (pending review).",
-  "subject_id": "dae70ac3-f38c-2a75-7e4c-ce7b7aae85fd",
-  "rows": [
-    {
-      "external_key": "ewp-seed-gram-001",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "The list of items are on the desk."
-    },
-    {
-      "external_key": "ewp-seed-gram-002",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "Each of the players have a locker in the room."
-    },
-    {
-      "external_key": "ewp-seed-gram-003",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "Neither the teacher nor the students was ready for the test."
-    },
-    {
-      "external_key": "ewp-seed-gram-004",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "There is many reasons to celebrate today."
-    },
-    {
-      "external_key": "ewp-seed-gram-005",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "One of my friends live in Canada."
-    },
-    {
-      "external_key": "ewp-seed-gram-006",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "The quality of the roads have improved a lot."
-    },
-    {
-      "external_key": "ewp-seed-gram-007",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "Mathematics are my favourite subject."
-    },
-    {
-      "external_key": "ewp-seed-gram-008",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "The number of applicants were higher this year."
-    },
-    {
-      "external_key": "ewp-seed-gram-009",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "A pair of scissors were lying on the table."
-    },
-    {
-      "external_key": "ewp-seed-gram-010",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "Everybody in the class have submitted the form."
-    },
-    {
-      "external_key": "ewp-seed-gram-011",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "The news about the floods were alarming."
-    },
-    {
-      "external_key": "ewp-seed-gram-012",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "Ten kilometres are a long way to walk."
-    },
-    {
-      "external_key": "ewp-seed-gram-013",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 5,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "Bread and butter are all he eats for breakfast."
-    },
-    {
-      "external_key": "ewp-seed-gram-014",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
-      "source_text": "My trousers is torn at the knee."
-    },
-    {
-      "external_key": "ewp-seed-gram-015",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "She has finished her lunch an hour ago."
-    },
-    {
-      "external_key": "ewp-seed-gram-016",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "I am knowing the answer to this question."
-    },
-    {
-      "external_key": "ewp-seed-gram-017",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "When I reached the station, the train already left."
-    },
-    {
-      "external_key": "ewp-seed-gram-018",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "He said that he will call me the next day."
-    },
-    {
-      "external_key": "ewp-seed-gram-019",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "They are living here since 2015."
-    },
-    {
-      "external_key": "ewp-seed-gram-020",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 5,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "If I would have known, I would have helped you."
-    },
-    {
-      "external_key": "ewp-seed-gram-021",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 5,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "By next month, I will complete two years at this office."
-    },
-    {
-      "external_key": "ewp-seed-gram-022",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "She was used to walk to school every morning."
-    },
-    {
-      "external_key": "ewp-seed-gram-023",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "I have seen that film yesterday."
-    },
-    {
-      "external_key": "ewp-seed-gram-024",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "While he cooked, the phone was ringing twice."
-    },
-    {
-      "external_key": "ewp-seed-gram-025",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 5,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "Water boils at 100 degrees, everyone knew that even before it was discovered."
-    },
-    {
-      "external_key": "ewp-seed-gram-026",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "He is having a car and a motorbike."
-    },
-    {
-      "external_key": "ewp-seed-gram-027",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 5,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "No sooner had I left than it starts to rain."
-    },
-    {
-      "external_key": "ewp-seed-gram-028",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-      "source_text": "They were playing cricket since morning."
-    },
-    {
-      "external_key": "ewp-seed-gram-029",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "She is honest girl who never lies."
-    },
-    {
-      "external_key": "ewp-seed-gram-030",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "He wants to become a engineer."
-    },
-    {
-      "external_key": "ewp-seed-gram-031",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "The Mount Everest is the highest peak in the world."
-    },
-    {
-      "external_key": "ewp-seed-gram-032",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "I bought an university sweatshirt yesterday."
-    },
-    {
-      "external_key": "ewp-seed-gram-033",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "She plays the football every evening."
-    },
-    {
-      "external_key": "ewp-seed-gram-034",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "He was sent to the prison for the theft."
-    },
-    {
-      "external_key": "ewp-seed-gram-035",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "Sun rises in the east."
-    },
-    {
-      "external_key": "ewp-seed-gram-036",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "She is best singer in our school."
-    },
-    {
-      "external_key": "ewp-seed-gram-037",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "We had a breakfast at eight o'clock."
-    },
-    {
-      "external_key": "ewp-seed-gram-038",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "He is an one-eyed man with a kind face."
-    },
-    {
-      "external_key": "ewp-seed-gram-039",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "A honest officer refused the bribe."
-    },
-    {
-      "external_key": "ewp-seed-gram-040",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
-      "source_text": "I met him a hour before the show."
-    },
-    {
-      "external_key": "ewp-seed-gram-041",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "She is married with a doctor."
-    },
-    {
-      "external_key": "ewp-seed-gram-042",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "He has been ill since three days."
-    },
-    {
-      "external_key": "ewp-seed-gram-043",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "I am good in mathematics."
-    },
-    {
-      "external_key": "ewp-seed-gram-044",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "The cat jumped in the wall."
-    },
-    {
-      "external_key": "ewp-seed-gram-045",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "He was accused for stealing the money."
-    },
-    {
-      "external_key": "ewp-seed-gram-046",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "She is senior to me by two years, but reports directly under our manager."
-    },
-    {
-      "external_key": "ewp-seed-gram-047",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "We discussed about the plan for an hour."
-    },
-    {
-      "external_key": "ewp-seed-gram-048",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "He is fond for sweets and chocolate."
-    },
-    {
-      "external_key": "ewp-seed-gram-049",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "The train will arrive at five minutes."
-    },
-    {
-      "external_key": "ewp-seed-gram-050",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "She has an advantage above the other players."
-    },
-    {
-      "external_key": "ewp-seed-gram-051",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "They reached to the airport in time."
-    },
-    {
-      "external_key": "ewp-seed-gram-052",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
-      "source_text": "He apologised for me for the delay."
-    },
-    {
-      "external_key": "ewp-seed-gram-053",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
-      "source_text": "Every student must bring their own pencil."
-    },
-    {
-      "external_key": "ewp-seed-gram-054",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
-      "source_text": "Between you and I, the plan will not work."
-    },
-    {
-      "external_key": "ewp-seed-gram-055",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
-      "source_text": "The manager praised John and myself for the report."
-    },
-    {
-      "external_key": "ewp-seed-gram-056",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 5,
-      "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
-      "source_text": "Ravi told his brother that he had won the prize, though it was unclear who."
-    },
-    {
-      "external_key": "ewp-seed-gram-057",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
-      "source_text": "Each of the girls must carry her own bag, but they forgot theirs."
-    },
-    {
-      "external_key": "ewp-seed-gram-058",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
-      "source_text": "Me and my friend went to the fair together."
-    },
-    {
-      "external_key": "ewp-seed-gram-059",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
-      "source_text": "The dog wagged its tail when it saw it's owner."
-    },
-    {
-      "external_key": "ewp-seed-gram-060",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
-      "source_text": "Whom shall I say is calling, please?"
-    },
-    {
-      "external_key": "ewp-seed-gram-061",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
-      "source_text": "This is a secret between she and her sister."
-    },
-    {
-      "external_key": "ewp-seed-gram-062",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
-      "source_text": "Everyone should mind their own business."
-    },
-    {
-      "external_key": "ewp-seed-gram-063",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
-      "source_text": "Running down the street, my hat blew away."
-    },
-    {
-      "external_key": "ewp-seed-gram-064",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
-      "source_text": "She almost drove the children to school every day."
-    },
-    {
-      "external_key": "ewp-seed-gram-065",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
-      "source_text": "He only eats vegetables on Mondays and nothing else."
-    },
-    {
-      "external_key": "ewp-seed-gram-066",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
-      "source_text": "Covered in mud, the coach scolded the players."
-    },
-    {
-      "external_key": "ewp-seed-gram-067",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
-      "source_text": "I saw a puppy walking to the market."
-    },
-    {
-      "external_key": "ewp-seed-gram-068",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 5,
-      "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
-      "source_text": "To write well, practice is essential every day."
-    },
-    {
-      "external_key": "ewp-seed-gram-069",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
-      "source_text": "The waiter served a steak to the guest that was overcooked."
-    },
-    {
-      "external_key": "ewp-seed-gram-070",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 5,
-      "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
-      "source_text": "Barely two years old, my father taught me to swim."
-    },
-    {
-      "external_key": "ewp-seed-gram-071",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 5,
-      "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
-      "source_text": "She served sandwiches to the children on paper plates that were half eaten."
-    },
-    {
-      "external_key": "ewp-seed-gram-072",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 5,
-      "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
-      "source_text": "Hoping to win, the trophy seemed within his reach."
-    },
-    {
-      "external_key": "ewp-seed-gram-073",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "Lets eat grandma before the food gets cold."
-    },
-    {
-      "external_key": "ewp-seed-gram-074",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "The teacher said the exam is on friday."
-    },
-    {
-      "external_key": "ewp-seed-gram-075",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "Its raining again and the dog lost it's collar."
-    },
-    {
-      "external_key": "ewp-seed-gram-076",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "Where are you going she asked."
-    },
-    {
-      "external_key": "ewp-seed-gram-077",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "We bought apples oranges and bananas from the market."
-    },
-    {
-      "external_key": "ewp-seed-gram-078",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "My sister who lives in Delhi is a doctor."
-    },
-    {
-      "external_key": "ewp-seed-gram-079",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "He shouted stop the bus is leaving."
-    },
-    {
-      "external_key": "ewp-seed-gram-080",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "The childrens toys were scattered across the floor."
-    },
-    {
-      "external_key": "ewp-seed-gram-081",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "I have three hobbies reading painting and cycling."
-    },
-    {
-      "external_key": "ewp-seed-gram-082",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "She replied yes I will certainly come."
-    },
-    {
-      "external_key": "ewp-seed-gram-083",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "Its a long way to the top isnt it."
-    },
-    {
-      "external_key": "ewp-seed-gram-084",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "The mens room is at the end of the corridor."
-    },
-    {
-      "external_key": "ewp-seed-gram-085",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "He asked, whether the shop was open?"
-    },
-    {
-      "external_key": "ewp-seed-gram-086",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
-      "source_text": "Although it was late; we decided to continue."
-    },
-    {
-      "external_key": "ewp-seed-gram-087",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "He recieved the parcel on Monday morning."
-    },
-    {
-      "external_key": "ewp-seed-gram-088",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 2,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "It was a beautifull sunset over the sea."
-    },
-    {
-      "external_key": "ewp-seed-gram-089",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "The government made an important annoucement."
-    },
-    {
-      "external_key": "ewp-seed-gram-090",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "She was embarassed by the sudden question."
-    },
-    {
-      "external_key": "ewp-seed-gram-091",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "They faced a lot of dificulties on the trek."
-    },
-    {
-      "external_key": "ewp-seed-gram-092",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "The commitee will meet again next week."
-    },
-    {
-      "external_key": "ewp-seed-gram-093",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "He has a good knowlege of history."
-    },
-    {
-      "external_key": "ewp-seed-gram-094",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "Please seperate the waste before disposal."
-    },
-    {
-      "external_key": "ewp-seed-gram-095",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 4,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "The medicine had no noticable side effect."
-    },
-    {
-      "external_key": "ewp-seed-gram-096",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "We must maintain proper disipline in class."
-    },
-    {
-      "external_key": "ewp-seed-gram-097",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 2,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "The wether was pleasant throughout the trip."
-    },
-    {
-      "external_key": "ewp-seed-gram-098",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "Her arguement was clear and convincing."
-    },
-    {
-      "external_key": "ewp-seed-gram-099",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "He signed the form in the space provieded."
-    },
-    {
-      "external_key": "ewp-seed-gram-100",
-      "exercise_type": "sentence_correction",
-      "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
-      "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
-      "difficulty_level": 3,
-      "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
-      "source_text": "The manager gave a breif reply to the query."
-    }
-  ]
-}
+[
+  {
+    "external_key": "ewp-seed-gram-001",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "The list of items are on the desk."
+  },
+  {
+    "external_key": "ewp-seed-gram-002",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "Each of the players have a locker in the room."
+  },
+  {
+    "external_key": "ewp-seed-gram-003",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "Neither the teacher nor the students was ready for the test."
+  },
+  {
+    "external_key": "ewp-seed-gram-004",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "There is many reasons to celebrate today."
+  },
+  {
+    "external_key": "ewp-seed-gram-005",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "One of my friends live in Canada."
+  },
+  {
+    "external_key": "ewp-seed-gram-006",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "The quality of the roads have improved a lot."
+  },
+  {
+    "external_key": "ewp-seed-gram-007",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "Mathematics are my favourite subject."
+  },
+  {
+    "external_key": "ewp-seed-gram-008",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "The number of applicants were higher this year."
+  },
+  {
+    "external_key": "ewp-seed-gram-009",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "A pair of scissors were lying on the table."
+  },
+  {
+    "external_key": "ewp-seed-gram-010",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "Everybody in the class have submitted the form."
+  },
+  {
+    "external_key": "ewp-seed-gram-011",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "The news about the floods were alarming."
+  },
+  {
+    "external_key": "ewp-seed-gram-012",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "Ten kilometres are a long way to walk."
+  },
+  {
+    "external_key": "ewp-seed-gram-013",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 5,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "Bread and butter are all he eats for breakfast."
+  },
+  {
+    "external_key": "ewp-seed-gram-014",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the subject–verb agreement error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "source_text": "My trousers is torn at the knee."
+  },
+  {
+    "external_key": "ewp-seed-gram-015",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "She has finished her lunch an hour ago."
+  },
+  {
+    "external_key": "ewp-seed-gram-016",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "I am knowing the answer to this question."
+  },
+  {
+    "external_key": "ewp-seed-gram-017",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "When I reached the station, the train already left."
+  },
+  {
+    "external_key": "ewp-seed-gram-018",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "He said that he will call me the next day."
+  },
+  {
+    "external_key": "ewp-seed-gram-019",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "They are living here since 2015."
+  },
+  {
+    "external_key": "ewp-seed-gram-020",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 5,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "If I would have known, I would have helped you."
+  },
+  {
+    "external_key": "ewp-seed-gram-021",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 5,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "By next month, I will complete two years at this office."
+  },
+  {
+    "external_key": "ewp-seed-gram-022",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "She was used to walk to school every morning."
+  },
+  {
+    "external_key": "ewp-seed-gram-023",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "I have seen that film yesterday."
+  },
+  {
+    "external_key": "ewp-seed-gram-024",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "While he cooked, the phone was ringing twice."
+  },
+  {
+    "external_key": "ewp-seed-gram-025",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 5,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "Water boils at 100 degrees, everyone knew that even before it was discovered."
+  },
+  {
+    "external_key": "ewp-seed-gram-026",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "He is having a car and a motorbike."
+  },
+  {
+    "external_key": "ewp-seed-gram-027",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 5,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "No sooner had I left than it starts to rain."
+  },
+  {
+    "external_key": "ewp-seed-gram-028",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "source_text": "They were playing cricket since morning."
+  },
+  {
+    "external_key": "ewp-seed-gram-029",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "She is honest girl who never lies."
+  },
+  {
+    "external_key": "ewp-seed-gram-030",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "He wants to become a engineer."
+  },
+  {
+    "external_key": "ewp-seed-gram-031",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "The Mount Everest is the highest peak in the world."
+  },
+  {
+    "external_key": "ewp-seed-gram-032",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "I bought an university sweatshirt yesterday."
+  },
+  {
+    "external_key": "ewp-seed-gram-033",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "She plays the football every evening."
+  },
+  {
+    "external_key": "ewp-seed-gram-034",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "He was sent to the prison for the theft."
+  },
+  {
+    "external_key": "ewp-seed-gram-035",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "Sun rises in the east."
+  },
+  {
+    "external_key": "ewp-seed-gram-036",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "She is best singer in our school."
+  },
+  {
+    "external_key": "ewp-seed-gram-037",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "We had a breakfast at eight o'clock."
+  },
+  {
+    "external_key": "ewp-seed-gram-038",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "He is an one-eyed man with a kind face."
+  },
+  {
+    "external_key": "ewp-seed-gram-039",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "A honest officer refused the bribe."
+  },
+  {
+    "external_key": "ewp-seed-gram-040",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the article error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "source_text": "I met him a hour before the show."
+  },
+  {
+    "external_key": "ewp-seed-gram-041",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "She is married with a doctor."
+  },
+  {
+    "external_key": "ewp-seed-gram-042",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "He has been ill since three days."
+  },
+  {
+    "external_key": "ewp-seed-gram-043",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "I am good in mathematics."
+  },
+  {
+    "external_key": "ewp-seed-gram-044",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "The cat jumped in the wall."
+  },
+  {
+    "external_key": "ewp-seed-gram-045",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "He was accused for stealing the money."
+  },
+  {
+    "external_key": "ewp-seed-gram-046",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "She is senior to me by two years, but reports directly under our manager."
+  },
+  {
+    "external_key": "ewp-seed-gram-047",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "We discussed about the plan for an hour."
+  },
+  {
+    "external_key": "ewp-seed-gram-048",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "He is fond for sweets and chocolate."
+  },
+  {
+    "external_key": "ewp-seed-gram-049",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "The train will arrive at five minutes."
+  },
+  {
+    "external_key": "ewp-seed-gram-050",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "She has an advantage above the other players."
+  },
+  {
+    "external_key": "ewp-seed-gram-051",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "They reached to the airport in time."
+  },
+  {
+    "external_key": "ewp-seed-gram-052",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the preposition error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "source_text": "He apologised for me for the delay."
+  },
+  {
+    "external_key": "ewp-seed-gram-053",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "source_text": "Between you and I, the plan will not work."
+  },
+  {
+    "external_key": "ewp-seed-gram-054",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "source_text": "The manager praised John and myself for the report."
+  },
+  {
+    "external_key": "ewp-seed-gram-055",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "source_text": "She is taller than me, though I am older than her."
+  },
+  {
+    "external_key": "ewp-seed-gram-056",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "source_text": "Give the tickets to whoever wants them, but not to he."
+  },
+  {
+    "external_key": "ewp-seed-gram-057",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "source_text": "Me and my friend went to the fair together."
+  },
+  {
+    "external_key": "ewp-seed-gram-058",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "source_text": "The dog wagged its tail when it saw it's owner."
+  },
+  {
+    "external_key": "ewp-seed-gram-059",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "source_text": "Us students should support the new library rule."
+  },
+  {
+    "external_key": "ewp-seed-gram-060",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "source_text": "This is a secret between she and her sister."
+  },
+  {
+    "external_key": "ewp-seed-gram-061",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "source_text": "Him and I finished the project a day early."
+  },
+  {
+    "external_key": "ewp-seed-gram-062",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the pronoun / case error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "source_text": "The prize was shared between she and me."
+  },
+  {
+    "external_key": "ewp-seed-gram-063",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "source_text": "Running down the street, my hat blew away."
+  },
+  {
+    "external_key": "ewp-seed-gram-064",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "source_text": "She almost drove the children to school every day."
+  },
+  {
+    "external_key": "ewp-seed-gram-065",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "source_text": "He only eats vegetables on Mondays and nothing else."
+  },
+  {
+    "external_key": "ewp-seed-gram-066",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "source_text": "Covered in mud, the coach scolded the players."
+  },
+  {
+    "external_key": "ewp-seed-gram-067",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "source_text": "I saw a puppy walking to the market."
+  },
+  {
+    "external_key": "ewp-seed-gram-068",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 5,
+    "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "source_text": "To write well, practice is essential every day."
+  },
+  {
+    "external_key": "ewp-seed-gram-069",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "source_text": "The waiter served a steak to the guest that was overcooked."
+  },
+  {
+    "external_key": "ewp-seed-gram-070",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 5,
+    "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "source_text": "Barely two years old, my father taught me to swim."
+  },
+  {
+    "external_key": "ewp-seed-gram-071",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 5,
+    "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "source_text": "She served sandwiches to the children on paper plates that were half eaten."
+  },
+  {
+    "external_key": "ewp-seed-gram-072",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the misplaced or dangling modifier in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 5,
+    "microtopic_id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "source_text": "Hoping to win, the trophy seemed within his reach."
+  },
+  {
+    "external_key": "ewp-seed-gram-073",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "Lets eat grandma before the food gets cold."
+  },
+  {
+    "external_key": "ewp-seed-gram-074",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "The teacher said the exam is on friday."
+  },
+  {
+    "external_key": "ewp-seed-gram-075",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "Its raining again and the dog lost it's collar."
+  },
+  {
+    "external_key": "ewp-seed-gram-076",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "Where are you going she asked."
+  },
+  {
+    "external_key": "ewp-seed-gram-077",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "We bought apples oranges and bananas from the market."
+  },
+  {
+    "external_key": "ewp-seed-gram-078",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "My sister who lives in Delhi is a doctor."
+  },
+  {
+    "external_key": "ewp-seed-gram-079",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "He shouted stop the bus is leaving."
+  },
+  {
+    "external_key": "ewp-seed-gram-080",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "The childrens toys were scattered across the floor."
+  },
+  {
+    "external_key": "ewp-seed-gram-081",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "I have three hobbies reading painting and cycling."
+  },
+  {
+    "external_key": "ewp-seed-gram-082",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "She replied yes I will certainly come."
+  },
+  {
+    "external_key": "ewp-seed-gram-083",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "Its a long way to the top isnt it."
+  },
+  {
+    "external_key": "ewp-seed-gram-084",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "The mens room is at the end of the corridor."
+  },
+  {
+    "external_key": "ewp-seed-gram-085",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "He asked, whether the shop was open?"
+  },
+  {
+    "external_key": "ewp-seed-gram-086",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the punctuation error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "source_text": "Although it was late; we decided to continue."
+  },
+  {
+    "external_key": "ewp-seed-gram-087",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "He recieved the parcel on Monday morning."
+  },
+  {
+    "external_key": "ewp-seed-gram-088",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 2,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "It was a beautifull sunset over the sea."
+  },
+  {
+    "external_key": "ewp-seed-gram-089",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "The government made an important annoucement."
+  },
+  {
+    "external_key": "ewp-seed-gram-090",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "She was embarassed by the sudden question."
+  },
+  {
+    "external_key": "ewp-seed-gram-091",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "They faced a lot of dificulties on the trek."
+  },
+  {
+    "external_key": "ewp-seed-gram-092",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "The commitee will meet again next week."
+  },
+  {
+    "external_key": "ewp-seed-gram-093",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "He has a good knowlege of history."
+  },
+  {
+    "external_key": "ewp-seed-gram-094",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "Please seperate the waste before disposal."
+  },
+  {
+    "external_key": "ewp-seed-gram-095",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 4,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "The medicine had no noticable side effect."
+  },
+  {
+    "external_key": "ewp-seed-gram-096",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "We must maintain proper disipline in class."
+  },
+  {
+    "external_key": "ewp-seed-gram-097",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 2,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "The wether was pleasant throughout the trip."
+  },
+  {
+    "external_key": "ewp-seed-gram-098",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "Her arguement was clear and convincing."
+  },
+  {
+    "external_key": "ewp-seed-gram-099",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "He signed the form in the space provieded."
+  },
+  {
+    "external_key": "ewp-seed-gram-100",
+    "exercise_type": "sentence_correction",
+    "topic_id": "54adbabc-f126-83ae-65c2-b04704228ee0",
+    "prompt_text": "Correct the spelling error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
+    "difficulty_level": 3,
+    "microtopic_id": "22591465-673a-c375-3460-2702125f6fc3",
+    "source_text": "The manager gave a breif reply to the query."
+  }
+]

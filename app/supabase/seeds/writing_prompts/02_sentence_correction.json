@@ -1,456 +1,452 @@
-{
-  "reason": "Seed batch: sentence-correction prompts (pending review).",
-  "subject_id": "dae70ac3-f38c-2a75-7e4c-ce7b7aae85fd",
-  "rows": [
-    {
-      "external_key": "ewp-seed-scor-001",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Because the train was late."
-    },
-    {
-      "external_key": "ewp-seed-scor-002",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Running across the busy platform with a heavy bag."
-    },
-    {
-      "external_key": "ewp-seed-scor-003",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Which is the reason we cancelled the trip."
-    },
-    {
-      "external_key": "ewp-seed-scor-004",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The old library near the river, a place full of quiet corners."
-    },
-    {
-      "external_key": "ewp-seed-scor-005",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "After she had finished her homework and cleared the table."
-    },
-    {
-      "external_key": "ewp-seed-scor-006",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "To improve his marks in the final examination."
-    },
-    {
-      "external_key": "ewp-seed-scor-007",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The results were declared yesterday everyone was thrilled."
-    },
-    {
-      "external_key": "ewp-seed-scor-008",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "I woke up early I still missed the bus."
-    },
-    {
-      "external_key": "ewp-seed-scor-009",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The rain stopped the children rushed outside to play."
-    },
-    {
-      "external_key": "ewp-seed-scor-010",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "She loves painting she has never taken a formal class."
-    },
-    {
-      "external_key": "ewp-seed-scor-011",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "He studied all night therefore he was too tired to write the test."
-    },
-    {
-      "external_key": "ewp-seed-scor-012",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a comma splice. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The shop was closed, we went home disappointed."
-    },
-    {
-      "external_key": "ewp-seed-scor-013",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a comma splice. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "It was raining heavily, the match was postponed."
-    },
-    {
-      "external_key": "ewp-seed-scor-014",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a comma splice. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The plan sounded simple, it turned out to be difficult."
-    },
-    {
-      "external_key": "ewp-seed-scor-015",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a comma splice. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "She is talented, she works harder than anyone else."
-    },
-    {
-      "external_key": "ewp-seed-scor-016",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
-      "source_text": "The manager likes reading, to travel, and painting."
-    },
-    {
-      "external_key": "ewp-seed-scor-017",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
-      "source_text": "He is not only clever but also works hard."
-    },
-    {
-      "external_key": "ewp-seed-scor-018",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
-      "source_text": "The course teaches you to plan, organising, and to lead."
-    },
-    {
-      "external_key": "ewp-seed-scor-019",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
-      "source_text": "She would rather write than speaking in public."
-    },
-    {
-      "external_key": "ewp-seed-scor-020",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
-      "source_text": "The report was clear, detailed, and it had accuracy."
-    },
-    {
-      "external_key": "ewp-seed-scor-021",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "There is many people waiting outside the office."
-    },
-    {
-      "external_key": "ewp-seed-scor-022",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a redundant structure. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The reason he failed is because he did not revise."
-    },
-    {
-      "external_key": "ewp-seed-scor-023",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a dangling structure. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Being a hot afternoon, the workers took a long break."
-    },
-    {
-      "external_key": "ewp-seed-scor-024",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty correlative. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The more you practise, you become more confident."
-    },
-    {
-      "external_key": "ewp-seed-scor-025",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Hardly had I sat down when the phone rang, and then it stopped and rang again continuously without any pause."
-    },
-    {
-      "external_key": "ewp-seed-scor-026",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a double subject. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "My brother he is studying to be an engineer."
-    },
-    {
-      "external_key": "ewp-seed-scor-027",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The book what I borrowed was very useful."
-    },
-    {
-      "external_key": "ewp-seed-scor-028",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "This is one of those problems that has no easy answer, and which many people they struggle with."
-    },
-    {
-      "external_key": "ewp-seed-scor-029",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a dangling modifier. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Walking to school, the rain soaked my uniform."
-    },
-    {
-      "external_key": "ewp-seed-scor-030",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The teacher explained the lesson very clear."
-    },
-    {
-      "external_key": "ewp-seed-scor-031",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
-      "source_text": "Neither the coach nor the players was happy with the result."
-    },
-    {
-      "external_key": "ewp-seed-scor-032",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a reported-speech structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "He asked me that where I was going."
-    },
-    {
-      "external_key": "ewp-seed-scor-033",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "I did not knew the answer to the question."
-    },
-    {
-      "external_key": "ewp-seed-scor-034",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Despite of the traffic, we reached on time."
-    },
-    {
-      "external_key": "ewp-seed-scor-035",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The committee were divided over the new rule."
-    },
-    {
-      "external_key": "ewp-seed-scor-036",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a agreement structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "One should do their best in every task."
-    },
-    {
-      "external_key": "ewp-seed-scor-037",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The list of names have been posted on the board."
-    },
-    {
-      "external_key": "ewp-seed-scor-038",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a dangling modifier. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Having finished the report, the printer broke down."
-    },
-    {
-      "external_key": "ewp-seed-scor-039",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The scenery of the hills were breathtaking."
-    },
-    {
-      "external_key": "ewp-seed-scor-040",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Each of the volunteers were given a badge."
-    },
-    {
-      "external_key": "ewp-seed-scor-041",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a inversion structure. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Not only she sings well but she also dances."
-    },
-    {
-      "external_key": "ewp-seed-scor-042",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a inversion structure. Do not change the intended meaning.",
-      "difficulty_level": 5,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Seldom I have seen such a beautiful sunrise."
-    },
-    {
-      "external_key": "ewp-seed-scor-043",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The teacher along with her students are attending the fair."
-    },
-    {
-      "external_key": "ewp-seed-scor-044",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "It is high time we leave for the station."
-    },
-    {
-      "external_key": "ewp-seed-scor-045",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "No sooner the bell rang than the students left."
-    },
-    {
-      "external_key": "ewp-seed-scor-046",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "He is senior than me by three years."
-    },
-    {
-      "external_key": "ewp-seed-scor-047",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The two brothers helped one another to lift the boxes."
-    },
-    {
-      "external_key": "ewp-seed-scor-048",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a inversion structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "Hardly ever he visits his old village now."
-    },
-    {
-      "external_key": "ewp-seed-scor-049",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 3,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "She cannot able to attend the meeting today."
-    },
-    {
-      "external_key": "ewp-seed-scor-050",
-      "exercise_type": "sentence_correction",
-      "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
-      "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
-      "difficulty_level": 4,
-      "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
-      "source_text": "The jury has not yet reached their verdict."
-    }
-  ]
-}
+[
+  {
+    "external_key": "ewp-seed-scor-001",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Because the train was late."
+  },
+  {
+    "external_key": "ewp-seed-scor-002",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Running across the busy platform with a heavy bag."
+  },
+  {
+    "external_key": "ewp-seed-scor-003",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Which is the reason we cancelled the trip."
+  },
+  {
+    "external_key": "ewp-seed-scor-004",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The old library near the river, a place full of quiet corners."
+  },
+  {
+    "external_key": "ewp-seed-scor-005",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "After she had finished her homework and cleared the table."
+  },
+  {
+    "external_key": "ewp-seed-scor-006",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a sentence fragment. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "To improve his marks in the final examination."
+  },
+  {
+    "external_key": "ewp-seed-scor-007",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The results were declared yesterday everyone was thrilled."
+  },
+  {
+    "external_key": "ewp-seed-scor-008",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "I woke up early I still missed the bus."
+  },
+  {
+    "external_key": "ewp-seed-scor-009",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The rain stopped the children rushed outside to play."
+  },
+  {
+    "external_key": "ewp-seed-scor-010",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "She loves painting she has never taken a formal class."
+  },
+  {
+    "external_key": "ewp-seed-scor-011",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "He studied all night therefore he was too tired to write the test."
+  },
+  {
+    "external_key": "ewp-seed-scor-012",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a comma splice. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The shop was closed, we went home disappointed."
+  },
+  {
+    "external_key": "ewp-seed-scor-013",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a comma splice. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "It was raining heavily, the match was postponed."
+  },
+  {
+    "external_key": "ewp-seed-scor-014",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a comma splice. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The plan sounded simple, it turned out to be difficult."
+  },
+  {
+    "external_key": "ewp-seed-scor-015",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a comma splice. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "She is talented, she works harder than anyone else."
+  },
+  {
+    "external_key": "ewp-seed-scor-016",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
+    "source_text": "The manager likes reading, to travel, and painting."
+  },
+  {
+    "external_key": "ewp-seed-scor-017",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
+    "source_text": "He is not only clever but also works hard."
+  },
+  {
+    "external_key": "ewp-seed-scor-018",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
+    "source_text": "The course teaches you to plan, organising, and to lead."
+  },
+  {
+    "external_key": "ewp-seed-scor-019",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
+    "source_text": "She would rather write than speaking in public."
+  },
+  {
+    "external_key": "ewp-seed-scor-020",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
+    "source_text": "The report was clear, detailed, and it had accuracy."
+  },
+  {
+    "external_key": "ewp-seed-scor-021",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "There is many people waiting outside the office."
+  },
+  {
+    "external_key": "ewp-seed-scor-022",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a redundant structure. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The reason he failed is because he did not revise."
+  },
+  {
+    "external_key": "ewp-seed-scor-023",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a dangling structure. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Being a hot afternoon, the workers took a long break."
+  },
+  {
+    "external_key": "ewp-seed-scor-024",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty correlative. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The more you practise, you become more confident."
+  },
+  {
+    "external_key": "ewp-seed-scor-025",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a run-on sentence. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Hardly had I sat down when the phone rang, and then it stopped and rang again continuously without any pause."
+  },
+  {
+    "external_key": "ewp-seed-scor-026",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a double subject. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "My brother he is studying to be an engineer."
+  },
+  {
+    "external_key": "ewp-seed-scor-027",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The book what I borrowed was very useful."
+  },
+  {
+    "external_key": "ewp-seed-scor-028",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "This is one of those problems that has no easy answer, and which many people they struggle with."
+  },
+  {
+    "external_key": "ewp-seed-scor-029",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a dangling modifier. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Walking to school, the rain soaked my uniform."
+  },
+  {
+    "external_key": "ewp-seed-scor-030",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The teacher explained the lesson very clear."
+  },
+  {
+    "external_key": "ewp-seed-scor-031",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
+    "source_text": "Neither the coach nor the players was happy with the result."
+  },
+  {
+    "external_key": "ewp-seed-scor-032",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a reported-speech structure. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "He asked me that where I was going."
+  },
+  {
+    "external_key": "ewp-seed-scor-033",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "I did not knew the answer to the question."
+  },
+  {
+    "external_key": "ewp-seed-scor-034",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Despite of the traffic, we reached on time."
+  },
+  {
+    "external_key": "ewp-seed-scor-035",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The committee were divided over the new rule."
+  },
+  {
+    "external_key": "ewp-seed-scor-036",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The list of names have been posted on the board."
+  },
+  {
+    "external_key": "ewp-seed-scor-037",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a dangling modifier. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Having finished the report, the printer broke down."
+  },
+  {
+    "external_key": "ewp-seed-scor-038",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The scenery of the hills were breathtaking."
+  },
+  {
+    "external_key": "ewp-seed-scor-039",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Each of the volunteers were given a badge."
+  },
+  {
+    "external_key": "ewp-seed-scor-040",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a inversion structure. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Not only she sings well but she also dances."
+  },
+  {
+    "external_key": "ewp-seed-scor-041",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a inversion structure. Do not change the intended meaning.",
+    "difficulty_level": 5,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Seldom I have seen such a beautiful sunrise."
+  },
+  {
+    "external_key": "ewp-seed-scor-042",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The teacher along with her students are attending the fair."
+  },
+  {
+    "external_key": "ewp-seed-scor-043",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "No sooner the bell rang than the students left."
+  },
+  {
+    "external_key": "ewp-seed-scor-044",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "He is senior than me by three years."
+  },
+  {
+    "external_key": "ewp-seed-scor-045",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a faulty parallelism. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "She helped to carry the boxes and arranging the chairs."
+  },
+  {
+    "external_key": "ewp-seed-scor-046",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a inversion structure. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Hardly ever he visits his old village now."
+  },
+  {
+    "external_key": "ewp-seed-scor-047",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "She cannot able to attend the meeting today."
+  },
+  {
+    "external_key": "ewp-seed-scor-048",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The scissors is kept in the top drawer."
+  },
+  {
+    "external_key": "ewp-seed-scor-049",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 4,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "Whoever finishes first, they may leave the hall."
+  },
+  {
+    "external_key": "ewp-seed-scor-050",
+    "exercise_type": "sentence_correction",
+    "topic_id": "88d27cc6-8d13-d6f8-a1f9-d5e60329f1b5",
+    "prompt_text": "Rewrite the sentence below as one grammatically correct, well-formed sentence. It contains a structure. Do not change the intended meaning.",
+    "difficulty_level": 3,
+    "microtopic_id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "source_text": "The instructions was printed on the back of the sheet."
+  }
+]

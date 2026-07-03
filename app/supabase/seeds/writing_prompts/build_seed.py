@@ -126,24 +126,27 @@ _CONSTRUCTION = [
     ("complex-sentences", ["until", "accumulate"], "complex", 5),
     ("complex-sentences", ["though", "hesitate"], "complex", 5),
     ("complex-sentences", ["if", "postpone"], "complex", 4),
-    ("sentence-transformation", ["negotiate"], "sentence in the passive voice", 6),
-    ("sentence-transformation", ["appoint"], "sentence in the passive voice", 6),
-    ("sentence-transformation", ["deliver"], "sentence in the passive voice", 5),
-    ("sentence-transformation", ["inaugurate"], "sentence in the passive voice", 7),
-    ("sentence-transformation", ["complete"], "sentence in the passive voice", 5),
-    ("sentence-transformation", ["exclaimed"], "sentence in indirect (reported) speech", 6),
-    ("sentence-transformation", ["insisted"], "sentence in indirect (reported) speech", 6),
-    ("sentence-transformation", ["warned"], "sentence in indirect (reported) speech", 6),
+    # Non-inflecting required words (nouns/adjectives/adverbs), so the "keep the
+    # word in its given form" instruction never contradicts the required grammar
+    # (an earlier draft paired base-form verbs with passive-voice tasks — removed).
+    ("complex-sentences", ["although", "diligent"], "complex", 5),
+    ("compound-sentences", ["however", "appointment"], "compound", 5),
+    ("simple-sentences", ["delivery"], "simple", 3),
+    ("complex-sentences", ["because", "committee"], "complex", 5),
+    ("compound-sentences", ["therefore", "complete"], "compound", 4),
+    ("simple-sentences", ["astonished"], "simple", 4),
+    ("complex-sentences", ["whenever", "insistent"], "complex", 5),
+    ("compound-sentences", ["nevertheless", "warning"], "compound", 5),
     ("simple-sentences", ["horizon"], "simple", 3),
     ("simple-sentences", ["gratitude"], "simple", 3),
     ("compound-sentences", ["instead", "monsoon"], "compound", 4),
     ("compound-sentences", ["yet", "ambition"], "compound", 4),
-    ("complex-sentences", ["before", "assemble"], "complex", 4),
-    ("complex-sentences", ["after", "restore"], "complex", 4),
-    ("complex-sentences", ["as", "diminish"], "complex", 5),
+    ("complex-sentences", ["before", "assembly"], "complex", 4),
+    ("complex-sentences", ["after", "restoration"], "complex", 4),
+    ("complex-sentences", ["as", "scarcity"], "complex", 5),
     ("simple-sentences", ["sturdy"], "simple", 2),
     ("simple-sentences", ["remote"], "simple", 2),
-    ("sentence-transformation", ["organise"], "sentence in the passive voice", 6),
+    ("compound-sentences", ["otherwise", "organiser"], "compound", 5),
 ]
 
 
@@ -204,7 +207,6 @@ _CORRECTION = [
     ("sentence-structure", "I did not knew the answer to the question.", 3, "structure"),
     ("sentence-structure", "Despite of the traffic, we reached on time.", 3, "structure"),
     ("sentence-structure", "The committee were divided over the new rule.", 4, "structure"),
-    ("sentence-structure", "One should do their best in every task.", 4, "agreement structure"),
     ("sentence-structure", "The list of names have been posted on the board.", 3, "structure"),
     ("sentence-structure", "Having finished the report, the printer broke down.", 5, "dangling modifier"),
     ("sentence-structure", "The scenery of the hills were breathtaking.", 3, "structure"),
@@ -212,13 +214,14 @@ _CORRECTION = [
     ("sentence-structure", "Not only she sings well but she also dances.", 5, "inversion structure"),
     ("sentence-structure", "Seldom I have seen such a beautiful sunrise.", 5, "inversion structure"),
     ("sentence-structure", "The teacher along with her students are attending the fair.", 4, "structure"),
-    ("sentence-structure", "It is high time we leave for the station.", 4, "structure"),
     ("sentence-structure", "No sooner the bell rang than the students left.", 4, "structure"),
     ("sentence-structure", "He is senior than me by three years.", 3, "structure"),
-    ("sentence-structure", "The two brothers helped one another to lift the boxes.", 4, "structure"),
+    ("sentence-structure", "She helped to carry the boxes and arranging the chairs.", 4, "faulty parallelism"),
     ("sentence-structure", "Hardly ever he visits his old village now.", 4, "inversion structure"),
     ("sentence-structure", "She cannot able to attend the meeting today.", 3, "structure"),
-    ("sentence-structure", "The jury has not yet reached their verdict.", 4, "structure"),
+    ("sentence-structure", "The scissors is kept in the top drawer.", 3, "structure"),
+    ("sentence-structure", "Whoever finishes first, they may leave the hall.", 4, "structure"),
+    ("sentence-structure", "The instructions was printed on the back of the sheet.", 3, "structure"),
 ]
 
 
@@ -302,16 +305,16 @@ _GRAMMAR = {
         ("He apologised for me for the delay.", 4),
     ],
     "pronoun-reference": [
-        ("Every student must bring their own pencil.", 3),
         ("Between you and I, the plan will not work.", 4),
         ("The manager praised John and myself for the report.", 4),
-        ("Ravi told his brother that he had won the prize, though it was unclear who.", 5),
-        ("Each of the girls must carry her own bag, but they forgot theirs.", 4),
+        ("She is taller than me, though I am older than her.", 4),
+        ("Give the tickets to whoever wants them, but not to he.", 4),
         ("Me and my friend went to the fair together.", 3),
         ("The dog wagged its tail when it saw it's owner.", 4),
-        ("Whom shall I say is calling, please?", 4),
+        ("Us students should support the new library rule.", 3),
         ("This is a secret between she and her sister.", 4),
-        ("Everyone should mind their own business.", 3),
+        ("Him and I finished the project a day early.", 3),
+        ("The prize was shared between she and me.", 4),
     ],
     "modifiers": [
         ("Running down the street, my hat blew away.", 4),
@@ -410,7 +413,7 @@ _VOCAB = {
     "collocations": [
         ("She made a big mistake by ignoring the warning signs.", "Replace the underlined-style verb collocation error if any, or rewrite using the natural collocation for 'mistake'.", 3, None),
         ("He did a strong effort to finish the project on time.", "Correct the verb collocation.", 3, None),
-        ("They took a decision to postpone the event.", "Correct the collocation to standard usage.", 3, None),
+        ("He did a mistake while copying the figures.", "Correct the verb collocation.", 3, None),
         ("Please do me a favour and pass the salt.", "This collocation may be correct; if it is, keep it and add a second sentence using 'make a decision' correctly.", 4, None),
         ("The scientist made an important discovery about the virus.", "If the collocation is correct, keep it; otherwise correct it.", 3, None),
         (None, 'Write one sentence using the collocation "keen interest".', 4, ["keen"]),
@@ -508,38 +511,35 @@ def build_paragraph():
 
 # ===========================================================================
 
+# (filename, target_count, builder). The committed .json files are plain ROW
+# ARRAYS — the exact shape the Content Studio Bulk Import UI parses
+# (PromptBulkImport.jsx: `Array.isArray(data) ? data : [data]`). The operator
+# supplies `subject_id` and `reason` in the form fields; for a direct `curl` to
+# the API, wrap a file into the `{reason, subject_id, rows}` envelope with
+# to_api_envelope.py.
 BATCHES = [
-    ("01_sentence_construction.json", "Seed batch: sentence-construction prompts (pending review).", build_construction),
-    ("02_sentence_correction.json", "Seed batch: sentence-correction prompts (pending review).", build_correction),
-    ("03_grammar.json", "Seed batch: grammar-rule correction prompts (pending review).", build_grammar),
-    ("04_vocabulary.json", "Seed batch: vocabulary-in-context prompts (pending review).", build_vocab),
-    ("05_paragraph.json", "Seed batch: paragraph-writing prompts (pending review).", build_paragraph),
+    ("01_sentence_construction.json", 50, build_construction),
+    ("02_sentence_correction.json", 50, build_correction),
+    ("03_grammar.json", 100, build_grammar),
+    ("04_vocabulary.json", 50, build_vocab),
+    ("05_paragraph.json", 20, build_paragraph),
 ]
-
-TARGETS = {
-    "01_sentence_construction.json": 50,
-    "02_sentence_correction.json": 50,
-    "03_grammar.json": 100,
-    "04_vocabulary.json": 50,
-    "05_paragraph.json": 20,
-}
 
 
 def main():
     total = 0
     summary = []
-    for fname, reason, builder in BATCHES:
+    for fname, target, builder in BATCHES:
         rows = builder()
-        payload = {"reason": reason, "subject_id": SUBJECT_ID, "rows": rows}
-        (HERE / fname).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
-        target = TARGETS[fname]
+        (HERE / fname).write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n")
         flag = "" if len(rows) == target else f"  (target {target})"
         summary.append(f"  {fname}: {len(rows)} rows{flag}")
         total += len(rows)
-    print("Wrote Content Studio bulk-import seed batches:")
+    print("Wrote Content Studio bulk-import seed batches (row arrays for UI upload):")
     print("\n".join(summary))
     print(f"  TOTAL: {total} prompts (target 270)")
-    print(f"  subject_id (english-language): {SUBJECT_ID}")
+    print(f"  subject_id to enter in the Bulk Import form: {SUBJECT_ID}")
+    print("  (verify/resolve topic + subject IDs against the target DB first — see README)")
 
 
 if __name__ == "__main__":
