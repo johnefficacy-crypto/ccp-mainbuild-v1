@@ -34,7 +34,6 @@ import { useAuth } from "../../../lib/authContext";
 
 const SyllabusMapperPanel = lazy(() => import("./syllabus-mapper/SyllabusMapperPanel"));
 const PyqWorkbenchPanel = lazy(() => import("./pyq-workbench/PyqWorkbenchPanel"));
-const PromptBankPanel = lazy(() => import("./prompt-bank/PromptBankPanel"));
 
 // ─── Tab definitions ────────────────────────────────────────────────────────
 
@@ -43,7 +42,6 @@ const TAB_ORDER = [
   { id: "documents",  label: "Documents",          kind: "open" },
   { id: "syllabus",   label: "Syllabus Mapper",    kind: "readiness", section: "syllabus_mapper" },
   { id: "pyq",        label: "PYQ Workbench",      kind: "readiness", section: "pyq_workbench" },
-  { id: "prompts",    label: "Prompt Bank",        kind: "readiness", section: "prompt_bank" },
   { id: "updates",    label: "Updates",            kind: "readiness", section: "updates" },
   { id: "competition",label: "Competition",        kind: "readiness", section: "competition" },
   { id: "review",     label: "Review & Activate",  kind: "terminal",  section: "review_activate" },
@@ -508,11 +506,6 @@ function WorkspaceShell() {
       {activeTab === "pyq" && (
         <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>
           <PyqWorkbenchPanel paperId={paperId} rowId={rowId} status={status} />
-        </Suspense>
-      )}
-      {activeTab === "prompts" && (
-        <Suspense fallback={<div style={{ padding: 20, color: "var(--ink-mute)" }}>Loading…</div>}>
-          <PromptBankPanel />
         </Suspense>
       )}
       {activeTab === "updates" && <UpdatesPanel status={status} rowId={rowId} />}
