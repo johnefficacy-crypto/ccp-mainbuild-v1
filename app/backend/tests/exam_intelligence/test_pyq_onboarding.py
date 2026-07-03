@@ -95,7 +95,7 @@ class _OnboardingRpc:
                 raise Exception(f"exam_phase_not_found: phase {phase_id} does not exist")
             if str(ph.get("exam_id")) != str(exam_id):
                 raise Exception("exam_phase_exam_mismatch")
-            # Phase↔cycle consistency (migration 219, fail-closed): a supplied
+            # Phase↔cycle consistency (migration 220, fail-closed): a supplied
             # phase must be bound to exactly the supplied cycle. Rejects
             # cross-cycle, cycle-agnostic, and phase-without-cycle combinations.
             if cycle_id is None or str(ph.get("exam_cycle_id")) != str(cycle_id):
@@ -557,7 +557,7 @@ def test_phase_cross_exam_is_422():
 
 
 def test_phase_with_matching_cycle_ok():
-    # New contract (migration 219): a supplied phase must be accompanied by its
+    # New contract (migration 220): a supplied phase must be accompanied by its
     # own cycle. Cycle-bound phase + matching cycle → persisted together.
     cyc = {"id": "cyc-1", "exam_id": "e1"}
     ph = {"id": "ph-1", "exam_id": "e1", "exam_cycle_id": "cyc-1"}
