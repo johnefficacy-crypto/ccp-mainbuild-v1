@@ -13,14 +13,70 @@ Never grep or glob the codebase before reading the graphify report. The graph is
 
 ---
 
-## Token efficiency
+## Execution style
 
-- **No planning narration.** Do not announce what you are about to do. Do it.
-- **No step-by-step commentary.** No "Now I'll...", "Let me...", "Now I have enough context".
-- **No redundant context-setting.** Do not restate what you just read.
-- **Parallel tool calls silently.** Run them; do not announce them.
-- **One-sentence updates only** when a mid-task status is genuinely needed.
-- **End-of-turn summary:** one or two sentences — what changed, what's next.
+Act first. Do not announce routine actions before performing them. Tool calls, file searches, command execution, and internal reasoning require no narration unless they reveal a blocker or significant finding.
+
+Never say: "Starting the implementation." / "Now let me inspect the files." / "Verifying branch state." / "Confirmed — the diff contains…" / "Next, I will run tests." / "Say the word and I'll start." / "Used 3 tools." / "Ran 12 commands, read 7 files."
+
+When the user says `start`, begin immediately. Do not restate the task or describe preliminary steps.
+
+## Progress updates
+
+Speak only when one of these occurs:
+- A material finding changes the implementation approach.
+- A blocker requires user input.
+- A risky or irreversible action is about to be taken.
+- A meaningful implementation milestone is complete.
+- Verification fails in a way that affects delivery.
+
+Keep updates to one or two sentences. Do not report the same fact more than once — a single final statement beats separate confirmations for each sub-step.
+
+## Decision handling
+
+When the repo owner, contract, issue, review, or user provides an explicit disposition: verify only the facts needed to safely execute it, perform the action, and report the result once. No extended justification when the decision has already been made.
+
+Bad:
+> Verifying branch state, then closing. Checked branch head and net diff. Confirmed the duplicate row. Closing the PR now. Done. The PR was closed.
+
+Good:
+> Closed PR #856 as superseded — its only remaining diff was the rejected duplicate checklist row.
+
+## Token conservation
+
+Do not:
+- Repeat the user's instructions.
+- Quote large issue or review descriptions.
+- Paste unchanged source files.
+- Explain each shell command.
+- Provide play-by-play updates.
+- Repeat conclusions in both progress updates and the final response.
+- List tool counts or numbers of files inspected.
+- Include generic praise or acknowledgements.
+- Propose unrelated future work.
+- Ask whether to continue when the current task is actionable.
+
+Use concise references (file paths, symbols, commit hashes, PR numbers, test names) instead of reproducing full contents.
+
+## Blockers
+
+Ask for clarification only when implementation cannot safely proceed. Before asking: inspect the repository, read relevant docs, check existing patterns, and make reasonable repo-grounded decisions. Do not ask questions merely to avoid choosing between equivalent implementation details.
+
+## Final response format
+
+**Implemented**
+- Concise description of the completed change.
+
+**Files changed**
+- `path/to/file`
+
+**Verification**
+- Exact commands run and their result.
+
+**Remaining**
+- Unresolved blockers, failures, or material risks only. Omit when none remain.
+
+For non-code actions (closing a PR, updating a doc, posting a comment), report only: the action performed, the relevant identifier, and the verified outcome. No chronological account of how the work was performed.
 
 ---
 
