@@ -164,6 +164,7 @@ def _shape(row: dict) -> dict:
         "source_kind": row.get("source_kind"),
         "sanitized_from_document_id": row.get("sanitized_from_document_id"),
         "metadata": row.get("metadata") or {},
+        "mixed_format": (row.get("metadata") or {}).get("mixed_format") is True,
         "created_at": row.get("created_at"),
         "updated_at": row.get("updated_at"),
     }
@@ -773,6 +774,52 @@ def archive_document(
         new_value={"status": "archived", "reason": body.reason},
     )
     return {"ok": True, "document_id": document_id, "status": "archived"}
+
+
+class MixedFormatRequest(BaseModel):
+    """B1 admin-declared mixed-format flag (J3 Mixed-Format PDF Gate, Option
+    B). Setting mixed_format=True causes the extraction pipeline's scope
+    fence to raise ExtractionMixedFormatError before any OCR runs — see
+    docs/engineering/mixed-format-pdf-workaround-v1.md for the required
+    split-and-reupload workaround.
+    """
+
+    mixed_format: bool
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+@router.post("/{document_id}/mixed-format")
+def set_mixed_format(
+    document_id: str,
+    body: MixedFormatRequest,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Declare (or clear) the admin-declared mixed-format flag on a document.
+
+    B1 detection ONLY (OD-2): this is a validated, admin-entered boolean —
+    no heuristic/AI detection is performed. When true, the extraction
+    pipeline scope fence rejects the document pre-OCR with
+    ExtractionMixedFormatError; zero pyq_questions rows are written. See
+    docs/engineering/mixed-format-pdf-workaround-v1.md for the workaround
+    (split into homogeneous sub-documents and re-upload each separately).
+    """
+    sb = get_supabase_admin()
+    asset = _load_admin_asset(sb, document_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    metadata = dict(asset.get("metadata") or {})
+    metadata["mixed_format"] = bool(body.mixed_format)
+
+    sb.table("document_assets").update({"metadata": metadata}).eq("id", document_id).execute()
+
+    _audit(
+        sb, admin, "exam_intel.cms.document.set_mixed_format",
+        entity_type="document_asset", entity_id=document_id,
+        new_value={"mixed_format": bool(body.mixed_format), "reason": body.reason},
+    )
+    return {"ok": True, "document_id": document_id, "metadata": metadata}
 
 
 def _extension(filename: str) -> str:

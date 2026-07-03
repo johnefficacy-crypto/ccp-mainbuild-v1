@@ -100,8 +100,8 @@ class ExtractionMixedFormatError(RuntimeError):
     Option B / B1 admin-declared detection).
 
     Split the source PDF into homogeneous per-format sub-documents (one
-    structural_format each) and upload each separately, or reclassify the
-    document if it was declared mixed-format in error. See the workaround
+    structural_format each) and upload each separately, or clear the
+    mixed_format flag if it was declared in error. See the workaround
     SOP: docs/engineering/mixed-format-pdf-workaround-v1.md.
     """
 
@@ -129,10 +129,10 @@ class _DocumentAssetsRow:
 def _is_mixed_format_declared(metadata: dict | None) -> bool:
     """Validate the admin-declared metadata.mixed_format flag.
 
-    B1 (admin-declared only, per J3 Mixed-Format PDF Gate / OD-2): the flag
-    must be the JSON boolean literal `true`. Anything else (missing key,
-    "true" string, 1, null, etc.) is treated as not-declared — app-level
-    validation only, no DB constraint (no migration required for B1).
+    B1 admin-declared detection ONLY (J3 Mixed-Format PDF Gate, OD-2):
+    the flag must be the literal boolean ``True`` — any other value
+    (missing key, string, null, falsy) is treated as not-mixed. No
+    heuristic detection is performed here.
     """
     if not metadata:
         return False
@@ -324,14 +324,16 @@ def extract(
     if doc_row.mixed_format:
         raise ExtractionMixedFormatError(
             f"Document {document_id} is declared mixed-format "
-            f"(document_assets.metadata.mixed_format=true). This file mixes "
-            f"multiple page-level structural formats (e.g. an MCQ objective "
-            f"section followed by a descriptive/essay section) and cannot be "
-            f"run through the v1 extractor, which applies a single strategy "
-            f"to every selected page. Split the source PDF into homogeneous "
+            f"(metadata.mixed_format=true): its pages do not all share one "
+            f"structural_format (e.g. an MCQ objective section followed by "
+            f"a descriptive/essay section). The v1 extractor applies one "
+            f"two-column MCQ strategy to every selected page, so non-MCQ "
+            f"pages would be silently mis-extracted into pyq_questions. "
+            f"Split the source PDF into homogeneous per-format "
             f"sub-documents (one structural_format each) and upload each "
-            f"separately, or clear the mixed_format flag if it was set in "
-            f"error. Workaround SOP: {MIXED_FORMAT_WORKAROUND_SOP}."
+            f"separately, or clear metadata.mixed_format if it was "
+            f"declared in error. See the workaround SOP: "
+            f"{MIXED_FORMAT_WORKAROUND_SOP}."
         )
 
     if doc_row.structural_format == StructuralFormat.UNKNOWN:

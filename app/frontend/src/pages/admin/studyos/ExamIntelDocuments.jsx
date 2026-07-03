@@ -218,6 +218,26 @@ export default function ExamIntelDocuments({ scopeExamId, scopeCycleId, writesBl
     }
   }
 
+  async function toggleMixedFormat(doc) {
+    if (writesBlocked) return setStatus({ ok: false, message: "Write blocked: scope is unresolved or invalid." });
+    const next = !doc.mixed_format;
+    const reason = next
+      ? window.prompt("Reason for declaring this document mixed-format (≥ 8 chars):", "Contains multiple structural formats on different pages")
+      : window.prompt("Reason for clearing the mixed-format flag (≥ 8 chars):", "Reclassified / declared in error");
+    if (reason == null) return;
+    if (reason.trim().length < 8) return setStatus({ ok: false, message: "Reason must be at least 8 characters." });
+    const scopeGen = scopeGenRef.current;
+    try {
+      await api.post(`${DOC_BASE}/${doc.id}/mixed-format`, { mixed_format: next, reason: reason.trim() });
+      if (scopeGen !== scopeGenRef.current) return;
+      setDocs((prev) => prev.map((d) => (d.id === doc.id ? { ...d, mixed_format: next } : d)));
+      setStatus({ ok: true, message: next ? "Marked mixed-format. Extraction will be rejected until split." : "Cleared mixed-format flag." });
+    } catch (e) {
+      if (scopeGen !== scopeGenRef.current) return;
+      setStatus({ ok: false, message: getApiErrorMessage(e) });
+    }
+  }
+
   async function confirmLink() {
     if (writesBlocked) return setStatus({ ok: false, message: "Write blocked: scope is unresolved or invalid." });
     const { docId, kind, targetId, reason } = linkTarget;
@@ -388,6 +408,16 @@ export default function ExamIntelDocuments({ scopeExamId, scopeCycleId, writesBl
                     <button type="button" className="btn small" onClick={() => refreshStatus(d.id)} data-testid={`doc-refresh-${d.id}`}>Status</button>
                     <button type="button" className="btn small" disabled={writesBlocked} onClick={() => setLinkTarget({ docId: d.id, kind: "syllabus", targetId: "", reason: "" })} data-testid={`doc-link-syllabus-${d.id}`}>→ Syllabus</button>
                     <button type="button" className="btn small" disabled={writesBlocked} onClick={() => setLinkTarget({ docId: d.id, kind: "pyq", targetId: "", reason: "" })} data-testid={`doc-link-pyq-${d.id}`}>→ PYQ paper</button>
+                    <button
+                      type="button"
+                      className={`btn small ${d.mixed_format ? "text-amber-700" : ""}`}
+                      disabled={writesBlocked}
+                      title="Declare this PDF as mixed-format (page-level layout mixing multiple structural formats). Blocks extraction until split into homogeneous sub-documents — see docs/engineering/mixed-format-pdf-workaround-v1.md."
+                      onClick={() => toggleMixedFormat(d)}
+                      data-testid={`doc-mixed-format-${d.id}`}
+                    >
+                      {d.mixed_format ? "Mixed-format ✓ (clear)" : "Mark mixed-format"}
+                    </button>
                   </td>
                 </tr>
                 {linkTarget.docId === d.id ? (

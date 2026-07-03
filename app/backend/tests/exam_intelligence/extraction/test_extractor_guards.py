@@ -19,6 +19,7 @@ def _mock_doc_row(
     exam_identity,
     source_kind=SourceKind.SANITIZED_COACHING,
     document_kind='pyq_paper',
+    mixed_format=False,
 ):
     row = MagicMock()
     row.structural_format = structural_format
@@ -26,6 +27,10 @@ def _mock_doc_row(
     row.source_kind = source_kind
     row.document_kind = document_kind
     row.storage_path = 'fake/path.pdf'
+    # J3 Mixed-Format PDF Gate (PR 3): must be an explicit bool, not an
+    # auto-created (truthy) MagicMock attribute, else every guard test here
+    # would spuriously hit the mixed-format scope fence first.
+    row.mixed_format = mixed_format
     return row
 
 
