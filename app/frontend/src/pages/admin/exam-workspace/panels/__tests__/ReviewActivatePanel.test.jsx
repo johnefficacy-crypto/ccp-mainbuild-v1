@@ -26,6 +26,20 @@ jest.mock("../../ExamWorkspaceContext", () => ({
   useExamWorkspace: jest.fn(),
 }));
 
+// RowLockButton mutates via useApiAction. Mock it so tests exercise the real
+// api.patch call without needing a ToastProvider — mirrors PanelWritePayloads.
+jest.mock("../../../../../lib/hooks/useApiAction", () => ({
+  __esModule: true,
+  default: () => ({
+    run: jest.fn(async ({ action, onSuccess }) => {
+      const result = await action();
+      if (onSuccess) onSuccess(result);
+      return { ok: true, data: result };
+    }),
+    busy: false,
+  }),
+}));
+
 const { api } = require("../../../../../lib/api");
 const { useAuth } = require("../../../../../lib/authContext");
 const { useExamWorkspace } = require("../../ExamWorkspaceContext");
@@ -171,7 +185,69 @@ describe("ReviewActivatePanel — lifecycle contract copy", () => {
   it("states that locked or reviewed rows feed the planner", () => {
     setup();
     expect(screen.getByText(/planner consumes/i)).toBeTruthy();
-    expect(screen.getByText(/locked.*preferred/i)).toBeTruthy();
+    // "locked (preferred)" is split across <strong> nodes — assert on the container text.
+    const note = screen.getByTestId("created-not-planner-ready-note");
+    expect(note.textContent).toMatch(/locked.*preferred/i);
+  });
+});
+
+// ── EI-CLEAN-06: workspace/Review compression ────────────────────────────────
+
+describe("ReviewActivatePanel — no duplicate activation headline", () => {
+  it("does not render the standalone activation-status banner (SmartHeader owns it)", () => {
+    setup({ readiness: READINESS_BLOCKED });
+    // The old duplicate headline copy is gone; the SmartHeader is the authority.
+    expect(screen.queryByText(/^Activation blocked$/)).toBeNull();
+    expect(screen.queryByText(/All sections reviewed or locked/i)).toBeNull();
+  });
+});
+
+describe("ReviewActivatePanel — planner-readiness / lifecycle ⓘ disclosure", () => {
+  it("renders the Created ≠ planner-ready note and lifecycle inside a collapsed disclosure", () => {
+    setup();
+    const disclosure = screen.getByTestId("planner-readiness-disclosure");
+    expect(disclosure.tagName.toLowerCase()).toBe("details");
+    // Closed by default — not always-expanded.
+    expect(disclosure.open).toBe(false);
+    // Note + lifecycle copy live inside the disclosure.
+    expect(disclosure).toContainElement(
+      screen.getByTestId("created-not-planner-ready-note"),
+    );
+  });
+
+  it("summary is keyboard-focusable and toggles the disclosure open", () => {
+    setup();
+    const summary = screen.getByTestId("planner-readiness-disclosure-summary");
+    const disclosure = screen.getByTestId("planner-readiness-disclosure");
+    fireEvent.click(summary);
+    expect(disclosure.open).toBe(true);
+  });
+});
+
+describe("ReviewActivatePanel — failed-first checklist with Show completed", () => {
+  it("shows unresolved sections and hides completed ones behind a toggle", () => {
+    setup({ readiness: READINESS_READY });
+    // competition is unresolved (partial) → visible in the failed group
+    const failed = screen.getByTestId("failed-sections");
+    expect(failed).toHaveTextContent(/Competition/i);
+    // completed sections group is not rendered until the toggle is pressed
+    expect(screen.queryByTestId("completed-sections")).toBeNull();
+    // setup is ready → behind the toggle
+    const toggle = screen.getByTestId("toggle-completed-sections");
+    expect(toggle).toHaveTextContent(/Show completed \(1\)/);
+  });
+
+  it("reveals completed sections when Show completed is clicked", () => {
+    setup({ readiness: READINESS_READY });
+    fireEvent.click(screen.getByTestId("toggle-completed-sections"));
+    const completed = screen.getByTestId("completed-sections");
+    expect(completed).toHaveTextContent(/Setup/i);
+    expect(screen.getByTestId("toggle-completed-sections")).toHaveTextContent(/Hide completed/);
+  });
+
+  it("does not render a Show completed toggle when nothing is completed", () => {
+    setup({ readiness: READINESS_BLOCKED });
+    expect(screen.queryByTestId("toggle-completed-sections")).toBeNull();
   });
 });
 

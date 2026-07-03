@@ -17,6 +17,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../../../../lib/authContext";
 import { api } from "../../../../lib/api";
+import useApiAction from "../../../../lib/hooks/useApiAction";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 
 const REVIEW_BASE = "/api/admin/exam-intelligence";
@@ -120,23 +121,23 @@ function StatusBadge({ status }) {
 }
 
 // Per-row lock action for a single reviewable entity row.
+// Mutation runs through the shared useApiAction runner (busy state + toast),
+// not a raw api.patch, per the data-layer governance rule.
 function RowLockButton({ entity, rowId, onLocked }) {
-  const [loading, setLoading] = useState(false);
+  const { run, busy } = useApiAction();
   const [err, setErr] = useState("");
 
   async function handleLock() {
-    setLoading(true);
     setErr("");
-    try {
-      await api.patch(`${REVIEW_BASE}/${entity}/${rowId}/review`, {
-        reviewer_status: "locked",
-      });
-      onLocked?.();
-    } catch (e) {
-      setErr(e?.message || "Lock failed");
-    } finally {
-      setLoading(false);
-    }
+    const res = await run({
+      action: () =>
+        api.patch(`${REVIEW_BASE}/${entity}/${rowId}/review`, {
+          reviewer_status: "locked",
+        }),
+      onSuccess: () => onLocked?.(),
+      errorMessage: "Lock failed",
+    });
+    if (!res.ok) setErr(res.error?.message || "Lock failed");
   }
 
   return (
@@ -148,11 +149,11 @@ function RowLockButton({ entity, rowId, onLocked }) {
       )}
       <button
         className="btn small"
-        disabled={loading}
+        disabled={busy}
         onClick={handleLock}
         aria-label="Lock this row"
       >
-        {loading ? "Locking…" : "Lock row"}
+        {busy ? "Locking…" : "Lock row"}
       </button>
     </span>
   );
@@ -161,6 +162,7 @@ function RowLockButton({ entity, rowId, onLocked }) {
 export default function ReviewActivatePanel({ onGotoTab }) {
   const { readiness, readiness_loading, refetchReadiness, mgmtVersionError, refetchMgmt } = useExamWorkspace();
   const { user } = useAuth();
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const canReview = Array.isArray(user?.permissions)
     ? user.permissions.includes("exam_intelligence.review")
@@ -217,16 +219,85 @@ export default function ReviewActivatePanel({ onGotoTab }) {
   const overall = readiness.overall || {};
   const scorePercent = overall.score_percent ?? 0;
 
-  const totalBlockers = sections.reduce(
-    (n, s) => n + (s.blockers?.length || 0),
-    0,
-  );
-  const blockedSections = sections.filter((s) => (s.blockers?.length || 0) > 0);
-  const clearCount = sections.filter(
-    (s) => s.status === "ready" || s.status === "locked",
-  ).length;
+  const isOk = (s) => s.status === "ready" || s.status === "locked";
+  // Failed-first: unresolved sections surface at the top; completed sections
+  // collapse behind a "Show completed" toggle so the checklist stays compact.
+  const failedSections = sections.filter((s) => !isOk(s));
+  const clearSections = sections.filter(isOk);
+  const clearCount = clearSections.length;
 
-  const allClear = totalBlockers === 0 && clearCount === sections.length;
+  function renderSectionRow(s) {
+    const ok = isOk(s);
+    const tabTarget = TAB_FOR_SECTION[s.section];
+    const reviewEntity = SECTION_REVIEW_ENTITY[s.section];
+    // metrics may carry a single row id for competition / policy rows
+    const singleRowId = s.metrics?.row_id || s.metrics?.id || null;
+
+    return (
+      <div key={s.section} className="check-row" style={{ cursor: "default" }}>
+        {/* Status dot + text label — not color-only */}
+        <StatusDot status={s.status} />
+        <div>
+          <div className="row" style={{ gap: 8 }}>
+            <span className="ctxt" style={{ fontWeight: 500 }}>
+              {s.label}
+            </span>
+            <StatusBadge status={s.status} />
+            {s.weight > 0 && <span className="csub">weight {s.weight}</span>}
+          </div>
+          <div className="csub" style={{ marginTop: 3 }}>
+            {s.note}
+          </div>
+          {/* Blocker reasons as text labels, not color-only */}
+          {(s.blockers?.length || 0) > 0 && (
+            <ul
+              style={{
+                margin: "6px 0 0",
+                padding: 0,
+                listStyle: "none",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+              }}
+              aria-label={`Blockers for ${s.label}`}
+            >
+              {s.blockers.map((b, i) => (
+                <li key={i} className="err-row" style={{ padding: "3px 7px" }}>
+                  <span aria-hidden="true">⛔ </span>
+                  {b}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div style={{ textAlign: "right", minWidth: 120 }}>
+          {/* Per-row lock action — gated on exam_intelligence.review */}
+          {canReview && reviewEntity && singleRowId && !ok ? (
+            <RowLockButton
+              entity={reviewEntity}
+              rowId={singleRowId}
+              onLocked={refetchReadiness}
+            />
+          ) : canReview && !ok && tabTarget ? (
+            <button className="btn small" onClick={() => onGotoTab(tabTarget)}>
+              Resolve →
+            </button>
+          ) : !canReview && !ok && tabTarget ? (
+            <button
+              className="btn small secondary"
+              onClick={() => onGotoTab(tabTarget)}
+            >
+              View →
+            </button>
+          ) : ok ? (
+            <span className="seal" style={{ fontSize: 11 }}>
+              {STATUS_LABELS[s.status] ?? s.status}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="stack">
@@ -238,67 +309,6 @@ export default function ReviewActivatePanel({ onGotoTab }) {
           </h2>
         </div>
         <span className="badge pending no-dot">{scorePercent}% ready</span>
-      </div>
-
-      {/* Activation status — informational only; no one-click endpoint exists */}
-      <div className={"next-action" + (allClear ? "" : " warn")}>
-        <div>
-          <span className="lbl">
-            {allClear ? "All sections reviewed or locked" : "Activation blocked"}
-          </span>
-          <div
-            className="oc-title"
-            style={{ fontSize: 16, marginTop: 4, color: "var(--paper)" }}
-          >
-            {allClear
-              ? "Every section is ready or locked. Lock individual rows below to mark them planner-ready."
-              : `${totalBlockers} blocker${totalBlockers === 1 ? "" : "s"} across ${blockedSections.length} section${blockedSections.length === 1 ? "" : "s"} must clear first.`}
-          </div>
-        </div>
-        <div
-          className="csub"
-          style={{
-            fontSize: 11,
-            color: "var(--paper)",
-            opacity: 0.8,
-            maxWidth: 220,
-            lineHeight: 1.5,
-          }}
-        >
-          Activation = per-row lock via the actions below.
-          <br />
-          Locked (preferred) or reviewed rows feed the planner.
-          <br />
-          Pending &amp; rejected rows never reach aspirants.
-        </div>
-      </div>
-
-      {/* Created ≠ planner-ready callout — always visible so operators don't mistake
-          row existence for planner activation. */}
-      <div
-        className="card"
-        style={{ borderLeft: "3px solid var(--info)", padding: "10px 14px" }}
-        role="note"
-        aria-label="Planner readiness note"
-        data-testid="created-not-planner-ready-note"
-      >
-        <p className="csub" style={{ lineHeight: 1.6, margin: 0 }}>
-          <strong>Created ≠ planner-ready.</strong> An exam with rows in the
-          database is <em>not</em> automatically visible in Study OS. The planner
-          requires at least one topic-coverage row at{" "}
-          <span className="font-mono" style={{ fontSize: 11 }}>
-            locked
-          </span>{" "}
-          status (
-          <span className="font-mono" style={{ fontSize: 11 }}>
-            reviewed
-          </span>{" "}
-          is also accepted). Until that threshold is met, the exam shows{" "}
-          <span className="font-mono" style={{ fontSize: 11 }}>
-            planner_ready: false
-          </span>{" "}
-          to aspirants.
-        </p>
       </div>
 
       {!canReview && (
@@ -314,7 +324,7 @@ export default function ReviewActivatePanel({ onGotoTab }) {
         </div>
       )}
 
-      {/* Per-section readiness checklist */}
+      {/* Per-section readiness checklist — failed-first, completed collapsed */}
       <div className="card">
         <div className="card-head">
           <h3 className="oc-title">Section readiness checklist</h3>
@@ -322,126 +332,75 @@ export default function ReviewActivatePanel({ onGotoTab }) {
             {clearCount} / {sections.length} clear
           </span>
         </div>
-        <div>
-          {sections.map((s) => {
-            const ok = s.status === "ready" || s.status === "locked";
-            const tabTarget = TAB_FOR_SECTION[s.section];
-            const reviewEntity = SECTION_REVIEW_ENTITY[s.section];
-            // metrics may carry a single row id for competition / policy rows
-            const singleRowId =
-              s.metrics?.row_id || s.metrics?.id || null;
-            // EI-CLEAN-03: missing-tag remediation is independent of D10 readiness.
-            // Once one question is planner-ready the section is "ok", but untagged
-            // questions still need attention — surface the CTA regardless of `ok`.
-            const pyqMissingTags =
-              s.section === "pyq_workbench" &&
-              (s.metrics?.pyq_readiness?.missing_verified_tag_count || 0) > 0;
-
-            return (
-              <div
-                key={s.section}
-                className="check-row"
-                style={{ cursor: "default" }}
+        <div data-testid="failed-sections">
+          {failedSections.length === 0 ? (
+            <div className="check-row" style={{ cursor: "default" }}>
+              <span className="csub" data-testid="all-sections-clear">
+                Every section is ready or locked. Lock individual rows below to
+                mark them planner-ready.
+              </span>
+            </div>
+          ) : (
+            failedSections.map(renderSectionRow)
+          )}
+          {clearSections.length > 0 && (
+            <div style={{ padding: "8px 0 0" }}>
+              <button
+                type="button"
+                className="btn small secondary"
+                aria-expanded={showCompleted}
+                onClick={() => setShowCompleted((v) => !v)}
+                data-testid="toggle-completed-sections"
               >
-                {/* Status dot + text label — not color-only */}
-                <StatusDot status={s.status} />
-                <div>
-                  <div className="row" style={{ gap: 8 }}>
-                    <span className="ctxt" style={{ fontWeight: 500 }}>
-                      {s.label}
-                    </span>
-                    <StatusBadge status={s.status} />
-                    {s.weight > 0 && (
-                      <span className="csub">weight {s.weight}</span>
-                    )}
-                  </div>
-                  <div className="csub" style={{ marginTop: 3 }}>
-                    {s.note}
-                  </div>
-                  {/* Blocker reasons as text labels, not color-only */}
-                  {(s.blockers?.length || 0) > 0 && (
-                    <ul
-                      style={{
-                        margin: "6px 0 0",
-                        padding: 0,
-                        listStyle: "none",
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 6,
-                      }}
-                      aria-label={`Blockers for ${s.label}`}
-                    >
-                      {s.blockers.map((b, i) => (
-                        <li
-                          key={i}
-                          className="err-row"
-                          style={{ padding: "3px 7px" }}
-                        >
-                          <span aria-hidden="true">⛔ </span>
-                          {b}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {/* EI-CLEAN-03: PYQ four-metric breakdown (planner-ready vs
-                      reviewed vs missing-tag vs rejected). */}
-                  {s.section === "pyq_workbench" && s.metrics?.pyq_readiness && (
-                    <PyqReadinessBreakdown pyq={s.metrics.pyq_readiness} />
-                  )}
-                </div>
-                <div style={{ textAlign: "right", minWidth: 120 }}>
-                  {/* Missing-tag CTA takes priority for the PYQ section even when
-                      the section is otherwise "ok" (planner-ready ≥ 1). */}
-                  {pyqMissingTags ? (
-                    <button
-                      className="btn small"
-                      onClick={() => onGotoTab("pyq")}
-                      data-testid="pyq-review-missing-cta"
-                    >
-                      Review missing topic tags →
-                    </button>
-                  ) : /* Per-row lock action — gated on exam_intelligence.review */
-                  canReview && reviewEntity && singleRowId && !ok ? (
-                    <RowLockButton
-                      entity={reviewEntity}
-                      rowId={singleRowId}
-                      onLocked={refetchReadiness}
-                    />
-                  ) : canReview && !ok && tabTarget ? (
-                    <button
-                      className="btn small"
-                      onClick={() => onGotoTab(tabTarget)}
-                    >
-                      Resolve →
-                    </button>
-                  ) : !canReview && !ok && tabTarget ? (
-                    <button
-                      className="btn small secondary"
-                      onClick={() => onGotoTab(tabTarget)}
-                    >
-                      View →
-                    </button>
-                  ) : ok ? (
-                    <span className="seal" style={{ fontSize: 11 }}>
-                      {STATUS_LABELS[s.status] ?? s.status}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
+                {showCompleted ? "Hide" : "Show"} completed ({clearSections.length})
+              </button>
+            </div>
+          )}
+          {showCompleted && (
+            <div data-testid="completed-sections">
+              {clearSections.map(renderSectionRow)}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Lifecycle reference */}
-      <div className="card">
-        <div className="card-head">
-          <h3 className="oc-title">Row lifecycle</h3>
-        </div>
-        <div className="card-body">
+      {/* Created ≠ planner-ready note + row lifecycle behind an ⓘ disclosure so
+          the terminal surface leads with the checklist, not reference copy. */}
+      <details className="card" data-testid="planner-readiness-disclosure">
+        <summary
+          className="csub"
+          style={{ cursor: "pointer", padding: "10px 14px", userSelect: "none" }}
+          data-testid="planner-readiness-disclosure-summary"
+        >
+          <span aria-hidden="true">ⓘ </span>
+          How planner readiness &amp; the row lifecycle work
+        </summary>
+        <div
+          className="card-body"
+          role="note"
+          aria-label="Planner readiness note"
+          data-testid="created-not-planner-ready-note"
+        >
+          <p className="csub" style={{ lineHeight: 1.6, margin: 0 }}>
+            <strong>Created ≠ planner-ready.</strong> An exam with rows in the
+            database is <em>not</em> automatically visible in Study OS. The
+            planner requires at least one topic-coverage row at{" "}
+            <span className="font-mono" style={{ fontSize: 11 }}>
+              locked
+            </span>{" "}
+            status (
+            <span className="font-mono" style={{ fontSize: 11 }}>
+              reviewed
+            </span>{" "}
+            is also accepted). Until that threshold is met, the exam shows{" "}
+            <span className="font-mono" style={{ fontSize: 11 }}>
+              planner_ready: false
+            </span>{" "}
+            to aspirants.
+          </p>
           <div
             className="row"
-            style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}
+            style={{ gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}
           >
             {["draft", "pending_review", "reviewed", "locked", "rejected"].map(
               (st, i, arr) => (
@@ -463,7 +422,7 @@ export default function ReviewActivatePanel({ onGotoTab }) {
             never reach aspirants.
           </p>
         </div>
-      </div>
+      </details>
     </div>
   );
 }

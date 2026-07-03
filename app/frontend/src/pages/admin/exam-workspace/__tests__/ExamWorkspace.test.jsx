@@ -450,6 +450,37 @@ describe("ExamWorkspace embedded action console (I8-B)", () => {
   });
 });
 
+// ── EI-CLEAN-05: collapsed action / advisory disclosure ──────────────────────
+
+describe("ExamWorkspace action disclosure (EI-CLEAN-05)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("action console lives inside a collapsed, keyboard-accessible disclosure", async () => {
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-action-details"));
+    const details = screen.getByTestId("workspace-action-details");
+    // Native <details> is keyboard operable and starts collapsed (not always-expanded).
+    expect(details.tagName.toLowerCase()).toBe("details");
+    expect(details.open).toBe(false);
+    expect(screen.getByTestId("workspace-action-summary")).toBeTruthy();
+    // The embedded action console content is nested inside the disclosure.
+    expect(details).toContainElement(screen.getByTestId("exam-action-console"));
+  });
+
+  test("advisory content readiness and lifecycle legend moved out of the header into the disclosure", async () => {
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("smart-header-status"));
+    const details = screen.getByTestId("workspace-action-details");
+    const advisory = screen.getByTestId("workspace-advisory-readiness");
+    expect(details).toContainElement(advisory);
+    // Header no longer carries the advisory readiness strip.
+    const header = screen.getByTestId("smart-header-status");
+    expect(header).not.toContainElement(advisory);
+  });
+});
+
 // ── PR2 Tests: readiness provider ─────────────────────────────────────────────
 
 describe("ExamWorkspace readiness provider (PR2)", () => {
