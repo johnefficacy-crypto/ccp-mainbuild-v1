@@ -12,6 +12,8 @@ Allowed status transitions (``reviewer_status``):
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
@@ -903,10 +905,98 @@ def review_item(
 _COMPETITION_COLUMNS = (
     "id, exam_id, exam_cycle_id, exam_phase_id, vacancy_total, "
     "vacancy_by_category, applicant_count, selection_ratio, cutoff_trend, "
-    "difficulty_trend, competition_pressure_score, source_basis, "
+    "difficulty_trend, cutoff_by_category, difficulty_assessment, metric_kind, "
+    "breakdown_complete, is_current_published, version_no, "
+    "competition_pressure_score, source_basis, "
     "confidence_score, evidence_count, reviewer_status, reviewed_at, "
     "reviewer_notes, metadata, created_at"
 )
+
+
+class CompetitionEvidenceBody(BaseModel):
+    claim_field: str = Field(
+        ...,
+        pattern="^(vacancy_total|vacancy_by_category|cutoff_by_category|difficulty_assessment|competition_pressure_score)$",
+    )
+    reservation_category_code: str | None = None
+    evidence_kind: str = Field(
+        ...,
+        pattern="^(official_notification|official_result|official_statistics|corrigendum|official_page|reviewed_analysis)$",
+    )
+    evidence_role: str = Field(default="primary", pattern="^(primary|supporting)$")
+    source_id: str | None = None
+    document_asset_id: str | None = None
+    evidence_url: str | None = None
+    source_label: str | None = None
+    source_page: int | None = Field(default=None, ge=1)
+    source_excerpt: str | None = None
+    claim_value: dict[str, Any]
+
+
+@router.post("/competition-metrics/{row_id}/evidence")
+def attach_competition_metric_evidence(
+    row_id: str,
+    body: CompetitionEvidenceBody = Body(...),
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Attach evidence to a working (draft/pending_review) competition-metric
+    revision. Evidence is append-only and immutable once the parent is
+    published (migration 215 trigger blocks INSERT on a published parent)."""
+    sb = get_supabase_admin()
+    metric = _safe(
+        lambda: sb.table("exam_competition_metrics").select("id, reviewer_status").eq("id", row_id).limit(1).execute().data,
+        default=[],
+    ) or []
+    if not metric:
+        raise HTTPException(status_code=404, detail="Competition metric not found")
+    if metric[0].get("reviewer_status") in ("reviewed", "locked"):
+        raise HTTPException(status_code=409, detail="Cannot attach evidence to a published metric row")
+
+    category_id = None
+    if body.reservation_category_code:
+        cat = _safe(
+            lambda: sb.table("reservation_categories").select("id").eq("code", body.reservation_category_code).limit(1).execute().data,
+            default=[],
+        ) or []
+        if not cat:
+            raise HTTPException(status_code=422, detail=f"Unknown reservation category code {body.reservation_category_code!r}")
+        category_id = cat[0]["id"]
+
+    if body.claim_field in ("vacancy_by_category", "cutoff_by_category") and not category_id:
+        raise HTTPException(status_code=422, detail=f"{body.claim_field} evidence requires reservation_category_code")
+    if body.claim_field in ("vacancy_total", "difficulty_assessment", "competition_pressure_score") and category_id:
+        raise HTTPException(status_code=422, detail=f"{body.claim_field} evidence must not set a reservation category")
+    if not any([body.source_id, body.document_asset_id, body.evidence_url]):
+        raise HTTPException(status_code=422, detail="At least one of source_id, document_asset_id, evidence_url is required")
+
+    key_material = "|".join([
+        row_id, body.claim_field, str(category_id or ""), str(body.source_id or ""),
+        str(body.document_asset_id or ""), body.evidence_url or "", str(body.source_page or ""),
+        json.dumps(body.claim_value, sort_keys=True),
+    ])
+    evidence_key = hashlib.sha256(key_material.encode("utf-8")).hexdigest()
+
+    row = {
+        "metric_id": row_id,
+        "claim_field": body.claim_field,
+        "reservation_category_id": category_id,
+        "evidence_kind": body.evidence_kind,
+        "evidence_role": body.evidence_role,
+        "source_id": body.source_id,
+        "document_asset_id": body.document_asset_id,
+        "evidence_url": body.evidence_url,
+        "source_label": body.source_label,
+        "source_page": body.source_page,
+        "source_excerpt": body.source_excerpt,
+        "claim_value": body.claim_value,
+        "evidence_key": evidence_key,
+        "created_by": admin.get("id"),
+    }
+    try:
+        inserted = sb.table("exam_competition_metric_evidence").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=422, detail=f"Could not attach evidence: {exc}") from exc
+    return {"ok": True, "row": inserted[0] if inserted else row}
 
 
 def _exam_name_map(sb: Any, exam_ids: list[str]) -> dict[str, dict[str, Any]]:
@@ -980,30 +1070,132 @@ def review_competition_metric(
 ) -> dict[str, Any]:
     """Move an ``exam_competition_metrics`` row through its lifecycle.
 
-    Lifecycle: ``draft → pending_review → reviewed → locked → rejected``.
-    Only ``locked`` rows are read by ``competition_context`` in Study OS.
+    Lifecycle: ``draft → pending_review → reviewed → locked``, ``→ rejected``,
+    ``locked → reviewed`` (reopen; reviewer_notes required). Enforced
+    atomically by ``cms_review_competition_metric`` (migration 215) — the
+    transition matrix, CAS, evidence/vacancy-sum validation, and the
+    current-published supersession are all inside one DB transaction so a
+    direct service-role UPDATE cannot bypass them (the published-parent
+    trigger backstops this even if this endpoint is skipped entirely).
+    Only ``reviewed``/``locked`` rows (locked preferred) are read by
+    ``competition_context`` in Study OS.
     """
     sb = get_supabase_admin()
-    patch: dict[str, Any] = {
-        "reviewer_status": body.reviewer_status,
-        "reviewed_by": admin.get("id"),
-        "reviewed_at": _now_iso(),
-        "updated_at": _now_iso(),
-    }
-    updated = _safe(
+    existing = _safe(
         lambda: (
             sb.table("exam_competition_metrics")
-            .update(patch)
+            .select("id, reviewer_status")
             .eq("id", row_id)
+            .limit(1)
             .execute()
             .data
         ),
-        default=None,
-    )
-    if not updated:
+        default=[],
+    ) or []
+    if not existing:
         raise HTTPException(status_code=404, detail="Competition metric not found")
+    current_status = existing[0].get("reviewer_status")
+    new_status = body.reviewer_status
+
+    try:
+        result = sb.rpc(
+            "cms_review_competition_metric",
+            {
+                "p_metric_id": row_id,
+                "p_expected_status": current_status,
+                "p_new_status": new_status,
+                "p_reviewer_notes": None,
+                "p_actor_user_id": admin.get("id"),
+                "p_actor_email": admin.get("email"),
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        msg_lower = msg.lower()
+        if "concurrent_modification" in msg_lower:
+            raise HTTPException(
+                status_code=409,
+                detail="competition metric was modified concurrently — refresh and retry",
+            ) from exc
+        if any(
+            tok in msg_lower
+            for tok in (
+                "transition_not_allowed",
+                "invalid_target_status",
+                "invalid_reviewer_notes",
+                "missing_actor_id",
+                "model_generated_requires_evidence",
+                "missing_or_stale_evidence",
+                "missing_evidence",
+                "vacancy_sum_exceeds_total",
+                "vacancy_sum_incomplete",
+            )
+        ):
+            raise HTTPException(status_code=422, detail=msg) from exc
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
+        logger.error(
+            "cms_review_competition_metric RPC failed; no status change recorded",
+            extra={"metric_id": row_id, "error": msg},
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Review transaction failed; no status change recorded.",
+        ) from exc
+
+    data = result.data or {}
     invalidate_per_exam_intelligence()
-    return updated[0]
+    return {
+        "ok": True,
+        "row_id": row_id,
+        "prev_status": current_status,
+        "new_status": new_status,
+        "audit_id": data.get("audit_id"),
+    }
+
+
+class ReopenForEditBody(BaseModel):
+    reviewer_notes: str = Field(..., min_length=1)
+
+
+@router.post("/competition-metrics/{row_id}/reopen-for-edit")
+def reopen_competition_metric_for_edit(
+    row_id: str,
+    body: ReopenForEditBody = Body(...),
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Clone a published (reviewed/locked) row into a new draft revision.
+
+    The published row is never mutated in place (OD-7) — it stays
+    aspirant-visible and current until the cloned draft is promoted back
+    through the lifecycle. Notes are required for audit.
+    """
+    sb = get_supabase_admin()
+    try:
+        result = sb.rpc(
+            "cms_reopen_competition_metric_for_edit",
+            {
+                "p_metric_id": row_id,
+                "p_reviewer_notes": body.reviewer_notes,
+                "p_actor_user_id": admin.get("id"),
+                "p_actor_email": admin.get("email"),
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        msg_lower = msg.lower()
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
+        if "not_published" in msg_lower or "invalid_reviewer_notes" in msg_lower:
+            raise HTTPException(status_code=422, detail=msg) from exc
+        logger.error(
+            "cms_reopen_competition_metric_for_edit RPC failed",
+            extra={"metric_id": row_id, "error": msg},
+        )
+        raise HTTPException(status_code=500, detail="Reopen-for-edit failed.") from exc
+
+    row = result.data or {}
+    return {"ok": True, "draft": row}
 
 
 # ─── 6. Policy / Update Intelligence (exam_policy_updates) ────────────────

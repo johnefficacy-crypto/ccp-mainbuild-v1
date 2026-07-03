@@ -258,4 +258,46 @@ describe("CompetitionPanel.saveMetric", () => {
     expect(["draft", "pending_review", "reviewed", "locked", "rejected"]).toContain(body.reviewer_status);
     expect(body.reviewer_status).not.toBe("verified");
   });
+
+  // J3 PR1: metric_kind is derived from exam_phase_id (OD-11) — selecting a
+  // phase switches the form to the cutoff_by_category editor and the payload
+  // must carry exam_phase_id + cutoff_by_category, never vacancy fields.
+  test("J3: selecting a phase sends exam_phase_id + cutoff_by_category, no vacancy fields", async () => {
+    useExamWorkspace.mockReturnValue({
+      exam: { id: "exam-1" },
+      cycle: { id: "cyc-1", cycle_name: "2026" },
+      phases: [{ id: "phase-1", phase_name: "Prelims" }],
+    });
+    render(<CompetitionPanel />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add competition metric" }));
+    fireEvent.change(screen.getByTestId("competition-phase-select"), { target: { value: "phase-1" } });
+    fireEvent.change(screen.getByTestId("cutoff-marks-general"), { target: { value: "75.41" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save as draft" }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    const body = lastPostBody();
+    expect(body.payload.exam_phase_id).toBe("phase-1");
+    expect(body.payload.cutoff_by_category).toEqual({ general: { marks: 75.41 } });
+    expect(body.payload.vacancy_total).toBeUndefined();
+    expect(body.payload.vacancy_by_category).toBeUndefined();
+    expect(body.payload.applicant_count).toBeUndefined();
+  });
+
+  test("J3: cycle-level (no phase) sends vacancy_by_category, no cutoff fields", async () => {
+    render(<CompetitionPanel />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add competition metric" }));
+    fireEvent.change(screen.getByTestId("vacancy-general"), { target: { value: "442" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save as draft" }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    const body = lastPostBody();
+    expect(body.payload.exam_phase_id).toBeUndefined();
+    expect(body.payload.vacancy_by_category).toEqual({ general: 442 });
+    expect(body.payload.cutoff_by_category).toBeUndefined();
+    expect(body.payload.difficulty_assessment).toBeUndefined();
+  });
 });

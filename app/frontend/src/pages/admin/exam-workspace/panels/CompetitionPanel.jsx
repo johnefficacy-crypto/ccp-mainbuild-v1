@@ -2,6 +2,17 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
 
+// Vertical reservation categories, v1 (resolutions §OD-1). Kept in sync with
+// the `reservation_categories` seed in migration 215 — do not add PwBD /
+// ex-servicemen / domicile here (separate horizontal dimension, later).
+const CATEGORIES = [
+  { code: "general", label: "General" },
+  { code: "ews", label: "EWS" },
+  { code: "obc", label: "OBC" },
+  { code: "sc", label: "SC" },
+  { code: "st", label: "ST" },
+];
+
 function TrustBadge({ status }) {
   const map = {
     pending:          { cls: "badge pending",  text: "pending" },
@@ -17,8 +28,13 @@ function TrustBadge({ status }) {
 const EI_BASE = "/api/admin/exam-intelligence";
 const CMS_BASE = "/api/admin/exam-intelligence-cms";
 
+const emptyCutoffRow = () => ({ marks: "", max_marks: "" });
+const emptyCutoffMap = () =>
+  Object.fromEntries(CATEGORIES.map((c) => [c.code, emptyCutoffRow()]));
+const emptyVacancyMap = () => Object.fromEntries(CATEGORIES.map((c) => [c.code, ""]));
+
 export default function CompetitionPanel() {
-  const { exam, cycle } = useExamWorkspace();
+  const { exam, cycle, phases } = useExamWorkspace();
 
   const [metrics, setMetrics] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,13 +43,17 @@ export default function CompetitionPanel() {
 
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({
+    exam_phase_id: "",
     vacancies: "",
     applicants: "",
-    cutoff_trend: "rising",
-    difficulty_trend: "harder",
+    vacancy_by_category: emptyVacancyMap(),
+    cutoff_by_category: emptyCutoffMap(),
+    difficulty_level: "stable",
+    difficulty_basis: "",
     source_url: "",
   });
   const [savingNew, setSavingNew] = useState(false);
+  const isPhaseScoped = !!form.exam_phase_id;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,18 +96,40 @@ export default function CompetitionPanel() {
     setSavingNew(true);
     setError("");
     try {
-      // Allowed fields = _COMPETITION_FIELDS (admin_exam_intel_cms.py:1366).
-      // Column names are vacancy_total / applicant_count (not vacancies /
-      // total_applicants); source_url is not a column, so it rides in
-      // metadata. reviewer_status is server-controlled (lands 'draft').
+      // Allowed fields = _COMPETITION_FIELDS (admin_exam_intel_cms.py).
+      // metric_kind is server-derived from exam_phase_id (OD-11): a row with
+      // exam_phase_id set is phase_cutoff (owns cutoff/difficulty only); a
+      // row without it is cycle_summary (owns vacancy/pressure only) — the
+      // two field groups are therefore mutually exclusive here, matching the
+      // server-side field-ownership check.
       const payload = {
         exam_id: exam?.id || null,
         exam_cycle_id: cycle?.id || null,
-        cutoff_trend: form.cutoff_trend,
-        difficulty_trend: form.difficulty_trend,
       };
-      if (form.vacancies) payload.vacancy_total = parseInt(form.vacancies, 10);
-      if (form.applicants) payload.applicant_count = parseInt(form.applicants.replace(/,/g, ""), 10);
+      if (form.exam_phase_id) {
+        payload.exam_phase_id = form.exam_phase_id;
+        const cutoff_by_category = {};
+        for (const c of CATEGORIES) {
+          const row = form.cutoff_by_category[c.code];
+          if (row.marks !== "") {
+            cutoff_by_category[c.code] = { marks: Number(row.marks) };
+            if (row.max_marks !== "") cutoff_by_category[c.code].max_marks = Number(row.max_marks);
+          }
+        }
+        if (Object.keys(cutoff_by_category).length) payload.cutoff_by_category = cutoff_by_category;
+        if (form.difficulty_basis.trim()) {
+          payload.difficulty_assessment = { level: form.difficulty_level, basis: form.difficulty_basis.trim() };
+        }
+      } else {
+        if (form.vacancies) payload.vacancy_total = parseInt(form.vacancies, 10);
+        if (form.applicants) payload.applicant_count = parseInt(form.applicants.replace(/,/g, ""), 10);
+        const vacancy_by_category = {};
+        for (const c of CATEGORIES) {
+          const v = form.vacancy_by_category[c.code];
+          if (v !== "") vacancy_by_category[c.code] = parseInt(v, 10);
+        }
+        if (Object.keys(vacancy_by_category).length) payload.vacancy_by_category = vacancy_by_category;
+      }
       const sourceUrl = form.source_url.trim();
       if (sourceUrl) payload.metadata = { source_url: sourceUrl };
       await api.post(`${CMS_BASE}/exam-competition-metrics`, {
@@ -95,13 +137,28 @@ export default function CompetitionPanel() {
         payload,
       });
       setAdding(false);
-      setForm({ vacancies: "", applicants: "", cutoff_trend: "rising", difficulty_trend: "harder", source_url: "" });
+      setForm({
+        exam_phase_id: "", vacancies: "", applicants: "",
+        vacancy_by_category: emptyVacancyMap(), cutoff_by_category: emptyCutoffMap(),
+        difficulty_level: "stable", difficulty_basis: "", source_url: "",
+      });
       await load();
     } catch (e) {
       setError(e?.message || "Failed to save metric");
     } finally {
       setSavingNew(false);
     }
+  }
+
+  function setCutoffField(code, field, value) {
+    setForm((f) => ({
+      ...f,
+      cutoff_by_category: { ...f.cutoff_by_category, [code]: { ...f.cutoff_by_category[code], [field]: value } },
+    }));
+  }
+
+  function setVacancyField(code, value) {
+    setForm((f) => ({ ...f, vacancy_by_category: { ...f.vacancy_by_category, [code]: value } }));
   }
 
   if (!adding && metrics.length === 0 && !loading) {
@@ -155,49 +212,21 @@ export default function CompetitionPanel() {
             <h4 className="oc-title">New competition metric</h4>
           </div>
           <div className="card-body grid3">
-            <div className="field">
-              <div className="field-lbl">Vacancies</div>
-              <input
-                className="input"
-                placeholder="e.g. 1056"
-                value={form.vacancies}
-                onChange={(e) => setForm((f) => ({ ...f, vacancies: e.target.value }))}
-              />
-            </div>
-            <div className="field">
-              <div className="field-lbl">Applicants</div>
-              <input
-                className="input"
-                placeholder="e.g. 1,100,000"
-                value={form.applicants}
-                onChange={(e) => setForm((f) => ({ ...f, applicants: e.target.value }))}
-              />
-            </div>
-            <div className="field">
-              <div className="field-lbl">Cutoff trend</div>
-              <select
-                className="input"
-                value={form.cutoff_trend}
-                onChange={(e) => setForm((f) => ({ ...f, cutoff_trend: e.target.value }))}
-              >
-                <option value="rising">rising</option>
-                <option value="flat">flat</option>
-                <option value="falling">falling</option>
-              </select>
-            </div>
-            <div className="field">
-              <div className="field-lbl">Difficulty trend</div>
-              <select
-                className="input"
-                value={form.difficulty_trend}
-                onChange={(e) => setForm((f) => ({ ...f, difficulty_trend: e.target.value }))}
-              >
-                <option value="harder">harder</option>
-                <option value="stable">stable</option>
-                <option value="easier">easier</option>
-              </select>
-            </div>
             <div className="field" style={{ gridColumn: "span 2" }}>
+              <div className="field-lbl">Phase (leave unset for a cycle-level vacancy row)</div>
+              <select
+                className="input"
+                data-testid="competition-phase-select"
+                value={form.exam_phase_id}
+                onChange={(e) => setForm((f) => ({ ...f, exam_phase_id: e.target.value }))}
+              >
+                <option value="">— cycle-level (vacancy / applicants) —</option>
+                {(phases || []).map((p) => (
+                  <option key={p.id} value={p.id}>{p.phase_name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
               <div className="field-lbl">Source URL</div>
               <input
                 className="input"
@@ -207,6 +236,97 @@ export default function CompetitionPanel() {
               />
             </div>
           </div>
+
+          {!isPhaseScoped && (
+            <div className="card-body grid3">
+              <div className="field">
+                <div className="field-lbl">Vacancies (total)</div>
+                <input
+                  className="input"
+                  placeholder="e.g. 1056"
+                  value={form.vacancies}
+                  onChange={(e) => setForm((f) => ({ ...f, vacancies: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <div className="field-lbl">Applicants</div>
+                <input
+                  className="input"
+                  placeholder="e.g. 1,100,000"
+                  value={form.applicants}
+                  onChange={(e) => setForm((f) => ({ ...f, applicants: e.target.value }))}
+                />
+              </div>
+              <div className="field" style={{ gridColumn: "span 3" }}>
+                <div className="field-lbl">Vacancy by category</div>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  {CATEGORIES.map((c) => (
+                    <div key={c.code} className="field" style={{ minWidth: 90 }}>
+                      <div className="field-lbl">{c.label}</div>
+                      <input
+                        className="input"
+                        data-testid={`vacancy-${c.code}`}
+                        placeholder="—"
+                        value={form.vacancy_by_category[c.code]}
+                        onChange={(e) => setVacancyField(c.code, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isPhaseScoped && (
+            <div className="card-body">
+              <div className="field">
+                <div className="field-lbl">Cutoff by category (marks / max marks)</div>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  {CATEGORIES.map((c) => (
+                    <div key={c.code} className="field" style={{ minWidth: 140 }}>
+                      <div className="field-lbl">{c.label}</div>
+                      <input
+                        className="input"
+                        data-testid={`cutoff-marks-${c.code}`}
+                        placeholder="marks"
+                        value={form.cutoff_by_category[c.code].marks}
+                        onChange={(e) => setCutoffField(c.code, "marks", e.target.value)}
+                      />
+                      <input
+                        className="input"
+                        style={{ marginTop: 4 }}
+                        placeholder="max marks (optional)"
+                        value={form.cutoff_by_category[c.code].max_marks}
+                        onChange={(e) => setCutoffField(c.code, "max_marks", e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="field" style={{ marginTop: 10 }}>
+                <div className="field-lbl">Difficulty assessment (descriptive only — not planner input)</div>
+                <div className="row" style={{ gap: 8 }}>
+                  <select
+                    className="input"
+                    style={{ maxWidth: 140 }}
+                    value={form.difficulty_level}
+                    onChange={(e) => setForm((f) => ({ ...f, difficulty_level: e.target.value }))}
+                  >
+                    <option value="harder">harder</option>
+                    <option value="stable">stable</option>
+                    <option value="easier">easier</option>
+                  </select>
+                  <input
+                    className="input"
+                    placeholder="basis (8-500 chars, e.g. \"cutoff rose 4th consecutive year\")"
+                    value={form.difficulty_basis}
+                    onChange={(e) => setForm((f) => ({ ...f, difficulty_basis: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="card-foot" style={{ justifyContent: "flex-start" }}>
             <button className="btn primary small" onClick={saveMetric} disabled={savingNew}>
               {savingNew ? "Saving…" : "Save as draft"}
@@ -246,22 +366,32 @@ export default function CompetitionPanel() {
             </thead>
             <tbody>
               {metrics.map((m) => {
-                const ratio =
-                  m.applicant_ratio ??
-                  (m.vacancy_total && m.applicant_count
-                    ? (m.applicant_count / m.vacancy_total).toFixed(0) + ":1"
-                    : "—");
+                // Ratio display is not computed client-side (resolutions
+                // §0.3 fixes the inverse applicant_count/vacancy_total bug
+                // by deriving selection_rate server-side once a
+                // provenance-proven denominator exists — PR 2). Until then
+                // this column shows the deprecated legacy value, labelled.
+                const cutoffEntries = Object.entries(m.cutoff_by_category || {});
+                const difficulty = m.difficulty_assessment || {};
                 return (
                   <tr key={m.id}>
                     <td className="row-sub">{m.exam_cycle_id ?? cycle?.cycle_name ?? "—"}</td>
                     <td className="num">{m.vacancy_total?.toLocaleString() ?? "—"}</td>
                     <td className="num">{m.applicant_count?.toLocaleString() ?? "—"}</td>
-                    <td className="num">{ratio}</td>
-                    <td>
-                      <span className="badge neutral no-dot">{m.cutoff_trend ?? "—"}</span>
+                    <td className="num" title="Legacy value — pending PR 2 provenance-proven ratio">
+                      {m.selection_ratio != null ? `${m.selection_ratio} (legacy)` : "—"}
                     </td>
                     <td>
-                      <span className="badge neutral no-dot">{m.difficulty_trend ?? "—"}</span>
+                      {cutoffEntries.length ? (
+                        <span className="badge neutral no-dot">
+                          {cutoffEntries.map(([code, v]) => `${code}:${v?.marks ?? "—"}`).join(", ")}
+                        </span>
+                      ) : "—"}
+                    </td>
+                    <td>
+                      {difficulty.level ? (
+                        <span className="badge neutral no-dot">{difficulty.level}</span>
+                      ) : "—"}
                     </td>
                     <td><TrustBadge status={m.reviewer_status ?? "pending"} /></td>
                     <td style={{ textAlign: "right" }}>

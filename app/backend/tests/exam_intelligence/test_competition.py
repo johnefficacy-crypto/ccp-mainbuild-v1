@@ -123,3 +123,117 @@ def test_vacancy_series_collapses_phases_per_cycle():
 
 def test_vacancy_series_empty_payload_when_no_data():
     assert vacancy_series([]) == {"total": [], "by_category": {}}
+
+
+# ── J3 PR1: metric_kind-disposed rows + cutoff_by_category (resolutions §1) ──
+
+from app.exam_intelligence.competition import cutoff_direction  # noqa: E402
+
+
+def _disposed_db():
+    return {
+        "exam_cycles": [
+            {"id": "cy-2023", "exam_id": "exam-2", "year": 2023, "cycle_name": "CSE 2023", "status": "completed"},
+            {"id": "cy-2024", "exam_id": "exam-2", "year": 2024, "cycle_name": "CSE 2024", "status": "active"},
+        ],
+        "exam_phases": [
+            {"id": "ph-prelims", "exam_id": "exam-2", "phase_name": "Prelims", "phase_slug": "prelims", "phase_order": 1},
+        ],
+        "exam_competition_metrics": [
+            # cycle_summary, current published — owns vacancy.
+            {
+                "id": "cs-2023", "exam_id": "exam-2", "exam_cycle_id": "cy-2023", "exam_phase_id": None,
+                "metric_kind": "cycle_summary", "is_current_published": True,
+                "vacancy_total": 1105, "vacancy_by_category": {"general": 442},
+                "applicant_count": 1290000, "reviewer_status": "locked", "source_basis": "official",
+                "confidence_score": 0.95,
+            },
+            # A superseded (non-current) cycle_summary row for the same scope
+            # must NOT leak into the series (OD-10 shared selector).
+            {
+                "id": "cs-2023-old", "exam_id": "exam-2", "exam_cycle_id": "cy-2023", "exam_phase_id": None,
+                "metric_kind": "cycle_summary", "is_current_published": False,
+                "vacancy_total": 999, "reviewer_status": "reviewed", "source_basis": "official",
+                "confidence_score": 0.5,
+            },
+            # phase_cutoff, current published — owns cutoff.
+            {
+                "id": "pc-2023", "exam_id": "exam-2", "exam_cycle_id": "cy-2023", "exam_phase_id": "ph-prelims",
+                "metric_kind": "phase_cutoff", "is_current_published": True,
+                "cutoff_by_category": {"general": {"marks": 75.41, "max_marks": 200}},
+                "difficulty_assessment": {"level": "harder", "basis": "cutoff rose vs prior cycle"},
+                "reviewer_status": "locked", "source_basis": "official", "confidence_score": 0.9,
+            },
+            {
+                "id": "pc-2024", "exam_id": "exam-2", "exam_cycle_id": "cy-2024", "exam_phase_id": "ph-prelims",
+                "metric_kind": "phase_cutoff", "is_current_published": True,
+                "cutoff_by_category": {"general": {"marks": 88.22, "max_marks": 200}},
+                "reviewer_status": "reviewed", "source_basis": "official", "confidence_score": 0.9,
+            },
+        ],
+    }
+
+
+def test_select_current_excludes_non_published_disposed_rows():
+    sb = SBStub(_disposed_db())
+    series = competition_series(sb, "exam-2")
+    # Exactly one entry per (cycle, phase); the superseded cs-2023-old must
+    # not have created a second 2023/None row nor overwritten the vacancy.
+    scoped = [r for r in series if r["cycle_year"] == 2023 and r["phase_slug"] == "prelims"]
+    assert len(scoped) == 1
+    assert scoped[0]["vacancy_total"] == 1105
+
+
+def test_competition_series_merges_cycle_summary_and_phase_cutoff():
+    sb = SBStub(_disposed_db())
+    series = competition_series(sb, "exam-2")
+    row = next(r for r in series if r["cycle_year"] == 2023 and r["phase_slug"] == "prelims")
+    # Vacancy comes from the cycle_summary sibling; cutoff from phase_cutoff.
+    assert row["vacancy_total"] == 1105
+    assert row["cutoff_by_category"]["general"]["marks"] == 75.41
+    assert row["difficulty_assessment"]["level"] == "harder"
+
+
+def test_cutoff_series_prefers_cutoff_by_category_over_legacy_trend():
+    series = [
+        {
+            "cycle_year": 2023, "phase_slug": "prelims",
+            "cutoff_trend": {"general": 999},  # must be ignored when the new shape is present
+            "cutoff_by_category": {"general": {"marks": 75.41, "max_marks": 200}},
+        },
+    ]
+    cuts = cutoff_series(series)
+    assert cuts["general"] == [{"year": 2023, "marks": 75.41, "phase_slug": "prelims", "max_marks": 200}]
+
+
+def test_ratio_contract_fields_null_until_pr2_denominator():
+    sb = SBStub(_disposed_db())
+    series = competition_series(sb, "exam-2")
+    row = next(r for r in series if r["cycle_year"] == 2023 and r["phase_slug"] == "prelims")
+    assert row["selection_rate"] is None
+    assert row["candidates_per_vacancy"] is None
+    assert row["ratio_denominator"] is None
+    # selection_ratio is preserved verbatim as the deprecated alias.
+    assert row["selection_ratio_legacy"] == row["selection_ratio"]
+
+
+def test_cutoff_direction_requires_two_comparable_points():
+    assert cutoff_direction([{"year": 2023, "marks": 75.0, "max_marks": 200, "phase_slug": "prelims"}]) is None
+    rising = cutoff_direction([
+        {"year": 2022, "marks": 70.0, "max_marks": 200, "phase_slug": "prelims"},
+        {"year": 2023, "marks": 75.0, "max_marks": 200, "phase_slug": "prelims"},
+    ])
+    assert rising == "rising"
+    falling = cutoff_direction([
+        {"year": 2022, "marks": 80.0, "max_marks": 200, "phase_slug": "prelims"},
+        {"year": 2023, "marks": 75.0, "max_marks": 200, "phase_slug": "prelims"},
+    ])
+    assert falling == "falling"
+
+
+def test_cutoff_direction_null_when_max_marks_differs():
+    # Not comparable (different max_marks) — must return None, never guess.
+    assert cutoff_direction([
+        {"year": 2022, "marks": 70.0, "max_marks": 200, "phase_slug": "prelims"},
+        {"year": 2023, "marks": 75.0, "max_marks": 100, "phase_slug": "prelims"},
+    ]) is None
