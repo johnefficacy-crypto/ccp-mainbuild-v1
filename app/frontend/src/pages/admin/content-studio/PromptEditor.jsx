@@ -8,11 +8,33 @@
  * - required_words: one token per entry, unique case-insensitively (server NFC-trims)
  * - metadata.external_key is system-owned; exam ids must never appear anywhere
  * - verified prompts are locked (the Library hides Edit; the server 422s anyway)
+ *
+ * EDIT builds a DIRTY-FIELD PATCH against the original row: unchanged fields are
+ * omitted, changed non-empty fields are sent, and a nullable field the operator
+ * cleared is sent as explicit `null` (the backend applies null via
+ * jsonb_populate_record; omitting it would leave the stale value in place and
+ * still report success). Non-nullable fields (subject_id, topic_id,
+ * exercise_type, prompt_text, difficulty_level, max_rewrite_attempts) are never
+ * nulled — clearing them in edit is ignored, not sent.
  */
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import useApiAction from "../../../lib/hooks/useApiAction";
 import { getApiErrorMessage } from "../../../lib/api";
 import { contentStudioApi, EXERCISE_TYPES, isValidReason } from "./contentStudioApi";
+import { parseRequiredWordsField, validateInt } from "./validation";
+
+// Optional fields that CAN be cleared to null on edit (not in the backend
+// _NOT_NULL guard). required_words clears to null (not []).
+const NULLABLE = new Set([
+  "microtopic_id",
+  "source_text",
+  "required_words",
+  "required_sentence_count",
+  "min_words",
+  "max_words",
+  "rubric_id",
+  "source_document_id",
+]);
 
 const EMPTY = {
   subject_id: "",
@@ -51,74 +73,116 @@ function toForm(prompt) {
   };
 }
 
-export function parseRequiredWords(text) {
-  const words = (text || "")
-    .split(",")
-    .map((w) => w.trim())
-    .filter(Boolean);
-  const seen = new Set();
-  const out = [];
-  for (const w of words) {
-    if (/\s/.test(w)) return { error: `"${w}" must be a single word (no spaces).` };
-    const key = w.toLowerCase();
-    if (seen.has(key)) return { error: `"${w}" appears more than once (case-insensitive).` };
-    seen.add(key);
-    out.push(w);
+// Normalise the form into typed values + validation errors, independent of
+// create/edit. `undefined` = field left blank.
+function normaliseForm(form) {
+  const errors = [];
+  const v = {};
+
+  v.subject_id = form.subject_id.trim() || undefined;
+  v.topic_id = form.topic_id.trim() || undefined;
+  v.microtopic_id = form.microtopic_id.trim() || undefined;
+  v.exercise_type = form.exercise_type;
+  v.rubric_id = form.rubric_id.trim() || undefined;
+  v.source_document_id = form.source_document_id.trim() || undefined;
+
+  v.prompt_text = form.prompt_text.trim() ? form.prompt_text : undefined;
+  v.source_text = form.source_text.trim() ? form.source_text : undefined;
+
+  const rw = parseRequiredWordsField(form.required_words);
+  if (rw.error) errors.push(rw.error);
+  v.required_words = rw.words && rw.words.length > 0 ? rw.words : undefined;
+
+  const dl = validateInt(form.difficulty_level, "Difficulty", { min: 1, max: 10 });
+  if (dl.error) errors.push(dl.error);
+  v.difficulty_level = dl.value;
+
+  const rsc = validateInt(form.required_sentence_count, "Required sentence count", { min: 1 });
+  if (rsc.error) errors.push(rsc.error);
+  v.required_sentence_count = rsc.value;
+
+  const mn = validateInt(form.min_words, "Min words", { min: 0 });
+  if (mn.error) errors.push(mn.error);
+  v.min_words = mn.value;
+
+  const mx = validateInt(form.max_words, "Max words", { min: 0 });
+  if (mx.error) errors.push(mx.error);
+  v.max_words = mx.value;
+
+  if (v.min_words !== undefined && v.max_words !== undefined && v.max_words < v.min_words) {
+    errors.push("Max words must be ≥ min words.");
   }
-  return { words: out };
+
+  const mra = validateInt(form.max_rewrite_attempts, "Max rewrite attempts", { min: 0 });
+  if (mra.error) errors.push(mra.error);
+  v.max_rewrite_attempts = mra.value;
+
+  return { values: v, errors };
 }
 
-export function buildPayload(form, { isCreate }) {
-  const errors = [];
+const FIELDS = [
+  "topic_id",
+  "microtopic_id",
+  "exercise_type",
+  "prompt_text",
+  "source_text",
+  "required_words",
+  "required_sentence_count",
+  "difficulty_level",
+  "min_words",
+  "max_words",
+  "max_rewrite_attempts",
+  "rubric_id",
+  "source_document_id",
+];
+
+function sameValue(a, b) {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    const aa = Array.isArray(a) ? a : [];
+    const bb = Array.isArray(b) ? b : [];
+    return aa.length === bb.length && aa.every((x, i) => x === bb[i]);
+  }
+  return a === b;
+}
+
+export function buildPayload(form, { isCreate, original = null }) {
+  const { values, errors } = normaliseForm(form);
   const payload = {};
 
   if (isCreate) {
-    if (!form.subject_id.trim()) errors.push("subject_id is required.");
-    payload.subject_id = form.subject_id.trim();
+    if (!values.subject_id) errors.push("subject_id is required.");
+    if (!values.topic_id) errors.push("topic_id is required.");
+    if (!values.prompt_text) errors.push("Prompt text must be non-blank.");
+    if (values.difficulty_level === undefined) errors.push("Difficulty is required (1–10).");
+
+    payload.subject_id = values.subject_id;
+    payload.topic_id = values.topic_id;
+    payload.exercise_type = values.exercise_type;
+    payload.prompt_text = values.prompt_text;
+    payload.difficulty_level = values.difficulty_level;
+    // optional — only when provided
+    FIELDS.forEach((f) => {
+      if (["topic_id", "exercise_type", "prompt_text", "difficulty_level"].includes(f)) return;
+      if (values[f] !== undefined) payload[f] = values[f];
+    });
+    return { payload, errors };
   }
-  if (!form.topic_id.trim() && isCreate) errors.push("topic_id is required.");
-  if (form.topic_id.trim()) payload.topic_id = form.topic_id.trim();
-  if (form.microtopic_id.trim()) payload.microtopic_id = form.microtopic_id.trim();
 
-  payload.exercise_type = form.exercise_type;
+  // EDIT: dirty diff against the original row.
+  const orig = original || {};
+  FIELDS.forEach((f) => {
+    const nextVal = values[f]; // undefined = blank
+    const origVal = f === "required_words"
+      ? (Array.isArray(orig.required_words) ? orig.required_words : undefined)
+      : (orig[f] === null || orig[f] === undefined || orig[f] === "" ? undefined : orig[f]);
 
-  if (!form.prompt_text.trim()) errors.push("Prompt text must be non-blank.");
-  payload.prompt_text = form.prompt_text;
-
-  if (form.source_text.trim()) payload.source_text = form.source_text;
-
-  const rw = parseRequiredWords(form.required_words);
-  if (rw.error) errors.push(rw.error);
-  else if (rw.words.length > 0) payload.required_words = rw.words;
-
-  const d = Number(form.difficulty_level);
-  if (!Number.isInteger(d) || d < 1 || d > 10) errors.push("Difficulty must be an integer 1–10.");
-  payload.difficulty_level = d;
-
-  const intField = (name, label, { min = 1 } = {}) => {
-    const raw = form[name];
-    if (raw === "" || raw === null || raw === undefined) return undefined;
-    const n = Number(raw);
-    if (!Number.isInteger(n) || n < min) {
-      errors.push(`${label} must be an integer ≥ ${min}.`);
-      return undefined;
+    if (nextVal === undefined) {
+      // Field cleared. Only send explicit null if it was set AND is nullable.
+      if (origVal !== undefined && NULLABLE.has(f)) payload[f] = null;
+      return;
     }
-    return n;
-  };
-  const minWords = intField("min_words", "Min words", { min: 0 });
-  const maxWords = intField("max_words", "Max words", { min: 0 });
-  if (minWords !== undefined) payload.min_words = minWords;
-  if (maxWords !== undefined) payload.max_words = maxWords;
-  if (minWords !== undefined && maxWords !== undefined && maxWords < minWords) {
-    errors.push("Max words must be ≥ min words.");
-  }
-  const rsc = intField("required_sentence_count", "Required sentence count");
-  if (rsc !== undefined) payload.required_sentence_count = rsc;
-  const mra = intField("max_rewrite_attempts", "Max rewrite attempts");
-  if (mra !== undefined) payload.max_rewrite_attempts = mra;
-
-  if (form.rubric_id.trim()) payload.rubric_id = form.rubric_id.trim();
-  if (form.source_document_id.trim()) payload.source_document_id = form.source_document_id.trim();
+    if (!sameValue(nextVal, origVal)) payload[f] = nextVal;
+  });
 
   return { payload, errors };
 }
@@ -130,13 +194,33 @@ export default function PromptEditor({ prompt, onClose, onSaved }) {
   const [errors, setErrors] = useState([]);
   const [conflict, setConflict] = useState(false);
   const { run, busy } = useApiAction();
+  const dialogRef = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  // A11y: Escape closes; focus moves into the dialog on open and restores on close.
+  useEffect(() => {
+    const prevFocus = typeof document !== "undefined" ? document.activeElement : null;
+    const node = dialogRef.current;
+    const first = node && node.querySelector("input, textarea, select, button");
+    if (first) first.focus();
+    const onKey = (e) => { if (e.key === "Escape") closeRef.current(); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (prevFocus && typeof prevFocus.focus === "function") prevFocus.focus();
+    };
+  }, []);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const save = async () => {
-    const { payload, errors: validationErrors } = buildPayload(form, { isCreate });
+    const { payload, errors: validationErrors } = buildPayload(form, { isCreate, original: prompt });
     const all = [...validationErrors];
     if (!isValidReason(reason)) all.push("Reason must be 8–500 characters (audit requirement).");
+    if (!isCreate && Object.keys(payload).length === 0) {
+      all.push("No changes to save — edit a field first.");
+    }
     setErrors(all);
     setConflict(false);
     if (all.length > 0) return;
@@ -164,16 +248,18 @@ export default function PromptEditor({ prompt, onClose, onSaved }) {
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={isCreate ? "Create writing prompt" : "Edit writing prompt"}
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", justifyContent: "flex-end" }}
       onClick={onClose}
-      data-testid="prompt-editor"
+      data-testid="prompt-editor-overlay"
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={isCreate ? "Create writing prompt" : "Edit writing prompt"}
         onClick={(e) => e.stopPropagation()}
         style={{ width: "min(560px, 95vw)", height: "100%", overflowY: "auto", background: "var(--paper, #fff)", padding: "1.25rem", boxShadow: "-4px 0 16px rgba(0,0,0,0.2)" }}
+        data-testid="prompt-editor"
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>
@@ -213,7 +299,7 @@ export default function PromptEditor({ prompt, onClose, onSaved }) {
           </label>
           <label style={{ fontSize: 12 }}>
             Microtopic ID (optional)
-            <input className="input" value={form.microtopic_id} onChange={set("microtopic_id")} placeholder="UUID (level=microtopic)" />
+            <input className="input" value={form.microtopic_id} onChange={set("microtopic_id")} placeholder="UUID (level=microtopic)" data-testid="prompt-form-microtopic" />
           </label>
           <label style={{ fontSize: 12 }}>
             Exercise type
@@ -227,7 +313,7 @@ export default function PromptEditor({ prompt, onClose, onSaved }) {
           </label>
           <label style={{ fontSize: 12 }}>
             Source text (optional)
-            <textarea className="input" rows={3} value={form.source_text} onChange={set("source_text")} />
+            <textarea className="input" rows={3} value={form.source_text} onChange={set("source_text")} data-testid="prompt-form-source-text" />
           </label>
           <label style={{ fontSize: 12 }}>
             Required words (comma-separated; one word each, no duplicates)
@@ -240,7 +326,7 @@ export default function PromptEditor({ prompt, onClose, onSaved }) {
             </label>
             <label style={{ fontSize: 12 }}>
               Required sentence count
-              <input className="input" type="number" min={1} value={form.required_sentence_count} onChange={set("required_sentence_count")} />
+              <input className="input" type="number" min={1} value={form.required_sentence_count} onChange={set("required_sentence_count")} data-testid="prompt-form-sentence-count" />
             </label>
             <label style={{ fontSize: 12 }}>
               Min words
@@ -252,16 +338,16 @@ export default function PromptEditor({ prompt, onClose, onSaved }) {
             </label>
             <label style={{ fontSize: 12 }}>
               Max rewrite attempts
-              <input className="input" type="number" min={1} value={form.max_rewrite_attempts} onChange={set("max_rewrite_attempts")} />
+              <input className="input" type="number" min={0} value={form.max_rewrite_attempts} onChange={set("max_rewrite_attempts")} data-testid="prompt-form-rewrite" />
             </label>
           </div>
           <label style={{ fontSize: 12 }}>
             Rubric ID (optional)
-            <input className="input" value={form.rubric_id} onChange={set("rubric_id")} placeholder="UUID" />
+            <input className="input" value={form.rubric_id} onChange={set("rubric_id")} placeholder="UUID" data-testid="prompt-form-rubric" />
           </label>
           <label style={{ fontSize: 12 }}>
             Source document ID (optional)
-            <input className="input" value={form.source_document_id} onChange={set("source_document_id")} placeholder="UUID (admin_exam_intelligence document)" />
+            <input className="input" value={form.source_document_id} onChange={set("source_document_id")} placeholder="UUID (admin_exam_intelligence document)" data-testid="prompt-form-source-document" />
           </label>
           <label style={{ fontSize: 12 }}>
             Reason (required, 8–500 chars — recorded in the audit log)

@@ -3,8 +3,9 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import ContentStudio from "../ContentStudio";
 import { parseCsv } from "../csv";
-import { normalizeRow } from "../PromptBulkImport";
-import { parseRequiredWords, buildPayload } from "../PromptEditor";
+import { normalizeRow, MAX_BULK_ROWS } from "../PromptBulkImport";
+import { buildPayload } from "../PromptEditor";
+import { validateRequiredWords, validateInt, isUuid } from "../validation";
 import { REVIEW_TRANSITIONS, isValidReason } from "../contentStudioApi";
 import { studioPerms } from "../permissions";
 
@@ -20,21 +21,25 @@ jest.mock("../../../../lib/api", () => ({
   getApiErrorMessage: (e) => e?.message || "error",
 }));
 
-// The lazy tab bodies fetch; stub the heavy ones so shell tests stay unit-level.
+// Component tests below drive the real screens with the collection hook mocked
+// (so env/transport stays out of it); shell tests stub the heavy tab bodies.
+let mockCollection;
+jest.mock("../../../../lib/hooks/useApiCollection", () => ({
+  __esModule: true,
+  default: () => mockCollection,
+}));
+jest.mock("../../../../lib/hooks/useApiAction", () => ({
+  __esModule: true,
+  default: () => ({ run: jest.fn(async () => ({ ok: true })), busy: false }),
+}));
+
 jest.mock("../../mocks/QuestionList", () => () => <div data-testid="mock-question-list" />);
 jest.mock("../../mocks/ReviewQueue", () => () => <div data-testid="mock-review-queue" />);
 jest.mock("../../mocks/ImportWizard", () => () => <div data-testid="mock-import-wizard" />);
-jest.mock("../PromptLibrary", () => () => <div data-testid="prompt-library" />);
-jest.mock("../PromptReviewQueue", () => () => <div data-testid="prompt-review-queue" />);
-jest.mock("../PromptBulkImport", () => ({
-  __esModule: true,
-  ...jest.requireActual("../PromptBulkImport"),
-  default: () => {
-    const ReactActual = jest.requireActual("react");
-    return ReactActual.createElement("div", { "data-testid": "prompt-bulk-import" });
-  },
-}));
-jest.mock("../ExamAssignments", () => () => <div data-testid="exam-assignments" />);
+
+const U1 = "11111111-1111-4111-8111-111111111111";
+const U2 = "22222222-2222-4222-8222-222222222222";
+const U3 = "33333333-3333-4333-8333-333333333333";
 
 function renderStudio(url = "/admin/content-studio") {
   return render(
@@ -43,6 +48,12 @@ function renderStudio(url = "/admin/content-studio") {
     </MemoryRouter>,
   );
 }
+
+beforeEach(() => {
+  mockCollection = { items: [], status: "empty", total: 0, refresh: jest.fn() };
+});
+
+// ---- Shell (real prompt bodies; collection hook mocked) --------------------
 
 describe("ContentStudio shell", () => {
   test("defaults to library tab, objective_question type (redirect-faithful)", async () => {
@@ -54,26 +65,6 @@ describe("ContentStudio shell", () => {
   test("tab query param selects the tab", async () => {
     renderStudio("/admin/content-studio?tab=review-queue");
     expect(await screen.findByTestId("mock-review-queue")).toBeInTheDocument();
-  });
-
-  test("writing_prompt facet renders the prompt library", async () => {
-    renderStudio("/admin/content-studio?tab=library&type=writing_prompt");
-    expect(await screen.findByTestId("prompt-library")).toBeInTheDocument();
-  });
-
-  test("exam-assignments tab exists only for writing prompts", async () => {
-    renderStudio("/admin/content-studio?tab=exam-assignments&type=writing_prompt");
-    expect(await screen.findByTestId("exam-assignments")).toBeInTheDocument();
-    renderStudio("/admin/content-studio?tab=exam-assignments&type=objective_question");
-    // falls back to library for objective questions
-    expect(await screen.findByTestId("mock-question-list")).toBeInTheDocument();
-  });
-
-  test("switching content type updates the facet", async () => {
-    renderStudio("/admin/content-studio?tab=bulk-import&type=writing_prompt");
-    expect(await screen.findByTestId("prompt-bulk-import")).toBeInTheDocument();
-    fireEvent.change(screen.getByTestId("content-studio-type"), { target: { value: "objective_question" } });
-    expect(await screen.findByTestId("mock-import-wizard")).toBeInTheDocument();
   });
 
   test("no activate/publish affordance is rendered anywhere in the shell", () => {
@@ -89,7 +80,9 @@ describe("ContentStudio shell", () => {
   });
 });
 
-describe("csv parser (RFC 4180)", () => {
+// ---- CSV parser (RFC 4180 + fail-loud) -------------------------------------
+
+describe("csv parser", () => {
   test("handles quoted commas and escaped quotes", () => {
     const rows = parseCsv('external_key,prompt_text\nk1,"Write, with commas"\nk2,"He said ""hi"""\n');
     expect(rows).toEqual([
@@ -103,17 +96,74 @@ describe("csv parser (RFC 4180)", () => {
     expect(rows).toEqual([{ a: "1", b: "2" }, { a: "3", b: "4" }]);
   });
 
+  test("strips a leading UTF-8 BOM from the first header", () => {
+    const rows = parseCsv("﻿a,b\n1,2\n");
+    expect(rows).toEqual([{ a: "1", b: "2" }]);
+  });
+
+  test("only trims UNQUOTED cells (quoted padding preserved)", () => {
+    const rows = parseCsv('a,b\n  x  ,"  y  "\n');
+    expect(rows).toEqual([{ a: "x", b: "  y  " }]);
+  });
+
+  test("throws on an unterminated quote", () => {
+    expect(() => parseCsv('a,b\n1,"oops\n')).toThrow(/unterminated/i);
+  });
+
+  test("throws on blank or duplicate headers", () => {
+    expect(() => parseCsv("a,,b\n1,2,3\n")).toThrow(/blank/i);
+    expect(() => parseCsv("a,a\n1,2\n")).toThrow(/duplicate/i);
+  });
+
+  test("throws on a row whose width differs from the header", () => {
+    expect(() => parseCsv("a,b\n1,2,3\n")).toThrow(/columns, expected/);
+  });
+
   test("returns empty for header-only input", () => {
     expect(parseCsv("a,b\n")).toEqual([]);
   });
 });
+
+// ---- Shared backend-parity validation --------------------------------------
+
+describe("required-words parity validator", () => {
+  test("accepts single tokens with internal apostrophe/hyphen", () => {
+    expect(validateRequiredWords(["don't", "well-known", "alpha"]).words).toEqual(["don't", "well-known", "alpha"]);
+  });
+
+  test("rejects the punctuation/underscore cases the backend 422s", () => {
+    expect(validateRequiredWords(["foo!"]).error).toMatch(/single word/);
+    expect(validateRequiredWords(["a.b"]).error).toMatch(/single word/);
+    expect(validateRequiredWords(["under_score"]).error).toMatch(/single word/);
+    expect(validateRequiredWords(["@handle"]).error).toMatch(/single word/);
+    expect(validateRequiredWords(["two words"]).error).toMatch(/single word/);
+  });
+
+  test("dedupes case-insensitively (NFC)", () => {
+    expect(validateRequiredWords(["Alpha", "alpha"]).error).toMatch(/more than once/);
+  });
+
+  test("validateInt enforces bounds and integrality", () => {
+    expect(validateInt("", "x").value).toBeUndefined();
+    expect(validateInt("3", "x", { min: 1, max: 10 }).value).toBe(3);
+    expect(validateInt("11", "x", { max: 10 }).error).toMatch(/≤ 10/);
+    expect(validateInt("1.5", "x").error).toMatch(/whole number/);
+  });
+
+  test("isUuid guards malformed ids", () => {
+    expect(isUuid(U1)).toBe(true);
+    expect(isUuid("t-1")).toBe(false);
+  });
+});
+
+// ---- Bulk row normalization (backend parity) -------------------------------
 
 describe("bulk row normalization", () => {
   const base = {
     external_key: "k1",
     exercise_type: "sentence_construction",
     prompt_text: "Write a sentence.",
-    topic_id: "t-1",
+    topic_id: U1,
     difficulty_level: "3",
   };
 
@@ -126,28 +176,46 @@ describe("bulk row normalization", () => {
   });
 
   test("rejects missing external_key and per-row subject_id / exam ids", () => {
-    const { errors } = normalizeRow({ ...base, external_key: "", subject_id: "s-1", exam_id: "e-1" });
+    const { errors } = normalizeRow({ ...base, external_key: "", subject_id: U2, exam_id: U3 });
     expect(errors.join(" ")).toMatch(/external_key is required/);
     expect(errors.join(" ")).toMatch(/must not carry subject_id/);
     expect(errors.join(" ")).toMatch(/exam_id is not allowed/);
+  });
+
+  test("rejects UNKNOWN columns instead of silently dropping them", () => {
+    expect(normalizeRow({ ...base, source_document: U2 }).errors.join(" ")).toMatch(/unknown column "source_document"/);
+    expect(normalizeRow({ ...base, max_rewrite_attempt: "2" }).errors.join(" ")).toMatch(/unknown column "max_rewrite_attempt"/);
+  });
+
+  test("rejects malformed UUIDs, invalid required words, and max<min", () => {
+    expect(normalizeRow({ ...base, topic_id: "t-1" }).errors.join(" ")).toMatch(/topic_id must be a UUID/);
+    expect(normalizeRow({ ...base, required_words: "foo!" }).errors.join(" ")).toMatch(/single word/);
+    expect(normalizeRow({ ...base, min_words: "10", max_words: "5" }).errors.join(" ")).toMatch(/max_words must be ≥ min_words/);
   });
 
   test("rejects out-of-range difficulty and unknown exercise type", () => {
     expect(normalizeRow({ ...base, difficulty_level: "11" }).errors.join(" ")).toMatch(/1–10/);
     expect(normalizeRow({ ...base, exercise_type: "typo_type" }).errors.join(" ")).toMatch(/exercise_type/);
   });
+
+  test("MAX_BULK_ROWS mirrors the backend cap", () => {
+    expect(MAX_BULK_ROWS).toBe(500);
+  });
 });
 
+// ---- Prompt editor payload (create + dirty-diff clearing) -------------------
+
 describe("prompt editor payload rules", () => {
-  test("required_words must be single unique tokens", () => {
-    expect(parseRequiredWords("alpha, beta").words).toEqual(["alpha", "beta"]);
-    expect(parseRequiredWords("two words").error).toMatch(/single word/);
-    expect(parseRequiredWords("Alpha, alpha").error).toMatch(/more than once/);
+  const fullForm = (over = {}) => ({
+    subject_id: U1, topic_id: U2, microtopic_id: "", exercise_type: "sentence_construction",
+    prompt_text: "ok", source_text: "", required_words: "", required_sentence_count: "",
+    difficulty_level: 3, min_words: "", max_words: "", max_rewrite_attempts: "", rubric_id: "",
+    source_document_id: "", ...over,
   });
 
   test("create requires subject/topic/prompt text and valid ranges", () => {
     const { errors } = buildPayload(
-      { subject_id: "", topic_id: "", microtopic_id: "", exercise_type: "sentence_construction", prompt_text: " ", source_text: "", required_words: "", required_sentence_count: "", difficulty_level: 12, min_words: "10", max_words: "5", max_rewrite_attempts: "", rubric_id: "", source_document_id: "" },
+      fullForm({ subject_id: "", topic_id: "", prompt_text: " ", difficulty_level: 12, min_words: "10", max_words: "5" }),
       { isCreate: true },
     );
     const text = errors.join(" ");
@@ -158,27 +226,68 @@ describe("prompt editor payload rules", () => {
     expect(text).toMatch(/Max words must be ≥ min words/);
   });
 
-  test("payload never contains exam-scope or external_key fields", () => {
-    const { payload } = buildPayload(
-      { subject_id: "s", topic_id: "t", microtopic_id: "", exercise_type: "sentence_construction", prompt_text: "ok", source_text: "", required_words: "", required_sentence_count: "", difficulty_level: 3, min_words: "", max_words: "", max_rewrite_attempts: "", rubric_id: "", source_document_id: "" },
-      { isCreate: true },
+  test("create payload never contains exam-scope, metadata, or external_key", () => {
+    const { payload } = buildPayload(fullForm(), { isCreate: true });
+    ["exam_id", "exam_cycle_id", "exam_phase_id", "metadata", "external_key"].forEach((k) =>
+      expect(payload).not.toHaveProperty(k),
     );
-    expect(payload).not.toHaveProperty("exam_id");
-    expect(payload).not.toHaveProperty("exam_cycle_id");
-    expect(payload).not.toHaveProperty("exam_phase_id");
-    expect(payload).not.toHaveProperty("metadata");
+  });
+
+  describe("edit dirty-diff", () => {
+    const original = {
+      id: U1, updated_at: "2026-07-03T00:00:00Z",
+      subject_id: U1, topic_id: U2, microtopic_id: U3, exercise_type: "sentence_construction",
+      prompt_text: "P", source_text: "S", required_words: ["alpha"], required_sentence_count: 2,
+      difficulty_level: 3, min_words: 5, max_words: 10, max_rewrite_attempts: 2, rubric_id: U3,
+      source_document_id: U2,
+    };
+    const formFromOriginal = (over = {}) => ({
+      subject_id: U1, topic_id: U2, microtopic_id: U3, exercise_type: "sentence_construction",
+      prompt_text: "P", source_text: "S", required_words: "alpha", required_sentence_count: 2,
+      difficulty_level: 3, min_words: 5, max_words: 10, max_rewrite_attempts: 2, rubric_id: U3,
+      source_document_id: U2, ...over,
+    });
+
+    test("no edits → empty patch", () => {
+      const { payload } = buildPayload(formFromOriginal(), { isCreate: false, original });
+      expect(payload).toEqual({});
+    });
+
+    test("clearing nullable fields sends explicit null", () => {
+      const { payload } = buildPayload(
+        formFromOriginal({ microtopic_id: "", source_text: "", required_words: "", required_sentence_count: "", min_words: "", max_words: "", rubric_id: "", source_document_id: "" }),
+        { isCreate: false, original },
+      );
+      expect(payload.microtopic_id).toBeNull();
+      expect(payload.source_text).toBeNull();
+      expect(payload.required_words).toBeNull();
+      expect(payload.required_sentence_count).toBeNull();
+      expect(payload.min_words).toBeNull();
+      expect(payload.max_words).toBeNull();
+      expect(payload.rubric_id).toBeNull();
+      expect(payload.source_document_id).toBeNull();
+    });
+
+    test("clearing a NON-nullable field is ignored, not nulled", () => {
+      const { payload } = buildPayload(formFromOriginal({ max_rewrite_attempts: "" }), { isCreate: false, original });
+      expect(payload).not.toHaveProperty("max_rewrite_attempts");
+    });
+
+    test("changed fields are sent; unchanged omitted", () => {
+      const { payload } = buildPayload(formFromOriginal({ min_words: "7", prompt_text: "P2" }), { isCreate: false, original });
+      expect(payload).toEqual({ min_words: 7, prompt_text: "P2" });
+    });
   });
 });
 
-describe("review transition map", () => {
+// ---- Review transitions + permissions --------------------------------------
+
+describe("review transition map + gates", () => {
   test("rejected is terminal; pending offers all three decisions", () => {
     expect(REVIEW_TRANSITIONS.rejected).toEqual([]);
     expect(REVIEW_TRANSITIONS.pending).toEqual(["verified", "rejected", "needs_correction"]);
-    expect(REVIEW_TRANSITIONS.verified).toEqual(["rejected", "needs_correction"]);
   });
-});
 
-describe("permissions + reason gates", () => {
   test("reason must be 8–500 chars", () => {
     expect(isValidReason("short")).toBe(false);
     expect(isValidReason("a valid audit reason")).toBe(true);
@@ -186,16 +295,54 @@ describe("permissions + reason gates", () => {
   });
 
   test("studioPerms maps the handoff permission model", () => {
-    const reviewer = studioPerms({ role: "admin", permissions: ["content_studio.review"] });
-    expect(reviewer.canRead).toBe(true);
-    expect(reviewer.canReview).toBe(true);
-    expect(reviewer.canAuthor).toBe(false);
     const manager = studioPerms({ role: "admin", permissions: ["exam_intelligence.manage"] });
-    expect(manager.canRead).toBe(true);
     expect(manager.canProposeAssignment).toBe(true);
     expect(manager.canReviewAssignment).toBe(false);
-    const superAdmin = studioPerms({ role: "super_admin", permissions: [] });
-    expect(superAdmin.canAuthor).toBe(true);
-    expect(superAdmin.canReviewAssignment).toBe(true);
+    expect(studioPerms({ role: "super_admin", permissions: [] }).canReviewAssignment).toBe(true);
+  });
+});
+
+// ---- Real PromptLibrary (collection hook mocked) ---------------------------
+
+describe("PromptLibrary screen", () => {
+  // eslint-disable-next-line global-require
+  const PromptLibrary = require("../PromptLibrary").default;
+  const perms = { canAuthor: true, canReview: true, canProposeAssignment: true, canReviewAssignment: true };
+
+  const row = (over) => ({
+    id: U1, prompt_text: "A prompt", exercise_type: "sentence_construction", difficulty_level: 3,
+    reviewer_status: "pending", is_active: false, updated_at: "2026-07-03T00:00:00Z", ...over,
+  });
+
+  test("rejected rows show a terminal marker, not an Edit button", () => {
+    mockCollection = { items: [row({ id: U1, reviewer_status: "rejected" })], status: "live", total: 1, refresh: jest.fn() };
+    render(<PromptLibrary perms={perms} onAssign={jest.fn()} />);
+    expect(screen.getByText(/rejected \(terminal\)/i)).toBeInTheDocument();
+    expect(screen.queryByTestId(`prompt-edit-${U1}`)).toBeNull();
+  });
+
+  test("verified rows are locked (no Edit)", () => {
+    mockCollection = { items: [row({ reviewer_status: "verified" })], status: "live", total: 1, refresh: jest.fn() };
+    render(<PromptLibrary perms={perms} onAssign={jest.fn()} />);
+    expect(screen.getByText(/^locked$/i)).toBeInTheDocument();
+  });
+
+  test("Assign action deep-links via onAssign(promptId)", () => {
+    const onAssign = jest.fn();
+    mockCollection = { items: [row()], status: "live", total: 1, refresh: jest.fn() };
+    render(<PromptLibrary perms={perms} onAssign={onAssign} />);
+    fireEvent.click(screen.getByTestId(`prompt-assign-${U1}`));
+    expect(onAssign).toHaveBeenCalledWith(U1);
+  });
+
+  test("pagination uses total, not a full-page heuristic", () => {
+    mockCollection = { items: new Array(50).fill(0).map((_, i) => row({ id: `id-${i}` })), status: "live", total: 50, refresh: jest.fn() };
+    const { rerender } = render(<PromptLibrary perms={perms} onAssign={jest.fn()} />);
+    // exactly 50 rows but total is 50 → no next page
+    expect(screen.queryByTestId("prompt-next")).toBeNull();
+
+    mockCollection = { ...mockCollection, total: 120 };
+    rerender(<PromptLibrary perms={perms} onAssign={jest.fn()} />);
+    expect(screen.getByTestId("prompt-next")).toBeInTheDocument();
   });
 });

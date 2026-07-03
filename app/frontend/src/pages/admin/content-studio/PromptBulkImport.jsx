@@ -13,23 +13,57 @@ import useApiAction from "../../../lib/hooks/useApiAction";
 import { getApiErrorMessage } from "../../../lib/api";
 import { contentStudioApi, EXERCISE_TYPES, isValidReason } from "./contentStudioApi";
 import { parseCsv } from "./csv";
+import { validateRequiredWords, validateInt, isUuid } from "./validation";
 
-const ROW_INT_FIELDS = ["difficulty_level", "min_words", "max_words", "required_sentence_count", "max_rewrite_attempts"];
+export const MAX_BULK_ROWS = 500;
+
+// Backend bulk row shape (migration 215 + content_studio.py strict boundary).
+const UUID_FIELDS = ["topic_id", "microtopic_id", "rubric_id", "source_document_id"];
+// name -> validateInt bounds (mirror of the Pydantic bounds).
+const INT_FIELDS = {
+  difficulty_level: { min: 1, max: 10 },
+  min_words: { min: 0 },
+  max_words: { min: 0 },
+  required_sentence_count: { min: 1 },
+  max_rewrite_attempts: { min: 0 },
+};
+const TEXT_FIELDS = ["source_text"];
+const ALLOWED_KEYS = new Set([
+  "external_key",
+  "exercise_type",
+  "prompt_text",
+  ...UUID_FIELDS,
+  ...Object.keys(INT_FIELDS),
+  ...TEXT_FIELDS,
+  "required_words",
+]);
+// Known-but-forbidden keys get a specific message instead of "unknown".
+const FORBIDDEN_KEYS = new Set(["subject_id", "exam_id", "exam_cycle_id", "exam_phase_id"]);
 
 export function normalizeRow(raw) {
   const row = {};
   const errors = [];
 
+  // Reject unknown / forbidden non-empty columns instead of silently dropping
+  // them (a typo like `source_document` or `max_rewrite_attempt` must fail loud).
+  Object.keys(raw || {}).forEach((k) => {
+    const present = String(raw[k] ?? "").trim() !== "" || Array.isArray(raw[k]);
+    if (FORBIDDEN_KEYS.has(k)) {
+      if (present) {
+        errors.push(
+          k === "subject_id"
+            ? "rows must not carry subject_id (it is set once for the whole batch)"
+            : `${k} is not allowed — prompts are subject-scoped`,
+        );
+      }
+    } else if (!ALLOWED_KEYS.has(k) && present) {
+      errors.push(`unknown column "${k}" — remove it or fix the header`);
+    }
+  });
+
   const key = (raw.external_key || "").trim();
   if (!key) errors.push("external_key is required");
   else row.external_key = key;
-
-  if ("subject_id" in raw && String(raw.subject_id || "").trim() !== "") {
-    errors.push("rows must not carry subject_id (it is set once for the whole batch)");
-  }
-  ["exam_id", "exam_cycle_id", "exam_phase_id"].forEach((k) => {
-    if (k in raw && String(raw[k] || "").trim() !== "") errors.push(`${k} is not allowed — prompts are subject-scoped`);
-  });
 
   const et = (raw.exercise_type || "").trim();
   if (!EXERCISE_TYPES.includes(et)) errors.push(`exercise_type must be one of: ${EXERCISE_TYPES.join(", ")}`);
@@ -40,28 +74,38 @@ export function normalizeRow(raw) {
 
   const topic = (raw.topic_id || "").trim();
   if (!topic) errors.push("topic_id is required");
+  else if (!isUuid(topic)) errors.push("topic_id must be a UUID");
   else row.topic_id = topic;
-  if ((raw.microtopic_id || "").trim()) row.microtopic_id = raw.microtopic_id.trim();
-  if ((raw.source_text || "").trim()) row.source_text = raw.source_text;
-  if ((raw.rubric_id || "").trim()) row.rubric_id = raw.rubric_id.trim();
-  if ((raw.source_document_id || "").trim()) row.source_document_id = raw.source_document_id.trim();
 
-  ROW_INT_FIELDS.forEach((f) => {
-    const v = raw[f];
-    if (v === undefined || v === null || String(v).trim() === "") return;
-    const n = Number(v);
-    if (!Number.isInteger(n)) errors.push(`${f} must be an integer`);
-    else row[f] = n;
+  UUID_FIELDS.filter((f) => f !== "topic_id").forEach((f) => {
+    const v = (raw[f] || "").trim();
+    if (!v) return;
+    if (!isUuid(v)) errors.push(`${f} must be a UUID`);
+    else row[f] = v;
+  });
+
+  TEXT_FIELDS.forEach((f) => {
+    if ((raw[f] || "").trim()) row[f] = raw[f];
+  });
+
+  Object.entries(INT_FIELDS).forEach(([f, bounds]) => {
+    const res = validateInt(raw[f], f, bounds);
+    if (res.error) errors.push(res.error);
+    else if (res.value !== undefined) row[f] = res.value;
   });
   if (row.difficulty_level === undefined) errors.push("difficulty_level is required (1–10)");
-  else if (row.difficulty_level < 1 || row.difficulty_level > 10) errors.push("difficulty_level must be 1–10");
+  if (row.min_words !== undefined && row.max_words !== undefined && row.max_words < row.min_words) {
+    errors.push("max_words must be ≥ min_words");
+  }
 
   const rw = raw.required_words;
-  if (Array.isArray(rw)) {
-    if (rw.length > 0) row.required_words = rw.map((w) => String(w).trim()).filter(Boolean);
-  } else if (typeof rw === "string" && rw.trim()) {
-    // CSV cell: pipe- or comma-separated list inside one (possibly quoted) cell
-    row.required_words = rw.split(/[|,]/).map((w) => w.trim()).filter(Boolean);
+  let entries = null;
+  if (Array.isArray(rw)) entries = rw.map((w) => String(w));
+  else if (typeof rw === "string" && rw.trim()) entries = rw.split(/[|,]/);
+  if (entries) {
+    const res = validateRequiredWords(entries);
+    if (res.error) errors.push(res.error);
+    else if (res.words.length > 0) row.required_words = res.words;
   }
 
   return { row, errors };
@@ -103,6 +147,10 @@ export default function PromptBulkImport({ perms }) {
       }
       if (!raws.length) {
         setParseError("No rows found in the file.");
+        return;
+      }
+      if (raws.length > MAX_BULK_ROWS) {
+        setParseError(`Too many rows: ${raws.length}. The import API accepts at most ${MAX_BULK_ROWS} rows per batch — split the file.`);
         return;
       }
       const seenKeys = new Set();

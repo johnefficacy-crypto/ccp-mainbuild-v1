@@ -21,7 +21,7 @@ function cleanParams(filters, offset) {
   return params;
 }
 
-export default function PromptLibrary({ perms }) {
+export default function PromptLibrary({ perms, onAssign }) {
   const [filters, setFilters] = useState({
     q: "",
     subject_id: "",
@@ -33,11 +33,17 @@ export default function PromptLibrary({ perms }) {
   const [editing, setEditing] = useState(null); // null closed | {} create | prompt edit
 
   const params = useMemo(() => cleanParams(filters, offset), [filters, offset]);
-  const { items, status, refresh } = useApiCollection(
+  const { items, status, total, refresh } = useApiCollection(
     "/api/admin/content-studio/writing-prompts",
     [],
     { params },
   );
+
+  const canAssign = perms.canProposeAssignment || perms.canReviewAssignment;
+  // Prefer the server total; only fall back to the full-page heuristic when the
+  // backend didn't send one.
+  const hasNext =
+    total !== null ? offset + PAGE_SIZE < total : status === "live" && items.length === PAGE_SIZE;
 
   const setFilter = (key, value) => {
     setOffset(0);
@@ -158,22 +164,39 @@ export default function PromptLibrary({ perms }) {
                     {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "—"}
                   </td>
                   <td>
-                    {perms.canAuthor ? (
-                      p.reviewer_status === "verified" ? (
-                        <span style={{ fontSize: 11, opacity: 0.6 }} title="Verified prompts are locked; request needs_correction via review first.">
-                          locked
-                        </span>
-                      ) : (
+                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                      {perms.canAuthor ? (
+                        p.reviewer_status === "verified" ? (
+                          <span style={{ fontSize: 11, opacity: 0.6 }} title="Verified prompts are locked; request needs_correction via review first.">
+                            locked
+                          </span>
+                        ) : p.reviewer_status === "rejected" ? (
+                          <span style={{ fontSize: 11, opacity: 0.6 }} title="Rejected is terminal — a rejected prompt cannot be edited or re-reviewed.">
+                            rejected (terminal)
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn small"
+                            onClick={() => setEditing(p)}
+                            data-testid={`prompt-edit-${p.id}`}
+                          >
+                            Edit
+                          </button>
+                        )
+                      ) : null}
+                      {canAssign && onAssign ? (
                         <button
                           type="button"
                           className="btn small"
-                          onClick={() => setEditing(p)}
-                          data-testid={`prompt-edit-${p.id}`}
+                          onClick={() => onAssign(p.id)}
+                          title="Manage exam applicability for this prompt"
+                          data-testid={`prompt-assign-${p.id}`}
                         >
-                          Edit
+                          Assign
                         </button>
-                      )
-                    ) : null}
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -182,14 +205,19 @@ export default function PromptLibrary({ perms }) {
         </div>
       ) : null}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 12 }}>
+        {total !== null && (status === "live" || status === "empty") ? (
+          <span style={{ fontSize: 12, opacity: 0.7, marginRight: "auto" }} data-testid="prompt-pagination-summary">
+            {total === 0 ? "0" : `${offset + 1}–${offset + items.length}`} of {total}
+          </span>
+        ) : null}
         {offset > 0 ? (
-          <button type="button" className="btn small" onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
+          <button type="button" className="btn small" onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))} data-testid="prompt-prev">
             ← Prev
           </button>
         ) : null}
-        {status === "live" && items.length === PAGE_SIZE ? (
-          <button type="button" className="btn small" onClick={() => setOffset(offset + PAGE_SIZE)}>
+        {hasNext ? (
+          <button type="button" className="btn small" onClick={() => setOffset(offset + PAGE_SIZE)} data-testid="prompt-next">
             Next →
           </button>
         ) : null}

@@ -57,6 +57,16 @@ export default function ContentStudio() {
     setParams(next);
   };
 
+  // Library → Exam Assignments deep link: jump to the assignments tab for a
+  // specific prompt, carrying its id in the URL (no hand-pasted UUIDs).
+  const assignPrompt = (promptId) => {
+    const next = new URLSearchParams(params);
+    next.set("type", "writing_prompt");
+    next.set("tab", "exam-assignments");
+    next.set("prompt_id", promptId);
+    setParams(next);
+  };
+
   // Exam Assignments only exists for writing prompts today.
   const typedTabs = type === "writing_prompt" ? TABS : TABS.filter((t) => t.id !== "exam-assignments");
   const activeTab = typedTabs.some((t) => t.id === tab) ? tab : "library";
@@ -67,13 +77,13 @@ export default function ContentStudio() {
     else if (activeTab === "review-queue") body = <MockReviewQueue />;
     else body = <MockImportWizard />;
   } else if (activeTab === "library") {
-    body = <PromptLibrary perms={perms} />;
+    body = <PromptLibrary perms={perms} onAssign={assignPrompt} />;
   } else if (activeTab === "review-queue") {
     body = <PromptReviewQueue perms={perms} />;
   } else if (activeTab === "bulk-import") {
     body = <PromptBulkImport perms={perms} />;
   } else {
-    body = <ExamAssignments perms={perms} />;
+    body = <ExamAssignments perms={perms} promptIdParam={params.get("prompt_id") || ""} />;
   }
 
   return (

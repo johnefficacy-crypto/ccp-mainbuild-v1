@@ -7,7 +7,7 @@
  * target is not applicable anywhere — global is an explicit is_global row,
  * never implied. Review/remove are CAS-guarded on the target's updated_at.
  */
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import useApiAction from "../../../lib/hooks/useApiAction";
 import { getApiErrorMessage } from "../../../lib/api";
 import { contentStudioApi, isValidReason } from "./contentStudioApi";
@@ -167,12 +167,14 @@ function TargetRow({ target, perms, promptId, onChanged }) {
   );
 }
 
-export default function ExamAssignments({ perms }) {
-  const [promptId, setPromptId] = useState("");
+export default function ExamAssignments({ perms, promptIdParam = "" }) {
+  const [promptId, setPromptId] = useState(promptIdParam);
   const [loadedFor, setLoadedFor] = useState("");
   const [targets, setTargets] = useState([]);
+  const [summary, setSummary] = useState(null); // selected prompt snapshot
   const [state, setState] = useState("idle"); // idle | loading | live | empty | error
   const [loadError, setLoadError] = useState("");
+  const loadRef = useRef(null);
 
   const load = async (id) => {
     const target = (id ?? promptId).trim();
@@ -180,8 +182,14 @@ export default function ExamAssignments({ perms }) {
     setState("loading");
     setLoadError("");
     try {
-      const d = await contentStudioApi.listTargets(target);
+      // Fetch the prompt snapshot (so the operator sees WHAT they are assigning,
+      // not just a UUID) and its targets together.
+      const [prompt, d] = await Promise.all([
+        contentStudioApi.getPrompt(target).catch(() => null),
+        contentStudioApi.listTargets(target),
+      ]);
       const items = Array.isArray(d?.items) ? d.items : [];
+      setSummary(prompt);
       setTargets(items);
       setLoadedFor(target);
       setState(items.length ? "live" : "empty");
@@ -190,6 +198,16 @@ export default function ExamAssignments({ perms }) {
       setState("error");
     }
   };
+  loadRef.current = load;
+
+  // Deep link from the Library ("Assign") arrives as ?prompt_id=… — auto-load it.
+  useEffect(() => {
+    if (promptIdParam) {
+      setPromptId(promptIdParam);
+      loadRef.current(promptIdParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promptIdParam]);
 
   return (
     <div style={{ padding: 16, maxWidth: 900 }} data-testid="exam-assignments">
@@ -214,6 +232,18 @@ export default function ExamAssignments({ perms }) {
           {state === "loading" ? "Loading…" : "Load assignments"}
         </button>
       </div>
+
+      {summary && (state === "live" || state === "empty") ? (
+        <div style={{ border: "1px solid var(--rule, #ddd)", borderRadius: 4, padding: "0.6rem 0.75rem", marginBottom: 12, fontSize: 12 }} data-testid="assignments-selected-prompt">
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>Selected prompt</div>
+          <div style={{ opacity: 0.85 }}>
+            {(summary.exercise_type || "").replaceAll("_", " ")} · difficulty {summary.difficulty_level}/10 · {summary.reviewer_status}
+          </div>
+          <div style={{ opacity: 0.7, marginTop: 2, maxWidth: 640, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {summary.prompt_text}
+          </div>
+        </div>
+      ) : null}
 
       {state === "error" ? (
         <div style={{ color: "var(--err, #c00)", fontSize: 12, marginBottom: 12 }} role="alert">{loadError}</div>
