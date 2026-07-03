@@ -167,3 +167,74 @@ def test_bulk_import_rejects_unknown_entity():
     )
     # Importing into a non-CMS table must be refused outright.
     assert r.status_code == 422, r.text
+
+
+# ── PATCH field-ownership (OD-11) — parity with the create path ────────
+#
+# create_competition_metric already rejects a phase_cutoff row carrying
+# vacancy/pressure fields (and a cycle_summary row carrying cutoff/difficulty)
+# with a 422. The PATCH path previously skipped that check, so the same
+# violation reached the DB `ecm_kind_field_ownership` CHECK and surfaced as an
+# unhandled 500. These pin the clean-422 parity.
+
+
+def test_patch_competition_metric_rejects_cutoff_on_cycle_summary():
+    sb = SBStub({
+        **_seeded_exam(),
+        "exam_competition_metrics": [{
+            "id": "m-cycle", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+            "exam_phase_id": None, "metric_kind": "cycle_summary",
+            "reviewer_status": "draft",
+        }],
+    })
+    client = _build_app(sb)
+    r = client.patch(
+        f"{_BASE}/exam-competition-metrics/m-cycle",
+        json={
+            "reason": "trying to add a cutoff to a cycle-summary row",
+            "payload": {"cutoff_by_category": {"general": {"marks": 75.41, "max_marks": 200}}},
+        },
+    )
+    assert r.status_code == 422, r.text
+    # The DB row must be untouched — the reject happens before the update.
+    assert "cutoff_by_category" not in sb.db["exam_competition_metrics"][0]
+
+
+def test_patch_competition_metric_rejects_vacancy_on_phase_cutoff():
+    sb = SBStub({
+        **_seeded_exam(),
+        "exam_competition_metrics": [{
+            "id": "m-phase", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+            "exam_phase_id": "ph-1", "metric_kind": "phase_cutoff",
+            "reviewer_status": "draft",
+        }],
+    })
+    client = _build_app(sb)
+    r = client.patch(
+        f"{_BASE}/exam-competition-metrics/m-phase",
+        json={
+            "reason": "trying to add vacancy_total to a phase-cutoff row",
+            "payload": {"vacancy_total": 120},
+        },
+    )
+    assert r.status_code == 422, r.text
+    assert sb.db["exam_competition_metrics"][0].get("vacancy_total") is None
+
+
+def test_patch_competition_metric_allows_owned_field():
+    # A cycle_summary row may still be patched with a vacancy field it owns.
+    sb = SBStub({
+        **_seeded_exam(),
+        "exam_competition_metrics": [{
+            "id": "m-cycle", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+            "exam_phase_id": None, "metric_kind": "cycle_summary",
+            "reviewer_status": "draft",
+        }],
+    })
+    client = _build_app(sb)
+    r = client.patch(
+        f"{_BASE}/exam-competition-metrics/m-cycle",
+        json={"reason": "legitimate vacancy_total edit", "payload": {"vacancy_total": 100}},
+    )
+    assert r.status_code == 200, r.text
+    assert sb.db["exam_competition_metrics"][0]["vacancy_total"] == 100

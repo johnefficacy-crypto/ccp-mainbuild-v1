@@ -2151,8 +2151,43 @@ def update_competition_metric(
     if not patch:
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
     _validate_competition_payload(patch)
+
+    # Field-ownership (OD-11), same rule create enforces. metric_kind is fixed
+    # at create (scope fields are immutable here), so validate the MERGED row
+    # (existing values overlaid with this patch) against the existing kind —
+    # a phase_cutoff row must not gain vacancy/pressure fields, a cycle_summary
+    # row must not gain cutoff/difficulty fields. Without this, such a patch is
+    # caught only by the DB `ecm_kind_field_ownership` CHECK and surfaces as an
+    # unhandled 500 instead of a clean 422. metric_kind IS NULL (legacy-triaged)
+    # rows are exempt, mirroring the CHECK.
+    def _merged(field: str) -> Any:
+        return patch[field] if field in patch else existing.get(field)
+
+    metric_kind = existing.get("metric_kind")
+    if metric_kind == "phase_cutoff":
+        if any(_merged(f) is not None for f in ("vacancy_total", "applicant_count", "competition_pressure_score")) or _merged("vacancy_by_category"):
+            raise HTTPException(status_code=422, detail="A phase_cutoff row cannot carry vacancy/pressure fields (field-ownership, OD-11)")
+    elif metric_kind == "cycle_summary":
+        if _merged("cutoff_by_category") or _merged("difficulty_assessment"):
+            raise HTTPException(status_code=422, detail="A cycle_summary row cannot carry cutoff/difficulty fields (field-ownership, OD-11)")
+
     patch["updated_at"] = _now_iso()
-    updated = supabase.table("exam_competition_metrics").update(patch).eq("id", metric_id).execute().data or []
+    try:
+        updated = supabase.table("exam_competition_metrics").update(patch).eq("id", metric_id).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        low = msg.lower()
+        if "published_row_immutable" in low:
+            raise HTTPException(
+                status_code=409,
+                detail="This row is published (reviewed/locked) and its content is frozen — reopen it for edit (clones a new draft revision) instead of patching it",
+            ) from exc
+        if "ecm_kind_field_ownership" in low:
+            raise HTTPException(
+                status_code=422,
+                detail="Patch violates metric_kind field-ownership (cycle_summary owns vacancy/pressure; phase_cutoff owns cutoff/difficulty)",
+            ) from exc
+        raise HTTPException(status_code=422, detail=f"Could not update competition metric: {msg}") from exc
     audit_id = _audit(
         supabase, admin, "exam_intel.cms.competition_metric.update",
         entity_type="exam_competition_metric", entity_id=metric_id,
