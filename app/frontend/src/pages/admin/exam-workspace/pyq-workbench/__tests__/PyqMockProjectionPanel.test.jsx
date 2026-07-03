@@ -2,7 +2,7 @@ import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 jest.mock("../../../../../lib/api", () => ({ api: { get: jest.fn(), post: jest.fn() } }));
-jest.mock("../../../../../lib/hooks/useApiAction", () => ({ __esModule: true, default: () => ({ run: async ({ action, onSuccess }) => { try { const data = await action(); onSuccess?.(data); } catch (_) {} } }) }));
+jest.mock("../../../../../lib/hooks/useApiAction", () => ({ __esModule: true, default: () => ({ run: async ({ action, onSuccess }) => { try { const data = await action(); onSuccess?.(data); return { ok: true, data }; } catch (error) { return { ok: false, error }; } } }) }));
 const { api } = require("../../../../../lib/api");
 const Panel = require("../PyqMockProjectionPanel").default;
 const status = (n) => ({ total_questions: n, unprojected_count: n, projection_counts: {}, stale_projections: [] });
