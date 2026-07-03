@@ -1,24 +1,19 @@
 -- =============================================================================
--- HELD OUT OF app/supabase/migrations/ ON PURPOSE — DO NOT RUN, DO NOT RENAME
--- INTO A LIVE `.sql` FILE YET.
+-- J3 PR 4 — Evidence-Coverage derivation: exam_topic_coverage source_basis
+-- extension + exam-wide unique index.
 --
--- This file uses the `.sql.pending` extension and lives outside any migration
--- runner's glob (`*.sql` only) specifically so nothing executes it. It is
--- included in PR 4 (J3 — Evidence-Coverage derivation) for REVIEW ONLY.
---
--- J3-Implementation-Checklist-2026-07-02.md locks PR 4's migration slot to
--- land AFTER PR 2 (Applied-vs-Appeared) merges, because PR 1/PR 2 are
--- concurrently changing the live `schema_migrations` ledger. The filename
--- number "215" here is ILLUSTRATIVE ONLY (next free slot at PR-4 drafting
--- time) and MUST be re-resolved from the live ledger — never inferred from
--- this filename — before this content is ever copied into a real,
--- sequentially-numbered file under app/supabase/migrations/.
+-- Landed after J3 PR 1 (Competition structure, migration 216) and its
+-- follow-up fix (#869), ahead of J3 PR 2 (Applied-vs-Appeared), per explicit
+-- operator direction overriding the original PR1 -> PR2 -> PR4 sequencing
+-- documented in J3-Implementation-Checklist-2026-07-02.md. See
+-- docs/status/J3-Evidence-Coverage-Scoring-Gate-2026-07-02.md for the
+-- landing-sequence deviation note and PR #867 for the operator decision.
 --
 -- Authority: docs/status/J3-Evidence-Coverage-Scoring-Gate-2026-07-02.md
 -- Section F; docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5.3/§5.5;
 -- docs/status/J3-Implementation-Checklist-2026-07-02.md "PR 4" section.
 --
--- Contents (one atomic migration per §5.5 — no benefit to splitting):
+-- Contents (one atomic migration per §5.5 -- no benefit to splitting):
 --   1. Extend exam_topic_coverage.source_basis CHECK with 'evidence_derived'
 --      (OD-1). It is a text CHECK constraint today, not a PG enum.
 --   2. Add the exam-wide partial UNIQUE index on
@@ -27,9 +22,11 @@
 --      phase-only scopes; the all-NULL exam-wide scope is unconstrained today.
 --   3. A fail-closed DO block that RAISES if any exam-wide (exam_id, topic_id)
 --      duplicate already exists. Duplicate resolution is MANUAL/OPERATOR ONLY
---      — this migration never auto-resolves; see the runbook at the bottom.
+--      -- this migration never auto-resolves; see the runbook at the bottom.
+--
+-- No new table is created by this migration, so no new RLS policy is
+-- required (confirmed: nothing in J3 PR 1 changed exam_topic_coverage).
 -- =============================================================================
-
 begin;
 
 -- ── 1. Preflight: fail-closed duplicate detection (§5.3) ───────────────────
