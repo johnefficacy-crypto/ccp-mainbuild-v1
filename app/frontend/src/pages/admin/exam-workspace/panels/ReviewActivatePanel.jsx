@@ -83,6 +83,18 @@ function PyqReadinessBreakdown({ pyq }) {
   );
 }
 
+// EI-CLEAN-03: missing-tag remediation is independent of D10 readiness — a PYQ
+// section can be "ok" (≥1 planner-ready) yet still have untagged questions that
+// need attention. Used both to keep such a section in the failed-first group and
+// to surface the remediation CTA.
+function pyqMissingTagsFor(s) {
+  return (
+    s.section === "pyq_workbench" &&
+    (s.metrics?.pyq_readiness?.missing_verified_tag_count || 0) > 0
+  );
+}
+
+
 function StatusDot({ status, label }) {
   const cls =
     status === "ready" || status === "locked"
@@ -220,10 +232,14 @@ export default function ReviewActivatePanel({ onGotoTab }) {
   const scorePercent = overall.score_percent ?? 0;
 
   const isOk = (s) => s.status === "ready" || s.status === "locked";
+  // A section still needs attention if it is not ready/locked OR (EI-CLEAN-03) it
+  // is a PYQ section with untagged questions — the missing-tag CTA must stay
+  // visible even when D10 marks the section ready.
+  const needsAttention = (s) => !isOk(s) || pyqMissingTagsFor(s);
   // Failed-first: unresolved sections surface at the top; completed sections
   // collapse behind a "Show completed" toggle so the checklist stays compact.
-  const failedSections = sections.filter((s) => !isOk(s));
-  const clearSections = sections.filter(isOk);
+  const failedSections = sections.filter(needsAttention);
+  const clearSections = sections.filter((s) => !needsAttention(s));
   const clearCount = clearSections.length;
 
   function renderSectionRow(s) {
@@ -232,6 +248,7 @@ export default function ReviewActivatePanel({ onGotoTab }) {
     const reviewEntity = SECTION_REVIEW_ENTITY[s.section];
     // metrics may carry a single row id for competition / policy rows
     const singleRowId = s.metrics?.row_id || s.metrics?.id || null;
+    const pyqMissingTags = pyqMissingTagsFor(s);
 
     return (
       <div key={s.section} className="check-row" style={{ cursor: "default" }}>
@@ -269,10 +286,25 @@ export default function ReviewActivatePanel({ onGotoTab }) {
               ))}
             </ul>
           )}
+          {/* EI-CLEAN-03: PYQ four-metric breakdown (planner-ready vs reviewed
+              vs missing-tag vs rejected). */}
+          {s.section === "pyq_workbench" && s.metrics?.pyq_readiness && (
+            <PyqReadinessBreakdown pyq={s.metrics.pyq_readiness} />
+          )}
         </div>
         <div style={{ textAlign: "right", minWidth: 120 }}>
-          {/* Per-row lock action — gated on exam_intelligence.review */}
-          {canReview && reviewEntity && singleRowId && !ok ? (
+          {/* EI-CLEAN-03: missing-tag CTA takes priority for the PYQ section even
+              when the section is otherwise "ok" (planner-ready ≥ 1). */}
+          {pyqMissingTags ? (
+            <button
+              className="btn small"
+              onClick={() => onGotoTab("pyq")}
+              data-testid="pyq-review-missing-cta"
+            >
+              Review missing topic tags →
+            </button>
+          ) : /* Per-row lock action — gated on exam_intelligence.review */
+          canReview && reviewEntity && singleRowId && !ok ? (
             <RowLockButton
               entity={reviewEntity}
               rowId={singleRowId}

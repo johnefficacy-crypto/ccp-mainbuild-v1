@@ -251,7 +251,7 @@ describe("ReviewActivatePanel — failed-first checklist with Show completed", (
   });
 });
 
-// ── EI-CLEAN-03: PYQ four-metric breakdown + missing-tag CTA ─────────────────
+// ── EI-CLEAN-03: PYQ four-metric breakdown + missing-tag CTA (from PR #875) ───
 
 const READINESS_PYQ_MISSING_TAGS = {
   exam_id: "exam-1",
