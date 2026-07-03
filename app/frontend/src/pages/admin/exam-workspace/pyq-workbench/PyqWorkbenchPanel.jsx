@@ -375,12 +375,17 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
     setSearchParams((prev) => { prev.set("view", v); return prev; }, { replace: true });
   }
 
-  const { exam, cycle } = useExamWorkspace();
+  const { exam, cycle, phases } = useExamWorkspace();
   const examId = exam?.id;
   const cycleId = cycle?.id ?? null;
-  // exam_cycles has no exam_phase_id column; phase is always null for this panel.
   const cycleLabel = cycle?.cycle_name ?? null;
   const cycleYear = cycle?.year ?? null;
+  // Phases the Add-PYQ modal may assign: only the selected cycle's own,
+  // non-cancelled phases. With no cycle selected there is nothing to scope to,
+  // so the modal offers exam-wide only. (D10 readiness stays exam-wide.)
+  const cyclePhases = cycleId
+    ? (phases || []).filter((p) => p.exam_cycle_id === cycleId && p.status !== "cancelled")
+    : [];
 
   const { user } = useAuth();
   const canReview = user?.role === "super_admin" ||
@@ -819,6 +824,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
           cycleId={cycleId}
           cycleLabel={cycleLabel}
           cycleYear={cycleYear}
+          phases={cyclePhases}
           pyqDocuments={pyqDocuments}
           pyqSources={pyqSources}
           onboardPaper={onboardPaper}

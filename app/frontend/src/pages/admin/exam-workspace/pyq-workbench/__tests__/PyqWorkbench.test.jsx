@@ -1638,13 +1638,14 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
 
   // ── Cycle/phase label fix — browser gate remediation ─────────────────────────
 
-  test("modal shows 'No cycle selected (exam-wide paper)' and 'No phase selected' when no cycle context is active", async () => {
+  test("modal shows 'No cycle selected (exam-wide paper)' and exam-wide phase default when no cycle context is active", async () => {
     // mockApiForOnboarding returns cycle: null by default
     mockApiForOnboarding(PAPERS);
     render(<WorkspaceWrapper><PyqWorkbenchPanel /></WorkspaceWrapper>);
     await openAddModal();
     expect(screen.getByTestId("add-pyq-cycle-label").textContent).toContain("No cycle selected (exam-wide paper)");
-    expect(screen.getByTestId("add-pyq-phase-label").textContent).toContain("No phase selected");
+    // EI-CLEAN-02: no cycle → no cycle-scoped phases → phase defaults to exam-wide.
+    expect(screen.getByTestId("add-pyq-phase-label").textContent).toContain("Exam-wide / no phase");
   });
 
   test("modal shows readable cycle name and year when a cycle is selected", async () => {
@@ -1691,7 +1692,8 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     render(<WorkspaceWrapper cycleId={CYCLE_ID}><PyqWorkbenchPanel /></WorkspaceWrapper>);
     await openAddModal();
     expect(screen.getByTestId("add-pyq-cycle-label").textContent).toContain("AILET 2026");
-    expect(screen.getByTestId("add-pyq-phase-label").textContent).toContain("No phase selected");
+    // EI-CLEAN-02: this context seeds no phases, so the default remains exam-wide.
+    expect(screen.getByTestId("add-pyq-phase-label").textContent).toContain("Exam-wide / no phase");
     fireEvent.change(screen.getByTestId("add-pyq-year"), { target: { value: "2025" } });
     // years match — no warning
     expect(screen.queryByTestId("add-pyq-year-mismatch-warning")).toBeNull();
@@ -1702,7 +1704,7 @@ describe("PyqWorkbenchPanel — inline PDF upload (OD-5 follow-up)", () => {
     );
     const body = api.post.mock.calls.find((c) => String(c[0]).includes("/pyq-onboarding"))?.[1];
     expect(body?.exam_cycle_id).toBe(CYCLE_ID);
-    // phase is always null from this panel — exam_cycles has no exam_phase_id column
+    // EI-CLEAN-02: no phase selected (none seeded) → exam-wide → exam_phase_id null.
     expect(body?.exam_phase_id ?? null).toBeNull();
   });
 
