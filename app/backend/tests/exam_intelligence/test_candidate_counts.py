@@ -57,6 +57,23 @@ def test_ratio_denominator_null_when_no_reviewed_locked_counts():
     assert (value, label, row) == (None, None, None)
 
 
+def test_ratio_denominator_fails_closed_without_cycle_id():
+    """Cycle-less callers (e.g. legacy reviewed/locked competition metrics
+    preserved by migration 216 without an exam_cycle_id) must get NO
+    denominator — never an arbitrary count borrowed from another cycle
+    (Codex review, PR #870)."""
+    sb = SBStub(_db(exam_candidate_counts=[
+        {
+            "id": "c-appeared", "exam_id": "exam-1", "exam_cycle_id": "cy-2024",
+            "exam_phase_id": None, "scope_kind": "cycle", "count_type": "appeared",
+            "reservation_category_id": None, "count_value": 950000,
+            "reviewer_status": "locked", "is_current_published": True,
+        },
+    ]))
+    value, label, row = ratio_denominator(sb, "exam-1", None)
+    assert (value, label, row) == (None, None, None)
+
+
 def test_ratio_denominator_ignores_draft_rows():
     sb = SBStub(_db(exam_candidate_counts=[
         {

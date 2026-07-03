@@ -38,7 +38,9 @@ def _safe(call: Callable[[], Any], default: Any = None) -> Any:
 
 
 def _load_counts(supabase: Any, exam_id: str, exam_cycle_id: str | None) -> list[dict[str, Any]]:
-    if not exam_id:
+    # Cycle is mandatory: exam_candidate_counts rows are cycle-scoped, so a
+    # cycle-less read would mix counts across cycles. Fail closed instead.
+    if not exam_id or not exam_cycle_id:
         return []
 
     def _builder():
@@ -53,9 +55,8 @@ def _load_counts(supabase: Any, exam_id: str, exam_cycle_id: str | None) -> list
             .in_("reviewer_status", list(_READY_STATUSES))
             .is_("reservation_category_id", None)
             .limit(200)
+            .eq("exam_cycle_id", exam_cycle_id)
         )
-        if exam_cycle_id:
-            q = q.eq("exam_cycle_id", exam_cycle_id)
         return q.execute().data
 
     return _safe(_builder, default=[]) or []
@@ -114,8 +115,14 @@ def ratio_denominator(
     ``denominator_label`` is ``"appeared"`` | ``"applied"`` | ``None``.
     Never estimates: returns ``(None, None, None)`` when no reviewed/locked
     provenance-proven count exists for the scope.
+
+    ``exam_cycle_id`` is REQUIRED: candidate counts are cycle-scoped facts,
+    so a cycle-less caller (e.g. a legacy reviewed/locked competition
+    metric that migration 216 preserved without an ``exam_cycle_id``)
+    fails closed with no denominator rather than borrowing an arbitrary
+    count from some other cycle of the exam.
     """
-    if not exam_id:
+    if not exam_id or not exam_cycle_id:
         return None, None, None
 
     rows = _select_current(_load_counts(supabase, exam_id, exam_cycle_id))
