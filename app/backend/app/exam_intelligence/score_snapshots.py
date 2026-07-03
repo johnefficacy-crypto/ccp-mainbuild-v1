@@ -285,12 +285,22 @@ def compute_exam_topic_scores(
     # ── 5. Locked coverage (paginated, phase-isolated) ────────────────────
     # Exam-wide reads use .is_("exam_phase_id", None) to exclude phase-
     # specific rows — mixing scopes would make the score nondeterministic.
+    #
+    # OD-3 (Option A, "break the input edge", J3 evidence-coverage gate):
+    # source_basis='evidence_derived' coverage rows are EXCLUDED here. Those
+    # rows are themselves a projection of THIS module's locked snapshots
+    # (see coverage_derivation.py); folding them back into coverage_component
+    # would create a self-reinforcing feedback loop across recompute cycles.
+    # coverage_component must only ever reflect genuinely human-authored
+    # coverage (manual/admin_review/official_syllabus/pyq_analysis/hybrid).
+    # This is a scoring invariant enforced by tests, not a promotion check.
     def _coverage_page(from_n: int, to_n: int) -> list[dict[str, Any]]:
         q = (
             sb.table("exam_topic_coverage")
-            .select("topic_id, exam_priority_score, is_high_yield")
+            .select("topic_id, exam_priority_score, is_high_yield, source_basis")
             .eq("exam_id", exam_id)
             .eq("reviewer_status", "locked")
+            .neq("source_basis", "evidence_derived")
         )
         if exam_phase_id:
             q = q.eq("exam_phase_id", exam_phase_id)
