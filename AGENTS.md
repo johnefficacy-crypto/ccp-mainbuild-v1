@@ -1,4 +1,5 @@
 <!-- Table of contents -->
+- [Execution protocol](#execution-protocol)
 - [graphify](#graphify)
 - [Shared checklist status](#shared-checklist-status)
 - [Known-flaky CI checks](#known-flaky-ci-checks)
@@ -8,6 +9,33 @@
 - [Before adding new modules, verify they don't already exist](#before-adding-new-modules-verify-they-dont-already-exist)
 - [Patterns and Lessons](#patterns-and-lessons)
 - [PYQ Intelligence v2 module contracts](#pyq-intelligence-v2-module-contracts)
+
+## Execution protocol
+
+### Repository inspection order
+
+Before opening any source file:
+1. Read `AGENTS.md` (this file).
+2. Read `graphify-out/GRAPH_REPORT.md`.
+3. Read `graphify-out/wiki/index.md` if it exists — navigate it instead of raw files.
+4. Read task-specific contracts, handoff documents, and architecture decisions.
+5. Then inspect actual source code and tests.
+
+Do not infer implementation details from issue descriptions, previous messages, filenames, or memory. Cross-verify every material claim against the repository.
+
+### Coding rules
+
+- Follow existing architecture, naming, types, utilities, and patterns.
+- Make the smallest complete change that satisfies the contract.
+- Do not refactor unrelated code or add speculative features.
+- Do not create duplicate logic, documentation, checklist rows, or configuration.
+- Inspect callers and dependants before changing shared code.
+- Update tests when behaviour changes.
+- Run the narrowest relevant verification first, then broader checks when justified.
+- Do not claim success unless the relevant checks were executed.
+- Mention every repository file changed in the final response.
+
+---
 
 ## graphify
 
