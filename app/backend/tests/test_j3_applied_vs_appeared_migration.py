@@ -114,15 +114,56 @@ def test_promotion_gate_compares_claim_value_to_current_parent():
     assert "e.evidence_kind <> 'reviewed_analysis'" in MIGRATION
 
 
-def test_od6_backfill_decision_is_zero_rows_with_documented_reasoning():
+def test_promotion_gate_enforces_full_source_trust_predicate():
+    # checkpost P1-5: source_id IS NULL is no longer treated as trusted. An
+    # inner JOIN drops null/dangling sources, and url-or-doc is required.
+    assert "join public.source_registry sr on sr.id = e.source_id" in MIGRATION
+    assert "sr.is_active and sr.is_verified and not sr.discovery_only" in MIGRATION
+    assert "sr.source_type <> 'aggregator'" in MIGRATION
+    assert "e.evidence_url is not null or e.document_asset_id is not null" in MIGRATION
+    # The old "source_id is null OR trusted" escape hatch is gone.
+    assert "e.source_id is null or (sr.is_active" not in MIGRATION
+
+
+def test_promotion_gate_guards_claim_value_shape_before_cast():
+    # checkpost P1-5: a jsonb_typeof number guard precedes the numeric cast so
+    # a malformed direct insert fails the predicate instead of raising.
+    assert "jsonb_typeof(e.claim_value -> 'count_value') = 'number'" in MIGRATION
+
+
+def test_scope_trigger_requires_exact_cycle_match():
+    # checkpost P1-3: the phase must belong to the same exam AND the same
+    # cycle. The NULL-cycle wildcard is removed.
+    assert "p.exam_cycle_id = new.exam_cycle_id" in MIGRATION
+    assert "p.exam_cycle_id is null or p.exam_cycle_id = new.exam_cycle_id" not in MIGRATION
+
+
+def test_lineage_trigger_enforces_scope_and_version_monotonicity():
+    # checkpost P1-4: a superseding revision must share the full scope/category
+    # and version_no = parent.version_no + 1, enforced by a trigger (a CHECK
+    # cannot express a cross-row invariant).
+    assert "_ecc_check_lineage" in MIGRATION
+    assert "trg_ecc_check_lineage" in MIGRATION
+    assert "version_no must be parent.version_no + 1" in MIGRATION
+    assert "v_parent.reservation_category_id is distinct from new.reservation_category_id" in MIGRATION
+
+
+def test_od6_backfill_decision_is_zero_rows_with_fail_closed_evidence():
     assert "0 rows migrated from exam_competition_metrics.applicant_count" in MIGRATION
     assert "zero evidence trail exists" in MIGRATION
-    # The Section I disposition block must not contain a bulk INSERT ...
-    # SELECT ... FROM exam_competition_metrics converting applicant_count
-    # rows into exam_candidate_counts (only a documentation-only DO block).
+    # checkpost P1-6: Section I now carries executable, fail-closed evidence
+    # (RAISE-on-mismatch), not a prose-only notice.
     section_i = MIGRATION[MIGRATION.index("od-6 option b backfill decision: no rows migrated (documented judgment"):MIGRATION.rindex("commit;")]
-    assert "insert into public.exam_candidate_counts" not in section_i
-    assert "from public.exam_competition_metrics" not in section_i
+    # No bulk conversion: a superseding INSERT..SELECT from the legacy table
+    # into exam_candidate_counts must not exist.
+    assert "insert into public.exam_candidate_counts (\n" not in section_i
+    assert "insert into public.exam_candidate_counts\n" not in section_i
+    # Executable fail-closed assertions are present:
+    assert "raise exception 'j3 pr2 §i (od-6): expected 0 converted rows" in section_i
+    assert "zero-loss accounting failed" in section_i
+    assert "applicant_count was mutated" in section_i
+    assert "competition_pressure_score changed for representative row" in section_i
+    assert "v_pre_count" in section_i and "v_converted" in section_i
 
 
 def test_reopen_for_edit_never_mutates_published_row_in_place():

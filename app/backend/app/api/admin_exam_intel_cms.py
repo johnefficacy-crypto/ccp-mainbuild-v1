@@ -1996,17 +1996,20 @@ def update_policy_update(
 _COMPETITION_FIELDS = {
     "exam_id", "exam_cycle_id", "exam_phase_id",
     "vacancy_total", "vacancy_by_category",
-    "applicant_count",
     "cutoff_by_category", "difficulty_assessment", "breakdown_complete",
     "competition_pressure_score",
     "source_basis", "confidence_score",
     "reviewer_notes", "metadata",
-    # cutoff_trend/difficulty_trend/selection_ratio/evidence_count are
-    # DEPRECATED — intentionally excluded from the write allowlist (resolutions
-    # §1.1/§1.2/OD-6: no new writes to legacy columns; evidence_count is
-    # derived from exam_competition_metric_evidence, never caller-supplied).
-    # metric_kind/version_no/supersedes_id/superseded_at/is_current_published
-    # are server-controlled (lifecycle RPC only) — never client-writable.
+    # applicant_count/cutoff_trend/difficulty_trend/selection_ratio/
+    # evidence_count are DEPRECATED — intentionally excluded from the write
+    # allowlist. applicant_count is the semantically-overloaded legacy volume
+    # column (resolutions §1.2 PR-2 atomic switch / OD-6): the applied-vs-
+    # appeared distinction now lives in exam_candidate_counts, so NO new
+    # ambiguous applicant_count values may be written. The DB column is kept
+    # (immutable-migration / deprecate-in-place), just never written here.
+    # evidence_count is derived from exam_competition_metric_evidence, never
+    # caller-supplied. metric_kind/version_no/supersedes_id/superseded_at/
+    # is_current_published are server-controlled (lifecycle RPC only).
 }
 _COMPETITION_SOURCE_BASIS = (
     "manual", "official", "reviewed_analysis", "derived", "model_generated"
@@ -2197,7 +2200,7 @@ def update_competition_metric(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Applied-vs-Appeared candidate counts (migration 217, J3 PR 2). Created
+#  Applied-vs-Appeared candidate counts (migration 218, J3 PR 2). Created
 #  at reviewer_status='draft'; moves through review lifecycle via the
 #  review-side router (admin_exam_intelligence.py). CMS-side create + curate.
 # ════════════════════════════════════════════════════════════════════════
@@ -2242,7 +2245,7 @@ def _validate_candidate_count_payload(row: dict[str, Any]) -> None:
 
 def _validate_candidate_count_scope(supabase, row: dict[str, Any]) -> None:
     """App-layer fast-path mirror of the DB scope-integrity trigger and the
-    OD-3 count_type/scope_kind shape CHECK (migration 217) — a phase must
+    OD-3 count_type/scope_kind shape CHECK (migration 218) — a phase must
     belong to the same exam AND cycle. The DB is the source of truth; this
     gives a fast 422 instead of a raw DB error for the common cases."""
     count_type = row.get("count_type")
@@ -2270,8 +2273,16 @@ def _validate_candidate_count_scope(supabase, row: dict[str, Any]) -> None:
             raise HTTPException(status_code=422, detail="exam_phase_id does not resolve")
         if phase.get("exam_id") != row.get("exam_id"):
             raise HTTPException(status_code=422, detail="exam_phase_id belongs to a different exam")
+        # OD-3: the phase must belong to the SAME exam AND the SAME cycle.
+        # A NULL exam_cycle_id (template / unbound phase) does NOT match any
+        # cycle — it is rejected, not treated as a wildcard (checkpost P1-3).
         phase_cycle = phase.get("exam_cycle_id")
-        if phase_cycle and phase_cycle != row.get("exam_cycle_id"):
+        if phase_cycle is None:
+            raise HTTPException(
+                status_code=422,
+                detail="exam_phase_id is a template/unbound phase (exam_cycle_id IS NULL); a phase-scoped count requires a phase bound to the same cycle (OD-3)",
+            )
+        if phase_cycle != row.get("exam_cycle_id"):
             raise HTTPException(status_code=422, detail="exam_phase_id belongs to a different exam_cycle_id")
 
 
@@ -2343,10 +2354,17 @@ def update_candidate_count(
     existing = _safe_select(supabase, "exam_candidate_counts", id=count_id)
     if not existing:
         raise HTTPException(status_code=404, detail="exam_candidate_count not found")
+    # reservation_category_id is IMMUTABLE scope (checkpost P1-4): a reopened
+    # draft must not repoint its category, which would let it supersede a
+    # parent in a different category scope. Correcting the category means a
+    # fresh root row, not a patch.
     patch = {
         k: v for k, v in body.payload.items()
         if k in _CANDIDATE_COUNT_FIELDS
-        and k not in ("exam_id", "exam_cycle_id", "exam_phase_id", "scope_kind", "count_type")
+        and k not in (
+            "exam_id", "exam_cycle_id", "exam_phase_id",
+            "scope_kind", "count_type", "reservation_category_id",
+        )
     }
     if not patch:
         raise HTTPException(status_code=422, detail="No allowed fields in payload")

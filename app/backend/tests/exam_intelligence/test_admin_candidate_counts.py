@@ -1,7 +1,7 @@
 """Admin candidate-count (applied-vs-appeared, J3 PR2) API tests.
 
 Mirrors test_admin_api.py's exam_competition_metrics review-endpoint test
-pattern (migration 217's lifecycle RPC is analogous to 216's).
+pattern (migration 218's lifecycle RPC is analogous to 216's).
 """
 from __future__ import annotations
 
@@ -83,6 +83,7 @@ def test_candidate_count_review_promotes_with_matching_evidence():
         {
             "id": "ev1", "count_id": "cc1", "evidence_kind": "official_result",
             "evidence_role": "primary", "source_id": "src1",
+            "evidence_url": "https://upsc.gov.in/result.pdf",
             "claim_value": {
                 "count_type": "appeared", "scope_kind": "phase",
                 "exam_phase_id": "ph1", "reservation_category_code": None,
@@ -101,6 +102,82 @@ def test_candidate_count_review_promotes_with_matching_evidence():
     row = next(c for c in sb.db["exam_candidate_counts"] if c["id"] == "cc1")
     assert row["reviewer_status"] == "reviewed"
     assert row["is_current_published"] is True
+
+
+def test_candidate_count_review_rejects_null_source_id_evidence():
+    """checkpost P1-5: source_id IS NULL is NOT trusted. Even a claim-value-
+    matching primary evidence row with no source_registry link (only a raw
+    evidence_url) fails the §7 source-trust predicate."""
+    sb = SBStub(_seed())
+    sb.db["exam_candidate_count_evidence"] = [
+        {
+            "id": "ev1", "count_id": "cc1", "evidence_kind": "official_result",
+            "evidence_role": "primary", "source_id": None,
+            "evidence_url": "https://upsc.gov.in/result.pdf",
+            "claim_value": {
+                "count_type": "appeared", "scope_kind": "phase",
+                "exam_phase_id": "ph1", "reservation_category_code": None,
+                "count_value": 500000,
+            },
+        },
+    ]
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/candidate-counts/cc1/review",
+        json={"reviewer_status": "reviewed"},
+    )
+    assert r.status_code == 422
+    assert "missing_or_stale_evidence" in r.json()["detail"]
+
+
+def test_candidate_count_review_rejects_evidence_without_url_or_doc():
+    """checkpost P1-5: §7 requires an evidence_url OR document_asset_id in
+    addition to a trusted source_registry row."""
+    sb = SBStub(_seed())
+    sb.db["exam_candidate_count_evidence"] = [
+        {
+            "id": "ev1", "count_id": "cc1", "evidence_kind": "official_result",
+            "evidence_role": "primary", "source_id": "src1",
+            "evidence_url": None, "document_asset_id": None,
+            "claim_value": {
+                "count_type": "appeared", "scope_kind": "phase",
+                "exam_phase_id": "ph1", "reservation_category_code": None,
+                "count_value": 500000,
+            },
+        },
+    ]
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/candidate-counts/cc1/review",
+        json={"reviewer_status": "reviewed"},
+    )
+    assert r.status_code == 422
+    assert "missing_or_stale_evidence" in r.json()["detail"]
+
+
+def test_candidate_count_review_rejects_malformed_claim_value_shape():
+    """checkpost P1-5: a non-numeric claim_value.count_value must fail the
+    shape guard and never qualify (no uncontrolled cast/compare error)."""
+    sb = SBStub(_seed())
+    sb.db["exam_candidate_count_evidence"] = [
+        {
+            "id": "ev1", "count_id": "cc1", "evidence_kind": "official_result",
+            "evidence_role": "primary", "source_id": "src1",
+            "evidence_url": "https://upsc.gov.in/result.pdf",
+            "claim_value": {
+                "count_type": "appeared", "scope_kind": "phase",
+                "exam_phase_id": "ph1", "reservation_category_code": None,
+                "count_value": "five lakh",  # malformed — not a number
+            },
+        },
+    ]
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/candidate-counts/cc1/review",
+        json={"reviewer_status": "reviewed"},
+    )
+    assert r.status_code == 422
+    assert "missing_or_stale_evidence" in r.json()["detail"]
 
 
 def test_candidate_count_review_rejects_stale_evidence():

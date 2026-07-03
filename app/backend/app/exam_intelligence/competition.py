@@ -257,7 +257,14 @@ def competition_series(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
         # applicant_count. Every entry in this series is looked up
         # individually so a cycle with no candidate-count data yet simply
         # keeps the null contract rather than falling back silently.
-        denom_value, denom_label, _src = ratio_denominator(supabase, exam_id, e.get("cycle_id"))
+        #
+        # Granularity is explicit (no cross-phase heuristic — PD-2): a cycle-
+        # level entry (phase_id None) uses ONLY a cycle aggregate; a phase
+        # entry uses that phase's appeared count (then the cycle applied
+        # aggregate), so a Mains row never borrows a Prelims denominator.
+        denom_value, denom_label, _src = ratio_denominator(
+            supabase, exam_id, e.get("cycle_id"), target_phase_id=e.get("phase_id")
+        )
         e["ratio_denominator"] = denom_label
         e["selection_rate"], e["candidates_per_vacancy"] = derive_rates(e.get("vacancy_total"), denom_value)
 

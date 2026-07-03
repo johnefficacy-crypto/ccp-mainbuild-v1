@@ -68,8 +68,8 @@ export default function CompetitionMetricsTable({ items, onReview, busyRowId }) 
           <tr>
             <th className="right">Vacancy</th>
             <th>Vacancy by category</th>
-            <th className="right">Applicants</th>
-            <th className="right">Selection ratio (legacy)</th>
+            <th className="right">Applicants (legacy)</th>
+            <th className="right">Selection rate</th>
             <th>Cutoff by category</th>
             <th>Difficulty</th>
             <th className="right">Pressure</th>
@@ -92,11 +92,25 @@ export default function CompetitionMetricsTable({ items, onReview, busyRowId }) 
                 <td className="px-4 py-2 text-xs">
                   {fmtCategoryMap(c.vacancy_by_category, (v) => v)}
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums">
-                  {c.applicant_count ?? "—"}
+                <td className="px-4 py-2 text-right tabular-nums" title="Deprecated legacy volume — ambiguous applied/appeared (resolutions §1.2 / OD-6)">
+                  {c.applicant_count != null ? `${c.applicant_count} (legacy)` : "—"}
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums" title="Deprecated — see resolutions §1.2">
-                  {fmtRatio(c.selection_ratio)}
+                <td className="px-4 py-2 text-right tabular-nums">
+                  {/* Authoritative when a provenance-proven denominator exists
+                      (exam_candidate_counts, appeared→applied); otherwise the
+                      raw legacy selection_ratio is shown labelled as legacy,
+                      never as an authoritative rate (resolutions §1.2). */}
+                  {c.selection_rate != null && c.ratio_denominator ? (
+                    <span title={`Derived from ${c.ratio_denominator} candidate counts`}>
+                      {fmtRatio(c.selection_rate)}{" "}
+                      <span className="text-[10px] text-muted-foreground">({c.ratio_denominator})</span>
+                    </span>
+                  ) : c.selection_ratio != null ? (
+                    <span title="No provenance-proven denominator yet — legacy value only">
+                      {fmtRatio(c.selection_ratio)}{" "}
+                      <span className="text-[10px] text-muted-foreground">(legacy)</span>
+                    </span>
+                  ) : "—"}
                 </td>
                 <td className="px-4 py-2 text-xs">
                   {fmtCategoryMap(c.cutoff_by_category, (v) => (v && v.marks != null ? v.marks : "—"))}

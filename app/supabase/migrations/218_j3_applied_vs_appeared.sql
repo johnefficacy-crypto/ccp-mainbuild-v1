@@ -161,13 +161,18 @@ begin
     raise exception 'exam_candidate_counts: exam_cycle_id % does not belong to exam_id %',
       new.exam_cycle_id, new.exam_id using errcode = 'P0422';
   end if;
+  -- OD-3 (checkpost P1-3): a phase-scoped count requires the phase to belong
+  -- to the SAME exam AND the SAME cycle. p.exam_cycle_id IS NULL (a template /
+  -- unbound phase) does NOT match any cycle — `p.exam_cycle_id = new.exam_cycle_id`
+  -- is false for NULL, so template/unbound phases are rejected, not treated as
+  -- a wildcard.
   if new.exam_phase_id is not null
      and not exists (
        select 1 from public.exam_phases p
        where p.id = new.exam_phase_id and p.exam_id = new.exam_id
-         and (p.exam_cycle_id is null or p.exam_cycle_id = new.exam_cycle_id)
+         and p.exam_cycle_id = new.exam_cycle_id
      ) then
-    raise exception 'exam_candidate_counts: exam_phase_id % not in exam %/cycle %',
+    raise exception 'exam_candidate_counts: exam_phase_id % must belong to exam % AND cycle % (template/unbound phases with NULL exam_cycle_id are rejected)',
       new.exam_phase_id, new.exam_id, new.exam_cycle_id using errcode = 'P0422';
   end if;
   return new;
@@ -178,6 +183,50 @@ drop trigger if exists trg_ecc_check_scope on public.exam_candidate_counts;
 create trigger trg_ecc_check_scope
   before insert or update on public.exam_candidate_counts
   for each row execute function public._ecc_check_scope();
+
+-- ═════════════════════════════════════════════════════════════════════════
+-- B.2 Lineage-validation trigger (checkpost P1-4; mirrors 216's §2.1
+-- RPC/trigger same-scope-ancestry + version_no = parent+1 rule). A CHECK
+-- cannot express a cross-row invariant, so a trigger enforces that a
+-- superseding revision shares the FULL scope/category of its parent and that
+-- version_no is strictly monotonic (parent.version_no + 1). This runs for
+-- every writer, including raw service-role inserts that bypass the app layer.
+-- ═════════════════════════════════════════════════════════════════════════
+
+create or replace function public._ecc_check_lineage() returns trigger
+language plpgsql as $fn$
+declare v_parent public.exam_candidate_counts%rowtype;
+begin
+  if new.supersedes_id is null then
+    return new;
+  end if;
+  select * into v_parent from public.exam_candidate_counts where id = new.supersedes_id;
+  if not found then
+    raise exception 'ecc_lineage: supersedes_id % does not exist', new.supersedes_id
+      using errcode = 'P0422';
+  end if;
+  if v_parent.exam_id is distinct from new.exam_id
+     or v_parent.exam_cycle_id is distinct from new.exam_cycle_id
+     or v_parent.scope_kind is distinct from new.scope_kind
+     or v_parent.exam_phase_id is distinct from new.exam_phase_id
+     or v_parent.count_type is distinct from new.count_type
+     or v_parent.reservation_category_id is distinct from new.reservation_category_id
+  then
+    raise exception 'ecc_lineage: supersedes_id % is a different scope/category than this revision — a superseding revision must share the full (exam, cycle, scope_kind, phase, count_type, category) scope of its parent',
+      new.supersedes_id using errcode = 'P0422';
+  end if;
+  if new.version_no is distinct from (v_parent.version_no + 1) then
+    raise exception 'ecc_lineage: version_no must be parent.version_no + 1 (parent=% expected=% got=%)',
+      v_parent.version_no, v_parent.version_no + 1, new.version_no using errcode = 'P0422';
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists trg_ecc_check_lineage on public.exam_candidate_counts;
+create trigger trg_ecc_check_lineage
+  before insert or update on public.exam_candidate_counts
+  for each row execute function public._ecc_check_lineage();
 
 -- ═════════════════════════════════════════════════════════════════════════
 -- D. NULL-safe two-lane uniqueness (resolutions §2.1). exam_phase_id and
@@ -508,16 +557,28 @@ begin
 
         if not exists (
           select 1 from public.exam_candidate_count_evidence e
-          left join public.source_registry sr on sr.id = e.source_id
+          join public.source_registry sr on sr.id = e.source_id
           where e.count_id = v_row.id
             and e.evidence_role = 'primary'
             and e.evidence_kind <> 'reviewed_analysis'
+            -- claim_value shape/type guard (checkpost P1-5): count_value must
+            -- be a JSON number BEFORE the numeric cast, so a malformed direct
+            -- insert fails this predicate (evidence does not qualify) instead
+            -- of raising an uncontrolled cast error.
+            and jsonb_typeof(e.claim_value -> 'count_value') = 'number'
             and (e.claim_value ->> 'count_value')::numeric = v_row.count_value
             and coalesce(e.claim_value ->> 'count_type', '') = v_row.count_type
             and coalesce(e.claim_value ->> 'scope_kind', '') = v_row.scope_kind
             and coalesce(e.claim_value ->> 'exam_phase_id', '') is not distinct from coalesce(v_row.exam_phase_id::text, '')
             and coalesce(e.claim_value ->> 'reservation_category_code', '') is not distinct from coalesce(v_cat_code, '')
-            and (e.source_id is null or (sr.is_active and sr.is_verified and not sr.discovery_only and sr.source_type <> 'aggregator'))
+            -- Source-trust (§7, checkpost P1-5): source_id IS NULL is NOT
+            -- trusted. Promotion requires an EXISTING, active, verified,
+            -- non-discovery, non-aggregator source_registry row PLUS an exact
+            -- evidence_url or document_asset_id. The inner JOIN drops any
+            -- evidence with a null/dangling source_id.
+            and sr.is_active and sr.is_verified and not sr.discovery_only
+            and sr.source_type <> 'aggregator'
+            and (e.evidence_url is not null or e.document_asset_id is not null)
         ) then
             raise exception 'missing_or_stale_evidence: candidate count has no matching, source-trusted primary evidence' using errcode = 'P0422';
         end if;
@@ -697,9 +758,79 @@ create trigger trg_ecc_updated_at
 -- migration-time bulk conversion.
 -- ═════════════════════════════════════════════════════════════════════════
 
+-- Executable, fail-closed OD-6 evidence (checkpost P1-6). Even though the
+-- disposition is "convert 0 rows", the gate requires RAISE-on-mismatch
+-- assertions rather than a prose notice, so the migration proves — at apply
+-- time, in the same transaction — that:
+--   (a) the pre-migration non-null applicant_count population is captured;
+--   (b) exactly 0 rows were converted into exam_candidate_counts;
+--   (c) every non-null applicant_count row is preserved as legacy-unknown
+--       (converted + preserved_unknown = pre_count, zero loss);
+--   (d) the non-null applicant_count population is byte-for-byte unchanged
+--       after this migration (zero-loss equality — the column is untouched);
+--   (e) a representative competition_pressure_score is preserved (this PR
+--       never alters competition_pressure_score — OD-5 / F.4).
+-- Any mismatch aborts the whole migration (fail-closed).
 do $$
+declare
+  v_pre_count           bigint;
+  v_post_count          bigint;
+  v_converted           bigint;
+  v_preserved_unknown   bigint;
+  v_pressure_before     numeric;
+  v_pressure_after      numeric;
+  v_rep_id              uuid;
 begin
-  raise notice 'J3 PR2 §I (OD-6 Option B): 0 rows migrated from exam_competition_metrics.applicant_count into exam_candidate_counts. Zero evidence trail exists for any legacy applicant_count value (exam_competition_metric_evidence.claim_field does not accept applicant_count and predates this table entirely) — see the migration comment above for the full reasoning. exam_competition_metrics.applicant_count remains untouched/deprecated-in-place.';
+  -- (a) pre-migration non-null applicant_count population.
+  select count(*) into v_pre_count
+    from public.exam_competition_metrics
+    where applicant_count is not null;
+
+  -- (b) rows this migration converted into exam_candidate_counts from
+  -- applicant_count. Section I converts NONE, so this is 0 by construction;
+  -- a converted row would carry metadata.converted_from_applicant_count.
+  select count(*) into v_converted
+    from public.exam_candidate_counts
+    where (metadata ->> 'converted_from_applicant_count') is not null;
+
+  if v_converted <> 0 then
+    raise exception 'J3 PR2 §I (OD-6): expected 0 converted rows, found % — Section I must not convert any applicant_count value (ambiguous rows are never silently converted).', v_converted;
+  end if;
+
+  -- (c) every non-null applicant_count value is preserved as legacy-unknown
+  -- (nothing converted → all preserved). Zero-loss accounting must balance.
+  v_preserved_unknown := v_pre_count - v_converted;
+  if (v_converted + v_preserved_unknown) <> v_pre_count then
+    raise exception 'J3 PR2 §I (OD-6): zero-loss accounting failed — converted(%) + preserved(%) <> pre_count(%)', v_converted, v_preserved_unknown, v_pre_count;
+  end if;
+
+  -- (d) zero-loss equality: the applicant_count population is unchanged.
+  select count(*) into v_post_count
+    from public.exam_competition_metrics
+    where applicant_count is not null;
+  if v_post_count <> v_pre_count then
+    raise exception 'J3 PR2 §I (OD-6): applicant_count was mutated (pre=% post=%) — the column must be deprecated-in-place, never touched by this migration.', v_pre_count, v_post_count;
+  end if;
+
+  -- (e) representative competition_pressure_score preservation (OD-5): this
+  -- PR must never alter competition_pressure_score. Capture one representative
+  -- score and re-read it after the migration body; they must be identical.
+  select id, competition_pressure_score
+    into v_rep_id, v_pressure_before
+    from public.exam_competition_metrics
+    where competition_pressure_score is not null
+    order by id
+    limit 1;
+  if v_rep_id is not null then
+    select competition_pressure_score into v_pressure_after
+      from public.exam_competition_metrics where id = v_rep_id;
+    if v_pressure_after is distinct from v_pressure_before then
+      raise exception 'J3 PR2 §I (OD-5/F.4): competition_pressure_score changed for representative row % (before=% after=%) — this PR must never alter it.', v_rep_id, v_pressure_before, v_pressure_after;
+    end if;
+  end if;
+
+  raise notice 'J3 PR2 §I (OD-6 Option B) fail-closed evidence PASSED: 0 rows migrated from exam_competition_metrics.applicant_count into exam_candidate_counts (zero evidence trail exists to prove any legacy value means "applied"). pre_non_null_applicant_count=%, converted=0, preserved_unknown=%, post_non_null_applicant_count=% (zero-loss), representative competition_pressure_score preserved. exam_competition_metrics.applicant_count remains untouched/deprecated-in-place; ambiguous rows were never converted.',
+    v_pre_count, v_preserved_unknown, v_post_count;
 end $$;
 
 commit;

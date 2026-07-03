@@ -1274,7 +1274,7 @@ def reopen_competition_metric_for_edit(
 
 
 # ─── 5.1 Applied-vs-Appeared candidate counts (exam_candidate_counts,
-# migration 217, J3 PR 2) ───────────────────────────────────────────────
+# migration 218, J3 PR 2) ───────────────────────────────────────────────
 _CANDIDATE_COUNT_COLUMNS = (
     "id, exam_id, exam_cycle_id, exam_phase_id, scope_kind, count_type, "
     "reservation_category_id, count_value, is_current_published, version_no, "
@@ -1306,7 +1306,7 @@ def attach_candidate_count_evidence(
 ) -> dict[str, Any]:
     """Attach evidence to a working (draft/pending_review) candidate-count
     revision (resolutions §4.1). Evidence is append-only and immutable once
-    the parent is published (migration 217 trigger blocks INSERT on a
+    the parent is published (migration 218 trigger blocks INSERT on a
     published parent). The parent row IS the single claim — no claim_field
     or reservation_category_id on the evidence row."""
     sb = get_supabase_admin()
@@ -1322,7 +1322,7 @@ def attach_candidate_count_evidence(
         raise HTTPException(status_code=422, detail="At least one of source_id, document_asset_id, evidence_url is required")
 
     # evidence_key is NOT computed here — the DB trigger
-    # (_ecce_compute_evidence_key, migration 217) unconditionally overwrites
+    # (_ecce_compute_evidence_key, migration 218) unconditionally overwrites
     # whatever is sent with its own canonical server-side digest.
     row = {
         "count_id": row_id,
@@ -1421,7 +1421,7 @@ def review_candidate_count(
 
     Lifecycle: ``draft -> pending_review -> reviewed -> locked``, ``-> rejected``,
     ``locked -> reviewed`` (reopen; reviewer_notes required). Enforced
-    atomically by ``cms_review_candidate_count`` (migration 217) — the
+    atomically by ``cms_review_candidate_count`` (migration 218) — the
     transition matrix, CAS, evidence claim-value-match validation, and the
     current-published supersession are all inside one DB transaction.
     Publishing a candidate count flips the ratio denominator used by

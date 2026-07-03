@@ -1,5 +1,5 @@
 """CMS create/patch endpoint tests for exam_candidate_counts (J3 PR2,
-migration 217). Mirrors the exam-competition-metrics CMS test pattern."""
+migration 218). Mirrors the exam-competition-metrics CMS test pattern."""
 from __future__ import annotations
 
 from fastapi import FastAPI
@@ -134,3 +134,31 @@ def test_patch_missing_row_404():
     sb = SBStub(_seed())
     r = _client(sb).patch(f"{_CC}/no-such", json={"reason": "no such row", "payload": {"count_value": 1}})
     assert r.status_code == 404
+
+
+def test_template_unbound_phase_rejected():
+    """checkpost P1-3: ph2 is a template/unbound phase (exam_cycle_id IS NULL).
+    A phase-scoped appeared count must NOT accept it — the phase must be bound
+    to the same cycle (OD-3)."""
+    sb = SBStub(_seed())
+    r = _client(sb).post(_CC, json={"reason": "unbound phase appeared", "payload": {
+        "exam_id": "e1", "exam_cycle_id": "cy1", "exam_phase_id": "ph2",
+        "scope_kind": "phase", "count_type": "appeared", "count_value": 500000,
+    }})
+    assert r.status_code == 422
+    assert "template/unbound phase" in r.json()["detail"]
+
+
+def test_patch_candidate_count_rejects_category_change():
+    """checkpost P1-4: reservation_category_id is immutable scope — a reopened
+    draft must not repoint its category (which could supersede a parent in a
+    different category scope)."""
+    sb = SBStub({**_seed(), "exam_candidate_counts": [
+        {"id": "cc1", "exam_id": "e1", "exam_cycle_id": "cy1", "scope_kind": "cycle",
+         "count_type": "applied", "reservation_category_id": None,
+         "count_value": 1000, "reviewer_status": "draft"},
+    ]})
+    r = _client(sb).patch(f"{_CC}/cc1", json={"reason": "try category change", "payload": {"reservation_category_id": "cat-obc"}})
+    assert r.status_code == 422
+    assert "No allowed fields" in r.json()["detail"]
+    assert sb.db["exam_candidate_counts"][0]["reservation_category_id"] is None

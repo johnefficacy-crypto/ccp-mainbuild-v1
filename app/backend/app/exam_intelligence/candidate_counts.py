@@ -69,46 +69,42 @@ def _select_current(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [r for r in rows if r.get("is_current_published")]
 
 
-def _load_phase_orders(supabase: Any, exam_id: str) -> dict[str, int]:
-    rows = _safe(
-        lambda: (
-            supabase.table("exam_phases")
-            .select("id, phase_order")
-            .eq("exam_id", exam_id)
-            .limit(200)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
-    return {r["id"]: (r.get("phase_order") if r.get("phase_order") is not None else 999999) for r in rows if r.get("id")}
+def _cycle_aggregate(rows: list[dict[str, Any]], count_type: str) -> dict[str, Any] | None:
+    """The explicitly-labelled cycle-level aggregate row of ``count_type``
+    (``scope_kind='cycle'`` and no ``exam_phase_id``). This is the ONLY row
+    permitted to stand for a cycle-level denominator — a phase row is never
+    promoted to cycle scope (PD-2, Determinism > Heuristics)."""
+    for r in rows:
+        if (
+            r.get("count_type") == count_type
+            and r.get("scope_kind") == "cycle"
+            and not r.get("exam_phase_id")
+            and r.get("count_value") is not None
+        ):
+            return r
+    return None
 
 
-def _pick_representative(rows: list[dict[str, Any]], count_type: str, phase_orders: dict[str, int]) -> dict[str, Any] | None:
-    """Among current-published official-total rows of ``count_type`` for the
-    scope, prefer the explicitly-labelled cycle-level aggregate
-    (``scope_kind='cycle'``); otherwise fall back to the earliest phase
-    (lowest ``phase_order``) as the representative denominator — the first
-    stage of a multi-phase exam typically has the largest turnout, so it is
-    the most conservative (largest, least-selective) appeared/applied
-    figure available. This is a documented judgment call, not a silent
-    guess: the exact scope used is always returned alongside the value.
-    """
-    candidates = [r for r in rows if r.get("count_type") == count_type]
-    if not candidates:
-        return None
-    cycle_agg = [r for r in candidates if r.get("scope_kind") == "cycle"]
-    if cycle_agg:
-        return cycle_agg[0]
-    phase_rows = [r for r in candidates if r.get("scope_kind") == "phase"]
-    if not phase_rows:
-        return None
-    phase_rows.sort(key=lambda r: phase_orders.get(r.get("exam_phase_id"), 999999))
-    return phase_rows[0]
+def _phase_appeared(rows: list[dict[str, Any]], phase_id: str) -> dict[str, Any] | None:
+    """The appeared count for one specific phase (``scope_kind='phase'`` and
+    matching ``exam_phase_id``). A Mains row therefore only ever reads a
+    Mains appeared count — never another phase's turnout."""
+    for r in rows:
+        if (
+            r.get("count_type") == "appeared"
+            and r.get("scope_kind") == "phase"
+            and r.get("exam_phase_id") == phase_id
+            and r.get("count_value") is not None
+        ):
+            return r
+    return None
 
 
 def ratio_denominator(
-    supabase: Any, exam_id: str | None, exam_cycle_id: str | None
+    supabase: Any,
+    exam_id: str | None,
+    exam_cycle_id: str | None,
+    target_phase_id: str | None = None,
 ) -> tuple[int | None, str | None, dict[str, Any] | None]:
     """Return ``(denominator_value, denominator_label, source_row)``.
 
@@ -116,11 +112,22 @@ def ratio_denominator(
     Never estimates: returns ``(None, None, None)`` when no reviewed/locked
     provenance-proven count exists for the scope.
 
+    ``target_phase_id`` selects the denominator granularity deterministically
+    (no cross-phase heuristic — PD-2):
+
+    * ``target_phase_id is None`` → **cycle-level** denominator. Use ONLY an
+      explicitly-labelled cycle aggregate (``scope_kind='cycle'``): prefer the
+      appeared cycle aggregate, then the applied cycle aggregate, else null.
+      A phase row is NEVER substituted for a cycle-level denominator.
+    * ``target_phase_id`` set → **phase-scoped** denominator. Use only that
+      phase's appeared count; if none, fall back to the cycle-level applied
+      aggregate (applied is always cycle-scoped, OD-3), else null. A Mains row
+      can therefore never show a Prelims count.
+
     ``exam_cycle_id`` is REQUIRED: candidate counts are cycle-scoped facts,
-    so a cycle-less caller (e.g. a legacy reviewed/locked competition
-    metric that migration 216 preserved without an ``exam_cycle_id``)
-    fails closed with no denominator rather than borrowing an arbitrary
-    count from some other cycle of the exam.
+    so a cycle-less caller (e.g. a legacy reviewed/locked competition metric
+    that migration 216 preserved without an ``exam_cycle_id``) fails closed
+    with no denominator rather than borrowing a count from another cycle.
     """
     if not exam_id or not exam_cycle_id:
         return None, None, None
@@ -128,13 +135,23 @@ def ratio_denominator(
     rows = _select_current(_load_counts(supabase, exam_id, exam_cycle_id))
     if not rows:
         return None, None, None
-    phase_orders = _load_phase_orders(supabase, exam_id)
 
-    for count_type in _DENOMINATOR_PREFERENCE:
-        row = _pick_representative(rows, count_type, phase_orders)
-        if row is not None and row.get("count_value") is not None:
-            return int(row["count_value"]), count_type, row
+    if target_phase_id is None:
+        # Cycle-level: cycle aggregates only, appeared → applied → null.
+        for count_type in _DENOMINATOR_PREFERENCE:
+            row = _cycle_aggregate(rows, count_type)
+            if row is not None:
+                return int(row["count_value"]), count_type, row
+        return None, None, None
 
+    # Phase-scoped: this phase's appeared count, then the cycle applied
+    # aggregate as the only permitted fallback, else null.
+    row = _phase_appeared(rows, target_phase_id)
+    if row is not None:
+        return int(row["count_value"]), "appeared", row
+    row = _cycle_aggregate(rows, "applied")
+    if row is not None:
+        return int(row["count_value"]), "applied", row
     return None, None, None
 
 

@@ -181,7 +181,7 @@ describe("CompetitionPanel.saveMetric", () => {
     });
   });
 
-  test("hits /exam-competition-metrics with vacancy_total/applicant_count, reason≥8, valid ranges", async () => {
+  test("hits /exam-competition-metrics with vacancy_total, reason≥8, and NEVER writes applicant_count", async () => {
     render(<CompetitionPanel />);
     await waitFor(() => expect(api.get).toHaveBeenCalled());
 
@@ -189,9 +189,10 @@ describe("CompetitionPanel.saveMetric", () => {
     fireEvent.change(screen.getByPlaceholderText("e.g. 1056"), {
       target: { value: "1056" },
     });
-    fireEvent.change(screen.getByPlaceholderText("e.g. 1,100,000"), {
-      target: { value: "1,100,000" },
-    });
+    // J3 PR2 (checkpost P0-1): the "Applicants" input is removed — the
+    // ambiguous legacy applicant_count is deprecated in place and NO new
+    // values may be written (resolutions §1.2 / OD-6).
+    expect(screen.queryByPlaceholderText("e.g. 1,100,000")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save as draft" }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalled());
@@ -202,7 +203,8 @@ describe("CompetitionPanel.saveMetric", () => {
     expect(body.reason.length).toBeGreaterThanOrEqual(8);
     // W2: correct column names
     expect(body.payload.vacancy_total).toBe(1056);
-    expect(body.payload.applicant_count).toBe(1100000);
+    // applicant_count is NEVER written by the panel now.
+    expect(body.payload.applicant_count).toBeUndefined();
     expect(body.payload).not.toHaveProperty("vacancies");
     expect(body.payload).not.toHaveProperty("total_applicants");
     // W2: reviewer_status dropped (server forces 'draft')

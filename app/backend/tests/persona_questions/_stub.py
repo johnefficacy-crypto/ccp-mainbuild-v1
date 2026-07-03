@@ -841,12 +841,12 @@ class SBStub:
         })
         return new_row
 
-    # Same transition matrix as competition metrics (migration 217 mirrors
+    # Same transition matrix as competition metrics (migration 218 mirrors
     # 216's lifecycle RPC exactly).
     _ECC_TRANSITIONS = _ECM_TRANSITIONS
 
     def _cms_review_candidate_count(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate cms_review_candidate_count (migration 217): transition
+        """Emulate cms_review_candidate_count (migration 218): transition
         matrix + CAS + evidence claim-value-match promotion gate + atomic
         current-published supersession on publish."""
         count_id = params.get("p_count_id")
@@ -895,7 +895,13 @@ class SBStub:
                 if e.get("evidence_role") != "primary" or e.get("evidence_kind") == "reviewed_analysis":
                     continue
                 cv = e.get("claim_value") or {}
-                if cv.get("count_value") != row.get("count_value"):
+                # claim_value shape/type guard (§7): count_value must be a
+                # real number, else the row is malformed and never qualifies
+                # (mirrors the migration's jsonb_typeof guard before the cast).
+                raw_cv = cv.get("count_value")
+                if not isinstance(raw_cv, (int, float)) or isinstance(raw_cv, bool):
+                    continue
+                if raw_cv != row.get("count_value"):
                     continue
                 if cv.get("count_type") != row.get("count_type"):
                     continue
@@ -905,12 +911,19 @@ class SBStub:
                     continue
                 if cv.get("reservation_category_code") != cat_code:
                     continue
+                # Source-trust (§7): a primary official count REQUIRES an
+                # existing, active, verified, non-discovery, non-aggregator
+                # source_registry row PLUS an evidence_url or document_asset_id.
+                # source_id IS NULL is NOT trusted (checkpost P1-5).
                 src_id = e.get("source_id")
-                if src_id:
-                    src = next((s for s in self.db.get("source_registry", []) if s.get("id") == src_id), None)
-                    if not src or not src.get("is_active") or not src.get("is_verified") \
-                            or src.get("discovery_only") or src.get("source_type") == "aggregator":
-                        continue
+                if not src_id:
+                    continue
+                src = next((s for s in self.db.get("source_registry", []) if s.get("id") == src_id), None)
+                if not src or not src.get("is_active") or not src.get("is_verified") \
+                        or src.get("discovery_only") or src.get("source_type") == "aggregator":
+                    continue
+                if not (e.get("evidence_url") or e.get("document_asset_id")):
+                    continue
                 qualifying = True
                 break
             if not qualifying:
@@ -953,7 +966,7 @@ class SBStub:
         }
 
     def _cms_reopen_candidate_count_for_edit(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate cms_reopen_candidate_count_for_edit (migration 217):
+        """Emulate cms_reopen_candidate_count_for_edit (migration 218):
         clone-to-draft, never mutates the published row in place."""
         import uuid as _uuid
 
