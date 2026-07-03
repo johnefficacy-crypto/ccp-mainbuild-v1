@@ -320,6 +320,10 @@ class SBStub:
             return _RpcCall(self._cms_review_competition_metric(params))
         if name == "cms_reopen_competition_metric_for_edit":
             return _RpcCall(self._cms_reopen_competition_metric_for_edit(params))
+        if name == "cms_review_candidate_count":
+            return _RpcCall(self._cms_review_candidate_count(params))
+        if name == "cms_reopen_candidate_count_for_edit":
+            return _RpcCall(self._cms_reopen_candidate_count_for_edit(params))
         return _RpcCall(None)
 
 
@@ -832,6 +836,168 @@ class SBStub:
             "id": str(_uuid.uuid4()), "actor_id": actor_id, "actor_email": actor_email,
             "admin_user_id": actor_id, "action": "competition_metric_reopen_for_edit",
             "entity_type": "exam_competition_metric", "entity_id": metric_id,
+            "old_value": {"published_id": pub["id"]}, "new_value": {"draft_id": new_row["id"]},
+            "notes": reviewer_notes,
+        })
+        return new_row
+
+    # Same transition matrix as competition metrics (migration 219 mirrors
+    # 216's lifecycle RPC exactly).
+    _ECC_TRANSITIONS = _ECM_TRANSITIONS
+
+    def _cms_review_candidate_count(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Emulate cms_review_candidate_count (migration 219): transition
+        matrix + CAS + evidence claim-value-match promotion gate + atomic
+        current-published supersession on publish."""
+        count_id = params.get("p_count_id")
+        expected_status = params.get("p_expected_status")
+        new_status = params.get("p_new_status")
+        reviewer_notes = params.get("p_reviewer_notes")
+        actor_id = params.get("p_actor_user_id")
+        actor_email = params.get("p_actor_email")
+
+        if not actor_id:
+            raise RuntimeError("missing_actor_id: p_actor_user_id must not be NULL")
+        if new_status not in ("draft", "pending_review", "reviewed", "locked", "rejected"):
+            raise RuntimeError(f"invalid_target_status: {new_status} is not a recognised status")
+
+        row = next((r for r in self.db.get("exam_candidate_counts", []) if r.get("id") == count_id), None)
+        if row is None:
+            raise RuntimeError(f"not_found: candidate count {count_id} does not exist")
+
+        current_status = row.get("reviewer_status")
+        if current_status != expected_status:
+            raise RuntimeError(
+                f"concurrent_modification: expected status={expected_status} but found {current_status}"
+            )
+        if new_status not in self._ECC_TRANSITIONS.get(current_status, set()):
+            raise RuntimeError(f"transition_not_allowed: {current_status} -> {new_status} is not permitted")
+        if current_status == "locked" and new_status == "reviewed" and not (reviewer_notes or "").strip():
+            raise RuntimeError("invalid_reviewer_notes: reviewer_notes required when reopening a locked row")
+        if current_status == "draft" and new_status == "pending_review" and row.get("source_basis") == "model_generated":
+            raise RuntimeError(
+                "model_generated_requires_evidence: attach primary evidence and change source_basis "
+                "to official or reviewed_analysis before submitting a model_generated row for review"
+            )
+
+        if current_status == "pending_review" and new_status == "reviewed":
+            cat_code = None
+            if row.get("reservation_category_id"):
+                cat = next(
+                    (c for c in self.db.get("reservation_categories", []) if c.get("id") == row.get("reservation_category_id")),
+                    None,
+                )
+                cat_code = cat.get("code") if cat else None
+            qualifying = False
+            for e in self.db.get("exam_candidate_count_evidence", []):
+                if e.get("count_id") != count_id:
+                    continue
+                if e.get("evidence_role") != "primary" or e.get("evidence_kind") == "reviewed_analysis":
+                    continue
+                cv = e.get("claim_value") or {}
+                # claim_value shape/type guard (§7): count_value must be a
+                # real number, else the row is malformed and never qualifies
+                # (mirrors the migration's jsonb_typeof guard before the cast).
+                raw_cv = cv.get("count_value")
+                if not isinstance(raw_cv, (int, float)) or isinstance(raw_cv, bool):
+                    continue
+                if raw_cv != row.get("count_value"):
+                    continue
+                if cv.get("count_type") != row.get("count_type"):
+                    continue
+                if cv.get("scope_kind") != row.get("scope_kind"):
+                    continue
+                if cv.get("exam_phase_id") != row.get("exam_phase_id"):
+                    continue
+                if cv.get("reservation_category_code") != cat_code:
+                    continue
+                # Source-trust (§7): a primary official count REQUIRES an
+                # existing, active, verified, non-discovery, non-aggregator
+                # source_registry row PLUS an evidence_url or document_asset_id.
+                # source_id IS NULL is NOT trusted (checkpost P1-5).
+                src_id = e.get("source_id")
+                if not src_id:
+                    continue
+                src = next((s for s in self.db.get("source_registry", []) if s.get("id") == src_id), None)
+                if not src or not src.get("is_active") or not src.get("is_verified") \
+                        or src.get("discovery_only") or src.get("source_type") == "aggregator":
+                    continue
+                if not (e.get("evidence_url") or e.get("document_asset_id")):
+                    continue
+                qualifying = True
+                break
+            if not qualifying:
+                raise RuntimeError("missing_or_stale_evidence: candidate count has no matching, source-trusted primary evidence")
+
+        row["reviewer_status"] = new_status
+        row["reviewed_by"] = actor_id
+        row["reviewed_at"] = "2026-07-03T00:00:00Z"
+        if reviewer_notes is not None:
+            row["reviewer_notes"] = reviewer_notes
+
+        if new_status == "reviewed" and current_status == "pending_review":
+            scope = (
+                row.get("exam_id"), row.get("exam_cycle_id"), row.get("scope_kind"),
+                row.get("exam_phase_id"), row.get("count_type"), row.get("reservation_category_id"),
+            )
+            for other in self.db.get("exam_candidate_counts", []):
+                other_scope = (
+                    other.get("exam_id"), other.get("exam_cycle_id"), other.get("scope_kind"),
+                    other.get("exam_phase_id"), other.get("count_type"), other.get("reservation_category_id"),
+                )
+                if other is not row and other.get("is_current_published") and other_scope == scope:
+                    other["is_current_published"] = False
+                    other["superseded_at"] = "2026-07-03T00:00:00Z"
+            row["is_current_published"] = True
+
+        import uuid as _uuid
+
+        audit_id = str(_uuid.uuid4())
+        self.db.setdefault("admin_audit_logs", []).append({
+            "id": audit_id, "actor_id": actor_id, "actor_email": actor_email,
+            "admin_user_id": actor_id, "action": "candidate_count_status_transition",
+            "entity_type": "exam_candidate_count", "entity_id": count_id,
+            "old_value": {"status": expected_status}, "new_value": {"status": new_status},
+            "notes": reviewer_notes,
+        })
+        return {
+            "ok": True, "audit_id": audit_id, "count_id": count_id,
+            "prev_status": expected_status, "new_status": new_status,
+        }
+
+    def _cms_reopen_candidate_count_for_edit(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Emulate cms_reopen_candidate_count_for_edit (migration 219):
+        clone-to-draft, never mutates the published row in place."""
+        import uuid as _uuid
+
+        count_id = params.get("p_count_id")
+        reviewer_notes = params.get("p_reviewer_notes")
+        actor_id = params.get("p_actor_user_id")
+        actor_email = params.get("p_actor_email")
+
+        if not actor_id:
+            raise RuntimeError("missing_actor_id: p_actor_user_id must not be NULL")
+        if not (reviewer_notes or "").strip():
+            raise RuntimeError("invalid_reviewer_notes: reviewer_notes required to reopen for edit")
+
+        pub = next((r for r in self.db.get("exam_candidate_counts", []) if r.get("id") == count_id), None)
+        if pub is None:
+            raise RuntimeError(f"not_found: candidate count {count_id} does not exist")
+        if pub.get("reviewer_status") not in ("reviewed", "locked"):
+            raise RuntimeError("not_published: only a reviewed/locked row can be reopened for edit")
+
+        new_row = dict(pub)
+        new_row["id"] = str(_uuid.uuid4())
+        new_row["reviewer_status"] = "draft"
+        new_row["supersedes_id"] = pub["id"]
+        new_row["version_no"] = (pub.get("version_no") or 1) + 1
+        new_row["is_current_published"] = False
+        new_row["superseded_at"] = None
+        self.db.setdefault("exam_candidate_counts", []).append(new_row)
+        self.db.setdefault("admin_audit_logs", []).append({
+            "id": str(_uuid.uuid4()), "actor_id": actor_id, "actor_email": actor_email,
+            "admin_user_id": actor_id, "action": "candidate_count_reopen_for_edit",
+            "entity_type": "exam_candidate_count", "entity_id": count_id,
             "old_value": {"published_id": pub["id"]}, "new_value": {"draft_id": new_row["id"]},
             "notes": reviewer_notes,
         })

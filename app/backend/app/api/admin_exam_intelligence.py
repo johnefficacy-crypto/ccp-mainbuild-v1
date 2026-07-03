@@ -1273,6 +1273,269 @@ def reopen_competition_metric_for_edit(
     return {"ok": True, "draft": row}
 
 
+# ─── 5.1 Applied-vs-Appeared candidate counts (exam_candidate_counts,
+# migration 219, J3 PR 2) ───────────────────────────────────────────────
+_CANDIDATE_COUNT_COLUMNS = (
+    "id, exam_id, exam_cycle_id, exam_phase_id, scope_kind, count_type, "
+    "reservation_category_id, count_value, is_current_published, version_no, "
+    "source_basis, confidence_score, reviewer_status, reviewed_at, "
+    "reviewer_notes, metadata, created_at"
+)
+
+
+class CandidateCountEvidenceBody(BaseModel):
+    evidence_kind: str = Field(
+        ...,
+        pattern="^(official_notification|official_result|official_statistics|corrigendum|official_page|reviewed_analysis)$",
+    )
+    evidence_role: str = Field(default="primary", pattern="^(primary|supporting)$")
+    source_id: str | None = None
+    document_asset_id: str | None = None
+    evidence_url: str | None = None
+    source_label: str | None = None
+    source_page: int | None = Field(default=None, ge=1)
+    source_excerpt: str | None = None
+    claim_value: dict[str, Any]
+
+
+@router.post("/candidate-counts/{row_id}/evidence")
+def attach_candidate_count_evidence(
+    row_id: str,
+    body: CandidateCountEvidenceBody = Body(...),
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Attach evidence to a working (draft/pending_review) candidate-count
+    revision (resolutions §4.1). Evidence is append-only and immutable once
+    the parent is published (migration 219 trigger blocks INSERT on a
+    published parent). The parent row IS the single claim — no claim_field
+    or reservation_category_id on the evidence row."""
+    sb = get_supabase_admin()
+    count = _safe(
+        lambda: sb.table("exam_candidate_counts").select("id, reviewer_status").eq("id", row_id).limit(1).execute().data,
+        default=[],
+    ) or []
+    if not count:
+        raise HTTPException(status_code=404, detail="Candidate count not found")
+    if count[0].get("reviewer_status") in ("reviewed", "locked"):
+        raise HTTPException(status_code=409, detail="Cannot attach evidence to a published candidate-count row")
+    if not any([body.source_id, body.document_asset_id, body.evidence_url]):
+        raise HTTPException(status_code=422, detail="At least one of source_id, document_asset_id, evidence_url is required")
+
+    # evidence_key is NOT computed here — the DB trigger
+    # (_ecce_compute_evidence_key, migration 219) unconditionally overwrites
+    # whatever is sent with its own canonical server-side digest.
+    row = {
+        "count_id": row_id,
+        "evidence_kind": body.evidence_kind,
+        "evidence_role": body.evidence_role,
+        "source_id": body.source_id,
+        "document_asset_id": body.document_asset_id,
+        "evidence_url": body.evidence_url,
+        "source_label": body.source_label,
+        "source_page": body.source_page,
+        "source_excerpt": body.source_excerpt,
+        "claim_value": body.claim_value,
+        "created_by": admin.get("id"),
+    }
+    try:
+        inserted = sb.table("exam_candidate_count_evidence").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=422, detail=f"Could not attach evidence: {exc}") from exc
+    return {"ok": True, "row": inserted[0] if inserted else row}
+
+
+@router.get("/candidate-counts/{row_id}/evidence")
+def list_candidate_count_evidence(
+    row_id: str,
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """List evidence attached to a candidate-count row (review surface)."""
+    sb = get_supabase_admin()
+    rows = _safe(
+        lambda: (
+            sb.table("exam_candidate_count_evidence")
+            .select(
+                "id, count_id, evidence_kind, evidence_role, source_id, document_asset_id, "
+                "evidence_url, source_label, source_page, source_excerpt, claim_value, "
+                "captured_at, created_by, created_at"
+            )
+            .eq("count_id", row_id)
+            .order("created_at", desc=False)
+            .limit(200)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    return {"items": rows, "count": len(rows)}
+
+
+@router.get("/candidate-counts")
+def list_candidate_counts(
+    exam_id: str | None = Query(None),
+    status: str = Query("all"),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0, le=10000),
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """List ``exam_candidate_counts`` rows for admin review."""
+    if status != "all" and status not in _COVERAGE_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid status filter")
+    sb = get_supabase_admin()
+
+    def _builder():
+        q = sb.table("exam_candidate_counts").select(_CANDIDATE_COUNT_COLUMNS)
+        if exam_id:
+            q = q.eq("exam_id", exam_id)
+        if status != "all":
+            q = q.eq("reviewer_status", status)
+        return q.order("created_at", desc=True).limit(limit + offset).execute().data
+
+    rows = _safe(_builder, default=[]) or []
+    page = rows[offset : offset + limit]
+    exams_by_id = _exam_name_map(
+        sb, list({r.get("exam_id") for r in page if r.get("exam_id")})
+    )
+
+    items = []
+    for r in page:
+        exam = exams_by_id.get(r.get("exam_id")) or {}
+        items.append(
+            {
+                **r,
+                "exam": exam.get("name"),
+                "exam_slug": exam.get("slug"),
+                "status": r.get("reviewer_status"),
+            }
+        )
+    return {"items": items, "count": len(rows)}
+
+
+@router.patch("/candidate-counts/{row_id}/review")
+def review_candidate_count(
+    row_id: str,
+    body: CoverageReviewBody = Body(...),
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Move an ``exam_candidate_counts`` row through its lifecycle.
+
+    Lifecycle: ``draft -> pending_review -> reviewed -> locked``, ``-> rejected``,
+    ``locked -> reviewed`` (reopen; reviewer_notes required). Enforced
+    atomically by ``cms_review_candidate_count`` (migration 219) — the
+    transition matrix, CAS, evidence claim-value-match validation, and the
+    current-published supersession are all inside one DB transaction.
+    Publishing a candidate count flips the ratio denominator used by
+    ``competition.py`` / ``competition_context.py`` (resolutions §1.2 PR-2
+    atomic switch), so the per-exam cache is invalidated the same way a
+    competition-metric review does.
+    """
+    sb = get_supabase_admin()
+    existing = _safe(
+        lambda: (
+            sb.table("exam_candidate_counts")
+            .select("id, reviewer_status")
+            .eq("id", row_id)
+            .limit(1)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    if not existing:
+        raise HTTPException(status_code=404, detail="Candidate count not found")
+    current_status = existing[0].get("reviewer_status")
+    new_status = body.reviewer_status
+
+    try:
+        result = sb.rpc(
+            "cms_review_candidate_count",
+            {
+                "p_count_id": row_id,
+                "p_expected_status": current_status,
+                "p_new_status": new_status,
+                "p_reviewer_notes": body.reviewer_notes,
+                "p_actor_user_id": admin.get("id"),
+                "p_actor_email": admin.get("email"),
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        msg_lower = msg.lower()
+        if "concurrent_modification" in msg_lower:
+            raise HTTPException(
+                status_code=409,
+                detail="candidate count was modified concurrently — refresh and retry",
+            ) from exc
+        if any(
+            tok in msg_lower
+            for tok in (
+                "transition_not_allowed",
+                "invalid_target_status",
+                "invalid_reviewer_notes",
+                "missing_actor_id",
+                "model_generated_requires_evidence",
+                "missing_or_stale_evidence",
+            )
+        ):
+            raise HTTPException(status_code=422, detail=msg) from exc
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
+        logger.error(
+            "cms_review_candidate_count RPC failed; no status change recorded",
+            extra={"count_id": row_id, "error": msg},
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Review transaction failed; no status change recorded.",
+        ) from exc
+
+    data = result.data or {}
+    invalidate_per_exam_intelligence()
+    return {
+        "ok": True,
+        "row_id": row_id,
+        "prev_status": current_status,
+        "new_status": new_status,
+        "audit_id": data.get("audit_id"),
+    }
+
+
+@router.post("/candidate-counts/{row_id}/reopen-for-edit")
+def reopen_candidate_count_for_edit(
+    row_id: str,
+    body: ReopenForEditBody = Body(...),
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Clone a published (reviewed/locked) candidate-count row into a new
+    draft revision. The published row is never mutated in place (OD-7)."""
+    sb = get_supabase_admin()
+    try:
+        result = sb.rpc(
+            "cms_reopen_candidate_count_for_edit",
+            {
+                "p_count_id": row_id,
+                "p_reviewer_notes": body.reviewer_notes,
+                "p_actor_user_id": admin.get("id"),
+                "p_actor_email": admin.get("email"),
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        msg_lower = msg.lower()
+        if "not_found" in msg_lower:
+            raise HTTPException(status_code=404, detail=msg) from exc
+        if "not_published" in msg_lower or "invalid_reviewer_notes" in msg_lower:
+            raise HTTPException(status_code=422, detail=msg) from exc
+        logger.error(
+            "cms_reopen_candidate_count_for_edit RPC failed",
+            extra={"count_id": row_id, "error": msg},
+        )
+        raise HTTPException(status_code=500, detail="Reopen-for-edit failed.") from exc
+
+    row = result.data or {}
+    return {"ok": True, "draft": row}
+
+
 # ─── 6. Policy / Update Intelligence (exam_policy_updates) ────────────────
 _POLICY_COLUMNS = (
     "id, exam_id, exam_cycle_id, source_id, update_type, title, summary, "

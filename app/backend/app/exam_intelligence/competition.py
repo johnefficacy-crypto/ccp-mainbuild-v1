@@ -28,6 +28,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable
 
+from app.exam_intelligence.candidate_counts import derive_rates, ratio_denominator
+
 logger = logging.getLogger("career_copilot.exam_intelligence.competition")
 
 _READY_STATUSES = ("reviewed", "locked")
@@ -175,10 +177,10 @@ def competition_series(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
                 "source_basis": None,
                 "confidence_score": None,
                 "reviewer_status": None,
-                # Ratio contract, PR-1 half (resolutions §1.2): the
-                # provenance-proven applied/appeared denominator lands in
-                # PR 2 (exam_candidate_counts). Until then these stay null —
-                # never derived from the ambiguous legacy applicant_count.
+                # Ratio contract, PR-2 half (resolutions §1.2 atomic switch):
+                # derived below from reviewed/locked exam_candidate_counts
+                # (prefer appeared -> applied -> null). Never derived from
+                # the ambiguous legacy applicant_count.
                 "selection_rate": None,
                 "candidates_per_vacancy": None,
                 "ratio_denominator": None,
@@ -249,6 +251,22 @@ def competition_series(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
         # verbatim for external-client compatibility); selection_ratio_legacy
         # is the same value under its explicit legacy name (resolutions §1.2).
         e["selection_ratio_legacy"] = e.get("selection_ratio")
+        # Ratio contract, PR-2 half (resolutions §1.2 atomic switch): the
+        # denominator now comes from reviewed/locked exam_candidate_counts
+        # (prefer appeared -> applied -> null) — never the legacy
+        # applicant_count. Every entry in this series is looked up
+        # individually so a cycle with no candidate-count data yet simply
+        # keeps the null contract rather than falling back silently.
+        #
+        # Granularity is explicit (no cross-phase heuristic — PD-2): a cycle-
+        # level entry (phase_id None) uses ONLY a cycle aggregate; a phase
+        # entry uses that phase's appeared count (then the cycle applied
+        # aggregate), so a Mains row never borrows a Prelims denominator.
+        denom_value, denom_label, _src = ratio_denominator(
+            supabase, exam_id, e.get("cycle_id"), target_phase_id=e.get("phase_id")
+        )
+        e["ratio_denominator"] = denom_label
+        e["selection_rate"], e["candidates_per_vacancy"] = derive_rates(e.get("vacancy_total"), denom_value)
 
     def _sort_key(r: dict[str, Any]) -> tuple[int, str]:
         year = r.get("cycle_year")

@@ -14,6 +14,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable
 
+from app.exam_intelligence.candidate_counts import derive_rates, ratio_denominator
+
 logger = logging.getLogger("career_copilot.study_os.competition_context")
 
 _READABLE_STATUSES = ("locked", "reviewed")
@@ -119,15 +121,21 @@ def _pressure_level(score: float | None, days_remaining: int | None) -> str:
 
 
 def _pressure_reason(
-    level: str, days_remaining: int | None, selection_ratio: float | None
+    level: str,
+    days_remaining: int | None,
+    selection_rate: float | None,
+    ratio_denominator: str | None,
 ) -> str | None:
+    """Explanation text only — never feeds back into competition_pressure_score
+    itself (OD-5: this PR fixes count display and the explanation text, not
+    the pressure formula)."""
     if level == "unknown":
         return None
     bits: list[str] = []
     if days_remaining is not None:
         bits.append(f"{days_remaining} days to the exam")
-    if selection_ratio is not None and selection_ratio > 0:
-        bits.append(f"selection ratio ~{selection_ratio:.4f}")
+    if selection_rate is not None and selection_rate > 0 and ratio_denominator:
+        bits.append(f"selection rate ~{selection_rate:.4f} (based on {ratio_denominator} candidates)")
     if not bits:
         return f"Competition pressure is {level}."
     return f"Competition pressure is {level} ({', '.join(bits)})."
@@ -197,6 +205,16 @@ def competition_context(
         selection_ratio = None
 
     level = _pressure_level(score, days_remaining)
+
+    # Ratio contract, PR-2 half (resolutions §1.2 atomic switch): the
+    # denominator now comes from reviewed/locked exam_candidate_counts
+    # (prefer appeared -> applied -> null) — never the legacy
+    # applicant_count. competition_pressure_score itself is NOT recomputed
+    # here (OD-5) — only the count display and the pressure explanation
+    # text change.
+    denom_value, denom_label, _src = ratio_denominator(supabase, exam_id, best.get("exam_cycle_id"))
+    selection_rate, candidates_per_vacancy = derive_rates(best.get("vacancy_total"), denom_value)
+
     return {
         "available": True,
         "exam_id": exam_id,
@@ -206,13 +224,13 @@ def competition_context(
         "vacancy_by_category": best.get("vacancy_by_category") or {},
         "applicant_count": best.get("applicant_count"),
         "selection_ratio": selection_ratio,
-        # Ratio contract, PR-1 half (resolutions §1.2): the provenance-proven
-        # applied/appeared denominator lands in PR 2 — these stay null until
-        # then, never derived from the ambiguous legacy applicant_count.
+        # selection_ratio_legacy is the deprecated-in-place verbatim value
+        # (resolutions §1.2) — retained for audit/back-compat only; ratio
+        # derivation for display/pressure purposes uses selection_rate.
         "selection_ratio_legacy": selection_ratio,
-        "selection_rate": None,
-        "candidates_per_vacancy": None,
-        "ratio_denominator": None,
+        "selection_rate": selection_rate,
+        "candidates_per_vacancy": candidates_per_vacancy,
+        "ratio_denominator": denom_label,
         "cutoff_trend": best.get("cutoff_trend") or {},
         "difficulty_trend": best.get("difficulty_trend") or {},
         "cutoff_by_category": best.get("cutoff_by_category") or {},
@@ -221,7 +239,7 @@ def competition_context(
         "cycle_pressure": {
             "days_remaining": days_remaining,
             "pressure_level": level,
-            "reason": _pressure_reason(level, days_remaining, selection_ratio),
+            "reason": _pressure_reason(level, days_remaining, selection_rate, denom_label),
         },
         "trust": {
             "source_basis": best.get("source_basis"),

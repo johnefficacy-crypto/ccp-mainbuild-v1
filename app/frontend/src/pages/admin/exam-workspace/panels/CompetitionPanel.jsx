@@ -242,7 +242,6 @@ export default function CompetitionPanel() {
   const [form, setForm] = useState({
     exam_phase_id: "",
     vacancies: "",
-    applicants: "",
     vacancy_by_category: emptyVacancyMap(),
     cutoff_by_category: emptyCutoffMap(),
     difficulty_level: "stable",
@@ -330,7 +329,12 @@ export default function CompetitionPanel() {
         }
       } else {
         if (form.vacancies) payload.vacancy_total = parseInt(form.vacancies, 10);
-        if (form.applicants) payload.applicant_count = parseInt(form.applicants.replace(/,/g, ""), 10);
+        // applicant_count is NO LONGER written (resolutions §1.2 PR-2 atomic
+        // switch / OD-6): the ambiguous legacy volume column is deprecated in
+        // place and the write allowlist (_COMPETITION_FIELDS) rejects it. The
+        // applied-vs-appeared distinction lives in exam_candidate_counts,
+        // edited through a dedicated candidate-count workflow (deferred UI —
+        // see PR body). No new applicant_count values are created here.
         const vacancy_by_category = {};
         for (const c of CATEGORIES) {
           const v = form.vacancy_by_category[c.code];
@@ -346,7 +350,7 @@ export default function CompetitionPanel() {
       });
       setAdding(false);
       setForm({
-        exam_phase_id: "", vacancies: "", applicants: "",
+        exam_phase_id: "", vacancies: "",
         vacancy_by_category: emptyVacancyMap(), cutoff_by_category: emptyCutoffMap(),
         difficulty_level: "stable", difficulty_basis: "", source_url: "",
       });
@@ -456,14 +460,14 @@ export default function CompetitionPanel() {
                   onChange={(e) => setForm((f) => ({ ...f, vacancies: e.target.value }))}
                 />
               </div>
-              <div className="field">
+              <div className="field" style={{ gridColumn: "span 2" }}>
                 <div className="field-lbl">Applicants</div>
-                <input
-                  className="input"
-                  placeholder="e.g. 1,100,000"
-                  value={form.applicants}
-                  onChange={(e) => setForm((f) => ({ ...f, applicants: e.target.value }))}
-                />
+                <div className="text-[11px] text-clay-500" data-testid="applicant-count-deprecated-note">
+                  Applied vs appeared candidate counts are no longer entered here.
+                  The ambiguous legacy “applicants” field is deprecated (resolutions
+                  §1.2 / OD-6); capture applied/appeared counts as evidence-backed
+                  rows in the candidate-count workflow instead.
+                </div>
               </div>
               <div className="field" style={{ gridColumn: "span 3" }}>
                 <div className="field-lbl">Vacancy by category</div>
@@ -564,8 +568,8 @@ export default function CompetitionPanel() {
               <tr>
                 <th>Cycle</th>
                 <th>Vacancies</th>
-                <th>Applicants</th>
-                <th>Ratio</th>
+                <th>Applicants (legacy)</th>
+                <th>Selection rate</th>
                 <th>Cutoff</th>
                 <th>Difficulty</th>
                 <th>Trust</th>
@@ -574,11 +578,15 @@ export default function CompetitionPanel() {
             </thead>
             <tbody>
               {metrics.map((m) => {
-                // Ratio display is not computed client-side (resolutions
-                // §0.3 fixes the inverse applicant_count/vacancy_total bug
-                // by deriving selection_rate server-side once a
-                // provenance-proven denominator exists — PR 2). Until then
-                // this column shows the deprecated legacy value, labelled.
+                // Ratio is NEVER computed client-side (resolutions §0.3 fixes
+                // the inverse applicant_count/vacancy_total bug). The server
+                // derives selection_rate from a provenance-proven appeared/
+                // applied denominator (exam_candidate_counts). When that
+                // derived value is present it is authoritative and labelled by
+                // its denominator; the raw legacy selection_ratio/applicant_count
+                // are shown only as explicitly-labelled legacy values.
+                const hasDerivedRate =
+                  m.selection_rate != null && m.ratio_denominator;
                 const cutoffEntries = Object.entries(m.cutoff_by_category || {});
                 const difficulty = m.difficulty_assessment || {};
                 const action = NEXT_ACTION[m.reviewer_status];
@@ -588,9 +596,20 @@ export default function CompetitionPanel() {
                     <tr>
                       <td className="row-sub">{m.exam_cycle_id ?? cycle?.cycle_name ?? "—"}</td>
                       <td className="num">{m.vacancy_total?.toLocaleString() ?? "—"}</td>
-                      <td className="num">{m.applicant_count?.toLocaleString() ?? "—"}</td>
-                      <td className="num" title="Legacy value — pending PR 2 provenance-proven ratio">
-                        {m.selection_ratio != null ? `${m.selection_ratio} (legacy)` : "—"}
+                      <td className="num" title="Deprecated legacy volume — ambiguous applied/appeared (resolutions §1.2 / OD-6)">
+                        {m.applicant_count != null ? `${m.applicant_count.toLocaleString()} (legacy)` : "—"}
+                      </td>
+                      <td className="num" data-testid={`selection-rate-${m.id}`}>
+                        {hasDerivedRate ? (
+                          <span title={`Derived from ${m.ratio_denominator} candidate counts`}>
+                            {Number(m.selection_rate).toFixed(6)}
+                            <span className="text-[10px] text-clay-500"> ({m.ratio_denominator})</span>
+                          </span>
+                        ) : m.selection_ratio != null ? (
+                          <span title="No provenance-proven denominator yet — legacy value only">
+                            {m.selection_ratio} <span className="text-[10px] text-clay-500">(legacy)</span>
+                          </span>
+                        ) : "—"}
                       </td>
                       <td>
                         {cutoffEntries.length ? (
