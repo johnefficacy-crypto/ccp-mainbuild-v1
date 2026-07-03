@@ -398,3 +398,43 @@ describe("ReviewActivatePanel — EI-CLEAN-03 PYQ metric decomposition", () => {
     expect(onGotoTab).toHaveBeenCalledWith("pyq");
   });
 });
+
+// EI-CLEAN-03 fix: missing-tag CTA must survive D10 "ready" (planner_ready >= 1).
+const READINESS_PYQ_READY_BUT_MISSING = {
+  exam_id: "exam-1",
+  overall: { score_percent: 90, ready_to_activate: false, status: "partial" },
+  sections: [
+    {
+      section: "pyq_workbench",
+      label: "PYQ Workbench",
+      status: "ready", // D10 ready: at least one planner-ready question
+      weight: 3,
+      blockers: [],
+      note: "",
+      metrics: {
+        pyq_readiness: {
+          questions_total: 100,
+          planner_ready_question_count: 1,
+          reviewed_question_count: 99,
+          missing_verified_tag_count: 98,
+          rejected_question_count: 0,
+        },
+      },
+    },
+  ],
+};
+
+describe("ReviewActivatePanel — missing-tag CTA independent of D10 readiness", () => {
+  it("still shows the missing-tag CTA (not a Ready seal) when planner_ready>0 and missing>0", () => {
+    setup({ readiness: READINESS_PYQ_READY_BUT_MISSING, permissions: ["exam_intelligence.review"] });
+    expect(screen.getByTestId("pyq-review-missing-cta")).toBeTruthy();
+    expect(screen.getByTestId("pyq-review-missing-cta").textContent).toMatch(/review missing topic tags/i);
+    // The Ready seal must NOT be the row's action while tags remain missing.
+    expect(screen.getByTestId("pyq-planner-ready").textContent).toMatch(/1 \/ 100 planner-ready/);
+  });
+
+  it("shows the missing-tag CTA even for a read-only (non-review) user", () => {
+    setup({ readiness: READINESS_PYQ_READY_BUT_MISSING, permissions: [] });
+    expect(screen.getByTestId("pyq-review-missing-cta")).toBeTruthy();
+  });
+});
