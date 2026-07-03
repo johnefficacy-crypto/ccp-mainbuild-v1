@@ -26,12 +26,21 @@ const UPLOAD_PHASE_LABEL = {
   failed: "Extraction failed",
 };
 
+// Readable option label for a phase: name + canonical kind (D05). NULL/'other'
+// kinds are unclassified, so no kind suffix is shown for them.
+function phaseOptionLabel(p) {
+  const name = p.phase_name || p.phase_slug || "Phase";
+  const kind = p.phase_kind && p.phase_kind !== "other" ? ` · ${p.phase_kind}` : "";
+  return `${name}${kind}`;
+}
+
 export default function AddPyqPaperModal({
   examId,
   examName,
   cycleId = null,
   cycleLabel = null,
   cycleYear = null,
+  phases = [],
   pyqDocuments,
   pyqSources,
   onboardPaper,
@@ -45,6 +54,11 @@ export default function AddPyqPaperModal({
   const [shift, setShift] = useState("");
   const [paperCode, setPaperCode] = useState("");
   const [expectedCount, setExpectedCount] = useState("");
+
+  // ── Phase assignment (EI-CLEAN-02) ──
+  // "" = explicit exam-wide / no phase. A non-empty value MUST resolve to a
+  // phase in the cycle-filtered `phases` list, else submit fails closed.
+  const [phaseId, setPhaseId] = useState("");
 
   // ── Source step (reuses PyqProvenanceFields) ──
   const [existingSourceId, setExistingSourceId] = useState("");
@@ -125,6 +139,11 @@ export default function AddPyqPaperModal({
   // them. They re-enable when no existing source is selected.
   const usingExistingSource = Boolean(existingSourceId);
 
+  // Fail-closed phase resolution: a selected phase id must map to a visible,
+  // cycle-scoped phase. A stale/unknown id must never be submitted.
+  const selectedPhase = phaseId ? (phases || []).find((p) => p.id === phaseId) || null : null;
+  const phaseUnresolvable = Boolean(phaseId) && !selectedPhase;
+
   async function handleSubmit(e) {
     e.preventDefault();
     setErr(null);
@@ -136,6 +155,10 @@ export default function AddPyqPaperModal({
     }
     if (reason.trim().length < 8) {
       setErr("Reason must be at least 8 characters.");
+      return;
+    }
+    if (phaseUnresolvable) {
+      setErr("Selected phase is no longer available. Reselect a phase or choose exam-wide.");
       return;
     }
 
@@ -169,7 +192,7 @@ export default function AddPyqPaperModal({
       reason: reason.trim(),
       exam_id: examId,
       exam_cycle_id: cycleId || null,
-      exam_phase_id: null,
+      exam_phase_id: phaseId || null,
       source,
       paper: {
         year: yearInt,
@@ -231,9 +254,37 @@ export default function AddPyqPaperModal({
               </span>
             )}
             <span className="text-gray-500" data-testid="add-pyq-phase-label">
-              Phase: No phase selected
+              Phase:{" "}
+              {selectedPhase
+                ? phaseOptionLabel(selectedPhase)
+                : "Exam-wide / no phase"}
             </span>
           </div>
+          {/* Phase selector (EI-CLEAN-02): cycle-scoped phases + explicit
+              exam-wide option. Assigning a phase supports D05 phase-compatible
+              evidence; it does NOT change D10's exam-wide readiness corpus. */}
+          <label className="flex flex-col gap-1 text-gray-500" data-testid="add-pyq-phase-field">
+            Assign to phase{" "}
+            <span className="text-gray-400 font-normal">(optional — exam-wide by default)</span>
+            <select
+              value={phaseId}
+              onChange={(e) => setPhaseId(e.target.value)}
+              className="mt-1 block w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none"
+              data-testid="add-pyq-phase-select"
+            >
+              <option value="">Exam-wide / no phase</option>
+              {(phases || []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {phaseOptionLabel(p)}
+                </option>
+              ))}
+            </select>
+            {phaseUnresolvable && (
+              <span className="text-red-600" data-testid="add-pyq-phase-unresolvable">
+                Selected phase is no longer available. Reselect a phase or choose exam-wide.
+              </span>
+            )}
+          </label>
           {cycleYear != null && year && parseInt(year, 10) !== cycleYear && (
             <span className="text-amber-600" data-testid="add-pyq-year-mismatch-warning">
               Paper year ({year}) differs from cycle year ({cycleYear}) — confirm this paper belongs to this cycle.
