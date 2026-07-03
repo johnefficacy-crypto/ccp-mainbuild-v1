@@ -1,4 +1,4 @@
--- 218_j3_applied_vs_appeared.sql
+-- 219_j3_applied_vs_appeared.sql
 --
 -- J3 PR 2 — Applied-vs-Appeared (branches from merged PR 1, migration 216).
 --
@@ -10,9 +10,11 @@
 -- J3-Implementation-Checklist-2026-07-02.md (PR 2 section).
 --
 -- Applied version must be reconciled against the deployed schema_migrations
--- state at apply time (operator step); 218 = MAX(filesystem)+1 after 217_evidence_derived_coverage (J3 PR4) landed; renumbered from 217 at merge time to resolve the
--- branch off main after 216_j3_competition_structure.sql landed. Confirm
--- with:
+-- state at apply time (operator step); 219 = MAX(filesystem)+1 after
+-- 218_writing_prompts_public_read_lockdown landed on main (this file was
+-- renumbered 217→218→219 as those slots were taken by landed PRs — the
+-- validate CI guard requires new migrations to be contiguous = MAX(main)+1).
+-- Confirm with:
 --   SELECT MAX(version) FROM schema_migrations;
 -- before applying to any environment.
 --

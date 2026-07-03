@@ -841,12 +841,12 @@ class SBStub:
         })
         return new_row
 
-    # Same transition matrix as competition metrics (migration 218 mirrors
+    # Same transition matrix as competition metrics (migration 219 mirrors
     # 216's lifecycle RPC exactly).
     _ECC_TRANSITIONS = _ECM_TRANSITIONS
 
     def _cms_review_candidate_count(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate cms_review_candidate_count (migration 218): transition
+        """Emulate cms_review_candidate_count (migration 219): transition
         matrix + CAS + evidence claim-value-match promotion gate + atomic
         current-published supersession on publish."""
         count_id = params.get("p_count_id")
@@ -966,7 +966,7 @@ class SBStub:
         }
 
     def _cms_reopen_candidate_count_for_edit(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate cms_reopen_candidate_count_for_edit (migration 218):
+        """Emulate cms_reopen_candidate_count_for_edit (migration 219):
         clone-to-draft, never mutates the published row in place."""
         import uuid as _uuid
 

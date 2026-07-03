@@ -1,5 +1,5 @@
 """CMS create/patch endpoint tests for exam_candidate_counts (J3 PR2,
-migration 218). Mirrors the exam-competition-metrics CMS test pattern."""
+migration 219). Mirrors the exam-competition-metrics CMS test pattern."""
 from __future__ import annotations
 
 from fastapi import FastAPI

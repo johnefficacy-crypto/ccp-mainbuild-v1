@@ -2200,7 +2200,7 @@ def update_competition_metric(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Applied-vs-Appeared candidate counts (migration 218, J3 PR 2). Created
+#  Applied-vs-Appeared candidate counts (migration 219, J3 PR 2). Created
 #  at reviewer_status='draft'; moves through review lifecycle via the
 #  review-side router (admin_exam_intelligence.py). CMS-side create + curate.
 # ════════════════════════════════════════════════════════════════════════
@@ -2245,7 +2245,7 @@ def _validate_candidate_count_payload(row: dict[str, Any]) -> None:
 
 def _validate_candidate_count_scope(supabase, row: dict[str, Any]) -> None:
     """App-layer fast-path mirror of the DB scope-integrity trigger and the
-    OD-3 count_type/scope_kind shape CHECK (migration 218) — a phase must
+    OD-3 count_type/scope_kind shape CHECK (migration 219) — a phase must
     belong to the same exam AND cycle. The DB is the source of truth; this
     gives a fast 422 instead of a raw DB error for the common cases."""
     count_type = row.get("count_type")

@@ -1,7 +1,7 @@
 """Admin candidate-count (applied-vs-appeared, J3 PR2) API tests.
 
 Mirrors test_admin_api.py's exam_competition_metrics review-endpoint test
-pattern (migration 218's lifecycle RPC is analogous to 216's).
+pattern (migration 219's lifecycle RPC is analogous to 216's).
 """
 from __future__ import annotations
 
