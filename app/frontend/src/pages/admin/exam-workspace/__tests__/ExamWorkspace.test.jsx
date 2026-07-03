@@ -479,6 +479,38 @@ describe("ExamWorkspace action disclosure (EI-CLEAN-05)", () => {
     const header = screen.getByTestId("smart-header-status");
     expect(header).not.toContainElement(advisory);
   });
+
+  test("management read failure surfaces a visible error + Retry outside the collapsed disclosure", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/management/exams/")) return Promise.reject(new Error("500"));
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-mgmt-error"));
+    const banner = screen.getByTestId("workspace-mgmt-error");
+    // The failure is discoverable without expanding the action disclosure.
+    const details = screen.getByTestId("workspace-action-details");
+    expect(details.open).toBe(false);
+    expect(details).not.toContainElement(banner);
+    expect(screen.getByTestId("workspace-mgmt-error-retry")).toBeTruthy();
+    // No authoritative verdict strip renders on a failed management read.
+    expect(screen.queryByTestId("smart-header-status")).toBeNull();
+  });
+
+  test("Retry on the management-error banner refetches management", async () => {
+    let mgmtCalls = 0;
+    api.get.mockImplementation((url) => {
+      if (url.includes("/management/exams/")) { mgmtCalls++; return Promise.reject(new Error("500")); }
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-mgmt-error-retry"));
+    const before = mgmtCalls;
+    fireEvent.click(screen.getByTestId("workspace-mgmt-error-retry"));
+    await waitFor(() => expect(mgmtCalls).toBeGreaterThan(before));
+  });
 });
 
 // ── PR2 Tests: readiness provider ─────────────────────────────────────────────

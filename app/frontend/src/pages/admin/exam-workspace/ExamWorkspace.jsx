@@ -512,6 +512,15 @@ function WorkspaceShell() {
   // keeps identity/navigation intact so the operator can still navigate away.
   const compatError = mgmtVersionError && !mgmtLoading;
 
+  // EI-CLEAN-05 follow-up: the management read is the top-level verdict
+  // authority, and SmartHeader only renders its verdict strip when mgmt is
+  // present. Because the action console (which carries the error + Retry) now
+  // lives inside a collapsed disclosure, a failed management read would leave
+  // the operator with no visible verdict and no recovery. Surface that failure
+  // at the workspace level so it is discoverable without expanding the
+  // disclosure. The unsupported-version case has its own banner above.
+  const mgmtLoadError = Boolean(mgmtError) && !mgmtLoading && !compatError;
+
   return (
     <div className="oc">
       <SmartHeader onGotoTab={gotoTab} />
@@ -526,6 +535,28 @@ function WorkspaceShell() {
               This workspace requires a newer client version. Reload the page or contact support.
             </span>
             <button className="btn" onClick={refetchMgmt} style={{ whiteSpace: "nowrap" }}>
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+      {mgmtLoadError && (
+        <div
+          data-testid="workspace-mgmt-error"
+          className="card"
+          style={{ margin: "12px 16px 0", borderLeft: "3px solid var(--err, #c00)" }}
+        >
+          <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span className="err-row" style={{ flex: 1, margin: 0 }}>
+              Could not load the activation verdict and action queue. The header
+              verdict is unavailable until this loads.
+            </span>
+            <button
+              className="btn"
+              onClick={refetchMgmt}
+              data-testid="workspace-mgmt-error-retry"
+              style={{ whiteSpace: "nowrap" }}
+            >
               Retry
             </button>
           </div>
