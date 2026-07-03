@@ -118,6 +118,27 @@ describe("AdminShell exam-intel nav active state (I8-A)", () => {
   });
 });
 
+describe("Content Studio nav consolidation (content-studio.md §3)", () => {
+  test("single Content Studio entry routes to /admin/content-studio", () => {
+    renderShell("/admin/content-studio");
+    const link = screen.getByTestId("admin-nav-content-studio");
+    expect(link.getAttribute("href")).toBe("/admin/content-studio");
+    expect(link.textContent).toContain("Content Studio");
+  });
+
+  test("the three Mock Content destinations are NOT visible nav links", () => {
+    renderShell("/admin/content-studio");
+    expect(screen.queryByTestId("admin-nav-mocks-question-bank")).toBeNull();
+    expect(screen.queryByTestId("admin-nav-mocks-review-queue")).toBeNull();
+    expect(screen.queryByTestId("admin-nav-mocks-import")).toBeNull();
+  });
+
+  test("masthead shows Content Studio at /admin/content-studio", () => {
+    renderShell("/admin/content-studio");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Content Studio");
+  });
+});
+
 describe("I8-A — Exam Management nav consolidation", () => {
   test("single Exam Management entry routes to /admin/exam-intelligence", () => {
     renderShell("/admin/exam-intelligence");
