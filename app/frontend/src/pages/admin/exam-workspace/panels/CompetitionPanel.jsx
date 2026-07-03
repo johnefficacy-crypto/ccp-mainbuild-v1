@@ -33,6 +33,203 @@ const emptyCutoffMap = () =>
   Object.fromEntries(CATEGORIES.map((c) => [c.code, emptyCutoffRow()]));
 const emptyVacancyMap = () => Object.fromEntries(CATEGORIES.map((c) => [c.code, ""]));
 
+// Lifecycle actions matching the DB transition matrix (migration 215):
+// draft -> pending_review -> reviewed -> locked, with locked -> reviewed
+// reopen (notes required) and rejected -> draft reset. Publication
+// (aspirant visibility) happens at pending_review -> reviewed, NOT at
+// reviewed -> locked (reviewed and locked are both published states per
+// AGENTS.md "reviewed or locked feed the planner, locked preferred").
+const NEXT_ACTION = {
+  draft: { to: "pending_review", label: "Submit for review" },
+  pending_review: { to: "reviewed", label: "Mark reviewed" },
+  reviewed: { to: "locked", label: "Lock" },
+  locked: { to: "reviewed", label: "Reopen", requiresNotes: true },
+  rejected: { to: "draft", label: "Reset to draft" },
+};
+
+const CLAIM_FIELDS = [
+  { value: "vacancy_total", label: "Vacancy total" },
+  { value: "vacancy_by_category", label: "Vacancy by category" },
+  { value: "cutoff_by_category", label: "Cutoff by category" },
+  { value: "difficulty_assessment", label: "Difficulty assessment" },
+  { value: "competition_pressure_score", label: "Competition pressure score" },
+];
+const CATEGORY_CLAIMS = new Set(["vacancy_by_category", "cutoff_by_category"]);
+const EVIDENCE_KINDS = [
+  "official_notification", "official_result", "official_statistics",
+  "corrigendum", "official_page", "reviewed_analysis",
+];
+
+function EvidencePanel({ metric }) {
+  const [items, setItems] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    claim_field: "vacancy_total",
+    category: CATEGORIES[0].code,
+    evidence_kind: "official_notification",
+    evidence_url: "",
+    value: "",
+    max_marks: "",
+    basis: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const d = await api.get(`${EI_BASE}/competition-metrics/${encodeURIComponent(metric.id)}/evidence`);
+      setItems(d?.items || []);
+    } catch (e) {
+      setError(e?.message || "Failed to load evidence");
+    } finally {
+      setLoading(false);
+    }
+  }, [metric.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function attach() {
+    setSaving(true);
+    setError("");
+    try {
+      let claim_value;
+      if (form.claim_field === "cutoff_by_category") {
+        claim_value = { marks: Number(form.value) };
+        if (form.max_marks !== "") claim_value.max_marks = Number(form.max_marks);
+      } else if (form.claim_field === "vacancy_by_category") {
+        claim_value = { count: Number(form.value) };
+      } else if (form.claim_field === "difficulty_assessment") {
+        claim_value = { level: form.value || undefined, basis: form.basis };
+      } else {
+        claim_value = { [form.claim_field]: Number(form.value) };
+      }
+      const payload = {
+        claim_field: form.claim_field,
+        evidence_kind: form.evidence_kind,
+        evidence_url: form.evidence_url.trim() || null,
+        claim_value,
+      };
+      if (CATEGORY_CLAIMS.has(form.claim_field)) payload.reservation_category_code = form.category;
+      await api.post(`${EI_BASE}/competition-metrics/${encodeURIComponent(metric.id)}/evidence`, payload);
+      await load();
+    } catch (e) {
+      setError(e?.message || "Failed to attach evidence");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const canAttach = metric.reviewer_status === "draft" || metric.reviewer_status === "pending_review";
+
+  return (
+    <div className="card" style={{ marginTop: 6, background: "var(--panel-2, #fafafa)" }} data-testid={`evidence-panel-${metric.id}`}>
+      <div className="card-head"><h4 className="oc-title">Evidence</h4></div>
+      <div className="card-body">
+        {loading && <div>Loading…</div>}
+        {error && <div className="err-row">{error}</div>}
+        {!loading && (items || []).length === 0 && <div className="text-[12px] text-clay-500">No evidence attached yet.</div>}
+        {!loading && (items || []).length > 0 && (
+          <ul style={{ fontSize: 12, listStyle: "none", padding: 0, margin: 0 }}>
+            {items.map((it) => (
+              <li key={it.id} style={{ padding: "4px 0", borderBottom: "1px solid var(--border, #eee)" }}>
+                <strong>{it.claim_field}</strong>
+                {it.reservation_category_code ? ` (${it.reservation_category_code})` : ""}
+                {" — "}
+                {it.evidence_kind}
+                {it.evidence_url ? (
+                  <>
+                    {" — "}
+                    <a href={it.evidence_url} target="_blank" rel="noreferrer">{it.evidence_url}</a>
+                  </>
+                ) : null}
+                {" — claim: "}
+                {JSON.stringify(it.claim_value)}
+              </li>
+            ))}
+          </ul>
+        )}
+        {canAttach && (
+          <div className="row" style={{ gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+            <select
+              className="input"
+              style={{ maxWidth: 190 }}
+              value={form.claim_field}
+              onChange={(e) => setForm((f) => ({ ...f, claim_field: e.target.value }))}
+            >
+              {CLAIM_FIELDS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+            {CATEGORY_CLAIMS.has(form.claim_field) && (
+              <select
+                className="input"
+                style={{ maxWidth: 110 }}
+                value={form.category}
+                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+              >
+                {CATEGORIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+              </select>
+            )}
+            <select
+              className="input"
+              style={{ maxWidth: 170 }}
+              value={form.evidence_kind}
+              onChange={(e) => setForm((f) => ({ ...f, evidence_kind: e.target.value }))}
+            >
+              {EVIDENCE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+            <input
+              className="input"
+              style={{ maxWidth: 220 }}
+              placeholder="evidence URL"
+              value={form.evidence_url}
+              onChange={(e) => setForm((f) => ({ ...f, evidence_url: e.target.value }))}
+            />
+            {form.claim_field === "difficulty_assessment" ? (
+              <>
+                <select className="input" style={{ maxWidth: 110 }} value={form.value}
+                  onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}>
+                  <option value="">level</option>
+                  <option value="harder">harder</option>
+                  <option value="stable">stable</option>
+                  <option value="easier">easier</option>
+                </select>
+                <input className="input" style={{ maxWidth: 220 }} placeholder="basis"
+                  value={form.basis} onChange={(e) => setForm((f) => ({ ...f, basis: e.target.value }))} />
+              </>
+            ) : (
+              <input
+                className="input"
+                style={{ maxWidth: 110 }}
+                placeholder={form.claim_field === "cutoff_by_category" ? "marks" : "value"}
+                value={form.value}
+                onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
+              />
+            )}
+            {form.claim_field === "cutoff_by_category" && (
+              <input
+                className="input"
+                style={{ maxWidth: 120 }}
+                placeholder="max marks (optional)"
+                value={form.max_marks}
+                onChange={(e) => setForm((f) => ({ ...f, max_marks: e.target.value }))}
+              />
+            )}
+            <button className="btn small primary" disabled={saving} onClick={attach}>
+              {saving ? "Attaching…" : "Attach evidence"}
+            </button>
+          </div>
+        )}
+        {!canAttach && (
+          <div className="text-[11px] text-clay-500" style={{ marginTop: 8 }}>
+            Evidence is append-only and frozen once this row is reviewed/locked.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CompetitionPanel() {
   const { exam, cycle, phases } = useExamWorkspace();
 
@@ -54,6 +251,8 @@ export default function CompetitionPanel() {
   });
   const [savingNew, setSavingNew] = useState(false);
   const isPhaseScoped = !!form.exam_phase_id;
+  const [reopenNotes, setReopenNotes] = useState({});
+  const [expandedId, setExpandedId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,20 +272,29 @@ export default function CompetitionPanel() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function lockMetric(id) {
-    setBusyId(id);
+  async function advanceMetric(metric) {
+    const action = NEXT_ACTION[metric.reviewer_status];
+    if (!action) return;
+    const notes = action.requiresNotes ? (reopenNotes[metric.id] || "").trim() : undefined;
+    if (action.requiresNotes && !notes) {
+      setError("Reopening a locked row requires reviewer notes.");
+      return;
+    }
+    setBusyId(metric.id);
     setError("");
     try {
-      // Competition review uses the coverage lifecycle
-      // (draft|pending_review|reviewed|locked|rejected) — "verified" is not a
-      // valid status here and 422s. Only "locked" rows feed competition_context
-      // in Study OS, so the promote action locks the row directly.
-      await api.patch(`${EI_BASE}/competition-metrics/${encodeURIComponent(id)}/review`, {
-        reviewer_status: "locked",
+      // Competition review uses the draft/pending_review/reviewed/locked/
+      // rejected lifecycle enforced server-side by the cms_review_competition_metric
+      // RPC (migration 215) — publication happens at pending_review->reviewed;
+      // reviewed->locked is a status bump on the already-published row.
+      await api.patch(`${EI_BASE}/competition-metrics/${encodeURIComponent(metric.id)}/review`, {
+        reviewer_status: action.to,
+        ...(notes ? { reviewer_notes: notes } : {}),
       });
+      setReopenNotes((n) => ({ ...n, [metric.id]: "" }));
       await load();
     } catch (e) {
-      setError(e?.message || "Lock failed");
+      setError(e?.message || "Transition failed");
     } finally {
       setBusyId(null);
     }
@@ -373,39 +581,65 @@ export default function CompetitionPanel() {
                 // this column shows the deprecated legacy value, labelled.
                 const cutoffEntries = Object.entries(m.cutoff_by_category || {});
                 const difficulty = m.difficulty_assessment || {};
+                const action = NEXT_ACTION[m.reviewer_status];
+                const expanded = expandedId === m.id;
                 return (
-                  <tr key={m.id}>
-                    <td className="row-sub">{m.exam_cycle_id ?? cycle?.cycle_name ?? "—"}</td>
-                    <td className="num">{m.vacancy_total?.toLocaleString() ?? "—"}</td>
-                    <td className="num">{m.applicant_count?.toLocaleString() ?? "—"}</td>
-                    <td className="num" title="Legacy value — pending PR 2 provenance-proven ratio">
-                      {m.selection_ratio != null ? `${m.selection_ratio} (legacy)` : "—"}
-                    </td>
-                    <td>
-                      {cutoffEntries.length ? (
-                        <span className="badge neutral no-dot">
-                          {cutoffEntries.map(([code, v]) => `${code}:${v?.marks ?? "—"}`).join(", ")}
-                        </span>
-                      ) : "—"}
-                    </td>
-                    <td>
-                      {difficulty.level ? (
-                        <span className="badge neutral no-dot">{difficulty.level}</span>
-                      ) : "—"}
-                    </td>
-                    <td><TrustBadge status={m.reviewer_status ?? "pending"} /></td>
-                    <td style={{ textAlign: "right" }}>
-                      {m.reviewer_status !== "locked" && (
-                        <button
-                          className="btn small primary"
-                          disabled={busyId === m.id}
-                          onClick={() => lockMetric(m.id)}
-                        >
-                          {busyId === m.id ? "…" : "Lock"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                  <React.Fragment key={m.id}>
+                    <tr>
+                      <td className="row-sub">{m.exam_cycle_id ?? cycle?.cycle_name ?? "—"}</td>
+                      <td className="num">{m.vacancy_total?.toLocaleString() ?? "—"}</td>
+                      <td className="num">{m.applicant_count?.toLocaleString() ?? "—"}</td>
+                      <td className="num" title="Legacy value — pending PR 2 provenance-proven ratio">
+                        {m.selection_ratio != null ? `${m.selection_ratio} (legacy)` : "—"}
+                      </td>
+                      <td>
+                        {cutoffEntries.length ? (
+                          <span className="badge neutral no-dot">
+                            {cutoffEntries.map(([code, v]) => `${code}:${v?.marks ?? "—"}`).join(", ")}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td>
+                        {difficulty.level ? (
+                          <span className="badge neutral no-dot">{difficulty.level}</span>
+                        ) : "—"}
+                      </td>
+                      <td><TrustBadge status={m.reviewer_status ?? "pending"} /></td>
+                      <td style={{ textAlign: "right" }}>
+                        <div className="row" style={{ justifyContent: "flex-end", gap: 6, flexWrap: "wrap" }}>
+                          <button
+                            className="btn small"
+                            onClick={() => setExpandedId(expanded ? null : m.id)}
+                          >
+                            {expanded ? "Hide evidence" : "Evidence"}
+                          </button>
+                          {action?.requiresNotes && (
+                            <input
+                              className="input"
+                              style={{ maxWidth: 140 }}
+                              placeholder="reopen notes (required)"
+                              value={reopenNotes[m.id] || ""}
+                              onChange={(e) => setReopenNotes((n) => ({ ...n, [m.id]: e.target.value }))}
+                            />
+                          )}
+                          {action && (
+                            <button
+                              className="btn small primary"
+                              disabled={busyId === m.id}
+                              onClick={() => advanceMetric(m)}
+                            >
+                              {busyId === m.id ? "…" : action.label}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {expanded && (
+                      <tr>
+                        <td colSpan={8}><EvidencePanel metric={m} /></td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>

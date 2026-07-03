@@ -174,21 +174,16 @@ def competition_context(
     if not best:
         return _empty(exam_id)
 
-    # This function is not called with an explicit phase — pick the
-    # current-published phase_cutoff row for whichever cycle `best` resolved
-    # to (there is at most one per cycle+phase, and typically one phase per
-    # cycle in the read paths that call this helper).
-    resolved_cycle_id = best.get("exam_cycle_id")
-    phase_cutoff = next(
-        (
-            r for r in rows
-            if r.get("metric_kind") == "phase_cutoff"
-            and r.get("is_current_published")
-            and r.get("exam_cycle_id") == resolved_cycle_id
-        ),
-        None,
-    )
-
+    # This function takes no phase argument, and a cycle can have multiple
+    # phase_cutoff rows (prelims, mains, ...). Picking one arbitrarily would
+    # be nondeterministic (dependent on row return order) and would attach
+    # the wrong phase's cutoff/difficulty to a cycle-level pressure summary,
+    # so this helper never guesses a phase. A disposed cycle_summary `best`
+    # row is guaranteed empty cutoff/difficulty fields by the field-ownership
+    # CHECK, so reading them directly off `best` is safe and simply yields
+    # nothing for disposed data; only a legacy, undisposed row (metric_kind
+    # still NULL) that happens to carry both on the same row surfaces cutoff
+    # facts here, exactly matching pre-migration-215 behavior for that data.
     score = best.get("competition_pressure_score")
     try:
         score = float(score) if score is not None else None
@@ -206,7 +201,7 @@ def competition_context(
         "available": True,
         "exam_id": exam_id,
         "exam_cycle_id": best.get("exam_cycle_id"),
-        "exam_phase_id": (phase_cutoff or {}).get("exam_phase_id"),
+        "exam_phase_id": best.get("exam_phase_id"),
         "vacancy_total": best.get("vacancy_total"),
         "vacancy_by_category": best.get("vacancy_by_category") or {},
         "applicant_count": best.get("applicant_count"),
@@ -218,10 +213,10 @@ def competition_context(
         "selection_rate": None,
         "candidates_per_vacancy": None,
         "ratio_denominator": None,
-        "cutoff_trend": (phase_cutoff or best).get("cutoff_trend") or {},
-        "difficulty_trend": (phase_cutoff or best).get("difficulty_trend") or {},
-        "cutoff_by_category": (phase_cutoff or {}).get("cutoff_by_category") or {},
-        "difficulty_assessment": (phase_cutoff or {}).get("difficulty_assessment") or {},
+        "cutoff_trend": best.get("cutoff_trend") or {},
+        "difficulty_trend": best.get("difficulty_trend") or {},
+        "cutoff_by_category": best.get("cutoff_by_category") or {},
+        "difficulty_assessment": best.get("difficulty_assessment") or {},
         "competition_pressure_score": score,
         "cycle_pressure": {
             "days_remaining": days_remaining,

@@ -97,17 +97,10 @@ begin
     execute format('revoke all on public.%I from anon', t);
     execute format('revoke all on public.%I from authenticated', t);
     execute format('grant select, insert, update, delete on public.%I to service_role', t);
-    -- Reference data: authenticated users may read it (admin editors need the
-    -- vocabulary), but only service_role writes.
-    if not exists (
-      select 1 from pg_policies
-      where schemaname = 'public' and tablename = t and policyname = t || '_read_authenticated'
-    ) then
-      execute format(
-        'create policy %I on public.%I for select to authenticated using (true)',
-        t || '_read_authenticated', t
-      );
-    end if;
+    -- Admin/service-role only (approved gate posture) — no authenticated
+    -- policy. The frontend category-map editor uses a hardcoded vocabulary
+    -- matching this seed exactly (CompetitionPanel.jsx CATEGORIES); it does
+    -- not read this table directly, so no authenticated grant is needed.
   end loop;
 end $$;
 
@@ -151,6 +144,44 @@ comment on column public.exam_competition_metrics.difficulty_trend is
   'DEPRECATED IN PLACE. Replaced by difficulty_assessment (resolutions §1.1). Retained for audit/back-compat; do not write new values.';
 
 -- ═════════════════════════════════════════════════════════════════════════
+-- B.1 Scope-integrity trigger (mirrors migration 211's _d05_check_evidence_scope
+-- pattern) — a bare FK does not imply exam_cycle_id belongs to exam_id, or
+-- that exam_phase_id belongs to exam_id (and exam_cycle_id, when both set).
+-- Installed BEFORE disposition runs so it also guards the migration's own
+-- INSERT/UPDATE writes in Section C/D — this only checks rows actually
+-- written (INSERT/UPDATE), never rejects data already at rest untouched.
+-- ═════════════════════════════════════════════════════════════════════════
+
+create or replace function public._ecm_check_scope() returns trigger
+language plpgsql as $fn$
+begin
+  if new.exam_cycle_id is not null
+     and not exists (
+       select 1 from public.exam_cycles c
+       where c.id = new.exam_cycle_id and c.exam_id = new.exam_id
+     ) then
+    raise exception 'exam_competition_metrics: exam_cycle_id % does not belong to exam_id %',
+      new.exam_cycle_id, new.exam_id using errcode = 'P0422';
+  end if;
+  if new.exam_phase_id is not null
+     and not exists (
+       select 1 from public.exam_phases p
+       where p.id = new.exam_phase_id and p.exam_id = new.exam_id
+         and (new.exam_cycle_id is null or p.exam_cycle_id is null or p.exam_cycle_id = new.exam_cycle_id)
+     ) then
+    raise exception 'exam_competition_metrics: exam_phase_id % not in exam %/cycle %',
+      new.exam_phase_id, new.exam_id, new.exam_cycle_id using errcode = 'P0422';
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists trg_ecm_check_scope on public.exam_competition_metrics;
+create trigger trg_ecm_check_scope
+  before insert or update on public.exam_competition_metrics
+  for each row execute function public._ecm_check_scope();
+
+-- ═════════════════════════════════════════════════════════════════════════
 -- C. Fail-closed legacy metric_kind disposition (resolutions §1.3)
 -- ═════════════════════════════════════════════════════════════════════════
 --
@@ -161,9 +192,11 @@ comment on column public.exam_competition_metrics.difficulty_trend is
 do $$
 declare
   r record;
+  v_existing record;
   v_cycle_summary_id uuid;
   v_has_cycle_fields boolean;
   v_has_cutoff_fields boolean;
+  v_conflict boolean;
   v_pre_count integer;
   v_post_null_count integer;
 begin
@@ -186,7 +219,20 @@ begin
       or (r.difficulty_trend is not null and r.difficulty_trend <> '{}'::jsonb)
     );
 
-    if r.exam_phase_id is null and not v_has_cutoff_fields then
+    if r.exam_cycle_id is null then
+      -- Cycle-less row: OD-11 requires exam_cycle_id on every new-model row,
+      -- so this can never become cycle_summary NOR phase_cutoff regardless
+      -- of its content. Triage unconditionally — never guess a cycle.
+      -- Published rows keep their status (OD-7: never reopened to draft);
+      -- a companion working row is NOT created here since there is no
+      -- scope to key it by until an operator assigns a cycle.
+      update public.exam_competition_metrics
+      set metadata = metadata || jsonb_build_object('legacy_needs_cycle_assignment', true)
+      where id = r.id;
+      -- metric_kind intentionally left NULL — operator must assign a cycle
+      -- before this row can be disposed into cycle_summary/phase_cutoff.
+
+    elsif r.exam_phase_id is null and not v_has_cutoff_fields then
       -- Clean cycle-level-only row: assign cycle_summary in place.
       update public.exam_competition_metrics
       set metric_kind = 'cycle_summary'
@@ -197,12 +243,40 @@ begin
       -- into a cycle_summary revision for the same (exam, cycle); the
       -- phase row keeps only cutoff/difficulty content.
       if v_has_cycle_fields then
-        select id into v_cycle_summary_id
+        select * into v_existing
         from public.exam_competition_metrics
         where exam_id = r.exam_id
           and exam_cycle_id is not distinct from r.exam_cycle_id
           and metric_kind = 'cycle_summary'
         limit 1;
+
+        if v_existing.id is not null then
+          -- P0 fix: a pre-existing cycle_summary row already covers this
+          -- scope. Discarding r's cycle-level fields is safe ONLY when they
+          -- are null or IDENTICAL to the existing row — never when they
+          -- differ, which would silently destroy a distinct legacy fact.
+          v_conflict := (
+            (r.vacancy_total is not null and v_existing.vacancy_total is not null
+              and r.vacancy_total <> v_existing.vacancy_total)
+            or (r.applicant_count is not null and v_existing.applicant_count is not null
+              and r.applicant_count <> v_existing.applicant_count)
+            or (r.competition_pressure_score is not null and v_existing.competition_pressure_score is not null
+              and r.competition_pressure_score <> v_existing.competition_pressure_score)
+            or (r.vacancy_by_category is not null and r.vacancy_by_category <> '{}'::jsonb
+              and v_existing.vacancy_by_category is not null and v_existing.vacancy_by_category <> '{}'::jsonb
+              and r.vacancy_by_category <> v_existing.vacancy_by_category)
+          );
+          if v_conflict then
+            raise exception 'J3 §1.3 disposition BLOCKED: phase row % carries cycle-level facts that CONFLICT with existing cycle_summary row % for exam=% cycle=%. Phase row: vacancy_total=%, applicant_count=%, pressure=%, vacancy_by_category=%. Existing cycle_summary: vacancy_total=%, applicant_count=%, pressure=%, vacancy_by_category=%. Distinct legacy values cannot be silently merged or discarded — an operator must decide which value is authoritative (update the surviving row, clear the losing row''s conflicting fields) and re-run this migration.',
+              r.id, v_existing.id, r.exam_id, r.exam_cycle_id,
+              r.vacancy_total, r.applicant_count, r.competition_pressure_score, r.vacancy_by_category,
+              v_existing.vacancy_total, v_existing.applicant_count, v_existing.competition_pressure_score, v_existing.vacancy_by_category
+              using errcode = 'P0001';
+          end if;
+          v_cycle_summary_id := v_existing.id;
+        else
+          v_cycle_summary_id := null;
+        end if;
 
         if v_cycle_summary_id is null then
           insert into public.exam_competition_metrics (
@@ -223,6 +297,9 @@ begin
         end if;
 
         -- Clear cycle-level fields from the phase row; it becomes phase_cutoff.
+        -- Safe now: either no existing cycle_summary row existed (its values
+        -- were just copied into a new one above), or an existing row's
+        -- values were proven identical/null-compatible by the conflict check.
         update public.exam_competition_metrics
         set metric_kind = 'phase_cutoff',
             vacancy_total = null,
@@ -237,9 +314,10 @@ begin
       end if;
 
     else
-      -- exam_phase_id IS NULL but cutoff/difficulty content exists: phase
-      -- identity is unknown, so this cannot be assigned phase_cutoff, and it
-      -- cannot be cycle_summary while carrying cutoff/difficulty content
+      -- exam_phase_id IS NULL but cutoff/difficulty content exists (and
+      -- exam_cycle_id IS NOT NULL, handled above): phase identity is
+      -- unknown, so this cannot be assigned phase_cutoff, and it cannot be
+      -- cycle_summary while carrying cutoff/difficulty content
       -- (field-ownership rule). Preserve the payload for operator triage and
       -- leave metric_kind NULL — exempted from the field-ownership CHECK
       -- (gated on metric_kind IS NOT NULL) and from the lane indexes.
@@ -286,6 +364,7 @@ begin
   from public.exam_competition_metrics
   where metric_kind is null
     and not coalesce((metadata ->> 'legacy_phaseless_cutoff_triage')::boolean, false)
+    and not coalesce((metadata ->> 'legacy_needs_cycle_assignment')::boolean, false)
     and not coalesce((metadata ->> 'legacy_phaseless_cutoff_needs_phase')::boolean, false);
 
   if v_post_null_count > 0 then
@@ -294,6 +373,104 @@ begin
   end if;
 
   raise notice 'J3 §1.3 disposition complete.';
+end $$;
+
+-- ═════════════════════════════════════════════════════════════════════════
+-- C.1 OD-5 selective legacy value normalization (cutoff_trend/difficulty_trend
+-- -> cutoff_by_category/difficulty_assessment). Runs after metric_kind
+-- disposition, before the JSONB validation trigger exists (Section F), so it
+-- writes directly — but only ever writes shapes that trigger would accept.
+-- Selective, not grandfathering: only convertible values are normalized;
+-- anything ambiguous (unknown category, list, string other than a bare
+-- harder/stable/easier scalar) is quarantined into metadata.legacy_* and the
+-- canonical field is left empty for that entry — never manufactured.
+-- ═════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  r record;
+  v_key text;
+  v_val jsonb;
+  v_marks numeric;
+  v_normalized jsonb;
+  v_unconverted jsonb;
+  v_level text;
+begin
+  for r in
+    select id, cutoff_trend, difficulty_trend
+    from public.exam_competition_metrics
+    where metric_kind = 'phase_cutoff'
+      and (
+        (cutoff_trend is not null and cutoff_trend <> '{}'::jsonb and cutoff_by_category = '{}'::jsonb)
+        or (difficulty_trend is not null and difficulty_trend <> '{}'::jsonb and difficulty_assessment = '{}'::jsonb)
+      )
+  loop
+    v_normalized := '{}'::jsonb;
+    v_unconverted := '{}'::jsonb;
+
+    if r.cutoff_trend is not null and jsonb_typeof(r.cutoff_trend) = 'object' then
+      for v_key, v_val in select * from jsonb_each(r.cutoff_trend) loop
+        if not exists (select 1 from public.reservation_categories where code = v_key) then
+          v_unconverted := v_unconverted || jsonb_build_object(v_key, v_val);
+          continue;
+        end if;
+        v_marks := null;
+        if jsonb_typeof(v_val) = 'number' then
+          v_marks := (v_val::text)::numeric;
+        elsif jsonb_typeof(v_val) = 'array' then
+          -- Multi-stage legacy convention: last meaningful (non-null) number.
+          select (t.elem::text)::numeric into v_marks
+          from jsonb_array_elements(v_val) with ordinality as t(elem, ordinality)
+          where jsonb_typeof(t.elem) = 'number'
+          order by t.ordinality desc
+          limit 1;
+        end if;
+        if v_marks is not null then
+          v_normalized := v_normalized || jsonb_build_object(v_key, jsonb_build_object('marks', v_marks));
+        else
+          v_unconverted := v_unconverted || jsonb_build_object(v_key, v_val);
+        end if;
+      end loop;
+    elsif r.cutoff_trend is not null and r.cutoff_trend <> '{}'::jsonb then
+      -- Bare string/number/list at the top level (not per-category) — cannot
+      -- be attributed to any category; quarantine wholesale.
+      v_unconverted := jsonb_build_object('_root', r.cutoff_trend);
+    end if;
+
+    if v_normalized <> '{}'::jsonb or v_unconverted <> '{}'::jsonb then
+      update public.exam_competition_metrics
+      set cutoff_by_category = case when v_normalized <> '{}'::jsonb then v_normalized else cutoff_by_category end,
+          metadata = metadata || case when v_unconverted <> '{}'::jsonb
+            then jsonb_build_object('legacy_cutoff_trend_unconverted', v_unconverted) else '{}'::jsonb end
+      where id = r.id;
+    end if;
+
+    -- difficulty_trend: only the documented legacy bare-scalar convention
+    -- ("harder"|"stable"|"easier", written by the pre-PR1 CompetitionPanel
+    -- string-enum inputs) is auto-normalized, with an honest provenance
+    -- note as basis (not a manufactured judgement). Any other shape
+    -- (object, unrecognized string) is quarantined for operator review.
+    if r.difficulty_trend is not null and r.difficulty_trend <> '{}'::jsonb then
+      v_level := null;
+      if jsonb_typeof(r.difficulty_trend) = 'string' then
+        v_level := trim(both '"' from r.difficulty_trend::text);
+      end if;
+      if v_level in ('harder', 'stable', 'easier') then
+        update public.exam_competition_metrics
+        set difficulty_assessment = jsonb_build_object(
+              'level', v_level,
+              'basis', 'Migrated from legacy difficulty_trend value at J3 PR1 disposition (no original basis text recorded).'
+            )
+        where id = r.id;
+      else
+        update public.exam_competition_metrics
+        set metadata = metadata || jsonb_build_object('legacy_difficulty_trend_unconverted', r.difficulty_trend)
+        where id = r.id;
+      end if;
+    end if;
+  end loop;
+
+  raise notice 'J3 §1.3.1 (OD-5) legacy value normalization complete.';
 end $$;
 
 -- ═════════════════════════════════════════════════════════════════════════
@@ -365,34 +542,34 @@ begin
     and source_basis = 'model_generated'
     and is_current_published = false;
 
-  -- Step 3: working-lane version backfill (draft/pending_review). At most one
-  -- per scope is expected after disposition; if duplicates exist here (lower
-  -- stakes than published dupes — nothing aspirant-visible), keep the most
-  -- recently updated and supersede the rest.
+  -- Step 3: working-lane (draft/pending_review) duplicate check. §1.4
+  -- requires an audited operator canonical selection for EVERY duplicate
+  -- lane, not a keep-latest heuristic — even though a working row is not
+  -- aspirant-visible, silently choosing one over another still discards an
+  -- operator's in-progress edit without their knowledge. Fail closed exactly
+  -- like the published-lane check in Step 1.
+  v_dup_count := 0;
+  v_dup_report := '';
   for r in
-    select id, exam_id, exam_cycle_id, exam_phase_id, metric_kind
+    select exam_id, exam_cycle_id, exam_phase_id, metric_kind, count(*) as n
     from public.exam_competition_metrics
-    where reviewer_status in ('draft', 'pending_review')
-      and metric_kind is not null
-    order by exam_id, exam_cycle_id, exam_phase_id, metric_kind, updated_at desc
+    where metric_kind is not null
+      and reviewer_status in ('draft', 'pending_review')
+    group by exam_id, exam_cycle_id, exam_phase_id, metric_kind
+    having count(*) > 1
   loop
-    null; -- handled by the ranked update below
+    v_dup_count := v_dup_count + 1;
+    v_dup_report := v_dup_report || format(
+      E'\n  scope exam=%s cycle=%s phase=%s kind=%s has % working rows',
+      r.exam_id, r.exam_cycle_id, r.exam_phase_id, r.metric_kind, r.n
+    );
   end loop;
 
-  with ranked as (
-    select id,
-           row_number() over (
-             partition by exam_id, exam_cycle_id, exam_phase_id, metric_kind
-             order by updated_at desc, created_at desc
-           ) as rn
-    from public.exam_competition_metrics
-    where reviewer_status in ('draft', 'pending_review')
-      and metric_kind is not null
-  )
-  update public.exam_competition_metrics ecm
-  set superseded_at = now()
-  from ranked
-  where ranked.id = ecm.id and ranked.rn > 1;
+  if v_dup_count > 0 then
+    raise exception 'J3 §1.4 lane initialization BLOCKED: % scope(s) have multiple draft/pending_review rows and require an audited operator canonical selection before this migration can proceed. Resolve by superseding all but one working row per scope (set superseded_at, recording the operator decision), then re-run this migration. Conflicting scopes:%',
+      v_dup_count, v_dup_report
+      using errcode = 'P0001';
+  end if;
 
   -- Step 4: version_no / supersedes_id chain backfill per scope (published
   -- current row is version 1 if it's the only row; if a working row also
@@ -735,6 +912,38 @@ create index if not exists exam_comp_metric_evidence_metric_idx
 create index if not exists exam_comp_metric_evidence_claim_idx
   on public.exam_competition_metric_evidence(metric_id, claim_field, reservation_category_id);
 
+-- Server-computed evidence_key: authority lives entirely in the database,
+-- not the caller. Rather than verify a caller-supplied key against a
+-- recomputed digest (fragile — Python's JSON serialization and Postgres's
+-- jsonb::text output are not guaranteed byte-identical), this BEFORE INSERT
+-- trigger unconditionally OVERWRITES evidence_key with the canonical digest
+-- of (metric_id, claim_field, reservation_category_id, source_id,
+-- document_asset_id, evidence_url, source_page, claim_value). Whatever the
+-- caller sends (including a direct service-role INSERT) is ignored/replaced.
+create or replace function public._ecme_compute_evidence_key() returns trigger
+language plpgsql as $fn$
+begin
+  new.evidence_key := encode(
+    digest(
+      concat_ws('|',
+        new.metric_id::text, new.claim_field, coalesce(new.reservation_category_id::text, ''),
+        coalesce(new.source_id::text, ''), coalesce(new.document_asset_id::text, ''),
+        coalesce(new.evidence_url, ''), coalesce(new.source_page::text, ''),
+        new.claim_value::text
+      ),
+      'sha256'
+    ),
+    'hex'
+  );
+  return new;
+end;
+$fn$;
+
+drop trigger if exists trg_ecme_compute_evidence_key on public.exam_competition_metric_evidence;
+create trigger trg_ecme_compute_evidence_key
+  before insert on public.exam_competition_metric_evidence
+  for each row execute function public._ecme_compute_evidence_key();
+
 -- Append-only immutability: evidence is attach-while-draft only; once the
 -- parent is published, evidence for that revision is frozen. A correction is
 -- a new working revision (§2), never an edit of prior evidence.
@@ -819,8 +1028,11 @@ security definer
 set search_path = public
 as $$
 declare
-    v_row   exam_competition_metrics%rowtype;
+    v_row      exam_competition_metrics%rowtype;
     v_audit_id uuid;
+    v_cat      text;
+    v_cat_val  jsonb;
+    v_sum      numeric;
 begin
     if p_actor_user_id is null then
         raise exception 'missing_actor_id: p_actor_user_id must not be NULL' using errcode = 'P0422';
@@ -840,10 +1052,16 @@ begin
             p_expected_status, v_row.reviewer_status using errcode = 'P0409';
     end if;
 
+    -- Publication happens on pending_review -> reviewed (below), so
+    -- reviewed/locked are BOTH published states (matches AGENTS.md
+    -- "reviewed or locked feed the planner, locked preferred"). reviewed
+    -- therefore has no direct path to rejected — once published, the only
+    -- correction path is reopen-for-edit (clone-to-draft), never an in-place
+    -- reject that would silently remove published availability.
     if not (
            (v_row.reviewer_status = 'draft'          and p_new_status in ('pending_review', 'rejected'))
         or (v_row.reviewer_status = 'pending_review' and p_new_status in ('reviewed', 'rejected', 'draft'))
-        or (v_row.reviewer_status = 'reviewed'        and p_new_status in ('locked', 'rejected'))
+        or (v_row.reviewer_status = 'reviewed'        and p_new_status = 'locked')
         or (v_row.reviewer_status = 'locked'          and p_new_status = 'reviewed')
         or (v_row.reviewer_status = 'rejected'        and p_new_status = 'draft')
     ) then
@@ -858,44 +1076,95 @@ begin
             using errcode = 'P0422';
     end if;
 
-    -- model_generated rows may not reach reviewed/locked without qualifying
-    -- primary evidence for every populated high-risk claim (OD-2).
-    if p_new_status in ('reviewed', 'locked') and v_row.source_basis = 'model_generated' then
-        if not exists (
-          select 1 from public.exam_competition_metric_evidence e
-          where e.metric_id = v_row.id and e.evidence_role = 'primary'
-        ) then
-            raise exception 'model_generated_requires_evidence: attach primary evidence and change source_basis before promoting a model_generated row'
-                using errcode = 'P0422';
-        end if;
+    -- OD-2: a model_generated row may remain draft only. Before it can even
+    -- be SUBMITTED for review, a human must attach evidence and rebase
+    -- source_basis away from model_generated — gated on the submit
+    -- transition itself, not on the later publish step.
+    if v_row.reviewer_status = 'draft' and p_new_status = 'pending_review'
+       and v_row.source_basis = 'model_generated'
+    then
+        raise exception 'model_generated_requires_evidence: attach primary evidence and change source_basis to official or reviewed_analysis before submitting a model_generated row for review'
+            using errcode = 'P0422';
     end if;
 
-    -- Claim-value-match promotion validation: any populated high-risk claim
-    -- must have qualifying primary evidence whose claim_value matches the
-    -- CURRENT parent value (stale evidence from a prior edit does not
-    -- qualify).
-    if p_new_status in ('reviewed', 'locked') then
+    -- Publication gate: pending_review -> reviewed is where this row becomes
+    -- the scope's current-published row (aspirant-visible). Every populated
+    -- high-risk claim must have qualifying PRIMARY evidence whose
+    -- claim_value matches the CURRENT parent value (stale evidence from a
+    -- prior edit does not qualify) and whose cited source (when source_id is
+    -- set) is trusted: active, verified, not discovery-only, not an
+    -- aggregator (aggregators are discovery-only surfaces, never final
+    -- official proof). reviewed_analysis may support difficulty_assessment
+    -- only — it is never accepted as the sole primary evidence for an
+    -- official vacancy/cutoff/pressure fact. reviewed -> locked is purely a
+    -- lifecycle upgrade on the already-published row and repeats none of
+    -- this (it was already validated when the row became reviewed).
+    if v_row.reviewer_status = 'pending_review' and p_new_status = 'reviewed' then
         if v_row.vacancy_total is not null and not exists (
           select 1 from public.exam_competition_metric_evidence e
+          left join public.source_registry sr on sr.id = e.source_id
           where e.metric_id = v_row.id and e.claim_field = 'vacancy_total' and e.evidence_role = 'primary'
+            and e.evidence_kind <> 'reviewed_analysis'
             and (e.claim_value ->> 'vacancy_total')::numeric = v_row.vacancy_total
+            and (e.source_id is null or (sr.is_active and sr.is_verified and not sr.discovery_only and sr.source_type <> 'aggregator'))
         ) then
-            raise exception 'missing_or_stale_evidence: vacancy_total has no matching primary evidence' using errcode = 'P0422';
+            raise exception 'missing_or_stale_evidence: vacancy_total has no matching, source-trusted primary evidence' using errcode = 'P0422';
         end if;
-        if v_row.cutoff_by_category <> '{}'::jsonb and not exists (
-          select 1 from public.exam_competition_metric_evidence e
-          where e.metric_id = v_row.id and e.claim_field = 'cutoff_by_category' and e.evidence_role = 'primary'
-        ) then
-            raise exception 'missing_evidence: cutoff_by_category has no primary evidence' using errcode = 'P0422';
-        end if;
-    end if;
 
-    -- Vacancy sum rule (OD-4).
-    if v_row.vacancy_total is not null and v_row.vacancy_by_category <> '{}'::jsonb then
-        declare v_sum numeric;
-        begin
-            select coalesce(sum((value::text)::numeric), 0) into v_sum
-            from jsonb_each(v_row.vacancy_by_category);
+        for v_cat, v_cat_val in select * from jsonb_each(v_row.vacancy_by_category) loop
+            if not exists (
+              select 1 from public.exam_competition_metric_evidence e
+              join public.reservation_categories rc on rc.id = e.reservation_category_id
+              left join public.source_registry sr on sr.id = e.source_id
+              where e.metric_id = v_row.id and e.claim_field = 'vacancy_by_category' and e.evidence_role = 'primary'
+                and e.evidence_kind <> 'reviewed_analysis'
+                and rc.code = v_cat
+                and (e.claim_value ->> 'count')::numeric = (v_cat_val::text)::numeric
+                and (e.source_id is null or (sr.is_active and sr.is_verified and not sr.discovery_only and sr.source_type <> 'aggregator'))
+            ) then
+                raise exception 'missing_or_stale_evidence: vacancy_by_category[%] has no matching, source-trusted primary evidence', v_cat
+                    using errcode = 'P0422';
+            end if;
+        end loop;
+
+        for v_cat, v_cat_val in select * from jsonb_each(v_row.cutoff_by_category) loop
+            if not exists (
+              select 1 from public.exam_competition_metric_evidence e
+              join public.reservation_categories rc on rc.id = e.reservation_category_id
+              left join public.source_registry sr on sr.id = e.source_id
+              where e.metric_id = v_row.id and e.claim_field = 'cutoff_by_category' and e.evidence_role = 'primary'
+                and e.evidence_kind <> 'reviewed_analysis'
+                and rc.code = v_cat
+                and (e.claim_value ->> 'marks')::numeric = (v_cat_val ->> 'marks')::numeric
+                and (e.source_id is null or (sr.is_active and sr.is_verified and not sr.discovery_only and sr.source_type <> 'aggregator'))
+            ) then
+                raise exception 'missing_or_stale_evidence: cutoff_by_category[%] has no matching, source-trusted primary evidence', v_cat
+                    using errcode = 'P0422';
+            end if;
+        end loop;
+
+        -- Descriptive only: difficulty_assessment may rely on reviewed_analysis.
+        if v_row.difficulty_assessment <> '{}'::jsonb and not exists (
+          select 1 from public.exam_competition_metric_evidence e
+          where e.metric_id = v_row.id and e.claim_field = 'difficulty_assessment' and e.evidence_role = 'primary'
+        ) then
+            raise exception 'missing_evidence: difficulty_assessment has no primary evidence' using errcode = 'P0422';
+        end if;
+
+        if v_row.competition_pressure_score is not null and not exists (
+          select 1 from public.exam_competition_metric_evidence e
+          left join public.source_registry sr on sr.id = e.source_id
+          where e.metric_id = v_row.id and e.claim_field = 'competition_pressure_score' and e.evidence_role = 'primary'
+            and e.evidence_kind <> 'reviewed_analysis'
+            and (e.claim_value ->> 'competition_pressure_score')::numeric = v_row.competition_pressure_score
+            and (e.source_id is null or (sr.is_active and sr.is_verified and not sr.discovery_only and sr.source_type <> 'aggregator'))
+        ) then
+            raise exception 'missing_or_stale_evidence: competition_pressure_score has no matching, source-trusted primary evidence' using errcode = 'P0422';
+        end if;
+
+        -- Vacancy sum rule (OD-4).
+        if v_row.vacancy_total is not null and v_row.vacancy_by_category <> '{}'::jsonb then
+            select coalesce(sum((value::text)::numeric), 0) into v_sum from jsonb_each(v_row.vacancy_by_category);
             if v_sum > v_row.vacancy_total then
                 raise exception 'vacancy_sum_exceeds_total: category sum % exceeds vacancy_total %', v_sum, v_row.vacancy_total
                     using errcode = 'P0422';
@@ -904,14 +1173,15 @@ begin
                 raise exception 'vacancy_sum_incomplete: breakdown_complete=true but category sum % < vacancy_total %', v_sum, v_row.vacancy_total
                     using errcode = 'P0422';
             end if;
-        end;
+        end if;
     end if;
 
     perform set_config('app.competition_lifecycle_rpc', 'true', true);
 
-    if p_new_status = 'locked' and v_row.reviewer_status = 'reviewed' then
-        -- Promotion to published: supersede any existing current-published
-        -- row for this scope, then mark this one current.
+    if p_new_status = 'reviewed' and v_row.reviewer_status = 'pending_review' then
+        -- Publication: supersede any existing current-published row for this
+        -- scope, then mark this one current. This is now the ONLY place
+        -- supersession/is_current_published assignment happens.
         update public.exam_competition_metrics
         set superseded_at = now(), is_current_published = false
         where exam_id = v_row.exam_id
@@ -931,12 +1201,17 @@ begin
         where id = p_metric_id
         returning * into v_row;
     else
+        -- reviewed->locked / locked->reviewed keep whatever is_current_published
+        -- state the row already carries (both are published states); every
+        -- other transition here (draft->pending_review, pending_review-
+        -- >draft|rejected, rejected->draft) never had it set in the first
+        -- place (enforced by ecm_current_published_state), so it is simply
+        -- left untouched rather than reassigned.
         update public.exam_competition_metrics
         set reviewer_status = p_new_status,
             reviewed_by = p_actor_user_id,
             reviewed_at = now(),
             reviewer_notes = coalesce(p_reviewer_notes, reviewer_notes),
-            is_current_published = (p_new_status in ('reviewed', 'locked') and v_row.is_current_published),
             updated_at = now()
         where id = p_metric_id
         returning * into v_row;

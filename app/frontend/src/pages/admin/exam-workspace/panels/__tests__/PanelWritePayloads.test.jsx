@@ -239,9 +239,12 @@ describe("CompetitionPanel.saveMetric", () => {
   // The competition review endpoint uses the coverage lifecycle
   // (draft|pending_review|reviewed|locked|rejected); "verified" 422s. The
   // promote action must send a valid status — only "locked" feeds the planner.
-  test("promote action PATCHes a valid coverage status (locked), never 'verified'", async () => {
+  test("Lock action PATCHes a valid coverage status (locked), never 'verified'", async () => {
+    // J3 PR1: publication (aspirant visibility) happens at pending_review ->
+    // reviewed (migration 215); reviewed -> locked is a status bump on the
+    // already-published row, so a "reviewed" row is what exercises "Lock".
     api.get.mockResolvedValue({
-      items: [{ id: "metric-1", exam_cycle_id: "cyc-1", vacancy_total: 1056, applicant_count: 1100000, reviewer_status: "pending_review" }],
+      items: [{ id: "metric-1", exam_cycle_id: "cyc-1", vacancy_total: 1056, applicant_count: 1100000, reviewer_status: "reviewed" }],
       count: 1,
     });
     api.patch.mockResolvedValue({ ok: true });
@@ -257,6 +260,48 @@ describe("CompetitionPanel.saveMetric", () => {
     expect(body.reviewer_status).toBe("locked");
     expect(["draft", "pending_review", "reviewed", "locked", "rejected"]).toContain(body.reviewer_status);
     expect(body.reviewer_status).not.toBe("verified");
+  });
+
+  test("Mark reviewed action PATCHes pending_review -> reviewed (publication step)", async () => {
+    api.get.mockResolvedValue({
+      items: [{ id: "metric-2", exam_cycle_id: "cyc-1", vacancy_total: 1056, reviewer_status: "pending_review" }],
+      count: 1,
+    });
+    api.patch.mockResolvedValue({ ok: true });
+
+    render(<CompetitionPanel />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole("button", { name: "Mark reviewed" }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+
+    const [, body] = api.patch.mock.calls[api.patch.mock.calls.length - 1];
+    expect(body.reviewer_status).toBe("reviewed");
+  });
+
+  test("Reopen action requires notes and sends reviewer_notes", async () => {
+    api.get.mockResolvedValue({
+      items: [{ id: "metric-3", exam_cycle_id: "cyc-1", vacancy_total: 1056, reviewer_status: "locked" }],
+      count: 1,
+    });
+    api.patch.mockResolvedValue({ ok: true });
+
+    render(<CompetitionPanel />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+
+    // No notes yet: clicking Reopen must not PATCH.
+    fireEvent.click(await screen.findByRole("button", { name: "Reopen" }));
+    expect(api.patch).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByPlaceholderText("reopen notes (required)"), {
+      target: { value: "cutoff was mistyped" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reopen" }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+
+    const [, body] = api.patch.mock.calls[api.patch.mock.calls.length - 1];
+    expect(body.reviewer_status).toBe("reviewed");
+    expect(body.reviewer_notes).toBe("cutoff was mistyped");
   });
 
   // J3 PR1: metric_kind is derived from exam_phase_id (OD-11) — selecting a

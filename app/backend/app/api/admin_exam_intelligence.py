@@ -12,8 +12,6 @@ Allowed status transitions (``reviewer_status``):
 """
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
@@ -756,6 +754,10 @@ class CoverageReviewBody(BaseModel):
     reviewer_status: str = Field(
         ..., pattern="^(draft|pending_review|reviewed|locked|rejected)$"
     )
+    # Optional; required by the DB RPC only for the locked->reviewed reopen
+    # transition (competition-metrics review, migration 215). Other callers
+    # of this shared body (e.g. /topic-coverage/{id}/review) may omit it.
+    reviewer_notes: str | None = None
 
 
 @router.patch("/topic-coverage/{row_id}/review")
@@ -969,13 +971,10 @@ def attach_competition_metric_evidence(
     if not any([body.source_id, body.document_asset_id, body.evidence_url]):
         raise HTTPException(status_code=422, detail="At least one of source_id, document_asset_id, evidence_url is required")
 
-    key_material = "|".join([
-        row_id, body.claim_field, str(category_id or ""), str(body.source_id or ""),
-        str(body.document_asset_id or ""), body.evidence_url or "", str(body.source_page or ""),
-        json.dumps(body.claim_value, sort_keys=True),
-    ])
-    evidence_key = hashlib.sha256(key_material.encode("utf-8")).hexdigest()
-
+    # evidence_key is NOT computed here — the DB trigger
+    # (_ecme_compute_evidence_key, migration 215) unconditionally overwrites
+    # whatever is sent with its own canonical server-side digest, so
+    # evidence_key authority lives entirely in the database, not the caller.
     row = {
         "metric_id": row_id,
         "claim_field": body.claim_field,
@@ -989,7 +988,6 @@ def attach_competition_metric_evidence(
         "source_page": body.source_page,
         "source_excerpt": body.source_excerpt,
         "claim_value": body.claim_value,
-        "evidence_key": evidence_key,
         "created_by": admin.get("id"),
     }
     try:
@@ -997,6 +995,43 @@ def attach_competition_metric_evidence(
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=422, detail=f"Could not attach evidence: {exc}") from exc
     return {"ok": True, "row": inserted[0] if inserted else row}
+
+
+@router.get("/competition-metrics/{row_id}/evidence")
+def list_competition_metric_evidence(
+    row_id: str,
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """List evidence attached to a competition-metric row (OD-9: the review
+    surface must be able to display the evidence a promotion decision relies
+    on, not just the row's own fields)."""
+    sb = get_supabase_admin()
+    rows = _safe(
+        lambda: (
+            sb.table("exam_competition_metric_evidence")
+            .select(
+                "id, metric_id, claim_field, reservation_category_id, evidence_kind, "
+                "evidence_role, source_id, document_asset_id, evidence_url, source_label, "
+                "source_page, source_excerpt, claim_value, captured_at, created_by, created_at"
+            )
+            .eq("metric_id", row_id)
+            .order("created_at", desc=False)
+            .limit(200)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    cat_ids = list({r.get("reservation_category_id") for r in rows if r.get("reservation_category_id")})
+    cat_map: dict[str, str] = {}
+    if cat_ids:
+        cats = _safe(
+            lambda: sb.table("reservation_categories").select("id, code").in_("id", cat_ids).execute().data,
+            default=[],
+        ) or []
+        cat_map = {c["id"]: c["code"] for c in cats if c.get("id")}
+    items = [{**r, "reservation_category_code": cat_map.get(r.get("reservation_category_id"))} for r in rows]
+    return {"items": items, "count": len(items)}
 
 
 def _exam_name_map(sb: Any, exam_ids: list[str]) -> dict[str, dict[str, Any]]:
@@ -1104,7 +1139,7 @@ def review_competition_metric(
                 "p_metric_id": row_id,
                 "p_expected_status": current_status,
                 "p_new_status": new_status,
-                "p_reviewer_notes": None,
+                "p_reviewer_notes": body.reviewer_notes,
                 "p_actor_user_id": admin.get("id"),
                 "p_actor_email": admin.get("email"),
             },

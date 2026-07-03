@@ -2132,12 +2132,22 @@ def update_competition_metric(
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     """Curate an existing competition-metric row. ``reviewer_status`` is
-    not movable here; the review-side router owns that lifecycle."""
+    not movable here; the review-side router owns that lifecycle.
+
+    Scope fields (``exam_id``/``exam_cycle_id``/``exam_phase_id``) are
+    immutable post-create: changing them without re-deriving ``metric_kind``
+    would let a phase_cutoff row silently become an orphaned/incorrect
+    cycle_summary row (or vice versa). Correcting scope means creating a new
+    row for the right scope, not moving an existing row across scopes.
+    """
     supabase = get_supabase_admin()
     existing = _safe_select(supabase, "exam_competition_metrics", id=metric_id)
     if not existing:
         raise HTTPException(status_code=404, detail="exam_competition_metric not found")
-    patch = {k: v for k, v in body.payload.items() if k in _COMPETITION_FIELDS}
+    patch = {
+        k: v for k, v in body.payload.items()
+        if k in _COMPETITION_FIELDS and k not in ("exam_id", "exam_cycle_id", "exam_phase_id")
+    }
     if not patch:
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
     _validate_competition_payload(patch)

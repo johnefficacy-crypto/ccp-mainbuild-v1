@@ -700,17 +700,23 @@ class SBStub:
 
         return {"question": question, "cascaded_option_count": option_count}
 
+    # Publication (aspirant visibility) happens at pending_review -> reviewed,
+    # NOT at reviewed -> locked (reviewed and locked are both published
+    # states per AGENTS.md "reviewed or locked feed the planner, locked
+    # preferred"). Once published, the only correction path is
+    # reopen-for-edit (clone-to-draft) — reviewed has no direct path to
+    # rejected, which would otherwise silently remove published availability.
     _ECM_TRANSITIONS = {
         "draft": {"pending_review", "rejected"},
         "pending_review": {"reviewed", "rejected", "draft"},
-        "reviewed": {"locked", "rejected"},
+        "reviewed": {"locked"},
         "locked": {"reviewed"},
         "rejected": {"draft"},
     }
 
     def _cms_review_competition_metric(self, params: dict[str, Any]) -> dict[str, Any]:
         """Emulate cms_review_competition_metric (migration 215): transition
-        matrix + CAS + atomic current-published supersession."""
+        matrix + CAS + atomic current-published supersession on publish."""
         metric_id = params.get("p_metric_id")
         expected_status = params.get("p_expected_status")
         new_status = params.get("p_new_status")
@@ -736,6 +742,11 @@ class SBStub:
             raise RuntimeError(f"transition_not_allowed: {current_status} -> {new_status} is not permitted")
         if current_status == "locked" and new_status == "reviewed" and not (reviewer_notes or "").strip():
             raise RuntimeError("invalid_reviewer_notes: reviewer_notes required when reopening a locked row")
+        if current_status == "draft" and new_status == "pending_review" and row.get("source_basis") == "model_generated":
+            raise RuntimeError(
+                "model_generated_requires_evidence: attach primary evidence and change source_basis "
+                "to official or reviewed_analysis before submitting a model_generated row for review"
+            )
 
         row["reviewer_status"] = new_status
         row["reviewed_by"] = actor_id
@@ -743,7 +754,7 @@ class SBStub:
         if reviewer_notes is not None:
             row["reviewer_notes"] = reviewer_notes
 
-        if new_status == "locked" and current_status == "reviewed":
+        if new_status == "reviewed" and current_status == "pending_review":
             scope = (row.get("exam_id"), row.get("exam_cycle_id"), row.get("exam_phase_id"), row.get("metric_kind"))
             for other in self.db.get("exam_competition_metrics", []):
                 other_scope = (
@@ -754,8 +765,9 @@ class SBStub:
                     other["is_current_published"] = False
                     other["superseded_at"] = "2026-07-03T00:00:00Z"
             row["is_current_published"] = True
-        elif new_status not in ("reviewed", "locked"):
-            row["is_current_published"] = False
+        # reviewed<->locked keeps whatever is_current_published it already
+        # has; every other transition never had it set (draft/pending_review/
+        # rejected rows are never current-published).
 
         import uuid as _uuid
 
