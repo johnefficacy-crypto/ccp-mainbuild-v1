@@ -344,3 +344,57 @@ describe("ReviewActivatePanel — missing-tag CTA independent of D10 readiness",
     expect(screen.getByTestId("pyq-review-missing-cta")).toBeTruthy();
   });
 });
+
+// ── EI-CLEAN-03: PYQ four-metric breakdown + missing-tag CTA ─────────────────
+
+const READINESS_PYQ_MISSING_TAGS = {
+  exam_id: "exam-1",
+  overall: { score_percent: 60, ready_to_activate: false, status: "partial" },
+  sections: [
+    {
+      section: "pyq_workbench",
+      label: "PYQ Workbench",
+      status: "partial",
+      weight: 3,
+      blockers: ["98 questions missing verified topic tag"],
+      note: "",
+      metrics: {
+        pyq_readiness: {
+          questions_total: 100,
+          planner_ready_question_count: 0,
+          reviewed_question_count: 98,
+          missing_verified_tag_count: 98,
+          rejected_question_count: 2,
+        },
+      },
+    },
+  ],
+};
+
+describe("ReviewActivatePanel — EI-CLEAN-03 PYQ metric decomposition", () => {
+  it("shows planner-ready, reviewed, missing-tag and rejected as distinct metrics", () => {
+    setup({ readiness: READINESS_PYQ_MISSING_TAGS });
+    expect(screen.getByTestId("pyq-planner-ready").textContent).toMatch(/0 \/ 100 planner-ready/);
+    expect(screen.getByTestId("pyq-reviewed").textContent).toMatch(/98 questions reviewed/);
+    expect(screen.getByTestId("pyq-missing-tag").textContent).toMatch(/98 need a verified topic tag/);
+    expect(screen.getByTestId("pyq-rejected").textContent).toMatch(/2 rejected/);
+  });
+
+  it("labels the CTA 'Review missing topic tags' when tags are missing", () => {
+    setup({ readiness: READINESS_PYQ_MISSING_TAGS, permissions: ["exam_intelligence.review"] });
+    expect(screen.getByRole("button", { name: /review missing topic tags/i })).toBeTruthy();
+  });
+
+  it("navigates to the pyq tab when the missing-tags CTA is clicked", () => {
+    const onGotoTab = jest.fn();
+    useExamWorkspace.mockReturnValue({
+      readiness: READINESS_PYQ_MISSING_TAGS,
+      readiness_loading: false,
+      refetchReadiness: jest.fn(),
+    });
+    useAuth.mockReturnValue({ user: { permissions: ["exam_intelligence.review"] } });
+    render(<ReviewActivatePanel onGotoTab={onGotoTab} />);
+    fireEvent.click(screen.getByRole("button", { name: /review missing topic tags/i }));
+    expect(onGotoTab).toHaveBeenCalledWith("pyq");
+  });
+});
