@@ -75,6 +75,19 @@ _EVIDENCE_DERIVED_BASIS = "evidence_derived"
 
 _KNOWN_SOURCE_BASES = _HUMAN_AUTHORED_BASES | {_MODEL_GENERATED_BASIS, _EVIDENCE_DERIVED_BASIS}
 
+# PD-4a ownership: a row is derivation-owned ONLY when source_basis is
+# 'evidence_derived' AND model_version is a value THIS derivation code
+# recognizes as its own (i.e. a row it previously wrote). Today that is
+# exactly DERIVATION_VERSION. A null/missing/future/unrecognized
+# model_version on an 'evidence_derived' row must NOT be treated as owned,
+# even though source_basis claims 'evidence_derived' — skip+triage instead
+# of silently overwriting.
+_OWNED_MODEL_VERSIONS = {DERIVATION_VERSION}
+
+# Reviewer statuses the derivation is allowed to recompute/update in place
+# (PD-3: draft/rejected only — never pending_review/reviewed/locked).
+_MUTABLE_STATUSES = ("draft", "rejected")
+
 
 class CoverageDerivationError(Exception):
     """Raised only for programmer-error / invariant violations, never for
@@ -510,7 +523,19 @@ def derive_topic_coverage(
             continue
 
         if basis == _EVIDENCE_DERIVED_BASIS:
-            if status in ("draft", "rejected"):
+            existing_model_version = existing.get("model_version")
+            if existing_model_version not in _OWNED_MODEL_VERSIONS:
+                # PD-4a: source_basis alone does not establish ownership.
+                # A null/missing/unrecognized model_version on an
+                # 'evidence_derived' row means this row was not written by
+                # (a version of) this derivation — never overwrite it.
+                # Treat like model_generated: skip + flag for operator
+                # triage rather than silently clobbering it.
+                triaged += 1
+                deltas.append(_delta(existing, proposed))
+                triage.append({"topic_id": tid, "row_id": existing.get("id")})
+                continue
+            if status in _MUTABLE_STATUSES:
                 # Idempotency (PD-2): if the existing derivation-owned row
                 # already carries this exact fingerprint AND is already in
                 # `draft`, re-running writes nothing new.
@@ -520,17 +545,44 @@ def derive_topic_coverage(
                 if status == "draft" and existing_fp == fingerprint:
                     skipped += 1
                     continue
-                # Derivation-owned + re-derivable: recompute/update in place.
-                # `rejected` returns to `draft` with fresh inputs.
+                # Derivation-owned + re-derivable: recompute/update in
+                # place. `rejected` returns to `draft` with fresh inputs.
+                #
+                # CAS guard: the read-then-write gap between fetching
+                # `existing` above and this UPDATE is a real race — another
+                # actor (a reviewer) could move the row to pending_review/
+                # reviewed/locked in between. Constrain the UPDATE itself
+                # by id + source_basis + model_version + reviewer_status IN
+                # (draft, rejected) so the database, not stale in-memory
+                # state, decides whether the write applies. Treat "0 rows
+                # affected" as a conflict — the row is no longer
+                # derivation-owned/mutable — and fall back to the
+                # skip+delta path rather than assuming success.
                 patch = {**proposed}
                 try:
-                    (
+                    resp = (
                         sb.table("exam_topic_coverage")
                         .update(patch)
                         .eq("id", existing["id"])
+                        .eq("source_basis", _EVIDENCE_DERIVED_BASIS)
+                        .eq("model_version", existing_model_version)
+                        .in_("reviewer_status", list(_MUTABLE_STATUSES))
                         .execute()
                     )
-                    updated += 1
+                    affected = resp.data or []
+                    if len(affected) == 1:
+                        updated += 1
+                    else:
+                        # Conflict: row moved out of draft/rejected (or was
+                        # otherwise mutated) between read and write. Do NOT
+                        # proceed as if the update succeeded.
+                        logger.warning(
+                            "coverage_derivation update CAS conflict — "
+                            "row no longer derivation-owned/mutable",
+                            extra={"topic_id": tid, "row_id": existing.get("id")},
+                        )
+                        skipped += 1
+                        deltas.append(_delta(existing, proposed))
                 except Exception as exc:  # noqa: BLE001
                     logger.warning(
                         "coverage_derivation update failed",

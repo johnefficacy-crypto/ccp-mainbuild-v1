@@ -12,7 +12,7 @@ import itertools
 
 import pytest
 
-from tests.persona_questions._stub import SBStub
+from tests.persona_questions._stub import SBStub, _Exec, _Query
 from app.exam_intelligence.coverage_derivation import (
     DERIVATION_VERSION,
     bucket_coverage_depth,
@@ -248,6 +248,7 @@ def test_evidence_derived_draft_is_recomputed():
             {
                 "id": "row-1", "exam_id": "exam-1", "exam_cycle_id": None, "exam_phase_id": None,
                 "topic_id": "t1", "source_basis": "evidence_derived", "reviewer_status": "draft",
+                "model_version": DERIVATION_VERSION,
                 "exam_priority_score": 1.0, "is_high_yield": False, "confidence_score": 0.1,
                 "coverage_depth": "light",
                 "metadata": {"evidence": {"fingerprint": "stale-fp"}},
@@ -268,6 +269,7 @@ def test_evidence_derived_pending_review_is_skipped():
             {
                 "id": "row-1", "exam_id": "exam-1", "exam_cycle_id": None, "exam_phase_id": None,
                 "topic_id": "t1", "source_basis": "evidence_derived", "reviewer_status": "pending_review",
+                "model_version": DERIVATION_VERSION,
                 "exam_priority_score": 1.0, "is_high_yield": False, "confidence_score": 0.1,
                 "coverage_depth": "light", "metadata": {},
             }
@@ -289,6 +291,7 @@ def test_evidence_derived_reviewed_or_locked_left_unchanged(status):
             {
                 "id": "row-1", "exam_id": "exam-1", "exam_cycle_id": None, "exam_phase_id": None,
                 "topic_id": "t1", "source_basis": "evidence_derived", "reviewer_status": status,
+                "model_version": DERIVATION_VERSION,
                 "exam_priority_score": 1.0, "is_high_yield": False, "confidence_score": 0.1,
                 "coverage_depth": "light", "metadata": {},
             }
@@ -309,6 +312,7 @@ def test_evidence_derived_rejected_is_recomputed_back_to_draft():
             {
                 "id": "row-1", "exam_id": "exam-1", "exam_cycle_id": None, "exam_phase_id": None,
                 "topic_id": "t1", "source_basis": "evidence_derived", "reviewer_status": "rejected",
+                "model_version": DERIVATION_VERSION,
                 "exam_priority_score": 1.0, "is_high_yield": False, "confidence_score": 0.1,
                 "coverage_depth": "light", "metadata": {},
             }
@@ -405,3 +409,157 @@ def test_read_error_is_fail_closed_no_partial_write():
     assert result["read_error"] is True
     assert result["written"] == 0
     assert result["updated"] == 0
+
+
+# ── Reviewer-found bug fix: CAS guard on the read-then-write update path ────
+# (docs/status/J3-Evidence-Coverage-Scoring-Gate-2026-07-02.md PD-3 / PD-4a)
+
+
+class _RaceQuery(_Query):
+    """Wraps the stub's update-path to simulate a reviewer moving the row
+    from draft/rejected to a protected status *between* the derivation's
+    initial read and its UPDATE — i.e. the exact TOCTOU window the CAS guard
+    must close. The mutation happens lazily, inside `execute()`, so it lands
+    after `derive_topic_coverage` has already read `existing` into memory."""
+
+    def __init__(self, name, db, race_row_id, race_to_status):
+        super().__init__(name, db)
+        self._race_row_id = race_row_id
+        self._race_to_status = race_to_status
+
+    def execute(self):
+        if self.name == "exam_topic_coverage" and self._pending_update is not None:
+            for row in self.db.get(self.name, []):
+                if row.get("id") == self._race_row_id:
+                    row["reviewer_status"] = self._race_to_status
+        return super().execute()
+
+
+class _RaceSB(SBStub):
+    """SBStub variant whose single UPDATE on exam_topic_coverage races a
+    reviewer status-change into the row immediately before the UPDATE's
+    WHERE clause is evaluated."""
+
+    def __init__(self, db, race_row_id, race_to_status):
+        super().__init__(db)
+        self._race_row_id = race_row_id
+        self._race_to_status = race_to_status
+
+    def table(self, name):
+        if name == "exam_topic_coverage":
+            return _RaceQuery(name, self.db, self._race_row_id, self._race_to_status)
+        return super().table(name)
+
+
+@pytest.mark.parametrize("race_to_status", ("pending_review", "reviewed", "locked"))
+def test_concurrent_reviewer_promotion_wins_cas_race_not_clobbered(race_to_status):
+    """A reviewer promotes the row out of draft/rejected in the window
+    between the derivation's read and its UPDATE. The CAS-guarded UPDATE
+    (id + source_basis + model_version + reviewer_status IN (draft,
+    rejected)) must affect zero rows, and the derivation must treat that as
+    a conflict — skip + delta, never clobber the promoted row back to
+    draft."""
+    sb = _RaceSB(
+        {
+            "exam_topic_score_snapshots": [_snapshot_row(exam_priority_score=99.0)],
+            "exam_topic_coverage": [
+                {
+                    "id": "row-1", "exam_id": "exam-1", "exam_cycle_id": None,
+                    "exam_phase_id": None, "topic_id": "t1",
+                    "source_basis": "evidence_derived", "reviewer_status": "draft",
+                    "model_version": DERIVATION_VERSION,
+                    "exam_priority_score": 1.0, "is_high_yield": False,
+                    "confidence_score": 0.1, "coverage_depth": "light",
+                    "metadata": {"evidence": {"fingerprint": "stale-fp"}},
+                }
+            ],
+        },
+        race_row_id="row-1",
+        race_to_status=race_to_status,
+    )
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["updated"] == 0
+    assert result["skipped"] == 1
+    assert len(result["deltas"]) == 1
+    row = sb.db["exam_topic_coverage"][0]
+    # The row must retain the reviewer's promoted status and NOT be reset
+    # to draft or have its scoring fields clobbered with the derivation's
+    # proposed values.
+    assert row["reviewer_status"] == race_to_status
+    assert row["exam_priority_score"] == 1.0
+
+
+def test_zero_rows_affected_on_update_is_treated_as_conflict_not_success():
+    """Even if the in-memory `existing` snapshot still says draft, if the
+    UPDATE's own WHERE clause matches zero rows (simulated here by pointing
+    the update at a row id that no longer satisfies the CAS predicate), the
+    derivation must not count it as `updated` — it must fall back to
+    skip+delta."""
+
+    class _ZeroAffectedQuery(_Query):
+        def execute(self):
+            if self.name == "exam_topic_coverage" and self._pending_update is not None:
+                return _Exec([])  # simulate PostgREST returning 0 affected rows
+            return super().execute()
+
+    class _ZeroAffectedSB(SBStub):
+        def table(self, name):
+            if name == "exam_topic_coverage":
+                return _ZeroAffectedQuery(name, self.db)
+            return super().table(name)
+
+    sb = _ZeroAffectedSB(
+        {
+            "exam_topic_score_snapshots": [_snapshot_row(exam_priority_score=77.0)],
+            "exam_topic_coverage": [
+                {
+                    "id": "row-1", "exam_id": "exam-1", "exam_cycle_id": None,
+                    "exam_phase_id": None, "topic_id": "t1",
+                    "source_basis": "evidence_derived", "reviewer_status": "draft",
+                    "model_version": DERIVATION_VERSION,
+                    "exam_priority_score": 1.0, "is_high_yield": False,
+                    "confidence_score": 0.1, "coverage_depth": "light",
+                    "metadata": {"evidence": {"fingerprint": "stale-fp"}},
+                }
+            ],
+        }
+    )
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["updated"] == 0
+    assert result["errors"] == 0
+    assert result["skipped"] == 1
+    row = sb.db["exam_topic_coverage"][0]
+    assert row["exam_priority_score"] == 1.0  # not clobbered despite 0-row response
+
+
+# ── Reviewer-found bug fix: ownership requires source_basis AND model_version
+# (PD-4a — a row must NOT be treated as derivation-owned just because
+# source_basis == 'evidence_derived'; model_version must also be recognized)
+
+
+@pytest.mark.parametrize(
+    "bad_model_version",
+    [None, "", "v0.9", "v2.0-future", "not-a-real-version"],
+)
+def test_evidence_derived_row_with_unowned_model_version_is_never_overwritten(bad_model_version):
+    sb = SBStub({
+        "exam_topic_score_snapshots": [_snapshot_row(exam_priority_score=99.0)],
+        "exam_topic_coverage": [
+            {
+                "id": "row-1", "exam_id": "exam-1", "exam_cycle_id": None, "exam_phase_id": None,
+                "topic_id": "t1", "source_basis": "evidence_derived", "reviewer_status": "draft",
+                "model_version": bad_model_version,
+                "exam_priority_score": 1.0, "is_high_yield": False, "confidence_score": 0.1,
+                "coverage_depth": "light", "metadata": {},
+            }
+        ],
+    })
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["updated"] == 0
+    assert result["written"] == 0
+    assert result["triaged"] == 1
+    assert result["triage"] == [{"topic_id": "t1", "row_id": "row-1"}]
+    row = sb.db["exam_topic_coverage"][0]
+    # Never overwritten — retains its original (non-owned) values.
+    assert row["exam_priority_score"] == 1.0
+    assert row["model_version"] == bad_model_version
