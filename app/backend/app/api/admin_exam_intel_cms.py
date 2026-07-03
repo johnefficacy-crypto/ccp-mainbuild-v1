@@ -1996,14 +1996,22 @@ def update_policy_update(
 _COMPETITION_FIELDS = {
     "exam_id", "exam_cycle_id", "exam_phase_id",
     "vacancy_total", "vacancy_by_category",
-    "applicant_count", "selection_ratio",
-    "cutoff_trend", "difficulty_trend", "competition_pressure_score",
-    "source_basis", "confidence_score", "evidence_count",
+    "applicant_count",
+    "cutoff_by_category", "difficulty_assessment", "breakdown_complete",
+    "competition_pressure_score",
+    "source_basis", "confidence_score",
     "reviewer_notes", "metadata",
+    # cutoff_trend/difficulty_trend/selection_ratio/evidence_count are
+    # DEPRECATED — intentionally excluded from the write allowlist (resolutions
+    # §1.1/§1.2/OD-6: no new writes to legacy columns; evidence_count is
+    # derived from exam_competition_metric_evidence, never caller-supplied).
+    # metric_kind/version_no/supersedes_id/superseded_at/is_current_published
+    # are server-controlled (lifecycle RPC only) — never client-writable.
 }
 _COMPETITION_SOURCE_BASIS = (
     "manual", "official", "reviewed_analysis", "derived", "model_generated"
 )
+_RESERVATION_CATEGORY_CODES = {"general", "ews", "obc", "sc", "st"}
 
 
 def _validate_competition_payload(row: dict[str, Any]) -> None:
@@ -2012,13 +2020,6 @@ def _validate_competition_payload(row: dict[str, Any]) -> None:
             status_code=422,
             detail=f"source_basis must be one of {_COMPETITION_SOURCE_BASIS}",
         )
-    if row.get("selection_ratio") is not None:
-        try:
-            n = float(row["selection_ratio"])
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=422, detail="selection_ratio must be numeric")
-        if not (0 <= n <= 1):
-            raise HTTPException(status_code=422, detail="selection_ratio must be in [0, 1]")
     if row.get("confidence_score") is not None:
         try:
             n = float(row["confidence_score"])
@@ -2033,6 +2034,39 @@ def _validate_competition_payload(row: dict[str, Any]) -> None:
             raise HTTPException(status_code=422, detail="competition_pressure_score must be numeric")
         if not (0 <= n <= 100):
             raise HTTPException(status_code=422, detail="competition_pressure_score must be in [0, 100]")
+    # App-layer fast-path mirror of the DB validation trigger (migration 216
+    # `_ecm_validate_jsonb`) — the DB trigger is the source of truth; this
+    # gives a fast 422 instead of a raw DB error for the common cases.
+    cutoff = row.get("cutoff_by_category")
+    if cutoff:
+        if not isinstance(cutoff, dict):
+            raise HTTPException(status_code=422, detail="cutoff_by_category must be an object")
+        for cat, val in cutoff.items():
+            if cat not in _RESERVATION_CATEGORY_CODES:
+                raise HTTPException(status_code=422, detail=f"cutoff_by_category: unknown category {cat!r}")
+            if not isinstance(val, dict) or "marks" not in val:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"cutoff_by_category[{cat}] must be an object {{marks, max_marks?}}, not a bare value",
+                )
+            if "stage" in val:
+                raise HTTPException(status_code=422, detail=f"cutoff_by_category[{cat}]: 'stage' is not permitted")
+    vacancy = row.get("vacancy_by_category")
+    if vacancy:
+        if not isinstance(vacancy, dict):
+            raise HTTPException(status_code=422, detail="vacancy_by_category must be an object")
+        for cat, val in vacancy.items():
+            if cat not in _RESERVATION_CATEGORY_CODES:
+                raise HTTPException(status_code=422, detail=f"vacancy_by_category: unknown category {cat!r}")
+            if not isinstance(val, int) or isinstance(val, bool) or val < 0:
+                raise HTTPException(status_code=422, detail=f"vacancy_by_category[{cat}] must be a non-negative integer")
+    difficulty = row.get("difficulty_assessment")
+    if difficulty:
+        if not isinstance(difficulty, dict) or difficulty.get("level") not in ("harder", "stable", "easier"):
+            raise HTTPException(status_code=422, detail="difficulty_assessment.level must be one of harder|stable|easier")
+        basis = difficulty.get("basis") or ""
+        if not (8 <= len(basis) <= 500):
+            raise HTTPException(status_code=422, detail="difficulty_assessment.basis must be 8-500 characters")
 
 
 @router.post("/exam-competition-metrics")
@@ -2052,11 +2086,35 @@ def create_competition_metric(
     row = {k: v for k, v in body.payload.items() if k in _COMPETITION_FIELDS}
     if not row.get("exam_id"):
         raise HTTPException(status_code=422, detail="exam_id is required")
+    if not row.get("exam_cycle_id"):
+        raise HTTPException(status_code=422, detail="exam_cycle_id is required (OD-11: every new-model competition row is cycle-anchored)")
     if not _safe_select(supabase, "exams", id=row["exam_id"]):
         raise HTTPException(status_code=422, detail="exam_id does not resolve")
     _validate_competition_payload(row)
+
+    # metric_kind + field-ownership (OD-11): derived from exam_phase_id, not
+    # client-supplied. cycle_summary owns vacancy/pressure; phase_cutoff owns
+    # cutoff/difficulty. Mixing either way is a 422, not a silent drop.
+    is_phase_scoped = bool(row.get("exam_phase_id"))
+    row["metric_kind"] = "phase_cutoff" if is_phase_scoped else "cycle_summary"
+    if is_phase_scoped:
+        if any(row.get(f) is not None for f in ("vacancy_total", "applicant_count", "competition_pressure_score")) or row.get("vacancy_by_category"):
+            raise HTTPException(status_code=422, detail="A phase-scoped (exam_phase_id set) row is phase_cutoff and cannot carry vacancy/pressure fields")
+    else:
+        if row.get("cutoff_by_category") or row.get("difficulty_assessment"):
+            raise HTTPException(status_code=422, detail="A cycle-level (no exam_phase_id) row is cycle_summary and cannot carry cutoff/difficulty fields")
     row["reviewer_status"] = "draft"
-    inserted = supabase.table("exam_competition_metrics").insert(row).execute().data or []
+    row["version_no"] = 1
+    try:
+        inserted = supabase.table("exam_competition_metrics").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        if "duplicate key" in msg.lower() or "ecm_working" in msg.lower():
+            raise HTTPException(
+                status_code=409,
+                detail="A working (draft/pending_review) revision already exists for this scope — edit it instead of creating a new one",
+            ) from exc
+        raise HTTPException(status_code=422, detail=f"Could not create competition metric: {msg}") from exc
     new = inserted[0] if inserted else row
     audit_id = _audit(
         supabase, admin, "exam_intel.cms.competition_metric.create",
@@ -2074,12 +2132,22 @@ def update_competition_metric(
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     """Curate an existing competition-metric row. ``reviewer_status`` is
-    not movable here; the review-side router owns that lifecycle."""
+    not movable here; the review-side router owns that lifecycle.
+
+    Scope fields (``exam_id``/``exam_cycle_id``/``exam_phase_id``) are
+    immutable post-create: changing them without re-deriving ``metric_kind``
+    would let a phase_cutoff row silently become an orphaned/incorrect
+    cycle_summary row (or vice versa). Correcting scope means creating a new
+    row for the right scope, not moving an existing row across scopes.
+    """
     supabase = get_supabase_admin()
     existing = _safe_select(supabase, "exam_competition_metrics", id=metric_id)
     if not existing:
         raise HTTPException(status_code=404, detail="exam_competition_metric not found")
-    patch = {k: v for k, v in body.payload.items() if k in _COMPETITION_FIELDS}
+    patch = {
+        k: v for k, v in body.payload.items()
+        if k in _COMPETITION_FIELDS and k not in ("exam_id", "exam_cycle_id", "exam_phase_id")
+    }
     if not patch:
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
     _validate_competition_payload(patch)

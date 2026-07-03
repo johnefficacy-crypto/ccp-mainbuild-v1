@@ -37,8 +37,14 @@ def _empty(exam_id: str | None = None) -> dict[str, Any]:
         "vacancy_by_category": {},
         "applicant_count": None,
         "selection_ratio": None,
+        "selection_ratio_legacy": None,
+        "selection_rate": None,
+        "candidates_per_vacancy": None,
+        "ratio_denominator": None,
         "cutoff_trend": {},
         "difficulty_trend": {},
+        "cutoff_by_category": {},
+        "difficulty_assessment": {},
         "competition_pressure_score": None,
         "cycle_pressure": {
             "days_remaining": None,
@@ -57,12 +63,30 @@ def _empty(exam_id: str | None = None) -> dict[str, Any]:
 def _pick_best(
     rows: list[dict[str, Any]], exam_cycle_id: str | None
 ) -> dict[str, Any] | None:
-    """Pick the most authoritative metrics row.
+    """Pick the authoritative cycle_summary metrics row for the requested
+    (or, if absent, the most recent) cycle.
 
-    Preference order: matches the requested cycle → ``locked`` over
-    ``reviewed`` → most recently created.
+    OD-10 shared selector: rows disposed with a metric_kind use
+    ``is_current_published`` as the single source of truth — never a
+    per-reader "best row" heuristic. Legacy undisposed rows
+    (metric_kind IS NULL) fall back to the prior locked-preferred /
+    latest-created heuristic so pre-migration data is not dropped.
     """
     if not rows:
+        return None
+
+    cycle_summary_rows = [r for r in rows if r.get("metric_kind") == "cycle_summary"]
+    current = [r for r in cycle_summary_rows if r.get("is_current_published")]
+    if current:
+        if exam_cycle_id:
+            for r in current:
+                if r.get("exam_cycle_id") == exam_cycle_id:
+                    return r
+        # No exact cycle match requested/found — most recently reviewed wins.
+        return sorted(current, key=lambda r: str(r.get("reviewed_at") or r.get("created_at") or ""), reverse=True)[0]
+
+    legacy = [r for r in rows if r.get("metric_kind") is None]
+    if not legacy:
         return None
 
     def _key(r: dict[str, Any]) -> tuple:
@@ -70,7 +94,9 @@ def _pick_best(
         locked = 1 if r.get("reviewer_status") == "locked" else 0
         return (cycle_match, locked, str(r.get("created_at") or ""))
 
-    return sorted(rows, key=_key, reverse=True)[0]
+    return sorted(legacy, key=_key, reverse=True)[0]
+
+
 
 
 def _pressure_level(score: float | None, days_remaining: int | None) -> str:
@@ -129,9 +155,11 @@ def competition_context(
             .select(
                 "id, exam_id, exam_cycle_id, exam_phase_id, vacancy_total, "
                 "vacancy_by_category, applicant_count, selection_ratio, "
-                "cutoff_trend, difficulty_trend, competition_pressure_score, "
+                "cutoff_trend, difficulty_trend, cutoff_by_category, "
+                "difficulty_assessment, metric_kind, is_current_published, "
+                "competition_pressure_score, "
                 "source_basis, confidence_score, evidence_count, "
-                "reviewer_status, created_at"
+                "reviewer_status, reviewed_at, created_at"
             )
             .eq("exam_id", exam_id)
             .in_("reviewer_status", list(_READABLE_STATUSES))
@@ -146,6 +174,16 @@ def competition_context(
     if not best:
         return _empty(exam_id)
 
+    # This function takes no phase argument, and a cycle can have multiple
+    # phase_cutoff rows (prelims, mains, ...). Picking one arbitrarily would
+    # be nondeterministic (dependent on row return order) and would attach
+    # the wrong phase's cutoff/difficulty to a cycle-level pressure summary,
+    # so this helper never guesses a phase. A disposed cycle_summary `best`
+    # row is guaranteed empty cutoff/difficulty fields by the field-ownership
+    # CHECK, so reading them directly off `best` is safe and simply yields
+    # nothing for disposed data; only a legacy, undisposed row (metric_kind
+    # still NULL) that happens to carry both on the same row surfaces cutoff
+    # facts here, exactly matching pre-migration-216 behavior for that data.
     score = best.get("competition_pressure_score")
     try:
         score = float(score) if score is not None else None
@@ -168,8 +206,17 @@ def competition_context(
         "vacancy_by_category": best.get("vacancy_by_category") or {},
         "applicant_count": best.get("applicant_count"),
         "selection_ratio": selection_ratio,
+        # Ratio contract, PR-1 half (resolutions §1.2): the provenance-proven
+        # applied/appeared denominator lands in PR 2 — these stay null until
+        # then, never derived from the ambiguous legacy applicant_count.
+        "selection_ratio_legacy": selection_ratio,
+        "selection_rate": None,
+        "candidates_per_vacancy": None,
+        "ratio_denominator": None,
         "cutoff_trend": best.get("cutoff_trend") or {},
         "difficulty_trend": best.get("difficulty_trend") or {},
+        "cutoff_by_category": best.get("cutoff_by_category") or {},
+        "difficulty_assessment": best.get("difficulty_assessment") or {},
         "competition_pressure_score": score,
         "cycle_pressure": {
             "days_remaining": days_remaining,

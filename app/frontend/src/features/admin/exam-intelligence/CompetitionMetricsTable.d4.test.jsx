@@ -44,8 +44,10 @@ test("D4: exam name is not rendered in any table cell", () => {
 
 test("D4: table still renders other data without Exam column", () => {
   render(<CompetitionMetricsTable items={ROWS} />);
-  // Core data columns should still be present.
-  expect(screen.getByRole("columnheader", { name: /vacancy/i })).toBeTruthy();
+  // Core data columns should still be present. J3 OD-9 added a "Vacancy by
+  // category" column alongside "Vacancy", so this now matches >1 header —
+  // assert on the exact "Vacancy" header instead of a loose regex.
+  expect(screen.getByRole("columnheader", { name: "Vacancy" })).toBeTruthy();
   expect(screen.getByRole("columnheader", { name: /applicants/i })).toBeTruthy();
   expect(document.body.textContent).toContain("1000");
   expect(document.body.textContent).toContain("500000");

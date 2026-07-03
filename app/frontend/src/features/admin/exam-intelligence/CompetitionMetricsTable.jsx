@@ -40,6 +40,12 @@ function fmtRatio(v) {
   return Number.isFinite(n) ? n.toFixed(4) : "—";
 }
 
+function fmtCategoryMap(map, formatValue) {
+  const entries = Object.entries(map || {});
+  if (!entries.length) return "—";
+  return entries.map(([code, v]) => `${code}: ${formatValue(v)}`).join(", ");
+}
+
 export default function CompetitionMetricsTable({ items, onReview, busyRowId }) {
   const rows = Array.isArray(items) ? items : [];
   const interactive = typeof onReview === "function";
@@ -61,8 +67,11 @@ export default function CompetitionMetricsTable({ items, onReview, busyRowId }) 
           {/* D4: "Exam" column removed — table is always pre-filtered by exam.id in CompetitionPanel */}
           <tr>
             <th className="right">Vacancy</th>
+            <th>Vacancy by category</th>
             <th className="right">Applicants</th>
-            <th className="right">Selection ratio</th>
+            <th className="right">Selection ratio (legacy)</th>
+            <th>Cutoff by category</th>
+            <th>Difficulty</th>
             <th className="right">Pressure</th>
             <th>Source basis</th>
             <th>Confidence</th>
@@ -74,16 +83,26 @@ export default function CompetitionMetricsTable({ items, onReview, busyRowId }) 
           {rows.map((c) => {
             const transitions = TRANSITIONS[c.status] || [];
             const busy = busyRowId === c.id;
+            const difficulty = c.difficulty_assessment || {};
             return (
               <tr key={c.id} className="border-t border-clay-100 align-top">
                 <td className="px-4 py-2 text-right tabular-nums">
                   {c.vacancy_total ?? "—"}
                 </td>
+                <td className="px-4 py-2 text-xs">
+                  {fmtCategoryMap(c.vacancy_by_category, (v) => v)}
+                </td>
                 <td className="px-4 py-2 text-right tabular-nums">
                   {c.applicant_count ?? "—"}
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums">
+                <td className="px-4 py-2 text-right tabular-nums" title="Deprecated — see resolutions §1.2">
                   {fmtRatio(c.selection_ratio)}
+                </td>
+                <td className="px-4 py-2 text-xs">
+                  {fmtCategoryMap(c.cutoff_by_category, (v) => (v && v.marks != null ? v.marks : "—"))}
+                </td>
+                <td className="px-4 py-2 text-xs">
+                  {difficulty.level || "—"}
                 </td>
                 <td className="px-4 py-2 text-right tabular-nums">
                   {c.competition_pressure_score ?? "—"}

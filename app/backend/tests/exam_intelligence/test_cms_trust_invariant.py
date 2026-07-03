@@ -99,13 +99,14 @@ def test_create_topic_coverage_is_forced_pending_review_even_if_caller_sends_loc
 
 
 def test_create_competition_metric_is_forced_draft():
+    # J3 PR1 / OD-11: exam_cycle_id is now required for every new-model row.
     sb = SBStub(_seeded_exam())
     client = _build_app(sb)
     r = client.post(
         f"{_BASE}/exam-competition-metrics",
         json={
             "reason": "seeding competition metric",
-            "payload": {"exam_id": "exam-1", "reviewer_status": "locked"},
+            "payload": {"exam_id": "exam-1", "exam_cycle_id": "cyc-1", "reviewer_status": "locked"},
         },
     )
     assert r.status_code == 200, r.text

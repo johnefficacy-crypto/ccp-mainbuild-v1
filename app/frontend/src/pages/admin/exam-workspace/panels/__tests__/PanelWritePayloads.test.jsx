@@ -239,9 +239,12 @@ describe("CompetitionPanel.saveMetric", () => {
   // The competition review endpoint uses the coverage lifecycle
   // (draft|pending_review|reviewed|locked|rejected); "verified" 422s. The
   // promote action must send a valid status — only "locked" feeds the planner.
-  test("promote action PATCHes a valid coverage status (locked), never 'verified'", async () => {
+  test("Lock action PATCHes a valid coverage status (locked), never 'verified'", async () => {
+    // J3 PR1: publication (aspirant visibility) happens at pending_review ->
+    // reviewed (migration 216); reviewed -> locked is a status bump on the
+    // already-published row, so a "reviewed" row is what exercises "Lock".
     api.get.mockResolvedValue({
-      items: [{ id: "metric-1", exam_cycle_id: "cyc-1", vacancy_total: 1056, applicant_count: 1100000, reviewer_status: "pending_review" }],
+      items: [{ id: "metric-1", exam_cycle_id: "cyc-1", vacancy_total: 1056, applicant_count: 1100000, reviewer_status: "reviewed" }],
       count: 1,
     });
     api.patch.mockResolvedValue({ ok: true });
@@ -257,5 +260,89 @@ describe("CompetitionPanel.saveMetric", () => {
     expect(body.reviewer_status).toBe("locked");
     expect(["draft", "pending_review", "reviewed", "locked", "rejected"]).toContain(body.reviewer_status);
     expect(body.reviewer_status).not.toBe("verified");
+  });
+
+  test("Mark reviewed action PATCHes pending_review -> reviewed (publication step)", async () => {
+    api.get.mockResolvedValue({
+      items: [{ id: "metric-2", exam_cycle_id: "cyc-1", vacancy_total: 1056, reviewer_status: "pending_review" }],
+      count: 1,
+    });
+    api.patch.mockResolvedValue({ ok: true });
+
+    render(<CompetitionPanel />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole("button", { name: "Mark reviewed" }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+
+    const [, body] = api.patch.mock.calls[api.patch.mock.calls.length - 1];
+    expect(body.reviewer_status).toBe("reviewed");
+  });
+
+  test("Reopen action requires notes and sends reviewer_notes", async () => {
+    api.get.mockResolvedValue({
+      items: [{ id: "metric-3", exam_cycle_id: "cyc-1", vacancy_total: 1056, reviewer_status: "locked" }],
+      count: 1,
+    });
+    api.patch.mockResolvedValue({ ok: true });
+
+    render(<CompetitionPanel />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+
+    // No notes yet: clicking Reopen must not PATCH.
+    fireEvent.click(await screen.findByRole("button", { name: "Reopen" }));
+    expect(api.patch).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByPlaceholderText("reopen notes (required)"), {
+      target: { value: "cutoff was mistyped" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reopen" }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+
+    const [, body] = api.patch.mock.calls[api.patch.mock.calls.length - 1];
+    expect(body.reviewer_status).toBe("reviewed");
+    expect(body.reviewer_notes).toBe("cutoff was mistyped");
+  });
+
+  // J3 PR1: metric_kind is derived from exam_phase_id (OD-11) — selecting a
+  // phase switches the form to the cutoff_by_category editor and the payload
+  // must carry exam_phase_id + cutoff_by_category, never vacancy fields.
+  test("J3: selecting a phase sends exam_phase_id + cutoff_by_category, no vacancy fields", async () => {
+    useExamWorkspace.mockReturnValue({
+      exam: { id: "exam-1" },
+      cycle: { id: "cyc-1", cycle_name: "2026" },
+      phases: [{ id: "phase-1", phase_name: "Prelims" }],
+    });
+    render(<CompetitionPanel />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add competition metric" }));
+    fireEvent.change(screen.getByTestId("competition-phase-select"), { target: { value: "phase-1" } });
+    fireEvent.change(screen.getByTestId("cutoff-marks-general"), { target: { value: "75.41" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save as draft" }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    const body = lastPostBody();
+    expect(body.payload.exam_phase_id).toBe("phase-1");
+    expect(body.payload.cutoff_by_category).toEqual({ general: { marks: 75.41 } });
+    expect(body.payload.vacancy_total).toBeUndefined();
+    expect(body.payload.vacancy_by_category).toBeUndefined();
+    expect(body.payload.applicant_count).toBeUndefined();
+  });
+
+  test("J3: cycle-level (no phase) sends vacancy_by_category, no cutoff fields", async () => {
+    render(<CompetitionPanel />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add competition metric" }));
+    fireEvent.change(screen.getByTestId("vacancy-general"), { target: { value: "442" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save as draft" }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    const body = lastPostBody();
+    expect(body.payload.exam_phase_id).toBeUndefined();
+    expect(body.payload.vacancy_by_category).toEqual({ general: 442 });
+    expect(body.payload.cutoff_by_category).toBeUndefined();
+    expect(body.payload.difficulty_assessment).toBeUndefined();
   });
 });

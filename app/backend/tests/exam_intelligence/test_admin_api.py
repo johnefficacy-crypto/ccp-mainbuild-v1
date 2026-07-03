@@ -442,7 +442,11 @@ def _competition_seed():
              "vacancy_total": 17727, "competition_pressure_score": 72,
              "source_basis": "reviewed_analysis", "confidence_score": 0.76,
              "created_at": "2026-05-01T00:00:00+00:00"},
-            {"id": "cm2", "exam_id": "e1", "reviewer_status": "draft",
+            # J3 PR1: the lifecycle RPC (migration 216) enforces a transition
+            # matrix — draft can no longer jump straight to locked (that was
+            # exactly the defect this gate fixes). Seeded at "reviewed" so
+            # the review-locks-for-planner test exercises a legal transition.
+            {"id": "cm2", "exam_id": "e1", "reviewer_status": "reviewed",
              "vacancy_total": 15000, "competition_pressure_score": 60,
              "created_at": "2026-04-20T00:00:00+00:00"},
         ],
@@ -483,16 +487,36 @@ def test_competition_metrics_status_filter_and_invalid():
 
 
 def test_competition_metric_review_locks_for_planner():
+    # J3 PR1: the review endpoint is now RPC-backed (migration 216); the
+    # response shape carries new_status/prev_status/audit_id, not a raw row.
     sb = SBStub(_competition_seed())
     client = TestClient(_build_app(sb))
     r = client.patch(
         "/api/admin/exam-intelligence/competition-metrics/cm2/review",
         json={"reviewer_status": "locked"},
     )
-    assert r.status_code == 200
-    assert r.json()["reviewer_status"] == "locked"
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["new_status"] == "locked"
+    assert body["prev_status"] == "reviewed"
+    assert body["audit_id"]
     row = next(c for c in sb.db["exam_competition_metrics"] if c["id"] == "cm2")
+    assert row["reviewer_status"] == "locked"
     assert row["reviewed_by"] == "admin-1"
+
+
+def test_competition_metric_review_rejects_draft_to_locked_jump():
+    # J3 PR1 regression: this was one of the three verified repo defects the
+    # gate fixes — draft must not be able to jump straight to locked.
+    sb = SBStub(_competition_seed())
+    sb.db["exam_competition_metrics"][1]["reviewer_status"] = "draft"
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/competition-metrics/cm2/review",
+        json={"reviewer_status": "locked"},
+    )
+    assert r.status_code == 422
+    assert "transition_not_allowed" in r.json()["detail"]
 
 
 def test_competition_metric_review_missing_returns_404():
