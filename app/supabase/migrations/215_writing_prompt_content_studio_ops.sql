@@ -69,6 +69,27 @@
 -- 1. Idempotency key for bulk import — SUBJECT-scoped (content is reusable
 --    across exams; external_key is unique within a subject).
 -- ---------------------------------------------------------------------------
+-- Preflight: the table + metadata predate this migration, so refuse to create the
+-- unique index if live data already holds duplicate (subject_id, external_key)
+-- groups — a silent index-creation failure on live would leave the idempotency
+-- contract unenforced. Fail loud so the operator dedupes first.
+DO $preflight$
+DECLARE v_dups int;
+BEGIN
+    SELECT count(*) INTO v_dups FROM (
+        SELECT subject_id, metadata->>'external_key' AS k
+        FROM public.writing_prompts
+        WHERE (metadata->>'external_key') IS NOT NULL
+        GROUP BY subject_id, (metadata->>'external_key')
+        HAVING count(*) > 1
+    ) d;
+    IF v_dups > 0 THEN
+        RAISE EXCEPTION 'migration 215 preflight: % duplicate (subject_id, external_key) group(s) exist; dedupe before applying', v_dups
+            USING ERRCODE = 'P0422';
+    END IF;
+END
+$preflight$;
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_writing_prompts_external_key
   ON public.writing_prompts (subject_id, (metadata->>'external_key'))
   WHERE (metadata->>'external_key') IS NOT NULL;
@@ -122,6 +143,38 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
         OR a.metadata IS DISTINCT FROM b.metadata;
 $$;
 
+-- Coarse in-DB guard for prompt_text + required_words (defense-in-depth behind the
+-- API canonicalizer): reject a blank/whitespace prompt, and any required word that
+-- is blank, whitespace-only, multi-token (contains whitespace), or a
+-- case-insensitive duplicate — content the deterministic runtime can never satisfy.
+CREATE OR REPLACE FUNCTION ewp_assert_prompt_content(p_prompt_text text, p_required_words jsonb)
+RETURNS void LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE w text; seen text[] := '{}'; k text;
+BEGIN
+    IF p_prompt_text IS NULL OR btrim(p_prompt_text) = '' THEN
+        RAISE EXCEPTION 'invalid_content: prompt_text must not be blank' USING ERRCODE = 'P0422';
+    END IF;
+    IF p_required_words IS NOT NULL AND p_required_words <> 'null'::jsonb THEN
+        IF jsonb_typeof(p_required_words) <> 'array' THEN
+            RAISE EXCEPTION 'invalid_content: required_words must be a JSON array' USING ERRCODE = 'P0422';
+        END IF;
+        FOR w IN SELECT jsonb_array_elements_text(p_required_words) LOOP
+            IF w IS NULL OR btrim(w) = '' THEN
+                RAISE EXCEPTION 'invalid_content: required_words entries must be non-blank' USING ERRCODE = 'P0422';
+            END IF;
+            IF btrim(w) ~ '\s' THEN
+                RAISE EXCEPTION 'invalid_content: required word % must be a single token', w USING ERRCODE = 'P0422';
+            END IF;
+            k := lower(btrim(w));
+            IF k = ANY(seen) THEN
+                RAISE EXCEPTION 'invalid_content: duplicate required word (case-insensitive): %', w USING ERRCODE = 'P0422';
+            END IF;
+            seen := array_append(seen, k);
+        END LOOP;
+    END IF;
+END;
+$$;
+
 -- Subject-scoped canonical validation (NO exam scope — prompts are reusable).
 -- Topic must be ACTIVE + level='topic'; microtopic ACTIVE + level='microtopic' +
 -- child-of-topic; source document must be a live admin exam-intelligence asset.
@@ -157,9 +210,14 @@ BEGIN
     END IF;
     IF p_document IS NOT NULL THEN
         SELECT * INTO v_doc FROM public.document_assets WHERE id = p_document;
+        -- NULL-safe positive validation: a NULL scope/kind/status must FAIL (not
+        -- fall open through three-valued logic). `IS DISTINCT FROM` + explicit
+        -- IS NULL guards ensure an unclassified row can never pass provenance.
         IF NOT FOUND
-           OR v_doc.scope <> 'admin_exam_intelligence'
+           OR v_doc.scope IS DISTINCT FROM 'admin_exam_intelligence'
+           OR v_doc.document_kind IS NULL
            OR v_doc.document_kind NOT IN ('syllabus','notification','corrigendum','pyq_paper','answer_key','other')
+           OR v_doc.status IS NULL
            OR v_doc.status IN ('failed','archived')
            OR coalesce(btrim(v_doc.storage_bucket), '') = ''
            OR coalesce(btrim(v_doc.storage_path), '') = '' THEN
@@ -186,10 +244,16 @@ BEGIN
         RAISE EXCEPTION 'missing_actor_id: p_actor_user_id must not be NULL' USING ERRCODE = 'P0422';
     END IF;
     PERFORM ewp_assert_reason(p_reason);
+    -- external_key is the SYSTEM-OWNED bulk-import identity — a manual create must
+    -- never claim one (else it could hijack/collide with a later import).
+    IF coalesce(p_payload->'metadata', '{}'::jsonb) ? 'external_key' THEN
+        RAISE EXCEPTION 'reserved_metadata_key: metadata.external_key is system-owned (bulk import only)' USING ERRCODE = 'P0422';
+    END IF;
     v_rec := jsonb_populate_record(NULL::public.writing_prompts,
         (coalesce(p_payload, '{}'::jsonb) - 'id' - 'created_at' - 'updated_at'
          - 'reviewer_status' - 'is_active'));
     PERFORM ewp_validate_prompt_scope(v_rec.subject_id, v_rec.topic_id, v_rec.microtopic_id, v_rec.source_document_id);
+    PERFORM ewp_assert_prompt_content(v_rec.prompt_text, v_rec.required_words);
 
     INSERT INTO public.writing_prompts (
         subject_id, topic_id, microtopic_id, exercise_type, prompt_text, source_text,
@@ -311,8 +375,21 @@ BEGIN
         RAISE EXCEPTION 'concurrent_modification: prompt changed since read' USING ERRCODE = 'P0409';
     END IF;
     v_patch := coalesce(p_patch, '{}'::jsonb) - 'id' - 'reviewer_status' - 'is_active' - 'created_at' - 'updated_at';
+    -- external_key is the immutable system-owned import identity: a patch may not
+    -- set it to a NEW value, and if the row already has one it is PRESERVED across
+    -- a metadata edit (so a curation edit can't orphan the row from a re-import).
+    IF v_patch ? 'metadata' THEN
+        IF (v_patch->'metadata' ? 'external_key')
+           AND (v_patch->'metadata'->>'external_key') IS DISTINCT FROM (v_existing.metadata->>'external_key') THEN
+            RAISE EXCEPTION 'reserved_metadata_key: metadata.external_key is system-owned and cannot be changed' USING ERRCODE = 'P0422';
+        END IF;
+        IF (v_existing.metadata ? 'external_key') THEN
+            v_patch := jsonb_set(v_patch, '{metadata,external_key}', v_existing.metadata->'external_key');
+        END IF;
+    END IF;
     v_new := jsonb_populate_record(v_existing, v_patch);
     PERFORM ewp_validate_prompt_scope(v_new.subject_id, v_new.topic_id, v_new.microtopic_id, v_new.source_document_id);
+    PERFORM ewp_assert_prompt_content(v_new.prompt_text, v_new.required_words);
 
     INSERT INTO public.admin_audit_logs (actor_id, actor_email, admin_user_id, action, entity_type, entity_id, old_value, new_value, notes)
     VALUES (p_actor_user_id, p_actor_email, p_actor_user_id, 'writing_prompt_update', 'writing_prompt', p_prompt_id::text,
@@ -380,9 +457,17 @@ BEGIN
             || jsonb_build_object('subject_id', p_subject_id, 'reviewer_status', 'pending', 'is_active', false, 'metadata', v_meta));
         v_incoming.max_rewrite_attempts := coalesce(v_incoming.max_rewrite_attempts, 3);
         PERFORM ewp_validate_prompt_scope(v_incoming.subject_id, v_incoming.topic_id, v_incoming.microtopic_id, v_incoming.source_document_id);
+        PERFORM ewp_assert_prompt_content(v_incoming.prompt_text, v_incoming.required_words);
 
         SELECT * INTO v_existing FROM public.writing_prompts
         WHERE subject_id = p_subject_id AND metadata->>'external_key' = v_ext FOR UPDATE;
+
+        -- On update, MERGE over the existing metadata (incoming wins per-key) so a
+        -- re-import refreshes import fields without erasing unrelated provenance
+        -- keys the row already carries. external_key is identical on both sides.
+        IF v_existing.id IS NOT NULL THEN
+            v_incoming.metadata := coalesce(v_existing.metadata, '{}'::jsonb) || v_incoming.metadata;
+        END IF;
 
         IF v_existing.id IS NULL THEN
             INSERT INTO public.writing_prompts (
@@ -589,6 +674,8 @@ $$;
 -- Deny all non-service-role access.
 REVOKE EXECUTE ON FUNCTION ewp_assert_reason(text) FROM PUBLIC, anon, authenticated;
 GRANT  EXECUTE ON FUNCTION ewp_assert_reason(text) TO service_role;
+REVOKE EXECUTE ON FUNCTION ewp_assert_prompt_content(text, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION ewp_assert_prompt_content(text, jsonb) TO service_role;
 REVOKE EXECUTE ON FUNCTION ewp_writing_prompt_content_differs(public.writing_prompts, public.writing_prompts) FROM PUBLIC, anon, authenticated;
 GRANT  EXECUTE ON FUNCTION ewp_writing_prompt_content_differs(public.writing_prompts, public.writing_prompts) TO service_role;
 REVOKE EXECUTE ON FUNCTION ewp_validate_prompt_scope(uuid, uuid, uuid, uuid) FROM PUBLIC, anon, authenticated;

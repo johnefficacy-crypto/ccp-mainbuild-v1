@@ -638,6 +638,98 @@ def test_remove_missing_target_is_not_found():
     assert proc.returncode != 0 and "not_found" in proc.stderr, proc.stderr
 
 
+# ── NULL-safe source-document provenance validation ─────────────────────────
+
+
+def _doc(scope="admin_exam_intelligence", kind="syllabus", status="ready"):
+    def v(x):
+        return "NULL" if x is None else f"'{x}'"
+    return _scalar(
+        f"INSERT INTO document_assets(scope,document_kind,status,storage_bucket,storage_path) "
+        f"VALUES ({v(scope)},{v(kind)},{v(status)},'docs','p.pdf') RETURNING id;")
+
+
+def test_create_rejects_null_scope_document():
+    proc = _create(_base_payload(source_document_id=_doc(scope=None)))
+    assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
+
+
+def test_create_rejects_null_kind_document():
+    proc = _create(_base_payload(source_document_id=_doc(kind=None)))
+    assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
+
+
+def test_create_rejects_null_status_document():
+    proc = _create(_base_payload(source_document_id=_doc(status=None)))
+    assert proc.returncode != 0 and "invalid_scope" in proc.stderr, proc.stderr
+
+
+# ── prompt content guards (blank prompt / invalid required words) ────────────
+
+
+def test_create_rejects_blank_prompt_text():
+    proc = _create(_base_payload(prompt_text="   "))
+    assert proc.returncode != 0 and "invalid_content" in proc.stderr, proc.stderr
+
+
+def test_create_rejects_blank_required_word():
+    proc = _create(_base_payload(required_words=["ok", "  "]))
+    assert proc.returncode != 0 and "invalid_content" in proc.stderr, proc.stderr
+
+
+def test_create_rejects_multiword_required_word():
+    proc = _create(_base_payload(required_words=["two words"]))
+    assert proc.returncode != 0 and "invalid_content" in proc.stderr, proc.stderr
+
+
+def test_create_rejects_case_duplicate_required_word():
+    proc = _create(_base_payload(required_words=["Policy", "policy"]))
+    assert proc.returncode != 0 and "invalid_content" in proc.stderr, proc.stderr
+
+
+# ── external_key is system-owned + immutable (bulk-import identity) ──────────
+
+
+def _ext_key(pid: str) -> str:
+    return _scalar(f"SELECT metadata->>'external_key' FROM writing_prompts WHERE id='{pid}';")
+
+
+def test_create_rejects_reserved_external_key_metadata():
+    proc = _create(_base_payload(metadata={"external_key": "hijack"}))
+    assert proc.returncode != 0 and "reserved_metadata_key" in proc.stderr, proc.stderr
+
+
+def test_patch_preserves_external_key_across_metadata_edit():
+    _bulk_counts([_row("ek-keep", prompt_text="Keepable sentence.")])
+    pid = _scalar(f"SELECT id FROM writing_prompts WHERE metadata->>'external_key'='ek-keep' AND subject_id='{_ENGLISH_ID}';")
+    proc = _update(pid, {"metadata": {"foo": "bar"}})
+    assert proc.returncode == 0, proc.stderr
+    assert _ext_key(pid) == "ek-keep", "patch must preserve the import key"
+    assert _scalar(f"SELECT metadata->>'foo' FROM writing_prompts WHERE id='{pid}';") == "bar"
+
+
+def test_patch_cannot_change_external_key():
+    _bulk_counts([_row("ek-immut", prompt_text="Immutable key sentence.")])
+    pid = _scalar(f"SELECT id FROM writing_prompts WHERE metadata->>'external_key'='ek-immut' AND subject_id='{_ENGLISH_ID}';")
+    proc = _update(pid, {"metadata": {"external_key": "other"}})
+    assert proc.returncode != 0 and "reserved_metadata_key" in proc.stderr, proc.stderr
+
+
+def test_bulk_reimport_after_metadata_edit_stays_idempotent():
+    # create via bulk, add provenance via a normal edit, then re-import the SAME
+    # key with changed content → must MATCH the same row (update), not duplicate,
+    # and preserve the unrelated provenance metadata.
+    _bulk_counts([_row("ek-reimp", prompt_text="Original reimport sentence.")])
+    pid = _scalar(f"SELECT id FROM writing_prompts WHERE metadata->>'external_key'='ek-reimp' AND subject_id='{_ENGLISH_ID}';")
+    _update(pid, {"metadata": {"prov": "manual"}})
+    c, u, n = _bulk_counts([_row("ek-reimp", prompt_text="Revised reimport sentence.")])
+    assert (c, u, n) == ("0", "1", "0"), "re-import must resolve to the same row"
+    rows = _scalar(f"SELECT count(*) FROM writing_prompts WHERE metadata->>'external_key'='ek-reimp' AND subject_id='{_ENGLISH_ID}';")
+    assert rows == "1", "no duplicate row after metadata edit + re-import"
+    assert _scalar(f"SELECT metadata->>'prov' FROM writing_prompts WHERE id='{pid}';") == "manual", \
+        "bulk update must preserve unrelated provenance metadata"
+
+
 # ── RPCs are service-role-only (not executable by anon/authenticated) ────────
 
 

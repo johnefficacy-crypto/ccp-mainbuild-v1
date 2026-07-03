@@ -7,7 +7,7 @@ is carried by `writing_prompt_targets`. This router is the operator write path:
   Library / Review Queue  → writing_prompts create/list/get/patch/review/bulk
                              (author = content_studio.author; review =
                               content_studio.review; reads = author OR review OR
-                              exam_intelligence.manage)
+                              exam_intelligence.manage OR exam_intelligence.review)
   Exam Assignments        → writing_prompt_targets list/propose/review/remove.
                              Split by the LOCKED J2 authority separation:
                              manage (exam_intelligence.manage) PROPOSES an inert
@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import logging
+import unicodedata
 from typing import Any, Literal
 from uuid import UUID
 
@@ -45,6 +46,7 @@ from pydantic import (
 )
 
 from app.api.admin_exam_intel_cms import WriteEnvelope, _flag_enabled, _safe_select
+from app.study_os.writing_practice.deterministic import tokenize_words as _tokenize_words
 from app.core.auth import get_current_user, require_permission
 from app.core.permissions import (
     CONTENT_STUDIO_AUTHOR,
@@ -85,6 +87,46 @@ _NOT_NULL = frozenset({
     "subject_id", "topic_id", "exercise_type", "prompt_text",
     "difficulty_level", "max_rewrite_attempts", "metadata",
 })
+
+# `external_key` is a SYSTEM-OWNED bulk-import identity (migration 215 idempotency
+# index). Normal create/patch must never set or mutate it through free-form
+# metadata — only the bulk RPC assigns it — so a manual prompt can't hijack an
+# import key and a patch can't drop it and orphan the row from a re-import.
+_RESERVED_METADATA_KEYS = frozenset({"external_key"})
+
+
+def _canonicalize_required_words(words: list[str]) -> list[str]:
+    """NFC + trim each required word; require EXACTLY ONE backend word token
+    (mirrors ``deterministic.tokenize_words`` — hyphen/apostrophe compounds are
+    one token); dedupe case-insensitively (the backend match is case-fold). The
+    display form of the first occurrence is preserved. Raises ValueError on any
+    blank, multi-token, or duplicate entry so the authoring boundary can never
+    store a required word the runtime coverage check can never satisfy."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in words:
+        norm = unicodedata.normalize("NFC", raw).strip()
+        if not norm:
+            raise ValueError("required_words entries must be non-blank")
+        toks = _tokenize_words(norm)
+        if len(toks) != 1 or toks[0] != norm:
+            raise ValueError(
+                f"required word {raw!r} must be exactly one word token "
+                "(no blanks, punctuation, or multi-word phrases)")
+        key = norm.casefold()
+        if key in seen:
+            raise ValueError(f"duplicate required word (case-insensitive): {raw!r}")
+        seen.add(key)
+        out.append(norm)
+    return out
+
+
+def _reject_reserved_metadata(md: dict | None) -> dict | None:
+    if md is not None:
+        bad = sorted(_RESERVED_METADATA_KEYS & set(md))
+        if bad:
+            raise ValueError(f"metadata keys are system-owned and may not be set here: {bad}")
+    return md
 
 
 def _require_content_read(user: dict = Depends(get_current_user)) -> dict:
@@ -137,6 +179,23 @@ class _PromptBase(_RejectExplicitNull):
             raise ValueError("max_words must be >= min_words")
         return v
 
+    @field_validator("prompt_text")
+    @classmethod
+    def _prompt_text_nonblank(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError("prompt_text must not be blank/whitespace-only")
+        return v
+
+    @field_validator("required_words")
+    @classmethod
+    def _canon_required_words(cls, v):
+        return _canonicalize_required_words(v) if v is not None else v
+
+    @field_validator("metadata")
+    @classmethod
+    def _no_reserved_metadata(cls, v):
+        return _reject_reserved_metadata(v)
+
 
 class WritingPromptCreate(_PromptBase):
     subject_id: UUID
@@ -160,6 +219,23 @@ class WritingPromptPatch(_RejectExplicitNull):
     source_document_id: UUID | None = None
     metadata: dict[str, Any] | None = None
 
+    @field_validator("prompt_text")
+    @classmethod
+    def _patch_prompt_text_nonblank(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError("prompt_text must not be blank/whitespace-only")
+        return v
+
+    @field_validator("required_words")
+    @classmethod
+    def _patch_canon_required_words(cls, v):
+        return _canonicalize_required_words(v) if v is not None else v
+
+    @field_validator("metadata")
+    @classmethod
+    def _patch_no_reserved_metadata(cls, v):
+        return _reject_reserved_metadata(v)
+
 
 class WritingPromptBulkRow(_PromptBase):
     external_key: StrictStr = Field(min_length=1)
@@ -179,9 +255,24 @@ class WritingPromptBulkBody(BaseModel):
     rows: list[WritingPromptBulkRow] = Field(..., min_length=1, max_length=500)
 
 
+class WritingPromptPatchEnvelope(BaseModel):
+    """Curation write body carrying the CLIENT's optimistic-lock token.
+
+    ``expected_updated_at`` is the ``updated_at`` the operator's browser last read
+    (from GET) — NOT a value the server re-reads just before the write. Passing
+    the client token unchanged is what makes edit-after-edit lose (409); a
+    server-minted fresh token would silently clobber a concurrent edit."""
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(..., min_length=8, max_length=500)
+    expected_updated_at: str = Field(..., description="updated_at the client last read (CAS token)")
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
 class WritingPromptReviewBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: str
+    expected_status: str = Field(..., description="reviewer_status the client last saw (CAS)")
+    expected_updated_at: str = Field(..., description="updated_at the client last read (CAS token)")
     reason: str = Field(..., min_length=8, max_length=500)
     reviewer_notes: str | None = Field(default=None, max_length=2000)
 
@@ -235,7 +326,7 @@ def _map_rpc_error(exc: Exception, ctx: str) -> HTTPException:
     if any(tok in low for tok in (
         "transition_not_allowed", "invalid_target_status", "missing_actor_id",
         "invalid_reason", "invalid_scope", "bulk_locked_row",
-        "target_effective_locked",
+        "target_effective_locked", "reserved_metadata_key",
     )) or "violates check constraint" in low:
         return HTTPException(status_code=422, detail=str(exc))
     if "not_found" in low:
@@ -256,9 +347,9 @@ def _rpc_row(result) -> dict:
 
 @router.get("/writing-prompts")
 def list_writing_prompts(
-    subject_id: str | None = Query(default=None),
-    topic_id: str | None = Query(default=None),
-    microtopic_id: str | None = Query(default=None),
+    subject_id: UUID | None = Query(default=None),
+    topic_id: UUID | None = Query(default=None),
+    microtopic_id: UUID | None = Query(default=None),
     exercise_type: str | None = Query(default=None),
     difficulty_level: int | None = Query(default=None, ge=1, le=10),
     reviewer_status: str | None = Query(default=None),
@@ -277,7 +368,7 @@ def list_writing_prompts(
         ("reviewer_status", reviewer_status),
     ):
         if val is not None:
-            query = query.eq(col, val)
+            query = query.eq(col, str(val))
     if is_active is not None:
         query = query.eq("is_active", is_active)
     if q:
@@ -288,12 +379,12 @@ def list_writing_prompts(
 
 @router.get("/writing-prompts/{prompt_id}")
 def get_writing_prompt(
-    prompt_id: str,
+    prompt_id: UUID,
     _admin: dict = Depends(_require_content_read),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
-    prompt = _safe_select(supabase, "writing_prompts", id=prompt_id)
+    prompt = _safe_select(supabase, "writing_prompts", id=str(prompt_id))
     if not prompt:
         raise HTTPException(status_code=404, detail="writing_prompt not found")
     return prompt
@@ -322,8 +413,8 @@ def create_writing_prompt(
 
 @router.patch("/writing-prompts/{prompt_id}")
 def update_writing_prompt(
-    prompt_id: str,
-    body: WriteEnvelope,
+    prompt_id: UUID,
+    body: WritingPromptPatchEnvelope,
     admin: dict = Depends(require_permission(PERM_AUTHOR)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
@@ -332,7 +423,8 @@ def update_writing_prompt(
     patch = _jsonable(model, exclude_unset=True)
     if not patch:
         raise HTTPException(status_code=422, detail="No fields to update")
-    existing = _safe_select(supabase, "writing_prompts", id=prompt_id)
+    # Best-effort merged min/max preview (the RPC re-validates scope under lock).
+    existing = _safe_select(supabase, "writing_prompts", id=str(prompt_id))
     if not existing:
         raise HTTPException(status_code=404, detail="writing_prompt not found")
     merged_min = patch.get("min_words", existing.get("min_words"))
@@ -341,8 +433,9 @@ def update_writing_prompt(
         raise HTTPException(status_code=422, detail="max_words must be >= min_words (merged with stored values)")
     try:
         result = supabase.rpc("cms_update_writing_prompt", {
-            "p_prompt_id": prompt_id,
-            "p_expected_updated_at": existing.get("updated_at"),
+            "p_prompt_id": str(prompt_id),
+            # CLIENT's token — never a server-minted fresh read — so edit-after-edit loses.
+            "p_expected_updated_at": body.expected_updated_at,
             "p_patch": patch,
             "p_reason": body.reason,
             "p_actor_user_id": admin.get("id"),
@@ -376,27 +469,26 @@ def bulk_upsert_writing_prompts(
 
 @router.post("/writing-prompts/{prompt_id}/review")
 def review_writing_prompt(
-    prompt_id: str,
+    prompt_id: UUID,
     body: WritingPromptReviewBody,
     admin: dict = Depends(require_permission(PERM_REVIEW)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     if body.status not in _TARGET_STATUSES:
         raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_TARGET_STATUSES)}")
-    supabase = get_supabase_admin()
-    existing = _safe_select(supabase, "writing_prompts", id=prompt_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="writing_prompt not found")
-    from_status = existing.get("reviewer_status", "pending")
-    if body.status not in _TRANSITIONS.get(from_status, ()):
+    # Guard the transition against the status the CLIENT actually saw (not a fresh
+    # server read) so a reviewer can't verify content that changed under them; the
+    # RPC re-checks expected_status + expected_updated_at under the row lock.
+    if body.status not in _TRANSITIONS.get(body.expected_status, ()):
         raise HTTPException(status_code=422, detail=(
-            f"Transition '{from_status}' → '{body.status}' is not allowed. "
-            f"Allowed: {list(_TRANSITIONS.get(from_status, ()))}"))
+            f"Transition '{body.expected_status}' → '{body.status}' is not allowed. "
+            f"Allowed: {list(_TRANSITIONS.get(body.expected_status, ()))}"))
+    supabase = get_supabase_admin()
     try:
         result = supabase.rpc("cms_review_writing_prompt", {
-            "p_prompt_id": prompt_id,
-            "p_expected_status": from_status,
-            "p_expected_updated_at": existing.get("updated_at"),
+            "p_prompt_id": str(prompt_id),
+            "p_expected_status": body.expected_status,
+            "p_expected_updated_at": body.expected_updated_at,
             "p_new_status": body.status,
             "p_reason": body.reason,
             "p_reviewer_notes": body.reviewer_notes,
@@ -413,19 +505,19 @@ def review_writing_prompt(
 
 @router.get("/writing-prompts/{prompt_id}/targets")
 def list_writing_prompt_targets(
-    prompt_id: str,
+    prompt_id: UUID,
     _admin: dict = Depends(_require_content_read),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
     res = (supabase.table("writing_prompt_targets").select("*")
-           .eq("prompt_id", prompt_id).order("created_at", desc=True).execute())
+           .eq("prompt_id", str(prompt_id)).order("created_at", desc=True).execute())
     return {"items": res.data or []}
 
 
 @router.post("/writing-prompts/{prompt_id}/targets")
 def propose_writing_prompt_target(
-    prompt_id: str,
+    prompt_id: UUID,
     body: WritingPromptTargetProposeBody,
     admin: dict = Depends(require_permission(PERM_ASSIGN)),
     __: None = Depends(_flag_enabled),
@@ -434,7 +526,7 @@ def propose_writing_prompt_target(
     supabase = get_supabase_admin()
     try:
         result = supabase.rpc("cms_propose_writing_prompt_target", {
-            "p_prompt_id": prompt_id,
+            "p_prompt_id": str(prompt_id),
             "p_is_global": body.is_global,
             "p_exam_family_id": str(body.exam_family_id) if body.exam_family_id else None,
             "p_exam_id": str(body.exam_id) if body.exam_id else None,
@@ -451,7 +543,7 @@ def propose_writing_prompt_target(
 
 @router.post("/writing-prompt-targets/{target_id}/review")
 def review_writing_prompt_target(
-    target_id: str,
+    target_id: UUID,
     body: WritingPromptTargetReviewBody,
     admin: dict = Depends(require_permission(PERM_ASSIGN_REVIEW)),
     __: None = Depends(_flag_enabled),
@@ -460,7 +552,7 @@ def review_writing_prompt_target(
     supabase = get_supabase_admin()
     try:
         result = supabase.rpc("cms_review_writing_prompt_target", {
-            "p_target_id": target_id,
+            "p_target_id": str(target_id),
             "p_expected_updated_at": body.expected_updated_at,
             "p_new_status": body.applicability_status,
             "p_priority": body.priority_score,
@@ -481,7 +573,7 @@ class _TargetRemoveBody(BaseModel):
 
 @router.post("/writing-prompt-targets/{target_id}/remove")
 def remove_writing_prompt_target(
-    target_id: str,
+    target_id: UUID,
     body: _TargetRemoveBody,
     admin: dict = Depends(require_permission(PERM_ASSIGN_REVIEW)),
     __: None = Depends(_flag_enabled),
@@ -490,7 +582,7 @@ def remove_writing_prompt_target(
     supabase = get_supabase_admin()
     try:
         result = supabase.rpc("cms_remove_writing_prompt_target", {
-            "p_target_id": target_id,
+            "p_target_id": str(target_id),
             "p_expected_updated_at": body.expected_updated_at,
             "p_reason": body.reason,
             "p_actor_user_id": admin.get("id"),

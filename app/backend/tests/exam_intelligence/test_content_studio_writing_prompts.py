@@ -34,6 +34,9 @@ _TOPIC = "00000000-0000-0000-0000-0000000000b1"
 _MICRO = "00000000-0000-0000-0000-0000000000c1"
 _PROMPT = "00000000-0000-0000-0000-0000000000d1"
 _EXAM = "00000000-0000-0000-0000-0000000000e1"
+_ABSENT = "00000000-0000-0000-0000-0000000000ff"  # valid UUID, not in seed
+_TOKEN = "2026-07-01T00:00:00Z"  # matches the seeded prompt's updated_at (CAS token)
+_TARGET = "00000000-0000-0000-0000-0000000000c2"  # a valid target UUID
 
 
 class _CSQuery(_Query):
@@ -213,8 +216,22 @@ def test_list_text_search_matches_prompt_text():
 
 def test_get_returns_404_when_absent():
     sb = CSSBStub(_seed())
-    r = _client(sb).get(f"{_BASE}/writing-prompts/does-not-exist")
+    r = _client(sb).get(f"{_BASE}/writing-prompts/{_ABSENT}")
     assert r.status_code == 404
+
+
+def test_get_malformed_uuid_is_422_not_404():
+    # UUID path typing must produce a controlled 422 at the boundary, not a
+    # _safe_select-swallowed 404 nor an unmapped 500.
+    sb = CSSBStub(_seed())
+    r = _client(sb).get(f"{_BASE}/writing-prompts/not-a-uuid")
+    assert r.status_code == 422
+
+
+def test_list_malformed_uuid_filter_is_422():
+    sb = CSSBStub(_seed())
+    r = _client(sb).get(f"{_BASE}/writing-prompts?subject_id=not-a-uuid")
+    assert r.status_code == 422
 
 
 def test_get_returns_prompt():
@@ -282,15 +299,84 @@ def test_create_requires_subject_id():
     assert r.status_code == 422
 
 
-# ── patch: merged word-bound validation + verified-lock mapping ────────────
+# ── create: reserved metadata + required-word / prompt-text canonicalization ──
 
 
-def test_patch_merged_min_max_validation_uses_stored_values():
-    # stored min_words=5; patch only max_words=3 → merged 3 < 5 → 422.
+def test_create_rejects_reserved_external_key_in_metadata():
+    sb = CSSBStub(_seed())
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts",
+        json={"reason": "claim an import key", "payload": _valid_payload(metadata={"external_key": "x"})})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_create_rejects_blank_prompt_text():
+    sb = CSSBStub(_seed())
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts",
+        json={"reason": "whitespace prompt text", "payload": _valid_payload(prompt_text="   ")})
+    assert r.status_code == 422
+
+
+def test_create_rejects_invalid_required_words():
+    sb = CSSBStub(_seed())
+    for bad in (["", "ok"], ["  "], ["two words"], ["Policy", "policy"], ["hi!"]):
+        r = _client(sb).post(
+            f"{_BASE}/writing-prompts",
+            json={"reason": "bad required words", "payload": _valid_payload(required_words=bad)})
+        assert r.status_code == 422, bad
+    assert not sb.rpc_calls
+
+
+def test_create_canonicalizes_required_words():
+    sb = CSSBStub(_seed())
+    r = _client(sb).post(
+        f"{_BASE}/writing-prompts",
+        json={"reason": "trim required words", "payload": _valid_payload(required_words=["  Ran  ", "quick-fix"])})
+    assert r.status_code == 200, r.text
+    assert sb.rpc_calls[-1][1]["p_payload"]["required_words"] == ["Ran", "quick-fix"]
+
+
+# ── patch: merged word-bound validation + verified-lock mapping + client CAS ──
+
+
+def test_patch_requires_expected_updated_at_token():
     sb = CSSBStub(_seed())
     r = _client(sb).patch(
         f"{_BASE}/writing-prompts/{_PROMPT}",
-        json={"reason": "shrink max below stored min", "payload": {"max_words": 3}})
+        json={"reason": "no CAS token", "payload": {"difficulty_level": 4}})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_patch_passes_client_token_unchanged():
+    # The router must pass the CLIENT's token, not a server-read fresh one.
+    sb = CSSBStub(_seed())
+    r = _client(sb).patch(
+        f"{_BASE}/writing-prompts/{_PROMPT}",
+        json={"reason": "edit difficulty", "expected_updated_at": "2020-01-01T00:00:00Z",
+              "payload": {"difficulty_level": 4}})
+    assert r.status_code == 200, r.text
+    assert sb.rpc_calls[-1][1]["p_expected_updated_at"] == "2020-01-01T00:00:00Z"
+
+
+def test_patch_rejects_reserved_external_key():
+    sb = CSSBStub(_seed())
+    r = _client(sb).patch(
+        f"{_BASE}/writing-prompts/{_PROMPT}",
+        json={"reason": "drop the import key", "expected_updated_at": _TOKEN,
+              "payload": {"metadata": {"external_key": "y"}}})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_patch_merged_min_max_validation_uses_stored_values():
+    sb = CSSBStub(_seed())
+    r = _client(sb).patch(
+        f"{_BASE}/writing-prompts/{_PROMPT}",
+        json={"reason": "shrink max below stored min", "expected_updated_at": _TOKEN,
+              "payload": {"max_words": 3}})
     assert r.status_code == 422
     assert not sb.rpc_calls
 
@@ -298,22 +384,33 @@ def test_patch_merged_min_max_validation_uses_stored_values():
 def test_patch_empty_payload_rejected():
     sb = CSSBStub(_seed())
     r = _client(sb).patch(f"{_BASE}/writing-prompts/{_PROMPT}",
-                          json={"reason": "no fields at all", "payload": {}})
+                          json={"reason": "no fields at all", "expected_updated_at": _TOKEN, "payload": {}})
     assert r.status_code == 422
 
 
 def test_patch_404_when_prompt_absent():
     sb = CSSBStub(_seed())
-    r = _client(sb).patch(f"{_BASE}/writing-prompts/nope",
-                          json={"reason": "patch a ghost", "payload": {"difficulty_level": 4}})
+    r = _client(sb).patch(f"{_BASE}/writing-prompts/{_ABSENT}",
+                          json={"reason": "patch a ghost", "expected_updated_at": _TOKEN,
+                                "payload": {"difficulty_level": 4}})
     assert r.status_code == 404
+
+
+def test_patch_malformed_uuid_is_422_not_404():
+    sb = CSSBStub(_seed())
+    r = _client(sb).patch(f"{_BASE}/writing-prompts/not-a-uuid",
+                          json={"reason": "malformed id", "expected_updated_at": _TOKEN,
+                                "payload": {"difficulty_level": 4}})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
 
 
 def test_patch_maps_verified_locked_to_422():
     sb = CSSBStub(_seed())
     sb.rpc_error = "prompt_verified_locked: demote via review first"
     r = _client(sb).patch(f"{_BASE}/writing-prompts/{_PROMPT}",
-                          json={"reason": "edit a verified prompt", "payload": {"difficulty_level": 4}})
+                          json={"reason": "edit a verified prompt", "expected_updated_at": _TOKEN,
+                                "payload": {"difficulty_level": 4}})
     assert r.status_code == 422
     assert r.json()["detail"]["error"] == "prompt_verified_locked"
 
@@ -322,56 +419,70 @@ def test_patch_maps_concurrent_modification_to_409():
     sb = CSSBStub(_seed())
     sb.rpc_error = "concurrent_modification: prompt changed since read"
     r = _client(sb).patch(f"{_BASE}/writing-prompts/{_PROMPT}",
-                          json={"reason": "stale write attempt", "payload": {"difficulty_level": 4}})
+                          json={"reason": "stale write attempt", "expected_updated_at": _TOKEN,
+                                "payload": {"difficulty_level": 4}})
     assert r.status_code == 409
 
 
-# ── review: transition guard + permission ─────────────────────────────────
+# ── review: transition guard + permission + client CAS ────────────────────
+
+
+def _review_body(**over) -> dict:
+    body = {"status": "verified", "expected_status": "pending",
+            "expected_updated_at": _TOKEN, "reason": "content looks correct"}
+    body.update(over)
+    return body
 
 
 def test_review_denied_without_review_permission():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[AUTHOR]).post(
-        f"{_BASE}/writing-prompts/{_PROMPT}/review",
-        json={"status": "verified", "reason": "author cannot review"})
+        f"{_BASE}/writing-prompts/{_PROMPT}/review", json=_review_body(reason="author cannot review"))
     assert r.status_code == 403
+
+
+def test_review_requires_cas_fields():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/review",
+        json={"status": "verified", "reason": "no CAS fields at all"})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
 
 
 def test_review_rejects_unknown_status():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[REVIEW]).post(
-        f"{_BASE}/writing-prompts/{_PROMPT}/review",
-        json={"status": "published", "reason": "not a real status"})
+        f"{_BASE}/writing-prompts/{_PROMPT}/review", json=_review_body(status="published"))
     assert r.status_code == 422
     assert not sb.rpc_calls
 
 
-def test_review_rejects_disallowed_transition():
-    seed = _seed()
-    seed["writing_prompts"][0]["reviewer_status"] = "rejected"
-    sb = CSSBStub(seed)
-    r = _client(sb, permissions=[REVIEW]).post(
-        f"{_BASE}/writing-prompts/{_PROMPT}/review",
-        json={"status": "verified", "reason": "rejected is terminal"})
-    assert r.status_code == 422
-    assert not sb.rpc_calls
-
-
-def test_review_happy_path_pending_to_verified():
+def test_review_rejects_disallowed_transition_by_client_expected_status():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[REVIEW]).post(
         f"{_BASE}/writing-prompts/{_PROMPT}/review",
-        json={"status": "verified", "reason": "content looks correct"})
+        json=_review_body(status="verified", expected_status="rejected", reason="rejected is terminal"))
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_review_happy_path_passes_client_tokens_unchanged():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/review",
+        json=_review_body(expected_status="pending", expected_updated_at="2019-05-05T00:00:00Z"))
     assert r.status_code == 200, r.text
     assert sb.rpc_calls[-1][0] == "cms_review_writing_prompt"
     assert sb.rpc_calls[-1][1]["p_expected_status"] == "pending"
+    assert sb.rpc_calls[-1][1]["p_expected_updated_at"] == "2019-05-05T00:00:00Z"
 
 
-def test_review_404_when_prompt_absent():
+def test_review_404_when_prompt_absent_from_rpc():
     sb = CSSBStub(_seed())
+    sb.rpc_error = "not_found: writing_prompt does not exist"
     r = _client(sb, permissions=[REVIEW]).post(
-        f"{_BASE}/writing-prompts/ghost/review",
-        json={"status": "verified", "reason": "reviewing a ghost"})
+        f"{_BASE}/writing-prompts/{_ABSENT}/review", json=_review_body())
     assert r.status_code == 404
 
 
@@ -428,7 +539,6 @@ def test_bulk_maps_locked_row_to_422():
 # (exam_intelligence.review) PROMOTES to active|excluded and removes.
 
 ASSIGN_REVIEW = cs.PERM_ASSIGN_REVIEW
-_TOKEN = "2026-07-01T00:00:00Z"
 
 
 def test_propose_target_requires_manage_permission():
@@ -476,7 +586,7 @@ def test_review_target_requires_review_permission():
     # manage may propose but NOT promote to effective.
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[ASSIGN]).post(
-        f"{_BASE}/writing-prompt-targets/t-1/review",
+        f"{_BASE}/writing-prompt-targets/{_TARGET}/review",
         json={"reason": "manage cannot activate", "applicability_status": "active",
               "expected_updated_at": _TOKEN})
     assert r.status_code == 403
@@ -486,7 +596,7 @@ def test_review_target_happy_path_calls_review_rpc():
     sb = CSSBStub(_seed())
     sb.rpc_result = {"ok": True, "target_id": "t-1"}
     r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
-        f"{_BASE}/writing-prompt-targets/t-1/review",
+        f"{_BASE}/writing-prompt-targets/{_TARGET}/review",
         json={"reason": "promote to active", "applicability_status": "active",
               "expected_updated_at": _TOKEN})
     assert r.status_code == 200, r.text
@@ -499,7 +609,7 @@ def test_review_target_rejects_pending_review_status():
     # review may only set active|excluded (Literal) — pending_review is rejected.
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
-        f"{_BASE}/writing-prompt-targets/t-1/review",
+        f"{_BASE}/writing-prompt-targets/{_TARGET}/review",
         json={"reason": "cannot set pending", "applicability_status": "pending_review",
               "expected_updated_at": _TOKEN})
     assert r.status_code == 422
@@ -509,7 +619,7 @@ def test_review_target_rejects_pending_review_status():
 def test_review_target_requires_cas_token():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
-        f"{_BASE}/writing-prompt-targets/t-1/review",
+        f"{_BASE}/writing-prompt-targets/{_TARGET}/review",
         json={"reason": "no CAS token supplied", "applicability_status": "active"})
     assert r.status_code == 422
     assert not sb.rpc_calls
@@ -520,7 +630,7 @@ def test_review_target_maps_invalid_scope_to_422():
     sb = CSSBStub(_seed())
     sb.rpc_error = "invalid_scope: a global assignment cannot be excluded"
     r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
-        f"{_BASE}/writing-prompt-targets/t-1/review",
+        f"{_BASE}/writing-prompt-targets/{_TARGET}/review",
         json={"reason": "exclude a global row", "applicability_status": "excluded",
               "expected_updated_at": _TOKEN})
     assert r.status_code == 422
@@ -540,7 +650,7 @@ def test_list_targets_readable_by_content_reader():
 def test_remove_target_requires_review_permission():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[ASSIGN]).post(
-        f"{_BASE}/writing-prompt-targets/t-1/remove",
+        f"{_BASE}/writing-prompt-targets/{_TARGET}/remove",
         json={"reason": "manage cannot remove effective", "expected_updated_at": _TOKEN})
     assert r.status_code == 403
 
@@ -548,7 +658,7 @@ def test_remove_target_requires_review_permission():
 def test_remove_target_requires_cas_token():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
-        f"{_BASE}/writing-prompt-targets/t-1/remove",
+        f"{_BASE}/writing-prompt-targets/{_TARGET}/remove",
         json={"reason": "no CAS token supplied"})
     assert r.status_code == 422
     assert not sb.rpc_calls
@@ -558,7 +668,7 @@ def test_remove_target_maps_not_found_to_404():
     sb = CSSBStub(_seed())
     sb.rpc_error = "not_found: writing_prompt_target does not exist"
     r = _client(sb, permissions=[ASSIGN_REVIEW]).post(
-        f"{_BASE}/writing-prompt-targets/ghost/remove",
+        f"{_BASE}/writing-prompt-targets/{_ABSENT}/remove",
         json={"reason": "removing a ghost target", "expected_updated_at": _TOKEN})
     assert r.status_code == 404
 
