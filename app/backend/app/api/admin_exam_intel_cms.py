@@ -2196,7 +2196,7 @@ def _validate_competition_payload(row: dict[str, Any]) -> None:
 @router.post("/exam-competition-metrics")
 def create_competition_metric(
     body: WriteEnvelope,
-    admin: dict = Depends(require_permission(PERM_CMS)),
+    admin: dict = Depends(require_permission(PERM_MANAGE)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     """Create a competition-intelligence row.
@@ -2252,7 +2252,7 @@ def create_competition_metric(
 def update_competition_metric(
     metric_id: str,
     body: WriteEnvelope,
-    admin: dict = Depends(require_permission(PERM_CMS)),
+    admin: dict = Depends(require_permission(PERM_MANAGE)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     """Curate an existing competition-metric row. ``reviewer_status`` is

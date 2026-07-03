@@ -113,6 +113,76 @@ def test_create_competition_metric_is_forced_draft():
     assert sb.db["exam_competition_metrics"][0]["reviewer_status"] == "draft"
 
 
+# ── permission tier: competition-metric create/patch are normal Manage-Exam
+# canonical edits → `exam_intelligence.manage`, NOT the Advanced-Repair
+# `exam_intelligence.cms` (J2 gate §D; parity with candidate-counts). ──────────
+def _tiered_client(sb: SBStub, permissions):
+    app = FastAPI()
+    app.include_router(cms_api.router, prefix="/api")
+    cms_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
+    app.dependency_overrides[cms_api._flag_enabled] = lambda: None
+    app.dependency_overrides[get_current_user] = lambda: {
+        "id": "admin-1", "role": "admin", "permissions": permissions,
+    }
+    return TestClient(app, raise_server_exceptions=False)
+
+
+def _competition_create_body():
+    return {
+        "reason": "seeding competition metric",
+        "payload": {"exam_id": "exam-1", "exam_cycle_id": "cyc-1"},
+    }
+
+
+def test_create_competition_metric_allowed_for_manage():
+    sb = SBStub(_seeded_exam())
+    r = _tiered_client(sb, ["exam_intelligence.manage"]).post(
+        f"{_BASE}/exam-competition-metrics", json=_competition_create_body())
+    assert r.status_code == 200, r.text
+
+
+def test_create_competition_metric_forbidden_for_cms_only():
+    sb = SBStub(_seeded_exam())
+    r = _tiered_client(sb, ["exam_intelligence.cms"]).post(
+        f"{_BASE}/exam-competition-metrics", json=_competition_create_body())
+    assert r.status_code == 403, r.text
+
+
+def test_create_competition_metric_forbidden_for_review_only():
+    sb = SBStub(_seeded_exam())
+    r = _tiered_client(sb, ["exam_intelligence.review"]).post(
+        f"{_BASE}/exam-competition-metrics", json=_competition_create_body())
+    assert r.status_code == 403, r.text
+
+
+def test_patch_competition_metric_allowed_for_manage():
+    sb = SBStub({
+        **_seeded_exam(),
+        "exam_competition_metrics": [{
+            "id": "m-cycle", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+            "exam_phase_id": None, "metric_kind": "cycle_summary", "reviewer_status": "draft",
+        }],
+    })
+    r = _tiered_client(sb, ["exam_intelligence.manage"]).patch(
+        f"{_BASE}/exam-competition-metrics/m-cycle",
+        json={"reason": "fix vacancy", "payload": {"vacancy_total": 100}})
+    assert r.status_code == 200, r.text
+
+
+def test_patch_competition_metric_forbidden_for_cms_only():
+    sb = SBStub({
+        **_seeded_exam(),
+        "exam_competition_metrics": [{
+            "id": "m-cycle", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+            "exam_phase_id": None, "metric_kind": "cycle_summary", "reviewer_status": "draft",
+        }],
+    })
+    r = _tiered_client(sb, ["exam_intelligence.cms"]).patch(
+        f"{_BASE}/exam-competition-metrics/m-cycle",
+        json={"reason": "fix vacancy", "payload": {"vacancy_total": 100}})
+    assert r.status_code == 403, r.text
+
+
 # ── bulk-import forces pre-review state per entity ─────────────────────
 
 

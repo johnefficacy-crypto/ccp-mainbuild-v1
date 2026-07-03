@@ -1000,7 +1000,7 @@ class CompetitionEvidenceBody(BaseModel):
 def attach_competition_metric_evidence(
     row_id: str,
     body: CompetitionEvidenceBody = Body(...),
-    admin: dict = Depends(require_permission(ADMIN_PERM)),
+    admin: dict = Depends(require_permission(MANAGE_PERM)),
 ) -> dict[str, Any]:
     """Attach evidence to a working (draft/pending_review) competition-metric
     revision. Evidence is append-only and immutable once the parent is
@@ -1061,7 +1061,7 @@ def attach_competition_metric_evidence(
 @router.get("/competition-metrics/{row_id}/evidence")
 def list_competition_metric_evidence(
     row_id: str,
-    admin: dict = Depends(require_permission(ADMIN_PERM)),
+    admin: dict = Depends(_manage_or_review),
 ) -> dict[str, Any]:
     """List evidence attached to a competition-metric row (OD-9: the review
     surface must be able to display the evidence a promotion decision relies
@@ -1118,7 +1118,7 @@ def list_competition_metrics(
     status: str = Query("all"),
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0, le=10000),
-    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+    _admin: dict = Depends(_manage_or_review),
 ) -> dict[str, Any]:
     """List ``exam_competition_metrics`` rows for admin review.
 
@@ -1258,7 +1258,7 @@ class ReopenForEditBody(BaseModel):
 def reopen_competition_metric_for_edit(
     row_id: str,
     body: ReopenForEditBody = Body(...),
-    admin: dict = Depends(require_permission(ADMIN_PERM)),
+    admin: dict = Depends(require_permission(MANAGE_PERM)),
 ) -> dict[str, Any]:
     """Clone a published (reviewed/locked) row into a new draft revision.
 
